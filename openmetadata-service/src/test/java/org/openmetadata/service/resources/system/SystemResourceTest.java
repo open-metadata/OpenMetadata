@@ -1,7 +1,6 @@
 package org.openmetadata.service.resources.system;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.TEST_AUTH_HEADERS;
 
@@ -48,7 +47,6 @@ import org.openmetadata.schema.auth.JWTAuthMechanism;
 import org.openmetadata.schema.auth.JWTTokenExpiry;
 import org.openmetadata.schema.configuration.AssetCertificationSettings;
 import org.openmetadata.schema.configuration.WorkflowSettings;
-import org.openmetadata.schema.email.SmtpSettings;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.profiler.MetricType;
@@ -58,10 +56,8 @@ import org.openmetadata.schema.system.ValidationResponse;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.util.EntitiesCount;
 import org.openmetadata.schema.util.ServicesCount;
-import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.OpenMetadataApplicationTest;
-import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.dashboards.DashboardResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
@@ -81,7 +77,6 @@ import org.openmetadata.service.resources.storages.ContainerResourceTest;
 import org.openmetadata.service.resources.teams.TeamResourceTest;
 import org.openmetadata.service.resources.teams.UserResourceTest;
 import org.openmetadata.service.resources.topics.TopicResourceTest;
-import org.openmetadata.service.secrets.masker.PasswordEntityMasker;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.TestUtils;
 
@@ -188,14 +183,6 @@ public class SystemResourceTest extends OpenMetadataApplicationTest {
   @Test
   @Order(2)
   void testSystemConfigs() throws HttpResponseException {
-    // Test Email Config
-    Settings emailSettings = getSystemConfig(SettingsType.EMAIL_CONFIGURATION);
-    SmtpSettings smtp = JsonUtils.convertValue(emailSettings.getConfigValue(), SmtpSettings.class);
-    // Password for Email is always sent in hidden
-    SmtpSettings expected = config.getSmtpSettings();
-    expected.setPassword(PasswordEntityMasker.PASSWORD_MASK);
-    assertEquals(expected, smtp);
-
     // Test Custom Ui Theme Preference Config
     Settings uiThemeConfigWrapped = getSystemConfig(SettingsType.CUSTOM_UI_THEME_PREFERENCE);
     UiThemePreference uiThemePreference =
@@ -212,39 +199,7 @@ public class SystemResourceTest extends OpenMetadataApplicationTest {
   }
 
   @Test
-  @Order(1)
-  void testDefaultEmailSystemConfig() {
-    // Test Email Config
-    Settings stored =
-        Entity.getCollectionDAO()
-            .systemDAO()
-            .getConfigWithKey(SettingsType.EMAIL_CONFIGURATION.value());
-    SmtpSettings storedAndEncrypted =
-        JsonUtils.convertValue(stored.getConfigValue(), SmtpSettings.class);
-    assertTrue(Fernet.isTokenized(storedAndEncrypted.getPassword()));
-    assertEquals(
-        config.getSmtpSettings().getPassword(),
-        Fernet.getInstance().decryptIfApplies(storedAndEncrypted.getPassword()));
-  }
-
-  @Test
   void testSystemConfigsUpdate(TestInfo test) throws HttpResponseException {
-    // Test Email Config
-    SmtpSettings smtpSettings = config.getSmtpSettings();
-    // Update a few Email fields
-    smtpSettings.setUsername(test.getDisplayName());
-    smtpSettings.setEmailingEntity(test.getDisplayName());
-
-    updateSystemConfig(
-        new Settings()
-            .withConfigType(SettingsType.EMAIL_CONFIGURATION)
-            .withConfigValue(smtpSettings));
-    SmtpSettings updateEmailSettings =
-        JsonUtils.convertValue(
-            getSystemConfig(SettingsType.EMAIL_CONFIGURATION).getConfigValue(), SmtpSettings.class);
-    assertEquals(updateEmailSettings.getUsername(), test.getDisplayName());
-    assertEquals(updateEmailSettings.getEmailingEntity(), test.getDisplayName());
-
     // Test Custom Logo Update and theme preference
     UiThemePreference updateConfigReq =
         new UiThemePreference()
@@ -352,43 +307,11 @@ public class SystemResourceTest extends OpenMetadataApplicationTest {
   @Test
   void testDefaultSettingsInitialization() throws HttpResponseException {
     SettingsCache.initialize(config);
-    Settings emailSettings = getSystemConfig(SettingsType.EMAIL_CONFIGURATION);
     Settings uiThemeSettings = getSystemConfig(SettingsType.CUSTOM_UI_THEME_PREFERENCE);
-    SmtpSettings smtpSettings =
-        JsonUtils.convertValue(emailSettings.getConfigValue(), SmtpSettings.class);
-    assertEquals(config.getSmtpSettings().getUsername(), smtpSettings.getUsername());
-    assertEquals(config.getSmtpSettings().getEmailingEntity(), smtpSettings.getEmailingEntity());
     UiThemePreference uiThemePreference =
         JsonUtils.convertValue(uiThemeSettings.getConfigValue(), UiThemePreference.class);
     assertEquals("", uiThemePreference.getCustomTheme().getPrimaryColor());
     assertEquals("", uiThemePreference.getCustomLogoConfig().getCustomLogoUrlPath());
-  }
-
-  @Test
-  void testEmailConfigurationSettings() throws HttpResponseException {
-    Settings emailSettings = getSystemConfig(SettingsType.EMAIL_CONFIGURATION);
-    SmtpSettings smtpSettings =
-        JsonUtils.convertValue(emailSettings.getConfigValue(), SmtpSettings.class);
-    SmtpSettings expectedSmtpSettings = config.getSmtpSettings();
-    expectedSmtpSettings.setPassword(
-        smtpSettings.getPassword()); // Password is encrypted, so we use the stored one
-    assertEquals(expectedSmtpSettings, smtpSettings);
-    smtpSettings.setUsername("updatedUsername");
-    smtpSettings.setEmailingEntity("updatedEntity");
-
-    Settings updatedEmailSettings =
-        new Settings()
-            .withConfigType(SettingsType.EMAIL_CONFIGURATION)
-            .withConfigValue(smtpSettings);
-
-    updateSystemConfig(updatedEmailSettings);
-
-    Settings updatedSettings = getSystemConfig(SettingsType.EMAIL_CONFIGURATION);
-    SmtpSettings updatedSmtpSettings =
-        JsonUtils.convertValue(updatedSettings.getConfigValue(), SmtpSettings.class);
-
-    assertEquals("updatedUsername", updatedSmtpSettings.getUsername());
-    assertEquals("updatedEntity", updatedSmtpSettings.getEmailingEntity());
   }
 
   @Order(3)
