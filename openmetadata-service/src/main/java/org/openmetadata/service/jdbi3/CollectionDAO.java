@@ -60,6 +60,7 @@ import org.openmetadata.schema.TokenInterface;
 import org.openmetadata.schema.analytics.ReportData;
 import org.openmetadata.schema.analytics.WebAnalyticEvent;
 import org.openmetadata.schema.api.configuration.LoginConfiguration;
+import org.openmetadata.schema.api.configuration.OpenMetadataBaseUrlConfiguration;
 import org.openmetadata.schema.api.configuration.profiler.ProfilerConfiguration;
 import org.openmetadata.schema.api.lineage.LineageSettings;
 import org.openmetadata.schema.api.search.SearchSettings;
@@ -5308,6 +5309,8 @@ public interface CollectionDAO {
       Object value =
           switch (configType) {
             case EMAIL_CONFIGURATION -> JsonUtils.readValue(json, SmtpSettings.class);
+            case OPEN_METADATA_BASE_URL_CONFIGURATION -> JsonUtils.readValue(
+                json, OpenMetadataBaseUrlConfiguration.class);
             case CUSTOM_UI_THEME_PREFERENCE -> JsonUtils.readValue(json, UiThemePreference.class);
             case LOGIN_CONFIGURATION -> JsonUtils.readValue(json, LoginConfiguration.class);
             case SLACK_APP_CONFIGURATION, SLACK_INSTALLER, SLACK_BOT, SLACK_STATE -> JsonUtils
