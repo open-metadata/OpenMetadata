@@ -253,6 +253,4 @@ class SqlLineageTest(TestCase):
         ]
 
         for i, query in enumerate(query_list):
-            print("*** "*100)
-            print(mask_query(query[0], query[1]), expected_query_list[i])
             self.assertEqual(mask_query(query[0], query[1]), expected_query_list[i])
