@@ -14,6 +14,8 @@
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { PagingResponse } from 'Models';
+import { PAGE_SIZE_MEDIUM } from '../constants/constants';
+import { SearchIndex } from '../enums/search.enum';
 import { CreateDomain } from '../generated/api/domains/createDomain';
 import { Domain, EntityReference } from '../generated/entity/domains/domain';
 import { EntityHistory } from '../generated/type/entityHistory';
@@ -104,4 +106,32 @@ export const removeAssetsFromDomain = async (
   >(`/domains/${getEncodedFqn(domainFqn)}/assets/remove`, data);
 
   return response.data;
+};
+
+export const listDomainHierarchy = async (params?: ListParams) => {
+  const response = await APIClient.get<PagingResponse<Domain[]>>(
+    `${BASE_URL}/hierarchy`,
+    {
+      params,
+    }
+  );
+
+  return response.data;
+};
+
+export const searchDomains = async (search: string, page = 1) => {
+  const apiUrl = `/search/query?q=*${search ?? ''}*`;
+
+  const { data } = await APIClient.get(apiUrl, {
+    params: {
+      index: SearchIndex.DOMAIN,
+      from: (page - 1) * PAGE_SIZE_MEDIUM,
+      size: PAGE_SIZE_MEDIUM,
+      deleted: false,
+      track_total_hits: true,
+      getHierarchy: true,
+    },
+  });
+
+  return data;
 };

@@ -82,7 +82,7 @@ import Fqn from '../../../utils/Fqn';
 import {
   buildTree,
   findExpandableKeysForArray,
-  findGlossaryTermByFqn,
+  findItemByFqn,
   glossaryTermTableColumnsWidth,
   StatusClass,
 } from '../../../utils/GlossaryUtils';
@@ -672,10 +672,7 @@ const GlossaryTermTab = ({
             );
             const terms = cloneDeep(glossaryTerms) ?? [];
 
-            const item = findGlossaryTermByFqn(
-              terms,
-              record.fullyQualifiedName ?? ''
-            );
+            const item = findItemByFqn(terms, record.fullyQualifiedName ?? '');
 
             (item as ModifiedGlossary).children = data;
 

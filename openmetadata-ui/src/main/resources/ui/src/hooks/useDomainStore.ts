@@ -34,7 +34,7 @@ export const useDomainStore = create<DomainStore>()(
       activeDomain: DEFAULT_DOMAIN_VALUE, // Set default value here
       activeDomainEntityRef: undefined,
       domainOptions: [],
-      updateDomains: (data: Domain[], selectDefault = true) => {
+      updateDomains: (data: Domain[]) => {
         const currentUser = useApplicationStore.getState().currentUser;
         const { isAdmin = false, domains = [] } = currentUser ?? {};
         const userDomainsObj = isAdmin ? [] : domains;
@@ -51,19 +51,9 @@ export const useDomainStore = create<DomainStore>()(
         set({
           domains: filteredDomains,
           domainOptions: getDomainOptions(
-            isAdmin ? filteredDomains : userDomainsObj,
-            isAdmin
+            isAdmin ? filteredDomains : userDomainsObj
           ),
         });
-
-        if (
-          selectDefault &&
-          !isAdmin &&
-          userDomainsObj.length > 0 &&
-          get().activeDomain === DEFAULT_DOMAIN_VALUE
-        ) {
-          get().updateActiveDomain(userDomainsObj[0].fullyQualifiedName ?? '');
-        }
       },
       updateActiveDomain: (activeDomainKey: string) => {
         const currentUser = useApplicationStore.getState().currentUser;

@@ -35,6 +35,7 @@ import {
   Status,
   TermReference,
 } from '../generated/entity/data/glossaryTerm';
+import { Domain } from '../generated/entity/domains/domain';
 import { calculatePercentageFromValue } from './CommonUtils';
 import { getEntityName } from './EntityUtils';
 import { VersionStatus } from './EntityVersionUtils.interface';
@@ -191,23 +192,28 @@ export const updateGlossaryTermByFqn = (
 // This function finds and gives you the glossary term you're looking for.
 // You can then use this term or update its information in the Glossary or Term with it's reference created
 // Reference will only be created if withReference is true
-export const findGlossaryTermByFqn = (
-  list: ModifiedGlossaryTerm[],
+export const findItemByFqn = (
+  list: ModifiedGlossaryTerm[] | Domain[],
   fullyQualifiedName: string,
   withReference = true
 ): GlossaryTerm | Glossary | ModifiedGlossary | null => {
   for (const item of list) {
-    if ((item.fullyQualifiedName ?? item.value) === fullyQualifiedName) {
+    if (
+      (item.fullyQualifiedName ?? (item as ModifiedGlossaryTerm).value) ===
+      fullyQualifiedName
+    ) {
       return withReference
         ? item
         : {
             ...item,
-            fullyQualifiedName: item.fullyQualifiedName ?? item.data?.tagFQN,
-            ...(item.data ?? {}),
+            fullyQualifiedName:
+              item.fullyQualifiedName ??
+              (item as ModifiedGlossaryTerm).data?.tagFQN,
+            ...((item as ModifiedGlossaryTerm).data ?? {}),
           };
     }
     if (item.children) {
-      const found = findGlossaryTermByFqn(
+      const found = findItemByFqn(
         item.children as ModifiedGlossaryTerm[],
         fullyQualifiedName
       );
