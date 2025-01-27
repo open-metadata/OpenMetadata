@@ -206,6 +206,12 @@ export const PAGE_HEADERS = {
     header: i18n.t('label.lineage-config'),
     subHeader: i18n.t('message.page-sub-header-for-lineage-config-setting'),
   },
+  OM_URL_CONFIG: {
+    header: i18n.t('label.entity-configuration', {
+      entity: i18n.t('label.open-metadata-url'),
+    }),
+    subHeader: i18n.t('message.om-url-configuration-message'),
+  },
   OM_HEALTH: {
     header: i18n.t('label.health-check'),
     subHeader: i18n.t('message.page-sub-header-for-om-health-configuration'),

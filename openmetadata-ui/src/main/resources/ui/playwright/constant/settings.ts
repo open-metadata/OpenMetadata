@@ -87,6 +87,7 @@ export enum GlobalSettingOptions {
   METRICS = 'metrics',
   SEARCH_RBAC = 'search-rbac',
   LINEAGE_CONFIG = 'lineageConfig',
+  OM_URL_CONFIG = 'om-url-config',
 }
 
 export const SETTINGS_OPTIONS_PATH = {
@@ -208,6 +209,10 @@ export const SETTINGS_OPTIONS_PATH = {
   [GlobalSettingOptions.LINEAGE_CONFIG]: [
     GlobalSettingsMenuCategory.PREFERENCES,
     `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.LINEAGE_CONFIG}`,
+  ],
+  [GlobalSettingOptions.OM_URL_CONFIG]: [
+    GlobalSettingsMenuCategory.PREFERENCES,
+    `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.OM_URL_CONFIG}`,
   ],
 };
 

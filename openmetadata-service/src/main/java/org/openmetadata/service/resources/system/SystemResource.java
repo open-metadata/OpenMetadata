@@ -255,30 +255,6 @@ public class SystemResource {
     return systemRepository.patchSetting(settingName, patch);
   }
 
-  @PUT
-  @Path("/restore/default/email")
-  @Operation(
-      operationId = "restoreEmailSettingToDefault",
-      summary = "Restore Email to Default setting",
-      description = "Restore Email to Default settings",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "Settings",
-            content =
-                @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = Settings.class)))
-      })
-  public Response restoreDefaultEmailSetting(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
-    authorizer.authorizeAdmin(securityContext);
-    return systemRepository.createOrUpdate(
-        new Settings()
-            .withConfigType(SettingsType.EMAIL_CONFIGURATION)
-            .withConfigValue(applicationConfig.getSmtpSettings()));
-  }
-
   @GET
   @Path("/entities/count")
   @Operation(

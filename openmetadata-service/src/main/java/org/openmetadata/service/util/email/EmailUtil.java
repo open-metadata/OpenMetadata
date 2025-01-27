@@ -55,13 +55,16 @@ import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.openmetadata.common.utils.CommonUtil;
+import org.openmetadata.schema.api.configuration.OpenMetadataBaseUrlConfiguration;
 import org.openmetadata.schema.email.SmtpSettings;
 import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.service.apps.bundles.changeEvent.email.EmailMessage;
 import org.openmetadata.service.events.scheduled.template.DataInsightDescriptionAndOwnerTemplate;
 import org.openmetadata.service.events.scheduled.template.DataInsightTotalAssetTemplate;
+import org.openmetadata.service.jdbi3.SystemRepository;
 import org.openmetadata.service.resources.settings.SettingsCache;
 import org.simplejavamail.api.email.Email;
 import org.simplejavamail.api.email.EmailPopulatingBuilder;
@@ -277,7 +280,7 @@ public class EmailUtil {
               .add(SUPPORT_URL, getSmtpSettings().getSupportUrl())
               .add(USERNAME, user.getName())
               .add(PASSWORD, password)
-              .add(APPLICATION_LOGIN_LINK, getSmtpSettings().getOpenMetadataUrl())
+              .add(APPLICATION_LOGIN_LINK, getOMBaseURL())
               .build();
 
       try {
@@ -351,10 +354,7 @@ public class EmailUtil {
               .add("descriptionObj", descriptionObj)
               .add("ownershipObj", ownerShipObj)
               .add("tierObj", tierObj)
-              .add(
-                  "viewReportUrl",
-                  String.format(
-                      "%s/data-insights/data-assets", getSmtpSettings().getOpenMetadataUrl()))
+              .add("viewReportUrl", String.format("%s/data-insights/data-assets", getOMBaseURL()))
               .build();
 
       sendMailToMultiple(subject, templatePopulator, emails, templateFilePath);
@@ -438,6 +438,15 @@ public class EmailUtil {
       return false;
     }
     return email.matches("^[\\w-\\.]+@([\\w-]+\\.)+[\\w-]{2,4}$");
+  }
+
+  public static String getOMBaseURL() {
+    Settings setting =
+        new SystemRepository()
+            .getConfigWithKey(SettingsType.OPEN_METADATA_BASE_URL_CONFIGURATION.value());
+    OpenMetadataBaseUrlConfiguration urlConfiguration =
+        (OpenMetadataBaseUrlConfiguration) setting.getConfigValue();
+    return urlConfiguration.getOpenMetadataUrl();
   }
 
   static class TemplatePopulatorBuilder {

@@ -15,6 +15,7 @@ import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.api.configuration.UiThemePreference;
+import org.openmetadata.schema.api.configuration.OpenMetadataBaseUrlConfiguration;
 import org.openmetadata.schema.configuration.AssetCertificationSettings;
 import org.openmetadata.schema.configuration.ExecutorConfiguration;
 import org.openmetadata.schema.configuration.HistoryCleanUpConfiguration;
@@ -175,6 +176,22 @@ public class SystemRepository {
     return null;
   }
 
+  public Settings getOMBaseUrlConfigInternal() {
+    try {
+      Settings setting =
+          dao.getConfigWithKey(SettingsType.OPEN_METADATA_BASE_URL_CONFIGURATION.value());
+      OpenMetadataBaseUrlConfiguration urlConfiguration =
+          (OpenMetadataBaseUrlConfiguration) setting.getConfigValue();
+      setting.setConfigValue(urlConfiguration);
+      return setting;
+    } catch (Exception ex) {
+      LOG.error(
+          "Error while trying to fetch OpenMetadataBaseUrlConfiguration Settings {}",
+          ex.getMessage());
+    }
+    return null;
+  }
+
   public Settings getSlackApplicationConfigInternal() {
     try {
       Settings setting = dao.getConfigWithKey(SettingsType.SLACK_APP_CONFIGURATION.value());
@@ -269,6 +286,11 @@ public class SystemRepository {
         SmtpSettings emailConfig =
             JsonUtils.convertValue(setting.getConfigValue(), SmtpSettings.class);
         setting.setConfigValue(encryptEmailSetting(emailConfig));
+      } else if (setting.getConfigType() == SettingsType.OPEN_METADATA_BASE_URL_CONFIGURATION) {
+        OpenMetadataBaseUrlConfiguration omBaseUrl =
+            JsonUtils.convertValue(
+                setting.getConfigValue(), OpenMetadataBaseUrlConfiguration.class);
+        setting.setConfigValue(omBaseUrl);
       } else if (setting.getConfigType() == SettingsType.SLACK_APP_CONFIGURATION) {
         SlackAppConfiguration appConfiguration =
             JsonUtils.convertValue(setting.getConfigValue(), SlackAppConfiguration.class);
