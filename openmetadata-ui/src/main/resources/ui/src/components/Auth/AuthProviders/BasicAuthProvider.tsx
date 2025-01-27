@@ -40,7 +40,13 @@ import {
 import { resetWebAnalyticSession } from '../../../utils/WebAnalyticsUtils';
 
 import { toLower } from 'lodash';
-import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { extractDetailsFromToken } from '../../../utils/AuthProvider.util';
+import {
+  getOidcToken,
+  getRefreshToken,
+  setOidcToken,
+  setRefreshToken,
+} from '../../../utils/LocalStorageUtils';
 import { OidcUser } from './AuthProvider.interface';
 
 export interface BasicAuthJWTPayload extends JwtPayload {
@@ -90,13 +96,7 @@ const BasicAuthProvider = ({
   onLoginFailure,
 }: BasicAuthProps) => {
   const { t } = useTranslation();
-  const {
-    setRefreshToken,
-    setOidcToken,
-    getOidcToken,
-    removeOidcToken,
-    getRefreshToken,
-  } = useApplicationStore();
+
   const [loginError, setLoginError] = useState<string | null>(null);
   const history = useHistory();
 
@@ -182,10 +182,11 @@ const BasicAuthProvider = ({
   const handleLogout = async () => {
     const token = getOidcToken();
     const refreshToken = getRefreshToken();
-    if (token) {
+    const isExpired = extractDetailsFromToken(token).isExpired;
+    if (token && !isExpired) {
       try {
         await logoutUser({ token, refreshToken });
-        removeOidcToken();
+        setOidcToken('');
         history.push(ROUTES.SIGNIN);
       } catch (error) {
         showErrorToast(error as AxiosError);

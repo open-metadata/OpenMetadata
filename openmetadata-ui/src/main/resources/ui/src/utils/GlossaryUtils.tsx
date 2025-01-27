@@ -22,6 +22,7 @@ import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import { EntityType } from '../enums/entity.enum';
 import { Glossary } from '../generated/entity/data/glossary';
 import { GlossaryTerm, Status } from '../generated/entity/data/glossaryTerm';
+import { calculatePercentageFromValue } from './CommonUtils';
 import { getEntityName } from './EntityUtils';
 import Fqn from './Fqn';
 import { getGlossaryPath } from './RouterUtils';
@@ -370,3 +371,18 @@ export const findAndUpdateNested = (
     return term;
   });
 };
+
+export const glossaryTermTableColumnsWidth = (
+  tableWidth: number,
+  havingCreatePermission: boolean
+) => ({
+  name: calculatePercentageFromValue(tableWidth, 40),
+  description: calculatePercentageFromValue(
+    tableWidth,
+    havingCreatePermission ? 21 : 33
+  ),
+  reviewers: calculatePercentageFromValue(tableWidth, 33),
+  synonyms: calculatePercentageFromValue(tableWidth, 33),
+  owners: calculatePercentageFromValue(tableWidth, 17),
+  status: calculatePercentageFromValue(tableWidth, 12),
+});

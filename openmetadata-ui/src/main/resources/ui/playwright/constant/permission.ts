@@ -77,6 +77,36 @@ export const DATA_CONSUMER_RULES: PolicyRulesType[] = [
   },
 ];
 
+export const VIEW_ALL_RULE: PolicyRulesType[] = [
+  {
+    name: 'OrganizationPolicy-ViewAll-Rule',
+    description: 'Allow all users to view all metadata',
+    resources: ['All'],
+    operations: ['ViewAll'],
+    effect: 'allow',
+  },
+];
+
+export const VIEW_ALL_WITH_IS_OWNER: PolicyRulesType[] = [
+  {
+    name: 'viewAll-IsOwner',
+    resources: ['All'],
+    operations: ['ViewAll'],
+    effect: 'allow',
+    condition: 'isOwner()',
+  },
+];
+
+export const VIEW_ALL_WITH_MATCH_TAG_CONDITION: PolicyRulesType[] = [
+  {
+    name: 'viewAll-MatchTag',
+    resources: ['All'],
+    operations: ['ViewAll'],
+    effect: 'allow',
+    condition: "matchAnyTag('PersonalData.Personal')",
+  },
+];
+
 export const EDIT_USER_FOR_TEAM_RULES: PolicyRulesType[] = [
   {
     name: 'EditUserTeams-EditRule',
@@ -103,13 +133,6 @@ export const ORGANIZATION_POLICY_RULES: PolicyRulesType[] = [
     operations: ['All'],
     resources: ['All'],
     condition: 'isOwner()',
-  },
-  {
-    name: 'OrganizationPolicy-ViewAll-Rule',
-    description: 'Allow all users to discover data assets.',
-    effect: 'allow',
-    operations: ['ViewAll'],
-    resources: ['All'],
   },
 ];
 
