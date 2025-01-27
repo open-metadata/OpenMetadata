@@ -248,7 +248,8 @@ class SalesforceSource(DatabaseServiceSource):
             column_description = result["records"][0]["Description"]
         except KeyError as err:
             logger.warning(
-                f"Unable to get required key from Tooling API response for column [{column_name}] in table [{table_name}]: {err}"
+                f"Unable to get required key from Tooling API response for "
+                f"column [{column_name}] in table [{table_name}]: {err}"
             )
         except IndexError as err:
             logger.warning(
