@@ -2486,6 +2486,35 @@ public abstract class EntityRepository<T extends EntityInterface> {
         .withPreviousVersion(prevVersion);
   }
 
+  protected void createAndInsertChangeEvent(
+      T original, T updated, ChangeDescription changeDescription, EventType eventType) {
+    if (changeDescription == null) {
+      return;
+    }
+
+    if (changeDescription.getPreviousVersion() == null) {
+      changeDescription.withPreviousVersion(original.getVersion());
+    }
+
+    ChangeEvent changeEvent =
+        new ChangeEvent()
+            .withId(UUID.randomUUID())
+            .withEventType(eventType)
+            .withEntityType(entityType)
+            .withEntityId(updated.getId())
+            .withEntityFullyQualifiedName(updated.getFullyQualifiedName())
+            .withUserName(updated.getUpdatedBy())
+            .withTimestamp(System.currentTimeMillis())
+            .withCurrentVersion(updated.getVersion())
+            .withPreviousVersion(changeDescription.getPreviousVersion())
+            .withChangeDescription(changeDescription)
+            .withEntity(updated);
+
+    daoCollection.changeEventDAO().insert(JsonUtils.pojoToJson(changeEvent));
+    LOG.debug(
+        "Inserted incremental ChangeEvent for {} version {}", entityType, updated.getVersion());
+  }
+
   /** Remove owner relationship for a given entity */
   @Transaction
   private void removeOwners(T entity, List<EntityReference> owners) {
@@ -2804,7 +2833,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       // Revert the changes previously made by the user with in a session and consolidate all the
       // changes
       if (consolidateChanges) {
-        revert();
+        revert(true);
       }
       // Now updated from previous/original to updated one
       changeDescription = new ChangeDescription();
@@ -2816,7 +2845,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
 
     @Transaction
-    private void revert() {
+    private void revert(boolean emitIntermediateChangeEvent) {
       // Revert from current version to previous version to go back to the previous version
       // set changeDescription to null
       T updatedOld = updated;
@@ -2825,8 +2854,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
         LOG.debug(
             "In session change consolidation. Reverting to previous version {}",
             previous.getVersion());
+        changeDescription = new ChangeDescription();
         updated = previous;
         updateInternal(true);
+        if (emitIntermediateChangeEvent) {
+          createAndInsertChangeEvent(
+              original, updated, changeDescription, EventType.ENTITY_UPDATED);
+        }
         LOG.info(
             "In session change consolidation. Reverting to previous version {} completed",
             previous.getVersion());
