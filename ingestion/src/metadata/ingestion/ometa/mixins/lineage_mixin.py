@@ -63,7 +63,7 @@ class OMetaLineageMixin(Generic[T]):
                     )
             for column in updated or []:
                 if not isinstance(column, dict):
-                    data = column.dict()
+                    data = column.model_dump()
                 else:
                     data = column
                 if data.get("toColumn") and data.get("fromColumns"):

@@ -69,6 +69,10 @@ def get_view_lineage(
         fqn=table_fqn,
     )
 
+    if not view_definition:
+        logger.warning(f"View definition for view {table_fqn} not available")
+        return
+
     try:
         connection_type = str(connection_type)
         dialect = ConnectionTypeDialectMapper.dialect_of(connection_type)
