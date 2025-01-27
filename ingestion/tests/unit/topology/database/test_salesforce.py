@@ -450,10 +450,10 @@ class SalesforceUnitTest(TestCase):
         ] = MOCK_DATABASE_SCHEMA
 
     @patch(
-        "metadata.ingestion.source.database.salesforce.metadata.SalesforceSource.get_column_description"
+        "metadata.ingestion.source.database.salesforce.metadata.SalesforceSource.get_table_column_description"
     )
-    def test_table_column(self, get_column_description):
-        get_column_description.return_value = None
+    def test_table_column(self, get_table_column_description):
+        get_table_column_description.return_value = None
         result = self.salesforce_source.get_columns("TEST_TABLE", SALESFORCE_FIELDS)
         assert EXPECTED_COLUMN_VALUE == result
 

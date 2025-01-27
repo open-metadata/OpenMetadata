@@ -231,36 +231,28 @@ class SalesforceSource(DatabaseServiceSource):
             )
         return table_description if table_description else object_label
 
-    def get_column_description(
-        self, table_name: str, column_name: str
-    ) -> Optional[str]:
+    def get_table_column_description(self, table_name: str) -> Optional[List]:
         """
-        Method to get the column (field) description for Salesforce with the Tooling API.
+        Method to get the all columns' (field) description for Salesforce with the Tooling API.
         """
-        column_description = None
+        all_column_description = None
         try:
-            query = (
-                f"SELECT+Description+FROM+FieldDefinition+WHERE"
-                f"+EntityDefinition.QualifiedApiName='{table_name}'"
-                f"+AND+QualifiedApiName='{column_name}'"
+            result = self.client.toolingexecute(
+                f"query/?q=SELECT+Description+FROM+FieldDefinition+WHERE+"
+                f"EntityDefinition.QualifiedApiName='{table_name}'"
             )
-            result = self.client.toolingexecute(f"query/?q={query}")
-            column_description = result["records"][0]["Description"]
+            all_column_description = result["records"]
         except KeyError as err:
             logger.warning(
-                f"Unable to get required key from Tooling API response for "
-                f"column [{column_name}] in table [{table_name}]: {err}"
-            )
-        except IndexError as err:
-            logger.warning(
-                f"Unable to get row for column [{column_name}] in table [{table_name}] from FieldDefinition: {err}"
+                "Unable to get required key from Tooling API response for "
+                f"table [{table_name}]: {err}"
             )
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(
-                f"Unable to get description with Tooling API for column [{column_name}] in table [{table_name}]: {exc}"
+                f"Unable to get column description with Tooling API for table [{table_name}]: {exc}"
             )
-        return column_description
+        return all_column_description
 
     def yield_table(
         self, table_name_and_type: Tuple[str, TableType]
@@ -315,6 +307,20 @@ class SalesforceSource(DatabaseServiceSource):
         """
         row_order = 1
         columns = []
+        column_description_mapping = {}
+        all_column_description = self.get_table_column_description(table_name)
+        if all_column_description:
+            for item in all_column_description:
+                try:
+                    if item["Description"] is not None:
+                        column_name = item["attributes"]["url"].split(".")[-1]
+                        column_description_mapping.update(
+                            {column_name: item["Description"]}
+                        )
+                except Exception as ex:
+                    logger.debug(
+                        f"Error creating column description mapping: {str(ex)}"
+                    )
         for column in salesforce_fields:
             col_constraint = None
             if column["nillable"]:
@@ -323,8 +329,9 @@ class SalesforceSource(DatabaseServiceSource):
                 col_constraint = Constraint.NOT_NULL
             if column["unique"]:
                 col_constraint = Constraint.UNIQUE
-            column_description = self.get_column_description(table_name, column["name"])
-            if not column_description:
+            if column_description_mapping.get(column["name"]):
+                column_description = column_description_mapping[column["name"]]
+            else:
                 column_description = column["label"]
 
             columns.append(
