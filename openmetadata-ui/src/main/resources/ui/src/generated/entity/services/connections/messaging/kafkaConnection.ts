@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * Kafka Connection Config
  */
 export interface KafkaConnection {
@@ -30,6 +28,11 @@ export interface KafkaConnection {
      * https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md
      */
     consumerConfig?: { [key: string]: any };
+    /**
+     * Consumer Config SSL Config. Configuration for enabling SSL for the Consumer Config
+     * connection.
+     */
+    consumerConfigSSL?: Config;
     /**
      * sasl.mechanism Consumer Config property
      */
@@ -73,23 +76,13 @@ export interface KafkaConnection {
 }
 
 /**
- * sasl.mechanism Consumer Config property
- *
- * SASL Mechanism consumer config property
- */
-export enum SaslMechanismType {
-    Gssapi = "GSSAPI",
-    Oauthbearer = "OAUTHBEARER",
-    Plain = "PLAIN",
-    ScramSHA256 = "SCRAM-SHA-256",
-    ScramSHA512 = "SCRAM-SHA-512",
-}
-
-/**
- * Schema Registry SSL Config. Configuration for enabling SSL for the Schema Registry
+ * Consumer Config SSL Config. Configuration for enabling SSL for the Consumer Config
  * connection.
  *
  * Client SSL configuration
+ *
+ * Schema Registry SSL Config. Configuration for enabling SSL for the Schema Registry
+ * connection.
  *
  * OpenMetadata Client configured to validate SSL certificates.
  */
@@ -106,6 +99,19 @@ export interface Config {
      * The private key associated with the SSL certificate.
      */
     sslKey?: string;
+}
+
+/**
+ * sasl.mechanism Consumer Config property
+ *
+ * SASL Mechanism consumer config property
+ */
+export enum SaslMechanismType {
+    Gssapi = "GSSAPI",
+    Oauthbearer = "OAUTHBEARER",
+    Plain = "PLAIN",
+    ScramSHA256 = "SCRAM-SHA-256",
+    ScramSHA512 = "SCRAM-SHA-512",
 }
 
 /**
