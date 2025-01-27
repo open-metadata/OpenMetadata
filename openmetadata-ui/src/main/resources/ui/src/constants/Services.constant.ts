@@ -474,6 +474,7 @@ export const ADVANCED_PROPERTIES = [
   'sslConfig',
   'sslMode',
   'schemaRegistrySSL',
+  'consumerConfigSSL',
   'verify',
 ];
 
