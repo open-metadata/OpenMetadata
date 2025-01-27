@@ -590,6 +590,100 @@ test.describe('Activity feed', () => {
       }
     );
   });
+
+  test('Check Task Filter in Landing Page Widget', async ({ browser }) => {
+    const { page: page1, afterAction: afterActionUser1 } =
+      await performUserLogin(browser, user1);
+    const { page: page2, afterAction: afterActionUser2 } =
+      await performUserLogin(browser, user2);
+
+    await base.step('Create and Assign Task to User 2', async () => {
+      await redirectToHomePage(page1);
+      await entity.visitEntityPage(page1);
+
+      // Create task for the user 2
+      await page1.getByTestId('request-description').click();
+      await createDescriptionTask(page1, {
+        term: entity.entity.displayName,
+        assignee: user2.responseData.name,
+      });
+
+      await afterActionUser1();
+    });
+
+    await base.step('Create and Validate Task as per Filters', async () => {
+      await redirectToHomePage(page2);
+      await entity.visitEntityPage(page2);
+
+      // Create task for the user 1
+      await page2.getByTestId('request-entity-tags').click();
+      await createTagTask(page2, {
+        term: entity.entity.displayName,
+        tag: 'PII.None',
+        assignee: user1.responseData.name,
+      });
+
+      await redirectToHomePage(page2);
+      const taskResponse = page2.waitForResponse(
+        '/api/v1/feed?type=Task&filterType=OWNER&taskStatus=Open&userId=*'
+      );
+
+      await page2
+        .getByTestId('activity-feed-widget')
+        .getByText('Tasks')
+        .click();
+
+      await taskResponse;
+
+      await expect(
+        page2.locator(
+          '[data-testid="activity-feed-widget"] [data-testid="no-data-placeholder"]'
+        )
+      ).not.toBeVisible();
+
+      // Check the Task based on ALL task filter
+      await expect(page2.getByTestId('message-container')).toHaveCount(2);
+
+      // Check the Task based on Assigned task filter
+      await page2.getByTestId('filter-button').click();
+      await page2.waitForSelector('.ant-popover ', { state: 'visible' });
+
+      const taskAssignedResponse = page2.waitForResponse(
+        '/api/v1/feed?type=Task&filterType=ASSIGNED_TO&taskStatus=Open&userId=*'
+      );
+      await page2.getByText('Assigned').click();
+      await page2.getByTestId('selectable-list-update-btn').click();
+
+      await taskAssignedResponse;
+
+      await expect(page2.getByTestId('message-container')).toHaveCount(1);
+
+      await expect(page2.getByTestId('owner-link')).toContainText(
+        user2.responseData.displayName
+      );
+
+      // Check the Task based on Created by me task filter
+
+      await page2.getByTestId('filter-button').click();
+      await page2.waitForSelector('.ant-popover ', { state: 'visible' });
+
+      const taskCreatedByResponse = page2.waitForResponse(
+        '/api/v1/feed?type=Task&filterType=ASSIGNED_BY&taskStatus=Open&userId=*'
+      );
+      await page2.getByText('Created By').click();
+      await page2.getByTestId('selectable-list-update-btn').click();
+
+      await taskCreatedByResponse;
+
+      await expect(page2.getByTestId('message-container')).toHaveCount(1);
+
+      await expect(page2.getByTestId('owner-link')).toContainText(
+        user1.responseData.displayName
+      );
+
+      await afterActionUser2();
+    });
+  });
 });
 
 base.describe('Activity feed with Data Consumer User', () => {
