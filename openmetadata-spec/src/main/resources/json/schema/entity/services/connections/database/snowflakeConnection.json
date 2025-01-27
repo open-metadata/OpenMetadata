@@ -104,6 +104,10 @@
       "title": "Supports Metadata Extraction",
       "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
     },
+    "supportsIncrementalMetadataExtraction": {
+      "title": "Supports Incremental Metadata Extraction",
+      "$ref": "../connectionBasicType.json#/definitions/supportsIncrementalMetadataExtraction"
+    },
     "supportsUsageExtraction": {
       "$ref": "../connectionBasicType.json#/definitions/supportsUsageExtraction"
     },
