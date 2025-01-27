@@ -173,6 +173,15 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
           @QueryParam("entityLink")
           String entityLink,
       @Parameter(
+              description = "Return list of tests by entity FQN",
+              schema =
+                  @Schema(
+                      type = "string",
+                      example =
+                          "{serviceName}.{databaseName}.{schemaName}.{tableName}.{columnName}"))
+          @QueryParam("entityFQN")
+          String entityFQN,
+      @Parameter(
               description = "Returns list of tests filtered by the testSuite id",
               schema = @Schema(type = "string"))
           @QueryParam("testSuiteId")
@@ -211,7 +220,8 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
             .addQueryParam("testSuiteId", testSuiteId)
             .addQueryParam("includeAllTests", includeAllTests.toString())
             .addQueryParam("testCaseStatus", status)
-            .addQueryParam("testCaseType", type);
+            .addQueryParam("testCaseType", type)
+            .addQueryParam("entityFQN", entityFQN);
     ResourceContextInterface resourceContext = getResourceContext(entityLink, filter);
 
     // Override OperationContext to change the entity to table and operation from VIEW_ALL to

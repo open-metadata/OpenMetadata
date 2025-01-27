@@ -481,7 +481,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
             .withParameterValues(
                 List.of(
                     new TestCaseParameterValue().withValue("100").withName("missingCountValue")));
-    createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+    TestCase testCase = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
     expectedTestCaseList.add(create);
     CreateTestCase create1 =
         createRequest(test, 1)
@@ -549,6 +549,15 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     queryParams.put("testSuiteId", TEST_SUITE1.getId().toString());
     testCaseList = getTestCases(queryParams, ADMIN_AUTH_HEADERS);
     verifyTestCases(testCaseList, expectedTestCaseList, 12);
+
+    queryParams.clear();
+    queryParams.put("limit", 10);
+    queryParams.put("entityFQN", testCase.getEntityFQN());
+    testCaseList = getTestCases(queryParams, ADMIN_AUTH_HEADERS);
+    testCaseList
+        .getData()
+        .forEach(
+            tc -> assertEquals(testCase.getEntityFQN(), tc.getEntityFQN(), "Entity FQN mismatch"));
   }
 
   @Test
