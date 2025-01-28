@@ -269,17 +269,17 @@ public abstract class AbstractEventConsumer
         publishEvents(eventsWithReceivers);
       }
     } catch (Exception e) {
-      long totalEvents = Entity.getCollectionDAO().changeEventDAO().listCount();
-      long remainingEvents = totalEvents - offset;
+      long currentLatest = Entity.getCollectionDAO().changeEventDAO().getLatestOffset();
+      long remainingEvents = currentLatest - offset;
       if (remainingEvents <= eventSubscription.getBatchSize()) {
-        batchSize = eventSubscription.getBatchSize();
+        batchSize = remainingEvents;
       } else {
-        batchSize = totalEvents - offset;
+        batchSize = eventSubscription.getBatchSize();
       }
       LOG.error(
           "Error in polling events for alert : {} , Total Events : {} , Offset : {} , Batch Size : {} ",
           e.getMessage(),
-          totalEvents,
+          currentLatest,
           offset,
           batchSize,
           e);
