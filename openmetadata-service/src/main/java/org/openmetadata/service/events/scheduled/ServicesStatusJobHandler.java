@@ -5,7 +5,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.configuration.pipelineServiceClient.PipelineServiceClientConfiguration;
 import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
+import org.openmetadata.service.monitoring.EventMonitorConfiguration;
 import org.openmetadata.service.util.MicrometerBundleSingleton;
+import org.quartz.Job;
 import org.quartz.JobBuilder;
 import org.quartz.JobDataMap;
 import org.quartz.JobDetail;
@@ -17,11 +19,14 @@ import org.quartz.TriggerBuilder;
 import org.quartz.impl.StdSchedulerFactory;
 
 @Slf4j
-public class PipelineServiceStatusJobHandler {
-
+public class ServicesStatusJobHandler {
+  public static final String HEALTHY_STATUS = "healthy";
+  public static final String UNHEALTHY_STATUS = "unhealthy";
+  public static final String DATABASE_SEARCH_STATUS_JOB = "databaseAndSearchServiceStatusJob";
   public static final String PIPELINE_SERVICE_STATUS_JOB = "pipelineServiceStatusJob";
   public static final String STATUS_GROUP = "status";
-  public static final String STATUS_CRON_TRIGGER = "statusTrigger";
+  public static final String PIPELINE_STATUS_CRON_TRIGGER = "pipelineStatusTrigger";
+  public static final String DATABSE_SEARCH_STATUS_CRON_TRIGGER = "databaseAndSearchStatusTrigger";
   public static final String JOB_CONTEXT_PIPELINE_SERVICE_CLIENT = "pipelineServiceClient";
   public static final String JOB_CONTEXT_METER_REGISTRY = "meterRegistry";
   public static final String JOB_CONTEXT_CLUSTER_NAME = "clusterName";
@@ -32,51 +37,55 @@ public class PipelineServiceStatusJobHandler {
   private final String clusterName;
   private final Integer healthCheckInterval;
   private final Scheduler scheduler = new StdSchedulerFactory().getScheduler();
+  private final int servicesHealthCheckInterval;
+  private static ServicesStatusJobHandler instance;
 
-  private static PipelineServiceStatusJobHandler instance;
-
-  private PipelineServiceStatusJobHandler(
-      PipelineServiceClientConfiguration config, String clusterName) throws SchedulerException {
+  private ServicesStatusJobHandler(
+      EventMonitorConfiguration monitorConfiguration,
+      PipelineServiceClientConfiguration config,
+      String clusterName)
+      throws SchedulerException {
     this.config = config;
     this.pipelineServiceClient = PipelineServiceClientFactory.createPipelineServiceClient(config);
     this.meterRegistry = MicrometerBundleSingleton.prometheusMeterRegistry;
     this.clusterName = clusterName;
     this.healthCheckInterval = config.getHealthCheckInterval();
+    this.servicesHealthCheckInterval = monitorConfiguration.getServicesHealthCheckInterval();
     this.scheduler.start();
   }
 
-  public static PipelineServiceStatusJobHandler create(
-      PipelineServiceClientConfiguration config, String clusterName) {
+  public static ServicesStatusJobHandler create(
+      EventMonitorConfiguration eventMonitorConfiguration,
+      PipelineServiceClientConfiguration config,
+      String clusterName) {
     if (instance != null) return instance;
 
     try {
-      instance = new PipelineServiceStatusJobHandler(config, clusterName);
+      instance = new ServicesStatusJobHandler(eventMonitorConfiguration, config, clusterName);
     } catch (Exception ex) {
       LOG.error("Failed to initialize the Pipeline Service Status Handler");
     }
     return instance;
   }
 
-  private JobDetail jobBuilder() {
+  private JobDetail jobBuilder(Class<? extends Job> clazz, String jobName, String group) {
     JobDataMap dataMap = new JobDataMap();
     dataMap.put(JOB_CONTEXT_PIPELINE_SERVICE_CLIENT, pipelineServiceClient);
     dataMap.put(JOB_CONTEXT_METER_REGISTRY, meterRegistry);
     dataMap.put(JOB_CONTEXT_CLUSTER_NAME, clusterName);
 
     JobBuilder jobBuilder =
-        JobBuilder.newJob(PipelineServiceStatusJob.class)
-            .withIdentity(PIPELINE_SERVICE_STATUS_JOB, STATUS_GROUP)
-            .usingJobData(dataMap);
+        JobBuilder.newJob(clazz).withIdentity(jobName, group).usingJobData(dataMap);
 
     return jobBuilder.build();
   }
 
-  private Trigger getTrigger() {
+  private Trigger getTrigger(int checkInterval, String identity, String group) {
     return TriggerBuilder.newTrigger()
-        .withIdentity(STATUS_CRON_TRIGGER, STATUS_GROUP)
+        .withIdentity(identity, group)
         .withSchedule(
             SimpleScheduleBuilder.simpleSchedule()
-                .withIntervalInSeconds(healthCheckInterval)
+                .withIntervalInSeconds(checkInterval)
                 .repeatForever())
         .build();
   }
@@ -86,12 +95,27 @@ public class PipelineServiceStatusJobHandler {
     // enabled
     if (config.getEnabled().equals(Boolean.TRUE)) {
       try {
-        JobDetail jobDetail = jobBuilder();
-        Trigger trigger = getTrigger();
+        JobDetail jobDetail =
+            jobBuilder(PipelineServiceStatusJob.class, PIPELINE_SERVICE_STATUS_JOB, STATUS_GROUP);
+        Trigger trigger =
+            getTrigger(healthCheckInterval, PIPELINE_STATUS_CRON_TRIGGER, STATUS_GROUP);
         scheduler.scheduleJob(jobDetail, trigger);
       } catch (Exception ex) {
         LOG.error("Failed in setting up job Scheduler for Pipeline Service Status", ex);
       }
+    }
+  }
+
+  public void addDatabaseAndSearchStatusJobs() {
+    try {
+      JobDetail jobDetail =
+          jobBuilder(
+              DatabseAndSearchServiceStatusJob.class, DATABASE_SEARCH_STATUS_JOB, STATUS_GROUP);
+      Trigger trigger =
+          getTrigger(servicesHealthCheckInterval, DATABSE_SEARCH_STATUS_CRON_TRIGGER, STATUS_GROUP);
+      scheduler.scheduleJob(jobDetail, trigger);
+    } catch (Exception ex) {
+      LOG.error("Failed in setting up job Scheduler for Pipeline Service Status", ex);
     }
   }
 }
