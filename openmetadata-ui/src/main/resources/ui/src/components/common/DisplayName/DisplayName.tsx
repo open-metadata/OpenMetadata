@@ -12,7 +12,7 @@
  */
 import { Button, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { isEmpty } from 'lodash';
+import { isEmpty, isString } from 'lodash';
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -85,11 +85,10 @@ const DisplayName: React.FC<DisplayNameProps> = ({
         <EntityNameModal
           allowRename={allowRename}
           entity={{
-            name: typeof name === 'string' ? name.toString() : '',
-            displayName:
-              typeof displayName === 'string'
-                ? displayName.toString()
-                : undefined,
+            name: isString(name) ? name.toString() : '',
+            displayName: isString(displayName)
+              ? displayName.toString()
+              : undefined,
           }}
           title={t('label.edit-entity', {
             entity: t('label.display-name'),

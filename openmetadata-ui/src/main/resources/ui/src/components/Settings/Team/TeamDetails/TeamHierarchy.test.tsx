@@ -57,10 +57,7 @@ jest.mock('../../../../utils/StringsUtils', () => ({
 }));
 
 jest.mock('../../../../utils/EntityUtils', () => {
-  const actual = jest.requireActual('../../../../utils/EntityUtils');
-
   return {
-    ...actual,
     getEntityName: jest.fn().mockReturnValue('entityName'),
     highlightSearchText: jest.fn((text) => text),
   };
