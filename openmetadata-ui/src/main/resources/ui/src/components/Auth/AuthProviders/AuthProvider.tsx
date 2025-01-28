@@ -548,6 +548,10 @@ export const AuthProvider = ({
                     resetUserDetails(true);
                   }
                 });
+              }).catch((err) => {
+                resetUserDetails(true);
+
+                return Promise.reject(err);
               });
             } else {
               // If refresh is in progress, queue the request
