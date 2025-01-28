@@ -1512,7 +1512,7 @@ Since we are introducing the Auto Classification workflow, we are going to remov
     },
   },
   {
-    id: 58,
+    id: 59,
     version: 'v1.6.3',
     description: 'Released on 29th January 2025.',
     features: [],
