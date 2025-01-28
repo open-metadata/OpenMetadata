@@ -1578,6 +1578,7 @@ Since we are introducing the Auto Classification workflow, we are going to remov
 - **Improvement**: Implement Data Quality Dashboards (Incident Manager + Data Quality).
 - **Improvement**: Added loading state, and manage error notification in TestSuite.
 - **Improvement**: Enhance Kafka SSL configuration support with consumerConfigSSL.
+- **Improvement**: Add prometheus counter for search and database.
 - **Improvement**: Retention Application : Delete change_events, activity threads, versions based on admin retention policies.
 - **Improvement**: Show displayName for custom dashboards. ${CollateIconWithLinkMD}
 - **Improvement**: Support rename for custom dashboard and charts. ${CollateIconWithLinkMD}
