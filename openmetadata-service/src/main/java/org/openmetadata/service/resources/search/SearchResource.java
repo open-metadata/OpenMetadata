@@ -32,6 +32,7 @@ import java.util.List;
 import java.util.UUID;
 import javax.ws.rs.DefaultValue;
 import javax.ws.rs.GET;
+import javax.ws.rs.PUT;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
@@ -433,5 +434,23 @@ public class SearchResource {
           .build();
     }
     return Response.status(Response.Status.NOT_FOUND).entity("No Last Run.").build();
+  }
+
+  @PUT
+  @Path("/client/restart")
+  @Operation(
+      operationId = "fixesElasticSearchClient",
+      summary = "Fix Elastic Search Client",
+      description = "Fix Elastic Search Client",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "Success"),
+        @ApiResponse(responseCode = "404", description = "Status not found")
+      })
+  public Response fixSearchClient(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext) throws IOException {
+    authorizer.authorizeAdmin(securityContext);
+    SearchRepository repository = Entity.getSearchRepository();
+    repository.restartClientIfNeeded();
+    return Response.status(Response.Status.OK).entity("Fixing Client Initiated.").build();
   }
 }

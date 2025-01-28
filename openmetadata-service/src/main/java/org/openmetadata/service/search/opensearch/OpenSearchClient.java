@@ -217,7 +217,7 @@ import os.org.opensearch.search.suggest.completion.context.CategoryQueryContext;
 @Slf4j
 // Not tagged with Repository annotation as it is programmatically initialized
 public class OpenSearchClient implements SearchClient {
-  @Getter protected final RestHighLevelClient client;
+  @Getter protected RestHighLevelClient client;
   public static final NamedXContentRegistry X_CONTENT_REGISTRY;
   private final boolean isClientAvailable;
   private final RBACConditionEvaluator rbacConditionEvaluator;
@@ -246,12 +246,15 @@ public class OpenSearchClient implements SearchClient {
     X_CONTENT_REGISTRY = new NamedXContentRegistry(searchModule.getNamedXContents());
   }
 
+  private final ElasticSearchConfiguration esConfig;
+
   public OpenSearchClient(ElasticSearchConfiguration config) {
     client = createOpenSearchClient(config);
     clusterAlias = config != null ? config.getClusterAlias() : "";
     isClientAvailable = client != null;
     queryBuilderFactory = new OpenSearchQueryBuilderFactory();
     rbacConditionEvaluator = new RBACConditionEvaluator(queryBuilderFactory);
+    this.esConfig = config;
   }
 
   @Override
@@ -2838,6 +2841,18 @@ public class OpenSearchClient implements SearchClient {
 
   public Object getLowLevelClient() {
     return client.getLowLevelClient();
+  }
+
+  @Override
+  public void restartSearchHttpClient() throws IOException {
+    if (client == null) {
+      client = createOpenSearchClient(esConfig);
+    } else {
+      if (!client.getLowLevelClient().isRunning()) {
+        client.close();
+        client = createOpenSearchClient(esConfig);
+      }
+    }
   }
 
   private void buildSearchRBACQuery(
