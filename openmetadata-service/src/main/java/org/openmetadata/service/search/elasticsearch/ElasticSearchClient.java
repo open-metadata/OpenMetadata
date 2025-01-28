@@ -221,7 +221,7 @@ public class ElasticSearchClient implements SearchClient {
 
   @SuppressWarnings("deprecated")
   @Getter
-  protected final RestHighLevelClient client;
+  protected RestHighLevelClient client;
 
   private final RBACConditionEvaluator rbacConditionEvaluator;
   private final QueryBuilderFactory queryBuilderFactory;
@@ -251,12 +251,15 @@ public class ElasticSearchClient implements SearchClient {
     xContentRegistry = new NamedXContentRegistry(searchModule.getNamedXContents());
   }
 
+  private final ElasticSearchConfiguration esConfig;
+
   public ElasticSearchClient(ElasticSearchConfiguration config) {
     client = createElasticSearchClient(config);
     clusterAlias = config != null ? config.getClusterAlias() : "";
     isClientAvailable = client != null;
     queryBuilderFactory = new ElasticQueryBuilderFactory();
     rbacConditionEvaluator = new RBACConditionEvaluator(queryBuilderFactory);
+    this.esConfig = config;
   }
 
   @Override
@@ -2806,6 +2809,18 @@ public class ElasticSearchClient implements SearchClient {
 
   public Object getLowLevelClient() {
     return client.getLowLevelClient();
+  }
+
+  @Override
+  public void restartSearchHttpClient() throws IOException {
+    if (client == null) {
+      client = createElasticSearchClient(esConfig);
+    } else {
+      if (!client.getLowLevelClient().isRunning()) {
+        client.close();
+        client = createElasticSearchClient(esConfig);
+      }
+    }
   }
 
   private void buildSearchRBACQuery(

@@ -1095,4 +1095,8 @@ public class SearchRepository {
   public Set<String> getSearchEntities() {
     return new HashSet<>(entityIndexMap.keySet());
   }
+
+  public void restartClientIfNeeded() throws IOException {
+    searchClient.restartSearchHttpClient();
+  }
 }
