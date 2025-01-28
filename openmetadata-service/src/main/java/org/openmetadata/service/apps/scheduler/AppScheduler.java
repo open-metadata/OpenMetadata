@@ -156,10 +156,13 @@ public class AppScheduler {
     throw new UnhandledServerException("App Scheduler is not Initialized");
   }
 
-  public void addApplicationSchedule(App application) {
+  public void scheduleApplication(App application) {
     try {
       if (scheduler.getJobDetail(new JobKey(application.getName(), APPS_JOB_GROUP)) != null) {
-        LOG.info("Job already exists for the application, skipping the scheduling");
+        LOG.info(
+            "Job already exists for the application {}, rescheduling it", application.getName());
+        scheduler.rescheduleJob(
+            new TriggerKey(application.getName(), APPS_TRIGGER_GROUP), trigger(application));
         return;
       }
       AppRuntime context = getAppRuntime(application);

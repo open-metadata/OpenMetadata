@@ -58,12 +58,13 @@ class AWSAssumeRoleCredentialResponse(BaseModel):
 
 
 class AWSAssumeRoleCredentialWrapper(BaseModel):
-    accessKeyId: str = Field()
-    secretAccessKey: CustomSecretStr = Field()
-    sessionToken: Optional[str] = Field(
-        default=None,
-    )
-    expiryTime: Optional[str] = Field()
+    accessKeyId: str = Field(alias="access_key")
+    secretAccessKey: CustomSecretStr = Field(alias="secret_key")
+    sessionToken: Optional[str] = Field(default=None, alias="token")
+    expiryTime: Optional[str] = Field(alias="expiry_time")
+
+    class Config:
+        populate_by_name = True
 
 
 AWSAssumeRoleCredentialFormat = TypeVar(
