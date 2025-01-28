@@ -28,7 +28,7 @@ const ProfileSectionUserDetailsCard = ({
     <div>
       {/* Profile Section */}
       <Card
-        className="profile-section-user-details-card"
+        className="profile-section-user-details-card mb-4"
         style={{
           textAlign: 'center',
           borderRadius: '12px',
