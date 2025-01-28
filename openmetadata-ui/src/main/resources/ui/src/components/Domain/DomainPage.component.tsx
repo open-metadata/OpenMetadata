@@ -177,7 +177,7 @@ const DomainPage = () => {
     }
   }, [rootDomains, domainFqn]);
 
-  const renderContent = () => {
+  const renderedContent = useMemo(() => {
     if (domainLoading) {
       return <Loader />;
     }
@@ -233,10 +233,17 @@ const DomainPage = () => {
         />
       </div>
     );
-  };
+  }, [
+    domainLoading,
+    viewBasicDomainPermission,
+    viewAllDomainPermission,
+    rootDomains,
+    createDomainPermission,
+    domainPageRender,
+  ]);
 
   return (
-    <PageLayoutV1 pageTitle={t('label.domain')}>{renderContent()}</PageLayoutV1>
+    <PageLayoutV1 pageTitle={t('label.domain')}>{renderedContent}</PageLayoutV1>
   );
 };
 

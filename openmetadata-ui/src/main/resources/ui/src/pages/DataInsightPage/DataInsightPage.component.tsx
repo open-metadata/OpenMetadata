@@ -111,7 +111,7 @@ const DataInsightPage = () => {
       return data;
     }, [viewDataInsightChartPermission, viewKPIPermission, tab]);
 
-  const renderContent = () => {
+  const renderedContent = useMemo(() => {
     if (!viewDataInsightChartPermission && !viewKPIPermission) {
       return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
     }
@@ -127,60 +127,63 @@ const DataInsightPage = () => {
     }
 
     return (
-      <div className="m--t-sm">
-        <ResizableLeftPanels
-          className="content-height-with-resizable-panel"
-          firstPanel={{
-            className: 'content-resizable-panel-container',
-            minWidth: 280,
-            flex: 0.13,
-            children: <LeftPanel />,
-          }}
-          pageTitle={t('label.data-insight')}
-          secondPanel={{
-            children: (
-              <DataInsightProvider>
-                <Row
-                  className="page-container"
-                  data-testid="data-insight-container"
-                  gutter={[16, 16]}>
-                  {isHeaderVisible && (
-                    <Col span={24}>
-                      <DataInsightHeader
-                        onScrollToChart={handleScrollToChart}
-                      />
-                    </Col>
-                  )}
+      <ResizableLeftPanels
+        className="content-height-with-resizable-panel"
+        firstPanel={{
+          className: 'content-resizable-panel-container',
+          minWidth: 280,
+          flex: 0.13,
+          children: <LeftPanel />,
+        }}
+        pageTitle={t('label.data-insight')}
+        secondPanel={{
+          children: (
+            <DataInsightProvider>
+              <Row
+                className="page-container"
+                data-testid="data-insight-container"
+                gutter={[16, 16]}>
+                {isHeaderVisible && (
                   <Col span={24}>
-                    <Switch>
-                      {dataInsightTabs.map((tab) => (
-                        <Route
-                          exact
-                          component={tab.component}
-                          key={tab.key}
-                          path={tab.path}
-                        />
-                      ))}
-                      <Route exact path={ROUTES.DATA_INSIGHT}>
-                        <Redirect to={getDataInsightPathWithFqn()} />
-                      </Route>
-                    </Switch>
+                    <DataInsightHeader onScrollToChart={handleScrollToChart} />
                   </Col>
-                </Row>
-              </DataInsightProvider>
-            ),
-            className: 'content-resizable-panel-container p-t-sm',
-            minWidth: 800,
-            flex: 0.87,
-          }}
-        />
-      </div>
+                )}
+                <Col span={24}>
+                  <Switch>
+                    {dataInsightTabs.map((tab) => (
+                      <Route
+                        exact
+                        component={tab.component}
+                        key={tab.key}
+                        path={tab.path}
+                      />
+                    ))}
+                    <Route exact path={ROUTES.DATA_INSIGHT}>
+                      <Redirect to={getDataInsightPathWithFqn()} />
+                    </Route>
+                  </Switch>
+                </Col>
+              </Row>
+            </DataInsightProvider>
+          ),
+          className: 'content-resizable-panel-container p-t-sm',
+          minWidth: 800,
+          flex: 0.87,
+        }}
+      />
     );
-  };
+  }, [
+    viewDataInsightChartPermission,
+    viewKPIPermission,
+    noDataInsightPermission,
+    noKPIPermission,
+    isHeaderVisible,
+    dataInsightTabs,
+  ]);
 
   return (
     <PageLayoutV1 pageTitle={t('label.data-insight')}>
-      {renderContent()}
+      {renderedContent}
     </PageLayoutV1>
   );
 };

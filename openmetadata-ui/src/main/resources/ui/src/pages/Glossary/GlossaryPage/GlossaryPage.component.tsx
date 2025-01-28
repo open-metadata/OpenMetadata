@@ -416,7 +416,7 @@ const GlossaryPage = () => {
     []
   );
 
-  const renderContent = () => {
+  const renderedContent = useMemo(() => {
     if (isLoading) {
       return <Loader />;
     }
@@ -529,11 +529,24 @@ const GlossaryPage = () => {
         />
       </div>
     );
-  };
+  }, [
+    isLoading,
+    viewBasicGlossaryPermission,
+    viewAllGlossaryPermission,
+    glossaries,
+    isRightPanelLoading,
+    previewAsset,
+    isGlossaryActive,
+    activeGlossary,
+    isMoreGlossaryLoading,
+    isImportAction,
+    createGlossaryPermission,
+    glossaryFqn,
+  ]);
 
   return (
     <PageLayoutV1 pageTitle={t('label.glossary')}>
-      {renderContent()}
+      {renderedContent}
     </PageLayoutV1>
   );
 };

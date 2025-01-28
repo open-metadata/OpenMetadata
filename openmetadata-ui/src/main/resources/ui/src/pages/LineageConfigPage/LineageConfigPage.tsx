@@ -112,7 +112,7 @@ const LineageConfigPage = () => {
     fetchSearchConfig();
   }, []);
 
-  const renderContent = () => {
+  const renderedContent = useMemo(() => {
     if (isLoading) {
       return <Loader />;
     }
@@ -244,11 +244,11 @@ const LineageConfigPage = () => {
         />
       </div>
     );
-  };
+  }, [isLoading, breadcrumbs, form, lineageConfig, isUpdating, activeField]);
 
   return (
     <PageLayoutV1 pageTitle={t('label.lineage-config')}>
-      {renderContent()}
+      {renderedContent}
     </PageLayoutV1>
   );
 };

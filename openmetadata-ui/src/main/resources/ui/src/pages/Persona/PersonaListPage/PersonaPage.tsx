@@ -120,7 +120,7 @@ export const PersonaPage = () => {
     }
   };
 
-  const renderContent = () => {
+  const renderedContent = useMemo(() => {
     if (isEmpty(persona) && !isLoading) {
       return (
         <div className="d-flex justify-center items-center full-height">
@@ -190,11 +190,21 @@ export const PersonaPage = () => {
         )}
       </Row>
     );
-  };
+  }, [
+    isLoading,
+    persona,
+    addEditPersona,
+    errorPlaceHolder,
+    breadcrumbs,
+    showPagination,
+    currentPage,
+    pageSize,
+    paging,
+  ]);
 
   return (
     <PageLayoutV1 pageTitle={t('label.persona-plural')}>
-      {renderContent()}
+      {renderedContent}
     </PageLayoutV1>
   );
 };

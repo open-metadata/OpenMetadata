@@ -319,7 +319,7 @@ function AlertDetailsPage({
     [alertEventCounts, alertEventCountsLoading]
   );
 
-  const renderContent = () => {
+  const renderedContent = useMemo(() => {
     if (!loadingCount && !viewPermission) {
       return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
     }
@@ -462,11 +462,27 @@ function AlertDetailsPage({
         }}
       />
     );
-  };
+  }, [
+    loadingCount,
+    viewPermission,
+    alertDetails,
+    breadcrumb,
+    alertIcon,
+    ownerLoading,
+    editOwnersPermission,
+    extraInfo,
+    editPermission,
+    deletePermission,
+    showDeleteModal,
+    tab,
+    tabItems,
+    editDescriptionPermission,
+    showDescriptionModal,
+  ]);
 
   return (
     <PageLayoutV1 pageTitle={t('label.alert-details')}>
-      {renderContent()}
+      {renderedContent}
     </PageLayoutV1>
   );
 }

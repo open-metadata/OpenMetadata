@@ -688,7 +688,7 @@ const TagsPage = () => {
     [editTag, currentClassification]
   );
 
-  const renderContent = () => {
+  const content = useMemo(() => {
     if (isLoading) {
       return <Loader />;
     }
@@ -790,12 +790,28 @@ const TagsPage = () => {
         />
       </div>
     );
-  };
+  }, [
+    isLoading,
+    error,
+    isUpdateLoading,
+    leftPanelLayout,
+    classificationPermissions,
+    currentClassification,
+    deleteTags,
+    disableEditButton,
+    isAddingTag,
+    isEditClassification,
+    isAddingClassification,
+    classifications,
+    isButtonLoading,
+    isTier,
+    tagsFormHeader,
+    editTag,
+    tagsFormPermissions,
+  ]);
 
   return (
-    <PageLayoutV1 pageTitle={t('label.tag-plural')}>
-      {renderContent()}
-    </PageLayoutV1>
+    <PageLayoutV1 pageTitle={t('label.tag-plural')}>{content}</PageLayoutV1>
   );
 };
 
