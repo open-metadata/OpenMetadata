@@ -35,6 +35,7 @@ import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.errors.EventPublisherException;
+import org.openmetadata.service.events.scheduled.ConsumerService;
 import org.openmetadata.service.util.JsonUtils;
 import org.quartz.DisallowConcurrentExecution;
 import org.quartz.Job;
@@ -53,7 +54,7 @@ public abstract class AbstractEventConsumer
   public static final String OFFSET_EXTENSION = "eventSubscription.Offset";
   public static final String METRICS_EXTENSION = "eventSubscription.metrics";
   public static final String FAILED_EVENT_EXTENSION = "eventSubscription.failedEvent";
-
+  protected final ConsumerService consumerService;
   private long offset = -1;
   private long startingOffset = -1;
 
@@ -63,7 +64,9 @@ public abstract class AbstractEventConsumer
   protected EventSubscription eventSubscription;
   protected Map<UUID, Destination<ChangeEvent>> destinationMap;
 
-  protected AbstractEventConsumer() {}
+  protected AbstractEventConsumer(ConsumerService consumerService) {
+    this.consumerService = consumerService;
+  }
 
   private void init(JobExecutionContext context) {
     EventSubscription sub =

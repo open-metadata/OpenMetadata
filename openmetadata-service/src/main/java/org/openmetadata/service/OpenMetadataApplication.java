@@ -234,6 +234,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     EventPubSub.start();
 
     ApplicationHandler.initialize(catalogConfig);
+    EventSubscriptionScheduler.initialize(catalogConfig);
     registerResources(catalogConfig, environment, jdbi);
 
     // Register Event Handler
