@@ -390,4 +390,6 @@ public interface SearchClient {
         && !subjectContext.isBot()
         && rbacConditionEvaluator != null;
   }
+
+  SearchHealthStatus getSearchHealthStatus() throws IOException;
 }
