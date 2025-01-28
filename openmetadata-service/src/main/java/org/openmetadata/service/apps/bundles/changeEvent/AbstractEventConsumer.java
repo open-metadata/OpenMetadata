@@ -256,18 +256,34 @@ public abstract class AbstractEventConsumer
   public void execute(JobExecutionContext jobExecutionContext) {
     // Must Have , Before Execute the Init, Quartz Requires a Non-Arg Constructor
     this.init(jobExecutionContext);
-    // Poll Events from Change Event Table
-    List<ChangeEvent> batch = pollEvents(offset, eventSubscription.getBatchSize());
-    int batchSize = batch.size();
-    Map<ChangeEvent, Set<UUID>> eventsWithReceivers = createEventsWithReceivers(batch);
+    long batchSize = 0;
+    Map<ChangeEvent, Set<UUID>> eventsWithReceivers = new HashMap<>();
     try {
+      // Poll Events from Change Event Table
+      List<ChangeEvent> batch = pollEvents(offset, eventSubscription.getBatchSize());
+      batchSize = batch.size();
+      eventsWithReceivers.putAll(createEventsWithReceivers(batch));
       // Publish Events
       if (!eventsWithReceivers.isEmpty()) {
         alertMetrics.withTotalEvents(alertMetrics.getTotalEvents() + eventsWithReceivers.size());
         publishEvents(eventsWithReceivers);
       }
     } catch (Exception e) {
-      LOG.error("Error in executing the Job : {} ", e.getMessage());
+      long totalEvents = Entity.getCollectionDAO().changeEventDAO().listCount();
+      long remainingEvents = totalEvents - offset;
+      if (remainingEvents <= eventSubscription.getBatchSize()) {
+        batchSize = eventSubscription.getBatchSize();
+      } else {
+        batchSize = totalEvents - offset;
+      }
+      LOG.error(
+          "Error in polling events for alert : {} , Total Events : {} , Offset : {} , Batch Size : {} ",
+          e.getMessage(),
+          totalEvents,
+          offset,
+          batchSize,
+          e);
+
     } finally {
       if (!eventsWithReceivers.isEmpty()) {
         // Commit the Offset
