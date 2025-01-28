@@ -123,6 +123,7 @@ export const TableSchemaTab = () => {
 
   const {
     editTagsPermission,
+    editGlossaryTermsPermission,
     editDescriptionPermission,
     editCustomAttributePermission,
     editAllPermission,
@@ -133,6 +134,9 @@ export const TableSchemaTab = () => {
         (tablePermissions.EditTags || tablePermissions.EditAll) && !deleted,
       editDescriptionPermission:
         (tablePermissions.EditDescription || tablePermissions.EditAll) &&
+        !deleted,
+      editGlossaryTermsPermission:
+        (tablePermissions.EditGlossaryTerms || tablePermissions.EditAll) &&
         !deleted,
       editCustomAttributePermission:
         (tablePermissions.EditAll || tablePermissions.EditCustomFields) &&
@@ -274,6 +278,7 @@ export const TableSchemaTab = () => {
         return (
           <SchemaTab
             hasDescriptionEditAccess={editDescriptionPermission}
+            hasGlossaryTermEditAccess={editGlossaryTermsPermission}
             hasTagEditAccess={editTagsPermission}
             isReadOnly={deleted}
             onThreadLinkSelect={onThreadLinkSelect}

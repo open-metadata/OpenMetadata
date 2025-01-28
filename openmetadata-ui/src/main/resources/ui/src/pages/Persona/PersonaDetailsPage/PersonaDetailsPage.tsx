@@ -56,7 +56,7 @@ export const PersonaDetailsPage = () => {
   );
   const location = useCustomLocation();
   const activeKey = useMemo(
-    () => location.hash?.replace('#', '') || 'users',
+    () => (location.hash?.replace('#', '') || 'users').split('.')[0],
     [location]
   );
 
