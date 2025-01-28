@@ -18,6 +18,7 @@ import {
   TestType,
 } from '@playwright/test';
 import { env } from 'process';
+import { resetTokenFromBotPage } from '../../../utils/bot';
 import {
   getApiContext,
   redirectToHomePage,
@@ -33,17 +34,18 @@ import {
 import ServiceBaseClass from './ServiceBaseClass';
 
 class MysqlIngestionClass extends ServiceBaseClass {
-  name: string;
+  name = '';
   tableFilter: string[];
   profilerTable = 'alert_entity';
-  constructor() {
-    super(
-      Services.Database,
-      `pw-mysql-with-%-${uuid()}`,
-      'Mysql',
-      'bot_entity'
-    );
-    this.tableFilter = ['bot_entity', 'alert_entity', 'chart_entity'];
+  constructor(tableFilter?: string[]) {
+    const serviceName = `pw-mysql-with-%-${uuid()}`;
+    super(Services.Database, serviceName, 'Mysql', 'bot_entity');
+    this.name = serviceName;
+    this.tableFilter = tableFilter ?? [
+      'bot_entity',
+      'alert_entity',
+      'chart_entity',
+    ];
   }
 
   async createService(page: Page) {
@@ -83,6 +85,13 @@ class MysqlIngestionClass extends ServiceBaseClass {
     await test.step('Add Profiler ingestion', async () => {
       const { apiContext } = await getApiContext(page);
       await redirectToHomePage(page);
+
+      // Todo: Remove this patch once the issue is fixed #19140
+      await resetTokenFromBotPage(page, {
+        name: 'profiler',
+        testId: 'bot-link-ProfilerBot',
+      });
+
       await visitServiceDetailsPage(
         page,
         {

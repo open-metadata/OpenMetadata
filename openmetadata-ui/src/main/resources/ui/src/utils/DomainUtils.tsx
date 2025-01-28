@@ -14,31 +14,27 @@ import { Divider, Space, Typography } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import classNames from 'classnames';
 import { t } from 'i18next';
-import { isEmpty, isUndefined } from 'lodash';
+import { get, isEmpty, isUndefined } from 'lodash';
 import React, { Fragment, ReactNode } from 'react';
 import { Link } from 'react-router-dom';
+import { ReactComponent as DomainIcon } from '../assets/svg/ic-domain.svg';
+import { ReactComponent as SubDomainIcon } from '../assets/svg/ic-subdomain.svg';
+import { TreeListItem } from '../components/common/DomainSelectableTree/DomainSelectableTree.interface';
 import { OwnerLabel } from '../components/common/OwnerLabel/OwnerLabel.component';
 import {
   DEFAULT_DOMAIN_VALUE,
+  DE_ACTIVE_COLOR,
   NO_DATA_PLACEHOLDER,
 } from '../constants/constants';
 import { DOMAIN_TYPE_DATA } from '../constants/Domain.constants';
-import { EntityType, TabSpecificField } from '../enums/entity.enum';
-import { EntityChangeOperations } from '../enums/VersionPage.enum';
-import { DataProduct } from '../generated/entity/domains/dataProduct';
+import { EntityType } from '../enums/entity.enum';
 import { Domain } from '../generated/entity/domains/domain';
-import { ChangeDescription, EntityReference } from '../generated/entity/type';
+import { EntityReference } from '../generated/entity/type';
 import {
   QueryFieldInterface,
   QueryFilterInterface,
 } from '../pages/ExplorePage/ExplorePage.interface';
 import { getEntityName, getEntityReferenceFromEntity } from './EntityUtils';
-import {
-  getChangedEntityNewValue,
-  getChangedEntityOldValue,
-  getDiffByFieldName,
-  getDiffValue,
-} from './EntityVersionUtils';
 import { getDomainPath } from './RouterUtils';
 
 export const getOwner = (
@@ -54,60 +50,6 @@ export const getOwner = (
   }
 
   return null;
-};
-
-export const getUserNames = (
-  entity: Domain | DataProduct,
-  hasPermission: boolean,
-  isVersionsView = false
-) => {
-  if (isVersionsView) {
-    const ownerDiff = getDiffByFieldName(
-      TabSpecificField.OWNERS,
-      entity.changeDescription as ChangeDescription
-    );
-
-    const oldOwners: EntityReference[] = JSON.parse(
-      getChangedEntityOldValue(ownerDiff) ?? '[]'
-    );
-    const newOwners: EntityReference[] = JSON.parse(
-      getChangedEntityNewValue(ownerDiff) ?? '[]'
-    );
-
-    const shouldShowDiff =
-      !isEmpty(ownerDiff.added) ||
-      !isEmpty(ownerDiff.deleted) ||
-      !isEmpty(ownerDiff.updated);
-
-    if (shouldShowDiff) {
-      const ownersWithOperations = [
-        { owners: newOwners, operation: EntityChangeOperations.ADDED },
-        { owners: oldOwners, operation: EntityChangeOperations.DELETED },
-      ];
-
-      const owners = ownersWithOperations.flatMap(({ owners }) => owners);
-      const ownerDisplayNames = ownersWithOperations.flatMap(
-        ({ owners, operation }) =>
-          owners.map((owner) =>
-            getDiffValue(
-              operation === EntityChangeOperations.ADDED
-                ? ''
-                : getEntityName(owner),
-              operation === EntityChangeOperations.ADDED
-                ? getEntityName(owner)
-                : ''
-            )
-          )
-      );
-
-      return getOwner(hasPermission, owners, ownerDisplayNames);
-    }
-  }
-
-  const owners = entity.owners || [];
-  const ownerDisplayNames = owners.map((owner) => getEntityName(owner));
-
-  return getOwner(hasPermission, owners, ownerDisplayNames);
 };
 
 export const getQueryFilterToIncludeDomain = (
@@ -202,23 +144,33 @@ export const domainTypeTooltipDataRender = () => (
   </Space>
 );
 
-export const getDomainOptions = (
-  domains: Domain[] | EntityReference[],
-  isAdmin = true
-) => {
-  const domainOptions: ItemType[] =
-    isAdmin || domains.length === 0
-      ? [
-          {
-            label: t('label.all-domain-plural'),
-            key: DEFAULT_DOMAIN_VALUE,
-          },
-        ]
-      : [];
+export const getDomainOptions = (domains: Domain[] | EntityReference[]) => {
+  const domainOptions: ItemType[] = [
+    {
+      label: t('label.all-domain-plural'),
+      key: DEFAULT_DOMAIN_VALUE,
+    },
+  ];
+
   domains.forEach((domain) => {
     domainOptions.push({
       label: getEntityName(domain),
       key: domain.fullyQualifiedName ?? '',
+      icon: get(domain, 'parent') ? (
+        <SubDomainIcon
+          color={DE_ACTIVE_COLOR}
+          height={20}
+          name="subdomain"
+          width={20}
+        />
+      ) : (
+        <DomainIcon
+          color={DE_ACTIVE_COLOR}
+          height={20}
+          name="domain"
+          width={20}
+        />
+      ),
     });
   });
 
@@ -265,4 +217,55 @@ export const getDomainFieldFromEntityType = (
   } else {
     return 'domain';
   }
+};
+
+export const convertDomainsToTreeOptions = (
+  options: EntityReference[] | Domain[] = [],
+  level = 0,
+  multiple = false
+): TreeListItem[] => {
+  const treeData = options.map((option) => {
+    const hasChildren = 'children' in option && !isEmpty(option?.children);
+
+    return {
+      id: option.id,
+      value: option.fullyQualifiedName,
+      name: option.name,
+      label: option.name,
+      key: option.fullyQualifiedName,
+      title: (
+        <div className="d-flex items-center gap-1">
+          {level === 0 ? (
+            <DomainIcon
+              color={DE_ACTIVE_COLOR}
+              height={20}
+              name="domain"
+              width={20}
+            />
+          ) : (
+            <SubDomainIcon
+              color={DE_ACTIVE_COLOR}
+              height={20}
+              name="subdomain"
+              width={20}
+            />
+          )}
+
+          <Typography.Text ellipsis>{getEntityName(option)}</Typography.Text>
+        </div>
+      ),
+      'data-testid': `tag-${option.fullyQualifiedName}`,
+      isLeaf: !hasChildren,
+      selectable: !multiple,
+      children: hasChildren
+        ? convertDomainsToTreeOptions(
+            (option as unknown as Domain)?.children as EntityReference[],
+            level + 1,
+            multiple
+          )
+        : undefined,
+    };
+  });
+
+  return treeData;
 };

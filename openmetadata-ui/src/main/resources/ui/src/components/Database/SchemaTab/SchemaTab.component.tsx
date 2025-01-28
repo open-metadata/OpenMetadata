@@ -23,6 +23,7 @@ const SchemaTab: FunctionComponent<Props> = ({
   onUpdate,
   hasDescriptionEditAccess,
   hasTagEditAccess,
+  hasGlossaryTermEditAccess,
   onThreadLinkSelect,
   isReadOnly = false,
 }: Props) => {
@@ -46,6 +47,7 @@ const SchemaTab: FunctionComponent<Props> = ({
       <Col span={24}>
         <SchemaTable
           hasDescriptionEditAccess={hasDescriptionEditAccess}
+          hasGlossaryTermEditAccess={hasGlossaryTermEditAccess}
           hasTagEditAccess={hasTagEditAccess}
           isReadOnly={isReadOnly}
           searchText={lowerCase(searchText)}

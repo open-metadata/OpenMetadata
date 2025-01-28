@@ -13,9 +13,14 @@
 import { APIRequestContext, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
 import { SERVICE_TYPE } from '../../constant/service';
+import { ServiceTypes } from '../../constant/settings';
 import { uuid } from '../../utils/common';
 import { visitEntityPage } from '../../utils/entity';
-import { EntityTypeEndpoint } from './Entity.interface';
+import {
+  EntityTypeEndpoint,
+  ResponseDataType,
+  ResponseDataWithServiceType,
+} from './Entity.interface';
 import { EntityClass } from './EntityClass';
 
 export class TopicClass extends EntityClass {
@@ -92,8 +97,9 @@ export class TopicClass extends EntityClass {
     partitions: 128,
   };
 
-  serviceResponseData: unknown;
-  entityResponseData: unknown;
+  serviceResponseData: ResponseDataType = {} as ResponseDataType;
+  entityResponseData: ResponseDataWithServiceType =
+    {} as ResponseDataWithServiceType;
 
   constructor(name?: string) {
     super(EntityTypeEndpoint.Topic);
@@ -102,6 +108,7 @@ export class TopicClass extends EntityClass {
     this.childrenTabId = 'schema';
     this.childrenSelectorId = this.children[0].name;
     this.serviceCategory = SERVICE_TYPE.Messaging;
+    this.serviceType = ServiceTypes.MESSAGING_SERVICES;
   }
 
   async create(apiContext: APIRequestContext) {

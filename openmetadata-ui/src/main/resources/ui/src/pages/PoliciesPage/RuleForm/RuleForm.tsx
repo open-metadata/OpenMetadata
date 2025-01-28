@@ -18,7 +18,6 @@ import { AxiosError } from 'axios';
 import { capitalize, startCase, uniq, uniqBy } from 'lodash';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import RichTextEditor from '../../../components/common/RichTextEditor/RichTextEditor';
 import { NAME_FIELD_RULES } from '../../../constants/Form.constants';
 import {
   Effect,
@@ -27,11 +26,13 @@ import {
 } from '../../../generated/api/policies/createPolicy';
 import { ResourceDescriptor } from '../../../generated/entity/policies/accessControl/resourceDescriptor';
 import { Function } from '../../../generated/type/function';
+import { FieldProp, FieldTypes } from '../../../interface/FormUtils.interface';
 import {
   getPolicyFunctions,
   getPolicyResources,
   validateRuleCondition,
 } from '../../../rest/rolesAPIV1';
+import { getField } from '../../../utils/formUtils';
 import { ALL_TYPE_RESOURCE_LIST } from '../../../utils/PermissionsUtils';
 import { getErrorText } from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
@@ -41,9 +42,14 @@ const { Option } = Select;
 export interface RuleFormProps {
   ruleData: Rule;
   setRuleData: (value: React.SetStateAction<Rule>) => void;
+  description?: string;
 }
 
-const RuleForm: FC<RuleFormProps> = ({ ruleData, setRuleData }) => {
+const RuleForm: FC<RuleFormProps> = ({
+  ruleData,
+  setRuleData,
+  description,
+}) => {
   const { t } = useTranslation();
   const [policyResources, setPolicyResources] = useState<ResourceDescriptor[]>(
     []
@@ -189,6 +195,27 @@ const RuleForm: FC<RuleFormProps> = ({ ruleData, setRuleData }) => {
     }
   };
 
+  const descriptionField: FieldProp = useMemo(
+    () => ({
+      name: 'ruleDescription',
+      required: false,
+      label: t('label.description'),
+      id: 'root/description',
+      type: FieldTypes.DESCRIPTION,
+      props: {
+        'data-testid': 'description',
+        initialValue: description,
+        style: {
+          margin: 0,
+        },
+        placeHolder: t('message.write-your-description'),
+        onTextChange: (value: string) =>
+          setRuleData((prev: Rule) => ({ ...prev, description: value })),
+      },
+    }),
+    [description, setRuleData]
+  );
+
   useEffect(() => {
     fetchPolicyResources();
     fetchPolicyFunctions();
@@ -214,17 +241,7 @@ const RuleForm: FC<RuleFormProps> = ({ ruleData, setRuleData }) => {
           }
         />
       </Form.Item>
-      <Form.Item label={t('label.description')} name="ruleDescription">
-        <RichTextEditor
-          height="200px"
-          initialValue={ruleData.description || ''}
-          placeHolder={t('message.write-your-description')}
-          style={{ margin: 0 }}
-          onTextChange={(value: string) =>
-            setRuleData((prev: Rule) => ({ ...prev, description: value }))
-          }
-        />
-      </Form.Item>
+      {getField(descriptionField)}
       <Form.Item
         label={`${t('label.resource-plural')}:`}
         name="resources"

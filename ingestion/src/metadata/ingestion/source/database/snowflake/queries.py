@@ -294,15 +294,36 @@ SELECT
   PROCEDURE_LANGUAGE AS language,
   PROCEDURE_DEFINITION AS definition,
   ARGUMENT_SIGNATURE AS signature,
-  COMMENT as comment
-FROM INFORMATION_SCHEMA.PROCEDURES
+  COMMENT as comment,
+  'StoredProcedure' as procedure_type
+FROM SNOWFLAKE.ACCOUNT_USAGE.PROCEDURES
 WHERE PROCEDURE_CATALOG = '{database_name}'
   AND PROCEDURE_SCHEMA = '{schema_name}'
     """
 )
 
+SNOWFLAKE_GET_FUNCTIONS = textwrap.dedent(
+    """
+SELECT
+  FUNCTION_NAME AS name,
+  FUNCTION_OWNER AS owner,
+  FUNCTION_LANGUAGE AS language,
+  FUNCTION_DEFINITION AS definition,
+  ARGUMENT_SIGNATURE AS signature,
+  COMMENT as comment,
+  'UDF' as procedure_type
+FROM SNOWFLAKE.ACCOUNT_USAGE.FUNCTIONS
+WHERE FUNCTION_CATALOG = '{database_name}'
+  AND FUNCTION_SCHEMA = '{schema_name}'
+    """
+)
+
 SNOWFLAKE_DESC_STORED_PROCEDURE = (
     "DESC PROCEDURE {database_name}.{schema_name}.{procedure_name}{procedure_signature}"
+)
+
+SNOWFLAKE_DESC_FUNCTION = (
+    "DESC FUNCTION {database_name}.{schema_name}.{procedure_name}{procedure_signature}"
 )
 
 SNOWFLAKE_GET_STORED_PROCEDURE_QUERIES = textwrap.dedent(
@@ -316,6 +337,8 @@ WITH SP_HISTORY AS (
     FROM SNOWFLAKE.ACCOUNT_USAGE.QUERY_HISTORY SP
     WHERE QUERY_TYPE = 'CALL'
       AND START_TIME >= '{start_date}'
+      AND QUERY_TEXT <> ''
+      AND QUERY_TEXT IS NOT NULL
 ),
 Q_HISTORY AS (
     SELECT
@@ -333,6 +356,10 @@ Q_HISTORY AS (
       AND QUERY_TEXT NOT LIKE '/* {{"app": "OpenMetadata", %%}} */%%'
       AND QUERY_TEXT NOT LIKE '/* {{"app": "dbt", %%}} */%%'
       AND START_TIME >= '{start_date}'
+      AND (
+        QUERY_TYPE IN ('MERGE', 'UPDATE','CREATE_TABLE_AS_SELECT')
+        OR (QUERY_TYPE = 'INSERT' and query_text ILIKE '%%insert%%into%%select%%')
+    )
 )
 SELECT
   Q.QUERY_TYPE AS QUERY_TYPE,

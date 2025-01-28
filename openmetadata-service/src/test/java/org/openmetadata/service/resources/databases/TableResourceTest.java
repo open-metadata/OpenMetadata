@@ -80,6 +80,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -149,6 +150,8 @@ import org.openmetadata.schema.type.TagLabel.LabelType;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
+import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.jdbi3.TableRepository;
 import org.openmetadata.service.jdbi3.TableRepository.TableCsv;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.databases.TableResource.TableList;
@@ -1001,7 +1004,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     // Invalid date older than 30 days
     String invalidColumnFQN4 = table2.getFullyQualifiedName() + ".c1";
     TableJoins tableJoins4 =
-        getTableJoins(getColumnJoin(C1, invalidColumnFQN4)).withStartDate(RestUtil.today(-30));
+        getTableJoins(getColumnJoin(C1, invalidColumnFQN4)).withStartDate(RestUtil.today(-31));
     assertResponse(
         () -> putJoins(table1.getId(), tableJoins4, ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
@@ -2225,7 +2228,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     CreateTestSuite createTestSuite =
         testSuiteResourceTest.createRequest(table.getFullyQualifiedName());
     TestSuite testSuite =
-        testSuiteResourceTest.createExecutableTestSuite(createTestSuite, ADMIN_AUTH_HEADERS);
+        testSuiteResourceTest.createBasicTestSuite(createTestSuite, ADMIN_AUTH_HEADERS);
 
     CreateTestCase createTestCase =
         testCaseResourceTest
@@ -2267,6 +2270,46 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   }
 
   @Test
+  void test_listTablesWithTestSuite(TestInfo test) throws IOException {
+    CreateDatabase createDb = dbTest.createRequest(test).withOwners(Lists.newArrayList(USER1_REF));
+    Database db = dbTest.createEntity(createDb, ADMIN_AUTH_HEADERS);
+    CreateDatabaseSchema createSchema =
+        schemaTest.createRequest(test).withDatabase(db.getFullyQualifiedName());
+    DatabaseSchema schema = schemaTest.createEntity(createSchema, ADMIN_AUTH_HEADERS);
+    CreateTable createTable =
+        createRequest(test).withDatabaseSchema(schema.getFullyQualifiedName());
+    Table table = createEntity(createTable, ADMIN_AUTH_HEADERS);
+
+    CreateTestSuite createTestSuite =
+        testSuiteResourceTest.createRequest(table.getFullyQualifiedName());
+    TestSuite testSuite =
+        testSuiteResourceTest.createBasicTestSuite(createTestSuite, ADMIN_AUTH_HEADERS);
+
+    CreateTestCase createTestCase =
+        testCaseResourceTest
+            .createRequest(test)
+            .withEntityLink(String.format("<#E::table::%s>", table.getFullyQualifiedName()))
+            .withTestSuite(testSuite.getFullyQualifiedName())
+            .withTestDefinition(TEST_DEFINITION2.getFullyQualifiedName());
+    TestCase testCase = testCaseResourceTest.createEntity(createTestCase, ADMIN_AUTH_HEADERS);
+
+    TableRepository tableRepository = (TableRepository) Entity.getEntityRepository(TABLE);
+
+    ResultList<Table> allTables = listEntities(null, ADMIN_AUTH_HEADERS);
+    ResultList<Table> tablesWithTestSuite =
+        tableRepository.getEntitiesWithTestSuite(
+            new ListFilter(),
+            10,
+            "MA==",
+            new Fields(
+                Set.of(
+                    "tags", "testSuite", "columns", "table.tableProfile", "table.columnProfile")));
+
+    // Ensure the number of tables with test suite is less than the total number of tables
+    assertTrue(allTables.getData().size() > tablesWithTestSuite.getData().size());
+  }
+
+  @Test
   void test_domainInheritance(TestInfo test) throws IOException {
     // Domain is inherited from databaseService > database > databaseSchema > table
     CreateDatabaseService createDbService =
@@ -2293,7 +2336,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     CreateTestSuite createTestSuite =
         testSuiteResourceTest.createRequest(table.getFullyQualifiedName());
     TestSuite testSuite =
-        testSuiteResourceTest.createExecutableTestSuite(createTestSuite, ADMIN_AUTH_HEADERS);
+        testSuiteResourceTest.createBasicTestSuite(createTestSuite, ADMIN_AUTH_HEADERS);
 
     CreateTestCase createTestCase =
         testCaseResourceTest
@@ -2433,8 +2476,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     CreateTestSuite createExecutableTestSuite =
         testSuiteResourceTest.createRequest(table1.getFullyQualifiedName());
     TestSuite executableTestSuite =
-        testSuiteResourceTest.createExecutableTestSuite(
-            createExecutableTestSuite, ADMIN_AUTH_HEADERS);
+        testSuiteResourceTest.createBasicTestSuite(createExecutableTestSuite, ADMIN_AUTH_HEADERS);
 
     HashMap<String, String> queryParams = new HashMap<>();
     queryParams.put("includeEmptyTestSuite", "false");
@@ -2442,7 +2484,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     queryParams.put("limit", "100");
 
     ResultList<Table> tables = listEntities(queryParams, ADMIN_AUTH_HEADERS);
-    assertEquals(4, tables.getData().size());
+    assertEquals(5, tables.getData().size());
     assertNotNull(tables.getData().get(0).getTestSuite());
   }
 
@@ -2952,6 +2994,48 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
         new RestoreEntity().withId(entity.getId()),
         javax.ws.rs.core.Response.Status.OK,
         ADMIN_AUTH_HEADERS);
+  }
+
+  @Test
+  void put_tableTableConstraintDuplicate_400(TestInfo test) throws IOException {
+    // Create table with a constraint
+    CreateTable request =
+        createRequest(test)
+            .withColumns(List.of(getColumn(C1, BIGINT, USER_ADDRESS_TAG_LABEL)))
+            .withTableConstraints(null);
+    Table table = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
+
+    // Attempt to add duplicate constraints
+    TableConstraint constraint =
+        new TableConstraint().withConstraintType(ConstraintType.UNIQUE).withColumns(List.of(C1));
+
+    request = request.withTableConstraints(List.of(constraint, constraint)); // Duplicate constraint
+    CreateTable finalRequest = request;
+    assertResponseContains(
+        () -> updateEntity(finalRequest, OK, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        "Duplicate constraint found in request: ");
+  }
+
+  @Test
+  void put_tableTableConstraintInvalidColumn_400(TestInfo test) throws IOException {
+    CreateTable request =
+        createRequest(test)
+            .withColumns(List.of(getColumn(C1, BIGINT, USER_ADDRESS_TAG_LABEL)))
+            .withTableConstraints(null);
+    Table table = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
+
+    TableConstraint constraint =
+        new TableConstraint()
+            .withConstraintType(ConstraintType.UNIQUE)
+            .withColumns(List.of("invalid_column")); // Non-existent column
+
+    request = request.withTableConstraints(List.of(constraint));
+    CreateTable finalRequest = request;
+    assertResponseContains(
+        () -> updateEntity(finalRequest, OK, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        "Invalid column name found in table constraint");
   }
 
   void assertFields(List<Table> tableList, String fieldsParam) {

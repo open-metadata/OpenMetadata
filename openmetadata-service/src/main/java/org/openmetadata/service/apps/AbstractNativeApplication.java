@@ -48,7 +48,6 @@ public class AbstractNativeApplication implements NativeApplication {
   protected CollectionDAO collectionDAO;
   private App app;
   protected SearchRepository searchRepository;
-  protected boolean isJobInterrupted = false;
 
   // Default service that contains external apps' Ingestion Pipelines
   private static final String SERVICE_NAME = "OpenMetadata";
@@ -106,7 +105,7 @@ public class AbstractNativeApplication implements NativeApplication {
     AppRuntime runtime = JsonUtils.convertValue(app.getRuntime(), ScheduledExecutionContext.class);
     validateServerExecutableApp(runtime);
     // Schedule New Application Run
-    AppScheduler.getInstance().addApplicationSchedule(app);
+    AppScheduler.getInstance().scheduleApplication(app);
   }
 
   public void scheduleExternal() {
@@ -299,6 +298,11 @@ public class AbstractNativeApplication implements NativeApplication {
   @Override
   public void interrupt() throws UnableToInterruptJobException {
     LOG.info("Interrupting the job for app: {}", this.app.getName());
-    isJobInterrupted = true;
+    stop();
+  }
+
+  protected void stop() {
+    LOG.info("Default stop behavior for app: {}", this.app.getName());
+    // Default implementation: no-op or generic cleanup logic
   }
 }

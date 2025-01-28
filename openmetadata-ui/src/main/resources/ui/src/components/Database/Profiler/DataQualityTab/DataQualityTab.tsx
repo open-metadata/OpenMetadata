@@ -88,6 +88,8 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
   const [testCaseStatus, setTestCaseStatus] = useState<
     TestCaseResolutionStatus[]
   >([]);
+  const [isTestCaseRemovalLoading, setIsTestCaseRemovalLoading] =
+    useState(false);
   const isApiSortingEnabled = useRef(false);
 
   const testCaseEditPermission = useMemo(() => {
@@ -131,6 +133,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
   };
 
   const handleConfirmClick = async () => {
+    setIsTestCaseRemovalLoading(true);
     if (isUndefined(removeFromTestSuite)) {
       return;
     }
@@ -143,6 +146,8 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
       setSelectedTestCase(undefined);
     } catch (error) {
       showErrorToast(error as AxiosError);
+    } finally {
+      setIsTestCaseRemovalLoading(false);
     }
   };
 
@@ -185,12 +190,13 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
               title: t('label.table'),
               dataIndex: 'entityLink',
               key: 'table',
-              width: 150,
+              width: 200,
               render: (entityLink: string) => {
                 const tableFqn = getEntityFQN(entityLink);
 
                 return (
                   <Link
+                    className="break-word"
                     data-testid="table-link"
                     to={{
                       pathname: getEntityDetailsPath(
@@ -513,6 +519,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
             cancelText={t('label.cancel')}
             confirmText={t('label.remove')}
             header={t('label.remove-entity', { entity: t('label.test-case') })}
+            isLoading={isTestCaseRemovalLoading}
             visible={selectedTestCase?.action === 'DELETE'}
             onCancel={handleCancel}
             onConfirm={handleConfirmClick}

@@ -1,7 +1,7 @@
-# 1.5.10 Release 🎉
+# 1.5.15 Release 🎉
 
 {% note noteType="Tip" %}
-**Oct 31st, 2024**
+**Dec 17th, 2024**
 {% /note %}
 
 {% inlineCalloutContainer %}
@@ -10,17 +10,19 @@ color="violet-70"
 icon="celebration"
 bold="Upgrade OpenMetadata"
 href="/deployment/upgrade" %}
-Learn how to upgrade your OpenMetadata instance to 1.5.10!
+Learn how to upgrade your OpenMetadata instance to 1.5.15!
 {% /inlineCallout %}
 {% /inlineCalloutContainer %}
 
-You can find the GitHub release [here](https://github.com/open-metadata/OpenMetadata/releases/tag/1.5.10-release).
+You can find the GitHub release [here](https://github.com/open-metadata/OpenMetadata/releases/tag/1.5.15-release).
 
 # What's Changed
 
-- Fix encoding issue for teams search query.
-- Fix disable empty rule for query builder widget.
-- Fix unable to add more enum values for enum cp.
-- Fix navigate to listing for deleting a service.
+- Minor - Fix clean_uri and add before pagination
+- Fix downloading of app logs
+- Fix query builder state issues
+- Fix : Handle Index out of bounds exception in feed api
+- Minor: DBT v12 Model Changes
+- Fix database and schema aggregation key
 
-**Full Changelog**: https://github.com/open-metadata/OpenMetadata/compare/1.5.9-release...1.5.10-release
+**Full Changelog**: https://github.com/open-metadata/OpenMetadata/compare/1.5.14-release...1.5.15-release

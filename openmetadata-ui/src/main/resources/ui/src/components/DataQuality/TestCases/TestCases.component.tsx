@@ -48,6 +48,7 @@ import {
 } from '../../../constants/constants';
 import {
   DEFAULT_SORT_ORDER,
+  TEST_CASE_DIMENSIONS_OPTION,
   TEST_CASE_FILTERS,
   TEST_CASE_PLATFORM_OPTION,
   TEST_CASE_STATUS_OPTION,
@@ -110,8 +111,8 @@ export const TestCases = () => {
 
     return params as TestCaseSearchParams;
   }, [location.search]);
-  const { searchValue = '' } = params;
 
+  const { searchValue = '' } = params;
   const [testCase, setTestCase] = useState<TestCase[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [selectedFilter, setSelectedFilter] = useState<string[]>([
@@ -415,7 +416,6 @@ export const TestCases = () => {
       key: filter,
       label: startCase(name),
       value: filter,
-      onClick: handleMenuClick,
     }));
   }, []);
 
@@ -496,6 +496,7 @@ export const TestCases = () => {
                 menu={{
                   items: filterMenu,
                   selectedKeys: selectedFilter,
+                  onClick: handleMenuClick,
                 }}
                 trigger={['click']}>
                 <Button
@@ -621,11 +622,26 @@ export const TestCases = () => {
                 />
               </Form.Item>
             )}
+            {selectedFilter.includes(TEST_CASE_FILTERS.dimension) && (
+              <Form.Item
+                className="m-0 w-80"
+                label={t('label.dimension')}
+                name="dataQualityDimension">
+                <Select
+                  allowClear
+                  showSearch
+                  data-testid="dimension-select-filter"
+                  options={TEST_CASE_DIMENSIONS_OPTION}
+                  placeholder={t('label.dimension')}
+                />
+              </Form.Item>
+            )}
           </Space>
         </Form>
       </Col>
       <Col span={24}>
         <SummaryPanel
+          showAdditionalSummary
           isLoading={isTestCaseSummaryLoading}
           testSummary={testCaseSummary}
         />

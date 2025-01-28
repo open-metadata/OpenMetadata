@@ -3,6 +3,7 @@ package org.openmetadata.service.governance.workflows.elements.nodes.automatedTa
 import static org.openmetadata.service.governance.workflows.Workflow.getFlowableElementId;
 
 import java.util.Optional;
+import org.flowable.bpmn.model.BoundaryEvent;
 import org.flowable.bpmn.model.BpmnModel;
 import org.flowable.bpmn.model.EndEvent;
 import org.flowable.bpmn.model.FieldExtension;
@@ -23,6 +24,7 @@ import org.openmetadata.service.governance.workflows.flowable.builders.SubProces
 
 public class SetEntityCertificationTask implements NodeInterface {
   private final SubProcess subProcess;
+  private final BoundaryEvent runtimeExceptionBoundaryEvent;
 
   public SetEntityCertificationTask(SetEntityCertificationTaskDefinition nodeDefinition) {
     String subProcessId = nodeDefinition.getName();
@@ -48,9 +50,13 @@ public class SetEntityCertificationTask implements NodeInterface {
     subProcess.addFlowElement(new SequenceFlow(startEvent.getId(), setEntityCertification.getId()));
     subProcess.addFlowElement(new SequenceFlow(setEntityCertification.getId(), endEvent.getId()));
 
-    attachWorkflowInstanceStageListeners(subProcess);
-
+    this.runtimeExceptionBoundaryEvent = getRuntimeExceptionBoundaryEvent(subProcess);
     this.subProcess = subProcess;
+  }
+
+  @Override
+  public BoundaryEvent getRuntimeExceptionBoundaryEvent() {
+    return runtimeExceptionBoundaryEvent;
   }
 
   private ServiceTask getSetEntityCertificationServiceTask(
@@ -75,5 +81,6 @@ public class SetEntityCertificationTask implements NodeInterface {
 
   public void addToWorkflow(BpmnModel model, Process process) {
     process.addFlowElement(subProcess);
+    process.addFlowElement(runtimeExceptionBoundaryEvent);
   }
 }

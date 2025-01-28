@@ -40,6 +40,7 @@ import FormItemLabel from '../components/common/Form/FormItemLabel';
 import { InlineAlertProps } from '../components/common/InlineAlert/InlineAlert.interface';
 import RichTextEditor from '../components/common/RichTextEditor/RichTextEditor';
 import { RichTextEditorProp } from '../components/common/RichTextEditor/RichTextEditor.interface';
+import SanitizedInput from '../components/common/SanitizedInput/SanitizedInput';
 import SliderWithInput from '../components/common/SliderWithInput/SliderWithInput';
 import { SliderWithInputProps } from '../components/common/SliderWithInput/SliderWithInput.interface';
 import { UserSelectableList } from '../components/common/UserSelectableList/UserSelectableList.component';
@@ -100,7 +101,9 @@ export const getField = (field: FieldProp) => {
 
   switch (type) {
     case FieldTypes.TEXT:
-      fieldElement = <Input {...props} id={id} placeholder={placeholder} />;
+      fieldElement = (
+        <SanitizedInput {...props} id={id} placeholder={placeholder} />
+      );
 
       break;
     case FieldTypes.PASSWORD:
@@ -158,7 +161,7 @@ export const getField = (field: FieldProp) => {
       internalFormItemProps = {
         ...internalFormItemProps,
         trigger: 'onTextChange',
-        valuePropName: 'initialValue',
+        initialValue: props?.initialValue ?? '',
       };
 
       break;

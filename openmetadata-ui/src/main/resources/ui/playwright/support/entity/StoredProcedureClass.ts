@@ -13,9 +13,14 @@
 import { APIRequestContext, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
 import { SERVICE_TYPE } from '../../constant/service';
+import { ServiceTypes } from '../../constant/settings';
 import { uuid } from '../../utils/common';
 import { visitEntityPage } from '../../utils/entity';
-import { EntityTypeEndpoint } from './Entity.interface';
+import {
+  EntityTypeEndpoint,
+  ResponseDataType,
+  ResponseDataWithServiceType,
+} from './Entity.interface';
 import { EntityClass } from './EntityClass';
 
 export class StoredProcedureClass extends EntityClass {
@@ -54,16 +59,20 @@ export class StoredProcedureClass extends EntityClass {
     },
   };
 
-  serviceResponseData: unknown;
-  databaseResponseData: unknown;
-  schemaResponseData: unknown;
-  entityResponseData: unknown;
+  serviceResponseData: ResponseDataType = {} as ResponseDataType;
+  databaseResponseData: ResponseDataWithServiceType =
+    {} as ResponseDataWithServiceType;
+  schemaResponseData: ResponseDataWithServiceType =
+    {} as ResponseDataWithServiceType;
+  entityResponseData: ResponseDataWithServiceType =
+    {} as ResponseDataWithServiceType;
 
   constructor(name?: string) {
     super(EntityTypeEndpoint.StoreProcedure);
     this.service.name = name ?? this.service.name;
     this.serviceCategory = SERVICE_TYPE.Database;
     this.type = 'Store Procedure';
+    this.serviceType = ServiceTypes.DATABASE_SERVICES;
   }
 
   async create(apiContext: APIRequestContext) {

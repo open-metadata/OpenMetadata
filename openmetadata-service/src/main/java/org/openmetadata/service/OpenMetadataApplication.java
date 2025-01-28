@@ -79,11 +79,16 @@ import org.openmetadata.service.exception.ConstraintViolationExceptionMapper;
 import org.openmetadata.service.exception.JsonMappingExceptionMapper;
 import org.openmetadata.service.exception.OMErrorPageHandler;
 import org.openmetadata.service.fernet.Fernet;
+import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.MigrationDAO;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareAnnotationSqlLocator;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
+import org.openmetadata.service.jobs.EnumCleanupHandler;
+import org.openmetadata.service.jobs.GenericBackgroundWorker;
+import org.openmetadata.service.jobs.JobDAO;
+import org.openmetadata.service.jobs.JobHandlerRegistry;
 import org.openmetadata.service.limits.DefaultLimits;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.migration.Migration;
@@ -162,6 +167,8 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
     jdbi = createAndSetupJDBI(environment, catalogConfig.getDataSourceFactory());
     Entity.setCollectionDAO(getDao(jdbi));
+    Entity.setJobDAO(jdbi.onDemand(JobDAO.class));
+    Entity.setJdbi(jdbi);
 
     initializeSearchRepository(catalogConfig.getElasticSearchConfiguration());
     // Initialize the MigrationValidationClient, used in the Settings Repository
@@ -171,6 +178,9 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
     // Configure the Fernet instance
     Fernet.getInstance().setFernetKey(catalogConfig);
+
+    // Initialize Workflow Handler
+    WorkflowHandler.initialize(catalogConfig);
 
     // Init Settings Cache after repositories
     SettingsCache.initialize(catalogConfig);
@@ -185,7 +195,10 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     EntityMaskerFactory.createEntityMasker();
 
     // Instantiate JWT Token Generator
-    JWTTokenGenerator.getInstance().init(catalogConfig.getJwtTokenConfiguration());
+    JWTTokenGenerator.getInstance()
+        .init(
+            catalogConfig.getAuthenticationConfiguration().getTokenValidationAlgorithm(),
+            catalogConfig.getJwtTokenConfiguration());
 
     // Set the Database type for choosing correct queries from annotations
     jdbi.getConfig(SqlObjects.class)
@@ -226,6 +239,13 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     // Register Event Handler
     registerEventFilter(catalogConfig, environment);
     environment.lifecycle().manage(new ManagedShutdown());
+
+    JobHandlerRegistry registry = new JobHandlerRegistry();
+    registry.register("EnumCleanupHandler", new EnumCleanupHandler(getDao(jdbi)));
+    environment
+        .lifecycle()
+        .manage(new GenericBackgroundWorker(jdbi.onDemand(JobDAO.class), registry));
+
     // Register Event publishers
     registerEventPublisher(catalogConfig);
 

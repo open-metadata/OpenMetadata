@@ -18,6 +18,7 @@ import { Column } from '../../../generated/entity/data/table';
 export interface SchemaTableProps {
   hasDescriptionEditAccess: boolean;
   hasTagEditAccess: boolean;
+  hasGlossaryTermEditAccess: boolean;
   searchText?: string;
   isReadOnly?: boolean;
   onUpdate: (columns: Column[]) => Promise<void>;
@@ -29,15 +30,6 @@ export type TableCellRendered<T, K extends keyof T> = (
   record: T,
   index: number
 ) => ReactNode;
-
-export interface DataTypeDisplayCellProps {
-  dataTypeDisplay: Column['dataTypeDisplay'];
-}
-
-export interface EditColumnTag {
-  column: Column;
-  index: number;
-}
 
 export interface UpdatedColumnFieldData {
   fqn: string;

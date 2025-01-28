@@ -12,11 +12,15 @@
  */
 import { APIRequestContext, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
+import { isEmpty } from 'lodash';
 import { SERVICE_TYPE } from '../../constant/service';
+import { ServiceTypes } from '../../constant/settings';
 import { uuid } from '../../utils/common';
 import { visitEntityPage } from '../../utils/entity';
 import {
   EntityTypeEndpoint,
+  ResponseDataType,
+  ResponseDataWithServiceType,
   TestCaseData,
   TestSuiteData,
 } from './Entity.interface';
@@ -74,16 +78,17 @@ export class TableClass extends EntityClass {
       children: [
         {
           name: 'first_name',
-          dataType: 'VARCHAR',
+          dataType: 'STRUCT',
           dataLength: 100,
-          dataTypeDisplay: 'varchar',
+          dataTypeDisplay:
+            'struct<username:varchar(32),name:varchar(32),sex:char(1),address:varchar(128),mail:varchar(64),birthdate:varchar(16)>',
           description: 'First name of the staff member.',
         },
         {
           name: 'last_name',
-          dataType: 'VARCHAR',
+          dataType: 'ARRAY',
           dataLength: 100,
-          dataTypeDisplay: 'varchar',
+          dataTypeDisplay: 'array<struct<type:string,provider:array<int>>>',
         },
       ],
     },
@@ -104,19 +109,24 @@ export class TableClass extends EntityClass {
     databaseSchema: `${this.service.name}.${this.database.name}.${this.schema.name}`,
   };
 
-  serviceResponseData: unknown;
-  databaseResponseData: unknown;
-  schemaResponseData: unknown;
-  entityResponseData: unknown;
-  testSuiteResponseData: unknown;
-  testSuitePipelineResponseData: unknown[] = [];
-  testCasesResponseData: unknown[] = [];
-  queryResponseData: unknown[] = [];
+  serviceResponseData: ResponseDataType = {} as ResponseDataType;
+  databaseResponseData: ResponseDataWithServiceType =
+    {} as ResponseDataWithServiceType;
+  schemaResponseData: ResponseDataWithServiceType =
+    {} as ResponseDataWithServiceType;
+  entityResponseData: ResponseDataWithServiceType =
+    {} as ResponseDataWithServiceType;
+  testSuiteResponseData: ResponseDataType = {} as ResponseDataType;
+  testSuitePipelineResponseData: ResponseDataType[] = [];
+  testCasesResponseData: ResponseDataType[] = [];
+  queryResponseData: ResponseDataType[] = [];
+  additionalEntityTableResponseData: ResponseDataType[] = [];
 
   constructor(name?: string) {
     super(EntityTypeEndpoint.Table);
     this.service.name = name ?? this.service.name;
     this.serviceCategory = SERVICE_TYPE.Database;
+    this.serviceType = ServiceTypes.DATABASE_SERVICES;
     this.type = 'Table';
     this.childrenTabId = 'schema';
     this.childrenSelectorId = `${this.entity.databaseSchema}.${this.entity.name}.${this.children[0].name}`;
@@ -155,6 +165,31 @@ export class TableClass extends EntityClass {
       schema,
       entity,
     };
+  }
+
+  async createAdditionalTable(
+    tableData: {
+      name: string;
+      displayName: string;
+      description?: string;
+      columns?: any[];
+      databaseSchema?: string;
+    },
+    apiContext: APIRequestContext
+  ) {
+    const entityResponse = await apiContext.post('/api/v1/tables', {
+      data: {
+        ...this.entity,
+        ...tableData,
+      },
+    });
+    const entity = await entityResponse.json();
+    this.additionalEntityTableResponseData = [
+      ...this.additionalEntityTableResponseData,
+      entity,
+    ];
+
+    return entity;
   }
 
   get() {
@@ -197,16 +232,15 @@ export class TableClass extends EntityClass {
     apiContext: APIRequestContext,
     testSuite?: TestSuiteData
   ) {
-    if (!this.entityResponseData) {
+    if (isEmpty(this.entityResponseData)) {
       await this.create(apiContext);
     }
 
     const testSuiteData = await apiContext
-      .post('/api/v1/dataQuality/testSuites/executable', {
+      .post('/api/v1/dataQuality/testSuites/basic', {
         data: {
           name: `pw-test-suite-${uuid()}`,
-          executableEntityReference:
-            this.entityResponseData?.['fullyQualifiedName'],
+          basicEntityReference: this.entityResponseData?.['fullyQualifiedName'],
           description: 'Playwright test suite for table',
           ...testSuite,
         },
@@ -261,7 +295,7 @@ export class TableClass extends EntityClass {
     apiContext: APIRequestContext,
     testCaseData?: TestCaseData
   ) {
-    if (!this.testSuiteResponseData) {
+    if (isEmpty(this.testSuiteResponseData)) {
       await this.createTestSuiteAndPipelines(apiContext);
     }
 
@@ -335,12 +369,31 @@ export class TableClass extends EntityClass {
     );
   }
 
-  async delete(apiContext: APIRequestContext) {
+  async delete(apiContext: APIRequestContext, hardDelete = true) {
     const serviceResponse = await apiContext.delete(
       `/api/v1/services/databaseServices/name/${encodeURIComponent(
         this.serviceResponseData?.['fullyQualifiedName']
-      )}?recursive=true&hardDelete=true`
+      )}?recursive=true&hardDelete=${hardDelete}`
     );
+
+    return {
+      service: serviceResponse.body,
+      entity: this.entityResponseData,
+    };
+  }
+
+  async deleteTable(apiContext: APIRequestContext, hardDelete = true) {
+    const tableResponse = await apiContext.delete(
+      `/api/v1/tables/${this.entityResponseData?.['id']}?recursive=true&hardDelete=${hardDelete}`
+    );
+
+    return tableResponse;
+  }
+
+  async restore(apiContext: APIRequestContext) {
+    const serviceResponse = await apiContext.put('/api/v1/tables/restore', {
+      data: { id: this.entityResponseData?.['id'] },
+    });
 
     return {
       service: serviceResponse.body,

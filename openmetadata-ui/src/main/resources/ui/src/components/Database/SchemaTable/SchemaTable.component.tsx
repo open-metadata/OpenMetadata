@@ -23,7 +23,6 @@ import {
   isUndefined,
   set,
   sortBy,
-  toLower,
   uniqBy,
 } from 'lodash';
 import { EntityTags, TagFilterOptions } from 'Models';
@@ -56,9 +55,12 @@ import {
   getColumnSorter,
   getEntityName,
   getFrequentlyJoinedColumns,
+  highlightSearchArrayElement,
+  highlightSearchText,
   searchInColumns,
 } from '../../../utils/EntityUtils';
 import { getEntityColumnFQN } from '../../../utils/FeedUtils';
+import { stringToHTML } from '../../../utils/StringsUtils';
 import {
   getAllTags,
   searchTagInData,
@@ -93,6 +95,7 @@ const SchemaTable = ({
   searchText,
   hasDescriptionEditAccess,
   hasTagEditAccess,
+  hasGlossaryTermEditAccess,
   isReadOnly = false,
   onUpdate,
   onThreadLinkSelect,
@@ -235,15 +238,12 @@ const SchemaTable = ({
       return NO_DATA_PLACEHOLDER;
     }
 
-    return isReadOnly ||
-      (displayValue && displayValue.length < 25 && !isReadOnly) ? (
-      toLower(displayValue)
-    ) : (
-      <Tooltip title={toLower(displayValue)}>
-        <Typography.Text ellipsis className="cursor-pointer">
-          {displayValue}
-        </Typography.Text>
-      </Tooltip>
+    return (
+      <Typography.Paragraph
+        className="cursor-pointer"
+        ellipsis={{ tooltip: displayValue, rows: 3 }}>
+        {highlightSearchArrayElement(dataTypeDisplay, searchText)}
+      </Typography.Paragraph>
     );
   };
 
@@ -257,7 +257,7 @@ const SchemaTable = ({
         <TableDescription
           columnData={{
             fqn: record.fullyQualifiedName ?? '',
-            field: record.description,
+            field: highlightSearchText(record.description, searchText),
             record,
           }}
           entityFqn={tableFqn}
@@ -367,7 +367,7 @@ const SchemaTable = ({
                 <Typography.Text
                   className="m-b-0 d-block text-grey-muted break-word"
                   data-testid="column-name">
-                  {name}
+                  {stringToHTML(highlightSearchText(name, searchText))}
                 </Typography.Text>
               </div>
               {!isEmpty(displayName) ? (
@@ -375,7 +375,9 @@ const SchemaTable = ({
                 <Typography.Text
                   className="m-b-0 d-block break-word"
                   data-testid="column-display-name">
-                  {getEntityName(record)}
+                  {stringToHTML(
+                    highlightSearchText(getEntityName(record), searchText)
+                  )}
                 </Typography.Text>
               ) : null}
 
@@ -408,7 +410,6 @@ const SchemaTable = ({
         dataIndex: 'dataTypeDisplay',
         key: 'dataTypeDisplay',
         accessor: 'dataTypeDisplay',
-        ellipsis: true,
         width: 150,
         render: renderDataTypeDisplay,
       },
@@ -471,7 +472,7 @@ const SchemaTable = ({
             entityFqn={tableFqn}
             entityType={EntityType.TABLE}
             handleTagSelection={handleTagSelection}
-            hasTagEditAccess={hasTagEditAccess}
+            hasTagEditAccess={hasGlossaryTermEditAccess}
             index={index}
             isReadOnly={isReadOnly}
             record={record}
@@ -508,6 +509,7 @@ const SchemaTable = ({
       isReadOnly,
       tableConstraints,
       hasTagEditAccess,
+      hasGlossaryTermEditAccess,
       handleUpdate,
       handleTagSelection,
       renderDataTypeDisplay,

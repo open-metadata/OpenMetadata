@@ -101,7 +101,7 @@ class RedshiftCliTest(CliCommonDB.TestSuite, SQACommonMethods):
     def expected_tables() -> int:
         return 5
 
-    def inserted_rows_count(self) -> int:
+    def expected_sample_size(self) -> int:
         return 50
 
     def view_column_lineage_count(self) -> int:
@@ -109,6 +109,9 @@ class RedshiftCliTest(CliCommonDB.TestSuite, SQACommonMethods):
         Gives us the lineage for the view_listing
         """
         return 9
+
+    def expected_lineage_node(self) -> str:
+        return "e2e_redshift.e2e_cli_tests.dbt_jaffle.view_listing"
 
     @staticmethod
     def fqn_created_table() -> str:

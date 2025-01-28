@@ -54,7 +54,11 @@ function CommonEntitySummaryInfo({
                         component={Typography.Link}
                         data-testid={`${info.name}-value`}
                         target={info.isExternal ? '_blank' : '_self'}
-                        to={{ pathname: info.url }}>
+                        to={
+                          info.linkProps
+                            ? info.linkProps
+                            : { pathname: info.url }
+                        }>
                         {info.value}
                         {info.isExternal ? (
                           <Icon

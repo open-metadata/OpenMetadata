@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
+import QueryString from 'qs';
 import React, { useEffect } from 'react';
 import { Edge } from 'reactflow';
 import { EdgeTypeEnum } from '../../components/Entity/EntityLineage/EntityLineage.interface';
@@ -44,6 +45,7 @@ const DummyChildrenComponent = () => {
   const {
     loadChildNodesHandler,
     onEdgeClick,
+    onColumnClick,
     updateEntityType,
     onLineageEditClick,
   } = useLineageProvider();
@@ -92,6 +94,11 @@ const DummyChildrenComponent = () => {
         data-testid="edge-click"
         onClick={() => onEdgeClick(MOCK_EDGE as Edge)}>
         On Edge Click
+      </button>
+      <button
+        data-testid="column-click"
+        onClick={() => onColumnClick('column')}>
+        On Column Click
       </button>
       <button data-testid="openConfirmationModal">
         Close Confirmation Modal
@@ -162,6 +169,9 @@ describe('LineageProvider', () => {
   });
 
   it('getDataQualityLineage should be called if alert is supported', async () => {
+    mockLocation.search = QueryString.stringify({
+      layers: ['DataObservability'],
+    });
     mockIsAlertSupported = true;
     (getLineageDataByFQN as jest.Mock).mockImplementationOnce(() =>
       Promise.resolve({
@@ -190,6 +200,7 @@ describe('LineageProvider', () => {
     );
 
     mockIsAlertSupported = false;
+    mockLocation.search = '';
   });
 
   it('should call loadChildNodesHandler', async () => {
@@ -239,5 +250,27 @@ describe('LineageProvider', () => {
     const edgeDrawer = screen.getByText('Edge Info Drawer');
 
     expect(edgeDrawer).toBeInTheDocument();
+  });
+
+  it('should close the drawer if open, on column click', async () => {
+    await act(async () => {
+      render(
+        <LineageProvider>
+          <DummyChildrenComponent />
+        </LineageProvider>
+      );
+    });
+
+    const edgeClick = screen.getByTestId('edge-click');
+    fireEvent.click(edgeClick);
+
+    const edgeDrawer = screen.getByText('Edge Info Drawer');
+
+    expect(edgeDrawer).toBeInTheDocument();
+
+    const columnClick = screen.getByTestId('column-click');
+    fireEvent.click(columnClick);
+
+    expect(edgeDrawer).not.toBeInTheDocument();
   });
 });

@@ -14,7 +14,6 @@
 package org.openmetadata.service.formatter.decorators;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
-import static org.openmetadata.service.util.email.EmailUtil.getSmtpSettings;
 
 import com.slack.api.model.block.Blocks;
 import com.slack.api.model.block.LayoutBlock;
@@ -39,6 +38,7 @@ import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.changeEvent.slack.SlackMessage;
 import org.openmetadata.service.exception.UnhandledServerException;
+import org.openmetadata.service.util.email.EmailUtil;
 
 public class SlackMessageDecorator implements MessageDecorator<SlackMessage> {
 
@@ -80,7 +80,7 @@ public class SlackMessageDecorator implements MessageDecorator<SlackMessage> {
   public String getEntityUrl(String prefix, String fqn, String additionalParams) {
     return String.format(
         "<%s/%s/%s%s|%s>",
-        getSmtpSettings().getOpenMetadataUrl(),
+        EmailUtil.getOMBaseURL(),
         prefix,
         fqn.trim().replaceAll(" ", "%20"),
         nullOrEmpty(additionalParams) ? "" : String.format("/%s", additionalParams),

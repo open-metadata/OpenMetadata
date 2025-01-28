@@ -17,6 +17,7 @@ import os
 from unittest import TestCase
 
 from metadata.generated.schema.entity.data.table import DataType
+from metadata.ingestion.source.dashboard.superset.mixin import SupersetSourceMixin
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
 from metadata.utils.datalake.datalake_utils import GenericDataFrameColumnParser
 
@@ -132,3 +133,16 @@ def test_check_datalake_type():
         assert assert_col_type_dict.get(
             column_name
         ) == GenericDataFrameColumnParser.fetch_col_types(df, column_name)
+
+
+def test_superset_parse_array_data_type():
+    """Test the parse_array_data_type method with different input scenarios"""
+    col_parse = {"dataType": "ARRAY", "arrayDataType": "STRING"}
+    result = SupersetSourceMixin.parse_array_data_type(None, col_parse)
+    assert result == DataType.STRING
+    col_parse = {"dataType": "ARRAY", "arrayDataType": None}
+    result = SupersetSourceMixin.parse_array_data_type(None, col_parse)
+    assert result == DataType.UNKNOWN
+    col_parse = {"dataType": "STRING", "arrayDataType": None}
+    result = SupersetSourceMixin.parse_array_data_type(None, col_parse)
+    assert result == None

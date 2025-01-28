@@ -99,12 +99,14 @@ import {
 } from '../../utils/TableUtils';
 import { updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
+import { useTestCaseStore } from '../IncidentManager/IncidentManagerDetailPage/useTestCase.store';
 import './table-details-page-v1.less';
 
 const TableDetailsPageV1: React.FC = () => {
   const { isTourOpen, activeTabForTourDatasetPage, isTourPage } =
     useTourProvider();
   const { currentUser, selectedPersona } = useApplicationStore();
+  const { setDqLineageData } = useTestCaseStore();
   const [tableDetails, setTableDetails] = useState<Table>();
   const { tab: activeTab = EntityTabs.SCHEMA } =
     useParams<{ tab: EntityTabs }>();
@@ -147,7 +149,7 @@ const TableDetailsPageV1: React.FC = () => {
             tableFqn,
             EntityTabs.PROFILER
           )}>
-          <RedAlertIcon height={24} width={24} />
+          <RedAlertIcon className="text-red-3" height={24} width={24} />
         </Link>
       </Tooltip>
     ) : undefined;
@@ -217,10 +219,11 @@ const TableDetailsPageV1: React.FC = () => {
     // Todo: Remove this once we have support for count in API
     try {
       const data = await getDataQualityLineage(tableFqn, {
-        upstreamDepth: 3,
+        upstreamDepth: 1,
       });
+      setDqLineageData(data);
       const updatedNodes =
-        data.nodes?.filter((node) => node.fullyQualifiedName !== tableFqn) ??
+        data.nodes?.filter((node) => node?.fullyQualifiedName !== tableFqn) ??
         [];
       setDqFailureCount(updatedNodes.length);
     } catch (error) {
@@ -231,6 +234,7 @@ const TableDetailsPageV1: React.FC = () => {
   const fetchTestCaseSummary = async () => {
     try {
       if (isUndefined(tableDetails?.testSuite?.id)) {
+        setTestCaseSummary(undefined);
         await fetchDQFailureCount();
 
         return;
@@ -335,6 +339,10 @@ const TableDetailsPageV1: React.FC = () => {
     if (tableFqn) {
       fetchResourcePermission(tableFqn);
     }
+
+    return () => {
+      setDqLineageData(undefined);
+    };
   }, [tableFqn]);
 
   const handleFeedCount = useCallback((data: FeedCounts) => {
@@ -460,6 +468,9 @@ const TableDetailsPageV1: React.FC = () => {
     () => ({
       editTagsPermission:
         (tablePermissions.EditTags || tablePermissions.EditAll) && !deleted,
+      editGlossaryTermsPermission:
+        (tablePermissions.EditGlossaryTerms || tablePermissions.EditAll) &&
+        !deleted,
       editDescriptionPermission:
         (tablePermissions.EditDescription || tablePermissions.EditAll) &&
         !deleted,

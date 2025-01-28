@@ -18,7 +18,6 @@ import {
   Card,
   Col,
   Dropdown,
-  Menu,
   Modal,
   Row,
   Space,
@@ -37,7 +36,7 @@ import { ReactComponent as IconDelete } from '../../../assets/svg/ic-delete.svg'
 import DescriptionV1 from '../../../components/common/EntityDescription/DescriptionV1';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../../components/common/Loader/Loader';
-import RichTextEditorPreviewer from '../../../components/common/RichTextEditor/RichTextEditorPreviewer';
+import RichTextEditorPreviewerV1 from '../../../components/common/RichTextEditor/RichTextEditorPreviewerV1';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
 import {
@@ -236,55 +235,47 @@ const PoliciesDetailPage = () => {
     (rule: Rule) => {
       return (
         <Dropdown
-          overlay={
-            <Menu
-              items={[
-                {
-                  label: (
-                    <Button
-                      className="p-0"
-                      data-testid="edit-rule"
-                      type="text"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        history.push(
-                          getEditPolicyRulePath(fqn, rule.name || '')
-                        );
-                      }}>
-                      <Space align="center">
-                        <EditIcon width="16px" />
-                        {t('label.edit')}
-                      </Space>
-                    </Button>
-                  ),
-                  key: 'edit-button',
-                },
-                {
-                  label: (
-                    <Button
-                      className="p-0"
-                      data-testid="delete-rule"
-                      type="text"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleRuleDelete(rule);
-                      }}>
-                      <Space align="center">
-                        <Icon
-                          className="align-middle"
-                          component={IconDelete}
-                          style={{ fontSize: '16px' }}
-                        />
+          menu={{
+            items: [
+              {
+                label: (
+                  <Space align="center" data-testid="edit-rule">
+                    <Icon
+                      className="align-middle"
+                      component={EditIcon}
+                      style={{ fontSize: '14px' }}
+                    />
 
-                        {t('label.delete')}
-                      </Space>
-                    </Button>
-                  ),
-                  key: 'delete-button',
-                },
-              ]}
-            />
-          }
+                    {t('label.edit')}
+                  </Space>
+                ),
+                key: 'edit-button',
+              },
+              {
+                label: (
+                  <Space align="center" data-testid="delete-rule">
+                    <Icon
+                      className="align-middle"
+                      component={IconDelete}
+                      style={{ fontSize: '14px' }}
+                    />
+
+                    {t('label.delete')}
+                  </Space>
+                ),
+                key: 'delete-button',
+              },
+            ],
+            onClick: (menuInfo) => {
+              if (menuInfo.key === 'edit-button') {
+                history.push(getEditPolicyRulePath(fqn, rule.name || ''));
+              } else if (menuInfo.key === 'delete-button') {
+                handleRuleDelete(rule);
+              } else {
+                return;
+              }
+            },
+          }}
           placement="bottomRight"
           trigger={['click']}>
           <Tooltip
@@ -407,7 +398,7 @@ const PoliciesDetailPage = () => {
                                     </Typography.Text>
                                   </Col>
                                   <Col span={22}>
-                                    <RichTextEditorPreviewer
+                                    <RichTextEditorPreviewerV1
                                       markdown={rule.description || ''}
                                     />
                                   </Col>

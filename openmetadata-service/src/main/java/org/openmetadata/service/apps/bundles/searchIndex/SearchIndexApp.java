@@ -1,47 +1,8 @@
 package org.openmetadata.service.apps.bundles.searchIndex;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
-import static org.openmetadata.service.Entity.API_COLLCECTION;
-import static org.openmetadata.service.Entity.API_ENDPOINT;
-import static org.openmetadata.service.Entity.API_SERVICE;
-import static org.openmetadata.service.Entity.CHART;
-import static org.openmetadata.service.Entity.CLASSIFICATION;
-import static org.openmetadata.service.Entity.CONTAINER;
-import static org.openmetadata.service.Entity.DASHBOARD;
-import static org.openmetadata.service.Entity.DASHBOARD_DATA_MODEL;
-import static org.openmetadata.service.Entity.DASHBOARD_SERVICE;
-import static org.openmetadata.service.Entity.DATABASE;
-import static org.openmetadata.service.Entity.DATABASE_SCHEMA;
-import static org.openmetadata.service.Entity.DATABASE_SERVICE;
-import static org.openmetadata.service.Entity.DATA_PRODUCT;
-import static org.openmetadata.service.Entity.DOMAIN;
-import static org.openmetadata.service.Entity.ENTITY_REPORT_DATA;
-import static org.openmetadata.service.Entity.GLOSSARY;
-import static org.openmetadata.service.Entity.GLOSSARY_TERM;
-import static org.openmetadata.service.Entity.INGESTION_PIPELINE;
-import static org.openmetadata.service.Entity.MESSAGING_SERVICE;
-import static org.openmetadata.service.Entity.METADATA_SERVICE;
-import static org.openmetadata.service.Entity.METRIC;
-import static org.openmetadata.service.Entity.MLMODEL;
-import static org.openmetadata.service.Entity.MLMODEL_SERVICE;
-import static org.openmetadata.service.Entity.PIPELINE;
-import static org.openmetadata.service.Entity.PIPELINE_SERVICE;
-import static org.openmetadata.service.Entity.QUERY;
-import static org.openmetadata.service.Entity.SEARCH_INDEX;
-import static org.openmetadata.service.Entity.SEARCH_SERVICE;
-import static org.openmetadata.service.Entity.STORAGE_SERVICE;
-import static org.openmetadata.service.Entity.STORED_PROCEDURE;
-import static org.openmetadata.service.Entity.TABLE;
-import static org.openmetadata.service.Entity.TAG;
-import static org.openmetadata.service.Entity.TEAM;
-import static org.openmetadata.service.Entity.TEST_CASE;
 import static org.openmetadata.service.Entity.TEST_CASE_RESOLUTION_STATUS;
 import static org.openmetadata.service.Entity.TEST_CASE_RESULT;
-import static org.openmetadata.service.Entity.TEST_SUITE;
-import static org.openmetadata.service.Entity.TOPIC;
-import static org.openmetadata.service.Entity.USER;
-import static org.openmetadata.service.Entity.WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA;
-import static org.openmetadata.service.Entity.WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA;
 import static org.openmetadata.service.apps.scheduler.AbstractOmAppJobListener.APP_RUN_STATS;
 import static org.openmetadata.service.apps.scheduler.AbstractOmAppJobListener.WEBSOCKET_STATUS_CHANNEL;
 import static org.openmetadata.service.apps.scheduler.AppScheduler.ON_DEMAND_JOB;
@@ -58,6 +19,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.Semaphore;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
@@ -98,51 +60,7 @@ import org.quartz.JobExecutionContext;
 
 @Slf4j
 public class SearchIndexApp extends AbstractNativeApplication {
-
   private static final String ALL = "all";
-  public static final Set<String> ALL_ENTITIES =
-      Set.of(
-          TABLE,
-          DASHBOARD,
-          TOPIC,
-          PIPELINE,
-          INGESTION_PIPELINE,
-          SEARCH_INDEX,
-          USER,
-          TEAM,
-          GLOSSARY,
-          GLOSSARY_TERM,
-          MLMODEL,
-          TAG,
-          CLASSIFICATION,
-          QUERY,
-          CONTAINER,
-          DATABASE,
-          DATABASE_SCHEMA,
-          TEST_CASE,
-          TEST_SUITE,
-          CHART,
-          DASHBOARD_DATA_MODEL,
-          DATABASE_SERVICE,
-          MESSAGING_SERVICE,
-          DASHBOARD_SERVICE,
-          PIPELINE_SERVICE,
-          MLMODEL_SERVICE,
-          STORAGE_SERVICE,
-          METADATA_SERVICE,
-          SEARCH_SERVICE,
-          ENTITY_REPORT_DATA,
-          WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA,
-          WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA,
-          DOMAIN,
-          STORED_PROCEDURE,
-          DATA_PRODUCT,
-          TEST_CASE_RESOLUTION_STATUS,
-          TEST_CASE_RESULT,
-          API_SERVICE,
-          API_ENDPOINT,
-          API_COLLCECTION,
-          METRIC);
 
   public static final Set<String> TIME_SERIES_ENTITIES =
       Set.of(
@@ -159,13 +77,13 @@ public class SearchIndexApp extends AbstractNativeApplication {
 
   @Getter private EventPublisherJob jobData;
   private final Object jobDataLock = new Object();
-  private volatile boolean stopped = false;
-  private ExecutorService consumerExecutor;
   private ExecutorService producerExecutor;
-  private ExecutorService jobExecutor = Executors.newFixedThreadPool(2);
-  private BlockingQueue<IndexingTask<?>> taskQueue = new LinkedBlockingQueue<>(100);
+  private final ExecutorService jobExecutor = Executors.newCachedThreadPool();
+  private BlockingQueue<Runnable> producerQueue = new LinkedBlockingQueue<>(100);
   private final AtomicReference<Stats> searchIndexStats = new AtomicReference<>();
   private final AtomicReference<Integer> batchSize = new AtomicReference<>(5);
+  private JobExecutionContext jobExecutionContext;
+  private volatile boolean stopped = false;
 
   public SearchIndexApp(CollectionDAO collectionDAO, SearchRepository searchRepository) {
     super(collectionDAO, searchRepository);
@@ -178,8 +96,9 @@ public class SearchIndexApp extends AbstractNativeApplication {
         JsonUtils.convertValue(app.getAppConfiguration(), EventPublisherJob.class)
             .withStats(new Stats());
 
-    if (request.getEntities().contains(ALL)) {
-      request.setEntities(ALL_ENTITIES);
+    if (request.getEntities().size() == 1 && request.getEntities().contains(ALL)) {
+      SearchRepository searchRepo = Entity.getSearchRepo();
+      request.setEntities(searchRepo.getSearchEntities());
     }
 
     jobData = request;
@@ -189,6 +108,7 @@ public class SearchIndexApp extends AbstractNativeApplication {
   @Override
   public void startApp(JobExecutionContext jobExecutionContext) {
     try {
+      this.jobExecutionContext = jobExecutionContext;
       initializeJob(jobExecutionContext);
       String runType =
           (String) jobExecutionContext.getJobDetail().getJobDataMap().get("triggerType");
@@ -196,6 +116,7 @@ public class SearchIndexApp extends AbstractNativeApplication {
         jobData.setRecreateIndex(false);
       }
 
+      reCreateIndexes(jobData.getEntities());
       performReindex(jobExecutionContext);
     } catch (InterruptedException ex) {
       Thread.currentThread().interrupt();
@@ -288,21 +209,14 @@ public class SearchIndexApp extends AbstractNativeApplication {
     int numConsumers = jobData.getConsumerThreads();
     LOG.info("Starting reindexing with {} producers and {} consumers.", numProducers, numConsumers);
 
-    taskQueue = new LinkedBlockingQueue<>(jobData.getQueueSize());
-    consumerExecutor =
-        new ThreadPoolExecutor(
-            numConsumers,
-            numConsumers,
-            0L,
-            TimeUnit.MILLISECONDS,
-            new LinkedBlockingQueue<>(jobData.getQueueSize()));
+    producerQueue = new LinkedBlockingQueue<>(jobData.getQueueSize());
     producerExecutor =
         new ThreadPoolExecutor(
             numProducers,
             numProducers,
             0L,
             TimeUnit.MILLISECONDS,
-            new LinkedBlockingQueue<>(jobData.getQueueSize()),
+            producerQueue,
             new ThreadPoolExecutor.CallerRunsPolicy());
 
     try {
@@ -313,89 +227,58 @@ public class SearchIndexApp extends AbstractNativeApplication {
     } finally {
       shutdownExecutor(jobExecutor, "JobExecutor", 20, TimeUnit.SECONDS);
       shutdownExecutor(producerExecutor, "ReaderExecutor", 1, TimeUnit.MINUTES);
-      shutdownExecutor(consumerExecutor, "ConsumerExecutor", 20, TimeUnit.SECONDS);
     }
   }
 
   private void processEntityReindex(JobExecutionContext jobExecutionContext)
       throws InterruptedException {
-    int numConsumers = jobData.getConsumerThreads();
-    CountDownLatch producerLatch = new CountDownLatch(getTotalLatchCount(jobData.getEntities()));
-    jobExecutor.submit(() -> submitProducerTask(producerLatch));
-    jobExecutor.submit(() -> submitConsumerTask(jobExecutionContext));
-
+    int latchCount = getTotalLatchCount(jobData.getEntities());
+    CountDownLatch producerLatch = new CountDownLatch(latchCount);
+    submitProducerTask(jobExecutionContext, producerLatch);
     producerLatch.await();
-    sendPoisonPills(numConsumers);
   }
 
-  private void submitProducerTask(CountDownLatch producerLatch) {
+  private void submitProducerTask(
+      JobExecutionContext jobExecutionContext, CountDownLatch producerLatch) {
     for (String entityType : jobData.getEntities()) {
-      try {
-        reCreateIndexes(entityType);
-        int totalEntityRecords = getTotalEntityRecords(entityType);
-        Source<?> source = createSource(entityType);
-        int noOfThreads = calculateNumberOfThreads(totalEntityRecords);
-        if (totalEntityRecords > 0) {
-          for (int i = 0; i < noOfThreads; i++) {
-            int currentOffset = i * batchSize.get();
-            producerExecutor.submit(
-                () -> {
-                  try {
-                    processReadTask(entityType, source, currentOffset);
-                  } catch (Exception e) {
-                    LOG.error("Error processing entity type {}", entityType, e);
-                  } finally {
-                    producerLatch.countDown();
-                  }
-                });
-          }
-        }
-      } catch (Exception e) {
-        LOG.error("Error processing entity type {}", entityType, e);
-      }
-    }
-  }
-
-  private void submitConsumerTask(JobExecutionContext jobExecutionContext) {
-    for (int i = 0; i < jobData.getConsumerThreads(); i++) {
-      consumerExecutor.submit(
+      jobExecutor.submit(
           () -> {
             try {
-              consumeTasks(jobExecutionContext);
-            } catch (InterruptedException e) {
-              Thread.currentThread().interrupt();
-              LOG.warn("Consumer thread interrupted.");
+              int totalEntityRecords = getTotalEntityRecords(entityType);
+              Source<?> source = createSource(entityType);
+              int loadPerThread = calculateNumberOfThreads(totalEntityRecords);
+              Semaphore semaphore = new Semaphore(jobData.getQueueSize());
+              if (totalEntityRecords > 0) {
+                for (int i = 0; i < loadPerThread; i++) {
+                  semaphore.acquire();
+                  LOG.debug(
+                      "Submitting producer task current queue size: {}", producerQueue.size());
+                  int currentOffset = i * batchSize.get();
+                  producerExecutor.submit(
+                      () -> {
+                        try {
+                          LOG.debug(
+                              "Running Task for CurrentOffset: {},  Producer Latch Down, Current : {}",
+                              currentOffset,
+                              producerLatch.getCount());
+                          processReadTask(jobExecutionContext, entityType, source, currentOffset);
+                        } catch (Exception e) {
+                          LOG.error("Error processing entity type {}", entityType, e);
+                        } finally {
+                          LOG.debug(
+                              "Producer Latch Down and Semaphore Release, Current : {}",
+                              producerLatch.getCount());
+                          producerLatch.countDown();
+                          semaphore.release();
+                        }
+                      });
+                }
+              }
+            } catch (Exception e) {
+              LOG.error("Error processing entity type {}", entityType, e);
             }
           });
     }
-  }
-
-  private void consumeTasks(JobExecutionContext jobExecutionContext) throws InterruptedException {
-    while (true) {
-      IndexingTask<?> task = taskQueue.take();
-      LOG.info(
-          "Consuming Indexing Task for entityType: {}, entity offset : {}",
-          task.entityType(),
-          task.currentEntityOffset());
-      if (task == IndexingTask.POISON_PILL) {
-        LOG.debug("Received POISON_PILL. Consumer thread terminating.");
-        break;
-      }
-      processTask(task, jobExecutionContext);
-    }
-  }
-
-  /**
-   * Sends POISON_PILLs to signal consumer threads to terminate.
-   *
-   * @param numConsumers The number of consumers to signal.
-   * @throws InterruptedException If the thread is interrupted while waiting.
-   */
-  private void sendPoisonPills(int numConsumers) throws InterruptedException {
-    for (int i = 0; i < numConsumers; i++) {
-      taskQueue.put(IndexingTask.POISON_PILL);
-    }
-    LOG.debug("Sent {} POISON_PILLs to consumers.", numConsumers);
   }
 
   /**
@@ -551,29 +434,37 @@ public class SearchIndexApp extends AbstractNativeApplication {
     }
   }
 
-  private void reCreateIndexes(String entityType) throws SearchIndexException {
-    if (Boolean.FALSE.equals(jobData.getRecreateIndex())) {
-      LOG.debug("RecreateIndex is false. Skipping index recreation for '{}'.", entityType);
-      return;
-    }
+  private void reCreateIndexes(Set<String> entities) throws SearchIndexException {
+    for (String entityType : entities) {
+      if (Boolean.FALSE.equals(jobData.getRecreateIndex())) {
+        LOG.debug("RecreateIndex is false. Skipping index recreation for '{}'.", entityType);
+        return;
+      }
 
-    try {
-      IndexMapping indexType = searchRepository.getIndexMapping(entityType);
-      searchRepository.deleteIndex(indexType);
-      searchRepository.createIndex(indexType);
-      LOG.info("Recreated index for entityType '{}'.", entityType);
-    } catch (Exception e) {
-      LOG.error("Failed to recreate index for entityType '{}'.", entityType, e);
-      throw new SearchIndexException(e);
+      try {
+        IndexMapping indexType = searchRepository.getIndexMapping(entityType);
+        searchRepository.deleteIndex(indexType);
+        searchRepository.createIndex(indexType);
+        LOG.info("Recreated index for entityType '{}'.", entityType);
+      } catch (Exception e) {
+        LOG.error("Failed to recreate index for entityType '{}'.", entityType, e);
+        throw new SearchIndexException(e);
+      }
     }
   }
 
   @SuppressWarnings("unused")
-  public void stopJob() {
+  @Override
+  public void stop() {
     LOG.info("Stopping reindexing job.");
     stopped = true;
+    jobData.setStatus(EventPublisherJob.Status.STOP_IN_PROGRESS);
+    sendUpdates(jobExecutionContext);
+    shutdownExecutor(jobExecutor, "JobExecutor", 60, TimeUnit.SECONDS);
     shutdownExecutor(producerExecutor, "ProducerExecutor", 60, TimeUnit.SECONDS);
-    shutdownExecutor(consumerExecutor, "ConsumerExecutor", 60, TimeUnit.SECONDS);
+    LOG.info("Stopped reindexing job.");
+    jobData.setStatus(EventPublisherJob.Status.STOPPED);
+    sendUpdates(jobExecutionContext);
   }
 
   private void processTask(IndexingTask<?> task, JobExecutionContext jobExecutionContext) {
@@ -619,7 +510,7 @@ public class SearchIndexApp extends AbstractNativeApplication {
 
     } catch (Exception e) {
       synchronized (jobDataLock) {
-        jobData.setStatus(EventPublisherJob.Status.FAILED);
+        jobData.setStatus(EventPublisherJob.Status.ACTIVE_ERROR);
         jobData.setFailure(
             new IndexingError()
                 .withErrorSource(IndexingError.ErrorSource.JOB)
@@ -632,7 +523,9 @@ public class SearchIndexApp extends AbstractNativeApplication {
       }
       LOG.error("Unexpected error during processing task for entity {}", entityType, e);
     } finally {
-      sendUpdates(jobExecutionContext);
+      if (!stopped) {
+        sendUpdates(jobExecutionContext);
+      }
     }
   }
 
@@ -676,20 +569,18 @@ public class SearchIndexApp extends AbstractNativeApplication {
         .getTotalRecords();
   }
 
-  private void processReadTask(String entityType, Source<?> source, int offset) {
+  private void processReadTask(
+      JobExecutionContext jobExecutionContext, String entityType, Source<?> source, int offset) {
     try {
       Object resultList = source.readWithCursor(RestUtil.encodeCursor(String.valueOf(offset)));
+      LOG.debug("Read Entities with entityType: {},  CurrentOffset: {}", entityType, offset);
       if (resultList != null) {
         ResultList<?> entities = extractEntities(entityType, resultList);
         if (!nullOrEmpty(entities.getData())) {
-          LOG.info(
-              "Creating Indexing Task for entityType: {}, current offset: {}", entityType, offset);
-          createIndexingTask(entityType, entities, offset);
+          IndexingTask<?> task = new IndexingTask<>(entityType, entities, offset);
+          processTask(task, jobExecutionContext);
         }
       }
-    } catch (InterruptedException e) {
-      Thread.currentThread().interrupt();
-      LOG.warn("Reader thread interrupted for entityType: {}", entityType);
     } catch (SearchIndexException e) {
       LOG.error("Error while reading source for entityType: {}", entityType, e);
       synchronized (jobDataLock) {
@@ -708,13 +599,7 @@ public class SearchIndexApp extends AbstractNativeApplication {
     }
   }
 
-  private void createIndexingTask(String entityType, ResultList<?> entities, int offset)
-      throws InterruptedException {
-    IndexingTask<?> task = new IndexingTask<>(entityType, entities, offset);
-    taskQueue.put(task);
-  }
-
-  private synchronized int calculateNumberOfThreads(int totalEntityRecords) {
+  private int calculateNumberOfThreads(int totalEntityRecords) {
     int mod = totalEntityRecords % batchSize.get();
     if (mod == 0) {
       return totalEntityRecords / batchSize.get();
@@ -732,7 +617,7 @@ public class SearchIndexApp extends AbstractNativeApplication {
     }
   }
 
-  private synchronized int getRemainingRecordsToProcess(String entityType) {
+  private int getRemainingRecordsToProcess(String entityType) {
     StepStats entityStats =
         ((StepStats)
             searchIndexStats.get().getEntityStats().getAdditionalProperties().get(entityType));

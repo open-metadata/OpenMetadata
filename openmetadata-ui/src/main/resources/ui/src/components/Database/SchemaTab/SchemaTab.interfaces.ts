@@ -17,6 +17,7 @@ import { Table } from '../../../generated/entity/data/table';
 export type Props = {
   hasDescriptionEditAccess: boolean;
   hasTagEditAccess: boolean;
+  hasGlossaryTermEditAccess: boolean;
   isReadOnly?: boolean;
   onThreadLinkSelect: (value: string, threadType?: ThreadType) => void;
   onUpdate: (columns: Table['columns']) => Promise<void>;

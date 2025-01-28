@@ -11,11 +11,14 @@
  *  limitations under the License.
  */
 import { APIRequestContext } from '@playwright/test';
+import { Operation } from 'fast-json-patch';
 import { uuid } from '../../utils/common';
 
 type UserTeamRef = {
   name: string;
   type: string;
+  fullyQualifiedName?: string;
+  id?: string;
 };
 
 type ResponseDataType = {
@@ -26,14 +29,14 @@ type ResponseDataType = {
   id?: string;
   fullyQualifiedName?: string;
   owners?: UserTeamRef[];
-  experts?: UserTeamRef[];
+  experts?: string[];
 };
 
 export class Domain {
   id: string;
   data: ResponseDataType;
 
-  responseData: ResponseDataType;
+  responseData: ResponseDataType = {} as ResponseDataType;
 
   constructor(data?: ResponseDataType) {
     this.id = uuid();
@@ -69,5 +72,29 @@ export class Domain {
     );
 
     return response.body;
+  }
+
+  async patch({
+    apiContext,
+    patchData,
+  }: {
+    apiContext: APIRequestContext;
+    patchData: Operation[];
+  }) {
+    const response = await apiContext.patch(
+      `/api/v1/domains/${this.responseData?.id}`,
+      {
+        data: patchData,
+        headers: {
+          'Content-Type': 'application/json-patch+json',
+        },
+      }
+    );
+
+    this.responseData = await response.json();
+
+    return {
+      entity: this.responseData,
+    };
   }
 }

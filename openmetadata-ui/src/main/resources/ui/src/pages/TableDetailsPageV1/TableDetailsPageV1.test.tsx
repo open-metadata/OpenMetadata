@@ -36,6 +36,7 @@ jest.mock('../../rest/tableAPI', () => ({
     Promise.resolve({
       name: 'test',
       id: '123',
+      columns: [],
     })
   ),
   addFollower: jest.fn(),
@@ -283,7 +284,7 @@ describe('TestDetailsPageV1 component', () => {
       await screen.findByText('label.custom-property-plural')
     ).toBeInTheDocument();
     expect(
-      await screen.findByText('label.profiler-amp-data-quality')
+      await screen.findByText('label.data-observability')
     ).toBeInTheDocument();
   });
 
@@ -300,6 +301,7 @@ describe('TestDetailsPageV1 component', () => {
         id: '123',
         tableFqn: 'fqn',
         dataModel: { sql: 'somequery' },
+        columns: [],
       })
     );
 
@@ -324,6 +326,7 @@ describe('TestDetailsPageV1 component', () => {
         id: '123',
         tableFqn: 'fqn',
         dataModel: { sql: '', rawSql: 'rawSql' },
+        columns: [],
       })
     );
 
@@ -348,6 +351,7 @@ describe('TestDetailsPageV1 component', () => {
         id: '123',
         tableFqn: 'fqn',
         dataModel: { rawSql: 'rawSql' },
+        columns: [],
       })
     );
 
@@ -371,6 +375,7 @@ describe('TestDetailsPageV1 component', () => {
         name: 'test',
         id: '123',
         schemaDefinition: 'schemaDefinition query',
+        columns: [],
       })
     );
 
@@ -395,6 +400,7 @@ describe('TestDetailsPageV1 component', () => {
         id: '123',
         schemaDefinition: 'viewDefinition query',
         tableType: TableType.View,
+        columns: [],
       })
     );
 
