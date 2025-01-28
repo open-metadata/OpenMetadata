@@ -47,11 +47,15 @@ class HivePostgresMetaStoreDialect(HiveMetaStoreDialectMixin, PGDialect_psycopg2
 
     def _get_table_columns(self, connection, table_name, schema):
         # Build schema join clause if schema is provided
-        schema_join = f"""
+        schema_join = (
+            f"""
             JOIN "DBS" db on tbsl."DB_ID" = db."DB_ID"
             AND db."NAME" = '{schema}'
-        """ if schema else ""
-        
+        """
+            if schema
+            else ""
+        )
+
         query = f"""
             WITH regular_columns AS (
                 -- Get regular table columns from COLUMNS_V2
