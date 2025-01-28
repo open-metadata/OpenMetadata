@@ -12,6 +12,9 @@
  */
 
 @import url('../../../styles/variables.less');
+body {
+  font-family: 'Inter', sans-serif;
+}
 
 .roles-container {
   display: flex;
@@ -80,4 +83,72 @@
   .explore-search-card {
     margin: 0 12px;
   }
+}
+
+.profile-details-text {
+  margin-top: 16px;
+  text-align: center;
+}
+.profile-details-title {
+  font-weight: 600;
+  font-size: 18px;
+  line-height: 28px;
+  color: #181d27;
+}
+.profile-details-email {
+  color: @blue-7;
+}
+.profile-details-desc {
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 20px;
+  text-align: center;
+  color: #535862;
+}
+
+.profile-section-card {
+  border-radius: 12px;
+  box-shadow: '0 2px 8px rgba(0, 0, 0, 0.1)';
+  margin-bottom: 16px;
+  padding: 20px;
+  background-color: #f5f5f5;
+  margin: 8px 0px;
+  width: 100%;
+  gap: 10px;
+}
+.profile-section-card-title {
+  font-weight: 600;
+  font-size: 16px;
+  line-height: 24px;
+  color: #414654;
+  margin-bottom: 8px;
+}
+.profile-section-card-list {
+  font-weight: 400;
+  font-size: 14px;
+  line-height: 20px;
+  color: @grey-3;
+}
+.tabs-container {
+  background-color: @white;
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  height: 48px;
+  width: 100%;
+  border-radius: 8px;
+  margin-bottom: 16px;
+}
+.tab-label {
+  color: #71717a;
+  font-size: 16px;
+  line-height: 24px;
+  margin: 0px 16px;
+  cursor: pointer;
+}
+
+.users-page-activity-feed {
+  background: @white;
+  border-radius: 8px;
+  padding: 20px;
 }

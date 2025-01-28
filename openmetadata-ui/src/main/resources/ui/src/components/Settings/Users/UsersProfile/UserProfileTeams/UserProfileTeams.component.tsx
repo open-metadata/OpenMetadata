@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Card, Space, Tooltip, Typography } from 'antd';
+import { Divider, Tooltip, Typography } from 'antd';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../../../assets/svg/edit-new.svg';
@@ -58,7 +58,6 @@ const UserProfileTeams = ({
       <Chip
         data={getNonDeletedTeams(teams ?? [])}
         entityType={EntityType.TEAM}
-        icon={<IconTeamsGrey height={20} />}
         noDataPlaceholder={t('message.no-team-found')}
       />
     ),
@@ -79,16 +78,29 @@ const UserProfileTeams = ({
   }, [setUserTeams]);
 
   return (
-    <Card
-      className="relative card-body-border-none card-padding-y-0"
+    <div
+      className="d-flex p-[20px]  w-full grey-1 gap-2 mb-4"
       data-testid="user-team-card-container"
       key="teams-card"
-      title={
-        <Space align="center">
-          <Typography.Text className="right-panel-label">
+      style={{ background: '#F5F5F5', padding: '20px', borderRadius: '12px' }}>
+      <div>
+        <div className="d-flex flex-col h-full flex-center">
+          <IconTeamsGrey height={24} width={24} />
+          <Divider
+            style={{
+              height: '100%',
+              width: '2px',
+              background: '#D9D9D9',
+            }}
+            type="vertical"
+          />
+        </div>
+      </div>
+      <div className="w-full">
+        <div className="d-flex justify-between w-full">
+          <Typography.Text className="profile-section-card-title">
             {t('label.team-plural')}
           </Typography.Text>
-
           {!isTeamsEdit && isAdminUser && !isDeletedUser && (
             <Tooltip
               title={t('label.edit-entity', {
@@ -103,25 +115,25 @@ const UserProfileTeams = ({
               />
             </Tooltip>
           )}
-        </Space>
-      }>
-      {isTeamsEdit && isAdminUser ? (
-        <InlineEdit
-          direction="vertical"
-          isLoading={isLoading}
-          onCancel={handleCloseEditTeam}
-          onSave={handleTeamsSave}>
-          <TeamsSelectable
-            filterJoinable
-            maxValueCount={4}
-            selectedTeams={selectedTeams}
-            onSelectionChange={setSelectedTeams}
-          />
-        </InlineEdit>
-      ) : (
-        teamsRenderElement
-      )}
-    </Card>
+        </div>
+        {isTeamsEdit && isAdminUser ? (
+          <InlineEdit
+            direction="vertical"
+            isLoading={isLoading}
+            onCancel={handleCloseEditTeam}
+            onSave={handleTeamsSave}>
+            <TeamsSelectable
+              filterJoinable
+              maxValueCount={4}
+              selectedTeams={selectedTeams}
+              onSelectionChange={setSelectedTeams}
+            />
+          </InlineEdit>
+        ) : (
+          teamsRenderElement
+        )}
+      </div>
+    </div>
   );
 };
 

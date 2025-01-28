@@ -11,13 +11,13 @@
  *  limitations under the License.
  */
 
-import { Card, Select, Space, Tooltip, Typography } from 'antd';
+import { Divider, Select, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, toLower } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../../../assets/svg/edit-new.svg';
-import { ReactComponent as UserIcons } from '../../../../../assets/svg/user.svg';
+import { ReactComponent as RoleIcon } from '../../../../../assets/svg/roles.svg';
 import {
   DE_ACTIVE_COLOR,
   ICON_DIMENSION,
@@ -33,6 +33,7 @@ import { getEntityName } from '../../../../../utils/EntityUtils';
 import { showErrorToast } from '../../../../../utils/ToastUtils';
 import Chip from '../../../../common/Chip/Chip.component';
 import InlineEdit from '../../../../common/InlineEdit/InlineEdit.component';
+import UserProfileInheritedRoles from '../UserProfileInheritedRoles/UserProfileInheritedRoles.component';
 import { UserProfileRolesProps } from './UserProfileRoles.interface';
 
 const UserProfileRoles = ({
@@ -40,6 +41,7 @@ const UserProfileRoles = ({
   isDeletedUser,
   updateUserDetails,
   isUserAdmin,
+  userData,
 }: UserProfileRolesProps) => {
   const { t } = useTranslation();
 
@@ -134,7 +136,6 @@ const UserProfileRoles = ({
           ...(userRoles ?? []),
         ]}
         entityType={EntityType.ROLE}
-        icon={<UserIcons height={20} />}
         noDataPlaceholder={t('message.no-roles-assigned')}
         showNoDataPlaceholder={!isUserAdmin}
       />
@@ -158,60 +159,82 @@ const UserProfileRoles = ({
   }, [isRolesEdit, roles]);
 
   return (
-    <Card
-      className="ant-card-feed relative card-body-border-none card-padding-y-0"
-      data-testid="user-profile-roles"
-      key="roles-card"
-      title={
-        <Space align="center">
-          <Typography.Text className="right-panel-label">
-            {t('label.role-plural')}
-          </Typography.Text>
-          {!isRolesEdit && isAdminUser && !isDeletedUser && (
-            <Tooltip
-              title={t('label.edit-entity', {
-                entity: t('label.role-plural'),
-              })}>
-              <EditIcon
-                className="cursor-pointer align-middle"
-                color={DE_ACTIVE_COLOR}
-                data-testid="edit-roles-button"
-                {...ICON_DIMENSION}
-                onClick={() => setIsRolesEdit(true)}
-              />
-            </Tooltip>
-          )}
-        </Space>
-      }>
-      <div className="m-b-md">
-        {isRolesEdit && isAdminUser ? (
-          <InlineEdit
-            direction="vertical"
-            isLoading={isLoading}
-            onCancel={handleCloseEditRole}
-            onSave={handleRolesSave}>
-            <Select
-              allowClear
-              showSearch
-              aria-label="Select roles"
-              className="w-full"
-              data-testid="select-user-roles"
-              filterOption={handleSearchFilterOption}
-              id="select-role"
-              loading={isRolesLoading}
-              maxTagCount={4}
-              mode="multiple"
-              options={useRolesOption}
-              placeholder={t('label.role-plural')}
-              value={!isRolesLoading ? selectedRoles : []}
-              onChange={setSelectedRoles}
+    <div className="d-flex flex-col mb-4 w-full  p-[20px]">
+      <div
+        className="d-flex  w-full grey-1 gap-2"
+        data-testid="user-team-card-container"
+        key="teams-card"
+        style={{
+          background: '#F5F5F5',
+          padding: '20px',
+          borderRadius: '12px 12px 0px 0px',
+        }}>
+        <div>
+          <div className="d-flex flex-col h-full flex-center">
+            <RoleIcon height={24} style={{ marginLeft: '8px' }} width={24} />
+            <Divider
+              style={{
+                height: '100%',
+                width: '2px',
+                background: '#D9D9D9',
+              }}
+              type="vertical"
             />
-          </InlineEdit>
-        ) : (
-          rolesRenderElement
-        )}
+          </div>
+        </div>
+        <div className="w-full">
+          <div className="d-flex justify-between w-full">
+            <Typography.Text className="profile-section-card-title">
+              {t('label.role-plural')}
+            </Typography.Text>
+            {!isRolesEdit && isAdminUser && !isDeletedUser && (
+              <Tooltip
+                title={t('label.edit-entity', {
+                  entity: t('label.role-plural'),
+                })}>
+                <EditIcon
+                  className="cursor-pointer align-middle"
+                  color={DE_ACTIVE_COLOR}
+                  data-testid="edit-roles-button"
+                  {...ICON_DIMENSION}
+                  onClick={() => setIsRolesEdit(true)}
+                />
+              </Tooltip>
+            )}
+          </div>
+
+          <div className="m-b-md">
+            {isRolesEdit && isAdminUser ? (
+              <InlineEdit
+                direction="vertical"
+                isLoading={isLoading}
+                onCancel={handleCloseEditRole}
+                onSave={handleRolesSave}>
+                <Select
+                  allowClear
+                  showSearch
+                  aria-label="Select roles"
+                  className="w-full"
+                  data-testid="select-user-roles"
+                  filterOption={handleSearchFilterOption}
+                  id="select-role"
+                  loading={isRolesLoading}
+                  maxTagCount={4}
+                  mode="multiple"
+                  options={useRolesOption}
+                  placeholder={t('label.role-plural')}
+                  value={!isRolesLoading ? selectedRoles : []}
+                  onChange={setSelectedRoles}
+                />
+              </InlineEdit>
+            ) : (
+              rolesRenderElement
+            )}
+          </div>
+        </div>
       </div>
-    </Card>
+      <UserProfileInheritedRoles inheritedRoles={userData?.inheritedRoles} />
+    </div>
   );
 };
 
