@@ -152,7 +152,7 @@ export const visitOwnProfilePage = async (page: Page) => {
 
 export const assignDomain = async (
   page: Page,
-  domain: { name: string; displayName: string }
+  domain: { name: string; displayName: string; fullyQualifiedName?: string }
 ) => {
   await page.getByTestId('add-domain').click();
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
@@ -160,11 +160,13 @@ export const assignDomain = async (
     `/api/v1/search/query?q=*${encodeURIComponent(domain.name)}*`
   );
   await page
-    .getByTestId('selectable-list')
+    .getByTestId('domain-selectable-tree')
     .getByTestId('searchbar')
     .fill(domain.name);
   await searchDomain;
-  await page.getByRole('listitem', { name: domain.displayName }).click();
+
+  await page.getByTestId(`tag-${domain.fullyQualifiedName}`).click();
+  await page.getByTestId('saveAssociatedTag').click();
 
   await expect(page.getByTestId('domain-link')).toContainText(
     domain.displayName
@@ -173,33 +175,42 @@ export const assignDomain = async (
 
 export const updateDomain = async (
   page: Page,
-  domain: { name: string; displayName: string }
+  domain: { name: string; displayName: string; fullyQualifiedName?: string }
 ) => {
   await page.getByTestId('add-domain').click();
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
-  await page.getByTestId('selectable-list').getByTestId('searchbar').clear();
+
+  await page
+    .getByTestId('domain-selectable-tree')
+    .getByTestId('searchbar')
+    .clear();
+
   const searchDomain = page.waitForResponse(
     `/api/v1/search/query?q=*${encodeURIComponent(domain.name)}*`
   );
   await page
-    .getByTestId('selectable-list')
+    .getByTestId('domain-selectable-tree')
     .getByTestId('searchbar')
     .fill(domain.name);
   await searchDomain;
-  await page.getByRole('listitem', { name: domain.displayName }).click();
+
+  await page.getByTestId(`tag-${domain.fullyQualifiedName}`).click();
+  await page.getByTestId('saveAssociatedTag').click();
 
   await expect(page.getByTestId('domain-link')).toContainText(
     domain.displayName
   );
 };
 
-export const removeDomain = async (page: Page) => {
+export const removeDomain = async (
+  page: Page,
+  domain: { name: string; displayName: string; fullyQualifiedName?: string }
+) => {
   await page.getByTestId('add-domain').click();
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
-  await expect(page.getByTestId('remove-owner').locator('path')).toBeVisible();
-
-  await page.getByTestId('remove-owner').locator('svg').click();
+  await page.getByTestId(`tag-${domain.fullyQualifiedName}`).click();
+  await page.getByTestId('saveAssociatedTag').click();
 
   await expect(page.getByTestId('no-domain-text')).toContainText('No Domain');
 };
