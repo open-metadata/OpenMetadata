@@ -272,13 +272,13 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
   }
 
   private void registerHealthCheckJobs(OpenMetadataApplicationConfig catalogConfig) {
-    ServicesStatusJobHandler pipelineServiceStatusJobHandler =
+    ServicesStatusJobHandler healthCheckStatusHandler =
         ServicesStatusJobHandler.create(
             catalogConfig.getEventMonitorConfiguration(),
             catalogConfig.getPipelineServiceClientConfiguration(),
             catalogConfig.getClusterName());
-    pipelineServiceStatusJobHandler.addPipelineServiceStatusJob();
-    pipelineServiceStatusJobHandler.addDatabaseAndSearchStatusJobs();
+    healthCheckStatusHandler.addPipelineServiceStatusJob();
+    healthCheckStatusHandler.addDatabaseAndSearchStatusJobs();
   }
 
   private void registerAuthServlets(OpenMetadataApplicationConfig config, Environment environment) {
