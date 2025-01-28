@@ -1048,8 +1048,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
     // Update the attributes and relationships of an entity
     EntityUpdater entityUpdater = getUpdater(original, updated, Operation.PUT);
     entityUpdater.update();
-    EventType change = entityUpdater.fieldsChanged() ? EventType.ENTITY_UPDATED : ENTITY_NO_CHANGE;
+    EventType change =
+        entityUpdater.incrementalFieldsChanged() ? EventType.ENTITY_UPDATED : ENTITY_NO_CHANGE;
     setInheritedFields(updated, new Fields(allowedFields));
+    if (change == ENTITY_UPDATED) {
+      updated.setChangeDescription(entityUpdater.getIncrementalChangeDescription());
+    }
     return new PutResponse<>(Status.OK, withHref(uriInfo, updated), change);
   }
 
@@ -1060,29 +1064,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     setInheritedFields(original, patchFields);
 
     // Apply JSON patch to the original entity to get the updated entity
-    T updated = JsonUtils.applyPatch(original, patch, entityClass);
-    updated.setUpdatedBy(user);
-    updated.setUpdatedAt(System.currentTimeMillis());
-
-    prepareInternal(updated, true);
-    // Validate and populate owners
-    List<EntityReference> validatedOwners = getValidatedOwners(updated.getOwners());
-    updated.setOwners(validatedOwners);
-
-    restorePatchAttributes(original, updated);
-
-    // Update the attributes and relationships of an entity
-    EntityUpdater entityUpdater = getUpdater(original, updated, Operation.PATCH);
-    entityUpdater.update();
-
-    entityRelationshipReindex(original, updated);
-
-    EventType change = ENTITY_NO_CHANGE;
-    if (entityUpdater.fieldsChanged()) {
-      change = EventType.ENTITY_UPDATED;
-      setInheritedFields(updated, patchFields); // Restore inherited fields after a change
-    }
-    return new PatchResponse<>(Status.OK, withHref(uriInfo, updated), change);
+    return patchCommon(original, patch, user, uriInfo);
   }
 
   /**
@@ -1095,6 +1077,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
     setInheritedFields(original, patchFields);
 
     // Apply JSON patch to the original entity to get the updated entity
+    return patchCommon(original, patch, user, uriInfo);
+  }
+
+  private PatchResponse<T> patchCommon(T original, JsonPatch patch, String user, UriInfo uriInfo) {
     T updated = JsonUtils.applyPatch(original, patch, entityClass);
     updated.setUpdatedBy(user);
     updated.setUpdatedAt(System.currentTimeMillis());
@@ -1108,12 +1094,15 @@ public abstract class EntityRepository<T extends EntityInterface> {
     // Update the attributes and relationships of an entity
     EntityUpdater entityUpdater = getUpdater(original, updated, Operation.PATCH);
     entityUpdater.update();
-    EventType change = ENTITY_NO_CHANGE;
     if (entityUpdater.fieldsChanged()) {
-      change = EventType.ENTITY_UPDATED;
       setInheritedFields(updated, patchFields); // Restore inherited fields after a change
     }
-    return new PatchResponse<>(Status.OK, withHref(uriInfo, updated), change);
+
+    if (entityUpdater.incrementalFieldsChanged()) {
+      updated.setChangeDescription(entityUpdater.getIncrementalChangeDescription());
+      return new PatchResponse<>(Status.OK, withHref(uriInfo, updated), ENTITY_UPDATED);
+    }
+    return new PatchResponse<>(Status.OK, withHref(uriInfo, updated), ENTITY_NO_CHANGE);
   }
 
   @Transaction
@@ -2815,6 +2804,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     protected boolean majorVersionChange = false;
     protected final User updatingUser;
     private boolean entityChanged = false;
+    @Getter protected ChangeDescription incrementalChangeDescription = null;
 
     public EntityUpdater(T original, T updated, Operation operation) {
       this.original = original;
@@ -2829,23 +2819,28 @@ public abstract class EntityRepository<T extends EntityInterface> {
     /** Compare original and updated entities and perform updates. Update the entity version and track changes. */
     @Transaction
     public final void update() {
+      incrementalChange();
       boolean consolidateChanges = consolidateChanges(original, updated, operation);
       // Revert the changes previously made by the user with in a session and consolidate all the
       // changes
       if (consolidateChanges) {
-        revert(true);
+        revert();
       }
       // Now updated from previous/original to updated one
       changeDescription = new ChangeDescription();
       updateInternal();
-
-      // Store the updated entity
       storeUpdate();
       postUpdate(original, updated);
     }
 
+    private void incrementalChange() {
+      changeDescription = new ChangeDescription();
+      updateInternal(false);
+      incrementalChangeDescription = changeDescription;
+    }
+
     @Transaction
-    private void revert(boolean emitIntermediateChangeEvent) {
+    private void revert() {
       // Revert from current version to previous version to go back to the previous version
       // set changeDescription to null
       T updatedOld = updated;
@@ -2857,10 +2852,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
         changeDescription = new ChangeDescription();
         updated = previous;
         updateInternal(true);
-        if (emitIntermediateChangeEvent) {
-          createAndInsertChangeEvent(
-              original, updated, changeDescription, EventType.ENTITY_UPDATED);
-        }
         LOG.info(
             "In session change consolidation. Reverting to previous version {} completed",
             previous.getVersion());
@@ -3294,6 +3285,15 @@ public abstract class EntityRepository<T extends EntityInterface> {
       return !changeDescription.getFieldsAdded().isEmpty()
           || !changeDescription.getFieldsUpdated().isEmpty()
           || !changeDescription.getFieldsDeleted().isEmpty();
+    }
+
+    public final boolean incrementalFieldsChanged() {
+      if (incrementalChangeDescription == null) {
+        return false;
+      }
+      return !incrementalChangeDescription.getFieldsAdded().isEmpty()
+          || !incrementalChangeDescription.getFieldsUpdated().isEmpty()
+          || !incrementalChangeDescription.getFieldsDeleted().isEmpty();
     }
 
     public final <K> boolean recordChange(String field, K orig, K updated) {
