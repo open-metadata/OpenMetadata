@@ -1,5 +1,5 @@
 /*
- *  Copyright 2023 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,34 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { DefaultOptionType } from 'antd/lib/select';
+import { EntityReference } from '../../../generated/entity/type';
 
-@import (reference) url('../../../styles/variables.less');
-
-.domain-select-popover {
-  min-width: 275px;
-
-  &.ant-popover {
-    padding-top: 0;
-  }
-
-  .ant-popover-inner-content {
-    padding: 0;
-  }
-
-  .page-search-bar {
-    padding: 0;
-  }
-
-  .dropdown-control-bar {
-    padding: 8px;
-  }
-
-  .ant-list-header,
-  .ant-list-footer {
-    padding: 12px;
-  }
-
-  .ant-list-empty-text {
-    color: @text-color;
-  }
+export interface DomainSelectableTreeProps {
+  value?: string[]; // array of fqn
+  onSubmit: (option: EntityReference[]) => Promise<void>;
+  visible: boolean;
+  onCancel: () => void;
+  isMultiple?: boolean;
 }
+
+export type TreeListItem = Omit<DefaultOptionType, 'label'>;
