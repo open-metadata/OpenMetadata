@@ -17,7 +17,7 @@ import { compare } from 'fast-json-patch';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
-import { ReactComponent as TestCaseIcon } from '../../assets/svg/ic-checklist.svg';
+import { ReactComponent as TestSuiteIcon } from '../../assets/svg/icon-test-suite.svg';
 import { DomainLabel } from '../../components/common/DomainLabel/DomainLabel.component';
 import DescriptionV1 from '../../components/common/EntityDescription/DescriptionV1';
 import ManageButton from '../../components/common/EntityPageInfos/ManageButton/ManageButton';
@@ -425,7 +425,7 @@ const TestSuiteDetailsPage = () => {
               <EntityHeaderTitle
                 className="w-max-full-45"
                 displayName={testSuite?.displayName}
-                icon={<TestCaseIcon className="h-9" />}
+                icon={<TestSuiteIcon className="h-9" />}
                 name={testSuite?.name ?? ''}
                 serviceName="testSuite"
               />
