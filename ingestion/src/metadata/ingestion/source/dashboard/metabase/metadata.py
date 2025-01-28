@@ -11,7 +11,7 @@
 """Metabase source module"""
 
 import traceback
-from typing import Any, Iterable, List, Optional
+from typing import Any, Dict, Iterable, List, Optional
 
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
@@ -54,6 +54,7 @@ from metadata.ingestion.source.dashboard.metabase.models import (
     MetabaseDashboardDetails,
 )
 from metadata.utils import fqn
+from metadata.utils.constants import DEFAULT_DASHBAORD
 from metadata.utils.filters import filter_by_chart
 from metadata.utils.helpers import (
     clean_uri,
@@ -92,16 +93,22 @@ class MetabaseSource(DashboardServiceSource):
     ):
         super().__init__(config, metadata)
         self.collections: List[MetabaseCollection] = []
+        self.dashboards_list: List[MetabaseDashboard] = []
+        self.charts_dict: Dict[str] = {}
+        self.orphan_charts_id: List[str] = []
+        self._default_dashboard_added = False
 
     def prepare(self):
         self.collections = self.client.get_collections_list()
+        self.charts_dict = self.client.get_charts_dict()
         return super().prepare()
 
     def get_dashboards_list(self) -> Optional[List[MetabaseDashboard]]:
         """
         Get List of all dashboards
         """
-        return self.client.get_dashboards_list(self.collections)
+        self.dashboards_list = self.client.get_dashboards_list(self.collections)
+        return self.dashboards_list
 
     def get_dashboard_name(self, dashboard: MetabaseDashboard) -> str:
         """
@@ -115,13 +122,39 @@ class MetabaseSource(DashboardServiceSource):
         """
         Get Dashboard Details
         """
-        return self.client.get_dashboard_details(dashboard.id)
+        retrieved_dashboards = self.client.get_dashboard_details(
+            dashboard.id, self.charts_dict, self.orphan_charts_id
+        )
+        if (
+            retrieved_dashboards
+            and dashboard == self.dashboards_list[-1]
+            and not self._default_dashboard_added
+        ):
+            # If processing the last dashboard, identify any orphaned charts (not associated with dashboards)
+            # and create a default dashboard to maintain visibility of these charts
+            self.orphan_charts_id = [
+                chart_id
+                for chart_id, chart in self.charts_dict.items()
+                if not chart.dashboard_ids
+            ]
+            if self.orphan_charts_id:
+                # add the default dashboard to the dashboards list
+                default_dashboard = MetabaseDashboard(
+                    name=DEFAULT_DASHBAORD,
+                    id=DEFAULT_DASHBAORD,
+                )
+                self.dashboards_list.append(default_dashboard)
+                self._default_dashboard_added = True
+        return retrieved_dashboards
 
     def get_project_name(self, dashboard_details: Any) -> Optional[str]:
         """
         Method to get the project name by searching the dataset using id in the workspace dict
         """
         try:
+            # Return default for the default dashboard containing orphaned charts
+            if dashboard_details.id == DEFAULT_DASHBAORD:
+                return DEFAULT_DASHBAORD
             if dashboard_details.collection_id:
                 collection_name = next(
                     (
@@ -164,10 +197,14 @@ class MetabaseSource(DashboardServiceSource):
         Method to Get Dashboard Entity
         """
         try:
+            # dashboard_url to be empty for default dashboard
             dashboard_url = (
-                f"{clean_uri(self.service_connection.hostPort)}/dashboard/{dashboard_details.id}-"
+                ""
+                if dashboard_details.id == DEFAULT_DASHBAORD
+                else f"{clean_uri(self.service_connection.hostPort)}/dashboard/{dashboard_details.id}-"
                 f"{replace_special_with(raw=dashboard_details.name.lower(), replacement='-')}"
             )
+
             dashboard_request = CreateDashboardRequest(
                 name=EntityName(str(dashboard_details.id)),
                 sourceUrl=SourceUrl(dashboard_url),
@@ -211,10 +248,10 @@ class MetabaseSource(DashboardServiceSource):
         Returns:
             Iterable[CreateChartRequest]
         """
-        charts = dashboard_details.dashcards
-        for chart in charts:
+        chart_ids = dashboard_details.card_ids
+        for chart_id in chart_ids:
             try:
-                chart_details = chart.card
+                chart_details = self.charts_dict[chart_id]
                 if not chart_details.id or not chart_details.name:
                     continue
                 chart_url = (
@@ -240,7 +277,7 @@ class MetabaseSource(DashboardServiceSource):
                 yield Either(
                     left=StackTraceError(
                         name="Chart",
-                        error=f"Error creating chart [{chart}]: {exc}",
+                        error=f"Error creating chart [{self.charts_dict[chart_id]}]: {exc}",
                         stackTrace=traceback.format_exc(),
                     )
                 )
@@ -257,13 +294,13 @@ class MetabaseSource(DashboardServiceSource):
         """
         if not db_service_name:
             return
-        chart_list, dashboard_name = (
-            dashboard_details.dashcards,
+        chart_ids, dashboard_name = (
+            dashboard_details.card_ids,
             str(dashboard_details.id),
         )
-        for chart in chart_list:
+        for chart_id in chart_ids:
             try:
-                chart_details = chart.card
+                chart_details = self.charts_dict[chart_id]
                 if (
                     chart_details.dataset_query is None
                     or chart_details.dataset_query.type is None
