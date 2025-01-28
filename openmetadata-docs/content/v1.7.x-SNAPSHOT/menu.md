@@ -191,6 +191,8 @@ site_menu:
     url: /deployment/rds-iam-auth
   - category: Deployment / How to enable Azure Auth
     url: /deployment/azure-auth
+  - category: Deployment / Production-Ready Requirements
+    url: /deployment/requirements
   - category: Deployment / Server Configuration Reference
     url: /deployment/configuration
   - category: Deployment / Database Connection Pooling
