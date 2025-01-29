@@ -22,7 +22,7 @@ interface AlertStore {
   alert: AlertType | undefined;
   animationClass: string;
   addAlert: (alert: AlertType, timer?: number) => void;
-  resetAlert: () => void;
+  resetAlert: VoidFunction;
 }
 
 export const useAlertStore = create<AlertStore>()((set) => ({

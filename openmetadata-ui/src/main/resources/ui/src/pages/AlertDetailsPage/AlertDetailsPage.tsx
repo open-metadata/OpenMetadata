@@ -481,7 +481,7 @@ function AlertDetailsPage({
   ]);
 
   return (
-    <PageLayoutV1 pageTitle={t('label.alert-details')}>
+    <PageLayoutV1 pageTitle={t('label.alert-detail-plural')}>
       {renderedContent}
     </PageLayoutV1>
   );
