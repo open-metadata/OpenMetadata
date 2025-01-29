@@ -114,8 +114,6 @@ test.describe('Teams Page', () => {
 
   test('Teams Page Flow', async ({ page }) => {
     await test.step('Create a new team', async () => {
-      await settingClick(page, GlobalSettingOptions.TEAMS);
-
       await checkTeamTabCount(page);
       await page.waitForLoadState('networkidle');
 

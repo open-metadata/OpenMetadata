@@ -1,19 +1,19 @@
 ---
-title: Run the Postgres Connector Externally
+title: Run the PostgreSQL Connector Externally
 slug: /connectors/database/postgres/yaml
 ---
 
 {% connectorDetailsHeader
-name="Postgres"
+name="PostgreSQL"
 stage="PROD"
 platform="OpenMetadata"
 availableFeatures=["Metadata", "Query Usage", "Data Profiler", "Data Quality", "dbt", "Lineage", "Column-level Lineage", "Owners", "Tags"]
 unavailableFeatures=["Stored Procedures"]
 / %}
 
-In this section, we provide guides and references to use the Postgres connector.
+In this section, we provide guides and references to use the PostgreSQL connector.
 
-Configure and schedule Postgres metadata and profiler workflows from the OpenMetadata UI:
+Configure and schedule PostgreSQL metadata and profiler workflows from the OpenMetadata UI:
 
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
@@ -28,11 +28,11 @@ Configure and schedule Postgres metadata and profiler workflows from the OpenMet
 
 ## Requirements
 
-**Note:** Note that we only support officially supported Postgres versions. You can check the version list [here](https://www.postgresql.org/support/versioning/).
+**Note:** Note that we only support officially supported PostgreSQL versions. You can check the version list [here](https://www.postgresql.org/support/versioning/).
 
 ### Usage and Lineage considerations
 
-When extracting lineage and usage information from Postgres we base our finding on the `pg_stat_statements` table.
+When extracting lineage and usage information from PostgreSQL we base our finding on the `pg_stat_statements` table.
 You can find more information about it on the official [docs](https://www.postgresql.org/docs/current/pgstatstatements.html#id-1.11.7.39.6).
 
 Another interesting consideration here is explained in the following SO [question](https://stackoverflow.com/questions/50803147/what-is-the-timeframe-for-pg-stat-statements).
@@ -53,7 +53,7 @@ GRANT pg_read_all_stats TO your_user;
 
 {% partial file="/v1.6/connectors/python-requirements.md" /%}
 
-To run the Postgres ingestion, you will need to install:
+To run the PostgreSQL ingestion, you will need to install:
 
 ```bash
 pip3 install "openmetadata-ingestion[postgres]"
@@ -63,7 +63,7 @@ pip3 install "openmetadata-ingestion[postgres]"
 
 All connectors are defined as JSON Schemas.
 [Here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/entity/services/connections/database/postgresConnection.json)
-you can find the structure to create a connection to Postgres.
+you can find the structure to create a connection to PostgreSQL.
 
 In order to create and run a Metadata Ingestion workflow, we will follow
 the steps to create a YAML configuration able to connect to the source,
@@ -74,7 +74,7 @@ The workflow is modeled around the following
 
 ### 1. Define the YAML Config
 
-This is a sample config for Postgres:
+This is a sample config for PostgreSQL:
 
 {% codePreview %}
 
@@ -84,7 +84,7 @@ This is a sample config for Postgres:
 
 {% codeInfo srNumber=1 %}
 
-**username**: Specify the User to connect to Postgres. It should have enough privileges to read all the metadata.
+**username**: Specify the User to connect to PostgreSQL. It should have enough privileges to read all the metadata.
 
 {% /codeInfo %}
 
@@ -174,19 +174,19 @@ Find more information about [Source Identity](https://docs.aws.amazon.com/STS/la
 {% codeInfo srNumber=4 %}
 
 
-**hostPort**: Enter the fully qualified hostname and port number for your Postgres deployment in the Host and Port field.
+**hostPort**: Enter the fully qualified hostname and port number for your PostgreSQL deployment in the Host and Port field.
 
 {% /codeInfo %}
 
 {% codeInfo srNumber=5 %}
 
-**database**: Initial Postgres database to connect to. If you want to ingest all databases, set ingestAllDatabases to true.
+**database**: Initial PostgreSQL database to connect to. If you want to ingest all databases, set ingestAllDatabases to true.
 
 {% /codeInfo %}
 
 {% codeInfo srNumber=6 %}
 
-**ingestAllDatabases**: Ingest data from all databases in Postgres. You can use databaseFilterPattern on top of this.
+**ingestAllDatabases**: Ingest data from all databases in PostgreSQL. You can use databaseFilterPattern on top of this.
 
 {% /codeInfo %}
 
@@ -240,7 +240,7 @@ source:
   serviceName: local_postgres
   serviceConnection:
     config:
-      type: Postgres
+      type: PostgreSQL
 ```
 ```yaml {% srNumber=1 %}
       username: username
@@ -302,7 +302,7 @@ source:
 
 {% partial file="/v1.6/connectors/yaml/data-quality.md" /%}
 
-## Securing Postgres Connection with SSL in OpenMetadata
+## Securing PostgreSQL Connection with SSL in OpenMetadata
 
 To configure SSL for secure connections between OpenMetadata and a PostgreSQL database, PostgreSQL offers various SSL modes, each providing different levels of connection security.
 
