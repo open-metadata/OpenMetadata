@@ -126,7 +126,7 @@ class CliCommonDB:
                 self.expected_profiled_tables(),
             )
             sample_data = self.retrieve_sample_data(self.fqn_created_table()).sampleData
-            self.assertEqual(len(sample_data.rows), self.inserted_rows_count())
+            self.assertEqual(len(sample_data.rows), self.expected_sample_size())
 
         def assert_for_table_with_profiler_time_partition(
             self, source_status: Status, sink_status: Status
@@ -216,7 +216,7 @@ class CliCommonDB:
             raise NotImplementedError()
 
         @abstractmethod
-        def inserted_rows_count(self) -> int:
+        def expected_sample_size(self) -> int:
             raise NotImplementedError()
 
         @abstractmethod

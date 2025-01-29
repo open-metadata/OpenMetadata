@@ -28,7 +28,6 @@ from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.type.queryParserData import QueryParserData
 from metadata.generated.schema.type.tableQuery import TableQueries
 from metadata.ingestion.api.models import Entity
-from metadata.ingestion.lineage.masker import mask_query
 from metadata.ingestion.models.delete_entity import DeleteEntity
 from metadata.ingestion.models.life_cycle import OMetaLifeCycleData
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
@@ -284,19 +283,13 @@ def _(record: PatchRequest) -> str:
 @get_log_name.register
 def _(record: TableQueries) -> str:
     """Get the log of the TableQuery"""
-    queries = "\n------\n".join(
-        mask_query(query.query, query.dialect) for query in record.queries
-    )
-    return f"Table Queries [{queries}]"
+    return f"Table Queries [{len(record.queries)}]"
 
 
 @get_log_name.register
 def _(record: QueryParserData) -> str:
     """Get the log of the ParsedData"""
-    queries = "\n------\n".join(
-        mask_query(query.sql, query.dialect) for query in record.parsedData
-    )
-    return f"Usage ParsedData [{queries}]"
+    return f"Usage ParsedData [{len(record.parsedData)}]"
 
 
 def redacted_config(config: Dict[str, Union[str, dict]]) -> Dict[str, Union[str, dict]]:

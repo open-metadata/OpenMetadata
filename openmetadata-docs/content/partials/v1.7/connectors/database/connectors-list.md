@@ -17,6 +17,7 @@
 {% connectorInfoCard name="Doris" stage="PROD" href="/connectors/database/doris" platform="OpenMetadata" / %}
 {% connectorInfoCard name="Druid" stage="PROD" href="/connectors/database/druid" platform="OpenMetadata" / %}
 {% connectorInfoCard name="DynamoDB" stage="PROD" href="/connectors/database/dynamodb" platform="OpenMetadata" / %}
+{% connectorInfoCard name="Exasol" stage="PROD" href="/connectors/database/exasol" platform="OpenMetadata" / %}
 {% connectorInfoCard name="GCS Datalake" stage="PROD" href="/connectors/database/gcs-datalake" platform="OpenMetadata" / %}
 {% connectorInfoCard name="Glue" stage="PROD" href="/connectors/database/glue" platform="OpenMetadata" / %}
 {% connectorInfoCard name="Greenplum" stage="BETA" href="/connectors/database/greenplum" platform="OpenMetadata" / %}
@@ -33,7 +34,7 @@
 {% connectorInfoCard name="Presto" stage="PROD" href="/connectors/database/presto" platform="OpenMetadata" / %}
 {% connectorInfoCard name="Redshift" stage="PROD" href="/connectors/database/redshift" platform="OpenMetadata" / %}
 {% connectorInfoCard name="Salesforce" stage="PROD" href="/connectors/database/salesforce" platform="OpenMetadata" / %}
-{% connectorInfoCard name="SAP Hana" stage="PROD" href="/connectors/database/sap-hana" platform="OpenMetadata" / %}
+{% connectorInfoCard name="SAP HANA" stage="PROD" href="/connectors/database/sap-hana" platform="OpenMetadata" / %}
 {% connectorInfoCard name="SAP ERP" stage="PROD" href="/connectors/database/sap-erp" platform="OpenMetadata" / %}
 {% connectorInfoCard name="SAS" stage="BETA" href="/connectors/database/sas" platform="OpenMetadata" / %}
 {% connectorInfoCard name="SingleStore" stage="PROD" href="/connectors/database/singlestore" platform="OpenMetadata" / %}
