@@ -68,6 +68,20 @@ Find further information on how to secure your OpenMetadata deployment:
   {%/inlineCallout%}
 {%/inlineCalloutContainer%}
 
+# Production-Ready Requirements
+
+Find further information on how to secure your OpenMetadata deployment:
+
+{%inlineCalloutContainer%}
+  {%inlineCallout
+    color="violet-70"
+    icon="celebration"
+    bold="Production-Ready Requirements"
+    href="/deployment/requirements"%}
+    Production-Ready Requirements for OpenMetadata Deployment
+  {%/inlineCallout%}
+{%/inlineCalloutContainer%}
+
 # Upgrade
 
 Learn how to move from version to version:
