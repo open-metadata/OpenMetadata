@@ -369,6 +369,10 @@ export const applyPipelineFromModal = async (
   const saveRes = page.waitForResponse('/api/v1/lineage');
   await page.click('[data-testid="save-button"]');
   await saveRes;
+
+  await page.waitForSelector('[data-testid="add-edge-modal"]', {
+    state: 'detached',
+  });
 };
 
 export const deleteNode = async (page: Page, node: EntityClass) => {
