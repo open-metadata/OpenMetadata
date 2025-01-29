@@ -85,10 +85,8 @@ const DisplayName: React.FC<DisplayNameProps> = ({
         <EntityNameModal
           allowRename={allowRename}
           entity={{
-            name: isString(name) ? name.toString() : '',
-            displayName: isString(displayName)
-              ? displayName.toString()
-              : undefined,
+            name: isString(name) ? name : '',
+            displayName: isString(displayName) ? displayName : undefined,
           }}
           title={t('label.edit-entity', {
             entity: t('label.display-name'),
