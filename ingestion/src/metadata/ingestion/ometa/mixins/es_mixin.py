@@ -405,11 +405,7 @@ class ESMixin(Generic[T]):
                         {
                             "bool": {
                                 "should": [
-                                    {
-                                        "term": {
-                                            "service.name.keyword": service_name
-                                        }
-                                    }
+                                    {"term": {"service.name.keyword": service_name}}
                                 ]
                             }
                         },
