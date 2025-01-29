@@ -4893,11 +4893,11 @@ public interface CollectionDAO {
   interface AppsDataStore {
     @ConnectionAwareSqlUpdate(
         value =
-            "INSERT INTO apps_data_store(identifier, type, json) VALUES (:identifier, :type, :json)",
+            "INSERT INTO apps_data_store(identifier, type, json) VALUES (:identifier, :type, :json) ON DUPLICATE KEY UPDATE json = VALUES(json)",
         connectionType = MYSQL)
     @ConnectionAwareSqlUpdate(
         value =
-            "INSERT INTO apps_data_store(identifier, type, json) VALUES (:identifier, :type, :json :: jsonb)",
+            "INSERT INTO apps_data_store(identifier, type, json) VALUES (:identifier, :type, :json :: jsonb) ON CONFLICT (identifier, type) DO UPDATE SET json = EXCLUDED.json",
         connectionType = POSTGRES)
     void insert(
         @Bind("identifier") String identifier,

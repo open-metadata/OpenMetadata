@@ -10,7 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { getTextFromHtmlString } from './BlockEditorUtils';
+import {
+  getHtmlStringFromMarkdownString,
+  getTextFromHtmlString,
+} from './BlockEditorUtils';
 
 describe('getTextFromHtmlString', () => {
   it('should return empty string when input is undefined', () => {
@@ -70,5 +73,47 @@ describe('getTextFromHtmlString', () => {
     const output = getTextFromHtmlString(input);
 
     expect(getTextFromHtmlString(input)).toBe(output);
+  });
+});
+
+describe('getHtmlStringFromMarkdownString', () => {
+  it('should return the same string if input is already HTML', () => {
+    const input = '<p>Hello World</p>';
+
+    expect(getHtmlStringFromMarkdownString(input)).toBe(input);
+  });
+
+  it('should convert markdown to HTML', () => {
+    const input = 'Hello **World**';
+    const expectedOutput = '<p>Hello <strong>World</strong></p>';
+
+    expect(getHtmlStringFromMarkdownString(input)).toBe(expectedOutput);
+  });
+
+  it('should handle empty string', () => {
+    expect(getHtmlStringFromMarkdownString('')).toBe('');
+  });
+
+  it('should preserve special characters in markdown', () => {
+    const input = 'Hello & World! @ #$%^';
+    const expectedOutput = '<p>Hello &amp; World! @ #$%^</p>';
+
+    expect(getHtmlStringFromMarkdownString(input)).toBe(expectedOutput);
+  });
+
+  it('should handle complex markdown structure', () => {
+    const input = `
+      ## Demo Title
+      Small Subtitle.
+      - Item 1
+      - Item 2
+    `;
+    const expectedOutput = `
+      <pre><code>##DemoTitleSmallSubtitle.-Item1-Item2</code></pre>
+    `;
+
+    expect(getHtmlStringFromMarkdownString(input).replace(/\s+/g, '')).toBe(
+      expectedOutput.replace(/\s+/g, '')
+    );
   });
 });
