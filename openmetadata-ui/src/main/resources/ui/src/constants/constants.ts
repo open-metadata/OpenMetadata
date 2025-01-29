@@ -612,3 +612,7 @@ export const STATUS_LABEL = {
   [Status.Stopped]: 'Stopped',
   [Status.Success]: 'Success',
 };
+
+export const INITIAL_TABLE_FILTERS = {
+  showDeletedTables: false,
+};

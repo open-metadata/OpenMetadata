@@ -120,7 +120,9 @@ const NextPrevious: FC<NextPreviousProps> = ({
               onClick: () => onShowSizeChange(size),
             })),
           }}>
-          <Button onClick={(e) => e.preventDefault()}>
+          <Button
+            data-testid="page-size-selection-dropdown"
+            onClick={(e) => e.preventDefault()}>
             {`${pageSize} / ${t('label.page')}`}
             <DownOutlined />
           </Button>
