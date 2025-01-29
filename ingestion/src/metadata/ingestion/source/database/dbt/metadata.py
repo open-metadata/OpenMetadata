@@ -1133,7 +1133,7 @@ class DbtSource(DbtServiceSource):
 
         except Exception as err:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
-            logger.error(
+            logger.debug(
                 f"Failed to capture tests results for node: {manifest_node.name} {err}"
             )
 
