@@ -197,26 +197,32 @@ const DocumentationTab = ({
                 <Typography.Text className="right-panel-label">
                   {t('label.owner-plural')}
                 </Typography.Text>
-                {editOwnerPermission && domain.owners && (
-                  <UserTeamSelectableList
-                    hasPermission
-                    multiple={{ team: false, user: true }}
-                    owner={domain.owners}
-                    onUpdate={(updatedUser) => handleUpdatedOwner(updatedUser)}>
-                    <Tooltip
-                      title={t('label.edit-entity', {
-                        entity: t('label.owner-plural'),
-                      })}>
-                      <Button
-                        className="cursor-pointer flex-center m-l-xss"
-                        data-testid="edit-owner"
-                        icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
-                        size="small"
-                        type="text"
-                      />
-                    </Tooltip>
-                  </UserTeamSelectableList>
-                )}
+                {editOwnerPermission &&
+                  domain.owners &&
+                  domain.owners.length > 0 && (
+                    <UserTeamSelectableList
+                      hasPermission
+                      multiple={{ team: false, user: true }}
+                      owner={domain.owners}
+                      onUpdate={(updatedUser) =>
+                        handleUpdatedOwner(updatedUser)
+                      }>
+                      <Tooltip
+                        title={t('label.edit-entity', {
+                          entity: t('label.owner-plural'),
+                        })}>
+                        <Button
+                          className="cursor-pointer flex-center m-l-xss"
+                          data-testid="edit-owner"
+                          icon={
+                            <EditIcon color={DE_ACTIVE_COLOR} width="14px" />
+                          }
+                          size="small"
+                          type="text"
+                        />
+                      </Tooltip>
+                    </UserTeamSelectableList>
+                  )}
               </div>
 
               <Space className="m-r-xss" size={4}>
