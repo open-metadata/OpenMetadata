@@ -407,7 +407,7 @@ class ESMixin(Generic[T]):
                                 "should": [
                                     {
                                         "term": {
-                                            "service.displayName.keyword": service_name
+                                            "service.name.keyword": service_name
                                         }
                                     }
                                 ]
