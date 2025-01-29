@@ -13,7 +13,7 @@
 import { AlertProps } from 'antd';
 import { create } from 'zustand';
 
-type AlertType = {
+export type AlertType = {
   type: AlertProps['type'];
   message: string | JSX.Element;
 };
