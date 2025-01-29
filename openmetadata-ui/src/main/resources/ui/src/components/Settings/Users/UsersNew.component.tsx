@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Col, Input, Row, Space, Tooltip, Typography } from 'antd';
+import { Col, Row, Space, Tabs, Tooltip, Typography } from 'antd';
 import { isEmpty, noop } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -29,7 +29,7 @@ import { searchData } from '../../../rest/miscAPI';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import ActivityFeedProvider from '../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
-import { ActivityFeedTab } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
+import { ActivityFeedTabNew } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTabNew.component';
 import DescriptionV1 from '../../common/EntityDescription/DescriptionV1';
 import TabsLabel from '../../common/TabsLabel/TabsLabel.component';
 import EntitySummaryPanel from '../../Explore/EntitySummaryPanel/EntitySummaryPanel.component';
@@ -176,7 +176,7 @@ const Users = ({
         key: UserPageTabs.ACTIVITY,
         children: (
           <ActivityFeedProvider user={userData.id}>
-            <ActivityFeedTab
+            <ActivityFeedTabNew
               entityType={EntityType.USER}
               fqn={decodedUsername}
               isForFeedTab={false}
@@ -325,12 +325,6 @@ const Users = ({
       <Col span={5}>
         <div className="profile-section">
           <ProfileSectionUserDetailsCard userData={userData} />
-          <UserProfilePersonas userData={userData} />
-          <UserProfileTeams
-            isDeletedUser={userData.deleted}
-            teams={userData.teams}
-            updateUserDetails={updateUserDetails}
-          />
           <UserProfileRoles
             isDeletedUser={userData.deleted}
             isUserAdmin={userData.isAdmin}
@@ -338,30 +332,48 @@ const Users = ({
             userData={userData}
             userRoles={userData.roles}
           />
+          <UserProfilePersonas userData={userData} />
+          <UserProfileTeams
+            isDeletedUser={userData.deleted}
+            teams={userData.teams}
+            updateUserDetails={updateUserDetails}
+          />
         </div>
       </Col>
       <Col span={19}>
         <Row className="mb-sm w-full">
           <div className="tabs-container d-flex justify-center">
-            {/* <p className="tab-label">Activity</p>
-
-            <p className="tab-label">Tasks</p>
-
-            <p className="tab-label">My Data</p>
-
-            <p className="tab-label">Following</p>
-
-            <p className="tab-label">Access Token</p> */}
+            {/* <Tabs
+              destroyInactiveTabPane
+              activeKey={activeTab ?? UserPageTabs.ACTIVITY}
+              className="user-page-tabs"
+              data-testid="tabs"
+              items={tabs}
+              onChange={activeTabHandler}
+            /> */}
+            <Tabs
+              activeKey={activeTab}
+              className="user-page-tabs"
+              data-testid="tabs"
+              items={tabs.map((tab) => ({
+                key: tab.key,
+                label: tab.label,
+              }))}
+              renderTabBar={(props, DefaultTabBar) => (
+                <div>
+                  <DefaultTabBar {...props} />
+                </div>
+              )}
+              onChange={activeTabHandler}
+            />
           </div>
         </Row>
         <Row gutter={[16, 16]}>
-          <Col className="users-page-activity-feed" span={12}>
-            <Input placeholder="Search" style={{ height: '44px' }} />
+          <Col span={24}>
             {/* <ActivityFeedCardNew />
             <ActivityFeedCardNew /> */}
+            {tabs.find((tab) => tab.key === activeTab)?.children}
           </Col>
-
-          <Col span={12}>{/* <DetailsPanel /> */}</Col>
         </Row>
       </Col>
     </Row>
