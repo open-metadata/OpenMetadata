@@ -27,13 +27,6 @@ $$
 
 $$section
 
-### OpenMetadata URL $(id="openMetadataUrl")
-
-Url of the OpenMetadata Server, in case of Docker or K8s this needs to be the external Url used to access the UI.
-$$
-
-$$section
-
 ### Server Endpoint $(id="serverEndpoint")
 
 Endpoint of the SMTP server (Ex. smtp.gmail.com)

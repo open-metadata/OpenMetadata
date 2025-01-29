@@ -18,9 +18,11 @@ import static org.openmetadata.schema.settings.SettingsType.CUSTOM_UI_THEME_PREF
 import static org.openmetadata.schema.settings.SettingsType.EMAIL_CONFIGURATION;
 import static org.openmetadata.schema.settings.SettingsType.LINEAGE_SETTINGS;
 import static org.openmetadata.schema.settings.SettingsType.LOGIN_CONFIGURATION;
+import static org.openmetadata.schema.settings.SettingsType.OPEN_METADATA_BASE_URL_CONFIGURATION;
 import static org.openmetadata.schema.settings.SettingsType.SEARCH_SETTINGS;
 import static org.openmetadata.schema.settings.SettingsType.WORKFLOW_SETTINGS;
 
+import com.cronutils.utils.StringUtils;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
@@ -28,10 +30,12 @@ import java.util.concurrent.TimeUnit;
 import javax.annotation.CheckForNull;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
+import okhttp3.HttpUrl;
 import org.openmetadata.api.configuration.LogoConfiguration;
 import org.openmetadata.api.configuration.ThemeConfiguration;
 import org.openmetadata.api.configuration.UiThemePreference;
 import org.openmetadata.schema.api.configuration.LoginConfiguration;
+import org.openmetadata.schema.api.configuration.OpenMetadataBaseUrlConfiguration;
 import org.openmetadata.schema.api.lineage.LineageLayer;
 import org.openmetadata.schema.api.lineage.LineageSettings;
 import org.openmetadata.schema.api.search.SearchSettings;
@@ -76,9 +80,32 @@ public class SettingsCache {
     Settings storedSettings = systemRepository.getConfigWithKey(EMAIL_CONFIGURATION.toString());
     if (storedSettings == null) {
       // Only in case a config doesn't exist in DB we insert it
-      SmtpSettings emailConfig = applicationConfig.getSmtpSettings();
+      SmtpSettings emailConfig =
+          new SmtpSettings()
+              .withPassword(StringUtils.EMPTY)
+              .withEmailingEntity("OpenMetadata")
+              .withSupportUrl("https://slack.open-metadata.org")
+              .withEnableSmtpServer(Boolean.FALSE)
+              .withTransportationStrategy(SmtpSettings.TransportationStrategy.SMTP_TLS)
+              .withTemplates(SmtpSettings.Templates.OPENMETADATA);
+
       Settings setting =
           new Settings().withConfigType(EMAIL_CONFIGURATION).withConfigValue(emailConfig);
+      systemRepository.createNewSetting(setting);
+    }
+
+    // Initialise OM base url setting
+    Settings storedOpenMetadataBaseUrlConfiguration =
+        systemRepository.getConfigWithKey(OPEN_METADATA_BASE_URL_CONFIGURATION.toString());
+    if (storedOpenMetadataBaseUrlConfiguration == null) {
+      String url =
+          new HttpUrl.Builder().scheme("http").host("localhost").port(8585).build().toString();
+      String baseUrl = url.substring(0, url.length() - 1);
+
+      Settings setting =
+          new Settings()
+              .withConfigType(OPEN_METADATA_BASE_URL_CONFIGURATION)
+              .withConfigValue(new OpenMetadataBaseUrlConfiguration().withOpenMetadataUrl(baseUrl));
       systemRepository.createNewSetting(setting);
     }
 
@@ -207,6 +234,9 @@ public class SettingsCache {
         case EMAIL_CONFIGURATION -> {
           fetchedSettings = systemRepository.getEmailConfigInternal();
           LOG.info("Loaded Email Setting");
+        }
+        case OPEN_METADATA_BASE_URL_CONFIGURATION -> {
+          fetchedSettings = systemRepository.getOMBaseUrlConfigInternal();
         }
         case SLACK_APP_CONFIGURATION -> {
           // Only if available

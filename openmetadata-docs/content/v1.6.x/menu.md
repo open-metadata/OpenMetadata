@@ -191,6 +191,8 @@ site_menu:
     url: /deployment/rds-iam-auth
   - category: Deployment / How to enable Azure Auth
     url: /deployment/azure-auth
+  - category: Deployment / Production-Ready Requirements
+    url: /deployment/requirements
   - category: Deployment / Server Configuration Reference
     url: /deployment/configuration
   - category: Deployment / Database Connection Pooling
@@ -300,6 +302,10 @@ site_menu:
     url: /connectors/database/dynamodb
   - category: Connectors / Database / DynamoDB / Run Externally
     url: /connectors/database/dynamodb/yaml
+  - category: Connectors / Database / Exasol
+    url: /connectors/database/exasol
+  - category: Connectors / Database / Exasol / Run Externally
+    url: /connectors/database/exasol/yaml
   - category: Connectors / Database / GCS Datalake
     url: /connectors/database/gcs-datalake
   - category: Connectors / Database / GCS Datalake / Run Externally
