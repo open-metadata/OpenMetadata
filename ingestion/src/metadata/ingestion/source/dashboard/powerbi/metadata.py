@@ -396,6 +396,7 @@ class PowerbiSource(DashboardServiceSource):
                     ),
                     "name": column.name,
                     "displayName": column.name,
+                    "description": column.description,
                 }
                 if column.dataType and column.dataType == DataType.ARRAY.value:
                     parsed_column["arrayDataType"] = DataType.UNKNOWN

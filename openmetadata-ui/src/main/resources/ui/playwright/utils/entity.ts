@@ -1295,6 +1295,7 @@ export const hardDeleteEntity = async (
 };
 
 export const checkDataAssetWidget = async (page: Page, serviceType: string) => {
+  await clickOutside(page);
   const quickFilterResponse = page.waitForResponse(
     `/api/v1/search/query?q=&index=dataAsset*${serviceType}*`
   );
@@ -1359,4 +1360,13 @@ export const getTextFromHtmlString = (description?: string): string => {
   }
 
   return description.replace(/<[^>]*>/g, '').trim();
+};
+
+export const getFirstRowColumnLink = (page: Page) => {
+  const table = page.locator('[data-testid="databaseSchema-tables"]');
+  const firstRowFirstColumn = table.locator(
+    'tbody tr:first-child td:first-child'
+  );
+
+  return firstRowFirstColumn.locator('[data-testid="column-name"] a');
 };
