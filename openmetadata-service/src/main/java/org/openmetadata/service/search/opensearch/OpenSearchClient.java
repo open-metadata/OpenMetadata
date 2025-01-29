@@ -1868,7 +1868,10 @@ public class OpenSearchClient implements SearchClient {
         buildSearchQueryBuilder(query, DomainIndex.getFields());
     FunctionScoreQueryBuilder queryBuilder = boostScore(queryStringBuilder);
     HighlightBuilder hb = buildHighlights(new ArrayList<>());
-    return searchBuilder(queryBuilder, hb, from, size);
+    SearchSourceBuilder searchSourceBuilder = searchBuilder(queryBuilder, hb, from, size);
+    searchSourceBuilder.aggregation(
+        AggregationBuilders.terms("fqnParts_agg").field("fqnParts").size(1000));
+    return addAggregation(searchSourceBuilder);
   }
 
   private static SearchSourceBuilder buildSearchEntitySearch(String query, int from, int size) {
