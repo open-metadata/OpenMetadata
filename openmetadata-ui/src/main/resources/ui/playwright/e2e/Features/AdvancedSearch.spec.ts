@@ -12,6 +12,7 @@
  */
 import test from '@playwright/test';
 import { SidebarItem } from '../../constant/sidebar';
+import { DashboardClass } from '../../support/entity/DashboardClass';
 import { TableClass } from '../../support/entity/TableClass';
 import { TopicClass } from '../../support/entity/TopicClass';
 import { TagClass } from '../../support/tag/TagClass';
@@ -38,6 +39,8 @@ test.describe('Advanced Search', { tag: '@advanced-search' }, () => {
   const topic2 = new TopicClass();
   const tierTag1 = new TagClass({ classification: 'Tier' });
   const tierTag2 = new TagClass({ classification: 'Tier' });
+  const dashboard1 = new DashboardClass();
+  const dashboard2 = new DashboardClass();
 
   let searchCriteria: Record<string, any> = {};
 
@@ -54,6 +57,8 @@ test.describe('Advanced Search', { tag: '@advanced-search' }, () => {
       topic2.create(apiContext),
       tierTag1.create(apiContext),
       tierTag2.create(apiContext),
+      dashboard1.create(apiContext),
+      dashboard2.create(apiContext),
     ]);
 
     // Add Owner & Tag to the table
@@ -109,6 +114,20 @@ test.describe('Advanced Search', { tag: '@advanced-search' }, () => {
         table1.entity.displayName,
         table2.entity.displayName,
       ],
+      serviceType: [table1.service.serviceType, table2.service.serviceType],
+      'charts.displayName.keyword': [
+        dashboard1.charts.displayName,
+        dashboard2.charts.displayName,
+      ],
+      'messageSchema.schemaFields.name.keyword': ['AddressBook', 'Customer'],
+      'dataModel.columns.name.keyword': ['approved', 'department_id'],
+      'dataModels.displayName.keyword': ['orders', 'operations'],
+      dataModelType: ['LookMlExplore', 'LookMlView'],
+      entityType: ['container', 'dashboard'],
+      'mlFeatures.name': ['persona', 'sales'],
+      'fields.name.keyword': ['Columns', 'Description'],
+      tableType: ['Regular', 'Iceberg'],
+      'tasks.displayName.keyword': ['Assert Table Exists', 'Presto Task'],
     };
 
     await afterAction();
@@ -125,6 +144,8 @@ test.describe('Advanced Search', { tag: '@advanced-search' }, () => {
       topic2.delete(apiContext),
       tierTag1.delete(apiContext),
       tierTag2.delete(apiContext),
+      dashboard1.delete(apiContext),
+      dashboard2.delete(apiContext),
     ]);
     await afterAction();
   });
