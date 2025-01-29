@@ -52,6 +52,8 @@ export const visitClassificationPage = async (
   await sidebarClick(page, SidebarItem.TAGS);
   await classificationResponse;
 
+  await page.waitForLoadState('networkidle');
+
   await page
     .getByTestId('data-summary-container')
     .getByText(classificationDisplayName)
