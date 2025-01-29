@@ -402,19 +402,55 @@ class ESMixin(Generic[T]):
             "query": {
                 "bool": {
                     "must": [
-                        {"term": {"service.name.keyword": service_name}},
                         {
-                            "term": {
-                                "tableType": [
-                                    TableType.View.value,
-                                    TableType.MaterializedView.value,
-                                    TableType.SecureView.value,
-                                    TableType.Dynamic.value,
+                            "bool": {
+                                "should": [
+                                    {
+                                        "term": {
+                                            "service.displayName.keyword": service_name
+                                        }
+                                    }
                                 ]
                             }
                         },
-                        {"term": {"deleted": False}},
-                        {"exists": {"field": "schemaDefinition"}},
+                        {
+                            "bool": {
+                                "must": [
+                                    {
+                                        "bool": {
+                                            "should": [
+                                                {
+                                                    "term": {
+                                                        "tableType": TableType.View.value
+                                                    }
+                                                },
+                                                {
+                                                    "term": {
+                                                        "tableType": TableType.MaterializedView.value
+                                                    }
+                                                },
+                                                {
+                                                    "term": {
+                                                        "tableType": TableType.SecureView.value
+                                                    }
+                                                },
+                                                {
+                                                    "term": {
+                                                        "tableType": TableType.Dynamic.value
+                                                    }
+                                                },
+                                            ]
+                                        }
+                                    }
+                                ]
+                            }
+                        },
+                        {"bool": {"should": [{"term": {"deleted": False}}]}},
+                        {
+                            "bool": {
+                                "should": [{"exists": {"field": "schemaDefinition"}}]
+                            }
+                        },
                     ]
                 }
             }
