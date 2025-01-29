@@ -14,7 +14,7 @@ Mariadb lineage module
 from typing import Optional
 
 from metadata.generated.schema.entity.services.connections.database.mariaDBConnection import (
-    MariadbConnection,
+    MariaDBConnection,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
@@ -38,8 +38,8 @@ class MariadbLineageSource(LineageSource):
     ):
         """Create class instance"""
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
-        connection: MariadbConnection = config.serviceConnection.root.config
-        if not isinstance(connection, MariadbConnection):
+        connection: MariaDBConnection = config.serviceConnection.root.config
+        if not isinstance(connection, MariaDBConnection):
             raise InvalidSourceException(
                 f"Expected MariadbConnection, but got {connection}"
             )
