@@ -95,6 +95,7 @@ class PowerBiColumns(BaseModel):
     name: str
     dataType: Optional[str] = None
     columnType: Optional[str] = None
+    description: Optional[str] = None
 
 
 class PowerBiMeasureModel(BaseModel):
