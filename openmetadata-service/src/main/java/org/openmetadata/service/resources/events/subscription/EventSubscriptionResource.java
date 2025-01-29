@@ -538,8 +538,6 @@ public class EventSubscriptionResource
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.VIEW_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
-
-    authorizer.authorizeAdmin(securityContext);
     EventSubscription sub = repository.getByName(null, name, repository.getFields("name"));
     return EventSubscriptionScheduler.getInstance()
         .getStatusForEventSubscription(sub.getId(), destinationId);
