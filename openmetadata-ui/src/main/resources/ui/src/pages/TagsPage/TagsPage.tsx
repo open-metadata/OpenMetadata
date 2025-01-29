@@ -238,11 +238,11 @@ const TagsPage = () => {
     }
   };
 
-  const handleCancel = () => {
+  const handleCancel = useCallback(() => {
     setEditTag(undefined);
     setIsAddingTag(false);
     setIsAddingClassification(false);
-  };
+  }, []);
 
   const handleAfterDeleteAction = useCallback(() => {
     if (!isUndefined(currentClassification)) {
@@ -308,72 +308,75 @@ const TagsPage = () => {
   /**
    * It redirects to respective function call based on tag/Classification
    */
-  const handleConfirmClick = async () => {
+  const handleConfirmClick = useCallback(async () => {
     if (deleteTags.data?.id) {
       await handleDeleteTag(deleteTags.data.id);
     }
-  };
+  }, [deleteTags.data?.id, handleDeleteTag]);
 
-  const handleUpdateClassification = async (
-    updatedClassification: Classification
-  ) => {
-    if (!isUndefined(currentClassification)) {
-      setIsUpdateLoading(true);
+  const handleUpdateClassification = useCallback(
+    async (updatedClassification: Classification) => {
+      if (!isUndefined(currentClassification)) {
+        setIsUpdateLoading(true);
 
-      const patchData = compare(currentClassification, updatedClassification);
-      try {
-        const response = await patchClassification(
-          currentClassification?.id ?? '',
-          patchData
-        );
-        setClassifications((prev) =>
-          prev.map((item) => {
-            if (
-              item.fullyQualifiedName ===
-              currentClassification.fullyQualifiedName
-            ) {
-              return {
-                ...item,
-                ...response,
-              };
-            }
+        const patchData = compare(currentClassification, updatedClassification);
+        try {
+          const response = await patchClassification(
+            currentClassification?.id ?? '',
+            patchData
+          );
 
-            return item;
-          })
-        );
-        setCurrentClassification((prev) => ({ ...prev, ...response }));
-        if (
-          currentClassification?.fullyQualifiedName !==
-            updatedClassification.fullyQualifiedName ||
-          currentClassification?.name !== updatedClassification.name
-        ) {
-          history.push(getTagPath(response.fullyQualifiedName));
-        }
-      } catch (error) {
-        if (
-          (error as AxiosError).response?.status === HTTP_STATUS_CODE.CONFLICT
-        ) {
-          showErrorToast(
-            t('server.entity-already-exist', {
-              entity: t('label.classification'),
-              entityPlural: t('label.classification-lowercase-plural'),
-              name: updatedClassification.name,
+          setClassifications((prev) =>
+            prev.map((item) => {
+              if (
+                item.fullyQualifiedName ===
+                currentClassification.fullyQualifiedName
+              ) {
+                return {
+                  ...item,
+                  ...response,
+                };
+              }
+
+              return item;
             })
           );
-        } else {
-          showErrorToast(
-            error as AxiosError,
-            t('server.entity-updating-error', {
-              entity: t('label.classification-lowercase'),
-            })
-          );
+          setCurrentClassification((prev) => ({ ...prev, ...response }));
+
+          if (
+            currentClassification?.fullyQualifiedName !==
+              updatedClassification.fullyQualifiedName ||
+            currentClassification?.name !== updatedClassification.name
+          ) {
+            history.push(getTagPath(response.fullyQualifiedName));
+          }
+        } catch (error) {
+          if (
+            (error as AxiosError).response?.status === HTTP_STATUS_CODE.CONFLICT
+          ) {
+            showErrorToast(
+              t('server.entity-already-exist', {
+                entity: t('label.classification'),
+                entityPlural: t('label.classification-lowercase-plural'),
+                name: updatedClassification.name,
+              })
+            );
+          } else {
+            showErrorToast(
+              error as AxiosError,
+              t('server.entity-updating-error', {
+                entity: t('label.classification-lowercase'),
+              })
+            );
+          }
+        } finally {
+          setIsEditClassification(false);
+          setIsUpdateLoading(false);
         }
-      } finally {
-        setIsEditClassification(false);
-        setIsUpdateLoading(false);
       }
-    }
-  };
+    },
+    [currentClassification, history]
+  );
 
   const handleCreatePrimaryTag = async (data: CreateTag) => {
     try {
@@ -455,37 +458,40 @@ const TagsPage = () => {
     }
   };
 
-  const handleActionDeleteTag = (record: Tag) => {
-    if (currentClassification) {
-      setDeleteTags({
-        data: {
-          id: record.id as string,
-          name: record.name,
-          categoryName: currentClassification?.fullyQualifiedName,
-          isCategory: false,
-          status: 'waiting',
-        },
-        state: true,
-      });
-    }
-  };
+  const handleActionDeleteTag = useCallback(
+    (record: Tag) => {
+      if (currentClassification) {
+        setDeleteTags({
+          data: {
+            id: record.id as string,
+            name: record.name,
+            categoryName: currentClassification?.fullyQualifiedName,
+            isCategory: false,
+            status: 'waiting',
+          },
+          state: true,
+        });
+      }
+    },
+    [currentClassification]
+  );
 
-  const handleEditTagClick = (selectedTag: Tag) => {
+  const handleEditTagClick = useCallback((selectedTag: Tag) => {
     setIsAddingTag(true);
     setEditTag(selectedTag);
-  };
+  }, []);
 
-  const handleAddNewTagClick = () => {
+  const handleAddNewTagClick = useCallback(() => {
     setIsAddingTag(true);
-  };
+  }, []);
 
-  const handleEditDescriptionClick = () => {
+  const handleEditDescriptionClick = useCallback(() => {
     setIsEditClassification(true);
-  };
+  }, []);
 
-  const handleCancelEditDescription = () => {
+  const handleCancelEditDescription = useCallback(() => {
     setIsEditClassification(false);
-  };
+  }, []);
 
   useEffect(() => {
     if (currentClassification) {
@@ -517,21 +523,26 @@ const TagsPage = () => {
     history.push(getTagPath(category.fullyQualifiedName));
   };
 
-  const handleAddTagSubmit = async (data: SubmitProps) => {
-    const updatedData = omit(data, 'color', 'iconURL');
-    const style = {
-      color: data.color,
-      iconURL: data.iconURL,
-    };
-    if (editTag) {
-      await handleUpdatePrimaryTag({ ...editTag, ...updatedData, style });
-    } else {
-      await handleCreatePrimaryTag({ ...updatedData, style });
-    }
-  };
+  const handleAddTagSubmit = useCallback(
+    async (data: SubmitProps) => {
+      const updatedData = omit(data, 'color', 'iconURL');
+      const style = {
+        color: data.color,
+        iconURL: data.iconURL,
+      };
 
-  const handleCancelClassificationDelete = () =>
+      if (editTag) {
+        await handleUpdatePrimaryTag({ ...editTag, ...updatedData, style });
+      } else {
+        await handleCreatePrimaryTag({ ...updatedData, style });
+      }
+    },
+    [editTag, handleUpdatePrimaryTag, handleCreatePrimaryTag]
+  );
+
+  const handleCancelClassificationDelete = useCallback(() => {
     setDeleteTags({ data: undefined, state: false });
+  }, []);
 
   const leftPanelLayout = useMemo(
     () => (
@@ -688,7 +699,7 @@ const TagsPage = () => {
     [editTag, currentClassification]
   );
 
-  const content = useMemo(() => {
+  const renderedContent = useMemo(() => {
     if (isLoading) {
       return <Loader />;
     }
@@ -808,10 +819,23 @@ const TagsPage = () => {
     tagsFormHeader,
     editTag,
     tagsFormPermissions,
+    handleActionDeleteTag,
+    handleAddNewTagClick,
+    handleAfterDeleteAction,
+    handleCancelEditDescription,
+    handleEditDescriptionClick,
+    handleEditTagClick,
+    handleUpdateClassification,
+    handleCancel,
+    handleAddTagSubmit,
+    handleCancelClassificationDelete,
+    handleConfirmClick,
   ]);
 
   return (
-    <PageLayoutV1 pageTitle={t('label.tag-plural')}>{content}</PageLayoutV1>
+    <PageLayoutV1 pageTitle={t('label.tag-plural')}>
+      {renderedContent}
+    </PageLayoutV1>
   );
 };
 

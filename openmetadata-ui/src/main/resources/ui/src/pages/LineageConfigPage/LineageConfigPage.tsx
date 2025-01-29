@@ -77,7 +77,7 @@ const LineageConfigPage = () => {
     setActiveField(event.target.id);
   }, []);
 
-  const handleSave = async (values: LineageSettings) => {
+  const handleSave = useCallback(async (values: LineageSettings) => {
     try {
       setIsUpdating(true);
 
@@ -89,6 +89,7 @@ const LineageConfigPage = () => {
           lineageLayer: values.lineageLayer,
         },
       };
+
       const { data } = await updateSettingsConfig(configData as Settings);
       showSuccessToast(
         t('server.update-entity-success', {
@@ -106,7 +107,7 @@ const LineageConfigPage = () => {
     } finally {
       setIsUpdating(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchSearchConfig();
@@ -244,7 +245,16 @@ const LineageConfigPage = () => {
         />
       </div>
     );
-  }, [isLoading, breadcrumbs, form, lineageConfig, isUpdating, activeField]);
+  }, [
+    isLoading,
+    breadcrumbs,
+    form,
+    lineageConfig,
+    isUpdating,
+    activeField,
+    handleSave,
+    handleFieldFocus,
+  ]);
 
   return (
     <PageLayoutV1 pageTitle={t('label.lineage-config')}>

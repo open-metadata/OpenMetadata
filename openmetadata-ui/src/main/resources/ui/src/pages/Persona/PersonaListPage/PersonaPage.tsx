@@ -82,9 +82,9 @@ export const PersonaPage = () => {
     fetchPersonas();
   }, [pageSize]);
 
-  const handleAddNewPersona = () => {
+  const handleAddNewPersona = useCallback(() => {
     setAddEditPersona({} as Persona);
-  };
+  }, []);
 
   const errorPlaceHolder = useMemo(
     () => (
@@ -101,29 +101,29 @@ export const PersonaPage = () => {
     [isAdminUser]
   );
 
-  const handlePersonalAddEditCancel = () => {
+  const handlePersonalAddEditCancel = useCallback(() => {
     setAddEditPersona(undefined);
-  };
+  }, []);
 
-  const handlePersonaAddEditSave = () => {
+  const handlePersonaAddEditSave = useCallback(() => {
     handlePersonalAddEditCancel();
     fetchPersonas();
-  };
+  }, [fetchPersonas]);
 
-  const handlePersonaPageChange = ({
-    currentPage,
-    cursorType,
-  }: PagingHandlerParams) => {
-    handlePageChange(currentPage);
-    if (cursorType) {
-      fetchPersonas({ [cursorType]: paging[cursorType] });
-    }
-  };
+  const handlePersonaPageChange = useCallback(
+    ({ currentPage, cursorType }: PagingHandlerParams) => {
+      handlePageChange(currentPage);
+      if (cursorType) {
+        fetchPersonas({ [cursorType]: paging[cursorType] });
+      }
+    },
+    [handlePageChange, fetchPersonas, paging]
+  );
 
   const renderedContent = useMemo(() => {
     if (isEmpty(persona) && !isLoading) {
       return (
-        <div className="d-flex justify-center items-center full-height">
+        <div className="flex-center full-height">
           {errorPlaceHolder}
           {Boolean(addEditPersona) && (
             <AddEditPersonaForm
@@ -200,6 +200,11 @@ export const PersonaPage = () => {
     currentPage,
     pageSize,
     paging,
+    handlePersonalAddEditCancel,
+    handlePersonaAddEditSave,
+    handleAddNewPersona,
+    handlePersonaPageChange,
+    handlePageSizeChange,
   ]);
 
   return (

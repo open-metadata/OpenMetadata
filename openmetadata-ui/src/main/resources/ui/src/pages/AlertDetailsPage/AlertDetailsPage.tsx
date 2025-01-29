@@ -478,6 +478,14 @@ function AlertDetailsPage({
     tabItems,
     editDescriptionPermission,
     showDescriptionModal,
+    onOwnerUpdate,
+    handleAlertEdit,
+    onCancel,
+    onDescriptionEdit,
+    onDescriptionUpdate,
+    handleTabChange,
+    handleAlertDelete,
+    hideDeleteModal,
   ]);
 
   return (

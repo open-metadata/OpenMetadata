@@ -83,9 +83,9 @@ const DomainPage = () => {
     ];
   }, [permissions]);
 
-  const handleAddDomainClick = () => {
+  const handleAddDomainClick = useCallback(() => {
     history.push(ROUTES.ADD_DOMAIN);
-  };
+  }, [history]);
 
   const handleDomainUpdate = async (updatedData: Domain) => {
     if (activeDomain) {
@@ -240,6 +240,7 @@ const DomainPage = () => {
     rootDomains,
     createDomainPermission,
     domainPageRender,
+    handleAddDomainClick,
   ]);
 
   return (

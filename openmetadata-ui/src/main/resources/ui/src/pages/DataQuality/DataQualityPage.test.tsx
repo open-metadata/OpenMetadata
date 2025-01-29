@@ -55,7 +55,7 @@ jest.mock('./DataQualityClassBase', () => {
   };
 });
 jest.mock('../../components/PageLayoutV1/PageLayoutV1', () => {
-  return jest.fn(({ children, pageTitle }) => (
+  return jest.fn().mockImplementation(({ children, pageTitle }) => (
     <div data-testid="page-layout-v1">
       <h1>{pageTitle}</h1>
       <div>{children}</div>

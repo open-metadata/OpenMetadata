@@ -13,7 +13,7 @@
 
 import { Col, Row } from 'antd';
 import { t } from 'i18next';
-import React, { useLayoutEffect, useMemo, useState } from 'react';
+import React, { useCallback, useLayoutEffect, useMemo, useState } from 'react';
 import {
   Redirect,
   Route,
@@ -76,16 +76,17 @@ const DataInsightPage = () => {
     SystemChartType | DataInsightChartType
   >();
 
-  const handleScrollToChart = (
-    chartType: SystemChartType | DataInsightChartType
-  ) => {
-    if (ENTITIES_CHARTS.includes(chartType as SystemChartType)) {
-      history.push(getDataInsightPathWithFqn(DataInsightTabs.DATA_ASSETS));
-    } else {
-      history.push(getDataInsightPathWithFqn(DataInsightTabs.APP_ANALYTICS));
-    }
-    setSelectedChart(chartType);
-  };
+  const handleScrollToChart = useCallback(
+    (chartType: SystemChartType | DataInsightChartType) => {
+      if (ENTITIES_CHARTS.includes(chartType as SystemChartType)) {
+        history.push(getDataInsightPathWithFqn(DataInsightTabs.DATA_ASSETS));
+      } else {
+        history.push(getDataInsightPathWithFqn(DataInsightTabs.APP_ANALYTICS));
+      }
+      setSelectedChart(chartType);
+    },
+    [history]
+  );
 
   useLayoutEffect(() => {
     if (selectedChart) {
@@ -179,6 +180,7 @@ const DataInsightPage = () => {
     noKPIPermission,
     isHeaderVisible,
     dataInsightTabs,
+    handleScrollToChart,
   ]);
 
   return (
