@@ -11,12 +11,14 @@
  *  limitations under the License.
  */
 import { APIRequestContext, expect, Page } from '@playwright/test';
+import { GlobalSettingOptions } from '../constant/settings';
 import { TableClass } from '../support/entity/TableClass';
 import { TeamClass } from '../support/team/TeamClass';
 import { UserClass } from '../support/user/UserClass';
 import { descriptionBox, toastNotification, uuid } from './common';
 import { addOwner } from './entity';
 import { validateFormNameFieldInput } from './form';
+import { settingClick } from './sidebar';
 
 const TEAM_TYPES = ['Department', 'Division', 'Group'];
 
@@ -354,6 +356,9 @@ export const checkTeamTabCount = async (page: Page) => {
   const fetchResponse = page.waitForResponse(
     '/api/v1/teams/name/*?fields=*childrenCount*include=all'
   );
+
+  await settingClick(page, GlobalSettingOptions.TEAMS);
+
   const response = await fetchResponse;
   const jsonRes = await response.json();
 

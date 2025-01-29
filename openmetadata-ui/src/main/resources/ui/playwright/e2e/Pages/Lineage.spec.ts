@@ -86,7 +86,8 @@ for (const EntityClass of entities) {
   test(`Lineage creation from ${defaultEntity.getType()} entity`, async ({
     browser,
   }) => {
-    test.slow(true);
+    // 5 minutes to avoid test timeout happening some times in AUTs
+    test.setTimeout(300_000);
 
     const { page } = await createNewPage(browser);
     const { currentEntity, entities, cleanup } = await setupEntitiesForLineage(
