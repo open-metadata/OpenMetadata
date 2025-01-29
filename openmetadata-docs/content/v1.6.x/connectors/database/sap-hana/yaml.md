@@ -1,19 +1,19 @@
 ---
-title: Run the SAP Hana Connector Externally
+title: Run the SAP HANA Connector Externally
 slug: /connectors/database/sap-hana/yaml
 ---
 
 {% connectorDetailsHeader
-name="SAP Hana"
+name="SAP HANA"
 stage="PROD"
 platform="OpenMetadata"
 availableFeatures=["Metadata", "Data Profiler", "Data Quality", "Lineage", "Column-level Lineage", "dbt"]
 unavailableFeatures=["Query Usage", "Stored Procedures", "Owners", "Tags"]
 / %}
 
-In this section, we provide guides and references to use the SAP Hana connector.
+In this section, we provide guides and references to use the SAP HANA connector.
 
-Configure and schedule SAP Hana metadata and profiler workflows from the OpenMetadata UI:
+Configure and schedule SAP HANA metadata and profiler workflows from the OpenMetadata UI:
 
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
@@ -39,7 +39,7 @@ The connector is compatible with HANA or HANA express versions since HANA SPS 2.
 
 {% partial file="/v1.6/connectors/python-requirements.md" /%}
 
-To run the SAP Hana ingestion, you will need to install:
+To run the SAP HANA ingestion, you will need to install:
 
 ```bash
 pip3 install "openmetadata-ingestion[sap-hana]"
@@ -78,7 +78,7 @@ Executing the profiler Workflow or data quality tests, will require the user to 
 
 All connectors are defined as JSON Schemas.
 [Here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/entity/services/connections/database/sapHanaConnection.json)
-you can find the structure to create a connection to SAP Hana.
+you can find the structure to create a connection to SAP HANA.
 
 In order to create and run a Metadata Ingestion workflow, we will follow
 the steps to create a YAML configuration able to connect to the source,
@@ -89,7 +89,7 @@ The workflow is modeled around the following
 
 ### 1. Define the YAML Config
 
-This is a sample config for SAP Hana:
+This is a sample config for SAP HANA:
 
 {% codePreview %}
 
@@ -109,19 +109,19 @@ If using the SQL Connection, inform:
 
 {% codeInfo srNumber=1 %}
 
-**hostPort**: Host and port of the SAP Hana service. This should be specified as a string in the format `hostname:port`. E.g., `localhost:39041`, `host.docker.internal:39041`.
+**hostPort**: Host and port of the SAP HANA service. This should be specified as a string in the format `hostname:port`. E.g., `localhost:39041`, `host.docker.internal:39041`.
 
 {% /codeInfo %}
 
 {% codeInfo srNumber=2 %}
 
-**username**: Specify the User to connect to SAP Hana. It should have enough privileges to read all the metadata.
+**username**: Specify the User to connect to SAP HANA. It should have enough privileges to read all the metadata.
 
 {% /codeInfo %}
 
 {% codeInfo srNumber=3 %}
 
-**password**: Password to connect to SAP Hana.
+**password**: Password to connect to SAP HANA.
 
 {% /codeInfo %}
 

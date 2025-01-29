@@ -1,10 +1,10 @@
 ---
-title: SAP Hana
+title: SAP HANA
 slug: /connectors/database/sap-hana
 ---
 
 {% connectorDetailsHeader
-name="SAP Hana"
+name="SAP HANA"
 stage="PROD"
 platform="OpenMetadata"
 availableFeatures=["Metadata", "Data Profiler", "Data Quality", "Lineage", "Column-level Lineage", "dbt"]
@@ -12,9 +12,9 @@ unavailableFeatures=["Query Usage", "Stored Procedures", "Owners", "Tags"]
 / %}
 
 
-In this section, we provide guides and references to use the SAP Hana connector.
+In this section, we provide guides and references to use the SAP HANA connector.
 
-Configure and schedule SAP Hana metadata and profiler workflows from the OpenMetadata UI:
+Configure and schedule SAP HANA metadata and profiler workflows from the OpenMetadata UI:
 
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
@@ -65,7 +65,7 @@ Executing the profiler Workflow or data quality tests, will require the user to 
 {% partial 
   file="/v1.6/connectors/metadata-ingestion-ui.md" 
   variables={
-    connector: "SAP Hana", 
+    connector: "SAP HANA", 
     selectServicePath: "/images/v1.6/connectors/sap-hana/select-service.png",
     addNewServicePath: "/images/v1.6/connectors/sap-hana/add-new-service.png",
     serviceConnectionPath: "/images/v1.6/connectors/sap-hana/service-connection.png",
@@ -85,9 +85,9 @@ We support two possible connection types:
 
 **SQL Connection**
 
-- **Host and Port**: Host and port of the SAP Hana service. This should be specified as a string in the format `hostname:port`. E.g., `localhost:39041`, `host.docker.internal:39041`.
-- **Username**: Specify the User to connect to SAP Hana. It should have enough privileges to read all the metadata.
-- **Password**: Password to connect to SAP Hana.
+- **Host and Port**: Host and port of the SAP HANA service. This should be specified as a string in the format `hostname:port`. E.g., `localhost:39041`, `host.docker.internal:39041`.
+- **Username**: Specify the User to connect to SAP HANA. It should have enough privileges to read all the metadata.
+- **Password**: Password to connect to SAP HANA.
 - **database**: Optional parameter to connect to a specific database.
 - **databaseSchema**: databaseSchema of the data source. This is an optional parameter, if you would like to restrict the metadata reading to a single schema. When left blank, OpenMetadata Ingestion attempts to scan all the schemas.
 

@@ -5,7 +5,7 @@ slug: /how-to-guides/data-lineage/workflow
 
 # How to Deploy a Lineage Workflow
 
-Lineage data can be ingested from your data sources right from the OpenMetadata UI. Currently, the lineage workflow is supported for a limited set of connectors, like [BigQuery](/connectors/database/bigquery), [Snowflake](/connectors/database/snowflake), [MSSQL](/connectors/database/mssql), [Redshift](/connectors/database/redshift), [Clickhouse](/connectors/database/clickhouse), [Postgres](/connectors/database/postgres), [Databricks](/connectors/database/databricks).
+Lineage data can be ingested from your data sources right from the OpenMetadata UI. Currently, the lineage workflow is supported for a limited set of connectors, like [BigQuery](/connectors/database/bigquery), [Snowflake](/connectors/database/snowflake), [MSSQL](/connectors/database/mssql), [Redshift](/connectors/database/redshift), [Clickhouse](/connectors/database/clickhouse), [PostgreSQL](/connectors/database/postgres), [Databricks](/connectors/database/databricks).
 
 {% note noteType="Tip" %} **Tip:** Trace the upstream and downstream dependencies with Lineage. {% /note %}
 
