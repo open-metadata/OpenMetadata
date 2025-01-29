@@ -1536,7 +1536,7 @@ You can find the GitHub release [here](https://github.com/open-metadata/OpenMeta
 ## Connectors
 
 - New [Spline](https://absaoss.github.io/spline/) Connector to extract metadata and lineage from Spark jobs. Regardless of where the Spark execution happens, if you have configured the Spline Agent, we can send Spark metadata to OpenMetadata.
-- New [SAP Hana](https://www.sap.com/products/technology-platform/hana/what-is-sap-hana.html) Connector, our first integration to the SAP ecosystem.
+- New [SAP HANA](https://www.sap.com/products/technology-platform/hana/what-is-sap-hana.html) Connector, our first integration to the SAP ecosystem.
 - New [MongoDB](https://www.mongodb.com/) Connector, extracting Collections as Tables.
 - Added support for [Databricks Unity Catalog](https://www.databricks.com/product/unity-catalog) for metadata and lineage extraction. If your Databricks instance supports the Unity Catalog, you can enable it in the Connection Details section to use this metadata extraction method instead of getting metadata out of the metastore and history APIs.
 

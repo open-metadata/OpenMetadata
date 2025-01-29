@@ -4,6 +4,9 @@
   "title": "EventBasedEntityTriggerDefinition",
   "description": "Event Based Entity Trigger.",
   "javaType": "org.openmetadata.schema.governance.workflows.elements.triggers.EventBasedEntityTriggerDefinition",
+  "javaInterfaces": [
+    "org.openmetadata.schema.governance.workflows.elements.WorkflowTriggerInterface"
+  ],
   "type": "object",
   "definitions": {
     "event": {
@@ -37,14 +40,17 @@
           }
         }
       },
-      "required": ["entityType", "events"],
+      "required": [
+        "entityType",
+        "events"
+      ],
       "additionalProperties": false
     }
   },
   "properties": {
     "type": {
       "type": "string",
-      "default": "eventBasedEntityTrigger"
+      "default": "eventBasedEntity"
     },
     "config": {
       "$ref": "#/definitions/config"
@@ -54,7 +60,9 @@
       "items": {
         "type": "string"
       },
-      "default": ["relatedEntity"],
+      "default": [
+        "relatedEntity"
+      ],
       "additionalItems": false,
       "minItems": 1,
       "maxItems": 1,

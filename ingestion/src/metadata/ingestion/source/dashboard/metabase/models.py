@@ -82,6 +82,7 @@ class MetabaseChart(BaseModel):
     dataset_query: Optional[DatasetQuery] = None
     id: Optional[MetabaseStrId] = None
     display: Optional[str] = None
+    dashboard_ids: List[str] = []
 
 
 class DashCard(BaseModel):
@@ -94,7 +95,7 @@ class MetabaseDashboardDetails(BaseModel):
     """
 
     description: Optional[str] = None
-    dashcards: List[DashCard]
+    card_ids: List[str] = []
     name: Optional[str] = None
     id: MetabaseStrId
     creator_id: Optional[MetabaseStrId] = None

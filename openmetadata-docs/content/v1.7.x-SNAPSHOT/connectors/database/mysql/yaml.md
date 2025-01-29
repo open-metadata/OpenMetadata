@@ -373,6 +373,12 @@ This is a required field if you'd like to `AssumeRole`.
 
 Find more information on [AssumeRole](https://docs.aws.amazon.com/STS/latest/APIReference/API_AssumeRole.html).
 
+{%note%}
+When using Assume Role authentication, ensure you provide the following details:  
+- **AWS Region**: Specify the AWS region for your deployment.  
+- **Assume Role ARN**: Provide the ARN of the role in your AWS account that OpenMetadata will assume.  
+{%/note%}
+
 **assumeRoleSessionName**: An identifier for the assumed role session. Use the role session name to uniquely identify a session when the same role
 is assumed by different principals or for different reasons.
 
