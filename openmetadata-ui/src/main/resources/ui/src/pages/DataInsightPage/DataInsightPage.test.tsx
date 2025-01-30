@@ -31,15 +31,6 @@ jest.mock('react-router-dom', () => ({
   useParams: jest.fn().mockImplementation(() => ({ tab: activeTab })),
 }));
 
-jest.mock('../../components/PageLayoutV1/PageLayoutV1', () => {
-  return jest.fn().mockImplementation(({ children, pageTitle }) => (
-    <div data-testid="page-layout-v1">
-      <h1>{pageTitle}</h1>
-      <div>{children}</div>
-    </div>
-  ));
-});
-
 jest.mock('../../components/common/ResizablePanels/ResizableLeftPanels', () => {
   return jest.fn().mockImplementation(({ firstPanel, secondPanel }) => (
     <div>
@@ -48,6 +39,10 @@ jest.mock('../../components/common/ResizablePanels/ResizableLeftPanels', () => {
     </div>
   ));
 });
+
+jest.mock('../../hoc/withPageLayout', () => ({
+  withPageLayout: jest.fn().mockImplementation((component) => component),
+}));
 
 jest.mock('../../utils/DataInsightUtils', () => ({
   getDataInsightPathWithFqn: jest.fn().mockReturnValue('/'),

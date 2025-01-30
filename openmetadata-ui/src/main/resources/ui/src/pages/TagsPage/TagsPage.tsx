@@ -34,7 +34,6 @@ import Loader from '../../components/common/Loader/Loader';
 import ResizableLeftPanels from '../../components/common/ResizablePanels/ResizableLeftPanels';
 import TagsLeftPanelSkeleton from '../../components/common/Skeleton/Tags/TagsLeftPanelSkeleton.component';
 import EntityDeleteModal from '../../components/Modals/EntityDeleteModal/EntityDeleteModal';
-import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { HTTP_STATUS_CODE } from '../../constants/Auth.constants';
 import { TIER_CATEGORY } from '../../constants/constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
@@ -51,6 +50,7 @@ import {
 import { Classification } from '../../generated/entity/classification/classification';
 import { Tag } from '../../generated/entity/classification/tag';
 import { Operation } from '../../generated/entity/policies/accessControl/rule';
+import { withPageLayout } from '../../hoc/withPageLayout';
 import { useFqn } from '../../hooks/useFqn';
 import {
   createClassification,
@@ -699,144 +699,106 @@ const TagsPage = () => {
     [editTag, currentClassification]
   );
 
-  const renderedContent = useMemo(() => {
-    if (isLoading) {
-      return <Loader />;
-    }
-
-    if (error) {
-      return (
-        <ErrorPlaceHolder>
-          <Typography.Paragraph className="text-center m-auto">
-            {error}
-          </Typography.Paragraph>
-        </ErrorPlaceHolder>
-      );
-    }
-
+  if (isLoading) {
+    return <Loader />;
+  }
+  if (error) {
     return (
-      <div className="m--t-sm">
-        <ResizableLeftPanels
-          className="content-height-with-resizable-panel"
-          firstPanel={{
-            className: 'content-resizable-panel-container',
-            minWidth: 280,
-            flex: 0.13,
-            children: leftPanelLayout,
-          }}
-          pageTitle={t('label.tag-plural')}
-          secondPanel={{
-            children: (
-              <>
-                {isUpdateLoading ? (
-                  <Loader />
-                ) : (
-                  <ClassificationDetails
-                    classificationPermissions={classificationPermissions}
-                    currentClassification={currentClassification}
-                    deleteTags={deleteTags}
-                    disableEditButton={disableEditButton}
-                    handleActionDeleteTag={handleActionDeleteTag}
-                    handleAddNewTagClick={handleAddNewTagClick}
-                    handleAfterDeleteAction={handleAfterDeleteAction}
-                    handleCancelEditDescription={handleCancelEditDescription}
-                    handleEditDescriptionClick={handleEditDescriptionClick}
-                    handleEditTagClick={handleEditTagClick}
-                    handleUpdateClassification={handleUpdateClassification}
-                    isAddingTag={isAddingTag}
-                    isEditClassification={isEditClassification}
-                    ref={classificationDetailsRef}
-                  />
-                )}
-
-                {/* Classification Form */}
-                {isAddingClassification && (
-                  <TagsForm
-                    isClassification
-                    showMutuallyExclusive
-                    data={classifications}
-                    header={t('label.adding-new-classification')}
-                    isEditing={false}
-                    isLoading={isButtonLoading}
-                    isTier={isTier}
-                    visible={isAddingClassification}
-                    onCancel={handleCancel}
-                    onSubmit={handleCreateClassification}
-                  />
-                )}
-
-                {/* Tags Form */}
-                {isAddingTag && (
-                  <TagsForm
-                    header={tagsFormHeader}
-                    initialValues={editTag}
-                    isEditing={!isUndefined(editTag)}
-                    isLoading={isButtonLoading}
-                    isSystemTag={editTag?.provider === ProviderType.System}
-                    isTier={isTier}
-                    permissions={tagsFormPermissions}
-                    visible={isAddingTag}
-                    onCancel={handleCancel}
-                    onSubmit={handleAddTagSubmit}
-                  />
-                )}
-
-                <EntityDeleteModal
-                  bodyText={getEntityDeleteMessage(
-                    deleteTags.data?.name ?? '',
-                    ''
-                  )}
-                  entityName={deleteTags.data?.name ?? ''}
-                  entityType={t('label.classification')}
-                  visible={deleteTags.state}
-                  onCancel={handleCancelClassificationDelete}
-                  onConfirm={handleConfirmClick}
-                />
-              </>
-            ),
-            className: 'content-resizable-panel-container',
-            minWidth: 800,
-            flex: 0.87,
-          }}
-        />
-      </div>
+      <ErrorPlaceHolder>
+        <Typography.Paragraph className="text-center m-auto">
+          {error}
+        </Typography.Paragraph>
+      </ErrorPlaceHolder>
     );
-  }, [
-    isLoading,
-    error,
-    isUpdateLoading,
-    leftPanelLayout,
-    classificationPermissions,
-    currentClassification,
-    deleteTags,
-    disableEditButton,
-    isAddingTag,
-    isEditClassification,
-    isAddingClassification,
-    classifications,
-    isButtonLoading,
-    isTier,
-    tagsFormHeader,
-    editTag,
-    tagsFormPermissions,
-    handleActionDeleteTag,
-    handleAddNewTagClick,
-    handleAfterDeleteAction,
-    handleCancelEditDescription,
-    handleEditDescriptionClick,
-    handleEditTagClick,
-    handleUpdateClassification,
-    handleCancel,
-    handleAddTagSubmit,
-    handleCancelClassificationDelete,
-    handleConfirmClick,
-  ]);
+  }
 
   return (
-    <PageLayoutV1 pageTitle={t('label.tag-plural')}>
-      {renderedContent}
-    </PageLayoutV1>
+    <div className="m--t-sm">
+      <ResizableLeftPanels
+        className="content-height-with-resizable-panel"
+        firstPanel={{
+          className: 'content-resizable-panel-container',
+          minWidth: 280,
+          flex: 0.13,
+          children: leftPanelLayout,
+        }}
+        pageTitle={t('label.tag-plural')}
+        secondPanel={{
+          children: (
+            <>
+              {isUpdateLoading ? (
+                <Loader />
+              ) : (
+                <ClassificationDetails
+                  classificationPermissions={classificationPermissions}
+                  currentClassification={currentClassification}
+                  deleteTags={deleteTags}
+                  disableEditButton={disableEditButton}
+                  handleActionDeleteTag={handleActionDeleteTag}
+                  handleAddNewTagClick={handleAddNewTagClick}
+                  handleAfterDeleteAction={handleAfterDeleteAction}
+                  handleCancelEditDescription={handleCancelEditDescription}
+                  handleEditDescriptionClick={handleEditDescriptionClick}
+                  handleEditTagClick={handleEditTagClick}
+                  handleUpdateClassification={handleUpdateClassification}
+                  isAddingTag={isAddingTag}
+                  isEditClassification={isEditClassification}
+                  ref={classificationDetailsRef}
+                />
+              )}
+
+              {/* Classification Form */}
+              {isAddingClassification && (
+                <TagsForm
+                  isClassification
+                  showMutuallyExclusive
+                  data={classifications}
+                  header={t('label.adding-new-classification')}
+                  isEditing={false}
+                  isLoading={isButtonLoading}
+                  isTier={isTier}
+                  visible={isAddingClassification}
+                  onCancel={handleCancel}
+                  onSubmit={handleCreateClassification}
+                />
+              )}
+
+              {/* Tags Form */}
+              {isAddingTag && (
+                <TagsForm
+                  header={tagsFormHeader}
+                  initialValues={editTag}
+                  isEditing={!isUndefined(editTag)}
+                  isLoading={isButtonLoading}
+                  isSystemTag={editTag?.provider === ProviderType.System}
+                  isTier={isTier}
+                  permissions={tagsFormPermissions}
+                  visible={isAddingTag}
+                  onCancel={handleCancel}
+                  onSubmit={handleAddTagSubmit}
+                />
+              )}
+
+              <EntityDeleteModal
+                bodyText={getEntityDeleteMessage(
+                  deleteTags.data?.name ?? '',
+                  ''
+                )}
+                entityName={deleteTags.data?.name ?? ''}
+                entityType={t('label.classification')}
+                visible={deleteTags.state}
+                onCancel={handleCancelClassificationDelete}
+                onConfirm={handleConfirmClick}
+              />
+            </>
+          ),
+          className: 'content-resizable-panel-container',
+          minWidth: 800,
+          flex: 0.87,
+        }}
+      />
+    </div>
   );
 };
 
-export default TagsPage;
+export default withPageLayout('tag-plural')(TagsPage);

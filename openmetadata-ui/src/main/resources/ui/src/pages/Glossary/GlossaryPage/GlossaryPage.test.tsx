@@ -53,14 +53,9 @@ jest.mock('../../../context/PermissionProvider/PermissionProvider', () => {
   };
 });
 
-jest.mock('../../../components/PageLayoutV1/PageLayoutV1', () => {
-  return jest.fn().mockImplementation(({ children, pageTitle }) => (
-    <div data-testid="page-layout-v1">
-      <h1>{pageTitle}</h1>
-      <div>{children}</div>
-    </div>
-  ));
-});
+jest.mock('../../../hoc/withPageLayout', () => ({
+  withPageLayout: jest.fn().mockImplementation((component) => component),
+}));
 
 jest.mock('../../../components/Glossary/GlossaryV1.component', () => {
   return jest.fn().mockImplementation((props) => (

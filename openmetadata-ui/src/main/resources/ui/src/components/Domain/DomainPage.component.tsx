@@ -25,6 +25,7 @@ import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { TabSpecificField } from '../../enums/entity.enum';
 import { Domain } from '../../generated/entity/domains/domain';
 import { Operation } from '../../generated/entity/policies/policy';
+import { withPageLayout } from '../../hoc/withPageLayout';
 import { useDomainStore } from '../../hooks/useDomainStore';
 import { useFqn } from '../../hooks/useFqn';
 import {
@@ -37,7 +38,6 @@ import { getDomainPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import Loader from '../common/Loader/Loader';
 import ResizableLeftPanels from '../common/ResizablePanels/ResizableLeftPanels';
-import PageLayoutV1 from '../PageLayoutV1/PageLayoutV1';
 import './domain.less';
 import DomainDetailsPage from './DomainDetailsPage/DomainDetailsPage.component';
 import DomainsLeftPanel from './DomainLeftPanel/DomainLeftPanel.component';
@@ -177,75 +177,61 @@ const DomainPage = () => {
     }
   }, [rootDomains, domainFqn]);
 
-  const renderedContent = useMemo(() => {
-    if (domainLoading) {
-      return <Loader />;
-    }
+  if (domainLoading) {
+    return <Loader />;
+  }
 
-    if (!(viewBasicDomainPermission || viewAllDomainPermission)) {
-      return (
-        <div className="d-flex justify-center items-center full-height">
-          <ErrorPlaceHolder
-            className="mt-0-important"
-            type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
-          />
-        </div>
-      );
-    }
-
-    if (isEmpty(rootDomains)) {
-      return (
-        <div className="d-flex justify-center items-center full-height">
-          <ErrorPlaceHolder
-            buttonId="add-domain"
-            className="mt-0-important"
-            heading={t('label.domain')}
-            permission={createDomainPermission}
-            type={
-              createDomainPermission
-                ? ERROR_PLACEHOLDER_TYPE.CREATE
-                : ERROR_PLACEHOLDER_TYPE.CUSTOM
-            }
-            onClick={handleAddDomainClick}>
-            {t('message.domains-not-configured')}
-          </ErrorPlaceHolder>
-        </div>
-      );
-    }
-
+  if (!(viewBasicDomainPermission || viewAllDomainPermission)) {
     return (
-      <div className="m--t-sm">
-        <ResizableLeftPanels
-          className="content-height-with-resizable-panel"
-          firstPanel={{
-            className: 'content-resizable-panel-container',
-            minWidth: 280,
-            flex: 0.13,
-            children: <DomainsLeftPanel domains={rootDomains} />,
-          }}
-          pageTitle={t('label.domain')}
-          secondPanel={{
-            children: domainPageRender,
-            className: 'content-resizable-panel-container p-t-sm',
-            minWidth: 800,
-            flex: 0.87,
-          }}
+      <div className="d-flex justify-center items-center full-height">
+        <ErrorPlaceHolder
+          className="mt-0-important"
+          type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
         />
       </div>
     );
-  }, [
-    domainLoading,
-    viewBasicDomainPermission,
-    viewAllDomainPermission,
-    rootDomains,
-    createDomainPermission,
-    domainPageRender,
-    handleAddDomainClick,
-  ]);
+  }
+
+  if (isEmpty(rootDomains)) {
+    return (
+      <div className="d-flex justify-center items-center full-height">
+        <ErrorPlaceHolder
+          buttonId="add-domain"
+          className="mt-0-important"
+          heading={t('label.domain')}
+          permission={createDomainPermission}
+          type={
+            createDomainPermission
+              ? ERROR_PLACEHOLDER_TYPE.CREATE
+              : ERROR_PLACEHOLDER_TYPE.CUSTOM
+          }
+          onClick={handleAddDomainClick}>
+          {t('message.domains-not-configured')}
+        </ErrorPlaceHolder>
+      </div>
+    );
+  }
 
   return (
-    <PageLayoutV1 pageTitle={t('label.domain')}>{renderedContent}</PageLayoutV1>
+    <div className="m--t-sm">
+      <ResizableLeftPanels
+        className="content-height-with-resizable-panel"
+        firstPanel={{
+          className: 'content-resizable-panel-container',
+          minWidth: 280,
+          flex: 0.13,
+          children: <DomainsLeftPanel domains={rootDomains} />,
+        }}
+        pageTitle={t('label.domain')}
+        secondPanel={{
+          children: domainPageRender,
+          className: 'content-resizable-panel-container p-t-sm',
+          minWidth: 800,
+          flex: 0.87,
+        }}
+      />
+    </div>
   );
 };
 
-export default DomainPage;
+export default withPageLayout('domain')(DomainPage);

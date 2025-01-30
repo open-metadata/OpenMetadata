@@ -23,7 +23,6 @@ import {
 } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import ResizableLeftPanels from '../../components/common/ResizablePanels/ResizableLeftPanels';
-import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { ROUTES } from '../../constants/constants';
 import { ENTITIES_CHARTS } from '../../constants/DataInsight.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
@@ -31,6 +30,7 @@ import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvi
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { DataInsightChartType } from '../../generated/dataInsight/dataInsightChartResult';
 import { Operation } from '../../generated/entity/policies/policy';
+import { withPageLayout } from '../../hoc/withPageLayout';
 import { DataInsightTabs } from '../../interface/data-insight.interface';
 import { SystemChartType } from '../../rest/DataInsightAPI';
 import { getDataInsightPathWithFqn } from '../../utils/DataInsightUtils';
@@ -112,22 +112,22 @@ const DataInsightPage = () => {
       return data;
     }, [viewDataInsightChartPermission, viewKPIPermission, tab]);
 
-  const renderedContent = useMemo(() => {
-    if (!viewDataInsightChartPermission && !viewKPIPermission) {
-      return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
-    }
+  if (!viewDataInsightChartPermission && !viewKPIPermission) {
+    return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
+  }
 
-    if (noDataInsightPermission || noKPIPermission) {
-      return (
-        <Row align="middle" className="w-full h-full" justify="center">
-          <Col span={24}>
-            <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
-          </Col>
-        </Row>
-      );
-    }
-
+  if (noDataInsightPermission || noKPIPermission) {
     return (
+      <Row align="middle" className="w-full h-full" justify="center">
+        <Col span={24}>
+          <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
+        </Col>
+      </Row>
+    );
+  }
+
+  return (
+    <div className="m--t-sm">
       <ResizableLeftPanels
         className="content-height-with-resizable-panel"
         firstPanel={{
@@ -172,22 +172,8 @@ const DataInsightPage = () => {
           flex: 0.87,
         }}
       />
-    );
-  }, [
-    viewDataInsightChartPermission,
-    viewKPIPermission,
-    noDataInsightPermission,
-    noKPIPermission,
-    isHeaderVisible,
-    dataInsightTabs,
-    handleScrollToChart,
-  ]);
-
-  return (
-    <PageLayoutV1 pageTitle={t('label.data-insight')}>
-      {renderedContent}
-    </PageLayoutV1>
+    </div>
   );
 };
 
-export default DataInsightPage;
+export default withPageLayout('data-insight')(DataInsightPage);
