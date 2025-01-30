@@ -11,22 +11,46 @@
  *  limitations under the License.
  */
 
-import { Button, Modal, Space, Tabs, Typography } from 'antd';
+import {
+  Button,
+  Col,
+  Dropdown,
+  Modal,
+  Row,
+  Space,
+  Tabs,
+  Tooltip,
+  Typography,
+} from 'antd';
+import ButtonGroup from 'antd/lib/button/button-group';
+import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import { isEmpty, isUndefined } from 'lodash';
+import { cloneDeep, isEmpty, isUndefined } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
+import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
+import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg';
+import { ReactComponent as IconDropdown } from '../../../assets/svg/menu.svg';
+import RoleIcon from '../../../assets/svg/role-colored.svg';
+import DeleteWidgetModal from '../../../components/common/DeleteWidget/DeleteWidgetModal';
 import DescriptionV1 from '../../../components/common/EntityDescription/DescriptionV1';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../../components/common/Loader/Loader';
+import { ManageButtonItemLabel } from '../../../components/common/ManageButtonContentItem/ManageButtonContentItem.component';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
+import EntityNameModal from '../../../components/Modals/EntityNameModal/EntityNameModal.component';
 import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
 } from '../../../constants/GlobalSettings.constants';
+import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
+import {
+  OperationPermission,
+  ResourceEntity,
+} from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
 import { Role } from '../../../generated/entity/teams/role';
@@ -36,6 +60,7 @@ import { getRoleByName, patchRole } from '../../../rest/rolesAPIV1';
 import { getTeamByName, patchTeamDetail } from '../../../rest/teamsAPI';
 import { getUserByName, updateUserDetail } from '../../../rest/userAPI';
 import { getEntityName } from '../../../utils/EntityUtils';
+import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { getSettingPath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import AddAttributeModal from '../AddAttributeModal/AddAttributeModal';
@@ -55,6 +80,7 @@ const RolesDetailPage = () => {
   const history = useHistory();
   const { t } = useTranslation();
   const { fqn } = useFqn();
+  const { getEntityPermission } = usePermissionProvider();
 
   const [role, setRole] = useState<Role>({} as Role);
   const [isLoading, setLoading] = useState<boolean>(false);
@@ -64,6 +90,12 @@ const RolesDetailPage = () => {
     useState<{ attribute: Attribute; record: EntityReference }>();
 
   const [addAttribute, setAddAttribute] = useState<AddAttribute>();
+  const [rolePermission, setRolePermission] = useState<OperationPermission>(
+    DEFAULT_ENTITY_PERMISSION
+  );
+  const [isNameEditing, setIsNameEditing] = useState<boolean>(false);
+  const [showActions, setShowActions] = useState(false);
+  const [isDelete, setIsDelete] = useState<boolean>(false);
 
   const rolesPath = getSettingPath(
     GlobalSettingsMenuCategory.ACCESS,
@@ -85,6 +117,103 @@ const RolesDetailPage = () => {
     ],
     [rolesPath, roleName]
   );
+
+  const fetchRolePermission = async () => {
+    try {
+      if (role) {
+        const response = await getEntityPermission(
+          ResourceEntity.ROLE,
+          role.id
+        );
+        setRolePermission(response);
+      }
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
+
+  const editDisplayNamePermission = useMemo(() => {
+    return rolePermission.EditAll || rolePermission.EditDisplayName;
+  }, [rolePermission]);
+
+  const manageButtonContent: ItemType[] = [
+    ...(editDisplayNamePermission
+      ? ([
+          {
+            label: (
+              <ManageButtonItemLabel
+                description={t('message.rename-entity', {
+                  entity: t('label.role'),
+                })}
+                icon={EditIcon}
+                id="rename-button"
+                name={t('label.rename')}
+              />
+            ),
+            key: 'rename-button',
+            onClick: (e) => {
+              e.domEvent.stopPropagation();
+              setIsNameEditing(true);
+              setShowActions(false);
+            },
+          },
+        ] as ItemType[])
+      : []),
+    ...(rolePermission.Delete
+      ? ([
+          {
+            label: (
+              <ManageButtonItemLabel
+                description={t(
+                  'message.delete-entity-type-action-description',
+                  {
+                    entityType: t('label.role'),
+                  }
+                )}
+                icon={DeleteIcon}
+                id="delete-button"
+                name={t('label.delete')}
+              />
+            ),
+            key: 'delete-button',
+            onClick: (e) => {
+              e.domEvent.stopPropagation();
+              setIsDelete(true);
+              setShowActions(false);
+            },
+          },
+        ] as ItemType[])
+      : []),
+  ];
+
+  const onDisplayNameSave = (obj: { name: string; displayName?: string }) => {
+    const { displayName } = obj;
+    let updatedDetails = cloneDeep(role);
+
+    updatedDetails = {
+      ...role,
+      displayName: displayName?.trim(),
+    };
+
+    handleRoleUpdate(updatedDetails);
+    setIsNameEditing(false);
+  };
+
+  const handleRoleUpdate = async (updatedData: Role) => {
+    if (role) {
+      const jsonPatch = compare(role, updatedData);
+      try {
+        const response = await patchRole(jsonPatch, role.id);
+        setRole(response);
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      }
+    }
+  };
+
+  const handleRoleDelete = () => {
+    history.push(rolesPath);
+  };
 
   const fetchRole = async () => {
     setLoading(true);
@@ -223,6 +352,10 @@ const RolesDetailPage = () => {
     fetchRole();
   }, [fqn]);
 
+  useEffect(() => {
+    fetchRolePermission();
+  }, [role.fullyQualifiedName]);
+
   if (isLoading) {
     return <Loader />;
   }
@@ -252,13 +385,69 @@ const RolesDetailPage = () => {
               </div>
             </ErrorPlaceHolder>
           ) : (
-            <div className="roles-detail" data-testid="role-details">
-              <Typography.Title
-                className="m-b-0 m-t-xs"
-                data-testid="heading"
-                level={5}>
-                {roleName}
-              </Typography.Title>
+            <div className="roles-details" data-testid="role-details">
+              <Row className="flex justify-between">
+                <Col className="flex items-center gap-2">
+                  <div>
+                    <img
+                      alt="role-icon"
+                      className="align-middle"
+                      data-testid="icon"
+                      height={36}
+                      src={RoleIcon}
+                      width={32}
+                    />
+                  </div>
+                  <div className="m-t-xs">
+                    {!isEmpty(role.displayName) ? (
+                      <Typography.Text
+                        className="m-b-0 d-block text-grey-muted"
+                        data-testid="role-header-name">
+                        {role.name}
+                      </Typography.Text>
+                    ) : null}
+                    <Typography.Text
+                      className="m-b-0 d-block entity-header-display-name text-lg font-semibold"
+                      data-testid="heading">
+                      {role.displayName || role.name}
+                    </Typography.Text>
+                  </div>
+                </Col>
+                <Col>
+                  <ButtonGroup className="p-l-xs mt--1" size="small">
+                    {manageButtonContent.length > 0 && (
+                      <Dropdown
+                        align={{ targetOffset: [-12, 0] }}
+                        className="m-l-xs"
+                        menu={{
+                          items: manageButtonContent,
+                        }}
+                        open={showActions}
+                        overlayClassName="domain-manage-dropdown-list-container"
+                        overlayStyle={{ width: '350px' }}
+                        placement="bottomRight"
+                        trigger={['click']}
+                        onOpenChange={setShowActions}>
+                        <Tooltip
+                          placement="topRight"
+                          title={t('label.manage-entity', {
+                            entity: t('label.role'),
+                          })}>
+                          <Button
+                            className="domain-manage-dropdown-button tw-px-1.5"
+                            data-testid="manage-button"
+                            icon={
+                              <IconDropdown className="vertical-align-inherit manage-dropdown-icon" />
+                            }
+                            onClick={() => setShowActions(true)}
+                          />
+                        </Tooltip>
+                      </Dropdown>
+                    )}
+                  </ButtonGroup>
+                </Col>
+              </Row>
+
               <DescriptionV1
                 hasEditAccess
                 className="m-y-md"
@@ -365,6 +554,28 @@ const RolesDetailPage = () => {
             onSave={(data) => handleAddAttribute(data)}
           />
         )}
+        {role && (
+          <DeleteWidgetModal
+            afterDeleteAction={() => handleRoleDelete()}
+            allowSoftDelete={false}
+            entityId={role.id}
+            entityName={getEntityName(role)}
+            entityType={EntityType.ROLE}
+            visible={isDelete}
+            onCancel={() => {
+              setIsDelete(false);
+            }}
+          />
+        )}
+        <EntityNameModal<Role>
+          entity={role}
+          title={t('label.edit-entity', {
+            entity: t('label.display-name'),
+          })}
+          visible={isNameEditing}
+          onCancel={() => setIsNameEditing(false)}
+          onSave={onDisplayNameSave}
+        />
       </div>
     </PageLayoutV1>
   );
