@@ -855,7 +855,8 @@ public class ElasticSearchClient implements SearchClient {
     Set<Map<String, Object>> nodes = new HashSet<>();
     if (entityType.equalsIgnoreCase(Entity.PIPELINE)
         || entityType.equalsIgnoreCase(Entity.STORED_PROCEDURE)) {
-      return searchPipelineLineage(fqn, queryFilter, deleted, responseMap);
+      return searchPipelineLineage(
+          fqn, upstreamDepth, downstreamDepth, queryFilter, deleted, responseMap);
     }
     es.org.elasticsearch.action.search.SearchRequest searchRequest =
         new es.org.elasticsearch.action.search.SearchRequest(
@@ -1296,13 +1297,19 @@ public class ElasticSearchClient implements SearchClient {
   }
 
   private Map<String, Object> searchPipelineLineage(
-      String fqn, String queryFilter, boolean deleted, Map<String, Object> responseMap)
+      String fqn,
+      int upstreamDepth,
+      int downstreamDepth,
+      String queryFilter,
+      boolean deleted,
+      Map<String, Object> responseMap)
       throws IOException {
     Set<Map<String, Object>> edges = new HashSet<>();
     Set<Map<String, Object>> nodes = new HashSet<>();
     Object[] searchAfter = null;
     long processedRecords = 0;
     long totalRecords = -1;
+    // Process pipeline as edge
     while (totalRecords != processedRecords) {
       es.org.elasticsearch.action.search.SearchRequest searchRequest =
           new es.org.elasticsearch.action.search.SearchRequest(
@@ -1353,6 +1360,18 @@ public class ElasticSearchClient implements SearchClient {
         break;
       }
     }
+
+    // Process pipeline as node
+    getLineage(
+        fqn,
+        downstreamDepth,
+        edges,
+        nodes,
+        queryFilter,
+        "lineage.fromEntity.fqnHash.keyword",
+        deleted);
+    getLineage(
+        fqn, upstreamDepth, edges, nodes, queryFilter, "lineage.toEntity.fqnHash.keyword", deleted);
 
     // TODO: Fix this , this is hack
     if (edges.isEmpty()) {

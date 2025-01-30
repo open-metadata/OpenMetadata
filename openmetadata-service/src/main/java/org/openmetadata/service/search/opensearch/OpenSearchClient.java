@@ -849,7 +849,7 @@ public class OpenSearchClient implements SearchClient {
       throws IOException {
     if (entityType.equalsIgnoreCase(Entity.PIPELINE)
         || entityType.equalsIgnoreCase(Entity.STORED_PROCEDURE)) {
-      return searchPipelineLineage(fqn, queryFilter, deleted);
+      return searchPipelineLineage(fqn, upstreamDepth, downstreamDepth, queryFilter, deleted);
     }
     Map<String, Object> responseMap = new HashMap<>();
     Set<Map<String, Object>> edges = new HashSet<>();
@@ -1293,7 +1293,8 @@ public class OpenSearchClient implements SearchClient {
     return client.search(searchRequest, RequestOptions.DEFAULT);
   }
 
-  private Map<String, Object> searchPipelineLineage(String fqn, String queryFilter, boolean deleted)
+  private Map<String, Object> searchPipelineLineage(
+      String fqn, int upstreamDepth, int downstreamDepth, String queryFilter, boolean deleted)
       throws IOException {
     Map<String, Object> responseMap = new HashMap<>();
     Set<Map<String, Object>> edges = new HashSet<>();
@@ -1302,6 +1303,7 @@ public class OpenSearchClient implements SearchClient {
     Object[] searchAfter = null;
     long processedRecords = 0;
     long totalRecords = -1;
+    // Process pipeline as edge
     while (totalRecords != processedRecords) {
       os.org.opensearch.action.search.SearchRequest searchRequest =
           new os.org.opensearch.action.search.SearchRequest(
@@ -1351,6 +1353,18 @@ public class OpenSearchClient implements SearchClient {
         break;
       }
     }
+
+    // Process pipeline as node
+    getLineage(
+        fqn,
+        downstreamDepth,
+        edges,
+        nodes,
+        queryFilter,
+        "lineage.fromEntity.fqnHash.keyword",
+        deleted);
+    getLineage(
+        fqn, upstreamDepth, edges, nodes, queryFilter, "lineage.toEntity.fqnHash.keyword", deleted);
 
     if (edges.isEmpty()) {
       os.org.opensearch.action.search.SearchRequest searchRequestForEntity =
