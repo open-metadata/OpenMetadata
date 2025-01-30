@@ -227,7 +227,7 @@ public class DataInsightsEntityEnricherProcessor
     }
 
     // Modify Custom Property key
-    Optional<Object> oCustomProperties = Optional.ofNullable(entityMap.remove("extension"));
+    Optional<Object> oCustomProperties = Optional.ofNullable(entityMap.get("extension"));
     oCustomProperties.ifPresent(
         o -> entityMap.put(String.format("%sCustomProperty", entityType), o));
 

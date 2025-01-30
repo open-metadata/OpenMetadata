@@ -124,7 +124,7 @@ export class EntityClass {
   ) {
     await assignDomain(page, domain1);
     await updateDomain(page, domain2);
-    await removeDomain(page);
+    await removeDomain(page, domain2);
   }
 
   async owner(
