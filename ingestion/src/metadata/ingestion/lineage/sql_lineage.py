@@ -37,7 +37,6 @@ from metadata.generated.schema.type.entityLineage import (
 from metadata.generated.schema.type.entityLineage import Source as LineageSource
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.models import Either
-from metadata.ingestion.lineage.masker import mask_query
 from metadata.ingestion.lineage.models import (
     Dialect,
     QueryParsingError,
@@ -614,11 +613,11 @@ def get_lineage_by_query(
     """
     column_lineage = {}
     query_parsing_failures = QueryParsingFailures()
-    masked_query = mask_query(query, dialect.value)
 
     try:
-        logger.debug(f"Running lineage with query: {masked_query}")
         lineage_parser = LineageParser(query, dialect, timeout_seconds=timeout_seconds)
+        masked_query = lineage_parser.masked_query or query
+        logger.debug(f"Running lineage with query: {masked_query}")
 
         raw_column_lineage = lineage_parser.column_lineage
         column_lineage.update(populate_column_lineage_map(raw_column_lineage))
@@ -715,11 +714,11 @@ def get_lineage_via_table_entity(
     """Get lineage from table entity"""
     column_lineage = {}
     query_parsing_failures = QueryParsingFailures()
-    masked_query = mask_query(query, dialect.value)
 
     try:
-        logger.debug(f"Getting lineage via table entity using query: {masked_query}")
         lineage_parser = LineageParser(query, dialect, timeout_seconds=timeout_seconds)
+        masked_query = lineage_parser.masked_query or query
+        logger.debug(f"Getting lineage via table entity using query: {masked_query}")
         to_table_name = table_entity.name.root
 
         for from_table_name in lineage_parser.source_tables:
