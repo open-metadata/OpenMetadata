@@ -1,7 +1,7 @@
-# 1.6.2 Release 🎉
+# 1.6.3 Release 🎉
 
 {% note noteType="Tip" %}
-**Jan 13th, 2025**
+**Jan 29th, 2025**
 {% /note %}
 
 {% inlineCalloutContainer %}
@@ -10,46 +10,77 @@ color="violet-70"
 icon="celebration"
 bold="Upgrade OpenMetadata"
 href="/deployment/upgrade" %}
-Learn how to upgrade your OpenMetadata instance to 1.6.2!
+Learn how to upgrade your OpenMetadata instance to 1.6.3!
 {% /inlineCallout %}
 {% /inlineCalloutContainer %}
 
-You can find the GitHub release [here](https://github.com/open-metadata/OpenMetadata/releases/tag/1.6.2-release).
+You can find the GitHub release [here](https://github.com/open-metadata/OpenMetadata/releases/tag/1.6.3-release).
 
-- Fix: Test case getting removed from logical test suite after editing the test case.
-- Fix: Edit Lineage Operation not working with isOwner() condition
-- Fix: EditLineage permission not allowing users to edit the lineage.
-- Fix: ViewAll permission not working with matchAnyTag() and isOwner() conditions
-- Fix: Vulnerability security on 1.5.6 version package com.google.protobuf_protobuf-java.
-- Fix: DBT Data ingestion not working.
-- Fix: Table owners not shown properly after a dbt ingestion and re-indexing.
-- Fix: Glossary Listing Limits to 50 without scrolling to next page.
-- Fix: Mask encrypted password for email.
-- Fix: Profiler failing on ingesting data type for postgres.
-- Fix: Column lineage ingestion failed to parse column due to subquery raw_name AttributeError.
-- Fix: Data Insight Tier Filter does not work.
-- Fix: Add depth support for storage connector.
-- Fix: Replace the description editor with a new block editor.
-- Fix: Redshift Metadata ingestion failing for Stored Procedure.
-- Fix: Lineage view not showing all the nodes in case of circular lineage.
-- Fix: Deleting Data Product should delete the data asset relationships.
-- Fix: styling (color, icon) is lost if a glossaryTerm is updated via the bulk upload.
-- Fix: Unable to see complete column type info for long column type.
-- Fix: ApiEndpoint reindexing failure.
-- Fix: Auto Classification Ingestion - AttributeError: 'DataType' object has no attribute 'dialect_impl'.
-- Fix: Adding the profiler for doris failing to execute.
-- Fix: Unable to remove existing values from custom property (enum data type).
-- Fix: Custom DI description getting added with HTML p tag. (Collate)
-- Fix: Knowledge Page hierarchy state doesn't persist on refresh. (Collate)
-- Fix: Reindex Page Entitiy is Missing on Collate. (Collate)
-- Fix: Avoid pluralizing for custom charts. (Collate)
-- Improvement: Ability to sort the DI charts based on date or term.
-- Improvement: Support test connection api cancellation on click of cancel.
-- Improvement: Highlight the search term for schema table on table details page.
-- Improvement: Add Algorithm option for authentication token validation in yaml.
-- Improvement: Make all Test Suites executable.
-- Improvement: Activity feed pagination.
-- Improvement: Add the missing filters for different assets in the Automator(Ex. Database filter for Database Schema asset).  (Collate)
-- Improvement: Add Glossary Term and Metric as assets for Automation. (Collate)
+- Fix: Adds percona server for postgresql support.
+- Fix: Inherited Ownership for Data Products.
+- Fix: Favicon not being updated in the browser tab.
+- Fix: Fix Search Index for ER Model.
+- Fix: dbt ingestion picks up wrong service to patch metadata.
+- Fix: Wrong team count displayed on team tab.
+- Fix: Tracing highlighter in lineage after edge clicked.
+- Fix: Api should not called after time out in Test connection.
+- Fix: Get only non-deleted entities in export.
+- Fix: The permissions call made for search service.
+- Fix: Kafkaconnect validation errors.
+- Fix: DI Filter not getting applied.
+- Fix: Redash Get Dashboards flow.
+- Fix: Description not rendered in Glossary Modal while edit.
+- Fix: The persona JSON schema is named Team.
+- Fix: Redirection issue on IDP initiated calls.
+- Fix: Async export csv not happening in lineage.
+- Fix: Description renderer having tags in glossary,team and user import.
+- Fix: RichTextEditor output in case on no data save.
+- Fix: s3 storage parquet structureFormat ingestion.
+- Fix: Data Insights index mapping.
+- Fix: Edit description permission for domain owner.
+- Fix: Model dump dict key names.
+- Fix: Broken looker lineage.
+- Fix: Refresh call concurrency for multiple browser tabs.
+- Fix: Infinite loading for refresh attempted on app visit.
+- Fix: Duplicate table constraints.
+- Fix: Updated MSSQL queries causing arithmetic overflow error.
+- Fix: PowerBI tables, datamodel metadata missing.
+- Fix: Wrong dataset and project id in filter of system metric query.
+- Fix: Data Insight fix custom property filter.
+- Fix: Entity Hierarchy Schema.
+- Fix: Salesforce column description with toggle api.
+- Fix: Update glossary term table upon new term added.
+- Fix: Remove unwanted spacing around the list in block editor.
+- Fix: Postgres parse json schema.
+- Fix: Optimize multithreading for lineage.
+- Fix: Fetch Stored Procedures from account usage .
+- Fix: Add MaterializedView & DynamicTable for lineage computation.
+- Fix: MariaDB Lineage Dialect Issue.
+- Minor: Optimize Snowflake SP Query.
+- Minor: Hide description tooltip for tag edit mode.
+- Minor: BigQuery Improvement, Hive Partitioned Tables, Nonetype issue resolved
+- Minor: Typo for datetime attribute.
+- Minor: Get missing dataProducts and pipeline properties in /customProperties api.
+- Minor: Improve cron expression validations.
+- Minor: Change log localization improvement.
+- Minor: Async test case result deletion.
+- Minor: Retention period 'Cancel' international display issue.
+- Improvement: Logout user on unsuccessful refresh attempt.
+- Improvement: Support for Domain hierarchy listing.
+- Improvement: Avoid usage of CONCAT in WHERE clause.
+- Improvement: Glossary column width sizes for the resizable columns.
+- Improvement: Move Recreate Out of executors.
+- Improvement: Supported the task filter on landing page feed widget.
+- Improvement: Implement Data Quality Dashboards (Incident Manager + Data Quality).
+- Improvement: Added loading state, and manage error notification in TestSuite.
+- Improvement: Enhance Kafka SSL configuration support with consumerConfigSSL.
+- Improvement: Add prometheus counter for search and database.
+- Improvement: Retention Application : Delete change_events, activity threads, versions based on admin retention policies.
+- Fix: DQ Dashboard: update order of the pie chart. (Collate)
+- Fix: Lineage Propagation when Entity doesn't have a given field. (Collate)
+- Minor: Added limits configuration in telemetry payload. (Collate)
+- Improvement: Show displayName for custom dashboards. (Collate)
+- Improvement: Support rename for custom dashboard and charts. (Collate)
+- Improvement: Improve Onboarding Application. (Collate)
 
-**Full Changelog**: https://github.com/open-metadata/OpenMetadata/compare/1.6.1-release...1.6.2-release
+**Full Changelog**: https://github.com/open-metadata/OpenMetadata/compare/1.6.2-release...1.6.3-release
