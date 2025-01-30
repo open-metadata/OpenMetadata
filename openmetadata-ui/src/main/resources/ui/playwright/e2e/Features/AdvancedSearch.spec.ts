@@ -15,6 +15,7 @@ import { SidebarItem } from '../../constant/sidebar';
 import { Domain } from '../../support/domain/Domain';
 import { ApiCollectionClass } from '../../support/entity/ApiCollectionClass';
 import { DashboardClass } from '../../support/entity/DashboardClass';
+import { DashboardDataModelClass } from '../../support/entity/DashboardDataModelClass';
 import { MlModelClass } from '../../support/entity/MlModelClass';
 import { PipelineClass } from '../../support/entity/PipelineClass';
 import { TableClass } from '../../support/entity/TableClass';
@@ -55,6 +56,8 @@ test.describe('Advanced Search', { tag: '@advanced-search' }, () => {
   const apiCollection2 = new ApiCollectionClass();
   const mlModel1 = new MlModelClass();
   const pipeline1 = new PipelineClass();
+  const dashboardDataModel1 = new DashboardDataModelClass();
+  const dashboardDataModel2 = new DashboardDataModelClass();
 
   let searchCriteria: Record<string, any> = {};
 
@@ -79,6 +82,8 @@ test.describe('Advanced Search', { tag: '@advanced-search' }, () => {
       apiCollection2.create(apiContext),
       mlModel1.create(apiContext),
       pipeline1.create(apiContext),
+      dashboardDataModel1.create(apiContext),
+      dashboardDataModel2.create(apiContext),
     ]);
 
     // Add Owner & Tag to the table
@@ -178,6 +183,11 @@ test.describe('Advanced Search', { tag: '@advanced-search' }, () => {
         apiCollection1.apiEndpoint.requestSchema.schemaFields[1].name,
       ],
       'name.keyword': [table1.entity.name, table2.entity.name],
+      'project.keyword': [
+        dashboardDataModel1.entity.project,
+        dashboardDataModel2.entity.project,
+      ],
+      status: ['Approved', 'In Review'],
     };
 
     await afterAction();
@@ -202,6 +212,8 @@ test.describe('Advanced Search', { tag: '@advanced-search' }, () => {
       apiCollection2.delete(apiContext),
       mlModel1.delete(apiContext),
       pipeline1.delete(apiContext),
+      dashboardDataModel1.delete(apiContext),
+      dashboardDataModel2.delete(apiContext),
     ]);
     await afterAction();
   });

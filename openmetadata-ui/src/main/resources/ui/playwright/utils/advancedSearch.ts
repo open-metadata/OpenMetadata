@@ -139,6 +139,16 @@ export const FIELDS: EntityFields[] = [
     localSearch: false,
     skipConditions: ['isNull', 'isNotNull'], // Null and isNotNull conditions are not present for name
   },
+  {
+    id: 'Project',
+    name: 'project.keyword',
+    localSearch: false,
+  },
+  {
+    id: 'Status',
+    name: 'status',
+    localSearch: false,
+  },
 ];
 
 export const OPERATOR = {
