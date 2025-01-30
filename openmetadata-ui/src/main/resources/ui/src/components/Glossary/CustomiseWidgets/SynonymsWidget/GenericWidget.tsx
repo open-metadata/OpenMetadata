@@ -39,6 +39,7 @@ import DataProductsContainer from '../../../DataProducts/DataProductsContainer/D
 import { GenericProvider } from '../../../GenericProvider/GenericProvider';
 import TagsViewer from '../../../Tag/TagsViewer/TagsViewer';
 import { DisplayType } from '../../../Tag/TagsViewer/TagsViewer.interface';
+import TopicSchemaFields from '../../../Topic/TopicSchema/TopicSchema';
 import GlossaryTermTab from '../../GlossaryTermTab/GlossaryTermTab.component';
 import { ModifiedGlossary, useGlossaryStore } from '../../useGlossary.store';
 
@@ -570,6 +571,14 @@ export const GenericWidget = (props: WidgetCommonProps) => {
         <TableConstraints
           hasPermission={false}
           tableDetails={tableClassBase.getDummyData()}
+          onUpdate={async () => noop()}
+        />
+      );
+    } else if (props.widgetKey.startsWith(DetailPageWidgetKeys.TOPIC_SCHEMA)) {
+      return (
+        <TopicSchemaFields
+          isReadOnly
+          onThreadLinkSelect={onThreadLinkSelect}
           onUpdate={async () => noop()}
         />
       );

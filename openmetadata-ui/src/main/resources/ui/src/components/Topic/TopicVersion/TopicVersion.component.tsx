@@ -156,11 +156,6 @@ const TopicVersion: FC<TopicVersionProp> = ({
                 <Col span={24}>
                   <TopicSchemaFields
                     isReadOnly
-                    isVersionView
-                    entityFqn={currentVersionData?.fullyQualifiedName ?? ''}
-                    hasDescriptionEditAccess={false}
-                    hasGlossaryTermEditAccess={false}
-                    hasTagEditAccess={false}
                     messageSchema={messageSchemaDiff}
                     schemaTypePlaceholder={schemaType}
                     onThreadLinkSelect={noop}

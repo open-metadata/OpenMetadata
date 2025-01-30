@@ -31,9 +31,14 @@ import { useTranslation } from 'react-i18next';
 import { TABLE_SCROLL_VALUE } from '../../../constants/Table.constants';
 import { CSMode } from '../../../enums/codemirror.enum';
 import { EntityType } from '../../../enums/entity.enum';
-import { DataTypeTopic, Field } from '../../../generated/entity/data/topic';
+import {
+  DataTypeTopic,
+  Field,
+  Topic,
+} from '../../../generated/entity/data/topic';
 import { TagLabel, TagSource } from '../../../generated/type/tagLabel';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { useFqn } from '../../../hooks/useFqn';
 import { getEntityName } from '../../../utils/EntityUtils';
 import {
   getAllTags,
@@ -52,6 +57,7 @@ import { ColumnFilter } from '../../Database/ColumnFilter/ColumnFilter.component
 import SchemaEditor from '../../Database/SchemaEditor/SchemaEditor';
 import TableDescription from '../../Database/TableDescription/TableDescription.component';
 import TableTags from '../../Database/TableTags/TableTags.component';
+import { useGenericContext } from '../../GenericProvider/GenericProvider';
 import { ModalWithMarkdownEditor } from '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import {
   SchemaViewType,
@@ -59,16 +65,9 @@ import {
 } from './TopicSchema.interface';
 
 const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
-  messageSchema,
   className,
-  hasDescriptionEditAccess,
   isReadOnly,
-  onUpdate,
-  hasTagEditAccess,
-  hasGlossaryTermEditAccess,
-  entityFqn,
   onThreadLinkSelect,
-  isVersionView = false,
   schemaTypePlaceholder,
 }) => {
   const { theme } = useApplicationStore();
@@ -77,6 +76,29 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
   const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
   const [viewType, setViewType] = useState<SchemaViewType>(
     SchemaViewType.FIELDS
+  );
+  const { fqn: entityFqn } = useFqn();
+  const {
+    data: topicDetails,
+    isVersionView,
+    permissions,
+    onUpdate,
+  } = useGenericContext<Topic>();
+  const { messageSchema } = topicDetails;
+
+  const {
+    hasDescriptionEditAccess,
+    hasTagEditAccess,
+    hasGlossaryTermEditAccess,
+  } = useMemo(
+    () => ({
+      hasDescriptionEditAccess:
+        permissions.EditAll ?? permissions.EditDescription,
+      hasTagEditAccess: permissions.EditAll ?? permissions.EditTags,
+      hasGlossaryTermEditAccess:
+        permissions.EditAll ?? permissions.EditGlossaryTerms,
+    }),
+    [permissions]
   );
 
   const schemaAllRowKeys = useMemo(() => {
@@ -97,7 +119,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
         selectedTags,
         schema?.schemaFields
       );
-      await onUpdate(schema);
+      await onUpdate({ ...topicDetails, messageSchema: schema });
     }
   };
 
@@ -109,7 +131,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
         updatedDescription,
         schema?.schemaFields
       );
-      await onUpdate(schema);
+      await onUpdate({ ...topicDetails, messageSchema: schema });
       setEditFieldDescription(undefined);
     } else {
       setEditFieldDescription(undefined);

@@ -31,8 +31,10 @@ import {
   Table,
   TableType,
 } from '../generated/entity/data/table';
+import { Tab } from '../generated/system/ui/uiCustomization';
 import { TestSummary } from '../generated/tests/testCase';
 import { FeedCounts } from '../interface/feed.interface';
+import { getTabLabelFromId } from './CustomizePage/CustomizePageUtils';
 import i18n from './i18next/LocalUtil';
 import { getTableDetailPageBaseTabs } from './TableUtils';
 
@@ -67,7 +69,7 @@ class TableClassBase {
     return getTableDetailPageBaseTabs(tableDetailsPageProps);
   }
 
-  public getTableDetailPageTabsIds(): EntityTabs[] {
+  public getTableDetailPageTabsIds(): Tab[] {
     return [
       EntityTabs.SCHEMA,
       EntityTabs.ACTIVITY_FEED,
@@ -78,7 +80,17 @@ class TableClassBase {
       EntityTabs.LINEAGE,
       EntityTabs.VIEW_DEFINITION,
       EntityTabs.CUSTOM_PROPERTIES,
-    ];
+    ].map((tab: EntityTabs) => ({
+      id: tab,
+      name: tab,
+      displayName: getTabLabelFromId(tab),
+      layout: this.getDefaultLayout(tab),
+      editable: [
+        EntityTabs.SCHEMA,
+        EntityTabs.OVERVIEW,
+        EntityTabs.TERMS,
+      ].includes(tab),
+    }));
   }
 
   public getDefaultLayout(tab: EntityTabs) {

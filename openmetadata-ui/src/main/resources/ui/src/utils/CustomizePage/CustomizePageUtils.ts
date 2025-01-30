@@ -18,6 +18,7 @@ import customizeGlossaryPageClassBase from '../CustomizeGlossaryPage/CustomizeGl
 import customizeGlossaryTermPageClassBase from '../CustomizeGlossaryTerm/CustomizeGlossaryTermBaseClass';
 import i18n from '../i18next/LocalUtil';
 import tableClassBase from '../TableClassBase';
+import topicClassBase from '../TopicClassBase';
 
 export const getGlossaryTermDefaultTabs = () => {
   return [
@@ -127,20 +128,14 @@ export const getTabLabelFromId = (tab: EntityTabs) => {
   }
 };
 
-const getCustomizeTabObject = (tab: EntityTabs) => ({
-  id: tab,
-  name: tab,
-  displayName: getTabLabelFromId(tab),
-  layout: tableClassBase.getDefaultLayout(tab),
-  editable: [EntityTabs.SCHEMA, EntityTabs.OVERVIEW, EntityTabs.TERMS].includes(
-    tab
-  ),
-});
-
 export const getTableDefaultTabs = () => {
-  const tabs = tableClassBase
-    .getTableDetailPageTabsIds()
-    .map(getCustomizeTabObject);
+  const tabs = tableClassBase.getTableDetailPageTabsIds();
+
+  return tabs;
+};
+
+export const getTopicDefaultTabs = () => {
+  const tabs = topicClassBase.getTopicDetailPageTabsIds();
 
   return tabs;
 };
@@ -153,6 +148,8 @@ export const getDefaultTabs = (pageType?: string): Tab[] => {
       return getGlossaryDefaultTabs();
     case PageType.Table:
       return getTableDefaultTabs();
+    case PageType.Topic:
+      return getTopicDefaultTabs();
     case PageType.Container:
     default:
       return [
@@ -175,6 +172,8 @@ export const getDefaultWidgetForTab = (pageType: PageType, tab: EntityTabs) => {
       return customizeGlossaryTermPageClassBase.getDefaultWidgetForTab(tab);
     case PageType.Table:
       return tableClassBase.getDefaultLayout(tab);
+    case PageType.Topic:
+      return topicClassBase.getDefaultLayout(tab);
     default:
       return [];
   }
@@ -214,6 +213,8 @@ export const getCustomizableWidgetByPage = (
 
     case PageType.Table:
       return tableClassBase.getCommonWidgetList();
+    case PageType.Topic:
+      return topicClassBase.getCommonWidgetList();
     case PageType.LandingPage:
     default:
       return [];
@@ -224,6 +225,8 @@ export const getDummyDataByPage = (pageType: PageType) => {
   switch (pageType) {
     case PageType.Table:
       return tableClassBase.getDummyData();
+    case PageType.Topic:
+      return topicClassBase.getDummyData();
 
     case PageType.LandingPage:
     default:

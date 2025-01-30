@@ -274,6 +274,34 @@ export const CustomizablePage = () => {
           onSaveLayout={handlePageCustomizeSave}
         />
       );
+    case PageType.StoredProcedure:
+      return (
+        <CustomizeTableDetailPage
+          initialPageData={currentPage}
+          isGlossary={false}
+          personaDetails={personaDetails}
+          onSaveLayout={handlePageCustomizeSave}
+        />
+      );
+    case PageType.Topic:
+      return (
+        <CustomizeTableDetailPage
+          initialPageData={currentPage}
+          isGlossary={false}
+          personaDetails={personaDetails}
+          onSaveLayout={handlePageCustomizeSave}
+        />
+      );
+    case PageType.DashboardDataModel:
+      return (
+        <CustomizeTableDetailPage
+          initialPageData={currentPage}
+          isGlossary={false}
+          personaDetails={personaDetails}
+          onSaveLayout={handlePageCustomizeSave}
+        />
+      );
+
     default:
       return <ErrorPlaceHolder />;
   }
