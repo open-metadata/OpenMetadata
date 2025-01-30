@@ -307,6 +307,13 @@ export const INGESTION_WORKFLOW_UI_SCHEMA = {
   ],
 };
 
+export const EXCLUDE_INCREMENTAL_EXTRACTION_SUPPORT_UI_SCHEMA = {
+  incremental: {
+    'ui:widget': 'hidden',
+    'ui:hideError': true,
+  },
+};
+
 export const COMMON_UI_SCHEMA = {
   ...DEF_UI_SCHEMA,
   connection: {
@@ -445,6 +452,7 @@ export const ADVANCED_PROPERTIES = [
   'sslConfig',
   'sslMode',
   'schemaRegistrySSL',
+  'consumerConfigSSL',
   'verify',
 ];
 

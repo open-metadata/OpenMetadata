@@ -139,6 +139,12 @@ const _convertMarkdownStringToHtmlString = new Showdown.Converter({
   ellipsis: false,
 });
 
+export const getHtmlStringFromMarkdownString = (content: string) => {
+  return isHTMLString(content)
+    ? content
+    : _convertMarkdownStringToHtmlString.makeHtml(content);
+};
+
 /**
  * Set the content of the editor
  * @param editor The editor instance
@@ -146,7 +152,7 @@ const _convertMarkdownStringToHtmlString = new Showdown.Converter({
  */
 export const setEditorContent = (editor: Editor, newContent: string) => {
   // Convert the markdown string to an HTML string
-  const htmlString = _convertMarkdownStringToHtmlString.makeHtml(newContent);
+  const htmlString = getHtmlStringFromMarkdownString(newContent);
 
   editor.commands.setContent(htmlString);
 

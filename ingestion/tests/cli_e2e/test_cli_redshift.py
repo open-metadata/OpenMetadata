@@ -101,7 +101,7 @@ class RedshiftCliTest(CliCommonDB.TestSuite, SQACommonMethods):
     def expected_tables() -> int:
         return 5
 
-    def inserted_rows_count(self) -> int:
+    def expected_sample_size(self) -> int:
         return 50
 
     def view_column_lineage_count(self) -> int:
