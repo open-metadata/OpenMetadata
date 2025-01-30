@@ -94,7 +94,7 @@ const RolesDetailPage = () => {
     DEFAULT_ENTITY_PERMISSION
   );
   const [isNameEditing, setIsNameEditing] = useState<boolean>(false);
-  const [showActions, setShowActions] = useState(false);
+  const [showActions, setShowActions] = useState<boolean>(false);
   const [isDelete, setIsDelete] = useState<boolean>(false);
 
   const rolesPath = getSettingPath(

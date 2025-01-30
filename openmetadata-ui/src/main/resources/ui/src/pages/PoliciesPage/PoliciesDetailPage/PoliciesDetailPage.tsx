@@ -25,24 +25,36 @@ import {
   Tooltip,
   Typography,
 } from 'antd';
+import ButtonGroup from 'antd/lib/button/button-group';
+import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import { isEmpty, isUndefined, startCase } from 'lodash';
+import { cloneDeep, isEmpty, isUndefined, startCase } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as IconDelete } from '../../../assets/svg/ic-delete.svg';
+import { ReactComponent as IconDropdown } from '../../../assets/svg/menu.svg';
+import PolicyIcon from '../../../assets/svg/policies-colored.svg';
+import DeleteWidgetModal from '../../../components/common/DeleteWidget/DeleteWidgetModal';
 import DescriptionV1 from '../../../components/common/EntityDescription/DescriptionV1';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../../components/common/Loader/Loader';
+import { ManageButtonItemLabel } from '../../../components/common/ManageButtonContentItem/ManageButtonContentItem.component';
 import RichTextEditorPreviewerV1 from '../../../components/common/RichTextEditor/RichTextEditorPreviewerV1';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
+import EntityNameModal from '../../../components/Modals/EntityNameModal/EntityNameModal.component';
 import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
 } from '../../../constants/GlobalSettings.constants';
+import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
+import {
+  OperationPermission,
+  ResourceEntity,
+} from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
 import { Rule } from '../../../generated/api/policies/createPolicy';
 import { Policy } from '../../../generated/entity/policies/policy';
@@ -56,6 +68,7 @@ import {
 } from '../../../rest/rolesAPIV1';
 import { getTeamByName, patchTeamDetail } from '../../../rest/teamsAPI';
 import { getEntityName } from '../../../utils/EntityUtils';
+import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import {
   getAddPolicyRulePath,
   getEditPolicyRulePath,
@@ -73,6 +86,7 @@ const PoliciesDetailPage = () => {
   const { t } = useTranslation();
   const history = useHistory();
   const { fqn } = useFqn();
+  const { getEntityPermission } = usePermissionProvider();
 
   const [policy, setPolicy] = useState<Policy>({} as Policy);
   const [isLoading, setLoading] = useState<boolean>(false);
@@ -80,6 +94,12 @@ const PoliciesDetailPage = () => {
   const [editDescription, setEditDescription] = useState<boolean>(false);
   const [selectedEntity, setEntity] =
     useState<{ attribute: Attribute; record: EntityReference }>();
+  const [policyPermission, setPolicyPermission] = useState<OperationPermission>(
+    DEFAULT_ENTITY_PERMISSION
+  );
+  const [isNameEditing, setIsNameEditing] = useState<boolean>(false);
+  const [showActions, setShowActions] = useState<boolean>(false);
+  const [isDelete, setIsDelete] = useState<boolean>(false);
 
   const policiesPath = getSettingPath(
     GlobalSettingsMenuCategory.ACCESS,
@@ -101,6 +121,103 @@ const PoliciesDetailPage = () => {
     ],
     [policyName, policiesPath]
   );
+
+  const fetchPolicyPermission = async () => {
+    try {
+      if (policy) {
+        const response = await getEntityPermission(
+          ResourceEntity.POLICY,
+          policy.id
+        );
+        setPolicyPermission(response);
+      }
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
+
+  const editDisplayNamePermission = useMemo(() => {
+    return policyPermission.EditAll || policyPermission.EditDisplayName;
+  }, [policyPermission]);
+
+  const manageButtonContent: ItemType[] = [
+    ...(editDisplayNamePermission
+      ? ([
+          {
+            label: (
+              <ManageButtonItemLabel
+                description={t('message.rename-entity', {
+                  entity: t('label.policy'),
+                })}
+                icon={EditIcon}
+                id="rename-button"
+                name={t('label.rename')}
+              />
+            ),
+            key: 'rename-button',
+            onClick: (e) => {
+              e.domEvent.stopPropagation();
+              setIsNameEditing(true);
+              setShowActions(false);
+            },
+          },
+        ] as ItemType[])
+      : []),
+    ...(policyPermission.Delete
+      ? ([
+          {
+            label: (
+              <ManageButtonItemLabel
+                description={t(
+                  'message.delete-entity-type-action-description',
+                  {
+                    entityType: t('label.policy'),
+                  }
+                )}
+                icon={IconDelete}
+                id="delete-button"
+                name={t('label.delete')}
+              />
+            ),
+            key: 'delete-button',
+            onClick: (e) => {
+              e.domEvent.stopPropagation();
+              setIsDelete(true);
+              setShowActions(false);
+            },
+          },
+        ] as ItemType[])
+      : []),
+  ];
+
+  const onDisplayNameSave = (obj: { name: string; displayName?: string }) => {
+    const { displayName } = obj;
+    let updatedDetails = cloneDeep(policy);
+
+    updatedDetails = {
+      ...policy,
+      displayName: displayName?.trim(),
+    };
+
+    handlePolicyUpdate(updatedDetails);
+    setIsNameEditing(false);
+  };
+
+  const handlePolicyUpdate = async (updatedData: Policy) => {
+    if (policy) {
+      const jsonPatch = compare(policy, updatedData);
+      try {
+        const response = await patchPolicy(jsonPatch, policy.id);
+        setPolicy(response);
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      }
+    }
+  };
+
+  const handlePolicyDelete = () => {
+    history.push(policiesPath);
+  };
 
   const fetchPolicy = async () => {
     setLoading(true);
@@ -303,6 +420,10 @@ const PoliciesDetailPage = () => {
     fetchPolicy();
   }, [fqn]);
 
+  useEffect(() => {
+    fetchPolicyPermission();
+  }, [policy.fullyQualifiedName]);
+
   if (isLoading) {
     return <Loader />;
   }
@@ -332,12 +453,67 @@ const PoliciesDetailPage = () => {
             </ErrorPlaceHolder>
           ) : (
             <div className="policies-detail" data-testid="policy-details">
-              <Typography.Title
-                className="m-b-0 m-t-xs"
-                data-testid="heading"
-                level={5}>
-                {policyName}
-              </Typography.Title>
+              <Row className="flex justify-between">
+                <Col className="flex items-center gap-2">
+                  <div>
+                    <img
+                      alt="policy-icon"
+                      className="align-middle"
+                      data-testid="icon"
+                      height={36}
+                      src={PolicyIcon}
+                      width={32}
+                    />
+                  </div>
+                  <div className="m-t-xs">
+                    {!isEmpty(policy.displayName) ? (
+                      <Typography.Text
+                        className="m-b-0 d-block text-grey-muted"
+                        data-testid="policy-header-name">
+                        {policy.name}
+                      </Typography.Text>
+                    ) : null}
+                    <Typography.Text
+                      className="m-b-0 d-block entity-header-display-name text-lg font-semibold"
+                      data-testid="heading">
+                      {policy.displayName || policy.name}
+                    </Typography.Text>
+                  </div>
+                </Col>
+                <Col>
+                  <ButtonGroup className="p-l-xs mt--1" size="small">
+                    {manageButtonContent.length > 0 && (
+                      <Dropdown
+                        align={{ targetOffset: [-12, 0] }}
+                        className="m-l-xs"
+                        menu={{
+                          items: manageButtonContent,
+                        }}
+                        open={showActions}
+                        overlayClassName="domain-manage-dropdown-list-container"
+                        overlayStyle={{ width: '350px' }}
+                        placement="bottomRight"
+                        trigger={['click']}
+                        onOpenChange={setShowActions}>
+                        <Tooltip
+                          placement="topRight"
+                          title={t('label.manage-entity', {
+                            entity: t('label.policy'),
+                          })}>
+                          <Button
+                            className="domain-manage-dropdown-button tw-px-1.5"
+                            data-testid="manage-button"
+                            icon={
+                              <IconDropdown className="vertical-align-inherit manage-dropdown-icon" />
+                            }
+                            onClick={() => setShowActions(true)}
+                          />
+                        </Tooltip>
+                      </Dropdown>
+                    )}
+                  </ButtonGroup>
+                </Col>
+              </Row>
               <DescriptionV1
                 hasEditAccess
                 className="m-y-md"
@@ -515,6 +691,28 @@ const PoliciesDetailPage = () => {
             </Typography.Text>
           </Modal>
         )}
+        {policy && (
+          <DeleteWidgetModal
+            afterDeleteAction={() => handlePolicyDelete()}
+            allowSoftDelete={false}
+            entityId={policy.id}
+            entityName={getEntityName(policy)}
+            entityType={EntityType.POLICY}
+            visible={isDelete}
+            onCancel={() => {
+              setIsDelete(false);
+            }}
+          />
+        )}
+        <EntityNameModal<Policy>
+          entity={policy}
+          title={t('label.edit-entity', {
+            entity: t('label.display-name'),
+          })}
+          visible={isNameEditing}
+          onCancel={() => setIsNameEditing(false)}
+          onSave={onDisplayNameSave}
+        />
       </div>
     </PageLayoutV1>
   );
