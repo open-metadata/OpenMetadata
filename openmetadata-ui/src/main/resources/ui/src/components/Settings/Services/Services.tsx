@@ -48,7 +48,7 @@ import { DatabaseServiceSearchSource } from '../../../interface/search.interface
 import { ServicesType } from '../../../interface/service.interface';
 import { getServices, searchService } from '../../../rest/serviceAPI';
 import { getServiceLogo } from '../../../utils/CommonUtils';
-import { getEntityName } from '../../../utils/EntityUtils';
+import { getEntityName, highlightSearchText } from '../../../utils/EntityUtils';
 import { checkPermission } from '../../../utils/PermissionsUtils';
 import { getAddServicePath } from '../../../utils/RouterUtils';
 import {
@@ -56,6 +56,7 @@ import {
   getResourceEntityFromServiceCategory,
   getServiceTypesFromServiceCategory,
 } from '../../../utils/ServiceUtils';
+import { stringToHTML } from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { ListView } from '../../common/ListView/ListView.component';
@@ -314,7 +315,9 @@ const Services = ({ serviceName }: ServicesProps) => {
               record.fullyQualifiedName ?? record.name,
               serviceName
             )}>
-            {getEntityName(record)}
+            {stringToHTML(
+              highlightSearchText(getEntityName(record), searchTerm)
+            )}
           </Link>
         </div>
       ),
@@ -329,7 +332,7 @@ const Services = ({ serviceName }: ServicesProps) => {
           <RichTextEditorPreviewerV1
             className="max-two-lines"
             enableSeeMoreVariant={false}
-            markdown={description}
+            markdown={highlightSearchText(description, searchTerm)}
           />
         ) : (
           <span className="text-grey-muted">{t('label.no-description')}</span>
@@ -352,7 +355,9 @@ const Services = ({ serviceName }: ServicesProps) => {
       filteredValue: serviceTypeFilter,
       filters: serviceTypeFilters,
       render: (serviceType) => (
-        <span className="font-normal text-grey-body">{serviceType}</span>
+        <span className="font-normal text-grey-body">
+          {stringToHTML(highlightSearchText(serviceType, searchTerm))}
+        </span>
       ),
     },
     {

@@ -33,4 +33,5 @@ export interface ExploreSearchCardProps {
   hideBreadcrumbs?: boolean;
   actionPopoverContent?: React.ReactNode;
   onCheckboxChange?: (checked: boolean) => void;
+  searchValue?: string;
 }

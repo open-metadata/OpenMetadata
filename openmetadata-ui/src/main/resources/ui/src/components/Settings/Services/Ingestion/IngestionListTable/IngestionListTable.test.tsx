@@ -98,12 +98,21 @@ jest.mock('../../../../common/NextPrevious/NextPrevious', () =>
 );
 
 jest.mock('../../../../../utils/IngestionListTableUtils', () => ({
-  renderNameField: jest.fn().mockImplementation(() => <div>nameField</div>),
+  renderNameField: jest
+    .fn()
+    .mockImplementation(() => () => <div>nameField</div>),
   renderScheduleField: jest
     .fn()
     .mockImplementation(() => <div>scheduleField</div>),
   renderStatusField: jest.fn().mockImplementation(() => <div>statusField</div>),
-  renderTypeField: jest.fn().mockImplementation(() => <div>typeField</div>),
+  renderTypeField: jest
+    .fn()
+    .mockImplementation(() => () => <div>typeField</div>),
+}));
+
+jest.mock('../../../../../utils/EntityUtils', () => ({
+  ...jest.requireActual('../../../../../utils/EntityUtils'),
+  highlightSearchText: jest.fn((text) => text),
 }));
 
 describe('Ingestion', () => {

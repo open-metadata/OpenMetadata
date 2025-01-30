@@ -33,7 +33,10 @@ import { UseAirflowStatusProps } from '../../../../../hooks/useAirflowStatus';
 import { useApplicationStore } from '../../../../../hooks/useApplicationStore';
 import { deleteIngestionPipelineById } from '../../../../../rest/ingestionPipelineAPI';
 import { Transi18next } from '../../../../../utils/CommonUtils';
-import { getEntityName } from '../../../../../utils/EntityUtils';
+import {
+  getEntityName,
+  highlightSearchText,
+} from '../../../../../utils/EntityUtils';
 import {
   renderNameField,
   renderScheduleField,
@@ -81,6 +84,7 @@ function IngestionListTable({
   triggerIngestion,
   customRenderNameField,
   tableClassName,
+  searchText,
 }: Readonly<IngestionListTableProps>) {
   const { t } = useTranslation();
   const { theme } = useApplicationStore();
@@ -250,7 +254,7 @@ function IngestionListTable({
         title: t('label.name'),
         dataIndex: 'name',
         key: 'name',
-        render: customRenderNameField ?? renderNameField,
+        render: customRenderNameField ?? renderNameField(searchText),
       },
       ...(showDescriptionCol
         ? [
@@ -261,7 +265,7 @@ function IngestionListTable({
               render: (description: string) =>
                 !isUndefined(description) && description.trim() ? (
                   <RichTextEditorPreviewerV1
-                    markdown={description}
+                    markdown={highlightSearchText(description, searchText)}
                     maxLength={MAX_CHAR_LIMIT_ENTITY_SUMMARY}
                   />
                 ) : (
@@ -280,7 +284,7 @@ function IngestionListTable({
           dataIndex: 'pipelineType',
           key: 'pipelineType',
           width: 120,
-          render: renderTypeField,
+          render: renderTypeField(searchText),
         },
       ]),
       {
