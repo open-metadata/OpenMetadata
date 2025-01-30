@@ -12,10 +12,12 @@
 """
 Module to define overriden dialect methods
 """
-
+import operator
+from functools import reduce
 from typing import Dict, Optional
 
 import sqlalchemy.types as sqltypes
+from snowflake.sqlalchemy.snowdialect import SnowflakeDialect
 from sqlalchemy import exc as sa_exc
 from sqlalchemy import util as sa_util
 from sqlalchemy.engine import reflection
@@ -52,6 +54,7 @@ from metadata.utils.sqlalchemy_utils import (
     get_table_comment_wrapper,
 )
 
+dialect = SnowflakeDialect()
 Query = str
 QueryMap = Dict[str, Query]
 
@@ -83,38 +86,18 @@ VIEW_QUERY_MAPS = {
 }
 
 
-def format_full_schema_name(
-    full_schema_name: str, original_schema: str, current_database: str
-) -> str:
-    """
-    Adds quotes to lowercase database or schema name to remove `not exist or not authorized` error
-    """
-    parts = []
-    current_part = ""
-    in_quotes = False
-
-    for char in full_schema_name:
-        if char == '"':
-            in_quotes = not in_quotes
-            current_part += char
-        elif char == "." and not in_quotes:
-            if current_part:
-                parts.append(current_part)
-                current_part = ""
-        else:
-            current_part += char
-
-    if current_part:
-        parts.append(current_part)
-
-    db_name, schema_name = parts
-    if not db_name.startswith('"') and not db_name.endswith('"'):
-        db_name = f'"{db_name}"'
-
-    if not schema_name.startswith('"') and not schema_name.endswith('"'):
-        schema_name = f'"{schema_name}"'
-
-    return f"{db_name}.{schema_name}"
+def _denormalize_quote_join(*idents):
+    ip = dialect.identifier_preparer
+    split_idents = reduce(
+        operator.add,
+        [ip._split_schema_by_dot(ids) for ids in idents if ids is not None],
+    )
+    quoted_identifiers = ip._quote_free_identifiers(*split_idents)
+    normalized_identifiers = (
+        item if item.startswith('"') and item.endswith('"') else f'"{item}"'
+        for item in quoted_identifiers
+    )
+    return ".".join(normalized_identifiers)
 
 
 def _quoted_name(entity_name: Optional[str]) -> Optional[str]:
@@ -290,12 +273,7 @@ def get_schema_columns(self, connection, schema, **kw):
     None, as it is cacheable and is an unexpected return type for this function"""
     ans = {}
     current_database, _ = self._current_database_schema(connection, **kw)
-    full_schema_name = self._denormalize_quote_join(
-        current_database, fqn.quote_name(schema)
-    )
-    full_schema_name = format_full_schema_name(
-        full_schema_name, schema, current_database
-    )
+    full_schema_name = _denormalize_quote_join(current_database, fqn.quote_name(schema))
     try:
         schema_primary_keys = self._get_schema_primary_keys(
             connection, full_schema_name, **kw
@@ -400,11 +378,8 @@ def get_pk_constraint(self, connection, table_name, schema=None, **kw):
     schema = schema or self.default_schema_name
     schema = _quoted_name(entity_name=schema)
     current_database, current_schema = self._current_database_schema(connection, **kw)
-    full_schema_name = self._denormalize_quote_join(
+    full_schema_name = _denormalize_quote_join(
         current_database, schema if schema else current_schema
-    )
-    full_schema_name = format_full_schema_name(
-        full_schema_name, schema if schema else current_schema, current_database
     )
 
     return self._get_schema_primary_keys(
@@ -420,12 +395,10 @@ def get_foreign_keys(self, connection, table_name, schema=None, **kw):
     schema = schema or self.default_schema_name
     schema = _quoted_name(entity_name=schema)
     current_database, current_schema = self._current_database_schema(connection, **kw)
-    full_schema_name = self._denormalize_quote_join(
+    full_schema_name = _denormalize_quote_join(
         current_database, schema if schema else current_schema
     )
-    full_schema_name = format_full_schema_name(
-        full_schema_name, schema if schema else current_schema, current_database
-    )
+
     foreign_key_map = self._get_schema_foreign_keys(
         connection, self.denormalize_name(full_schema_name), **kw
     )
@@ -496,12 +469,10 @@ def get_unique_constraints(self, connection, table_name, schema, **kw):
     schema = schema or self.default_schema_name
     schema = _quoted_name(entity_name=schema)
     current_database, current_schema = self._current_database_schema(connection, **kw)
-    full_schema_name = self._denormalize_quote_join(
+    full_schema_name = _denormalize_quote_join(
         current_database, schema if schema else current_schema
     )
-    full_schema_name = format_full_schema_name(
-        full_schema_name, schema if schema else current_schema, current_database
-    )
+
     return self._get_schema_unique_constraints(
         connection, self.denormalize_name(full_schema_name), **kw
     ).get(table_name, [])
