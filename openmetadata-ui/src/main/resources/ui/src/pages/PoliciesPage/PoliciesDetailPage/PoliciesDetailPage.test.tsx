@@ -63,6 +63,10 @@ jest.mock('../../../components/common/Loader/Loader', () =>
   jest.fn().mockReturnValue(<div>Loader</div>)
 );
 
+jest.mock('../../../components/common/DeleteWidget/DeleteWidgetModal', () =>
+  jest.fn().mockReturnValue(<div>DeleteWidgetModal</div>)
+);
+
 jest.mock('../../../constants/HelperTextUtil', () => ({
   NO_PERMISSION_FOR_ACTION: '',
   NO_PERMISSION_TO_VIEW: '',

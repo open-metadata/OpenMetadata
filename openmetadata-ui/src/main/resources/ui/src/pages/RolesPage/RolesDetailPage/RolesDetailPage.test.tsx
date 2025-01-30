@@ -49,6 +49,10 @@ jest.mock('../../../components/common/Loader/Loader', () =>
   jest.fn().mockReturnValue(<div data-testid="loader">Loader</div>)
 );
 
+jest.mock('../../../components/common/DeleteWidget/DeleteWidgetModal', () =>
+  jest.fn().mockReturnValue(<div>DeleteWidgetModal</div>)
+);
+
 jest.mock('../../../constants/constants', () => ({
   getUserPath: jest.fn(),
 }));
