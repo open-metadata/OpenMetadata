@@ -140,9 +140,20 @@ jest.mock('../../../rest/serviceAPI', () => ({
   searchService: mockSearchService,
 }));
 
-jest.mock('../../../utils/EntityUtils', () => ({
-  getEntityName: jest.fn().mockReturnValue('Glue'),
+jest.mock('../../../utils/StringsUtils', () => ({
+  ...jest.requireActual('../../../utils/StringsUtils'),
+  stringToHTML: jest.fn((text) => text),
 }));
+
+jest.mock('../../../utils/EntityUtils', () => {
+  const actual = jest.requireActual('../../../utils/EntityUtils');
+
+  return {
+    ...actual,
+    getEntityName: jest.fn().mockReturnValue('Glue'),
+    highlightSearchText: jest.fn((text) => text),
+  };
+});
 
 jest.mock('../../../utils/PermissionsUtils', () => ({
   checkPermission: jest.fn().mockReturnValue(true),
