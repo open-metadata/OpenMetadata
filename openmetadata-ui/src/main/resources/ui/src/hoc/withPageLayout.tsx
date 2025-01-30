@@ -15,7 +15,7 @@ import { useTranslation } from 'react-i18next';
 import PageLayoutV1 from '../components/PageLayoutV1/PageLayoutV1';
 
 export const withPageLayout =
-  <P extends unknown>(pageTitleKey: string) =>
+  <P,>(pageTitleKey: string) =>
   (Component: FC<P>) => {
     const WrappedComponent: FC<P> = (props) => {
       const { t } = useTranslation();
