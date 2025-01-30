@@ -54,6 +54,13 @@ export class DashboardClass extends EntityClass {
   };
   children = [
     {
+      name: 'merchant',
+      dataType: 'VARCHAR',
+      dataLength: 256,
+      dataTypeDisplay: 'varchar',
+      description: 'merchant',
+    },
+    {
       name: 'country_name',
       dataType: 'VARCHAR',
       dataLength: 256,
