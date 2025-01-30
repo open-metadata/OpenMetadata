@@ -12,7 +12,11 @@
  */
 import test from '@playwright/test';
 import { SidebarItem } from '../../constant/sidebar';
+import { Domain } from '../../support/domain/Domain';
+import { ApiCollectionClass } from '../../support/entity/ApiCollectionClass';
 import { DashboardClass } from '../../support/entity/DashboardClass';
+import { MlModelClass } from '../../support/entity/MlModelClass';
+import { PipelineClass } from '../../support/entity/PipelineClass';
 import { TableClass } from '../../support/entity/TableClass';
 import { TopicClass } from '../../support/entity/TopicClass';
 import { TagClass } from '../../support/tag/TagClass';
@@ -23,7 +27,11 @@ import {
   runRuleGroupTests,
   verifyAllConditions,
 } from '../../utils/advancedSearch';
-import { createNewPage, redirectToHomePage } from '../../utils/common';
+import {
+  assignDomain,
+  createNewPage,
+  redirectToHomePage,
+} from '../../utils/common';
 import { addMultiOwner, assignTag, assignTier } from '../../utils/entity';
 import { sidebarClick } from '../../utils/sidebar';
 
@@ -41,6 +49,12 @@ test.describe('Advanced Search', { tag: '@advanced-search' }, () => {
   const tierTag2 = new TagClass({ classification: 'Tier' });
   const dashboard1 = new DashboardClass();
   const dashboard2 = new DashboardClass();
+  const domain1 = new Domain();
+  const domain2 = new Domain();
+  const apiCollection1 = new ApiCollectionClass();
+  const apiCollection2 = new ApiCollectionClass();
+  const mlModel1 = new MlModelClass();
+  const pipeline1 = new PipelineClass();
 
   let searchCriteria: Record<string, any> = {};
 
@@ -59,6 +73,12 @@ test.describe('Advanced Search', { tag: '@advanced-search' }, () => {
       tierTag2.create(apiContext),
       dashboard1.create(apiContext),
       dashboard2.create(apiContext),
+      domain1.create(apiContext),
+      domain2.create(apiContext),
+      apiCollection1.create(apiContext),
+      apiCollection2.create(apiContext),
+      mlModel1.create(apiContext),
+      pipeline1.create(apiContext),
     ]);
 
     // Add Owner & Tag to the table
@@ -72,6 +92,7 @@ test.describe('Advanced Search', { tag: '@advanced-search' }, () => {
       type: 'Users',
     });
     await assignTag(page, 'PersonalData.Personal');
+    await assignDomain(page, domain1.data);
 
     await table2.visitEntityPage(page);
     await addMultiOwner({
@@ -83,6 +104,7 @@ test.describe('Advanced Search', { tag: '@advanced-search' }, () => {
       type: 'Users',
     });
     await assignTag(page, 'PII.None');
+    await assignDomain(page, domain2.data);
 
     // Add Tier To the topic 1
     await topic1.visitEntityPage(page);
@@ -119,15 +141,43 @@ test.describe('Advanced Search', { tag: '@advanced-search' }, () => {
         dashboard1.charts.displayName,
         dashboard2.charts.displayName,
       ],
-      'messageSchema.schemaFields.name.keyword': ['AddressBook', 'Customer'],
-      'dataModel.columns.name.keyword': ['approved', 'department_id'],
+      'messageSchema.schemaFields.name.keyword': [
+        topic1.entity.messageSchema.schemaFields[0].name,
+        topic1.entity.messageSchema.schemaFields[1].name,
+      ],
+      'dataModel.columns.name.keyword': [
+        dashboard1.dataModel.columns[0].name,
+        dashboard1.dataModel.columns[1].name,
+      ],
       'dataModels.displayName.keyword': ['orders', 'operations'],
-      dataModelType: ['LookMlExplore', 'LookMlView'],
+      dataModelType: [
+        dashboard1.dataModel.dataModelType,
+        dashboard2.dataModel.dataModelType,
+      ],
       entityType: ['container', 'dashboard'],
-      'mlFeatures.name': ['persona', 'sales'],
+      'mlFeatures.name': [
+        mlModel1.entity.mlFeatures[0].name,
+        mlModel1.entity.mlFeatures[1].name,
+      ],
       'fields.name.keyword': ['Columns', 'Description'],
       tableType: ['Regular', 'Iceberg'],
-      'tasks.displayName.keyword': ['Assert Table Exists', 'Presto Task'],
+      'tasks.displayName.keyword': [
+        pipeline1.entity.tasks[0].displayName,
+        pipeline1.entity.tasks[1].displayName,
+      ],
+      'domain.displayName.keyword': [
+        domain1.data.displayName,
+        domain2.data.displayName,
+      ],
+      'responseSchema.schemaFields.name.keyword': [
+        apiCollection1.apiEndpoint.responseSchema.schemaFields[0].name,
+        apiCollection1.apiEndpoint.responseSchema.schemaFields[1].name,
+      ],
+      'requestSchema.schemaFields.name.keyword': [
+        apiCollection1.apiEndpoint.requestSchema.schemaFields[0].name,
+        apiCollection1.apiEndpoint.requestSchema.schemaFields[1].name,
+      ],
+      'name.keyword': [table1.entity.name, table2.entity.name],
     };
 
     await afterAction();
@@ -146,6 +196,12 @@ test.describe('Advanced Search', { tag: '@advanced-search' }, () => {
       tierTag2.delete(apiContext),
       dashboard1.delete(apiContext),
       dashboard2.delete(apiContext),
+      domain1.delete(apiContext),
+      domain2.delete(apiContext),
+      apiCollection1.delete(apiContext),
+      apiCollection2.delete(apiContext),
+      mlModel1.delete(apiContext),
+      pipeline1.delete(apiContext),
     ]);
     await afterAction();
   });

@@ -118,6 +118,27 @@ export const FIELDS: EntityFields[] = [
     name: 'tasks.displayName.keyword',
     localSearch: false,
   },
+  {
+    id: 'Domain',
+    name: 'domain.displayName.keyword',
+    localSearch: false,
+  },
+  {
+    id: 'Response Schema Field',
+    name: 'responseSchema.schemaFields.name.keyword',
+    localSearch: false,
+  },
+  {
+    id: 'Request Schema Field',
+    name: 'requestSchema.schemaFields.name.keyword',
+    localSearch: false,
+  },
+  {
+    id: 'Name',
+    name: 'name.keyword',
+    localSearch: false,
+    skipConditions: ['isNull', 'isNotNull'], // Null and isNotNull conditions are not present for name
+  },
 ];
 
 export const OPERATOR = {
