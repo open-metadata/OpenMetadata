@@ -627,6 +627,8 @@ public class FeedRepository {
               } else if (taskStatus.equals("Closed")) {
                 threadCount.setClosedTaskCount(count);
               }
+            } else if (type.equalsIgnoreCase("Announcement")) {
+              threadCount.setAnnouncementCount(count);
             }
             computeTotalTaskCount(threadCount);
             threadCounts.add(threadCount);
@@ -656,6 +658,8 @@ public class FeedRepository {
               } else if (taskStatus.equals("Closed")) {
                 threadCount.setClosedTaskCount(count);
               }
+            } else if (type.equalsIgnoreCase("Announcement")) {
+              threadCount.setAnnouncementCount(count);
             }
             computeTotalTaskCount(threadCount);
             threadCounts.add(threadCount);
