@@ -4,12 +4,12 @@ import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.service.events.errors.EventPublisherException;
-import org.openmetadata.service.events.scheduled.ConsumerService;
+import org.openmetadata.service.util.DIContainer;
 
 @Slf4j
 public class AlertPublisher extends AbstractEventConsumer {
-  public AlertPublisher(ConsumerService consumerService) {
-    super(consumerService);
+  public AlertPublisher(DIContainer di) {
+    super(di);
   }
 
   @Override

@@ -78,7 +78,7 @@
     "alertType": {
       "description": "Type of Alerts supported.",
       "type": "string",
-      "enum": ["Notification", "Observability", "ActivityFeed", "GovernanceWorkflowChangeEvent"],
+      "enum": ["Notification", "Observability", "ActivityFeed", "GovernanceWorkflowChangeEvent", "Custom"],
       "default": "Notification"
     },
     "subscriptionCategory": {

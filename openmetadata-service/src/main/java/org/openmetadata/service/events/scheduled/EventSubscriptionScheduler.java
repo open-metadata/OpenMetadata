@@ -72,15 +72,14 @@ public class EventSubscriptionScheduler {
   private static volatile boolean initialized = false;
   private final Scheduler alertsScheduler = new StdSchedulerFactory().getScheduler();
 
-  private record CustomJobFactory(ConsumerService consumerService) implements JobFactory {
+  private record CustomJobFactory(DIContainer di) implements JobFactory {
 
     @Override
     public Job newJob(TriggerFiredBundle bundle, Scheduler scheduler) throws SchedulerException {
       try {
         JobDetail jobDetail = bundle.getJobDetail();
         Class<? extends Job> jobClass = jobDetail.getJobClass();
-        Job job =
-            jobClass.getDeclaredConstructor(ConsumerService.class).newInstance(consumerService);
+        Job job = jobClass.getDeclaredConstructor(DIContainer.class).newInstance(di);
         return job;
       } catch (Exception e) {
         throw new SchedulerException("Failed to create job instance", e);
@@ -92,8 +91,7 @@ public class EventSubscriptionScheduler {
       throws SchedulerException {
     DIContainer di = new DIContainer();
     di.registerResource(PipelineServiceClientInterface.class, pipelineServiceClient);
-    ConsumerService consumerService = new ConsumerServiceImpl(di);
-    this.alertsScheduler.setJobFactory(new CustomJobFactory(consumerService));
+    this.alertsScheduler.setJobFactory(new CustomJobFactory(di));
     this.alertsScheduler.start();
   }
 
@@ -135,9 +133,10 @@ public class EventSubscriptionScheduler {
                 Optional.ofNullable(eventSubscription.getClassName())
                     .orElse(defaultClass.getCanonicalName()))
             .asSubclass(AbstractEventConsumer.class);
-    ConsumerService consumerService = new ConsumerServiceImpl(null);
+    // we can use an empty dependency container here because when initializing the
+    // the consumer it does need to access any state
     AbstractEventConsumer publisher =
-        clazz.getDeclaredConstructor(ConsumerService.class).newInstance(consumerService);
+        clazz.getDeclaredConstructor(DIContainer.class).newInstance(new DIContainer());
     if (reinstall && isSubscriptionRegistered(eventSubscription)) {
       deleteEventSubscriptionPublisher(eventSubscription);
     }
