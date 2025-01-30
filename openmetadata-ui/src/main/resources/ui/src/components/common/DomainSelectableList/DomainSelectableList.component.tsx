@@ -97,7 +97,7 @@ const DomainSelectableList = ({
           <DomainSelectablTree
             isMultiple={multiple}
             value={selectedDomainsList as string[]}
-            visible={popupVisible}
+            visible={popupVisible || Boolean(popoverProps?.open)}
             onCancel={() => setPopupVisible(false)}
             onSubmit={handleUpdate}
           />
