@@ -182,7 +182,7 @@ export const findItemByFqn = (
   list: ModifiedGlossaryTerm[] | Domain[],
   fullyQualifiedName: string,
   withReference = true
-): GlossaryTerm | Glossary | ModifiedGlossary | null => {
+): GlossaryTerm | Glossary | ModifiedGlossary | Domain | null => {
   for (const item of list) {
     if (
       (item.fullyQualifiedName ?? (item as ModifiedGlossaryTerm).value) ===
