@@ -459,7 +459,7 @@ const AppRunsHistory = forwardRef(
           footer={
             <Space className="w-full justify-end">
               <Button
-                data-testid="selectable-list-update-btn"
+                data-testid="app-run-config-close"
                 type="primary"
                 onClick={() => setShowConfigModal(false)}>
                 {t('label.close')}
