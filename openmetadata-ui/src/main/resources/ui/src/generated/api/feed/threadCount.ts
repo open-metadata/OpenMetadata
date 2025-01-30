@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,12 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * This schema defines the type for reporting the count of threads related to an entity.
  */
 export interface ThreadCount {
+    /**
+     * Total count of all the announcements associated with an entity.
+     */
+    announcementCount?: number;
     /**
      * Total count of all the tasks.
      */
