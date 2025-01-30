@@ -11,77 +11,59 @@
  *  limitations under the License.
  */
 
+import docsClassBase from '../utils/docsClassBase copy';
+
 export const OMD_REPOSITORY_LINK = 'https://star-us.open-metadata.org/';
 
-export const WORKFLOWS_PROFILER_DOCS =
-  'https://docs.open-metadata.org/how-to-guides/data-quality-observability/profiler/workflow';
+const docsUrl = docsClassBase.docsUrl;
 
-export const GLOSSARIES_DOCS =
-  'https://docs.open-metadata.org/main-concepts/metadata-standard/schemas/entity/data/glossary';
+export const WORKFLOWS_PROFILER_DOCS = `${docsUrl}how-to-guides/data-quality-observability/profiler/workflow`;
 
-export const CONNECTORS_DOCS = 'https://docs.open-metadata.org/connectors';
+export const GLOSSARIES_DOCS = `${docsUrl}main-concepts/metadata-standard/schemas/entity/data/glossary`;
 
-export const WORKFLOWS_METADATA_DOCS =
-  'https://docs.open-metadata.org/connectors/ingestion/workflows/metadata';
+export const CONNECTORS_DOCS = `${docsUrl}connectors`;
 
-export const INGESTION_FRAMEWORK_DEPLOYMENT_DOCS =
-  'https://docs.open-metadata.org/deployment/ingestion';
+export const WORKFLOWS_METADATA_DOCS = `${docsUrl}connectors/ingestion/workflows/metadata`;
 
-export const BOTS_DOCS =
-  'https://docs.open-metadata.org/main-concepts/metadata-standard/schemas/entity/bot';
+export const INGESTION_FRAMEWORK_DEPLOYMENT_DOCS = `${docsUrl}deployment/ingestion`;
 
-export const TEAMS_DOCS =
-  'https://docs.open-metadata.org/how-to-guides/admin-guide/teams-and-users/team-structure-openmetadata';
+export const BOTS_DOCS = `${docsUrl}main-concepts/metadata-standard/schemas/entity/bot`;
 
-export const ADD_CUSTOM_PROPERTIES_DOCS =
-  'https://docs.open-metadata.org/latest/how-to-guides/guide-for-data-users/custom';
+export const TEAMS_DOCS = `${docsUrl}how-to-guides/admin-guide/teams-and-users/team-structure-openmetadata`;
 
-export const ROLE_DOCS =
-  'https://docs.open-metadata.org/main-concepts/metadata-standard/schemas/entity/teams/role';
+export const ADD_CUSTOM_PROPERTIES_DOCS = `${docsUrl}how-to-guides/guide-for-data-users/custom`;
 
-export const DATA_INSIGHT_DOCS =
-  'https://docs.open-metadata.org/how-to-guides/data-insights';
+export const ROLE_DOCS = `${docsUrl}main-concepts/metadata-standard/schemas/entity/teams/role`;
 
-export const INGESTION_DOCS =
-  'https://docs.open-metadata.org/connectors/ingestion/workflows';
+export const DATA_INSIGHT_DOCS = `${docsUrl}how-to-guides/data-insights`;
 
-export const USAGE_DOCS =
-  'https://docs.open-metadata.org/connectors/ingestion/workflows/usage';
+export const INGESTION_DOCS = `${docsUrl}connectors/ingestion/workflows`;
 
-export const LOCAL_DEPLOYMENT =
-  'https://docs.open-metadata.org/quick-start/local-docker-deployment';
+export const USAGE_DOCS = `${docsUrl}connectors/ingestion/workflows/usage`;
+
+export const LOCAL_DEPLOYMENT = `${docsUrl}quick-start/local-docker-deployment`;
 
 export const OMD_SLACK_LINK =
   'https://join.slack.com/t/openmetadata/shared_invite/zt-1r1kv175f-9qM5eTB39MF6U2DBhZhWow';
 
-export const DATA_INSIGHTS_PIPELINE_DOCS =
-  'https://docs.open-metadata.org/how-to-guides/data-insights/ingestion';
+export const DATA_INSIGHTS_PIPELINE_DOCS = `${docsUrl}how-to-guides/data-insights/ingestion`;
 
-export const ELASTIC_SEARCH_RE_INDEX_PIPELINE_DOCS =
-  'https://docs.open-metadata.org/main-concepts/metadata-standard/schemas/entity/services/connections/metadata/metadataesconnection';
+export const ELASTIC_SEARCH_RE_INDEX_PIPELINE_DOCS = `${docsUrl}main-concepts/metadata-standard/schemas/entity/services/connections/metadata/metadataesconnection`;
 
-export const ALERTS_DOCS =
-  'https://docs.open-metadata.org/how-to-guides/admin-guide/alerts';
+export const ALERTS_DOCS = `${docsUrl}how-to-guides/admin-guide/alerts`;
 
-export const TAGS_DOCS =
-  'https://docs.open-metadata.org/main-concepts/metadata-standard/schemas/api/tags';
+export const TAGS_DOCS = `${docsUrl}main-concepts/metadata-standard/schemas/api/tags`;
 
-export const AIRFLOW_DOCS =
-  'https://docs.open-metadata.org/latest/deployment/ingestion/external/airflow';
+export const AIRFLOW_DOCS = `${docsUrl}deployment/ingestion/external/airflow`;
 
-export const FOLLOW_DATA_ASSET =
-  'https://docs.open-metadata.org/how-to-guides/guide-for-data-users/follow-data-asset';
+export const FOLLOW_DATA_ASSET = `${docsUrl}how-to-guides/guide-for-data-users/follow-data-asset`;
 
-export const RECENTLY_VIEWED =
-  'https://docs.open-metadata.org/how-to-guides/data-discovery/discover';
+export const RECENTLY_VIEWED = `${docsUrl}how-to-guides/data-discovery/discover`;
 
-export const DATA_QUALITY_PROFILER_DOCS =
-  'https://docs.open-metadata.org/latest/how-to-guides/data-quality-observability';
+export const DATA_QUALITY_PROFILER_DOCS = `${docsUrl}how-to-guides/data-quality-observability`;
 
-export const CUSTOM_PROPERTIES_DOCS =
-  'https://docs.open-metadata.org/how-to-guides/guide-for-data-users/custom';
+export const CUSTOM_PROPERTIES_DOCS = `${docsUrl}how-to-guides/guide-for-data-users/custom`;
 
-export const DATA_DISCOVERY_DOCS =
-  'https://docs.open-metadata.org/how-to-guides/data-discovery';
+export const DATA_DISCOVERY_DOCS = `${docsUrl}how-to-guides/data-discovery`;
 
-export const HOW_TO_GUIDE_DOCS = 'https://docs.open-metadata.org/how-to-guides';
+export const HOW_TO_GUIDE_DOCS = `${docsUrl}how-to-guides`;
