@@ -35,7 +35,7 @@ import { usePaging } from '../../../hooks/paging/usePaging';
 import { getAllPersonas } from '../../../rest/PersonaAPI';
 import { getSettingPageEntityBreadCrumb } from '../../../utils/GlobalSettingsUtils';
 
-const PersonaPage = () => {
+const PersonaPageLayout = () => {
   const { isAdminUser } = useAuth();
   const { t } = useTranslation();
 
@@ -191,4 +191,4 @@ const PersonaPage = () => {
   );
 };
 
-export default withPageLayout('persona-plural')(PersonaPage);
+export const PersonaPage = withPageLayout('persona-plural')(PersonaPageLayout);

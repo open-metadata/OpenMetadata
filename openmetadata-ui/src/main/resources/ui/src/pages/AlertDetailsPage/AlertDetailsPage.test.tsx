@@ -85,7 +85,16 @@ jest.mock('../../utils/ToastUtils', () => ({
 }));
 
 jest.mock('../../hoc/withPageLayout', () => ({
-  withPageLayout: jest.fn().mockImplementation((component) => component),
+  withPageLayout: jest.fn().mockImplementation(
+    () =>
+      (Component: React.FC) =>
+      (
+        props: JSX.IntrinsicAttributes & {
+          children?: React.ReactNode | undefined;
+        }
+      ) =>
+        <Component {...props} />
+  ),
 }));
 
 jest.mock(

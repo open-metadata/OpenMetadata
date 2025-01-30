@@ -13,12 +13,21 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import { getAllPersonas } from '../../../rest/PersonaAPI';
-import PersonaPage from './PersonaPage';
+import { PersonaPage } from './PersonaPage';
 jest.mock('../../../components/PageHeader/PageHeader.component', () => {
   return jest.fn().mockImplementation(() => <div>PageHeader.component</div>);
 });
-jest.mock('../../hoc/withPageLayout', () => ({
-  withPageLayout: jest.fn().mockImplementation((component) => component),
+jest.mock('../../../hoc/withPageLayout', () => ({
+  withPageLayout: jest.fn().mockImplementation(
+    () =>
+      (Component: React.FC) =>
+      (
+        props: JSX.IntrinsicAttributes & {
+          children?: React.ReactNode | undefined;
+        }
+      ) =>
+        <Component {...props} />
+  ),
 }));
 jest.mock(
   '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component',

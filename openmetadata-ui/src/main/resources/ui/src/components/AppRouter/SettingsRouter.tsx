@@ -41,7 +41,7 @@ import LineageConfigPage from '../../pages/LineageConfigPage/LineageConfigPage';
 import NotificationListPage from '../../pages/NotificationListPage/NotificationListPage';
 import OmHealthPage from '../../pages/OmHealth/OmHealthPage';
 import { PersonaDetailsPage } from '../../pages/Persona/PersonaDetailsPage/PersonaDetailsPage';
-import PersonaPage from '../../pages/Persona/PersonaListPage/PersonaPage';
+import { PersonaPage } from '../../pages/Persona/PersonaListPage/PersonaPage';
 import AddPolicyPage from '../../pages/PoliciesPage/AddPolicyPage/AddPolicyPage';
 import AddRulePage from '../../pages/PoliciesPage/PoliciesDetailPage/AddRulePage';
 import EditRulePage from '../../pages/PoliciesPage/PoliciesDetailPage/EditRulePage';
