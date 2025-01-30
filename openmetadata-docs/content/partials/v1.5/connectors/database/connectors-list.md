@@ -26,12 +26,12 @@
 {% connectorInfoCard name="MySQL" stage="PROD" href="/connectors/database/mysql" platform="OpenMetadata" / %}
 {% connectorInfoCard name="Oracle" stage="PROD" href="/connectors/database/oracle" platform="OpenMetadata" / %}
 {% connectorInfoCard name="PinotDB" stage="PROD" href="/connectors/database/pinotdb" platform="OpenMetadata" / %}
-{% connectorInfoCard name="Postgres" stage="PROD" href="/connectors/database/postgres" platform="OpenMetadata" / %}
+{% connectorInfoCard name="PostgreSQL stage="PROD" href="/connectors/database/postgres" platform="OpenMetadata" / %}
 {% connectorInfoCard name="Presto" stage="PROD" href="/connectors/database/presto" platform="OpenMetadata" / %}
 {% connectorInfoCard name="Redshift" stage="PROD" href="/connectors/database/redshift" platform="OpenMetadata" / %}
 {% connectorInfoCard name="Salesforce" stage="PROD" href="/connectors/database/salesforce" platform="OpenMetadata" / %}
 {% connectorInfoCard name="SAP ERP" stage="PROD" href="/connectors/database/sap-erp" platform="OpenMetadata" / %}
-{% connectorInfoCard name="SAP Hana" stage="PROD" href="/connectors/database/sap-hana" platform="OpenMetadata" / %}
+{% connectorInfoCard name="SAP HANA" stage="PROD" href="/connectors/database/sap-hana" platform="OpenMetadata" / %}
 {% connectorInfoCard name="SAS" stage="BETA" href="/connectors/database/sas" platform="OpenMetadata" / %}
 {% connectorInfoCard name="SingleStore" stage="PROD" href="/connectors/database/singlestore" platform="OpenMetadata" / %}
 {% connectorInfoCard name="Snowflake" stage="PROD" href="/connectors/database/snowflake" platform="OpenMetadata" / %}
