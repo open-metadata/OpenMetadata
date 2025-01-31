@@ -336,6 +336,7 @@ class SupersetSourceMixin(DashboardServiceSource):
         """clean datatype of column fetched from superset"""
         return datatype.replace("()", "")
 
+
     def parse_array_data_type(self, col_parse: dict) -> Optional[str]:
         """
         Set arrayDataType to UNKNOWN for Snowflake table array columns
@@ -347,8 +348,23 @@ class SupersetSourceMixin(DashboardServiceSource):
             return DataType(col_parse["arrayDataType"])
         return None
 
+
+    def parse_row_data_type(self, col_parse: dict) -> List[Column]:
+        """
+        Set children to single UNKNOWN column for Trino row columns
+        to prevent validation error requiring non empty list of children.
+        """
+        if col_parse["dataType"] == "ROW" and not col_parse.get("children"):
+            return [
+                Column(name="unknown", dataType=DataType.UNKNOWN)
+            ]
+
+        if col_parse.get("children"):
+            return col_parse["children"]
+
+
     def get_column_info(
-        self, data_source: List[Union[DataSourceResult, FetchColumn]]
+            self, data_source: List[Union[DataSourceResult, FetchColumn]]
     ) -> Optional[List[Column]]:
         """
         Args:
@@ -364,13 +380,19 @@ class SupersetSourceMixin(DashboardServiceSource):
                     col_parse = ColumnTypeParser._parse_datatype_string(  # pylint: disable=protected-access
                         field.type
                     )
+
+                    array_data_type = (
+                        DataType(col_parse.get("arrayDataType") or DataType.UNKNOWN)
+                        if "arrayDataType" in col_parse
+                        or col_parse["dataType"] == "ARRAY"
+                        else None
+                    )
+
                     parsed_fields = Column(
                         dataTypeDisplay=field.type,
                         dataType=col_parse["dataType"],
                         arrayDataType=self.parse_array_data_type(col_parse),
-                        children=list(col_parse["children"])
-                        if col_parse.get("children")
-                        else None,
+                        children=self.parse_row_data_type(col_parse),
                         name=str(field.id),
                         displayName=field.column_name,
                         description=field.description,
