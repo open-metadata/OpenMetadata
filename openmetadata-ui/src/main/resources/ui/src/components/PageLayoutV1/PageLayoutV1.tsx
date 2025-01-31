@@ -106,7 +106,9 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
         <Col span={24}>
           <Col
             className={classNames(
-              'page-layout-v1-center p-t-sm page-layout-v1-vertical-scroll',
+              `page-layout-v1-center page-layout-v1-vertical-scroll ${
+                !alert && 'p-t-sm'
+              }`,
               {
                 'flex justify-center': center,
               },
@@ -115,13 +117,16 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
             flex={contentWidth}
             offset={center ? 3 : 0}
             span={center ? 18 : 24}>
-            <div>
-              {alert && <AlertBar message={alert.message} type={alert.type} />}
-              <div
-                className={`page-content ${alert && 'page-content-shifted'}`}>
+            <Row gutter={0}>
+              <Col id={`${alert && 'page-alert'}`} span={24}>
+                {alert && (
+                  <AlertBar message={alert.message} type={alert.type} />
+                )}
+              </Col>
+              <Col className={`${alert && 'p-t-sm'}`} span={24}>
                 {children}
-              </div>
-            </div>
+              </Col>
+            </Row>
           </Col>
           {rightPanel && (
             <Col

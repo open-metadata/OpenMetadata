@@ -12,7 +12,7 @@
  */
 import { Alert } from 'antd';
 import classNames from 'classnames';
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { ReactComponent as CrossIcon } from '../../assets/svg/ic-cross.svg';
 import { useAlertStore } from '../../hooks/useAlertStore';
 import { getIconAndClassName } from '../../utils/ToastUtils';
@@ -21,6 +21,7 @@ import { AlertBarProps } from './AlertBar.interface';
 
 const AlertBar = ({ type, message }: AlertBarProps): JSX.Element => {
   const { resetAlert, animationClass } = useAlertStore();
+  const [expanded, setExpanded] = useState(false);
 
   const { icon: AlertIcon, className } = useMemo(() => {
     return getIconAndClassName(type);
@@ -40,7 +41,23 @@ const AlertBar = ({ type, message }: AlertBarProps): JSX.Element => {
         />
       }
       data-testid="alert-bar"
-      description={message}
+      description={
+        <>
+          <span
+            className={classNames('alert-message', { expanded })}
+            data-testid="alert-message">
+            {message}
+          </span>
+          {typeof message === 'string' && message.length > 400 && (
+            <button
+              className="alert-toggle-btn"
+              data-testid="alert-toggle-btn"
+              onClick={() => setExpanded(!expanded)}>
+              {expanded ? 'Show Less' : 'Show More'}
+            </button>
+          )}
+        </>
+      }
       icon={AlertIcon && <AlertIcon data-testid="alert-icon" />}
       type={type}
     />
