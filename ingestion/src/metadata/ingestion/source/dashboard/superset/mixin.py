@@ -175,21 +175,22 @@ class SupersetSourceMixin(DashboardServiceSource):
                 if "Table" in str(type(c[0].parent)) and "Table" in str(
                     type(c[-1].parent)
                 ):
-                    from_column_name = c[0].raw_name
-                    to_column_name = c[-1].raw_name
+                    if c[0].parent.schema == table.schema and c[0].parent.raw_name == table.raw_name:
+                        from_column_name = c[0].raw_name
+                        to_column_name = c[-1].raw_name
 
-                    if from_column_name != "*" and to_column_name != "*":
-                        if column_mapping.get(to_column_name):
-                            column_mapping[to_column_name].append(from_column_name)
-                        else:
-                            column_mapping[to_column_name] = [from_column_name]
-
-                    if from_column_name == "*" and to_column_name == "*":
-                        for col_name in self._get_columns_list_for_lineage(chart_json):
-                            if column_mapping.get(col_name):
-                                column_mapping[col_name].append(col_name)
+                        if from_column_name != "*" and to_column_name != "*":
+                            if column_mapping.get(to_column_name):
+                                column_mapping[to_column_name].append(from_column_name)
                             else:
-                                column_mapping[col_name] = [col_name]
+                                column_mapping[to_column_name] = [from_column_name]
+
+                        if from_column_name == "*" and to_column_name == "*":
+                            for col_name in self._get_columns_list_for_lineage(chart_json):
+                                if column_mapping.get(col_name):
+                                    column_mapping[col_name].append(col_name)
+                                else:
+                                    column_mapping[col_name] = [col_name]
 
             result.append(
                 (
