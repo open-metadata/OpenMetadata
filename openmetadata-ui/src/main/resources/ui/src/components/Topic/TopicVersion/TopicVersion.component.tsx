@@ -20,17 +20,13 @@ import { useHistory, useParams } from 'react-router-dom';
 import { getVersionPath } from '../../../constants/constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
-import {
-  ChangeDescription,
-  MessageSchemaObject,
-} from '../../../generated/entity/data/topic';
+import { ChangeDescription } from '../../../generated/entity/data/topic';
 import { TagSource } from '../../../generated/type/tagLabel';
 import {
   getCommonExtraInfoForVersionDetails,
   getEntityVersionByField,
   getEntityVersionTags,
 } from '../../../utils/EntityVersionUtils';
-import { getVersionedSchema } from '../../../utils/SchemaVersionUtils';
 import { stringToHTML } from '../../../utils/StringsUtils';
 import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
 import DescriptionV1 from '../../common/EntityDescription/DescriptionV1';
@@ -76,15 +72,6 @@ const TopicVersion: FC<TopicVersionProp> = ({
         ),
       [changeDescription, owners, tier, domain]
     );
-
-  const messageSchemaDiff = useMemo(
-    () =>
-      getVersionedSchema(
-        currentVersionData['messageSchema'] as MessageSchemaObject,
-        changeDescription
-      ),
-    [currentVersionData, changeDescription]
-  );
 
   useEffect(() => {
     setChangeDescription(
@@ -156,7 +143,6 @@ const TopicVersion: FC<TopicVersionProp> = ({
                 <Col span={24}>
                   <TopicSchemaFields
                     isReadOnly
-                    messageSchema={messageSchemaDiff}
                     schemaTypePlaceholder={schemaType}
                     onThreadLinkSelect={noop}
                   />
@@ -206,14 +192,7 @@ const TopicVersion: FC<TopicVersionProp> = ({
         ),
       },
     ],
-    [
-      description,
-      messageSchemaDiff,
-      currentVersionData,
-      entityPermissions,
-      schemaType,
-      tags,
-    ]
+    [description, currentVersionData, entityPermissions, schemaType, tags]
   );
 
   return (

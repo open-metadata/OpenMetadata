@@ -24,7 +24,7 @@ import {
 import Table, { ColumnsType } from 'antd/lib/table';
 import { Key } from 'antd/lib/table/interface';
 import classNames from 'classnames';
-import { cloneDeep, groupBy, isEmpty, isUndefined, uniqBy } from 'lodash';
+import { cloneDeep, groupBy, isEmpty, isUndefined, noop, uniqBy } from 'lodash';
 import { EntityTags, TagFilterOptions } from 'Models';
 import React, { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -34,12 +34,14 @@ import { EntityType } from '../../../enums/entity.enum';
 import {
   DataTypeTopic,
   Field,
+  MessageSchemaObject,
   Topic,
 } from '../../../generated/entity/data/topic';
 import { TagLabel, TagSource } from '../../../generated/type/tagLabel';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useFqn } from '../../../hooks/useFqn';
 import { getEntityName } from '../../../utils/EntityUtils';
+import { getVersionedSchema } from '../../../utils/SchemaVersionUtils';
 import {
   getAllTags,
   searchTagInData,
@@ -83,8 +85,19 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
     isVersionView,
     permissions,
     onUpdate,
+    currentVersionData,
   } = useGenericContext<Topic>();
-  const { messageSchema } = topicDetails;
+
+  const messageSchema = useMemo(
+    () =>
+      isVersionView && currentVersionData?.changeDescription
+        ? getVersionedSchema(
+            currentVersionData?.['messageSchema'] as MessageSchemaObject,
+            currentVersionData?.changeDescription
+          )
+        : topicDetails.messageSchema,
+    [currentVersionData, isVersionView, topicDetails]
+  );
 
   const {
     hasDescriptionEditAccess,
@@ -227,7 +240,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
             index={index}
             isReadOnly={isReadOnly}
             onClick={() => setEditFieldDescription(record)}
-            onThreadLinkSelect={onThreadLinkSelect}
+            onThreadLinkSelect={onThreadLinkSelect ?? noop}
           />
         ),
       },
@@ -256,7 +269,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
             record={record}
             tags={tags}
             type={TagSource.Classification}
-            onThreadLinkSelect={onThreadLinkSelect}
+            onThreadLinkSelect={onThreadLinkSelect ?? noop}
           />
         ),
         filters: tagFilter.Classification,
@@ -288,7 +301,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
             record={record}
             tags={tags}
             type={TagSource.Glossary}
-            onThreadLinkSelect={onThreadLinkSelect}
+            onThreadLinkSelect={onThreadLinkSelect ?? noop}
           />
         ),
         filters: tagFilter.Glossary,

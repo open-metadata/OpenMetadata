@@ -55,6 +55,7 @@ import TabsLabel from '../../common/TabsLabel/TabsLabel.component';
 import { DataAssetsHeader } from '../../DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import SampleDataWithMessages from '../../Database/SampleDataWithMessages/SampleDataWithMessages';
 import EntityRightPanel from '../../Entity/EntityRightPanel/EntityRightPanel';
+import { GenericProvider } from '../../GenericProvider/GenericProvider';
 import Lineage from '../../Lineage/Lineage.component';
 import { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../PageLayoutV1/PageLayoutV1';
@@ -339,14 +340,8 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
                         onThreadLinkSelect={onThreadLinkSelect}
                       />
                       <TopicSchemaFields
-                        entityFqn={decodedTopicFQN}
-                        hasDescriptionEditAccess={editDescriptionPermission}
-                        hasGlossaryTermEditAccess={editGlossaryTermsPermission}
-                        hasTagEditAccess={editTagsPermission}
                         isReadOnly={Boolean(topicDetails.deleted)}
-                        messageSchema={topicDetails.messageSchema}
                         onThreadLinkSelect={onThreadLinkSelect}
-                        onUpdate={handleSchemaFieldsUpdate}
                       />
                     </div>
                   ),
@@ -529,15 +524,21 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
             onVersionClick={versionHandler}
           />
         </Col>
-        <Col span={24}>
-          <Tabs
-            activeKey={activeTab ?? EntityTabs.SCHEMA}
-            className="entity-details-page-tabs"
-            data-testid="tabs"
-            items={tabs}
-            onChange={handleTabChange}
-          />
-        </Col>
+        <GenericProvider<Topic>
+          data={topicDetails}
+          permissions={topicPermissions}
+          type={EntityType.TOPIC}
+          onUpdate={onTopicUpdate}>
+          <Col span={24}>
+            <Tabs
+              activeKey={activeTab ?? EntityTabs.SCHEMA}
+              className="entity-details-page-tabs"
+              data-testid="tabs"
+              items={tabs}
+              onChange={handleTabChange}
+            />
+          </Col>
+        </GenericProvider>
       </Row>
       <LimitWrapper resource="topic">
         <></>

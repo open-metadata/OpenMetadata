@@ -20,6 +20,7 @@ import {
 } from '../../../../enums/CustomizeDetailPage.enum';
 import { EntityType } from '../../../../enums/entity.enum';
 import { DataType, Table } from '../../../../generated/entity/data/table';
+import { Topic } from '../../../../generated/entity/data/topic';
 import { EntityReference } from '../../../../generated/tests/testCase';
 import { TagSource } from '../../../../generated/type/tagLabel';
 import { WidgetCommonProps } from '../../../../pages/CustomizablePage/CustomizablePage.interface';
@@ -29,6 +30,7 @@ import { renderReferenceElement } from '../../../../utils/GlossaryUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../../utils/PermissionsUtils';
 import tableClassBase from '../../../../utils/TableClassBase';
 import { getJoinsFromTableJoins } from '../../../../utils/TableUtils';
+import topicClassBase from '../../../../utils/TopicClassBase';
 import { ExtensionTable } from '../../../common/CustomPropertyTable/ExtensionTable';
 import { DomainLabel } from '../../../common/DomainLabel/DomainLabel.component';
 import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
@@ -576,11 +578,13 @@ export const GenericWidget = (props: WidgetCommonProps) => {
       );
     } else if (props.widgetKey.startsWith(DetailPageWidgetKeys.TOPIC_SCHEMA)) {
       return (
-        <TopicSchemaFields
-          isReadOnly
-          onThreadLinkSelect={onThreadLinkSelect}
-          onUpdate={async () => noop()}
-        />
+        <GenericProvider<Topic>
+          data={topicClassBase.getDummyData()}
+          permissions={DEFAULT_ENTITY_PERMISSION}
+          type={EntityType.TOPIC}
+          onUpdate={async () => noop()}>
+          <TopicSchemaFields isReadOnly />
+        </GenericProvider>
       );
     }
 
