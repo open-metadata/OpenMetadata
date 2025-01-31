@@ -156,11 +156,10 @@ class SupersetSourceMixin(DashboardServiceSource):
         self, chart_json: FetchChart
     ) -> list[tuple[FetchChart, dict[str, list[str]]]]:
         # Every SQL query in tables is a SQL statement SELECTING data.
-        # To get lineage we 'simulate' INSERT INTO query by treating chart dataset as 'destination'
-        # table.
+        # To get lineage we 'simulate' INSERT INTO query into dummy table.
         result = []
 
-        parser = LineageParser(f"INSERT INTO {chart_json.table_name} {chart_json.sql}")
+        parser = LineageParser(f"INSERT INTO dummy_table {chart_json.sql}")
         for table in parser.source_tables:
             table_name = table.raw_name
             table_schema = (
