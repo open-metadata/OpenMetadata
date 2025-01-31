@@ -79,6 +79,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
   showPagination,
   breadcrumbData,
   fetchTestCases,
+  isEditAllowed,
 }) => {
   const { t } = useTranslation();
   const { getEntityPermissionByFqn } = usePermissionProvider();
@@ -313,7 +314,8 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
               permission.fullyQualifiedName === record.fullyQualifiedName
           );
 
-          const testCaseEditPermission = testCasePermission?.EditAll;
+          const testCaseEditPermission =
+            isEditAllowed || testCasePermission?.EditAll;
           const testCaseDeletePermission = testCasePermission?.Delete;
 
           return (
