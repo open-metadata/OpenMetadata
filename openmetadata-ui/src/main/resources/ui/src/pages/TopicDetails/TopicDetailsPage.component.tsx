@@ -80,7 +80,7 @@ const TopicDetailsPage: FunctionComponent = () => {
     return patchTopicDetails(topicId, jsonPatch);
   };
 
-  const onTopicUpdate = async (updatedData: Topic, key: keyof Topic) => {
+  const onTopicUpdate = async (updatedData: Topic, key?: keyof Topic) => {
     try {
       const res = await saveUpdatedTopicData(updatedData);
 
@@ -95,8 +95,8 @@ const TopicDetailsPage: FunctionComponent = () => {
 
         return {
           ...previous,
+          ...res,
           version: res.version,
-          [key]: res[key],
         };
       });
     } catch (error) {

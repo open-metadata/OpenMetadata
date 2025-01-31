@@ -11,34 +11,14 @@
  *  limitations under the License.
  */
 import { TabsProps } from 'antd';
-import {
-  CommonWidgetType,
-  CUSTOM_PROPERTIES_WIDGET,
-  DESCRIPTION_WIDGET,
-  DOMAIN_WIDGET,
-  GLOSSARY_TERMS_WIDGET,
-  TAGS_WIDGET,
-} from '../../constants/CustomizeWidgets.constants';
+import { CommonWidgetType } from '../../constants/CustomizeWidgets.constants';
 import { EntityTabs } from '../../enums/entity.enum';
-import { PageType } from '../../generated/system/ui/page';
-import customizeGlossaryTermPageClassBase from '../CustomiseGlossaryTermPage/CustomizeGlossaryTermPage';
-import customizeDetailPageClassBase from '../CustomizeDetailPage/CustomizeDetailPage';
+import { PageType, Tab } from '../../generated/system/ui/page';
 import customizeGlossaryPageClassBase from '../CustomizeGlossaryPage/CustomizeGlossaryPage';
-import customizeMyDataPageClassBase from '../CustomizeMyDataPageClassBase';
+import customizeGlossaryTermPageClassBase from '../CustomizeGlossaryTerm/CustomizeGlossaryTermBaseClass';
 import i18n from '../i18next/LocalUtil';
 import tableClassBase from '../TableClassBase';
-
-export const getDefaultLayout = (pageType: string) => {
-  switch (pageType) {
-    case PageType.GlossaryTerm:
-      return customizeGlossaryTermPageClassBase.defaultLayout;
-    case PageType.Table:
-      return customizeDetailPageClassBase.defaultLayout;
-    case PageType.LandingPage:
-    default:
-      return customizeMyDataPageClassBase.defaultLayout;
-  }
-};
+import topicClassBase from '../TopicClassBase';
 
 export const getGlossaryTermDefaultTabs = () => {
   return [
@@ -148,25 +128,19 @@ export const getTabLabelFromId = (tab: EntityTabs) => {
   }
 };
 
-const getCustomizeTabObject = (tab: EntityTabs) => ({
-  id: tab,
-  name: tab,
-  displayName: getTabLabelFromId(tab),
-  layout: tableClassBase.getDefaultLayout(tab),
-  editable: [EntityTabs.SCHEMA, EntityTabs.OVERVIEW, EntityTabs.TERMS].includes(
-    tab
-  ),
-});
-
 export const getTableDefaultTabs = () => {
-  const tabs = tableClassBase
-    .getTableDetailPageTabsIds()
-    .map(getCustomizeTabObject);
+  const tabs = tableClassBase.getTableDetailPageTabsIds();
 
   return tabs;
 };
 
-export const getDefaultTabs = (pageType?: string) => {
+export const getTopicDefaultTabs = () => {
+  const tabs = topicClassBase.getTopicDetailPageTabsIds();
+
+  return tabs;
+};
+
+export const getDefaultTabs = (pageType?: string): Tab[] => {
   switch (pageType) {
     case PageType.GlossaryTerm:
       return getGlossaryTermDefaultTabs();
@@ -174,6 +148,8 @@ export const getDefaultTabs = (pageType?: string) => {
       return getGlossaryDefaultTabs();
     case PageType.Table:
       return getTableDefaultTabs();
+    case PageType.Topic:
+      return getTopicDefaultTabs();
     case PageType.Container:
     default:
       return [
@@ -196,6 +172,8 @@ export const getDefaultWidgetForTab = (pageType: PageType, tab: EntityTabs) => {
       return customizeGlossaryTermPageClassBase.getDefaultWidgetForTab(tab);
     case PageType.Table:
       return tableClassBase.getDefaultLayout(tab);
+    case PageType.Topic:
+      return topicClassBase.getDefaultLayout(tab);
     default:
       return [];
   }
@@ -229,16 +207,14 @@ export const getCustomizableWidgetByPage = (
   switch (pageType) {
     case PageType.GlossaryTerm:
     case PageType.Glossary:
-      return customizeGlossaryTermPageClassBase.getCommonWidgetList();
+      return customizeGlossaryTermPageClassBase.getCommonWidgetList(
+        pageType === PageType.Glossary
+      );
 
     case PageType.Table:
-      return [
-        DESCRIPTION_WIDGET,
-        CUSTOM_PROPERTIES_WIDGET,
-        DOMAIN_WIDGET,
-        TAGS_WIDGET,
-        GLOSSARY_TERMS_WIDGET,
-      ];
+      return tableClassBase.getCommonWidgetList();
+    case PageType.Topic:
+      return topicClassBase.getCommonWidgetList();
     case PageType.LandingPage:
     default:
       return [];
@@ -249,6 +225,8 @@ export const getDummyDataByPage = (pageType: PageType) => {
   switch (pageType) {
     case PageType.Table:
       return tableClassBase.getDummyData();
+    case PageType.Topic:
+      return topicClassBase.getDummyData();
 
     case PageType.LandingPage:
     default:

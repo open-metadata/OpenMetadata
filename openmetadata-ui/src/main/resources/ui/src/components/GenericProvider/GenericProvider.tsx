@@ -22,6 +22,7 @@ interface GenericProviderProps<T> {
   onUpdate: (updatedData: T) => Promise<void>;
   isVersionView?: boolean;
   permissions: OperationPermission;
+  currentVersionData?: T;
 }
 
 interface GenericContextType<T> {
@@ -30,6 +31,7 @@ interface GenericContextType<T> {
   onUpdate: (updatedData: T) => Promise<void>;
   isVersionView?: boolean;
   permissions: OperationPermission;
+  currentVersionData?: T;
 }
 
 const createGenericContext = once(<T,>() =>
@@ -43,12 +45,20 @@ export const GenericProvider = <T,>({
   onUpdate,
   isVersionView,
   permissions,
+  currentVersionData,
 }: GenericProviderProps<T>) => {
   const GenericContext = createGenericContext<T>();
 
   const values = useMemo(
-    () => ({ data, type, onUpdate, isVersionView, permissions }),
-    [data, type, onUpdate, isVersionView, permissions]
+    () => ({
+      data,
+      type,
+      onUpdate,
+      isVersionView,
+      permissions,
+      currentVersionData,
+    }),
+    [data, type, onUpdate, isVersionView, permissions, currentVersionData]
   );
 
   return (

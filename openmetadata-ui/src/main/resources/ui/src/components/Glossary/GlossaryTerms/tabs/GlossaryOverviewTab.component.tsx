@@ -25,7 +25,7 @@ import { TagLabel, TagSource } from '../../../../generated/type/tagLabel';
 import { useGridLayoutDirection } from '../../../../hooks/useGridLayoutDirection';
 import { WidgetConfig } from '../../../../pages/CustomizablePage/CustomizablePage.interface';
 import { useCustomizeStore } from '../../../../pages/CustomizablePage/CustomizeStore';
-import customizeGlossaryTermPageClassBase from '../../../../utils/CustomiseGlossaryTermPage/CustomizeGlossaryTermPage';
+import customizeGlossaryTermPageClassBase from '../../../../utils/CustomizeGlossaryTerm/CustomizeGlossaryTermBaseClass';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import {
   getEntityVersionByField,
@@ -33,8 +33,8 @@ import {
 } from '../../../../utils/EntityVersionUtils';
 import { getWidgetFromKey } from '../../../../utils/GlossaryTerm/GlossaryTermUtil';
 import { CustomPropertyTable } from '../../../common/CustomPropertyTable/CustomPropertyTable';
-import { DomainLabel } from '../../../common/DomainLabel/DomainLabel.component';
 import DescriptionV1 from '../../../common/EntityDescription/DescriptionV1';
+import { DomainLabelV2 } from '../../../DataAssets/DomainLabelV2/DomainLabelV2';
 import { OwnerLabelV2 } from '../../../DataAssets/OwnerLabelV2/OwnerLabelV2';
 import { ReviewerLabelV2 } from '../../../DataAssets/ReviewerLabelV2/ReviewerLabelV2';
 import { useGenericContext } from '../../../GenericProvider/GenericProvider';
@@ -79,7 +79,7 @@ const GlossaryOverviewTab = ({
       return customizeGlossaryTermPageClassBase.getDefaultWidgetForTab(tab);
     }
     const pageType = isGlossary ? PageType.Glossary : PageType.GlossaryTerm;
-    const page = currentPersonaDocStore?.data?.pages.find(
+    const page = currentPersonaDocStore?.data?.pages?.find(
       (p: Page) => p.pageType === pageType
     );
 
@@ -195,12 +195,8 @@ const GlossaryOverviewTab = ({
 
   const domainWidget = useMemo(() => {
     return (
-      <DomainLabel
+      <DomainLabelV2
         showDomainHeading
-        domain={selectedData.domain}
-        entityFqn={selectedData.fullyQualifiedName ?? ''}
-        entityId={selectedData.id ?? ''}
-        entityType={isGlossary ? EntityType.GLOSSARY : EntityType.GLOSSARY_TERM}
         // Only allow domain selection at glossary level. Glossary Term will inherit
         hasPermission={isGlossary ? permissions.EditAll : false}
       />

@@ -11,18 +11,31 @@
  *  limitations under the License.
  */
 import { TabProps } from '../components/common/TabsLabel/TabsLabel.interface';
+import {
+  CUSTOM_PROPERTIES_WIDGET,
+  DATA_PRODUCTS_WIDGET,
+  DESCRIPTION_WIDGET,
+  GLOSSARY_TERMS_WIDGET,
+  GridSizes,
+  TAGS_WIDGET,
+} from '../constants/CustomizeWidgets.constants';
 import { OperationPermission } from '../context/PermissionProvider/PermissionProvider.interface';
 import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 import { EntityTabs } from '../enums/entity.enum';
 import {
   Constraint,
+  ConstraintType,
   DatabaseServiceType,
   DataType,
+  RelationshipType,
   Table,
   TableType,
 } from '../generated/entity/data/table';
+import { Tab } from '../generated/system/ui/uiCustomization';
 import { TestSummary } from '../generated/tests/testCase';
 import { FeedCounts } from '../interface/feed.interface';
+import { getTabLabelFromId } from './CustomizePage/CustomizePageUtils';
+import i18n from './i18next/LocalUtil';
 import { getTableDetailPageBaseTabs } from './TableUtils';
 
 export interface TableDetailPageTabProps {
@@ -46,6 +59,7 @@ export interface TableDetailPageTabProps {
   fetchTableDetails: () => Promise<void>;
   onExtensionUpdate: (updatedData: Table) => Promise<void>;
   handleFeedCount: (data: FeedCounts) => void;
+  labelMap?: Record<EntityTabs, string>;
 }
 
 class TableClassBase {
@@ -55,7 +69,7 @@ class TableClassBase {
     return getTableDetailPageBaseTabs(tableDetailsPageProps);
   }
 
-  public getTableDetailPageTabsIds(): EntityTabs[] {
+  public getTableDetailPageTabsIds(): Tab[] {
     return [
       EntityTabs.SCHEMA,
       EntityTabs.ACTIVITY_FEED,
@@ -66,7 +80,17 @@ class TableClassBase {
       EntityTabs.LINEAGE,
       EntityTabs.VIEW_DEFINITION,
       EntityTabs.CUSTOM_PROPERTIES,
-    ];
+    ].map((tab: EntityTabs) => ({
+      id: tab,
+      name: tab,
+      displayName: getTabLabelFromId(tab),
+      layout: this.getDefaultLayout(tab),
+      editable: [
+        EntityTabs.SCHEMA,
+        EntityTabs.OVERVIEW,
+        EntityTabs.TERMS,
+      ].includes(tab),
+    }));
   }
 
   public getDefaultLayout(tab: EntityTabs) {
@@ -122,11 +146,19 @@ class TableClassBase {
             static: false,
           },
           {
+            h: 3,
+            i: DetailPageWidgetKeys.TABLE_CONSTRAINTS,
+            w: 2,
+            x: 6,
+            y: 4,
+            static: false,
+          },
+          {
             h: 4,
             i: DetailPageWidgetKeys.CUSTOM_PROPERTIES,
             w: 2,
             x: 6,
-            y: 4,
+            y: 6,
             static: false,
           },
         ];
@@ -241,6 +273,20 @@ class TableClassBase {
         fullyQualifiedName: 'sample_data',
         deleted: false,
       },
+      tableConstraints: [
+        {
+          constraintType: ConstraintType.ForeignKey,
+          columns: ['post_id'],
+          referredColumns: ['mysql_sample.default.posts_db.Posts.post_id'],
+          relationshipType: RelationshipType.ManyToOne,
+        },
+        {
+          constraintType: ConstraintType.ForeignKey,
+          columns: ['user_id'],
+          referredColumns: ['mysql_sample.default.posts_db.Users.user_id'],
+          relationshipType: RelationshipType.ManyToOne,
+        },
+      ],
       serviceType: DatabaseServiceType.BigQuery,
       tags: [],
       followers: [],
@@ -258,6 +304,37 @@ class TableClassBase {
       },
       deleted: false,
     };
+  }
+
+  public getCommonWidgetList() {
+    return [
+      DESCRIPTION_WIDGET,
+      {
+        fullyQualifiedName: DetailPageWidgetKeys.TABLE_SCHEMA,
+        name: i18n.t('label.schema'),
+        data: {
+          gridSizes: ['large'] as GridSizes[],
+        },
+      },
+      DATA_PRODUCTS_WIDGET,
+      TAGS_WIDGET,
+      GLOSSARY_TERMS_WIDGET,
+      {
+        fullyQualifiedName: DetailPageWidgetKeys.FREQUENTLY_JOINED_TABLES,
+        name: i18n.t('label.frequently-joined-table-plural'),
+        data: {
+          gridSizes: ['small'] as GridSizes[],
+        },
+      },
+      {
+        fullyQualifiedName: DetailPageWidgetKeys.TABLE_CONSTRAINTS,
+        name: i18n.t('label.table-constraints'),
+        data: {
+          gridSizes: ['small'] as GridSizes[],
+        },
+      },
+      CUSTOM_PROPERTIES_WIDGET,
+    ];
   }
 }
 

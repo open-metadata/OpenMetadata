@@ -22,21 +22,11 @@ import {
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
-import { Topic } from '../../../generated/entity/data/topic';
-import { MESSAGE_SCHEMA } from '../TopicDetails/TopicDetails.mock';
 import TopicSchema from './TopicSchema';
 import { TopicSchemaFieldsProps } from './TopicSchema.interface';
 
-const mockOnUpdate = jest.fn();
-
 const mockProps: TopicSchemaFieldsProps = {
-  messageSchema: MESSAGE_SCHEMA as Topic['messageSchema'],
-  hasDescriptionEditAccess: true,
   isReadOnly: false,
-  onUpdate: mockOnUpdate,
-  hasTagEditAccess: true,
-  hasGlossaryTermEditAccess: true,
-  entityFqn: 'topic.fqn',
   onThreadLinkSelect: jest.fn(),
 };
 
@@ -162,9 +152,7 @@ describe('Topic Schema', () => {
   });
 
   it('Should not render the edit action if isReadOnly', async () => {
-    render(
-      <TopicSchema {...mockProps} isReadOnly hasDescriptionEditAccess={false} />
-    );
+    render(<TopicSchema {...mockProps} isReadOnly />);
 
     const rows = await screen.findAllByRole('row');
 

@@ -27,6 +27,6 @@ export interface TopicDetailsProps {
   unFollowTopicHandler: () => Promise<void>;
   versionHandler: () => void;
   onUpdateVote: (data: QueryVote, id: string) => Promise<void>;
-  onTopicUpdate: (updatedData: Topic, key: keyof Topic) => Promise<void>;
+  onTopicUpdate: (updatedData: Topic, key?: keyof Topic) => Promise<void>;
   handleToggleDelete: (version?: number) => void;
 }

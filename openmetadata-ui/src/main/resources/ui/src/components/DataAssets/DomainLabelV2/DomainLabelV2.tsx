@@ -43,14 +43,14 @@ export const DomainLabelV2 = <
     id: string;
     fullyQualifiedName: string;
   }
->(
-  props: Partial<DomainLabelProps>
-) => {
-  const { data, permissions, type: entityType } = useGenericContext<T>();
+>({
+  hasPermission,
+  ...props
+}: Partial<DomainLabelProps>) => {
+  const { data, type: entityType } = useGenericContext<T>();
   const { id: entityId, fullyQualifiedName: entityFqn, domain } = data;
   const { t } = useTranslation();
   const [activeDomain, setActiveDomain] = useState<EntityReference[]>([]);
-  const hasPermission = permissions.EditAll;
 
   const handleDomainSave = useCallback(
     async (selectedDomain: EntityReference | EntityReference[]) => {

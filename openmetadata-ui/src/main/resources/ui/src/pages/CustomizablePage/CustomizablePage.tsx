@@ -180,7 +180,10 @@ export const CustomizablePage = () => {
               name: `${personaDetails.name}-${personaFQN}`,
               fullyQualifiedName: pageLayoutFQN,
               entityType: EntityType.PAGE,
-              data: {},
+              data: {
+                pages: [],
+                navigation: [],
+              },
             });
             setCurrentPageType(pageFqn as PageType);
           } else {
@@ -271,6 +274,34 @@ export const CustomizablePage = () => {
           onSaveLayout={handlePageCustomizeSave}
         />
       );
+    case PageType.StoredProcedure:
+      return (
+        <CustomizeTableDetailPage
+          initialPageData={currentPage}
+          isGlossary={false}
+          personaDetails={personaDetails}
+          onSaveLayout={handlePageCustomizeSave}
+        />
+      );
+    case PageType.Topic:
+      return (
+        <CustomizeTableDetailPage
+          initialPageData={currentPage}
+          isGlossary={false}
+          personaDetails={personaDetails}
+          onSaveLayout={handlePageCustomizeSave}
+        />
+      );
+    case PageType.DashboardDataModel:
+      return (
+        <CustomizeTableDetailPage
+          initialPageData={currentPage}
+          isGlossary={false}
+          personaDetails={personaDetails}
+          onSaveLayout={handlePageCustomizeSave}
+        />
+      );
+
     default:
       return <ErrorPlaceHolder />;
   }

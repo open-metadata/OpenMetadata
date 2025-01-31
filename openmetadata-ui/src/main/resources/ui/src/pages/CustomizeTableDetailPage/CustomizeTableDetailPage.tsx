@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { noop } from 'lodash';
+import { noop, toLower } from 'lodash';
 import React, { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import gridBgImg from '../../assets/img/grid-bg-img.png';
@@ -54,6 +54,13 @@ export const CustomizeTableDetailPage = ({
     noop();
   };
 
+  if (!currentPageType) {
+    // eslint-disable-next-line no-console
+    console.error('currentPageType is not defined');
+
+    return null;
+  }
+
   return (
     <PageLayoutV1
       mainContainerClassName="p-t-0"
@@ -71,7 +78,7 @@ export const CustomizeTableDetailPage = ({
       <div className="m-md">
         <DataAssetsHeader
           dataAsset={entityDummyData as Table}
-          entityType={EntityType.TABLE}
+          entityType={toLower(currentPageType) as EntityType.TABLE}
           permissions={{} as OperationPermission}
           onDisplayNameUpdate={asyncNoop}
           onOwnerUpdate={asyncNoop}

@@ -307,10 +307,11 @@ export interface ConfigClass {
      *
      * Couchbase driver scheme options.
      */
-    scheme?:                ConfigScheme;
-    supportsDatabase?:      boolean;
-    supportsDataDiff?:      boolean;
-    supportsDBTExtraction?: boolean;
+    scheme?:                                ConfigScheme;
+    supportsDatabase?:                      boolean;
+    supportsDataDiff?:                      boolean;
+    supportsDBTExtraction?:                 boolean;
+    supportsIncrementalMetadataExtraction?: boolean;
     /**
      * Supports Lineage Extraction.
      */

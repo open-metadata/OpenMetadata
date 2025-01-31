@@ -27,6 +27,13 @@ jest.mock('../SchemaTable/SchemaTable.component', () => {
   return jest.fn().mockReturnValue(<p>SchemaTable</p>);
 });
 
+jest.mock('../../GenericProvider/GenericProvider', () => ({
+  useGenericContext: jest.fn().mockReturnValue({
+    data: MOCK_TABLE,
+    permissions: {},
+  }),
+}));
+
 describe('Test SchemaTab Component', () => {
   it('Renders all the parts of the schema tab', () => {
     const { queryByTestId, container } = render(
@@ -35,7 +42,6 @@ describe('Test SchemaTab Component', () => {
         hasGlossaryTermEditAccess
         hasTagEditAccess
         isReadOnly={false}
-        table={MOCK_TABLE}
         onThreadLinkSelect={jest.fn()}
         onUpdate={mockUpdate}
       />,

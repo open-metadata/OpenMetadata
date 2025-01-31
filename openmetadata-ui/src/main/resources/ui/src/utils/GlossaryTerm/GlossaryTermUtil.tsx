@@ -15,11 +15,10 @@ import { isUndefined } from 'lodash';
 import React from 'react';
 import EmptyWidgetPlaceholder from '../../components/MyData/CustomizableComponents/EmptyWidgetPlaceholder/EmptyWidgetPlaceholder';
 import { SIZE } from '../../enums/common.enum';
-import { GlossaryTermDetailPageWidgetKeys } from '../../enums/CustomizeDetailPage.enum';
 import { EntityTabs } from '../../enums/entity.enum';
 import { Tab } from '../../generated/system/ui/uiCustomization';
 import { WidgetConfig } from '../../pages/CustomizablePage/CustomizablePage.interface';
-import customizeGlossaryTermPageClassBase from '../CustomiseGlossaryTermPage/CustomizeGlossaryTermPage';
+import customizeGlossaryTermPageClassBase from '../CustomizeGlossaryTerm/CustomizeGlossaryTermBaseClass';
 import { getEntityName } from '../EntityUtils';
 
 export const getWidgetFromKey = ({
@@ -58,13 +57,9 @@ export const getWidgetFromKey = ({
     );
   }
 
-  const widgetKey = customizeGlossaryTermPageClassBase.getKeyFromWidgetName(
+  const Widget = customizeGlossaryTermPageClassBase.getWidgetsFromKey(
     widgetConfig.i
   );
-
-  const Widget = customizeGlossaryTermPageClassBase.getWidgetsFromKey<
-    typeof widgetKey
-  >(widgetConfig.i as GlossaryTermDetailPageWidgetKeys);
 
   return (
     <Widget
@@ -77,12 +72,14 @@ export const getWidgetFromKey = ({
 };
 
 export const getGlossaryTermDetailTabs = (
-  defaultTabs: TabsProps['items'],
+  defaultTabs: Array<
+    NonNullable<TabsProps['items']>[number] & { isHidden?: boolean }
+  >,
   customizedTabs?: Tab[],
   defaultTabId: EntityTabs = EntityTabs.OVERVIEW
 ) => {
   if (!customizedTabs) {
-    return defaultTabs;
+    return defaultTabs.filter((data) => !data.isHidden);
   }
   const overviewTab = defaultTabs?.find((t) => t.key === defaultTabId);
 
@@ -99,7 +96,7 @@ export const getGlossaryTermDetailTabs = (
       );
     }) ?? defaultTabs;
 
-  return newTabs;
+  return newTabs.filter((data) => !data.isHidden);
 };
 
 export const getTabLabelMap = (tabs?: Tab[]): Record<EntityTabs, string> => {

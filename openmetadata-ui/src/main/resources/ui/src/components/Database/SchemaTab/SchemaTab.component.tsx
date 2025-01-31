@@ -11,22 +11,21 @@
  *  limitations under the License.
  */
 
+import { Col, Row } from 'antd';
 import { t } from 'i18next';
 import { lowerCase } from 'lodash';
-import React, { Fragment, FunctionComponent, useState } from 'react';
+import React, { FunctionComponent, useState } from 'react';
 import Searchbar from '../../common/SearchBarComponent/SearchBar.component';
 import SchemaTable from '../SchemaTable/SchemaTable.component';
 import { Props } from './SchemaTab.interfaces';
 
 const SchemaTab: FunctionComponent<Props> = ({
-  table,
   onUpdate,
   hasDescriptionEditAccess,
   hasTagEditAccess,
   hasGlossaryTermEditAccess,
   onThreadLinkSelect,
   isReadOnly = false,
-  testCaseSummary,
 }: Props) => {
   const [searchText, setSearchText] = useState('');
 
@@ -35,30 +34,28 @@ const SchemaTab: FunctionComponent<Props> = ({
   };
 
   return (
-    <Fragment>
-      <div className="d-flex items-center justify-between">
-        <div className="w-1/2">
-          <Searchbar
-            removeMargin
-            placeholder={t('message.find-in-table')}
-            searchValue={searchText}
-            typingInterval={500}
-            onSearch={handleSearchAction}
-          />
-        </div>
-      </div>
-      <SchemaTable
-        hasDescriptionEditAccess={hasDescriptionEditAccess}
-        hasGlossaryTermEditAccess={hasGlossaryTermEditAccess}
-        hasTagEditAccess={hasTagEditAccess}
-        isReadOnly={isReadOnly}
-        searchText={lowerCase(searchText)}
-        table={table}
-        testCaseSummary={testCaseSummary}
-        onThreadLinkSelect={onThreadLinkSelect}
-        onUpdate={onUpdate}
-      />
-    </Fragment>
+    <Row gutter={[16, 16]}>
+      <Col span={8}>
+        <Searchbar
+          removeMargin
+          placeholder={t('message.find-in-table')}
+          searchValue={searchText}
+          typingInterval={500}
+          onSearch={handleSearchAction}
+        />
+      </Col>
+      <Col span={24}>
+        <SchemaTable
+          hasDescriptionEditAccess={hasDescriptionEditAccess}
+          hasGlossaryTermEditAccess={hasGlossaryTermEditAccess}
+          hasTagEditAccess={hasTagEditAccess}
+          isReadOnly={isReadOnly}
+          searchText={lowerCase(searchText)}
+          onThreadLinkSelect={onThreadLinkSelect}
+          onUpdate={onUpdate}
+        />
+      </Col>
+    </Row>
   );
 };
 
