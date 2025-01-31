@@ -20,6 +20,8 @@ import { MlModelClass } from '../../support/entity/MlModelClass';
 import { PipelineClass } from '../../support/entity/PipelineClass';
 import { TableClass } from '../../support/entity/TableClass';
 import { TopicClass } from '../../support/entity/TopicClass';
+import { Glossary } from '../../support/glossary/Glossary';
+import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
 import { TagClass } from '../../support/tag/TagClass';
 import { UserClass } from '../../support/user/UserClass';
 import {
@@ -28,12 +30,8 @@ import {
   runRuleGroupTests,
   verifyAllConditions,
 } from '../../utils/advancedSearch';
-import {
-  assignDomain,
-  createNewPage,
-  redirectToHomePage,
-} from '../../utils/common';
-import { addMultiOwner, assignTag, assignTier } from '../../utils/entity';
+import { createNewPage, redirectToHomePage } from '../../utils/common';
+import { assignTier } from '../../utils/entity';
 import { sidebarClick } from '../../utils/sidebar';
 
 test.describe('Advanced Search', { tag: '@advanced-search' }, () => {
@@ -58,6 +56,10 @@ test.describe('Advanced Search', { tag: '@advanced-search' }, () => {
   const pipeline1 = new PipelineClass();
   const dashboardDataModel1 = new DashboardDataModelClass();
   const dashboardDataModel2 = new DashboardDataModelClass();
+  const glossary1 = new Glossary();
+  const glossary2 = new Glossary();
+  const glossaryTerm1 = new GlossaryTerm(glossary1);
+  const glossaryTerm2 = new GlossaryTerm(glossary2);
 
   let searchCriteria: Record<string, any> = {};
 
@@ -84,32 +86,76 @@ test.describe('Advanced Search', { tag: '@advanced-search' }, () => {
       pipeline1.create(apiContext),
       dashboardDataModel1.create(apiContext),
       dashboardDataModel2.create(apiContext),
+      glossary1.create(apiContext),
+      glossary2.create(apiContext),
+      glossaryTerm1.create(apiContext),
+      glossaryTerm2.create(apiContext),
     ]);
 
     // Add Owner & Tag to the table
     await table1.visitEntityPage(page);
-    await addMultiOwner({
-      page,
-      ownerNames: [user1.getUserName()],
-      activatorBtnDataTestId: 'edit-owner',
-      resultTestId: 'data-assets-header',
-      endpoint: table1.endpoint,
-      type: 'Users',
+    await table1.patch({
+      apiContext,
+      patchData: [
+        {
+          op: 'add',
+          value: {
+            type: 'user',
+            id: user1.responseData.id,
+          },
+          path: '/owners/0',
+        },
+        {
+          op: 'add',
+          value: {
+            tagFQN: 'PersonalData.Personal',
+          },
+          path: '/tags/0',
+        },
+        {
+          op: 'add',
+          path: '/domain',
+          value: {
+            id: domain1.responseData.id,
+            type: 'domain',
+            name: domain1.responseData.name,
+            displayName: domain1.responseData.displayName,
+          },
+        },
+      ],
     });
-    await assignTag(page, 'PersonalData.Personal');
-    await assignDomain(page, domain1.data);
 
     await table2.visitEntityPage(page);
-    await addMultiOwner({
-      page,
-      ownerNames: [user2.getUserName()],
-      activatorBtnDataTestId: 'edit-owner',
-      resultTestId: 'data-assets-header',
-      endpoint: table1.endpoint,
-      type: 'Users',
+    await table2.patch({
+      apiContext,
+      patchData: [
+        {
+          op: 'add',
+          value: {
+            type: 'user',
+            id: user2.responseData.id,
+          },
+          path: '/owners/0',
+        },
+        {
+          op: 'add',
+          value: {
+            tagFQN: 'PII.None',
+          },
+          path: '/tags/0',
+        },
+        {
+          op: 'add',
+          path: '/domain',
+          value: {
+            id: domain2.responseData.id,
+            type: 'domain',
+            name: domain2.responseData.name,
+            displayName: domain2.responseData.displayName,
+          },
+        },
+      ],
     });
-    await assignTag(page, 'PII.None');
-    await assignDomain(page, domain2.data);
 
     // Add Tier To the topic 1
     await topic1.visitEntityPage(page);
@@ -188,6 +234,11 @@ test.describe('Advanced Search', { tag: '@advanced-search' }, () => {
         dashboardDataModel2.entity.project,
       ],
       status: ['Approved', 'In Review'],
+
+      'glossary.name.keyword': [
+        glossaryTerm1.data.name,
+        glossaryTerm2.data.name,
+      ],
     };
 
     await afterAction();
@@ -214,6 +265,10 @@ test.describe('Advanced Search', { tag: '@advanced-search' }, () => {
       pipeline1.delete(apiContext),
       dashboardDataModel1.delete(apiContext),
       dashboardDataModel2.delete(apiContext),
+      glossary1.delete(apiContext),
+      glossary2.delete(apiContext),
+      glossaryTerm1.delete(apiContext),
+      glossaryTerm2.delete(apiContext),
     ]);
     await afterAction();
   });
