@@ -64,19 +64,70 @@ body {
     border-right: @global-border !important;
   }
   .activity-feed-card-new {
-    width: inherit;
     border-radius: 8px;
     margin: 8px 0px;
     background: #f5f5f5;
     display: flex;
     flex-direction: column;
     flex-wrap: wrap;
+    width: inherit;
+    border: none;
 
     .ant-card-body {
       width: inherit;
+      padding: 20px;
+      // margin-top: 2px;
 
       .ant-space-item {
         width: inherit;
+      }
+    }
+    .activity-feed-card-message {
+      padding: 12px;
+      background-color: @white;
+      border-radius: 4px;
+      width: inherit;
+      margin-top: 2px;
+
+      .ant-card-body {
+        padding: 0px;
+      }
+    }
+  }
+  .activity-feed-reply-card {
+    border-radius: 8px;
+
+    background: #f5f5f5;
+    display: flex;
+    flex-direction: column;
+    flex-wrap: wrap;
+    width: inherit;
+
+    .ant-card-body {
+      width: inherit;
+      padding: 0px;
+      //  margin: 10px  0px 20px 0px;
+      padding-top: 20px;
+      border-bottom: 1.5px solid #d4d4d8;
+
+      padding-bottom: 10px;
+      .ant-space-item {
+        width: inherit;
+      }
+    }
+    .activity-feed-reply-card-message {
+      padding-left: 50px;
+      border: none;
+      background: none;
+      .ant-card-body {
+        margin: 0px;
+        margin-top: -10px;
+        margin-bottom: -6px;
+        border: none;
+        padding: 0px;
+      }
+      .activity-feed-comment-text {
+        color: #52525b;
       }
     }
   }
@@ -100,27 +151,6 @@ body {
   padding: 16px;
   margin: 16px 0px;
 }
-.activity-feed-reply-card {
-  .ant-card-body {
-    padding: 0px;
-    padding-left: 50px;
-    padding-top: -10px;
-  }
-
-  .activity-feed-comment-text {
-    background-color: white;
-    border-radius: 4px;
-    width: inherit;
-    border: none;
-    padding: 0px;
-    color: #52525b;
-    font-weight: 400;
-    line-height: 14.52px;
-    font-size: 12px;
-    word-wrap: break-word;
-    white-space: normal;
-  }
-}
 
 .activity-feed-reply-button {
   border-radius: 24px;
@@ -128,3 +158,67 @@ body {
   color: #52525b;
   font-size: 12px;
 }
+.comments-input-field {
+  background-color: #f4f5f7;
+  border-radius: 20px;
+  border: 1px solid #d4d4d8;
+  height: 36px;
+  font-size: 12px;
+  line-height: 14.52px;
+}
+.activity-feed-editor-container-new {
+  background-color: #f5f5f5;
+  border: none;
+  border-radius: 10px;
+  .ql-container {
+    background-color: #f5f5f5;
+    border: none;
+  }
+  .ql-toolbar {
+    background-color: #f5f5f5;
+    border: none;
+    border-bottom: 1px solid #d9d9d9;
+  }
+  .ql-toolbar button {
+    color: #292929;
+  }
+}
+.activity-feed-editor-send-btn {
+  background-color: #292929;
+  color: @white;
+  .ant-btn.send-button {
+    background: #292929;
+    position: absolute;
+    bottom: 8px;
+    right: 8px;
+    width: 34px;
+    height: 34px;
+    padding: 0;
+    border-radius: 50%;
+  }
+}
+.activity-feed-user-name {
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 20px;
+  letter-spacing: 0.03em;
+  color: #181d27;
+}
+.reply-card-user-name {
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 24px;
+  color: #373e44;
+}
+.activity-feed-reply-card-footer {
+  margin-left: 45px;
+}
+.active-card {
+  background-color: #e6f1fe;
+}
+// .activity-feed-reply-card-container{
+//   .ant-card-body{
+//     padding: 0 !important;
+//   }
+
+// }

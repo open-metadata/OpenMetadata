@@ -325,18 +325,18 @@ const Users = ({
       <Col span={5}>
         <div className="profile-section">
           <ProfileSectionUserDetailsCard userData={userData} />
+          <UserProfilePersonas userData={userData} />
+          <UserProfileTeams
+            isDeletedUser={userData.deleted}
+            teams={userData.teams}
+            updateUserDetails={updateUserDetails}
+          />
           <UserProfileRoles
             isDeletedUser={userData.deleted}
             isUserAdmin={userData.isAdmin}
             updateUserDetails={updateUserDetails}
             userData={userData}
             userRoles={userData.roles}
-          />
-          <UserProfilePersonas userData={userData} />
-          <UserProfileTeams
-            isDeletedUser={userData.deleted}
-            teams={userData.teams}
-            updateUserDetails={updateUserDetails}
           />
         </div>
       </Col>

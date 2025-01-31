@@ -120,10 +120,14 @@ const Emoji: FC<EmojiProps> = ({
         key={reaction}
         shape="round"
         size="small"
+        style={{ background: 'transparent', border: '1px solid  #757575' }}
         onClick={handleEmojiOnClick}
         onMouseOver={() => setVisible(true)}>
         {element}
-        <span className="text-xs m-l-xs self-center" data-testid="emoji-count">
+        <span
+          className="text-xs m-l-xs self-center"
+          data-testid="emoji-count"
+          style={{ color: '#52525b' }}>
           {reactionList.length.toLocaleString('en-US', {
             useGrouping: false,
           })}

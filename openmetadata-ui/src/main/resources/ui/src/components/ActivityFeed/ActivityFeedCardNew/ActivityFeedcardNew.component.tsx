@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Avatar, Badge, Card, Col, Space, Tooltip, Typography } from 'antd';
-import React, { useMemo } from 'react';
+import { Card, Col, Input, Space, Tooltip, Typography } from 'antd';
+import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Thread } from '../../../generated/entity/feed/thread';
 import { useUserProfile } from '../../../hooks/user-profile/useUserProfile';
@@ -26,8 +26,9 @@ import {
   getEntityType,
   getFeedHeaderTextFromCardStyle,
 } from '../../../utils/FeedUtils';
+import ProfilePicture from '../../common/ProfilePicture/ProfilePicture';
 import FeedCardFooterNew from '../ActivityFeedCardV2/FeedCardFooter/FeedCardFooterNew';
-import ActivityFeedEditor from '../ActivityFeedEditor/ActivityFeedEditor';
+import ActivityFeedEditorNew from '../ActivityFeedEditor/ActivityFeedEditorNew';
 import { useActivityFeedProvider } from '../ActivityFeedProvider/ActivityFeedProvider';
 import '../ActivityFeedTab/activity-feed-tab-new.less';
 
@@ -50,6 +51,7 @@ const ActivityFeedCardNew = ({
   post,
   showActivityFeedEditor,
   showThread,
+  isActive,
 }: ActivityFeedCardNewProps) => {
   const { entityFQN, entityType } = useMemo(() => {
     const entityFQN = getEntityFQN(feed.about) ?? '';
@@ -63,11 +65,13 @@ const ActivityFeedCardNew = ({
   });
   const { t } = useTranslation();
   const { selectedThread, postFeed } = useActivityFeedProvider();
+  const [showFeedEditor, setShowFeedEditor] = useState<boolean>(false);
   const onSave = (message: string) => {
     postFeed(message, selectedThread?.id ?? '').catch(() => {
       // ignore since error is displayed in toast in the parent promise.
       // Added block for sonar code smell
     });
+    setShowFeedEditor(false);
   };
 
   return (
@@ -77,17 +81,18 @@ const ActivityFeedCardNew = ({
         showThread || isPost
           ? 'activity-feed-card-new-right-panel m-0 gap-0'
           : ''
-      }`}
-      // style={
-      //   showThread || isPost
-      //     ? { border: 'none', background: 'white', gap: 0 }
-      //     : {}
-      // }
-    >
+      } ${isPost && 'activity-feed-reply-card'} ${isActive && 'active-card'}`}
+      style={
+        isActive
+          ? {
+              background: '#E6F1FE',
+            }
+          : {}
+      }>
       <Space align="start" style={{ width: 'inherit' }}>
         <Space className="d-flex" direction="vertical">
           <Space className="d-inline-flex justify-start">
-            <Badge
+            {/* <Badge
               dot
               offset={[-5, 30]}
               status="success"
@@ -97,18 +102,23 @@ const ActivityFeedCardNew = ({
                 borderRadius: '50%',
                 backgroundColor: 'green',
               }}>
-              <Avatar
-                size={40}
-                src="https://randomuser.me/api/portraits/women/44.jpg"
-              />
-            </Badge>
+                 </Badge> */}
+            <ProfilePicture
+              avatarType="outlined"
+              key={feed.id}
+              name="admin"
+              size={40}
+            />
+
             <Space className="d-flex flex-col align-start gap-0" size={0}>
               <Space className="d-flex gap-0" size={0}>
+                <Typography.Text
+                  className={`mr-2 ${
+                    !isPost ? 'activity-feed-user-name' : 'reply-card-user-name'
+                  }`}>
+                  {feed.updatedBy}
+                </Typography.Text>
                 <Typography.Text>
-                  <Text strong className="mr-2">
-                    {feed.updatedBy}
-                  </Text>
-
                   {post.postTs && (
                     <Tooltip
                       color="white"
@@ -160,14 +170,7 @@ const ActivityFeedCardNew = ({
 
           {!isPost ? (
             feed.feedInfo?.entitySpecificInfo?.entity?.description && (
-              <Card
-                bordered
-                bodyStyle={{
-                  padding: '12px',
-                  backgroundColor: '@white',
-                  borderRadius: '4px',
-                  width: 'inherit',
-                }}>
+              <Card bordered className="activity-feed-card-message">
                 <Text style={{ wordWrap: 'break-word', whiteSpace: 'normal' }}>
                   {feed.feedInfo?.entitySpecificInfo?.entity?.description &&
                     feed.feedInfo?.entitySpecificInfo?.entity?.description}
@@ -175,10 +178,7 @@ const ActivityFeedCardNew = ({
               </Card>
             )
           ) : (
-            <Card
-              bordered
-              className="activity-feed-reply-card"
-              style={{ border: 'none' }}>
+            <Card bordered className="activity-feed-reply-card-message">
               <Text
                 className="activity-feed-comment-text"
                 style={{ wordWrap: 'break-word', whiteSpace: 'normal' }}>
@@ -193,25 +193,42 @@ const ActivityFeedCardNew = ({
         </Space>
       </Space>
       {showThread && (
-        <div className="activity-feed-comments-container">
+        <div className="activity-feed-comments-container d-flex flex-col">
           {showActivityFeedEditor && (
-            <Typography.Text className="activity-feed-comments-title">
+            <Typography.Text className="activity-feed-comments-title mb-2">
               {/* Comments */}
             </Typography.Text>
           )}
-          {showActivityFeedEditor && (
-            <ActivityFeedEditor
-              className="m-t-md feed-editor"
+          {showFeedEditor ? (
+            <ActivityFeedEditorNew
+              className="m-t-md feed-editor activity-feed-editor-container-new"
               onSave={onSave}
             />
+          ) : (
+            <div className="d-flex gap-2">
+              <ProfilePicture
+                avatarType="outlined"
+                key={feed.id}
+                name="admin"
+                size={40}
+              />
+
+              <Input
+                className="comments-input-field"
+                placeholder="Use @mention to tag and comment..."
+                onMouseEnter={() => setShowFeedEditor(true)}
+              />
+            </div>
           )}
+
           {showThread && feed?.posts && feed?.posts?.length > 0 && (
-            <Col className="feed-replies" data-testid="feed-replies" span={24}>
+            <Col className="p-l-0 p-r-0" data-testid="feed-replies">
               {feed?.posts?.map((reply) => (
                 <ActivityFeedCardNew
                   isPost
                   componentsVisibility={componentsVisibility}
                   feed={feed}
+                  isActive={isActive}
                   key={reply.id}
                   post={reply}
                   showActivityFeedEditor={false}

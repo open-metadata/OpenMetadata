@@ -21,6 +21,7 @@ import { EntityReference, User } from '../../../../generated/entity/teams/user';
 import { useAuth } from '../../../../hooks/authHooks';
 import Chip from '../../../common/Chip/Chip.component';
 import { PersonaSelectableList } from '../../../MyData/Persona/PersonaSelectableList/PersonaSelectableList.component';
+import '../users.less';
 
 interface UserProfileProps {
   userData: User;
@@ -37,18 +38,41 @@ const UserProfilePersonas = ({ userData }: UserProfileProps) => {
   );
 
   return (
-    <div
-      className="d-flex flex-col mb-4 w-full h-full p-[20px]"
-      style={{
-        background: '#F5F5F5',
-        padding: '20px',
-        borderRadius: '12px',
-      }}>
-      <div
-        className="d-flex  w-full grey-1 gap-2 h-full mb-4"
-        style={{
-          background: '#F5F5F5',
-        }}>
+    <div className="d-flex flex-col mb-4 w-full h-full p-[20px] user-profile-card">
+      <div className="user-profile-card-header d-flex items-center justify-start gap-2 w-full">
+        <Persona height={24} width={24} />
+        <div className="d-flex justify-between w-full">
+          <Typography.Text
+            className="user-profile-card-title"
+            data-testid="persona-list">
+            {t('label.persona')}
+          </Typography.Text>
+          <PersonaSelectableList
+            multiSelect
+            hasPermission={Boolean(isAdminUser) && !userData.deleted}
+            selectedPersonas={userData.personas ?? []}
+            onUpdate={handlePersonaUpdate}
+          />
+        </div>
+      </div>
+      <div className="user-profile-card-body d-flex justify-start gap-2">
+        <Divider
+          style={{
+            height: '100%',
+            width: '1px',
+            background: '#D9D9D9',
+          }}
+          type="vertical"
+        />
+        <Chip
+          showNoDataPlaceholder
+          data={userData.personas ?? []}
+          entityType={EntityType.PERSONA}
+          noDataPlaceholder={t('message.no-persona-assigned')}
+        />
+      </div>
+
+      {/* <div className="d-flex  w-full grey-1 gap-2 h-full mb-4">
         <div className="d-flex flex-col h-full flex-center">
           <Persona height={20} />
           <Divider
@@ -81,46 +105,40 @@ const UserProfilePersonas = ({ userData }: UserProfileProps) => {
             noDataPlaceholder={t('message.no-persona-assigned')}
           />
         </div>
-      </div>
+      </div> */}
 
       {/** Default persona**/}
-      <div
-        className="d-flex  w-full grey-1 gap-2 h-full mt-2"
-        style={{
-          background: '#F5F5F5',
-        }}>
-        <div className="d-flex flex-col h-full flex-center">
-          <Persona height={20} />
-          <Divider
-            style={{
-              minHeight: '60px',
-              width: '2px',
-              background: '#D9D9D9',
-            }}
-            type="vertical"
+      <div className="user-profile-card-header d-flex items-center justify-start gap-2 w-full">
+        <Persona fontSize={14} height={24} width={24} />
+        <div className="d-flex justify-between w-full">
+          <Typography.Text
+            className="user-profile-card-title"
+            data-testid="persona-list">
+            {t('label.default-persona')}
+          </Typography.Text>
+          <PersonaSelectableList
+            multiSelect
+            hasPermission={Boolean(isAdminUser) && !userData.deleted}
+            selectedPersonas={userData.personas ?? []}
+            onUpdate={handlePersonaUpdate}
           />
         </div>
-        <div className="d-flex flex-col w-full">
-          <div className="d-flex justify-between w-full">
-            <Typography.Text
-              className="profile-section-card-title"
-              data-testid="persona-list">
-              {t('label.default-persona')}
-            </Typography.Text>
-            <PersonaSelectableList
-              multiSelect
-              hasPermission={Boolean(isAdminUser) && !userData.deleted}
-              selectedPersonas={userData.personas ?? []}
-              onUpdate={handlePersonaUpdate}
-            />
-          </div>
-          <Chip
-            showNoDataPlaceholder
-            data={userData.personas ?? []}
-            entityType={EntityType.PERSONA}
-            noDataPlaceholder={t('message.no-persona-assigned')}
-          />
-        </div>
+      </div>
+      <div className="user-profile-card-body d-flex justify-start gap-2">
+        <Divider
+          style={{
+            height: '100%',
+            width: '1px',
+            background: '#D9D9D9',
+          }}
+          type="vertical"
+        />
+        <Chip
+          showNoDataPlaceholder
+          data={userData.personas ?? []}
+          entityType={EntityType.PERSONA}
+          noDataPlaceholder={t('message.no-persona-assigned')}
+        />
       </div>
     </div>
   );

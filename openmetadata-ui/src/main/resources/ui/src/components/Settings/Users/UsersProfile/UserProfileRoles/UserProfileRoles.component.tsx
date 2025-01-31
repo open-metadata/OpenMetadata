@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Divider, Select, Tooltip, Typography } from 'antd';
+import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
+import { Button, Divider, Popover, Select, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, toLower } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
@@ -32,7 +33,7 @@ import { handleSearchFilterOption } from '../../../../../utils/CommonUtils';
 import { getEntityName } from '../../../../../utils/EntityUtils';
 import { showErrorToast } from '../../../../../utils/ToastUtils';
 import Chip from '../../../../common/Chip/Chip.component';
-import InlineEdit from '../../../../common/InlineEdit/InlineEdit.component';
+import '../../users.less';
 import UserProfileInheritedRoles from '../UserProfileInheritedRoles/UserProfileInheritedRoles.component';
 import { UserProfileRolesProps } from './UserProfileRoles.interface';
 
@@ -51,6 +52,7 @@ const UserProfileRoles = ({
   const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
   const [roles, setRoles] = useState<Role[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isSelectOpen, setIsSelectOpen] = useState<boolean>(false);
 
   const useRolesOption = useMemo(() => {
     const options = roles?.map((role) => ({
@@ -122,6 +124,7 @@ const UserProfileRoles = ({
       },
       'roles'
     );
+
     setIsLoading(false);
     setIsRolesEdit(false);
   };
@@ -146,7 +149,7 @@ const UserProfileRoles = ({
   const handleCloseEditRole = useCallback(() => {
     setIsRolesEdit(false);
     setUserRoles();
-  }, [setUserRoles]);
+  }, [setUserRoles, setIsRolesEdit]);
 
   useEffect(() => {
     setUserRoles();
@@ -187,11 +190,66 @@ const UserProfileRoles = ({
             <Typography.Text className="profile-section-card-title">
               {t('label.role-plural')}
             </Typography.Text>
-            {!isRolesEdit && isAdminUser && !isDeletedUser && (
-              <Tooltip
-                title={t('label.edit-entity', {
-                  entity: t('label.role-plural'),
-                })}>
+            {isAdminUser && !isDeletedUser && (
+              <Popover
+                content={
+                  <div className="w-full p-xs bg-white rounded-lg shadow-lg user-profile-edit-popover-card">
+                    <div className="d-flex justify-start align-center gap-2 mb-4">
+                      <RoleIcon {...ICON_DIMENSION} />
+                      <Typography.Text className="user-profile-edit-popover-card-title">
+                        {t('label.role-plural')}
+                      </Typography.Text>
+                    </div>
+
+                    <div
+                      className="border p-2 bg-gray-100 rounded-md"
+                      style={{
+                        overflowY: 'auto',
+                        height: isSelectOpen ? '300px' : 'auto',
+                      }}>
+                      <Select
+                        allowClear
+                        showSearch
+                        aria-label="Roles"
+                        className="w-full"
+                        dropdownMatchSelectWidth={false}
+                        filterOption={handleSearchFilterOption}
+                        getPopupContainer={(trigger) => trigger.parentElement}
+                        loading={isLoading}
+                        maxTagCount={4}
+                        mode="multiple"
+                        open={isSelectOpen}
+                        options={useRolesOption}
+                        value={selectedRoles}
+                        onChange={setSelectedRoles}
+                        onDropdownVisibleChange={setIsSelectOpen}
+                      />
+                    </div>
+                    {!isSelectOpen && (
+                      <div className="flex justify-end gap-2 mt-4">
+                        <Button
+                          data-testid="inline-cancel-btn"
+                          icon={<CloseOutlined />}
+                          size="small"
+                          type="primary"
+                          onClick={handleCloseEditRole}
+                        />
+                        <Button
+                          data-testid="inline-save-btn"
+                          icon={<CheckOutlined />}
+                          size="small"
+                          type="primary"
+                          onClick={handleRolesSave}
+                        />
+                      </div>
+                    )}
+                  </div>
+                }
+                open={isRolesEdit}
+                overlayStyle={{ width: '379px', zIndex: 9 }}
+                placement="right"
+                trigger="click"
+                onOpenChange={setIsRolesEdit}>
                 <EditIcon
                   className="cursor-pointer align-middle"
                   color={DE_ACTIVE_COLOR}
@@ -199,38 +257,11 @@ const UserProfileRoles = ({
                   {...ICON_DIMENSION}
                   onClick={() => setIsRolesEdit(true)}
                 />
-              </Tooltip>
+              </Popover>
             )}
           </div>
 
-          <div className="m-b-md">
-            {isRolesEdit && isAdminUser ? (
-              <InlineEdit
-                direction="vertical"
-                isLoading={isLoading}
-                onCancel={handleCloseEditRole}
-                onSave={handleRolesSave}>
-                <Select
-                  allowClear
-                  showSearch
-                  aria-label="Select roles"
-                  className="w-full"
-                  data-testid="select-user-roles"
-                  filterOption={handleSearchFilterOption}
-                  id="select-role"
-                  loading={isRolesLoading}
-                  maxTagCount={4}
-                  mode="multiple"
-                  options={useRolesOption}
-                  placeholder={t('label.role-plural')}
-                  value={!isRolesLoading ? selectedRoles : []}
-                  onChange={setSelectedRoles}
-                />
-              </InlineEdit>
-            ) : (
-              rolesRenderElement
-            )}
-          </div>
+          <div className="m-b-md">{rolesRenderElement}</div>
         </div>
       </div>
       <UserProfileInheritedRoles inheritedRoles={userData?.inheritedRoles} />

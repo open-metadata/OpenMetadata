@@ -10,10 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Avatar, Button, Card } from 'antd';
+import { Card } from 'antd';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { User } from '../../generated/entity/teams/user';
+import ProfilePicture from '../common/ProfilePicture/ProfilePicture';
 
 interface ProfileSectionUserDetailsCardProps {
   userData: User;
@@ -25,18 +26,29 @@ const ProfileSectionUserDetailsCard = ({
   const { t } = useTranslation();
 
   return (
-    <div>
+    <div className="d-flex">
       {/* Profile Section */}
       <Card
-        className="profile-section-user-details-card mb-4"
+        className="profile-section-user-details-card d-flex mb-4 flex-center"
         style={{
           textAlign: 'center',
           borderRadius: '12px',
         }}>
-        <Avatar
+        <div
+          className="d-flex justify-content-center"
+          style={{ marginLeft: '75px' }}>
+          <ProfilePicture
+            avatarType="outlined"
+            data-testid="replied-user"
+            // key={i}
+            name="admin"
+            width="80"
+          />
+        </div>
+        {/* <Avatar
           size={80}
           src="https://images.unsplash.com/photo-1607746882042-944635dfe10e?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=MnwzNjUyOXwwfDF8c2VhcmNofDd8fHByb2ZpbGUlMjBwaWN0dXJlfGVufDB8fHx8MTY4MjkwMzE2Mw&ixlib=rb-1.2.1&q=80&w=400"
-        />
+        /> */}
         <div className="profile-details-text">
           <p className="profile-details-title">
             {userData?.fullyQualifiedName}
@@ -49,7 +61,6 @@ const ProfileSectionUserDetailsCard = ({
             incididunt ut labore et dolore magna */}
           </p>
         </div>
-        <Button type="primary">{t('label.edit')}</Button>
       </Card>
     </div>
   );

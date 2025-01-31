@@ -75,7 +75,9 @@ function FeedCardFooterNew({
   return (
     <Row>
       <Col span={24}>
-        <Space className="p-xss" size={8}>
+        <Space
+          className={`  ${isPost ? 'activity-feed-reply-card-footer' : ''}`}
+          size={8}>
           <div
             className="flex items-center gap-2 p-x-xss w-full rounded-8"
             // type="text"
@@ -98,24 +100,24 @@ function FeedCardFooterNew({
                 )} */}
               </Avatar.Group>
             )}
-            {/* <Tooltip title="Comments">
-              <CommentOutlined height={32} width={32} />
-            </Tooltip> */}
 
-            <Button
-              className="flex-center p-0"
-              data-testid="thread-count"
-              icon={<ThreadIcon width={18} />}
-              shape="circle"
-              size="small"
-              type="text"
-              onClick={showReplies}
-            />
+            {!isPost && (
+              <Button
+                className="flex-center p-0"
+                data-testid="thread-count"
+                icon={<ThreadIcon width={18} />}
+                shape="circle"
+                size="small"
+                type="text"
+                onClick={showReplies}
+              />
+            )}
 
             <Reactions
               reactions={post.reactions ?? []}
               onReactionSelect={onReactionUpdate ?? noop}
             />
+
             {/* {isPost && (
               <Button
                 className="activity-feed-reply-button"
