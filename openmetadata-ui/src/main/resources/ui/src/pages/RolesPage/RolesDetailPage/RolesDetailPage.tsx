@@ -411,7 +411,7 @@ const RolesDetailPage = () => {
                     <Typography.Text
                       className="m-b-0 d-block entity-header-display-name text-lg font-semibold"
                       data-testid="heading">
-                      {role.displayName || role.name}
+                      {roleName}
                     </Typography.Text>
                   </div>
                 </Col>
@@ -558,7 +558,7 @@ const RolesDetailPage = () => {
         )}
         {role && (
           <DeleteWidgetModal
-            afterDeleteAction={() => handleRoleDelete()}
+            afterDeleteAction={handleRoleDelete}
             allowSoftDelete={false}
             entityId={role.id}
             entityName={getEntityName(role)}

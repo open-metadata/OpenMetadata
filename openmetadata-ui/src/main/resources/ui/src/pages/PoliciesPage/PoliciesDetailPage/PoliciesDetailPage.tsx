@@ -478,7 +478,7 @@ const PoliciesDetailPage = () => {
                     <Typography.Text
                       className="m-b-0 d-block entity-header-display-name text-lg font-semibold"
                       data-testid="heading">
-                      {policy.displayName || policy.name}
+                      {policyName}
                     </Typography.Text>
                   </div>
                 </Col>
@@ -695,7 +695,7 @@ const PoliciesDetailPage = () => {
         )}
         {policy && (
           <DeleteWidgetModal
-            afterDeleteAction={() => handlePolicyDelete()}
+            afterDeleteAction={handlePolicyDelete}
             allowSoftDelete={false}
             entityId={policy.id}
             entityName={getEntityName(policy)}
