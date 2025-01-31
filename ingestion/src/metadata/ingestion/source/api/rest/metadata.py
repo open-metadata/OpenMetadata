@@ -262,16 +262,15 @@ class RestSource(ApiServiceSource):
             fetched_fields = []
             for key, val in schema_fields.get("properties", {}).items():
                 dtype = val.get("type")
-                if not dtype:
-                    continue
-                fetched_fields.append(
-                    FieldModel(
-                        name=key,
-                        dataType=DataTypeTopic[dtype.upper()]
+                if dtype:
+                    parsed_dtype = (
+                        DataTypeTopic[dtype.upper()]
                         if dtype.upper() in DataTypeTopic.__members__
-                        else DataTypeTopic.UNKNOWN,
+                        else DataTypeTopic.UNKNOWN
                     )
-                )
+                else:
+                    parsed_dtype = DataTypeTopic.UNKNOWN
+                fetched_fields.append(FieldModel(name=key, dataType=parsed_dtype))
             return APISchema(schemaFields=fetched_fields)
         except Exception as err:
             logger.info(f"Error while processing request schema: {err}")
