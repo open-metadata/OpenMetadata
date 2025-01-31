@@ -175,7 +175,7 @@ class SupersetSourceMixin(DashboardServiceSource):
                 if "Table" in str(type(c[0].parent)) and "Table" in str(
                     type(c[-1].parent)
                 ):
-                    if c[0].parent.schema == table.schema and c[0].parent.raw_name == table.raw_name:
+                    if c[0].parent.schema.raw_name == table.schema.raw_name and c[0].parent.raw_name == table.raw_name:
                         from_column_name = c[0].raw_name
                         to_column_name = c[-1].raw_name
 
