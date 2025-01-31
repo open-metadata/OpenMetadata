@@ -31,6 +31,7 @@ export interface EventSubscription {
      * Java class for the Event Subscription.
      */
     className?: string;
+    config?:    { [key: string]: any };
     /**
      * A short description of the Event Subscription, comprehensible to regular users.
      */
@@ -116,6 +117,7 @@ export interface EventSubscription {
  */
 export enum AlertType {
     ActivityFeed = "ActivityFeed",
+    Custom = "Custom",
     GovernanceWorkflowChangeEvent = "GovernanceWorkflowChangeEvent",
     Notification = "Notification",
     Observability = "Observability",
