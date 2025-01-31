@@ -32,7 +32,6 @@ const SelectWidget: FC<WidgetProps> = (props) => {
       disabled={rest.disabled}
       id={rest.id}
       mode={rest.multiple ? 'multiple' : undefined}
-      open={props.readonly ? false : undefined}
       placeholder={rest.placeholder}
       value={rest.value}
       onBlur={() => onBlur(rest.id, rest.value)}
