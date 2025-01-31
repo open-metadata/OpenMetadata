@@ -66,7 +66,7 @@ const FormBuilder: FunctionComponent<Props> = forwardRef(
   ) => {
     const isReadOnlyForm = useMemo(() => {
       return !!props.readonly;
-    }, [props]);
+    }, [props.readonly]);
 
     const [localFormData, setLocalFormData] = useState<ConfigData | undefined>(
       formatFormDataForRender(formData ?? {})
