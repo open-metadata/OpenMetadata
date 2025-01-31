@@ -152,6 +152,58 @@ class SupersetSourceMixin(DashboardServiceSource):
             )
         return []
 
+    def parse_lineage_from_dataset_sql(
+        self, chart_json: FetchChart
+    ) -> list[tuple[FetchChart, dict[str, list[str]]]]:
+        # Every SQL query in tables is a SQL statement SELECTING data.
+        # To get lineage we 'simulate' INSERT INTO query by treating chart dataset as 'destination'
+        # table.
+        result = []
+
+        parser = LineageParser(f"INSERT INTO {chart_json.table_name} {chart_json.sql}")
+        for table in parser.source_tables:
+            table_name = table.raw_name
+            table_schema = (
+                table.schema.raw_name
+                if table.schema.raw_name != table.schema.unknown
+                else chart_json.table_schema
+            )
+
+            column_mapping: dict[str, list[str]] = {}
+
+            for c in parser.column_lineage:
+                if "Table" in str(type(c[0].parent)) and "Table" in str(
+                    type(c[-1].parent)
+                ):
+                    from_column_name = c[0].raw_name
+                    to_column_name = c[-1].raw_name
+
+                    if from_column_name != "*" and to_column_name != "*":
+                        if column_mapping.get(to_column_name):
+                            column_mapping[to_column_name].append(from_column_name)
+                        else:
+                            column_mapping[to_column_name] = [from_column_name]
+
+                    if from_column_name == "*" and to_column_name == "*":
+                        for col_name in self._get_columns_list_for_lineage(chart_json):
+                            if column_mapping.get(col_name):
+                                column_mapping[col_name].append(col_name)
+                            else:
+                                column_mapping[col_name] = [col_name]
+
+            result.append(
+                (
+                    FetchChart(
+                        table_name=table_name,
+                        table_schema=table_schema,
+                        sqlalchemy_uri=chart_json.sqlalchemy_uri,
+                    ),
+                    column_mapping,
+                )
+            )
+
+        return result
+
     def yield_dashboard_lineage_details(
         self,
         dashboard_details: Union[FetchDashboard, DashboardResult],
@@ -168,72 +220,10 @@ class SupersetSourceMixin(DashboardServiceSource):
                 chart_json: FetchChart = self.all_charts.get(chart_id)
                 if chart_json:
                     try:
-                        input_tables_raw: list[tuple[FetchChart, dict[str, list]]] = []
                         if chart_json.sql:
-                            # Every SQL query in tables is a SQL statement SELECTING data.
-                            # To get lineage we 'simulate' INSERT INTO query by treating chart dataset as 'destination'
-                            # table.
-                            parser = LineageParser(
-                                f"INSERT INTO {chart_json.table_name} {chart_json.sql}"
+                            input_tables_raw = self.parse_lineage_from_dataset_sql(
+                                chart_json
                             )
-                            for table in parser.source_tables:
-                                table_name = table.raw_name
-                                table_schema = (
-                                    table.schema.raw_name
-                                    if table.schema.raw_name != table.schema.unknown
-                                    else chart_json.table_schema
-                                )
-
-                                column_mapping: dict[str, list[str]] = {}
-
-                                for c in parser.column_lineage:
-                                    if "Table" in str(
-                                        type(c[0].parent)
-                                    ) and "Table" in str(type(c[-1].parent)):
-                                        from_column_name = c[0].raw_name
-                                        to_column_name = c[-1].raw_name
-
-                                        if (
-                                            from_column_name != "*"
-                                            and to_column_name != "*"
-                                        ):
-                                            if column_mapping.get(to_column_name):
-                                                column_mapping[to_column_name].append(
-                                                    from_column_name
-                                                )
-                                            else:
-                                                column_mapping[to_column_name] = [
-                                                    from_column_name
-                                                ]
-
-                                        if (
-                                            from_column_name == "*"
-                                            and to_column_name == "*"
-                                        ):
-                                            for (
-                                                col_name
-                                            ) in self._get_columns_list_for_lineage(
-                                                chart_json
-                                            ):
-                                                if column_mapping.get(col_name):
-                                                    column_mapping[col_name].append(
-                                                        col_name
-                                                    )
-                                                else:
-                                                    column_mapping[col_name] = [
-                                                        col_name
-                                                    ]
-
-                                input_tables_raw.append(
-                                    (
-                                        FetchChart(
-                                            table_name=table_name,
-                                            table_schema=table_schema,
-                                            sqlalchemy_uri=chart_json.sqlalchemy_uri,
-                                        ),
-                                        column_mapping,
-                                    )
-                                )
                         else:
                             input_tables_raw = [
                                 (
@@ -355,16 +345,13 @@ class SupersetSourceMixin(DashboardServiceSource):
         to prevent validation error requiring non empty list of children.
         """
         if col_parse["dataType"] == "ROW" and not col_parse.get("children"):
-            return [
-                Column(name="unknown", dataType=DataType.UNKNOWN)
-            ]
+            return [Column(name="unknown", dataType=DataType.UNKNOWN)]
 
         if col_parse.get("children"):
             return col_parse["children"]
 
-
     def get_column_info(
-            self, data_source: List[Union[DataSourceResult, FetchColumn]]
+        self, data_source: List[Union[DataSourceResult, FetchColumn]]
     ) -> Optional[List[Column]]:
         """
         Args:
@@ -380,14 +367,6 @@ class SupersetSourceMixin(DashboardServiceSource):
                     col_parse = ColumnTypeParser._parse_datatype_string(  # pylint: disable=protected-access
                         field.type
                     )
-
-                    array_data_type = (
-                        DataType(col_parse.get("arrayDataType") or DataType.UNKNOWN)
-                        if "arrayDataType" in col_parse
-                        or col_parse["dataType"] == "ARRAY"
-                        else None
-                    )
-
                     parsed_fields = Column(
                         dataTypeDisplay=field.type,
                         dataType=col_parse["dataType"],
