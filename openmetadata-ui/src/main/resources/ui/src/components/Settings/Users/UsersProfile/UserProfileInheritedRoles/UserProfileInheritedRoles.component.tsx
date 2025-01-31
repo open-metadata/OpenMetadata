@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 
-import { Card, Typography } from 'antd';
+import { Divider, Typography } from 'antd';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as UserIcons } from '../../../../../assets/svg/user.svg';
+import { ReactComponent as InheritedRolesIcon } from '../../../../../assets/svg/InheritedRoles.svg';
 import { EntityType } from '../../../../../enums/entity.enum';
 import Chip from '../../../../common/Chip/Chip.component';
 import { UserProfileInheritedRolesProps } from './UserProfileInheritedRoles.interface';
@@ -25,24 +25,44 @@ const UserProfileInheritedRoles = ({
   const { t } = useTranslation();
 
   return (
-    <Card
-      className="ant-card-feed relative card-body-border-none card-padding-y-0"
+    <div
+      className="d-flex p-[20px]  w-full grey-1 gap-2 mb-4 mt-[-20px]"
       data-testid="user-profile-inherited-roles"
       key="inherited-roles-card-component"
-      title={
-        <Typography.Text
-          className="right-panel-label m-b-0"
-          data-testid="inherited-roles-label">
-          {t('label.inherited-role-plural')}
-        </Typography.Text>
-      }>
-      <Chip
-        data={inheritedRoles ?? []}
-        entityType={EntityType.ROLE}
-        icon={<UserIcons height={20} />}
-        noDataPlaceholder={t('message.no-inherited-roles-found')}
-      />
-    </Card>
+      style={{
+        background: '#F5F5F5',
+        padding: '20px',
+        marginTop: '-20px',
+        borderRadius: '0px 0px 12px 12px',
+      }}>
+      <div>
+        <div className="d-flex flex-col h-full flex-center">
+          <InheritedRolesIcon height={24} width={24} />
+          <Divider
+            style={{
+              height: '100%',
+              width: '2px',
+              background: '#D9D9D9',
+            }}
+            type="vertical"
+          />
+        </div>
+      </div>
+      <div className="w-full">
+        <div className="d-flex flex-col justify-between w-full">
+          <Typography.Text
+            className="profile-section-card-title"
+            data-testid="inherited-roles-label">
+            {t('label.inherited-role-plural')}
+          </Typography.Text>
+          <Chip
+            data={inheritedRoles ?? []}
+            entityType={EntityType.ROLE}
+            noDataPlaceholder={t('message.no-inherited-roles-found')}
+          />{' '}
+        </div>
+      </div>
+    </div>
   );
 };
 
