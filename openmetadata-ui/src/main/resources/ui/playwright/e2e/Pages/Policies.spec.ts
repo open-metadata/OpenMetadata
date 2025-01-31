@@ -192,9 +192,9 @@ test.describe('Policy page should work properly', () => {
       await page.locator('#displayName').fill(UPDATED_POLICY_NAME);
       await page.getByTestId('save-button').click();
 
-      await expect(page.getByTestId('heading')).toContainText(
-        UPDATED_POLICY_NAME
-      );
+      await expect(
+        page.getByTestId('entity-header-display-name')
+      ).toContainText(UPDATED_POLICY_NAME);
     });
 
     await test.step('Add new rule', async () => {

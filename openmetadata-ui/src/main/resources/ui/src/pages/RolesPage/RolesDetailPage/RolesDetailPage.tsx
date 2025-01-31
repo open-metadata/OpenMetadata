@@ -11,36 +11,21 @@
  *  limitations under the License.
  */
 
-import {
-  Button,
-  Col,
-  Dropdown,
-  Modal,
-  Row,
-  Space,
-  Tabs,
-  Tooltip,
-  Typography,
-} from 'antd';
-import ButtonGroup from 'antd/lib/button/button-group';
-import { ItemType } from 'antd/lib/menu/hooks/useItems';
+import { Button, Col, Modal, Row, Space, Tabs, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import { cloneDeep, isEmpty, isUndefined } from 'lodash';
+import { isEmpty, isUndefined } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
-import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
-import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg';
-import { ReactComponent as IconDropdown } from '../../../assets/svg/menu.svg';
 import RoleIcon from '../../../assets/svg/role-colored.svg';
-import DeleteWidgetModal from '../../../components/common/DeleteWidget/DeleteWidgetModal';
 import DescriptionV1 from '../../../components/common/EntityDescription/DescriptionV1';
+import ManageButton from '../../../components/common/EntityPageInfos/ManageButton/ManageButton';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../../components/common/Loader/Loader';
-import { ManageButtonItemLabel } from '../../../components/common/ManageButtonContentItem/ManageButtonContentItem.component';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
-import EntityNameModal from '../../../components/Modals/EntityNameModal/EntityNameModal.component';
+import EntityHeaderTitle from '../../../components/Entity/EntityHeaderTitle/EntityHeaderTitle.component';
+import { EntityName } from '../../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
 import {
   GlobalSettingOptions,
@@ -93,9 +78,6 @@ const RolesDetailPage = () => {
   const [rolePermission, setRolePermission] = useState<OperationPermission>(
     DEFAULT_ENTITY_PERMISSION
   );
-  const [isNameEditing, setIsNameEditing] = useState<boolean>(false);
-  const [showActions, setShowActions] = useState<boolean>(false);
-  const [isDelete, setIsDelete] = useState<boolean>(false);
 
   const rolesPath = getSettingPath(
     GlobalSettingsMenuCategory.ACCESS,
@@ -132,88 +114,13 @@ const RolesDetailPage = () => {
     }
   };
 
-  const editDisplayNamePermission = useMemo(() => {
-    return rolePermission.EditAll || rolePermission.EditDisplayName;
+  const { editDisplayNamePermission, hasDeletePermission } = useMemo(() => {
+    const editDisplayNamePermission =
+      rolePermission.EditAll || rolePermission.EditDisplayName;
+    const hasDeletePermission = rolePermission.Delete;
+
+    return { editDisplayNamePermission, hasDeletePermission };
   }, [rolePermission]);
-
-  const manageButtonContent: ItemType[] = [
-    ...(editDisplayNamePermission
-      ? ([
-          {
-            label: (
-              <ManageButtonItemLabel
-                description={t('message.rename-entity', {
-                  entity: t('label.role'),
-                })}
-                icon={EditIcon}
-                id="rename-button"
-                name={t('label.rename')}
-              />
-            ),
-            key: 'rename-button',
-            onClick: (e) => {
-              e.domEvent.stopPropagation();
-              setIsNameEditing(true);
-              setShowActions(false);
-            },
-          },
-        ] as ItemType[])
-      : []),
-    ...(rolePermission.Delete
-      ? ([
-          {
-            label: (
-              <ManageButtonItemLabel
-                description={t(
-                  'message.delete-entity-type-action-description',
-                  {
-                    entityType: t('label.role'),
-                  }
-                )}
-                icon={DeleteIcon}
-                id="delete-button"
-                name={t('label.delete')}
-              />
-            ),
-            key: 'delete-button',
-            onClick: (e) => {
-              e.domEvent.stopPropagation();
-              setIsDelete(true);
-              setShowActions(false);
-            },
-          },
-        ] as ItemType[])
-      : []),
-  ];
-
-  const onDisplayNameSave = (obj: { name: string; displayName?: string }) => {
-    const { displayName } = obj;
-    let updatedDetails = cloneDeep(role);
-
-    updatedDetails = {
-      ...role,
-      displayName: displayName?.trim(),
-    };
-
-    handleRoleUpdate(updatedDetails);
-    setIsNameEditing(false);
-  };
-
-  const handleRoleUpdate = async (updatedData: Role) => {
-    if (role) {
-      const jsonPatch = compare(role, updatedData);
-      try {
-        const response = await patchRole(jsonPatch, role.id);
-        setRole(response);
-      } catch (error) {
-        showErrorToast(error as AxiosError);
-      }
-    }
-  };
-
-  const handleRoleDelete = () => {
-    history.push(rolesPath);
-  };
 
   const fetchRole = async () => {
     setLoading(true);
@@ -236,6 +143,26 @@ const RolesDetailPage = () => {
       showErrorToast(error as AxiosError);
     } finally {
       setEditDescription(false);
+    }
+  };
+
+  const handleDisplayNameUpdate = async (entityName?: EntityName) => {
+    try {
+      if (role) {
+        const updatedRole = {
+          ...role,
+          ...entityName,
+        };
+        const jsonPatch = compare(role, updatedRole);
+
+        if (jsonPatch.length && role.id) {
+          const response = await patchRole(jsonPatch, role.id);
+
+          setRole(response);
+        }
+      }
+    } catch (error) {
+      showErrorToast(error as AxiosError);
     }
   };
 
@@ -389,64 +316,38 @@ const RolesDetailPage = () => {
           ) : (
             <div className="roles-detail" data-testid="role-details">
               <Row className="flex justify-between">
-                <Col className="flex items-center gap-2">
-                  <div>
-                    <img
-                      alt="role-icon"
-                      className="align-middle"
-                      data-testid="icon"
-                      height={36}
-                      src={RoleIcon}
-                      width={32}
-                    />
-                  </div>
-                  <div className="m-t-xs">
-                    {!isEmpty(role.displayName) ? (
-                      <Typography.Text
-                        className="m-b-0 d-block text-grey-muted"
-                        data-testid="role-header-name">
-                        {role.name}
-                      </Typography.Text>
-                    ) : null}
-                    <Typography.Text
-                      className="m-b-0 d-block entity-header-display-name text-lg font-semibold"
-                      data-testid="heading">
-                      {roleName}
-                    </Typography.Text>
-                  </div>
+                <Col span={23}>
+                  <EntityHeaderTitle
+                    className="w-max-full"
+                    displayName={role.displayName}
+                    icon={
+                      <img
+                        alt="role-icon"
+                        className="align-middle"
+                        data-testid="icon"
+                        height={36}
+                        src={RoleIcon}
+                        width={32}
+                      />
+                    }
+                    name={role?.name ?? ''}
+                    serviceName="role"
+                  />
                 </Col>
-                <Col>
-                  <ButtonGroup className="p-l-xs mt--1" size="small">
-                    {manageButtonContent.length > 0 && (
-                      <Dropdown
-                        align={{ targetOffset: [-12, 0] }}
-                        className="m-l-xs"
-                        menu={{
-                          items: manageButtonContent,
-                        }}
-                        open={showActions}
-                        overlayClassName="domain-manage-dropdown-list-container"
-                        overlayStyle={{ width: '350px' }}
-                        placement="bottomRight"
-                        trigger={['click']}
-                        onOpenChange={setShowActions}>
-                        <Tooltip
-                          placement="topRight"
-                          title={t('label.manage-entity', {
-                            entity: t('label.role'),
-                          })}>
-                          <Button
-                            className="domain-manage-dropdown-button tw-px-1.5"
-                            data-testid="manage-button"
-                            icon={
-                              <IconDropdown className="vertical-align-inherit manage-dropdown-icon" />
-                            }
-                            onClick={() => setShowActions(true)}
-                          />
-                        </Tooltip>
-                      </Dropdown>
-                    )}
-                  </ButtonGroup>
+                <Col span={1}>
+                  <ManageButton
+                    isRecursiveDelete
+                    afterDeleteAction={() => history.push(rolesPath)}
+                    allowSoftDelete={false}
+                    canDelete={hasDeletePermission}
+                    displayName={role?.displayName}
+                    editDisplayNamePermission={editDisplayNamePermission}
+                    entityFQN={role?.fullyQualifiedName}
+                    entityId={role?.id}
+                    entityName={role.name}
+                    entityType={EntityType.ROLE}
+                    onEditDisplayName={handleDisplayNameUpdate}
+                  />
                 </Col>
               </Row>
 
@@ -556,28 +457,6 @@ const RolesDetailPage = () => {
             onSave={(data) => handleAddAttribute(data)}
           />
         )}
-        {role && (
-          <DeleteWidgetModal
-            afterDeleteAction={handleRoleDelete}
-            allowSoftDelete={false}
-            entityId={role.id}
-            entityName={getEntityName(role)}
-            entityType={EntityType.ROLE}
-            visible={isDelete}
-            onCancel={() => {
-              setIsDelete(false);
-            }}
-          />
-        )}
-        <EntityNameModal<Role>
-          entity={role}
-          title={t('label.edit-entity', {
-            entity: t('label.display-name'),
-          })}
-          visible={isNameEditing}
-          onCancel={() => setIsNameEditing(false)}
-          onSave={onDisplayNameSave}
-        />
       </div>
     </PageLayoutV1>
   );

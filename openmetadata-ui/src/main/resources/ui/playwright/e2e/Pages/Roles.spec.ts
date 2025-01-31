@@ -160,7 +160,9 @@ test('Roles page should work properly', async ({ page }) => {
     await page.locator('#displayName').fill(updatedRoleName);
     await page.getByTestId('save-button').click();
 
-    await expect(page.getByTestId('heading')).toContainText(updatedRoleName);
+    await expect(page.getByTestId('entity-header-display-name')).toContainText(
+      updatedRoleName
+    );
   });
 
   await test.step('Add new policy to created role', async () => {
