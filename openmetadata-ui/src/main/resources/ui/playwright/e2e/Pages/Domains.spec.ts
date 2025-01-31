@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import test, { expect } from '@playwright/test';
+import base, { expect, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
 import { get } from 'lodash';
 import { SidebarItem } from '../../constant/sidebar';
@@ -40,10 +40,52 @@ import {
 import { sidebarClick } from '../../utils/sidebar';
 import { performUserLogin, visitUserProfilePage } from '../../utils/user';
 
-test.describe('Domains', () => {
-  test.use({ storageState: 'playwright/.auth/admin.json' });
+const user = new UserClass();
 
+const domain = new Domain();
+
+const test = base.extend<{
+  page: Page;
+  userPage: Page;
+}>({
+  page: async ({ browser }, use) => {
+    const { page } = await performAdminLogin(browser);
+    await use(page);
+    await page.close();
+  },
+  userPage: async ({ browser }, use) => {
+    const page = await browser.newPage();
+    await user.login(page);
+    await use(page);
+    await page.close();
+  },
+});
+
+test.describe('Domains', () => {
   test.slow(true);
+
+  test.beforeAll('Setup pre-requests', async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    await user.create(apiContext);
+
+    await domain.create(apiContext);
+
+    await domain.patch({
+      apiContext,
+      patchData: [
+        {
+          op: 'add',
+          path: '/owners/0',
+          value: {
+            id: user.responseData.id,
+            type: 'user',
+          },
+        },
+      ],
+    });
+
+    await afterAction();
+  });
 
   test.beforeEach('Visit home page', async ({ page }) => {
     await redirectToHomePage(page);
@@ -99,9 +141,13 @@ test.describe('Domains', () => {
     const dataProduct1 = new DataProduct(domain);
     const dataProduct2 = new DataProduct(domain);
     await domain.create(apiContext);
-    await sidebarClick(page, SidebarItem.DOMAIN);
     await page.reload();
-    await addAssetsToDomain(page, domain, assets);
+
+    await test.step('Add assets to domain', async () => {
+      await redirectToHomePage(page);
+      await sidebarClick(page, SidebarItem.DOMAIN);
+      await addAssetsToDomain(page, domain, assets);
+    });
 
     await test.step('Create DataProducts', async () => {
       await selectDomain(page, domain.data);
@@ -389,6 +435,41 @@ test.describe('Domains', () => {
       await afterAction();
     }
   });
+
+  test('Domain owner should able to edit description of domain', async ({
+    page,
+    userPage,
+  }) => {
+    const { afterAction, apiContext } = await getApiContext(page);
+    try {
+      await sidebarClick(userPage, SidebarItem.DOMAIN);
+      await selectDomain(userPage, domain.data);
+
+      await expect(userPage.getByTestId('edit-description')).toBeInViewport();
+
+      await userPage.getByTestId('edit-description').click();
+
+      await expect(userPage.getByTestId('editor')).toBeInViewport();
+
+      const descriptionInputBox = '.om-block-editor[contenteditable="true"]';
+
+      await userPage.fill(descriptionInputBox, 'test description');
+
+      await userPage.getByTestId('save').click();
+
+      await userPage.waitForTimeout(3000);
+
+      const descriptionBox = '.om-block-editor[contenteditable="false"]';
+
+      await expect(userPage.locator(descriptionBox)).toHaveText(
+        'test description'
+      );
+    } finally {
+      await domain?.delete(apiContext);
+      await user.delete(apiContext);
+    }
+    await afterAction();
+  });
 });
 
 test.describe('Domains Rbac', () => {
@@ -505,7 +586,7 @@ test.describe('Domains Rbac', () => {
         const urlParams = new URLSearchParams(queryString);
         const qParam = urlParams.get('q');
 
-        expect(qParam).toContain(`domain.fullyQualifiedName:`);
+        expect(qParam).toEqual('');
       });
 
       for (const asset of domainAssset2) {

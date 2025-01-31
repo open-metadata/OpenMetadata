@@ -91,7 +91,7 @@ SELECT * from names
     def expected_tables() -> int:
         return 13
 
-    def inserted_rows_count(self) -> int:
+    def expected_sample_size(self) -> int:
         # For the admin_emp table
         return 4
 

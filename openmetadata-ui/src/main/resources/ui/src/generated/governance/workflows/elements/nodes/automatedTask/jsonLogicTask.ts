@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,19 +10,28 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-export interface RetentionPolicyConfigurationClass {
+/**
+ * Checks if an Entity attributes fit given rules.
+ */
+export interface JSONLogicTask {
+    config?: Config;
     /**
-     * Enter the retention period for Activity Threads records in days (e.g., 30 for one month,
-     * 60 for two months).
+     * Description of the Node.
      */
-    activityThreadsRetentionPeriod: number;
+    description?: string;
     /**
-     * Enter the retention period for change event records in days (e.g., 7 for one week, 30 for
-     * one month).
+     * Display Name that identifies this Node.
      */
-    changeEventRetentionPeriod: number;
+    displayName?: string;
     /**
-     * Enter the number of versions to retain.
+     * Name that identifies this Node.
      */
-    versionsRetentionPeriod: number;
+    name?:    string;
+    subType?: string;
+    type?:    string;
+    [property: string]: any;
+}
+
+export interface Config {
+    rules?: string;
 }
