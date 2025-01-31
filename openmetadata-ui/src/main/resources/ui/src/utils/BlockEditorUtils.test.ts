@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import {
+  formatValueBasedOnContent,
   getHtmlStringFromMarkdownString,
   getTextFromHtmlString,
 } from './BlockEditorUtils';
@@ -115,5 +116,19 @@ describe('getHtmlStringFromMarkdownString', () => {
     expect(getHtmlStringFromMarkdownString(input).replace(/\s+/g, '')).toBe(
       expectedOutput.replace(/\s+/g, '')
     );
+  });
+});
+
+describe('formatValueBasedOnContent', () => {
+  it('should return the same string if input is not empty p tag', () => {
+    const input = '<p>Hello World</p>';
+
+    expect(formatValueBasedOnContent(input)).toBe(input);
+  });
+
+  it('should return the empty string if input is empty p tag', () => {
+    const input = '<p></p>';
+
+    expect(formatValueBasedOnContent(input)).toBe('');
   });
 });
