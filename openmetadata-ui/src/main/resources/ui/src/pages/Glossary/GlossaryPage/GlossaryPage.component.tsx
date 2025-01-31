@@ -46,6 +46,7 @@ import { EntityAction, TabSpecificField } from '../../../enums/entity.enum';
 import { Glossary } from '../../../generated/entity/data/glossary';
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
 import { Operation } from '../../../generated/entity/policies/policy';
+import { withPageLayout } from '../../../hoc/withPageLayout';
 import { usePaging } from '../../../hooks/paging/usePaging';
 import { useElementInView } from '../../../hooks/useElementInView';
 import { useFqn } from '../../../hooks/useFqn';
@@ -146,9 +147,9 @@ const GlossaryPage = () => {
     [permissions, isGlossaryActive]
   );
 
-  const handleAddGlossaryClick = () => {
+  const handleAddGlossaryClick = useCallback(() => {
     history.push(ROUTES.ADD_GLOSSARY);
-  };
+  }, [history]);
 
   const fetchGlossaryList = useCallback(async () => {
     try {
@@ -236,7 +237,7 @@ const GlossaryPage = () => {
     }
   }, [paging, isInView, isMoreGlossaryLoading, pageSize]);
 
-  const fetchGlossaryTermDetails = async () => {
+  const fetchGlossaryTermDetails = useCallback(async () => {
     setIsRightPanelLoading(true);
     try {
       const response = await getGlossaryTermByFQN(glossaryFqn, {
@@ -257,7 +258,7 @@ const GlossaryPage = () => {
     } finally {
       setIsRightPanelLoading(false);
     }
-  };
+  }, [glossaryFqn]);
   useEffect(() => {
     setIsRightPanelLoading(true);
     if (glossaries.length) {
@@ -277,22 +278,25 @@ const GlossaryPage = () => {
     }
   }, [isGlossaryActive, glossaryFqn, glossaries]);
 
-  const updateGlossary = async (updatedData: Glossary) => {
-    const jsonPatch = compare(activeGlossary as Glossary, updatedData);
+  const updateGlossary = useCallback(
+    async (updatedData: Glossary) => {
+      const jsonPatch = compare(activeGlossary as Glossary, updatedData);
 
-    try {
-      const response = await patchGlossaries(activeGlossary?.id, jsonPatch);
+      try {
+        const response = await patchGlossaries(activeGlossary?.id, jsonPatch);
 
-      updateActiveGlossary({ ...updatedData, ...response });
+        updateActiveGlossary({ ...updatedData, ...response });
 
-      if (activeGlossary?.name !== updatedData.name) {
-        history.push(getGlossaryPath(response.fullyQualifiedName));
-        fetchGlossaryList();
+        if (activeGlossary?.name !== updatedData.name) {
+          history.push(getGlossaryPath(response.fullyQualifiedName));
+          fetchGlossaryList();
+        }
+      } catch (error) {
+        showErrorToast(error as AxiosError);
       }
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    }
-  };
+    },
+    [activeGlossary, updateActiveGlossary, history, fetchGlossaryList]
+  );
 
   const updateVote = useCallback(
     async (data: VotingDataProps) => {
@@ -318,35 +322,38 @@ const GlossaryPage = () => {
     [updateActiveGlossary, activeGlossary]
   );
 
-  const handleGlossaryDelete = async (id: string) => {
-    try {
-      await deleteGlossary(id);
-      showSuccessToast(
-        t('server.entity-deleted-successfully', {
-          entity: t('label.glossary'),
-        })
-      );
-      setIsLoading(true);
-      // check if the glossary available
-      const updatedGlossaries = glossaries.filter((item) => item.id !== id);
-      setGlossaries(updatedGlossaries);
-      const glossaryPath =
-        updatedGlossaries.length > 0
-          ? getGlossaryPath(updatedGlossaries[0].fullyQualifiedName)
-          : getGlossaryPath();
+  const handleGlossaryDelete = useCallback(
+    async (id: string) => {
+      try {
+        await deleteGlossary(id);
+        showSuccessToast(
+          t('server.entity-deleted-successfully', {
+            entity: t('label.glossary'),
+          })
+        );
+        setIsLoading(true);
+        // check if the glossary is available
+        const updatedGlossaries = glossaries.filter((item) => item.id !== id);
+        setGlossaries(updatedGlossaries);
+        const glossaryPath =
+          updatedGlossaries.length > 0
+            ? getGlossaryPath(updatedGlossaries[0].fullyQualifiedName)
+            : getGlossaryPath();
 
-      history.push(glossaryPath);
-    } catch (error) {
-      showErrorToast(
-        error as AxiosError,
-        t('server.delete-entity-error', {
-          entity: t('label.glossary'),
-        })
-      );
-    } finally {
-      setIsLoading(false);
-    }
-  };
+        history.push(glossaryPath);
+      } catch (error) {
+        showErrorToast(
+          error as AxiosError,
+          t('server.delete-entity-error', {
+            entity: t('label.glossary'),
+          })
+        );
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [glossaries, history]
+  );
 
   const handleGlossaryTermUpdate = useCallback(
     async (updatedData: GlossaryTerm) => {
@@ -380,33 +387,38 @@ const GlossaryPage = () => {
     [activeGlossary]
   );
 
-  const handleGlossaryTermDelete = async (id: string) => {
-    try {
-      await deleteGlossaryTerm(id);
+  const handleGlossaryTermDelete = useCallback(
+    async (id: string) => {
+      try {
+        await deleteGlossaryTerm(id);
 
-      showSuccessToast(
-        t('server.entity-deleted-successfully', {
-          entity: t('label.glossary-term'),
-        })
-      );
-      let fqn;
-      if (glossaryFqn) {
-        const fqnArr = Fqn.split(glossaryFqn);
-        fqnArr.pop();
-        fqn = fqnArr.join(FQN_SEPARATOR_CHAR);
+        showSuccessToast(
+          t('server.entity-deleted-successfully', {
+            entity: t('label.glossary-term'),
+          })
+        );
+
+        let fqn;
+        if (glossaryFqn) {
+          const fqnArr = Fqn.split(glossaryFqn);
+          fqnArr.pop();
+          fqn = fqnArr.join(FQN_SEPARATOR_CHAR);
+        }
+
+        setIsLoading(true);
+        history.push(getGlossaryPath(fqn));
+        fetchGlossaryList();
+      } catch (err) {
+        showErrorToast(
+          err as AxiosError,
+          t('server.delete-entity-error', {
+            entity: t('label.glossary-term'),
+          })
+        );
       }
-      setIsLoading(true);
-      history.push(getGlossaryPath(fqn));
-      fetchGlossaryList();
-    } catch (err) {
-      showErrorToast(
-        err as AxiosError,
-        t('server.delete-entity-error', {
-          entity: t('label.glossary-term'),
-        })
-      );
-    }
-  };
+    },
+    [glossaryFqn, history, fetchGlossaryList]
+  );
 
   const handleAssetClick = useCallback(
     (asset?: EntityDetailsObjectInterface) => {
@@ -420,24 +432,30 @@ const GlossaryPage = () => {
   }
 
   if (!(viewBasicGlossaryPermission || viewAllGlossaryPermission)) {
-    return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
+    return (
+      <div className="d-flex justify-center items-center">
+        <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
+      </div>
+    );
   }
 
   if (glossaries.length === 0 && !isLoading) {
     return (
-      <ErrorPlaceHolder
-        buttonId="add-glossary"
-        className="mt-0-important"
-        doc={GLOSSARIES_DOCS}
-        heading={t('label.glossary')}
-        permission={createGlossaryPermission}
-        type={
-          createGlossaryPermission
-            ? ERROR_PLACEHOLDER_TYPE.CREATE
-            : ERROR_PLACEHOLDER_TYPE.NO_DATA
-        }
-        onClick={handleAddGlossaryClick}
-      />
+      <div className="d-flex justify-center items-center full-height">
+        <ErrorPlaceHolder
+          buttonId="add-glossary"
+          className="mt-0-important"
+          doc={GLOSSARIES_DOCS}
+          heading={t('label.glossary')}
+          permission={createGlossaryPermission}
+          type={
+            createGlossaryPermission
+              ? ERROR_PLACEHOLDER_TYPE.CREATE
+              : ERROR_PLACEHOLDER_TYPE.NO_DATA
+          }
+          onClick={handleAddGlossaryClick}
+        />
+      </div>
     );
   }
 
@@ -518,7 +536,7 @@ const GlossaryPage = () => {
     />
   );
 
-  return <>{resizableLayout}</>;
+  return <div className="m--t-sm">{resizableLayout}</div>;
 };
 
-export default GlossaryPage;
+export default withPageLayout('glossary')(GlossaryPage);

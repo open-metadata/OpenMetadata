@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,12 +10,22 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import React, { FC } from 'react';
+import { useTranslation } from 'react-i18next';
+import PageLayoutV1 from '../components/PageLayoutV1/PageLayoutV1';
 
-import { ToastOptions } from 'react-toastify';
+export const withPageLayout =
+  <P,>(pageTitleKey: string) =>
+  (Component: FC<P>) => {
+    const WrappedComponent: FC<P> = (props) => {
+      const { t } = useTranslation();
 
-export const TOAST_OPTIONS: ToastOptions = {
-  autoClose: false,
-  hideProgressBar: true,
-  draggable: false,
-  closeOnClick: false,
-};
+      return (
+        <PageLayoutV1 pageTitle={t(`label.${pageTitleKey}`)}>
+          <Component {...props} />
+        </PageLayoutV1>
+      );
+    };
+
+    return WrappedComponent;
+  };

@@ -25,7 +25,11 @@ import {
   UPDATED_RULE_NAME,
 } from '../../constant/permission';
 import { GlobalSettingOptions } from '../../constant/settings';
-import { descriptionBox, redirectToHomePage } from '../../utils/common';
+import {
+  descriptionBox,
+  redirectToHomePage,
+  toastNotification,
+} from '../../utils/common';
 import { validateFormNameFieldInput } from '../../utils/form';
 import { settingClick } from '../../utils/sidebar';
 
@@ -258,7 +262,8 @@ test.describe('Policy page should work properly', () => {
       await page.locator('[data-testid="delete-rule"]').click();
 
       // Validate the error message
-      await expect(page.locator('.Toastify__toast-body')).toContainText(
+      await toastNotification(
+        page,
         ERROR_MESSAGE_VALIDATION.lastRuleCannotBeRemoved
       );
     });
