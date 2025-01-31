@@ -39,7 +39,10 @@ export class PipelineClass extends EntityClass {
     },
   };
 
-  children = [{ name: 'snowflake_task' }];
+  children = [
+    { name: 'snowflake_task', displayName: 'Snowflake Task' },
+    { name: 'presto_task', displayName: 'Presto Task' },
+  ];
 
   entity = {
     name: this.pipelineName,
