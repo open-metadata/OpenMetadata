@@ -26,7 +26,15 @@ import {
   UPDATED_RULE_NAME,
 } from '../../constant/permission';
 import { GlobalSettingOptions } from '../../constant/settings';
-import { descriptionBox, redirectToHomePage } from '../../utils/common';
+import {
+  PolicyClass,
+  PolicyRulesType,
+} from '../../support/access-control/PoliciesClass';
+import {
+  descriptionBox,
+  getApiContext,
+  redirectToHomePage,
+} from '../../utils/common';
 import { validateFormNameFieldInput } from '../../utils/form';
 import { settingClick } from '../../utils/sidebar';
 
@@ -337,5 +345,38 @@ test.describe('Policy page should work properly', () => {
     await expect(
       page.getByRole('link', { name: 'Organization', exact: true })
     ).toBeVisible();
+  });
+
+  test('Delete policy action from manage button options', async ({ page }) => {
+    const { apiContext, afterAction } = await getApiContext(page);
+
+    const policy = new PolicyClass();
+    const policyRules: PolicyRulesType[] = [
+      {
+        name: `${RULE_NAME}`,
+        resources: ['bot'],
+        operations: ['ViewAll'],
+        effect: 'allow',
+      },
+    ];
+    const policyLocator = `[data-testid="policy-name"][href="/settings/access/policies/${encodeURIComponent(
+      policy.data.name
+    )}"]`;
+
+    await policy.create(apiContext, policyRules);
+
+    await page.reload();
+    await page.locator(policyLocator).click();
+    await page.getByTestId('manage-button').click();
+    await page.getByTestId('delete-button').click();
+    await page
+      .locator('[data-testid="confirmation-text-input"]')
+      .fill('DELETE');
+    await page.locator('[data-testid="confirm-button"]').click();
+
+    await expect(page.locator(policyLocator)).not.toBeVisible();
+
+    await policy.delete(apiContext);
+    await afterAction();
   });
 });

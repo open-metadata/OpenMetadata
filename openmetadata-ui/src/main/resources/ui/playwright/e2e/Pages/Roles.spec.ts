@@ -12,7 +12,13 @@
  */
 import { expect, test } from '@playwright/test';
 import { GlobalSettingOptions } from '../../constant/settings';
-import { descriptionBox, redirectToHomePage, uuid } from '../../utils/common';
+import { RolesClass } from '../../support/access-control/RolesClass';
+import {
+  descriptionBox,
+  getApiContext,
+  redirectToHomePage,
+  uuid,
+} from '../../utils/common';
 import { removePolicyFromRole } from '../../utils/roles';
 import { settingClick } from '../../utils/sidebar';
 
@@ -251,4 +257,28 @@ test('Roles page should work properly', async ({ page }) => {
       )
     ).not.toBeVisible();
   });
+});
+
+test('Delete role action from manage button options', async ({ page }) => {
+  const { apiContext, afterAction } = await getApiContext(page);
+
+  const role = new RolesClass();
+  const policies = ['ApplicationBotPolicy'];
+  const roleLocator = `[data-testid="role-name"][href="/settings/access/roles/${encodeURIComponent(
+    role.data.name
+  )}"]`;
+
+  await role.create(apiContext, policies);
+
+  await settingClick(page, GlobalSettingOptions.ROLES);
+  await page.locator(roleLocator).click();
+  await page.getByTestId('manage-button').click();
+  await page.getByTestId('delete-button').click();
+  await page.locator('[data-testid="confirmation-text-input"]').fill('DELETE');
+  await page.locator('[data-testid="confirm-button"]').click();
+
+  await expect(page.locator(roleLocator)).not.toBeVisible();
+
+  await role.delete(apiContext);
+  await afterAction();
 });
