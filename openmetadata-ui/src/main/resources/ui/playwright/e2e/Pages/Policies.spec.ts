@@ -22,6 +22,7 @@ import {
   RULE_DETAILS,
   RULE_NAME,
   UPDATED_DESCRIPTION,
+  UPDATED_POLICY_NAME,
   UPDATED_RULE_NAME,
 } from '../../constant/permission';
 import { GlobalSettingOptions } from '../../constant/settings';
@@ -184,6 +185,18 @@ test.describe('Policy page should work properly', () => {
       ).toContainText(`${UPDATED_DESCRIPTION}-${POLICY_NAME}`);
     });
 
+    await test.step('Edit policy display name', async () => {
+      await page.getByTestId('manage-button').click();
+      await page.getByTestId('rename-button-title').click();
+      await page.locator('#displayName').click();
+      await page.locator('#displayName').fill(UPDATED_POLICY_NAME);
+      await page.getByTestId('save-button').click();
+
+      await expect(page.getByTestId('heading')).toContainText(
+        UPDATED_POLICY_NAME
+      );
+    });
+
     await test.step('Add new rule', async () => {
       // Click on add rule button
       await page.locator('[data-testid="add-rule"]').click();
@@ -270,7 +283,7 @@ test.describe('Policy page should work properly', () => {
       });
       // Click on delete action button
       await page
-        .locator(`[data-testid="delete-action-${POLICY_NAME}"]`)
+        .locator(`[data-testid="delete-action-${UPDATED_POLICY_NAME}"]`)
         .click({ force: true });
 
       // Type 'DELETE' in the confirmation text input
@@ -283,7 +296,7 @@ test.describe('Policy page should work properly', () => {
 
       // Validate deleted policy
       await expect(
-        page.getByText(POLICY_NAME, { exact: true })
+        page.getByText(UPDATED_POLICY_NAME, { exact: true })
       ).not.toBeVisible();
     });
   });

@@ -421,7 +421,7 @@ const PoliciesDetailPage = () => {
   }, [fqn]);
 
   useEffect(() => {
-    if (policy && policy?.id) {
+    if (policy?.id) {
       fetchPolicyPermission();
     }
   }, [policy?.id]);

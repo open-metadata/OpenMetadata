@@ -353,7 +353,7 @@ const RolesDetailPage = () => {
   }, [fqn]);
 
   useEffect(() => {
-    if (role && role?.id) {
+    if (role?.id) {
       fetchRolePermission();
     }
   }, [role?.id]);
