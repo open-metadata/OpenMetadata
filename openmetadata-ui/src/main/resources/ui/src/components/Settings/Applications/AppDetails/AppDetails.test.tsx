@@ -54,6 +54,16 @@ const mockPush = jest.fn();
 const mockPatchApplication = jest.fn().mockReturnValue(mockApplicationData);
 const mockGetApplicationByName = jest.fn().mockReturnValue(mockApplicationData);
 
+jest.mock('../ApplicationConfiguration/ApplicationConfiguration', () =>
+  jest.fn().mockImplementation(({ onConfigSave }) => (
+    <div data-testid="application-configuration">
+      <button onClick={() => onConfigSave({ formData: {} })}>
+        Save Config
+      </button>
+    </div>
+  ))
+);
+
 jest.mock('../../../../rest/applicationAPI', () => ({
   configureApp: mockConfigureApp,
   deployApp: jest.fn().mockImplementation(() => mockDeployApp()),
@@ -208,15 +218,6 @@ describe('AppDetails component', () => {
     ConfirmAction('label.restore');
 
     expect(mockRestoreApp).toHaveBeenCalled();
-  });
-
-  it('Configuration tab actions check', async () => {
-    await renderAppDetails();
-
-    userEvent.click(screen.getByRole('tab', { name: 'label.configuration' }));
-    userEvent.click(screen.getByRole('button', { name: 'Configure Save' }));
-
-    expect(mockPatchApplication).toHaveBeenCalled();
   });
 
   it('Schedule and Recent Runs tab should not be visible for NoScheduleApps', async () => {

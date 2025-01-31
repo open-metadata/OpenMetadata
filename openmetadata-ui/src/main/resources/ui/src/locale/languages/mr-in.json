@@ -2023,6 +2023,7 @@
     "join-team-success": "टीममध्ये यशस्वीरित्या सामील झाले!",
     "leave-team-error": "टीम सोडताना त्रुटी!",
     "leave-team-success": "टीम यशस्वीरित्या सोडली!",
+    "no-application-schema-found": "No application schema found for {{appName}}",
     "no-owned-entities": "तुम्ही अद्याप काहीही मालकीचे नाही.",
     "no-query-available": "कोणतीही क्वेरी उपलब्ध नाही.",
     "no-task-available": "कोणताही कार्य डेटा उपलब्ध नाही.",

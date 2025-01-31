@@ -16,7 +16,7 @@
     "build": "webpack --config ./webpack.config.prod.js --env production",
     "postinstall": "yarn run build-check",
     "preinstall": "cd ../../../../.. && yarn install --frozen-lockfile",
-    "pre-commit": "lint-staged --concurrent false",
+    "pre-commit": "lint-staged --concurrent false && yarn generate:app-docs",
     "test": "jest --passWithNoTests --maxWorkers=3 --silent",
     "prepare": "cd ../../../../.. && husky install openmetadata-ui/src/main/resources/ui/.husky",
     "test:watch": "jest --passWithNoTests --watch --maxWorkers=3",
@@ -35,7 +35,8 @@
     "check-i18n": "npm run i18n -- --check",
     "playwright:run": "playwright test",
     "playwright:open": "playwright test --ui",
-    "playwright:codegen": "playwright codegen"
+    "playwright:codegen": "playwright codegen",
+    "generate:app-docs": "node generateApplicationDocs.js"
   },
   "dependencies": {
     "@analytics/session-utils": "^0.1.17",

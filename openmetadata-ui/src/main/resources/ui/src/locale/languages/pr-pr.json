@@ -2023,6 +2023,7 @@
     "join-team-success": "با موفقیت به تیم پیوستید!",
     "leave-team-error": "خطا در ترک تیم!",
     "leave-team-success": "با موفقیت از تیم خارج شدید!",
+    "no-application-schema-found": "No application schema found for {{appName}}",
     "no-owned-entities": "شما هنوز هیچ چیزی را مالک نشده‌اید.",
     "no-query-available": "هیچ پرس‌و‌جویی در دسترس نیست.",
     "no-task-available": "داده‌ای از وظایف در دسترس نیست.",
