@@ -11,59 +11,33 @@
  *  limitations under the License.
  */
 
-import docsClassBase from '../utils/docsClassBase copy';
+import documentationLinksClassBase from '../utils/DocumentationLinksClassBase';
 
-export const OMD_REPOSITORY_LINK = 'https://star-us.open-metadata.org/';
-
-const docsUrl = docsClassBase.docsUrl;
-
-export const WORKFLOWS_PROFILER_DOCS = `${docsUrl}how-to-guides/data-quality-observability/profiler/workflow`;
-
-export const GLOSSARIES_DOCS = `${docsUrl}main-concepts/metadata-standard/schemas/entity/data/glossary`;
-
-export const CONNECTORS_DOCS = `${docsUrl}connectors`;
-
-export const WORKFLOWS_METADATA_DOCS = `${docsUrl}connectors/ingestion/workflows/metadata`;
-
-export const INGESTION_FRAMEWORK_DEPLOYMENT_DOCS = `${docsUrl}deployment/ingestion`;
-
-export const BOTS_DOCS = `${docsUrl}main-concepts/metadata-standard/schemas/entity/bot`;
-
-export const TEAMS_DOCS = `${docsUrl}how-to-guides/admin-guide/teams-and-users/team-structure-openmetadata`;
-
-export const ADD_CUSTOM_PROPERTIES_DOCS = `${docsUrl}how-to-guides/guide-for-data-users/custom`;
-
-export const ROLE_DOCS = `${docsUrl}main-concepts/metadata-standard/schemas/entity/teams/role`;
-
-export const DATA_INSIGHT_DOCS = `${docsUrl}how-to-guides/data-insights`;
-
-export const INGESTION_DOCS = `${docsUrl}connectors/ingestion/workflows`;
-
-export const USAGE_DOCS = `${docsUrl}connectors/ingestion/workflows/usage`;
-
-export const LOCAL_DEPLOYMENT = `${docsUrl}quick-start/local-docker-deployment`;
-
-export const OMD_SLACK_LINK =
-  'https://join.slack.com/t/openmetadata/shared_invite/zt-1r1kv175f-9qM5eTB39MF6U2DBhZhWow';
-
-export const DATA_INSIGHTS_PIPELINE_DOCS = `${docsUrl}how-to-guides/data-insights/ingestion`;
-
-export const ELASTIC_SEARCH_RE_INDEX_PIPELINE_DOCS = `${docsUrl}main-concepts/metadata-standard/schemas/entity/services/connections/metadata/metadataesconnection`;
-
-export const ALERTS_DOCS = `${docsUrl}how-to-guides/admin-guide/alerts`;
-
-export const TAGS_DOCS = `${docsUrl}main-concepts/metadata-standard/schemas/api/tags`;
-
-export const AIRFLOW_DOCS = `${docsUrl}deployment/ingestion/external/airflow`;
-
-export const FOLLOW_DATA_ASSET = `${docsUrl}how-to-guides/guide-for-data-users/follow-data-asset`;
-
-export const RECENTLY_VIEWED = `${docsUrl}how-to-guides/data-discovery/discover`;
-
-export const DATA_QUALITY_PROFILER_DOCS = `${docsUrl}how-to-guides/data-quality-observability`;
-
-export const CUSTOM_PROPERTIES_DOCS = `${docsUrl}how-to-guides/guide-for-data-users/custom`;
-
-export const DATA_DISCOVERY_DOCS = `${docsUrl}how-to-guides/data-discovery`;
-
-export const HOW_TO_GUIDE_DOCS = `${docsUrl}how-to-guides`;
+export const {
+  OMD_REPOSITORY_LINK,
+  WORKFLOWS_PROFILER_DOCS,
+  GLOSSARIES_DOCS,
+  CONNECTORS_DOCS,
+  WORKFLOWS_METADATA_DOCS,
+  INGESTION_FRAMEWORK_DEPLOYMENT_DOCS,
+  BOTS_DOCS,
+  TEAMS_DOCS,
+  ADD_CUSTOM_PROPERTIES_DOCS,
+  ROLE_DOCS,
+  DATA_INSIGHT_DOCS,
+  INGESTION_DOCS,
+  USAGE_DOCS,
+  LOCAL_DEPLOYMENT,
+  OMD_SLACK_LINK,
+  DATA_INSIGHTS_PIPELINE_DOCS,
+  ELASTIC_SEARCH_RE_INDEX_PIPELINE_DOCS,
+  ALERTS_DOCS,
+  TAGS_DOCS,
+  AIRFLOW_DOCS,
+  FOLLOW_DATA_ASSET,
+  RECENTLY_VIEWED,
+  DATA_QUALITY_PROFILER_DOCS,
+  CUSTOM_PROPERTIES_DOCS,
+  DATA_DISCOVERY_DOCS,
+  HOW_TO_GUIDE_DOCS,
+} = documentationLinksClassBase.getDocsURLS();

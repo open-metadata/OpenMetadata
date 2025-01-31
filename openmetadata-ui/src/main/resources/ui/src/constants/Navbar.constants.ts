@@ -17,7 +17,7 @@ import { ReactComponent as IconTour } from '../assets/svg/icon-tour.svg';
 import { ReactComponent as IconSlackGrey } from '../assets/svg/slack-grey.svg';
 import { ReactComponent as IconVersionBlack } from '../assets/svg/version-black.svg';
 import { ReactComponent as IconWhatsNew } from '../assets/svg/whats-new.svg';
-import docsClassBase from '../utils/docsClassBase copy';
+import documentationLinksClassBase from '../utils/DocumentationLinksClassBase';
 
 import i18n from '../utils/i18next/LocalUtil';
 import { ROUTES } from './constants';
@@ -53,7 +53,7 @@ export const HELP_ITEMS = [
     key: HELP_ITEMS_ENUM.DOC,
     label: i18n.t('label.doc-plural'),
     icon: IconDoc,
-    link: docsClassBase.docsUrl,
+    link: documentationLinksClassBase.getDocsBaseURL(),
     isExternal: true,
   },
   {
