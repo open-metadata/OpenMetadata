@@ -15,11 +15,6 @@ import React from 'react';
 import { EditorContentRef } from '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor.interface';
 import RichTextEditor from './RichTextEditor';
 
-// jest.mock('../../../utils/BlockEditorUtils', () => ({
-//   formatContent: jest.fn(),
-// //   formatValueBasedOnContent: jest.fn().mockReturnValue('formatted content'),
-// }));
-
 jest.mock('../../BlockEditor/BlockEditor', () => {
   return jest.fn().mockImplementation(({ content, onChange, ref }: any) => {
     if (ref && ref.current) {
