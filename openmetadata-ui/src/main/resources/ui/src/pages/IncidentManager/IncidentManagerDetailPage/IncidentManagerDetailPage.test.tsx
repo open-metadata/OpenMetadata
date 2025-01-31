@@ -14,8 +14,9 @@ import { act, fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { TestCase } from '../../../generated/tests/testCase';
+import { MOCK_PERMISSIONS } from '../../../mocks/Glossary.mock';
 import { getTestCaseByFqn } from '../../../rest/testAPI';
-import { checkPermission } from '../../../utils/PermissionsUtils';
+import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { IncidentManagerTabs } from '../IncidentManager.interface';
 import IncidentManagerDetailPage from './IncidentManagerDetailPage';
 import { UseTestCaseStoreInterface } from './useTestCase.store';
@@ -80,6 +81,10 @@ const mockUseTestCase: UseTestCaseStoreInterface = {
   setShowAILearningBanner: jest.fn(),
   dqLineageData: undefined,
   setDqLineageData: jest.fn(),
+  isPermissionLoading: false,
+  testCasePermission: MOCK_PERMISSIONS,
+  setTestCasePermission: jest.fn(),
+  setIsPermissionLoading: jest.fn(),
 };
 jest.mock('./useTestCase.store', () => ({
   useTestCaseStore: jest.fn().mockImplementation(() => mockUseTestCase),
@@ -152,9 +157,6 @@ jest.mock(
 jest.mock('../../../components/common/OwnerLabel/OwnerLabel.component', () => ({
   OwnerLabel: jest.fn().mockImplementation(() => <div>OwnerLabel</div>),
 }));
-jest.mock('../../../utils/PermissionsUtils', () => ({
-  checkPermission: jest.fn().mockReturnValue(true),
-}));
 
 describe('IncidentManagerDetailPage', () => {
   it('should render component', async () => {
@@ -187,9 +189,7 @@ describe('IncidentManagerDetailPage', () => {
   });
 
   it("should render no permission message if user doesn't have permission", async () => {
-    (checkPermission as jest.Mock).mockImplementationOnce(
-      (data) => data !== 'ViewAll'
-    );
+    mockUseTestCase.testCasePermission = DEFAULT_ENTITY_PERMISSION;
     await act(async () => {
       render(<IncidentManagerDetailPage />, { wrapper: MemoryRouter });
     });
@@ -197,6 +197,8 @@ describe('IncidentManagerDetailPage', () => {
     expect(
       await screen.findByText('ErrorPlaceHolder PERMISSION')
     ).toBeInTheDocument();
+
+    mockUseTestCase.testCasePermission = MOCK_PERMISSIONS;
   });
 
   it('should render no data placeholder message if there is no data', async () => {
