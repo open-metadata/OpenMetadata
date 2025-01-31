@@ -251,7 +251,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
                     mediaType = "application/json",
                     schema = @Schema(implementation = AppRunList.class)))
       })
-  public Response listAppRuns(
+  public ResultList<AppRunRecord> listAppRuns(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Name of the App", schema = @Schema(type = "string"))
@@ -281,9 +281,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
           Long endTs) {
     App installation = repository.getByName(uriInfo, name, repository.getFields("id,pipelines"));
     if (installation.getAppType().equals(AppType.Internal)) {
-      return Response.status(Response.Status.OK)
-          .entity(repository.listAppRuns(installation, limitParam, offset))
-          .build();
+      return repository.listAppRuns(installation, limitParam, offset);
     }
     if (!installation.getPipelines().isEmpty()) {
       EntityReference pipelineRef = installation.getPipelines().get(0);
@@ -292,13 +290,27 @@ public class AppResource extends EntityResource<App, AppRepository> {
       IngestionPipeline ingestionPipeline =
           ingestionPipelineRepository.get(
               uriInfo, pipelineRef.getId(), ingestionPipelineRepository.getFields(FIELD_OWNERS));
-      return Response.ok(
-              ingestionPipelineRepository.listPipelineStatus(
-                  ingestionPipeline.getFullyQualifiedName(), startTs, endTs),
-              MediaType.APPLICATION_JSON_TYPE)
-          .build();
+      return ingestionPipelineRepository
+          .listPipelineStatus(ingestionPipeline.getFullyQualifiedName(), startTs, endTs)
+          .map(pipelineStatus -> convertPipelineStatus(installation, pipelineStatus));
     }
-    throw new IllegalArgumentException("App does not have an associated pipeline.");
+    throw new IllegalArgumentException("App does not have a scheduled deployment");
+  }
+
+  private static AppRunRecord convertPipelineStatus(App app, PipelineStatus pipelineStatus) {
+    return new AppRunRecord()
+        .withAppId(app.getId())
+        .withAppName(app.getName())
+        .withExecutionTime(pipelineStatus.getStartDate())
+        .withEndTime(pipelineStatus.getEndDate())
+        .withStatus(
+            switch (pipelineStatus.getPipelineState()) {
+              case QUEUED -> AppRunRecord.Status.PENDING;
+              case SUCCESS -> AppRunRecord.Status.SUCCESS;
+              case FAILED, PARTIAL_SUCCESS -> AppRunRecord.Status.FAILED;
+              case RUNNING -> AppRunRecord.Status.RUNNING;
+            })
+        .withConfig(pipelineStatus.getConfig());
   }
 
   @GET
@@ -617,7 +629,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
     limits.enforceLimits(
         securityContext,
         getResourceContext(),
-        new OperationContext(Entity.APPLICATION, MetadataOperation.CREATE));
+        new OperationContext(APPLICATION, MetadataOperation.CREATE));
     if (SCHEDULED_TYPES.contains(app.getScheduleType())) {
       ApplicationHandler.getInstance()
           .installApplication(

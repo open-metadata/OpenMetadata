@@ -90,6 +90,22 @@ test('Search Index Application', async ({ page }) => {
     await verifyLastExecutionRun(page);
   });
 
+  await test.step('View App Run Config', async () => {
+    await page.getByTestId('app-historical-config').click();
+    await page.waitForSelector('[role="dialog"].ant-modal');
+
+    await expect(page.locator('[role="dialog"].ant-modal')).toBeVisible();
+
+    await expect(page.locator('.ant-modal-title')).toContainText(
+      'Search Indexing Configuration'
+    );
+
+    await page.click('[data-testid="app-run-config-close"]');
+    await page.waitForSelector('[role="dialog"].ant-modal', {
+      state: 'detached',
+    });
+  });
+
   await test.step('Edit application', async () => {
     await page.click('[data-testid="edit-button"]');
     await page.waitForSelector('[data-testid="schedular-card-container"]');

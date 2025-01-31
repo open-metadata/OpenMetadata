@@ -10,10 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Col, Row, Typography } from 'antd';
+import validator from '@rjsf/validator-ajv8';
+import { Button, Col, Modal, Row, Space, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
-import { isNull } from 'lodash';
+import { isNull, noop } from 'lodash';
 import React, {
   forwardRef,
   useCallback,
@@ -31,8 +32,12 @@ import {
 } from '../../../../constants/constants';
 import { GlobalSettingOptions } from '../../../../constants/GlobalSettings.constants';
 import { useWebSocketConnector } from '../../../../context/WebSocketProvider/WebSocketProvider';
+import { ServiceCategory } from '../../../../enums/service.enum';
 import { AppType } from '../../../../generated/entity/applications/app';
-import { Status } from '../../../../generated/entity/applications/appRunRecord';
+import {
+  AppRunRecord,
+  Status,
+} from '../../../../generated/entity/applications/appRunRecord';
 import {
   PipelineState,
   PipelineStatus,
@@ -51,16 +56,20 @@ import {
   getEpochMillisForPastDays,
   getIntervalInMilliseconds,
 } from '../../../../utils/date-time/DateTimeUtils';
+import { getEntityName } from '../../../../utils/EntityUtils';
 import { getLogsViewerPath } from '../../../../utils/RouterUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import FormBuilder from '../../../common/FormBuilder/FormBuilder';
 import NextPrevious from '../../../common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../../common/NextPrevious/NextPrevious.interface';
 import StatusBadge from '../../../common/StatusBadge/StatusBadge.component';
 import { StatusType } from '../../../common/StatusBadge/StatusBadge.interface';
 import Table from '../../../common/Table/Table';
 import StopScheduleModal from '../../../Modals/StopScheduleRun/StopScheduleRunModal';
+import applicationsClassBase from '../AppDetails/ApplicationsClassBase';
 import AppLogsViewer from '../AppLogsViewer/AppLogsViewer.component';
+import './app-run-history.less';
 import {
   AppRunRecordWithId,
   AppRunsHistoryProps,
@@ -68,7 +77,12 @@ import {
 
 const AppRunsHistory = forwardRef(
   (
-    { appData, maxRecords, showPagination = true }: AppRunsHistoryProps,
+    {
+      appData,
+      maxRecords,
+      jsonSchema,
+      showPagination = true,
+    }: AppRunsHistoryProps,
     ref
   ) => {
     const { socket } = useWebSocketConnector();
@@ -80,6 +94,17 @@ const AppRunsHistory = forwardRef(
     >([]);
     const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
     const [isStopModalOpen, setIsStopModalOpen] = useState<boolean>(false);
+    const [showConfigModal, setShowConfigModal] = useState<boolean>(false);
+    const [appRunRecordConfig, setAppRunRecordConfig] = useState<
+      AppRunRecord['config']
+    >({});
+    const UiSchema = {
+      ...applicationsClassBase.getJSONUISchema(),
+      'ui:submitButtonProps': {
+        showButton: false,
+        buttonText: 'submit',
+      },
+    };
 
     const {
       currentPage,
@@ -132,6 +157,11 @@ const AppRunsHistory = forwardRef(
       return false;
     }, []);
 
+    const showAppRunConfig = (record: AppRunRecordWithId) => {
+      setShowConfigModal(true);
+      setAppRunRecordConfig(record.config ?? {});
+    };
+
     const getActionButton = useCallback(
       (record: AppRunRecordWithId, index: number) => {
         if (
@@ -148,6 +178,14 @@ const AppRunsHistory = forwardRef(
                 type="link"
                 onClick={() => handleRowExpandable(record.id)}>
                 {t('label.log-plural')}
+              </Button>
+              <Button
+                className="m-l-xs p-0"
+                data-testid="app-historical-config"
+                size="small"
+                type="link"
+                onClick={() => showAppRunConfig(record)}>
+                {t('label.config')}
               </Button>
               {/* For status running or activewitherror and supportsInterrupt is true, show stop button */}
               {(record.status === Status.Running ||
@@ -214,7 +252,7 @@ const AppRunsHistory = forwardRef(
             return record.status ? (
               <StatusBadge
                 dataTestId="pipeline-status"
-                label={STATUS_LABEL[record.status]}
+                label={STATUS_LABEL[record.status as keyof typeof STATUS_LABEL]}
                 status={status}
               />
             ) : (
@@ -408,6 +446,52 @@ const AppRunsHistory = forwardRef(
             }}
           />
         )}
+        <Modal
+          centered
+          destroyOnClose
+          bodyStyle={{
+            maxHeight: 700,
+            overflowY: 'scroll',
+          }}
+          className="app-config-modal"
+          closable={false}
+          data-testid="edit-table-type-property-modal"
+          footer={
+            <Space className="w-full justify-end">
+              <Button
+                data-testid="app-run-config-close"
+                type="primary"
+                onClick={() => setShowConfigModal(false)}>
+                {t('label.close')}
+              </Button>
+            </Space>
+          }
+          maskClosable={false}
+          open={showConfigModal}
+          title={
+            <Typography.Text>
+              {t('label.entity-configuration', {
+                entity: getEntityName(appData) ?? t('label.application'),
+              })}
+            </Typography.Text>
+          }
+          width={800}>
+          <FormBuilder
+            hideCancelButton
+            readonly
+            useSelectWidget
+            cancelText={t('label.back')}
+            formData={appRunRecordConfig}
+            isLoading={false}
+            okText={t('label.submit')}
+            schema={jsonSchema}
+            serviceCategory={ServiceCategory.DASHBOARD_SERVICES}
+            uiSchema={UiSchema}
+            validator={validator}
+            onCancel={noop}
+            onSubmit={noop}
+          />
+        </Modal>
       </>
     );
   }
