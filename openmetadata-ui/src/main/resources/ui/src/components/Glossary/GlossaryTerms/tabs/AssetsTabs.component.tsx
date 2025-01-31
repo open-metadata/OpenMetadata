@@ -630,6 +630,7 @@ const AssetsTabs = forwardRef(
                 handleSummaryPanelDisplay={setSelectedCard}
                 id={_id}
                 key={'assets_' + _id}
+                searchValue={searchValue}
                 showCheckboxes={Boolean(activeEntity) && permissions.Create}
                 showTags={false}
                 source={_source}
