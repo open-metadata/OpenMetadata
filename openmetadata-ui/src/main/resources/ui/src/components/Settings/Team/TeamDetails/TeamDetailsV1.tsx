@@ -916,6 +916,7 @@ const TeamDetailsV1 = ({
       !isOrganization &&
       !isUndefined(currentUser) &&
       isGroupType &&
+      !isTeamDeleted &&
       (isAlreadyJoinedTeam ? (
         <Button
           ghost
@@ -975,7 +976,7 @@ const TeamDetailsV1 = ({
                 <ManageButton
                   isRecursiveDelete
                   afterDeleteAction={afterDeleteAction}
-                  allowSoftDelete={!currentTeam.deleted}
+                  allowSoftDelete={!isTeamDeleted}
                   canDelete={entityPermissions.EditAll}
                   displayName={getEntityName(currentTeam)}
                   entityId={currentTeam.id}

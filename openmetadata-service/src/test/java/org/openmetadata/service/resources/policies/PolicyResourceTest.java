@@ -429,7 +429,9 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
     for (int i = 0; i < 3; i++) {
       // Team X has Policy X
       CreateTeam createTeam =
-          TEAM_TEST.createRequest(test, i).withPolicies(List.of(policies.get(i).getId()));
+          TEAM_TEST
+              .createRequest(test, i)
+              .withPolicies(List.of(policies.get(i).getFullyQualifiedName()));
       teams.add(TEAM_TEST.createEntity(createTeam, ADMIN_AUTH_HEADERS));
     }
 
@@ -542,15 +544,27 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
         TEAM_TEST
             .createRequest("rolesPoliciesTeam2")
             .withTeamType(DEPARTMENT)
-            .withDefaultRoles(listOf(DATA_STEWARD_ROLE.getId()));
+            .withDefaultRoles(listOf(DATA_STEWARD_ROLE.getFullyQualifiedName()));
     Team team2 = TEAM_TEST.createEntity(createTeam, ADMIN_AUTH_HEADERS);
-    createTeam = TEAM_TEST.createRequest("rolesPoliciesTeam11").withParents(listOf(team1.getId()));
+    createTeam =
+        TEAM_TEST
+            .createRequest("rolesPoliciesTeam11")
+            .withParents(listOf(team1.getFullyQualifiedName()));
     Team team11 = TEAM_TEST.createEntity(createTeam, ADMIN_AUTH_HEADERS);
-    createTeam = TEAM_TEST.createRequest("rolesPoliciesTeam12").withParents(listOf(team1.getId()));
+    createTeam =
+        TEAM_TEST
+            .createRequest("rolesPoliciesTeam12")
+            .withParents(listOf(team1.getFullyQualifiedName()));
     Team team12 = TEAM_TEST.createEntity(createTeam, ADMIN_AUTH_HEADERS);
-    createTeam = TEAM_TEST.createRequest("rolesPoliciesTeam21").withParents(listOf(team2.getId()));
+    createTeam =
+        TEAM_TEST
+            .createRequest("rolesPoliciesTeam21")
+            .withParents(listOf(team2.getFullyQualifiedName()));
     Team team21 = TEAM_TEST.createEntity(createTeam, ADMIN_AUTH_HEADERS);
-    createTeam = TEAM_TEST.createRequest("rolesPoliciesTeam22").withParents(listOf(team2.getId()));
+    createTeam =
+        TEAM_TEST
+            .createRequest("rolesPoliciesTeam22")
+            .withParents(listOf(team2.getFullyQualifiedName()));
     Team team22 = TEAM_TEST.createEntity(createTeam, ADMIN_AUTH_HEADERS);
 
     // Create users - Team2 has default role DataSteward
