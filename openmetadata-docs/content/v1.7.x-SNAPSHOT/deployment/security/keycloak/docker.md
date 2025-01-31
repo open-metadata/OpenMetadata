@@ -30,7 +30,7 @@ AUTHENTICATION_CLIENT_ID="{Client ID}"
 AUTHENTICATION_PROVIDER=custom-oidc                 # Use "custom-oidc" for Keycloak
 CUSTOM_OIDC_AUTHENTICATION_PROVIDER_NAME=Keycloak   # Name of the OIDC provider
 AUTHENTICATION_PUBLIC_KEYS=http://{Keycloak-server-URL}/realms/{your-realm}/protocol/openid-connect/certs, http://{OMD-server-domain}/api/v1/system/config/jwks       # Update your keyCloak server URL, Realm and openmetadata URL
-AUTHENTICATION_CALLBACK_URL=http://localhost:8585/callback"
+AUTHENTICATION_CALLBACK_URL="http://localhost:8585/callback"
 AUTHENTICATION_AUTHORITY=AUTHENTICATION_AUTHORITY:-http://localhost:8080/realms/{your-realm}
 AUTHENTICATION_CLIENT_TYPE=public
 
@@ -46,7 +46,7 @@ AUTHENTICATION_CLIENT_ID="{Client ID}"
 AUTHENTICATION_PROVIDER=custom-oidc                 # Use "custom-oidc" for Keycloak
 CUSTOM_OIDC_AUTHENTICATION_PROVIDER_NAME=Keycloak   # Name of the OIDC provider
 AUTHENTICATION_PUBLIC_KEYS=http://{Keycloak-server-URL}/realms/{your-realm}/protocol/openid-connect/certs, http://{OMD-server-domain}/api/v1/system/config/jwks       # Update your keyCloak server URL, Realm and openmetadata URL
-AUTHENTICATION_CALLBACK_URL=http://localhost:8585/callback"
+AUTHENTICATION_CALLBACK_URL="http://localhost:8585/callback"
 AUTHENTICATION_AUTHORITY=AUTHENTICATION_AUTHORITY:-http://localhost:8080/realms/{your-realm}
 AUTHENTICATION_CLIENT_TYPE=confidential
 
