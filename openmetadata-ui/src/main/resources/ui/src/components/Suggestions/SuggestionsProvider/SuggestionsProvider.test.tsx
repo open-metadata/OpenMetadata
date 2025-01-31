@@ -65,7 +65,10 @@ describe('SuggestionsProvider', () => {
       );
     });
 
-    expect(getSuggestionsList).toHaveBeenCalled();
+    expect(getSuggestionsList).toHaveBeenCalledWith({
+      entityFQN: 'mockFQN',
+      limit: 500,
+    });
   });
 
   it('calls approveRejectAllSuggestions when button is clicked', () => {

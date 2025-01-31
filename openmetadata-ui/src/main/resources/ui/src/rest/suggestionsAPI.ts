@@ -24,6 +24,7 @@ const BASE_URL = '/suggestions';
 
 export type ListSuggestionsParams = ListParams & {
   entityFQN?: string;
+  limit?: number;
 };
 
 export const getSuggestionsList = async (params?: ListSuggestionsParams) => {
