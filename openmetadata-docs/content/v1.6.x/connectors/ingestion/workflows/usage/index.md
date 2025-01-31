@@ -14,7 +14,7 @@ This workflow is available ONLY for the following connectors:
 - [MSSQL](/connectors/database/mssql)
 - [Redshift](/connectors/database/redshift)
 - [Clickhouse](/connectors/database/clickhouse)
-- [Postgres](/connectors/database/postgres)
+- [PostgreSQL](/connectors/database/postgres)
 - [Databricks](/connectors/database/databricks)
 
 If your database service is not yet supported, you can use this same workflow by providing a Query Log file!
