@@ -171,7 +171,7 @@ class RestSource(ApiServiceSource):
                     break
             return filtered_paths
         except Exception as err:
-            logger.error(
+            logger.warning(
                 f"Error while filtering endpoints for collection {collection.name.root}"
             )
             return None
@@ -184,7 +184,7 @@ class RestSource(ApiServiceSource):
                 endpoint.name = f"{path} - {method_type}"
             return endpoint
         except Exception as err:
-            logger.error(f"Error while parsing endpoint data: {err}")
+            logger.warning(f"Error while parsing endpoint data: {err}")
         return None
 
     def _generate_collection_url(self, collection_name: str) -> Optional[AnyUrl]:
@@ -195,7 +195,7 @@ class RestSource(ApiServiceSource):
                     f"{self.config.serviceConnection.root.config.openAPISchemaURL}#tag/{collection_name}"
                 )
         except Exception as err:
-            logger.error(f"Error while generating collection url: {err}")
+            logger.warning(f"Error while generating collection url: {err}")
         return None
 
     def _generate_endpoint_url(self, endpoint_name: str) -> AnyUrl:
@@ -210,7 +210,7 @@ class RestSource(ApiServiceSource):
         try:
             return ApiRequestMethod[method_type.upper()]
         except KeyError as err:
-            logger.error(f"Keyerror while fetching request method: {err}")
+            logger.warning(f"Keyerror while fetching request method: {err}")
         return None
 
     def _get_request_schema(self, info: dict) -> Optional[APISchema]:
@@ -228,7 +228,7 @@ class RestSource(ApiServiceSource):
                 return None
             return APISchema(schemaFields=self.process_schema_fields(schema_ref))
         except Exception as err:
-            logger.error(f"Error while parsing request schema: {err}")
+            logger.warning(f"Error while parsing request schema: {err}")
         return None
 
     def _get_response_schema(self, info: dict) -> Optional[APISchema]:
@@ -247,7 +247,7 @@ class RestSource(ApiServiceSource):
                 return None
             return APISchema(schemaFields=self.process_schema_fields(schema_ref))
         except Exception as err:
-            logger.error(f"Error while parsing response schema: {err}")
+            logger.warning(f"Error while parsing response schema: {err}")
         return None
 
     def process_schema_fields(self, schema_ref: str) -> Optional[List[FieldModel]]:
@@ -283,5 +283,5 @@ class RestSource(ApiServiceSource):
                     )
             return fetched_fields
         except Exception as err:
-            logger.error(f"Error while processing schema fields: {err}")
+            logger.warning(f"Error while processing schema fields: {err}")
         return None
