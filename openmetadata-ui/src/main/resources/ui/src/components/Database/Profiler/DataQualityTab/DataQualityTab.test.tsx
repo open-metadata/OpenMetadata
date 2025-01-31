@@ -377,4 +377,22 @@ describe('DataQualityTab test', () => {
 
     mockPermissionsData = MOCK_PERMISSIONS;
   });
+
+  it('Only Edit test case button should be enabled if isEditAllowed is true', async () => {
+    mockPermissionsData = DEFAULT_ENTITY_PERMISSION;
+
+    await act(async () => {
+      render(<DataQualityTab isEditAllowed {...mockProps} />);
+    });
+
+    const editButton = screen.getByTestId('edit-column_values_to_match_regex');
+    const deleteButton = screen.getByTestId(
+      'delete-column_values_to_match_regex'
+    );
+
+    expect(editButton).not.toBeDisabled();
+    expect(deleteButton).toBeDisabled();
+
+    mockPermissionsData = MOCK_PERMISSIONS;
+  });
 });

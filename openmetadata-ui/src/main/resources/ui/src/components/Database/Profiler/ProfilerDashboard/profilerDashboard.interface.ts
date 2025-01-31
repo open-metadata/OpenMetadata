@@ -63,6 +63,7 @@ export interface DataQualityTabProps {
   showPagination?: boolean;
   breadcrumbData?: TitleBreadcrumbProps['titleLinks'];
   fetchTestCases?: (params?: ListTestCaseParamsBySearch) => Promise<void>;
+  isEditAllowed?: boolean;
 }
 
 export interface TestSummaryProps {
