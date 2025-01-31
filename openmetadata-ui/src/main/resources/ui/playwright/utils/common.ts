@@ -116,6 +116,8 @@ export const toastNotification = async (
   page: Page,
   message: string | RegExp
 ) => {
+  await page.waitForSelector('[data-testid="alert-bar"]', { state: 'visible' });
+
   await expect(page.getByTestId('alert-bar')).toHaveText(message);
 
   await expect(page.getByTestId('alert-icon')).toBeVisible();
