@@ -421,10 +421,10 @@ const PoliciesDetailPage = () => {
   }, [fqn]);
 
   useEffect(() => {
-    if (policy && policy.id) {
+    if (policy && policy?.id) {
       fetchPolicyPermission();
     }
-  }, [policy.id]);
+  }, [policy?.id]);
 
   if (isLoading) {
     return <Loader />;

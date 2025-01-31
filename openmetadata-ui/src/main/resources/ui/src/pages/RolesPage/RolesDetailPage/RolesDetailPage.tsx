@@ -353,10 +353,10 @@ const RolesDetailPage = () => {
   }, [fqn]);
 
   useEffect(() => {
-    if (role && role.id) {
+    if (role && role?.id) {
       fetchRolePermission();
     }
-  }, [role.id]);
+  }, [role?.id]);
 
   if (isLoading) {
     return <Loader />;
