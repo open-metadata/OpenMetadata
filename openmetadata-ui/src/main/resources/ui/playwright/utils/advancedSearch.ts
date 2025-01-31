@@ -12,7 +12,7 @@
  */
 import { expect, Locator, Page } from '@playwright/test';
 import { clickOutside } from './common';
-import { escapeESReservedCharacters, getEncodedFqn } from './entity';
+import { getEncodedFqn } from './entity';
 
 type EntityFields = {
   id: string;
@@ -332,7 +332,7 @@ export const checkMustPaths = async (
 
   await expect(
     page.getByTestId('advance-search-filter-container')
-  ).toContainText(escapeESReservedCharacters(searchData));
+  ).toContainText(searchData);
 };
 
 export const checkMustNotPaths = async (
