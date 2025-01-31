@@ -123,16 +123,16 @@ const PoliciesDetailPage = () => {
   );
 
   const fetchPolicyPermission = async () => {
-    try {
-      if (policy) {
+    if (policy) {
+      try {
         const response = await getEntityPermission(
           ResourceEntity.POLICY,
           policy.id
         );
         setPolicyPermission(response);
+      } catch (error) {
+        showErrorToast(error as AxiosError);
       }
-    } catch (error) {
-      showErrorToast(error as AxiosError);
     }
   };
 
@@ -421,8 +421,10 @@ const PoliciesDetailPage = () => {
   }, [fqn]);
 
   useEffect(() => {
-    fetchPolicyPermission();
-  }, [policy.fullyQualifiedName]);
+    if (policy && policy.id) {
+      fetchPolicyPermission();
+    }
+  }, [policy.id]);
 
   if (isLoading) {
     return <Loader />;

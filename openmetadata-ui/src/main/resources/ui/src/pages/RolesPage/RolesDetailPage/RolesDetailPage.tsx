@@ -119,16 +119,16 @@ const RolesDetailPage = () => {
   );
 
   const fetchRolePermission = async () => {
-    try {
-      if (role) {
+    if (role) {
+      try {
         const response = await getEntityPermission(
           ResourceEntity.ROLE,
           role.id
         );
         setRolePermission(response);
+      } catch (error) {
+        showErrorToast(error as AxiosError);
       }
-    } catch (error) {
-      showErrorToast(error as AxiosError);
     }
   };
 
@@ -353,8 +353,10 @@ const RolesDetailPage = () => {
   }, [fqn]);
 
   useEffect(() => {
-    fetchRolePermission();
-  }, [role.fullyQualifiedName]);
+    if (role && role.id) {
+      fetchRolePermission();
+    }
+  }, [role.id]);
 
   if (isLoading) {
     return <Loader />;
