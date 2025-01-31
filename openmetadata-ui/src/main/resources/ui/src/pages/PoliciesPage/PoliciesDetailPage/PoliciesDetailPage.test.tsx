@@ -63,6 +63,16 @@ jest.mock('../../../components/common/Loader/Loader', () =>
   jest.fn().mockReturnValue(<div>Loader</div>)
 );
 
+jest.mock(
+  '../../../components/Entity/EntityHeaderTitle/EntityHeaderTitle.component',
+  () => jest.fn().mockReturnValue(<div>EntityHeaderTitle</div>)
+);
+
+jest.mock(
+  '../../../components/common/EntityPageInfos/ManageButton/ManageButton',
+  () => jest.fn().mockReturnValue(<div>ManageButton</div>)
+);
+
 jest.mock('../../../constants/HelperTextUtil', () => ({
   NO_PERMISSION_FOR_ACTION: '',
   NO_PERMISSION_TO_VIEW: '',

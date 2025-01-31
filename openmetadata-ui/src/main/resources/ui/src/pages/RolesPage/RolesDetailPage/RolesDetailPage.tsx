@@ -11,22 +11,31 @@
  *  limitations under the License.
  */
 
-import { Button, Modal, Space, Tabs, Typography } from 'antd';
+import { Button, Col, Modal, Row, Space, Tabs, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
+import RoleIcon from '../../../assets/svg/role-colored.svg';
 import DescriptionV1 from '../../../components/common/EntityDescription/DescriptionV1';
+import ManageButton from '../../../components/common/EntityPageInfos/ManageButton/ManageButton';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../../components/common/Loader/Loader';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
+import EntityHeaderTitle from '../../../components/Entity/EntityHeaderTitle/EntityHeaderTitle.component';
+import { EntityName } from '../../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
 } from '../../../constants/GlobalSettings.constants';
+import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
+import {
+  OperationPermission,
+  ResourceEntity,
+} from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
 import { Role } from '../../../generated/entity/teams/role';
@@ -36,6 +45,7 @@ import { getRoleByName, patchRole } from '../../../rest/rolesAPIV1';
 import { getTeamByName, patchTeamDetail } from '../../../rest/teamsAPI';
 import { getUserByName, updateUserDetail } from '../../../rest/userAPI';
 import { getEntityName } from '../../../utils/EntityUtils';
+import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { getSettingPath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import AddAttributeModal from '../AddAttributeModal/AddAttributeModal';
@@ -55,6 +65,7 @@ const RolesDetailPage = () => {
   const history = useHistory();
   const { t } = useTranslation();
   const { fqn } = useFqn();
+  const { getEntityPermission } = usePermissionProvider();
 
   const [role, setRole] = useState<Role>({} as Role);
   const [isLoading, setLoading] = useState<boolean>(false);
@@ -64,6 +75,9 @@ const RolesDetailPage = () => {
     useState<{ attribute: Attribute; record: EntityReference }>();
 
   const [addAttribute, setAddAttribute] = useState<AddAttribute>();
+  const [rolePermission, setRolePermission] = useState<OperationPermission>(
+    DEFAULT_ENTITY_PERMISSION
+  );
 
   const rolesPath = getSettingPath(
     GlobalSettingsMenuCategory.ACCESS,
@@ -86,6 +100,28 @@ const RolesDetailPage = () => {
     [rolesPath, roleName]
   );
 
+  const fetchRolePermission = async () => {
+    if (role) {
+      try {
+        const response = await getEntityPermission(
+          ResourceEntity.ROLE,
+          role.id
+        );
+        setRolePermission(response);
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      }
+    }
+  };
+
+  const { editDisplayNamePermission, hasDeletePermission } = useMemo(() => {
+    const editDisplayNamePermission =
+      rolePermission.EditAll || rolePermission.EditDisplayName;
+    const hasDeletePermission = rolePermission.Delete;
+
+    return { editDisplayNamePermission, hasDeletePermission };
+  }, [rolePermission]);
+
   const fetchRole = async () => {
     setLoading(true);
     try {
@@ -107,6 +143,26 @@ const RolesDetailPage = () => {
       showErrorToast(error as AxiosError);
     } finally {
       setEditDescription(false);
+    }
+  };
+
+  const handleDisplayNameUpdate = async (entityName?: EntityName) => {
+    try {
+      if (role) {
+        const updatedRole = {
+          ...role,
+          ...entityName,
+        };
+        const jsonPatch = compare(role, updatedRole);
+
+        if (jsonPatch.length && role.id) {
+          const response = await patchRole(jsonPatch, role.id);
+
+          setRole(response);
+        }
+      }
+    } catch (error) {
+      showErrorToast(error as AxiosError);
     }
   };
 
@@ -223,6 +279,12 @@ const RolesDetailPage = () => {
     fetchRole();
   }, [fqn]);
 
+  useEffect(() => {
+    if (role?.id) {
+      fetchRolePermission();
+    }
+  }, [role?.id]);
+
   if (isLoading) {
     return <Loader />;
   }
@@ -253,12 +315,42 @@ const RolesDetailPage = () => {
             </ErrorPlaceHolder>
           ) : (
             <div className="roles-detail" data-testid="role-details">
-              <Typography.Title
-                className="m-b-0 m-t-xs"
-                data-testid="heading"
-                level={5}>
-                {roleName}
-              </Typography.Title>
+              <Row className="flex justify-between">
+                <Col span={23}>
+                  <EntityHeaderTitle
+                    className="w-max-full"
+                    displayName={role.displayName}
+                    icon={
+                      <img
+                        alt="role-icon"
+                        className="align-middle"
+                        data-testid="icon"
+                        height={36}
+                        src={RoleIcon}
+                        width={32}
+                      />
+                    }
+                    name={role?.name ?? ''}
+                    serviceName="role"
+                  />
+                </Col>
+                <Col span={1}>
+                  <ManageButton
+                    isRecursiveDelete
+                    afterDeleteAction={() => history.push(rolesPath)}
+                    allowSoftDelete={false}
+                    canDelete={hasDeletePermission}
+                    displayName={role?.displayName}
+                    editDisplayNamePermission={editDisplayNamePermission}
+                    entityFQN={role?.fullyQualifiedName}
+                    entityId={role?.id}
+                    entityName={role.name}
+                    entityType={EntityType.ROLE}
+                    onEditDisplayName={handleDisplayNameUpdate}
+                  />
+                </Col>
+              </Row>
+
               <DescriptionV1
                 hasEditAccess
                 className="m-y-md"
