@@ -1676,7 +1676,9 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     assertResponse(
         () -> updateEntity(updateRequest, OK, TEST_AUTH_HEADERS),
         FORBIDDEN,
-        "User does not have ANY of the required permissions.");
+        List.of(
+            permissionNotAllowed(TEST_USER_NAME, List.of(MetadataOperation.EDIT_ALL)),
+            "User does not have ANY of the required permissions."));
   }
 
   @Test
@@ -3214,7 +3216,9 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       assertResponse(
           () -> patchEntity(entity.getId(), originalJson, entity, authHeaders),
           FORBIDDEN,
-          permissionNotAllowed(userName, List.of(disallowedOperation)));
+          List.of(
+              "User does not have ANY of the required permissions.",
+              permissionNotAllowed(userName, List.of(disallowedOperation))));
       return entity;
     }
 

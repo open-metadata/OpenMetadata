@@ -2728,13 +2728,15 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     }
 
     deleteEntity(testCase1.getId(), true, true, ADMIN_AUTH_HEADERS); // hard delete
-    resultList =
-        getTestCaseResults(
-            testCase1.getFullyQualifiedName(),
-            TestUtils.dateToTimestamp("2021-10-01"),
-            TestUtils.dateToTimestamp("2021-10-30"),
-            ADMIN_AUTH_HEADERS);
-    assertEquals(resultList.getData().size(), 0); // hard deletion should delete existing results
+    assertResponse(
+        () ->
+            getTestCaseResults(
+                testCase1.getFullyQualifiedName(),
+                TestUtils.dateToTimestamp("2021-10-01"),
+                TestUtils.dateToTimestamp("2021-10-30"),
+                ADMIN_AUTH_HEADERS),
+        NOT_FOUND,
+        "testCase instance for " + testCase1.getFullyQualifiedName() + " not found");
 
     if (supportsSearchIndex) {
       getAndValidateTestSummary(testCase.getTestSuite().getId().toString());
