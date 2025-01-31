@@ -387,7 +387,7 @@ const RolesDetailPage = () => {
               </div>
             </ErrorPlaceHolder>
           ) : (
-            <div className="roles-details" data-testid="role-details">
+            <div className="roles-detail" data-testid="role-details">
               <Row className="flex justify-between">
                 <Col className="flex items-center gap-2">
                   <div>
