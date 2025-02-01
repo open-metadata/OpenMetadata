@@ -76,7 +76,7 @@ const Appbar: React.FC = (): JSX.Element => {
         getExplorePath({
           tab: defaultTab,
           search: value,
-          isPersistFilters: false,
+          isPersistFilters: true,
           extraParameters: {
             sort: '_score',
           },
