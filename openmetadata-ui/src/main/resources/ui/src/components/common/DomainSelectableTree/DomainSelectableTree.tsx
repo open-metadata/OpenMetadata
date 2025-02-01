@@ -56,30 +56,22 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
   const [domains, setDomains] = useState<Domain[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isSubmitLoading, setIsSubmitLoading] = useState(false);
-  const [selectedDomains, setSelectedDomains] = useState<Key[]>([]);
+  const [selectedDomains, setSelectedDomains] = useState<Domain[]>([]);
   const [searchTerm, setSearchTerm] = useState<string>('');
 
   const handleSave = async () => {
     setIsSubmitLoading(true);
     if (isMultiple) {
-      const selectedData = [];
-      for (const item of selectedDomains) {
-        selectedData.push(findItemByFqn(domains, item as string, false));
-      }
-      const domains1 = selectedData.map((item) =>
-        getEntityReferenceFromEntity(item as EntityReference, EntityType.DOMAIN)
+      const domains1 = selectedDomains.map((item) =>
+        getEntityReferenceFromEntity<Domain>(item, EntityType.DOMAIN)
       );
       await onSubmit(domains1);
     } else {
       let retn: EntityReference[] = [];
       if (selectedDomains.length > 0) {
-        const initialData = findItemByFqn(
-          domains,
-          selectedDomains[0] as string,
-          false
-        );
-        const domain = getEntityReferenceFromEntity(
-          initialData as EntityReference,
+        
+        const domain = getEntityReferenceFromEntity<Domain>(
+          selectedDomains[0],
           EntityType.DOMAIN
         );
         retn = [domain];
@@ -105,7 +97,13 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
 
   const onSelect = (selectedKeys: React.Key[]) => {
     if (!isMultiple) {
-      setSelectedDomains(selectedKeys);
+
+      const selectedData = [];
+      for (const item of selectedKeys) {
+        selectedData.push(findItemByFqn(domains, item as string, false) as Domain);
+      }
+
+      setSelectedDomains(selectedData);
     }
   };
 
@@ -113,9 +111,14 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
     checked: Key[] | { checked: Key[]; halfChecked: Key[] }
   ): void => {
     if (Array.isArray(checked)) {
-      setSelectedDomains(checked);
+      const selectedData = [];
+      for (const item of checked) {
+        selectedData.push(findItemByFqn(domains, item as string, false) as Domain);
+      }
+
+      setSelectedDomains(selectedData);
     } else {
-      setSelectedDomains(checked.checked);
+      setSelectedDomains([findItemByFqn(domains, checked.checked as unknown as string, false) as Domain]);
     }
   };
 
@@ -132,6 +135,7 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
           isMultiple
         );
         setTreeData(updatedTreeData);
+        setDomains(results);
       } finally {
         setIsLoading(false);
       }
@@ -201,7 +205,6 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
         <Button
           className="update-btn"
           data-testid="saveAssociatedTag"
-          // disabled={isEmpty(glossaries)}
           htmlType="submit"
           loading={isSubmitLoading}
           size="small"
