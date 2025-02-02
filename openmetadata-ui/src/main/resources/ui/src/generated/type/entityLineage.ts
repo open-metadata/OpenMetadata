@@ -69,6 +69,15 @@ export interface LineageDetails {
      * SQL used for transformation.
      */
     sqlQuery?: string;
+    /**
+     * Last update time corresponding to the new version of the entity in Unix epoch time
+     * milliseconds.
+     */
+    updatedAt?: number;
+    /**
+     * User who made the update.
+     */
+    updatedBy?: string;
     [property: string]: any;
 }
 
