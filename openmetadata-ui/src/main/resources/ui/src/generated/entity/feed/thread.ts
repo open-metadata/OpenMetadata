@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * This schema defines the Thread entity. A Thread is a collection of posts made by the
  * users. The first post that starts a thread is **about** a data asset **from** a user.
  * Other users can respond to this post by creating new posts in the thread. Note that bot
@@ -139,6 +137,7 @@ export interface AnnouncementDetails {
  */
 export enum CardStyle {
     Assets = "assets",
+    Certification = "certification",
     CustomProperties = "customProperties",
     Default = "default",
     Description = "description",
@@ -248,6 +247,8 @@ export interface FeedInfo {
 /**
  * This schema defines the schema for Assets addition/deletion Updates.
  *
+ * This schema defines the certification addition/updation/deletion schema on feed.
+ *
  * This schema defines the custom properties addition/deltion schema on feed.
  *
  * This schema defines the schema for Description Updates.
@@ -259,10 +260,14 @@ export interface FeedInfo {
 export interface Info {
     updatedAssets?: EntityReference[];
     /**
+     * Previous Certification details.
+     *
      * Previous Custom Property.
      */
     previousValue?: any;
     /**
+     * Updated Certification details.
+     *
      * Updated Custom Property.
      */
     updatedValue?: any;

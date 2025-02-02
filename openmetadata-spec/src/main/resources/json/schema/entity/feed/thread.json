@@ -240,7 +240,8 @@
         "testCaseResult",
         "customProperties",
         "assets",
-        "domain"
+        "domain",
+        "certification"
       ],
       "default": "default"
     },
@@ -266,6 +267,9 @@
           "oneOf": [
             {
               "$ref": "./assets.json"
+            },
+            {
+              "$ref": "./certification.json"
             },
             {
               "$ref": "./customProperty.json"
