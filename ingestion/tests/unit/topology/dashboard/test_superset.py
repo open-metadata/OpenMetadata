@@ -279,7 +279,8 @@ def setup_sample_data(postgres_container):
                 id INTEGER PRIMARY KEY,
                 table_name VARCHAR(255),
                 schema VARCHAR(255),
-                database_id INTEGER
+                database_id INTEGER,
+                sql VARCHAR(4000)
             );
         """
         INSERT_TABLES_DATA = """
