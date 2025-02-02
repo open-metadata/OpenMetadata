@@ -14,7 +14,7 @@
 
 // Define a mixin for repeated styles
 .buttonStyle() {
-  background: #292929;
+  background: @primary-color;
   color: @white;
 }
 
@@ -37,15 +37,11 @@
 
   &:disabled {
     .buttonStyle();
-    // opacity: 0.8;
-    background-color: #292929;
+    opacity: 0.8;
 
     &:hover {
       .buttonStyle();
       opacity: 0.8;
     }
-  }
-  .ant-btn .anticon {
-    color: @white;
   }
 }

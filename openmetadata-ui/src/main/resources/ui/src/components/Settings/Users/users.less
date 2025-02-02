@@ -86,7 +86,7 @@ body {
 }
 .profile-section {
   max-width: 300px;
-  padding: 16px 16px;
+  padding: 20px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -95,26 +95,37 @@ body {
   border-radius: 8px;
   height: @profile-page-sidebar;
   overflow-y: scroll;
-}
-.profile-details-text {
-  margin-top: 16px;
-  text-align: center;
-}
-.profile-details-title {
-  font-weight: 600;
-  font-size: 18px;
-  line-height: 28px;
-  color: #181d27;
-}
-.profile-details-email {
-  color: @blue-7;
-}
-.profile-details-desc {
-  font-size: 14px;
-  font-weight: 400;
-  line-height: 20px;
-  text-align: center;
-  color: #535862;
+  .profile-section-user-details-card {
+    padding: 20px;
+    margin-bottom: 16px;
+    background: #f5f5f5;
+    justify-content: center;
+    align-items: center;
+    border-radius: 12px;
+
+    .profile-details-title {
+      margin-top: 20px;
+      font-size: 18px;
+      font-style: normal;
+      font-weight: 600;
+      line-height: 28px;
+      color: #181d27;
+      text-align: center;
+    }
+    .profile-details-email {
+      color: #175cd3;
+      text-align: center;
+    }
+    .profile-details-desc {
+      font-size: 14px;
+      font-style: normal;
+      font-weight: 400;
+      line-height: 20px;
+      color: #535862;
+      text-align: center;
+      margin-top: @margin-xs;
+    }
+  }
 }
 
 .profile-section-card {
@@ -137,7 +148,7 @@ body {
   font-weight: 400;
   font-size: 14px;
   line-height: 20px;
-  color: @grey-3;
+  color: #535862;
 }
 .tabs-container {
   background-color: @white;
@@ -165,20 +176,19 @@ body {
 
 .user-profile-card {
   background: #f5f5f5;
-  padding: 20px;
+  padding: 20px 20px 10px 20px;
   border-radius: 12px;
-  // .user-profile-card-header{
-  //   margin-left: 4px;
-  // }
-
+  .user-profile-card-header {
+    margin-bottom: @margin-xs;
+  }
+  .user-profile-card-body {
+    margin-bottom: 10px;
+  }
   .user-profile-card-title {
     font-weight: 600;
     font-size: 14px;
     line-height: 20px;
-    color: #414654;
-  }
-  .user-profile-card-body {
-    margin: 5px 0px 10px 0px;
+    color: #414651;
   }
 }
 .user-profile-edit-popover-card {
@@ -190,4 +200,15 @@ body {
   font-size: 14px;
   font-weight: 600;
   line-height: 20px;
+}
+
+.chip-text {
+  background-color: #535862;
+}
+.default-persona-text {
+  padding-left: 26px;
+  color: #535862;
+}
+.user-page-icon {
+  width: 16px;
 }

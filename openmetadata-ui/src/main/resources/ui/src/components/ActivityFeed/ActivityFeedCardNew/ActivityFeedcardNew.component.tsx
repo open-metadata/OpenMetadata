@@ -11,9 +11,10 @@
  *  limitations under the License.
  */
 import { Card, Col, Input, Space, Tooltip, Typography } from 'antd';
-import React, { useMemo, useState } from 'react';
+import { compare } from 'fast-json-patch';
+import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Thread } from '../../../generated/entity/feed/thread';
+import { GeneratedBy, Thread } from '../../../generated/entity/feed/thread';
 import { useUserProfile } from '../../../hooks/user-profile/useUserProfile';
 import {
   formatDateTime,
@@ -27,10 +28,12 @@ import {
   getFeedHeaderTextFromCardStyle,
 } from '../../../utils/FeedUtils';
 import ProfilePicture from '../../common/ProfilePicture/ProfilePicture';
+import FeedCardBodyNew from '../ActivityFeedCard/FeedCardBody/FeedCardBodyNew';
 import FeedCardFooterNew from '../ActivityFeedCardV2/FeedCardFooter/FeedCardFooterNew';
 import ActivityFeedEditorNew from '../ActivityFeedEditor/ActivityFeedEditorNew';
 import { useActivityFeedProvider } from '../ActivityFeedProvider/ActivityFeedProvider';
 import '../ActivityFeedTab/activity-feed-tab-new.less';
+import ActivityFeedActions from '../Shared/ActivityFeedActions';
 
 const { Text, Link } = Typography;
 
@@ -66,6 +69,11 @@ const ActivityFeedCardNew = ({
   const { t } = useTranslation();
   const { selectedThread, postFeed } = useActivityFeedProvider();
   const [showFeedEditor, setShowFeedEditor] = useState<boolean>(false);
+  const [isEditPost, setIsEditPost] = useState<boolean>(false);
+  const [postMessage, setPostMessage] = useState<string>('');
+  const { updateFeed } = useActivityFeedProvider();
+  const [isHovered, setIsHovered] = useState(false);
+
   const onSave = (message: string) => {
     postFeed(message, selectedThread?.id ?? '').catch(() => {
       // ignore since error is displayed in toast in the parent promise.
@@ -73,7 +81,58 @@ const ActivityFeedCardNew = ({
     });
     setShowFeedEditor(false);
   };
+  const onEditPost = () => {
+    setIsEditPost(!isEditPost);
+  };
+  const onUpdate = (message: string) => {
+    const updatedPost = { ...feed, message };
+    const patch = compare(feed, updatedPost);
+    updateFeed(feed.id, post.id, !isPost, patch);
+    setIsEditPost(!isEditPost);
+  };
+  const handleSave = useCallback(() => {
+    onUpdate?.(postMessage ?? '');
+  }, [onUpdate, postMessage]);
+  // const getDefaultValue = (defaultMessage: string) => {
+  //   return MarkdownToHTMLConverter.makeHtml(getFrontEndFormat(defaultMessage));
+  // };
+  // const feedBodyRender = useMemo(() => {
+  //   if (isEditPost) {
+  //     return (
+  //       <ActivityFeedEditor
+  //         focused
+  //         className="mb-8"
+  //         defaultValue={getDefaultValue(post.message)}
+  //         editAction={
+  //           <div className="d-flex justify-end gap-2 m-r-xss">
+  //             <Button
+  //               className="border border-primary text-primary rounded-4"
+  //               data-testid="cancel-button"
+  //               size="small"
+  //               // onClick={onEditCancel}
+  //             >
+  //               {t('label.cancel')}
+  //             </Button>
+  //             <Button
+  //               className="rounded-4"
+  //               data-testid="save-button"
+  //               // disabled={!message.length}
+  //               size="small"
+  //               type="primary"
+  //               onClick={handleSave}>
+  //               {t('label.save')}
+  //             </Button>
+  //           </div>
+  //         }
+  //         editorClass="is_edit_post"
+  //         onSave={handleSave}
+  //         onTextChange={(message) => setPostMessage(message)}
+  //       />
+  //     );
+  //   }
 
+  //   // return feedBodyStyleCardsRender;
+  // }, [isEditPost, message]);
   return (
     <Card
       bordered={showThread ? false : true}
@@ -88,7 +147,9 @@ const ActivityFeedCardNew = ({
               background: '#E6F1FE',
             }
           : {}
-      }>
+      }
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}>
       <Space align="start" style={{ width: 'inherit' }}>
         <Space className="d-flex" direction="vertical">
           <Space className="d-inline-flex justify-start">
@@ -167,29 +228,31 @@ const ActivityFeedCardNew = ({
               )}
             </Space>
           </Space>
+          <FeedCardBodyNew
+            feed={feed}
+            isEditPost={isEditPost}
+            isPost={isPost}
+            message={
+              !isPost
+                ? feed.feedInfo?.entitySpecificInfo?.entity?.description
+                : post.message
+            }
+            onEditCancel={() => setIsEditPost(false)}
+            onUpdate={onUpdate}
+          />
 
-          {!isPost ? (
-            feed.feedInfo?.entitySpecificInfo?.entity?.description && (
-              <Card bordered className="activity-feed-card-message">
-                <Text style={{ wordWrap: 'break-word', whiteSpace: 'normal' }}>
-                  {feed.feedInfo?.entitySpecificInfo?.entity?.description &&
-                    feed.feedInfo?.entitySpecificInfo?.entity?.description}
-                </Text>
-              </Card>
-            )
-          ) : (
-            <Card bordered className="activity-feed-reply-card-message">
-              <Text
-                className="activity-feed-comment-text"
-                style={{ wordWrap: 'break-word', whiteSpace: 'normal' }}>
-                {post.message}
-              </Text>
-            </Card>
-          )}
-
-          <Space size="middle" style={{ marginTop: 8 }}>
+          <Space className="mt-4">
             <FeedCardFooterNew feed={feed} isPost={isPost} post={post} />
           </Space>
+          {(feed.generatedBy !== GeneratedBy.System ||
+            (isPost && isHovered)) && (
+            <ActivityFeedActions
+              feed={feed}
+              isPost={isPost}
+              post={post}
+              onEditPost={onEditPost}
+            />
+          )}
         </Space>
       </Space>
       {showThread && (

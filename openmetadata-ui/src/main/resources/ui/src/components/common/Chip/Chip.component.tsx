@@ -70,7 +70,7 @@ const Chip = ({
   return (
     <Row
       wrap
-      className="align-middle d-flex flex-col"
+      className="align-middle d-flex flex-col "
       data-testid="chip-container"
       gutter={[20, 6]}>
       {data.slice(0, USER_DATA_SIZE).map(getChipElement)}
@@ -84,7 +84,7 @@ const Chip = ({
           }
           overlayClassName="w-56"
           trigger="click">
-          <Tag className="m-l-xss" data-testid="plus-more-count">{`+${
+          <Tag className="m-l-xss chip-text" data-testid="plus-more-count">{`+${
             listLength - USER_DATA_SIZE
           } more`}</Tag>
         </Popover>

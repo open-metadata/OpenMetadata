@@ -19,7 +19,7 @@ import { ReactComponent as EditIcon } from '../../../../../assets/svg/edit-new.s
 import { ReactComponent as IconTeamsGrey } from '../../../../../assets/svg/teams-grey.svg';
 import {
   DE_ACTIVE_COLOR,
-  ICON_DIMENSION,
+  ICON_DIMENSION_USER_PAGE,
 } from '../../../../../constants/constants';
 import { EntityType } from '../../../../../enums/entity.enum';
 import { EntityReference } from '../../../../../generated/entity/type';
@@ -85,14 +85,12 @@ const UserProfileTeams = ({
   return (
     <div className="d-flex flex-col mb-4 w-full h-full p-[20px] user-profile-card">
       <div className="user-profile-card-header d-flex items-center justify-start gap-2 w-full">
-        <IconTeamsGrey
-          {...ICON_DIMENSION}
-          fontSize={14}
-          height={24}
-          width={24}
-        />
+        <div>
+          <IconTeamsGrey {...ICON_DIMENSION_USER_PAGE} />
+        </div>
+
         <div className="d-flex justify-between w-full">
-          <Typography.Text className="profile-section-card-title">
+          <Typography.Text className="user-profile-card-title">
             {t('label.team-plural')}
           </Typography.Text>
           {isAdminUser && !isDeletedUser && (
@@ -100,12 +98,10 @@ const UserProfileTeams = ({
               content={
                 <div className="w-full p-xs bg-white rounded-lg shadow-lg user-profile-edit-popover-card">
                   <div className="d-flex justify-start items-center gap-2 mb-4">
-                    <IconTeamsGrey
-                      // {...ICON_DIMENSION}
-                      fontSize={14}
-                      height={24}
-                      width={24}
-                    />
+                    <div className="user-page-icon d-flex-center">
+                      <IconTeamsGrey {...ICON_DIMENSION_USER_PAGE} />
+                    </div>
+
                     <Typography.Text className="user-profile-edit-popover-card-title">
                       {t('label.team-plural')}
                     </Typography.Text>
@@ -154,7 +150,7 @@ const UserProfileTeams = ({
                 className="cursor-pointer"
                 color={DE_ACTIVE_COLOR}
                 data-testid="edit-teams-button"
-                {...ICON_DIMENSION}
+                {...ICON_DIMENSION_USER_PAGE}
                 onClick={() => setIsTeamsEdit(true)}
               />
             </Popover>
@@ -162,103 +158,19 @@ const UserProfileTeams = ({
         </div>
       </div>
       <div className="user-profile-card-body d-flex justify-start gap-2">
-        <Divider
-          style={{
-            height: '100%',
-            width: '1px',
-            background: '#D9D9D9',
-          }}
-          type="vertical"
-        />
+        <div className="user-page-icon d-flex-center">
+          <Divider
+            style={{
+              height: '100%',
+              width: '1px',
+              background: '#D9D9D9',
+            }}
+            type="vertical"
+          />
+        </div>
         {isAdminUser && teamsRenderElement}
       </div>
     </div>
-    // <div
-    //   className="d-flex p-[20px]  w-full grey-1 gap-2 mb-4"
-    //   data-testid="user-team-card-container"
-    //   key="teams-card"
-    //   style={{ background: '#F5F5F5', padding: '20px', borderRadius: '12px' }}>
-    //   <div>
-    //     <div className="d-flex flex-col h-full flex-center">
-    //       <IconTeamsGrey {...ICON_DIMENSION} />
-    //       <Divider
-    //         style={{
-    //           height: '100%',
-    //           width: '2px',
-    //           background: '#D9D9D9',
-    //         }}
-    //         type="vertical"
-    //       />
-    //     </div>
-    //   </div>
-    //   <div className="w-full">
-    //     <div className="d-flex justify-between w-full">
-    // <Typography.Text className="profile-section-card-title">
-    //   {t('label.team-plural')}
-    // </Typography.Text>
-    //       {isAdminUser && !isDeletedUser && (
-    //         <Popover
-    //           placement="topRight"
-    //           open={isTeamsEdit}
-    //           onOpenChange={setIsTeamsEdit}
-    //           trigger="click"
-    //           overlayStyle={{ width: '379px', zIndex: 9 }}
-    //           content={
-    //             <div className="w-full p-xs bg-white rounded-lg shadow-lg user-profile-edit-popover-card">
-    //               <div className="d-flex justify-start items-center gap-2 mb-4">
-    //                 <IconTeamsGrey {...ICON_DIMENSION} />
-    //                 <Typography.Text className="user-profile-edit-popover-card-title">
-    //                   {t('label.team-plural')}
-    //                 </Typography.Text>
-    //               </div>
-
-    //               <div
-    //                 className="border p-2 bg-gray-100 rounded-md"
-    //                 style={{
-    //                   overflowY: 'auto',
-    //                   height: isSelectOpen ? '300px' : 'auto',
-    //                 }}>
-    //                 <TeamsSelectableNew
-    //                   filterJoinable
-    //                   maxValueCount={4}
-    //                   selectedTeams={selectedTeams}
-    //                   onSelectionChange={setSelectedTeams}
-    //                   handleDropdownChange={handleDropdownChange}
-    //                 />
-    //               </div>
-    //               {!isSelectOpen && (
-    //                 <div className="flex justify-end gap-2 mt-4">
-    //                   <Button
-    //                     data-testid="inline-cancel-btn"
-    //                     icon={<CloseOutlined />}
-    //                     size="small"
-    //                     type="primary"
-    //                     onClick={handleCloseEditTeam}
-    //                   />
-    //                   <Button
-    //                     data-testid="inline-save-btn"
-    //                     icon={<CheckOutlined />}
-    //                     size="small"
-    //                     type="primary"
-    //                     onClick={handleTeamsSave}
-    //                   />
-    //                 </div>
-    //               )}
-    //             </div>
-    //           }>
-    //           <EditIcon
-    //             className="cursor-pointer align-middle"
-    //             color={DE_ACTIVE_COLOR}
-    //             data-testid="edit-teams-button"
-    //             {...ICON_DIMENSION}
-    //             onClick={() => setIsTeamsEdit(true)}
-    //           />
-    //         </Popover>
-    //       )}
-    //     </div>
-    //     {isAdminUser && teamsRenderElement}
-    //   </div>
-    // </div>
   );
 };
 

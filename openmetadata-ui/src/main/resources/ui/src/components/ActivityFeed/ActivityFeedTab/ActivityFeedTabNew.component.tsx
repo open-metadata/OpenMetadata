@@ -77,6 +77,7 @@ export const ActivityFeedTabNew = ({
   isForFeedTab = true,
   onUpdateFeedCount,
   onUpdateEntityDetails,
+  subTab,
 }: ActivityFeedTabProps) => {
   const history = useHistory();
   const { t } = useTranslation();
@@ -88,10 +89,8 @@ export const ActivityFeedTabNew = ({
     root: document.querySelector('#center-container'),
     rootMargin: '0px 0px 2px 0px',
   });
-  const {
-    tab = EntityTabs.ACTIVITY_FEED,
-    subTab: activeTab = ActivityFeedTabs.ALL,
-  } = useParams<{ tab: EntityTabs; subTab: ActivityFeedTabs }>();
+  const { tab = EntityTabs.ACTIVITY_FEED, subTab: activeTab = subTab } =
+    useParams<{ tab: EntityTabs; subTab: ActivityFeedTabs }>();
   const [taskFilter, setTaskFilter] = useState<ThreadTaskStatus>(
     ThreadTaskStatus.Open
   );

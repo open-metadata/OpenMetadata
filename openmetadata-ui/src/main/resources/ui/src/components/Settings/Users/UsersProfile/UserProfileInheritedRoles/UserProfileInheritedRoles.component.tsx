@@ -15,6 +15,7 @@ import { Divider, Typography } from 'antd';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as InheritedRolesIcon } from '../../../../../assets/svg/InheritedRoles.svg';
+import { ICON_DIMENSION_USER_PAGE } from '../../../../../constants/constants';
 import { EntityType } from '../../../../../enums/entity.enum';
 import Chip from '../../../../common/Chip/Chip.component';
 import { UserProfileInheritedRolesProps } from './UserProfileInheritedRoles.interface';
@@ -26,41 +27,34 @@ const UserProfileInheritedRoles = ({
 
   return (
     <div
-      className="d-flex p-[20px]  w-full grey-1 gap-2 mb-4 mt-[-20px]"
-      data-testid="user-profile-inherited-roles"
-      key="inherited-roles-card-component"
-      style={{
-        background: '#F5F5F5',
-        padding: '20px',
-        marginTop: '-20px',
-        borderRadius: '0px 0px 12px 12px',
-      }}>
-      <div>
-        <div className="d-flex flex-col h-full flex-center">
-          <InheritedRolesIcon height={24} width={24} />
+      className="d-flex flex-col mb-4 w-full h-full p-[20px] user-profile-card p-0"
+      data-testid="user-profile-inherited-roles">
+      <div className="user-profile-card-header d-flex items-center justify-start gap-2 w-full">
+        <div className="d-flex flex-center user-page-icon">
+          <InheritedRolesIcon {...ICON_DIMENSION_USER_PAGE} />
+        </div>
+        <div className="d-flex justify-between w-full">
+          <Typography.Text className="user-profile-card-title">
+            {t('label.role-plural')}
+          </Typography.Text>
+        </div>
+      </div>
+      <div className="user-profile-card-body d-flex justify-start gap-2">
+        <div className="d-flex flex-center user-page-icon">
           <Divider
             style={{
               height: '100%',
-              width: '2px',
+              width: '1px',
               background: '#D9D9D9',
             }}
             type="vertical"
           />
         </div>
-      </div>
-      <div className="w-full">
-        <div className="d-flex flex-col justify-between w-full">
-          <Typography.Text
-            className="profile-section-card-title"
-            data-testid="inherited-roles-label">
-            {t('label.inherited-role-plural')}
-          </Typography.Text>
-          <Chip
-            data={inheritedRoles ?? []}
-            entityType={EntityType.ROLE}
-            noDataPlaceholder={t('message.no-inherited-roles-found')}
-          />{' '}
-        </div>
+        <Chip
+          data={inheritedRoles ?? []}
+          entityType={EntityType.ROLE}
+          noDataPlaceholder={t('message.no-inherited-roles-found')}
+        />
       </div>
     </div>
   );

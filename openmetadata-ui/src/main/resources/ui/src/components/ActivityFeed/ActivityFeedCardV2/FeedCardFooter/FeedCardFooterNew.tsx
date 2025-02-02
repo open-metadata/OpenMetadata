@@ -83,7 +83,7 @@ function FeedCardFooterNew({
             // type="text"
             // onClick={componentsVisibility.showThreadIcon ? showReplies : noop}
           >
-            {postLength > 0 && (
+            {postLength > 0 && !isPost && (
               <Avatar.Group>
                 {repliedUniqueUsersList.slice(0, 2).map((user) => (
                   <ProfilePicture

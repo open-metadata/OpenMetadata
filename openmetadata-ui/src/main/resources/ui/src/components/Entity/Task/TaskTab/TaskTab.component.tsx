@@ -16,6 +16,7 @@ import {
   Col,
   Dropdown,
   Form,
+  Input,
   MenuProps,
   Row,
   Select,
@@ -104,15 +105,16 @@ import {
 } from '../../../../utils/TasksUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import ActivityFeedCardV2 from '../../../ActivityFeed/ActivityFeedCardV2/ActivityFeedCardV2';
-import ActivityFeedEditor, {
-  EditorContentRef,
-} from '../../../ActivityFeed/ActivityFeedEditor/ActivityFeedEditor';
+import { EditorContentRef } from '../../../ActivityFeed/ActivityFeedEditor/ActivityFeedEditor';
 import { useActivityFeedProvider } from '../../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import InlineEdit from '../../../common/InlineEdit/InlineEdit.component';
 import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
 import EntityPopOverCard from '../../../common/PopOverCard/EntityPopOverCard';
 import TaskTabIncidentManagerHeader from '../TaskTabIncidentManagerHeader/TaskTabIncidentManagerHeader.component';
 import './task-tab.less';
+// import '../../../ActivityFeed/ActivityFeed/activity-feed-tab-new.less';
+import ActivityFeedEditorNew from '../../../ActivityFeed/ActivityFeedEditor/ActivityFeedEditorNew';
+import ProfilePicture from '../../../common/ProfilePicture/ProfilePicture';
 import { TaskTabProps } from './TaskTab.interface';
 
 export const TaskTab = ({
@@ -234,6 +236,7 @@ export const TaskTab = ({
   const [comment, setComment] = useState('');
   const [isEditAssignee, setIsEditAssignee] = useState<boolean>(false);
   const [options, setOptions] = useState<Option[]>([]);
+  const [showFeedEditor, setShowFeedEditor] = useState<boolean>(false);
   const [isAssigneeLoading, setIsAssigneeLoading] = useState<boolean>(false);
   const { initialAssignees, assigneeOptions } = useMemo(() => {
     const initialAssignees = generateOptions(taskDetails?.assignees ?? []);
@@ -964,23 +967,73 @@ export const TaskTab = ({
           />
         )}
 
-        <div className="m-l-lg">
+        {/* <div className="m-l-lg">
           {taskThread?.posts?.map((reply) => (
-            <ActivityFeedCardV2
-              isPost
-              componentsVisibility={{
-                showRepliesContainer: false,
-                showThreadIcon: false,
-              }}
-              feed={taskThread}
-              key={reply.id}
-              post={reply}
-            />
+            <ActivityFeedCardNew
+            isPost
+            componentsVisibility={{
+              showRepliesContainer: false,
+              showThreadIcon: false,
+            }}
+            feed={taskThread}
+            // isActive={isActive}
+            key={reply.id}
+            post={reply}
+            showActivityFeedEditor={false}
+          />
+           
           ))}
-        </div>
+        </div> */}
+        <Col span={24}>
+          <div className="activity-feed-comments-container d-flex flex-col">
+            <Typography.Text className="activity-feed-comments-title mb-2">
+              {/* Comments */}
+            </Typography.Text>
+
+            {showFeedEditor ? (
+              <ActivityFeedEditorNew
+                className="m-t-md feed-editor activity-feed-editor-container-new"
+                onSave={onSave}
+              />
+            ) : (
+              <div className="d-flex gap-2">
+                <ProfilePicture
+                  avatarType="outlined"
+                  key={taskThread.id}
+                  name="admin"
+                  size={40}
+                />
+
+                <Input
+                  className="comments-input-field"
+                  placeholder="Use @mention to tag and comment..."
+                  onMouseEnter={() => setShowFeedEditor(true)}
+                />
+              </div>
+            )}
+
+            {taskThread?.posts && taskThread?.posts?.length > 0 && (
+              <Col className="p-l-0 p-r-0" data-testid="feed-replies">
+                {taskThread?.posts?.map((reply) => (
+                  <ActivityFeedCardV2
+                    isPost
+                    componentsVisibility={{
+                      showRepliesContainer: false,
+                      showThreadIcon: false,
+                    }}
+                    feed={taskThread}
+                    // isActive={isActive}
+                    key={reply.id}
+                    post={reply}
+                  />
+                ))}
+              </Col>
+            )}
+          </div>
+        </Col>
       </Col>
 
-      <Col span={24}>
+      {/* <Col span={24}>
         {taskDetails?.status === ThreadTaskStatus.Open && (
           <ActivityFeedEditor
             editAction={actionButtons}
@@ -989,7 +1042,7 @@ export const TaskTab = ({
             onTextChange={setComment}
           />
         )}
-      </Col>
+      </Col> */}
       {isTaskTestCaseResult ? (
         <Modal
           destroyOnClose

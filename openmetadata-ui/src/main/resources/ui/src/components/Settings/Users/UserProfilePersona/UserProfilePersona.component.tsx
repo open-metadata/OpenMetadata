@@ -16,6 +16,7 @@ import React, { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { ReactComponent as Persona } from '../../../../assets/svg/Persona.svg';
+import { ICON_DIMENSION_USER_PAGE } from '../../../../constants/constants';
 import { EntityType } from '../../../../enums/entity.enum';
 import { EntityReference, User } from '../../../../generated/entity/teams/user';
 import { useAuth } from '../../../../hooks/authHooks';
@@ -40,7 +41,11 @@ const UserProfilePersonas = ({ userData }: UserProfileProps) => {
   return (
     <div className="d-flex flex-col mb-4 w-full h-full p-[20px] user-profile-card">
       <div className="user-profile-card-header d-flex items-center justify-start gap-2 w-full">
-        <Persona height={24} width={24} />
+        <div
+          className="d-flex flex-center user-page-icon"
+          style={{ paddingLeft: '2px' }}>
+          <Persona {...ICON_DIMENSION_USER_PAGE} />
+        </div>
         <div className="d-flex justify-between w-full">
           <Typography.Text
             className="user-profile-card-title"
@@ -56,14 +61,17 @@ const UserProfilePersonas = ({ userData }: UserProfileProps) => {
         </div>
       </div>
       <div className="user-profile-card-body d-flex justify-start gap-2">
-        <Divider
-          style={{
-            height: '100%',
-            width: '1px',
-            background: '#D9D9D9',
-          }}
-          type="vertical"
-        />
+        <div className="d-flex flex-center user-page-icon">
+          <Divider
+            style={{
+              height: '100%',
+              width: '1px',
+              background: '#D9D9D9',
+            }}
+            type="vertical"
+          />
+        </div>
+
         <Chip
           showNoDataPlaceholder
           data={userData.personas ?? []}
@@ -72,44 +80,13 @@ const UserProfilePersonas = ({ userData }: UserProfileProps) => {
         />
       </div>
 
-      {/* <div className="d-flex  w-full grey-1 gap-2 h-full mb-4">
-        <div className="d-flex flex-col h-full flex-center">
-          <Persona height={20} />
-          <Divider
-            style={{
-              minHeight: '60px',
-              width: '2px',
-              background: '#D9D9D9',
-            }}
-            type="vertical"
-          />
-        </div>
-        <div className="d-flex flex-col w-full h-full">
-          <div className="d-flex justify-between w-full">
-            <Typography.Text
-              className="profile-section-card-title"
-              data-testid="persona-list">
-              {t('label.persona')}
-            </Typography.Text>
-            <PersonaSelectableList
-              multiSelect
-              hasPermission={Boolean(isAdminUser) && !userData.deleted}
-              selectedPersonas={userData.personas ?? []}
-              onUpdate={handlePersonaUpdate}
-            />
-          </div>
-          <Chip
-            showNoDataPlaceholder
-            data={userData.personas ?? []}
-            entityType={EntityType.PERSONA}
-            noDataPlaceholder={t('message.no-persona-assigned')}
-          />
-        </div>
-      </div> */}
-
       {/** Default persona**/}
       <div className="user-profile-card-header d-flex items-center justify-start gap-2 w-full">
-        <Persona fontSize={14} height={24} width={24} />
+        <div
+          className="d-flex flex-center"
+          style={{ width: '16px', paddingLeft: '2px' }}>
+          <Persona {...ICON_DIMENSION_USER_PAGE} />
+        </div>
         <div className="d-flex justify-between w-full">
           <Typography.Text
             className="user-profile-card-title"
@@ -125,20 +102,9 @@ const UserProfilePersonas = ({ userData }: UserProfileProps) => {
         </div>
       </div>
       <div className="user-profile-card-body d-flex justify-start gap-2">
-        <Divider
-          style={{
-            height: '100%',
-            width: '1px',
-            background: '#D9D9D9',
-          }}
-          type="vertical"
-        />
-        <Chip
-          showNoDataPlaceholder
-          data={userData.personas ?? []}
-          entityType={EntityType.PERSONA}
-          noDataPlaceholder={t('message.no-persona-assigned')}
-        />
+        <Typography.Text className="default-persona-text">
+          {/* default persona */}
+        </Typography.Text>
       </div>
     </div>
   );

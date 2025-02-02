@@ -16,7 +16,7 @@ import classNames from 'classnames';
 import React, { FC, useCallback, useMemo } from 'react';
 import { Post, ThreadType } from '../../../generated/entity/feed/thread';
 import ActivityFeedCardNew from '../ActivityFeedCardNew/ActivityFeedcardNew.component';
-import TaskFeedCard from '../TaskFeedCard/TaskFeedCard.component';
+import TaskFeedCardNew from '../TaskFeedCard/TaskFeedCardNew.component';
 import './feed-panel-body-v1.less';
 import { FeedPanelBodyPropV1 } from './FeedPanelBodyV1.interface';
 
@@ -58,7 +58,7 @@ const FeedPanelBodyV1: FC<FeedPanelBodyPropV1> = ({
       type="text"
       onClick={handleFeedClick}>
       {feed.type === ThreadType.Task ? (
-        <TaskFeedCard
+        <TaskFeedCardNew
           feed={feed}
           hidePopover={hidePopover}
           isActive={isActive}

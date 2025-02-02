@@ -46,6 +46,8 @@ import UserProfileDetails from './UsersProfile/UserProfileDetails/UserProfileDet
 // import Title from 'antd/lib/skeleton/Title';
 // import ActivityFeedCardNew from '../../ActivityFeedCardNew/ActivityFeedcardNew.component';
 // import DetailsPanel from '../../ActivityFeedCardNew/DetailsPanel.component';
+import { ActivityFeedTabs } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
+import { DomainLabelNew } from '../../common/DomainLabel/DomainLabelNew';
 import ProfileSectionUserDetailsCard from '../../ProfileCard/ProfileSectionUserDetailsCard.component';
 import UserProfilePersonas from './UserProfilePersona/UserProfilePersona.component';
 import UserProfileRoles from './UsersProfile/UserProfileRoles/UserProfileRoles.component';
@@ -180,6 +182,28 @@ const Users = ({
               entityType={EntityType.USER}
               fqn={decodedUsername}
               isForFeedTab={false}
+              subTab={ActivityFeedTabs.ALL}
+              onFeedUpdate={noop}
+            />
+          </ActivityFeedProvider>
+        ),
+      },
+      {
+        label: (
+          <TabsLabel
+            id={UserPageTabs.TASK}
+            isActive={activeTab === UserPageTabs.TASK}
+            name={t('label.task')}
+          />
+        ),
+        key: UserPageTabs.TASK,
+        children: (
+          <ActivityFeedProvider user={userData.id}>
+            <ActivityFeedTabNew
+              entityType={EntityType.USER}
+              fqn={decodedUsername}
+              isForFeedTab={false}
+              subTab={ActivityFeedTabs.TASKS}
               onFeedUpdate={noop}
             />
           </ActivityFeedProvider>
@@ -326,6 +350,15 @@ const Users = ({
         <div className="profile-section">
           <ProfileSectionUserDetailsCard userData={userData} />
           <UserProfilePersonas userData={userData} />
+          <DomainLabelNew
+            multiple
+            domain={userData?.domains}
+            entityFqn={userData.fullyQualifiedName ?? ''}
+            entityId={userData.id ?? ''}
+            entityType={EntityType.USER}
+            hasPermission={Boolean(isAdminUser) && !userData.deleted}
+            textClassName="text-sm text-grey-muted"
+          />
           <UserProfileTeams
             isDeletedUser={userData.deleted}
             teams={userData.teams}
