@@ -155,11 +155,9 @@ class SupersetSourceMixin(DashboardServiceSource):
             )
         return []
 
-    def _is_table_to_table_lineage(
-        self, columns: tuple[LineageColumn, ...], table: LineageTable
-    ) -> bool:
-        from_column = columns[0]
-        to_column = columns[-1]
+    def _is_table_to_table_lineage(self, columns: tuple, table: LineageTable) -> bool:
+        from_column: LineageColumn = columns[0]
+        to_column: LineageColumn = columns[-1]
 
         if not isinstance(from_column.parent, LineageTable):
             return False
