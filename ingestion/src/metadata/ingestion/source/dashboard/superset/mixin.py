@@ -186,8 +186,8 @@ class SupersetSourceMixin(DashboardServiceSource):
     def _get_table_schema(self, table: LineageTable, chart: FetchChart) -> str:
         if table.schema.raw_name == table.schema.unknown:
             return chart.table_schema
-        else:
-            return table.schema.raw_name
+
+        return table.schema.raw_name
 
     def _create_column_lineage_mapping(
         self, parser: LineageParser, table: LineageTable, chart: FetchChart
@@ -214,7 +214,7 @@ class SupersetSourceMixin(DashboardServiceSource):
 
         return result
 
-    def parse_lineage_from_dataset_sql(
+    def _parse_lineage_from_dataset_sql(
         self, chart_json: FetchChart
     ) -> list[tuple[FetchChart, dict[str, list[str]]]]:
         # Every SQL query in tables is a SQL statement SELECTING data.
@@ -285,7 +285,7 @@ class SupersetSourceMixin(DashboardServiceSource):
 
     def _get_input_tables(self, chart: FetchChart):
         if chart.sql:
-            result = self.parse_lineage_from_dataset_sql(chart)
+            result = self._parse_lineage_from_dataset_sql(chart)
         else:
             result = [
                 (chart, {c: [c] for c in self._get_columns_list_for_lineage(chart)})
@@ -398,6 +398,7 @@ class SupersetSourceMixin(DashboardServiceSource):
 
         if col_parse.get("children"):
             return col_parse["children"]
+        return []
 
     def get_column_info(
         self, data_source: List[Union[DataSourceResult, FetchColumn]]
