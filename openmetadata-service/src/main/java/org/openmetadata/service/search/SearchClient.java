@@ -7,6 +7,7 @@ import java.security.KeyStoreException;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import javax.json.JsonArray;
@@ -15,6 +16,10 @@ import javax.net.ssl.SSLContext;
 import javax.ws.rs.core.Response;
 import lombok.Getter;
 import org.apache.commons.lang3.tuple.Pair;
+import org.openmetadata.schema.api.lineage.EsLineageData;
+import org.openmetadata.schema.api.lineage.RelationshipRef;
+import org.openmetadata.schema.api.lineage.SearchLineageRequest;
+import org.openmetadata.schema.api.lineage.SearchLineageResult;
 import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
@@ -28,6 +33,7 @@ import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.search.models.IndexMapping;
 import org.openmetadata.service.search.security.RBACConditionEvaluator;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
+import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.SSLUtil;
 import os.org.opensearch.action.bulk.BulkRequest;
@@ -35,6 +41,9 @@ import os.org.opensearch.action.bulk.BulkResponse;
 import os.org.opensearch.client.RequestOptions;
 
 public interface SearchClient {
+  String UPSTREAM_LINEAGE_FIELD = "upstreamLineage";
+  String FQN_FIELD = "fullyQualifiedName";
+  String ID_FIELD = "id";
   ExecutorService asyncExecutor = Executors.newFixedThreadPool(1);
   String UPDATE = "update";
 
@@ -81,10 +90,10 @@ public interface SearchClient {
       "if (ctx._source.certification != null && ctx._source.certification.tagLabel != null) {ctx._source.certification.tagLabel.style = params.style; ctx._source.certification.tagLabel.description = params.description; ctx._source.certification.tagLabel.tagFQN = params.tagFQN; ctx._source.certification.tagLabel.name = params.name;  }";
 
   String REMOVE_LINEAGE_SCRIPT =
-      "for (int i = 0; i < ctx._source.lineage.length; i++) { if (ctx._source.lineage[i].doc_id == '%s') { ctx._source.lineage.remove(i) }}";
+      "for (int i = 0; i < ctx._source.upstreamLineage.length; i++) { if (ctx._source.upstreamLineage[i].doc_id == '%s') { ctx._source.upstreamLineage.remove(i) }}";
 
   String ADD_UPDATE_LINEAGE =
-      "boolean docIdExists = false; for (int i = 0; i < ctx._source.lineage.size(); i++) { if (ctx._source.lineage[i].doc_id.equalsIgnoreCase(params.lineageData.doc_id)) { ctx._source.lineage[i] = params.lineageData; docIdExists = true; break;}}if (!docIdExists) {ctx._source.lineage.add(params.lineageData);}";
+      "boolean docIdExists = false; for (int i = 0; i < ctx._source.upstreamLineage.size(); i++) { if (ctx._source.upstreamLineage[i].doc_id.equalsIgnoreCase(params.lineageData.doc_id)) { ctx._source.upstreamLineage[i] = params.lineageData; docIdExists = true; break;}}if (!docIdExists) {ctx._source.upstreamLineage.add(params.lineageData);}";
 
   // The script is used for updating the entityRelationship attribute of the entity in ES
   // It checks if any duplicate entry is present based on the doc_id and updates only if it is not
@@ -188,14 +197,14 @@ public interface SearchClient {
 
   Response searchBySourceUrl(String sourceUrl) throws IOException;
 
-  Response searchLineage(
-      String fqn,
-      int upstreamDepth,
-      int downstreamDepth,
-      String queryFilter,
-      boolean deleted,
-      String entityType)
+  SearchLineageResult searchLineage(SearchLineageRequest lineageRequest) throws IOException;
+
+  SearchLineageResult searchLineageWithDirection(SearchLineageRequest lineageRequest)
       throws IOException;
+
+  SearchLineageResult getUpstreamLineage(SearchLineageRequest lineageRequest) throws IOException;
+
+  SearchLineageResult getDownStreamLineage(SearchLineageRequest lineageRequest) throws IOException;
 
   Response searchEntityRelationship(
       String fqn, int upstreamDepth, int downstreamDepth, String queryFilter, boolean deleted)
@@ -206,6 +215,10 @@ public interface SearchClient {
 
   Response searchSchemaEntityRelationship(
       String fqn, int upstreamDepth, int downstreamDepth, String queryFilter, boolean deleted)
+      throws IOException;
+
+  Map<String, Object> searchEntityByKey(
+      String indexAlias, String keyName, String keyValue, List<String> fieldsToRemove)
       throws IOException;
 
   /*
@@ -220,6 +233,7 @@ public interface SearchClient {
   /*
    Used for listing knowledge page hierarchy for a given active Page and page type, used in Elastic/Open SearchClientExtension
   */
+  @SuppressWarnings("unused")
   default ResultList listPageHierarchyForActivePage(
       String activeFqn, String pageType, int offset, int limit) {
     throw new CustomExceptionMessage(
@@ -231,15 +245,6 @@ public interface SearchClient {
     throw new CustomExceptionMessage(
         Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_ERROR_TYPE, NOT_IMPLEMENTED_METHOD);
   }
-
-  Map<String, Object> searchLineageInternal(
-      String fqn,
-      int upstreamDepth,
-      int downstreamDepth,
-      String queryFilter,
-      boolean deleted,
-      String entityType)
-      throws IOException;
 
   Response searchByField(String fieldName, String fieldValue, String index) throws IOException;
 
@@ -291,7 +296,7 @@ public interface SearchClient {
       Pair<String, Map<String, Object>> updates);
 
   void updateLineage(
-      String indexName, Pair<String, String> fieldAndValue, Map<String, Object> lineagaData);
+      String indexName, Pair<String, String> fieldAndValue, EsLineageData lineageData);
 
   void updateEntityRelationship(
       String indexName,
@@ -393,5 +398,51 @@ public interface SearchClient {
         && rbacConditionEvaluator != null;
   }
 
+  //  default String getLineageDirection(LineageDirection direction, String entityType) {
+  //    if (LineageDirection.UPSTREAM.equals(direction)) {
+  //      if (Boolean.FALSE.equals(entityType.equals(Entity.PIPELINE)) &&
+  // Boolean.FALSE.equals(entityType.equals(Entity.STORED_PROCEDURE))) {
+  //        return
+  //      }else{
+  //
+  //      }
+  //    } else {
+  //
+  //    }
+  //    return "";
+  //  }
+
   SearchHealthStatus getSearchHealthStatus() throws IOException;
+
+  static RelationshipRef getRelationshipRef(Map<String, Object> entityMap) {
+    // This assumes these keys exists in the map, use it with caution
+    return new RelationshipRef()
+        .withId(UUID.fromString(entityMap.get("id").toString()))
+        .withType(entityMap.get("entityType").toString())
+        .withFqn(entityMap.get("fullyQualifiedName").toString())
+        .withFqnHash(FullyQualifiedName.buildHash(entityMap.get("fullyQualifiedName").toString()));
+  }
+
+  static EsLineageData getEsLineageDataFromUpstreamLineage(
+      String fqn, List<EsLineageData> upstream) {
+    for (EsLineageData esLineageData : upstream) {
+      if (esLineageData.getFromEntity().getFqn().equals(fqn)) {
+        return esLineageData;
+      }
+    }
+    return null;
+  }
+
+  static EsLineageData copyEsLineageData(EsLineageData data) {
+    return new EsLineageData()
+        .withDocId(data.getDocId())
+        .withFromEntity(data.getFromEntity())
+        .withToEntity(data.getToEntity())
+        .withPipeline(data.getPipeline())
+        .withSqlQuery(data.getSqlQuery())
+        .withColumns(data.getColumns())
+        .withDescription(data.getDescription())
+        .withSource(data.getSource())
+        .withPipelineEntityType(data.getPipelineEntityType());
+  }
 }

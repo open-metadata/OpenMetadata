@@ -33,6 +33,7 @@ import java.util.Base64;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Enumeration;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -177,6 +178,10 @@ public final class CommonUtil {
     return Optional.ofNullable(list).orElse(Collections.emptyList());
   }
 
+  public static <K, V> Map<K, V> collectionOrEmpty(Map<K, V> input) {
+    return Optional.ofNullable(input).orElse(new HashMap<>());
+  }
+
   public static <T> List<T> listOrEmptyMutable(List<T> list) {
     return nullOrEmpty(list) ? new ArrayList<>() : new ArrayList<>(list);
   }
@@ -206,6 +211,14 @@ public final class CommonUtil {
       return defaultValue;
     } else {
       return object;
+    }
+  }
+
+  public static <T> List<T> collectionOrDefault(List<T> c, List<T> defaultValue) {
+    if (nullOrEmpty(c)) {
+      return defaultValue;
+    } else {
+      return c;
     }
   }
 

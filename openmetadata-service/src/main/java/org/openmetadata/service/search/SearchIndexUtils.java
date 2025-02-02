@@ -19,6 +19,7 @@ import org.openmetadata.schema.tests.Datum;
 import org.openmetadata.schema.tests.type.DataQualityReportMetadata;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.Utilities;
 
 public final class SearchIndexUtils {
@@ -58,8 +59,9 @@ public final class SearchIndexUtils {
     if (value instanceof Map) {
       currentMap = (Map<String, Object>) value;
     } else if (value instanceof List) {
-      List<Map<String, Object>> list = (List<Map<String, Object>>) value;
-      for (Map<String, Object> item : list) {
+      List<?> list = (List<Map<String, Object>>) value;
+      for (Object obj : list) {
+        Map<String, Object> item = JsonUtils.getMap(obj);
         removeFieldByPath(
             item,
             Arrays.stream(pathElements, 1, pathElements.length).collect(Collectors.joining(".")));
