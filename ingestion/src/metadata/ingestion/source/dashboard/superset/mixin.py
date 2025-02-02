@@ -15,6 +15,9 @@ import json
 import traceback
 from typing import Iterable, List, Optional, Union
 
+from collate_sqllineage.core.models import Column as LineageColumn
+from collate_sqllineage.core.models import Table as LineageTable
+
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.dashboardDataModel import DashboardDataModel
 from metadata.generated.schema.entity.data.table import Column, DataType, Table
@@ -152,44 +155,80 @@ class SupersetSourceMixin(DashboardServiceSource):
             )
         return []
 
+    def _is_table_to_table_lineage(
+        self, columns: tuple[LineageColumn, ...], table: LineageTable
+    ) -> bool:
+        from_column = columns[0]
+        to_column = columns[-1]
+
+        if not isinstance(from_column.parent, LineageTable):
+            return False
+
+        if not isinstance(to_column.parent, LineageTable):
+            return False
+
+        if from_column.parent.schema.raw_name != table.schema.raw_name:
+            return False
+
+        if from_column.parent.raw_name != table.raw_name:
+            return False
+
+        return True
+
+    def _append_value_to_dict_list(
+        self, input_dict: dict[str, list[str]], dict_key: str, list_value: str
+    ) -> None:
+        if input_dict.get(dict_key):
+            input_dict[dict_key].append(list_value)
+        else:
+            input_dict[dict_key] = [list_value]
+
+    def _get_table_schema(self, table: LineageTable, chart: FetchChart) -> str:
+        if table.schema.raw_name == table.schema.unknown:
+            return chart.table_schema
+        else:
+            return table.schema.raw_name
+
+    def _create_column_lineage_mapping(
+        self, parser: LineageParser, table: LineageTable, chart: FetchChart
+    ) -> dict[str, list[str]]:
+        result = {}
+        table_to_table_lineage = [
+            _columns
+            for _columns in parser.column_lineage
+            if self._is_table_to_table_lineage(_columns, table)
+        ]
+
+        for columns in table_to_table_lineage:
+            from_column_name = columns[0].raw_name
+            to_column_name = columns[-1].raw_name
+
+            if from_column_name != "*" and to_column_name != "*":
+                self._append_value_to_dict_list(
+                    result, to_column_name, from_column_name
+                )
+
+            if from_column_name == "*" and to_column_name == "*":
+                for col_name in self._get_columns_list_for_lineage(chart):
+                    self._append_value_to_dict_list(result, col_name, col_name)
+
+        return result
+
     def parse_lineage_from_dataset_sql(
         self, chart_json: FetchChart
     ) -> list[tuple[FetchChart, dict[str, list[str]]]]:
         # Every SQL query in tables is a SQL statement SELECTING data.
         # To get lineage we 'simulate' INSERT INTO query into dummy table.
         result = []
-
         parser = LineageParser(f"INSERT INTO dummy_table {chart_json.sql}")
+
         for table in parser.source_tables:
             table_name = table.raw_name
-            table_schema = (
-                table.schema.raw_name
-                if table.schema.raw_name != table.schema.unknown
-                else chart_json.table_schema
+            table_schema = self._get_table_schema(table, chart_json)
+
+            column_mapping: dict[str, list[str]] = self._create_column_lineage_mapping(
+                parser, table, chart_json
             )
-
-            column_mapping: dict[str, list[str]] = {}
-
-            for c in parser.column_lineage:
-                if "Table" in str(type(c[0].parent)) and "Table" in str(
-                    type(c[-1].parent)
-                ):
-                    if c[0].parent.schema.raw_name == table.schema.raw_name and c[0].parent.raw_name == table.raw_name:
-                        from_column_name = c[0].raw_name
-                        to_column_name = c[-1].raw_name
-
-                        if from_column_name != "*" and to_column_name != "*":
-                            if column_mapping.get(to_column_name):
-                                column_mapping[to_column_name].append(from_column_name)
-                            else:
-                                column_mapping[to_column_name] = [from_column_name]
-
-                        if from_column_name == "*" and to_column_name == "*":
-                            for col_name in self._get_columns_list_for_lineage(chart_json):
-                                if column_mapping.get(col_name):
-                                    column_mapping[col_name].append(col_name)
-                                else:
-                                    column_mapping[col_name] = [col_name]
 
             result.append(
                 (
@@ -204,6 +243,70 @@ class SupersetSourceMixin(DashboardServiceSource):
 
         return result
 
+    def _enrich_raw_input_tables(
+        self,
+        from_entities: list[tuple[FetchChart, dict[str, list[str]]]],
+        to_entity: DashboardDataModel,
+        db_service_entity: DatabaseService,
+    ):
+        result = []
+
+        for from_entity in from_entities:
+            input_table, _column_lineage = from_entity
+            datasource_fqn = self._get_datasource_fqn_for_lineage(
+                input_table, db_service_entity
+            )
+            from_entity = self.metadata.get_by_name(
+                entity=Table,
+                fqn=datasource_fqn,
+            )
+
+            column_lineage: List[ColumnLineage] = []
+            for to_column, from_columns in _column_lineage.items():
+                _from_columns = [
+                    get_column_fqn(from_entity, from_column)
+                    for from_column in from_columns
+                    if get_column_fqn(from_entity, from_column)
+                ]
+
+                _to_column = get_dashboard_data_model_column_fqn(to_entity, to_column)
+
+                if _from_columns and _to_column:
+                    column_lineage.append(
+                        ColumnLineage(
+                            fromColumns=_from_columns,
+                            toColumn=_to_column,
+                        )
+                    )
+
+            result.append((from_entity, column_lineage))
+
+        return result
+
+    def _get_input_tables(self, chart: FetchChart):
+        if chart.sql:
+            result = self.parse_lineage_from_dataset_sql(chart)
+        else:
+            result = [
+                (chart, {c: [c] for c in self._get_columns_list_for_lineage(chart)})
+            ]
+
+        return result
+
+    def _get_dashboard_data_model_entity(
+        self, chart: FetchChart
+    ) -> Optional[DashboardDataModel]:
+        datamodel_fqn = fqn.build(
+            self.metadata,
+            entity_type=DashboardDataModel,
+            service_name=self.config.serviceName,
+            data_model_name=str(chart.datasource_id),
+        )
+        return self.metadata.get_by_name(
+            entity=DashboardDataModel,
+            fqn=datamodel_fqn,
+        )
+
     def yield_dashboard_lineage_details(
         self,
         dashboard_details: Union[FetchDashboard, DashboardResult],
@@ -216,92 +319,40 @@ class SupersetSourceMixin(DashboardServiceSource):
             entity=DatabaseService, fqn=db_service_name
         )
         if db_service_entity:
-            for chart_id in self._get_charts_of_dashboard(dashboard_details):
-                chart_json: FetchChart = self.all_charts.get(chart_id)
-                if chart_json:
-                    try:
-                        if chart_json.sql:
-                            input_tables_raw = self.parse_lineage_from_dataset_sql(
-                                chart_json
-                            )
-                        else:
-                            input_tables_raw = [
-                                (
-                                    chart_json,
-                                    {
-                                        c: [c]
-                                        for c in self._get_columns_list_for_lineage(
-                                            chart_json
-                                        )
-                                    },
-                                )
-                            ]
+            for chart_json in filter(
+                None,
+                [
+                    self.all_charts.get(chart_id)
+                    for chart_id in self._get_charts_of_dashboard(dashboard_details)
+                ],
+            ):
+                try:
+                    to_entity = self._get_dashboard_data_model_entity(chart_json)
 
-                        datamodel_fqn = fqn.build(
-                            self.metadata,
-                            entity_type=DashboardDataModel,
-                            service_name=self.config.serviceName,
-                            data_model_name=str(chart_json.datasource_id),
+                    if to_entity:
+                        _input_tables = self._get_input_tables(chart_json)
+                        input_tables = self._enrich_raw_input_tables(
+                            _input_tables, to_entity, db_service_entity
                         )
-                        to_entity = self.metadata.get_by_name(
-                            entity=DashboardDataModel,
-                            fqn=datamodel_fqn,
+                        for input_table in input_tables:
+                            from_entity_table, column_lineage = input_table
+
+                            yield self._get_add_lineage_request(
+                                to_entity=to_entity,
+                                from_entity=from_entity_table,
+                                column_lineage=column_lineage,
+                            )
+                except Exception as exc:
+                    yield Either(
+                        left=StackTraceError(
+                            name=db_service_name,
+                            error=(
+                                "Error to yield dashboard lineage details for DB "
+                                f"service name [{db_service_name}]: {exc}"
+                            ),
+                            stackTrace=traceback.format_exc(),
                         )
-
-                        input_tables: list[tuple[Table, list[ColumnLineage]]] = []
-                        # Enrich raw objects with OM FQNs
-                        for raw_input_table in input_tables_raw:
-                            input_table, _column_lineage = raw_input_table
-                            datasource_fqn = self._get_datasource_fqn_for_lineage(
-                                input_table, db_service_entity
-                            )
-                            from_entity = self.metadata.get_by_name(
-                                entity=Table,
-                                fqn=datasource_fqn,
-                            )
-
-                            column_lineage: List[ColumnLineage] = []
-                            for to_column, from_columns in _column_lineage.items():
-                                _from_columns = [
-                                    get_column_fqn(from_entity, from_column)
-                                    for from_column in from_columns
-                                    if get_column_fqn(from_entity, from_column)
-                                ]
-
-                                _to_column = get_dashboard_data_model_column_fqn(
-                                    to_entity, to_column
-                                )
-
-                                if _from_columns and _to_column:
-                                    column_lineage.append(
-                                        ColumnLineage(
-                                            fromColumns=_from_columns,
-                                            toColumn=_to_column,
-                                        )
-                                    )
-
-                            input_tables.append((from_entity, column_lineage))
-
-                        if to_entity:
-                            for input_table in input_tables:
-                                from_entity_table, column_lineage = input_table
-
-                                yield self._get_add_lineage_request(
-                                    to_entity=to_entity,
-                                    from_entity=from_entity_table,
-                                    column_lineage=column_lineage,
-                                )
-                    except Exception as exc:
-                        yield Either(
-                            left=StackTraceError(
-                                name=db_service_name,
-                                error=(
-                                    "Error to yield dashboard lineage details for DB "
-                                    f"service name [{db_service_name}]: {exc}"
-                                ),
-                                stackTrace=traceback.format_exc(),
-                            )
-                        )
+                    )
 
     def _get_datamodel(
         self, datamodel: Union[SupersetDatasource, FetchChart]
@@ -326,7 +377,6 @@ class SupersetSourceMixin(DashboardServiceSource):
         """clean datatype of column fetched from superset"""
         return datatype.replace("()", "")
 
-
     def parse_array_data_type(self, col_parse: dict) -> Optional[str]:
         """
         Set arrayDataType to UNKNOWN for Snowflake table array columns
@@ -337,7 +387,6 @@ class SupersetSourceMixin(DashboardServiceSource):
         if col_parse.get("arrayDataType"):
             return DataType(col_parse["arrayDataType"])
         return None
-
 
     def parse_row_data_type(self, col_parse: dict) -> List[Column]:
         """
