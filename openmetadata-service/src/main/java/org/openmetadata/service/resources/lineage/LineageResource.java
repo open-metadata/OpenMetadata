@@ -417,7 +417,7 @@ public class LineageResource {
             addLineage.getEdge().getToEntity().getType(),
             addLineage.getEdge().getToEntity().getId(),
             addLineage.getEdge().getToEntity().getName()));
-    dao.addLineage(addLineage);
+    dao.addLineage(addLineage, securityContext.getUserPrincipal().getName());
     return Response.status(Status.OK).build();
   }
 
@@ -498,7 +498,7 @@ public class LineageResource {
         securityContext,
         new OperationContext(toEntity, MetadataOperation.EDIT_LINEAGE),
         new ResourceContext<>(toEntity, toId, null));
-    return dao.patchLineageEdge(fromEntity, fromId, toEntity, toId, patch);
+    return dao.patchLineageEdge(fromEntity, fromId, toEntity, toId, patch, securityContext.getUserPrincipal().getName());
   }
 
   @DELETE
