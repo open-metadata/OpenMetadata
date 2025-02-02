@@ -95,7 +95,7 @@ public class APIEndpointIndex implements SearchIndex {
             .collect(ArrayList::new, ArrayList::add, ArrayList::addAll);
     Map<String, Object> commonAttributes = getCommonAttributesMap(apiEndpoint, Entity.API_ENDPOINT);
     doc.putAll(commonAttributes);
-    doc.put("lineage", SearchIndex.getLineageData(apiEndpoint.getEntityReference()));
+    doc.put("upstreamLineage", SearchIndex.getLineageData(apiEndpoint.getEntityReference()));
     doc.put(
         "requestSchema",
         apiEndpoint.getRequestSchema() != null ? apiEndpoint.getRequestSchema() : null);
