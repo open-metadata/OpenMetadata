@@ -98,9 +98,7 @@ class SupersetDBSource(SupersetSourceMixin):
     def get_column_list(self, table_id: Optional[int]) -> Iterable[FetchChart]:
         try:
             if table_id:
-                col_list = self.engine.execute(
-                    FETCH_COLUMN, table_id=table_id
-                )
+                col_list = self.engine.execute(FETCH_COLUMN, table_id=table_id)
                 return [FetchColumn(**col) for col in col_list]
         except Exception as err:
             logger.debug(traceback.format_exc())
