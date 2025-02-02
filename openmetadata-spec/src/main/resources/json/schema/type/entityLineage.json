@@ -54,6 +54,14 @@
           "type": "string",
           "enum": ["Manual", "ViewLineage", "QueryLineage", "PipelineLineage", "DashboardLineage", "DbtLineage", "SparkLineage", "OpenLineage", "ExternalTableLineage", "CrossDatabaseLineage"],
           "default": "Manual"
+        },
+        "updatedAt": {
+          "description": "Last update time corresponding to the new version of the entity in Unix epoch time milliseconds.",
+          "$ref": "../type/basic.json#/definitions/timestamp"
+        },
+        "updatedBy": {
+          "description": "User who made the update.",
+          "type": "string"
         }
       }
     },

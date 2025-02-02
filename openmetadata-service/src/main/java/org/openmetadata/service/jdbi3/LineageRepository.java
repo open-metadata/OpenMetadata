@@ -112,8 +112,12 @@ public class LineageRepository {
   }
 
   @Transaction
-  public void addLineage(AddLineage addLineage) {
+  public void addLineage(AddLineage addLineage, String updatedBy) {
     // Validate from entity
+    LineageDetails lineageDetails =
+        addLineage.getEdge().getLineageDetails() != null
+            ? addLineage.getEdge().getLineageDetails()
+            : new LineageDetails();
     EntityReference from = addLineage.getEdge().getFromEntity();
     from = Entity.getEntityReferenceById(from.getType(), from.getId(), Include.NON_DELETED);
 
@@ -121,20 +125,22 @@ public class LineageRepository {
     EntityReference to = addLineage.getEdge().getToEntity();
     to = Entity.getEntityReferenceById(to.getType(), to.getId(), Include.NON_DELETED);
 
-    if (addLineage.getEdge().getLineageDetails() != null
-        && addLineage.getEdge().getLineageDetails().getPipeline() != null) {
-
+    if (lineageDetails.getPipeline() != null) {
       // Validate pipeline entity
-      EntityReference pipeline = addLineage.getEdge().getLineageDetails().getPipeline();
+      EntityReference pipeline = lineageDetails.getPipeline();
       pipeline =
           Entity.getEntityReferenceById(pipeline.getType(), pipeline.getId(), Include.NON_DELETED);
 
       // Add pipeline entity details to lineage details
-      addLineage.getEdge().getLineageDetails().withPipeline(pipeline);
+      lineageDetails.withPipeline(pipeline);
     }
 
+    // Update the lineage details with user and time
+    lineageDetails.setUpdatedAt(System.currentTimeMillis());
+    lineageDetails.setUpdatedBy(updatedBy);
+
     // Validate lineage details
-    String detailsJson = validateLineageDetails(from, to, addLineage.getEdge().getLineageDetails());
+    String detailsJson = validateLineageDetails(from, to, lineageDetails);
 
     // Finally, add lineage relationship
     dao.relationshipDAO()
@@ -765,7 +771,7 @@ public class LineageRepository {
   }
 
   public Response patchLineageEdge(
-      String fromEntity, UUID fromId, String toEntity, UUID toId, JsonPatch patch) {
+      String fromEntity, UUID fromId, String toEntity, UUID toId, JsonPatch patch, String updatedBy) {
     EntityReference from = Entity.getEntityReferenceById(fromEntity, fromId, Include.NON_DELETED);
     EntityReference to = Entity.getEntityReferenceById(toEntity, toId, Include.NON_DELETED);
     String json = dao.relationshipDAO().getRelation(fromId, toId, Relationship.UPSTREAM.ordinal());
@@ -782,6 +788,11 @@ public class LineageRepository {
                 pipeline.getType(), pipeline.getId(), Include.NON_DELETED);
         updated.withPipeline(pipeline);
       }
+      
+      // Update the lineage details with user and time
+      updated.setUpdatedAt(System.currentTimeMillis());
+      updated.setUpdatedBy(updatedBy);
+      
       String detailsJson = JsonUtils.pojoToJson(updated);
       dao.relationshipDAO()
           .insert(fromId, toId, fromEntity, toEntity, Relationship.UPSTREAM.ordinal(), detailsJson);
