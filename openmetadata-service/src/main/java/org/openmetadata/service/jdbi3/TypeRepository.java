@@ -25,8 +25,10 @@ import static org.openmetadata.service.util.EntityUtil.getCustomField;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -174,6 +176,11 @@ public class TypeRepository extends EntityRepository<Type> {
     for (Triple<String, String, String> result : results) {
       CustomProperty property = JsonUtils.readValue(result.getRight(), CustomProperty.class);
       property.setPropertyType(this.getReferenceByName(result.getMiddle(), NON_DELETED));
+
+      if ("enum".equals(property.getPropertyType().getName())) {
+        sortEnumKeys(property);
+      }
+
       customProperties.add(property);
     }
     customProperties.sort(EntityUtil.compareCustomProperty);
@@ -267,6 +274,18 @@ public class TypeRepository extends EntityRepository<Type> {
 
       throw new IllegalArgumentException(
           CatalogExceptionMessage.customPropertyConfigError("table", validationErrors));
+    }
+  }
+
+  @SuppressWarnings("unchecked")
+  private void sortEnumKeys(CustomProperty property) {
+    Object enumConfig = property.getCustomPropertyConfig().getConfig();
+    if (enumConfig instanceof Map) {
+      Map<String, Object> configMap = (Map<String, Object>) enumConfig;
+      if (configMap.get("values") instanceof List) {
+        List<String> values = (List<String>) configMap.get("values");
+        Collections.sort(values);
+      }
     }
   }
 
@@ -460,6 +479,7 @@ public class TypeRepository extends EntityRepository<Type> {
         Type entity, CustomProperty origProperty, CustomProperty updatedProperty) {
       String updatedBy = entity.getUpdatedBy();
       if (origProperty.getPropertyType().getName().equals("enum")) {
+        sortEnumKeys(updatedProperty);
         EnumConfig origConfig =
             JsonUtils.convertValue(
                 origProperty.getCustomPropertyConfig().getConfig(), EnumConfig.class);

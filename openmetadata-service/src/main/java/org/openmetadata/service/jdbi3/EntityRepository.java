@@ -1663,7 +1663,14 @@ public abstract class EntityRepository<T extends EntityInterface> {
         jsonNode.put(fieldName, formattedValue);
       }
       case "table-cp" -> validateTableType(fieldValue, propertyConfig, fieldName);
-      case "enum" -> validateEnumKeys(fieldName, fieldValue, propertyConfig);
+      case "enum" -> {
+        validateEnumKeys(fieldName, fieldValue, propertyConfig);
+        List<String> enumValues = new ArrayList<>();
+        fieldValue.forEach(value -> enumValues.add(value.asText()));
+        Collections.sort(enumValues);
+        jsonNode.set(fieldName, JsonUtils.valueToTree(enumValues));
+        entity.setExtension(jsonNode);
+      }
       default -> {}
     }
   }
@@ -1832,8 +1839,17 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
     ObjectNode objectNode = JsonUtils.getObjectNode();
     for (ExtensionRecord extensionRecord : records) {
-      String fieldName = TypeRegistry.getPropertyName(extensionRecord.extensionName());
-      objectNode.set(fieldName, JsonUtils.readTree(extensionRecord.extensionJson()));
+      String fieldName = extensionRecord.extensionName().substring(fieldFQNPrefix.length() + 1);
+      JsonNode fieldValue = JsonUtils.readTree(extensionRecord.extensionJson());
+      String customPropertyType = TypeRegistry.getCustomPropertyType(entityType, fieldName);
+      if ("enum".equals(customPropertyType) && fieldValue.isArray() && fieldValue.size() > 1) {
+        ArrayList<String> enumValues = new ArrayList<>(fieldValue.size());
+        fieldValue.forEach(node -> enumValues.add(node.asText()));
+        Collections.sort(enumValues);
+        fieldValue = JsonUtils.valueToTree(enumValues);
+      }
+
+      objectNode.set(fieldName, fieldValue);
     }
     return objectNode;
   }
