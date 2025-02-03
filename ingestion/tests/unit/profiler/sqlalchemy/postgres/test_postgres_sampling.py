@@ -81,7 +81,7 @@ class SampleTest(TestCase):
             ometa_client=None,
             entity=self.table_entity,
             sample_config=SampleConfig(
-                profile_sample_type=ProfileSampleType.PERCENTAGE,
+                profileSampleType=ProfileSampleType.PERCENTAGE,
                 profileSample=50.0,
             ),
         )
@@ -128,7 +128,7 @@ class SampleTest(TestCase):
             ometa_client=None,
             entity=self.table_entity,
             sample_config=SampleConfig(
-                profile_sample_type=ProfileSampleType.PERCENTAGE, profileSample=50.0
+                profileSampleType=ProfileSampleType.PERCENTAGE, profileSample=50.0
             ),
             partition_details=PartitionProfilerConfig(
                 enablePartitioning=True,
