@@ -17,7 +17,9 @@ import uuid
 from pathlib import Path
 from unittest import TestCase
 
+import pytest
 import sqlalchemy
+from collate_sqllineage.core.models import Column, Schema, SubQuery, Table
 from testcontainers.core.generic import DockerContainer
 from testcontainers.postgres import PostgresContainer
 
@@ -56,6 +58,7 @@ from metadata.generated.schema.type.basic import (
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.ingestion.api.steps import InvalidSourceException
+from metadata.ingestion.lineage.parser import LineageParser
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.superset.api_source import SupersetAPISource
 from metadata.ingestion.source.dashboard.superset.db_source import SupersetDBSource
@@ -169,7 +172,6 @@ EXPECTED_DASH = CreateDashboardRequest(
     service=EXPECTED_DASH_SERVICE.fullyQualifiedName,
     owners=EXPECTED_USER,
 )
-
 
 EXPECTED_API_DASHBOARD = CreateDashboardRequest(
     name=EntityName("10"),
@@ -287,6 +289,25 @@ def setup_sample_data(postgres_container):
             INSERT INTO tables(id, table_name, schema, database_id)
             VALUES (99, 'sample_table', 'main', 5);
         """
+        CREATE_TABLE_COLUMNS_TABLE = """
+            CREATE TABLE table_columns (
+                id INTEGER PRIMARY KEY,
+                table_name VARCHAR(255),
+                table_id INTEGER,
+                column_name VARCHAR(255),
+                type VARCHAR(255),
+                description VARCHAR(255)
+            );
+        """
+        CREATE_TABLE_COLUMNS_DATA = """
+            INSERT INTO table_columns(id, table_name, table_id, column_name, type, description)
+            VALUES (1099, 'sample_table', 99, 'id', 'VARCHAR', 'dummy description');
+            INSERT INTO table_columns(id, table_name, column_name, type, description)
+            VALUES (1199, 'sample_table', 99, 'timestamp', 'VARCHAR', 'dummy description');
+            INSERT INTO table_columns(id, table_name, column_name, type, description)
+            VALUES (1299, 'sample_table', 99, 'price', 'VARCHAR', 'dummy description');
+        """
+
         connection.execute(sqlalchemy.text(CREATE_TABLE_AB_USER))
         connection.execute(sqlalchemy.text(INSERT_AB_USER_DATA))
         connection.execute(sqlalchemy.text(CREATE_TABLE_DASHBOARDS))
@@ -297,6 +318,8 @@ def setup_sample_data(postgres_container):
         connection.execute(sqlalchemy.text(INSERT_DBS_DATA))
         connection.execute(sqlalchemy.text(CREATE_TABLES_TABLE))
         connection.execute(sqlalchemy.text(INSERT_TABLES_DATA))
+        connection.execute(sqlalchemy.text(CREATE_TABLE_COLUMNS_TABLE))
+        connection.execute(sqlalchemy.text(CREATE_TABLE_COLUMNS_DATA))
 
 
 INITIAL_SETUP = True
@@ -617,3 +640,152 @@ class SupersetUnitTest(TestCase):
         self.superset_db.prepare()
         parsed_datasource = self.superset_db.get_column_info(MOCK_DATASOURCE)
         assert parsed_datasource[0].dataType.value == "INT"
+
+    @pytest.mark.parametrize(
+        ("columns,expected"),
+        [
+            (
+                (
+                    Column(
+                        name="col_name",
+                        parent=Table(
+                            name="table_name", schema=Schema(name="schema_name")
+                        ),
+                    ),
+                    Column(
+                        name="col_name",
+                        parent=Table(
+                            name="dataset_name", schema=Schema(name="schema_name")
+                        ),
+                    ),
+                ),
+                True,
+            ),
+            (
+                (
+                    Column(
+                        name="col_name",
+                        parent=Table(
+                            name="table_name", schema=Schema(name=Schema.unknown)
+                        ),
+                    ),
+                    Column(
+                        name="col_name",
+                        parent=Table(
+                            name="dataset_name", schema=Schema(name="schema_name")
+                        ),
+                    ),
+                ),
+                False,
+            ),
+            (
+                (
+                    Column(
+                        name="col_name",
+                        parent=Table(
+                            name="other_table_name", schema=Schema(name="schema_name")
+                        ),
+                    ),
+                    Column(
+                        name="col_name",
+                        parent=Table(
+                            name="dataset_name", schema=Schema(name="schema_name")
+                        ),
+                    ),
+                ),
+                False,
+            ),
+            (
+                (
+                    Column(
+                        name="col_name",
+                        parent=Table(
+                            name="table_name", schema=Schema(name="schema_name")
+                        ),
+                    ),
+                    Column(
+                        name="col_name",
+                        parent=SubQuery(
+                            subquery="select * from 1",
+                            subquery_raw="select * from 1",
+                            alias="dummy_subquery",
+                        ),
+                    ),
+                ),
+                False,
+            ),
+        ],
+    )
+    def test_is_table_to_table_lineage(self, columns, expected):
+        table = Table(name="table_name", schema=Schema(name="schema_name"))
+
+        self.assertEqual(
+            self.superset_db._is_table_to_table_lineage(columns, table), expected
+        )
+
+    def test_append_value_to_dict_list(self):
+        init_dict = {1: [2]}
+
+        self.superset_db._append_value_to_dict_list(init_dict, 1, 3)
+        self.assertListEqual(init_dict[1], [2, 3])
+
+        self.superset_db._append_value_to_dict_list(init_dict, 2, 1)
+        self.assertListEqual(init_dict[2], [1])
+
+    @pytest.mark.parametrize(
+        ("table,chart,expected"),
+        [
+            (
+                Table(name="testtable", schema=Schema(name=Schema.unknown)),
+                FetchChart(table_schema="chart_table_schema"),
+                "chart_table_schema",
+            ),
+            (
+                Table(name="test_table", schema=Schema(name="test_schema")),
+                FetchChart(table_schema="chart_table_schema"),
+                "test_schema",
+            ),
+        ],
+    )
+    def test_get_table_schema(self, table, chart, expected):
+        self.assertEqual(self.superset_db._get_table_schema(table, chart), expected)
+
+    def test_create_column_lineage_mapping_no_wildcard(self):
+        sql = """
+        SELECT id, timestamp FROM input_table;
+        """
+
+        parser = LineageParser(sql)
+        table = Table(name="input_table", schema=Schema(name="input_schema"))
+        chart = FetchChart(table_name="sample_table")
+
+        expected = {
+            "id": ["id"],
+            "timestamp": ["timestamp"]
+        }
+
+        self.assertDictEqual(
+            self.superset_db._create_column_lineage_mapping(parser, table, chart),
+            expected,
+        )
+
+    def test_create_column_lineage_mapping_with_wildcard(self):
+        sql = """
+        SELECT * FROM sample_table;
+        """
+
+        parser = LineageParser(sql)
+        table = Table(name="sample_table", schema=Schema(name="input_schema"))
+        chart = FetchChart(table_name="sample_table")
+
+        expected = {
+            "id": ["id"],
+            "timestamp": ["timestamp"],
+            "price": ["price"],
+        }
+
+        self.assertDictEqual(
+            self.superset_db._create_column_lineage_mapping(parser, table, chart),
+            expected,
+        )
+
