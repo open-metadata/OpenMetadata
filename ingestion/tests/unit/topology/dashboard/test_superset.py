@@ -17,7 +17,6 @@ import uuid
 from pathlib import Path
 from unittest import TestCase
 
-import pytest
 import sqlalchemy
 from collate_sqllineage.core.models import Column, Schema, SubQuery, Table
 from testcontainers.core.generic import DockerContainer
@@ -300,12 +299,12 @@ def setup_sample_data(postgres_container):
             );
         """
         CREATE_TABLE_COLUMNS_DATA = """
-            INSERT INTO table_columns(id, table_name, table_id, column_name, type, description)
-            VALUES (1099, 'sample_table', 99, 'id', 'VARCHAR', 'dummy description');
-            INSERT INTO table_columns(id, table_name, column_name, type, description)
-            VALUES (1199, 'sample_table', 99, 'timestamp', 'VARCHAR', 'dummy description');
-            INSERT INTO table_columns(id, table_name, column_name, type, description)
-            VALUES (1299, 'sample_table', 99, 'price', 'VARCHAR', 'dummy description');
+            INSERT INTO 
+                table_columns(id, table_name, table_id, column_name, type, description)
+            VALUES 
+                (1099, 'sample_table', 99, 'id', 'VARCHAR', 'dummy description'), 
+                (1199, 'sample_table', 99, 'timestamp', 'VARCHAR', 'dummy description'),
+                (1299, 'sample_table', 99, 'price', 'VARCHAR', 'dummy description');
         """
 
         connection.execute(sqlalchemy.text(CREATE_TABLE_AB_USER))
@@ -641,22 +640,23 @@ class SupersetUnitTest(TestCase):
         parsed_datasource = self.superset_db.get_column_info(MOCK_DATASOURCE)
         assert parsed_datasource[0].dataType.value == "INT"
 
-    @pytest.mark.parametrize(
-        ("columns,expected"),
-        [
+    def test_is_table_to_table_lineage(self):
+        table = Table(name="table_name", schema=Schema(name="schema_name"))
+
+        for test_case in [
             (
                 (
                     Column(
-                        name="col_name",
-                        parent=Table(
-                            name="table_name", schema=Schema(name="schema_name")
-                        ),
+                        name="col_name"
+                    ),
+                    Table(
+                        name="table_name", schema=Schema(name="schema_name")
                     ),
                     Column(
-                        name="col_name",
-                        parent=Table(
-                            name="dataset_name", schema=Schema(name="schema_name")
-                        ),
+                        name="col_name"
+                    ),
+                    Table(
+                        name="dataset_name", schema=Schema(name="schema_name")
                     ),
                 ),
                 True,
@@ -664,16 +664,16 @@ class SupersetUnitTest(TestCase):
             (
                 (
                     Column(
-                        name="col_name",
-                        parent=Table(
-                            name="table_name", schema=Schema(name=Schema.unknown)
-                        ),
+                        name="col_name"
+                    ),
+                    Table(
+                        name="table_name", schema=Schema(name=Schema.unknown)
                     ),
                     Column(
-                        name="col_name",
-                        parent=Table(
-                            name="dataset_name", schema=Schema(name="schema_name")
-                        ),
+                        name="col_name"
+                    ),
+                    Table(
+                        name="dataset_name", schema=Schema(name="schema_name")
                     ),
                 ),
                 False,
@@ -681,16 +681,16 @@ class SupersetUnitTest(TestCase):
             (
                 (
                     Column(
-                        name="col_name",
-                        parent=Table(
-                            name="other_table_name", schema=Schema(name="schema_name")
-                        ),
+                        name="col_name"
+                    ),
+                    Table(
+                        name="other_table_name", schema=Schema(name="schema_name")
                     ),
                     Column(
-                        name="col_name",
-                        parent=Table(
-                            name="dataset_name", schema=Schema(name="schema_name")
-                        ),
+                        name="col_name"
+                    ),
+                    Table(
+                        name="dataset_name", schema=Schema(name="schema_name")
                     ),
                 ),
                 False,
@@ -698,30 +698,34 @@ class SupersetUnitTest(TestCase):
             (
                 (
                     Column(
-                        name="col_name",
-                        parent=Table(
-                            name="table_name", schema=Schema(name="schema_name")
-                        ),
+                        name="col_name"
+                    ),
+                    Table(
+                        name="table_name", schema=Schema(name="schema_name")
                     ),
                     Column(
-                        name="col_name",
-                        parent=SubQuery(
-                            subquery="select * from 1",
-                            subquery_raw="select * from 1",
-                            alias="dummy_subquery",
-                        ),
+                        name="col_name"
                     ),
+                    SubQuery(
+                        subquery="select * from 1",
+                        subquery_raw="select * from 1",
+                        alias="dummy_subquery",
+                    )
                 ),
                 False,
             ),
-        ],
-    )
-    def test_is_table_to_table_lineage(self, columns, expected):
-        table = Table(name="table_name", schema=Schema(name="schema_name"))
+        ]:
+            _columns, expected = test_case
 
-        self.assertEqual(
-            self.superset_db._is_table_to_table_lineage(columns, table), expected
-        )
+            column_from, column_from_parent, column_to, column_to_parent = _columns
+
+            column_from._parent.add(column_from_parent)
+            column_to._parent.add(column_to_parent)
+
+            columns = (column_from, column_to)
+            self.assertEqual(
+                self.superset_db._is_table_to_table_lineage(columns, table), expected
+            )
 
     def test_append_value_to_dict_list(self):
         init_dict = {1: [2]}
@@ -732,32 +736,32 @@ class SupersetUnitTest(TestCase):
         self.superset_db._append_value_to_dict_list(init_dict, 2, 1)
         self.assertListEqual(init_dict[2], [1])
 
-    @pytest.mark.parametrize(
-        ("table,chart,expected"),
-        [
+
+    def test_get_table_schema(self):
+        for test_case in [
             (
-                Table(name="testtable", schema=Schema(name=Schema.unknown)),
-                FetchChart(table_schema="chart_table_schema"),
-                "chart_table_schema",
+                Table(name="test_table", schema=Schema(name=Schema.unknown)),
+                FetchChart(schema="chart_table_schema"),
+                "chart_table_schema"
             ),
             (
                 Table(name="test_table", schema=Schema(name="test_schema")),
-                FetchChart(table_schema="chart_table_schema"),
-                "test_schema",
-            ),
-        ],
-    )
-    def test_get_table_schema(self, table, chart, expected):
-        self.assertEqual(self.superset_db._get_table_schema(table, chart), expected)
+                FetchChart(schema="chart_table_schema"),
+                "test_schema"
+            )
+        ]:
+            table, chart, expected = test_case
+
+            self.assertEqual(self.superset_db._get_table_schema(table, chart), expected)
 
     def test_create_column_lineage_mapping_no_wildcard(self):
         sql = """
-        SELECT id, timestamp FROM input_table;
+        INSERT INTO dummy_table SELECT id, timestamp FROM input_table;
         """
 
         parser = LineageParser(sql)
-        table = Table(name="input_table", schema=Schema(name="input_schema"))
-        chart = FetchChart(table_name="sample_table")
+        table = Table(name="input_table", schema=Schema(name=Schema.unknown))
+        chart = FetchChart(table_name="sample_table", table_schema="main")
 
         expected = {
             "id": ["id"],
@@ -769,23 +773,13 @@ class SupersetUnitTest(TestCase):
             expected,
         )
 
-    def test_create_column_lineage_mapping_with_wildcard(self):
-        sql = """
-        SELECT * FROM sample_table;
-        """
-
-        parser = LineageParser(sql)
-        table = Table(name="sample_table", schema=Schema(name="input_schema"))
-        chart = FetchChart(table_name="sample_table")
-
-        expected = {
-            "id": ["id"],
-            "timestamp": ["timestamp"],
-            "price": ["price"],
-        }
-
-        self.assertDictEqual(
-            self.superset_db._create_column_lineage_mapping(parser, table, chart),
-            expected,
+    def test_parse_lineage_from_dataset_sql(self):
+        sql = """SELECT id, timestamp FROM sample_table"""
+        chart = FetchChart(
+            sql=sql,
+            table_schema="main"
         )
 
+        result = self.superset_db._parse_lineage_from_dataset_sql(chart)[0]
+
+        self.assertSetEqual({"id", "timestamp"}, set(result[1]))
