@@ -84,6 +84,19 @@ jest.mock('../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
 }));
 
+jest.mock('../../hoc/withPageLayout', () => ({
+  withPageLayout: jest.fn().mockImplementation(
+    () =>
+      (Component: React.FC) =>
+      (
+        props: JSX.IntrinsicAttributes & {
+          children?: React.ReactNode | undefined;
+        }
+      ) =>
+        <Component {...props} />
+  ),
+}));
+
 jest.mock(
   '../../components/Alerts/AlertDetails/AlertConfigDetails/AlertConfigDetails',
   () => jest.fn().mockImplementation(() => <div>AlertConfigDetails</div>)

@@ -56,6 +56,7 @@
     "aggregate": "Agregar",
     "airflow-config-plural": "Configuraciones de airflow",
     "alert": "Alerta",
+    "alert-detail-plural": "Detalles de la alerta",
     "alert-lowercase": "alerta",
     "alert-lowercase-plural": "alertas",
     "alert-plural": "Alertas",

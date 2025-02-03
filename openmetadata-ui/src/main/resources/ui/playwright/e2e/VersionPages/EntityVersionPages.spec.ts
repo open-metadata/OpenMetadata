@@ -26,6 +26,7 @@ import {
   createNewPage,
   descriptionBoxReadOnly,
   redirectToHomePage,
+  toastNotification,
 } from '../../utils/common';
 import { addMultiOwner, assignTier } from '../../utils/entity';
 
@@ -237,11 +238,7 @@ entities.forEach((EntityClass) => {
 
           await deleteResponse;
 
-          await expect(page.locator('.Toastify__toast-body')).toHaveText(
-            /deleted successfully!/
-          );
-
-          await page.click('.Toastify__close-button');
+          await toastNotification(page, /deleted successfully!/);
 
           await page.reload();
 

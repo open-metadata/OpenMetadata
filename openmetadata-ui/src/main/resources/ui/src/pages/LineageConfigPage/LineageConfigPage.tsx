@@ -33,6 +33,7 @@ import {
   LineageSettings,
 } from '../../generated/configuration/lineageSettings';
 import { Settings, SettingType } from '../../generated/settings/settings';
+import { withPageLayout } from '../../hoc/withPageLayout';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import {
   getSettingsByType,
@@ -76,7 +77,7 @@ const LineageConfigPage = () => {
     setActiveField(event.target.id);
   }, []);
 
-  const handleSave = async (values: LineageSettings) => {
+  const handleSave = useCallback(async (values: LineageSettings) => {
     try {
       setIsUpdating(true);
 
@@ -88,6 +89,7 @@ const LineageConfigPage = () => {
           lineageLayer: values.lineageLayer,
         },
       };
+
       const { data } = await updateSettingsConfig(configData as Settings);
       showSuccessToast(
         t('server.update-entity-success', {
@@ -105,7 +107,7 @@ const LineageConfigPage = () => {
     } finally {
       setIsUpdating(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchSearchConfig();
@@ -116,129 +118,131 @@ const LineageConfigPage = () => {
   }
 
   return (
-    <ResizablePanels
-      className="content-height-with-resizable-panel"
-      firstPanel={{
-        className: 'content-resizable-panel-container',
-        children: (
-          <div
-            className="max-width-md w-9/10 service-form-container"
-            data-testid="add-metric-container">
-            <Row gutter={[16, 16]}>
-              <Col span={24}>
-                <TitleBreadcrumb titleLinks={breadcrumbs} />
-              </Col>
+    <div className="m--t-sm">
+      <ResizablePanels
+        className="content-height-with-resizable-panel"
+        firstPanel={{
+          className: 'content-resizable-panel-container',
+          children: (
+            <div
+              className="max-width-md w-9/10 service-form-container"
+              data-testid="add-metric-container">
+              <Row gutter={[16, 16]}>
+                <Col span={24}>
+                  <TitleBreadcrumb titleLinks={breadcrumbs} />
+                </Col>
 
-              <Col span={24}>
-                <Typography.Title
-                  className="m-b-0"
-                  data-testid="heading"
-                  level={5}>
-                  {t('label.lineage')}
-                </Typography.Title>
-              </Col>
-              <Col span={24}>
-                <Form
-                  form={form}
-                  id="lineage-config"
-                  initialValues={lineageConfig}
-                  layout="vertical"
-                  onFinish={handleSave}
-                  onFocus={handleFieldFocus}>
-                  <Form.Item
-                    id="root/upstreamDepth"
-                    label={t('label.upstream-depth')}
-                    name="upstreamDepth"
-                    rules={[
-                      {
-                        required: true,
-                        message: t('message.upstream-depth-message'),
-                      },
-                    ]}>
-                    <Input
-                      data-testid="field-upstream"
-                      max={5}
-                      min={1}
-                      type="number"
-                    />
-                  </Form.Item>
+                <Col span={24}>
+                  <Typography.Title
+                    className="m-b-0"
+                    data-testid="heading"
+                    level={5}>
+                    {t('label.lineage')}
+                  </Typography.Title>
+                </Col>
+                <Col span={24}>
+                  <Form
+                    form={form}
+                    id="lineage-config"
+                    initialValues={lineageConfig}
+                    layout="vertical"
+                    onFinish={handleSave}
+                    onFocus={handleFieldFocus}>
+                    <Form.Item
+                      id="root/upstreamDepth"
+                      label={t('label.upstream-depth')}
+                      name="upstreamDepth"
+                      rules={[
+                        {
+                          required: true,
+                          message: t('message.upstream-depth-message'),
+                        },
+                      ]}>
+                      <Input
+                        data-testid="field-upstream"
+                        max={5}
+                        min={1}
+                        type="number"
+                      />
+                    </Form.Item>
 
-                  <Form.Item
-                    className="m-t-sm"
-                    id="root/downstreamDepth"
-                    label={t('label.downstream-depth')}
-                    name="downstreamDepth"
-                    rules={[
-                      {
-                        required: true,
-                        message: t('message.downstream-depth-message'),
-                      },
-                    ]}>
-                    <Input
-                      data-testid="field-downstream"
-                      max={5}
-                      min={1}
-                      type="number"
-                    />
-                  </Form.Item>
+                    <Form.Item
+                      className="m-t-sm"
+                      id="root/downstreamDepth"
+                      label={t('label.downstream-depth')}
+                      name="downstreamDepth"
+                      rules={[
+                        {
+                          required: true,
+                          message: t('message.downstream-depth-message'),
+                        },
+                      ]}>
+                      <Input
+                        data-testid="field-downstream"
+                        max={5}
+                        min={1}
+                        type="number"
+                      />
+                    </Form.Item>
 
-                  <Form.Item
-                    className="m-t-sm"
-                    id="root/lineageLayer"
-                    label={t('label.lineage-layer')}
-                    name="lineageLayer">
-                    <Select data-testid="field-lineage-layer">
-                      <Select.Option value={LineageLayer.EntityLineage}>
-                        {t('label.entity-lineage')}
-                      </Select.Option>
-                      <Select.Option value={LineageLayer.ColumnLevelLineage}>
-                        {t('label.column-level-lineage')}
-                      </Select.Option>
-                      <Select.Option value={LineageLayer.DataObservability}>
-                        {t('label.data-observability')}
-                      </Select.Option>
-                    </Select>
-                  </Form.Item>
-                </Form>
-                <Row className="m-b-xl" justify="end">
-                  <Col className="d-flex justify-end gap-2" span={24}>
-                    <Button
-                      data-testid="cancel-button"
-                      onClick={() => history.goBack()}>
-                      {t('label.cancel')}
-                    </Button>
-                    <Button
-                      data-testid="save-button"
-                      form="lineage-config"
-                      htmlType="submit"
-                      loading={isUpdating}
-                      type="primary">
-                      {t('label.save')}
-                    </Button>
-                  </Col>
-                </Row>
-              </Col>
-            </Row>
-          </div>
-        ),
-        minWidth: 700,
-        flex: 0.7,
-      }}
-      pageTitle={t('label.lineage-config')}
-      secondPanel={{
-        className: 'service-doc-panel content-resizable-panel-container',
-        minWidth: 400,
-        flex: 0.3,
-        children: (
-          <ServiceDocPanel
-            activeField={activeField}
-            serviceName="LineageConfiguration"
-            serviceType={OPEN_METADATA}
-          />
-        ),
-      }}
-    />
+                    <Form.Item
+                      className="m-t-sm"
+                      id="root/lineageLayer"
+                      label={t('label.lineage-layer')}
+                      name="lineageLayer">
+                      <Select data-testid="field-lineage-layer">
+                        <Select.Option value={LineageLayer.EntityLineage}>
+                          {t('label.entity-lineage')}
+                        </Select.Option>
+                        <Select.Option value={LineageLayer.ColumnLevelLineage}>
+                          {t('label.column-level-lineage')}
+                        </Select.Option>
+                        <Select.Option value={LineageLayer.DataObservability}>
+                          {t('label.data-observability')}
+                        </Select.Option>
+                      </Select>
+                    </Form.Item>
+                  </Form>
+                  <Row className="m-b-xl" justify="end">
+                    <Col className="d-flex justify-end gap-2" span={24}>
+                      <Button
+                        data-testid="cancel-button"
+                        onClick={() => history.goBack()}>
+                        {t('label.cancel')}
+                      </Button>
+                      <Button
+                        data-testid="save-button"
+                        form="lineage-config"
+                        htmlType="submit"
+                        loading={isUpdating}
+                        type="primary">
+                        {t('label.save')}
+                      </Button>
+                    </Col>
+                  </Row>
+                </Col>
+              </Row>
+            </div>
+          ),
+          minWidth: 700,
+          flex: 0.7,
+        }}
+        pageTitle={t('label.lineage-config')}
+        secondPanel={{
+          className: 'service-doc-panel content-resizable-panel-container',
+          minWidth: 400,
+          flex: 0.3,
+          children: (
+            <ServiceDocPanel
+              activeField={activeField}
+              serviceName="LineageConfiguration"
+              serviceType={OPEN_METADATA}
+            />
+          ),
+        }}
+      />
+    </div>
   );
 };
 
-export default LineageConfigPage;
+export default withPageLayout('lineage-config')(LineageConfigPage);

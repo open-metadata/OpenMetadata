@@ -21,6 +21,8 @@ import React, {
   ReactNode,
   useMemo,
 } from 'react';
+import { useAlertStore } from '../../hooks/useAlertStore';
+import AlertBar from '../AlertBar/AlertBar';
 import DocumentTitle from '../common/DocumentTitle/DocumentTitle';
 import './../../styles/layout/page-layout.less';
 
@@ -60,6 +62,8 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
   mainContainerClassName = '',
   pageContainerStyle = {},
 }: PageLayoutProp) => {
+  const { alert } = useAlertStore();
+
   const contentWidth = useMemo(() => {
     if (leftPanel && rightPanel) {
       return `calc(100% - ${leftPanelWidth + rightPanelWidth}px)`;
@@ -99,27 +103,40 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
             {leftPanel}
           </Col>
         )}
-        <Col
-          className={classNames(
-            'page-layout-v1-center p-t-sm page-layout-v1-vertical-scroll',
-            {
-              'flex justify-center': center,
-            },
-            mainContainerClassName
-          )}
-          flex={contentWidth}
-          offset={center ? 3 : 0}
-          span={center ? 18 : 24}>
-          {children}
-        </Col>
-        {rightPanel && (
+        <Col span={24}>
           <Col
-            className="page-layout-rightpanel page-layout-v1-vertical-scroll"
-            flex={rightPanelWidth + 'px'}
-            id="right-panelV1">
-            {rightPanel}
+            className={classNames(
+              `page-layout-v1-center page-layout-v1-vertical-scroll ${
+                !alert && 'p-t-sm'
+              }`,
+              {
+                'flex justify-center': center,
+              },
+              mainContainerClassName
+            )}
+            flex={contentWidth}
+            offset={center ? 3 : 0}
+            span={center ? 18 : 24}>
+            <Row gutter={0}>
+              <Col id={`${alert && 'page-alert'}`} span={24}>
+                {alert && (
+                  <AlertBar message={alert.message} type={alert.type} />
+                )}
+              </Col>
+              <Col className={`${alert && 'p-t-sm'}`} span={24}>
+                {children}
+              </Col>
+            </Row>
           </Col>
-        )}
+          {rightPanel && (
+            <Col
+              className="page-layout-rightpanel page-layout-v1-vertical-scroll"
+              flex={rightPanelWidth + 'px'}
+              id="right-panelV1">
+              {rightPanel}
+            </Col>
+          )}
+        </Col>
       </Row>
     </Fragment>
   );
