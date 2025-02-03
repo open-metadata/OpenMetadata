@@ -197,7 +197,7 @@ export const buildMustEsFilterForTags = (
       path: isTestCaseResult ? 'testCase.tags' : 'tags',
       query: {
         bool: {
-          must: tags.map((tag) => ({
+          should: tags.map((tag) => ({
             match: {
               [isTestCaseResult ? 'testCase.tags.tagFQN' : 'tags.tagFQN']: tag,
             },
