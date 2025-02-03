@@ -13,7 +13,7 @@ Superset mixin module
 """
 import json
 import traceback
-from typing import Iterable, List, Optional, Union, Dict, Tuple
+from typing import Dict, Iterable, List, Optional, Tuple, Union
 
 from collate_sqllineage.core.models import Column as LineageColumn
 from collate_sqllineage.core.models import Table as LineageTable
