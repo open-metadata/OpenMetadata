@@ -35,6 +35,8 @@ import static org.openmetadata.csv.EntityCsvTest.createCsv;
 import static org.openmetadata.csv.EntityCsvTest.getFailedRecord;
 import static org.openmetadata.schema.type.ProviderType.SYSTEM;
 import static org.openmetadata.schema.type.TaskType.RequestDescription;
+import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAMESPACE;
+import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_VARIABLE;
 import static org.openmetadata.service.security.SecurityUtil.authHeaders;
 import static org.openmetadata.service.util.EntityUtil.fieldAdded;
 import static org.openmetadata.service.util.EntityUtil.fieldDeleted;
@@ -1211,6 +1213,9 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
             () ->
                 WorkflowHandler.getInstance()
                     .isActivityWithVariableExecuting(
-                        "ApproveGlossaryTerm.approvalTask", "relatedEntity", entityLink));
+                        "ApproveGlossaryTerm.approvalTask",
+                        WorkflowHandler.getNamespacedVariableName(
+                            GLOBAL_NAMESPACE, RELATED_ENTITY_VARIABLE),
+                        entityLink));
   }
 }
