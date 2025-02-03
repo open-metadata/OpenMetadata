@@ -94,7 +94,7 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
   @Override
   public void initialize(OpenMetadataApplicationConfig config) {
     this.openMetadataApplicationConfig = config;
-    this.mapper = new WorkflowMapper(config);
+    this.mapper = new WorkflowMapper();
     this.pipelineServiceClient =
         PipelineServiceClientFactory.createPipelineServiceClient(
             config.getPipelineServiceClientConfiguration());

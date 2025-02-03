@@ -133,8 +133,8 @@ public class EventSubscriptionScheduler {
                 Optional.ofNullable(eventSubscription.getClassName())
                     .orElse(defaultClass.getCanonicalName()))
             .asSubclass(AbstractEventConsumer.class);
-    // we can use an empty dependency container here because when initializing the
-    // the consumer it does need to access any state
+    // we can use an empty dependency container here because when initializing
+    // the consumer because it does need to access any state
     AbstractEventConsumer publisher =
         clazz.getDeclaredConstructor(DIContainer.class).newInstance(new DIContainer());
     if (reinstall && isSubscriptionRegistered(eventSubscription)) {

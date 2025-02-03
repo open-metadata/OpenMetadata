@@ -27,7 +27,7 @@ import org.quartz.JobListener;
 public abstract class AbstractOmAppJobListener implements JobListener {
   private final CollectionDAO collectionDAO;
   private final AppRepository repository;
-  private static final String SCHEDULED_APP_RUN_EXTENSION = "AppScheduleRun";
+  public static final String SCHEDULED_APP_RUN_EXTENSION = "AppScheduleRun";
   public static final String WEBSOCKET_STATUS_CHANNEL = "WebsocketStatusUpdateExtension";
 
   public static final String APP_RUN_STATS = "AppRunStats";
@@ -78,7 +78,6 @@ public abstract class AbstractOmAppJobListener implements JobListener {
 
       // Insert new Record Run
       pushApplicationStatusUpdates(jobExecutionContext, runRecord, update);
-      this.doJobToBeExecuted(jobExecutionContext);
     } catch (Exception e) {
       LOG.info("Error while setting up the job context", e);
     }
@@ -134,8 +133,6 @@ public abstract class AbstractOmAppJobListener implements JobListener {
 
     // Update App Run Record
     pushApplicationStatusUpdates(jobExecutionContext, runRecord, true);
-
-    this.doJobWasExecuted(jobExecutionContext, jobException);
   }
 
   public AppRunRecord getAppRunRecordForJob(JobExecutionContext context) {
@@ -154,28 +151,11 @@ public abstract class AbstractOmAppJobListener implements JobListener {
       // Push Updates to the Database
       String appName = (String) context.getJobDetail().getJobDataMap().get(APP_NAME);
       UUID appId = collectionDAO.applicationDAO().findEntityByName(appName).getId();
-      updateStatus(appId, runRecord, update);
+      if (update) {
+        repository.updateAppStatus(appId, runRecord);
+      } else {
+        repository.addAppStatus(appId, runRecord);
+      }
     }
   }
-
-  private void updateStatus(UUID appId, AppRunRecord appRunRecord, boolean update) {
-    if (update) {
-      collectionDAO
-          .appExtensionTimeSeriesDao()
-          .update(
-              appId.toString(),
-              JsonUtils.pojoToJson(appRunRecord),
-              appRunRecord.getTimestamp(),
-              AppExtension.ExtensionType.STATUS.toString());
-    } else {
-      collectionDAO
-          .appExtensionTimeSeriesDao()
-          .insert(JsonUtils.pojoToJson(appRunRecord), AppExtension.ExtensionType.STATUS.toString());
-    }
-  }
-
-  protected void doJobWasExecuted(
-      JobExecutionContext jobExecutionContext, JobExecutionException jobException) {}
-
-  protected void doJobToBeExecuted(JobExecutionContext jobExecutionContext) {}
 }

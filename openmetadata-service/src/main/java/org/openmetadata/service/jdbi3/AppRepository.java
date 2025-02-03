@@ -396,6 +396,22 @@ public class AppRepository extends EntityRepository<App> {
     getUpdater(app, updated, EntityRepository.Operation.PATCH).update();
   }
 
+  public void updateAppStatus(UUID appID, AppRunRecord record) {
+    daoCollection
+        .appExtensionTimeSeriesDao()
+        .update(
+            appID.toString(),
+            JsonUtils.pojoToJson(record),
+            record.getTimestamp(),
+            AppExtension.ExtensionType.STATUS.toString());
+  }
+
+  public void addAppStatus(UUID appID, AppRunRecord record) {
+    daoCollection
+        .appExtensionTimeSeriesDao()
+        .insert(JsonUtils.pojoToJson(record), AppExtension.ExtensionType.STATUS.toString());
+  }
+
   public class AppUpdater extends EntityUpdater {
     public AppUpdater(App original, App updated, Operation operation) {
       super(original, updated, operation);
