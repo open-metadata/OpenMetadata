@@ -61,6 +61,13 @@ export class DashboardClass extends EntityClass {
       description: 'merchant',
     },
     {
+      name: 'notes',
+      dataType: 'VARCHAR',
+      dataLength: 256,
+      dataTypeDisplay: 'varchar',
+      description: 'merchant',
+    },
+    {
       name: 'country_name',
       dataType: 'VARCHAR',
       dataLength: 256,

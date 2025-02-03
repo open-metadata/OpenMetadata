@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import test from '@playwright/test';
+import { CUSTOM_PROPERTIES_ENTITIES } from '../../constant/customProperty';
 import { SidebarItem } from '../../constant/sidebar';
 import { EntityDataClass } from '../../support/entity/EntityDataClass';
 import {
@@ -146,7 +147,7 @@ test.describe('Advanced Search', { tag: '@advanced-search' }, () => {
       ],
       serviceType: [
         EntityDataClass.table1.service.serviceType,
-        EntityDataClass.table2.service.serviceType,
+        EntityDataClass.topic1.service.serviceType,
       ],
       'charts.displayName.keyword': [
         EntityDataClass.dashboard1.charts.displayName,
@@ -165,7 +166,10 @@ test.describe('Advanced Search', { tag: '@advanced-search' }, () => {
         EntityDataClass.dashboard1.dataModel.dataModelType,
         EntityDataClass.dashboard2.dataModel.dataModelType,
       ],
-      entityType: ['container', 'dashboard'],
+      entityType: [
+        CUSTOM_PROPERTIES_ENTITIES.entity_container.name,
+        CUSTOM_PROPERTIES_ENTITIES.entity_dashboard.name,
+      ],
       'mlFeatures.name': [
         EntityDataClass.mlModel1.entity.mlFeatures[0].name,
         EntityDataClass.mlModel1.entity.mlFeatures[1].name,
