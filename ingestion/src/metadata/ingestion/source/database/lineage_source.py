@@ -43,6 +43,11 @@ from metadata.ingestion.models.ometa_lineage import OMetaLineageRequest
 from metadata.ingestion.models.topology import Queue
 from metadata.ingestion.source.database.query_parser_source import QueryParserSource
 from metadata.ingestion.source.models import TableView
+from metadata.ingestion.lineage.sql_lineage import (
+    get_lineage_by_graph,
+    get_lineage_by_query,
+)
+
 from metadata.utils import fqn
 from metadata.utils.db_utils import get_view_lineage
 from metadata.utils.logger import ingestion_logger
@@ -207,6 +212,11 @@ class LineageSource(QueryParserSource, ABC):
     def query_lineage_generator(
         self, table_queries: List[TableQuery], queue: Queue
     ) -> Iterable[Either[Union[AddLineageRequest, CreateQueryRequest]]]:
+        if self.graph is None and self.source_config.enableTempTableLineage:
+            import networkx as nx
+            # Create a directed graph
+            self.graph = nx.DiGraph()
+
         for table_query in table_queries or []:
             if not self._query_already_processed(table_query):
                 lineages: Iterable[Either[AddLineageRequest]] = get_lineage_by_query(
@@ -217,6 +227,7 @@ class LineageSource(QueryParserSource, ABC):
                     schema_name=table_query.databaseSchema,
                     dialect=self.dialect,
                     timeout_seconds=self.source_config.parsingTimeoutLimit,
+                    graph=self.graph,
                 )
 
                 for lineage_request in lineages or []:
@@ -366,6 +377,7 @@ class LineageSource(QueryParserSource, ABC):
         if self.source_config.processQueryLineage:
             if hasattr(self.service_connection, "supportsLineageExtraction"):
                 yield from self.yield_query_lineage() or []
+                yield from get_lineage_by_graph(graph=self.graph)
             else:
                 logger.warning(
                     f"Lineage extraction is not supported for {str(self.service_connection.type.value)} connection"
