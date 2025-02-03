@@ -31,9 +31,10 @@ import {
   PolicyRulesType,
 } from '../../support/access-control/PoliciesClass';
 import {
-  descriptionBox,
   getApiContext,
+  descriptionBox,
   redirectToHomePage,
+  toastNotification,
 } from '../../utils/common';
 import { validateFormNameFieldInput } from '../../utils/form';
 import { settingClick } from '../../utils/sidebar';
@@ -279,7 +280,8 @@ test.describe('Policy page should work properly', () => {
       await page.locator('[data-testid="delete-rule"]').click();
 
       // Validate the error message
-      await expect(page.locator('.Toastify__toast-body')).toContainText(
+      await toastNotification(
+        page,
         ERROR_MESSAGE_VALIDATION.lastRuleCannotBeRemoved
       );
     });

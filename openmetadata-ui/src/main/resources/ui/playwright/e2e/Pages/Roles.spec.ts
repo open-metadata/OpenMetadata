@@ -15,8 +15,9 @@ import { GlobalSettingOptions } from '../../constant/settings';
 import { RolesClass } from '../../support/access-control/RolesClass';
 import {
   descriptionBox,
-  getApiContext,
   redirectToHomePage,
+  toastNotification,
+  getApiContext,
   uuid,
 } from '../../utils/common';
 import { removePolicyFromRole } from '../../utils/roles';
@@ -232,9 +233,11 @@ test('Roles page should work properly', async ({ page }) => {
       updatedRoleName
     );
 
-    await expect(page.locator('.Toastify__toast-body')).toContainText(
+    await toastNotification(
+      page,
       errorMessageValidation.lastPolicyCannotBeRemoved
     );
+
     await expect(page.locator('.ant-table-row')).toContainText(
       policies.dataConsumerPolicy
     );
