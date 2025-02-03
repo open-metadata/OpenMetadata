@@ -13,6 +13,7 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as NoDataIcon } from '../../../../../assets/svg/no-data-icon.svg';
+import documentationLinksClassBase from '../../../../../utils/DocumentationLinksClassBase';
 
 const NoProfilerBanner = () => {
   const { t } = useTranslation();
@@ -26,7 +27,7 @@ const NoProfilerBanner = () => {
         {t('message.no-profiler-message')}
         <a
           data-testid="documentation-link"
-          href="https://docs.open-metadata.org/how-to-guides/data-quality-observability/profiler/workflow"
+          href={`${documentationLinksClassBase.getDocsBaseURL()}how-to-guides/data-quality-observability/profiler/workflow`}
           rel="noreferrer"
           target="_blank"
           title="data quality observability profiler workflow">

@@ -25,6 +25,7 @@ import LeftPanelCard from '../../components/common/LeftPanelCard/LeftPanelCard';
 import ResizableLeftPanels from '../../components/common/ResizablePanels/ResizableLeftPanels';
 import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
 import { ROUTES } from '../../constants/constants';
+import { withPageLayout } from '../../hoc/withPageLayout';
 import { getDataQualityPagePath } from '../../utils/RouterUtils';
 import './data-quality-page.less';
 import DataQualityClassBase from './DataQualityClassBase';
@@ -68,77 +69,79 @@ const DataQualityPage = () => {
   };
 
   return (
-    <ResizableLeftPanels
-      className="content-height-with-resizable-panel"
-      firstPanel={{
-        className: 'content-resizable-panel-container',
-        minWidth: 280,
-        flex: 0.13,
-        children: (
-          <LeftPanelCard id="data-quality">
-            <Menu
-              className="custom-menu custom-menu-with-description data-quality-page-left-panel-menu"
-              data-testid="tabs"
-              items={menuItems}
-              mode="inline"
-              selectedKeys={[
-                activeTab ?? DataQualityClassBase.getDefaultActiveTab(),
-              ]}
-              onClick={handleTabChange}
-            />
-          </LeftPanelCard>
-        ),
-      }}
-      pageTitle="Quality"
-      secondPanel={{
-        children: (
-          <DataQualityProvider>
-            <Row
-              className="page-container"
-              data-testid="data-insight-container"
-              gutter={[16, 16]}>
-              <Col span={24}>
-                <Typography.Title
-                  className="m-b-md p-x-md"
-                  data-testid="page-title"
-                  level={5}>
-                  {t('label.data-quality')}
-                </Typography.Title>
-                <Typography.Paragraph
-                  className="text-grey-muted p-x-md"
-                  data-testid="page-sub-title">
-                  {t('message.page-sub-header-for-data-quality')}
-                </Typography.Paragraph>
-              </Col>
-              <Col span={24}>
-                <Switch>
-                  {tabDetailsComponent.map((tab) => (
-                    <Route
-                      exact
-                      component={tab.component}
-                      key={tab.key}
-                      path={tab.path}
-                    />
-                  ))}
+    <div className="m--t-sm">
+      <ResizableLeftPanels
+        className="content-height-with-resizable-panel"
+        firstPanel={{
+          className: 'content-resizable-panel-container',
+          minWidth: 280,
+          flex: 0.13,
+          children: (
+            <LeftPanelCard id="data-quality">
+              <Menu
+                className="custom-menu custom-menu-with-description data-quality-page-left-panel-menu"
+                data-testid="tabs"
+                items={menuItems}
+                mode="inline"
+                selectedKeys={[
+                  activeTab ?? DataQualityClassBase.getDefaultActiveTab(),
+                ]}
+                onClick={handleTabChange}
+              />
+            </LeftPanelCard>
+          ),
+        }}
+        pageTitle="Quality"
+        secondPanel={{
+          children: (
+            <DataQualityProvider>
+              <Row
+                className="page-container"
+                data-testid="data-insight-container"
+                gutter={[16, 16]}>
+                <Col span={24}>
+                  <Typography.Title
+                    className="m-b-md p-x-md"
+                    data-testid="page-title"
+                    level={5}>
+                    {t('label.data-quality')}
+                  </Typography.Title>
+                  <Typography.Paragraph
+                    className="text-grey-muted p-x-md"
+                    data-testid="page-sub-title">
+                    {t('message.page-sub-header-for-data-quality')}
+                  </Typography.Paragraph>
+                </Col>
+                <Col span={24}>
+                  <Switch>
+                    {tabDetailsComponent.map((tab) => (
+                      <Route
+                        exact
+                        component={tab.component}
+                        key={tab.key}
+                        path={tab.path}
+                      />
+                    ))}
 
-                  <Route exact path={ROUTES.DATA_QUALITY}>
-                    <Redirect
-                      to={getDataQualityPagePath(
-                        DataQualityClassBase.getDefaultActiveTab()
-                      )}
-                    />
-                  </Route>
-                </Switch>
-              </Col>
-            </Row>
-          </DataQualityProvider>
-        ),
-        className: 'content-resizable-panel-container p-t-sm',
-        minWidth: 800,
-        flex: 0.87,
-      }}
-    />
+                    <Route exact path={ROUTES.DATA_QUALITY}>
+                      <Redirect
+                        to={getDataQualityPagePath(
+                          DataQualityClassBase.getDefaultActiveTab()
+                        )}
+                      />
+                    </Route>
+                  </Switch>
+                </Col>
+              </Row>
+            </DataQualityProvider>
+          ),
+          className: 'content-resizable-panel-container p-t-sm',
+          minWidth: 800,
+          flex: 0.87,
+        }}
+      />
+    </div>
   );
 };
 
-export default DataQualityPage;
+export default withPageLayout('quality')(DataQualityPage);

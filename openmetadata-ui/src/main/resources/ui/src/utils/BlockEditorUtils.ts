@@ -118,6 +118,9 @@ export const formatContent = (
   return modifiedHtmlString;
 };
 
+export const formatValueBasedOnContent = (value: string) =>
+  value === '<p></p>' ? '' : value;
+
 export const isHTMLString = (content: string) => {
   try {
     const parser = new DOMParser();
