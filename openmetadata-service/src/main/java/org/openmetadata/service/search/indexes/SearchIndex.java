@@ -6,7 +6,7 @@ import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
 import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
 import static org.openmetadata.service.Entity.getEntityByName;
-import static org.openmetadata.service.jdbi3.LineageRepository.buildEntityLineageData;
+import static org.openmetadata.service.jdbi3.LineageRepository.buildRelationshipDetailsMap;
 import static org.openmetadata.service.search.EntityBuilderConstant.DISPLAY_NAME_KEYWORD;
 import static org.openmetadata.service.search.EntityBuilderConstant.FIELD_DISPLAY_NAME_NGRAM;
 import static org.openmetadata.service.search.EntityBuilderConstant.FULLY_QUALIFIED_NAME;
@@ -24,7 +24,6 @@ import java.util.Set;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.openmetadata.schema.EntityInterface;
-import org.openmetadata.schema.api.lineage.EsLineageData;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
@@ -43,7 +42,7 @@ import org.openmetadata.service.util.JsonUtils;
 
 public interface SearchIndex {
   Set<String> DEFAULT_EXCLUDED_FIELDS =
-      Set.of("changeDescription", "upstreamLineage.pipeline.changeDescription", "connection");
+      Set.of("changeDescription", "lineage.pipeline.changeDescription", "connection");
   public static final SearchClient searchClient = Entity.getSearchRepository().getSearchClient();
 
   default Map<String, Object> buildSearchIndexDoc() {
@@ -150,25 +149,31 @@ public interface SearchIndex {
     return nullOrEmpty(entity.getDescription()) ? "INCOMPLETE" : "COMPLETE";
   }
 
-  static List<EsLineageData> getLineageData(EntityReference entity) {
-    return new ArrayList<>(
-        getLineageDataFromRefs(
-            entity,
-            Entity.getCollectionDAO()
-                .relationshipDAO()
-                .findFrom(entity.getId(), entity.getType(), Relationship.UPSTREAM.ordinal())));
-  }
-
-  static List<EsLineageData> getLineageDataFromRefs(
-      EntityReference entity, List<CollectionDAO.EntityRelationshipRecord> records) {
-    List<EsLineageData> data = new ArrayList<>();
-    for (CollectionDAO.EntityRelationshipRecord entityRelationshipRecord : records) {
+  static List<Map<String, Object>> getLineageData(EntityReference entity) {
+    List<Map<String, Object>> data = new ArrayList<>();
+    CollectionDAO dao = Entity.getCollectionDAO();
+    List<CollectionDAO.EntityRelationshipRecord> toRelationshipsRecords =
+        dao.relationshipDAO()
+            .findTo(entity.getId(), entity.getType(), Relationship.UPSTREAM.ordinal());
+    for (CollectionDAO.EntityRelationshipRecord entityRelationshipRecord : toRelationshipsRecords) {
       EntityReference ref =
           Entity.getEntityReferenceById(
               entityRelationshipRecord.getType(), entityRelationshipRecord.getId(), Include.ALL);
       LineageDetails lineageDetails =
           JsonUtils.readValue(entityRelationshipRecord.getJson(), LineageDetails.class);
-      data.add(buildEntityLineageData(ref, entity, lineageDetails));
+      data.add(buildRelationshipDetailsMap(entity, ref, lineageDetails));
+    }
+    List<CollectionDAO.EntityRelationshipRecord> fromRelationshipsRecords =
+        dao.relationshipDAO()
+            .findFrom(entity.getId(), entity.getType(), Relationship.UPSTREAM.ordinal());
+    for (CollectionDAO.EntityRelationshipRecord entityRelationshipRecord :
+        fromRelationshipsRecords) {
+      EntityReference ref =
+          Entity.getEntityReferenceById(
+              entityRelationshipRecord.getType(), entityRelationshipRecord.getId(), Include.ALL);
+      LineageDetails lineageDetails =
+          JsonUtils.readValue(entityRelationshipRecord.getJson(), LineageDetails.class);
+      data.add(buildRelationshipDetailsMap(ref, entity, lineageDetails));
     }
     return data;
   }
