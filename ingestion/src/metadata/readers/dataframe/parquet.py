@@ -76,7 +76,9 @@ class ParquetDataFrameReader(DataFrameReader):
             "session_name": self.config_source.securityConfig.assumeRoleSessionName,
         }
         if self.config_source.securityConfig.awsSecretAccessKey:
-            client_kwargs["secret_key"] = self.config_source.securityConfig.awsSecretAccessKey.get_secret_value()
+            client_kwargs[
+                "secret_key"
+            ] = self.config_source.securityConfig.awsSecretAccessKey.get_secret_value()
         s3_fs = S3FileSystem(**client_kwargs)
 
         bucket_uri = f"{bucket_name}/{key}"
