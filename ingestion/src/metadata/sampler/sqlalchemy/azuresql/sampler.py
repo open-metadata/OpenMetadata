@@ -37,13 +37,13 @@ class AzureSQLSampler(SQASampler):
         Args:
             selectable (Table): _description_
         """
-        if self.sample_config.profile_sample_type == ProfileSampleType.PERCENTAGE:
+        if self.sample_config.profileSampleType == ProfileSampleType.PERCENTAGE:
             return selectable.tablesample(
-                text(f"{self.sample_config.profile_sample or 100} PERCENT")
+                text(f"{self.sample_config.profileSample or 100} PERCENT")
             )
 
         return selectable.tablesample(
-            text(f"{int(self.sample_config.profile_sample or 100)} ROWS")
+            text(f"{int(self.sample_config.profileSample or 100)} ROWS")
         )
 
     def get_sample_query(self, *, column=None) -> CTE:

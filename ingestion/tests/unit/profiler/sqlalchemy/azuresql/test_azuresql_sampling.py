@@ -82,7 +82,7 @@ class SampleTest(TestCase):
             ometa_client=None,
             entity=self.table_entity,
             sample_config=SampleConfig(
-                profile_sample_type=ProfileSampleType.PERCENTAGE, profile_sample=50.0
+                profile_sample_type=ProfileSampleType.PERCENTAGE, profileSample=50.0
             ),
         )
         query: CTE = sampler.get_sample_query()
@@ -105,7 +105,7 @@ class SampleTest(TestCase):
             ometa_client=None,
             entity=self.table_entity,
             sample_config=SampleConfig(
-                profile_sample_type=ProfileSampleType.ROWS, profile_sample=50
+                profile_sample_type=ProfileSampleType.ROWS, profileSample=50
             ),
         )
         query: CTE = sampler.get_sample_query()
@@ -129,7 +129,7 @@ class SampleTest(TestCase):
             entity=self.table_entity,
             sample_config=SampleConfig(
                 profile_sample_type=ProfileSampleType.PERCENTAGE,
-                profile_sample=50.0,
+                profileSample=50.0,
             ),
             partition_details=PartitionProfilerConfig(
                 enablePartitioning=True,
