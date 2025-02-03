@@ -8,7 +8,7 @@ from pathlib import Path
 from unittest import TestCase
 from unittest.mock import MagicMock, patch
 
-from dbt_artifacts_parser.parser import parse_catalog, parse_manifest, parse_run_results
+from collate_dbt_artifacts_parser.parser import parse_catalog, parse_manifest, parse_run_results
 from pydantic import AnyUrl
 
 from metadata.generated.schema.entity.data.table import Column, DataModel, Table
@@ -686,6 +686,12 @@ class DbtUnitTest(TestCase):
 
     def check_process_dbt_owners(self, data_model_link):
         process_dbt_owners = self.dbt_source_obj.process_dbt_owners(data_model_link)
+        for entity in process_dbt_owners:
+            entity_owner = entity.right.new_entity.owners
+            self.assertEqual(entity_owner, MOCK_OWNER)
+
+    def test_search_across_services(self, data_model_link):
+        process_dbt_owners = self.dbt_source_obj._get_table_entity(data_model_link)
         for entity in process_dbt_owners:
             entity_owner = entity.right.new_entity.owners
             self.assertEqual(entity_owner, MOCK_OWNER)
