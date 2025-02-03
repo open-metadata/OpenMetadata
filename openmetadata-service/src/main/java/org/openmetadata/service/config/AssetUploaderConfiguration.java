@@ -1,0 +1,28 @@
+package org.openmetadata.service.config;
+
+import com.fasterxml.jackson.annotation.JsonProperty;
+import javax.validation.Valid;
+import javax.validation.constraints.NotNull;
+import lombok.Getter;
+import lombok.Setter;
+
+@Getter
+@Setter
+public class AssetUploaderConfiguration {
+
+  /**
+   * Provider can be "s3", "azure", or "dummy" (for local testing).
+   */
+  @JsonProperty("provider")
+  @NotNull
+  private String provider;
+
+  @JsonProperty("s3")
+  @Valid
+  private S3Configuration s3Configuration;
+
+  @JsonProperty("azure")
+  @Valid
+  private AzureConfiguration azureConfiguration;
+}
+
