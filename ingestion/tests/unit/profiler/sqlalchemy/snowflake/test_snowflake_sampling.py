@@ -107,7 +107,7 @@ class SampleTest(TestCase):
                 ometa_client=None,
                 entity=self.table_entity,
                 sample_config=SampleConfig(
-                    profileSample_type=ProfileSampleType.PERCENTAGE,
+                    profileSampleType=ProfileSampleType.PERCENTAGE,
                     profileSample=50.0,
                     samplingMethodType=sampling_method_type,
                 ),
