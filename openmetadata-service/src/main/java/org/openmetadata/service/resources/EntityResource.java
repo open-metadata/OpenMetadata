@@ -284,6 +284,26 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       UriInfo uriInfo,
       SecurityContext securityContext,
       String name,
+      String fieldsParam,
+      Fields.FieldConfig fieldConfig,
+      Include include) {
+    Fields fields = getFields(fieldsParam);
+    fields.setFieldConfig(fieldConfig);
+    OperationContext operationContext = new OperationContext(entityType, getViewOperations(fields));
+    return getByNameInternal(
+        uriInfo,
+        securityContext,
+        name,
+        fields,
+        include,
+        operationContext,
+        getResourceContextByName(name));
+  }
+
+  public T getByNameInternal(
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      String name,
       Fields fields,
       Include include,
       OperationContext operationContext,

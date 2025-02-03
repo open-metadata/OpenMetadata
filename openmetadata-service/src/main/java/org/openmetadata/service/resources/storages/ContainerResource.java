@@ -46,6 +46,7 @@ import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.ResultList;
 
 @Path("/v1/containers")
@@ -217,8 +218,23 @@ public class ContainerResource extends EntityResource<Container, ContainerReposi
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include) {
-    return getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
+          Include include,
+      @Parameter(description = "Limit the values in children field of container")
+          @QueryParam("fieldLimit")
+          @Min(0)
+          @Max(1000000)
+          Integer fieldLimit,
+      @Parameter(description = "Returns list of values in children field after this offset")
+          @QueryParam("fieldOffset")
+          @Min(0)
+          Integer fieldOffset) {
+    if (fieldLimit != null && fieldOffset != null) {
+      EntityUtil.Fields.FieldConfig fieldConfig =
+          new EntityUtil.Fields.FieldConfig(fieldLimit, fieldOffset);
+      return getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, fieldConfig, include);
+    } else {
+      return getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
+    }
   }
 
   @POST

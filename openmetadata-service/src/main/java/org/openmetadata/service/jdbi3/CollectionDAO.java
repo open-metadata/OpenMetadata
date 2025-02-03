@@ -995,6 +995,17 @@ public interface CollectionDAO {
     }
 
     @SqlQuery(
+        "SELECT toId, toEntity, json FROM entity_relationship WHERE fromId = :fromId AND fromEntity = :fromEntity "
+            + "AND relation IN (<relation>) ORDER BY toId LIMIT :limit OFFSET :offset")
+    @RegisterRowMapper(ToRelationshipMapper.class)
+    List<EntityRelationshipRecord> findToWithOffset(
+        @BindUUID("fromId") UUID fromId,
+        @Bind("fromEntity") String fromEntity,
+        @BindList("relation") List<Integer> relation,
+        @Bind("offset") int offset,
+        @Bind("limit") int limit);
+
+    @SqlQuery(
         "SELECT fromId, toId, fromEntity, toEntity, relation "
             + "FROM entity_relationship "
             + "WHERE fromId IN (<fromIds>) "

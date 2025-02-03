@@ -40,7 +40,9 @@ import java.util.stream.Collectors;
 import javax.validation.constraints.NotNull;
 import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.core.SecurityContext;
+import lombok.AllArgsConstructor;
 import lombok.Getter;
+import lombok.Setter;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.codec.binary.Hex;
@@ -287,6 +289,15 @@ public final class EntityUtil {
   public static class Fields implements Iterable<String> {
     public static final Fields EMPTY_FIELDS = new Fields(Collections.emptySet());
     @Getter private final Set<String> fieldList;
+    @Getter @Setter private FieldConfig fieldConfig;
+
+    @Getter
+    @Setter
+    @AllArgsConstructor
+    public static class FieldConfig {
+      private Integer limit;
+      private Integer offset;
+    }
 
     public Fields(Set<String> fieldList) {
       this.fieldList = fieldList;

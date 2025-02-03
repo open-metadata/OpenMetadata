@@ -40,6 +40,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 import lombok.extern.slf4j.Slf4j;
@@ -399,6 +400,7 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
             .withOwners(List.of(DATA_CONSUMER.getEntityReference()))
             .withSize(0.0);
     Container rootContainer = createAndCheckEntity(createRootContainer, ADMIN_AUTH_HEADERS);
+    String rootContainerFQN = rootContainer.getFullyQualifiedName();
 
     CreateContainer createChildOneContainer =
         new CreateContainer()
@@ -490,6 +492,22 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
     ResultList<Container> rootContainerList = listEntities(queryParams, ADMIN_AUTH_HEADERS);
     assertEquals(1, rootContainerList.getData().size());
     assertEquals("s3.0_root", rootContainerList.getData().get(0).getFullyQualifiedName());
+
+    // Test with default pagination (no parameters)
+    Container container = getContainerByName(rootContainerFQN, "children", null, null);
+    assertEquals(2, container.getChildren().size());
+
+    // Test with fieldLimit
+    Container containerWithLimit = getContainerByName(rootContainerFQN, "children", 5, 0);
+    assertEquals(2, containerWithLimit.getChildren().size());
+
+    // Test with fieldOffset
+    Container containerWithOffset = getContainerByName(rootContainerFQN, "children", 1, 1);
+    assertEquals(1, containerWithOffset.getChildren().size());
+
+    // Test with offset greater than available items
+    Container containerWithLargeOffset = getContainerByName(rootContainerFQN, "children", 1, 3);
+    assertTrue(containerWithLargeOffset.getChildren().isEmpty());
   }
 
   @Test
@@ -699,6 +717,16 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
             : FullyQualifiedName.add(
                 createdEntity.getService().getFullyQualifiedName(), createdEntity.getName()),
         createdEntity.getFullyQualifiedName());
+  }
+
+  private Container getContainerByName(
+      String fqn, String fields, Integer fieldLimit, Integer fieldOffset)
+      throws HttpResponseException {
+    WebTarget target = getResource(String.format("containers/name/%s", fqn));
+    target = fields != null ? target.queryParam("fields", fields) : target;
+    target = fieldLimit != null ? target.queryParam("fieldLimit", fieldLimit) : target;
+    target = fieldOffset != null ? target.queryParam("fieldOffset", fieldOffset) : target;
+    return TestUtils.get(target, Container.class, ADMIN_AUTH_HEADERS);
   }
 
   @Test
