@@ -69,6 +69,7 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
     } else {
       let retn: EntityReference[] = [];
       if (selectedDomains.length > 0) {
+        
         const domain = getEntityReferenceFromEntity<Domain>(
           selectedDomains[0],
           EntityType.DOMAIN
@@ -96,11 +97,10 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
 
   const onSelect = (selectedKeys: React.Key[]) => {
     if (!isMultiple) {
+
       const selectedData = [];
       for (const item of selectedKeys) {
-        selectedData.push(
-          findItemByFqn(domains, item as string, false) as Domain
-        );
+        selectedData.push(findItemByFqn(domains, item as string, false) as Domain);
       }
 
       setSelectedDomains(selectedData);
@@ -113,20 +113,12 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
     if (Array.isArray(checked)) {
       const selectedData = [];
       for (const item of checked) {
-        selectedData.push(
-          findItemByFqn(domains, item as string, false) as Domain
-        );
+        selectedData.push(findItemByFqn(domains, item as string, false) as Domain);
       }
 
       setSelectedDomains(selectedData);
     } else {
-      setSelectedDomains([
-        findItemByFqn(
-          domains,
-          checked.checked as unknown as string,
-          false
-        ) as Domain,
-      ]);
+      setSelectedDomains([findItemByFqn(domains, checked.checked as unknown as string, false) as Domain]);
     }
   };
 
