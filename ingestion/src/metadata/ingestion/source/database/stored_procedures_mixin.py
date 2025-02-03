@@ -244,8 +244,18 @@ class StoredProcedureLineageMixin(ABC):
             "query": {
                 "bool": {
                     "must": [
-                        {"term": {"service.name.keyword": self.service_name}},
-                        {"term": {"deleted": False}},
+                        {
+                            "bool": {
+                                "should": [
+                                    {
+                                        "term": {
+                                            "service.name.keyword": self.service_name
+                                        }
+                                    }
+                                ]
+                            }
+                        },
+                        {"bool": {"should": [{"term": {"deleted": False}}]}},
                     ]
                 }
             }
