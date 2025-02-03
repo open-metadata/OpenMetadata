@@ -771,7 +771,12 @@ public class LineageRepository {
   }
 
   public Response patchLineageEdge(
-      String fromEntity, UUID fromId, String toEntity, UUID toId, JsonPatch patch, String updatedBy) {
+      String fromEntity,
+      UUID fromId,
+      String toEntity,
+      UUID toId,
+      JsonPatch patch,
+      String updatedBy) {
     EntityReference from = Entity.getEntityReferenceById(fromEntity, fromId, Include.NON_DELETED);
     EntityReference to = Entity.getEntityReferenceById(toEntity, toId, Include.NON_DELETED);
     String json = dao.relationshipDAO().getRelation(fromId, toId, Relationship.UPSTREAM.ordinal());
@@ -788,11 +793,11 @@ public class LineageRepository {
                 pipeline.getType(), pipeline.getId(), Include.NON_DELETED);
         updated.withPipeline(pipeline);
       }
-      
+
       // Update the lineage details with user and time
       updated.setUpdatedAt(System.currentTimeMillis());
       updated.setUpdatedBy(updatedBy);
-      
+
       String detailsJson = JsonUtils.pojoToJson(updated);
       dao.relationshipDAO()
           .insert(fromId, toId, fromEntity, toEntity, Relationship.UPSTREAM.ordinal(), detailsJson);
