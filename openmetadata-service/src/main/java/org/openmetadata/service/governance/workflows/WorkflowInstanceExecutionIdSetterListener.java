@@ -1,7 +1,9 @@
 package org.openmetadata.service.governance.workflows;
 
+import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAMESPACE;
 import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.WORKFLOW_INSTANCE_EXECUTION_ID_VARIABLE;
+import static org.openmetadata.service.governance.workflows.WorkflowHandler.getNamespacedVariable;
 import static org.openmetadata.service.governance.workflows.WorkflowHandler.getProcessDefinitionKeyFromId;
 
 import java.util.UUID;
@@ -15,7 +17,8 @@ public class WorkflowInstanceExecutionIdSetterListener implements JavaDelegate {
   public void execute(DelegateExecution execution) {
     try {
       String workflowName = getProcessDefinitionKeyFromId(execution.getProcessDefinitionId());
-      String relatedEntity = (String) execution.getVariable(RELATED_ENTITY_VARIABLE);
+      String relatedEntity =
+          (String) getNamespacedVariable(execution, GLOBAL_NAMESPACE, RELATED_ENTITY_VARIABLE);
       LOG.debug(
           String.format(
               "New Execution for Workflow '%s'. Related Entity: '%s'",

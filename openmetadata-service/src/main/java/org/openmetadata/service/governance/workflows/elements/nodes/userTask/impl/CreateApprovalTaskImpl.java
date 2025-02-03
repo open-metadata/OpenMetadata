@@ -1,15 +1,20 @@
 package org.openmetadata.service.governance.workflows.elements.nodes.userTask.impl;
 
 import static org.openmetadata.service.governance.workflows.Workflow.EXCEPTION_VARIABLE;
+import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAMESPACE;
 import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.WORKFLOW_RUNTIME_EXCEPTION;
+import static org.openmetadata.service.governance.workflows.WorkflowHandler.getNamespacedVariable;
 import static org.openmetadata.service.governance.workflows.WorkflowHandler.getProcessDefinitionKeyFromId;
+import static org.openmetadata.service.governance.workflows.WorkflowHandler.setNamespacedVariable;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
+import org.flowable.common.engine.api.delegate.Expression;
 import org.flowable.engine.delegate.BpmnError;
 import org.flowable.engine.delegate.TaskListener;
 import org.flowable.identitylink.api.IdentityLink;
@@ -28,17 +33,26 @@ import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.FeedRepository;
 import org.openmetadata.service.resources.feeds.FeedMapper;
 import org.openmetadata.service.resources.feeds.MessageParser;
+import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.WebsocketNotificationHandler;
 
 @Slf4j
 public class CreateApprovalTaskImpl implements TaskListener {
+  private Expression inputNamespaceMapExpr;
+
   @Override
   public void notify(DelegateTask delegateTask) {
     try {
+      Map<String, String> inputNamespaceMap =
+          JsonUtils.readOrConvertValue(inputNamespaceMapExpr.getValue(delegateTask), Map.class);
       List<EntityReference> assignees = getAssignees(delegateTask);
       MessageParser.EntityLink entityLink =
           MessageParser.EntityLink.parse(
-              (String) delegateTask.getVariable(RELATED_ENTITY_VARIABLE));
+              (String)
+                  getNamespacedVariable(
+                      delegateTask,
+                      inputNamespaceMap.get(RELATED_ENTITY_VARIABLE),
+                      RELATED_ENTITY_VARIABLE));
       GlossaryTerm entity = Entity.getEntity(entityLink, "*", Include.ALL);
 
       Thread task = createApprovalTask(entity, assignees);
@@ -49,7 +63,7 @@ public class CreateApprovalTaskImpl implements TaskListener {
               "[%s] Failure: ",
               getProcessDefinitionKeyFromId(delegateTask.getProcessDefinitionId())),
           exc);
-      delegateTask.setVariable(EXCEPTION_VARIABLE, exc.toString());
+      setNamespacedVariable(delegateTask, GLOBAL_NAMESPACE, EXCEPTION_VARIABLE, exc.toString());
       throw new BpmnError(WORKFLOW_RUNTIME_EXCEPTION, exc.getMessage());
     }
   }

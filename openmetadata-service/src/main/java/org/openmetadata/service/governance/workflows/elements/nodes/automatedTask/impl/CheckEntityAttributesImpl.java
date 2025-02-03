@@ -1,13 +1,18 @@
 package org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.impl;
 
 import static org.openmetadata.service.governance.workflows.Workflow.EXCEPTION_VARIABLE;
+import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAMESPACE;
 import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.RESULT_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.WORKFLOW_RUNTIME_EXCEPTION;
+import static org.openmetadata.service.governance.workflows.WorkflowHandler.getNamespacedVariable;
 import static org.openmetadata.service.governance.workflows.WorkflowHandler.getProcessDefinitionKeyFromId;
+import static org.openmetadata.service.governance.workflows.WorkflowHandler.setNamespacedVariable;
+import static org.openmetadata.service.governance.workflows.WorkflowHandler.setNodeVariable;
 
 import io.github.jamsesso.jsonlogic.JsonLogic;
 import io.github.jamsesso.jsonlogic.JsonLogicException;
+import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.flowable.common.engine.api.delegate.Expression;
 import org.flowable.engine.delegate.BpmnError;
@@ -22,20 +27,28 @@ import org.openmetadata.service.util.JsonUtils;
 @Slf4j
 public class CheckEntityAttributesImpl implements JavaDelegate {
   private Expression rulesExpr;
+  private Expression inputNamespaceMapExpr;
 
   @Override
   public void execute(DelegateExecution execution) {
     try {
+      Map<String, String> inputNamespaceMap =
+          JsonUtils.readOrConvertValue(inputNamespaceMapExpr.getValue(execution), Map.class);
       String rules = (String) rulesExpr.getValue(execution);
       MessageParser.EntityLink entityLink =
-          MessageParser.EntityLink.parse((String) execution.getVariable(RELATED_ENTITY_VARIABLE));
-      execution.setVariable(RESULT_VARIABLE, checkAttributes(entityLink, rules));
+          MessageParser.EntityLink.parse(
+              (String)
+                  getNamespacedVariable(
+                      execution,
+                      inputNamespaceMap.get(RELATED_ENTITY_VARIABLE),
+                      RELATED_ENTITY_VARIABLE));
+      setNodeVariable(execution, RESULT_VARIABLE, checkAttributes(entityLink, rules));
     } catch (Exception exc) {
       LOG.error(
           String.format(
               "[%s] Failure: ", getProcessDefinitionKeyFromId(execution.getProcessDefinitionId())),
           exc);
-      execution.setVariable(EXCEPTION_VARIABLE, exc.toString());
+      setNamespacedVariable(execution, GLOBAL_NAMESPACE, EXCEPTION_VARIABLE, exc.toString());
       throw new BpmnError(WORKFLOW_RUNTIME_EXCEPTION, exc.getMessage());
     }
   }

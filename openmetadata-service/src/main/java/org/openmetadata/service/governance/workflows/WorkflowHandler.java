@@ -1,9 +1,11 @@
 package org.openmetadata.service.governance.workflows;
 
+import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAMESPACE;
 import static org.openmetadata.service.governance.workflows.elements.TriggerFactory.getTriggerWorkflowId;
 
 import java.time.Duration;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -19,12 +21,15 @@ import org.flowable.engine.ProcessEngines;
 import org.flowable.engine.RepositoryService;
 import org.flowable.engine.RuntimeService;
 import org.flowable.engine.TaskService;
+import org.flowable.engine.delegate.DelegateExecution;
 import org.flowable.engine.history.HistoricProcessInstance;
 import org.flowable.engine.impl.cfg.StandaloneProcessEngineConfiguration;
 import org.flowable.engine.repository.ProcessDefinition;
 import org.flowable.engine.runtime.Execution;
 import org.flowable.engine.runtime.ProcessInstance;
 import org.flowable.task.api.Task;
+import org.flowable.task.service.delegate.DelegateTask;
+import org.flowable.variable.api.delegate.VariableScope;
 import org.openmetadata.schema.configuration.WorkflowSettings;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.service.Entity;
@@ -198,19 +203,59 @@ public class WorkflowHandler {
     taskService.setVariable(taskId, "customTaskId", customTaskId.toString());
   }
 
+  public String getParentActivityId(String executionId) {
+    String activityId = null;
+
+    Execution execution =
+        runtimeService.createExecutionQuery().executionId(executionId).singleResult();
+
+    if (execution != null && execution.getParentId() != null) {
+      Execution parentExecution =
+          runtimeService.createExecutionQuery().executionId(execution.getParentId()).singleResult();
+
+      if (parentExecution != null) {
+        activityId = parentExecution.getActivityId();
+      }
+    }
+
+    return activityId;
+  }
+
+  private Task getTaskFromCustomTaskId(UUID customTaskId) {
+    return taskService
+        .createTaskQuery()
+        .processVariableValueEquals("customTaskId", customTaskId.toString())
+        .singleResult();
+  }
+
+  public Map<String, Object> transformToNodeVariables(
+      UUID customTaskId, Map<String, Object> variables) {
+    Map<String, Object> namespacedVariables = null;
+    Optional<Task> oTask = Optional.ofNullable(getTaskFromCustomTaskId(customTaskId));
+
+    if (oTask.isPresent()) {
+      Task task = oTask.get();
+      String namespace = getParentActivityId(task.getExecutionId());
+      namespacedVariables = new HashMap<>();
+      for (Map.Entry<String, Object> entry : variables.entrySet()) {
+        namespacedVariables.put(
+            getNamespacedVariableName(namespace, entry.getKey()), entry.getValue());
+      }
+
+    } else {
+      // LOG
+    }
+
+    return namespacedVariables;
+  }
+
   public void resolveTask(UUID taskId) {
     resolveTask(taskId, null);
   }
 
   public void resolveTask(UUID customTaskId, Map<String, Object> variables) {
     try {
-      Optional<Task> oTask =
-          Optional.ofNullable(
-              taskService
-                  .createTaskQuery()
-                  .processVariableValueEquals("customTaskId", customTaskId.toString())
-                  .singleResult());
-
+      Optional<Task> oTask = Optional.ofNullable(getTaskFromCustomTaskId(customTaskId));
       if (oTask.isPresent()) {
         Task task = oTask.get();
         Optional.ofNullable(variables)
@@ -322,5 +367,42 @@ public class WorkflowHandler {
               runtimeService.deleteProcessInstance(
                   instance.getId(), "Terminating all instances due to user request.");
             });
+  }
+
+  public static String getNamespacedVariableName(String namespace, String varName) {
+    if (namespace != null) {
+      return String.format("%s_%s", namespace, varName);
+    } else {
+      return varName;
+    }
+  }
+
+  public static void setNodeVariable(DelegateExecution execution, String varName, Object varValue) {
+    String namespace = execution.getParent().getCurrentActivityId();
+    setNamespacedVariable(execution, namespace, varName, varValue);
+  }
+
+  public static void setGlobalVariable(VariableScope execution, String varName, Object varValue) {
+    setNamespacedVariable(execution, GLOBAL_NAMESPACE, varName, varValue);
+  }
+
+  public static void setNamespacedVariable(
+      VariableScope execution, String namespace, String varName, Object varValue) {
+    execution.setVariable(getNamespacedVariableName(namespace, varName), varValue);
+  }
+
+  public static Object getNamespacedVariable(
+      VariableScope execution, String namespace, String varName) {
+    return execution.getVariable(getNamespacedVariableName(namespace, varName));
+  }
+
+  public static void setNodeVariable(DelegateTask delegateTask, String varName, Object varValue) {
+    WorkflowHandler workflowHandler = WorkflowHandler.getInstance();
+    String namespace = workflowHandler.getParentActivityId(delegateTask.getExecutionId());
+    if (namespace != null) {
+      setNamespacedVariable(delegateTask, namespace, varName, varValue);
+    } else {
+      // Raise Error
+    }
   }
 }

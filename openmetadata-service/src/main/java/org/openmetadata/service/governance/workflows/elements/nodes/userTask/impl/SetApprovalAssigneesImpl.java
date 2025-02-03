@@ -1,9 +1,12 @@
 package org.openmetadata.service.governance.workflows.elements.nodes.userTask.impl;
 
 import static org.openmetadata.service.governance.workflows.Workflow.EXCEPTION_VARIABLE;
+import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAMESPACE;
 import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.WORKFLOW_RUNTIME_EXCEPTION;
+import static org.openmetadata.service.governance.workflows.WorkflowHandler.getNamespacedVariable;
 import static org.openmetadata.service.governance.workflows.WorkflowHandler.getProcessDefinitionKeyFromId;
+import static org.openmetadata.service.governance.workflows.WorkflowHandler.setNamespacedVariable;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -25,10 +28,13 @@ import org.openmetadata.service.util.JsonUtils;
 public class SetApprovalAssigneesImpl implements JavaDelegate {
   private Expression assigneesExpr;
   private Expression assigneesVarNameExpr;
+  private Expression inputNamespaceMapExpr;
 
   @Override
   public void execute(DelegateExecution execution) {
     try {
+      Map<String, String> inputNamespaceMap =
+          JsonUtils.readOrConvertValue(inputNamespaceMapExpr.getValue(execution), Map.class);
       Map<String, Object> assigneesConfig =
           JsonUtils.readOrConvertValue(assigneesExpr.getValue(execution), Map.class);
       Boolean addReviewers = (Boolean) assigneesConfig.get("addReviewers");
@@ -40,7 +46,12 @@ public class SetApprovalAssigneesImpl implements JavaDelegate {
 
       if (addReviewers) {
         MessageParser.EntityLink entityLink =
-            MessageParser.EntityLink.parse((String) execution.getVariable(RELATED_ENTITY_VARIABLE));
+            MessageParser.EntityLink.parse(
+                (String)
+                    getNamespacedVariable(
+                        execution,
+                        inputNamespaceMap.get(RELATED_ENTITY_VARIABLE),
+                        RELATED_ENTITY_VARIABLE));
         EntityInterface entity = Entity.getEntity(entityLink, "*", Include.ALL);
         assignees.addAll(getEntityLinkStringFromEntityReference(entity.getReviewers()));
       }
@@ -56,7 +67,7 @@ public class SetApprovalAssigneesImpl implements JavaDelegate {
           String.format(
               "[%s] Failure: ", getProcessDefinitionKeyFromId(execution.getProcessDefinitionId())),
           exc);
-      execution.setVariable(EXCEPTION_VARIABLE, exc.toString());
+      setNamespacedVariable(execution, GLOBAL_NAMESPACE, EXCEPTION_VARIABLE, exc.toString());
       throw new BpmnError(WORKFLOW_RUNTIME_EXCEPTION, exc.getMessage());
     }
   }

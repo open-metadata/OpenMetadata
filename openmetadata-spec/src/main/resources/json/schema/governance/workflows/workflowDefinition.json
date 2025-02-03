@@ -12,7 +12,6 @@
       "javaType": "org.openmetadata.schema.governance.workflows.TriggerType",
       "enum": [
         "eventBasedEntity",
-        "customSignal",
         "periodicBatchEntity"
       ]
     }

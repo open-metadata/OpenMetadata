@@ -62,10 +62,25 @@
     "input": {
       "type": "array",
       "items": { "type":  "string" },
-      "default": ["relatedEntity"],
+      "default": ["relatedEntity", "updatedBy"],
       "additionalItems": false,
-      "minItems": 1,
-      "maxItems": 1
+      "minItems": 2,
+      "maxItems": 2
+    },
+    "inputNamespaceMap": {
+      "type": "object",
+      "properties": {
+        "relatedEntity": {
+          "type": "string",
+          "default": "global"
+        },
+        "updatedBy": {
+          "type": "string",
+          "default": null
+        }
+      },
+      "additionalProperties": false,
+      "required": ["relatedEntity"]
     }
   }
 }

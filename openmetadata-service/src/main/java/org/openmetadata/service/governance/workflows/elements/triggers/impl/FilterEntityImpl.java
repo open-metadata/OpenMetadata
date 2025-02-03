@@ -1,6 +1,8 @@
 package org.openmetadata.service.governance.workflows.elements.triggers.impl;
 
+import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAMESPACE;
 import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_VARIABLE;
+import static org.openmetadata.service.governance.workflows.WorkflowHandler.getNamespacedVariable;
 import static org.openmetadata.service.governance.workflows.elements.triggers.EventBasedEntityTrigger.PASSES_FILTER_VARIABLE;
 
 import java.util.List;
@@ -24,7 +26,8 @@ public class FilterEntityImpl implements JavaDelegate {
     List<String> excludedFilter =
         JsonUtils.readOrConvertValue(excludedFilterExpr.getValue(execution), List.class);
 
-    String entityLinkStr = (String) execution.getVariable(RELATED_ENTITY_VARIABLE);
+    String entityLinkStr =
+        (String) getNamespacedVariable(execution, GLOBAL_NAMESPACE, RELATED_ENTITY_VARIABLE);
 
     execution.setVariable(
         PASSES_FILTER_VARIABLE, passesExcludedFilter(entityLinkStr, excludedFilter));
