@@ -65,7 +65,6 @@ import {
 } from '../../../rest/rolesAPIV1';
 import { getTeamByName, patchTeamDetail } from '../../../rest/teamsAPI';
 import { getEntityName } from '../../../utils/EntityUtils';
-import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import {
   getAddPolicyRulePath,
   getEditPolicyRulePath,
@@ -91,9 +90,8 @@ const PoliciesDetailPage = () => {
   const [editDescription, setEditDescription] = useState<boolean>(false);
   const [selectedEntity, setEntity] =
     useState<{ attribute: Attribute; record: EntityReference }>();
-  const [policyPermission, setPolicyPermission] = useState<OperationPermission>(
-    DEFAULT_ENTITY_PERMISSION
-  );
+  const [policyPermission, setPolicyPermission] =
+    useState<OperationPermission | null>(null);
 
   const policiesPath = getSettingPath(
     GlobalSettingsMenuCategory.ACCESS,
@@ -122,10 +120,10 @@ const PoliciesDetailPage = () => {
     viewBasicPermission,
   } = useMemo(() => {
     const editDisplayNamePermission =
-      policyPermission.EditAll || policyPermission.EditDisplayName;
-    const hasDeletePermission = policyPermission.Delete;
+      policyPermission?.EditAll || policyPermission?.EditDisplayName;
+    const hasDeletePermission = policyPermission?.Delete;
     const viewBasicPermission =
-      policyPermission.ViewAll || policyPermission.ViewBasic;
+      policyPermission?.ViewAll || policyPermission?.ViewBasic;
 
     return {
       editDisplayNamePermission,
@@ -367,11 +365,12 @@ const PoliciesDetailPage = () => {
   );
 
   const init = async () => {
-    if (fqn) {
-      await fetchPolicyPermission(fqn);
-      if (viewBasicPermission) {
-        fetchPolicy();
-      }
+    if (!fqn) {
+      return;
+    }
+    await fetchPolicyPermission(fqn);
+    if (viewBasicPermission) {
+      fetchPolicy();
     }
   };
 

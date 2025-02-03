@@ -11,16 +11,25 @@
  *  limitations under the License.
  */
 
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import React from 'react';
+import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { TabSpecificField } from '../../../enums/entity.enum';
 import { getPolicyByName } from '../../../rest/rolesAPIV1';
 import { POLICY_DATA } from '../PoliciesData.mock';
 import PoliciesDetailPage from './PoliciesDetailPage';
 
+const mockEntityPermissionByFqn = jest.fn().mockImplementation(() => null);
+
 jest.mock('react-router-dom', () => ({
   useHistory: jest.fn(),
   useParams: jest.fn().mockReturnValue({ fqn: 'policy' }),
+}));
+
+jest.mock('../../../context/PermissionProvider/PermissionProvider', () => ({
+  usePermissionProvider: jest.fn().mockImplementation(() => ({
+    getEntityPermissionByFqn: mockEntityPermissionByFqn,
+  })),
 }));
 
 jest.mock('../../../rest/rolesAPIV1', () => ({
@@ -106,7 +115,15 @@ jest.mock('../../../components/PageLayoutV1/PageLayoutV1', () => {
 
 describe('Test Policy details page', () => {
   it('Should render the policy details page component', async () => {
-    render(<PoliciesDetailPage />);
+    (usePermissionProvider as jest.Mock).mockImplementationOnce(() => ({
+      getEntityPermissionByFqn: jest.fn().mockImplementationOnce(() => ({
+        ViewBasic: true,
+      })),
+    }));
+
+    await act(async () => {
+      render(<PoliciesDetailPage />);
+    });
 
     expect(getPolicyByName).toHaveBeenCalledWith(
       'policy',
@@ -139,7 +156,15 @@ describe('Test Policy details page', () => {
   });
 
   it('Should render the rule card and its attributes', async () => {
-    render(<PoliciesDetailPage />);
+    (usePermissionProvider as jest.Mock).mockImplementationOnce(() => ({
+      getEntityPermissionByFqn: jest.fn().mockImplementationOnce(() => ({
+        ViewBasic: true,
+      })),
+    }));
+
+    await act(async () => {
+      render(<PoliciesDetailPage />);
+    });
 
     const ruleCard = await screen.findByTestId('rule-card');
 

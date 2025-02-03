@@ -46,7 +46,6 @@ import { getRoleByName, patchRole } from '../../../rest/rolesAPIV1';
 import { getTeamByName, patchTeamDetail } from '../../../rest/teamsAPI';
 import { getUserByName, updateUserDetail } from '../../../rest/userAPI';
 import { getEntityName } from '../../../utils/EntityUtils';
-import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { getSettingPath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import AddAttributeModal from '../AddAttributeModal/AddAttributeModal';
@@ -76,9 +75,8 @@ const RolesDetailPage = () => {
     useState<{ attribute: Attribute; record: EntityReference }>();
 
   const [addAttribute, setAddAttribute] = useState<AddAttribute>();
-  const [rolePermission, setRolePermission] = useState<OperationPermission>(
-    DEFAULT_ENTITY_PERMISSION
-  );
+  const [rolePermission, setRolePermission] =
+    useState<OperationPermission | null>(null);
 
   const rolesPath = getSettingPath(
     GlobalSettingsMenuCategory.ACCESS,
@@ -107,10 +105,10 @@ const RolesDetailPage = () => {
     viewBasicPermission,
   } = useMemo(() => {
     const editDisplayNamePermission =
-      rolePermission.EditAll || rolePermission.EditDisplayName;
-    const hasDeletePermission = rolePermission.Delete;
+      rolePermission?.EditAll || rolePermission?.EditDisplayName;
+    const hasDeletePermission = rolePermission?.Delete;
     const viewBasicPermission =
-      rolePermission.ViewAll || rolePermission.ViewBasic;
+      rolePermission?.ViewAll || rolePermission?.ViewBasic;
 
     return {
       editDisplayNamePermission,
@@ -288,11 +286,12 @@ const RolesDetailPage = () => {
   };
 
   const init = async () => {
-    if (fqn) {
-      await fetchRolePermission(fqn);
-      if (viewBasicPermission) {
-        fetchRole();
-      }
+    if (!fqn) {
+      return;
+    }
+    await fetchRolePermission(fqn);
+    if (viewBasicPermission) {
+      fetchRole();
     }
   };
 
