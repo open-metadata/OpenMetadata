@@ -33,7 +33,7 @@ import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as IconDelete } from '../../../assets/svg/ic-delete.svg';
-import PolicyIcon from '../../../assets/svg/policies-colored.svg';
+import { ReactComponent as PolicyIcon } from '../../../assets/svg/policies-colored.svg';
 import DescriptionV1 from '../../../components/common/EntityDescription/DescriptionV1';
 import ManageButton from '../../../components/common/EntityPageInfos/ManageButton/ManageButton';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -83,7 +83,7 @@ const PoliciesDetailPage = () => {
   const { t } = useTranslation();
   const history = useHistory();
   const { fqn } = useFqn();
-  const { getEntityPermission } = usePermissionProvider();
+  const { getEntityPermissionByFqn } = usePermissionProvider();
 
   const [policy, setPolicy] = useState<Policy>({} as Policy);
   const [isLoading, setLoading] = useState<boolean>(false);
@@ -119,9 +119,9 @@ const PoliciesDetailPage = () => {
   const fetchPolicyPermission = async () => {
     if (policy) {
       try {
-        const response = await getEntityPermission(
+        const response = await getEntityPermissionByFqn(
           ResourceEntity.POLICY,
-          policy.id
+          fqn
         );
         setPolicyPermission(response);
       } catch (error) {
@@ -168,11 +168,11 @@ const PoliciesDetailPage = () => {
   const handleDisplayNameUpdate = async (entityName?: EntityName) => {
     try {
       if (policy) {
-        const updatedRole = {
+        const updatedPolicy = {
           ...policy,
           ...entityName,
         };
-        const jsonPatch = compare(policy, updatedRole);
+        const jsonPatch = compare(policy, updatedPolicy);
 
         if (jsonPatch.length && policy.id) {
           const response = await patchPolicy(jsonPatch, policy.id);
@@ -357,13 +357,8 @@ const PoliciesDetailPage = () => {
 
   useEffect(() => {
     fetchPolicy();
+    fetchPolicyPermission();
   }, [fqn]);
-
-  useEffect(() => {
-    if (policy?.id) {
-      fetchPolicyPermission();
-    }
-  }, [policy?.id]);
 
   if (isLoading) {
     return <Loader />;
@@ -400,13 +395,10 @@ const PoliciesDetailPage = () => {
                     className="w-max-full"
                     displayName={policy.displayName}
                     icon={
-                      <img
-                        alt="policy-icon"
-                        className="align-middle"
-                        data-testid="icon"
-                        height={36}
-                        src={PolicyIcon}
-                        width={32}
+                      <Icon
+                        className="align-middle p-y-xss"
+                        component={PolicyIcon}
+                        style={{ fontSize: '50px' }}
                       />
                     }
                     name={policy?.name ?? ''}

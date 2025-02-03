@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import Icon from '@ant-design/icons';
 import { Button, Col, Modal, Row, Space, Tabs, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
@@ -18,7 +19,7 @@ import { isEmpty, isUndefined } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
-import RoleIcon from '../../../assets/svg/role-colored.svg';
+import { ReactComponent as RoleIcon } from '../../../assets/svg/role-colored.svg';
 import DescriptionV1 from '../../../components/common/EntityDescription/DescriptionV1';
 import ManageButton from '../../../components/common/EntityPageInfos/ManageButton/ManageButton';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -65,7 +66,7 @@ const RolesDetailPage = () => {
   const history = useHistory();
   const { t } = useTranslation();
   const { fqn } = useFqn();
-  const { getEntityPermission } = usePermissionProvider();
+  const { getEntityPermissionByFqn } = usePermissionProvider();
 
   const [role, setRole] = useState<Role>({} as Role);
   const [isLoading, setLoading] = useState<boolean>(false);
@@ -103,9 +104,9 @@ const RolesDetailPage = () => {
   const fetchRolePermission = async () => {
     if (role) {
       try {
-        const response = await getEntityPermission(
+        const response = await getEntityPermissionByFqn(
           ResourceEntity.ROLE,
-          role.id
+          fqn
         );
         setRolePermission(response);
       } catch (error) {
@@ -277,13 +278,8 @@ const RolesDetailPage = () => {
 
   useEffect(() => {
     fetchRole();
+    fetchRolePermission();
   }, [fqn]);
-
-  useEffect(() => {
-    if (role?.id) {
-      fetchRolePermission();
-    }
-  }, [role?.id]);
 
   if (isLoading) {
     return <Loader />;
@@ -321,13 +317,12 @@ const RolesDetailPage = () => {
                     className="w-max-full"
                     displayName={role.displayName}
                     icon={
-                      <img
-                        alt="role-icon"
-                        className="align-middle"
-                        data-testid="icon"
-                        height={36}
-                        src={RoleIcon}
-                        width={32}
+                      <Icon
+                        className="align-middle p-y-xss"
+                        component={RoleIcon}
+                        style={{
+                          fontSize: '50px',
+                        }}
                       />
                     }
                     name={role?.name ?? ''}
