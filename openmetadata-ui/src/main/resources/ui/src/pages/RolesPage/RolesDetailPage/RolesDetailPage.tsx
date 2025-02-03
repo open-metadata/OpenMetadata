@@ -16,7 +16,7 @@ import { Button, Col, Modal, Row, Space, Tabs, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined } from 'lodash';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import { ReactComponent as RoleIcon } from '../../../assets/svg/role-colored.svg';
@@ -101,8 +101,26 @@ const RolesDetailPage = () => {
     [rolesPath, roleName]
   );
 
-  const fetchRolePermission = async () => {
-    if (role) {
+  const {
+    editDisplayNamePermission,
+    hasDeletePermission,
+    viewBasicPermission,
+  } = useMemo(() => {
+    const editDisplayNamePermission =
+      rolePermission.EditAll || rolePermission.EditDisplayName;
+    const hasDeletePermission = rolePermission.Delete;
+    const viewBasicPermission =
+      rolePermission.ViewAll || rolePermission.ViewBasic;
+
+    return {
+      editDisplayNamePermission,
+      hasDeletePermission,
+      viewBasicPermission,
+    };
+  }, [rolePermission]);
+
+  const fetchRolePermission = useCallback(
+    async (fqn) => {
       try {
         const response = await getEntityPermissionByFqn(
           ResourceEntity.ROLE,
@@ -112,16 +130,9 @@ const RolesDetailPage = () => {
       } catch (error) {
         showErrorToast(error as AxiosError);
       }
-    }
-  };
-
-  const { editDisplayNamePermission, hasDeletePermission } = useMemo(() => {
-    const editDisplayNamePermission =
-      rolePermission.EditAll || rolePermission.EditDisplayName;
-    const hasDeletePermission = rolePermission.Delete;
-
-    return { editDisplayNamePermission, hasDeletePermission };
-  }, [rolePermission]);
+    },
+    [getEntityPermissionByFqn, setRolePermission]
+  );
 
   const fetchRole = async () => {
     setLoading(true);
@@ -276,10 +287,18 @@ const RolesDetailPage = () => {
     }
   };
 
+  const init = async () => {
+    if (fqn) {
+      await fetchRolePermission(fqn);
+      if (viewBasicPermission) {
+        fetchRole();
+      }
+    }
+  };
+
   useEffect(() => {
-    fetchRole();
-    fetchRolePermission();
-  }, [fqn]);
+    init();
+  }, [fqn, rolePermission]);
 
   if (isLoading) {
     return <Loader />;

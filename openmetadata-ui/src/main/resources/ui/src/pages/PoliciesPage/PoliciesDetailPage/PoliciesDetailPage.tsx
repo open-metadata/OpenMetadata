@@ -116,8 +116,26 @@ const PoliciesDetailPage = () => {
     [policyName, policiesPath]
   );
 
-  const fetchPolicyPermission = async () => {
-    if (policy) {
+  const {
+    editDisplayNamePermission,
+    hasDeletePermission,
+    viewBasicPermission,
+  } = useMemo(() => {
+    const editDisplayNamePermission =
+      policyPermission.EditAll || policyPermission.EditDisplayName;
+    const hasDeletePermission = policyPermission.Delete;
+    const viewBasicPermission =
+      policyPermission.ViewAll || policyPermission.ViewBasic;
+
+    return {
+      editDisplayNamePermission,
+      hasDeletePermission,
+      viewBasicPermission,
+    };
+  }, [policyPermission]);
+
+  const fetchPolicyPermission = useCallback(
+    async (fqn) => {
       try {
         const response = await getEntityPermissionByFqn(
           ResourceEntity.POLICY,
@@ -127,16 +145,9 @@ const PoliciesDetailPage = () => {
       } catch (error) {
         showErrorToast(error as AxiosError);
       }
-    }
-  };
-
-  const { editDisplayNamePermission, hasDeletePermission } = useMemo(() => {
-    const editDisplayNamePermission =
-      policyPermission.EditAll || policyPermission.EditDisplayName;
-    const hasDeletePermission = policyPermission.Delete;
-
-    return { editDisplayNamePermission, hasDeletePermission };
-  }, [policyPermission]);
+    },
+    [getEntityPermissionByFqn, setPolicyPermission]
+  );
 
   const fetchPolicy = async () => {
     setLoading(true);
@@ -355,10 +366,18 @@ const PoliciesDetailPage = () => {
     [policy]
   );
 
+  const init = async () => {
+    if (fqn) {
+      await fetchPolicyPermission(fqn);
+      if (viewBasicPermission) {
+        fetchPolicy();
+      }
+    }
+  };
+
   useEffect(() => {
-    fetchPolicy();
-    fetchPolicyPermission();
-  }, [fqn]);
+    init();
+  }, [fqn, policyPermission]);
 
   if (isLoading) {
     return <Loader />;
