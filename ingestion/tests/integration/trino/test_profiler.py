@@ -65,7 +65,7 @@ class ProfilerTestParameters:
                 ColumnProfile(
                     name="three",
                     timestamp=Timestamp(0),
-                    valuesCount=2,
+                    valuesCount=1,
                     nullCount=1,
                 )
             ],
