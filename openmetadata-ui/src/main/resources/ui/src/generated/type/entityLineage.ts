@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2024 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -69,15 +69,6 @@ export interface LineageDetails {
      * SQL used for transformation.
      */
     sqlQuery?: string;
-    /**
-     * Last update time corresponding to the new version of the entity in Unix epoch time
-     * milliseconds.
-     */
-    updatedAt?: number;
-    /**
-     * User who made the update.
-     */
-    updatedBy?: string;
     [property: string]: any;
 }
 
