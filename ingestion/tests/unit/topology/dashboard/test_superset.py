@@ -646,71 +646,41 @@ class SupersetUnitTest(TestCase):
         for test_case in [
             (
                 (
-                    Column(
-                        name="col_name"
-                    ),
-                    Table(
-                        name="table_name", schema=Schema(name="schema_name")
-                    ),
-                    Column(
-                        name="col_name"
-                    ),
-                    Table(
-                        name="dataset_name", schema=Schema(name="schema_name")
-                    ),
+                    Column(name="col_name"),
+                    Table(name="table_name", schema=Schema(name="schema_name")),
+                    Column(name="col_name"),
+                    Table(name="dataset_name", schema=Schema(name="schema_name")),
                 ),
                 True,
             ),
             (
                 (
-                    Column(
-                        name="col_name"
-                    ),
-                    Table(
-                        name="table_name", schema=Schema(name=Schema.unknown)
-                    ),
-                    Column(
-                        name="col_name"
-                    ),
-                    Table(
-                        name="dataset_name", schema=Schema(name="schema_name")
-                    ),
+                    Column(name="col_name"),
+                    Table(name="table_name", schema=Schema(name=Schema.unknown)),
+                    Column(name="col_name"),
+                    Table(name="dataset_name", schema=Schema(name="schema_name")),
                 ),
                 False,
             ),
             (
                 (
-                    Column(
-                        name="col_name"
-                    ),
-                    Table(
-                        name="other_table_name", schema=Schema(name="schema_name")
-                    ),
-                    Column(
-                        name="col_name"
-                    ),
-                    Table(
-                        name="dataset_name", schema=Schema(name="schema_name")
-                    ),
+                    Column(name="col_name"),
+                    Table(name="other_table_name", schema=Schema(name="schema_name")),
+                    Column(name="col_name"),
+                    Table(name="dataset_name", schema=Schema(name="schema_name")),
                 ),
                 False,
             ),
             (
                 (
-                    Column(
-                        name="col_name"
-                    ),
-                    Table(
-                        name="table_name", schema=Schema(name="schema_name")
-                    ),
-                    Column(
-                        name="col_name"
-                    ),
+                    Column(name="col_name"),
+                    Table(name="table_name", schema=Schema(name="schema_name")),
+                    Column(name="col_name"),
                     SubQuery(
                         subquery="select * from 1",
                         subquery_raw="select * from 1",
                         alias="dummy_subquery",
-                    )
+                    ),
                 ),
                 False,
             ),
@@ -736,19 +706,18 @@ class SupersetUnitTest(TestCase):
         self.superset_db._append_value_to_dict_list(init_dict, 2, 1)
         self.assertListEqual(init_dict[2], [1])
 
-
     def test_get_table_schema(self):
         for test_case in [
             (
                 Table(name="test_table", schema=Schema(name=Schema.unknown)),
                 FetchChart(schema="chart_table_schema"),
-                "chart_table_schema"
+                "chart_table_schema",
             ),
             (
                 Table(name="test_table", schema=Schema(name="test_schema")),
                 FetchChart(schema="chart_table_schema"),
-                "test_schema"
-            )
+                "test_schema",
+            ),
         ]:
             table, chart, expected = test_case
 
@@ -763,10 +732,7 @@ class SupersetUnitTest(TestCase):
         table = Table(name="input_table", schema=Schema(name=Schema.unknown))
         chart = FetchChart(table_name="sample_table", table_schema="main")
 
-        expected = {
-            "id": ["id"],
-            "timestamp": ["timestamp"]
-        }
+        expected = {"id": ["id"], "timestamp": ["timestamp"]}
 
         self.assertDictEqual(
             self.superset_db._create_column_lineage_mapping(parser, table, chart),
@@ -775,10 +741,7 @@ class SupersetUnitTest(TestCase):
 
     def test_parse_lineage_from_dataset_sql(self):
         sql = """SELECT id, timestamp FROM sample_table"""
-        chart = FetchChart(
-            sql=sql,
-            table_schema="main"
-        )
+        chart = FetchChart(sql=sql, table_schema="main")
 
         result = self.superset_db._parse_lineage_from_dataset_sql(chart)[0]
 
