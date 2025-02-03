@@ -496,9 +496,13 @@ class LookerSource(DashboardServiceSource):
             try:
                 project_parser = self.parser.get(explore.project_name)
                 if project_parser:
-                    return project_parser.parsed_files.get(
+                    explore_sql = project_parser.parsed_files.get(
                         Includes(get_path_from_link(explore.lookml_link))
                     )
+                    logger.debug(
+                        f"Explore SQL for project {explore.project_name}: \n{explore_sql}"
+                    )
+                    return explore_sql
             except Exception as err:
                 logger.warning(f"Exception getting the model sql: {err}")
 
@@ -597,6 +601,7 @@ class LookerSource(DashboardServiceSource):
                 sql_query = view.derived_table.sql
                 if not sql_query:
                     return
+                logger.debug(f"Processing view [{view.name}] with SQL: \n[{sql_query}]")
                 for db_service_name in db_service_names or []:
                     lineage_parser = LineageParser(
                         sql_query,
