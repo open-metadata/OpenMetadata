@@ -92,7 +92,7 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
       if (chartDetails.get("metrics") != null) {
         for (LinkedHashMap<String, Object> metrics :
             (List<LinkedHashMap<String, Object>>) chartDetails.get("metrics")) {
-          metrics.put("filter ", filter);
+          metrics.put("filter", filter);
         }
       }
     }
@@ -121,7 +121,7 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
           if (chartDetails.get("metrics") != null) {
             for (LinkedHashMap<String, Object> metrics :
                 (List<LinkedHashMap<String, Object>>) chartDetails.get("metrics")) {
-              metrics.put("filter ", filter);
+              metrics.put("filter", filter);
             }
           }
         }

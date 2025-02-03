@@ -28,6 +28,8 @@ import { ReactComponent as DashboardDataModelIcon } from '../assets/svg/ic-dashb
 import { ReactComponent as DataProductIcon } from '../assets/svg/ic-data-product-colored.svg';
 import { ReactComponent as SchemaIcon } from '../assets/svg/ic-database-schema-colored.svg';
 import { ReactComponent as LineageIcon } from '../assets/svg/ic-lineage-config.svg';
+import { ReactComponent as LinkIcon } from '../assets/svg/ic-url-link.svg';
+
 import { ReactComponent as LoginIcon } from '../assets/svg/login-colored.svg';
 import { ReactComponent as OpenMetadataIcon } from '../assets/svg/logo-monogram.svg';
 import { ReactComponent as MessagingIcon } from '../assets/svg/messaging-colored.svg';
@@ -357,6 +359,13 @@ class GlobalSettingsClassBase {
             isProtected: Boolean(isAdminUser),
             key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.LINEAGE_CONFIG}`,
             icon: LineageIcon,
+          },
+          {
+            label: t('label.open-metadata-url'),
+            description: t('message.om-url-configuration-message'),
+            isProtected: Boolean(isAdminUser),
+            key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.OM_URL_CONFIG}`,
+            icon: LinkIcon,
           },
         ],
       },

@@ -23,7 +23,12 @@ interface RenewTokenResponse {
 }
 
 export const renewToken = async () => {
-  const data = await axiosClient.get<RenewTokenResponse>(`${BASE_URL}/refresh`);
+  const data = await axiosClient.get<RenewTokenResponse>(
+    `${BASE_URL}/refresh`,
+    // Need to invalidate other status codes
+    // which help is user to force logout
+    { validateStatus: (status) => status === 200 }
+  );
 
   return data.data;
 };

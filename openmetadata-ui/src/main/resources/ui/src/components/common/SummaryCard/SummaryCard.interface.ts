@@ -18,4 +18,11 @@ export interface SummaryCardProps {
   showProgressBar?: boolean;
   className?: string;
   isLoading?: boolean;
+  inverseLabel?: boolean;
+  titleIcon?: React.ReactElement;
+  cardBackgroundClass?:
+    | 'bg-success'
+    | 'bg-failed'
+    | 'bg-aborted'
+    | 'bg-primary';
 }

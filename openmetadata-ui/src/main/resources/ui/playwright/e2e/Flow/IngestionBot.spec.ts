@@ -57,7 +57,7 @@ const test = base.extend<{
       // Set a new value for a key in localStorage
       localStorage.setItem(
         'om-session',
-        JSON.stringify({ state: { oidcIdToken: token } })
+        JSON.stringify({ oidcIdToken: token })
       );
     }, tokenData.config.JWTToken);
 
