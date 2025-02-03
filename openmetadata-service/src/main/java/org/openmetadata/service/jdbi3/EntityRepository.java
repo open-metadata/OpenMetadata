@@ -271,7 +271,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
   @Getter protected final Fields putFields;
 
   protected boolean supportsSearch = false;
-  @Getter protected boolean parent = false;
   protected final Map<String, BiConsumer<List<T>, Fields>> fieldFetchers = new HashMap<>();
 
   protected EntityRepository(
@@ -1097,9 +1096,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
     if (entityUpdater.fieldsChanged()) {
       setInheritedFields(updated, patchFields); // Restore inherited fields after a change
     }
-
+    updated.setChangeDescription(entityUpdater.getIncrementalChangeDescription());
     if (entityUpdater.incrementalFieldsChanged()) {
-      updated.setChangeDescription(entityUpdater.getIncrementalChangeDescription());
       return new PatchResponse<>(Status.OK, withHref(uriInfo, updated), ENTITY_UPDATED);
     }
     return new PatchResponse<>(Status.OK, withHref(uriInfo, updated), ENTITY_NO_CHANGE);
@@ -2819,10 +2817,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
     /** Compare original and updated entities and perform updates. Update the entity version and track changes. */
     @Transaction
     public final void update() {
-      incrementalChange();
       boolean consolidateChanges = consolidateChanges(original, updated, operation);
-      // Revert the changes previously made by the user with in a session and consolidate all the
-      // changes
+      incrementalChange();
       if (consolidateChanges) {
         revert();
       }
@@ -2837,6 +2833,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       changeDescription = new ChangeDescription();
       updateInternal(false);
       incrementalChangeDescription = changeDescription;
+      incrementalChangeDescription.setPreviousVersion(original.getVersion());
     }
 
     @Transaction
@@ -3553,9 +3550,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     private boolean consolidateChanges(T original, T updated, Operation operation) {
       // If user is the same and the new update is with in the user session timeout
-      return !parent // Parent entity shouldn't consolidate changes, as we need ChangeDescription to
-          // propagate to children
-          && original.getVersion() > 0.1 // First update on an entity that
+      return original.getVersion() > 0.1 // First update on an entity that
           && operation == Operation.PATCH
           && !Boolean.TRUE.equals(original.getDeleted()) // Entity is not soft deleted
           && !operation.isDelete() // Operation must be an update
