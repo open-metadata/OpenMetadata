@@ -498,7 +498,8 @@ public class LineageResource {
         securityContext,
         new OperationContext(toEntity, MetadataOperation.EDIT_LINEAGE),
         new ResourceContext<>(toEntity, toId, null));
-    return dao.patchLineageEdge(fromEntity, fromId, toEntity, toId, patch, securityContext.getUserPrincipal().getName());
+    return dao.patchLineageEdge(
+        fromEntity, fromId, toEntity, toId, patch, securityContext.getUserPrincipal().getName());
   }
 
   @DELETE
