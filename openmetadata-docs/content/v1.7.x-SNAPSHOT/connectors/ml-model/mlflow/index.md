@@ -7,7 +7,7 @@ slug: /connectors/ml-model/mlflow
 name="MLflow"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=["ML Store"]
+availableFeatures=["ML Features", "Hyperparameters", "ML Store"]
 unavailableFeatures=[]
 / %}
 
