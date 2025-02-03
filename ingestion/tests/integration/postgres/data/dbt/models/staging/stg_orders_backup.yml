@@ -1,0 +1,9 @@
+models:
+  - name: stg_orders_backuo
+    description: Backup of stg_orders table
+    columns:
+      - name: order_id
+        description: The unique key for each order.
+        data_tests:
+          - not_null
+          - unique
