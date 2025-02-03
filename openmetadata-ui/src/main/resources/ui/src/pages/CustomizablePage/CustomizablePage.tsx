@@ -266,32 +266,8 @@ export const CustomizablePage = () => {
         />
       );
     case PageType.Table:
-      return (
-        <CustomizeTableDetailPage
-          initialPageData={currentPage}
-          isGlossary={false}
-          personaDetails={personaDetails}
-          onSaveLayout={handlePageCustomizeSave}
-        />
-      );
-    case PageType.StoredProcedure:
-      return (
-        <CustomizeTableDetailPage
-          initialPageData={currentPage}
-          isGlossary={false}
-          personaDetails={personaDetails}
-          onSaveLayout={handlePageCustomizeSave}
-        />
-      );
     case PageType.Topic:
-      return (
-        <CustomizeTableDetailPage
-          initialPageData={currentPage}
-          isGlossary={false}
-          personaDetails={personaDetails}
-          onSaveLayout={handlePageCustomizeSave}
-        />
-      );
+    case PageType.StoredProcedure:
     case PageType.DashboardDataModel:
       return (
         <CustomizeTableDetailPage

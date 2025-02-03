@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Card, Col, Row, Tabs } from 'antd';
+import { Col, Row, Tabs } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined, toString } from 'lodash';
 import { EntityTags } from 'Models';
@@ -24,8 +24,6 @@ import {
 } from '../../../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../../../constants/entity.constants';
 import { COMMON_RESIZABLE_PANEL_CONFIG } from '../../../../constants/ResizablePanel.constants';
-import LineageProvider from '../../../../context/LineageProvider/LineageProvider';
-import { CSMode } from '../../../../enums/codemirror.enum';
 import { EntityTabs, EntityType } from '../../../../enums/entity.enum';
 import { DashboardDataModel } from '../../../../generated/entity/data/dashboardDataModel';
 import { TagLabel } from '../../../../generated/type/tagLabel';
@@ -33,25 +31,21 @@ import { useFqn } from '../../../../hooks/useFqn';
 import { FeedCounts } from '../../../../interface/feed.interface';
 import { restoreDataModel } from '../../../../rest/dataModelsAPI';
 import { getFeedCounts } from '../../../../utils/CommonUtils';
+import { getDashboardDataModelDetailPageTabs } from '../../../../utils/DashboardDetailsUtils';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import { getTagsWithoutTier } from '../../../../utils/TableUtils';
 import { createTagObject } from '../../../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import { useActivityFeedProvider } from '../../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
-import { ActivityFeedTab } from '../../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import ActivityThreadPanel from '../../../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import { withActivityFeed } from '../../../AppRouter/withActivityFeed';
-import { CustomPropertyTable } from '../../../common/CustomPropertyTable/CustomPropertyTable';
 import DescriptionV1 from '../../../common/EntityDescription/DescriptionV1';
 import ResizablePanels from '../../../common/ResizablePanels/ResizablePanels';
-import TabsLabel from '../../../common/TabsLabel/TabsLabel.component';
 import { DataAssetsHeader } from '../../../DataAssets/DataAssetsHeader/DataAssetsHeader.component';
-import SchemaEditor from '../../../Database/SchemaEditor/SchemaEditor';
 import EntityRightPanel from '../../../Entity/EntityRightPanel/EntityRightPanel';
-import Lineage from '../../../Lineage/Lineage.component';
+import { GenericProvider } from '../../../GenericProvider/GenericProvider';
 import { EntityName } from '../../../Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../../PageLayoutV1/PageLayoutV1';
-import { SourceType } from '../../../SearchedData/SearchedData.interface';
 import { DataModelDetailsProps } from './DataModelDetails.interface';
 import ModelTab from './ModelTab/ModelTab.component';
 
@@ -255,14 +249,8 @@ const DataModelDetails = ({
                     onThreadLinkSelect={onThreadLinkSelect}
                   />
                   <ModelTab
-                    data={dataModelData?.columns || []}
-                    entityFqn={decodedDataModelFQN}
-                    hasEditDescriptionPermission={editDescriptionPermission}
-                    hasEditGlossaryTermPermission={editGlossaryTermsPermission}
-                    hasEditTagsPermission={editTagsPermission}
                     isReadOnly={Boolean(deleted)}
                     onThreadLinkSelect={onThreadLinkSelect}
-                    onUpdate={handleColumnUpdateDataModel}
                   />
                 </div>
               ),
@@ -319,112 +307,19 @@ const DataModelDetails = ({
   ]);
 
   const tabs = useMemo(() => {
-    const allTabs = [
-      {
-        label: (
-          <TabsLabel
-            data-testid={EntityTabs.MODEL}
-            id={EntityTabs.MODEL}
-            name={t('label.model')}
-          />
-        ),
-        key: EntityTabs.MODEL,
-        children: modelComponent,
-      },
-      {
-        label: (
-          <TabsLabel
-            count={feedCount.totalCount}
-            id={EntityTabs.ACTIVITY_FEED}
-            isActive={activeTab === EntityTabs.ACTIVITY_FEED}
-            name={t('label.activity-feed-and-task-plural')}
-          />
-        ),
-        key: EntityTabs.ACTIVITY_FEED,
-        children: (
-          <ActivityFeedTab
-            refetchFeed
-            entityFeedTotalCount={feedCount.totalCount}
-            entityType={EntityType.DASHBOARD_DATA_MODEL}
-            fqn={dataModelData?.fullyQualifiedName ?? ''}
-            onFeedUpdate={getEntityFeedCount}
-            onUpdateEntityDetails={fetchDataModel}
-            onUpdateFeedCount={handleFeedCount}
-          />
-        ),
-      },
-      ...(dataModelData?.sql
-        ? [
-            {
-              label: (
-                <TabsLabel
-                  data-testid={EntityTabs.SQL}
-                  id={EntityTabs.SQL}
-                  name={t('label.sql-uppercase')}
-                />
-              ),
-              key: EntityTabs.SQL,
-              children: (
-                <Card>
-                  <SchemaEditor
-                    editorClass="custom-code-mirror-theme full-screen-editor-height"
-                    mode={{ name: CSMode.SQL }}
-                    options={{
-                      styleActiveLine: false,
-                      readOnly: true,
-                    }}
-                    value={dataModelData?.sql}
-                  />
-                </Card>
-              ),
-            },
-          ]
-        : []),
-      {
-        label: (
-          <TabsLabel
-            data-testid={EntityTabs.LINEAGE}
-            id={EntityTabs.LINEAGE}
-            name={t('label.lineage')}
-          />
-        ),
-        key: EntityTabs.LINEAGE,
-        children: (
-          <LineageProvider>
-            <Lineage
-              deleted={deleted}
-              entity={dataModelData as SourceType}
-              entityType={EntityType.DASHBOARD_DATA_MODEL}
-              hasEditAccess={editLineagePermission}
-            />
-          </LineageProvider>
-        ),
-      },
-      {
-        label: (
-          <TabsLabel
-            id={EntityTabs.CUSTOM_PROPERTIES}
-            name={t('label.custom-property-plural')}
-          />
-        ),
-        key: EntityTabs.CUSTOM_PROPERTIES,
-        children: (
-          <div className="p-md">
-            <CustomPropertyTable<EntityType.DASHBOARD_DATA_MODEL>
-              entityDetails={dataModelData}
-              entityType={EntityType.DASHBOARD_DATA_MODEL}
-              handleExtensionUpdate={handelExtensionUpdate}
-              hasEditAccess={
-                dataModelPermissions.EditAll ||
-                dataModelPermissions.EditCustomFields
-              }
-              hasPermission={dataModelPermissions.ViewAll}
-              isVersionView={false}
-            />
-          </div>
-        ),
-      },
-    ];
+    const allTabs = getDashboardDataModelDetailPageTabs({
+      modelComponent,
+      feedCount,
+      activeTab,
+      handleFeedCount,
+      editLineagePermission,
+      dataModelData,
+      dataModelPermissions,
+      deleted: deleted ?? false,
+      handelExtensionUpdate,
+      getEntityFeedCount,
+      fetchDataModel,
+    });
 
     return allTabs;
   }, [
@@ -464,17 +359,23 @@ const DataModelDetails = ({
             onVersionClick={versionHandler}
           />
         </Col>
-        <Col span={24}>
-          <Tabs
-            activeKey={activeTab ?? EntityTabs.MODEL}
-            className="entity-details-page-tabs"
-            data-testid="tabs"
-            items={tabs}
-            onChange={(activeKey: string) =>
-              handleTabChange(activeKey as EntityTabs)
-            }
-          />
-        </Col>
+        <GenericProvider<DashboardDataModel>
+          data={dataModelData}
+          permissions={dataModelPermissions}
+          type={EntityType.DASHBOARD_DATA_MODEL}
+          onUpdate={onUpdateDataModel}>
+          <Col span={24}>
+            <Tabs
+              activeKey={activeTab ?? EntityTabs.MODEL}
+              className="entity-details-page-tabs"
+              data-testid="tabs"
+              items={tabs}
+              onChange={(activeKey: string) =>
+                handleTabChange(activeKey as EntityTabs)
+              }
+            />
+          </Col>
+        </GenericProvider>
 
         {threadLink ? (
           <ActivityThreadPanel

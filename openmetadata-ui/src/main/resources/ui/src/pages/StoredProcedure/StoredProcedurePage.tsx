@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Card, Col, Row, Tabs } from 'antd';
+import { Col, Row, Tabs } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { EntityTags } from 'Models';
@@ -18,40 +18,27 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { useActivityFeedProvider } from '../../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
-import { ActivityFeedTab } from '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import ActivityThreadPanel from '../../components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
-
-import { isEmpty } from 'lodash';
-import { CustomPropertyTable } from '../../components/common/CustomPropertyTable/CustomPropertyTable';
-import DescriptionV1 from '../../components/common/EntityDescription/DescriptionV1';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';
-import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
-import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
 import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
-import SchemaEditor from '../../components/Database/SchemaEditor/SchemaEditor';
 import { QueryVote } from '../../components/Database/TableQueries/TableQueries.interface';
-import EntityRightPanel from '../../components/Entity/EntityRightPanel/EntityRightPanel';
-import Lineage from '../../components/Lineage/Lineage.component';
+import { GenericProvider } from '../../components/GenericProvider/GenericProvider';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
-import { SourceType } from '../../components/SearchedData/SearchedData.interface';
 import {
   getEntityDetailsPath,
   getVersionPath,
   ROUTES,
 } from '../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
-import { COMMON_RESIZABLE_PANEL_CONFIG } from '../../constants/ResizablePanel.constants';
-import LineageProvider from '../../context/LineageProvider/LineageProvider';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
   ResourceEntity,
 } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ClientErrors } from '../../enums/Axios.enum';
-import { CSMode } from '../../enums/codemirror.enum';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import {
@@ -85,7 +72,10 @@ import {
 } from '../../utils/CommonUtils';
 import { getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
-import { STORED_PROCEDURE_DEFAULT_FIELDS } from '../../utils/StoredProceduresUtils';
+import {
+  getStoredProcedureDetailsPageTabs,
+  STORED_PROCEDURE_DEFAULT_FIELDS,
+} from '../../utils/StoredProceduresUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
 import { createTagObject, updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
@@ -234,7 +224,7 @@ const StoredProcedurePage = () => {
 
   const handleStoreProcedureUpdate = async (
     updatedData: StoredProcedure,
-    key: keyof StoredProcedure
+    key?: keyof StoredProcedure
   ) => {
     try {
       const res = await saveUpdatedStoredProceduresData(updatedData);
@@ -254,7 +244,7 @@ const StoredProcedurePage = () => {
         return {
           ...previous,
           version: res.version,
-          [key]: res[key],
+          ...res,
         };
       });
     } catch (error) {
@@ -536,166 +526,55 @@ const StoredProcedurePage = () => {
     [storedProcedurePermissions, storedProcedure]
   );
 
-  const tabs = useMemo(
-    () => [
-      {
-        label: (
-          <TabsLabel
-            data-testid={EntityTabs.CODE}
-            id={EntityTabs.CODE}
-            name={t('label.code')}
-          />
-        ),
-        key: EntityTabs.CODE,
-        children: (
-          <Row gutter={[0, 16]} wrap={false}>
-            <Col className="tab-content-height-with-resizable-panel" span={24}>
-              <ResizablePanels
-                firstPanel={{
-                  className: 'entity-resizable-panel-container',
-                  children: (
-                    <div className="d-flex flex-col gap-4 p-t-sm m-l-lg p-r-lg">
-                      <DescriptionV1
-                        description={description}
-                        entityFqn={decodedStoredProcedureFQN}
-                        entityName={entityName}
-                        entityType={EntityType.STORED_PROCEDURE}
-                        hasEditAccess={editDescriptionPermission}
-                        isDescriptionExpanded={isEmpty(code)}
-                        isEdit={isEdit}
-                        owner={owners}
-                        showActions={!deleted}
-                        onCancel={onCancel}
-                        onDescriptionEdit={onDescriptionEdit}
-                        onDescriptionUpdate={onDescriptionUpdate}
-                        onThreadLinkSelect={onThreadLinkSelect}
-                      />
-
-                      <Card className="m-b-md" data-testid="code-component">
-                        <SchemaEditor
-                          editorClass="custom-code-mirror-theme full-screen-editor-height"
-                          mode={{ name: CSMode.SQL }}
-                          options={{
-                            styleActiveLine: false,
-                            readOnly: true,
-                          }}
-                          value={code}
-                        />
-                      </Card>
-                    </div>
-                  ),
-                  ...COMMON_RESIZABLE_PANEL_CONFIG.LEFT_PANEL,
-                }}
-                secondPanel={{
-                  children: (
-                    <div data-testid="entity-right-panel">
-                      <EntityRightPanel<EntityType.STORED_PROCEDURE>
-                        customProperties={storedProcedure}
-                        dataProducts={storedProcedure?.dataProducts ?? []}
-                        domain={storedProcedure?.domain}
-                        editCustomAttributePermission={
-                          editCustomAttributePermission
-                        }
-                        editGlossaryTermsPermission={
-                          editGlossaryTermsPermission
-                        }
-                        editTagPermission={editTagsPermission}
-                        entityFQN={decodedStoredProcedureFQN}
-                        entityId={storedProcedure?.id ?? ''}
-                        entityType={EntityType.STORED_PROCEDURE}
-                        selectedTags={tags}
-                        viewAllPermission={viewAllPermission}
-                        onExtensionUpdate={onExtensionUpdate}
-                        onTagSelectionChange={handleTagSelection}
-                        onThreadLinkSelect={onThreadLinkSelect}
-                      />
-                    </div>
-                  ),
-                  ...COMMON_RESIZABLE_PANEL_CONFIG.RIGHT_PANEL,
-                  className:
-                    'entity-resizable-right-panel-container entity-resizable-panel-container',
-                }}
-              />
-            </Col>
-          </Row>
-        ),
-      },
-      {
-        label: (
-          <TabsLabel
-            count={feedCount.totalCount}
-            id={EntityTabs.ACTIVITY_FEED}
-            isActive={activeTab === EntityTabs.ACTIVITY_FEED}
-            name={t('label.activity-feed-and-task-plural')}
-          />
-        ),
-        key: EntityTabs.ACTIVITY_FEED,
-        children: (
-          <ActivityFeedTab
-            refetchFeed
-            entityFeedTotalCount={feedCount.totalCount}
-            entityType={EntityType.STORED_PROCEDURE}
-            fqn={entityFQN}
-            onFeedUpdate={getEntityFeedCount}
-            onUpdateEntityDetails={fetchStoredProcedureDetails}
-            onUpdateFeedCount={handleFeedCount}
-          />
-        ),
-      },
-      {
-        label: <TabsLabel id={EntityTabs.LINEAGE} name={t('label.lineage')} />,
-        key: EntityTabs.LINEAGE,
-        children: (
-          <LineageProvider>
-            <Lineage
-              deleted={deleted}
-              entity={storedProcedure as SourceType}
-              entityType={EntityType.STORED_PROCEDURE}
-              hasEditAccess={editLineagePermission}
-            />
-          </LineageProvider>
-        ),
-      },
-      {
-        label: (
-          <TabsLabel
-            id={EntityTabs.CUSTOM_PROPERTIES}
-            name={t('label.custom-property-plural')}
-          />
-        ),
-        key: EntityTabs.CUSTOM_PROPERTIES,
-        children: storedProcedure && (
-          <CustomPropertyTable<EntityType.STORED_PROCEDURE>
-            entityDetails={storedProcedure}
-            entityType={EntityType.STORED_PROCEDURE}
-            handleExtensionUpdate={onExtensionUpdate}
-            hasEditAccess={editCustomAttributePermission}
-            hasPermission={viewAllPermission}
-          />
-        ),
-      },
-    ],
-    [
-      code,
-      tags,
-      isEdit,
-      deleted,
-      feedCount.totalCount,
-      activeTab,
-      entityFQN,
-      entityName,
-      description,
-      storedProcedure,
+  const tabs = useMemo(() => {
+    return getStoredProcedureDetailsPageTabs({
+      activeTab: activeTab as EntityTabs,
+      feedCount,
+      description: description ?? '',
       decodedStoredProcedureFQN,
+      entityName,
+      code,
+      isEdit,
+      deleted: deleted ?? false,
+      owners: owners ?? [],
+      editDescriptionPermission,
+      onCancel,
+      onDescriptionEdit,
+      onDescriptionUpdate,
+      onThreadLinkSelect,
+      storedProcedure: storedProcedure as StoredProcedure,
+      tags: tags ?? [],
       editTagsPermission,
       editGlossaryTermsPermission,
       editLineagePermission,
-      editDescriptionPermission,
       editCustomAttributePermission,
       viewAllPermission,
-      handleFeedCount,
-    ]
-  );
+      onExtensionUpdate,
+      handleTagSelection,
+      getEntityFeedCount: getEntityFeedCount,
+      fetchStoredProcedureDetails,
+      handleFeedCount: handleFeedCount,
+    });
+  }, [
+    code,
+    tags,
+    isEdit,
+    deleted,
+    feedCount.totalCount,
+    activeTab,
+    entityFQN,
+    entityName,
+    description,
+    storedProcedure,
+    decodedStoredProcedureFQN,
+    editTagsPermission,
+    editGlossaryTermsPermission,
+    editLineagePermission,
+    editDescriptionPermission,
+    editCustomAttributePermission,
+    viewAllPermission,
+    handleFeedCount,
+  ]);
 
   const updateVote = async (data: QueryVote, id: string) => {
     try {
@@ -763,18 +642,24 @@ const StoredProcedurePage = () => {
           />
         </Col>
 
-        {/* Entity Tabs */}
-        <Col span={24}>
-          <Tabs
-            activeKey={activeTab ?? EntityTabs.CODE}
-            className="entity-details-page-tabs"
-            data-testid="tabs"
-            items={tabs}
-            onChange={(activeKey: string) =>
-              handleTabChange(activeKey as EntityTabs)
-            }
-          />
-        </Col>
+        <GenericProvider
+          data={storedProcedure}
+          permissions={storedProcedurePermissions}
+          type={EntityType.STORED_PROCEDURE}
+          onUpdate={handleStoreProcedureUpdate}>
+          {/* Entity Tabs */}
+          <Col span={24}>
+            <Tabs
+              activeKey={activeTab ?? EntityTabs.CODE}
+              className="entity-details-page-tabs"
+              data-testid="tabs"
+              items={tabs}
+              onChange={(activeKey: string) =>
+                handleTabChange(activeKey as EntityTabs)
+              }
+            />
+          </Col>
+        </GenericProvider>
 
         <LimitWrapper resource="storedProcedure">
           <></>

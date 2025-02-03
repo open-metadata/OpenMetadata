@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { noop, toLower } from 'lodash';
+import { camelCase, noop } from 'lodash';
 import React, { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import gridBgImg from '../../assets/img/grid-bg-img.png';
@@ -78,7 +78,7 @@ export const CustomizeTableDetailPage = ({
       <div className="m-md">
         <DataAssetsHeader
           dataAsset={entityDummyData as Table}
-          entityType={toLower(currentPageType) as EntityType.TABLE}
+          entityType={camelCase(currentPageType) as EntityType.TABLE}
           permissions={{} as OperationPermission}
           onDisplayNameUpdate={asyncNoop}
           onOwnerUpdate={asyncNoop}

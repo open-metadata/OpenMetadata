@@ -16,7 +16,9 @@ import { EntityTabs } from '../../enums/entity.enum';
 import { PageType, Tab } from '../../generated/system/ui/page';
 import customizeGlossaryPageClassBase from '../CustomizeGlossaryPage/CustomizeGlossaryPage';
 import customizeGlossaryTermPageClassBase from '../CustomizeGlossaryTerm/CustomizeGlossaryTermBaseClass';
+import dashboardDataModelClassBase from '../DashboardDataModelBase';
 import i18n from '../i18next/LocalUtil';
+import storedProcedureClassBase from '../StoredProcedureBase';
 import tableClassBase from '../TableClassBase';
 import topicClassBase from '../TopicClassBase';
 
@@ -140,6 +142,19 @@ export const getTopicDefaultTabs = () => {
   return tabs;
 };
 
+export const getStoredProcedureDefaultTabs = () => {
+  const tabs = storedProcedureClassBase.getStoredProcedureDetailPageTabsIds();
+
+  return tabs;
+};
+
+export const getDashboardDataModelDefaultTabs = () => {
+  const tabs =
+    dashboardDataModelClassBase.getDashboardDataModelDetailPageTabsIds();
+
+  return tabs;
+};
+
 export const getDefaultTabs = (pageType?: string): Tab[] => {
   switch (pageType) {
     case PageType.GlossaryTerm:
@@ -150,6 +165,10 @@ export const getDefaultTabs = (pageType?: string): Tab[] => {
       return getTableDefaultTabs();
     case PageType.Topic:
       return getTopicDefaultTabs();
+    case PageType.StoredProcedure:
+      return getStoredProcedureDefaultTabs();
+    case PageType.DashboardDataModel:
+      return getDashboardDataModelDefaultTabs();
     case PageType.Container:
     default:
       return [
@@ -174,6 +193,10 @@ export const getDefaultWidgetForTab = (pageType: PageType, tab: EntityTabs) => {
       return tableClassBase.getDefaultLayout(tab);
     case PageType.Topic:
       return topicClassBase.getDefaultLayout(tab);
+    case PageType.DashboardDataModel:
+      return dashboardDataModelClassBase.getDefaultLayout(tab);
+    case PageType.StoredProcedure:
+      return storedProcedureClassBase.getDefaultLayout(tab);
     default:
       return [];
   }
@@ -227,6 +250,10 @@ export const getDummyDataByPage = (pageType: PageType) => {
       return tableClassBase.getDummyData();
     case PageType.Topic:
       return topicClassBase.getDummyData();
+    case PageType.StoredProcedure:
+      return storedProcedureClassBase.getDummyData();
+    case PageType.DashboardDataModel:
+      return dashboardDataModelClassBase.getDummyData();
 
     case PageType.LandingPage:
     default:

@@ -19,6 +19,7 @@ import {
   GlossaryTermDetailPageWidgetKeys,
 } from '../../../../enums/CustomizeDetailPage.enum';
 import { EntityType } from '../../../../enums/entity.enum';
+import { DashboardDataModel } from '../../../../generated/entity/data/dashboardDataModel';
 import { DataType, Table } from '../../../../generated/entity/data/table';
 import { Topic } from '../../../../generated/entity/data/topic';
 import { EntityReference } from '../../../../generated/tests/testCase';
@@ -26,6 +27,7 @@ import { TagSource } from '../../../../generated/type/tagLabel';
 import { WidgetCommonProps } from '../../../../pages/CustomizablePage/CustomizablePage.interface';
 import { FrequentlyJoinedTables } from '../../../../pages/TableDetailsPageV1/FrequentlyJoinedTables/FrequentlyJoinedTables.component';
 import TableConstraints from '../../../../pages/TableDetailsPageV1/TableConstraints/TableConstraints';
+import dashboardDataModelClassBase from '../../../../utils/DashboardDataModelBase';
 import { renderReferenceElement } from '../../../../utils/GlossaryUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../../utils/PermissionsUtils';
 import tableClassBase from '../../../../utils/TableClassBase';
@@ -36,6 +38,7 @@ import { DomainLabel } from '../../../common/DomainLabel/DomainLabel.component';
 import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
 import RichTextEditorPreviewerV1 from '../../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import TagButton from '../../../common/TagButton/TagButton.component';
+import ModelTab from '../../../Dashboard/DataModel/DataModels/ModelTab/ModelTab.component';
 import SchemaTable from '../../../Database/SchemaTable/SchemaTable.component';
 import DataProductsContainer from '../../../DataProducts/DataProductsContainer/DataProductsContainer.component';
 import { GenericProvider } from '../../../GenericProvider/GenericProvider';
@@ -584,6 +587,16 @@ export const GenericWidget = (props: WidgetCommonProps) => {
           type={EntityType.TOPIC}
           onUpdate={async () => noop()}>
           <TopicSchemaFields isReadOnly />
+        </GenericProvider>
+      );
+    } else if (props.widgetKey.startsWith(DetailPageWidgetKeys.DATA_MODEL)) {
+      return (
+        <GenericProvider<DashboardDataModel>
+          data={dashboardDataModelClassBase.getDummyData()}
+          permissions={DEFAULT_ENTITY_PERMISSION}
+          type={EntityType.DASHBOARD_DATA_MODEL}
+          onUpdate={async () => noop()}>
+          <ModelTab isReadOnly={false} onThreadLinkSelect={noop} />
         </GenericProvider>
       );
     }

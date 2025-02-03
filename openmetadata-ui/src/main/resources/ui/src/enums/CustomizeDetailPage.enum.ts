@@ -32,6 +32,8 @@ export enum DetailPageWidgetKeys {
   TABLE_CONSTRAINTS = 'KnowledgePanel.TableConstraints',
   EMPTY_WIDGET_PLACEHOLDER = 'ExtraWidget.EmptyWidgetPlaceholder',
   PARTITIONED_KEYS = 'KnowledgePanel.PartitionedKeys',
+  STORED_PROCEDURE_CODE = 'KnowledgePanel.StoredProcedureCode',
+  DATA_MODEL = 'KnowledgePanel.DataModel',
 }
 
 export enum GlossaryTermDetailPageWidgetKeys {
