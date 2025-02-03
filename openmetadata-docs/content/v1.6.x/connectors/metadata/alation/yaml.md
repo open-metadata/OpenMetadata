@@ -8,7 +8,7 @@ collate: true
 name="Alation"
 stage="PROD"
 platform="Collate"
-availableFeatures=[]
+availableFeatures=["Metadata"]
 unavailableFeatures=[]
 / %}
 

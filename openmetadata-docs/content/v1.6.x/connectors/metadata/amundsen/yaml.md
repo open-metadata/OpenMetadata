@@ -7,7 +7,7 @@ slug: /connectors/metadata/amundsen/yaml
 name="Amundsen"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=[]
+availableFeatures=["Metadata"]
 unavailableFeatures=[]
 / %}
 
