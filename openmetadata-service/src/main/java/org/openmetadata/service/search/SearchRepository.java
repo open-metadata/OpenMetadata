@@ -60,6 +60,9 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.EntityTimeSeriesInterface;
 import org.openmetadata.schema.analytics.ReportData;
+import org.openmetadata.schema.api.lineage.LineageDirection;
+import org.openmetadata.schema.api.lineage.SearchLineageRequest;
+import org.openmetadata.schema.api.lineage.SearchLineageResult;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
@@ -958,16 +961,13 @@ public class SearchRepository {
     return searchClient.searchBySourceUrl(sourceUrl);
   }
 
-  public Response searchLineage(
-      String fqn,
-      int upstreamDepth,
-      int downstreamDepth,
-      String queryFilter,
-      boolean deleted,
-      String entityType)
+  public SearchLineageResult searchLineage(SearchLineageRequest lineageRequest) throws IOException {
+    return searchClient.searchLineage(lineageRequest);
+  }
+
+  public SearchLineageResult searchLineageWithDirection(SearchLineageRequest lineageRequest)
       throws IOException {
-    return searchClient.searchLineage(
-        fqn, upstreamDepth, downstreamDepth, queryFilter, deleted, entityType);
+    return searchClient.searchLineage(lineageRequest);
   }
 
   public Response searchEntityRelationship(
@@ -989,16 +989,24 @@ public class SearchRepository {
         fqn, upstreamDepth, downstreamDepth, queryFilter, deleted);
   }
 
-  public Map<String, Object> searchLineageForExport(
+  public SearchLineageResult searchLineageForExport(
       String fqn,
       int upstreamDepth,
       int downstreamDepth,
       String queryFilter,
       boolean deleted,
-      String entityType)
+      String entityType,
+      LineageDirection direction)
       throws IOException {
-    return searchClient.searchLineageInternal(
-        fqn, upstreamDepth, downstreamDepth, queryFilter, deleted, entityType);
+    return searchClient.searchLineage(
+        new SearchLineageRequest()
+            .withFqn(fqn)
+            .withUpstreamDepth(upstreamDepth)
+            .withDownstreamDepth(downstreamDepth)
+            .withQueryFilter(queryFilter)
+            .withIncludeDeleted(deleted)
+            .withEntityType(entityType)
+            .withDirection(direction));
   }
 
   public Response searchByField(String fieldName, String fieldValue, String index)

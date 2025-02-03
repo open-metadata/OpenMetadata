@@ -51,6 +51,9 @@ import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.lineage.AddLineage;
+import org.openmetadata.schema.api.lineage.LineageDirection;
+import org.openmetadata.schema.api.lineage.SearchLineageRequest;
+import org.openmetadata.schema.api.lineage.SearchLineageResult;
 import org.openmetadata.schema.type.EntityLineage;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.MetadataOperation;
@@ -192,7 +195,7 @@ public class LineageResource {
                     mediaType = "application/json",
                     schema = @Schema(implementation = SearchResponse.class)))
       })
-  public Response searchLineage(
+  public SearchLineageResult searchLineage(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "fqn") @QueryParam("fqn") String fqn,
@@ -209,9 +212,61 @@ public class LineageResource {
           boolean deleted,
       @Parameter(description = "entity type") @QueryParam("type") String entityType)
       throws IOException {
-
     return Entity.getSearchRepository()
-        .searchLineage(fqn, upstreamDepth, downstreamDepth, queryFilter, deleted, entityType);
+        .searchLineage(
+            new SearchLineageRequest()
+                .withFqn(fqn)
+                .withUpstreamDepth(upstreamDepth)
+                .withDownstreamDepth(downstreamDepth)
+                .withQueryFilter(queryFilter)
+                .withIncludeDeleted(deleted)
+                .withEntityType(entityType));
+  }
+
+  @GET
+  @Path("/getLineage/{direction}")
+  @Operation(
+      operationId = "searchLineageWithDirection",
+      summary = "Search lineage with Direction",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "search response",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = SearchResponse.class)))
+      })
+  public SearchLineageResult searchLineageWithDirection(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "fqn") @QueryParam("fqn") String fqn,
+      @Parameter(description = "Direction", required = true, schema = @Schema(type = "string"))
+          @PathParam("direction")
+          LineageDirection direction,
+      @Parameter(description = "upstreamDepth") @QueryParam("upstreamDepth") int upstreamDepth,
+      @Parameter(description = "downstreamDepth") @QueryParam("downstreamDepth")
+          int downstreamDepth,
+      @Parameter(
+              description =
+                  "Elasticsearch query that will be combined with the query_string query generator from the `query` argument")
+          @QueryParam("query_filter")
+          String queryFilter,
+      @Parameter(description = "Filter documents by deleted param. By default deleted is false")
+          @QueryParam("includeDeleted")
+          boolean deleted,
+      @Parameter(description = "entity type") @QueryParam("type") String entityType)
+      throws IOException {
+    return Entity.getSearchRepository()
+        .searchLineage(
+            new SearchLineageRequest()
+                .withFqn(fqn)
+                .withUpstreamDepth(upstreamDepth)
+                .withDownstreamDepth(downstreamDepth)
+                .withQueryFilter(queryFilter)
+                .withIncludeDeleted(deleted)
+                .withEntityType(entityType)
+                .withDirection(direction));
   }
 
   @GET
@@ -279,8 +334,6 @@ public class LineageResource {
           boolean deleted,
       @Parameter(description = "entity type") @QueryParam("type") String entityType)
       throws IOException {
-    Entity.getSearchRepository()
-        .searchLineage(fqn, upstreamDepth, downstreamDepth, queryFilter, deleted, entityType);
     return dao.exportCsv(fqn, upstreamDepth, downstreamDepth, queryFilter, deleted, entityType);
   }
 
@@ -364,7 +417,7 @@ public class LineageResource {
             addLineage.getEdge().getToEntity().getType(),
             addLineage.getEdge().getToEntity().getId(),
             addLineage.getEdge().getToEntity().getName()));
-    dao.addLineage(addLineage);
+    dao.addLineage(addLineage, securityContext.getUserPrincipal().getName());
     return Response.status(Status.OK).build();
   }
 
@@ -445,7 +498,7 @@ public class LineageResource {
         securityContext,
         new OperationContext(toEntity, MetadataOperation.EDIT_LINEAGE),
         new ResourceContext<>(toEntity, toId, null));
-    return dao.patchLineageEdge(fromEntity, fromId, toEntity, toId, patch);
+    return dao.patchLineageEdge(fromEntity, fromId, toEntity, toId, patch, securityContext.getUserPrincipal().getName());
   }
 
   @DELETE
