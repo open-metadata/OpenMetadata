@@ -144,6 +144,7 @@ class FetchChart(BaseModel):
     id: Optional[int] = None
     slice_name: Optional[str] = None
     description: Optional[str] = None
+    table_id: Optional[int] = None
     table_name: Optional[str] = None
     table_schema: Optional[str] = Field(None, alias="schema")
     database_name: Optional[str] = None
@@ -157,5 +158,6 @@ class FetchColumn(BaseModel):
     id: Optional[int] = None
     type: Optional[str] = None
     column_name: Optional[str] = None
+    table_id: Optional[int] = None
     table_name: Optional[str] = None
     description: Optional[str] = None

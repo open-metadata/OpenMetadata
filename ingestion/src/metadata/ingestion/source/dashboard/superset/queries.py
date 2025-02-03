@@ -20,6 +20,7 @@ select
 	s.description,
     	s.datasource_id,
     	s.viz_type,
+	t.id AS table_id,
 	t.table_name,
 	t.schema,
 	t.sql,
@@ -94,6 +95,7 @@ select
 	tc.id, 
     	table_name ,
     	column_name, 
+		table_id, 
     	type,
     	tc.description 
 from 
@@ -103,5 +105,5 @@ inner join
 on 
 	t.id=tc.table_id  
 where 
-	table_name=%(table_name)s
+	table_id=%(table_id)s
 """
