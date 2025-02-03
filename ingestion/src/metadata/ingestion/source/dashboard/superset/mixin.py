@@ -13,7 +13,7 @@ Superset mixin module
 """
 import json
 import traceback
-from typing import Iterable, List, Optional, Union
+from typing import Iterable, List, Optional, Union, Dict, Tuple
 
 from collate_sqllineage.core.models import Column as LineageColumn
 from collate_sqllineage.core.models import Table as LineageTable
@@ -174,7 +174,7 @@ class SupersetSourceMixin(DashboardServiceSource):
         return True
 
     def _append_value_to_dict_list(
-        self, input_dict: dict[str, list[str]], dict_key: str, list_value: str
+        self, input_dict: Dict[str, List[str]], dict_key: str, list_value: str
     ) -> None:
         if input_dict.get(dict_key):
             input_dict[dict_key].append(list_value)
@@ -189,7 +189,7 @@ class SupersetSourceMixin(DashboardServiceSource):
 
     def _create_column_lineage_mapping(
         self, parser: LineageParser, table: LineageTable, chart: FetchChart
-    ) -> dict[str, list[str]]:
+    ) -> Dict[str, List[str]]:
         result = {}
         table_to_table_lineage = [
             _columns
@@ -214,7 +214,7 @@ class SupersetSourceMixin(DashboardServiceSource):
 
     def _parse_lineage_from_dataset_sql(
         self, chart_json: FetchChart
-    ) -> list[tuple[FetchChart, dict[str, list[str]]]]:
+    ) -> List[Tuple[FetchChart, Dict[str, List[str]]]]:
         # Every SQL query in tables is a SQL statement SELECTING data.
         # To get lineage we 'simulate' INSERT INTO query into dummy table.
         result = []
@@ -224,7 +224,7 @@ class SupersetSourceMixin(DashboardServiceSource):
             table_name = table.raw_name
             table_schema = self._get_table_schema(table, chart_json)
 
-            column_mapping: dict[str, list[str]] = self._create_column_lineage_mapping(
+            column_mapping: Dict[str, List[str]] = self._create_column_lineage_mapping(
                 parser, table, chart_json
             )
 
@@ -243,7 +243,7 @@ class SupersetSourceMixin(DashboardServiceSource):
 
     def _enrich_raw_input_tables(
         self,
-        from_entities: list[tuple[FetchChart, dict[str, list[str]]]],
+        from_entities: List[Tuple[FetchChart, Dict[str, List[str]]]],
         to_entity: DashboardDataModel,
         db_service_entity: DatabaseService,
     ):
