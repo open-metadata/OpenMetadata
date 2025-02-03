@@ -93,10 +93,10 @@ LIMIT 1
 FETCH_COLUMN = """
 select 
 	tc.id, 
-    	table_name ,
-    	column_name, 
-		table_id, 
-    	type,
+    	tc.table_name ,
+    	tc.column_name, 
+		tc.table_id, 
+    	tc.type,
     	tc.description 
 from 
 	table_columns  tc  
@@ -105,5 +105,5 @@ inner join
 on 
 	t.id=tc.table_id  
 where 
-	table_id=%(table_id)s
+	tc.table_id=%(table_id)s
 """

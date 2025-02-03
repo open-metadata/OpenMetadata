@@ -730,7 +730,7 @@ class SupersetUnitTest(TestCase):
 
         parser = LineageParser(sql)
         table = Table(name="input_table", schema=Schema(name=Schema.unknown))
-        chart = FetchChart(table_name="sample_table", table_schema="main")
+        chart = FetchChart(table_name="sample_table", table_schema="main", table_id=99)
 
         expected = {"id": ["id"], "timestamp": ["timestamp"]}
 
@@ -739,10 +739,35 @@ class SupersetUnitTest(TestCase):
             expected,
         )
 
-    def test_parse_lineage_from_dataset_sql(self):
-        sql = """SELECT id, timestamp FROM sample_table"""
-        chart = FetchChart(sql=sql, table_schema="main")
+    def test_create_column_lineage_mapping_with_wildcard(self):
+        sql = """
+        INSERT INTO dummy_table SELECT * FROM input_table;
+        """
 
-        result = self.superset_db._parse_lineage_from_dataset_sql(chart)[0]
+        parser = LineageParser(sql)
+        table = Table(name="input_table", schema=Schema(name=Schema.unknown))
+        chart = FetchChart(table_name="sample_table", table_schema="main", table_id=99)
+
+        expected = {"id": ["id"], "timestamp": ["timestamp"], "price": ["price"]}
+
+        self.assertDictEqual(
+            self.superset_db._create_column_lineage_mapping(parser, table, chart),
+            expected,
+        )
+
+    def test_get_input_tables_from_dataset_sql(self):
+        sql = """SELECT id, timestamp FROM sample_table"""
+        chart = FetchChart(
+            sql=sql, table_name="sample_table", table_schema="main", table_id=99
+        )
+
+        result = self.superset_db._get_input_tables(chart)[0]
 
         self.assertSetEqual({"id", "timestamp"}, set(result[1]))
+
+    def test_get_input_tables_when_table_has_no_sql(self):
+        chart = FetchChart(table_name="sample_table", table_schema="main", table_id=99)
+
+        result = self.superset_db._get_input_tables(chart)[0]
+
+        self.assertSetEqual({"id", "timestamp", "price"}, set(result[1]))
