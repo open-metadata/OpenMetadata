@@ -194,14 +194,14 @@ class SupersetSourceMixin(DashboardServiceSource):
                         )
 
                         columns_list = self._get_columns_list_for_lineage(chart_json)
-                        
+
                         if from_entities == None or len(from_entities) == 0:
                             print("Missing from entity")
                             from_entities = []
                         if not to_entity:
                             print("Missing to entity")
                         for from_entity in from_entities:
-                            print('Found both - from & To entity, adding lineage')
+                            print("Found both - from & To entity, adding lineage")
                             column_lineage = self._get_column_lineage(
                                 from_entity, to_entity, columns_list
                             )
@@ -277,9 +277,11 @@ class SupersetSourceMixin(DashboardServiceSource):
                         dataTypeDisplay=field.type,
                         dataType=col_parse["dataType"],
                         arrayDataType=self.parse_array_data_type(col_parse),
-                        children=list(col_parse["children"])
-                        if col_parse.get("children")
-                        else None,
+                        children=(
+                            list(col_parse["children"])
+                            if col_parse.get("children")
+                            else None
+                        ),
                         name=str(field.id),
                         displayName=field.column_name,
                         description=field.description,

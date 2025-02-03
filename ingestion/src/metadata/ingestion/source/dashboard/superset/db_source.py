@@ -15,6 +15,7 @@ Superset source module
 import traceback
 from typing import Iterable, List, Optional
 
+from jinja2 import Template
 from sqlalchemy.engine import Engine
 from sqlalchemy.engine.url import make_url
 
@@ -42,13 +43,10 @@ from metadata.generated.schema.type.basic import (
     Markdown,
     SourceUrl,
 )
-from jinja2 import Template
-
-
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper
 from metadata.ingestion.lineage.parser import LineageParser
-from metadata.ingestion.lineage.sql_lineage import get_column_fqn, search_table_entities
+from metadata.ingestion.lineage.sql_lineage import search_table_entities
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.superset.mixin import SupersetSourceMixin
 from metadata.ingestion.source.dashboard.superset.models import (
@@ -73,6 +71,7 @@ from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 
+
 def get_jinja_context():
     # Define placeholder static functions and variables
     def get_time_filter():
@@ -81,8 +80,8 @@ def get_jinja_context():
     columns = []
     filter = ""
     from_dttm = None  # Deprecated
-    to_dttm = None    # Deprecated
-    groupby = []      # Deprecated
+    to_dttm = None  # Deprecated
+    groupby = []  # Deprecated
     metrics = []
     row_limit = 1000
     row_offset = 0
@@ -215,14 +214,16 @@ class SupersetDBSource(SupersetSourceMixin):
         if chart_json.sql:
             tpl = Template(source=chart_json.sql)
             rendered_sql = tpl.render(get_jinja_context())
-            
+
             lineage_parser = LineageParser(
                 rendered_sql,
-                ConnectionTypeDialectMapper.dialect_of(
-                    db_service_entity.serviceType.value
-                )
-                if db_service_entity
-                else None,
+                (
+                    ConnectionTypeDialectMapper.dialect_of(
+                        db_service_entity.serviceType.value
+                    )
+                    if db_service_entity
+                    else None
+                ),
             )
 
             tables_list = []
@@ -243,9 +244,9 @@ class SupersetDBSource(SupersetSourceMixin):
                     table=table_name,
                 )
                 tables_list.extend(from_entities)
-            
-            return tables_list;
-        
+
+            return tables_list
+
     def _get_datasource_fqn_for_lineage(
         self, chart_json: FetchChart, db_service_entity: DatabaseService
     ):
@@ -273,9 +274,11 @@ class SupersetDBSource(SupersetSourceMixin):
                 chart = CreateChartRequest(
                     name=EntityName(str(chart_json.id)),
                     displayName=chart_json.slice_name,
-                    description=Markdown(chart_json.description)
-                    if chart_json.description
-                    else None,
+                    description=(
+                        Markdown(chart_json.description)
+                        if chart_json.description
+                        else None
+                    ),
                     chartType=get_standard_chart_type(chart_json.viz_type),
                     sourceUrl=SourceUrl(
                         f"{clean_uri(self.service_connection.hostPort)}/explore/?slice_id={chart_json.id}"
