@@ -13,8 +13,8 @@
 
 import { FilterOutlined } from '@ant-design/icons';
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Card, Col, Radio, Row, Tabs, Typography } from 'antd';
-import Table, { ColumnsType } from 'antd/lib/table';
+import { Card, Col, Row, Tabs, Typography } from 'antd';
+import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { groupBy, isEmpty, isUndefined, uniqBy } from 'lodash';
@@ -23,6 +23,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory, useParams } from 'react-router-dom';
 import { ReactComponent as ExternalLinkIcon } from '../../../assets/svg/external-links.svg';
+import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import {
   DATA_ASSET_ICON_DIMENSION,
   getEntityDetailsPath,
@@ -30,8 +31,6 @@ import {
 } from '../../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
 import { PIPELINE_TASK_TABS } from '../../../constants/pipeline.constants';
-import { COMMON_RESIZABLE_PANEL_CONFIG } from '../../../constants/ResizablePanel.constants';
-import LineageProvider from '../../../context/LineageProvider/LineageProvider';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
@@ -44,15 +43,23 @@ import {
   Task,
 } from '../../../generated/entity/data/pipeline';
 import { ThreadType } from '../../../generated/entity/feed/thread';
+import { Page } from '../../../generated/system/ui/page';
+import { PageType } from '../../../generated/system/ui/uiCustomization';
 import { TagSource } from '../../../generated/type/schema';
 import LimitWrapper from '../../../hoc/LimitWrapper';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { FeedCounts } from '../../../interface/feed.interface';
+import { getDocumentByFQN } from '../../../rest/DocStoreAPI';
 import { postThread } from '../../../rest/feedsAPI';
 import { restorePipeline } from '../../../rest/pipelineAPI';
 import { getFeedCounts } from '../../../utils/CommonUtils';
 import { getColumnSorter, getEntityName } from '../../../utils/EntityUtils';
+import {
+  getGlossaryTermDetailTabs,
+  getTabLabelMap,
+} from '../../../utils/GlossaryTerm/GlossaryTermUtil';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
+import pipelineClassBase from '../../../utils/PipelineClassBase';
 import {
   getAllTags,
   searchTagInData,
@@ -61,25 +68,16 @@ import { getTagsWithoutTier, getTierTags } from '../../../utils/TableUtils';
 import { createTagObject, updateTierTag } from '../../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { useActivityFeedProvider } from '../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
-import { ActivityFeedTab } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import ActivityThreadPanel from '../../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import { withActivityFeed } from '../../AppRouter/withActivityFeed';
-import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
-import DescriptionV1 from '../../common/EntityDescription/DescriptionV1';
 import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
-import ResizablePanels from '../../common/ResizablePanels/ResizablePanels';
-import TabsLabel from '../../common/TabsLabel/TabsLabel.component';
 import { DataAssetsHeader } from '../../DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import { ColumnFilter } from '../../Database/ColumnFilter/ColumnFilter.component';
 import TableDescription from '../../Database/TableDescription/TableDescription.component';
 import TableTags from '../../Database/TableTags/TableTags.component';
-import EntityRightPanel from '../../Entity/EntityRightPanel/EntityRightPanel';
-import Lineage from '../../Lineage/Lineage.component';
 import { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.interface';
 import { ModalWithMarkdownEditor } from '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import PageLayoutV1 from '../../PageLayoutV1/PageLayoutV1';
-import { SourceType } from '../../SearchedData/SearchedData.interface';
-import ExecutionsTab from '../Execution/Execution.component';
 import TasksDAGView from '../TasksDAGView/TasksDAGView';
 import './pipeline-details.style.less';
 import { PipeLineDetailsProp } from './PipelineDetails.interface';
@@ -102,7 +100,7 @@ const PipelineDetails = ({
   const history = useHistory();
   const { tab } = useParams<{ tab: EntityTabs }>();
   const { t } = useTranslation();
-  const { currentUser, theme } = useApplicationStore();
+  const { currentUser, theme, selectedPersona } = useApplicationStore();
   const { postFeed, deleteFeed, updateFeed } = useActivityFeedProvider();
   const userID = currentUser?.id ?? '';
   const {
@@ -130,7 +128,7 @@ const PipelineDetails = ({
   }, [pipelineDetails]);
 
   // local state variables
-
+  const [customizedPage, setCustomizedPage] = useState<Page | null>(null);
   const [editTask, setEditTask] = useState<{
     task: Task;
     index: number;
@@ -580,200 +578,89 @@ const PipelineDetails = ({
     [pipelineDetails, selectedExecution]
   );
 
-  const tabs = useMemo(
-    () => [
-      {
-        label: (
-          <TabsLabel id={EntityTabs.TASKS} name={t('label.task-plural')} />
-        ),
-        key: EntityTabs.TASKS,
-        children: (
-          <Row gutter={[0, 16]} wrap={false}>
-            <Col className="tab-content-height-with-resizable-panel" span={24}>
-              <ResizablePanels
-                firstPanel={{
-                  className: 'entity-resizable-panel-container',
-                  children: (
-                    <div className="p-t-sm m-x-lg">
-                      <Row gutter={[0, 16]}>
-                        <Col span={24}>
-                          <DescriptionV1
-                            description={description}
-                            entityFqn={pipelineFQN}
-                            entityName={entityName}
-                            entityType={EntityType.PIPELINE}
-                            hasEditAccess={editDescriptionPermission}
-                            isDescriptionExpanded={isEmpty(tasksInternal)}
-                            owner={owners}
-                            showActions={!deleted}
-                            onDescriptionUpdate={onDescriptionUpdate}
-                            onThreadLinkSelect={onThreadLinkSelect}
-                          />
-                        </Col>
-                        <Col span={24}>
-                          <Radio.Group
-                            buttonStyle="solid"
-                            className="radio-switch"
-                            data-testid="pipeline-task-switch"
-                            optionType="button"
-                            options={Object.values(PIPELINE_TASK_TABS)}
-                            value={activeTab}
-                            onChange={(e) => setActiveTab(e.target.value)}
-                          />
-                        </Col>
-                        <Col span={24}>
-                          {activeTab === PIPELINE_TASK_TABS.LIST_VIEW ? (
-                            <Table
-                              bordered
-                              className="align-table-filter-left"
-                              columns={taskColumns}
-                              data-testid="task-table"
-                              dataSource={tasksInternal}
-                              pagination={false}
-                              rowKey="name"
-                              scroll={{ x: 1200 }}
-                              size="small"
-                            />
-                          ) : (
-                            tasksDAGView
-                          )}
-                        </Col>
-                      </Row>
-                    </div>
-                  ),
-                  ...COMMON_RESIZABLE_PANEL_CONFIG.LEFT_PANEL,
-                }}
-                secondPanel={{
-                  children: (
-                    <div data-testid="entity-right-panel">
-                      <EntityRightPanel<EntityType.PIPELINE>
-                        customProperties={pipelineDetails}
-                        dataProducts={pipelineDetails?.dataProducts ?? []}
-                        domain={pipelineDetails?.domain}
-                        editCustomAttributePermission={
-                          editCustomAttributePermission
-                        }
-                        editGlossaryTermsPermission={
-                          editGlossaryTermsPermission
-                        }
-                        editTagPermission={editTagsPermission}
-                        entityFQN={pipelineFQN}
-                        entityId={pipelineDetails.id}
-                        entityType={EntityType.PIPELINE}
-                        selectedTags={tags}
-                        viewAllPermission={viewAllPermission}
-                        onExtensionUpdate={onExtensionUpdate}
-                        onTagSelectionChange={handleTagSelection}
-                        onThreadLinkSelect={onThreadLinkSelect}
-                      />
-                    </div>
-                  ),
-                  ...COMMON_RESIZABLE_PANEL_CONFIG.RIGHT_PANEL,
-                  className:
-                    'entity-resizable-right-panel-container entity-resizable-panel-container',
-                }}
-              />
-            </Col>
-          </Row>
-        ),
-      },
-      {
-        label: (
-          <TabsLabel
-            count={feedCount.totalCount}
-            id={EntityTabs.ACTIVITY_FEED}
-            isActive={tab === EntityTabs.ACTIVITY_FEED}
-            name={t('label.activity-feed-and-task-plural')}
-          />
-        ),
-        key: EntityTabs.ACTIVITY_FEED,
-        children: (
-          <ActivityFeedTab
-            refetchFeed
-            entityFeedTotalCount={feedCount.totalCount}
-            entityType={EntityType.PIPELINE}
-            fqn={pipelineDetails?.fullyQualifiedName ?? ''}
-            onFeedUpdate={getEntityFeedCount}
-            onUpdateEntityDetails={fetchPipeline}
-            onUpdateFeedCount={handleFeedCount}
-          />
-        ),
-      },
-      {
-        label: (
-          <TabsLabel
-            id={EntityTabs.EXECUTIONS}
-            name={t('label.execution-plural')}
-          />
-        ),
-        key: EntityTabs.EXECUTIONS,
-        children: (
-          <ExecutionsTab
-            pipelineFQN={pipelineFQN}
-            tasks={pipelineDetails.tasks ?? []}
-          />
-        ),
-      },
-      {
-        label: <TabsLabel id={EntityTabs.LINEAGE} name={t('label.lineage')} />,
-        key: EntityTabs.LINEAGE,
-        children: (
-          <LineageProvider>
-            <Lineage
-              deleted={deleted}
-              entity={pipelineDetails as SourceType}
-              entityType={EntityType.PIPELINE}
-              hasEditAccess={editLineagePermission}
-            />
-          </LineageProvider>
-        ),
-      },
-      {
-        label: (
-          <TabsLabel
-            id={EntityTabs.CUSTOM_PROPERTIES}
-            name={t('label.custom-property-plural')}
-          />
-        ),
-        key: EntityTabs.CUSTOM_PROPERTIES,
-        children: pipelineDetails && (
-          <div className="m-sm">
-            <CustomPropertyTable<EntityType.PIPELINE>
-              entityDetails={pipelineDetails}
-              entityType={EntityType.PIPELINE}
-              handleExtensionUpdate={onExtensionUpdate}
-              hasEditAccess={editCustomAttributePermission}
-              hasPermission={viewAllPermission}
-            />
-          </div>
-        ),
-      },
-    ],
-    [
-      description,
+  const tabs = useMemo(() => {
+    const tabLabelMap = getTabLabelMap(customizedPage?.tabs);
+
+    const tabs = pipelineClassBase.getPipelineDetailPageTabs({
+      description: description ?? '',
       activeTab,
-      feedCount.totalCount,
-      deleted,
-      owners,
-      entityName,
-      pipelineFQN,
-      pipelineDetails,
+      feedCount: {
+        totalCount: feedCount.totalCount,
+      },
+      deleted: deleted ?? false,
+      owners: owners ?? [],
+      entityName: entityName ?? '',
+      pipelineFQN: pipelineFQN ?? '',
+      pipelineDetails: pipelineDetails ?? {},
       tasksDAGView,
-      taskColumns,
-      tasksInternal,
+      taskColumns: taskColumns ?? [],
+      tasksInternal: tasksInternal ?? [],
       handleFeedCount,
       handleTagSelection,
       onExtensionUpdate,
       onDescriptionUpdate,
       onThreadLinkSelect,
-      editDescriptionPermission,
-      editTagsPermission,
-      editGlossaryTermsPermission,
-      editLineagePermission,
-      editCustomAttributePermission,
-      viewAllPermission,
-    ]
-  );
+      editDescriptionPermission: editDescriptionPermission ?? false,
+      editTagsPermission: editTagsPermission ?? false,
+      editGlossaryTermsPermission: editGlossaryTermsPermission ?? false,
+      editLineagePermission: editLineagePermission ?? false,
+      editCustomAttributePermission: editCustomAttributePermission ?? false,
+      viewAllPermission: viewAllPermission ?? false,
+      tab: tab ?? EntityTabs.TASKS,
+      getEntityFeedCount,
+      tags,
+      setActiveTab,
+      fetchPipeline,
+      labelMap: tabLabelMap,
+    });
+
+    return getGlossaryTermDetailTabs(
+      tabs,
+      customizedPage?.tabs,
+      EntityTabs.TASKS
+    );
+  }, [
+    description,
+    activeTab,
+    feedCount.totalCount,
+    deleted,
+    owners,
+    entityName,
+    pipelineFQN,
+    pipelineDetails,
+    tasksDAGView,
+    taskColumns,
+    tasksInternal,
+    handleFeedCount,
+    handleTagSelection,
+    onExtensionUpdate,
+    onDescriptionUpdate,
+    onThreadLinkSelect,
+    editDescriptionPermission,
+    editTagsPermission,
+    editGlossaryTermsPermission,
+    editLineagePermission,
+    editCustomAttributePermission,
+    viewAllPermission,
+  ]);
+
+  const fetchDocument = useCallback(async () => {
+    const pageFQN = `${EntityType.PERSONA}${FQN_SEPARATOR_CHAR}${selectedPersona.fullyQualifiedName}`;
+    try {
+      const doc = await getDocumentByFQN(pageFQN);
+      setCustomizedPage(
+        doc.data?.pages?.find((p: Page) => p.pageType === PageType.Pipeline)
+      );
+    } catch (error) {
+      // fail silent
+    }
+  }, [selectedPersona.fullyQualifiedName]);
+
+  useEffect(() => {
+    if (selectedPersona?.fullyQualifiedName) {
+      fetchDocument();
+    }
+  }, [selectedPersona]);
 
   useEffect(() => {
     getEntityFeedCount();

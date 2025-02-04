@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { ColumnType } from 'antd/lib/table';
 import { TabProps } from '../components/common/TabsLabel/TabsLabel.interface';
 import {
   CUSTOM_PROPERTIES_WIDGET,
@@ -20,30 +21,64 @@ import {
   GridSizes,
   TAGS_WIDGET,
 } from '../constants/CustomizeWidgets.constants';
+import { PIPELINE_TASK_TABS } from '../constants/pipeline.constants';
 import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 import { EntityTabs } from '../enums/entity.enum';
+import { Tag } from '../generated/entity/classification/tag';
 import {
   Pipeline,
   PipelineServiceType,
   State,
   StatusType,
+  Task,
 } from '../generated/entity/data/pipeline';
+import { ThreadType } from '../generated/entity/feed/thread';
+import { EntityReference } from '../generated/entity/type';
 import { Tab } from '../generated/system/ui/uiCustomization';
-import { LabelType, TagSource } from '../generated/type/tagLabel';
-
+import { LabelType, TagLabel, TagSource } from '../generated/type/tagLabel';
+import { FeedCounts } from '../interface/feed.interface';
 import { getTabLabelFromId } from './CustomizePage/CustomizePageUtils';
 import i18n from './i18next/LocalUtil';
+import { getPipelineDetailPageTabs } from './PipelineDetailsUtils';
 
 export interface PipelineDetailPageTabProps {
+  description: string;
+  entityName: string;
+  feedCount: {
+    totalCount: number;
+  };
+  editDescriptionPermission: boolean;
+  editGlossaryTermsPermission: boolean;
+  editTagsPermission: boolean;
+  getEntityFeedCount: () => void;
+  handleFeedCount: (data: FeedCounts) => void;
+  handleTagSelection: (selectedTags: TagLabel[]) => Promise<void>;
+  onDescriptionUpdate: (value: string) => Promise<void>;
+  onExtensionUpdate: (updatedPipeline: Pipeline) => Promise<void>;
+  onThreadLinkSelect: (link: string, threadType?: ThreadType) => void;
+  pipelineDetails: Pipeline;
+  pipelineFQN: string;
+  tasksInternal: Task[];
+  tasksDAGView: JSX.Element;
+  tags: Tag[];
+  viewAllPermission: boolean;
+  editLineagePermission: boolean;
+  editCustomAttributePermission: boolean;
+  deleted: boolean;
+  activeTab: PIPELINE_TASK_TABS;
+  tab: EntityTabs;
+  setActiveTab: (tab: PIPELINE_TASK_TABS) => void;
+  taskColumns: ColumnType<Task>[];
+  owners: EntityReference[];
+  fetchPipeline: () => void;
   labelMap?: Record<EntityTabs, string>;
 }
 
 class PipelineClassBase {
   public getPipelineDetailPageTabs(
-    _tabProps: PipelineDetailPageTabProps
+    tabProps: PipelineDetailPageTabProps
   ): TabProps[] {
-    return [];
-    // getDatabaseDetailPageBaseTabs(tableDetailsPageProps);
+    return getPipelineDetailPageTabs(tabProps);
   }
 
   public getPipelineDetailPageTabsIds(): Tab[] {
@@ -72,7 +107,7 @@ class PipelineClassBase {
 
   public getDefaultLayout(tab: EntityTabs) {
     switch (tab) {
-      case EntityTabs.SCHEMA:
+      case EntityTabs.TASKS:
         return [
           {
             h: 2,
@@ -84,7 +119,7 @@ class PipelineClassBase {
           },
           {
             h: 11,
-            i: DetailPageWidgetKeys.DATABASE_SCHEMA,
+            i: DetailPageWidgetKeys.PIPELINE_TASKS,
             w: 6,
             x: 0,
             y: 0,

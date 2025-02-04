@@ -37,6 +37,7 @@ export enum DetailPageWidgetKeys {
   STORED_PROCEDURE_CODE = 'KnowledgePanel.StoredProcedureCode',
   DATA_MODEL = 'KnowledgePanel.DataModel',
   CONTAINER_CHILDREN = 'KnowledgePanel.ContainerChildren',
+  PIPELINE_TASKS = 'KnowledgePanel.PipelineTasks',
 }
 
 export enum GlossaryTermDetailPageWidgetKeys {
