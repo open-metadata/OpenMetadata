@@ -7,7 +7,7 @@ slug: /connectors/metadata/atlas
 name="Atlas"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=[]
+availableFeatures=["Metadata"]
 unavailableFeatures=[]
 / %}
 
