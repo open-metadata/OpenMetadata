@@ -975,7 +975,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
     entity.setFollowers(
         fields.contains(FIELD_FOLLOWERS) ? getFollowers(entity) : entity.getFollowers());
     entity.setChildren(
-        fields.contains(FIELD_CHILDREN) ? getChildren(entity, fields) : entity.getChildren());
+        fields.contains(FIELD_CHILDREN)
+            ? (fields.getFieldConfig() != null ? getChildren(entity, fields) : getChildren(entity))
+            : entity.getChildren());
     entity.setExperts(fields.contains(FIELD_EXPERTS) ? getExperts(entity) : entity.getExperts());
     entity.setReviewers(
         fields.contains(FIELD_REVIEWERS) ? getReviewers(entity) : entity.getReviewers());

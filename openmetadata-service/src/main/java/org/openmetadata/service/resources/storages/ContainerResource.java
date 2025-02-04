@@ -219,12 +219,16 @@ public class ContainerResource extends EntityResource<Container, ContainerReposi
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include,
-      @Parameter(description = "Limit the values in children field of container")
+      @Parameter(
+              description =
+                  "Limit the number of children returned in response. Currently only supported for children field")
           @QueryParam("fieldLimit")
           @Min(0)
           @Max(1000000)
           Integer fieldLimit,
-      @Parameter(description = "Returns list of values in children field after this offset")
+      @Parameter(
+              description =
+                  "Returns list of children after the given offset. Currently only supported for children field")
           @QueryParam("fieldOffset")
           @Min(0)
           Integer fieldOffset) {
