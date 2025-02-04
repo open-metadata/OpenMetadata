@@ -33,16 +33,25 @@ import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as IconDelete } from '../../../assets/svg/ic-delete.svg';
+import { ReactComponent as PolicyIcon } from '../../../assets/svg/policies-colored.svg';
 import DescriptionV1 from '../../../components/common/EntityDescription/DescriptionV1';
+import ManageButton from '../../../components/common/EntityPageInfos/ManageButton/ManageButton';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../../components/common/Loader/Loader';
 import RichTextEditorPreviewerV1 from '../../../components/common/RichTextEditor/RichTextEditorPreviewerV1';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
+import EntityHeaderTitle from '../../../components/Entity/EntityHeaderTitle/EntityHeaderTitle.component';
+import { EntityName } from '../../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
 } from '../../../constants/GlobalSettings.constants';
+import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
+import {
+  OperationPermission,
+  ResourceEntity,
+} from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
 import { Rule } from '../../../generated/api/policies/createPolicy';
 import { Policy } from '../../../generated/entity/policies/policy';
@@ -73,12 +82,15 @@ const PoliciesDetailPage = () => {
   const { t } = useTranslation();
   const history = useHistory();
   const { fqn } = useFqn();
+  const { getEntityPermissionByFqn } = usePermissionProvider();
 
   const [policy, setPolicy] = useState<Policy>({} as Policy);
   const [isLoading, setLoading] = useState<boolean>(false);
   const [isloadingOnSave, setIsloadingOnSave] = useState(false);
   const [selectedEntity, setEntity] =
     useState<{ attribute: Attribute; record: EntityReference }>();
+  const [policyPermission, setPolicyPermission] =
+    useState<OperationPermission | null>(null);
 
   const policiesPath = getSettingPath(
     GlobalSettingsMenuCategory.ACCESS,
@@ -101,6 +113,39 @@ const PoliciesDetailPage = () => {
     [policyName, policiesPath]
   );
 
+  const {
+    editDisplayNamePermission,
+    hasDeletePermission,
+    viewBasicPermission,
+  } = useMemo(() => {
+    const editDisplayNamePermission =
+      policyPermission?.EditAll || policyPermission?.EditDisplayName;
+    const hasDeletePermission = policyPermission?.Delete;
+    const viewBasicPermission =
+      policyPermission?.ViewAll || policyPermission?.ViewBasic;
+
+    return {
+      editDisplayNamePermission,
+      hasDeletePermission,
+      viewBasicPermission,
+    };
+  }, [policyPermission]);
+
+  const fetchPolicyPermission = useCallback(
+    async (fqn) => {
+      try {
+        const response = await getEntityPermissionByFqn(
+          ResourceEntity.POLICY,
+          fqn
+        );
+        setPolicyPermission(response);
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      }
+    },
+    [getEntityPermissionByFqn, setPolicyPermission]
+  );
+
   const fetchPolicy = async () => {
     setLoading(true);
     try {
@@ -121,6 +166,26 @@ const PoliciesDetailPage = () => {
     try {
       const data = await patchPolicy(patch, policy.id);
       setPolicy({ ...policy, description: data.description });
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
+
+  const handleDisplayNameUpdate = async (entityName?: EntityName) => {
+    try {
+      if (policy) {
+        const updatedPolicy = {
+          ...policy,
+          ...entityName,
+        };
+        const jsonPatch = compare(policy, updatedPolicy);
+
+        if (jsonPatch.length && policy.id) {
+          const response = await patchPolicy(jsonPatch, policy.id);
+
+          setPolicy(response);
+        }
+      }
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
@@ -296,9 +361,19 @@ const PoliciesDetailPage = () => {
     [policy]
   );
 
+  const init = async () => {
+    if (!fqn) {
+      return;
+    }
+    await fetchPolicyPermission(fqn);
+    if (viewBasicPermission) {
+      fetchPolicy();
+    }
+  };
+
   useEffect(() => {
-    fetchPolicy();
-  }, [fqn]);
+    init();
+  }, [fqn, policyPermission]);
 
   if (isLoading) {
     return <Loader />;
@@ -329,12 +404,38 @@ const PoliciesDetailPage = () => {
             </ErrorPlaceHolder>
           ) : (
             <div className="policies-detail" data-testid="policy-details">
-              <Typography.Title
-                className="m-b-0 m-t-xs"
-                data-testid="heading"
-                level={5}>
-                {policyName}
-              </Typography.Title>
+              <Row className="flex justify-between">
+                <Col span={23}>
+                  <EntityHeaderTitle
+                    className="w-max-full"
+                    displayName={policy.displayName}
+                    icon={
+                      <Icon
+                        className="align-middle p-y-xss"
+                        component={PolicyIcon}
+                        style={{ fontSize: '50px' }}
+                      />
+                    }
+                    name={policy?.name ?? ''}
+                    serviceName="policy"
+                  />
+                </Col>
+                <Col span={1}>
+                  <ManageButton
+                    isRecursiveDelete
+                    afterDeleteAction={() => history.push(policiesPath)}
+                    allowSoftDelete={false}
+                    canDelete={hasDeletePermission}
+                    displayName={policy?.displayName}
+                    editDisplayNamePermission={editDisplayNamePermission}
+                    entityFQN={policy?.fullyQualifiedName}
+                    entityId={policy?.id}
+                    entityName={policy.name}
+                    entityType={EntityType.POLICY}
+                    onEditDisplayName={handleDisplayNameUpdate}
+                  />
+                </Col>
+              </Row>
               <DescriptionV1
                 hasEditAccess
                 className="m-y-md"

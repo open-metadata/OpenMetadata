@@ -23,6 +23,10 @@ export interface DatabaseServiceQueryLineagePipeline {
      */
     databaseFilterPattern?: FilterPattern;
     /**
+     * Handle Lineage for Snowflake Temporary and Transient Tables.
+     */
+    enableTempTableLineage?: boolean;
+    /**
      * Configuration the condition to filter the query history.
      */
     filterCondition?: string;
