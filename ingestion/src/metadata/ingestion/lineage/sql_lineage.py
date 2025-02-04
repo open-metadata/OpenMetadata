@@ -16,8 +16,10 @@ import traceback
 from collections import defaultdict
 from typing import Any, Iterable, List, Optional, Tuple, Union
 
+import networkx as nx
 from collate_sqllineage.core.models import Column, DataFunction
 from collate_sqllineage.core.models import Table as LineageTable
+from networkx import DiGraph
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.storedProcedure import (
@@ -509,6 +511,7 @@ def _create_lineage_by_table_name(
     column_lineage_map: dict,
     lineage_source: LineageSource = LineageSource.QueryLineage,
     procedure: Optional[EntityReference] = None,
+    graph: DiGraph = None,
 ) -> Iterable[Either[AddLineageRequest]]:
     """
     This method is to create a lineage between two tables
@@ -539,6 +542,11 @@ def _create_lineage_by_table_name(
                 logger.debug(
                     f"WARNING: Table entity [{table_name}] not found in OpenMetadata"
                 )
+        if graph is not None and (not from_table_entities or not to_table_entities):
+            graph.add_node(from_table, entity=from_table_entities)
+            graph.add_node(to_table, entity=to_table_entities)
+            graph.add_edge(from_table, to_table, query=masked_query)
+            return
 
         for from_entity, to_entity in itertools.product(
             from_table_entities or [], to_table_entities or []
@@ -606,6 +614,7 @@ def get_lineage_by_query(
     dialect: Dialect,
     timeout_seconds: int = LINEAGE_PARSING_TIMEOUT,
     lineage_source: LineageSource = LineageSource.QueryLineage,
+    graph: DiGraph = None,
 ) -> Iterable[Either[AddLineageRequest]]:
     """
     This method parses the query to get source, target and intermediate table names to create lineage,
@@ -645,6 +654,7 @@ def get_lineage_by_query(
                         column_lineage_map=column_lineage,
                         lineage_source=lineage_source,
                         procedure=procedure,
+                        graph=graph,
                     )
             for target_table in lineage_parser.target_tables:
                 yield from _create_lineage_by_table_name(
@@ -682,6 +692,7 @@ def get_lineage_by_query(
                             column_lineage_map=column_lineage,
                             lineage_source=lineage_source,
                             procedure=procedure,
+                            graph=graph,
                         )
         if not lineage_parser.query_parsing_success:
             query_parsing_failures.add(
@@ -710,6 +721,7 @@ def get_lineage_via_table_entity(
     dialect: Dialect,
     timeout_seconds: int = LINEAGE_PARSING_TIMEOUT,
     lineage_source: LineageSource = LineageSource.QueryLineage,
+    graph: DiGraph = None,
 ) -> Iterable[Either[AddLineageRequest]]:
     """Get lineage from table entity"""
     column_lineage = {}
@@ -743,6 +755,7 @@ def get_lineage_via_table_entity(
                     column_lineage_map=column_lineage,
                     lineage_source=lineage_source,
                     procedure=procedure,
+                    graph=graph,
                 ) or []
         if not lineage_parser.query_parsing_success:
             query_parsing_failures.add(
@@ -759,3 +772,94 @@ def get_lineage_via_table_entity(
                 stackTrace=traceback.format_exc(),
             )
         )
+
+
+def _process_sequence(
+    sequence: List[Any], graph: DiGraph
+) -> Iterable[Either[AddLineageRequest]]:
+    """
+    Process a sequence of nodes to generate lineage information.
+    """
+    from_node = None
+    queries = set()
+    clean_queries = False
+    previous_node = None
+    for node in sequence:
+        try:
+            if clean_queries:
+                queries.clear()
+                clean_queries = False
+            current_node = graph.nodes[node]
+            current_entity = current_node.get("entity")
+
+            if (
+                previous_node is not None
+                and graph.edges[(previous_node, node)].get("query") is not None
+            ):
+                queries.add(graph.edges[(previous_node, node)].get("query"))
+
+            if current_entity and from_node is not None:
+                for from_entity, to_entity in itertools.product(
+                    from_node.get("entity") or [], current_entity or []
+                ):
+                    if to_entity and from_entity:
+                        yield _build_table_lineage(
+                            to_entity=to_entity,
+                            from_entity=from_entity,
+                            to_table_raw_name=str(node),
+                            from_table_raw_name=str(from_node),
+                            masked_query="\n--------\n".join(queries),
+                            column_lineage_map={},
+                            lineage_source=LineageSource.QueryLineage,
+                            procedure=None,
+                        )
+                        clean_queries = True
+
+            if current_entity:
+                from_node = graph.nodes[node]
+            previous_node = node
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.error(f"Error creating lineage for node [{node}]: {exc}")
+
+
+def get_lineage_by_graph(
+    graph: DiGraph,
+) -> Iterable[Either[AddLineageRequest]]:
+    """
+    Generate lineage information from a directed graph.
+    This method processes a directed graph to extract lineage information by identifying
+    weakly connected components and traversing each component to generate sequences of nodes.
+    It then yields lineage information for each sequence.
+    Args:
+        graph (DiGraph): A directed graph representing the lineage.
+    Raises:
+        Exception: If an error occurs during the lineage creation process, it logs the error.
+    """
+    if graph is None:
+        return
+
+    # Get all weakly connected components
+    components = list(nx.weakly_connected_components(graph))
+
+    # Extract each component as an independent subgraph
+    independent_subtrees = [
+        graph.subgraph(component).copy() for component in components
+    ]
+
+    # Print results in the desired format
+    for subtree in independent_subtrees:
+        # Find a root node (node with no incoming edges)
+        root = [node for node in subtree if subtree.in_degree(node) == 0][0]
+
+        # Traverse from the root to get the sequence of nodes
+        current = root
+        sequence = [current]
+        while True:
+            successors = list(subtree.successors(current))
+            if not successors:
+                break
+            current = successors[0]
+            sequence.append(current)
+
+        yield from _process_sequence(sequence, subtree)
