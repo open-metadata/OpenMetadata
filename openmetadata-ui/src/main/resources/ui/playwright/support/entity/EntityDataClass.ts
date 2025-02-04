@@ -22,6 +22,7 @@ import { DashboardClass } from './DashboardClass';
 import { DashboardDataModelClass } from './DashboardDataModelClass';
 import { MlModelClass } from './MlModelClass';
 import { PipelineClass } from './PipelineClass';
+import { SearchIndexClass } from './SearchIndexClass';
 import { TableClass } from './TableClass';
 import { TopicClass } from './TopicClass';
 
@@ -44,13 +45,18 @@ export class EntityDataClass {
   static readonly topic1 = new TopicClass();
   static readonly topic2 = new TopicClass();
   static readonly dashboard1 = new DashboardClass();
-  static readonly dashboard2 = new DashboardClass();
+  static readonly dashboard2 = new DashboardClass(
+    'Dashboard 2',
+    'LookMlExplore'
+  );
   static readonly mlModel1 = new MlModelClass();
   static readonly pipeline1 = new PipelineClass();
   static readonly dashboardDataModel1 = new DashboardDataModelClass();
   static readonly dashboardDataModel2 = new DashboardDataModelClass();
   static readonly apiCollection1 = new ApiCollectionClass();
   static readonly apiCollection2 = new ApiCollectionClass();
+  static readonly searchIndex1 = new SearchIndexClass();
+  static readonly searchIndex2 = new SearchIndexClass();
 
   static async preRequisitesForTests(apiContext: APIRequestContext) {
     // Add pre-requisites for tests
@@ -79,6 +85,8 @@ export class EntityDataClass {
     await this.dashboardDataModel2.create(apiContext);
     await this.apiCollection1.create(apiContext);
     await this.apiCollection2.create(apiContext);
+    await this.searchIndex1.create(apiContext);
+    await this.searchIndex2.create(apiContext);
   }
 
   static async postRequisitesForTests(apiContext: APIRequestContext) {
@@ -107,5 +115,7 @@ export class EntityDataClass {
     await this.dashboardDataModel2.delete(apiContext);
     await this.apiCollection1.delete(apiContext);
     await this.apiCollection2.delete(apiContext);
+    await this.searchIndex1.delete(apiContext);
+    await this.searchIndex2.delete(apiContext);
   }
 }

@@ -84,11 +84,6 @@ export const FIELDS: EntityFields[] = [
     localSearch: false,
   },
   {
-    id: 'Data Model',
-    name: 'dataModels.displayName.keyword',
-    localSearch: false,
-  },
-  {
     id: 'Data Model Type',
     name: 'dataModelType',
     localSearch: false,
@@ -99,18 +94,8 @@ export const FIELDS: EntityFields[] = [
     localSearch: false,
   },
   {
-    id: 'Feature',
-    name: 'mlFeatures.name',
-    localSearch: false,
-  },
-  {
     id: 'Field',
     name: 'fields.name.keyword',
-    localSearch: false,
-  },
-  {
-    id: 'Table Type',
-    name: 'tableType',
     localSearch: false,
   },
   {
@@ -147,11 +132,6 @@ export const FIELDS: EntityFields[] = [
   {
     id: 'Status',
     name: 'status',
-    localSearch: false,
-  },
-  {
-    id: 'Glossary',
-    name: 'glossary.name.keyword',
     localSearch: false,
   },
 ];

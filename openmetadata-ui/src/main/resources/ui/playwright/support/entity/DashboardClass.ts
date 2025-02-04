@@ -90,12 +90,13 @@ export class DashboardClass extends EntityClass {
     {} as ResponseDataWithServiceType;
   chartsResponseData: ResponseDataType = {} as ResponseDataType;
 
-  constructor(name?: string) {
+  constructor(name?: string, dataModelType = 'SupersetDataModel') {
     super(EntityTypeEndpoint.Dashboard);
     this.service.name = name ?? this.service.name;
     this.type = 'Dashboard';
     this.serviceCategory = SERVICE_TYPE.Dashboard;
     this.serviceType = ServiceTypes.DASHBOARD_SERVICES;
+    this.dataModel.dataModelType = dataModelType;
   }
 
   async create(apiContext: APIRequestContext) {

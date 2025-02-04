@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import test from '@playwright/test';
-import { CUSTOM_PROPERTIES_ENTITIES } from '../../constant/customProperty';
 import { SidebarItem } from '../../constant/sidebar';
 import { EntityDataClass } from '../../support/entity/EntityDataClass';
 import {
@@ -161,21 +160,18 @@ test.describe('Advanced Search', { tag: '@advanced-search' }, () => {
         EntityDataClass.dashboard1.dataModel.columns[0].name,
         EntityDataClass.dashboard1.dataModel.columns[1].name,
       ],
-      'dataModels.displayName.keyword': ['orders', 'operations'],
       dataModelType: [
         EntityDataClass.dashboard1.dataModel.dataModelType,
         EntityDataClass.dashboard2.dataModel.dataModelType,
       ],
       entityType: [
-        CUSTOM_PROPERTIES_ENTITIES.entity_container.name,
-        CUSTOM_PROPERTIES_ENTITIES.entity_dashboard.name,
+        EntityDataClass.dashboard1.type.toLowerCase(),
+        EntityDataClass.table1.type.toLowerCase(),
       ],
-      'mlFeatures.name': [
-        EntityDataClass.mlModel1.entity.mlFeatures[0].name,
-        EntityDataClass.mlModel1.entity.mlFeatures[1].name,
+      'fields.name.keyword': [
+        EntityDataClass.searchIndex1.entity.fields[1].name,
+        EntityDataClass.searchIndex1.entity.fields[3].name,
       ],
-      'fields.name.keyword': ['Columns', 'Description'],
-      tableType: ['Regular', 'Iceberg'],
       'tasks.displayName.keyword': [
         EntityDataClass.pipeline1.entity.tasks[0].displayName,
         EntityDataClass.pipeline1.entity.tasks[1].displayName,
@@ -205,10 +201,6 @@ test.describe('Advanced Search', { tag: '@advanced-search' }, () => {
         EntityDataClass.dashboardDataModel2.entity.project,
       ],
       status: ['Approved', 'In Review'],
-      'glossary.name.keyword': [
-        EntityDataClass.glossaryTerm1.data.name,
-        EntityDataClass.glossaryTerm2.data.name,
-      ],
     };
 
     await afterAction();

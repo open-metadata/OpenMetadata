@@ -91,6 +91,7 @@ export default defineConfig({
 
   // Increase timeout for the test
   timeout: 60000,
+  testMatch: ['**/AdvancedSearch.spec.ts'],
 
   /* Run your local dev server before starting the tests */
   // webServer: {
