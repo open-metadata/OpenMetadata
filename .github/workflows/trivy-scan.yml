@@ -27,8 +27,6 @@ jobs:
           push_latest: false
           is_ingestion: false
           release_version: latest
-          dockerhub_username: ${{ secrets.DOCKERHUB_USERNAME }}
-          dockerhub_token: ${{ secrets.DOCKERHUB_TOKEN }}
 
       # Step 3: Run Trivy Scan on the Built Image
       - name: Run Trivy Scan on the Image
