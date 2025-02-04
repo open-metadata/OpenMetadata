@@ -65,6 +65,7 @@ class QueryParserSource(Source, ABC):
         self.dialect = ConnectionTypeDialectMapper.dialect_of(connection_type)
         self.source_config = self.config.sourceConfig.config
         self.start, self.end = get_start_and_end(self.source_config.queryLogDuration)
+        self.graph = None
 
         self.engine = None
         if get_engine:
