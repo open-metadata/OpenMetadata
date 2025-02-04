@@ -91,6 +91,12 @@
       "default": 1,
       "title": "Number of Threads",
       "minimum": 1
+    },
+    "enableTempTableLineage": {
+      "title": "Enable Temp Table Lineage",
+      "description": "Handle Lineage for Snowflake Temporary and Transient Tables. ",
+      "type": "boolean",
+      "default": false
     }
   },
   "additionalProperties": false

@@ -67,6 +67,7 @@ class QueryParserSource(Source, ABC):
         self.engine = (
             get_ssl_connection(self.service_connection) if get_engine else None
         )
+        self.graph = None
 
     @property
     def name(self) -> str:
