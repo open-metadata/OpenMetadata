@@ -2023,7 +2023,7 @@
     "join-team-success": "Erfolgreich dem Team beigetreten!",
     "leave-team-error": "Fehler beim Verlassen des Teams!",
     "leave-team-success": "Team erfolgreich verlassen!",
-    "no-application-schema-found": "No application schema found for {{appName}}",
+    "no-application-schema-found": "Kein Anwendungsschema gefunden für {{appName}}",
     "no-owned-entities": "Sie besitzen noch nichts.",
     "no-query-available": "Keine Abfrage verfügbar.",
     "no-task-available": "Keine Aufgabendaten verfügbar.",

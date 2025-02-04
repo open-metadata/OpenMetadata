@@ -2023,7 +2023,7 @@
     "join-team-success": "成功加入团队！",
     "leave-team-error": "离开团队时发生错误！",
     "leave-team-success": "成功离开团队！",
-    "no-application-schema-found": "No application schema found for {{appName}}",
+    "no-application-schema-found": "未找到{{appName}}的应用程序模式",
     "no-owned-entities": "暂不拥有数据条目",
     "no-query-available": "没有可用的查询",
     "no-task-available": "没有任务数据可用",

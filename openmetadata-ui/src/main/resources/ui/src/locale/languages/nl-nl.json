@@ -2023,7 +2023,7 @@
     "join-team-success": "Team succesvol toegetreden!",
     "leave-team-error": "Fout bij het verlaten van het team!",
     "leave-team-success": "Team succesvol verlaten!",
-    "no-application-schema-found": "No application schema found for {{appName}}",
+    "no-application-schema-found": "Geen applicatieschema gevonden voor {{appName}}",
     "no-owned-entities": "Je bent nog geen eigenaar van assets.",
     "no-query-available": "Geen query beschikbaar.",
     "no-task-available": "Geen taakdata beschikbaar.",

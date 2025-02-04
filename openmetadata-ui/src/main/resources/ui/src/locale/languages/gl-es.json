@@ -2023,7 +2023,7 @@
     "join-team-success": "Unido ao equipo correctamente!",
     "leave-team-error": "Erro ao abandonar o equipo!",
     "leave-team-success": "Abandonado o equipo correctamente!",
-    "no-application-schema-found": "No application schema found for {{appName}}",
+    "no-application-schema-found": "Non se atopou esquema de aplicación para {{appName}}",
     "no-owned-entities": "Aínda non posúes nada.",
     "no-query-available": "Non hai consultas dispoñibles.",
     "no-task-available": "Non hai datos de tarefas dispoñibles.",
