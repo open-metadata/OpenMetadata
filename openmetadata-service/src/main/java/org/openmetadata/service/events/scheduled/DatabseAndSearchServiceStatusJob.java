@@ -35,7 +35,7 @@ public class DatabseAndSearchServiceStatusJob implements Job {
         publishUnhealthyCounter(meterRegistry, SERVICE_NAME, SEARCH_SERVICE_NAME);
       }
     } catch (Exception ex) {
-      LOG.error("Elastic Search encountering exception.", ex);
+      LOG.error("Elastic Search Health Check encountered issues: {}", ex.getMessage());
       publishUnhealthyCounter(meterRegistry, SERVICE_NAME, SEARCH_SERVICE_NAME);
     }
   }
@@ -44,7 +44,7 @@ public class DatabseAndSearchServiceStatusJob implements Job {
     try {
       Entity.getCollectionDAO().systemDAO().testConnection();
     } catch (Exception ex) {
-      LOG.error("Database encountering exception.", ex);
+      LOG.error("Database Health Check encountered issues: {}", ex.getMessage());
       publishUnhealthyCounter(meterRegistry, SERVICE_NAME, DATABASE_SERVICE_NAME);
     }
   }
