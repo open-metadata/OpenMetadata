@@ -101,6 +101,6 @@ class SamplerResponse(ConfigModel):
 class SampleConfig(ConfigModel):
     """Profile Sample Config"""
 
-    profile_sample: Optional[Union[float, int]] = None
-    profile_sample_type: Optional[ProfileSampleType] = ProfileSampleType.PERCENTAGE
-    sampling_method_type: Optional[SamplingMethodType] = None
+    profileSample: Optional[Union[float, int]] = None
+    profileSampleType: Optional[ProfileSampleType] = ProfileSampleType.PERCENTAGE
+    samplingMethodType: Optional[SamplingMethodType] = None

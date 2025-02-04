@@ -120,9 +120,9 @@ class BaseTestSuiteRunner:
             schema_entity=schema_entity,
             database_entity=database_entity,
             default_sample_config=SampleConfig(
-                profile_sample=self.source_config.profileSample,
-                profile_sample_type=self.source_config.profileSampleType,
-                sampling_method_type=self.source_config.samplingMethodType,
+                profileSample=self.source_config.profileSample,
+                profileSampleType=self.source_config.profileSampleType,
+                samplingMethodType=self.source_config.samplingMethodType,
             ),
         )
 

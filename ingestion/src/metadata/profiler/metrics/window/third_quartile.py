@@ -56,14 +56,14 @@ class ThirdQuartile(StaticMetric, PercentilMixin):
             # col fullname is only needed for MySQL and SQLite
             return self._compute_sqa_fn(
                 column(self.col.name, self.col.type),
-                self.col.table.fullname if self.col.table is not None else None,
+                self.col.table.name if self.col.table is not None else None,
                 0.75,
             )
 
         if is_concatenable(self.col.type):
             return self._compute_sqa_fn(
                 LenFn(column(self.col.name, self.col.type)),
-                self.col.table.fullname if self.col.table is not None else None,
+                self.col.table.name if self.col.table is not None else None,
                 0.75,
             )
 

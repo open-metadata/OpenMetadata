@@ -65,7 +65,7 @@ class ProfilerTestParameters:
                 ColumnProfile(
                     name="three",
                     timestamp=Timestamp(0),
-                    valuesCount=2,
+                    valuesCount=1,
                     nullCount=1,
                 )
             ],
@@ -101,7 +101,7 @@ class ProfilerTestParameters:
                 ColumnProfile(
                     name="gender",
                     timestamp=Timestamp(0),
-                    valuesCount=1000,
+                    valuesCount=932,
                     nullCount=0,
                 )
             ],

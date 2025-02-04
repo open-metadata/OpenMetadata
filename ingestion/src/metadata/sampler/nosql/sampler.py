@@ -82,10 +82,10 @@ class NoSQLSampler(SamplerInterface):
 
     def _get_limit(self) -> Optional[int]:
         num_rows = self.client.item_count(self.raw_dataset)
-        if self.sample_config.profile_sample_type == ProfileSampleType.PERCENTAGE:
-            limit = num_rows * (self.sample_config.profile_sample / 100)
-        elif self.sample_config.profile_sample_type == ProfileSampleType.ROWS:
-            limit = self.sample_config.profile_sample
+        if self.sample_config.profileSampleType == ProfileSampleType.PERCENTAGE:
+            limit = num_rows * (self.sample_config.profileSample or 100 / 100)
+        elif self.sample_config.profileSampleType == ProfileSampleType.ROWS:
+            limit = self.sample_config.profileSample
         else:
             limit = SAMPLE_DATA_DEFAULT_COUNT
         return limit
