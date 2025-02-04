@@ -338,7 +338,8 @@ public class SubscriptionUtil {
               .toList();
       receiverList.addAll(getEmailOrWebhookEndpointForTeams(teams, type));
     } else {
-      receiverList = action.getReceivers() == null ? receiverList : action.getReceivers();
+      receiverList =
+          action.getReceivers() == null ? receiverList : new HashSet<>(action.getReceivers());
     }
 
     // Send to Admins
