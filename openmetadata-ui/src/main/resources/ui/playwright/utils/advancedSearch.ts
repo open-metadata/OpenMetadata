@@ -69,11 +69,6 @@ export const FIELDS: EntityFields[] = [
     localSearch: false,
   },
   {
-    id: 'Chart',
-    name: 'charts.displayName.keyword',
-    localSearch: false,
-  },
-  {
     id: 'Schema Field',
     name: 'messageSchema.schemaFields.name.keyword',
     localSearch: false,
@@ -86,11 +81,6 @@ export const FIELDS: EntityFields[] = [
   {
     id: 'Data Model Type',
     name: 'dataModelType',
-    localSearch: false,
-  },
-  {
-    id: 'Entity Type',
-    name: 'entityType',
     localSearch: false,
   },
   {

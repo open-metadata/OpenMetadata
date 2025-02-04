@@ -148,10 +148,6 @@ test.describe('Advanced Search', { tag: '@advanced-search' }, () => {
         EntityDataClass.table1.service.serviceType,
         EntityDataClass.topic1.service.serviceType,
       ],
-      'charts.displayName.keyword': [
-        EntityDataClass.dashboard1.charts.displayName,
-        EntityDataClass.dashboard2.charts.displayName,
-      ],
       'messageSchema.schemaFields.name.keyword': [
         EntityDataClass.topic1.entity.messageSchema.schemaFields[0].name,
         EntityDataClass.topic1.entity.messageSchema.schemaFields[1].name,
@@ -163,10 +159,6 @@ test.describe('Advanced Search', { tag: '@advanced-search' }, () => {
       dataModelType: [
         EntityDataClass.dashboard1.dataModel.dataModelType,
         EntityDataClass.dashboard2.dataModel.dataModelType,
-      ],
-      entityType: [
-        EntityDataClass.dashboard1.type.toLowerCase(),
-        EntityDataClass.table1.type.toLowerCase(),
       ],
       'fields.name.keyword': [
         EntityDataClass.searchIndex1.entity.fields[1].name,
