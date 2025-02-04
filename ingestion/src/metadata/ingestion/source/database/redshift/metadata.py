@@ -121,12 +121,13 @@ RedshiftDialect.get_view_definition = get_view_definition
 RedshiftDialect._get_all_relation_info = (  # pylint: disable=protected-access
     _get_all_relation_info
 )
-
 Inspector.get_all_table_ddls = get_all_table_ddls
 Inspector.get_table_ddl = get_table_ddl
+from metadata.ingestion.source.database.external_table_lineage_mixin import (
+    ExternalTableLineageMixin,
+)
 
-
-class RedshiftSource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
+class RedshiftSource(ExternalTableLineageMixin, LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
     """
     Implements the necessary methods to extract
     Database metadata from Redshift Source
@@ -146,6 +147,7 @@ class RedshiftSource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
         self.incremental_table_processor: Optional[
             RedshiftIncrementalTableProcessor
         ] = None
+        self.external_location_map = {}
 
         if self.incremental.enabled:
             logger.info(
@@ -167,6 +169,38 @@ class RedshiftSource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
             config.sourceConfig.config.incremental, pipeline_name, metadata
         )
         return cls(config, metadata, incremental_config)
+
+    def _is_external_table(self, schema_name: str, table_name: str) -> bool:
+        query = """
+            SELECT *
+            FROM svv_external_tables 
+            WHERE schemaname = %s AND tablename = %s
+            limit 1;
+        """
+        result = self.connection.execute(query, (schema_name, table_name)).fetchone()
+        return bool(result)
+    
+    def _get_external_table_location(self, schema_name: str, table_name: str) -> Optional[str]:
+        query = """
+            SELECT location 
+            FROM svv_external_tables 
+            WHERE schemaname = %s AND tablename = %s
+        """
+        result = self.connection.execute(query, (schema_name, table_name)).fetchone()
+        return result[0] if result else None
+
+    def get_table_description(
+        self, schema_name: str, table_name: str, inspector: Inspector
+    ) -> str:        
+        # Check if the table is external
+        is_external = self._is_external_table(schema_name, table_name)
+        
+        if is_external:
+            location = self._get_external_table_location(schema_name, table_name)
+            if location:
+                self.external_location_map[
+                    (self.context.get().database, schema_name, table_name)
+                ] = location
 
     def get_partition_details(self) -> None:
         """
