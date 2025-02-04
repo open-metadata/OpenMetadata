@@ -772,6 +772,7 @@ def get_lineage_via_table_entity(
             )
         )
 
+
 def get_lineage_by_graph(
     graph: DiGraph,
 ):

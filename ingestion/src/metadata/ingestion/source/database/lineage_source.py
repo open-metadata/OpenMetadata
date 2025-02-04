@@ -38,16 +38,15 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.tableQuery import TableQuery
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper, Dialect
-from metadata.ingestion.lineage.sql_lineage import get_column_fqn, get_lineage_by_query
+from metadata.ingestion.lineage.sql_lineage import (
+    get_column_fqn,
+    get_lineage_by_graph,
+    get_lineage_by_query,
+)
 from metadata.ingestion.models.ometa_lineage import OMetaLineageRequest
 from metadata.ingestion.models.topology import Queue
 from metadata.ingestion.source.database.query_parser_source import QueryParserSource
 from metadata.ingestion.source.models import TableView
-from metadata.ingestion.lineage.sql_lineage import (
-    get_lineage_by_graph,
-    get_lineage_by_query,
-)
-
 from metadata.utils import fqn
 from metadata.utils.db_utils import get_view_lineage
 from metadata.utils.logger import ingestion_logger
@@ -214,6 +213,7 @@ class LineageSource(QueryParserSource, ABC):
     ) -> Iterable[Either[Union[AddLineageRequest, CreateQueryRequest]]]:
         if self.graph is None and self.source_config.enableTempTableLineage:
             import networkx as nx
+
             # Create a directed graph
             self.graph = nx.DiGraph()
 
