@@ -136,6 +136,9 @@ public class LineageRepository {
     }
 
     // Update the lineage details with user and time
+    long currentTime = System.currentTimeMillis();
+    lineageDetails.setCreatedAt(currentTime);
+    lineageDetails.setCreatedBy(updatedBy);
     lineageDetails.setUpdatedAt(System.currentTimeMillis());
     lineageDetails.setUpdatedBy(updatedBy);
 

@@ -884,6 +884,8 @@ public interface CollectionDAO {
     private String fromEntity;
     private String toEntity;
     private int relation;
+    private String json;
+    private String jsonSchema;
   }
 
   @Getter
@@ -995,7 +997,7 @@ public interface CollectionDAO {
     }
 
     @SqlQuery(
-        "SELECT fromId, toId, fromEntity, toEntity, relation "
+        "SELECT fromId, toId, fromEntity, toEntity, relation, json, jsonSchema "
             + "FROM entity_relationship "
             + "WHERE fromId IN (<fromIds>) "
             + "AND relation = :relation "
@@ -1049,7 +1051,7 @@ public interface CollectionDAO {
         @Bind("fromEntity") String fromEntity);
 
     @SqlQuery(
-        "SELECT fromId, toId, fromEntity, toEntity, relation "
+        "SELECT fromId, toId, fromEntity, toEntity, relation, json, jsonSchema "
             + "FROM entity_relationship "
             + "WHERE toId IN (<toIds>) "
             + "AND relation = :relation "
@@ -1059,7 +1061,13 @@ public interface CollectionDAO {
         @BindList("toIds") List<String> toIds, @Bind("relation") int relation);
 
     @SqlQuery(
-        "SELECT fromId, toId, fromEntity, toEntity, relation "
+        "SELECT * FROM ( SELECT *, ROW_NUMBER() OVER (ORDER BY fromId) AS row_num FROM entity_relationship WHERE relation = :relation) AS rec WHERE row_num > :after ORDER BY row_num LIMIT :limit;")
+    @UseRowMapper(RelationshipObjectMapper.class)
+    List<EntityRelationshipObject> listWithRelation(
+        @Bind("relation") int relation, @Bind("after") int after, @Bind("limit") int limit);
+
+    @SqlQuery(
+        "SELECT fromId, toId, fromEntity, toEntity, relation, json, jsonSchema"
             + "FROM entity_relationship "
             + "WHERE toId IN (<toIds>) "
             + "AND relation = :relation "
@@ -1072,7 +1080,7 @@ public interface CollectionDAO {
         @Bind("fromEntityType") String fromEntityType);
 
     @SqlQuery(
-        "SELECT fromId, toId, fromEntity, toEntity, relation, json "
+        "SELECT fromId, toId, fromEntity, toEntity, relation, json, jsonSchema "
             + "FROM entity_relationship "
             + "WHERE toId IN (<toIds>) "
             + "AND relation = :relation "
@@ -1094,7 +1102,7 @@ public interface CollectionDAO {
         @Bind("relation") int relation);
 
     @SqlQuery(
-        "SELECT fromId, toId, fromEntity, toEntity, relation "
+        "SELECT fromId, toId, fromEntity, toEntity, relation, json, jsonSchema "
             + "FROM entity_relationship "
             + "WHERE toId IN (<toIds>) "
             + "AND relation = :relation "
@@ -1126,13 +1134,13 @@ public interface CollectionDAO {
 
     @ConnectionAwareSqlQuery(
         value =
-            "SELECT toId, toEntity, fromId, fromEntity, relation FROM entity_relationship "
+            "SELECT toId, toEntity, fromId, fromEntity, relation, json, jsonSchema FROM entity_relationship "
                 + "WHERE JSON_UNQUOTE(JSON_EXTRACT(json, '$.source')) = :source AND (toId = :toId AND toEntity = :toEntity) "
                 + "AND relation = :relation ORDER BY fromId",
         connectionType = MYSQL)
     @ConnectionAwareSqlQuery(
         value =
-            "SELECT toId, toEntity, fromId, fromEntity, relation FROM entity_relationship "
+            "SELECT toId, toEntity, fromId, fromEntity, relation, json, jsonSchema FROM entity_relationship "
                 + "WHERE  json->>'source' = :source AND (toId = :toId AND toEntity = :toEntity) "
                 + "AND relation = :relation ORDER BY fromId",
         connectionType = POSTGRES)
@@ -1145,13 +1153,13 @@ public interface CollectionDAO {
 
     @ConnectionAwareSqlQuery(
         value =
-            "SELECT toId, toEntity, fromId, fromEntity, relation FROM entity_relationship "
+            "SELECT toId, toEntity, fromId, fromEntity, relation, json, jsonSchema FROM entity_relationship "
                 + "WHERE JSON_UNQUOTE(JSON_EXTRACT(json, '$.pipeline.id')) =:toId OR toId = :toId AND relation = :relation "
                 + "AND JSON_UNQUOTE(JSON_EXTRACT(json, '$.source')) = :source ORDER BY toId",
         connectionType = MYSQL)
     @ConnectionAwareSqlQuery(
         value =
-            "SELECT toId, toEntity, fromId, fromEntity, relation FROM entity_relationship "
+            "SELECT toId, toEntity, fromId, fromEntity, relation, json, jsonSchema FROM entity_relationship "
                 + "WHERE  json->'pipeline'->>'id' =:toId OR toId = :toId AND relation = :relation "
                 + "AND json->>'source' = :source ORDER BY toId",
         connectionType = POSTGRES)
@@ -1289,6 +1297,8 @@ public interface CollectionDAO {
             .toEntity(rs.getString("toEntity"))
             .toId(rs.getString("toId"))
             .relation(rs.getInt("relation"))
+            .json(rs.getString("json"))
+            .jsonSchema(rs.getString("jsonSchema"))
             .build();
       }
     }
