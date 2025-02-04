@@ -10,12 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { ReactNode } from 'react';
 import { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.interface';
 
 export interface DisplayNameProps {
   id: string;
-  name?: string;
-  displayName?: string;
+  name?: ReactNode;
+  displayName?: ReactNode;
   link: string;
   onEditDisplayName?: (data: EntityName, id?: string) => Promise<void>;
   allowRename?: boolean;
