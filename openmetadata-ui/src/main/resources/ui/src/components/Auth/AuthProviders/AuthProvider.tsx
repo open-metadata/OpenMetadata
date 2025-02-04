@@ -517,7 +517,9 @@ export const AuthProvider = ({
         if (error.response) {
           const { status } = error.response;
           if (status === ClientErrors.UNAUTHORIZED) {
-            if (error.config.url === '/users/refresh') {
+            // For login or refresh we don't want to fire another refresh req
+            // Hence rejecting it
+            if (['/users/refresh', '/users/login'].includes(error.config.url)) {
               return Promise.reject(error as Error);
             }
             handleStoreProtectedRedirectPath();
