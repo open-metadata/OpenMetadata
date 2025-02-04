@@ -232,7 +232,7 @@ class SupersetSourceMixin(DashboardServiceSource):
                 (
                     FetchChart(
                         table_name=table_name,
-                        table_schema=table_schema,
+                        schema=table_schema,
                         sqlalchemy_uri=chart_json.sqlalchemy_uri,
                     ),
                     column_mapping,
