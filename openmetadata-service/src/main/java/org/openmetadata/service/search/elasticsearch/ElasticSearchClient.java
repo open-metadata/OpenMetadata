@@ -1297,30 +1297,41 @@ public class ElasticSearchClient implements SearchClient {
   }
 
   private Map<String, Object> searchPipelineLineage(
-      String fqn,
+      String pipelineFqn,
       int upstreamDepth,
       int downstreamDepth,
       String queryFilter,
       boolean deleted,
       Map<String, Object> responseMap)
       throws IOException {
+
     Set<Map<String, Object>> edges = new HashSet<>();
     Set<Map<String, Object>> nodes = new HashSet<>();
+
     Object[] searchAfter = null;
     long processedRecords = 0;
     long totalRecords = -1;
+
+    List<String> immediateFromFqns = new ArrayList<>();
+    List<String> immediateToFqns = new ArrayList<>();
+
+    // INITIAL QUERY: Get nodes that contain at least one lineage edge whose pipeline matches.
     while (totalRecords != processedRecords) {
       es.org.elasticsearch.action.search.SearchRequest searchRequest =
           new es.org.elasticsearch.action.search.SearchRequest(
-              Entity.getSearchRepository().getIndexOrAliasName(GLOBAL_SEARCH_ALIAS));
-      es.org.elasticsearch.index.query.BoolQueryBuilder boolQueryBuilder =
-          QueryBuilders.boolQuery();
+              Entity.getSearchRepository().getIndexOrAliasName(LINEAGE_SEARCH_ALIAS));
+
+      BoolQueryBuilder boolQueryBuilder = QueryBuilders.boolQuery();
       boolQueryBuilder.should(
           QueryBuilders.boolQuery()
-              .must(QueryBuilders.termQuery("lineage.pipeline.fullyQualifiedName.keyword", fqn)));
+              .must(
+                  QueryBuilders.termQuery(
+                      "lineage.pipeline.fullyQualifiedName.keyword", pipelineFqn)));
+
       SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
       searchSourceBuilder.fetchSource(null, SOURCE_FIELDS_TO_EXCLUDE.toArray(String[]::new));
-      FieldSortBuilder sortBuilder = SortBuilders.fieldSort("fullyQualifiedName");
+      FieldSortBuilder sortBuilder =
+          SortBuilders.fieldSort("fullyQualifiedName").order(SortOrder.ASC).unmappedType("keyword");
       searchSourceBuilder.sort(sortBuilder);
       searchSourceBuilder.query(boolQueryBuilder);
       if (searchAfter != null) {
@@ -1336,70 +1347,227 @@ public class ElasticSearchClient implements SearchClient {
       searchRequest.source(searchSourceBuilder);
       SearchResponse searchResponse = client.search(searchRequest, RequestOptions.DEFAULT);
 
+      long currentHitsCount = searchResponse.getHits().getHits().length;
+      if (currentHitsCount == 0) {
+        break;
+      }
+      processedRecords += currentHitsCount;
+      totalRecords = searchResponse.getHits().getTotalHits().value;
+
       for (var hit : searchResponse.getHits().getHits()) {
-        List<Map<String, Object>> lineage =
-            (List<Map<String, Object>>) hit.getSourceAsMap().get("lineage");
-        HashMap<String, Object> tempMap = new HashMap<>(JsonUtils.getMap(hit.getSourceAsMap()));
-        nodes.add(tempMap);
-        for (Map<String, Object> lin : lineage) {
-          HashMap<String, String> fromEntity = (HashMap<String, String>) lin.get("fromEntity");
-          HashMap<String, String> toEntity = (HashMap<String, String>) lin.get("toEntity");
-          HashMap<String, String> pipeline = (HashMap<String, String>) lin.get("pipeline");
-          if (pipeline != null && pipeline.get("fullyQualifiedName").equalsIgnoreCase(fqn)) {
-            edges.add(lin);
-            getLineage(
-                fromEntity.get("fqn"),
-                upstreamDepth,
-                edges,
-                nodes,
-                queryFilter,
-                "lineage.toEntity.fqn.keyword",
-                deleted);
-            getLineage(
-                toEntity.get("fqn"),
-                downstreamDepth,
-                edges,
-                nodes,
-                queryFilter,
-                "lineage.fromEntity.fqn.keyword",
-                deleted);
+        Map<String, Object> sourceMap = hit.getSourceAsMap();
+        // Skip if this document is the pipeline entity itself.
+        if (pipelineFqn.equalsIgnoreCase((String) sourceMap.get("fullyQualifiedName"))) {
+          continue;
+        }
+
+        List<Map<String, Object>> lineage = (List<Map<String, Object>>) sourceMap.get("lineage");
+        List<Map<String, Object>> filteredLineage = new ArrayList<>();
+        if (lineage != null) {
+          for (Map<String, Object> edge : lineage) {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> pipelineObj = (Map<String, Object>) edge.get("pipeline");
+            if (pipelineObj != null) {
+              String edgePipelineFqn = (String) pipelineObj.get("fullyQualifiedName");
+              if (pipelineFqn.equalsIgnoreCase(edgePipelineFqn)) {
+                filteredLineage.add(edge);
+                @SuppressWarnings("unchecked")
+                Map<String, String> fromEntity = (Map<String, String>) edge.get("fromEntity");
+                @SuppressWarnings("unchecked")
+                Map<String, String> toEntity = (Map<String, String>) edge.get("toEntity");
+                if (fromEntity != null && fromEntity.get("fqn") != null) {
+                  immediateFromFqns.add(fromEntity.get("fqn"));
+                }
+                if (toEntity != null && toEntity.get("fqn") != null) {
+                  immediateToFqns.add(toEntity.get("fqn"));
+                }
+                edges.add(edge);
+              }
+            }
           }
         }
+        sourceMap.put("lineage", filteredLineage);
+        if (!filteredLineage.isEmpty()) {
+          nodes.add(sourceMap);
+        }
       }
-      totalRecords = searchResponse.getHits().getTotalHits().value;
-      int currentHits = searchResponse.getHits().getHits().length;
-      processedRecords += currentHits;
-      if (currentHits > 0) {
-        searchAfter = searchResponse.getHits().getHits()[currentHits - 1].getSortValues();
-      } else {
-        searchAfter = null;
-      }
+      int currentHits = (int) currentHitsCount;
+      searchAfter = searchResponse.getHits().getHits()[currentHits - 1].getSortValues();
     }
-    getLineage(
-        fqn, downstreamDepth, edges, nodes, queryFilter, "lineage.fromEntity.fqn.keyword", deleted);
-    getLineage(
-        fqn, upstreamDepth, edges, nodes, queryFilter, "lineage.toEntity.fqn.keyword", deleted);
 
-    // TODO: Fix this , this is hack
-    if (edges.isEmpty()) {
-      es.org.elasticsearch.action.search.SearchRequest searchRequestForEntity =
-          new es.org.elasticsearch.action.search.SearchRequest(
-              Entity.getSearchRepository().getIndexOrAliasName(GLOBAL_SEARCH_ALIAS));
-      SearchSourceBuilder searchSourceBuilderForEntity = new SearchSourceBuilder();
-      searchSourceBuilderForEntity.query(
-          QueryBuilders.boolQuery().must(QueryBuilders.termQuery("fullyQualifiedName", fqn)));
-      searchRequestForEntity.source(searchSourceBuilderForEntity.size(1000));
-      SearchResponse searchResponseForEntity =
-          client.search(searchRequestForEntity, RequestOptions.DEFAULT);
-      for (var hit : searchResponseForEntity.getHits().getHits()) {
-        HashMap<String, Object> tempMap = new HashMap<>(JsonUtils.getMap(hit.getSourceAsMap()));
-        tempMap.keySet().removeAll(FIELDS_TO_REMOVE);
-        responseMap.put("entity", tempMap);
+    Set<String> immediateFromSet = new HashSet<>(immediateFromFqns);
+    Set<String> immediateToSet = new HashSet<>(immediateToFqns);
+
+    if (upstreamDepth > 1 && !immediateToSet.isEmpty()) {
+      getLineageBFS(
+          immediateToSet,
+          upstreamDepth - 1,
+          edges,
+          nodes,
+          queryFilter,
+          "lineage.toEntity.fqnHash.keyword",
+          deleted,
+          pipelineFqn,
+          false);
+    }
+
+    if (downstreamDepth > 1 && !immediateFromSet.isEmpty()) {
+      getLineageBFS(
+          immediateFromSet,
+          downstreamDepth - 1,
+          edges,
+          nodes,
+          queryFilter,
+          "lineage.fromEntity.fqnHash.keyword",
+          deleted,
+          pipelineFqn,
+          false);
+    }
+
+    Set<String> connectedFqns = new HashSet<>();
+    for (Map<String, Object> edge : edges) {
+      @SuppressWarnings("unchecked")
+      Map<String, String> fromEntity = (Map<String, String>) edge.get("fromEntity");
+      @SuppressWarnings("unchecked")
+      Map<String, String> toEntity = (Map<String, String>) edge.get("toEntity");
+      if (fromEntity != null && fromEntity.get("fqn") != null) {
+        connectedFqns.add(fromEntity.get("fqn").toLowerCase());
+      }
+      if (toEntity != null && toEntity.get("fqn") != null) {
+        connectedFqns.add(toEntity.get("fqn").toLowerCase());
       }
     }
+    Set<Map<String, Object>> filteredNodes = new HashSet<>();
+    for (Map<String, Object> node : nodes) {
+      String nodeFqn = (String) node.get("fullyQualifiedName");
+      if (nodeFqn == null) {
+        continue;
+      }
+      if (pipelineFqn.equalsIgnoreCase(nodeFqn)) {
+        continue;
+      }
+      if (connectedFqns.contains(nodeFqn.toLowerCase())) {
+        filteredNodes.add(node);
+      }
+    }
+    nodes = filteredNodes;
+
     responseMap.put("edges", edges);
     responseMap.put("nodes", nodes);
     return responseMap;
+  }
+
+  @SuppressWarnings("unchecked")
+  private void getLineageBFS(
+      Set<String> startFqns,
+      int maxDepth,
+      Set<Map<String, Object>> edges,
+      Set<Map<String, Object>> nodes,
+      String queryFilter,
+      String direction,
+      boolean deleted,
+      String requestedPipelineFqn,
+      boolean filterPipeline)
+      throws IOException {
+
+    if (maxDepth <= 0 || startFqns.isEmpty()) {
+      return;
+    }
+
+    Set<String> frontier = new HashSet<>();
+    for (String fqn : startFqns) {
+      frontier.add(FullyQualifiedName.buildHash(fqn));
+    }
+
+    Set<String> visited = new HashSet<>(frontier);
+
+    for (int depth = 0; depth < maxDepth && !frontier.isEmpty(); depth++) {
+      es.org.elasticsearch.action.search.SearchRequest searchRequest =
+          new es.org.elasticsearch.action.search.SearchRequest(
+              Entity.getSearchRepository().getIndexOrAliasName(LINEAGE_SEARCH_ALIAS));
+      SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+      searchSourceBuilder.fetchSource(null, SOURCE_FIELDS_TO_EXCLUDE.toArray(String[]::new));
+
+      BoolQueryBuilder boolQuery =
+          QueryBuilders.boolQuery().must(QueryBuilders.termsQuery(direction, frontier));
+      if (!CommonUtil.nullOrEmpty(deleted)) {
+        boolQuery.must(QueryBuilders.termQuery("deleted", deleted));
+      }
+      buildSearchSourceFilter(queryFilter, searchSourceBuilder);
+      searchSourceBuilder.query(boolQuery);
+      searchSourceBuilder.size(10000);
+      searchRequest.source(searchSourceBuilder);
+      SearchResponse searchResponse = client.search(searchRequest, RequestOptions.DEFAULT);
+
+      Set<String> nextFrontier = new HashSet<>();
+
+      for (var hit : searchResponse.getHits().getHits()) {
+        Map<String, Object> sourceMap = hit.getSourceAsMap();
+        if (requestedPipelineFqn.equalsIgnoreCase((String) sourceMap.get("fullyQualifiedName"))) {
+          continue;
+        }
+        nodes.add(new HashMap<>(sourceMap));
+
+        List<Map<String, Object>> lineageList =
+            (List<Map<String, Object>>) sourceMap.get("lineage");
+        if (lineageList == null) {
+          continue;
+        }
+        for (Map<String, Object> lin : lineageList) {
+          if (filterPipeline) {
+            Map<String, Object> pipelineObj = (Map<String, Object>) lin.get("pipeline");
+            if (pipelineObj == null) {
+              continue;
+            }
+            String edgePipelineFqn = (String) pipelineObj.get("fullyQualifiedName");
+            if (!requestedPipelineFqn.equalsIgnoreCase(edgePipelineFqn)) {
+              continue;
+            }
+          }
+          @SuppressWarnings("unchecked")
+          Map<String, String> fromEntity = (Map<String, String>) lin.get("fromEntity");
+          @SuppressWarnings("unchecked")
+          Map<String, String> toEntity = (Map<String, String>) lin.get("toEntity");
+          if (fromEntity == null || toEntity == null) {
+            continue;
+          }
+
+          if ("lineage.fromEntity.fqnHash.keyword".equalsIgnoreCase(direction)) {
+            String fromFqnHash =
+                (fromEntity.get("fqnHash") != null)
+                    ? fromEntity.get("fqnHash")
+                    : FullyQualifiedName.buildHash(fromEntity.get("fqn"));
+            if (frontier.contains(fromFqnHash)) {
+              edges.add(lin);
+              String toFqnHash =
+                  (toEntity.get("fqnHash") != null)
+                      ? toEntity.get("fqnHash")
+                      : FullyQualifiedName.buildHash(toEntity.get("fqn"));
+              if (!visited.contains(toFqnHash)) {
+                nextFrontier.add(toFqnHash);
+              }
+            }
+          } else { // direction "lineage.toEntity.fqnHash.keyword"
+            String toFqnHash =
+                (toEntity.get("fqnHash") != null)
+                    ? toEntity.get("fqnHash")
+                    : FullyQualifiedName.buildHash(toEntity.get("fqn"));
+            if (frontier.contains(toFqnHash)) {
+              edges.add(lin);
+              String fromFqnHash =
+                  (fromEntity.get("fqnHash") != null)
+                      ? fromEntity.get("fqnHash")
+                      : FullyQualifiedName.buildHash(fromEntity.get("fqn"));
+              if (!visited.contains(fromFqnHash)) {
+                nextFrontier.add(fromFqnHash);
+              }
+            }
+          }
+        }
+      }
+      visited.addAll(nextFrontier);
+      frontier = nextFrontier;
+    }
   }
 
   @Override

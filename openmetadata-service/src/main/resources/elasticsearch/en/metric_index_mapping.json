@@ -46,6 +46,17 @@
     }
   },
   "mappings": {
+    "dynamic_templates": [
+      {
+        "lineage_pipeline_fqn": {
+          "path_match": "lineage.*.pipeline.fullyQualifiedName",
+          "mapping": {
+            "type": "keyword",
+            "ignore_above": 256
+          }
+        }
+      }
+    ],
     "properties": {
       "id": {
         "type": "text"

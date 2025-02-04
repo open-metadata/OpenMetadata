@@ -41,16 +41,4 @@ public class IndexMapping {
         ? childAliases.stream().map(alias -> clusterAlias + indexNameSeparator + alias).toList()
         : childAliases;
   }
-
-  private String getIndexName() {
-    return indexName;
-  }
-
-  private String getAlias() {
-    return alias;
-  }
-
-  private List<String> getParentAliases() {
-    return parentAliases;
-  }
 }
