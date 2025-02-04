@@ -103,40 +103,36 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
             {leftPanel}
           </Col>
         )}
-        <Col span={24}>
-          <Col
-            className={classNames(
-              `page-layout-v1-center page-layout-v1-vertical-scroll ${
-                !alert && 'p-t-sm'
-              }`,
-              {
-                'flex justify-center': center,
-              },
-              mainContainerClassName
-            )}
-            flex={contentWidth}
-            offset={center ? 3 : 0}
-            span={center ? 18 : 24}>
-            <Row gutter={0}>
-              <Col id={`${alert && 'page-alert'}`} span={24}>
-                {alert && (
-                  <AlertBar message={alert.message} type={alert.type} />
-                )}
-              </Col>
-              <Col className={`${alert && 'p-t-sm'}`} span={24}>
-                {children}
-              </Col>
-            </Row>
-          </Col>
-          {rightPanel && (
-            <Col
-              className="page-layout-rightpanel page-layout-v1-vertical-scroll"
-              flex={rightPanelWidth + 'px'}
-              id="right-panelV1">
-              {rightPanel}
+        <Col
+          className={classNames(
+            `page-layout-v1-center page-layout-v1-vertical-scroll ${
+              !alert && 'p-t-sm'
+            }`,
+            {
+              'flex justify-center': center,
+            },
+            mainContainerClassName
+          )}
+          flex={contentWidth}
+          offset={center ? 3 : 0}
+          span={center ? 18 : 24}>
+          {alert && (
+            <Col id={`${alert && 'page-alert'}`} span={24}>
+              <AlertBar message={alert.message} type={alert.type} />
             </Col>
           )}
+          <Col className={`${alert && 'p-t-sm'}`} span={24}>
+            {children}
+          </Col>
         </Col>
+        {rightPanel && (
+          <Col
+            className="page-layout-rightpanel page-layout-v1-vertical-scroll"
+            flex={rightPanelWidth + 'px'}
+            id="right-panelV1">
+            {rightPanel}
+          </Col>
+        )}
       </Row>
     </Fragment>
   );
