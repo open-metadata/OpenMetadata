@@ -1371,7 +1371,10 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     assertResponse(
         () -> createEntity(createRequest(test), TEST_AUTH_HEADERS),
         FORBIDDEN,
-        permissionNotAllowed(TEST_USER_NAME, List.of(MetadataOperation.CREATE)));
+        List.of(
+                permissionNotAllowed(TEST_USER_NAME, List.of(MetadataOperation.CREATE)),
+                "User does not have ANY of the required permissions."
+        ));
   }
 
   @Test
