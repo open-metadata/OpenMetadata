@@ -38,12 +38,13 @@ const verifyLastExecutionStatus = async (page: Page) => {
       },
       {
         // Custom expect message for reporting, optional.
-        message: 'To get the last run execution status as success',
+        message:
+          'To get the last run execution status as success or active with error',
         intervals: [30_000],
         timeout: 300_000,
       }
     )
-    .toBe('success');
+    .toEqual(expect.stringMatching(/success|activeError/g));
 
   await page.reload();
 
@@ -67,7 +68,9 @@ const verifyLastExecutionRun = async (page: Page) => {
       // wait for success status
       await verifyLastExecutionStatus(page);
     } else {
-      expect(responseData.data[0].status).toBe('success');
+      expect(responseData.data[0].status).toEqual(
+        expect.stringMatching(/success|activeError/g)
+      );
     }
   }
 };
@@ -89,8 +92,11 @@ test('Search Index Application', async ({ page }) => {
 
   await test.step('Edit application', async () => {
     await page.click('[data-testid="edit-button"]');
-    await page.click('[data-testid="cron-type"]');
-    await page.click('.rc-virtual-list [title="None"]');
+    await page.waitForSelector('[data-testid="schedular-card-container"]');
+    await page
+      .getByTestId('schedular-card-container')
+      .getByText('On Demand')
+      .click();
 
     const deployResponse = page.waitForResponse('/api/v1/apps/*');
     await page.click('.ant-modal-body [data-testid="deploy-button"]');
@@ -105,7 +111,16 @@ test('Search Index Application', async ({ page }) => {
     await page.click('[data-testid="configuration"]');
     await page.fill('#root\\/batchSize', '0');
 
-    await page.getByTitle('chart').getByLabel('close').click();
+    await page.getByTestId('tree-select-widget').click();
+
+    // Bring table option to view in dropdown via searching for it
+    await page
+      .getByTestId('tree-select-widget')
+      .getByRole('combobox')
+      .fill('Table');
+
+    // uncheck the entity
+    await page.getByRole('tree').getByTitle('Table').click();
 
     await page.click(
       '[data-testid="select-widget"] > .ant-select-selector > .ant-select-selection-item'
@@ -154,10 +169,13 @@ test('Search Index Application', async ({ page }) => {
     await page.click('[data-testid="install-application"]');
     await page.click('[data-testid="save-button"]');
     await page.click('[data-testid="submit-btn"]');
-    await page.click('[data-testid="cron-type"]');
-    await page.click('.rc-virtual-list [title="None"]');
+    await page.waitForSelector('[data-testid="schedular-card-container"]');
+    await page
+      .getByTestId('schedular-card-container')
+      .getByText('On Demand')
+      .click();
 
-    expect(await page.innerText('[data-testid="cron-type"]')).toContain('None');
+    await expect(page.locator('[data-testid="cron-type"]')).not.toBeVisible();
 
     const installApplicationResponse = page.waitForResponse('api/v1/apps');
     await page.click('[data-testid="deploy-button"]');

@@ -26,7 +26,10 @@ import React, {
 import { useTranslation } from 'react-i18next';
 import { PAGE_SIZE } from '../../../../constants/constants';
 import { mockDatasetData } from '../../../../constants/mockTourData.constants';
-import { DEFAULT_RANGE_DATA } from '../../../../constants/profiler.constant';
+import {
+  DEFAULT_RANGE_DATA,
+  DEFAULT_SORT_ORDER,
+} from '../../../../constants/profiler.constant';
 import { useTourProvider } from '../../../../context/TourProvider/TourProvider';
 import { TabSpecificField } from '../../../../enums/entity.enum';
 import { Table } from '../../../../generated/entity/data/table';
@@ -152,7 +155,7 @@ export const TableProfilerProvider = ({
         value: profile?.createDateTime
           ? DateTime.fromJSDate(new Date(profile?.createDateTime))
               .toUTC()
-              .toFormat('MMM dd, yyyy HH:mm')
+              .toLocaleString(DateTime.DATE_MED)
           : '--',
       },
     ];
@@ -209,6 +212,7 @@ export const TableProfilerProvider = ({
     setIsTestsLoading(true);
     try {
       const { data, paging } = await getListTestCaseBySearch({
+        ...DEFAULT_SORT_ORDER,
         ...params,
         fields: [
           TabSpecificField.TEST_CASE_RESULT,
@@ -304,8 +308,8 @@ export const TableProfilerProvider = ({
       {children}
       {settingModalVisible && (
         <ProfilerSettingsModal
-          columns={tableProfiler?.columns ?? []}
-          tableId={tableProfiler?.id ?? ''}
+          columns={table?.columns ?? []}
+          tableId={table?.id ?? ''}
           visible={settingModalVisible}
           onVisibilityChange={handleSettingModal}
         />

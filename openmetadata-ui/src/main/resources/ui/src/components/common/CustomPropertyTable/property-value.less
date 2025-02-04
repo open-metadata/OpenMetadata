@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 
-@btn-bg-color: #00000005;
-@enum-tag-bg-color: #00000008;
+@import (reference) url('../../../styles/variables.less');
 
 .entity-reference-list-item:last-child {
   border-bottom: none;
@@ -45,12 +44,12 @@
   }
 }
 
-.enum-key-tag {
+.ant-tag.enum-key-tag {
   width: max-content;
   margin: 0px;
-  border: none;
-  padding: 4px;
-  background: @enum-tag-bg-color;
+  padding: 2px 8px;
+  border: 1px solid @text-color;
+  background: @white;
 }
 
 .sql-query-custom-property {
@@ -74,4 +73,32 @@
 
 .custom-property-card-right-panel {
   overflow-x: scroll;
+}
+
+.ant-tag.time-interval-separator {
+  height: 26px;
+  background: @grey-1;
+  padding: 4px 8px;
+  border-radius: 30px;
+  margin-right: 0px;
+  font-size: 12px;
+  text-align: center;
+  font-weight: 500;
+  line-height: 18px;
+}
+
+.property-description {
+  .markdown-parser .toastui-editor-contents {
+    font-size: 13px;
+  }
+}
+
+.custom-property-inline-edit-container {
+  width: 100%;
+  flex-wrap: wrap;
+  overflow-x: scroll;
+
+  .ant-space-item:first-child {
+    width: inherit;
+  }
 }

@@ -15,7 +15,7 @@ The following configuration controls the auth mechanism for OpenMetadata. Update
 ```yaml
 authenticationConfiguration:
   provider: ${AUTHENTICATION_PROVIDER:-ldap}
-  publicKeyUrls: ${AUTHENTICATION_PUBLIC_KEYS:-[{your domain}/api/v1/system/config/jwks]} # Update with your Domain and Make sure this "/api/v1/system/config/jwks" is always configured to enable JWT tokens
+  publicKeyUrls: ${AUTHENTICATION_PUBLIC_KEYS:-[https://{your domain}/api/v1/system/config/jwks]} # Update with your Domain and Make sure this "/api/v1/system/config/jwks" is always configured to enable JWT tokens
   authority: ${AUTHENTICATION_AUTHORITY:-https://accounts.google.com}
   enableSelfSignup : ${AUTHENTICATION_ENABLE_SELF_SIGNUP:-false}
   ldapConfiguration:
@@ -44,6 +44,13 @@ authenticationConfiguration:
       trustAllConfig:
         examineValidityDates: ${AUTHENTICATION_LDAP_EXAMINE_VALIDITY_DATES:-true}
 ```
+
+{% note %}
+
+`AUTHENTICATION_PUBLIC_KEYS` and `AUTHENTICATION_CALLBACK_URL` refers to https://{your domain} this is referring to your OpenMetdata installation domain name
+and please make sure to correctly put http or https depending on your installation.
+
+{% /note %}
 
 For the LDAP auth we need to set:
 

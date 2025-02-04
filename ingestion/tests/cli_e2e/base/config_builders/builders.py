@@ -53,15 +53,67 @@ class ProfilerConfigBuilder(BaseBuilder):
         self.profilerSample = self.config_args.get("profilerSample", 100)
 
     # pylint: enable=invalid-name
-
     def build(self) -> dict:
         """build profiler config"""
         del self.config["source"]["sourceConfig"]["config"]
         self.config["source"]["sourceConfig"] = {
             "config": {
                 "type": "Profiler",
-                "generateSampleData": True,
                 "profileSample": self.profilerSample,
+            }
+        }
+
+        if self.config_args.get("includes"):
+            self.config["source"]["sourceConfig"]["config"]["schemaFilterPattern"] = {
+                "includes": self.config_args.get("includes")
+            }
+
+        self.config["processor"] = {"type": "orm-profiler", "config": {}}
+        return self.config
+
+
+class LineageConfigBuilder(BaseBuilder):
+    """Builder class for the Lineage config"""
+
+    # pylint: disable=invalid-name
+    def __init__(self, config: dict, config_args: dict) -> None:
+        super().__init__(config, config_args)
+        self.resultLimit = self.config_args.get("resultLimit", 1000)
+        self.queryLogDuration = self.config_args.get("queryLogDuration", 1)
+
+    # pylint: enable=invalid-name
+    def build(self) -> dict:
+        """build lineage config"""
+        self.config["source"]["type"] = self.config_args["source"]
+        self.config["source"]["sourceConfig"] = {
+            "config": {
+                "type": "DatabaseLineage",
+                "queryLogDuration": 1,
+                "resultLimit": 10000,
+                "processQueryLineage": True,
+                "processStoredProcedureLineage": True,
+            }
+        }
+        return self.config
+
+
+class AutoClassificationConfigBuilder(BaseBuilder):
+    """Builder class for the AutoClassification config"""
+
+    # pylint: disable=invalid-name
+    def __init__(self, config: dict, config_args: dict) -> None:
+        super().__init__(config, config_args)
+        self.profilerSample = self.config_args.get("profilerSample", 100)
+
+    # pylint: enable=invalid-name
+    def build(self) -> dict:
+        """build profiler config"""
+        del self.config["source"]["sourceConfig"]["config"]
+        self.config["source"]["sourceConfig"] = {
+            "config": {
+                "type": "AutoClassification",
+                "storeSampleData": True,
+                "enableAutoClassification": False,
             }
         }
 
@@ -87,13 +139,19 @@ class DataQualityConfigBuilder(BaseBuilder):
 
     def build(self) -> dict:
         """build profiler config"""
-        del self.config["source"]["sourceConfig"]["config"]
-        self.config["source"]["sourceConfig"] = {
-            "config": {
-                "type": TestSuiteConfigType.TestSuite.value,
-                "entityFullyQualifiedName": self.entity_fqn,
-            },
+        self.config["source"]["sourceConfig"]["config"] = {
+            "type": TestSuiteConfigType.TestSuite.value,
+            "entityFullyQualifiedName": self.entity_fqn,
         }
+
+        self.config["source"]["sourceConfig"]["config"]["serviceConnections"] = [
+            {
+                "serviceName": self.config["source"]["serviceName"],
+                "serviceConnection": self.config["source"]["serviceConnection"],
+            }
+        ]
+
+        del self.config["source"]["serviceConnection"]
 
         self.config["processor"] = {
             "type": "orm-test-runner",
@@ -179,6 +237,7 @@ def builder_factory(builder, config: dict, config_args: dict):
     """Factory method to return the builder class"""
     builder_classes = {
         E2EType.PROFILER.value: ProfilerConfigBuilder,
+        E2EType.LINEAGE.value: LineageConfigBuilder,
         E2EType.DATA_QUALITY.value: DataQualityConfigBuilder,
         E2EType.INGEST_DB_FILTER_SCHEMA.value: SchemaConfigBuilder,
         E2EType.INGEST_DB_FILTER_TABLE.value: TableConfigBuilder,
@@ -186,6 +245,7 @@ def builder_factory(builder, config: dict, config_args: dict):
         E2EType.INGEST_DASHBOARD_FILTER_MIX.value: DashboardMixConfigBuilder,
         E2EType.INGEST_DASHBOARD_NOT_INCLUDING.value: DashboardConfigBuilder,
         E2EType.PROFILER_PROCESSOR.value: ProfilerProcessorConfigBuilder,
+        E2EType.AUTO_CLASSIFICATION.value: AutoClassificationConfigBuilder,
     }
 
     return builder_classes.get(builder, BaseBuilder)(config, config_args)

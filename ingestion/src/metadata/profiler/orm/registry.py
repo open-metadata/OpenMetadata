@@ -14,10 +14,11 @@ Custom types' registry for easy access
 without having an import mess
 """
 import math
+from enum import Enum
 
 import sqlalchemy
 from sqlalchemy import Date, DateTime, Integer, Numeric, Time
-from sqlalchemy.sql.sqltypes import Concatenable, Enum
+from sqlalchemy.sql.sqltypes import Concatenable
 
 from metadata.generated.schema.entity.data.table import DataType
 from metadata.ingestion.source import sqa_types
@@ -45,7 +46,7 @@ class CustomTypes(TypeRegistry):
     UNDETERMINED = UndeterminedType
 
 
-class Dialects(Enum):
+class PythonDialects(Enum):
     """
     Map the service types from DatabaseServiceType
     to the dialect scheme name used for ingesting
@@ -54,10 +55,13 @@ class Dialects(Enum):
     Keep this alphabetically ordered
     """
 
+    # pylint: disable=invalid-name
+
     Athena = "awsathena"
     AzureSQL = "azuresql"
     BigQuery = "bigquery"
     ClickHouse = "clickhouse"
+    Cockroach = "cockroachdb"
     Databricks = "databricks"
     Db2 = "db2"
     Doris = "pydoris"
@@ -73,6 +77,7 @@ class Dialects(Enum):
     MSSQL = "mssql"
     MySQL = "mysql"
     Oracle = "oracle"
+    PinotDB = "pinotdb"
     Postgres = "postgresql"
     Presto = "presto"
     Redshift = "redshift"
@@ -81,6 +86,28 @@ class Dialects(Enum):
     Snowflake = "snowflake"
     Trino = "trino"
     Vertica = "vertica"
+
+
+class EnumAdapter(type):
+    """A hack to use the Dialects string values can be accesses
+    without using the value attribute.
+
+    Example:
+        Dialets.MySQL == "mysql"
+
+    Instead of:
+        Dialects.MySQL.value == "mysql"
+
+    We use this functionality when registring sqlalchemy custom functions. But we should
+    avoid using this pattern as it can be confusing.
+    """
+
+    def __getattr__(cls, item):
+        return PythonDialects[item].value
+
+
+class Dialects(metaclass=EnumAdapter):
+    pass
 
 
 # Sometimes we want to skip certain types for computing metrics.

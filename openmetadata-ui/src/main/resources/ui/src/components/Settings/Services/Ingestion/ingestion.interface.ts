@@ -20,18 +20,6 @@ import { UseAirflowStatusProps } from '../../../../hooks/useAirflowStatus';
 import { ServicesType } from '../../../../interface/service.interface';
 import { PagingHandlerParams } from '../../../common/NextPrevious/NextPrevious.interface';
 
-export interface ConnectorConfig {
-  username: string;
-  password: string;
-  host: string;
-  database: string;
-  includeFilterPattern: Array<string>;
-  excludeFilterPattern: Array<string>;
-  includeViews: boolean;
-  excludeDataProfiler?: boolean;
-  enableDataProfiler?: boolean;
-}
-
 export interface IngestionProps {
   ingestionPagingInfo: UsePagingInterface;
   serviceDetails: ServicesType;

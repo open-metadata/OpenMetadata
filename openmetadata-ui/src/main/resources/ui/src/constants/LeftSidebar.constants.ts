@@ -38,34 +38,34 @@ export const SIDEBAR_NESTED_KEYS = {
 export const SIDEBAR_LIST: Array<LeftSidebarItem> = [
   {
     key: ROUTES.EXPLORE,
-    label: i18next.t('label.explore'),
+    title: i18next.t('label.explore'),
     redirect_url: ROUTES.EXPLORE,
     icon: ExploreIcon,
     dataTestId: `app-bar-item-${SidebarItem.EXPLORE}`,
   },
   {
     key: ROUTES.OBSERVABILITY,
-    label: i18next.t('label.observability'),
+    title: i18next.t('label.observability'),
     icon: ObservabilityIcon,
     dataTestId: SidebarItem.OBSERVABILITY,
     children: [
       {
         key: ROUTES.DATA_QUALITY,
-        label: i18next.t('label.data-quality'),
+        title: i18next.t('label.data-quality'),
         redirect_url: ROUTES.DATA_QUALITY,
         icon: DataQualityIcon,
         dataTestId: `app-bar-item-${SidebarItem.DATA_QUALITY}`,
       },
       {
         key: ROUTES.INCIDENT_MANAGER,
-        label: i18next.t('label.incident-manager'),
+        title: i18next.t('label.incident-manager'),
         redirect_url: ROUTES.INCIDENT_MANAGER,
         icon: IncidentMangerIcon,
         dataTestId: `app-bar-item-${SidebarItem.INCIDENT_MANAGER}`,
       },
       {
         key: ROUTES.OBSERVABILITY_ALERTS,
-        label: i18next.t('label.alert-plural'),
+        title: i18next.t('label.alert-plural'),
         redirect_url: ROUTES.OBSERVABILITY_ALERTS,
         icon: AlertIcon,
         dataTestId: `app-bar-item-${SidebarItem.OBSERVABILITY_ALERT}`,
@@ -74,41 +74,41 @@ export const SIDEBAR_LIST: Array<LeftSidebarItem> = [
   },
   {
     key: ROUTES.DATA_INSIGHT,
-    label: i18next.t('label.insight-plural'),
+    title: i18next.t('label.insight-plural'),
     redirect_url: getDataInsightPathWithFqn(),
     icon: InsightsIcon,
     dataTestId: `app-bar-item-${SidebarItem.DATA_INSIGHT}`,
   },
   {
     key: ROUTES.DOMAIN,
-    label: i18next.t('label.domain-plural'),
+    title: i18next.t('label.domain-plural'),
     redirect_url: ROUTES.DOMAIN,
     icon: DomainsIcon,
     dataTestId: `app-bar-item-${SidebarItem.DOMAIN}`,
   },
   {
     key: 'governance',
-    label: i18next.t('label.govern'),
+    title: i18next.t('label.govern'),
     icon: GovernIcon,
     dataTestId: SidebarItem.GOVERNANCE,
     children: [
       {
         key: ROUTES.GLOSSARY,
-        label: i18next.t('label.glossary'),
+        title: i18next.t('label.glossary'),
         redirect_url: ROUTES.GLOSSARY,
         icon: GlossaryIcon,
         dataTestId: `app-bar-item-${SidebarItem.GLOSSARY}`,
       },
       {
         key: ROUTES.TAGS,
-        label: i18next.t('label.classification'),
+        title: i18next.t('label.classification'),
         redirect_url: ROUTES.TAGS,
         icon: ClassificationIcon,
         dataTestId: `app-bar-item-${SidebarItem.TAGS}`,
       },
       {
         key: ROUTES.METRICS,
-        label: i18next.t('label.metric-plural'),
+        title: i18next.t('label.metric-plural'),
         redirect_url: ROUTES.METRICS,
         icon: MetricIcon,
         dataTestId: `app-bar-item-${SidebarItem.METRICS}`,
@@ -119,7 +119,7 @@ export const SIDEBAR_LIST: Array<LeftSidebarItem> = [
 
 export const SETTING_ITEM = {
   key: ROUTES.SETTINGS,
-  label: i18next.t('label.setting-plural'),
+  title: i18next.t('label.setting-plural'),
   redirect_url: ROUTES.SETTINGS,
   icon: SettingsIcon,
   dataTestId: `app-bar-item-${SidebarItem.SETTINGS}`,
@@ -127,7 +127,7 @@ export const SETTING_ITEM = {
 
 export const LOGOUT_ITEM = {
   key: SidebarItem.LOGOUT,
-  label: i18next.t('label.logout'),
+  title: i18next.t('label.logout'),
   icon: LogoutIcon,
   dataTestId: `app-bar-item-${SidebarItem.LOGOUT}`,
 };

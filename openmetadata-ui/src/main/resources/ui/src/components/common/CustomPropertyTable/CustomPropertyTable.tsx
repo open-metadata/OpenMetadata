@@ -14,7 +14,7 @@
 import { Col, Divider, Row, Skeleton, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { isEmpty, isUndefined } from 'lodash';
+import { isEmpty, isUndefined, startCase } from 'lodash';
 import React, {
   Fragment,
   useCallback,
@@ -178,12 +178,20 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
     maxDataCap,
   ]);
 
-  const dataSource = useMemo(() => {
+  const { dataSource, dataSourceColumns } = useMemo(() => {
     const customProperties = entityTypeDetail?.customProperties ?? [];
 
-    return Array.isArray(customProperties)
+    const dataSource = Array.isArray(customProperties)
       ? customProperties.slice(0, maxDataCap)
       : [];
+
+    // Split dataSource into three equal parts
+    const columnCount = 3;
+    const columns = Array.from({ length: columnCount }, (_, i) =>
+      dataSource.filter((_, index) => index % columnCount === i)
+    );
+
+    return { dataSource, dataSourceColumns: columns };
   }, [maxDataCap, entityTypeDetail?.customProperties]);
 
   useEffect(() => {
@@ -220,7 +228,7 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
           className={className}
           placeholderText={
             <Transi18next
-              i18nKey="message.no-custom-properties-table"
+              i18nKey="message.no-custom-properties-entity"
               renderElement={
                 <a
                   href={CUSTOM_PROPERTIES_DOCS}
@@ -231,6 +239,7 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
               }
               values={{
                 docs: t('label.doc-plural-lowercase'),
+                entity: startCase(entityType),
               }}
             />
           }
@@ -286,21 +295,27 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
               </div>
             </>
           ) : (
-            <Row data-testid="custom-properties-card" gutter={[16, 16]}>
-              {dataSource.map((record) => (
-                <Col key={record.name} span={8}>
-                  <PropertyValue
-                    extension={extensionObject.extensionObject}
-                    hasEditPermissions={hasEditAccess}
-                    isRenderedInRightPanel={isRenderedInRightPanel}
-                    isVersionView={isVersionView}
-                    property={record}
-                    versionDataKeys={extensionObject.addedKeysList}
-                    onExtensionUpdate={onExtensionUpdate}
-                  />
-                </Col>
-              ))}
-            </Row>
+            <div className="custom-properties-card">
+              <Row data-testid="custom-properties-card" gutter={[16, 16]}>
+                {dataSourceColumns.map((columns, colIndex) => (
+                  <Col key={colIndex} span={8}>
+                    {columns.map((record) => (
+                      <div key={record.name} style={{ marginBottom: '16px' }}>
+                        <PropertyValue
+                          extension={extensionObject.extensionObject}
+                          hasEditPermissions={hasEditAccess}
+                          isRenderedInRightPanel={isRenderedInRightPanel}
+                          isVersionView={isVersionView}
+                          property={record}
+                          versionDataKeys={extensionObject.addedKeysList}
+                          onExtensionUpdate={onExtensionUpdate}
+                        />
+                      </div>
+                    ))}
+                  </Col>
+                ))}
+              </Row>
+            </div>
           )}
         </>
       )}

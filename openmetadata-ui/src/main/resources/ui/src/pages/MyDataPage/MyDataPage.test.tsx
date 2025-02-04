@@ -57,7 +57,7 @@ jest.mock(
 jest.mock('../../components/common/Loader/Loader', () => {
   return jest.fn().mockImplementation(() => <div>Loader</div>);
 });
-jest.mock('../../utils/CustomizePageClassBase', () => {
+jest.mock('../../utils/CustomizeMyDataPageClassBase', () => {
   return mockCustomizePageClassBase;
 });
 jest.mock('../../components/PageLayoutV1/PageLayoutV1', () => {
@@ -144,6 +144,12 @@ jest.mock('../../hoc/LimitWrapper', () => {
 jest.mock('../DataInsightPage/DataInsightProvider', async () => {
   return jest.fn().mockImplementation(({ children }) => <>{children}</>);
 });
+
+jest.mock('../../hooks/useWelcomeStore', () => ({
+  useWelcomeStore: jest.fn().mockReturnValue({
+    isWelcomeVisible: true,
+  }),
+}));
 
 jest.mock('../DataInsightPage/DataInsightProvider', () => {
   return {

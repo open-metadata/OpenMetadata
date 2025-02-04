@@ -1,8 +1,10 @@
 package org.openmetadata.service.apps.bundles.insights;
 
 import static org.openmetadata.service.apps.scheduler.AbstractOmAppJobListener.APP_RUN_STATS;
+import static org.openmetadata.service.apps.scheduler.AbstractOmAppJobListener.WEBSOCKET_STATUS_CHANNEL;
 import static org.openmetadata.service.apps.scheduler.AppScheduler.ON_DEMAND_JOB;
-import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getTotalRequestToProcess;
+import static org.openmetadata.service.socket.WebSocketManager.DATA_INSIGHTS_JOB_BROADCAST_CHANNEL;
+import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getInitialStatsForEntities;
 
 import es.org.elasticsearch.client.RestClient;
 import java.io.IOException;
@@ -24,6 +26,7 @@ import org.openmetadata.schema.system.EventPublisherJob;
 import org.openmetadata.schema.system.IndexingError;
 import org.openmetadata.schema.system.Stats;
 import org.openmetadata.schema.system.StepStats;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.AbstractNativeApplication;
 import org.openmetadata.service.apps.bundles.insights.search.DataInsightsSearchInterface;
 import org.openmetadata.service.apps.bundles.insights.search.elasticsearch.ElasticSearchDataInsightsClient;
@@ -32,10 +35,12 @@ import org.openmetadata.service.apps.bundles.insights.utils.TimestampUtils;
 import org.openmetadata.service.apps.bundles.insights.workflows.WorkflowStats;
 import org.openmetadata.service.apps.bundles.insights.workflows.costAnalysis.CostAnalysisWorkflow;
 import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.DataAssetsWorkflow;
+import org.openmetadata.service.apps.bundles.insights.workflows.dataQuality.DataQualityWorkflow;
 import org.openmetadata.service.apps.bundles.insights.workflows.webAnalytics.WebAnalyticsWorkflow;
 import org.openmetadata.service.exception.SearchIndexException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.search.models.IndexMapping;
 import org.openmetadata.service.socket.WebSocketManager;
 import org.openmetadata.service.util.JsonUtils;
 import org.quartz.JobExecutionContext;
@@ -73,6 +78,9 @@ public class DataInsightsApp extends AbstractNativeApplication {
           "glossaryTerm",
           "tag");
 
+  public final Set<String> dataQualityEntities =
+      Set.of(Entity.TEST_CASE_RESULT, Entity.TEST_CASE_RESOLUTION_STATUS);
+
   public DataInsightsApp(CollectionDAO collectionDAO, SearchRepository searchRepository) {
     super(collectionDAO, searchRepository);
   }
@@ -99,14 +107,58 @@ public class DataInsightsApp extends AbstractNativeApplication {
     return String.format("%s-%s", DATA_ASSET_INDEX_PREFIX, dataAssetType).toLowerCase();
   }
 
+  private void createIndexInternal(String entityType) throws IOException {
+    IndexMapping resultIndexType = searchRepository.getIndexMapping(entityType);
+    if (!searchRepository.indexExists(resultIndexType)) {
+      searchRepository.createIndex(resultIndexType);
+    }
+    DataInsightsSearchInterface searchInterface = getSearchInterface();
+    if (!searchInterface.dataAssetDataStreamExists(getDataStreamName(entityType))) {
+      searchRepository
+          .getSearchClient()
+          .addIndexAlias(resultIndexType, getDataStreamName(entityType));
+    }
+  }
+
+  private void deleteIndexInternal(String entityType) {
+    IndexMapping resultIndexType = searchRepository.getIndexMapping(entityType);
+    if (searchRepository.indexExists(resultIndexType)) {
+      searchRepository.deleteIndex(resultIndexType);
+    }
+  }
+
+  private void createDataQualityDataIndex() {
+    try {
+      createIndexInternal(Entity.TEST_CASE_RESULT);
+      createIndexInternal(Entity.TEST_CASE_RESOLUTION_STATUS);
+    } catch (IOException ex) {
+      LOG.error(
+          "Couldn't install DataInsightsApp: Can't initialize ElasticSearch Index for DataQuality.",
+          ex);
+    }
+  }
+
+  private void deleteDataQualityDataIndex() {
+    deleteIndexInternal(Entity.TEST_CASE_RESULT);
+    deleteIndexInternal(Entity.TEST_CASE_RESOLUTION_STATUS);
+  }
+
   private void createDataAssetsDataStream() {
     DataInsightsSearchInterface searchInterface = getSearchInterface();
 
+    ElasticSearchConfiguration config = searchRepository.getElasticSearchConfiguration();
+    String language =
+        config != null && config.getSearchIndexMappingLanguage() != null
+            ? config.getSearchIndexMappingLanguage().value()
+            : "en";
+
     try {
       for (String dataAssetType : dataAssetTypes) {
+        IndexMapping dataAssetIndex = searchRepository.getIndexMapping(dataAssetType);
         String dataStreamName = getDataStreamName(dataAssetType);
         if (!searchInterface.dataAssetDataStreamExists(dataStreamName)) {
-          searchInterface.createDataAssetsDataStream(dataStreamName);
+          searchInterface.createDataAssetsDataStream(
+              dataStreamName, dataAssetType, dataAssetIndex, language);
         }
       }
     } catch (IOException ex) {
@@ -133,6 +185,7 @@ public class DataInsightsApp extends AbstractNativeApplication {
   public void init(App app) {
     super.init(app);
     createDataAssetsDataStream();
+    createDataQualityDataIndex();
     DataInsightsAppConfig config =
         JsonUtils.convertValue(app.getAppConfiguration(), DataInsightsAppConfig.class);
 
@@ -176,6 +229,8 @@ public class DataInsightsApp extends AbstractNativeApplication {
       if (recreateDataAssetsIndex.isPresent() && recreateDataAssetsIndex.get().equals(true)) {
         deleteDataAssetsDataStream();
         createDataAssetsDataStream();
+        deleteDataQualityDataIndex();
+        createDataQualityDataIndex();
       }
 
       WorkflowStats webAnalyticsStats = processWebAnalytics();
@@ -186,6 +241,9 @@ public class DataInsightsApp extends AbstractNativeApplication {
 
       WorkflowStats dataAssetsStats = processDataAssets();
       updateJobStatsWithWorkflowStats(dataAssetsStats);
+
+      WorkflowStats dataQualityStats = processDataQuality();
+      updateJobStatsWithWorkflowStats(dataQualityStats);
 
       if (webAnalyticsStats.hasFailed()
           || costAnalysisStats.hasFailed()
@@ -262,7 +320,13 @@ public class DataInsightsApp extends AbstractNativeApplication {
   private WorkflowStats processDataAssets() {
     DataAssetsWorkflow workflow =
         new DataAssetsWorkflow(
-            timestamp, batchSize, backfill, dataAssetTypes, collectionDAO, searchRepository);
+            timestamp,
+            batchSize,
+            backfill,
+            dataAssetTypes,
+            collectionDAO,
+            searchRepository,
+            getSearchInterface());
     WorkflowStats workflowStats = workflow.getWorkflowStats();
 
     try {
@@ -273,6 +337,23 @@ public class DataInsightsApp extends AbstractNativeApplication {
     }
 
     return workflowStats;
+  }
+
+  private WorkflowStats processDataQuality() {
+    for (String entityType : dataQualityEntities) {
+      DataQualityWorkflow workflow =
+          new DataQualityWorkflow(
+              timestamp, batchSize, backfill, entityType, collectionDAO, searchRepository);
+
+      try {
+        workflow.process();
+      } catch (SearchIndexException ex) {
+        jobData.setStatus(EventPublisherJob.Status.FAILED);
+        jobData.setFailure(ex.getIndexingError());
+      }
+    }
+
+    return DataQualityWorkflow.getWorkflowStats();
   }
 
   private void updateJobStatsWithWorkflowStats(WorkflowStats workflowStats) {
@@ -312,7 +393,10 @@ public class DataInsightsApp extends AbstractNativeApplication {
     if (stats == null) {
       stats =
           new StepStats()
-              .withTotalRecords(getTotalRequestToProcess(jobData.getEntities(), collectionDAO));
+              .withTotalRecords(
+                  getInitialStatsForEntities(jobData.getEntities())
+                      .getJobStats()
+                      .getTotalRecords());
     }
 
     stats.setTotalRecords(
@@ -339,7 +423,7 @@ public class DataInsightsApp extends AbstractNativeApplication {
     jobData.setStats(jobDataStats);
   }
 
-  public void updateRecordToDb(JobExecutionContext jobExecutionContext) {
+  public void updateRecordToDbAndNotify(JobExecutionContext jobExecutionContext) {
     AppRunRecord appRecord = getJobRecord(jobExecutionContext);
 
     // Update Run Record with Status
@@ -357,6 +441,12 @@ public class DataInsightsApp extends AbstractNativeApplication {
           new SuccessContext().withAdditionalProperty("stats", jobData.getStats()));
     }
 
+    if (WebSocketManager.getInstance() != null) {
+      WebSocketManager.getInstance()
+          .broadCastMessageToAll(
+              DATA_INSIGHTS_JOB_BROADCAST_CHANNEL, JsonUtils.pojoToJson(appRecord));
+    }
+
     pushAppStatusUpdates(jobExecutionContext, appRecord, true);
   }
 
@@ -364,13 +454,12 @@ public class DataInsightsApp extends AbstractNativeApplication {
     try {
       // store job details in Database
       jobExecutionContext.getJobDetail().getJobDataMap().put(APP_RUN_STATS, jobData.getStats());
+      jobExecutionContext
+          .getJobDetail()
+          .getJobDataMap()
+          .put(WEBSOCKET_STATUS_CHANNEL, DATA_INSIGHTS_JOB_BROADCAST_CHANNEL);
       // Update Record to db
-      updateRecordToDb(jobExecutionContext);
-      if (WebSocketManager.getInstance() != null) {
-        WebSocketManager.getInstance()
-            .broadCastMessageToAll(
-                WebSocketManager.JOB_STATUS_BROADCAST_CHANNEL, JsonUtils.pojoToJson(jobData));
-      }
+      updateRecordToDbAndNotify(jobExecutionContext);
     } catch (Exception ex) {
       LOG.error("Failed to send updated stats with WebSocket", ex);
     }

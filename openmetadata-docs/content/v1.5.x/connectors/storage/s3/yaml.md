@@ -281,7 +281,7 @@ source:
         # assumeRoleSourceIdentity: identity
 ```
 ```yaml {% srNumber=13 %}
-      bucketName: 
+      bucketNames: 
       - s3-testing-1
       - s3-testing-2
 ```

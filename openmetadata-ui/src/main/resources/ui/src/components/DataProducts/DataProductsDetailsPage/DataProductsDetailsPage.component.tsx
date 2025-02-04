@@ -318,7 +318,7 @@ const DataProductsDetailsPage = ({
     assetTabRef.current?.refreshAssets();
   };
 
-  const onNameSave = (obj: { name: string; displayName: string }) => {
+  const onNameSave = (obj: { name: string; displayName?: string }) => {
     if (dataProduct) {
       const { displayName } = obj;
       let updatedDetails = cloneDeep(dataProduct);
@@ -410,14 +410,9 @@ const DataProductsDetailsPage = ({
         children: (
           <DocumentationTab
             domain={dataProduct}
-            editCustomAttributePermission={
-              (dataProductPermission.EditAll ||
-                dataProductPermission.EditCustomFields) &&
-              !isVersionsView
-            }
             isVersionsView={isVersionsView}
+            permissions={dataProductPermission}
             type={DocumentationEntity.DATA_PRODUCT}
-            viewAllPermission={dataProductPermission.ViewAll}
             onExtensionUpdate={handelExtensionUpdate}
             onUpdate={(data: Domain | DataProduct) =>
               onUpdate(data as DataProduct)
@@ -640,7 +635,7 @@ const DataProductsDetailsPage = ({
         </Col>
       </Row>
 
-      <EntityNameModal
+      <EntityNameModal<DataProduct>
         entity={dataProduct}
         title={t('label.edit-entity', {
           entity: t('label.display-name'),

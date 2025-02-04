@@ -11,36 +11,58 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Space, Tabs } from 'antd';
+import { Col, Row, Tabs } from 'antd';
 import classNames from 'classnames';
 import { isEmpty, noop } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import RGL, { WidthProvider } from 'react-grid-layout';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
+import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { getGlossaryTermDetailsPath } from '../../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
 import { EntityField } from '../../../constants/Feeds.constants';
-import { COMMON_RESIZABLE_PANEL_CONFIG } from '../../../constants/ResizablePanel.constants';
-import { EntityType } from '../../../enums/entity.enum';
+import { GlossaryTermDetailPageWidgetKeys } from '../../../enums/CustomizeDetailPage.enum';
+import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { Glossary } from '../../../generated/entity/data/glossary';
 import { ChangeDescription } from '../../../generated/entity/type';
+import { Page, PageType, Tab } from '../../../generated/system/ui/page';
+import { TagLabel } from '../../../generated/tests/testCase';
+import { TagSource } from '../../../generated/type/tagLabel';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { useGridLayoutDirection } from '../../../hooks/useGridLayoutDirection';
 import { FeedCounts } from '../../../interface/feed.interface';
+import { WidgetConfig } from '../../../pages/CustomizablePage/CustomizablePage.interface';
+import { useCustomizeStore } from '../../../pages/CustomizablePage/CustomizeStore';
+import { getDocumentByFQN } from '../../../rest/DocStoreAPI';
 import { getFeedCounts } from '../../../utils/CommonUtils';
+import customizeGlossaryPageClassBase from '../../../utils/CustomizeGlossaryPage/CustomizeGlossaryPage';
 import { getEntityName } from '../../../utils/EntityUtils';
-import { getEntityVersionByField } from '../../../utils/EntityVersionUtils';
+import {
+  getEntityVersionByField,
+  getEntityVersionTags,
+} from '../../../utils/EntityVersionUtils';
+import {
+  getGlossaryTermDetailTabs,
+  getTabLabelMap,
+  getWidgetFromKey,
+} from '../../../utils/GlossaryTerm/GlossaryTermUtil';
 import { ActivityFeedTab } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import DescriptionV1 from '../../common/EntityDescription/DescriptionV1';
-import ResizablePanels from '../../common/ResizablePanels/ResizablePanels';
 import TabsLabel from '../../common/TabsLabel/TabsLabel.component';
-import GlossaryDetailsRightPanel from '../GlossaryDetailsRightPanel/GlossaryDetailsRightPanel.component';
+import { DomainLabelV2 } from '../../DataAssets/DomainLabelV2/DomainLabelV2';
+import { OwnerLabelV2 } from '../../DataAssets/OwnerLabelV2/OwnerLabelV2';
+import { ReviewerLabelV2 } from '../../DataAssets/ReviewerLabelV2/ReviewerLabelV2';
+import { GenericProvider } from '../../GenericProvider/GenericProvider';
+import TagsContainerV2 from '../../Tag/TagsContainerV2/TagsContainerV2';
+import { DisplayType } from '../../Tag/TagsViewer/TagsViewer.interface';
 import GlossaryHeader from '../GlossaryHeader/GlossaryHeader.component';
 import GlossaryTermTab from '../GlossaryTermTab/GlossaryTermTab.component';
 import { useGlossaryStore } from '../useGlossary.store';
 import './glossary-details.less';
-import {
-  GlossaryDetailsProps,
-  GlossaryTabs,
-} from './GlossaryDetails.interface';
+import { GlossaryDetailsProps } from './GlossaryDetails.interface';
+
+const ReactGridLayout = WidthProvider(RGL);
 
 const GlossaryDetails = ({
   permissions,
@@ -57,12 +79,35 @@ const GlossaryDetails = ({
   const { t } = useTranslation();
   const history = useHistory();
   const { activeGlossary: glossary } = useGlossaryStore();
-  const { tab: activeTab } = useParams<{ tab: string }>();
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA
   );
+  const { selectedPersona } = useApplicationStore();
   const [isDescriptionEditable, setIsDescriptionEditable] =
     useState<boolean>(false);
+  const { currentPersonaDocStore } = useCustomizeStore();
+  // Since we are rendering this component for all customized tabs we need tab ID to get layout form store
+  const { tab: activeTab = EntityTabs.TERMS } =
+    useParams<{ tab: EntityTabs }>();
+  const [customizedPage, setCustomizedPage] = useState<Page | null>(null);
+
+  useGridLayoutDirection();
+
+  const layout = useMemo(() => {
+    if (!currentPersonaDocStore) {
+      return customizeGlossaryPageClassBase.getDefaultWidgetForTab(activeTab);
+    }
+
+    const page = currentPersonaDocStore?.data?.pages.find(
+      (p: Page) => p.pageType === PageType.Glossary
+    );
+
+    if (page) {
+      return page.tabs.find((t: Tab) => t.id === activeTab)?.layout;
+    } else {
+      return customizeGlossaryPageClassBase.getDefaultWidgetForTab(activeTab);
+    }
+  }, [currentPersonaDocStore, activeTab]);
 
   const handleFeedCount = useCallback((data: FeedCounts) => {
     setFeedCount(data);
@@ -94,44 +139,37 @@ const GlossaryDetails = ({
     }
   };
 
-  const description = useMemo(
-    () =>
-      isVersionView
-        ? getEntityVersionByField(
-            glossary.changeDescription as ChangeDescription,
-            EntityField.DESCRIPTION,
-            glossary.description
-          )
-        : glossary.description,
+  const updatedGlossary = useMemo(() => {
+    const updatedDescription = isVersionView
+      ? getEntityVersionByField(
+          glossary.changeDescription as ChangeDescription,
+          EntityField.DESCRIPTION,
+          glossary.description
+        )
+      : glossary.description;
 
-    [glossary, isVersionView]
-  );
+    const updatedName = isVersionView
+      ? getEntityVersionByField(
+          glossary.changeDescription as ChangeDescription,
+          EntityField.NAME,
+          glossary.name
+        )
+      : glossary.name;
+    const updatedDisplayName = isVersionView
+      ? getEntityVersionByField(
+          glossary.changeDescription as ChangeDescription,
+          EntityField.DISPLAYNAME,
+          glossary.displayName
+        )
+      : glossary.displayName;
 
-  const name = useMemo(
-    () =>
-      isVersionView
-        ? getEntityVersionByField(
-            glossary.changeDescription as ChangeDescription,
-            EntityField.NAME,
-            glossary.name
-          )
-        : glossary.name,
-
-    [glossary, isVersionView]
-  );
-
-  const displayName = useMemo(
-    () =>
-      isVersionView
-        ? getEntityVersionByField(
-            glossary.changeDescription as ChangeDescription,
-            EntityField.DISPLAYNAME,
-            glossary.displayName
-          )
-        : glossary.displayName,
-
-    [glossary, isVersionView]
-  );
+    return {
+      ...glossary,
+      description: updatedDescription,
+      name: updatedName,
+      displayName: updatedDisplayName,
+    };
+  }, [glossary, isVersionView]);
 
   const handleTabChange = (activeKey: string) => {
     if (activeKey !== activeTab) {
@@ -141,88 +179,129 @@ const GlossaryDetails = ({
     }
   };
 
+  const tags = useMemo(
+    () =>
+      isVersionView
+        ? getEntityVersionTags(
+            glossary,
+            glossary.changeDescription as ChangeDescription
+          )
+        : glossary.tags,
+    [isVersionView, glossary]
+  );
+
+  const tagsWidget = useMemo(() => {
+    return (
+      <TagsContainerV2
+        displayType={DisplayType.READ_MORE}
+        entityFqn={glossary.fullyQualifiedName}
+        entityType={EntityType.GLOSSARY}
+        permission={permissions.EditAll || permissions.EditTags}
+        selectedTags={tags ?? []}
+        tagType={TagSource.Classification}
+        onSelectionChange={async (updatedTags: TagLabel[]) =>
+          await handleGlossaryUpdate({ ...glossary, tags: updatedTags })
+        }
+        onThreadLinkSelect={onThreadLinkSelect}
+      />
+    );
+  }, [tags, glossary, handleGlossaryUpdate, permissions, onThreadLinkSelect]);
+
+  const widgets = useMemo(() => {
+    const getWidgetFromKeyInternal = (widget: WidgetConfig) => {
+      if (widget.i.startsWith(GlossaryTermDetailPageWidgetKeys.DESCRIPTION)) {
+        return (
+          <DescriptionV1
+            description={updatedGlossary.description}
+            entityFqn={glossary.fullyQualifiedName}
+            entityName={getEntityName(glossary)}
+            entityType={EntityType.GLOSSARY}
+            hasEditAccess={permissions.EditDescription || permissions.EditAll}
+            isDescriptionExpanded={isEmpty(glossary.children)}
+            isEdit={isDescriptionEditable}
+            owner={glossary?.owners}
+            showActions={!glossary.deleted}
+            onCancel={() => setIsDescriptionEditable(false)}
+            onDescriptionEdit={() => setIsDescriptionEditable(true)}
+            onDescriptionUpdate={onDescriptionUpdate}
+            onThreadLinkSelect={onThreadLinkSelect}
+          />
+        );
+      } else if (
+        widget.i.startsWith(GlossaryTermDetailPageWidgetKeys.TERMS_TABLE)
+      ) {
+        return (
+          <GlossaryTermTab
+            isGlossary
+            permissions={permissions}
+            refreshGlossaryTerms={refreshGlossaryTerms}
+            termsLoading={termsLoading}
+            onAddGlossaryTerm={onAddGlossaryTerm}
+            onEditGlossaryTerm={onEditGlossaryTerm}
+          />
+        );
+      } else if (widget.i.startsWith(GlossaryTermDetailPageWidgetKeys.OWNER)) {
+        return <OwnerLabelV2 />;
+      } else if (widget.i.startsWith(GlossaryTermDetailPageWidgetKeys.DOMAIN)) {
+        return <DomainLabelV2 showDomainHeading />;
+      } else if (
+        widget.i.startsWith(GlossaryTermDetailPageWidgetKeys.REVIEWER)
+      ) {
+        return <ReviewerLabelV2 />;
+      } else if (widget.i.startsWith(GlossaryTermDetailPageWidgetKeys.TAGS)) {
+        return tagsWidget;
+      }
+
+      return getWidgetFromKey({
+        widgetConfig: widget,
+        handleOpenAddWidgetModal: noop,
+        handlePlaceholderWidgetKey: noop,
+        handleRemoveWidget: noop,
+        isEditView: false,
+      });
+    };
+
+    return layout.map((widget: WidgetConfig) => (
+      <div
+        data-grid={widget}
+        id={widget.i}
+        key={widget.i}
+        style={{ overflow: 'scroll' }}>
+        {getWidgetFromKeyInternal(widget)}
+      </div>
+    ));
+  }, [tagsWidget, layout, permissions, termsLoading]);
+
   const detailsContent = useMemo(() => {
     return (
-      <Row className="h-full" gutter={[32, 0]}>
-        <Col className="glossary-height-with-resizable-panel" span={24}>
-          <ResizablePanels
-            firstPanel={{
-              className: 'glossary-resizable-panel-container',
-              children: (
-                <div className="p-y-md p-x-md glossary-content-container">
-                  <Space className="w-full" direction="vertical" size={24}>
-                    <DescriptionV1
-                      description={description}
-                      entityFqn={glossary.fullyQualifiedName}
-                      entityName={getEntityName(glossary)}
-                      entityType={EntityType.GLOSSARY}
-                      hasEditAccess={
-                        permissions.EditDescription || permissions.EditAll
-                      }
-                      isDescriptionExpanded={isEmpty(glossary.children)}
-                      isEdit={isDescriptionEditable}
-                      owner={glossary?.owners}
-                      showActions={!glossary.deleted}
-                      onCancel={() => setIsDescriptionEditable(false)}
-                      onDescriptionEdit={() => setIsDescriptionEditable(true)}
-                      onDescriptionUpdate={onDescriptionUpdate}
-                      onThreadLinkSelect={onThreadLinkSelect}
-                    />
-
-                    <GlossaryTermTab
-                      isGlossary
-                      permissions={permissions}
-                      refreshGlossaryTerms={refreshGlossaryTerms}
-                      termsLoading={termsLoading}
-                      onAddGlossaryTerm={onAddGlossaryTerm}
-                      onEditGlossaryTerm={onEditGlossaryTerm}
-                    />
-                  </Space>
-                </div>
-              ),
-              ...COMMON_RESIZABLE_PANEL_CONFIG.LEFT_PANEL,
-            }}
-            secondPanel={{
-              children: (
-                <GlossaryDetailsRightPanel
-                  isGlossary
-                  entityType={EntityType.GLOSSARY_TERM}
-                  isVersionView={isVersionView}
-                  permissions={permissions}
-                  refreshGlossaryTerms={refreshGlossaryTerms}
-                  selectedData={glossary}
-                  onThreadLinkSelect={onThreadLinkSelect}
-                  onUpdate={handleGlossaryUpdate}
-                />
-              ),
-              ...COMMON_RESIZABLE_PANEL_CONFIG.RIGHT_PANEL,
-              className:
-                'entity-resizable-right-panel-container glossary-resizable-panel-container',
-            }}
-          />
-        </Col>
-      </Row>
+      <ReactGridLayout
+        className="grid-container"
+        cols={8}
+        isDraggable={false}
+        isResizable={false}
+        margin={[
+          customizeGlossaryPageClassBase.detailWidgetMargin,
+          customizeGlossaryPageClassBase.detailWidgetMargin,
+        ]}
+        rowHeight={customizeGlossaryPageClassBase.rowHeight}>
+        {widgets}
+      </ReactGridLayout>
     );
-  }, [
-    isVersionView,
-    permissions,
-    glossary,
-    termsLoading,
-    description,
-    isDescriptionEditable,
-  ]);
+  }, [permissions, glossary, termsLoading, isDescriptionEditable, widgets]);
 
   const tabs = useMemo(() => {
-    return [
+    const tabLabelMap = getTabLabelMap(customizedPage?.tabs);
+
+    const items = [
       {
         label: (
           <TabsLabel
-            id={GlossaryTabs.TERMS}
-            isActive={activeTab === GlossaryTabs.TERMS}
-            name={t('label.term-plural')}
+            id={EntityTabs.TERMS}
+            isActive={activeTab === EntityTabs.TERMS}
+            name={tabLabelMap[EntityTabs.TERMS] ?? t('label.term-plural')}
           />
         ),
-        key: GlossaryTabs.TERMS,
+        key: EntityTabs.TERMS,
         children: detailsContent,
       },
       ...(!isVersionView
@@ -231,12 +310,15 @@ const GlossaryDetails = ({
               label: (
                 <TabsLabel
                   count={feedCount.totalCount}
-                  id={GlossaryTabs.ACTIVITY_FEED}
-                  isActive={activeTab === GlossaryTabs.ACTIVITY_FEED}
-                  name={t('label.activity-feed-and-task-plural')}
+                  id={EntityTabs.ACTIVITY_FEED}
+                  isActive={activeTab === EntityTabs.ACTIVITY_FEED}
+                  name={
+                    tabLabelMap[EntityTabs.ACTIVITY_FEED] ??
+                    t('label.activity-feed-and-task-plural')
+                  }
                 />
               ),
-              key: GlossaryTabs.ACTIVITY_FEED,
+              key: EntityTabs.ACTIVITY_FEED,
               children: (
                 <ActivityFeedTab
                   refetchFeed
@@ -253,8 +335,15 @@ const GlossaryDetails = ({
           ]
         : []),
     ];
+
+    return getGlossaryTermDetailTabs(
+      items,
+      customizedPage?.tabs,
+      EntityTabs.TERMS
+    );
   }, [
     detailsContent,
+    customizedPage?.tabs,
     glossary.fullyQualifiedName,
     feedCount.conversationCount,
     feedCount.totalTasksCount,
@@ -266,37 +355,57 @@ const GlossaryDetails = ({
     getEntityFeedCount();
   }, [glossary.fullyQualifiedName]);
 
+  const fetchDocument = useCallback(async () => {
+    const pageFQN = `${EntityType.PERSONA}${FQN_SEPARATOR_CHAR}${selectedPersona.fullyQualifiedName}`;
+    try {
+      const doc = await getDocumentByFQN(pageFQN);
+      setCustomizedPage(
+        doc.data?.pages?.find((p: Page) => p.pageType === PageType.Glossary)
+      );
+    } catch (error) {
+      // fail silent
+    }
+  }, [selectedPersona.fullyQualifiedName]);
+
+  useEffect(() => {
+    if (selectedPersona?.fullyQualifiedName) {
+      fetchDocument();
+    }
+  }, [selectedPersona]);
+
   return (
-    <Row
-      className="glossary-details"
-      data-testid="glossary-details"
-      gutter={[0, 16]}>
-      <Col
-        className={classNames('p-x-md', {
-          'p-l-xl': !isVersionView,
-        })}
-        span={24}>
-        <GlossaryHeader
-          isGlossary
-          isVersionView={isVersionView}
-          permissions={permissions}
-          selectedData={{ ...glossary, displayName, name }}
-          updateVote={updateVote}
-          onAddGlossaryTerm={onAddGlossaryTerm}
-          onDelete={handleGlossaryDelete}
-          onUpdate={handleGlossaryUpdate}
-        />
-      </Col>
-      <Col span={24}>
-        <Tabs
-          activeKey={activeTab ?? GlossaryTabs.TERMS}
-          className="glossary-details-page-tabs"
-          data-testid="tabs"
-          items={tabs}
-          onChange={handleTabChange}
-        />
-      </Col>
-    </Row>
+    <GenericProvider<Glossary>
+      data={updatedGlossary}
+      isVersionView={isVersionView}
+      permissions={permissions}
+      type={EntityType.GLOSSARY}
+      onUpdate={handleGlossaryUpdate}>
+      <Row
+        className="glossary-details"
+        data-testid="glossary-details"
+        gutter={[0, 16]}>
+        <Col
+          className={classNames('p-x-md', {
+            'p-l-xl': !isVersionView,
+          })}
+          span={24}>
+          <GlossaryHeader
+            updateVote={updateVote}
+            onAddGlossaryTerm={onAddGlossaryTerm}
+            onDelete={handleGlossaryDelete}
+          />
+        </Col>
+        <Col span={24}>
+          <Tabs
+            activeKey={activeTab ?? EntityTabs.TERMS}
+            className="glossary-details-page-tabs"
+            data-testid="tabs"
+            items={tabs}
+            onChange={handleTabChange}
+          />
+        </Col>
+      </Row>
+    </GenericProvider>
   );
 };
 

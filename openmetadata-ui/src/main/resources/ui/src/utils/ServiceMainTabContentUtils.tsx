@@ -17,46 +17,51 @@ import { t } from 'i18next';
 import { isUndefined } from 'lodash';
 import { ServiceTypes } from 'Models';
 import React from 'react';
-import { Link } from 'react-router-dom';
-import UserPopOverCard from '../components/common/PopOverCard/UserPopOverCard';
-import RichTextEditorPreviewer from '../components/common/RichTextEditor/RichTextEditorPreviewer';
+import DisplayName from '../components/common/DisplayName/DisplayName';
+import { OwnerLabel } from '../components/common/OwnerLabel/OwnerLabel.component';
+import RichTextEditorPreviewerV1 from '../components/common/RichTextEditor/RichTextEditorPreviewerV1';
+import { EntityName } from '../components/Modals/EntityNameModal/EntityNameModal.interface';
 import TagsViewer from '../components/Tag/TagsViewer/TagsViewer';
 import { NO_DATA_PLACEHOLDER } from '../constants/constants';
 import { ServiceCategory } from '../enums/service.enum';
-import { OwnerType } from '../enums/user.enum';
 import { Database } from '../generated/entity/data/database';
 import { Pipeline } from '../generated/entity/data/pipeline';
-import { EntityReference } from '../generated/entity/type';
 import { ServicePageData } from '../pages/ServiceDetailsPage/ServiceDetailsPage';
-import { getEntityName } from './EntityUtils';
+import { patchApiCollection } from '../rest/apiCollectionsAPI';
+import { patchDashboardDetails } from '../rest/dashboardAPI';
+import { patchDatabaseDetails } from '../rest/databaseAPI';
+import { patchMlModelDetails } from '../rest/mlModelAPI';
+import { patchPipelineDetails } from '../rest/pipelineAPI';
+import { patchSearchIndexDetails } from '../rest/SearchIndexAPI';
+import { patchContainerDetails } from '../rest/storageAPI';
+import { patchTopicDetails } from '../rest/topicsAPI';
 import { getLinkForFqn } from './ServiceUtils';
 import { getUsagePercentile } from './TableUtils';
 
 export const getServiceMainTabColumns = (
-  serviceCategory: ServiceTypes
+  serviceCategory: ServiceTypes,
+  editDisplayNamePermission?: boolean,
+  handleDisplayNameUpdate?: (
+    entityData: EntityName,
+    id?: string
+  ) => Promise<void>
 ): ColumnsType<ServicePageData> => [
   {
     title: t('label.name'),
     dataIndex: 'name',
     key: 'name',
     width: 280,
-    render: (_, record: ServicePageData) => {
-      return (
-        <Link
-          data-testid={record.name}
-          to={getLinkForFqn(serviceCategory, record.fullyQualifiedName ?? '')}>
-          <Typography.Paragraph
-            data-testid="child-asset-name-link"
-            ellipsis={{
-              rows: 2,
-              tooltip: true,
-            }}
-            style={{ width: 280, color: 'inherit' }}>
-            {getEntityName(record)}
-          </Typography.Paragraph>
-        </Link>
-      );
-    },
+    render: (_, record: ServicePageData) => (
+      <DisplayName
+        allowRename={editDisplayNamePermission}
+        displayName={record.displayName}
+        id={record.id}
+        key={record.id}
+        link={getLinkForFqn(serviceCategory, record.fullyQualifiedName ?? '')}
+        name={record.name}
+        onEditDisplayName={handleDisplayNameUpdate}
+      />
+    ),
   },
   {
     title: t('label.description'),
@@ -64,7 +69,7 @@ export const getServiceMainTabColumns = (
     key: 'description',
     render: (description: ServicePageData['description']) =>
       !isUndefined(description) && description.trim() ? (
-        <RichTextEditorPreviewer markdown={description} />
+        <RichTextEditorPreviewerV1 markdown={description} />
       ) : (
         <span className="text-grey-muted">
           {t('label.no-entity', {
@@ -89,22 +94,12 @@ export const getServiceMainTabColumns = (
       ]
     : []),
   {
-    title: t('label.owner'),
+    title: t('label.owner-plural'),
     dataIndex: 'owners',
     key: 'owners',
     render: (owners: ServicePageData['owners']) =>
       !isUndefined(owners) && owners.length > 0 ? (
-        owners.map((owner: EntityReference) => (
-          <UserPopOverCard
-            showUserName
-            data-testid="owner-data"
-            displayName={owner.displayName}
-            key={owner.id}
-            profileWidth={20}
-            type={owner.type as OwnerType}
-            userName={owner.name ?? ''}
-          />
-        ))
+        <OwnerLabel owners={owners} />
       ) : (
         <Typography.Text data-testid="no-owner-text">--</Typography.Text>
       ),
@@ -135,3 +130,30 @@ export const getServiceMainTabColumns = (
       ]
     : []),
 ];
+
+export const callServicePatchAPI = async (
+  serviceCategory: ServiceTypes,
+  id: string,
+  jsonPatch: any
+) => {
+  switch (serviceCategory) {
+    case ServiceCategory.DATABASE_SERVICES:
+      return await patchDatabaseDetails(id, jsonPatch);
+    case ServiceCategory.MESSAGING_SERVICES:
+      return await patchTopicDetails(id, jsonPatch);
+    case ServiceCategory.DASHBOARD_SERVICES:
+      return await patchDashboardDetails(id, jsonPatch);
+    case ServiceCategory.PIPELINE_SERVICES:
+      return await patchPipelineDetails(id, jsonPatch);
+    case ServiceCategory.ML_MODEL_SERVICES:
+      return await patchMlModelDetails(id, jsonPatch);
+    case ServiceCategory.STORAGE_SERVICES:
+      return await patchContainerDetails(id, jsonPatch);
+    case ServiceCategory.SEARCH_SERVICES:
+      return await patchSearchIndexDetails(id, jsonPatch);
+    case ServiceCategory.API_SERVICES:
+      return await patchApiCollection(id, jsonPatch);
+    default:
+      return;
+  }
+};

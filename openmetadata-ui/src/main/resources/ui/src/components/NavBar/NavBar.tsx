@@ -31,7 +31,7 @@ import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { CookieStorage } from 'cookie-storage';
 import i18next from 'i18next';
-import { debounce, upperCase } from 'lodash';
+import { debounce, startCase, upperCase } from 'lodash';
 import { MenuInfo } from 'rc-menu/lib/interface';
 import React, {
   useCallback,
@@ -53,9 +53,11 @@ import {
   NOTIFICATION_READ_TIMER,
   SOCKET_EVENTS,
 } from '../../constants/constants';
+import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import { HELP_ITEMS_ENUM } from '../../constants/Navbar.constants';
 import { useWebSocketConnector } from '../../context/WebSocketProvider/WebSocketProvider';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
+import { BackgroundJob, JobType } from '../../generated/jobs/backgroundJob';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import { useDomainStore } from '../../hooks/useDomainStore';
@@ -67,6 +69,7 @@ import {
   shouldRequestPermission,
 } from '../../utils/BrowserNotificationUtils';
 import { refreshPage } from '../../utils/CommonUtils';
+import { getCustomPropertyEntityPathname } from '../../utils/CustomProperty.utils';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../utils/EntityUtils';
 import {
@@ -81,6 +84,7 @@ import {
 import { isCommandKeyPress, Keys } from '../../utils/KeyboardUtil';
 import { getHelpDropdownItems } from '../../utils/NavbarUtils';
 import {
+  getSettingPath,
   inPageSearchOptions,
   isInPageSearchAllowed,
 } from '../../utils/RouterUtils';
@@ -90,6 +94,8 @@ import { ActivityFeedTabs } from '../ActivityFeed/ActivityFeedTab/ActivityFeedTa
 import SearchOptions from '../AppBar/SearchOptions';
 import Suggestions from '../AppBar/Suggestions';
 import CmdKIcon from '../common/CmdKIcon/CmdKIcon.component';
+import { useEntityExportModalProvider } from '../Entity/EntityExportModalProvider/EntityExportModalProvider.component';
+import { CSVExportWebsocketResponse } from '../Entity/EntityExportModalProvider/EntityExportModalProvider.interface';
 import WhatsNewModal from '../Modals/WhatsNewModal/WhatsNewModal';
 import NotificationBox from '../NotificationBox/NotificationBox.component';
 import { UserProfileIcon } from '../Settings/Users/UserProfileIcon/UserProfileIcon.component';
@@ -110,6 +116,7 @@ const NavBar = ({
   handleOnClick,
   handleClear,
 }: NavBarProps) => {
+  const { onUpdateCSVExportJob } = useEntityExportModalProvider();
   const { searchCriteria, updateSearchCriteria } = useApplicationStore();
   const searchContainerRef = useRef<HTMLDivElement>(null);
   const Logo = useMemo(() => brandImageClassBase.getMonogram().src, []);
@@ -249,15 +256,18 @@ const NavBar = ({
   const showBrowserNotification = (
     about: string,
     createdBy: string,
-    type: string
+    type: string,
+    backgroundJobData?: BackgroundJob
   ) => {
     if (!hasNotificationPermission()) {
       return;
     }
+
     const entityType = getEntityType(about);
     const entityFQN = getEntityFQN(about) ?? '';
     let body;
     let path: string;
+
     switch (type) {
       case 'Task':
         body = t('message.user-assign-new-task', {
@@ -277,6 +287,31 @@ const NavBar = ({
           user: createdBy,
         });
         path = prepareFeedLink(entityType as string, entityFQN as string);
+
+        break;
+
+      case 'BackgroundJob': {
+        if (!backgroundJobData) {
+          break;
+        }
+
+        const { jobArgs, status, jobType } = backgroundJobData;
+
+        if (jobType === JobType.CustomPropertyEnumCleanup) {
+          body = t('message.custom-property-update', {
+            propertyName: jobArgs.propertyName,
+            entityName: jobArgs.entityType,
+            status: startCase(status.toLowerCase()),
+          });
+
+          path = getSettingPath(
+            GlobalSettingsMenuCategory.CUSTOM_PROPERTIES,
+            getCustomPropertyEntityPathname(jobArgs.entityType)
+          );
+        }
+
+        break;
+      }
     }
     const notification = new Notification('Notification From OpenMetadata', {
       body: body,
@@ -311,7 +346,8 @@ const NavBar = ({
         return;
       }
       const newVersion = await getVersion();
-      if (version !== newVersion.version) {
+      // Compare version only if version is set previously to have fair comparison
+      if (version && version !== newVersion.version) {
         setShowVersionMissMatchAlert(true);
       }
     };
@@ -348,11 +384,35 @@ const NavBar = ({
           );
         }
       });
+
+      socket.on(SOCKET_EVENTS.CSV_EXPORT_CHANNEL, (exportResponse) => {
+        if (exportResponse) {
+          const exportResponseData = JSON.parse(
+            exportResponse
+          ) as CSVExportWebsocketResponse;
+
+          onUpdateCSVExportJob(exportResponseData);
+        }
+      });
+      socket.on(SOCKET_EVENTS.BACKGROUND_JOB_CHANNEL, (jobResponse) => {
+        if (jobResponse) {
+          const jobResponseData: BackgroundJob = JSON.parse(jobResponse);
+          showBrowserNotification(
+            '',
+            jobResponseData.createdBy,
+            'BackgroundJob',
+            jobResponseData
+          );
+        }
+      });
     }
 
     return () => {
       socket && socket.off(SOCKET_EVENTS.TASK_CHANNEL);
       socket && socket.off(SOCKET_EVENTS.MENTION_CHANNEL);
+      socket && socket.off(SOCKET_EVENTS.CSV_EXPORT_CHANNEL);
+      socket && socket.off(SOCKET_EVENTS.CSV_EXPORT_CHANNEL);
+      socket && socket.off(SOCKET_EVENTS.BACKGROUND_JOB_CHANNEL);
     };
   }, [socket]);
 
@@ -449,6 +509,7 @@ const NavBar = ({
                           'text-primary': !isSearchBlur,
                         })}
                         component={IconCloseCircleOutlined}
+                        data-testid="cancel-icon"
                         style={{ fontSize: '16px' }}
                         onClick={handleClear}
                       />

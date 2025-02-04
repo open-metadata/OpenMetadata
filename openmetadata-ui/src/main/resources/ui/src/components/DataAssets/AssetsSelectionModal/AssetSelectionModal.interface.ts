@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { EntityType } from '../../../enums/entity.enum';
+import { Tag } from '../../../generated/entity/classification/tag';
 import { APICollection } from '../../../generated/entity/data/apiCollection';
 import { APIEndpoint } from '../../../generated/entity/data/apiEndpoint';
 import { Container } from '../../../generated/entity/data/container';
@@ -102,4 +103,5 @@ export type MapPatchAPIResponse = {
   [EntityType.API_COLLECTION]: APICollection;
   [EntityType.API_ENDPOINT]: APIEndpoint;
   [EntityType.METRIC]: Metric;
+  [EntityType.TAG]: Tag;
 };

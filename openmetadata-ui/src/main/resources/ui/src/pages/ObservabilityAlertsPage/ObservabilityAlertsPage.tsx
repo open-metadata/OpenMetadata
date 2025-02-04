@@ -10,9 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Col, Row, Tooltip, Typography } from 'antd';
+import { Button, Col, Row, Skeleton, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { isEmpty } from 'lodash';
+import { isEmpty, isUndefined } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory } from 'react-router-dom';
@@ -22,12 +22,18 @@ import DeleteWidgetModal from '../../components/common/DeleteWidget/DeleteWidget
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import NextPrevious from '../../components/common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
+import RichTextEditorPreviewerV1 from '../../components/common/RichTextEditor/RichTextEditorPreviewerV1';
 import Table from '../../components/common/Table/Table';
 import PageHeader from '../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
-import { ROUTES } from '../../constants/constants';
+import { NO_DATA_PLACEHOLDER, ROUTES } from '../../constants/constants';
 import { ALERTS_DOCS } from '../../constants/docs.constants';
 import { useLimitStore } from '../../context/LimitsProvider/useLimitsStore';
+import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
+import {
+  OperationPermission,
+  ResourceEntity,
+} from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType } from '../../enums/entity.enum';
 import {
@@ -50,6 +56,7 @@ const ObservabilityAlertsPage = () => {
   const { t } = useTranslation();
   const history = useHistory();
   const [loading, setLoading] = useState(true);
+  const [loadingCount, setLoadingCount] = useState(0);
   const [alerts, setAlerts] = useState<EventSubscription[]>([]);
   const [selectedAlert, setSelectedAlert] = useState<EventSubscription>();
   const {
@@ -62,6 +69,61 @@ const ObservabilityAlertsPage = () => {
     paging,
   } = usePaging();
   const { getResourceLimit } = useLimitStore();
+  const { getEntityPermissionByFqn, getResourcePermission } =
+    usePermissionProvider();
+  const [alertPermissions, setAlertPermissions] = useState<
+    {
+      id: string;
+      edit: boolean;
+      delete: boolean;
+    }[]
+  >();
+  const [alertResourcePermission, setAlertResourcePermission] =
+    useState<OperationPermission>();
+
+  const fetchAlertResourcePermission = async () => {
+    try {
+      setLoadingCount((count) => count + 1);
+      const permission = await getResourcePermission(
+        ResourceEntity.EVENT_SUBSCRIPTION
+      );
+
+      setAlertResourcePermission(permission);
+    } catch {
+      // Error
+    } finally {
+      setLoadingCount((count) => count - 1);
+    }
+  };
+
+  const fetchAlertPermissionByFqn = async (alertDetails: EventSubscription) => {
+    const permission = await getEntityPermissionByFqn(
+      ResourceEntity.EVENT_SUBSCRIPTION,
+      alertDetails.fullyQualifiedName ?? ''
+    );
+
+    const editPermission = permission.EditAll;
+    const deletePermission = permission.Delete;
+
+    return {
+      id: alertDetails.id,
+      edit: editPermission,
+      delete: deletePermission,
+    };
+  };
+
+  const fetchAllAlertsPermission = async (alerts: EventSubscription[]) => {
+    try {
+      setLoadingCount((count) => count + 1);
+      const response = alerts.map((alert) => fetchAlertPermissionByFqn(alert));
+
+      setAlertPermissions(await Promise.all(response));
+    } catch {
+      // Error
+    } finally {
+      setLoadingCount((count) => count - 1);
+    }
+  };
 
   const fetchAlerts = useCallback(
     async (params?: Partial<Paging>) => {
@@ -73,9 +135,13 @@ const ObservabilityAlertsPage = () => {
           limit: pageSize,
           alertType: AlertType.Observability,
         });
+        const alertsList = data.filter(
+          (d) => d.provider !== ProviderType.System
+        );
 
-        setAlerts(data.filter((d) => d.provider !== ProviderType.System));
+        setAlerts(alertsList);
         handlePagingChange(paging);
+        fetchAllAlertsPermission(alertsList);
       } catch (error) {
         showErrorToast(
           t('server.entity-fetch-error', { entity: t('label.alert-plural') })
@@ -86,6 +152,10 @@ const ObservabilityAlertsPage = () => {
     },
     [pageSize]
   );
+
+  useEffect(() => {
+    fetchAlertResourcePermission();
+  }, []);
 
   useEffect(() => {
     fetchAlerts();
@@ -118,14 +188,14 @@ const ObservabilityAlertsPage = () => {
         dataIndex: 'name',
         width: '200px',
         key: 'name',
-        render: (name: string, record: EventSubscription) => {
+        render: (_: string, record: EventSubscription) => {
           return (
             <Link
               data-testid="alert-name"
               to={getObservabilityAlertDetailsPath(
                 record.fullyQualifiedName ?? ''
               )}>
-              {name}
+              {getEntityName(record)}
             </Link>
           );
         },
@@ -152,43 +222,65 @@ const ObservabilityAlertsPage = () => {
               })}
             </Typography.Text>
           ) : (
-            description
+            <RichTextEditorPreviewerV1 markdown={description} />
           ),
       },
       {
         title: t('label.action-plural'),
         dataIndex: 'fullyQualifiedName',
-        width: 120,
+        width: 90,
         key: 'fullyQualifiedName',
         render: (fqn: string, record: EventSubscription) => {
+          const alertPermission = alertPermissions?.find(
+            (alert) => alert.id === record.id
+          );
+          if (loadingCount > 0) {
+            return <Skeleton active className="p-r-lg" paragraph={false} />;
+          }
+
+          if (
+            isUndefined(alertPermission) ||
+            (!alertPermission.edit && !alertPermission.delete)
+          ) {
+            return (
+              <Typography.Text className="p-l-xs">
+                {NO_DATA_PLACEHOLDER}
+              </Typography.Text>
+            );
+          }
+
           return (
-            <div className="d-flex flex-center">
-              <Tooltip placement="bottom" title={t('label.edit')}>
-                <Link to={getObservabilityAlertsEditPath(fqn)}>
+            <div className="d-flex items-center">
+              {alertPermission.edit && (
+                <Tooltip placement="bottom" title={t('label.edit')}>
+                  <Link to={getObservabilityAlertsEditPath(fqn)}>
+                    <Button
+                      className="flex flex-center"
+                      data-testid={`alert-edit-${record.name}`}
+                      icon={<EditIcon width={16} />}
+                      type="text"
+                    />
+                  </Link>
+                </Tooltip>
+              )}
+              {alertPermission.delete && (
+                <Tooltip placement="bottom" title={t('label.delete')}>
                   <Button
                     className="flex flex-center"
-                    data-testid={`alert-edit-${record.name}`}
-                    icon={<EditIcon width={16} />}
+                    data-testid={`alert-delete-${record.name}`}
+                    disabled={record.provider === ProviderType.System}
+                    icon={<DeleteIcon height={16} width={16} />}
                     type="text"
+                    onClick={() => setSelectedAlert(record)}
                   />
-                </Link>
-              </Tooltip>
-              <Tooltip placement="bottom" title={t('label.delete')}>
-                <Button
-                  className="flex flex-center"
-                  data-testid={`alert-delete-${record.name}`}
-                  disabled={record.provider === ProviderType.System}
-                  icon={<DeleteIcon height={16} width={16} />}
-                  type="text"
-                  onClick={() => setSelectedAlert(record)}
-                />
-              </Tooltip>
+                </Tooltip>
+              )}
             </div>
           );
         },
       },
     ],
-    [handleAlertDelete]
+    [alertPermissions, loadingCount]
   );
 
   const pageHeaderData = useMemo(
@@ -205,14 +297,17 @@ const ObservabilityAlertsPage = () => {
         <Col span={24}>
           <div className="d-flex justify-between">
             <PageHeader data={pageHeaderData} />
-            <LimitWrapper resource="eventsubscription">
-              <Button
-                data-testid="create-observability"
-                type="primary"
-                onClick={() => history.push(ROUTES.ADD_OBSERVABILITY_ALERTS)}>
-                {t('label.add-entity', { entity: t('label.alert') })}
-              </Button>
-            </LimitWrapper>
+            {(alertResourcePermission?.Create ||
+              alertResourcePermission?.All) && (
+              <LimitWrapper resource="eventsubscription">
+                <Button
+                  data-testid="create-observability"
+                  type="primary"
+                  onClick={() => history.push(ROUTES.ADD_OBSERVABILITY_ALERTS)}>
+                  {t('label.add-entity', { entity: t('label.alert') })}
+                </Button>
+              </LimitWrapper>
+            )}
           </div>
         </Col>
         <Col span={24}>
@@ -242,6 +337,7 @@ const ObservabilityAlertsPage = () => {
           {showPagination && (
             <NextPrevious
               currentPage={currentPage}
+              isLoading={loading}
               pageSize={pageSize}
               paging={paging}
               pagingHandler={onPageChange}

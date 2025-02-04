@@ -23,6 +23,7 @@ import { Link, useHistory } from 'react-router-dom';
 import {
   DISABLED,
   getServiceDetailsPath,
+  INITIAL_PAGING_VALUE,
   pagingObject,
 } from '../../../constants/constants';
 import { CONNECTORS_DOCS } from '../../../constants/docs.constants';
@@ -47,7 +48,7 @@ import { DatabaseServiceSearchSource } from '../../../interface/search.interface
 import { ServicesType } from '../../../interface/service.interface';
 import { getServices, searchService } from '../../../rest/serviceAPI';
 import { getServiceLogo } from '../../../utils/CommonUtils';
-import { getEntityName } from '../../../utils/EntityUtils';
+import { getEntityName, highlightSearchText } from '../../../utils/EntityUtils';
 import { checkPermission } from '../../../utils/PermissionsUtils';
 import { getAddServicePath } from '../../../utils/RouterUtils';
 import {
@@ -55,13 +56,14 @@ import {
   getResourceEntityFromServiceCategory,
   getServiceTypesFromServiceCategory,
 } from '../../../utils/ServiceUtils';
+import { stringToHTML } from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { ListView } from '../../common/ListView/ListView.component';
 import NextPrevious from '../../common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
 import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
-import RichTextEditorPreviewer from '../../common/RichTextEditor/RichTextEditorPreviewer';
+import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import ButtonSkeleton from '../../common/Skeleton/CommonSkeletons/ControlElements/ControlElements.component';
 import { ColumnFilter } from '../../Database/ColumnFilter/ColumnFilter.component';
 import PageHeader from '../../PageHeader/PageHeader.component';
@@ -132,7 +134,6 @@ const Services = ({ serviceName }: ServicesProps) => {
       after,
       before,
       filters,
-      limit,
     }: {
       search?: string;
       limit?: number;
@@ -150,7 +151,7 @@ const Services = ({ serviceName }: ServicesProps) => {
           } = await searchService({
             search,
             searchIndex,
-            limit: limit ?? pageSize,
+            limit: pageSize,
             currentPage,
             filters,
             deleted,
@@ -163,7 +164,7 @@ const Services = ({ serviceName }: ServicesProps) => {
         } else {
           const { data, paging } = await getServices({
             serviceName,
-            limit: limit ?? pageSize,
+            limit: pageSize,
             after,
             before,
             include: deleted ? Include.Deleted : Include.NonDeleted,
@@ -191,18 +192,30 @@ const Services = ({ serviceName }: ServicesProps) => {
         setIsLoading(false);
       }
     },
-    [searchIndex, serviceName, deleted]
+    [searchIndex, serviceName, deleted, pageSize]
   );
 
-  const handleServicePageChange = ({
-    cursorType,
-    currentPage,
-  }: PagingHandlerParams) => {
-    if (cursorType) {
-      getServiceDetails({ [cursorType]: paging[cursorType] });
-    }
-    handlePageChange(currentPage);
-  };
+  const handleServicePageChange = useCallback(
+    ({ cursorType, currentPage }: PagingHandlerParams) => {
+      if (searchTerm) {
+        handlePageChange(currentPage);
+        getServiceDetails({
+          currentPage,
+          search: searchTerm,
+          limit: pageSize,
+          filters: serviceTypeFilter?.length
+            ? `(${serviceTypeFilter
+                .map((type) => `serviceType:${type}`)
+                .join(' ')})`
+            : undefined,
+        });
+      } else if (cursorType) {
+        handlePageChange(currentPage);
+        getServiceDetails({ [cursorType]: paging[cursorType] });
+      }
+    },
+    [getServiceDetails, searchTerm, serviceTypeFilter, paging, pageSize]
+  );
 
   const addServicePermission = useMemo(
     () =>
@@ -302,7 +315,9 @@ const Services = ({ serviceName }: ServicesProps) => {
               record.fullyQualifiedName ?? record.name,
               serviceName
             )}>
-            {getEntityName(record)}
+            {stringToHTML(
+              highlightSearchText(getEntityName(record), searchTerm)
+            )}
           </Link>
         </div>
       ),
@@ -314,10 +329,10 @@ const Services = ({ serviceName }: ServicesProps) => {
       width: 200,
       render: (description) =>
         description ? (
-          <RichTextEditorPreviewer
+          <RichTextEditorPreviewerV1
             className="max-two-lines"
             enableSeeMoreVariant={false}
-            markdown={description}
+            markdown={highlightSearchText(description, searchTerm)}
           />
         ) : (
           <span className="text-grey-muted">{t('label.no-description')}</span>
@@ -340,11 +355,13 @@ const Services = ({ serviceName }: ServicesProps) => {
       filteredValue: serviceTypeFilter,
       filters: serviceTypeFilters,
       render: (serviceType) => (
-        <span className="font-normal text-grey-body">{serviceType}</span>
+        <span className="font-normal text-grey-body">
+          {stringToHTML(highlightSearchText(serviceType, searchTerm))}
+        </span>
       ),
     },
     {
-      title: t('label.owner'),
+      title: t('label.owner-plural'),
       dataIndex: 'owners',
       key: 'owners',
       width: 200,
@@ -378,7 +395,7 @@ const Services = ({ serviceName }: ServicesProps) => {
                   className="p-t-xs text-grey-body break-all description-text"
                   data-testid="service-description">
                   {service.description ? (
-                    <RichTextEditorPreviewer
+                    <RichTextEditorPreviewerV1
                       className="max-two-lines"
                       enableSeeMoreVariant={false}
                       markdown={service.description}
@@ -414,6 +431,7 @@ const Services = ({ serviceName }: ServicesProps) => {
 
   const handleServiceSearch = useCallback(
     async (search: string) => {
+      handlePageChange(INITIAL_PAGING_VALUE);
       setSearchTerm(search);
     },
     [getServiceDetails]
@@ -511,6 +529,8 @@ const Services = ({ serviceName }: ServicesProps) => {
         {showPagination && (
           <NextPrevious
             currentPage={currentPage}
+            isLoading={isLoading}
+            isNumberBased={!isEmpty(searchTerm)}
             pageSize={pageSize}
             paging={paging}
             pagingHandler={handleServicePageChange}

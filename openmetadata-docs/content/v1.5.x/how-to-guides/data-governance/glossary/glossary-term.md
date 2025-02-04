@@ -64,7 +64,7 @@ caption="Glossary Terms Tab"
 
 ### Assets Tab
 
-The **Assets Tab** displays all the assets that are associated with the glossary term. These data assets are further subgrouped as Tables, Topics, Dashboards. The right side panel shows a preview of the data assets selected.
+The **Assets Tab** displays all the assets that are associated with the glossary term. These data assets are further subgrouped on the basis of databases. The right side panel shows a preview of the data assets selected.
 
 {% image
 src="/images/v1.5/how-to-guides/governance/term3.png"

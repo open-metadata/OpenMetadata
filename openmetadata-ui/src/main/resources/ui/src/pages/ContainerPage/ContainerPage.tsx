@@ -241,6 +241,7 @@ const ContainerPage = () => {
 
   const {
     editTagsPermission,
+    editGlossaryTermsPermission,
     editDescriptionPermission,
     editCustomAttributePermission,
     editLineagePermission,
@@ -250,6 +251,10 @@ const ContainerPage = () => {
     () => ({
       editTagsPermission:
         (containerPermissions.EditTags || containerPermissions.EditAll) &&
+        !deleted,
+      editGlossaryTermsPermission:
+        (containerPermissions.EditGlossaryTerms ||
+          containerPermissions.EditAll) &&
         !deleted,
       editDescriptionPermission:
         (containerPermissions.EditDescription ||
@@ -612,6 +617,9 @@ const ContainerPage = () => {
                           dataModel={containerData?.dataModel}
                           entityFqn={decodedContainerName}
                           hasDescriptionEditAccess={editDescriptionPermission}
+                          hasGlossaryTermEditAccess={
+                            editGlossaryTermsPermission
+                          }
                           hasTagEditAccess={editTagsPermission}
                           isReadOnly={Boolean(deleted)}
                           onThreadLinkSelect={onThreadLinkSelect}
@@ -631,6 +639,9 @@ const ContainerPage = () => {
                         domain={containerData?.domain}
                         editCustomAttributePermission={
                           editCustomAttributePermission
+                        }
+                        editGlossaryTermsPermission={
+                          editGlossaryTermsPermission
                         }
                         editTagPermission={
                           editTagsPermission && !containerData?.deleted
@@ -748,6 +759,7 @@ const ContainerPage = () => {
       entityName,
       editDescriptionPermission,
       editTagsPermission,
+      editGlossaryTermsPermission,
       isEditDescription,
       editLineagePermission,
       editCustomAttributePermission,
@@ -824,6 +836,7 @@ const ContainerPage = () => {
       <Row gutter={[0, 12]}>
         <Col className="p-x-lg" span={24}>
           <DataAssetsHeader
+            isDqAlertSupported
             isRecursiveDelete
             afterDeleteAction={afterDeleteAction}
             afterDomainUpdateAction={afterDomainUpdateAction}

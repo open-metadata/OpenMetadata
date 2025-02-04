@@ -33,11 +33,8 @@ import javax.ws.rs.core.UriInfo;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.tests.CreateTestCaseResolutionStatus;
-import org.openmetadata.schema.entity.teams.User;
-import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.type.TestCaseResolutionStatus;
 import org.openmetadata.schema.tests.type.TestCaseResolutionStatusTypes;
-import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ListFilter;
@@ -63,6 +60,7 @@ import org.openmetadata.service.util.ResultList;
 public class TestCaseResolutionStatusResource
     extends EntityTimeSeriesResource<TestCaseResolutionStatus, TestCaseResolutionStatusRepository> {
   public static final String COLLECTION_PATH = "/v1/dataQuality/testCases/testCaseIncidentStatus";
+  private TestCaseResolutionStatusMapper mapper = new TestCaseResolutionStatusMapper();
 
   public TestCaseResolutionStatusResource(Authorizer authorizer) {
     super(Entity.TEST_CASE_RESOLUTION_STATUS, authorizer);
@@ -232,20 +230,12 @@ public class TestCaseResolutionStatusResource
         new OperationContext(Entity.TEST_CASE, MetadataOperation.EDIT_TESTS);
     ResourceContextInterface resourceContext = ReportDataContext.builder().build();
     authorizer.authorize(securityContext, operationContext, resourceContext);
-
-    TestCase testCaseEntity =
-        Entity.getEntityByName(
-            Entity.TEST_CASE,
-            createTestCaseResolutionStatus.getTestCaseReference(),
-            null,
-            Include.ALL);
     TestCaseResolutionStatus testCaseResolutionStatus =
-        getTestCaseResolutionStatus(
-            testCaseEntity,
-            createTestCaseResolutionStatus,
-            securityContext.getUserPrincipal().getName());
-
-    return create(testCaseResolutionStatus, testCaseEntity.getFullyQualifiedName());
+        mapper.createToEntity(
+            createTestCaseResolutionStatus, securityContext.getUserPrincipal().getName());
+    return create(
+        testCaseResolutionStatus,
+        testCaseResolutionStatus.getTestCaseReference().getFullyQualifiedName());
   }
 
   @PATCH
@@ -282,29 +272,6 @@ public class TestCaseResolutionStatusResource
     authorizer.authorize(securityContext, operationContext, resourceContext);
     RestUtil.PatchResponse<TestCaseResolutionStatus> response =
         repository.patch(id, patch, securityContext.getUserPrincipal().getName());
-    if (response
-        .entity()
-        .getTestCaseResolutionStatusType()
-        .equals(TestCaseResolutionStatusTypes.Resolved)) {
-      repository.deleteTestCaseFailedSamples(response.entity());
-    }
     return response.toResponse();
-  }
-
-  private TestCaseResolutionStatus getTestCaseResolutionStatus(
-      TestCase testCaseEntity,
-      CreateTestCaseResolutionStatus createTestCaseResolutionStatus,
-      String userName) {
-    User userEntity = Entity.getEntityByName(Entity.USER, userName, null, Include.ALL);
-
-    return new TestCaseResolutionStatus()
-        .withTimestamp(System.currentTimeMillis())
-        .withTestCaseResolutionStatusType(
-            createTestCaseResolutionStatus.getTestCaseResolutionStatusType())
-        .withTestCaseResolutionStatusDetails(
-            createTestCaseResolutionStatus.getTestCaseResolutionStatusDetails())
-        .withUpdatedBy(userEntity.getEntityReference())
-        .withUpdatedAt(System.currentTimeMillis())
-        .withTestCaseReference(testCaseEntity.getEntityReference());
   }
 }

@@ -376,7 +376,7 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
 
     @Transaction
     @Override
-    public void entitySpecificUpdate() {
+    public void entitySpecificUpdate(boolean consolidatingChanges) {
       if (updated.getFields() != null) {
         updateSearchIndexFields(
             "fields",
@@ -389,6 +389,7 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
           original.getSearchIndexSettings(),
           updated.getSearchIndexSettings());
       recordChange("sourceHash", original.getSourceHash(), updated.getSourceHash());
+      recordChange("indexType", original.getIndexType(), updated.getIndexType());
     }
 
     private void updateSearchIndexFields(

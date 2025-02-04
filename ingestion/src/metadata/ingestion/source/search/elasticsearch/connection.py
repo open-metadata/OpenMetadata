@@ -40,10 +40,13 @@ from metadata.generated.schema.entity.services.connections.search.elasticSearch.
 from metadata.generated.schema.entity.services.connections.search.elasticSearchConnection import (
     ElasticsearchConnection,
 )
+from metadata.generated.schema.entity.services.connections.testConnectionResult import (
+    TestConnectionResult,
+)
 from metadata.ingestion.connections.builders import init_empty_connection_arguments
 from metadata.ingestion.connections.test_connections import test_connection_steps
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.utils.constants import UTF_8
+from metadata.utils.constants import THREE_MIN, UTF_8
 from metadata.utils.helpers import init_staging_dir
 
 CA_CERT_FILE_NAME = "root.pem"
@@ -185,7 +188,8 @@ def test_connection(
     client: Elasticsearch,
     service_connection: ElasticsearchConnection,
     automation_workflow: Optional[AutomationWorkflow] = None,
-) -> None:
+    timeout_seconds: Optional[int] = THREE_MIN,
+) -> TestConnectionResult:
     """
     Test connection. This can be executed either as part
     of a metadata workflow or during an Automation Workflow
@@ -199,9 +203,10 @@ def test_connection(
         "GetSearchIndexes": test_get_search_indexes,
     }
 
-    test_connection_steps(
+    return test_connection_steps(
         metadata=metadata,
         test_fn=test_fn,
         service_type=service_connection.type.value,
         automation_workflow=automation_workflow,
+        timeout_seconds=timeout_seconds,
     )

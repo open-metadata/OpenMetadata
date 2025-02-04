@@ -24,7 +24,7 @@ import DeleteWidgetModal from '../../components/common/DeleteWidget/DeleteWidget
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import NextPrevious from '../../components/common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
-import RichTextEditorPreviewer from '../../components/common/RichTextEditor/RichTextEditorPreviewer';
+import RichTextEditorPreviewerV1 from '../../components/common/RichTextEditor/RichTextEditorPreviewerV1';
 import Table from '../../components/common/Table/Table';
 import { EmptyGraphPlaceholder } from '../../components/DataInsight/EmptyGraphPlaceholder';
 import {
@@ -104,7 +104,7 @@ const KPIList = () => {
         width: 300,
         render: (description: string | undefined) =>
           description ? (
-            <RichTextEditorPreviewer markdown={description} />
+            <RichTextEditorPreviewerV1 markdown={description} />
           ) : (
             <span data-testid="no-description">
               {t('label.no-entity', {
@@ -234,6 +234,7 @@ const KPIList = () => {
       <Col span={24}>
         <Table
           bordered
+          className="kpi-table"
           columns={columns}
           data-testid="kpi-table"
           dataSource={kpiList}
@@ -250,6 +251,7 @@ const KPIList = () => {
         <Col span={24}>
           <NextPrevious
             currentPage={kpiPage}
+            isLoading={isLoading}
             pageSize={PAGE_SIZE_MEDIUM}
             paging={kpiPaging}
             pagingHandler={kpiPagingHandler}

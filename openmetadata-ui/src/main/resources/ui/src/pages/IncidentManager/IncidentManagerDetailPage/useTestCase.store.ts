@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { create } from 'zustand';
+import { EntityLineageResponse } from '../../../components/Lineage/Lineage.interface';
 import { TestCase } from '../../../generated/tests/testCase';
 
 export interface UseTestCaseStoreInterface {
@@ -21,9 +22,12 @@ export interface UseTestCaseStoreInterface {
   setIsLoading: (isLoading: boolean) => void;
   setShowAILearningBanner: (showBanner: boolean) => void;
   reset: () => void;
+  dqLineageData: EntityLineageResponse | undefined;
+  setDqLineageData: (data: EntityLineageResponse | undefined) => void;
 }
 export const useTestCaseStore = create<UseTestCaseStoreInterface>()((set) => ({
   testCase: undefined,
+  dqLineageData: undefined,
   isLoading: true,
   showAILearningBanner: false,
   setTestCase: (testCase: TestCase) => {
@@ -34,6 +38,9 @@ export const useTestCaseStore = create<UseTestCaseStoreInterface>()((set) => ({
   },
   setShowAILearningBanner: (showAILearningBanner: boolean) => {
     set({ showAILearningBanner });
+  },
+  setDqLineageData: (data: EntityLineageResponse | undefined) => {
+    set({ dqLineageData: data });
   },
   reset: () => {
     set({ testCase: undefined, isLoading: true, showAILearningBanner: false });

@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import React from 'react';
 import { EntityType } from '../../../enums/entity.enum';
 import {
@@ -19,15 +19,17 @@ import {
 } from '../../../generated/entity/data/apiEndpoint';
 import { Container } from '../../../generated/entity/data/container';
 import { MOCK_TIER_DATA } from '../../../mocks/TableData.mock';
+import { getDataQualityLineage } from '../../../rest/lineageAPI';
 import { getContainerByName } from '../../../rest/storageAPI';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
-import { DataAssetsHeader } from './DataAssetsHeader.component';
+import { DataAssetsHeader, ExtraInfoLink } from './DataAssetsHeader.component';
 import { DataAssetsHeaderProps } from './DataAssetsHeader.interface';
 
 const mockProps: DataAssetsHeaderProps = {
   dataAsset: {
     id: 'assets-id',
     name: 'testContainer',
+    fullyQualifiedName: 'fullyQualifiedName',
     parent: {
       id: 'id',
       type: 'container',
@@ -103,6 +105,48 @@ jest.mock('../../../rest/storageAPI', () => ({
     .mockImplementation(() => Promise.resolve({ name: 'test' })),
 }));
 
+let mockIsAlertSupported = false;
+jest.mock('../../../utils/TableClassBase', () => ({
+  getAlertEnableStatus: jest
+    .fn()
+    .mockImplementation(() => mockIsAlertSupported),
+}));
+
+jest.mock('../../../rest/lineageAPI', () => ({
+  getDataQualityLineage: jest.fn(),
+}));
+
+describe('ExtraInfoLink component', () => {
+  const mockProps = {
+    label: 'myLabel',
+    value: 'example',
+    href: 'http://example.com/',
+  };
+
+  it('should not have target and rel attributes when newTab is false (default)', () => {
+    const { container } = render(<ExtraInfoLink {...mockProps} />);
+
+    const elm = container.querySelector('a');
+
+    expect(elm).toHaveAttribute('href', mockProps.href);
+    expect(elm).not.toHaveAttribute('target');
+    expect(elm).not.toHaveAttribute('rel');
+  });
+
+  it('should have target and rel attributes when newTab is true', () => {
+    const { container } = render(<ExtraInfoLink {...mockProps} newTab />);
+
+    const elm = container.querySelector('a');
+
+    expect(elm).toHaveAttribute('href', mockProps.href);
+    expect(elm).toHaveAttribute('target', '_blank');
+
+    const rel = (elm?.getAttribute('rel') || '').split(/\s+/g);
+
+    expect(rel.sort()).toStrictEqual(['noopener', 'noreferrer'].sort());
+  });
+});
+
 describe('DataAssetsHeader component', () => {
   it('should call getContainerByName API on Page load for container assets', () => {
     const mockGetContainerByName = getContainerByName as jest.Mock;
@@ -111,6 +155,7 @@ describe('DataAssetsHeader component', () => {
     expect(mockGetContainerByName).toHaveBeenCalledWith('fullyQualifiedName', {
       fields: 'parent',
     });
+    expect(getDataQualityLineage).not.toHaveBeenCalled();
   });
 
   it('should not call getContainerByName API if parent is undefined', () => {
@@ -164,5 +209,18 @@ describe('DataAssetsHeader component', () => {
     expect(
       screen.getByTestId('api-endpoint-request-method')
     ).toBeInTheDocument();
+  });
+
+  it('should call getDataQualityLineage, if isDqAlertSupported and alert supported is true', () => {
+    mockIsAlertSupported = true;
+    act(() => {
+      render(<DataAssetsHeader isDqAlertSupported {...mockProps} />);
+    });
+
+    expect(getDataQualityLineage).toHaveBeenCalledWith('fullyQualifiedName', {
+      upstreamDepth: 1,
+    });
+
+    mockIsAlertSupported = false;
   });
 });

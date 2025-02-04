@@ -40,7 +40,7 @@
       "items": {
         "$ref": "../../type/tagLabel.json"
       },
-      "default": null
+      "default": []
     },
     "version": {
       "description": "Metadata version of the entity.",
@@ -121,6 +121,9 @@
       "description": "Life Cycle properties of the entity",
       "$ref": "../../type/lifeCycle.json"
     },
+    "certification": {
+      "$ref": "../../type/assetCertification.json"
+    },
     "sourceHash": {
       "description": "Source hash of the entity",
       "type": "string",
@@ -156,6 +159,6 @@
       }
     }
   },
-  "required": ["name", "service"],
+  "required": ["id", "name", "service"],
   "additionalProperties": false
 }

@@ -109,7 +109,9 @@ export const OwnerLabel = ({
                   key={owner.id}
                   to={
                     owner.type === OwnerType.TEAM
-                      ? getTeamAndUserDetailsPath(owner.name ?? '')
+                      ? getTeamAndUserDetailsPath(
+                          owner.fullyQualifiedName ?? ''
+                        )
                       : getUserPath(owner.name ?? '')
                   }>
                   {ownerDisplayName?.[index] ?? displayName}
@@ -119,7 +121,7 @@ export const OwnerLabel = ({
               const inheritedIcon = owner?.inherited ? (
                 <Tooltip
                   title={t('label.inherited-entity', {
-                    entity: t('label.owner'),
+                    entity: t('label.owner-plural'),
                   })}>
                   <InheritIcon
                     className="inherit-icon cursor-pointer"
@@ -165,7 +167,7 @@ export const OwnerLabel = ({
               className={classNames('no-owner font-medium text-xs', className)}
               data-testid="owner-link">
               {placeHolder ??
-                t('label.no-entity', { entity: t('label.owner') })}
+                t('label.no-entity', { entity: t('label.owner-plural') })}
             </Typography.Text>
           </div>
         )}

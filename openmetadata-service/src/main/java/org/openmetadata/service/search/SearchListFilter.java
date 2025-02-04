@@ -177,11 +177,7 @@ public class SearchListFilter extends Filter<SearchListFilter> {
     if (entityFQN != null) {
       conditions.add(
           includeAllTests
-              ? String.format(
-                  "{\"bool\":{\"should\": ["
-                      + "{\"prefix\": {\"entityFQN\": \"%s%s\"}},"
-                      + "{\"term\": {\"entityFQN\": \"%s\"}}]}}",
-                  escapeDoubleQuotes(entityFQN), Entity.SEPARATOR, escapeDoubleQuotes(entityFQN))
+              ? getTestCaseForEntityCondition(entityFQN, "entityFQN")
               : String.format(
                   "{\"term\": {\"entityFQN\": \"%s\"}}", escapeDoubleQuotes(entityFQN)));
     }
@@ -218,6 +214,7 @@ public class SearchListFilter extends Filter<SearchListFilter> {
   private String getTestCaseResultCondition() {
     ArrayList<String> conditions = new ArrayList<>();
 
+    String entityFQN = getQueryParam("entityFQN");
     String dataQualityDimension = getQueryParam("dataQualityDimension");
     String type = getQueryParam("testCaseType");
     String startTimestamp = getQueryParam("startTimestamp");
@@ -225,6 +222,9 @@ public class SearchListFilter extends Filter<SearchListFilter> {
     String testCaseFQN = getQueryParam("testCaseFQN");
     String testCaseStatus = getQueryParam("testCaseStatus");
     String testSuiteId = getQueryParam("testSuiteId");
+
+    if (entityFQN != null)
+      conditions.add(getTestCaseForEntityCondition(entityFQN, "testCase.entityFQN"));
 
     if (startTimestamp != null && endTimestamp != null) {
       conditions.add(getTimestampFilter("timestamp", "gte", Long.parseLong(startTimestamp)));
@@ -257,8 +257,8 @@ public class SearchListFilter extends Filter<SearchListFilter> {
     boolean includeEmptyTestSuites = Boolean.parseBoolean(getQueryParam("includeEmptyTestSuites"));
 
     if (testSuiteType != null) {
-      boolean executable = !testSuiteType.equals("logical");
-      conditions.add(String.format("{\"term\": {\"executable\": \"%s\"}}", executable));
+      boolean basic = !testSuiteType.equals("logical");
+      conditions.add(String.format("{\"term\": {\"basic\": \"%s\"}}", basic));
     }
 
     if (!includeEmptyTestSuites) {
@@ -292,6 +292,18 @@ public class SearchListFilter extends Filter<SearchListFilter> {
       case "column" -> String.format("{\"regexp\": {\"%s\": \".*::columns::.*\"}}", field);
       default -> "";
     };
+  }
+
+  private String getTestCaseForEntityCondition(String entityFQN, String field) {
+    return String.format(
+        "{\"bool\":{\"should\": ["
+            + "{\"prefix\": {\"%s\": \"%s%s\"}},"
+            + "{\"term\": {\"%s\": \"%s\"}}]}}",
+        field,
+        escapeDoubleQuotes(entityFQN),
+        Entity.SEPARATOR,
+        field,
+        escapeDoubleQuotes(entityFQN));
   }
 
   private String getDataQualityDimensionCondition(String dataQualityDimension, String field) {

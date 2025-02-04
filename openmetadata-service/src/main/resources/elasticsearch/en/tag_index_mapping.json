@@ -78,6 +78,7 @@
         "fields": {
           "keyword": {
             "type": "keyword",
+            "normalizer": "lowercase_normalizer",
             "ignore_above": 256
           },
           "ngram": {
@@ -108,7 +109,7 @@
         "type": "boolean"
       },
       "disabled": {
-        "type": "text"
+        "type": "boolean"
       },
       "entityType": {
         "type": "keyword"

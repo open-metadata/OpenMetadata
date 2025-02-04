@@ -25,11 +25,8 @@ import {
   PAGE_SIZE_MEDIUM,
 } from '../../../constants/constants';
 import { CursorType } from '../../../enums/pagination.enum';
+import { computeTotalPages } from '../../../utils/PaginationUtils';
 import { NextPreviousProps, PagingProps } from './NextPrevious.interface';
-
-const computeTotalPages = (pSize: number, total: number) => {
-  return Math.ceil(total / pSize);
-};
 
 const NextPrevious: FC<NextPreviousProps> = ({
   paging,
@@ -37,6 +34,7 @@ const NextPrevious: FC<NextPreviousProps> = ({
   pageSize,
   isNumberBased = false,
   currentPage = 1,
+  isLoading,
   ...pagingProps
 }: NextPreviousProps) => {
   const { t } = useTranslation();
@@ -91,7 +89,7 @@ const NextPrevious: FC<NextPreviousProps> = ({
         ghost
         className="hover-button text-sm flex-center"
         data-testid="previous"
-        disabled={computePrevDisableState()}
+        disabled={computePrevDisableState() || isLoading}
         icon={<ArrowLeftOutlined />}
         type="primary"
         onClick={onPreviousHandler}>
@@ -100,12 +98,12 @@ const NextPrevious: FC<NextPreviousProps> = ({
       <span data-testid="page-indicator">{`${currentPage}/${computeTotalPages(
         pageSize,
         paging.total
-      )} Page`}</span>
+      )} ${t('label.page')}`}</span>
       <Button
         ghost
         className="hover-button text-sm flex-center"
         data-testid="next"
-        disabled={computeNextDisableState()}
+        disabled={computeNextDisableState() || isLoading}
         type="primary"
         onClick={onNextHandler}>
         <span> {t('label.next')}</span>
@@ -113,16 +111,19 @@ const NextPrevious: FC<NextPreviousProps> = ({
       </Button>
       {onShowSizeChange && (
         <Dropdown
+          disabled={isLoading}
           menu={{
             items: pageSizeOptions.map((size) => ({
-              label: `${size} / Page`,
+              label: `${size} / ${t('label.page')}`,
               value: size,
               key: size,
               onClick: () => onShowSizeChange(size),
             })),
           }}>
-          <Button onClick={(e) => e.preventDefault()}>
-            {`${pageSize} / Page`}
+          <Button
+            data-testid="page-size-selection-dropdown"
+            onClick={(e) => e.preventDefault()}>
+            {`${pageSize} / ${t('label.page')}`}
             <DownOutlined />
           </Button>
         </Dropdown>

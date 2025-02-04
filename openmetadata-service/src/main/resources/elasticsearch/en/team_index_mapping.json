@@ -131,6 +131,16 @@
               }
             }
           },
+          "displayName": {
+            "type": "keyword",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "normalizer": "lowercase_normalizer",
+                "ignore_above": 256
+              }
+            }
+          },
           "fullyQualifiedName": {
             "type": "keyword"
           },
@@ -181,6 +191,9 @@
             "type": "text"
           }
         }
+      },
+      "userCount" : {
+        "type" : "long"
       },
       "parents": {
         "properties": {

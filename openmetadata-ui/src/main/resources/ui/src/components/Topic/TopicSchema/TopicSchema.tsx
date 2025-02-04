@@ -46,7 +46,7 @@ import {
   updateFieldTags,
 } from '../../../utils/TableUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import RichTextEditorPreviewer from '../../common/RichTextEditor/RichTextEditorPreviewer';
+import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import ToggleExpandButton from '../../common/ToggleExpandButton/ToggleExpandButton';
 import { ColumnFilter } from '../../Database/ColumnFilter/ColumnFilter.component';
 import SchemaEditor from '../../Database/SchemaEditor/SchemaEditor';
@@ -65,6 +65,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
   isReadOnly,
   onUpdate,
   hasTagEditAccess,
+  hasGlossaryTermEditAccess,
   entityFqn,
   onThreadLinkSelect,
   isVersionView = false,
@@ -133,7 +134,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
         <Tooltip destroyTooltipOnHide title={getEntityName(record)}>
           <span className="break-word">
             {isVersionView ? (
-              <RichTextEditorPreviewer markdown={getEntityName(record)} />
+              <RichTextEditorPreviewerV1 markdown={getEntityName(record)} />
             ) : (
               getEntityName(record)
             )}
@@ -148,7 +149,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
     (dataType: DataTypeTopic, record: Field) => (
       <Typography.Text>
         {isVersionView ? (
-          <RichTextEditorPreviewer
+          <RichTextEditorPreviewerV1
             markdown={record.dataTypeDisplay ?? dataType}
           />
         ) : (
@@ -259,7 +260,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
             entityFqn={entityFqn}
             entityType={EntityType.TOPIC}
             handleTagSelection={handleFieldTagsChange}
-            hasTagEditAccess={hasTagEditAccess}
+            hasTagEditAccess={hasGlossaryTermEditAccess}
             index={index}
             isReadOnly={isReadOnly}
             record={record}
@@ -300,7 +301,9 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
           <Typography.Text type="secondary">
             {t('label.schema')}
           </Typography.Text>
-          {schemaTypePlaceholder ?? <Tag>{messageSchema.schemaType}</Tag>}
+          {schemaTypePlaceholder ?? (
+            <Tag className="ml-4">{messageSchema.schemaType}</Tag>
+          )}
         </Col>
       )}
       {isEmpty(messageSchema?.schemaFields) &&

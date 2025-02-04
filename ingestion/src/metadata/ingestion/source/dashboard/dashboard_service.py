@@ -55,6 +55,9 @@ from metadata.ingestion.api.delete import delete_entity_from_source
 from metadata.ingestion.api.models import Either, Entity
 from metadata.ingestion.api.steps import Source
 from metadata.ingestion.api.topology_runner import C, TopologyRunnerMixin
+from metadata.ingestion.connections.test_connections import (
+    raise_test_connection_exception,
+)
 from metadata.ingestion.lineage.sql_lineage import get_column_fqn
 from metadata.ingestion.models.delete_entity import DeleteEntity
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
@@ -195,6 +198,9 @@ class DashboardServiceTopology(ServiceTopology):
     )
 
 
+from metadata.utils.helpers import retry_with_docker_host
+
+
 # pylint: disable=too-many-public-methods
 class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
     """
@@ -213,6 +219,7 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
     dashboard_source_state: Set = set()
     datamodel_source_state: Set = set()
 
+    @retry_with_docker_host()
     def __init__(
         self,
         config: WorkflowSource,
@@ -476,6 +483,7 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
         to_entity: Union[Dashboard, DashboardDataModel],
         from_entity: Union[Table, DashboardDataModel, Dashboard],
         column_lineage: List[ColumnLineage] = None,
+        sql: Optional[str] = None,
     ) -> Optional[Either[AddLineageRequest]]:
         if from_entity and to_entity:
             return Either(
@@ -491,6 +499,7 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
                         ),
                         lineageDetails=LineageDetails(
                             source=LineageSource.DashboardLineage,
+                            sqlQuery=sql,
                             columnsLineage=column_lineage,
                         ),
                     )
@@ -554,7 +563,10 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
 
     def test_connection(self) -> None:
         test_connection_fn = get_test_connection_fn(self.service_connection)
-        test_connection_fn(self.metadata, self.connection_obj, self.service_connection)
+        result = test_connection_fn(
+            self.metadata, self.connection_obj, self.service_connection
+        )
+        raise_test_connection_exception(result)
 
     def prepare(self):
         """By default, nothing to prepare"""

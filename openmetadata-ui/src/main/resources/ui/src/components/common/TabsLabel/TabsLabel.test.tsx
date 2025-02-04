@@ -42,4 +42,11 @@ describe('TabsLabel component', () => {
 
     expect(container).toBeVisible();
   });
+
+  it('Description should visible, if provided via prop', async () => {
+    render(<TabsLabel {...mockProps} description="test-description" />);
+    const container = await screen.findByTestId('label-description');
+
+    expect(container).toBeVisible();
+  });
 });

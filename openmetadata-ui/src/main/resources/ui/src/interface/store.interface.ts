@@ -23,6 +23,7 @@ import {
 } from '../components/Explore/ExplorePage.interface';
 import { AuthenticationConfiguration } from '../generated/configuration/authenticationConfiguration';
 import { AuthorizerConfiguration } from '../generated/configuration/authorizerConfiguration';
+import { LineageSettings } from '../generated/configuration/lineageSettings';
 import { LoginConfiguration } from '../generated/configuration/loginConfiguration';
 import { LogoConfiguration } from '../generated/configuration/logoConfiguration';
 import { UIThemePreference } from '../generated/configuration/uiThemePreference';
@@ -36,7 +37,10 @@ export interface HelperFunctions {
   handleSuccessfulLogin: (user: OidcUser) => Promise<void>;
   handleFailedLogin: () => void;
   updateAxiosInterceptors: () => void;
-  trySilentSignIn: (forceLogout?: boolean) => Promise<void>;
+}
+
+export interface AppPreferences {
+  lineageConfig?: LineageSettings;
 }
 
 export interface ApplicationStore
@@ -48,16 +52,17 @@ export interface ApplicationStore
   userProfilePics: Record<string, User>;
   cachedEntityData: Record<string, EntityUnion>;
   selectedPersona: EntityReference;
-  oidcIdToken: string;
-  refreshTokenKey: string;
   authConfig?: AuthenticationConfigurationWithScope;
   applicationConfig?: UIThemePreference;
   searchCriteria: ExploreSearchIndex | '';
   theme: UIThemePreference['customTheme'];
   inlineAlertDetails?: InlineAlertProps;
+  applications: string[];
+  appPreferences: AppPreferences;
   setInlineAlertDetails: (alertDetails?: InlineAlertProps) => void;
   setSelectedPersona: (persona: EntityReference) => void;
   setApplicationConfig: (config: UIThemePreference) => void;
+  setAppPreferences: (preferences: AppPreferences) => void;
   setCurrentUser: (user: User) => void;
   setAuthConfig: (authConfig: AuthenticationConfigurationWithScope) => void;
   setAuthorizerConfig: (authorizerConfig: AuthorizerConfiguration) => void;
@@ -73,15 +78,9 @@ export interface ApplicationStore
     id: string;
     entityDetails: EntityUnion;
   }) => void;
-
-  getRefreshToken: () => string;
-  setRefreshToken: (refreshToken: string) => void;
-  getOidcToken: () => string;
-  setOidcToken: (oidcToken: string) => void;
-  removeOidcToken: () => void;
-  removeRefreshToken: () => void;
   updateSearchCriteria: (criteria: ExploreSearchIndex | '') => void;
   trySilentSignIn: (forceLogout?: boolean) => void;
+  setApplicationsName: (applications: string[]) => void;
 }
 
 export interface DomainStore {

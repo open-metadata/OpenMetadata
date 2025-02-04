@@ -11,12 +11,24 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Col, Form, Input, Row, Skeleton, Typography } from 'antd';
+import {
+  Button,
+  Col,
+  Divider,
+  Form,
+  Input,
+  Row,
+  Skeleton,
+  Typography,
+} from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { isEmpty, isUndefined } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
+import AlertFormSourceItem from '../../components/Alerts/AlertFormSourceItem/AlertFormSourceItem';
+import DestinationFormItem from '../../components/Alerts/DestinationFormItem/DestinationFormItem.component';
+import ObservabilityFormFiltersItem from '../../components/Alerts/ObservabilityFormFiltersItem/ObservabilityFormFiltersItem';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import InlineAlert from '../../components/common/InlineAlert/InlineAlert';
 import Loader from '../../components/common/Loader/Loader';
@@ -33,7 +45,6 @@ import {
   AlertType,
   EventSubscription,
   ProviderType,
-  SubscriptionCategory,
 } from '../../generated/events/eventSubscription';
 import { FilterResourceDescriptor } from '../../generated/events/filterResourceDescriptor';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
@@ -42,9 +53,13 @@ import {
   createNotificationAlert,
   getAlertsFromName,
   getResourceFunctions,
-  updateNotificationAlertWithPut,
+  updateNotificationAlert,
 } from '../../rest/alertsAPI';
-import { handleAlertSave } from '../../utils/Alerts/AlertsUtil';
+import {
+  getModifiedAlertDataForForm,
+  handleAlertSave,
+} from '../../utils/Alerts/AlertsUtil';
+import { getEntityName } from '../../utils/EntityUtils';
 import {
   getNotificationAlertDetailsPath,
   getSettingPath,
@@ -54,16 +69,14 @@ import {
   ModifiedCreateEventSubscription,
   ModifiedEventSubscription,
 } from '../AddObservabilityPage/AddObservabilityPage.interface';
-import AlertFormSourceItem from '../AddObservabilityPage/AlertFormSourceItem/AlertFormSourceItem';
-import DestinationFormItem from '../AddObservabilityPage/DestinationFormItem/DestinationFormItem.component';
-import ObservabilityFormFiltersItem from '../AddObservabilityPage/ObservabilityFormFiltersItem/ObservabilityFormFiltersItem';
 
 const AddNotificationPage = () => {
   const { t } = useTranslation();
   const [form] = useForm<ModifiedCreateEventSubscription>();
   const history = useHistory();
   const { fqn } = useFqn();
-  const { setInlineAlertDetails, inlineAlertDetails } = useApplicationStore();
+  const { setInlineAlertDetails, inlineAlertDetails, currentUser } =
+    useApplicationStore();
   const { getResourceLimit } = useLimitStore();
 
   const [loadingCount, setLoadingCount] = useState(0);
@@ -72,6 +85,7 @@ const AddNotificationPage = () => {
   >([]);
   const [isButtonLoading, setIsButtonLoading] = useState<boolean>(false);
   const [alert, setAlert] = useState<ModifiedEventSubscription>();
+  const [initialData, setInitialData] = useState<EventSubscription>();
 
   const isSystemProvider = useMemo(
     () => alert?.provider === ProviderType.System,
@@ -103,22 +117,10 @@ const AddNotificationPage = () => {
       setLoadingCount((count) => count + 1);
 
       const response: EventSubscription = await getAlertsFromName(fqn);
-      const modifiedAlertData: ModifiedEventSubscription = {
-        ...response,
-        timeout: response.destinations[0].timeout ?? 10,
-        destinations: response.destinations.map((destination) => {
-          const isExternalDestination =
-            destination.category === SubscriptionCategory.External;
+      const modifiedAlertData: ModifiedEventSubscription =
+        getModifiedAlertDataForForm(response);
 
-          return {
-            ...destination,
-            destinationType: isExternalDestination
-              ? destination.type
-              : destination.category,
-          };
-        }),
-      };
-
+      setInitialData(response);
       setAlert(modifiedAlertData);
     } catch {
       showErrorToast(
@@ -164,11 +166,13 @@ const AddNotificationPage = () => {
         await handleAlertSave({
           data,
           fqn,
+          initialData,
+          currentUser,
           createAlertAPI: createNotificationAlert,
-          updateAlertAPI: updateNotificationAlertWithPut,
-          afterSaveAction: async () => {
+          updateAlertAPI: updateNotificationAlert,
+          afterSaveAction: async (fqn: string) => {
             !fqn && (await getResourceLimit('eventsubscription', true, true));
-            history.push(getNotificationAlertDetailsPath(data.name));
+            history.push(getNotificationAlertDetailsPath(fqn));
           },
           setInlineAlertDetails,
         });
@@ -178,7 +182,7 @@ const AddNotificationPage = () => {
         setIsButtonLoading(false);
       }
     },
-    [fqn, history]
+    [fqn, history, initialData, currentUser]
   );
 
   const [selectedTrigger] =
@@ -242,6 +246,7 @@ const AddNotificationPage = () => {
                   form={form}
                   initialValues={{
                     ...alert,
+                    displayName: getEntityName(alert),
                     resources: alert?.filteringRules?.resources,
                   }}
                   validateMessages={VALIDATION_MESSAGES}
@@ -254,12 +259,9 @@ const AddNotificationPage = () => {
                         <Form.Item
                           label={t('label.name')}
                           labelCol={{ span: 24 }}
-                          name="name"
+                          name="displayName"
                           rules={NAME_FIELD_RULES}>
-                          <Input
-                            disabled={isEditMode}
-                            placeholder={t('label.name')}
-                          />
+                          <Input placeholder={t('label.name')} />
                         </Form.Item>
                       </Col>
                       <Col span={24}>
@@ -267,27 +269,40 @@ const AddNotificationPage = () => {
                           label={t('label.description')}
                           labelCol={{ span: 24 }}
                           name="description"
-                          trigger="onTextChange"
-                          valuePropName="initialValue">
+                          trigger="onTextChange">
                           <RichTextEditor
                             data-testid="description"
-                            height="200px"
-                            initialValue=""
+                            initialValue={alert?.description}
                           />
                         </Form.Item>
                       </Col>
                       <Col span={24}>
-                        <AlertFormSourceItem
-                          filterResources={entityFunctions}
-                        />
+                        <Row justify="center">
+                          <Col span={24}>
+                            <AlertFormSourceItem
+                              filterResources={entityFunctions}
+                            />
+                          </Col>
+                          {shouldShowFiltersSection && (
+                            <>
+                              <Col>
+                                <Divider dashed type="vertical" />
+                              </Col>
+                              <Col span={24}>
+                                <ObservabilityFormFiltersItem
+                                  supportedFilters={supportedFilters}
+                                />
+                              </Col>
+                            </>
+                          )}
+                          <Col>
+                            <Divider dashed type="vertical" />
+                          </Col>
+                          <Col span={24}>
+                            <DestinationFormItem />
+                          </Col>
+                        </Row>
                       </Col>
-                      {shouldShowFiltersSection && (
-                        <Col span={24}>
-                          <ObservabilityFormFiltersItem
-                            supportedFilters={supportedFilters}
-                          />
-                        </Col>
-                      )}
                       <Form.Item
                         hidden
                         initialValue={AlertType.Notification}
@@ -298,9 +313,6 @@ const AddNotificationPage = () => {
                         initialValue={ProviderType.User}
                         name="provider"
                       />
-                      <Col span={24}>
-                        <DestinationFormItem />
-                      </Col>
 
                       {!isUndefined(inlineAlertDetails) && (
                         <Col span={24}>

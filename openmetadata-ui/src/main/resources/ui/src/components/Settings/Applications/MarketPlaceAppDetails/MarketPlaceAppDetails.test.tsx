@@ -41,7 +41,7 @@ jest.mock('react-router-dom', () => ({
   })),
 }));
 
-jest.mock('../../../common/RichTextEditor/RichTextEditorPreviewer', () =>
+jest.mock('../../../common/RichTextEditor/RichTextEditorPreviewerV1', () =>
   jest.fn().mockReturnValue(<>RichTextEditorPreviewer</>)
 );
 
@@ -178,5 +178,16 @@ describe('MarketPlaceAppDetails component', () => {
     userEvent.click(screen.getByRole('button', { name: 'label.install' }));
 
     expect(mockPush).toHaveBeenCalledWith('app install path');
+  });
+
+  it("should render the correct support email url with 'mailto:' schema", async () => {
+    render(<MarketPlaceAppDetails />);
+
+    await waitForElementToBeRemoved(() => screen.getByText('Loader'));
+
+    expect(screen.getByTestId('app-support-email')).toHaveAttribute(
+      'href',
+      'mailto:support@email.com'
+    );
   });
 });

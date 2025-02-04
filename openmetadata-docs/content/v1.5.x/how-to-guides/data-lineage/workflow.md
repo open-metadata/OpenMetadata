@@ -5,7 +5,7 @@ slug: /how-to-guides/data-lineage/workflow
 
 # How to Deploy a Lineage Workflow
 
-Lineage data can be ingested from your data sources right from the OpenMetadata UI. Currently, the lineage workflow is supported for a limited set of connectors, like [BigQuery](/connectors/database/bigquery), [Snowflake](/connectors/database/snowflake), [MSSQL](/connectors/database/mssql), [Redshift](/connectors/database/redshift), [Clickhouse](/connectors/database/clickhouse), [Postgres](/connectors/database/postgres), [Databricks](/connectors/database/databricks).
+Lineage data can be ingested from your data sources right from the OpenMetadata UI. Currently, the lineage workflow is supported for a limited set of connectors, like [BigQuery](/connectors/database/bigquery), [Snowflake](/connectors/database/snowflake), [MSSQL](/connectors/database/mssql), [Redshift](/connectors/database/redshift), [Clickhouse](/connectors/database/clickhouse), [PostgreSQL](/connectors/database/postgres), [Databricks](/connectors/database/databricks).
 
 {% note noteType="Tip" %} **Tip:** Trace the upstream and downstream dependencies with Lineage. {% /note %}
 
@@ -24,11 +24,23 @@ Apart from the Metadata ingestion, we can create a workflow that will obtain the
 
 ### 1. Add a Lineage Ingestion
 
-Navigate to **Settings >> Services**. Select the required service
+Navigate to **Settings >> Services >> Databases**. Select the required service
  {% image
  src="/images/v1.5/how-to-guides/lineage/wkf1.png"
  alt="Select a Service"
  caption="Select a Service"
+ /%}
+
+ {% image
+ src="/images/v1.5/how-to-guides/lineage/wkf1.1.png"
+ alt="Click on Databases"
+ caption="Click on Databases"
+ /%}
+
+ {% image
+ src="/images/v1.5/how-to-guides/lineage/wkf1.2.png"
+ alt="Select the Database"
+ caption="Select the Database"
  /%}
 
 Go the the **Ingestions** tab. Click on **Add Ingestion** and select **Add Lineage Ingestion**.

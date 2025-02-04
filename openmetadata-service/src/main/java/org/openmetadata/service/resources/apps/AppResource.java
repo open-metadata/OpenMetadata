@@ -2,8 +2,8 @@ package org.openmetadata.service.resources.apps;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
+import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 import static org.openmetadata.service.Entity.APPLICATION;
-import static org.openmetadata.service.Entity.BOT;
 import static org.openmetadata.service.Entity.FIELD_OWNERS;
 import static org.openmetadata.service.jdbi3.EntityRepository.getEntitiesFromSeedData;
 
@@ -43,11 +43,10 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.ServiceEntityInterface;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.entity.app.App;
-import org.openmetadata.schema.entity.app.AppMarketPlaceDefinition;
+import org.openmetadata.schema.entity.app.AppExtension;
 import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.schema.entity.app.AppType;
 import org.openmetadata.schema.entity.app.CreateApp;
@@ -93,7 +92,7 @@ import org.quartz.SchedulerException;
     description = "Apps are internal/external apps used to something on top of Open-metadata.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "apps")
+@Collection(name = "apps", order = 8)
 @Slf4j
 public class AppResource extends EntityResource<App, AppRepository> {
   public static final String COLLECTION_PATH = "v1/apps/";
@@ -102,8 +101,9 @@ public class AppResource extends EntityResource<App, AppRepository> {
   static final String FIELDS = "owners";
   private SearchRepository searchRepository;
   public static final List<ScheduleType> SCHEDULED_TYPES =
-      List.of(ScheduleType.Scheduled, ScheduleType.ScheduledOrManual);
+      List.of(ScheduleType.Scheduled, ScheduleType.ScheduledOrManual, ScheduleType.NoSchedule);
   public static final String SLACK_APPLICATION = "SlackApplication";
+  private final AppMapper mapper = new AppMapper();
 
   @Override
   public void initialize(OpenMetadataApplicationConfig config) {
@@ -132,28 +132,21 @@ public class AppResource extends EntityResource<App, AppRepository> {
     // Get Create App Requests
     for (CreateApp createApp : defaultAppCreateRequests) {
       try {
-        AppMarketPlaceDefinition definition =
-            repository
-                .getMarketPlace()
-                .getByName(
-                    null,
-                    createApp.getName(),
-                    new EntityUtil.Fields(repository.getMarketPlace().getAllowedFields()));
         App app = getAppForInit(createApp.getName());
         if (app == null) {
-          app =
-              getApplication(definition, createApp, "admin")
-                  .withFullyQualifiedName(createApp.getName());
+          app = mapper.createToEntity(createApp, ADMIN_USER_NAME);
           repository.initializeEntity(app);
         }
 
         // Schedule
         if (SCHEDULED_TYPES.contains(app.getScheduleType())) {
           ApplicationHandler.getInstance()
-              .installApplication(app, Entity.getCollectionDAO(), searchRepository);
+              .installApplication(
+                  app, Entity.getCollectionDAO(), searchRepository, ADMIN_USER_NAME);
         }
       } catch (Exception ex) {
         LOG.error("Failed in Creation/Initialization of Application : {}", createApp.getName(), ex);
+        repository.deleteByName("admin", createApp.getName(), false, true);
       }
     }
   }
@@ -268,13 +261,13 @@ public class AppResource extends EntityResource<App, AppRepository> {
           @DefaultValue("10")
           @QueryParam("limit")
           @Min(0)
-          @Max(1000000)
+          @Max(1000)
           int limitParam,
       @Parameter(description = "Offset records. (0 to 1000000, default = 0)")
           @DefaultValue("0")
           @QueryParam("offset")
           @Min(0)
-          @Max(1000000)
+          @Max(1000)
           int offset,
       @Parameter(
               description = "Filter pipeline status after the given start timestamp",
@@ -289,7 +282,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
     App installation = repository.getByName(uriInfo, name, repository.getFields("id,pipelines"));
     if (installation.getAppType().equals(AppType.Internal)) {
       return Response.status(Response.Status.OK)
-          .entity(repository.listAppRuns(installation.getId(), limitParam, offset))
+          .entity(repository.listAppRuns(installation, limitParam, offset))
           .build();
     }
     if (!installation.getPipelines().isEmpty()) {
@@ -306,6 +299,77 @@ public class AppResource extends EntityResource<App, AppRepository> {
           .build();
     }
     throw new IllegalArgumentException("App does not have an associated pipeline.");
+  }
+
+  @GET
+  @Path("/name/{name}/extension")
+  @Operation(
+      operationId = "listAppExtension",
+      summary = "List App Extension data",
+      description =
+          "Get a list of applications Extension data."
+              + " Use cursor-based pagination to limit the number "
+              + "entries in the list using `offset` query params.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "List of Installed Applications Runs",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = AppExtension.class)))
+      })
+  public Response listAppExtension(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Name of the App", schema = @Schema(type = "string"))
+          @PathParam("name")
+          String name,
+      @Parameter(description = "Limit records. (1 to 1000000, default = 10)")
+          @DefaultValue("10")
+          @QueryParam("limit")
+          @Min(0)
+          @Max(1000000)
+          int limitParam,
+      @Parameter(description = "Offset records. (0 to 1000000, default = 0)")
+          @DefaultValue("0")
+          @QueryParam("offset")
+          @Min(0)
+          @Max(1000000)
+          int offset,
+      @Parameter(
+              description = "Filter pipeline status after the given start timestamp",
+              schema = @Schema(type = "number"))
+          @QueryParam("startTs")
+          Long startTs,
+      @Parameter(description = "Get the extension type", schema = @Schema(type = "string"))
+          @QueryParam("extensionType")
+          AppExtension.ExtensionType extensionType,
+      @Parameter(
+              description = "List extensions by name instead of id",
+              schema = @Schema(type = "boolean"))
+          @QueryParam("byName")
+          @DefaultValue("false")
+          boolean byName) {
+    App installation = repository.getByName(uriInfo, name, repository.getFields("id"));
+    if (startTs != null) {
+      ResultList<AppExtension> appExtensionList =
+          byName
+              ? repository.listAppExtensionAfterTimeByName(
+                  installation, startTs, limitParam, offset, AppExtension.class, extensionType)
+              : repository.listAppExtensionAfterTimeById(
+                  installation, startTs, limitParam, offset, AppExtension.class, extensionType);
+      return Response.status(Response.Status.OK).entity(appExtensionList).build();
+    }
+
+    ResultList<AppExtension> appExtensionList =
+        byName
+            ? repository.listAppExtensionByName(
+                installation, limitParam, offset, AppExtension.class, extensionType)
+            : repository.listAppExtensionById(
+                installation, limitParam, offset, AppExtension.class, extensionType);
+
+    return Response.status(Response.Status.OK).entity(appExtensionList).build();
   }
 
   @GET
@@ -336,7 +400,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
     App installation = repository.getByName(uriInfo, name, repository.getFields("id,pipelines"));
     if (installation.getAppType().equals(AppType.Internal)) {
       return Response.status(Response.Status.OK)
-          .entity(repository.getLatestAppRuns(installation.getId()))
+          .entity(repository.getLatestAppRuns(installation))
           .build();
     } else {
       if (!installation.getPipelines().isEmpty()) {
@@ -385,7 +449,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
     App installation = repository.getByName(uriInfo, name, repository.getFields("id,pipelines"));
     if (installation.getAppType().equals(AppType.Internal)) {
       return Response.status(Response.Status.OK)
-          .entity(repository.getLatestAppRuns(installation.getId()))
+          .entity(repository.getLatestAppRuns(installation))
           .build();
     } else {
       if (!installation.getPipelines().isEmpty()) {
@@ -549,24 +613,18 @@ public class AppResource extends EntityResource<App, AppRepository> {
       })
   public Response create(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateApp create) {
-
-    AppMarketPlaceDefinition definition =
-        repository
-            .getMarketPlace()
-            .getByName(
-                uriInfo,
-                create.getName(),
-                new EntityUtil.Fields(repository.getMarketPlace().getAllowedFields()));
-    App app = getApplication(definition, create, securityContext.getUserPrincipal().getName());
+    App app = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     limits.enforceLimits(
         securityContext,
         getResourceContext(),
         new OperationContext(Entity.APPLICATION, MetadataOperation.CREATE));
     if (SCHEDULED_TYPES.contains(app.getScheduleType())) {
       ApplicationHandler.getInstance()
-          .installApplication(app, Entity.getCollectionDAO(), searchRepository);
-      ApplicationHandler.getInstance()
-          .configureApplication(app, Entity.getCollectionDAO(), searchRepository);
+          .installApplication(
+              app,
+              Entity.getCollectionDAO(),
+              searchRepository,
+              securityContext.getUserPrincipal().getName());
     }
     // We don't want to store this information
     unsetAppRuntimeProperties(app);
@@ -609,7 +667,11 @@ public class AppResource extends EntityResource<App, AppRepository> {
     App updatedApp = (App) response.getEntity();
     if (SCHEDULED_TYPES.contains(app.getScheduleType())) {
       ApplicationHandler.getInstance()
-          .installApplication(updatedApp, Entity.getCollectionDAO(), searchRepository);
+          .installApplication(
+              updatedApp,
+              Entity.getCollectionDAO(),
+              searchRepository,
+              securityContext.getUserPrincipal().getName());
     }
     // We don't want to store this information
     unsetAppRuntimeProperties(updatedApp);
@@ -653,7 +715,11 @@ public class AppResource extends EntityResource<App, AppRepository> {
     App updatedApp = (App) response.getEntity();
     if (SCHEDULED_TYPES.contains(app.getScheduleType())) {
       ApplicationHandler.getInstance()
-          .installApplication(updatedApp, Entity.getCollectionDAO(), searchRepository);
+          .installApplication(
+              updatedApp,
+              Entity.getCollectionDAO(),
+              searchRepository,
+              securityContext.getUserPrincipal().getName());
     }
     // We don't want to store this information
     unsetAppRuntimeProperties(updatedApp);
@@ -677,18 +743,15 @@ public class AppResource extends EntityResource<App, AppRepository> {
   public Response createOrUpdate(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateApp create)
       throws SchedulerException {
-    AppMarketPlaceDefinition definition =
-        repository
-            .getMarketPlace()
-            .getByName(
-                uriInfo,
-                create.getName(),
-                new EntityUtil.Fields(repository.getMarketPlace().getAllowedFields()));
-    App app = getApplication(definition, create, securityContext.getUserPrincipal().getName());
+    App app = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     AppScheduler.getInstance().deleteScheduledApplication(app);
     if (SCHEDULED_TYPES.contains(app.getScheduleType())) {
       ApplicationHandler.getInstance()
-          .installApplication(app, Entity.getCollectionDAO(), searchRepository);
+          .installApplication(
+              app,
+              Entity.getCollectionDAO(),
+              searchRepository,
+              securityContext.getUserPrincipal().getName());
     }
     // We don't want to store this information
     unsetAppRuntimeProperties(app);
@@ -726,7 +789,11 @@ public class AppResource extends EntityResource<App, AppRepository> {
     }
 
     ApplicationHandler.getInstance()
-        .performCleanup(app, Entity.getCollectionDAO(), searchRepository);
+        .performCleanup(
+            app,
+            Entity.getCollectionDAO(),
+            searchRepository,
+            securityContext.getUserPrincipal().getName());
 
     limits.invalidateCache(entityType);
     // Remove from Pipeline Service
@@ -763,7 +830,11 @@ public class AppResource extends EntityResource<App, AppRepository> {
     }
 
     ApplicationHandler.getInstance()
-        .performCleanup(app, Entity.getCollectionDAO(), searchRepository);
+        .performCleanup(
+            app,
+            Entity.getCollectionDAO(),
+            searchRepository,
+            securityContext.getUserPrincipal().getName());
 
     // Remove from Pipeline Service
     deleteApp(securityContext, app);
@@ -795,7 +866,11 @@ public class AppResource extends EntityResource<App, AppRepository> {
       App app = (App) response.getEntity();
       if (SCHEDULED_TYPES.contains(app.getScheduleType())) {
         ApplicationHandler.getInstance()
-            .installApplication(app, Entity.getCollectionDAO(), searchRepository);
+            .installApplication(
+                app,
+                Entity.getCollectionDAO(),
+                searchRepository,
+                securityContext.getUserPrincipal().getName());
       }
       // We don't want to store this information
       unsetAppRuntimeProperties(app);
@@ -831,7 +906,12 @@ public class AppResource extends EntityResource<App, AppRepository> {
         repository.getByName(uriInfo, name, new EntityUtil.Fields(repository.getAllowedFields()));
     if (SCHEDULED_TYPES.contains(app.getScheduleType())) {
       ApplicationHandler.getInstance()
-          .installApplication(app, repository.getDaoCollection(), searchRepository);
+          .installApplication(
+              app,
+              repository.getDaoCollection(),
+              searchRepository,
+              securityContext.getUserPrincipal().getName());
+
       return Response.status(Response.Status.OK).entity("App is Scheduled.").build();
     }
     throw new IllegalArgumentException("App is not of schedule type Scheduled.");
@@ -865,15 +945,9 @@ public class AppResource extends EntityResource<App, AppRepository> {
         repository.getByName(uriInfo, name, new EntityUtil.Fields(repository.getAllowedFields()));
     // The application will have the updated appConfiguration we can use to run the `configure`
     // logic
-    try {
-      ApplicationHandler.getInstance()
-          .configureApplication(app, repository.getDaoCollection(), searchRepository);
-      return Response.status(Response.Status.OK).entity("App has been configured.").build();
-    } catch (RuntimeException e) {
-      return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-          .entity(String.format("Error configuring app [%s]", e.getMessage()))
-          .build();
-    }
+    ApplicationHandler.getInstance()
+        .configureApplication(app, repository.getDaoCollection(), searchRepository);
+    return Response.status(Response.Status.OK).entity("App has been configured.").build();
   }
 
   @POST
@@ -941,9 +1015,9 @@ public class AppResource extends EntityResource<App, AppRepository> {
     App app = repository.getByName(uriInfo, name, fields);
     if (Boolean.TRUE.equals(app.getSupportsInterrupt())) {
       if (app.getAppType().equals(AppType.Internal)) {
-        AppScheduler.getInstance().stopApplicationRun(app);
+        new Thread(() -> AppScheduler.getInstance().stopApplicationRun(app)).start();
         return Response.status(Response.Status.OK)
-            .entity("Application will be stopped in some time.")
+            .entity("Application stop in progress. Please check status via.")
             .build();
       } else {
         if (!app.getPipelines().isEmpty()) {
@@ -982,7 +1056,11 @@ public class AppResource extends EntityResource<App, AppRepository> {
     App app = repository.getByName(uriInfo, name, fields);
     if (app.getAppType().equals(AppType.Internal)) {
       ApplicationHandler.getInstance()
-          .installApplication(app, Entity.getCollectionDAO(), searchRepository);
+          .installApplication(
+              app,
+              Entity.getCollectionDAO(),
+              searchRepository,
+              securityContext.getUserPrincipal().getName());
       return Response.status(Response.Status.OK).entity("Application Deployed").build();
     } else {
       if (!app.getPipelines().isEmpty()) {
@@ -1025,53 +1103,6 @@ public class AppResource extends EntityResource<App, AppRepository> {
         secretsManager.encryptOpenMetadataConnection(openMetadataServerConnection, false));
     if (authorizer.shouldMaskPasswords(securityContext) && !forceNotMask) {
       EntityMaskerFactory.getEntityMasker().maskIngestionPipeline(ingestionPipeline);
-    }
-  }
-
-  private App getApplication(
-      AppMarketPlaceDefinition marketPlaceDefinition,
-      CreateApp createAppRequest,
-      String updatedBy) {
-    List<EntityReference> owners = repository.validateOwners(createAppRequest.getOwners());
-    App app =
-        new App()
-            .withId(UUID.randomUUID())
-            .withName(marketPlaceDefinition.getName())
-            .withDisplayName(createAppRequest.getDisplayName())
-            .withDescription(createAppRequest.getDescription())
-            .withOwners(owners)
-            .withUpdatedBy(updatedBy)
-            .withUpdatedAt(System.currentTimeMillis())
-            .withDeveloper(marketPlaceDefinition.getDeveloper())
-            .withDeveloperUrl(marketPlaceDefinition.getDeveloperUrl())
-            .withPrivacyPolicyUrl(marketPlaceDefinition.getPrivacyPolicyUrl())
-            .withSupportEmail(marketPlaceDefinition.getSupportEmail())
-            .withClassName(marketPlaceDefinition.getClassName())
-            .withAppType(marketPlaceDefinition.getAppType())
-            .withScheduleType(marketPlaceDefinition.getScheduleType())
-            .withAppConfiguration(createAppRequest.getAppConfiguration())
-            .withRuntime(marketPlaceDefinition.getRuntime())
-            .withPermission(marketPlaceDefinition.getPermission())
-            .withAppSchedule(createAppRequest.getAppSchedule())
-            .withAppLogoUrl(marketPlaceDefinition.getAppLogoUrl())
-            .withAppScreenshots(marketPlaceDefinition.getAppScreenshots())
-            .withFeatures(marketPlaceDefinition.getFeatures())
-            .withSourcePythonClass(marketPlaceDefinition.getSourcePythonClass())
-            .withAllowConfiguration(marketPlaceDefinition.getAllowConfiguration())
-            .withSystem(marketPlaceDefinition.getSystem())
-            .withSupportsInterrupt(marketPlaceDefinition.getSupportsInterrupt());
-
-    // validate Bot if provided
-    validateAndAddBot(app, createAppRequest.getBot());
-
-    return app;
-  }
-
-  private void validateAndAddBot(App app, String botName) {
-    if (!CommonUtil.nullOrEmpty(botName)) {
-      app.setBot(Entity.getEntityReferenceByName(BOT, botName, Include.NON_DELETED));
-    } else {
-      app.setBot(repository.createNewAppBot(app));
     }
   }
 

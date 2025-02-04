@@ -15,6 +15,7 @@ import { PLAYWRIGHT_INGESTION_TAG_OBJ } from '../../constant/config';
 import { SidebarItem } from '../../constant/sidebar';
 import { TableClass } from '../../support/entity/TableClass';
 import { UserClass } from '../../support/user/UserClass';
+import { resetTokenFromBotPage } from '../../utils/bot';
 import {
   createNewPage,
   descriptionBox,
@@ -47,6 +48,15 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
 
     const { afterAction, apiContext, page } = await createNewPage(browser);
 
+    // Todo: Remove this patch once the issue is fixed #19140
+    await resetTokenFromBotPage(page, {
+      name: 'testsuite',
+      testId: 'bot-link-TestSuiteBot',
+    });
+
+    for (const user of users) {
+      await user.create(apiContext);
+    }
     const { pipeline } = await table1.createTestSuiteAndPipelines(apiContext);
     for (let i = 0; i < 3; i++) {
       await table1.createTestCase(apiContext, {
@@ -65,10 +75,6 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
       pipeline,
       apiContext,
     });
-
-    for (const user of users) {
-      await user.create(apiContext);
-    }
 
     await afterAction();
   });
@@ -231,7 +237,7 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
     await test.step('Resolve task from incident list page', async () => {
       await visitProfilerTab(page, table1);
       const testCaseResponse = page.waitForResponse(
-        '/api/v1/dataQuality/testCases/search/list?fields=*'
+        '/api/v1/dataQuality/testCases/search/list?*fields=*'
       );
       await page
         .getByTestId('profiler-tab-left-panel')
@@ -277,7 +283,7 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
     await test.step('Task should be closed', async () => {
       await visitProfilerTab(page, table1);
       const testCaseResponse = page.waitForResponse(
-        '/api/v1/dataQuality/testCases/search/list?fields=*'
+        '/api/v1/dataQuality/testCases/search/list?*fields=*'
       );
       await page
         .getByTestId('profiler-tab-left-panel')
@@ -373,7 +379,7 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
     await test.step("Verify incident's status on DQ page", async () => {
       await visitProfilerTab(page, table1);
       const testCaseResponse = page.waitForResponse(
-        '/api/v1/dataQuality/testCases/search/list?fields=*'
+        '/api/v1/dataQuality/testCases/search/list?*fields=*'
       );
       await page
         .getByTestId('profiler-tab-left-panel')
@@ -392,12 +398,16 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
 
   test('Validate Incident Tab in Entity details page', async ({ page }) => {
     const testCases = table1.testCasesResponseData;
-    await table1.visitEntityPage(page);
+    await visitProfilerTab(page, table1);
+
     const incidentListResponse = page.waitForResponse(
       `/api/v1/dataQuality/testCases/testCaseIncidentStatus?*originEntityFQN=${table1.entityResponseData?.['fullyQualifiedName']}*`
     );
 
-    await page.click('[data-testid="incidents"]');
+    await page
+      .getByTestId('profiler-tab-left-panel')
+      .getByText('Incidents')
+      .click();
     await incidentListResponse;
 
     for (const testCase of testCases) {

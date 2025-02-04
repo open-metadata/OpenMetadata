@@ -1,9 +1,9 @@
 {
-	"type": "REST",
+	"type": "rest",
 	"serviceName": "ometa_api_service", 
 	"serviceConnection": {
 		"config": {
-			"type": "REST",
+			"type": "Rest",
 			"openAPISchemaURL": "https://docs.open-metadata.org/swagger.html",
     		"token":"token"
 		}

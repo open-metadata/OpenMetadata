@@ -21,9 +21,9 @@ from metadata.generated.schema.api.data.createAPICollection import (
     CreateAPICollectionRequest,
 )
 from metadata.generated.schema.entity.services.apiService import (
+    ApiConnection,
     ApiService,
-    ApiServiceConnection,
-    APIServiceType,
+    ApiServiceType,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
@@ -43,7 +43,7 @@ mock_rest_config = {
         "serviceName": "openapi_rest",
         "serviceConnection": {
             "config": {
-                "type": "REST",
+                "type": "Rest",
                 "openAPISchemaURL": "https://petstore3.swagger.io/api/v3/openapi.json",
             }
         },
@@ -91,8 +91,8 @@ MOCK_API_SERVICE = ApiService(
     id="c3eb265f-5445-4ad3-ba5e-797d3a3071bb",
     name="openapi_rest",
     fullyQualifiedName=FullyQualifiedEntityName("openapi_rest"),
-    connection=ApiServiceConnection(),
-    serviceType=APIServiceType.REST,
+    connection=ApiConnection(),
+    serviceType=ApiServiceType.Rest,
 )
 EXPECTED_COLLECTION_REQUEST = [
     Either(

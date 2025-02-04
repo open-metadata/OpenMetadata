@@ -39,7 +39,7 @@ import { getEntityName } from '../../../../utils/EntityUtils';
 import { getAppInstallPath } from '../../../../utils/RouterUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import Loader from '../../../common/Loader/Loader';
-import RichTextEditorPreviewer from '../../../common/RichTextEditor/RichTextEditorPreviewer';
+import RichTextEditorPreviewerV1 from '../../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import PageLayoutV1 from '../../../PageLayoutV1/PageLayoutV1';
 import applicationsClassBase from '../AppDetails/ApplicationsClassBase';
 import AppLogo from '../AppLogo/AppLogo.component';
@@ -203,7 +203,10 @@ const MarketPlaceAppDetails = () => {
         <Space className="p-t-lg" direction="vertical" size={8}>
           <Typography.Text>
             {appData?.supportEmail && (
-              <Typography.Link href={appData?.supportEmail} target="_blank">
+              <Typography.Link
+                data-testid="app-support-email"
+                href={`mailto:${appData?.supportEmail}`}
+                target="_blank">
                 <Space>{t('label.get-app-support')}</Space>
               </Typography.Link>
             )}
@@ -265,7 +268,7 @@ const MarketPlaceAppDetails = () => {
 
         <Col span={24}>
           <div className="p-md">
-            <RichTextEditorPreviewer
+            <RichTextEditorPreviewerV1
               enableSeeMoreVariant={false}
               markdown={appData?.description ?? ''}
             />

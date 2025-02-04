@@ -169,3 +169,28 @@ def get_table_ddl(
         table_name=table_name,
         schema=schema,
     )
+
+
+@reflection.cache
+def get_table_comment_results(
+    self, connection, query, database, table_name, schema=None
+):
+    """
+    Method to fetch comment of all available tables
+    """
+    self.table_comment_result: Dict[Tuple[str, str], str] = {}
+    self.current_db: str = database
+    result = connection.execute(query).fetchall()
+    self.table_comment_result[(table_name, schema)] = result
+
+
+def get_table_comment_result_wrapper(
+    self, connection, query, database, table_name, schema=None
+):
+    if (
+        not hasattr(self, "table_comment_result")
+        or self.table_comment_result.get((table_name, schema)) is None
+        or self.current_db != database
+    ):
+        self.get_table_comment_results(connection, query, database, table_name, schema)
+    return self.table_comment_result.get((table_name, schema))

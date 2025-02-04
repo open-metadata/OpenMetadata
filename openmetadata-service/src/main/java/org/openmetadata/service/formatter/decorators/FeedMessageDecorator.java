@@ -26,13 +26,18 @@ public class FeedMessageDecorator implements MessageDecorator<FeedMessage> {
   }
 
   @Override
+  public String getBoldWithSpace() {
+    return "**%s** ";
+  }
+
+  @Override
   public String getLineBreak() {
     return " <br/> ";
   }
 
   @Override
   public String getAddMarker() {
-    return "<span class=\"diff-added\">";
+    return "<span data-diff='true' class=\"diff-added\">";
   }
 
   @Override
@@ -42,7 +47,7 @@ public class FeedMessageDecorator implements MessageDecorator<FeedMessage> {
 
   @Override
   public String getRemoveMarker() {
-    return "<span class=\"diff-removed\">";
+    return "<span data-diff='true' class=\"diff-removed\">";
   }
 
   @Override
@@ -66,7 +71,7 @@ public class FeedMessageDecorator implements MessageDecorator<FeedMessage> {
   }
 
   @Override
-  public FeedMessage buildTestMessage(String publisherName) {
+  public FeedMessage buildTestMessage() {
     return null;
   }
 

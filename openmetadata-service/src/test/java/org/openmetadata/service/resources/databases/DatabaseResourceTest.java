@@ -121,7 +121,7 @@ public class DatabaseResourceTest extends EntityResourceTest<Database, CreateDat
     // Headers: name, displayName, description, owner, tags, retentionPeriod, sourceUrl, domain
     // Update databaseSchema with invalid tags field
     String resultsHeader = recordToString(EntityCsv.getResultHeaders(DatabaseCsv.HEADERS));
-    String record = "s1,dsp1,dsc1,,Tag.invalidTag,,,,,";
+    String record = "s1,dsp1,dsc1,,Tag.invalidTag,,,,,,";
     String csv = createCsv(DatabaseCsv.HEADERS, listOf(record), null);
     CsvImportResult result = importCsv(databaseName, csv, false);
     assertSummary(result, ApiStatus.PARTIAL_SUCCESS, 2, 1, 1);
@@ -132,7 +132,7 @@ public class DatabaseResourceTest extends EntityResourceTest<Database, CreateDat
     assertRows(result, expectedRows);
 
     //  invalid tag it will give error.
-    record = "non-existing,dsp1,dsc1,,Tag.invalidTag,,,,,";
+    record = "non-existing,dsp1,dsc1,,Tag.invalidTag,,,,,,";
     csv = createCsv(DatabaseSchemaCsv.HEADERS, listOf(record), null);
     result = importCsv(databaseName, csv, false);
     assertSummary(result, ApiStatus.PARTIAL_SUCCESS, 2, 1, 1);
@@ -144,7 +144,7 @@ public class DatabaseResourceTest extends EntityResourceTest<Database, CreateDat
 
     // databaseSchema will be created if it does not exist
     String schemaFqn = FullyQualifiedName.add(database.getFullyQualifiedName(), "non-existing");
-    record = "non-existing,dsp1,dsc1,,,,,,,";
+    record = "non-existing,dsp1,dsc1,,,,,,,,";
     csv = createCsv(DatabaseSchemaCsv.HEADERS, listOf(record), null);
     result = importCsv(databaseName, csv, false);
     assertSummary(result, ApiStatus.SUCCESS, 2, 2, 0);
@@ -168,7 +168,7 @@ public class DatabaseResourceTest extends EntityResourceTest<Database, CreateDat
     // Update terms with change in description
     String record =
         String.format(
-            "s1,dsp1,new-dsc1,user:%s,,,Tier.Tier1,P23DT23H,http://test.com,%s",
+            "s1,dsp1,new-dsc1,user:%s,,,Tier.Tier1,P23DT23H,http://test.com,%s,",
             user1, escapeCsv(DOMAIN.getFullyQualifiedName()));
 
     // Update created entity with changes

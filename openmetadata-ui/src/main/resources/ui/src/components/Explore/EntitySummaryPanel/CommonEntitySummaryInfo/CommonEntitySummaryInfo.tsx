@@ -30,7 +30,7 @@ function CommonEntitySummaryInfo({
   return (
     <Row gutter={[0, 4]}>
       {entityInfo.map((info) => {
-        const isOwner = info.name === t('label.owner');
+        const isOwner = info.name === t('label.owner-plural');
 
         return info.visible?.includes(componentType) ? (
           <Col key={info.name} span={24}>
@@ -54,7 +54,11 @@ function CommonEntitySummaryInfo({
                         component={Typography.Link}
                         data-testid={`${info.name}-value`}
                         target={info.isExternal ? '_blank' : '_self'}
-                        to={{ pathname: info.url }}>
+                        to={
+                          info.linkProps
+                            ? info.linkProps
+                            : { pathname: info.url }
+                        }>
                         {info.value}
                         {info.isExternal ? (
                           <Icon

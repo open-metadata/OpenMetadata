@@ -18,6 +18,7 @@ export interface ModelTabProps {
   entityFqn: string;
   isReadOnly: boolean;
   hasEditTagsPermission: boolean;
+  hasEditGlossaryTermPermission: boolean;
   hasEditDescriptionPermission: boolean;
   onThreadLinkSelect: (value: string, threadType?: ThreadType) => void;
   onUpdate: (updatedDataModel: Column[]) => Promise<void>;

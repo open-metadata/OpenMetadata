@@ -12,22 +12,23 @@
  */
 
 import Icon, { SearchOutlined } from '@ant-design/icons';
-import { Tooltip } from 'antd';
+import { Space, Tooltip, Typography } from 'antd';
 import { ExpandableConfig } from 'antd/lib/table/interface';
 import classNames from 'classnames';
 import { t } from 'i18next';
 import {
+  get,
+  isEmpty,
   isUndefined,
   lowerCase,
   omit,
-  reduce,
   toString,
   uniqBy,
   uniqueId,
   upperCase,
 } from 'lodash';
 import { EntityTags } from 'Models';
-import React, { CSSProperties } from 'react';
+import React, { CSSProperties, Fragment } from 'react';
 import { ReactComponent as AlertIcon } from '../assets/svg/alert.svg';
 import { ReactComponent as AnnouncementIcon } from '../assets/svg/announcements-black.svg';
 import { ReactComponent as ApplicationIcon } from '../assets/svg/application.svg';
@@ -47,7 +48,7 @@ import { ReactComponent as APIEndpointIcon } from '../assets/svg/ic-api-endpoint
 import { ReactComponent as APIServiceIcon } from '../assets/svg/ic-api-service-default.svg';
 import { ReactComponent as IconDown } from '../assets/svg/ic-arrow-down.svg';
 import { ReactComponent as IconRight } from '../assets/svg/ic-arrow-right.svg';
-import { ReactComponent as IconTestSuite } from '../assets/svg/ic-checklist.svg';
+import { ReactComponent as IconTestCase } from '../assets/svg/ic-checklist.svg';
 import { ReactComponent as DashboardIcon } from '../assets/svg/ic-dashboard.svg';
 import { ReactComponent as DataQualityIcon } from '../assets/svg/ic-data-contract.svg';
 import { ReactComponent as DataProductIcon } from '../assets/svg/ic-data-product.svg';
@@ -61,11 +62,17 @@ import { ReactComponent as ContainerIcon } from '../assets/svg/ic-storage.svg';
 import { ReactComponent as IconStoredProcedure } from '../assets/svg/ic-stored-procedure.svg';
 import { ReactComponent as TableIcon } from '../assets/svg/ic-table.svg';
 import { ReactComponent as TopicIcon } from '../assets/svg/ic-topic.svg';
+import { ReactComponent as IconDistLineThrough } from '../assets/svg/icon-dist-line-through.svg';
+import { ReactComponent as IconDistKey } from '../assets/svg/icon-distribution.svg';
 import { ReactComponent as IconKeyLineThrough } from '../assets/svg/icon-key-line-through.svg';
 import { ReactComponent as IconKey } from '../assets/svg/icon-key.svg';
 import { ReactComponent as IconNotNullLineThrough } from '../assets/svg/icon-not-null-line-through.svg';
+import { ReactComponent as IconSortLineThrough } from '../assets/svg/icon-sort-line-through.svg';
+import { ReactComponent as IconTestSuite } from '../assets/svg/icon-test-suite.svg';
+
 import { ReactComponent as IconNotNull } from '../assets/svg/icon-not-null.svg';
 import { ReactComponent as RoleIcon } from '../assets/svg/icon-role-grey.svg';
+import { ReactComponent as IconSortKey } from '../assets/svg/icon-sort.svg';
 import { ReactComponent as IconUniqueLineThrough } from '../assets/svg/icon-unique-line-through.svg';
 import { ReactComponent as IconUnique } from '../assets/svg/icon-unique.svg';
 import { ReactComponent as KPIIcon } from '../assets/svg/kpi.svg';
@@ -79,19 +86,33 @@ import { ReactComponent as TagIcon } from '../assets/svg/tag.svg';
 import { ReactComponent as TaskIcon } from '../assets/svg/task-ic.svg';
 import { ReactComponent as TeamIcon } from '../assets/svg/teams.svg';
 import { ReactComponent as UserIcon } from '../assets/svg/user.svg';
-
+import { ActivityFeedTab } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
+import { CustomPropertyTable } from '../components/common/CustomPropertyTable/CustomPropertyTable';
+import ErrorPlaceHolder from '../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import QueryViewer from '../components/common/QueryViewer/QueryViewer.component';
+import TabsLabel from '../components/common/TabsLabel/TabsLabel.component';
+import { TabProps } from '../components/common/TabsLabel/TabsLabel.interface';
+import TableProfiler from '../components/Database/Profiler/TableProfiler/TableProfiler';
+import SampleDataTableComponent from '../components/Database/SampleDataTable/SampleDataTable.component';
+import TableQueries from '../components/Database/TableQueries/TableQueries';
+import Lineage from '../components/Lineage/Lineage.component';
 import { SourceType } from '../components/SearchedData/SearchedData.interface';
 import { NON_SERVICE_TYPE_ASSETS } from '../constants/Assets.constants';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import { DE_ACTIVE_COLOR, TEXT_BODY_COLOR } from '../constants/constants';
-import { EntityType, FqnPart } from '../enums/entity.enum';
+import LineageProvider from '../context/LineageProvider/LineageProvider';
+import { ERROR_PLACEHOLDER_TYPE } from '../enums/common.enum';
+import { EntityTabs, EntityType, FqnPart } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { ConstraintTypes, PrimaryTableDataTypes } from '../enums/table.enum';
 import { SearchIndexField } from '../generated/entity/data/searchIndex';
 import {
   Column,
+  ConstraintType,
   DataType,
+  JoinedWith,
   TableConstraint,
+  TableJoins,
 } from '../generated/entity/data/table';
 import { Field } from '../generated/type/schema';
 import { LabelType, State, TagLabel } from '../generated/type/tagLabel';
@@ -104,7 +125,41 @@ import EntityLink from './EntityLink';
 import searchClassBase from './SearchClassBase';
 import serviceUtilClassBase from './ServiceUtilClassBase';
 import { ordinalize } from './StringsUtils';
+import { TableDetailPageTabProps } from './TableClassBase';
 import { TableFieldsInfoCommonEntities } from './TableUtils.interface';
+
+import { ReactComponent as IconArray } from '../assets/svg/data-type-icon/array.svg';
+import { ReactComponent as IconBinary } from '../assets/svg/data-type-icon/binary.svg';
+import { ReactComponent as IconBitmap } from '../assets/svg/data-type-icon/bitmap.svg';
+import { ReactComponent as IconBoolean } from '../assets/svg/data-type-icon/boolean.svg';
+import { ReactComponent as IconDateTime } from '../assets/svg/data-type-icon/data-time-range.svg';
+import { ReactComponent as IconDate } from '../assets/svg/data-type-icon/date.svg';
+import { ReactComponent as IconDecimal } from '../assets/svg/data-type-icon/decimal.svg';
+import { ReactComponent as IconDouble } from '../assets/svg/data-type-icon/double.svg';
+import { ReactComponent as IconEnum } from '../assets/svg/data-type-icon/enum.svg';
+import { ReactComponent as IconError } from '../assets/svg/data-type-icon/error.svg';
+import { ReactComponent as IconGeometry } from '../assets/svg/data-type-icon/geometry.svg';
+import { ReactComponent as IconInteger } from '../assets/svg/data-type-icon/integer.svg';
+import { ReactComponent as IconIpVersion } from '../assets/svg/data-type-icon/ipv6.svg';
+import { ReactComponent as IconJson } from '../assets/svg/data-type-icon/json.svg';
+import { ReactComponent as IconMap } from '../assets/svg/data-type-icon/map.svg';
+import { ReactComponent as IconMoney } from '../assets/svg/data-type-icon/money.svg';
+import { ReactComponent as IconNull } from '../assets/svg/data-type-icon/null.svg';
+import { ReactComponent as IconNumeric } from '../assets/svg/data-type-icon/numeric.svg';
+import { ReactComponent as IconPolygon } from '../assets/svg/data-type-icon/polygon.svg';
+import { ReactComponent as IconRecord } from '../assets/svg/data-type-icon/record.svg';
+import { ReactComponent as IconString } from '../assets/svg/data-type-icon/string.svg';
+import { ReactComponent as IconStruct } from '../assets/svg/data-type-icon/struct.svg';
+import { ReactComponent as IconTime } from '../assets/svg/data-type-icon/time.svg';
+import { ReactComponent as IconTimestamp } from '../assets/svg/data-type-icon/timestamp.svg';
+import { ReactComponent as IconTsQuery } from '../assets/svg/data-type-icon/ts-query.svg';
+import { ReactComponent as IconUnion } from '../assets/svg/data-type-icon/union.svg';
+import { ReactComponent as IconUnknown } from '../assets/svg/data-type-icon/unknown.svg';
+import { ReactComponent as IconVarchar } from '../assets/svg/data-type-icon/varchar.svg';
+import { ReactComponent as IconVariant } from '../assets/svg/data-type-icon/variant.svg';
+import { ReactComponent as IconXML } from '../assets/svg/data-type-icon/xml.svg';
+import { Joined } from '../pages/TableDetailsPageV1/FrequentlyJoinedTables/FrequentlyJoinedTables.component';
+import ConstraintIcon from '../pages/TableDetailsPageV1/TableConstraints/ConstraintIcon';
 
 export const getUsagePercentile = (pctRank: number, isLiteral = false) => {
   const percentile = Math.round(pctRank * 10) / 10;
@@ -175,6 +230,24 @@ export const getConstraintIcon = ({
 
       break;
     }
+    case ConstraintType.DistKey: {
+      title = t('label.entity-key', {
+        entity: t('label.dist'),
+      });
+      icon = isConstraintDeleted ? IconDistLineThrough : IconDistKey;
+      dataTestId = 'dist-key';
+
+      break;
+    }
+    case ConstraintType.SortKey: {
+      title = t('label.entity-key', {
+        entity: t('label.sort'),
+      });
+      icon = isConstraintDeleted ? IconSortLineThrough : IconSortKey;
+      dataTestId = 'sort-key';
+
+      break;
+    }
     default:
       return null;
   }
@@ -197,6 +270,70 @@ export const getConstraintIcon = ({
       />
     </Tooltip>
   );
+};
+
+export const getColumnDataTypeIcon = ({
+  dataType,
+  width = '16px',
+}: {
+  dataType: DataType;
+  width?: string;
+}) => {
+  const dataTypeIcons = {
+    [DataType.Array]: IconArray,
+    [DataType.Bit]: IconBinary,
+    [DataType.Binary]: IconBinary,
+    [DataType.Bitmap]: IconBitmap,
+    [DataType.Image]: IconBitmap,
+    [DataType.Boolean]: IconBoolean,
+    [DataType.Date]: IconDate,
+    [DataType.Year]: IconDate,
+    [DataType.Datetime]: IconDateTime,
+    [DataType.Datetimerange]: IconDateTime,
+    [DataType.Double]: IconDouble,
+    [DataType.Float]: IconDouble,
+    [DataType.Number]: IconDouble,
+    [DataType.Decimal]: IconDecimal,
+    [DataType.Enum]: IconEnum,
+    [DataType.Error]: IconError,
+    [DataType.Map]: IconMap,
+    [DataType.Geography]: IconMap,
+    [DataType.Geometry]: IconGeometry,
+    [DataType.Ipv4]: IconIpVersion,
+    [DataType.Ipv6]: IconIpVersion,
+    [DataType.JSON]: IconJson,
+    [DataType.Numeric]: IconNumeric,
+    [DataType.Long]: IconNumeric,
+    [DataType.Money]: IconMoney,
+    [DataType.Char]: IconVarchar,
+    [DataType.Text]: IconVarchar,
+    [DataType.Ntext]: IconVarchar,
+    [DataType.Mediumtext]: IconVarchar,
+    [DataType.Varchar]: IconVarchar,
+    [DataType.Int]: IconInteger,
+    [DataType.Bigint]: IconInteger,
+    [DataType.Largeint]: IconInteger,
+    [DataType.Smallint]: IconInteger,
+    [DataType.Tinyint]: IconInteger,
+    [DataType.Polygon]: IconPolygon,
+    [DataType.Null]: IconNull,
+    [DataType.Record]: IconRecord,
+    [DataType.Table]: IconRecord,
+    [DataType.String]: IconString,
+    [DataType.Struct]: IconStruct,
+    [DataType.Time]: IconTime,
+    [DataType.Timestamp]: IconTimestamp,
+    [DataType.Timestampz]: IconTimestamp,
+    [DataType.Tsquery]: IconTsQuery,
+    [DataType.Union]: IconUnion,
+    [DataType.Unknown]: IconUnknown,
+    [DataType.Variant]: IconVariant,
+    [DataType.XML]: IconXML,
+  };
+
+  const icon = dataTypeIcons[dataType as keyof typeof dataTypeIcons] || null;
+
+  return <Icon alt={dataType} component={icon} style={{ fontSize: width }} />;
 };
 
 export const getEntityIcon = (
@@ -254,7 +391,7 @@ export const getEntityIcon = (
     [EntityType.METADATA_SERVICE]: MetadataServiceIcon,
     [SearchIndex.DATA_PRODUCT]: DataProductIcon,
     [EntityType.DATA_PRODUCT]: DataProductIcon,
-    [EntityType.TEST_CASE]: IconTestSuite,
+    [EntityType.TEST_CASE]: IconTestCase,
     [EntityType.TEST_SUITE]: IconTestSuite,
     [EntityType.BOT]: BotIcon,
     [EntityType.TEAM]: TeamIcon,
@@ -545,32 +682,34 @@ export const searchInFields = <T extends SearchIndexField | Column>(
   return searchedValue;
 };
 
-export const getUpdatedTags = <T extends TableFieldsInfoCommonEntities>(
-  newFieldTags: Array<EntityTags>,
-  field?: T
-): TagLabel[] => {
-  const prevTagsFqn = field?.tags?.map((tag) => tag.tagFQN);
+export const updateFieldTags = <T extends TableFieldsInfoCommonEntities>(
+  changedFieldFQN: string,
+  newFieldTags: EntityTags[],
+  searchIndexFields?: Array<T>
+) => {
+  searchIndexFields?.forEach((field) => {
+    if (field.fullyQualifiedName === changedFieldFQN) {
+      field.tags = getUpdatedTags(newFieldTags);
+    } else {
+      updateFieldTags(
+        changedFieldFQN,
+        newFieldTags,
+        field?.children as Array<T>
+      );
+    }
+  });
+};
 
-  return reduce(
-    newFieldTags,
-    (acc: Array<EntityTags>, cv: EntityTags) => {
-      if (prevTagsFqn?.includes(cv.tagFQN)) {
-        const prev = field?.tags?.find((tag) => tag.tagFQN === cv.tagFQN);
+export const getUpdatedTags = (newFieldTags: Array<EntityTags>): TagLabel[] => {
+  const mappedNewTags: TagLabel[] = newFieldTags.map((tag) => ({
+    ...omit(tag, 'isRemovable'),
+    labelType: LabelType.Manual,
+    state: State.Confirmed,
+    source: tag.source || 'Classification',
+    tagFQN: tag.tagFQN,
+  }));
 
-        return [...acc, prev];
-      } else {
-        return [
-          ...acc,
-          {
-            ...omit(cv, 'isRemovable'),
-            labelType: LabelType.Manual,
-            state: State.Confirmed,
-          },
-        ];
-      }
-    },
-    []
-  );
+  return mappedNewTags;
 };
 
 export const updateFieldDescription = <T extends TableFieldsInfoCommonEntities>(
@@ -591,20 +730,304 @@ export const updateFieldDescription = <T extends TableFieldsInfoCommonEntities>(
   });
 };
 
-export const updateFieldTags = <T extends TableFieldsInfoCommonEntities>(
-  changedFieldFQN: string,
-  newFieldTags: EntityTags[],
-  searchIndexFields?: Array<T>
+export const getTableDetailPageBaseTabs = ({
+  schemaTab,
+  queryCount,
+  isTourOpen,
+  tablePermissions,
+  activeTab,
+  deleted,
+  tableDetails,
+  totalFeedCount,
+  onExtensionUpdate,
+  getEntityFeedCount,
+  handleFeedCount,
+  viewAllPermission,
+  editCustomAttributePermission,
+  viewSampleDataPermission,
+  viewQueriesPermission,
+  viewProfilerPermission,
+  editLineagePermission,
+  fetchTableDetails,
+  testCaseSummary,
+  isViewTableType,
+}: TableDetailPageTabProps): TabProps[] => {
+  return [
+    {
+      label: (
+        <TabsLabel
+          count={tableDetails?.columns.length}
+          id={EntityTabs.SCHEMA}
+          isActive={activeTab === EntityTabs.SCHEMA}
+          name={t('label.schema')}
+        />
+      ),
+      key: EntityTabs.SCHEMA,
+      children: schemaTab,
+    },
+    {
+      label: (
+        <TabsLabel
+          count={totalFeedCount}
+          id={EntityTabs.ACTIVITY_FEED}
+          isActive={activeTab === EntityTabs.ACTIVITY_FEED}
+          name={t('label.activity-feed-and-task-plural')}
+        />
+      ),
+      key: EntityTabs.ACTIVITY_FEED,
+      children: (
+        <ActivityFeedTab
+          refetchFeed
+          columns={tableDetails?.columns}
+          entityFeedTotalCount={totalFeedCount}
+          entityType={EntityType.TABLE}
+          fqn={tableDetails?.fullyQualifiedName ?? ''}
+          owners={tableDetails?.owners}
+          onFeedUpdate={getEntityFeedCount}
+          onUpdateEntityDetails={fetchTableDetails}
+          onUpdateFeedCount={handleFeedCount}
+        />
+      ),
+    },
+    {
+      label: (
+        <TabsLabel id={EntityTabs.SAMPLE_DATA} name={t('label.sample-data')} />
+      ),
+
+      key: EntityTabs.SAMPLE_DATA,
+      children:
+        !isTourOpen && !viewSampleDataPermission ? (
+          <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
+        ) : (
+          <SampleDataTableComponent
+            isTableDeleted={deleted}
+            owners={tableDetails?.owners ?? []}
+            permissions={tablePermissions}
+            tableId={tableDetails?.id ?? ''}
+          />
+        ),
+    },
+    {
+      label: (
+        <TabsLabel
+          count={queryCount}
+          id={EntityTabs.TABLE_QUERIES}
+          isActive={activeTab === EntityTabs.TABLE_QUERIES}
+          name={t('label.query-plural')}
+        />
+      ),
+      key: EntityTabs.TABLE_QUERIES,
+      children: !viewQueriesPermission ? (
+        <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
+      ) : (
+        <TableQueries
+          isTableDeleted={deleted}
+          tableId={tableDetails?.id ?? ''}
+        />
+      ),
+    },
+    {
+      label: (
+        <TabsLabel
+          id={EntityTabs.PROFILER}
+          name={t('label.data-observability')}
+        />
+      ),
+      key: EntityTabs.PROFILER,
+      children:
+        !isTourOpen && !viewProfilerPermission ? (
+          <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
+        ) : (
+          <TableProfiler
+            permissions={tablePermissions}
+            table={tableDetails}
+            testCaseSummary={testCaseSummary}
+          />
+        ),
+    },
+    {
+      label: <TabsLabel id={EntityTabs.LINEAGE} name={t('label.lineage')} />,
+      key: EntityTabs.LINEAGE,
+      children: (
+        <LineageProvider>
+          <Lineage
+            deleted={deleted}
+            entity={tableDetails as SourceType}
+            entityType={EntityType.TABLE}
+            hasEditAccess={editLineagePermission}
+          />
+        </LineageProvider>
+      ),
+    },
+    {
+      label: <TabsLabel id={EntityTabs.DBT} name={t('label.dbt-lowercase')} />,
+      isHidden: !(
+        tableDetails?.dataModel?.sql || tableDetails?.dataModel?.rawSql
+      ),
+      key: EntityTabs.DBT,
+      children: (
+        <QueryViewer
+          sqlQuery={
+            get(tableDetails, 'dataModel.sql', '') ||
+            get(tableDetails, 'dataModel.rawSql', '')
+          }
+          title={
+            <Space className="p-y-xss">
+              <Typography.Text className="text-grey-muted">
+                {`${t('label.path')}:`}
+              </Typography.Text>
+              <Typography.Text>{tableDetails?.dataModel?.path}</Typography.Text>
+            </Space>
+          }
+        />
+      ),
+    },
+    {
+      label: (
+        <TabsLabel
+          id={
+            isViewTableType
+              ? EntityTabs.VIEW_DEFINITION
+              : EntityTabs.SCHEMA_DEFINITION
+          }
+          name={
+            isViewTableType
+              ? t('label.view-definition')
+              : t('label.schema-definition')
+          }
+        />
+      ),
+      isHidden: isUndefined(tableDetails?.schemaDefinition),
+      key: isViewTableType
+        ? EntityTabs.VIEW_DEFINITION
+        : EntityTabs.SCHEMA_DEFINITION,
+      children: <QueryViewer sqlQuery={tableDetails?.schemaDefinition ?? ''} />,
+    },
+    {
+      label: (
+        <TabsLabel
+          id={EntityTabs.CUSTOM_PROPERTIES}
+          name={t('label.custom-property-plural')}
+        />
+      ),
+      key: EntityTabs.CUSTOM_PROPERTIES,
+      children: tableDetails && (
+        <div className="m-sm">
+          <CustomPropertyTable<EntityType.TABLE>
+            entityDetails={tableDetails}
+            entityType={EntityType.TABLE}
+            handleExtensionUpdate={onExtensionUpdate}
+            hasEditAccess={editCustomAttributePermission}
+            hasPermission={viewAllPermission}
+          />
+        </div>
+      ),
+    },
+  ];
+};
+
+export const getJoinsFromTableJoins = (joins?: TableJoins): Joined[] => {
+  const tableFQNGrouping = [
+    ...(joins?.columnJoins?.flatMap(
+      (cjs) =>
+        cjs.joinedWith?.map<JoinedWith>((jw) => ({
+          fullyQualifiedName: getTableFQNFromColumnFQN(jw.fullyQualifiedName),
+          joinCount: jw.joinCount,
+        })) ?? []
+    ) ?? []),
+    ...(joins?.directTableJoins ?? []),
+  ].reduce(
+    (result, jw) => ({
+      ...result,
+      [jw.fullyQualifiedName]:
+        (result[jw.fullyQualifiedName] ?? 0) + jw.joinCount,
+    }),
+    {} as Record<string, number>
+  );
+
+  return Object.entries(tableFQNGrouping)
+    .map<JoinedWith & { name: string }>(([fullyQualifiedName, joinCount]) => ({
+      fullyQualifiedName,
+      joinCount,
+      name: getPartialNameFromTableFQN(
+        fullyQualifiedName,
+        [FqnPart.Database, FqnPart.Table],
+        FQN_SEPARATOR_CHAR
+      ),
+    }))
+    .sort((a, b) => b.joinCount - a.joinCount);
+};
+
+/**
+ * @param constraints contains column names for constraints which
+ * @param type constraint type
+ * @returns constraint object with columns and constraint type or empty array if constraints are empty
+ */
+export const createTableConstraintObject = (
+  constraints: string[],
+  type: ConstraintType
+) =>
+  !isEmpty(constraints) ? [{ columns: constraints, constraintType: type }] : [];
+
+export const tableConstraintRendererBasedOnType = (
+  constraintType: ConstraintType,
+  columns?: string[]
 ) => {
-  searchIndexFields?.forEach((field) => {
-    if (field.fullyQualifiedName === changedFieldFQN) {
-      field.tags = getUpdatedTags<T>(newFieldTags, field);
-    } else {
-      updateFieldTags(
-        changedFieldFQN,
-        newFieldTags,
-        field?.children as Array<T>
-      );
+  const isSingleColumn = columns?.length === 1;
+
+  return (
+    <div
+      className="d-flex constraint-columns"
+      data-testid={`${constraintType}-container`}
+      key={constraintType}>
+      <Space
+        className="constraint-icon-container"
+        direction="vertical"
+        size={0}>
+        {columns?.map((column, index) => (
+          <Fragment key={column}>
+            {(columns?.length ?? 0) - 1 !== index || isSingleColumn ? (
+              <ConstraintIcon
+                constraintType={constraintType}
+                showOnlyIcon={isSingleColumn}
+              />
+            ) : null}
+          </Fragment>
+        ))}
+      </Space>
+
+      <Space direction="vertical" size={16}>
+        {columns?.map((column) => (
+          <Typography.Text ellipsis={{ tooltip: true }} key={column}>
+            {column}
+          </Typography.Text>
+        ))}
+      </Space>
+    </div>
+  );
+};
+
+/**
+ * Recursive function to get all columns from table column and its children
+ * @param columns Table Columns for creating options in table constraint form
+ * @returns column options with label and value
+ */
+export const getColumnOptionsFromTableColumn = (columns: Column[]) => {
+  const options: {
+    label: string;
+    value: string;
+  }[] = [];
+
+  columns.forEach((item) => {
+    if (!isEmpty(item.children)) {
+      options.push(...getColumnOptionsFromTableColumn(item.children ?? []));
     }
+
+    options.push({
+      label: item.name,
+      value: item.name,
+    });
   });
+
+  return options;
 };

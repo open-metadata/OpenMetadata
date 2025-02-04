@@ -11,12 +11,18 @@
  *  limitations under the License.
  */
 import { Form, Input, Modal } from 'antd';
-import React, { useState } from 'react';
+import React from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   LineageConfig,
   LineageConfigModalProps,
 } from './EntityLineage.interface';
+
+type LineageConfigFormFields = {
+  upstreamDepth: number;
+  downstreamDepth: number;
+  nodesPerLayer: number;
+};
 
 const LineageConfigModal: React.FC<LineageConfigModalProps> = ({
   visible,
@@ -26,21 +32,12 @@ const LineageConfigModal: React.FC<LineageConfigModalProps> = ({
 }) => {
   const { t } = useTranslation();
   const [form] = Form.useForm();
-  const [upstreamDepth, setUpstreamDepth] = useState<number>(
-    config?.upstreamDepth || 1
-  );
-  const [downstreamDepth, setDownstreamDepth] = useState<number>(
-    config?.downstreamDepth || 1
-  );
-  const [nodesPerLayer, setNodesPerLayer] = useState<number>(
-    config?.nodesPerLayer || 1
-  );
 
-  const handleSave = () => {
+  const handleSave = (values: LineageConfigFormFields) => {
     const updatedConfig: LineageConfig = {
-      upstreamDepth,
-      downstreamDepth,
-      nodesPerLayer,
+      upstreamDepth: Number(values.upstreamDepth),
+      downstreamDepth: Number(values.downstreamDepth),
+      nodesPerLayer: Number(values.nodesPerLayer),
     };
     onSave(updatedConfig);
   };
@@ -67,12 +64,7 @@ const LineageConfigModal: React.FC<LineageConfigModalProps> = ({
             },
           ]}
           tooltip={t('message.upstream-depth-tooltip')}>
-          <Input
-            data-testid="field-upstream"
-            type="number"
-            value={upstreamDepth}
-            onChange={(e) => setUpstreamDepth(Number(e.target.value))}
-          />
+          <Input data-testid="field-upstream" type="number" />
         </Form.Item>
 
         <Form.Item
@@ -85,12 +77,7 @@ const LineageConfigModal: React.FC<LineageConfigModalProps> = ({
             },
           ]}
           tooltip={t('message.downstream-depth-tooltip')}>
-          <Input
-            data-testid="field-downstream"
-            type="number"
-            value={downstreamDepth}
-            onChange={(e) => setDownstreamDepth(Number(e.target.value))}
-          />
+          <Input data-testid="field-downstream" type="number" />
         </Form.Item>
 
         <Form.Item
@@ -108,7 +95,6 @@ const LineageConfigModal: React.FC<LineageConfigModalProps> = ({
             data-testid="field-nodes-per-layer"
             min={5}
             type="number"
-            onChange={(e) => setNodesPerLayer(Number(e.target.value))}
           />
         </Form.Item>
       </Form>

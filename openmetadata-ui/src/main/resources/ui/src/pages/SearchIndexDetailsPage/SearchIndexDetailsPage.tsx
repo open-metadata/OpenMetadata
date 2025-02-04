@@ -174,6 +174,7 @@ function SearchIndexDetailsPage() {
 
   const {
     editTagsPermission,
+    editGlossaryTermsPermission,
     editDescriptionPermission,
     editCustomAttributePermission,
     editLineagePermission,
@@ -183,6 +184,10 @@ function SearchIndexDetailsPage() {
     () => ({
       editTagsPermission:
         (searchIndexPermissions.EditTags || searchIndexPermissions.EditAll) &&
+        !deleted,
+      editGlossaryTermsPermission:
+        (searchIndexPermissions.EditGlossaryTerms ||
+          searchIndexPermissions.EditAll) &&
         !deleted,
       editDescriptionPermission:
         (searchIndexPermissions.EditDescription ||
@@ -407,6 +412,7 @@ function SearchIndexDetailsPage() {
                         entityFqn={decodedSearchIndexFQN}
                         fields={searchIndexDetails?.fields ?? []}
                         hasDescriptionEditAccess={editDescriptionPermission}
+                        hasGlossaryTermEditAccess={editGlossaryTermsPermission}
                         hasTagEditAccess={editTagsPermission}
                         isReadOnly={searchIndexDetails?.deleted}
                         onThreadLinkSelect={onThreadLinkSelect}
@@ -425,6 +431,9 @@ function SearchIndexDetailsPage() {
                         domain={searchIndexDetails?.domain}
                         editCustomAttributePermission={
                           editCustomAttributePermission
+                        }
+                        editGlossaryTermsPermission={
+                          editGlossaryTermsPermission
                         }
                         editTagPermission={editTagsPermission}
                         entityFQN={decodedSearchIndexFQN}
@@ -562,6 +571,7 @@ function SearchIndexDetailsPage() {
     onDescriptionEdit,
     onDescriptionUpdate,
     editTagsPermission,
+    editGlossaryTermsPermission,
     editDescriptionPermission,
   ]);
 
@@ -767,6 +777,7 @@ function SearchIndexDetailsPage() {
       <Row gutter={[0, 12]}>
         <Col className="p-x-lg" data-testid="entity-page-header" span={24}>
           <DataAssetsHeader
+            isDqAlertSupported
             isRecursiveDelete
             afterDeleteAction={afterDeleteAction}
             afterDomainUpdateAction={afterDomainUpdateAction}

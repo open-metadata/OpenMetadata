@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { EntityTags, TagOption } from 'Models';
+import { EntityTags } from 'Models';
 import { EntityType } from '../../../enums/entity.enum';
 import { ThreadType } from '../../../generated/api/feed/createThread';
 import { MlFeature } from '../../../generated/entity/data/mlmodel';
@@ -36,11 +36,6 @@ export interface TableTagsComponentProps<T> {
     editColumnTag: T
   ) => Promise<void>;
   onThreadLinkSelect: (value: string, threadType?: ThreadType) => void;
-}
-
-export interface TagsCollection {
-  Classification: TagOption[];
-  Glossary: TagOption[];
 }
 
 export interface TableTagsProps {

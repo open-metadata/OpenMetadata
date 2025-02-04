@@ -64,11 +64,10 @@ class PowerBiApiClient:
             client_credential=self.config.clientSecret.get_secret_value(),
             authority=self.config.authorityURI + self.config.tenantId,
         )
-        self.auth_token = self.get_auth_token()
         client_config = ClientConfig(
             base_url="https://api.powerbi.com",
             api_version="v1.0",
-            auth_token=lambda: self.auth_token,
+            auth_token=self.get_auth_token,
             auth_header="Authorization",
             allow_redirects=True,
             retry_codes=[429],
@@ -228,6 +227,12 @@ class PowerBiApiClient:
                     "$skip": str(index * entities_per_page),
                 }
                 response_data = self.client.get(api_url, data=params_data)
+                if not response_data:
+                    logger.error(
+                        "Error fetching workspaces between results: "
+                        f"{str(index * entities_per_page)} - {str(entities_per_page)}"
+                    )
+                    continue
                 response = GroupsResponse(**response_data)
                 workspaces.extend(response.value)
             return workspaces

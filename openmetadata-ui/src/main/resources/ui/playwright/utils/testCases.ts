@@ -32,7 +32,7 @@ export const visitDataQualityTab = async (page: Page, table: TableClass) => {
   await table.visitEntityPage(page);
   await page.getByTestId('profiler').click();
   const testCaseResponse = page.waitForResponse(
-    '/api/v1/dataQuality/testCases/search/list?fields=*'
+    '/api/v1/dataQuality/testCases/search/list?*fields=*'
   );
   await page
     .getByTestId('profiler-tab-left-panel')

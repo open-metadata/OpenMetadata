@@ -14,7 +14,7 @@ Snowflake source module
 import json
 import traceback
 from datetime import datetime
-from typing import Dict, Iterable, List, Optional, Tuple
+from typing import Iterable, List, Optional, Tuple
 
 import sqlparse
 from snowflake.sqlalchemy.custom_types import VARIANT
@@ -27,7 +27,10 @@ from metadata.generated.schema.api.data.createStoredProcedure import (
 )
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
-from metadata.generated.schema.entity.data.storedProcedure import StoredProcedureCode
+from metadata.generated.schema.entity.data.storedProcedure import (
+    StoredProcedureCode,
+    StoredProcedureType,
+)
 from metadata.generated.schema.entity.data.table import (
     PartitionColumnDetails,
     PartitionIntervalTypes,
@@ -71,6 +74,7 @@ from metadata.ingestion.source.database.snowflake.models import (
     SnowflakeStoredProcedure,
 )
 from metadata.ingestion.source.database.snowflake.queries import (
+    SNOWFLAKE_DESC_FUNCTION,
     SNOWFLAKE_DESC_STORED_PROCEDURE,
     SNOWFLAKE_FETCH_ALL_TAGS,
     SNOWFLAKE_GET_CLUSTER_KEY,
@@ -78,9 +82,9 @@ from metadata.ingestion.source.database.snowflake.queries import (
     SNOWFLAKE_GET_DATABASE_COMMENTS,
     SNOWFLAKE_GET_DATABASES,
     SNOWFLAKE_GET_EXTERNAL_LOCATIONS,
+    SNOWFLAKE_GET_FUNCTIONS,
     SNOWFLAKE_GET_ORGANIZATION_NAME,
     SNOWFLAKE_GET_SCHEMA_COMMENTS,
-    SNOWFLAKE_GET_STORED_PROCEDURE_QUERIES,
     SNOWFLAKE_GET_STORED_PROCEDURES,
     SNOWFLAKE_LIFE_CYCLE_QUERY,
     SNOWFLAKE_SESSION_TAG_QUERY,
@@ -102,13 +106,8 @@ from metadata.ingestion.source.database.snowflake.utils import (
     get_view_names_reflection,
     normalize_names,
 )
-from metadata.ingestion.source.database.stored_procedures_mixin import (
-    QueryByProcedure,
-    StoredProcedureMixin,
-)
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_database
-from metadata.utils.helpers import get_start_and_end
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sqlalchemy_utils import get_all_table_comments, get_all_table_ddls
 from metadata.utils.tag_utils import get_ometa_tag_and_classification
@@ -145,7 +144,6 @@ SnowflakeDialect._get_schema_foreign_keys = get_schema_foreign_keys
 
 
 class SnowflakeSource(
-    StoredProcedureMixin,
     ExternalTableLineageMixin,
     CommonDbSourceService,
     MultiDBSource,
@@ -630,26 +628,34 @@ class SnowflakeSource(
 
         return views
 
+    def _get_stored_procedures_internal(
+        self, query: str
+    ) -> Iterable[SnowflakeStoredProcedure]:
+        results = self.engine.execute(
+            query.format(
+                database_name=self.context.get().database,
+                schema_name=self.context.get().database_schema,
+            )
+        ).all()
+        for row in results:
+            stored_procedure = SnowflakeStoredProcedure.model_validate(dict(row))
+            if stored_procedure.definition is None:
+                logger.debug(
+                    f"Missing ownership permissions on procedure {stored_procedure.name}."
+                    " Trying to fetch description via DESCRIBE."
+                )
+                stored_procedure.definition = self.describe_procedure_definition(
+                    stored_procedure
+                )
+            yield stored_procedure
+
     def get_stored_procedures(self) -> Iterable[SnowflakeStoredProcedure]:
         """List Snowflake stored procedures"""
         if self.source_config.includeStoredProcedures:
-            results = self.engine.execute(
-                SNOWFLAKE_GET_STORED_PROCEDURES.format(
-                    database_name=self.context.get().database,
-                    schema_name=self.context.get().database_schema,
-                )
-            ).all()
-            for row in results:
-                stored_procedure = SnowflakeStoredProcedure.model_validate(dict(row))
-                if stored_procedure.definition is None:
-                    logger.debug(
-                        f"Missing ownership permissions on procedure {stored_procedure.name}."
-                        " Trying to fetch description via DESCRIBE."
-                    )
-                    stored_procedure.definition = self.describe_procedure_definition(
-                        stored_procedure
-                    )
-                yield stored_procedure
+            yield from self._get_stored_procedures_internal(
+                SNOWFLAKE_GET_STORED_PROCEDURES
+            )
+            yield from self._get_stored_procedures_internal(SNOWFLAKE_GET_FUNCTIONS)
 
     def describe_procedure_definition(
         self, stored_procedure: SnowflakeStoredProcedure
@@ -661,8 +667,12 @@ class SnowflakeSource(
         Then, if the procedure is created with `EXECUTE AS CALLER`, we can still try to
         get the definition with a DESCRIBE.
         """
+        if stored_procedure.procedure_type == StoredProcedureType.StoredProcedure.value:
+            query = SNOWFLAKE_DESC_STORED_PROCEDURE
+        else:
+            query = SNOWFLAKE_DESC_FUNCTION
         res = self.engine.execute(
-            SNOWFLAKE_DESC_STORED_PROCEDURE.format(
+            query.format(
                 database_name=self.context.get().database,
                 schema_name=self.context.get().database_schema,
                 procedure_name=stored_procedure.name,
@@ -684,6 +694,8 @@ class SnowflakeSource(
                     language=STORED_PROC_LANGUAGE_MAP.get(stored_procedure.language),
                     code=stored_procedure.definition,
                 ),
+                storedProcedureType=stored_procedure.procedure_type
+                or StoredProcedureType.StoredProcedure.value,
                 databaseSchema=fqn.build(
                     metadata=self.metadata,
                     entity_type=DatabaseSchema,
@@ -711,22 +723,6 @@ class SnowflakeSource(
                     stackTrace=traceback.format_exc(),
                 )
             )
-
-    def get_stored_procedure_queries_dict(self) -> Dict[str, List[QueryByProcedure]]:
-        """
-        Return the dictionary associating stored procedures to the
-        queries they triggered
-        """
-        start, _ = get_start_and_end(self.source_config.queryLogDuration)
-        query = SNOWFLAKE_GET_STORED_PROCEDURE_QUERIES.format(
-            start_date=start,
-        )
-
-        queries_dict = self.procedure_queries_dict(
-            query=query,
-        )
-
-        return queries_dict
 
     def mark_tables_as_deleted(self):
         """

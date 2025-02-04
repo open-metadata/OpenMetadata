@@ -1,0 +1,56 @@
+source:
+  type: bigquery
+  serviceName: local_bigquery
+  serviceConnection:
+    config:
+      type: BigQuery
+      credentials:
+        gcpConfig:
+          type: service_account
+          projectId: my-project-id-1234
+          privateKeyId: privateKeyID
+          privateKey: "-----BEGIN PRIVATE KEY-----\nmySuperSecurePrivateKey==\n-----END PRIVATE KEY-----\n"
+          clientEmail: client@email.secure
+          clientId: "1234567890"
+          authUri: https://accounts.google.com/o/oauth2/auth
+          tokenUri: https://oauth2.googleapis.com/token
+          authProviderX509CertUrl: https://www.googleapis.com/oauth2/v1/certs
+          clientX509CertUrl: https://www.googleapis.com/oauth2/v1/certs
+  sourceConfig:
+    config:
+      type: AutoClassification
+      storeSampleData: true
+      enableAutoClassification: true
+      databaseFilterPattern:
+        includes: 
+          - hello-world-1234
+      schemaFilterPattern:
+        includes: 
+          - super_schema
+      tableFilterPattern:
+        includes: 
+          - abc
+
+processor:
+   type: "orm-profiler"
+   config:
+    tableConfig:
+      - fullyQualifiedName: local_bigquery.hello-world-1234.super_schema.abc
+        profileSample: 85
+        partitionConfig:
+          partitionQueryDuration: 180
+        columnConfig:
+          excludeColumns:
+            - a
+            - b
+
+sink:
+  type: metadata-rest
+  config: {}
+workflowConfig:
+#  loggerLevel: INFO # DEBUG, INFO, WARN or ERROR
+  openMetadataServerConfig:
+    hostPort: http://localhost:8585/api
+    authProvider: openmetadata
+    securityConfig:
+      jwtToken: "eyJraWQiOiJHYjM4OWEtOWY3Ni1nZGpzLWE5MmotMDI0MmJrOTQzNTYiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJhZG1pbiIsImlzQm90IjpmYWxzZSwiaXNzIjoib3Blbi1tZXRhZGF0YS5vcmciLCJpYXQiOjE2NjM5Mzg0NjIsImVtYWlsIjoiYWRtaW5Ab3Blbm1ldGFkYXRhLm9yZyJ9.tS8um_5DKu7HgzGBzS1VTA5uUjKWOCU0B_j08WXBiEC0mr0zNREkqVfwFDD-d24HlNEbrqioLsBuFRiwIWKc1m_ZlVQbG7P36RUxhuv2vbSp80FKyNM-Tj93FDzq91jsyNmsQhyNv_fNr3TXfzzSPjHt8Go0FMMP66weoKMgW2PbXlhVKwEuXUHyakLLzewm9UMeQaEiRzhiTMU3UkLXcKbYEJJvfNFcLwSl9W8JCO_l0Yj3ud-qt_nQYEZwqW6u5nfdQllN133iikV4fM5QZsMCnm8Rq1mvLR0y9bmJiD7fwM1tmJ791TUWqmKaTnP49U493VanKpUAfzIiOiIbhg"      

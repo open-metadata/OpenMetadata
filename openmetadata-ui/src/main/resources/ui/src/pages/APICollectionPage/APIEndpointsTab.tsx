@@ -13,8 +13,7 @@
 
 import { Col, Row, Switch, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
-import { isEmpty } from 'lodash';
-import { PagingResponse } from 'Models';
+import { isEmpty, isUndefined } from 'lodash';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -22,13 +21,14 @@ import DescriptionV1 from '../../components/common/EntityDescription/Description
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import NextPrevious from '../../components/common/NextPrevious/NextPrevious';
 import { NextPreviousProps } from '../../components/common/NextPrevious/NextPrevious.interface';
-import RichTextEditorPreviewer from '../../components/common/RichTextEditor/RichTextEditorPreviewer';
+import RichTextEditorPreviewerV1 from '../../components/common/RichTextEditor/RichTextEditorPreviewerV1';
 import TableAntd from '../../components/common/Table/Table';
-import { NO_DATA, PAGE_SIZE } from '../../constants/constants';
+import { NO_DATA } from '../../constants/constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType } from '../../enums/entity.enum';
 import { APICollection } from '../../generated/entity/data/apiCollection';
 import { APIEndpoint } from '../../generated/entity/data/apiEndpoint';
+import { UsePagingInterface } from '../../hooks/paging/usePaging';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../utils/EntityUtils';
 
@@ -39,7 +39,7 @@ interface APIEndpointsTabProps {
   editDescriptionPermission?: boolean;
   isEdit?: boolean;
   showDeletedEndpoints?: boolean;
-  apiEndpoints: PagingResponse<APIEndpoint[]>;
+  apiEndpoints: APIEndpoint[];
   currentEndpointsPage: number;
   endpointPaginationHandler: NextPreviousProps['pagingHandler'];
   onCancel?: () => void;
@@ -48,6 +48,7 @@ interface APIEndpointsTabProps {
   onThreadLinkSelect?: (link: string) => void;
   onShowDeletedEndpointsChange?: (value: boolean) => void;
   isVersionView?: boolean;
+  pagingInfo: UsePagingInterface;
 }
 
 function APIEndpointsTab({
@@ -66,6 +67,7 @@ function APIEndpointsTab({
   showDeletedEndpoints = false,
   onShowDeletedEndpointsChange,
   isVersionView = false,
+  pagingInfo,
 }: Readonly<APIEndpointsTabProps>) {
   const { t } = useTranslation();
 
@@ -107,7 +109,7 @@ function APIEndpointsTab({
         key: 'description',
         render: (text: string) =>
           text?.trim() ? (
-            <RichTextEditorPreviewer markdown={text} />
+            <RichTextEditorPreviewerV1 markdown={text} />
           ) : (
             <span className="text-grey-muted">{t('label.no-description')}</span>
           ),
@@ -124,7 +126,7 @@ function APIEndpointsTab({
             description={description}
             entityFqn={apiCollectionDetails.fullyQualifiedName}
             entityType={EntityType.API_COLLECTION}
-            isDescriptionExpanded={isEmpty(apiEndpoints.data)}
+            isDescriptionExpanded={isEmpty(apiEndpoints)}
             showActions={false}
           />
         ) : (
@@ -134,7 +136,7 @@ function APIEndpointsTab({
             entityName={getEntityName(apiCollectionDetails)}
             entityType={EntityType.API_COLLECTION}
             hasEditAccess={editDescriptionPermission}
-            isDescriptionExpanded={isEmpty(apiEndpoints.data)}
+            isDescriptionExpanded={isEmpty(apiEndpoints)}
             isEdit={isEdit}
             showActions={!apiCollectionDetails.deleted}
             onCancel={onCancel}
@@ -166,7 +168,7 @@ function APIEndpointsTab({
           bordered
           columns={tableColumn}
           data-testid="databaseSchema-tables"
-          dataSource={apiEndpoints.data}
+          dataSource={apiEndpoints}
           loading={apiEndpointsLoading}
           locale={{
             emptyText: (
@@ -181,13 +183,15 @@ function APIEndpointsTab({
           size="small"
         />
       </Col>
-      {apiEndpoints.paging.total > PAGE_SIZE && apiEndpoints.data.length > 0 && (
+      {!isUndefined(pagingInfo) && pagingInfo.showPagination && (
         <Col span={24}>
           <NextPrevious
             currentPage={currentEndpointsPage}
-            pageSize={PAGE_SIZE}
-            paging={apiEndpoints.paging}
+            isLoading={apiEndpointsLoading}
+            pageSize={pagingInfo.pageSize}
+            paging={pagingInfo.paging}
             pagingHandler={endpointPaginationHandler}
+            onShowSizeChange={pagingInfo.handlePageSizeChange}
           />
         </Col>
       )}

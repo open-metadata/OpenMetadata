@@ -18,6 +18,7 @@ export interface SearchIndexFieldsTabProps {
   fields: Array<SearchIndexField>;
   hasDescriptionEditAccess: boolean;
   hasTagEditAccess: boolean;
+  hasGlossaryTermEditAccess: boolean;
   isReadOnly?: boolean;
   entityFqn: string;
   onThreadLinkSelect: (value: string, threadType?: ThreadType) => void;

@@ -12,27 +12,29 @@
  */
 
 import {
-  AuthenticationResult,
   InteractionRequiredAuthError,
+  InteractionStatus,
 } from '@azure/msal-browser';
 import { useAccount, useMsal } from '@azure/msal-react';
 import { AxiosError } from 'axios';
-import { get } from 'lodash';
 import React, {
   forwardRef,
   Fragment,
   ReactNode,
+  useEffect,
   useImperativeHandle,
 } from 'react';
-import { toast } from 'react-toastify';
-import { useApplicationStore } from '../../../hooks/useApplicationStore';
-import { msalLoginRequest } from '../../../utils/AuthProvider.util';
+import {
+  msalLoginRequest,
+  parseMSALResponse,
+} from '../../../utils/AuthProvider.util';
 import { getPopupSettingLink } from '../../../utils/BrowserUtils';
 import { Transi18next } from '../../../utils/CommonUtils';
+import { showErrorToast } from '../../../utils/ToastUtils';
+import Loader from '../../common/Loader/Loader';
 import {
   AuthenticatorRef,
   OidcUser,
-  UserProfile,
 } from '../AuthProviders/AuthProvider.interface';
 
 interface Props {
@@ -47,36 +49,10 @@ const MsalAuthenticator = forwardRef<AuthenticatorRef, Props>(
     { children, onLoginSuccess, onLogoutSuccess, onLoginFailure }: Props,
     ref
   ) => {
-    const { setOidcToken } = useApplicationStore();
-    const { instance, accounts } = useMsal();
+    const { instance, accounts, inProgress } = useMsal();
     const account = useAccount(accounts[0] || {});
 
-    const parseResponse = (response: AuthenticationResult): OidcUser => {
-      // Call your API with the access token and return the data you need to save in state
-      const { idToken, scopes, account } = response;
-
-      const user = {
-        id_token: idToken,
-        scope: scopes.join(),
-        profile: {
-          email: get(account, 'idTokenClaims.email', ''),
-          name: account?.name || '',
-          picture: '',
-          preferred_username: get(
-            account,
-            'idTokenClaims.preferred_username',
-            ''
-          ),
-          sub: get(account, 'idTokenClaims.sub', ''),
-        } as UserProfile,
-      };
-
-      setOidcToken(idToken);
-
-      return user;
-    };
-
-    const handleOnLogoutSuccess = () => {
+    const handleOnLogoutSuccess = async () => {
       for (const key in localStorage) {
         if (key.includes('-login.windows.net-') || key.startsWith('msal.')) {
           localStorage.removeItem(key);
@@ -87,9 +63,8 @@ const MsalAuthenticator = forwardRef<AuthenticatorRef, Props>(
 
     const login = async () => {
       try {
-        const response = await instance.loginPopup(msalLoginRequest);
-
-        onLoginSuccess(parseResponse(response));
+        // Use login with redirect to avoid popup issue with maximized browser window
+        await instance.loginRedirect();
       } catch (error) {
         onLoginFailure(error as AxiosError);
       }
@@ -109,7 +84,7 @@ const MsalAuthenticator = forwardRef<AuthenticatorRef, Props>(
       try {
         const response = await instance.ssoSilent(tokenRequest);
 
-        return parseResponse(response);
+        return parseMSALResponse(response);
       } catch (error) {
         if (
           error instanceof InteractionRequiredAuthError &&
@@ -121,7 +96,7 @@ const MsalAuthenticator = forwardRef<AuthenticatorRef, Props>(
               // eslint-disable-next-line no-console
               console.error(e);
               if (e?.message?.includes('popup_window_error')) {
-                toast.error(
+                showErrorToast(
                   <Transi18next
                     i18nKey="message.popup-block-message"
                     renderElement={
@@ -138,7 +113,7 @@ const MsalAuthenticator = forwardRef<AuthenticatorRef, Props>(
               throw e;
             });
 
-          return parseResponse(response);
+          return parseMSALResponse(response);
         } else {
           // eslint-disable-next-line no-console
           console.error(error);
@@ -159,6 +134,32 @@ const MsalAuthenticator = forwardRef<AuthenticatorRef, Props>(
       invokeLogout: logout,
       renewIdToken: renewIdToken,
     }));
+
+    // Need to capture redirect and parse ID token
+    // Call login success callback
+    const handleRedirect = async () => {
+      try {
+        const response = await instance.handleRedirectPromise();
+
+        if (response) {
+          const user = parseMSALResponse(response);
+
+          onLoginSuccess(user);
+        }
+      } catch (error) {
+        onLoginFailure(error as AxiosError);
+      }
+    };
+
+    // To add redirect callback
+    useEffect(() => {
+      instance && handleRedirect();
+    }, [instance]);
+
+    // Show loader until the interaction is completed
+    if (inProgress !== InteractionStatus.None) {
+      return <Loader />;
+    }
 
     return <Fragment>{children}</Fragment>;
   }

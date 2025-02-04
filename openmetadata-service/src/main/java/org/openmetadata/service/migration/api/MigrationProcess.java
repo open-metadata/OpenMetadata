@@ -3,6 +3,7 @@ package org.openmetadata.service.migration.api;
 import java.util.List;
 import java.util.Map;
 import org.jdbi.v3.core.Handle;
+import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.service.migration.QueryStatus;
 import org.openmetadata.service.migration.context.MigrationOps;
 
@@ -15,7 +16,7 @@ public interface MigrationProcess {
   // Ex: if the server is 1.0.0 the migration version for that server is 1.0.0
   // This version is used to sort all the upgrade migrations and apply them in order
 
-  void initialize(Handle handle);
+  void initialize(Handle handle, Jdbi jdbi);
 
   List<MigrationOps> getMigrationOps();
 

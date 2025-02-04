@@ -11,7 +11,11 @@
  *  limitations under the License.
  */
 import { render } from '@testing-library/react';
-import { getDeleteIcon, getUsageCountLink } from './TagsUtils';
+import {
+  getDeleteIcon,
+  getTagAssetsQueryFilter,
+  getUsageCountLink,
+} from './TagsUtils';
 
 describe('getDeleteIcon', () => {
   it('renders CheckOutlined icon when deleteTagId matches id and status is "success"', () => {
@@ -80,5 +84,28 @@ describe('getUsageCountLink', () => {
       // eslint-disable-next-line max-len
       '/explore/tables?page=1&quickFilter=%7B%22query%22%3A%7B%22bool%22%3A%7B%22must%22%3A%5B%7B%22bool%22%3A%7B%22should%22%3A%5B%7B%22term%22%3A%7B%22tags.tagFQN%22%3A%22Tag1%22%7D%7D%5D%7D%7D%5D%7D%7D%7D'
     );
+  });
+});
+
+describe('getTagAssetsQueryFilter', () => {
+  it('returns query filter for tagFQN starting with "Tier"', () => {
+    const tagFQN = 'Tier.Tier1';
+    const result = getTagAssetsQueryFilter(tagFQN);
+
+    expect(result).toBe(`(tier.tagFQN:"${tagFQN}")`);
+  });
+
+  it('returns query filter for tagFQN starting with "Certification"', () => {
+    const tagFQN = 'Certification.Gold';
+    const result = getTagAssetsQueryFilter(tagFQN);
+
+    expect(result).toBe(`(certification.tagLabel.tagFQN:"${tagFQN}")`);
+  });
+
+  it('returns common query filter for tagFQN starting with any name expect "Tier and Certification"', () => {
+    const tagFQN = 'ClassificationTag.Gold';
+    const result = getTagAssetsQueryFilter(tagFQN);
+
+    expect(result).toBe(`(tags.tagFQN:"${tagFQN}")`);
   });
 });

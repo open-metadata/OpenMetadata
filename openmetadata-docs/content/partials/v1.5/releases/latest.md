@@ -1,7 +1,7 @@
-# 1.5.5 Release 🎉
+# 1.5.15 Release 🎉
 
 {% note noteType="Tip" %}
-**Sep 25th, 2024**
+**Dec 17th, 2024**
 {% /note %}
 
 {% inlineCalloutContainer %}
@@ -10,37 +10,19 @@ color="violet-70"
 icon="celebration"
 bold="Upgrade OpenMetadata"
 href="/deployment/upgrade" %}
-Learn how to upgrade your OpenMetadata instance to 1.5.5!
+Learn how to upgrade your OpenMetadata instance to 1.5.15!
 {% /inlineCallout %}
 {% /inlineCalloutContainer %}
 
-You can find the GitHub release [here](https://github.com/open-metadata/OpenMetadata/releases/tag/1.5.5-release).
+You can find the GitHub release [here](https://github.com/open-metadata/OpenMetadata/releases/tag/1.5.15-release).
 
 # What's Changed
 
-- Made the type optional in ES Response.
-- Added support for refresh tokens with multiple tabs open.
-- Resolved issue of overriding user info after login.
-- Updated the custom property entities data model, along with the data product and database schema icons.
-- Ensured Teams and Owner fields are correctly passed in the policy API call.
-- Enhanced PII logging information.
-- Addressed the paginate_es issue in OpenSearch.
-- Decrypted JWT internally for system health checks.
-- Implemented multithreading in View Lineage Processing.
-- Improved search relevancy.
-- Resolved issue with owners patch.
-- Fixed Snowflake data diff issue.
-- Updated Presidio Analyzer version and validated support for legal entities.
-- Added validations for Salesforce connection.
-- Allowed PII Processor to operate without storing sample data.
-- Added seconds to the human-readable format scale for test case graphs.
-- Added missing field in glossary term.
-- Excluded defaultPersona if not present in personas.
-- Resolved team export issue.
-- Updated Python lineage SDK to work with UUID and FQN models.
-- Fixed LDAP login issue.
-- Column sizing of data quality and pipeline widget ${CollateIconWithLinkMD}
-- Export with new line in description ${CollateIconWithLinkMD}
-- Fix Page entity publicationDate datatype ${CollateIconWithLinkMD}
+- Minor - Fix clean_uri and add before pagination
+- Fix downloading of app logs
+- Fix query builder state issues
+- Fix : Handle Index out of bounds exception in feed api
+- Minor: DBT v12 Model Changes
+- Fix database and schema aggregation key
 
-**Full Changelog**: https://github.com/open-metadata/OpenMetadata/compare/1.5.4-release...1.5.5-release
+**Full Changelog**: https://github.com/open-metadata/OpenMetadata/compare/1.5.14-release...1.5.15-release

@@ -22,7 +22,6 @@ from metadata.generated.schema.entity.services.connections.dashboard.sigmaConnec
 from metadata.ingestion.ometa.client import REST, ClientConfig
 from metadata.ingestion.source.dashboard.sigma.models import (
     AuthToken,
-    EdgeSource,
     EdgeSourceResponse,
     Elements,
     ElementsResponse,
@@ -161,7 +160,7 @@ class SigmaApiClient:
 
     def get_lineage_details(
         self, workbook_id: str, element_id: str
-    ) -> Optional[List[EdgeSource]]:
+    ) -> Optional[List[NodeDetails]]:
         """
         method to fetch dashboards lineage details from api
         """

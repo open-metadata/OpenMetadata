@@ -17,7 +17,7 @@ import { AxiosError } from 'axios';
 import { capitalize, get, isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { Link, useHistory } from 'react-router-dom';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as IconExternalLink } from '../../../assets/svg/external-links.svg';
 import { ReactComponent as TaskOpenIcon } from '../../../assets/svg/ic-open-task.svg';
@@ -33,6 +33,7 @@ import EntityHeaderTitle from '../../../components/Entity/EntityHeaderTitle/Enti
 import {
   DATA_ASSET_ICON_DIMENSION,
   DE_ACTIVE_COLOR,
+  getEntityDetailsPath,
 } from '../../../constants/constants';
 import { SERVICE_TYPES } from '../../../constants/Services.constant';
 import { useTourProvider } from '../../../context/TourProvider/TourProvider';
@@ -59,9 +60,14 @@ import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 import { getTierTags } from '../../../utils/TableUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 
+import QueryString from 'qs';
+import { ReactComponent as RedAlertIcon } from '../../../assets/svg/ic-alert-red.svg';
 import { TAG_START_WITH } from '../../../constants/Tag.constants';
+import { LineageLayer } from '../../../generated/configuration/lineageSettings';
 import { Metric } from '../../../generated/entity/data/metric';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { getDataQualityLineage } from '../../../rest/lineageAPI';
+import tableClassBase from '../../../utils/TableClassBase';
 import AnnouncementCard from '../../common/EntityPageInfos/AnnouncementCard/AnnouncementCard';
 import AnnouncementDrawer from '../../common/EntityPageInfos/AnnouncementDrawer/AnnouncementDrawer';
 import ManageButton from '../../common/EntityPageInfos/ManageButton/ManageButton';
@@ -107,10 +113,12 @@ export const ExtraInfoLink = ({
   label,
   value,
   href,
+  newTab = false,
 }: {
   label: string;
   value: string | number;
   href: string;
+  newTab?: boolean;
 }) => (
   <>
     <Divider className="self-center" type="vertical" />
@@ -118,7 +126,11 @@ export const ExtraInfoLink = ({
       {!isEmpty(label) && (
         <span className="text-grey-muted m-r-xss">{`${label}: `}</span>
       )}
-      <Typography.Link href={href} style={{ fontSize: '12px' }}>
+      <Typography.Link
+        href={href}
+        rel={newTab ? 'noopener noreferrer' : undefined}
+        style={{ fontSize: '12px' }}
+        target={newTab ? '_blank' : undefined}>
         {value}{' '}
       </Typography.Link>
       <Icon
@@ -151,6 +163,8 @@ export const DataAssetsHeader = ({
   onUpdateRetentionPeriod,
   extraDropdownContent,
   onMetricUpdate,
+  badge,
+  isDqAlertSupported,
 }: DataAssetsHeaderProps) => {
   const { currentUser } = useApplicationStore();
   const USER_ID = currentUser?.id ?? '';
@@ -159,6 +173,7 @@ export const DataAssetsHeader = ({
   const { onCopyToClipBoard } = useClipboard(window.location.href);
   const [parentContainers, setParentContainers] = useState<Container[]>([]);
   const [isBreadcrumbLoading, setIsBreadcrumbLoading] = useState(false);
+  const [dqFailureCount, setDqFailureCount] = useState(0);
   const [isFollowingLoading, setIsFollowingLoading] = useState(false);
   const history = useHistory();
   const icon = useMemo(() => {
@@ -218,6 +233,60 @@ export const DataAssetsHeader = ({
     useState<boolean>(false);
   const [activeAnnouncement, setActiveAnnouncement] = useState<Thread>();
 
+  const fetchDQFailureCount = async () => {
+    if (!tableClassBase.getAlertEnableStatus() && !isDqAlertSupported) {
+      setDqFailureCount(0);
+
+      return;
+    }
+
+    // Todo: Remove this once we have support for count in API
+    try {
+      const data = await getDataQualityLineage(
+        dataAsset.fullyQualifiedName ?? '',
+        {
+          upstreamDepth: 1,
+        }
+      );
+
+      const updatedNodes =
+        data.nodes?.filter(
+          (node) => node?.fullyQualifiedName !== dataAsset?.fullyQualifiedName
+        ) ?? [];
+      setDqFailureCount(updatedNodes.length);
+    } catch (error) {
+      setDqFailureCount(0);
+    }
+  };
+
+  const alertBadge = useMemo(() => {
+    return tableClassBase.getAlertEnableStatus() &&
+      dqFailureCount > 0 &&
+      isDqAlertSupported ? (
+      <Space size={8}>
+        {badge}
+        <Tooltip placement="right" title={t('label.check-upstream-failure')}>
+          <Link
+            to={{
+              pathname: getEntityDetailsPath(
+                entityType,
+                dataAsset?.fullyQualifiedName ?? '',
+                EntityTabs.LINEAGE
+              ),
+
+              search: QueryString.stringify({
+                layers: [LineageLayer.DataObservability],
+              }),
+            }}>
+            <RedAlertIcon className="text-red-3" height={24} width={24} />
+          </Link>
+        </Tooltip>
+      </Space>
+    ) : (
+      badge
+    );
+  }, [dqFailureCount, dataAsset?.fullyQualifiedName, entityType, badge]);
+
   const fetchActiveAnnouncement = async () => {
     try {
       const announcements = await getActiveAnnouncement(
@@ -263,6 +332,7 @@ export const DataAssetsHeader = ({
   useEffect(() => {
     if (dataAsset.fullyQualifiedName && !isTourPage) {
       fetchActiveAnnouncement();
+      fetchDQFailureCount();
     }
     if (entityType === EntityType.CONTAINER) {
       const asset = dataAsset as Container;
@@ -343,7 +413,7 @@ export const DataAssetsHeader = ({
         editOwnerPermission:
           (permissions.EditAll || permissions.EditOwners) && !dataAsset.deleted,
         editTierPermission:
-          (permissions.EditAll || permissions.EditTags) && !dataAsset.deleted,
+          (permissions.EditAll || permissions.EditTier) && !dataAsset.deleted,
       }),
       [permissions, dataAsset]
     );
@@ -362,6 +432,8 @@ export const DataAssetsHeader = ({
             </Col>
             <Col span={24}>
               <EntityHeaderTitle
+                badge={alertBadge}
+                certification={(dataAsset as Table)?.certification}
                 deleted={dataAsset?.deleted}
                 displayName={dataAsset.displayName}
                 icon={icon}

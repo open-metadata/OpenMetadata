@@ -18,12 +18,15 @@ import static javax.ws.rs.core.Response.Status.CONFLICT;
 import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static javax.ws.rs.core.Response.Status.OK;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.api.teams.CreateUser.CreatePasswordType.ADMIN_CREATE;
 import static org.openmetadata.schema.auth.ChangePasswordRequest.RequestType.SELF;
 import static org.openmetadata.schema.entity.teams.AuthenticationMechanism.AuthType.BASIC;
 import static org.openmetadata.schema.entity.teams.AuthenticationMechanism.AuthType.JWT;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.EMAIL_SENDING_ISSUE;
+import static org.openmetadata.service.jdbi3.RoleRepository.DEFAULT_BOT_ROLE;
+import static org.openmetadata.service.jdbi3.RoleRepository.DOMAIN_ONLY_ACCESS_ROLE;
 import static org.openmetadata.service.jdbi3.UserRepository.AUTH_MECHANISM_FIELD;
 import static org.openmetadata.service.secrets.ExternalSecretsManager.NULL_SECRET_STRING;
 import static org.openmetadata.service.security.jwt.JWTTokenGenerator.getExpiryDate;
@@ -51,6 +54,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Date;
 import java.util.List;
@@ -104,7 +108,6 @@ import org.openmetadata.schema.auth.PersonalAccessToken;
 import org.openmetadata.schema.auth.RegistrationRequest;
 import org.openmetadata.schema.auth.RevokePersonalTokenRequest;
 import org.openmetadata.schema.auth.RevokeTokenRequest;
-import org.openmetadata.schema.auth.SSOAuthMechanism;
 import org.openmetadata.schema.auth.ServiceTokenType;
 import org.openmetadata.schema.auth.TokenRefreshRequest;
 import org.openmetadata.schema.auth.TokenType;
@@ -125,6 +128,7 @@ import org.openmetadata.service.exception.CustomExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.jdbi3.RoleRepository;
 import org.openmetadata.service.jdbi3.TokenRepository;
 import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.jdbi3.UserRepository.UserCsv;
@@ -146,6 +150,7 @@ import org.openmetadata.service.security.mask.PIIMasker;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.saml.JwtTokenCacheManager;
+import org.openmetadata.service.util.CSVExportResponse;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.JsonUtils;
@@ -173,6 +178,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
   public static final String USER_PROTECTED_FIELDS = "authenticationMechanism";
   private final JWTTokenGenerator jwtTokenGenerator;
   private final TokenRepository tokenRepository;
+  private final RoleRepository roleRepository;
   private AuthenticationConfiguration authenticationConfiguration;
   private AuthorizerConfiguration authorizerConfiguration;
   private final AuthenticatorHandler authHandler;
@@ -197,6 +203,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     jwtTokenGenerator = JWTTokenGenerator.getInstance();
     allowedFields.remove(USER_PROTECTED_FIELDS);
     tokenRepository = Entity.getTokenRepository();
+    roleRepository = Entity.getRoleRepository();
     UserTokenCache.initialize();
     authHandler = authenticatorHandler;
   }
@@ -567,6 +574,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     User user = getUser(securityContext.getUserPrincipal().getName(), create);
     if (Boolean.TRUE.equals(user.getIsBot())) {
       addAuthMechanismToBot(user, create, uriInfo);
+      addRolesToBot(user, uriInfo);
     }
 
     //
@@ -696,8 +704,8 @@ public class UserResource extends EntityResource<User, UserRepository> {
           new OperationContext(entityType, EntityUtil.createOrUpdateOperation(resourceContext));
       authorizer.authorize(securityContext, createOperationContext, resourceContext);
     }
-    if (Boolean.TRUE.equals(create.getIsBot())) { // TODO expect bot to be created separately
-      return createOrUpdateBot(user, create, uriInfo, securityContext);
+    if (Boolean.TRUE.equals(create.getIsBot())) {
+      return createOrUpdateBotUser(user, create, uriInfo, securityContext);
     }
     PutResponse<User> response = repository.createOrUpdate(uriInfo, user);
     addHref(uriInfo, response.getEntity());
@@ -1384,6 +1392,33 @@ public class UserResource extends EntityResource<User, UserRepository> {
   }
 
   @GET
+  @Path("/exportAsync")
+  @Produces(MediaType.APPLICATION_JSON)
+  @Valid
+  @Operation(
+      operationId = "exportUsers",
+      summary = "Export users in a team in CSV format",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Exported csv with user information",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = CSVExportResponse.class)))
+      })
+  public Response exportUsersCsvAsync(
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Name of the team to under which the users are imported to",
+              required = true,
+              schema = @Schema(type = "string"))
+          @QueryParam("team")
+          String team) {
+    return exportCsvInternalAsync(securityContext, team);
+  }
+
+  @GET
   @Path("/export")
   @Produces(MediaType.TEXT_PLAIN)
   @Valid
@@ -1447,6 +1482,41 @@ public class UserResource extends EntityResource<User, UserRepository> {
     return importCsvInternal(securityContext, team, csv, dryRun);
   }
 
+  @PUT
+  @Path("/importAsync")
+  @Consumes(MediaType.TEXT_PLAIN)
+  @Valid
+  @Operation(
+      operationId = "importTeamsAsync",
+      summary = "Import from CSV to create, and update teams asynchronously.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Import result",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = CsvImportResult.class)))
+      })
+  public Response importCsvAsync(
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Name of the team to under which the users are imported to",
+              required = true,
+              schema = @Schema(type = "string"))
+          @QueryParam("team")
+          String team,
+      @Parameter(
+              description =
+                  "Dry-run when true is used for validating the CSV without really importing it. (default=true)",
+              schema = @Schema(type = "boolean"))
+          @DefaultValue("true")
+          @QueryParam("dryRun")
+          boolean dryRun,
+      String csv) {
+    return importCsvInternalAsync(securityContext, team, csv, dryRun);
+  }
+
   public void validateEmailAlreadyExists(String email) {
     if (repository.checkEmailAlreadyExists(email)) {
       throw new CustomExceptionMessage(
@@ -1454,7 +1524,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     }
   }
 
-  private Response createOrUpdateBot(
+  private Response createOrUpdateBotUser(
       User user, CreateUser create, UriInfo uriInfo, SecurityContext securityContext) {
     User original = retrieveBotUser(user, uriInfo);
     String botName = create.getBotName();
@@ -1488,8 +1558,9 @@ public class UserResource extends EntityResource<User, UserRepository> {
               original.getAuthenticationMechanism());
       user.setRoles(original.getRoles());
     }
-    // TODO remove this
+    // TODO remove this -> Still valid TODO?
     addAuthMechanismToBot(user, create, uriInfo);
+    addRolesToBot(user, uriInfo);
     PutResponse<User> response = repository.createOrUpdate(uriInfo, user);
     decryptOrNullify(securityContext, response.getEntity());
     return response.toResponse();
@@ -1531,41 +1602,54 @@ public class UserResource extends EntityResource<User, UserRepository> {
     return repository.findToRecords(bot.getId(), Entity.BOT, Relationship.CONTAINS, Entity.USER);
   }
 
-  // TODO remove this
+  // TODO remove this -> still valid TODO?
   private void addAuthMechanismToBot(User user, @Valid CreateUser create, UriInfo uriInfo) {
     if (!Boolean.TRUE.equals(user.getIsBot())) {
       throw new IllegalArgumentException(
           "Authentication mechanism change is only supported for bot users");
     }
-    if (isValidAuthenticationMechanism(create)) {
-      AuthenticationMechanism authMechanism = create.getAuthenticationMechanism();
-      AuthenticationMechanism.AuthType authType = authMechanism.getAuthType();
-      switch (authType) {
-        case JWT -> {
-          User original = retrieveBotUser(user, uriInfo);
-          if (original == null
-              || !hasAJWTAuthMechanism(user, original.getAuthenticationMechanism())) {
-            JWTAuthMechanism jwtAuthMechanism =
-                JsonUtils.convertValue(authMechanism.getConfig(), JWTAuthMechanism.class);
-            authMechanism.setConfig(
-                jwtTokenGenerator.generateJWTToken(user, jwtAuthMechanism.getJWTTokenExpiry()));
-          } else {
-            authMechanism = original.getAuthenticationMechanism();
-          }
-        }
-        case SSO -> {
-          SSOAuthMechanism ssoAuthMechanism =
-              JsonUtils.convertValue(authMechanism.getConfig(), SSOAuthMechanism.class);
-          authMechanism.setConfig(ssoAuthMechanism);
-        }
-        default -> throw new IllegalArgumentException(
-            String.format("Not supported authentication mechanism type: [%s]", authType.value()));
-      }
-      user.setAuthenticationMechanism(authMechanism);
+    AuthenticationMechanism authMechanism = create.getAuthenticationMechanism();
+    User original = retrieveBotUser(user, uriInfo);
+    if (original == null || !hasAJWTAuthMechanism(user, original.getAuthenticationMechanism())) {
+      JWTAuthMechanism jwtAuthMechanism =
+          JsonUtils.convertValue(authMechanism.getConfig(), JWTAuthMechanism.class);
+      authMechanism.setConfig(
+          jwtTokenGenerator.generateJWTToken(user, jwtAuthMechanism.getJWTTokenExpiry()));
     } else {
-      throw new IllegalArgumentException(
-          String.format("Authentication mechanism is empty bot user: [%s]", user.getName()));
+      authMechanism = original.getAuthenticationMechanism();
     }
+    user.setAuthenticationMechanism(authMechanism);
+  }
+
+  private void addRolesToBot(User user, UriInfo uriInfo) {
+    if (!Boolean.TRUE.equals(user.getIsBot())) {
+      throw new IllegalArgumentException("Bot roles are only supported for bot users");
+    }
+    User original = retrieveBotUser(user, uriInfo);
+    ArrayList<EntityReference> defaultBotRoles = getDefaultBotRoles(user);
+    // Keep the incoming roles of the created user
+    if (!nullOrEmpty(user.getRoles())) {
+      defaultBotRoles.addAll(user.getRoles());
+    }
+    // If user existed, merge roles
+    if (original != null && !nullOrEmpty(original.getRoles())) {
+      defaultBotRoles.addAll(original.getRoles());
+    }
+    user.setRoles(defaultBotRoles);
+  }
+
+  private ArrayList<EntityReference> getDefaultBotRoles(User user) {
+    ArrayList<EntityReference> defaultBotRoles = new ArrayList<>();
+    EntityReference defaultBotRole =
+        roleRepository.getReferenceByName(DEFAULT_BOT_ROLE, Include.NON_DELETED);
+    defaultBotRoles.add(defaultBotRole);
+
+    if (!nullOrEmpty(user.getDomains())) {
+      EntityReference domainOnlyAccessRole =
+          roleRepository.getReferenceByName(DOMAIN_ONLY_ACCESS_ROLE, Include.NON_DELETED);
+      defaultBotRoles.add(domainOnlyAccessRole);
+    }
+    return defaultBotRoles;
   }
 
   @Nullable

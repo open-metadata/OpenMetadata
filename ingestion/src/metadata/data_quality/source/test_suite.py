@@ -14,11 +14,17 @@ Test Suite Workflow Source
 
 The main goal is to get the configured table from the API.
 """
-from typing import Iterable, List, Optional, cast
+import itertools
+import traceback
+from typing import Dict, Iterable, List, Optional, cast
 
 from metadata.data_quality.api.models import TableAndTests
 from metadata.generated.schema.api.tests.createTestSuite import CreateTestSuiteRequest
 from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.entity.services.databaseService import (
+    DatabaseConnection,
+    DatabaseService,
+)
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
 )
@@ -36,10 +42,10 @@ from metadata.ingestion.api.parser import parse_workflow_config_gracefully
 from metadata.ingestion.api.step import Step
 from metadata.ingestion.api.steps import Source
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.utils import fqn
+from metadata.utils import entity_link, fqn
 from metadata.utils.constants import CUSTOM_CONNECTOR_PREFIX
-from metadata.utils.importer import import_source_class
 from metadata.utils.logger import test_suite_logger
+from metadata.utils.service_spec.service_spec import import_source_class
 
 logger = test_suite_logger()
 
@@ -61,11 +67,26 @@ class TestSuiteSource(Source):
 
         self.source_config: TestSuitePipeline = self.config.source.sourceConfig.config
 
+        # Build at runtime - if not informed in the yaml - the service connection map
+        self.service_connection_map: Dict[
+            str, DatabaseConnection
+        ] = self._load_yaml_service_connections()
+
         self.test_connection()
 
     @property
     def name(self) -> str:
         return "OpenMetadata"
+
+    def _load_yaml_service_connections(self) -> Dict[str, DatabaseConnection]:
+        """Load the service connections from the YAML file"""
+        service_connections = self.source_config.serviceConnections
+        if not service_connections:
+            return {}
+        return {
+            conn.serviceName: cast(DatabaseConnection, conn.serviceConnection.root)
+            for conn in service_connections
+        }
 
     def _get_table_entity(self) -> Optional[Table]:
         """given an entity fqn return the table entity
@@ -73,6 +94,9 @@ class TestSuiteSource(Source):
         Args:
             entity_fqn: entity fqn for the test case
         """
+        # Logical test suites don't have associated tables
+        if self.source_config.entityFullyQualifiedName is None:
+            return None
         table: Table = self.metadata.get_by_name(
             entity=Table,
             fqn=self.source_config.entityFullyQualifiedName.root,
@@ -81,23 +105,51 @@ class TestSuiteSource(Source):
 
         return table
 
-    def _get_test_cases_from_test_suite(
-        self, test_suite: Optional[TestSuite]
-    ) -> List[TestCase]:
+    def _get_table_service_connection(self, table: Table) -> DatabaseConnection:
+        """Get the service connection for the table"""
+        service_name = table.service.name
+
+        if service_name not in self.service_connection_map:
+            try:
+                service: DatabaseService = self.metadata.get_by_name(
+                    DatabaseService, service_name
+                )
+                if not service:
+                    raise ConnectionError(
+                        f"Could not retrieve service with name `{service_name}`. "
+                        "Typically caused by the `entityFullyQualifiedName` does not exists in OpenMetadata "
+                        "or the JWT Token is invalid."
+                    )
+                if not service.connection:
+                    raise ConnectionError(
+                        f"Service with name `{service_name}` does not have a connection. "
+                        "If the connection is not stored in OpenMetadata, please provide it in the YAML file."
+                    )
+                self.service_connection_map[service_name] = service.connection
+
+            except Exception as exc:
+                logger.debug(traceback.format_exc())
+                logger.error(
+                    f"Error getting service connection for service name [{service_name}]"
+                    f" using the secrets manager provider [{self.metadata.config.secretsManagerProvider}]: {exc}"
+                )
+                raise exc
+
+        return self.service_connection_map[service_name]
+
+    def _get_test_cases_from_test_suite(self, test_suite: TestSuite) -> List[TestCase]:
         """Return test cases if the test suite exists and has them"""
-        if test_suite:
-            test_cases = self.metadata.list_all_entities(
-                entity=TestCase,
-                fields=["testSuite", "entityLink", "testDefinition"],
-                params={"testSuiteId": test_suite.id.root},
-            )
-            test_cases = cast(List[TestCase], test_cases)  # satisfy type checker
-            if self.source_config.testCases is not None:
-                test_cases = [
-                    t for t in test_cases if t.name in self.source_config.testCases
-                ]
-            return test_cases
-        return []
+        test_cases = self.metadata.list_all_entities(
+            entity=TestCase,
+            fields=["testSuite", "entityLink", "testDefinition"],
+            params={"testSuiteId": test_suite.id.root},
+        )
+        test_cases = cast(List[TestCase], test_cases)  # satisfy type checker
+        if self.source_config.testCases is not None:
+            test_cases = [
+                t for t in test_cases if t.name in self.source_config.testCases
+            ]
+        return test_cases
 
     def prepare(self):
         """Nothing to prepare"""
@@ -106,6 +158,7 @@ class TestSuiteSource(Source):
         self.metadata.health_check()
 
     def _iter(self) -> Iterable[Either[TableAndTests]]:
+        # Basic tests suites will have a table informed
         table: Table = self._get_table_entity()
         if table:
             source_type = table.serviceType.value.lower()
@@ -119,20 +172,29 @@ class TestSuiteSource(Source):
                 )
             yield from self._process_table_suite(table)
 
+        # Logical test suites won't have a table, we'll need to group the execution by tests
         else:
-            yield Either(
-                left=StackTraceError(
-                    name="Missing Table",
-                    error=f"Could not retrieve table entity for {self.source_config.entityFullyQualifiedName.root}."
-                    " Make sure the table exists in OpenMetadata and/or the JWT Token provided is valid.",
-                )
-            )
+            yield from self._process_logical_suite()
 
     def _process_table_suite(self, table: Table) -> Iterable[Either[TableAndTests]]:
         """
         Check that the table has the proper test suite built in
         """
+        try:
+            service_connection: DatabaseConnection = self._get_table_service_connection(
+                table
+            )
+        except Exception as exc:
+            yield Either(
+                left=StackTraceError(
+                    name="Error getting service connection",
+                    error=f"Error getting the service connection for table {table.name.root}: {exc}",
+                    stackTrace=traceback.format_exc(),
+                )
+            )
+            return
         # If there is no executable test suite yet for the table, we'll need to create one
+        # Then, the suite won't have yet any tests
         if not table.testSuite:
             executable_test_suite = CreateTestSuiteRequest(
                 name=fqn.build(
@@ -143,38 +205,80 @@ class TestSuiteSource(Source):
                 displayName=f"{self.source_config.entityFullyQualifiedName.root} Test Suite",
                 description="Test Suite created from YAML processor config file",
                 owners=None,
-                executableEntityReference=self.source_config.entityFullyQualifiedName.root,
+                basicEntityReference=self.source_config.entityFullyQualifiedName.root,
             )
             yield Either(
                 right=TableAndTests(
                     executable_test_suite=executable_test_suite,
-                    service_type=self.config.source.serviceConnection.root.config.type.value,
+                    service_type=service_connection.config.type.value,
+                    service_connection=service_connection,
                 )
             )
+            test_suite_cases = []
 
-        test_suite: Optional[TestSuite] = None
-        if table.testSuite:
-            test_suite = self.metadata.get_by_id(
+        # Otherwise, we pick the tests already registered in the suite
+        else:
+            test_suite: Optional[TestSuite] = self.metadata.get_by_id(
                 entity=TestSuite, entity_id=table.testSuite.id.root
             )
+            test_suite_cases = self._get_test_cases_from_test_suite(test_suite)
 
-        if test_suite and not test_suite.executable:
+        yield Either(
+            right=TableAndTests(
+                table=table,
+                test_cases=test_suite_cases,
+                service_type=service_connection.config.type.value,
+                service_connection=service_connection,
+            )
+        )
+
+    def _process_logical_suite(self):
+        """Process logical test suite, collect all test cases and yield them in batches by table"""
+        test_suite = self.metadata.get_by_name(
+            entity=TestSuite, fqn=self.config.source.serviceName
+        )
+        if test_suite is None:
             yield Either(
                 left=StackTraceError(
-                    name="Non-executable Test Suite",
-                    error=f"The table {self.source_config.entityFullyQualifiedName.root} "
-                    "has a test suite that is not executable.",
+                    name="Test Suite not found",
+                    error=f"Test Suite with name {self.config.source.serviceName} not found",
                 )
             )
+        test_cases: List[TestCase] = self._get_test_cases_from_test_suite(test_suite)
+        grouped_by_table = itertools.groupby(
+            test_cases, key=lambda t: entity_link.get_table_fqn(t.entityLink.root)
+        )
+        for table_fqn, group in grouped_by_table:
+            table_entity: Table = self.metadata.get_by_name(Table, table_fqn)
+            if table_entity is None:
+                yield Either(
+                    left=StackTraceError(
+                        name="Table not found",
+                        error=f"Table with fqn {table_fqn} not found for test suite {test_suite.name.root}",
+                    )
+                )
+                continue
 
-        else:
-            test_suite_cases = self._get_test_cases_from_test_suite(test_suite)
+            try:
+                service_connection: DatabaseConnection = (
+                    self._get_table_service_connection(table_entity)
+                )
+            except Exception as exc:
+                yield Either(
+                    left=StackTraceError(
+                        name="Error getting service connection",
+                        error=f"Error getting the service connection for table {table_entity.name.root}: {exc}",
+                        stackTrace=traceback.format_exc(),
+                    )
+                )
+                continue
 
             yield Either(
                 right=TableAndTests(
-                    table=table,
-                    test_cases=test_suite_cases,
-                    service_type=self.config.source.serviceConnection.root.config.type.value,
+                    table=table_entity,
+                    test_cases=list(group),
+                    service_type=service_connection.config.type.value,
+                    service_connection=service_connection,
                 )
             )
 

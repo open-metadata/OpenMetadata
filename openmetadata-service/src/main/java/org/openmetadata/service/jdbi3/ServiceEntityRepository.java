@@ -117,27 +117,38 @@ public abstract class ServiceEntityRepository<
 
     @Transaction
     @Override
-    public void entitySpecificUpdate() {
+    public void entitySpecificUpdate(boolean consolidatingChanges) {
       updateConnection();
     }
 
     private void updateConnection() {
       ServiceConnectionEntityInterface origConn = original.getConnection();
       ServiceConnectionEntityInterface updatedConn = updated.getConnection();
-      if (!CommonUtil.nullOrEmpty(origConn) && !CommonUtil.nullOrEmpty(updatedConn)) {
+      if (!CommonUtil.nullOrEmpty(updatedConn)) {
+        // We check if the updatedConn is null or empty
         String origJson = JsonUtils.pojoToJson(origConn);
         String updatedJson = JsonUtils.pojoToJson(updatedConn);
         S decryptedOrigConn = JsonUtils.readValue(origJson, serviceConnectionClass);
         S decryptedUpdatedConn = JsonUtils.readValue(updatedJson, serviceConnectionClass);
         SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
-        decryptedOrigConn.setConfig(
-            secretsManager.decryptServiceConnectionConfig(
-                decryptedOrigConn.getConfig(), original.getServiceType().value(), serviceType));
+        if (!CommonUtil.nullOrEmpty(decryptedOrigConn)) {
+          // Only decrypt the original connection if it is not null or empty
+          decryptedOrigConn.setConfig(
+              secretsManager.decryptServiceConnectionConfig(
+                  decryptedOrigConn.getConfig(), original.getServiceType().value(), serviceType));
+        }
+
         decryptedUpdatedConn.setConfig(
             secretsManager.decryptServiceConnectionConfig(
                 decryptedUpdatedConn.getConfig(), updated.getServiceType().value(), serviceType));
-        if (!objectMatch.test(decryptedOrigConn, decryptedUpdatedConn)) {
-          // we don't want save connection config details in our database
+        // we don't want save connection config details in our database
+        if (CommonUtil.nullOrEmpty(decryptedOrigConn)
+                && !CommonUtil.nullOrEmpty(decryptedUpdatedConn)
+            || !objectMatch.test(decryptedOrigConn, decryptedUpdatedConn)) {
+
+          // if Original connection is null or empty and updated connection is not null or empty
+          // or if the connection details are different
+
           recordChange("connection", "old-encrypted-value", "new-encrypted-value", true);
         }
       }

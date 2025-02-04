@@ -16,6 +16,7 @@ import { Change } from 'diff';
 import { uniqueId } from 'lodash';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
+import { getTextFromHtmlString } from '../../../utils/BlockEditorUtils';
 
 export const DiffView = ({
   diffArr,
@@ -26,10 +27,11 @@ export const DiffView = ({
 }) => {
   const { t } = useTranslation();
   const elements = diffArr.map((diff) => {
+    const diffValue = getTextFromHtmlString(diff.value);
     if (diff.added) {
       return (
         <ins className="diff-added" data-testid="diff-added" key={uniqueId()}>
-          {diff.value}
+          {diffValue}
         </ins>
       );
     }
@@ -39,14 +41,14 @@ export const DiffView = ({
           data-testid="diff-removed"
           key={uniqueId()}
           style={{ color: 'grey', textDecoration: 'line-through' }}>
-          {diff.value}
+          {diffValue}
         </del>
       );
     }
 
     return (
       <span data-testid="diff-normal" key={uniqueId()}>
-        {diff.value}
+        {diffValue}
       </span>
     );
   });

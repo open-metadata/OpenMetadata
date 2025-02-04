@@ -165,6 +165,9 @@ jest.mock('../../../utils/TableTags/TableTags.utils', () => ({
 
 jest.mock('../../../utils/EntityUtils', () => ({
   getEntityName: jest.fn().mockReturnValue('testEntityName'),
+  getColumnSorter: jest.fn().mockImplementation(() => {
+    return () => 1;
+  }),
 }));
 
 jest.mock('../../common/CustomPropertyTable/CustomPropertyTable', () => ({

@@ -15,6 +15,7 @@ import {
   render,
   screen,
   waitForElementToBeRemoved,
+  within,
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
@@ -216,6 +217,31 @@ describe('AppDetails component', () => {
     userEvent.click(screen.getByRole('button', { name: 'Configure Save' }));
 
     expect(mockPatchApplication).toHaveBeenCalled();
+  });
+
+  it('Schedule and Recent Runs tab should not be visible for NoScheduleApps', async () => {
+    mockGetApplicationByName.mockReturnValueOnce({
+      ...mockApplicationData,
+      scheduleType: 'NoSchedule',
+      deleted: true,
+    });
+
+    await renderAppDetails();
+
+    // Narrow the scope to the tablist within the container
+    const tabList = screen.getByTestId('tabs');
+
+    expect(
+      within(tabList).getByRole('tab', { name: 'label.configuration' })
+    ).toBeInTheDocument();
+
+    expect(
+      within(tabList).queryByRole('tab', { name: 'label.schedule' })
+    ).not.toBeInTheDocument();
+
+    expect(
+      within(tabList).queryByRole('tab', { name: 'label.recent-run-plural' })
+    ).not.toBeInTheDocument();
   });
 
   it('Schedule tab Actions check', async () => {

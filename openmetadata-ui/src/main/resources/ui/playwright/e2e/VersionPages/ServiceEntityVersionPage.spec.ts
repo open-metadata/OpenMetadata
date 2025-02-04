@@ -23,7 +23,12 @@ import { MlmodelServiceClass } from '../../support/entity/service/MlmodelService
 import { PipelineServiceClass } from '../../support/entity/service/PipelineServiceClass';
 import { SearchIndexServiceClass } from '../../support/entity/service/SearchIndexServiceClass';
 import { StorageServiceClass } from '../../support/entity/service/StorageServiceClass';
-import { createNewPage, redirectToHomePage } from '../../utils/common';
+import {
+  createNewPage,
+  descriptionBoxReadOnly,
+  redirectToHomePage,
+  toastNotification,
+} from '../../utils/common';
 import { addMultiOwner, assignTier } from '../../utils/entity';
 
 const entities = [
@@ -122,7 +127,7 @@ entities.forEach((EntityClass) => {
 
           await expect(
             page.locator(
-              '[data-testid="viewer-container"] [data-testid="diff-added"]'
+              `[data-testid="asset-description-container"] ${descriptionBoxReadOnly} [data-testid="diff-added"]`
             )
           ).toBeVisible();
 
@@ -153,7 +158,7 @@ entities.forEach((EntityClass) => {
           type: 'Users',
         });
 
-        const versionDetailResponse = page.waitForResponse(`**/versions/0.2`);
+        const versionDetailResponse = page.waitForResponse(`**/versions/0.3`);
         await page.locator('[data-testid="version-button"]').click();
         await versionDetailResponse;
 
@@ -169,7 +174,7 @@ entities.forEach((EntityClass) => {
 
         await assignTier(page, 'Tier1', entity.endpoint);
 
-        const versionDetailResponse = page.waitForResponse(`**/versions/0.2`);
+        const versionDetailResponse = page.waitForResponse(`**/versions/0.4`);
         await page.locator('[data-testid="version-button"]').click();
         await versionDetailResponse;
 
@@ -198,11 +203,7 @@ entities.forEach((EntityClass) => {
 
           await deleteResponse;
 
-          await expect(page.locator('.Toastify__toast-body')).toHaveText(
-            /deleted successfully!/
-          );
-
-          await page.click('.Toastify__close-button');
+          await toastNotification(page, /deleted successfully!/);
 
           await page.reload();
 
@@ -210,7 +211,7 @@ entities.forEach((EntityClass) => {
 
           await expect(deletedBadge).toHaveText('Deleted');
 
-          const versionDetailResponse = page.waitForResponse(`**/versions/0.3`);
+          const versionDetailResponse = page.waitForResponse(`**/versions/0.5`);
           await page.locator('[data-testid="version-button"]').click();
           await versionDetailResponse;
 

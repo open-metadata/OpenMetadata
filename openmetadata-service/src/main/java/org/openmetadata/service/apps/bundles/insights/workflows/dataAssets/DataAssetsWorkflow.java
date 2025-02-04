@@ -5,7 +5,7 @@ import static org.openmetadata.service.apps.bundles.insights.DataInsightsApp.get
 import static org.openmetadata.service.apps.bundles.insights.utils.TimestampUtils.END_TIMESTAMP_KEY;
 import static org.openmetadata.service.apps.bundles.insights.utils.TimestampUtils.START_TIMESTAMP_KEY;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.ENTITY_TYPE_KEY;
-import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getTotalRequestToProcess;
+import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getInitialStatsForEntities;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -19,8 +19,12 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.system.IndexingError;
+import org.openmetadata.schema.system.Stats;
 import org.openmetadata.schema.system.StepStats;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.apps.bundles.insights.DataInsightsApp;
+import org.openmetadata.service.apps.bundles.insights.search.DataInsightsSearchConfiguration;
+import org.openmetadata.service.apps.bundles.insights.search.DataInsightsSearchInterface;
 import org.openmetadata.service.apps.bundles.insights.utils.TimestampUtils;
 import org.openmetadata.service.apps.bundles.insights.workflows.WorkflowStats;
 import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.processors.DataInsightsElasticSearchProcessor;
@@ -28,6 +32,7 @@ import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.proce
 import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.processors.DataInsightsOpenSearchProcessor;
 import org.openmetadata.service.exception.SearchIndexException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.elasticsearch.ElasticSearchIndexSink;
 import org.openmetadata.service.search.opensearch.OpenSearchIndexSink;
@@ -40,6 +45,7 @@ import org.openmetadata.service.workflows.searchIndex.PaginatedEntitiesSource;
 @Slf4j
 public class DataAssetsWorkflow {
   public static final String DATA_STREAM_KEY = "DataStreamKey";
+  public static final String ENTITY_TYPE_FIELDS_KEY = "EnityTypeFields";
   private final int retentionDays = 30;
   private final Long startTimestamp;
   private final Long endTimestamp;
@@ -48,6 +54,8 @@ public class DataAssetsWorkflow {
   private final CollectionDAO collectionDAO;
   private final List<PaginatedEntitiesSource> sources = new ArrayList<>();
   private final Set<String> entityTypes;
+  private final DataInsightsSearchConfiguration dataInsightsSearchConfiguration;
+  private final DataInsightsSearchInterface searchInterface;
 
   private DataInsightsEntityEnricherProcessor entityEnricher;
   private Processor entityProcessor;
@@ -60,7 +68,8 @@ public class DataAssetsWorkflow {
       Optional<DataInsightsApp.Backfill> backfill,
       Set<String> entityTypes,
       CollectionDAO collectionDAO,
-      SearchRepository searchRepository) {
+      SearchRepository searchRepository,
+      DataInsightsSearchInterface searchInterface) {
     if (backfill.isPresent()) {
       Long oldestPossibleTimestamp =
           TimestampUtils.getStartOfDayTimestamp(
@@ -92,16 +101,26 @@ public class DataAssetsWorkflow {
     this.searchRepository = searchRepository;
     this.collectionDAO = collectionDAO;
     this.entityTypes = entityTypes;
+    this.searchInterface = searchInterface;
+    this.dataInsightsSearchConfiguration = searchInterface.readDataInsightsSearchConfiguration();
   }
 
   private void initialize() {
-    int totalRecords = getTotalRequestToProcess(entityTypes, collectionDAO);
+    Stats stats = getInitialStatsForEntities(entityTypes);
+    int totalRecords = stats.getJobStats().getTotalRecords();
 
     entityTypes.forEach(
         entityType -> {
           List<String> fields = List.of("*");
+          ListFilter filter;
+          // data product does not support soft delete
+          if (!entityType.equals("dataProduct")) {
+            filter = new ListFilter();
+          } else {
+            filter = new ListFilter(Include.ALL);
+          }
           PaginatedEntitiesSource source =
-              new PaginatedEntitiesSource(entityType, batchSize, fields)
+              new PaginatedEntitiesSource(entityType, batchSize, fields, filter)
                   .withName(String.format("[DataAssetsWorkflow] %s", entityType));
           sources.add(source);
         });
@@ -135,8 +154,12 @@ public class DataAssetsWorkflow {
       deleteDataBeforeInserting(getDataStreamName(source.getEntityType()));
       contextData.put(DATA_STREAM_KEY, getDataStreamName(source.getEntityType()));
       contextData.put(ENTITY_TYPE_KEY, source.getEntityType());
+      contextData.put(
+          ENTITY_TYPE_FIELDS_KEY,
+          searchInterface.getEntityAttributeFields(
+              dataInsightsSearchConfiguration, source.getEntityType()));
 
-      while (!source.isDone()) {
+      while (!source.isDone().get()) {
         try {
           processEntity(source.readNext(null), contextData, source);
         } catch (SearchIndexException ex) {

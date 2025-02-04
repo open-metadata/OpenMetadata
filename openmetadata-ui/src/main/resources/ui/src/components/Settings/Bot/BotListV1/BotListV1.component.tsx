@@ -34,15 +34,19 @@ import LimitWrapper from '../../../../hoc/LimitWrapper';
 import { useAuth } from '../../../../hooks/authHooks';
 import { usePaging } from '../../../../hooks/paging/usePaging';
 import { getBots } from '../../../../rest/botsAPI';
-import { getEntityName } from '../../../../utils/EntityUtils';
+import {
+  getEntityName,
+  highlightSearchText,
+} from '../../../../utils/EntityUtils';
 import { getSettingPageEntityBreadCrumb } from '../../../../utils/GlobalSettingsUtils';
+import { stringToHTML } from '../../../../utils/StringsUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import DeleteWidgetModal from '../../../common/DeleteWidget/DeleteWidgetModal';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import FilterTablePlaceHolder from '../../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
 import NextPrevious from '../../../common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../../common/NextPrevious/NextPrevious.interface';
-import RichTextEditorPreviewer from '../../../common/RichTextEditor/RichTextEditorPreviewer';
+import RichTextEditorPreviewerV1 from '../../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import Searchbar from '../../../common/SearchBarComponent/SearchBar.component';
 import Table from '../../../common/Table/Table';
 import TitleBreadcrumb from '../../../common/TitleBreadcrumb/TitleBreadcrumb.component';
@@ -73,6 +77,7 @@ const BotListV1 = ({
 
   const [handleErrorPlaceholder, setHandleErrorPlaceholder] = useState(false);
   const [searchedData, setSearchedData] = useState<Bot[]>([]);
+  const [searchTerm, setSearchTerm] = useState<string>('');
 
   const breadcrumbs: TitleBreadcrumbProps['titleLinks'] = useMemo(
     () => getSettingPageEntityBreadCrumb(GlobalSettingsMenuCategory.BOTS),
@@ -123,7 +128,7 @@ const BotListV1 = ({
 
           return (
             <Link data-testid={`bot-link-${name}`} to={getBotsPath(fqn)}>
-              {name}
+              {stringToHTML(highlightSearchText(name, searchTerm))}
             </Link>
           );
         },
@@ -134,7 +139,12 @@ const BotListV1 = ({
         key: 'description',
         render: (_, record) =>
           record?.description ? (
-            <RichTextEditorPreviewer markdown={record?.description || ''} />
+            <RichTextEditorPreviewerV1
+              markdown={highlightSearchText(
+                record?.description || '',
+                searchTerm
+              )}
+            />
           ) : (
             <span data-testid="no-description">
               {t('label.no-entity', {
@@ -205,6 +215,7 @@ const BotListV1 = ({
   }, [selectedUser]);
 
   const handleSearch = (text: string) => {
+    setSearchTerm(text);
     if (text) {
       const normalizeText = lowerCase(text);
       const matchedData = botUsers.filter(
@@ -317,6 +328,7 @@ const BotListV1 = ({
         {showPagination && (
           <NextPrevious
             currentPage={currentPage}
+            isLoading={loading}
             pageSize={pageSize}
             paging={paging}
             pagingHandler={handleBotPageChange}

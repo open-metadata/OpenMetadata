@@ -37,7 +37,7 @@ p {
 // Global css
 
 .global-search-select-menu {
-  width: 110px !important;
+  width: 200px !important;
 }
 
 .appbar-search .rc-virtual-list-holder {
@@ -557,6 +557,20 @@ a[href].link-text-grey,
   }
 }
 
+// beta tag for page header
+.service-beta-page-header {
+  sup {
+    height: auto;
+    padding: 2px 6px;
+    border-radius: 30px;
+    margin-left: 2px;
+    font-size: 10px;
+    background: @primary-1;
+    border: 1px solid @primary-color;
+    color: @primary-color;
+  }
+}
+
 /* Tabs */
 .ant-tabs-top > .ant-tabs-nav::before {
   border-color: @border-color;
@@ -567,6 +581,10 @@ a[href].link-text-grey,
   .ant-tabs-nav {
     margin: 0 !important;
     padding: 0 20px;
+
+    .ant-tabs-nav-wrap {
+      overflow: initial;
+    }
   }
 }
 .entity-tag-right-panel-container {
@@ -717,22 +735,6 @@ a[href].link-text-grey,
   background-color: @body-bg-color;
 }
 
-/* react toastify */
-
-.Toastify__toast-container {
-  width: 450px;
-  word-break: break-word;
-}
-
-.Toastify__toast {
-  overflow-y: auto;
-  max-height: 80vh;
-}
-
-.Toastify__toast-body {
-  align-items: flex-start;
-}
-
 /* ToastUI Editor style */
 .ProseMirror .placeholder {
   color: @text-grey-muted;
@@ -824,9 +826,13 @@ a[href].link-text-grey,
   .appearance-cta-buttons {
     padding-right: 64px;
   }
+  .activity-feed-editor-drawer,
   .policies-list-table,
   .roles-list-table,
-  .list-table {
+  .list-table,
+  .kpi-table,
+  .custom-properties-card,
+  .entity-custom-properties-table {
     margin-right: 64px;
   }
 }

@@ -14,7 +14,7 @@ Redshift source ingestion
 
 import re
 import traceback
-from typing import Dict, Iterable, List, Optional, Tuple
+from typing import Iterable, List, Optional, Tuple
 
 from sqlalchemy import sql
 from sqlalchemy.dialects.postgresql.base import PGDialect
@@ -71,7 +71,6 @@ from metadata.ingestion.source.database.redshift.models import RedshiftStoredPro
 from metadata.ingestion.source.database.redshift.queries import (
     REDSHIFT_GET_ALL_RELATION_INFO,
     REDSHIFT_GET_DATABASE_NAMES,
-    REDSHIFT_GET_STORED_PROCEDURE_QUERIES,
     REDSHIFT_GET_STORED_PROCEDURES,
     REDSHIFT_LIFE_CYCLE_QUERY,
     REDSHIFT_PARTITION_DETAILS,
@@ -85,17 +84,12 @@ from metadata.ingestion.source.database.redshift.utils import (
     get_table_comment,
     get_view_definition,
 )
-from metadata.ingestion.source.database.stored_procedures_mixin import (
-    QueryByProcedure,
-    StoredProcedureMixin,
-)
 from metadata.utils import fqn
 from metadata.utils.execution_time_tracker import (
     calculate_execution_time,
     calculate_execution_time_generator,
 )
 from metadata.utils.filters import filter_by_database
-from metadata.utils.helpers import get_start_and_end
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sqlalchemy_utils import (
     get_all_table_comments,
@@ -132,9 +126,7 @@ Inspector.get_all_table_ddls = get_all_table_ddls
 Inspector.get_table_ddl = get_table_ddl
 
 
-class RedshiftSource(
-    LifeCycleQueryMixin, StoredProcedureMixin, CommonDbSourceService, MultiDBSource
-):
+class RedshiftSource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
     """
     Implements the necessary methods to extract
     Database metadata from Redshift Source
@@ -423,23 +415,6 @@ class RedshiftSource(
                     stackTrace=traceback.format_exc(),
                 )
             )
-
-    def get_stored_procedure_queries_dict(self) -> Dict[str, List[QueryByProcedure]]:
-        """
-        Return the dictionary associating stored procedures to the
-        queries they triggered
-        """
-        start, _ = get_start_and_end(self.source_config.queryLogDuration)
-        query = REDSHIFT_GET_STORED_PROCEDURE_QUERIES.format(
-            start_date=start,
-            database_name=self.context.get().database,
-        )
-
-        queries_dict = self.procedure_queries_dict(
-            query=query,
-        )
-
-        return queries_dict
 
     def mark_tables_as_deleted(self):
         """

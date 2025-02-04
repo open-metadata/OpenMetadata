@@ -12,9 +12,10 @@
 """
 Redshift E2E tests
 """
+from typing import List, Tuple
 
-from typing import List
-
+from metadata.generated.schema.entity.data.table import DmlOperationType, SystemProfile
+from metadata.generated.schema.type.basic import Timestamp
 from metadata.ingestion.api.status import Status
 
 from .common.test_cli_db import CliCommonDB
@@ -100,7 +101,7 @@ class RedshiftCliTest(CliCommonDB.TestSuite, SQACommonMethods):
     def expected_tables() -> int:
         return 5
 
-    def inserted_rows_count(self) -> int:
+    def expected_sample_size(self) -> int:
         return 50
 
     def view_column_lineage_count(self) -> int:
@@ -108,6 +109,9 @@ class RedshiftCliTest(CliCommonDB.TestSuite, SQACommonMethods):
         Gives us the lineage for the view_listing
         """
         return 9
+
+    def expected_lineage_node(self) -> str:
+        return "e2e_redshift.e2e_cli_tests.dbt_jaffle.view_listing"
 
     @staticmethod
     def fqn_created_table() -> str:
@@ -231,4 +235,18 @@ class RedshiftCliTest(CliCommonDB.TestSuite, SQACommonMethods):
             """
             UPDATE e2e_cli_tests.dbt_jaffle.persons SET full_name = 'Bruce Wayne' WHERE person_id = 3
             """,
+        ]
+
+    def get_system_profile_cases(self) -> List[Tuple[str, List[SystemProfile]]]:
+        return [
+            (
+                "e2e_redshift.e2e_cli_tests.dbt_jaffle.persons",
+                [
+                    SystemProfile(
+                        timestamp=Timestamp(root=0),
+                        operation=DmlOperationType.INSERT,
+                        rowsAffected=6,
+                    )
+                ],
+            )
         ]

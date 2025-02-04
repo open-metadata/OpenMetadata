@@ -36,8 +36,14 @@ import { EntityType } from '../../../enums/entity.enum';
 import { SearchIndexField } from '../../../generated/entity/data/searchIndex';
 import { TagSource } from '../../../generated/type/schema';
 import { TagLabel } from '../../../generated/type/tagLabel';
-import { getEntityName } from '../../../utils/EntityUtils';
+import {
+  getColumnSorter,
+  getEntityName,
+  highlightSearchArrayElement,
+  highlightSearchText,
+} from '../../../utils/EntityUtils';
 import { makeData } from '../../../utils/SearchIndexUtils';
+import { stringToHTML } from '../../../utils/StringsUtils';
 import {
   getAllTags,
   searchTagInData,
@@ -58,9 +64,11 @@ const SearchIndexFieldsTable = ({
   onUpdate,
   hasDescriptionEditAccess,
   hasTagEditAccess,
+  hasGlossaryTermEditAccess,
   isReadOnly = false,
   onThreadLinkSelect,
   entityFqn,
+  searchText,
 }: SearchIndexFieldsTableProps) => {
   const { t } = useTranslation();
   const [editField, setEditField] = useState<{
@@ -147,7 +155,7 @@ const SearchIndexFieldsTable = ({
           ) : (
             <Tooltip title={toLower(displayValue)}>
               <Typography.Text ellipsis className="cursor-pointer">
-                {displayValue}
+                {highlightSearchArrayElement(displayValue, searchText)}
               </Typography.Text>
             </Tooltip>
           )}
@@ -165,7 +173,7 @@ const SearchIndexFieldsTable = ({
       <TableDescription
         columnData={{
           fqn: record.fullyQualifiedName ?? '',
-          field: record.description,
+          field: highlightSearchText(record.description, searchText),
         }}
         entityFqn={entityFqn}
         entityType={EntityType.SEARCH_INDEX}
@@ -194,9 +202,14 @@ const SearchIndexFieldsTable = ({
         accessor: 'name',
         width: 220,
         fixed: 'left',
+        sorter: getColumnSorter<SearchIndexField, 'name'>('name'),
         render: (_, record: SearchIndexField) => (
           <div className="d-inline-flex w-max-90">
-            <span className="break-word">{getEntityName(record)}</span>
+            <span className="break-word">
+              {stringToHTML(
+                highlightSearchText(getEntityName(record), searchText)
+              )}
+            </span>
           </div>
         ),
       },
@@ -255,7 +268,7 @@ const SearchIndexFieldsTable = ({
             entityFqn={entityFqn}
             entityType={EntityType.SEARCH_INDEX}
             handleTagSelection={handleTagSelection}
-            hasTagEditAccess={hasTagEditAccess}
+            hasTagEditAccess={hasGlossaryTermEditAccess}
             index={index}
             isReadOnly={isReadOnly}
             record={record}
@@ -270,6 +283,7 @@ const SearchIndexFieldsTable = ({
       entityFqn,
       isReadOnly,
       hasTagEditAccess,
+      hasGlossaryTermEditAccess,
       handleUpdate,
       handleTagSelection,
       renderDataTypeDisplay,

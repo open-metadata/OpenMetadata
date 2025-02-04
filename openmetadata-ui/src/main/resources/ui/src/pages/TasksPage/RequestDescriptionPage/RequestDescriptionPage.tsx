@@ -38,6 +38,7 @@ import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../../hooks/useFqn';
 import { postThread } from '../../../rest/feedsAPI';
+import { isDescriptionContentEmpty } from '../../../utils/BlockEditorUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import {
   ENTITY_LINK_SEPARATOR,
@@ -62,7 +63,7 @@ const RequestDescription = () => {
   const location = useCustomLocation();
   const history = useHistory();
   const [form] = useForm();
-  const markdownRef = useRef<EditorContentRef>();
+  const markdownRef = useRef<EditorContentRef>({} as EditorContentRef);
 
   const { entityType } = useParams<{ entityType: EntityType }>();
 
@@ -120,6 +121,7 @@ const RequestDescription = () => {
   const onCreateTask: FormProps['onFinish'] = (value) => {
     setIsLoading(true);
     if (assignees.length) {
+      const suggestion = markdownRef.current?.getEditorContent?.();
       const data: CreateThread = {
         from: currentUser?.name as string,
         message: value.title || taskMessage,
@@ -129,12 +131,15 @@ const RequestDescription = () => {
             id: assignee.value,
             type: assignee.type,
           })),
-          suggestion: markdownRef.current?.getEditorContent(),
+          suggestion: isDescriptionContentEmpty(suggestion)
+            ? undefined
+            : suggestion,
           type: TaskType.RequestDescription,
           oldValue: '',
         },
         type: ThreadType.Task,
       };
+
       postThread(data)
         .then(() => {
           showSuccessToast(

@@ -47,6 +47,12 @@
         "type": "keyword",
         "normalizer": "lowercase_normalizer"
       },
+      "timestamp": {
+        "type": "date"
+      },
+      "@timestamp": {
+          "type": "date"
+      },
       "testResultValue": {
         "properties": {
           "name": {
@@ -255,7 +261,8 @@
           "type": "nested",
           "properties": {
             "tagFQN": {
-              "type": "keyword"
+              "type": "keyword",
+              "normalizer": "lowercase_normalizer"
             },
             "labelType": {
               "type": "keyword"

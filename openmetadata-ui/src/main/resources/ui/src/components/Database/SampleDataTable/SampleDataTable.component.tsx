@@ -107,7 +107,7 @@ const SampleDataTable = ({
         dataIndex: column,
         key: column,
         accessor: column,
-        width: 210,
+        width: 250,
         render: (data: SampleDataType) => <RowData data={data} />,
       };
     });

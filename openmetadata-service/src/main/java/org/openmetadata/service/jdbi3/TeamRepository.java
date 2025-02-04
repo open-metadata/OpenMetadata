@@ -24,6 +24,7 @@ import static org.openmetadata.schema.api.teams.CreateTeam.TeamType.DEPARTMENT;
 import static org.openmetadata.schema.api.teams.CreateTeam.TeamType.DIVISION;
 import static org.openmetadata.schema.api.teams.CreateTeam.TeamType.GROUP;
 import static org.openmetadata.schema.api.teams.CreateTeam.TeamType.ORGANIZATION;
+import static org.openmetadata.schema.type.EventType.ENTITY_FIELDS_CHANGED;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
@@ -41,6 +42,7 @@ import static org.openmetadata.service.exception.CatalogExceptionMessage.UNEXPEC
 import static org.openmetadata.service.exception.CatalogExceptionMessage.invalidChild;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.invalidParent;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.invalidParentCount;
+import static org.openmetadata.service.util.EntityUtil.*;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -50,20 +52,26 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import javax.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.csv.CSVRecord;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.csv.EntityCsv;
+import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.api.teams.CreateTeam.TeamType;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.TeamHierarchy;
+import org.openmetadata.schema.type.ChangeDescription;
+import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.api.BulkAssets;
@@ -74,17 +82,20 @@ import org.openmetadata.schema.type.csv.CsvFile;
 import org.openmetadata.schema.type.csv.CsvHeader;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.resources.teams.TeamResource;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 
 @Slf4j
 public class TeamRepository extends EntityRepository<Team> {
   static final String PARENTS_FIELD = "parents";
+  static final String USERS_FIELD = "users";
   static final String TEAM_UPDATE_FIELDS =
       "profile,users,defaultRoles,parents,children,policies,teamType,email,domains";
   static final String TEAM_PATCH_FIELDS =
@@ -102,6 +113,7 @@ public class TeamRepository extends EntityRepository<Team> {
         TEAM_UPDATE_FIELDS);
     this.quoteFqn = true;
     supportsSearch = true;
+    parent = true;
   }
 
   @Override
@@ -606,6 +618,111 @@ public class TeamRepository extends EntityRepository<Team> {
     }
   }
 
+  @Transaction
+  public RestUtil.PutResponse<Team> updateTeamUsers(
+      String updatedBy, UUID teamId, List<EntityReference> updatedUsers) {
+
+    if (updatedUsers == null) {
+      throw new IllegalArgumentException("Users list cannot be null");
+    }
+
+    Team team = Entity.getEntity(Entity.TEAM, teamId, USERS_FIELD, Include.NON_DELETED);
+    if (!team.getTeamType().equals(CreateTeam.TeamType.GROUP)) {
+      throw new IllegalArgumentException(
+          CatalogExceptionMessage.invalidTeamUpdateUsers(team.getTeamType()));
+    }
+
+    List<EntityReference> currentUsers = team.getUsers();
+
+    Set<UUID> oldUserIds =
+        currentUsers.stream().map(EntityReference::getId).collect(Collectors.toSet());
+    Set<UUID> updatedUserIds =
+        updatedUsers.stream().map(EntityReference::getId).collect(Collectors.toSet());
+    List<EntityReference> addedUsers =
+        updatedUsers.stream()
+            .filter(user -> !oldUserIds.contains(user.getId()))
+            .collect(Collectors.toList());
+
+    Optional.of(addedUsers).ifPresent(this::validateUsers);
+
+    List<UUID> addedUserIds =
+        updatedUsers.stream()
+            .map(EntityReference::getId)
+            .filter(id -> !oldUserIds.contains(id))
+            .collect(Collectors.toList());
+
+    List<UUID> removedUserIds =
+        currentUsers.stream()
+            .map(EntityReference::getId)
+            .filter(id -> !updatedUserIds.contains(id))
+            .collect(Collectors.toList());
+
+    Optional.of(addedUserIds)
+        .filter(ids -> !ids.isEmpty())
+        .ifPresent(
+            ids -> bulkAddToRelationship(teamId, ids, Entity.TEAM, Entity.USER, Relationship.HAS));
+
+    Optional.of(removedUserIds)
+        .filter(ids -> !ids.isEmpty())
+        .ifPresent(
+            ids ->
+                bulkRemoveToRelationship(teamId, ids, Entity.TEAM, Entity.USER, Relationship.HAS));
+
+    setFieldsInternal(team, new EntityUtil.Fields(allowedFields, USERS_FIELD));
+    ChangeDescription change = new ChangeDescription().withPreviousVersion(team.getVersion());
+    fieldAdded(change, USERS_FIELD, updatedUsers);
+
+    ChangeEvent changeEvent =
+        new ChangeEvent()
+            .withId(UUID.randomUUID())
+            .withEntity(team)
+            .withChangeDescription(change)
+            .withEventType(EventType.ENTITY_UPDATED)
+            .withEntityType(entityType)
+            .withEntityId(teamId)
+            .withEntityFullyQualifiedName(team.getFullyQualifiedName())
+            .withUserName(updatedBy)
+            .withTimestamp(System.currentTimeMillis())
+            .withCurrentVersion(team.getVersion())
+            .withPreviousVersion(change.getPreviousVersion());
+    team.setChangeDescription(change);
+
+    return new RestUtil.PutResponse<>(Response.Status.OK, changeEvent, ENTITY_FIELDS_CHANGED);
+  }
+
+  public final RestUtil.PutResponse<Team> deleteTeamUser(
+      String updatedBy, UUID teamId, UUID userId) {
+    Team team = find(teamId, NON_DELETED);
+    if (!team.getTeamType().equals(CreateTeam.TeamType.GROUP)) {
+      throw new IllegalArgumentException(
+          CatalogExceptionMessage.invalidTeamUpdateUsers(team.getTeamType()));
+    }
+
+    // Validate user
+    EntityReference user = Entity.getEntityReferenceById(Entity.USER, userId, NON_DELETED);
+
+    deleteRelationship(teamId, Entity.TEAM, userId, Entity.USER, Relationship.HAS);
+
+    ChangeDescription change = new ChangeDescription().withPreviousVersion(team.getVersion());
+    fieldDeleted(change, USERS_FIELD, List.of(user));
+
+    ChangeEvent changeEvent =
+        new ChangeEvent()
+            .withId(UUID.randomUUID())
+            .withEntity(team)
+            .withChangeDescription(change)
+            .withEventType(EventType.ENTITY_UPDATED)
+            .withEntityFullyQualifiedName(team.getFullyQualifiedName())
+            .withEntityType(entityType)
+            .withEntityId(teamId)
+            .withUserName(updatedBy)
+            .withTimestamp(System.currentTimeMillis())
+            .withCurrentVersion(team.getVersion())
+            .withPreviousVersion(change.getPreviousVersion());
+
+    return new RestUtil.PutResponse<>(Response.Status.OK, changeEvent, ENTITY_FIELDS_CHANGED);
+  }
+
   public void initOrganization() {
     organization = findByNameOrNull(ORGANIZATION_NAME, ALL);
     if (organization == null) {
@@ -759,7 +876,7 @@ public class TeamRepository extends EntityRepository<Team> {
 
     @Transaction
     @Override
-    public void entitySpecificUpdate() {
+    public void entitySpecificUpdate(boolean consolidatingChanges) {
       if (original.getTeamType() != updated.getTeamType()) {
         // A team of type 'Group' cannot be updated
         if (GROUP.equals(original.getTeamType())) {
@@ -797,6 +914,8 @@ public class TeamRepository extends EntityRepository<Team> {
           origUsers,
           updatedUsers,
           false);
+
+      updatedTeam.setUserCount(updatedUsers.size());
     }
 
     private void updateDefaultRoles(Team origTeam, Team updatedTeam) {

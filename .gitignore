@@ -11,6 +11,7 @@
 
 # Created by .ignore support plugin (hsz.mobi)
 # Maven
+.venv
 __pycache__
 target/
 pom.xml.tag
@@ -88,9 +89,8 @@ openmetadata-ui/src/main/resources/ui/playwright/.auth
 #UI - Dereferenced Schemas
 openmetadata-ui/src/main/resources/ui/src/jsons/connectionSchemas
 openmetadata-ui/src/main/resources/ui/src/jsons/ingestionSchemas
+openmetadata-ui/src/main/resources/ui/src/jsons/governanceSchemas
 
-#UI - Generated TS
-openmetadata-ui/src/main/resources/ui/src/generated
 
 #vscode
 */.vscode/*
@@ -109,10 +109,7 @@ mlruns/
 /ingestion/tests/integration/source/mlflow/tests/db/
 
 # Antlr
-/openmetadata-ui/src/main/resources/ui/src/antlr/generated/Fqn.interp
-/openmetadata-ui/src/main/resources/ui/src/antlr/generated/Fqn.tokens
-/openmetadata-ui/src/main/resources/ui/src/antlr/generated/FqnLexer.interp
-/openmetadata-ui/src/main/resources/ui/src/antlr/generated/FqnLexer.tokens
+openmetadata-ui/src/main/resources/ui/src/generated/antlr/
 .antlr
 
 # SQLAlchemy tests
@@ -128,3 +125,6 @@ ingestion/tests/cli_e2e/**/*test.yaml
 
 # GX artifacts
 /ingestion/tests/integration/great_expectations/gx/*
+
+# Tests
+**/metastore_db/

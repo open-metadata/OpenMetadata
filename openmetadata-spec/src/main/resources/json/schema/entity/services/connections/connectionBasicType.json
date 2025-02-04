@@ -25,6 +25,11 @@
       "type": "boolean",
       "default": true
     },
+    "supportsIncrementalMetadataExtraction": {
+      "description": "Supports Incremental Metadata Extraction.",
+      "type": "boolean",
+      "default": true
+    },
     "supportsUsageExtraction": {
       "description": "Supports Usage Extraction.",
       "type": "boolean",
@@ -35,10 +40,20 @@
       "type": "boolean",
       "default": true
     },
+    "supportsViewLineageExtraction": {
+      "description": "Supports View Lineage Extraction.",
+      "type": "boolean",
+      "default": true
+    },
     "supportsProfiler": {
       "description": "Supports Profiler",
       "type": "boolean",
       "default": true
+    }, 
+    "supportsStatistics": {
+      "description": "Supports collecting metrics from an aggregated statistics table",
+      "type": "boolean",
+      "default": false
     },
     "supportsDatabase": {
       "description": "The source service supports the database concept in its hierarchy",
@@ -49,6 +64,11 @@
       "description": "For Database Services using SQLAlchemy, True to enable running a comment for all queries run from OpenMetadata.",
       "type": "boolean",
       "default": true
+    },
+    "supportsSystemProfile": {
+      "description": "The source database supports system profiles for tables such as last update.",
+      "type": "boolean",
+      "default": false
     },
     "supportsDataInsightExtraction": {
       "description": "Support Metadata To Elastic Search",
@@ -62,6 +82,11 @@
     },
     "supportsDBTExtraction": {
       "description": "Supports DBT Extraction.",
+      "type": "boolean",
+      "default": true
+    }, 
+    "supportsDataDiff": {
+      "description": "Supports the data diff data qualty specification.",
       "type": "boolean",
       "default": true
     },

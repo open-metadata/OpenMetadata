@@ -67,7 +67,7 @@ import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.entity.type.CustomProperty;
 import org.openmetadata.schema.entity.type.Style;
 import org.openmetadata.schema.security.credentials.AWSCredentials;
-import org.openmetadata.schema.services.connections.api.RESTConnection;
+import org.openmetadata.schema.services.connections.api.RestConnection;
 import org.openmetadata.schema.services.connections.database.BigQueryConnection;
 import org.openmetadata.schema.services.connections.database.MysqlConnection;
 import org.openmetadata.schema.services.connections.database.RedshiftConnection;
@@ -83,7 +83,7 @@ import org.openmetadata.schema.services.connections.pipeline.GluePipelineConnect
 import org.openmetadata.schema.services.connections.search.ElasticSearchConnection;
 import org.openmetadata.schema.services.connections.search.OpenSearchConnection;
 import org.openmetadata.schema.services.connections.storage.S3Connection;
-import org.openmetadata.schema.type.APIServiceConnection;
+import org.openmetadata.schema.type.ApiConnection;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.MessagingConnection;
 import org.openmetadata.schema.type.MlModelConnection;
@@ -105,6 +105,9 @@ public final class TestUtils {
   public static String LONG_ENTITY_NAME = "a".repeat(256 + 1);
   public static final Map<String, String> ADMIN_AUTH_HEADERS =
       authHeaders(ADMIN_USER_NAME + "@open-metadata.org");
+  public static final String GOVERNANCE_BOT = "governance-bot";
+  public static final Map<String, String> GOVERNANCE_BOT_AUTH_HEADERS =
+      authHeaders(GOVERNANCE_BOT + "@open-metadata.org");
   public static final String INGESTION_BOT = "ingestion-bot";
   public static final Map<String, String> INGESTION_BOT_AUTH_HEADERS =
       authHeaders(INGESTION_BOT + "@open-metadata.org");
@@ -183,10 +186,10 @@ public final class TestUtils {
       new SearchConnection()
           .withConfig(new OpenSearchConnection().withHostPort("http://localhost:9200"));
 
-  public static final APIServiceConnection API_SERVICE_CONNECTION =
-      new APIServiceConnection()
+  public static final ApiConnection API_SERVICE_CONNECTION =
+      new ApiConnection()
           .withConfig(
-              new RESTConnection()
+              new RestConnection()
                   .withOpenAPISchemaURL(getUri("http://localhost:8585/swagger.json")));
 
   public static final MetadataConnection AMUNDSEN_CONNECTION =
@@ -311,10 +314,16 @@ public final class TestUtils {
 
   public static <K> void post(WebTarget target, K request, Map<String, String> headers)
       throws HttpResponseException {
+    post(target, request, Status.CREATED.getStatusCode(), headers);
+  }
+
+  public static <K> void post(
+      WebTarget target, K request, int expectedStatus, Map<String, String> headers)
+      throws HttpResponseException {
     Entity<K> entity =
         (request == null) ? null : Entity.entity(request, MediaType.APPLICATION_JSON);
     Response response = SecurityUtil.addHeaders(target, headers).post(entity);
-    readResponse(response, Status.CREATED.getStatusCode());
+    readResponse(response, expectedStatus);
   }
 
   public static <T, K> T post(
@@ -710,7 +719,8 @@ public final class TestUtils {
   public static void assertFieldExists(
       DocumentContext jsonContext, String jsonPath, String fieldName) {
     List<Map<String, Object>> result = jsonContext.read(jsonPath, List.class);
-    assertTrue(result.size() > 0, "The query should contain '" + fieldName + "' term.");
+    assertFalse(
+        (result == null || result.isEmpty()), "The query should contain '" + fieldName + "' term.");
   }
 
   public static void assertFieldDoesNotExist(

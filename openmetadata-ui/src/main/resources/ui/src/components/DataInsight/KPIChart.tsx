@@ -264,7 +264,7 @@ const KPIChart: FC<Props> = ({
                     <XAxis
                       allowDuplicatedCategory={false}
                       dataKey="day"
-                      tickFormatter={formatDate}
+                      tickFormatter={(value) => formatDate(value)}
                       type="category"
                     />
                     <YAxis dataKey="count" />

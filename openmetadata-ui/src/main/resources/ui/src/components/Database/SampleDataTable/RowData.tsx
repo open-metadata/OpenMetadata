@@ -33,12 +33,13 @@ export const RowData = ({ data }: { data: SampleDataType }) => {
       );
     } else if (isObject(data)) {
       return (
-        <Typography.Text
-          className="w-52 truncate cursor-pointer"
+        <Typography.Paragraph
+          className="w-52 cursor-pointer"
           data-testid="json-object"
+          ellipsis={{ rows: 4 }}
           onClick={onOpen}>
           {JSON.stringify(data)}
-        </Typography.Text>
+        </Typography.Paragraph>
       );
     } else {
       return (

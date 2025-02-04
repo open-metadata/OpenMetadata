@@ -26,6 +26,9 @@ from metadata.generated.schema.api.data.createDashboardDataModel import (
 from metadata.generated.schema.entity.data.chart import Chart
 from metadata.generated.schema.entity.data.dashboardDataModel import DataModelType
 from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
+    MysqlConnection,
+)
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
@@ -81,7 +84,10 @@ class SupersetDBSource(SupersetSourceMixin):
         the required information which is not available in fetch_charts_with_id api
         """
         try:
-            charts = self.engine.execute(FETCH_ALL_CHARTS)
+            if isinstance(self.service_connection.connection, MysqlConnection):
+                charts = self.engine.execute(FETCH_ALL_CHARTS.replace('"', "`"))
+            else:
+                charts = self.engine.execute(FETCH_ALL_CHARTS)
             for chart in charts:
                 chart_detail = FetchChart(**chart)
                 self.all_charts[chart_detail.id] = chart_detail
@@ -89,17 +95,15 @@ class SupersetDBSource(SupersetSourceMixin):
             logger.debug(traceback.format_exc())
             logger.warning(f"Failed to fetch chart list due to - {err}]")
 
-    def get_column_list(self, table_name: str) -> Iterable[FetchChart]:
+    def get_column_list(self, table_id: Optional[int]) -> Iterable[FetchChart]:
         try:
-            if table_name:
-                col_list = self.engine.execute(
-                    FETCH_COLUMN, table_name=table_name.lower()
-                )
+            if table_id:
+                col_list = self.engine.execute(FETCH_COLUMN, table_id=table_id)
                 return [FetchColumn(**col) for col in col_list]
         except Exception as err:
             logger.debug(traceback.format_exc())
             logger.warning(
-                f"Failed to fetch column name list for table: [{table_name} due to - {err}]"
+                f"Failed to fetch column name list for table: [{table_id} due to - {err}]"
             )
         return []
 
@@ -195,7 +199,7 @@ class SupersetDBSource(SupersetSourceMixin):
             except Exception as exc:
                 yield Either(
                     left=StackTraceError(
-                        name=chart_json.id,
+                        name=str(chart_json.id),
                         error=f"Error yielding Chart [{chart_json.id} - {chart_json.slice_name}]: {exc}",
                         stackTrace=traceback.format_exc(),
                     )
@@ -249,7 +253,7 @@ class SupersetDBSource(SupersetSourceMixin):
                     self.status.filter(
                         chart_json.table_name, "Data model filtered out."
                     )
-                col_names = self.get_column_list(chart_json.table_name)
+                col_names = self.get_column_list(chart_json.table_id)
                 try:
                     data_model_request = CreateDashboardDataModelRequest(
                         name=EntityName(str(chart_json.datasource_id)),
@@ -279,5 +283,5 @@ class SupersetDBSource(SupersetSourceMixin):
         Returns:
             List of columns as str to generate column lineage
         """
-        col_list = self.get_column_list(chart_json.table_name)
+        col_list = self.get_column_list(chart_json.table_id)
         return [col.column_name for col in col_list]

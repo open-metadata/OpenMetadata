@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.jdbi3;
 
+import static org.openmetadata.csv.CsvUtil.addExtension;
 import static org.openmetadata.csv.CsvUtil.addField;
 import static org.openmetadata.csv.CsvUtil.addGlossaryTerms;
 import static org.openmetadata.csv.CsvUtil.addOwners;
@@ -59,6 +60,7 @@ public class DatabaseServiceRepository
         "",
         ServiceType.DATABASE);
     supportsSearch = true;
+    parent = true;
   }
 
   @Override
@@ -66,9 +68,11 @@ public class DatabaseServiceRepository
     DatabaseService databaseService =
         getByName(null, name, EntityUtil.Fields.EMPTY_FIELDS); // Validate database name
     DatabaseRepository repository = (DatabaseRepository) Entity.getEntityRepository(DATABASE);
-    ListFilter filter = new ListFilter(Include.NON_DELETED).addQueryParam("service", name);
     List<Database> databases =
-        repository.listAll(repository.getFields("owners,tags,domain"), filter);
+        repository.listAllForCSV(
+            repository.getFields("name,owners,tags,domain,extension"),
+            databaseService.getFullyQualifiedName());
+
     databases.sort(Comparator.comparing(EntityInterface::getFullyQualifiedName));
     return new DatabaseServiceCsv(databaseService, user).exportCsv(databases);
   }
@@ -122,7 +126,8 @@ public class DatabaseServiceRepository
           .withDescription(csvRecord.get(2))
           .withOwners(getOwners(printer, csvRecord, 3))
           .withTags(tagLabels)
-          .withDomain(getEntityReference(printer, csvRecord, 7, Entity.DOMAIN));
+          .withDomain(getEntityReference(printer, csvRecord, 7, Entity.DOMAIN))
+          .withExtension(getExtension(printer, csvRecord, 8));
 
       if (processRecord) {
         createEntity(printer, csvRecord, database);
@@ -145,6 +150,7 @@ public class DatabaseServiceRepository
               ? ""
               : entity.getDomain().getFullyQualifiedName();
       addField(recordList, domain);
+      addExtension(recordList, entity.getExtension());
       addRecord(csvFile, recordList);
     }
   }

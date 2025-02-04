@@ -15,7 +15,7 @@ import { Col, Row, Skeleton, Tabs, TabsProps } from 'antd';
 import { AxiosError } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
 import { isEmpty, isUndefined } from 'lodash';
-import { EntityTags, PagingResponse } from 'Models';
+import { EntityTags } from 'Models';
 import React, {
   FunctionComponent,
   useCallback,
@@ -25,32 +25,26 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import ActivityFeedProvider, {
-  useActivityFeedProvider,
-} from '../../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
-import { ActivityFeedTab } from '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
+import { useActivityFeedProvider } from '../../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import ActivityThreadPanel from '../../components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
-import { CustomPropertyTable } from '../../components/common/CustomPropertyTable/CustomPropertyTable';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
-import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
-import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
 import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import ProfilerSettings from '../../components/Database/Profiler/ProfilerSettings/ProfilerSettings';
 import { QueryVote } from '../../components/Database/TableQueries/TableQueries.interface';
-import EntityRightPanel from '../../components/Entity/EntityRightPanel/EntityRightPanel';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import {
   getEntityDetailsPath,
   getVersionPath,
   INITIAL_PAGING_VALUE,
+  INITIAL_TABLE_FILTERS,
+  PAGE_SIZE,
   ROUTES,
 } from '../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
-import { COMMON_RESIZABLE_PANEL_CONFIG } from '../../constants/ResizablePanel.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
@@ -70,9 +64,10 @@ import { Table } from '../../generated/entity/data/table';
 import { ThreadType } from '../../generated/entity/feed/thread';
 import { Include } from '../../generated/type/include';
 import { TagLabel } from '../../generated/type/tagLabel';
+import { usePaging } from '../../hooks/paging/usePaging';
 import { useFqn } from '../../hooks/useFqn';
+import { useTableFilters } from '../../hooks/useTableFilters';
 import { FeedCounts } from '../../interface/feed.interface';
-import StoredProcedureTab from '../../pages/StoredProcedure/StoredProcedureTab';
 import {
   getDatabaseSchemaDetailsByFQN,
   patchDatabaseSchemaDetails,
@@ -87,24 +82,36 @@ import {
   getFeedCounts,
   sortTagsCaseInsensitive,
 } from '../../utils/CommonUtils';
+import databaseSchemaClassBase from '../../utils/DatabaseSchemaClassBase';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
 import { createTagObject, updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
-import SchemaTablesTab from './SchemaTablesTab';
 
 const DatabaseSchemaPage: FunctionComponent = () => {
   const { postFeed, deleteFeed, updateFeed } = useActivityFeedProvider();
   const { t } = useTranslation();
   const { getEntityPermissionByFqn } = usePermissionProvider();
+  const pagingInfo = usePaging(PAGE_SIZE);
 
+  const {
+    paging,
+    pageSize,
+    handlePagingChange,
+    currentPage,
+    handlePageChange,
+    pagingCursor,
+  } = pagingInfo;
+
+  const { filters: tableFilters, setFilters } = useTableFilters(
+    INITIAL_TABLE_FILTERS
+  );
   const { tab: activeTab = EntityTabs.TABLE } =
     useParams<{ tab: EntityTabs }>();
   const { fqn: decodedDatabaseSchemaFQN } = useFqn();
   const history = useHistory();
-
   const [threadType, setThreadType] = useState<ThreadType>(
     ThreadType.Conversation
   );
@@ -112,10 +119,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   const [databaseSchema, setDatabaseSchema] = useState<DatabaseSchema>(
     {} as DatabaseSchema
   );
-  const [tableData, setTableData] = useState<PagingResponse<Table[]>>({
-    data: [],
-    paging: { total: 0 },
-  });
+  const [tableData, setTableData] = useState<Array<Table>>([]);
   const [tableDataLoading, setTableDataLoading] = useState<boolean>(true);
   const [isSchemaDetailsLoading, setIsSchemaDetailsLoading] =
     useState<boolean>(true);
@@ -127,9 +131,6 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   const [threadLink, setThreadLink] = useState<string>('');
   const [databaseSchemaPermission, setDatabaseSchemaPermission] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
-  const [showDeletedTables, setShowDeletedTables] = useState<boolean>(false);
-  const [currentTablesPage, setCurrentTablesPage] =
-    useState<number>(INITIAL_PAGING_VALUE);
   const [storedProcedureCount, setStoredProcedureCount] = useState(0);
 
   const [updateProfilerSetting, setUpdateProfilerSetting] =
@@ -146,8 +147,8 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   );
 
   const handleShowDeletedTables = (value: boolean) => {
-    setShowDeletedTables(value);
-    setCurrentTablesPage(INITIAL_PAGING_VALUE);
+    setFilters({ showDeletedTables: value });
+    handlePageChange(INITIAL_PAGING_VALUE);
   };
 
   const { version: currentVersion, deleted } = useMemo(
@@ -229,7 +230,11 @@ const DatabaseSchemaPage: FunctionComponent = () => {
       const { description: schemaDescription = '' } = response;
       setDatabaseSchema(response);
       setDescription(schemaDescription);
-      setShowDeletedTables(response.deleted ?? false);
+      if (response.deleted) {
+        setFilters({
+          showDeletedTables: response.deleted,
+        });
+      }
     } catch (err) {
       // Error
       if ((err as AxiosError)?.response?.status === ClientErrors.FORBIDDEN) {
@@ -247,16 +252,20 @@ const DatabaseSchemaPage: FunctionComponent = () => {
         const res = await getTableList({
           ...params,
           databaseSchema: decodedDatabaseSchemaFQN,
-          include: showDeletedTables ? Include.Deleted : Include.NonDeleted,
+          limit: pageSize,
+          include: tableFilters.showDeletedTables
+            ? Include.Deleted
+            : Include.NonDeleted,
         });
-        setTableData(res);
+        setTableData(res.data);
+        handlePagingChange(res.paging);
       } catch (err) {
         showErrorToast(err as AxiosError);
       } finally {
         setTableDataLoading(false);
       }
     },
-    [decodedDatabaseSchemaFQN, showDeletedTables]
+    [decodedDatabaseSchemaFQN, tableFilters.showDeletedTables, pageSize]
   );
 
   const onDescriptionEdit = useCallback((): void => {
@@ -423,6 +432,13 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   );
 
   const handleToggleDelete = (version?: number) => {
+    history.replace({
+      state: {
+        cursorData: null,
+        pageSize: null,
+        currentPage: INITIAL_PAGING_VALUE,
+      },
+    });
     setDatabaseSchema((prev) => {
       if (!prev) {
         return prev;
@@ -461,11 +477,19 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   const tablePaginationHandler = useCallback(
     ({ cursorType, currentPage }: PagingHandlerParams) => {
       if (cursorType) {
-        getSchemaTables({ [cursorType]: tableData.paging[cursorType] });
+        getSchemaTables({ [cursorType]: paging[cursorType] });
+        handlePageChange(
+          currentPage,
+          {
+            cursorType: cursorType,
+            cursorValue: paging[cursorType]!,
+          },
+          pageSize
+        );
       }
-      setCurrentTablesPage(currentPage);
+      handlePageChange(currentPage);
     },
-    [tableData, getSchemaTables]
+    [paging, getSchemaTables, handlePageChange]
   );
 
   const versionHandler = useCallback(() => {
@@ -522,17 +546,28 @@ const DatabaseSchemaPage: FunctionComponent = () => {
 
   useEffect(() => {
     if (viewDatabaseSchemaPermission && decodedDatabaseSchemaFQN) {
-      getSchemaTables();
+      if (pagingCursor?.cursorData?.cursorType) {
+        // Fetch data if cursorType is present in state with cursor Value to handle browser back navigation
+        getSchemaTables({
+          [pagingCursor?.cursorData?.cursorType]:
+            pagingCursor?.cursorData?.cursorValue,
+        });
+      } else {
+        // Otherwise, just fetch the data without cursor value
+        getSchemaTables({ limit: pageSize });
+      }
     }
   }, [
-    showDeletedTables,
+    tableFilters.showDeletedTables,
     decodedDatabaseSchemaFQN,
     viewDatabaseSchemaPermission,
     deleted,
+    pageSize,
   ]);
 
   const {
     editTagsPermission,
+    editGlossaryTermsPermission,
     editDescriptionPermission,
     editCustomAttributePermission,
     viewAllPermission,
@@ -540,6 +575,10 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     () => ({
       editTagsPermission:
         (databaseSchemaPermission.EditTags ||
+          databaseSchemaPermission.EditAll) &&
+        !databaseSchema.deleted,
+      editGlossaryTermsPermission:
+        (databaseSchemaPermission.EditGlossaryTerms ||
           databaseSchemaPermission.EditAll) &&
         !databaseSchema.deleted,
       editDescriptionPermission:
@@ -572,135 +611,73 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     });
   };
 
-  const tabs: TabsProps['items'] = [
-    {
-      label: (
-        <TabsLabel
-          count={tableData.paging.total}
-          id={EntityTabs.TABLE}
-          isActive={activeTab === EntityTabs.TABLE}
-          name={t('label.table-plural')}
-        />
-      ),
-      key: EntityTabs.TABLE,
-      children: (
-        <Row gutter={[0, 16]} wrap={false}>
-          <Col className="tab-content-height-with-resizable-panel" span={24}>
-            <ResizablePanels
-              firstPanel={{
-                className: 'entity-resizable-panel-container',
-                children: (
-                  <div className="p-t-sm m-x-lg">
-                    <SchemaTablesTab
-                      currentTablesPage={currentTablesPage}
-                      databaseSchemaDetails={databaseSchema}
-                      description={description}
-                      editDescriptionPermission={editDescriptionPermission}
-                      isEdit={isEdit}
-                      showDeletedTables={showDeletedTables}
-                      tableData={tableData}
-                      tableDataLoading={tableDataLoading}
-                      tablePaginationHandler={tablePaginationHandler}
-                      onCancel={onEditCancel}
-                      onDescriptionEdit={onDescriptionEdit}
-                      onDescriptionUpdate={onDescriptionUpdate}
-                      onShowDeletedTablesChange={handleShowDeletedTables}
-                      onThreadLinkSelect={onThreadLinkSelect}
-                    />
-                  </div>
-                ),
-                ...COMMON_RESIZABLE_PANEL_CONFIG.LEFT_PANEL,
-              }}
-              secondPanel={{
-                children: (
-                  <div data-testid="entity-right-panel">
-                    <EntityRightPanel<EntityType.DATABASE_SCHEMA>
-                      customProperties={databaseSchema}
-                      dataProducts={databaseSchema?.dataProducts ?? []}
-                      domain={databaseSchema?.domain}
-                      editCustomAttributePermission={
-                        editCustomAttributePermission
-                      }
-                      editTagPermission={editTagsPermission}
-                      entityFQN={decodedDatabaseSchemaFQN}
-                      entityId={databaseSchema?.id ?? ''}
-                      entityType={EntityType.DATABASE_SCHEMA}
-                      selectedTags={tags}
-                      viewAllPermission={viewAllPermission}
-                      onExtensionUpdate={handleExtensionUpdate}
-                      onTagSelectionChange={handleTagSelection}
-                      onThreadLinkSelect={onThreadLinkSelect}
-                    />
-                  </div>
-                ),
-                ...COMMON_RESIZABLE_PANEL_CONFIG.RIGHT_PANEL,
-                className:
-                  'entity-resizable-right-panel-container entity-resizable-panel-container',
-              }}
-            />
-          </Col>
-        </Row>
-      ),
-    },
-    {
-      label: (
-        <TabsLabel
-          count={storedProcedureCount}
-          id={EntityTabs.STORED_PROCEDURE}
-          isActive={activeTab === EntityTabs.STORED_PROCEDURE}
-          name={t('label.stored-procedure-plural')}
-        />
-      ),
-      key: EntityTabs.STORED_PROCEDURE,
-      children: <StoredProcedureTab />,
-    },
-    {
-      label: (
-        <TabsLabel
-          count={feedCount.totalCount}
-          id={EntityTabs.ACTIVITY_FEED}
-          isActive={activeTab === EntityTabs.ACTIVITY_FEED}
-          name={t('label.activity-feed-plural')}
-        />
-      ),
-      key: EntityTabs.ACTIVITY_FEED,
-      children: (
-        <ActivityFeedProvider>
-          <ActivityFeedTab
-            refetchFeed
-            entityFeedTotalCount={feedCount.totalCount}
-            entityType={EntityType.DATABASE_SCHEMA}
-            fqn={databaseSchema.fullyQualifiedName ?? ''}
-            onFeedUpdate={getEntityFeedCount}
-            onUpdateEntityDetails={fetchDatabaseSchemaDetails}
-            onUpdateFeedCount={handleFeedCount}
-          />
-        </ActivityFeedProvider>
-      ),
-    },
-    {
-      label: (
-        <TabsLabel
-          id={EntityTabs.CUSTOM_PROPERTIES}
-          name={t('label.custom-property-plural')}
-        />
-      ),
-      key: EntityTabs.CUSTOM_PROPERTIES,
-      children: databaseSchema && (
-        <div className="m-sm">
-          <CustomPropertyTable<EntityType.DATABASE_SCHEMA>
-            className=""
-            entityDetails={databaseSchema}
-            entityType={EntityType.DATABASE_SCHEMA}
-            handleExtensionUpdate={handleExtensionUpdate}
-            hasEditAccess={editCustomAttributePermission}
-            hasPermission={viewAllPermission}
-            isVersionView={false}
-          />
-        </div>
-      ),
-    },
-  ];
+  const tabs: TabsProps['items'] = useMemo(
+    () =>
+      databaseSchemaClassBase.getDatabaseSchemaPageTabs({
+        feedCount,
+        tableData,
+        activeTab,
+        currentTablesPage: currentPage,
+        databaseSchema,
+        description,
+        editDescriptionPermission,
+        isEdit,
+        showDeletedTables: tableFilters.showDeletedTables,
+        tableDataLoading,
+        editCustomAttributePermission,
+        editTagsPermission,
+        editGlossaryTermsPermission,
+        decodedDatabaseSchemaFQN,
+        tags,
+        viewAllPermission,
+        databaseSchemaPermission,
+        storedProcedureCount,
+        onEditCancel,
+        handleExtensionUpdate,
+        handleTagSelection,
+        onThreadLinkSelect,
+        tablePaginationHandler,
+        onDescriptionEdit,
+        onDescriptionUpdate,
+        handleShowDeletedTables,
+        getEntityFeedCount,
+        fetchDatabaseSchemaDetails,
+        handleFeedCount,
+        pagingInfo,
+      }),
+    [
+      feedCount,
+      tableData,
+      activeTab,
+      currentPage,
+      databaseSchema,
+      description,
+      editDescriptionPermission,
+      isEdit,
+      tableFilters.showDeletedTables,
+      tableDataLoading,
+      editCustomAttributePermission,
+      editTagsPermission,
+      editGlossaryTermsPermission,
+      decodedDatabaseSchemaFQN,
+      tags,
+      viewAllPermission,
+      storedProcedureCount,
+      databaseSchemaPermission,
+      handleExtensionUpdate,
+      handleTagSelection,
+      onThreadLinkSelect,
+      tablePaginationHandler,
+      onEditCancel,
+      onDescriptionEdit,
+      onDescriptionUpdate,
+      handleShowDeletedTables,
+      getEntityFeedCount,
+      fetchDatabaseSchemaDetails,
+      handleFeedCount,
+      pagingInfo,
+    ]
+  );
 
   const updateVote = async (data: QueryVote, id: string) => {
     try {

@@ -72,6 +72,7 @@ import org.openmetadata.service.util.ResultList;
 public class DashboardServiceResource
     extends ServiceEntityResource<
         DashboardService, DashboardServiceRepository, DashboardConnection> {
+  private final DashboardServiceMapper mapper = new DashboardServiceMapper();
   public static final String COLLECTION_PATH = "v1/services/dashboardServices";
   static final String FIELDS = "owners,domain";
 
@@ -333,7 +334,8 @@ public class DashboardServiceResource
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateDashboardService create) {
-    DashboardService service = getService(create, securityContext.getUserPrincipal().getName());
+    DashboardService service =
+        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     Response response = create(uriInfo, securityContext, service);
     decryptOrNullify(securityContext, (DashboardService) response.getEntity());
     return response;
@@ -358,7 +360,8 @@ public class DashboardServiceResource
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateDashboardService update) {
-    DashboardService service = getService(update, securityContext.getUserPrincipal().getName());
+    DashboardService service =
+        mapper.createToEntity(update, securityContext.getUserPrincipal().getName());
     Response response = createOrUpdate(uriInfo, securityContext, unmask(service));
     decryptOrNullify(securityContext, (DashboardService) response.getEntity());
     return response;
@@ -505,13 +508,6 @@ public class DashboardServiceResource
       @Context SecurityContext securityContext,
       @Valid RestoreEntity restore) {
     return restoreEntity(uriInfo, securityContext, restore.getId());
-  }
-
-  private DashboardService getService(CreateDashboardService create, String user) {
-    return repository
-        .copy(new DashboardService(), create, user)
-        .withServiceType(create.getServiceType())
-        .withConnection(create.getConnection());
   }
 
   @Override

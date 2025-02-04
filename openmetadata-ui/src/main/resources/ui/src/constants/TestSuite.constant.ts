@@ -39,26 +39,6 @@ export const STEPS_FOR_ADD_TEST_SUITE: Array<StepperStepType> = [
   },
 ];
 
-export const STEPS_FOR_ADD_TEST_SUITE_PIPELINE: Array<StepperStepType> = [
-  {
-    name: i18next.t('label.add-entity', {
-      entity: i18next.t('label.test-case'),
-    }),
-    step: 1,
-  },
-  {
-    name: i18next.t('label.schedule-interval'),
-    step: 2,
-  },
-];
-
-export const TEST_SUITE_BREADCRUMB = [
-  {
-    name: TEST_SUITE_LABEL,
-    url: '',
-    activeTitle: true,
-  },
-];
 export const TEST_SUITE_STEPPER_BREADCRUMB = [
   {
     name: TEST_SUITE_LABEL,

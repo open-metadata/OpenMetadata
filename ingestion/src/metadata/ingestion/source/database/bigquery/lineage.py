@@ -11,14 +11,26 @@
 """
 Handle big query lineage extraction
 """
-from metadata.ingestion.source.database.bigquery.queries import BIGQUERY_STATEMENT
+from typing import Dict, List
+
+from metadata.ingestion.source.database.bigquery.queries import (
+    BIGQUERY_GET_STORED_PROCEDURE_QUERIES,
+    BIGQUERY_STATEMENT,
+)
 from metadata.ingestion.source.database.bigquery.query_parser import (
     BigqueryQueryParserSource,
 )
 from metadata.ingestion.source.database.lineage_source import LineageSource
+from metadata.ingestion.source.database.stored_procedures_mixin import (
+    QueryByProcedure,
+    StoredProcedureLineageMixin,
+)
+from metadata.utils.helpers import get_start_and_end
 
 
-class BigqueryLineageSource(BigqueryQueryParserSource, LineageSource):
+class BigqueryLineageSource(
+    BigqueryQueryParserSource, StoredProcedureLineageMixin, LineageSource
+):
     """
     Implements the necessary methods to extract
     Database lineage from Bigquery Source
@@ -32,3 +44,18 @@ class BigqueryLineageSource(BigqueryQueryParserSource, LineageSource):
             OR (statement_type = "INSERT" and UPPER(query) like '%%INSERT%%INTO%%SELECT%%')
         )
     """
+
+    def get_stored_procedure_queries_dict(self) -> Dict[str, List[QueryByProcedure]]:
+        """
+        Pick the stored procedure name from the context
+        and return the list of associated queries
+        """
+        start, _ = get_start_and_end(self.source_config.queryLogDuration)
+        query = BIGQUERY_GET_STORED_PROCEDURE_QUERIES.format(
+            start_date=start,
+            region=self.service_connection.usageLocation,
+        )
+        queries_dict = self.procedure_queries_dict(
+            query=query,
+        )
+        return queries_dict

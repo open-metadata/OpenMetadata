@@ -10,7 +10,7 @@
 #  limitations under the License.
 """MSSQL source module"""
 import traceback
-from typing import Dict, Iterable, List, Optional
+from typing import Iterable, Optional
 
 from sqlalchemy.dialects.mssql.base import MSDialect, ischema_names
 from sqlalchemy.engine.reflection import Inspector
@@ -35,24 +35,18 @@ from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
-from metadata.ingestion.source.database.mssql.constants import (
-    DEFAULT_DATETIME_FORMAT,
-    MSSQL_DATEFORMAT_DATETIME_MAP,
-)
 from metadata.ingestion.source.database.mssql.models import (
     STORED_PROC_LANGUAGE_MAP,
     MssqlStoredProcedure,
 )
 from metadata.ingestion.source.database.mssql.queries import (
     MSSQL_GET_DATABASE,
-    MSSQL_GET_STORED_PROCEDURE_QUERIES,
     MSSQL_GET_STORED_PROCEDURES,
 )
 from metadata.ingestion.source.database.mssql.utils import (
     get_columns,
     get_foreign_keys,
     get_pk_constraint,
-    get_sqlalchemy_engine_dateformat,
     get_table_comment,
     get_table_names,
     get_unique_constraints,
@@ -60,13 +54,8 @@ from metadata.ingestion.source.database.mssql.utils import (
     get_view_names,
 )
 from metadata.ingestion.source.database.multi_db_source import MultiDBSource
-from metadata.ingestion.source.database.stored_procedures_mixin import (
-    QueryByProcedure,
-    StoredProcedureMixin,
-)
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_database
-from metadata.utils.helpers import get_start_and_end
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sqa_utils import update_mssql_ischema_names
 from metadata.utils.sqlalchemy_utils import (
@@ -99,7 +88,7 @@ Inspector.get_all_table_ddls = get_all_table_ddls
 Inspector.get_table_ddl = get_table_ddl
 
 
-class MssqlSource(StoredProcedureMixin, CommonDbSourceService, MultiDBSource):
+class MssqlSource(CommonDbSourceService, MultiDBSource):
     """
     Implements the necessary methods to extract
     Database metadata from MSSQL Source
@@ -213,34 +202,3 @@ class MssqlSource(StoredProcedureMixin, CommonDbSourceService, MultiDBSource):
                     stackTrace=traceback.format_exc(),
                 )
             )
-
-    def get_stored_procedure_queries_dict(self) -> Dict[str, List[QueryByProcedure]]:
-        """
-        Return the dictionary associating stored procedures to the
-        queries they triggered
-        """
-        start, _ = get_start_and_end(self.source_config.queryLogDuration)
-        server_date_format = get_sqlalchemy_engine_dateformat(self.engine)
-        current_datetime_format = MSSQL_DATEFORMAT_DATETIME_MAP.get(
-            server_date_format, DEFAULT_DATETIME_FORMAT
-        )
-        start = start.strftime(current_datetime_format)
-        query = MSSQL_GET_STORED_PROCEDURE_QUERIES.format(
-            start_date=start,
-        )
-        try:
-            queries_dict = self.procedure_queries_dict(
-                query=query,
-            )
-        except Exception as ex:  # pylint: disable=broad-except
-            logger.debug(f"Error runnning query:\n{query}")
-            self.status.failed(
-                StackTraceError(
-                    name="Stored Procedure",
-                    error=f"Error trying to get stored procedure queries: {ex}",
-                    stackTrace=traceback.format_exc(),
-                )
-            )
-            return {}
-
-        return queries_dict

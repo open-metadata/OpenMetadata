@@ -12,6 +12,7 @@
  */
 import { DownOutlined, SearchOutlined, UpOutlined } from '@ant-design/icons';
 import { Button, Collapse, Input, Space } from 'antd';
+import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -21,9 +22,9 @@ import {
   LINEAGE_COLUMN_NODE_SUPPORTED,
 } from '../../../../constants/Lineage.constants';
 import { useLineageProvider } from '../../../../context/LineageProvider/LineageProvider';
-import { LineageLayerView } from '../../../../context/LineageProvider/LineageProvider.interface';
 import { EntityType } from '../../../../enums/entity.enum';
 import { Column, Table } from '../../../../generated/entity/data/table';
+import { LineageLayer } from '../../../../generated/settings/settings';
 import { getEntityChildrenAndLabel } from '../../../../utils/EntityLineageUtils';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import searchClassBase from '../../../../utils/SearchClassBase';
@@ -50,9 +51,9 @@ const NodeChildren = ({ node, isConnectable }: NodeChildrenProps) => {
 
   const { showColumns, showDataObservability } = useMemo(() => {
     return {
-      showColumns: activeLayer.includes(LineageLayerView.COLUMN),
+      showColumns: activeLayer.includes(LineageLayer.ColumnLevelLineage),
       showDataObservability: activeLayer.includes(
-        LineageLayerView.DATA_OBSERVARABILITY
+        LineageLayer.DataObservability
       ),
     };
   }, [activeLayer]);
@@ -111,6 +112,10 @@ const NodeChildren = ({ node, isConnectable }: NodeChildrenProps) => {
       setFilteredColumns(children);
     }
   }, [children]);
+
+  useEffect(() => {
+    setShowAllColumns(expandAllColumns);
+  }, [expandAllColumns]);
 
   const renderRecord = useCallback(
     (record: Column) => {
@@ -200,7 +205,7 @@ const NodeChildren = ({ node, isConnectable }: NodeChildrenProps) => {
 
   if (supportsColumns && (showColumns || showDataObservability)) {
     return (
-      <div className="column-container bg-grey-1 p-sm p-y-xs">
+      <div className="column-container">
         <div className="d-flex justify-between items-center">
           <div>
             {showColumns && (
@@ -247,7 +252,10 @@ const NodeChildren = ({ node, isConnectable }: NodeChildrenProps) => {
             </div>
 
             <section className="m-t-md" id="table-columns">
-              <div className="border rounded-4 overflow-hidden">
+              <div
+                className={classNames('rounded-4 overflow-hidden', {
+                  border: !showAllColumns,
+                })}>
                 {filteredColumns.map((column) =>
                   renderColumnsData(column as Column)
                 )}

@@ -25,7 +25,7 @@ VERSIONS = {
     "boto3": "boto3>=1.20,<2.0",  # No need to add botocore separately. It's a dep from boto3
     "geoalchemy2": "GeoAlchemy2~=0.12",
     "google-cloud-monitoring": "google-cloud-monitoring>=2.0.0",
-    "google-cloud-storage": "google-cloud-storage==1.43.0",
+    "google-cloud-storage": "google-cloud-storage>=1.43.0",
     "gcsfs": "gcsfs>=2023.1.0",
     "great-expectations": "great-expectations>=0.18.0,<0.18.14",
     "grpc-tools": "grpcio-tools>=1.47.2",
@@ -33,7 +33,7 @@ VERSIONS = {
     "neo4j": "neo4j~=5.3.0",
     "pandas": "pandas~=2.0.0",
     "pyarrow": "pyarrow~=16.0",
-    "pydantic": "pydantic~=2.0",
+    "pydantic": "pydantic~=2.0,>=2.7.0",
     "pydomo": "pydomo~=0.3",
     "pymysql": "pymysql~=1.0",
     "pyodbc": "pyodbc>=4.0.35,<5",
@@ -46,7 +46,7 @@ VERSIONS = {
     "databricks-sdk": "databricks-sdk>=0.18.0,<0.20.0",
     "trino": "trino[sqlalchemy]",
     "spacy": "spacy<3.8",
-    "looker-sdk": "looker-sdk>=22.20.0",
+    "looker-sdk": "looker-sdk>=22.20.0,!=24.18.0",
     "lkml": "lkml~=1.3",
     "tableau": "tableau-api-lib~=0.1",
     "pyhive": "pyhive[hive_pure_sasl]~=0.7",
@@ -57,6 +57,8 @@ VERSIONS = {
     "giturlparse": "giturlparse",
     "validators": "validators~=0.22.0",
     "teradata": "teradatasqlalchemy>=20.0.0.0",
+    "cockroach": "sqlalchemy-cockroachdb~=2.0",
+    "cassandra": "cassandra-driver>=3.28.0",
 }
 
 COMMONS = {
@@ -76,7 +78,7 @@ COMMONS = {
     },
     "kafka": {
         VERSIONS["avro"],
-        "confluent_kafka==2.1.1",
+        "confluent_kafka>=2.1.1,<=2.6.1",
         "fastavro>=1.2.0",
         # Due to https://github.com/grpc/grpc/issues/30843#issuecomment-1303816925
         # use >= v1.47.2 https://github.com/grpc/grpc/blob/v1.47.2/tools/distrib/python/grpcio_tools/grpc_version.py#L17
@@ -137,16 +139,20 @@ base_requirements = {
     "requests>=2.23",
     "requests-aws4auth~=1.1",  # Only depends on requests as external package. Leaving as base.
     "sqlalchemy>=1.4.0,<2",
-    "collate-sqllineage~=1.4.0",
+    "collate-sqllineage~=1.6.0",
     "tabulate==0.9.0",
     "typing-inspect",
     "packaging",  # For version parsing
+    "shapely",
+    "collate-data-diff",
 }
 
 plugins: Dict[str, Set[str]] = {
     "airflow": {
-        VERSIONS["airflow"],
+        "opentelemetry-exporter-otlp==1.27.0",
+        "protobuf<5",
         "attrs",
+        VERSIONS["airflow"],
     },  # Same as ingestion container. For development.
     "amundsen": {VERSIONS["neo4j"]},
     "athena": {"pyathena~=3.0"},
@@ -179,11 +185,11 @@ plugins: Dict[str, Set[str]] = {
         "google-cloud",
         VERSIONS["boto3"],
         VERSIONS["google-cloud-storage"],
-        "dbt-artifacts-parser",
+        "collate-dbt-artifacts-parser",
         VERSIONS["azure-storage-blob"],
         VERSIONS["azure-identity"],
     },
-    "db2": {"ibm-db-sa~=0.3"},
+    "db2": {"ibm-db-sa~=0.4.1", "ibm-db>=2.0.0"},
     "db2-ibmi": {"sqlalchemy-ibmi~=0.9.3"},
     "databricks": {
         VERSIONS["sqlalchemy-databricks"],
@@ -224,9 +230,14 @@ plugins: Dict[str, Set[str]] = {
     "elasticsearch": {
         VERSIONS["elasticsearch8"],
     },  # also requires requests-aws4auth which is in base
+    "exasol": {"sqlalchemy_exasol>=5,<6"},
     "glue": {VERSIONS["boto3"]},
     "great-expectations": {VERSIONS["great-expectations"]},
     "greenplum": {*COMMONS["postgres"]},
+    "cockroach": {
+        VERSIONS["cockroach"],
+        "psycopg2-binary",
+    },
     "hive": {
         *COMMONS["hive"],
         "thrift>=0.13,<1",
@@ -236,7 +247,7 @@ plugins: Dict[str, Set[str]] = {
         "impyla~=0.18.0",
     },
     "iceberg": {
-        "pyiceberg>=0.5",
+        "pyiceberg==0.5.1",
         # Forcing the version of a few packages so it plays nicely with other requirements.
         VERSIONS["pydantic"],
         VERSIONS["adlfs"],
@@ -262,6 +273,7 @@ plugins: Dict[str, Set[str]] = {
     },
     "mlflow": {"mlflow-skinny>=2.3.0"},
     "mongo": {VERSIONS["mongo"], VERSIONS["pandas"], VERSIONS["numpy"]},
+    "cassandra": {VERSIONS["cassandra"]},
     "couchbase": {"couchbase~=4.1"},
     "mssql": {
         "sqlalchemy-pytds~=0.3",
@@ -300,7 +312,6 @@ plugins: Dict[str, Set[str]] = {
         "psycopg2-binary",
         VERSIONS["geoalchemy2"],
     },
-    "mstr": {"mstr-rest-requests==0.14.1"},
     "sagemaker": {VERSIONS["boto3"]},
     "salesforce": {"simple_salesforce~=1.11"},
     "sample-data": {VERSIONS["avro"], VERSIONS["grpc-tools"]},
@@ -339,6 +350,7 @@ dev = {
 
 test = {
     # Install Airflow as it's not part of `all` plugin
+    "opentelemetry-exporter-otlp==1.27.0",
     VERSIONS["airflow"],
     "boto3-stubs",
     "mypy-boto3-glue",
@@ -349,8 +361,9 @@ test = {
     "pytest==7.0.0",
     "pytest-cov",
     "pytest-order",
+    "dirty-equals",
     # install dbt dependency
-    "dbt-artifacts-parser",
+    "collate-dbt-artifacts-parser",
     "freezegun",
     VERSIONS["sqlalchemy-databricks"],
     VERSIONS["databricks-sdk"],
@@ -364,6 +377,7 @@ test = {
     VERSIONS["tableau"],
     VERSIONS["pyhive"],
     VERSIONS["mongo"],
+    VERSIONS["cassandra"],
     VERSIONS["redshift"],
     VERSIONS["snowflake"],
     VERSIONS["elasticsearch8"],
@@ -371,6 +385,7 @@ test = {
     VERSIONS["avro"],  # Sample Data
     VERSIONS["grpc-tools"],
     VERSIONS["neo4j"],
+    VERSIONS["cockroach"],
     "testcontainers==3.7.1;python_version<'3.9'",
     "testcontainers~=4.8.0;python_version>='3.9'",
     "minio==7.2.5",

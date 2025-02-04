@@ -18,7 +18,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.APICollection;
-import org.openmetadata.schema.entity.services.APIService;
+import org.openmetadata.schema.entity.services.ApiService;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
@@ -39,6 +39,7 @@ public class APICollectionRepository extends EntityRepository<APICollection> {
         "",
         "");
     supportsSearch = true;
+    parent = true;
   }
 
   @Override
@@ -108,7 +109,7 @@ public class APICollectionRepository extends EntityRepository<APICollection> {
   }
 
   private void populateService(APICollection apiCollection) {
-    APIService service = Entity.getEntity(apiCollection.getService(), "", Include.NON_DELETED);
+    ApiService service = Entity.getEntity(apiCollection.getService(), "", Include.NON_DELETED);
     apiCollection.setService(service.getEntityReference());
     apiCollection.setServiceType(service.getServiceType());
   }
@@ -121,7 +122,7 @@ public class APICollectionRepository extends EntityRepository<APICollection> {
 
     @Transaction
     @Override
-    public void entitySpecificUpdate() {
+    public void entitySpecificUpdate(boolean consolidatingChanges) {
       recordChange("sourceHash", original.getSourceHash(), updated.getSourceHash());
     }
   }

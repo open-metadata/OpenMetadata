@@ -92,7 +92,7 @@ describe('Database Util', () => {
           render: expect.any(Function),
         },
         {
-          title: 'label.owner',
+          title: 'label.owner-plural',
           dataIndex: 'owners',
           key: 'owners',
           width: 120,

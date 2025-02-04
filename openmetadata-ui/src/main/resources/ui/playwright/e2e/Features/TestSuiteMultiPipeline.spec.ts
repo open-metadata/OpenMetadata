@@ -33,7 +33,7 @@ test(
     const pipelineName = `test suite pipeline 2`;
 
     await test.step('Create a new pipeline', async () => {
-      await page.getByText('Profiler & Data Quality').click();
+      await page.getByText('Data Observability').click();
       await page
         .getByRole('menuitem', {
           name: 'Table Profile',
@@ -55,8 +55,11 @@ test(
 
       await page.getByTestId('add-ingestion-button').click();
       await page.getByTestId('select-all-test-cases').click();
-      await page.getByTestId('cron-type').getByText('Hour').click();
-      await page.getByTitle('Day').click();
+
+      await expect(
+        page.getByTestId('cron-type').getByText('Day')
+      ).toBeAttached();
+
       await page.getByTestId('deploy-button').click();
 
       await expect(page.getByTestId('view-service-button')).toBeVisible();
@@ -155,7 +158,10 @@ test(
       await page.getByTestId('confirm-button').click();
       await deleteRes;
 
-      await page.getByTestId('more-actions').click();
+      await page
+        .getByTestId('ingestion-list-table')
+        .getByTestId('more-actions')
+        .click();
 
       await page
         .locator(
@@ -201,7 +207,7 @@ test(
       testCaseNames
     );
     await table.visitEntityPage(page);
-    await page.getByText('Profiler & Data Quality').click();
+    await page.getByText('Data Observability').click();
     await page.getByRole('menuitem', { name: 'Data Quality' }).click();
 
     await page.getByRole('tab', { name: 'Pipeline' }).click();

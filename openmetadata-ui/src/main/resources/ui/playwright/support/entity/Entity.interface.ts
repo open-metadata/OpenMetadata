@@ -41,6 +41,7 @@ export enum EntityTypeEndpoint {
   METRIC = 'metrics',
   TestSuites = 'dataQuality/testSuites',
   Teams = 'teams',
+  NotificationAlert = 'events/subscriptions',
 }
 
 export type EntityDataType = {
@@ -87,6 +88,17 @@ export type TestCaseData = {
 
 export type TestSuiteData = {
   name?: string;
-  executableEntityReference?: string;
+  basicEntityReference?: string;
   description?: string;
 };
+
+export interface ResponseDataWithServiceType extends ResponseDataType {
+  service: ResponseDataType;
+}
+
+export interface UserResponseDataType extends ResponseDataType {
+  email: string;
+  isAdmin: boolean;
+  isBot: boolean;
+  href?: string;
+}

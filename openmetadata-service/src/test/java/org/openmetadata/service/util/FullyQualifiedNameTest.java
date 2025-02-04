@@ -51,20 +51,10 @@ class FullyQualifiedNameTest {
     assertEquals("\"a.b\"", FullyQualifiedName.quoteName("a.b")); // Add quotes when "." in the name
     assertEquals("\"a.b\"", FullyQualifiedName.quoteName("\"a.b\"")); // Leave existing valid quotes
     assertEquals("a", FullyQualifiedName.quoteName("\"a\"")); // Remove quotes when not needed
-
-    assertThrows(
-        IllegalArgumentException.class,
-        () -> FullyQualifiedName.quoteName("\"a")); // Error when ending quote is missing
-
-    assertThrows(
-        IllegalArgumentException.class,
-        () -> FullyQualifiedName.quoteName("a\"")); // Error when beginning quote is missing
-
-    assertThrows(
-        IllegalArgumentException.class,
-        () ->
-            FullyQualifiedName.quoteName(
-                "a\"b")); // Error when invalid quote is present in the middle of the string
+    // we now allow quotes
+    assertEquals("\\\"a", FullyQualifiedName.quoteName("\"a"));
+    assertEquals("a\\\"", FullyQualifiedName.quoteName("a\""));
+    assertEquals("a\\\"b", FullyQualifiedName.quoteName("a\"b"));
   }
 
   @Test
@@ -75,7 +65,8 @@ class FullyQualifiedNameTest {
 
   @Test
   void test_invalid() {
-    assertThrows(ParseCancellationException.class, () -> FullyQualifiedName.split("a\""));
+    assertThrows(ParseCancellationException.class, () -> FullyQualifiedName.split("..a"));
+    assertThrows(ParseCancellationException.class, () -> FullyQualifiedName.split("a.."));
   }
 
   @Test

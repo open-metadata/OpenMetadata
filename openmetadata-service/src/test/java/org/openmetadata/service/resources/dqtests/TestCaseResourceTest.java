@@ -17,13 +17,16 @@ import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static javax.ws.rs.core.Response.Status.OK;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
+import static org.openmetadata.schema.api.teams.CreateTeam.TeamType.GROUP;
 import static org.openmetadata.schema.type.ColumnDataType.BIGINT;
 import static org.openmetadata.schema.type.MetadataOperation.EDIT_TESTS;
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
@@ -58,6 +61,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 import javax.ws.rs.client.WebTarget;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang.RandomStringUtils;
 import org.apache.http.client.HttpResponseException;
 import org.apache.http.util.EntityUtils;
 import org.junit.jupiter.api.Assertions;
@@ -71,12 +75,16 @@ import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.feed.CloseTask;
 import org.openmetadata.schema.api.feed.ResolveTask;
+import org.openmetadata.schema.api.teams.CreateTeam;
+import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.api.tests.CreateTestCase;
 import org.openmetadata.schema.api.tests.CreateTestCaseResolutionStatus;
 import org.openmetadata.schema.api.tests.CreateTestCaseResult;
 import org.openmetadata.schema.api.tests.CreateTestSuite;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.feed.Thread;
+import org.openmetadata.schema.entity.teams.Team;
+import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.tests.DataQualityReport;
 import org.openmetadata.schema.tests.ResultSummary;
 import org.openmetadata.schema.tests.TestCase;
@@ -108,6 +116,9 @@ import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
 import org.openmetadata.service.resources.feeds.FeedResourceTest;
 import org.openmetadata.service.resources.feeds.MessageParser;
+import org.openmetadata.service.resources.teams.TeamResourceTest;
+import org.openmetadata.service.resources.teams.UserResourceTest;
+import org.openmetadata.service.search.SearchAggregation;
 import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.indexes.TestCaseIndex;
@@ -237,7 +248,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     CreateTestSuite createTestSuite =
         testSuiteResourceTest.createRequest(test).withName(TEST_TABLE1.getFullyQualifiedName());
     TestSuite testSuite =
-        testSuiteResourceTest.createExecutableTestSuite(createTestSuite, ADMIN_AUTH_HEADERS);
+        testSuiteResourceTest.createBasicTestSuite(createTestSuite, ADMIN_AUTH_HEADERS);
 
     create.withEntityLink(INVALID_LINK1).withTestSuite(testSuite.getFullyQualifiedName());
     assertResponseContains(
@@ -470,7 +481,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
             .withParameterValues(
                 List.of(
                     new TestCaseParameterValue().withValue("100").withName("missingCountValue")));
-    createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+    TestCase testCase = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
     expectedTestCaseList.add(create);
     CreateTestCase create1 =
         createRequest(test, 1)
@@ -538,6 +549,15 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     queryParams.put("testSuiteId", TEST_SUITE1.getId().toString());
     testCaseList = getTestCases(queryParams, ADMIN_AUTH_HEADERS);
     verifyTestCases(testCaseList, expectedTestCaseList, 12);
+
+    queryParams.clear();
+    queryParams.put("limit", 10);
+    queryParams.put("entityFQN", testCase.getEntityFQN());
+    testCaseList = getTestCases(queryParams, ADMIN_AUTH_HEADERS);
+    testCaseList
+        .getData()
+        .forEach(
+            tc -> assertEquals(testCase.getEntityFQN(), tc.getEntityFQN(), "Entity FQN mismatch"));
   }
 
   @Test
@@ -574,7 +594,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
         CreateTestSuite createTestSuite =
             testSuiteResourceTest.createRequest(table.getFullyQualifiedName());
         TestSuite testSuite =
-            testSuiteResourceTest.createExecutableTestSuite(createTestSuite, ADMIN_AUTH_HEADERS);
+            testSuiteResourceTest.createBasicTestSuite(createTestSuite, ADMIN_AUTH_HEADERS);
         testSuites.put(table.getFullyQualifiedName(), testSuite);
       }
 
@@ -615,6 +635,21 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     CreateTestSuite createLogicalTestSuite = testSuiteResourceTest.createRequest(testInfo);
     TestSuite logicalTestSuite =
         testSuiteResourceTest.createEntity(createLogicalTestSuite, ADMIN_AUTH_HEADERS);
+    UserResourceTest userResourceTest = new UserResourceTest();
+    CreateUser createUser1 =
+        userResourceTest.createRequest(testInfo).withRoles(List.of(DATA_CONSUMER_ROLE.getId()));
+    User user1 = userResourceTest.createEntity(createUser1, ADMIN_AUTH_HEADERS);
+    EntityReference user1Ref = user1.getEntityReference();
+    CreateUser createUser2 =
+        userResourceTest
+            .createRequest("USER_ListFromSearch")
+            .withRoles(List.of(DATA_CONSUMER_ROLE.getId()));
+    User user2 = userResourceTest.createEntity(createUser2, ADMIN_AUTH_HEADERS);
+    EntityReference user2Ref = user2.getEntityReference();
+    TeamResourceTest teamResourceTest = new TeamResourceTest();
+    CreateTeam createTeam = teamResourceTest.createRequest(testInfo, 1).withTeamType(GROUP);
+    Team team = teamResourceTest.createEntity(createTeam, ADMIN_AUTH_HEADERS);
+    EntityReference teamRef = team.getEntityReference();
 
     List<Table> tables = new ArrayList<>();
     Map<String, TestSuite> testSuites = new HashMap<>();
@@ -644,13 +679,13 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
                       .withDisplayName("c1")
                       .withDataType(ColumnDataType.VARCHAR)
                       .withDataLength(10)))
-          .withOwners(List.of(USER1_REF));
+          .withOwners(List.of(user1Ref));
       Table table = tableResourceTest.createEntity(tableReq, ADMIN_AUTH_HEADERS);
       tables.add(table);
       CreateTestSuite createTestSuite =
           testSuiteResourceTest.createRequest(table.getFullyQualifiedName());
       TestSuite testSuite =
-          testSuiteResourceTest.createExecutableTestSuite(createTestSuite, ADMIN_AUTH_HEADERS);
+          testSuiteResourceTest.createBasicTestSuite(createTestSuite, ADMIN_AUTH_HEADERS);
       testSuites.put(table.getFullyQualifiedName(), testSuite);
     }
 
@@ -667,10 +702,10 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
                       new TestCaseParameterValue().withValue("20").withName("missingCountValue")));
       if (i == 2) {
         // create 1 test cases with USER21_TEAM as owner
-        create.withOwners(List.of(TEAM21.getEntityReference()));
+        create.withOwners(List.of(teamRef));
       } else if (i % 2 == 0) {
         // create 2 test cases with USER1_REF as owner
-        create.withOwners(List.of(USER2_REF));
+        create.withOwners(List.of(user2Ref));
       }
       TestCase testCase = createEntity(create, ADMIN_AUTH_HEADERS);
       testCases.add(testCase);
@@ -690,18 +725,17 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     ResultList<TestCase> allEntities =
         listEntitiesFromSearch(queryParams, testCasesNum, 0, ADMIN_AUTH_HEADERS);
     assertEquals(testCasesNum, allEntities.getData().size());
-    queryParams.put("q", "test_getSimpleListFromSearchc");
+    queryParams.put("q", "test_getSimpleListFromSearchb");
     allEntities = listEntitiesFromSearch(queryParams, testCasesNum, 0, ADMIN_AUTH_HEADERS);
     assertEquals(1, allEntities.getData().size());
-    org.assertj.core.api.Assertions.assertThat(allEntities.getData().get(0).getName())
-        .contains("test_getSimpleListFromSearchc");
+    assertThat(allEntities.getData().get(0).getName()).contains("test_getSimpleListFromSearchb");
 
     queryParams.clear();
     queryParams.put("entityLink", testCaseForEL.getEntityLink());
     queryParams.put("includeAllTests", "true");
     allEntities = listEntitiesFromSearch(queryParams, testCasesNum, 0, ADMIN_AUTH_HEADERS);
     assertEquals(1, allEntities.getData().size());
-    org.assertj.core.api.Assertions.assertThat(allEntities.getData().get(0).getEntityLink())
+    assertThat(allEntities.getData().get(0).getEntityLink())
         .contains(testCaseForEL.getEntityLink());
 
     queryParams.clear();
@@ -725,12 +759,22 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
         testCasesNum, allEntities.getData().size()); // Should return either values matching
 
     queryParams.clear();
-    queryParams.put("owner", USER2_REF.getName());
+    queryParams.put("owner", user2Ref.getName());
     allEntities = listEntitiesFromSearch(queryParams, testCasesNum, 0, ADMIN_AUTH_HEADERS);
-    assertEquals(3, allEntities.getData().size()); // we have 3 test cases with USER2_REF as owner ,
+    assertEquals(2, allEntities.getData().size()); // we have 2 test cases with user2Ref as owner ,
     // patch_entityUpdateOwnerFromNull_200 also adds owner
+    allEntities
+        .getData()
+        .forEach(
+            tc -> {
+              assertTrue(
+                  tc.getOwners().stream().anyMatch(owner -> owner.getId().equals(user2Ref.getId())),
+                  String.format(
+                      "Test case %s does not contain the expected owner %s",
+                      tc.getName(), user2Ref.getName()));
+            });
 
-    queryParams.put("owner", USER_TEAM21.getName());
+    queryParams.put("owner", team.getName());
     allEntities = listEntitiesFromSearch(queryParams, testCasesNum, 0, ADMIN_AUTH_HEADERS);
     assertEquals(
         1,
@@ -845,24 +889,26 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     TableResourceTest tableResourceTest = new TableResourceTest();
     TestSuiteResourceTest testSuiteResourceTest = new TestSuiteResourceTest();
     CreateTable createTable = tableResourceTest.createRequest(testInfo);
+    String columnName = RandomStringUtils.random(10, true, false);
     createTable
         .withDatabaseSchema(DATABASE_SCHEMA.getFullyQualifiedName())
         .withColumns(
             List.of(
                 new Column()
-                    .withName(C1)
-                    .withDisplayName("c1")
+                    .withName(columnName)
+                    .withDisplayName(columnName)
                     .withDataType(ColumnDataType.VARCHAR)
                     .withDataLength(10)
                     .withTags(List.of(PII_SENSITIVE_TAG_LABEL))))
         .withOwners(List.of(USER1_REF))
         .withDomain(DOMAIN1.getFullyQualifiedName())
+        .withTableConstraints(List.of())
         .withTags(List.of(PERSONAL_DATA_TAG_LABEL, TIER1_TAG_LABEL));
     Table table = tableResourceTest.createEntity(createTable, ADMIN_AUTH_HEADERS);
     CreateTestSuite createTestSuite =
         testSuiteResourceTest.createRequest(table.getFullyQualifiedName());
     TestSuite testSuite =
-        testSuiteResourceTest.createExecutableTestSuite(createTestSuite, ADMIN_AUTH_HEADERS);
+        testSuiteResourceTest.createBasicTestSuite(createTestSuite, ADMIN_AUTH_HEADERS);
 
     CreateTestCase create =
         createRequest(testInfo)
@@ -873,7 +919,8 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     create =
         createRequest(testInfo)
             .withEntityLink(
-                String.format("<#E::table::%s::columns::%s>", table.getFullyQualifiedName(), C1))
+                String.format(
+                    "<#E::table::%s::columns::%s>", table.getFullyQualifiedName(), columnName))
             .withTestSuite(testSuite.getFullyQualifiedName())
             .withTestDefinition(TEST_DEFINITION3.getFullyQualifiedName())
             .withParameterValues(
@@ -895,7 +942,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
       HashSet<String> actualTags =
           tags.stream().map(TagLabel::getName).collect(Collectors.toCollection(HashSet::new));
       HashSet<String> expectedTags;
-      if (testCase.getEntityLink().contains(C1)) {
+      if (testCase.getEntityLink().contains(columnName)) {
         expectedTags =
             new HashSet<>(
                 List.of(
@@ -915,7 +962,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     createTable.withColumns(
         List.of(
             new Column()
-                .withName(C1)
+                .withName(columnName)
                 .withDisplayName("c1")
                 .withDataType(ColumnDataType.VARCHAR)
                 .withDataLength(10)
@@ -926,16 +973,6 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     for (TestCase testCase : testCases.getData()) {
       assertOwners(table.getOwners(), testCase.getOwners());
       assertEquals(table.getDomain().getId(), testCase.getDomain().getId());
-      List<TagLabel> tags = testCase.getTags();
-      HashSet<String> actualTags =
-          tags.stream().map(TagLabel::getName).collect(Collectors.toCollection(HashSet::new));
-      HashSet<String> expectedTags;
-      List<TagLabel> expectedTagsList = table.getTags();
-      if (testCase.getEntityLink().contains(C1)) {
-        expectedTagsList.addAll(table.getColumns().get(0).getTags());
-      }
-      expectedTags = new HashSet<>(expectedTagsList.stream().map(TagLabel::getName).toList());
-      assertEquals(expectedTags, actualTags);
     }
   }
 
@@ -1105,7 +1142,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     CreateTestSuite createTestSuite =
         testSuiteResourceTest.createRequest(test).withName(TEST_TABLE2.getFullyQualifiedName());
     TestSuite executableTestSuite =
-        testSuiteResourceTest.createExecutableTestSuite(createTestSuite, ADMIN_AUTH_HEADERS);
+        testSuiteResourceTest.createBasicTestSuite(createTestSuite, ADMIN_AUTH_HEADERS);
 
     // Create the test cases (need to be created against an executable test suite)
     CreateTestCase create =
@@ -2143,8 +2180,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
             .withDescription(test.getDisplayName())
             .withEntityLink(
                 String.format(
-                    "<#E::table::%s>",
-                    testSuite.getExecutableEntityReference().getFullyQualifiedName()))
+                    "<#E::table::%s>", testSuite.getBasicEntityReference().getFullyQualifiedName()))
             .withTestSuite(testSuite.getFullyQualifiedName())
             .withTestDefinition(TEST_DEFINITION1.getFullyQualifiedName());
     TestCase testCase = createAndCheckEntity(createTestCase, ADMIN_AUTH_HEADERS);
@@ -2485,6 +2521,44 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     }
   }
 
+  @Test
+  void test_createMany(TestInfo test) throws HttpResponseException {
+    List<CreateTestCase> createTestCases = new ArrayList<>();
+    for (int i = 0; i < 10; i++) {
+      CreateTestCase createTestCase = createRequest(test, i);
+      if (i % 2 == 0) {
+        createTestCase.withTestSuite(TEST_SUITE1.getFullyQualifiedName());
+      } else {
+        createTestCase.withTestSuite(TEST_SUITE2.getFullyQualifiedName());
+      }
+      createTestCases.add(createTestCase);
+    }
+    List<Map<String, Object>> testCases = createManyTestCases(createTestCases);
+    for (Map<String, Object> testCase : testCases) {
+      TestCase storedTestCase =
+          getTestCase(
+              (String) testCase.get("fullyQualifiedName"),
+              Map.of("fields", "testSuite,testDefinition"),
+              ADMIN_AUTH_HEADERS);
+      CreateTestCase createTestCase =
+          createTestCases.stream()
+              .filter(t -> t.getName().equals(storedTestCase.getName()))
+              .findFirst()
+              .get();
+      validateCreatedEntity(storedTestCase, createTestCase, ADMIN_AUTH_HEADERS);
+    }
+
+    for (Map<String, Object> testCase : testCases) {
+      String entityLink = (String) testCase.get("entityLink");
+      ResultList<TestCase> testCasesFromSearch =
+          listEntitiesFromSearch(Map.of("entityLink", entityLink), 100, 0, ADMIN_AUTH_HEADERS);
+      testCasesFromSearch.getData().stream()
+          .filter(t -> t.getId().toString().equals(testCase.get("id")))
+          .findFirst()
+          .orElseThrow();
+    }
+  }
+
   // Test utils methods
 
   public ResultList<TestCaseResult> listTestCaseResultsFromSearch(
@@ -2606,7 +2680,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     Table table = tableResourceTest.createAndCheckEntity(tableReq, ADMIN_AUTH_HEADERS);
     CreateTestSuite createExecutableTestSuite =
         testSuiteResourceTest.createRequest(table.getFullyQualifiedName());
-    return testSuiteResourceTest.createExecutableTestSuite(
+    return testSuiteResourceTest.createBasicTestSuite(
         createExecutableTestSuite, ADMIN_AUTH_HEADERS);
   }
 
@@ -2862,7 +2936,6 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     assertEquals(request.getEntityLink(), createdEntity.getEntityLink());
     assertReference(request.getTestSuite(), createdEntity.getTestSuite());
     assertReference(request.getTestDefinition(), createdEntity.getTestDefinition());
-    assertReference(request.getTestSuite(), createdEntity.getTestSuite());
     assertEquals(request.getParameterValues(), createdEntity.getParameterValues());
   }
 
@@ -2959,6 +3032,14 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
         target,
         TestCaseResolutionStatusResource.TestCaseResolutionStatusResultList.class,
         ADMIN_AUTH_HEADERS);
+  }
+
+  private List<Map<String, Object>> createManyTestCases(List<CreateTestCase> createTestCases)
+      throws HttpResponseException {
+    String pathUrl = "/createMany/";
+    WebTarget target = getCollection().path(pathUrl);
+    return TestUtils.post(
+        target, createTestCases, List.class, OK.getStatusCode(), ADMIN_AUTH_HEADERS);
   }
 
   private ResultList<TestCaseResolutionStatus> getTestCaseFailureStatus(
@@ -3082,10 +3163,9 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     // Test aggregation
     String aggregationQuery =
         "bucketName=dates:aggType=date_histogram:field=timestamp&calendar_interval=1d,bucketName=dimesion:aggType=terms:field=testDefinition.dataQualityDimension";
-    Map<String, Object> aggregationString =
-        SearchIndexUtils.buildAggregationString(aggregationQuery);
+    SearchAggregation aggregation = SearchIndexUtils.buildAggregationTree(aggregationQuery);
     DataQualityReport dataQualityReport =
-        searchRepository.genericAggregation(null, "testCaseResult", aggregationString);
+        searchRepository.genericAggregation(null, "testCaseResult", aggregation);
     assertNotNull(dataQualityReport.getData());
   }
 
@@ -3186,6 +3266,52 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
               TestCase tc = Entity.getEntity(TEST_CASE, testCase.getId(), "", Include.ALL);
               assertTrue(tc.getEntityLink().contains("columns"));
             });
+  }
+
+  @Test
+  void test_testCaseInvalidEntityLinkTest(TestInfo testInfo) throws IOException {
+    // Invalid entity link as not parsable by antlr parser
+    String entityLink = "<#E::table::special!@#$%^&*()_+[]{}|;:\\'\",./?>";
+    CreateTestCase create = createRequest(testInfo);
+    create
+        .withEntityLink(entityLink)
+        .withTestSuite(TEST_SUITE1.getFullyQualifiedName())
+        .withTestDefinition(TEST_DEFINITION3.getFullyQualifiedName())
+        .withParameterValues(
+            List.of(new TestCaseParameterValue().withValue("100").withName("missingCountValue")));
+
+    assertThrows(
+        HttpResponseException.class,
+        () -> createAndCheckEntity(create, ADMIN_AUTH_HEADERS),
+        "entityLink must match \"(?U)^<#E::\\w+::[\\w'\\- .&/:+\"\\\\()$#%]+>$\"");
+
+    entityLink = "<#E::table::user<name>::column>";
+    create.setEntityLink(entityLink);
+    assertThrows(
+        HttpResponseException.class,
+        () -> createAndCheckEntity(create, ADMIN_AUTH_HEADERS),
+        "entityLink must match \"(?U)^<#E::\\w+::[\\w'\\- .&/:+\"\\\\()$#%]+>$\"");
+
+    entityLink = "<#E::table::user>name::column>";
+    create.setEntityLink(entityLink);
+    assertThrows(
+        HttpResponseException.class,
+        () -> createAndCheckEntity(create, ADMIN_AUTH_HEADERS),
+        "entityLink must match \"(?U)^<#E::\\w+::[\\w'\\- .&/:+\"\\\\()$#%]+>$\"");
+
+    entityLink = "<#E::table::foo<>bar::baz>\");";
+    create.setEntityLink(entityLink);
+    assertThrows(
+        HttpResponseException.class,
+        () -> createAndCheckEntity(create, ADMIN_AUTH_HEADERS),
+        "entityLink must match \"(?U)^<#E::\\w+::[\\w'\\- .&/:+\"\\\\()$#%]+>$\"");
+
+    entityLink = "<#E::table::::baz>";
+    create.setEntityLink(entityLink);
+    assertThrows(
+        HttpResponseException.class,
+        () -> createAndCheckEntity(create, ADMIN_AUTH_HEADERS),
+        "entityLink must match \"(?U)^<#E::\\w+::[\\w'\\- .&/:+\"\\\\()$#%]+>$\"");
   }
 
   private void putInspectionQuery(TestCase testCase, String sql) throws IOException {

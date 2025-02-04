@@ -77,7 +77,6 @@ from metadata.ingestion.source.database.bigquery.models import (
     BigQueryStoredProcedure,
 )
 from metadata.ingestion.source.database.bigquery.queries import (
-    BIGQUERY_GET_STORED_PROCEDURE_QUERIES,
     BIGQUERY_GET_STORED_PROCEDURES,
     BIGQUERY_LIFE_CYCLE_QUERY,
     BIGQUERY_SCHEMA_DESCRIPTION,
@@ -95,14 +94,10 @@ from metadata.ingestion.source.database.life_cycle_query_mixin import (
     LifeCycleQueryMixin,
 )
 from metadata.ingestion.source.database.multi_db_source import MultiDBSource
-from metadata.ingestion.source.database.stored_procedures_mixin import (
-    QueryByProcedure,
-    StoredProcedureMixin,
-)
 from metadata.utils import fqn
 from metadata.utils.credentials import GOOGLE_CREDENTIALS
 from metadata.utils.filters import filter_by_database, filter_by_schema
-from metadata.utils.helpers import get_start_and_end
+from metadata.utils.helpers import retry_with_docker_host
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sqlalchemy_utils import (
     get_all_table_ddls,
@@ -168,9 +163,11 @@ def get_columns(bq_schema):
             "precision": field.precision,
             "scale": field.scale,
             "max_length": field.max_length,
-            "system_data_type": _array_sys_data_type_repr(col_type)
-            if str(col_type) == "ARRAY"
-            else str(col_type),
+            "system_data_type": (
+                _array_sys_data_type_repr(col_type)
+                if str(col_type) == "ARRAY"
+                else str(col_type)
+            ),
             "is_complex": is_complex_type(str(col_type)),
             "policy_tags": None,
         }
@@ -223,14 +220,13 @@ Inspector.get_all_table_ddls = get_all_table_ddls
 Inspector.get_table_ddl = get_table_ddl
 
 
-class BigquerySource(
-    LifeCycleQueryMixin, StoredProcedureMixin, CommonDbSourceService, MultiDBSource
-):
+class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
     """
     Implements the necessary methods to extract
     Database metadata from Bigquery Source
     """
 
+    @retry_with_docker_host()
     def __init__(self, config, metadata, incremental_configuration: IncrementalConfig):
         # Check if the engine is established before setting project IDs
         # This ensures that we don't try to set project IDs when there is no engine
@@ -675,6 +671,31 @@ class BigquerySource(
             database = self.context.get().database
             table = self.client.get_table(fqn._build(database, schema_name, table_name))
             columns = inspector.get_columns(table_name, schema_name, db_name=database)
+            if hasattr(table, "external_data_configuration") and hasattr(
+                table.external_data_configuration, "hive_partitioning"
+            ):
+                # Ingesting External Hive Partitioned Tables
+                from google.cloud.bigquery.external_config import (  # pylint: disable=import-outside-toplevel
+                    HivePartitioningOptions,
+                )
+
+                partition_details: HivePartitioningOptions = (
+                    table.external_data_configuration.hive_partitioning
+                )
+                return True, TablePartition(
+                    columns=[
+                        PartitionColumnDetails(
+                            columnName=self._get_partition_column_name(
+                                columns=columns,
+                                partition_field_name=field,
+                            ),
+                            interval=str(partition_details._properties.get("mode")),
+                            intervalType=PartitionIntervalTypes.OTHER,
+                        )
+                        for field in partition_details._properties.get("fields")
+                    ]
+                )
+
             if table.time_partitioning is not None:
                 if table.time_partitioning.field:
                     table_partition = TablePartition(
@@ -693,9 +714,11 @@ class BigquerySource(
                 return True, TablePartition(
                     columns=[
                         PartitionColumnDetails(
-                            columnName="_PARTITIONTIME"
-                            if table.time_partitioning.type_ == "HOUR"
-                            else "_PARTITIONDATE",
+                            columnName=(
+                                "_PARTITIONTIME"
+                                if table.time_partitioning.type_ == "HOUR"
+                                else "_PARTITIONDATE"
+                            ),
                             interval=str(table.time_partitioning.type_),
                             intervalType=PartitionIntervalTypes.INGESTION_TIME,
                         )
@@ -849,22 +872,6 @@ class BigquerySource(
                     stackTrace=traceback.format_exc(),
                 )
             )
-
-    def get_stored_procedure_queries_dict(self) -> Dict[str, List[QueryByProcedure]]:
-        """
-        Pick the stored procedure name from the context
-        and return the list of associated queries
-        """
-        start, _ = get_start_and_end(self.source_config.queryLogDuration)
-        query = BIGQUERY_GET_STORED_PROCEDURE_QUERIES.format(
-            start_date=start,
-            region=self.service_connection.usageLocation,
-        )
-        queries_dict = self.procedure_queries_dict(
-            query=query,
-        )
-
-        return queries_dict
 
     def mark_tables_as_deleted(self):
         """

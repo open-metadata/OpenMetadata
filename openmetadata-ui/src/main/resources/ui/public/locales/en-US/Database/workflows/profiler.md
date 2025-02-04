@@ -75,25 +75,10 @@ Checkout [this](https://docs.open-metadata.org/connectors/ingestion/workflows/me
 $$
 
 $$section
-### Ingest Sample Data $(id="generateSampleData")
-
-Set the Ingest Sample Data toggle to control whether to ingest sample data as part of profiler ingestion. If this is enabled, 100 rows will be ingested by default. You can update the number of rows in the "DatabaseServiceProfilerPipeline Advanced Config" section (i.e. `Sample Data Rows Count` setting). 
-$$
-
-$$section
 ### Compute Metrics $(id="computeMetrics")
 
 Set the `Compute Metrics` toggle off to not perform any metric computation during the profiler ingestion workflow. Used in combination with `Ingest Sample Data` toggle on allows you to only ingest sample data.
 $$
-
-$$section
-### Auto Tag PII $(id="processPiiSensitive")
-
-Set the `Auto Tag PII` toggle to control whether to automatically tag columns that might contain sensitive information as part of profiler ingestion. 
-
-If `Ingest Sample Data` is enabled, OpenMetadata will leverage machine learning to infer which column may contain PII sensitive data. If disabled, OpenMetadata will infer this information from the column name. Use the `Confidence` setting in the "DatabaseServiceProfilerPipeline Advanced Config" to set the confience level when infering the PII status of a column.
-$$
-
 
 $$section
 ### Profile Sample Type $(id="profileSampleType")
@@ -113,19 +98,9 @@ $$section
 
 **This parameter is effective for Snowflake only**
 
-The sampling method type can be set to **BERNOULLI** or **SYSTEM**. You can find the difference of two values in the document of the Snowflake. When you choice **BERNOULLI**, it will scan full rows in the table even though small value is set at the **Profile Sample**. However, it has less restlictions than **SYSTEM**.
+The sampling method type can be set to **BERNOULLI** or **SYSTEM**. Only database supporting these two sampling methods will take this setting into account. When you choose **BERNOULLI**, it will scan full rows in the table even though small value is set at the **Profile Sample**. However, it has less restrictions than **SYSTEM**. For more information you can reference the service documentation.
 
-If no option is choiced, the default is **BERNOULLI**.
-$$
-
-$$section
-### PII Inference Confidence Level $(id="confidence")
-Confidence level to use when infering whether a column shoul be flagged as PII or not (between 0 and 100). A number closer to 100 will yield less false positive but potentially more false negative. 
-$$
-
-$$section
-### Sample Data Rows Count $(id="sampleDataCount")
-Set the number of rows to ingest when `Ingest Sample Data` toggle is on. Defaults to 50.
+If no option is chosen, the default is **BERNOULLI**.
 $$
 
 $$section

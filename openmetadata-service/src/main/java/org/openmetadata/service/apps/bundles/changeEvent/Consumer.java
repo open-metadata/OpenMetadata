@@ -26,7 +26,7 @@ public interface Consumer<T> {
 
   void publishEvents(Map<ChangeEvent, Set<UUID>> events);
 
-  void handleFailedEvent(EventPublisherException e);
+  void handleFailedEvent(EventPublisherException e, boolean errorOnSub);
 
   void commit(JobExecutionContext jobExecutionContext);
 }

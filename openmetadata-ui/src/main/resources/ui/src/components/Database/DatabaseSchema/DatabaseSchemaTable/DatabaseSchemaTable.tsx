@@ -11,44 +11,73 @@
  *  limitations under the License.
  */
 import { Col, Row, Switch, Typography } from 'antd';
+import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
+import { compare } from 'fast-json-patch';
 import { t } from 'i18next';
 import { isEmpty } from 'lodash';
 import QueryString from 'qs';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useHistory } from 'react-router-dom';
 import {
+  getEntityDetailsPath,
   INITIAL_PAGING_VALUE,
+  NO_DATA_PLACEHOLDER,
   PAGE_SIZE,
 } from '../../../../constants/constants';
-import { TabSpecificField } from '../../../../enums/entity.enum';
+import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
+import { EntityType, TabSpecificField } from '../../../../enums/entity.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
 import { DatabaseSchema } from '../../../../generated/entity/data/databaseSchema';
+import { EntityReference } from '../../../../generated/entity/type';
+import { UsageDetails } from '../../../../generated/type/entityUsage';
 import { Include } from '../../../../generated/type/include';
 import { Paging } from '../../../../generated/type/paging';
 import { usePaging } from '../../../../hooks/paging/usePaging';
 import useCustomLocation from '../../../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../../../hooks/useFqn';
-import { getDatabaseSchemas } from '../../../../rest/databaseAPI';
+import {
+  getDatabaseSchemas,
+  patchDatabaseSchemaDetails,
+} from '../../../../rest/databaseAPI';
 import { searchQuery } from '../../../../rest/searchAPI';
-import { schemaTableColumns } from '../../../../utils/Database/Database.util';
+import {
+  getEntityName,
+  highlightSearchText,
+} from '../../../../utils/EntityUtils';
+import { stringToHTML } from '../../../../utils/StringsUtils';
+import { getUsagePercentile } from '../../../../utils/TableUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
+import DisplayName from '../../../common/DisplayName/DisplayName';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import NextPrevious from '../../../common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../../common/NextPrevious/NextPrevious.interface';
+import RichTextEditorPreviewerV1 from '../../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import Searchbar from '../../../common/SearchBarComponent/SearchBar.component';
 import Table from '../../../common/Table/Table';
+import { EntityName } from '../../../Modals/EntityNameModal/EntityNameModal.interface';
 import { DatabaseSchemaTableProps } from './DatabaseSchemaTable.interface';
 
 export const DatabaseSchemaTable = ({
   isDatabaseDeleted,
+  isVersionPage = false,
 }: Readonly<DatabaseSchemaTableProps>) => {
   const { fqn: decodedDatabaseFQN } = useFqn();
   const history = useHistory();
   const location = useCustomLocation();
+  const { permissions } = usePermissionProvider();
+
   const [schemas, setSchemas] = useState<DatabaseSchema[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showDeletedSchemas, setShowDeletedSchemas] = useState<boolean>(false);
+
+  const allowEditDisplayNamePermission = useMemo(() => {
+    return (
+      !isVersionPage &&
+      (permissions.databaseSchema.EditAll ||
+        permissions.databaseSchema.EditDisplayName)
+    );
+  }, [permissions, isVersionPage]);
 
   const searchValue = useMemo(() => {
     const param = location.search;
@@ -160,6 +189,99 @@ export const DatabaseSchemaTable = ({
     }
   };
 
+  const handleDisplayNameUpdate = useCallback(
+    async (data: EntityName, id?: string) => {
+      try {
+        const schemaDetails = schemas.find((schema) => schema.id === id);
+        if (!schemaDetails) {
+          return;
+        }
+        const updatedData = {
+          ...schemaDetails,
+          displayName: data.displayName || undefined,
+        };
+        const jsonPatch = compare(schemaDetails, updatedData);
+        const response = await patchDatabaseSchemaDetails(
+          schemaDetails.id ?? '',
+          jsonPatch
+        );
+        setSchemas((prevData) =>
+          prevData.map((schema) => (schema.id === id ? response : schema))
+        );
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      }
+    },
+    [schemas]
+  );
+
+  const schemaTableColumns: ColumnsType<DatabaseSchema> = useMemo(
+    () => [
+      {
+        title: t('label.schema-name'),
+        dataIndex: 'name',
+        key: 'name',
+        width: 250,
+        render: (_, record: DatabaseSchema) => (
+          <DisplayName
+            allowRename={allowEditDisplayNamePermission}
+            displayName={stringToHTML(
+              highlightSearchText(record.displayName, searchValue)
+            )}
+            id={record.id ?? ''}
+            key={record.id}
+            link={
+              record.fullyQualifiedName
+                ? getEntityDetailsPath(
+                    EntityType.DATABASE_SCHEMA,
+                    record.fullyQualifiedName
+                  )
+                : ''
+            }
+            name={stringToHTML(highlightSearchText(record.name, searchValue))}
+            onEditDisplayName={handleDisplayNameUpdate}
+          />
+        ),
+      },
+      {
+        title: t('label.description'),
+        dataIndex: 'description',
+        key: 'description',
+        render: (text: string) =>
+          text?.trim() ? (
+            <RichTextEditorPreviewerV1 markdown={text} />
+          ) : (
+            <span className="text-grey-muted">
+              {t('label.no-entity', { entity: t('label.description') })}
+            </span>
+          ),
+      },
+      {
+        title: t('label.owner-plural'),
+        dataIndex: 'owners',
+        key: 'owners',
+        width: 120,
+        render: (owners: EntityReference[]) =>
+          !isEmpty(owners) && owners.length > 0 ? (
+            owners.map((owner: EntityReference) => getEntityName(owner))
+          ) : (
+            <Typography.Text data-testid="no-owner-text">
+              {NO_DATA_PLACEHOLDER}
+            </Typography.Text>
+          ),
+      },
+      {
+        title: t('label.usage'),
+        dataIndex: 'usageSummary',
+        key: 'usageSummary',
+        width: 120,
+        render: (text: UsageDetails) =>
+          getUsagePercentile(text?.weeklyStats?.percentileRank ?? 0),
+      },
+    ],
+    [handleDisplayNameUpdate, allowEditDisplayNamePermission]
+  );
+
   useEffect(() => {
     fetchDatabaseSchema();
   }, [decodedDatabaseFQN, pageSize, showDeletedSchemas, isDatabaseDeleted]);
@@ -206,6 +328,7 @@ export const DatabaseSchemaTable = ({
         {showPagination && (
           <NextPrevious
             currentPage={currentPage}
+            isLoading={isLoading}
             isNumberBased={Boolean(searchValue)}
             pageSize={pageSize}
             paging={paging}

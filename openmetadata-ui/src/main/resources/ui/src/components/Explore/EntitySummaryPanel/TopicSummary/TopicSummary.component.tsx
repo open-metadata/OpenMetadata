@@ -12,31 +12,33 @@
  */
 
 import { Col, Divider, Row, Typography } from 'antd';
-import { get, isArray, isEmpty } from 'lodash';
+import { get, isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { TabSpecificField } from '../../../../enums/entity.enum';
 import { SummaryEntityType } from '../../../../enums/EntitySummary.enum';
+import { ExplorePageTabs } from '../../../../enums/Explore.enum';
 import { TagLabel, Topic } from '../../../../generated/entity/data/topic';
 import { getTopicByFqn } from '../../../../rest/topicsAPI';
 import {
   getFormattedEntityData,
   getSortedTagsWithHighlight,
 } from '../../../../utils/EntitySummaryPanelUtils';
-import { DRAWER_NAVIGATION_OPTIONS } from '../../../../utils/EntityUtils';
-import { bytesToSize } from '../../../../utils/StringsUtils';
-import { getConfigObject } from '../../../../utils/TopicDetailsUtils';
+import {
+  DRAWER_NAVIGATION_OPTIONS,
+  getEntityOverview,
+} from '../../../../utils/EntityUtils';
 import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
 import SummaryPanelSkeleton from '../../../common/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
 import SummaryTagsDescription from '../../../common/SummaryTagsDescription/SummaryTagsDescription.component';
 import { SearchedDataProps } from '../../../SearchedData/SearchedData.interface';
-import { TopicConfigObjectInterface } from '../../../Topic/TopicDetails/TopicDetails.interface';
+import CommonEntitySummaryInfo from '../CommonEntitySummaryInfo/CommonEntitySummaryInfo';
 import SummaryList from '../SummaryList/SummaryList.component';
 import { BasicEntityInfo } from '../SummaryList/SummaryList.interface';
 
 interface TopicSummaryProps {
   entityDetails: Topic;
-  componentType?: string;
+  componentType?: DRAWER_NAVIGATION_OPTIONS;
   tags?: TagLabel[];
   isLoading?: boolean;
   highlights?: SearchedDataProps['data'][number]['highlight'];
@@ -57,16 +59,15 @@ function TopicSummary({
     () => componentType === DRAWER_NAVIGATION_OPTIONS.explore,
     [componentType]
   );
-  const topicConfig = useMemo(() => {
-    const combined = { ...topicDetails, ...entityDetails };
-    const configs = getConfigObject(combined);
 
-    return {
-      ...configs,
-      'Retention Size': bytesToSize(configs['Retention Size'] ?? 0),
-      'Max Message Size': bytesToSize(configs['Max Message Size'] ?? 0),
-    };
-  }, [entityDetails, topicDetails]);
+  const entityInfo = useMemo(
+    () =>
+      getEntityOverview(ExplorePageTabs.TOPICS, {
+        ...topicDetails,
+        ...entityDetails,
+      }),
+    [topicDetails, entityDetails]
+  );
 
   const ownerDetails = useMemo(() => {
     const owners = entityDetails.owners;
@@ -116,29 +117,10 @@ function TopicSummary({
             </Col>
           ) : null}
           <Col span={24}>
-            <Row gutter={[0, 4]}>
-              {Object.keys(topicConfig).map((fieldName) => {
-                const value =
-                  topicConfig[fieldName as keyof TopicConfigObjectInterface];
-
-                const fieldValue = isArray(value) ? value.join(', ') : value;
-
-                return (
-                  <Col key={fieldName} span={24}>
-                    <Row gutter={[16, 32]}>
-                      <Col data-testid={`${fieldName}-label`} span={10}>
-                        <Typography.Text className="text-grey-muted">
-                          {fieldName}
-                        </Typography.Text>
-                      </Col>
-                      <Col data-testid={`${fieldName}-value`} span={14}>
-                        {fieldValue ? fieldValue : '-'}
-                      </Col>
-                    </Row>
-                  </Col>
-                );
-              })}
-            </Row>
+            <CommonEntitySummaryInfo
+              componentType={componentType}
+              entityInfo={entityInfo}
+            />
           </Col>
         </Row>
         <Divider className="m-y-xs" />

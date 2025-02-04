@@ -19,9 +19,9 @@ import { getEntityDetailsPath } from '../../../constants/constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { Container } from '../../../generated/entity/data/container';
 import { EntityReference } from '../../../generated/type/entityReference';
-import { getEntityName } from '../../../utils/EntityUtils';
+import { getColumnSorter, getEntityName } from '../../../utils/EntityUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import RichTextEditorPreviewer from '../../common/RichTextEditor/RichTextEditorPreviewer';
+import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import Table from '../../common/Table/Table';
 
 interface ContainerChildrenProps {
@@ -44,6 +44,7 @@ const ContainerChildren: FC<ContainerChildrenProps> = ({
         dataIndex: 'name',
         width: 400,
         key: 'name',
+        sorter: getColumnSorter<EntityReference, 'name'>('name'),
         render: (_, record) => (
           <div className="d-inline-flex w-max-90">
             <Link
@@ -65,7 +66,7 @@ const ContainerChildren: FC<ContainerChildrenProps> = ({
         render: (description: EntityReference['description']) => (
           <>
             {description ? (
-              <RichTextEditorPreviewer markdown={description} />
+              <RichTextEditorPreviewerV1 markdown={description} />
             ) : (
               <Typography.Text className="text-grey-muted">
                 {t('label.no-entity', {

@@ -21,6 +21,18 @@ export enum GlobalSettingsMenuCategory {
   APPLICATIONS = 'apps',
 }
 
+export enum ServiceTypes {
+  API_SERVICES = 'apiServices',
+  DATABASE_SERVICES = 'databaseServices',
+  MESSAGING_SERVICES = 'messagingServices',
+  PIPELINE_SERVICES = 'pipelineServices',
+  DASHBOARD_SERVICES = 'dashboardServices',
+  ML_MODEL_SERVICES = 'mlmodelServices',
+  STORAGE_SERVICES = 'storageServices',
+  METADATA_SERVICES = 'metadataServices',
+  SEARCH_SERVICES = 'searchServices',
+}
+
 export enum GlobalSettingOptions {
   USERS = 'users',
   ADMINS = 'admins',
@@ -73,11 +85,18 @@ export enum GlobalSettingOptions {
   DATA_PRODUCTS = 'dataProducts',
   DASHBOARD_DATA_MODEL = 'dashboardDataModels',
   METRICS = 'metrics',
+  SEARCH_RBAC = 'search-rbac',
+  LINEAGE_CONFIG = 'lineageConfig',
+  OM_URL_CONFIG = 'om-url-config',
 }
 
 export const SETTINGS_OPTIONS_PATH = {
   // Services
 
+  [GlobalSettingOptions.API_COLLECTIONS]: [
+    GlobalSettingsMenuCategory.SERVICES,
+    `${GlobalSettingsMenuCategory.SERVICES}.${GlobalSettingOptions.API_COLLECTIONS}`,
+  ],
   [GlobalSettingOptions.DATABASES]: [
     GlobalSettingsMenuCategory.SERVICES,
     `${GlobalSettingsMenuCategory.SERVICES}.${GlobalSettingOptions.DATABASES}`,
@@ -147,10 +166,7 @@ export const SETTINGS_OPTIONS_PATH = {
     GlobalSettingsMenuCategory.MEMBERS,
     `${GlobalSettingsMenuCategory.MEMBERS}.${GlobalSettingOptions.ADMINS}`,
   ],
-  [GlobalSettingOptions.PERSONA]: [
-    GlobalSettingsMenuCategory.MEMBERS,
-    `${GlobalSettingsMenuCategory.MEMBERS}.${GlobalSettingOptions.PERSONA}`,
-  ],
+  [GlobalSettingOptions.PERSONA]: [GlobalSettingOptions.PERSONA],
 
   // Access Control
 
@@ -165,10 +181,6 @@ export const SETTINGS_OPTIONS_PATH = {
 
   // Open-metadata
 
-  [GlobalSettingOptions.CUSTOMIZE_LANDING_PAGE]: [
-    GlobalSettingsMenuCategory.PREFERENCES,
-    `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.CUSTOMIZE_LANDING_PAGE}`,
-  ],
   [GlobalSettingOptions.EMAIL]: [
     GlobalSettingsMenuCategory.PREFERENCES,
     `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.EMAIL}`,
@@ -188,6 +200,19 @@ export const SETTINGS_OPTIONS_PATH = {
   [GlobalSettingOptions.GLOSSARY_TERM]: [
     GlobalSettingsMenuCategory.CUSTOM_PROPERTIES,
     `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.GLOSSARY_TERM}`,
+  ],
+
+  [GlobalSettingOptions.SEARCH_RBAC]: [
+    GlobalSettingsMenuCategory.PREFERENCES,
+    `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.SEARCH_RBAC}`,
+  ],
+  [GlobalSettingOptions.LINEAGE_CONFIG]: [
+    GlobalSettingsMenuCategory.PREFERENCES,
+    `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.LINEAGE_CONFIG}`,
+  ],
+  [GlobalSettingOptions.OM_URL_CONFIG]: [
+    GlobalSettingsMenuCategory.PREFERENCES,
+    `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.OM_URL_CONFIG}`,
   ],
 };
 

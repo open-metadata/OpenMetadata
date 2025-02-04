@@ -16,17 +16,12 @@ import { HTMLAttributes, ReactNode } from 'react';
 import { ThreadType } from '../../../generated/api/feed/createThread';
 import { Field, Topic } from '../../../generated/entity/data/topic';
 
-export type CellRendered<T, K extends keyof T> = (
-  value: T[K],
-  record: T,
-  index: number
-) => ReactNode;
-
 export interface TopicSchemaFieldsProps
   extends HTMLAttributes<TableProps<Field>> {
   messageSchema: Topic['messageSchema'];
   hasDescriptionEditAccess: boolean;
   hasTagEditAccess: boolean;
+  hasGlossaryTermEditAccess: boolean;
   isReadOnly: boolean;
   entityFqn: string;
   isVersionView?: boolean;

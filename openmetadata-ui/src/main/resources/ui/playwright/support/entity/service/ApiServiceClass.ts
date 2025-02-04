@@ -15,22 +15,22 @@ import { Operation } from 'fast-json-patch';
 import { SERVICE_TYPE } from '../../../constant/service';
 import { uuid } from '../../../utils/common';
 import { visitServiceDetailsPage } from '../../../utils/service';
-import { EntityTypeEndpoint } from '../Entity.interface';
+import { EntityTypeEndpoint, ResponseDataType } from '../Entity.interface';
 import { EntityClass } from '../EntityClass';
 
 export class ApiServiceClass extends EntityClass {
   entity = {
     name: `pw-api-service-${uuid()}`,
-    serviceType: 'REST',
+    serviceType: 'Rest',
     connection: {
       config: {
-        type: 'REST',
+        type: 'Rest',
         openAPISchemaURL: 'https://sandbox-beta.open-metadata.org/swagger.json',
       },
     },
   };
 
-  entityResponseData: unknown;
+  entityResponseData: ResponseDataType = {} as ResponseDataType;
 
   constructor(name?: string) {
     super(EntityTypeEndpoint.ApiService);

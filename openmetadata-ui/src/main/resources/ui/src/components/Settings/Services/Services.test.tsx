@@ -140,9 +140,20 @@ jest.mock('../../../rest/serviceAPI', () => ({
   searchService: mockSearchService,
 }));
 
-jest.mock('../../../utils/EntityUtils', () => ({
-  getEntityName: jest.fn().mockReturnValue('Glue'),
+jest.mock('../../../utils/StringsUtils', () => ({
+  ...jest.requireActual('../../../utils/StringsUtils'),
+  stringToHTML: jest.fn((text) => text),
 }));
+
+jest.mock('../../../utils/EntityUtils', () => {
+  const actual = jest.requireActual('../../../utils/EntityUtils');
+
+  return {
+    ...actual,
+    getEntityName: jest.fn().mockReturnValue('Glue'),
+    highlightSearchText: jest.fn((text) => text),
+  };
+});
 
 jest.mock('../../../utils/PermissionsUtils', () => ({
   checkPermission: jest.fn().mockReturnValue(true),
@@ -208,7 +219,7 @@ jest.mock('../../common/ListView/ListView.component', () => ({
   )),
 }));
 
-jest.mock('../../common/RichTextEditor/RichTextEditorPreviewer', () => {
+jest.mock('../../common/RichTextEditor/RichTextEditorPreviewerV1', () => {
   return jest
     .fn()
     .mockReturnValue(
@@ -354,7 +365,7 @@ describe('Services', () => {
       await screen.findByTestId('service-name-pipelineServices')
     ).toHaveTextContent('Glue');
 
-    expect(await screen.findByText('label.owner')).toBeInTheDocument();
+    expect(await screen.findByText('label.owner-plural')).toBeInTheDocument();
     expect(await screen.findByText('OwnerLabel')).toBeInTheDocument();
   });
 

@@ -62,6 +62,7 @@ class ModeSource(DashboardServiceSource):
     ):
         super().__init__(config, metadata)
         self.workspace_name = config.serviceConnection.root.config.workspaceName
+        self.filter_query_param = config.serviceConnection.root.config.filterQueryParam
         self.data_sources = self.client.get_all_data_sources(self.workspace_name)
 
     @classmethod
@@ -80,7 +81,9 @@ class ModeSource(DashboardServiceSource):
         """
         Get List of all dashboards
         """
-        return self.client.fetch_all_reports(self.workspace_name)
+        # If filter param field was empty, we will default to passing "all" to the API
+        filter_param = "all" if not self.filter_query_param else self.filter_query_param
+        return self.client.fetch_all_reports(self.workspace_name, filter_param)
 
     def get_dashboard_name(self, dashboard: dict) -> str:
         """

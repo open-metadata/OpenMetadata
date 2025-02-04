@@ -11,12 +11,12 @@
  *  limitations under the License.
  */
 import { expect, Page } from '@playwright/test';
-import { CUSTOM_PROPERTIES_ENTITIES } from '../constant/customProperty';
 import {
   CUSTOM_PROPERTIES_TYPES,
   FIELD_VALUES_CUSTOM_PROPERTIES,
 } from '../constant/glossaryImportExport';
 import { descriptionBox, uuid } from './common';
+import { fillTableColumnInputDetails } from './customProperty';
 
 export const createGlossaryTermRowDetails = () => {
   return {
@@ -46,17 +46,15 @@ export const fillDescriptionDetails = async (
   description: string
 ) => {
   await page.locator('.InovuaReactDataGrid__cell--cell-active').press('Enter');
-  await page.click(
-    '.toastui-editor-md-container > .toastui-editor > .ProseMirror'
-  );
+  await page.click(descriptionBox);
 
-  await page.fill(
-    '.toastui-editor-md-container > .toastui-editor > .ProseMirror',
-    description
-  );
+  await page.fill(descriptionBox, description);
 
   await page.click('[data-testid="save"]');
-  await page.click('.InovuaReactDataGrid__cell--cell-active');
+
+  await expect(
+    page.locator('.InovuaReactDataGrid__cell--cell-active')
+  ).not.toContainText('<p>');
 };
 
 export const fillOwnerDetails = async (page: Page, owners: string[]) => {
@@ -175,30 +173,17 @@ const editGlossaryCustomProperty = async (
     await page.getByTestId('inline-save-btn').click();
   }
 
-  if (type === CUSTOM_PROPERTIES_TYPES.ENUM_WITH_DESCRIPTIONS) {
-    await page.getByTestId('enum-with-description-select').click();
+  if (type === CUSTOM_PROPERTIES_TYPES.TABLE) {
+    const columns = FIELD_VALUES_CUSTOM_PROPERTIES.TABLE.columns;
+    const values = FIELD_VALUES_CUSTOM_PROPERTIES.TABLE.rows.split(',');
 
-    await page.waitForSelector('.ant-select-dropdown', {
-      state: 'visible',
-    });
+    await page.locator('[data-testid="add-new-row"]').click();
 
-    // await page
-    //   .getByRole('option', {
-    //     name: CUSTOM_PROPERTIES_ENTITIES.entity_glossaryTerm
-    //       .enumWithDescriptionConfig.values[0].key,
-    //   })
-    //   .click();
+    await fillTableColumnInputDetails(page, values[0], columns[0]);
 
-    await page
-      .locator('span')
-      .filter({
-        hasText:
-          CUSTOM_PROPERTIES_ENTITIES.entity_glossaryTerm
-            .enumWithDescriptionConfig.values[0].key,
-      })
-      .click();
+    await fillTableColumnInputDetails(page, values[1], columns[1]);
 
-    await page.getByTestId('inline-save-btn').click();
+    await page.locator('[data-testid="update-table-type-property"]').click();
   }
 };
 

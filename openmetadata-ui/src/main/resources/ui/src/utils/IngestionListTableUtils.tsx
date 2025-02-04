@@ -12,7 +12,7 @@
  */
 
 import { Col, Row, Tag, Typography } from 'antd';
-import cronstrue from 'cronstrue';
+import cronstrue from 'cronstrue/i18n';
 import { t } from 'i18next';
 import { capitalize, isUndefined } from 'lodash';
 import React from 'react';
@@ -20,23 +20,29 @@ import { ReactComponent as TimeDateIcon } from '../assets/svg/time-date.svg';
 import { NO_DATA_PLACEHOLDER } from '../constants/constants';
 import { PIPELINE_INGESTION_RUN_STATUS } from '../constants/pipeline.constants';
 import { IngestionPipeline } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
-import { getEntityName } from './EntityUtils';
+import { getEntityName, highlightSearchText } from './EntityUtils';
+import { getCurrentLocaleForConstrue } from './i18next/i18nextUtil';
+import { stringToHTML } from './StringsUtils';
 
-export const renderNameField = (_: string, record: IngestionPipeline) => (
-  <Typography.Text
-    className="m-b-0 d-block break-word"
-    data-testid="pipeline-name">
-    {getEntityName(record)}
-  </Typography.Text>
-);
+export const renderNameField =
+  (searchText?: string) => (_: string, record: IngestionPipeline) =>
+    (
+      <Typography.Text
+        className="m-b-0 d-block break-word"
+        data-testid="pipeline-name">
+        {stringToHTML(highlightSearchText(getEntityName(record), searchText))}
+      </Typography.Text>
+    );
 
-export const renderTypeField = (_: string, record: IngestionPipeline) => (
-  <Typography.Text
-    className="m-b-0 d-block break-word"
-    data-testid="pipeline-type">
-    {record.pipelineType}
-  </Typography.Text>
-);
+export const renderTypeField =
+  (searchText?: string) => (_: string, record: IngestionPipeline) =>
+    (
+      <Typography.Text
+        className="m-b-0 d-block break-word"
+        data-testid="pipeline-type">
+        {stringToHTML(highlightSearchText(record.pipelineType, searchText))}
+      </Typography.Text>
+    );
 
 export const renderStatusField = (_: string, record: IngestionPipeline) => (
   <Tag
@@ -60,6 +66,7 @@ export const renderScheduleField = (_: string, record: IngestionPipeline) => {
     {
       use24HourTimeFormat: false,
       verbose: true,
+      locale: getCurrentLocaleForConstrue(), // To get localized string
     }
   );
 

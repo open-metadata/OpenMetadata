@@ -21,11 +21,19 @@ AUTHORIZER_ADMIN_PRINCIPALS=[admin]  # Your `name` from name@domain.com
 AUTHORIZER_PRINCIPAL_DOMAIN=open-metadata.org # Update with your domain
 
 AUTHENTICATION_PROVIDER=aws-cognito
-AUTHENTICATION_PUBLIC_KEYS=[{Cognito Domain}/{User Pool ID}/.well-known/jwks.json,  {your domain}/api/v1/system/config/jwks] # Update with your Cognito Domain and User Pool ID
+AUTHENTICATION_PUBLIC_KEYS=[{Cognito Domain}/{User Pool ID}/.well-known/jwks.json,  https://{your domain}/api/v1/system/config/jwks] # Update with your Cognito Domain and User Pool ID
 AUTHENTICATION_AUTHORITY={Cognito Domain}/{User Pool ID} # Update with your Cognito Domain and User Pool ID as follows - https://cognito-idp.us-west-1.amazonaws.com/us-west-1_DL8xfTzj8
 AUTHENTICATION_CLIENT_ID={Client ID} # Update with your Client ID
-AUTHENTICATION_CALLBACK_URL=http://localhost:8585/callback
+AUTHENTICATION_CALLBACK_URL=https://{your domain}/callback
 ```
+
+{% note %}
+
+`AUTHENTICATION_PUBLIC_KEYS` and `AUTHENTICATION_CALLBACK_URL` refers to https://{your domain} this is referring to your OpenMetdata installation domain name
+and please make sure to correctly put http or https depending on your installation.
+
+{% /note %}
+
 
 ## 2. Start Docker
 

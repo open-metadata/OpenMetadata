@@ -36,6 +36,7 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
@@ -43,6 +44,7 @@ import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.csv.CSVRecord;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.csv.EntityCsv;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.teams.CreateTeam.TeamType;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
@@ -623,7 +625,7 @@ public class UserRepository extends EntityRepository<User> {
 
     @Transaction
     @Override
-    public void entitySpecificUpdate() {
+    public void entitySpecificUpdate(boolean consolidatingChanges) {
       // LowerCase Email
       updated.setEmail(original.getEmail().toLowerCase());
 
@@ -709,6 +711,14 @@ public class UserRepository extends EntityRepository<User> {
       List<EntityReference> deleted = new ArrayList<>();
       recordListChange(
           TEAMS_FIELD, origTeams, updatedTeams, added, deleted, EntityUtil.entityReferenceMatch);
+
+      // Update users and userCount in team search index
+      Stream.concat(added.stream(), deleted.stream())
+          .forEach(
+              teamRef -> {
+                EntityInterface team = Entity.getEntity(teamRef, "id,userCount", Include.ALL);
+                searchRepository.updateEntity(team);
+              });
     }
 
     private void updatePersonas(User original, User updated) {

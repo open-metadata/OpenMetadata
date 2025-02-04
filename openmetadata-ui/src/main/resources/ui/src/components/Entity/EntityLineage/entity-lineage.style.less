@@ -44,6 +44,25 @@
     }
   }
 }
+
+.data-quality-failed-custom-node-header {
+  &.custom-node-header-normal {
+    border: 1px solid @red-3;
+  }
+  .react-flow__handle {
+    border-color: @red-3;
+  }
+  .lineage-node-handle {
+    border: 1px solid @red-3;
+    svg {
+      color: @red-3;
+    }
+  }
+
+  &.custom-node-header-active {
+    border-color: @red-3;
+  }
+}
 .custom-node-header-active {
   border-color: @primary-color;
 }
@@ -64,17 +83,6 @@
       border-radius: 4px;
       position: relative;
     }
-  }
-}
-.custom-node-column-lineage-normal {
-  border-top: 1px solid @border-color;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  position: relative;
-  font-size: 12px;
-  &:first-child {
-    border-top: none;
   }
 }
 
@@ -209,6 +217,7 @@
   height: calc(100vh - @om-navbar-height);
   .lineage-card {
     height: calc(100vh - @om-navbar-height);
+    overflow-y: scroll;
   }
   .entity-lineage.sidebar {
     top: @lineage-breadcrumb-panel;

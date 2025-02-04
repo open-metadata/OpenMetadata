@@ -30,7 +30,10 @@ import static org.openmetadata.service.Entity.TOPIC;
 import static org.openmetadata.service.search.SearchClient.GLOBAL_SEARCH_ALIAS;
 import static org.openmetadata.service.search.SearchClient.REMOVE_LINEAGE_SCRIPT;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.opencsv.CSVWriter;
 import java.io.IOException;
+import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -40,6 +43,7 @@ import java.util.Map;
 import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.ws.rs.core.Response;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
@@ -66,6 +70,7 @@ import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.csv.CsvDocumentation;
 import org.openmetadata.schema.type.csv.CsvFile;
 import org.openmetadata.schema.type.csv.CsvHeader;
+import org.openmetadata.sdk.exception.CSVExportException;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
@@ -254,6 +259,232 @@ public class LineageRepository {
     return CsvUtil.formatCsv(csvFile);
   }
 
+  @Getter
+  private static class ColumnMapping {
+    String fromChildFQN;
+    String toChildFQN;
+
+    ColumnMapping(String from, String to) {
+      this.fromChildFQN = from;
+      this.toChildFQN = to;
+    }
+  }
+
+  public final String exportCsvAsync(
+      String fqn,
+      int upstreamDepth,
+      int downstreamDepth,
+      String queryFilter,
+      String entityType,
+      boolean deleted) {
+    try {
+      Response response =
+          Entity.getSearchRepository()
+              .searchLineage(fqn, upstreamDepth, downstreamDepth, queryFilter, deleted, entityType);
+      String jsonResponse = JsonUtils.pojoToJson(response.getEntity());
+      JsonNode rootNode = JsonUtils.readTree(jsonResponse);
+
+      Map<String, JsonNode> entityMap = new HashMap<>();
+      JsonNode nodes = rootNode.path("nodes");
+      for (JsonNode node : nodes) {
+        String id = node.path("id").asText();
+        entityMap.put(id, node);
+      }
+
+      StringWriter csvContent = new StringWriter();
+      CSVWriter csvWriter = new CSVWriter(csvContent);
+      String[] headers = {
+        "fromEntityFQN",
+        "fromServiceName",
+        "fromServiceType",
+        "fromOwners",
+        "fromDomain",
+        "toEntityFQN",
+        "toServiceName",
+        "toServiceType",
+        "toOwners",
+        "toDomain",
+        "fromChildEntityFQN",
+        "toChildEntityFQN",
+        "pipelineName",
+        "pipelineType",
+        "pipelineDescription",
+        "pipelineOwners",
+        "pipelineDomain",
+        "pipelineServiceName",
+        "pipelineServiceType"
+      };
+      csvWriter.writeNext(headers);
+
+      JsonNode edges = rootNode.path("edges");
+      for (JsonNode edge : edges) {
+        String fromEntityId = edge.path("fromEntity").path("id").asText();
+        String toEntityId = edge.path("toEntity").path("id").asText();
+
+        JsonNode fromEntity = entityMap.getOrDefault(fromEntityId, null);
+        JsonNode toEntity = entityMap.getOrDefault(toEntityId, null);
+
+        Map<String, String> baseRow = new HashMap<>();
+        baseRow.put("fromEntityFQN", getText(fromEntity, "fullyQualifiedName"));
+        baseRow.put("fromServiceName", getText(fromEntity.path("service"), "name"));
+        baseRow.put("fromServiceType", getText(fromEntity, "serviceType"));
+        baseRow.put("fromOwners", getOwners(fromEntity.path("owners")));
+        baseRow.put("fromDomain", getDomainFQN(fromEntity.path("domain")));
+
+        baseRow.put("toEntityFQN", getText(toEntity, "fullyQualifiedName"));
+        baseRow.put("toServiceName", getText(toEntity.path("service"), "name"));
+        baseRow.put("toServiceType", getText(toEntity, "serviceType"));
+        baseRow.put("toOwners", getOwners(toEntity.path("owners")));
+        baseRow.put("toDomain", getDomainFQN(toEntity.path("domain")));
+
+        JsonNode columns = edge.path("columns");
+        JsonNode pipeline = edge.path("pipeline");
+
+        if (columns.isArray() && columns.size() > 0) {
+          // Process column mappings
+          List<ColumnMapping> columnMappings = extractColumnMappingsFromEdge(columns);
+          for (ColumnMapping mapping : columnMappings) {
+            writeCsvRow(
+                csvWriter,
+                baseRow,
+                mapping.getFromChildFQN(),
+                mapping.getToChildFQN(),
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "");
+            LOG.debug(
+                "Exported ColumnMapping: from='{}', to='{}'",
+                mapping.getFromChildFQN(),
+                mapping.getToChildFQN());
+          }
+        } else if (!pipeline.isMissingNode() && !pipeline.isNull()) {
+          writePipelineRow(csvWriter, baseRow, pipeline);
+        } else {
+          writeCsvRow(csvWriter, baseRow, "", "", "", "", "", "", "", "", "");
+        }
+      }
+      csvWriter.close();
+      return csvContent.toString();
+    } catch (IOException e) {
+      throw CSVExportException.byMessage("Failed to export lineage data to CSV", e.getMessage());
+    }
+  }
+
+  private void writePipelineRow(
+      CSVWriter csvWriter, Map<String, String> baseRow, JsonNode pipeline) {
+    String pipelineName = getText(pipeline, "name");
+    String pipelineType = getText(pipeline, "serviceType");
+    String pipelineDescription = getText(pipeline, "description");
+    String pipelineOwners = getOwners(pipeline.path("owners"));
+    String pipelineServiceName = getText(pipeline.path("service"), "name");
+    String pipelineServiceType = getText(pipeline, "serviceType");
+    String pipelineDomain = getDomainFQN(pipeline.path("domain"));
+
+    writeCsvRow(
+        csvWriter,
+        baseRow,
+        "",
+        "",
+        pipelineName,
+        pipelineType,
+        pipelineDescription,
+        pipelineOwners,
+        pipelineDomain,
+        pipelineServiceName,
+        pipelineServiceType);
+    LOG.debug("Exported Pipeline Information: {}", pipelineName);
+  }
+
+  private static void writeCsvRow(
+      CSVWriter csvWriter,
+      Map<String, String> baseRow,
+      String fromChildFQN,
+      String toChildFQN,
+      String pipelineName,
+      String pipelineType,
+      String pipelineDescription,
+      String pipelineOwners,
+      String pipelineDomain,
+      String pipelineServiceName,
+      String pipelineServiceType) {
+    String[] row = {
+      baseRow.getOrDefault("fromEntityFQN", ""),
+      baseRow.getOrDefault("fromServiceName", ""),
+      baseRow.getOrDefault("fromServiceType", ""),
+      baseRow.getOrDefault("fromOwners", ""),
+      baseRow.getOrDefault("fromDomain", ""),
+      baseRow.getOrDefault("toEntityFQN", ""),
+      baseRow.getOrDefault("toServiceName", ""),
+      baseRow.getOrDefault("toServiceType", ""),
+      baseRow.getOrDefault("toOwners", ""),
+      baseRow.getOrDefault("toDomain", ""),
+      fromChildFQN,
+      toChildFQN,
+      pipelineName,
+      pipelineType,
+      pipelineDescription,
+      pipelineOwners,
+      pipelineDomain,
+      pipelineServiceName,
+      pipelineServiceType
+    };
+    csvWriter.writeNext(row);
+  }
+
+  private static String getText(JsonNode node, String fieldName) {
+    if (node != null && node.has(fieldName)) {
+      JsonNode fieldNode = node.get(fieldName);
+      return fieldNode.isNull() ? "" : fieldNode.asText();
+    }
+    return "";
+  }
+
+  private static String getOwners(JsonNode ownersNode) {
+    if (ownersNode != null && ownersNode.isArray()) {
+      List<String> ownersList = new ArrayList<>();
+      for (JsonNode owner : ownersNode) {
+        String ownerName = getText(owner, "displayName");
+        if (!ownerName.isEmpty()) {
+          ownersList.add(ownerName);
+        }
+      }
+      return String.join(";", ownersList);
+    }
+    return "";
+  }
+
+  private static String getDomainFQN(JsonNode domainNode) {
+    if (domainNode != null && domainNode.has("fullyQualifiedName")) {
+      JsonNode fqnNode = domainNode.get("fullyQualifiedName");
+      return fqnNode.isNull() ? "" : fqnNode.asText();
+    }
+    return "";
+  }
+
+  private static List<ColumnMapping> extractColumnMappingsFromEdge(JsonNode columnsNode) {
+    List<ColumnMapping> mappings = new ArrayList<>();
+    if (columnsNode != null && columnsNode.isArray()) {
+      for (JsonNode columnMapping : columnsNode) {
+        JsonNode fromColumns = columnMapping.path("fromColumns");
+        String toColumn = columnMapping.path("toColumn").asText().trim();
+
+        if (fromColumns.isArray() && !toColumn.isEmpty()) {
+          for (JsonNode fromColumn : fromColumns) {
+            String fromChildFQN = fromColumn.asText().trim();
+            if (!fromChildFQN.isEmpty()) {
+              mappings.add(new ColumnMapping(fromChildFQN, toColumn));
+            }
+          }
+        }
+      }
+    }
+    return mappings;
+  }
+
   private String getStringOrNull(HashMap map, String key) {
     return nullOrEmpty(map.get(key)) ? "" : map.get(key).toString();
   }
@@ -402,7 +633,7 @@ public class LineageRepository {
               .findLineageBySourcePipeline(toId, toEntity, source, Relationship.UPSTREAM.ordinal());
       // Finally, delete lineage relationship
       dao.relationshipDAO()
-          .deleteLineageBySourcePipeline(toId, toEntity, source, Relationship.UPSTREAM.ordinal());
+          .deleteLineageBySourcePipeline(toId, toEntity, Relationship.UPSTREAM.ordinal());
     } else {
       relations =
           dao.relationshipDAO()

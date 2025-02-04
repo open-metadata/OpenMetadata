@@ -13,10 +13,16 @@
 
 package org.openmetadata.service.resources.settings;
 
+import static org.openmetadata.schema.settings.SettingsType.ASSET_CERTIFICATION_SETTINGS;
 import static org.openmetadata.schema.settings.SettingsType.CUSTOM_UI_THEME_PREFERENCE;
 import static org.openmetadata.schema.settings.SettingsType.EMAIL_CONFIGURATION;
+import static org.openmetadata.schema.settings.SettingsType.LINEAGE_SETTINGS;
 import static org.openmetadata.schema.settings.SettingsType.LOGIN_CONFIGURATION;
+import static org.openmetadata.schema.settings.SettingsType.OPEN_METADATA_BASE_URL_CONFIGURATION;
+import static org.openmetadata.schema.settings.SettingsType.SEARCH_SETTINGS;
+import static org.openmetadata.schema.settings.SettingsType.WORKFLOW_SETTINGS;
 
+import com.cronutils.utils.StringUtils;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
@@ -24,10 +30,19 @@ import java.util.concurrent.TimeUnit;
 import javax.annotation.CheckForNull;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
+import okhttp3.HttpUrl;
 import org.openmetadata.api.configuration.LogoConfiguration;
 import org.openmetadata.api.configuration.ThemeConfiguration;
 import org.openmetadata.api.configuration.UiThemePreference;
 import org.openmetadata.schema.api.configuration.LoginConfiguration;
+import org.openmetadata.schema.api.configuration.OpenMetadataBaseUrlConfiguration;
+import org.openmetadata.schema.api.lineage.LineageLayer;
+import org.openmetadata.schema.api.lineage.LineageSettings;
+import org.openmetadata.schema.api.search.SearchSettings;
+import org.openmetadata.schema.configuration.AssetCertificationSettings;
+import org.openmetadata.schema.configuration.ExecutorConfiguration;
+import org.openmetadata.schema.configuration.HistoryCleanUpConfiguration;
+import org.openmetadata.schema.configuration.WorkflowSettings;
 import org.openmetadata.schema.email.SmtpSettings;
 import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.settings.SettingsType;
@@ -65,9 +80,32 @@ public class SettingsCache {
     Settings storedSettings = systemRepository.getConfigWithKey(EMAIL_CONFIGURATION.toString());
     if (storedSettings == null) {
       // Only in case a config doesn't exist in DB we insert it
-      SmtpSettings emailConfig = applicationConfig.getSmtpSettings();
+      SmtpSettings emailConfig =
+          new SmtpSettings()
+              .withPassword(StringUtils.EMPTY)
+              .withEmailingEntity("OpenMetadata")
+              .withSupportUrl("https://slack.open-metadata.org")
+              .withEnableSmtpServer(Boolean.FALSE)
+              .withTransportationStrategy(SmtpSettings.TransportationStrategy.SMTP_TLS)
+              .withTemplates(SmtpSettings.Templates.OPENMETADATA);
+
       Settings setting =
           new Settings().withConfigType(EMAIL_CONFIGURATION).withConfigValue(emailConfig);
+      systemRepository.createNewSetting(setting);
+    }
+
+    // Initialise OM base url setting
+    Settings storedOpenMetadataBaseUrlConfiguration =
+        systemRepository.getConfigWithKey(OPEN_METADATA_BASE_URL_CONFIGURATION.toString());
+    if (storedOpenMetadataBaseUrlConfiguration == null) {
+      String url =
+          new HttpUrl.Builder().scheme("http").host("localhost").port(8585).build().toString();
+      String baseUrl = url.substring(0, url.length() - 1);
+
+      Settings setting =
+          new Settings()
+              .withConfigType(OPEN_METADATA_BASE_URL_CONFIGURATION)
+              .withConfigValue(new OpenMetadataBaseUrlConfiguration().withOpenMetadataUrl(baseUrl));
       systemRepository.createNewSetting(setting);
     }
 
@@ -107,8 +145,60 @@ public class SettingsCache {
               .withConfigValue(
                   new LoginConfiguration()
                       .withMaxLoginFailAttempts(3)
-                      .withAccessBlockTime(600)
+                      .withAccessBlockTime(30)
                       .withJwtTokenExpiryTime(3600));
+      systemRepository.createNewSetting(setting);
+    }
+
+    // Initialise Rbac Settings
+    Settings storedRbacSettings = systemRepository.getConfigWithKey(SEARCH_SETTINGS.toString());
+    if (storedRbacSettings == null) {
+      // Only in case a config doesn't exist in DB we insert it
+      Settings setting =
+          new Settings()
+              .withConfigType(SEARCH_SETTINGS)
+              .withConfigValue(new SearchSettings().withEnableAccessControl(false));
+      systemRepository.createNewSetting(setting);
+    }
+
+    // Initialise Certification Settings
+    Settings certificationSettings =
+        systemRepository.getConfigWithKey(ASSET_CERTIFICATION_SETTINGS.toString());
+    if (certificationSettings == null) {
+      Settings setting =
+          new Settings()
+              .withConfigType(ASSET_CERTIFICATION_SETTINGS)
+              .withConfigValue(
+                  new AssetCertificationSettings()
+                      .withAllowedClassification("Certification")
+                      .withValidityPeriod("P30D"));
+      systemRepository.createNewSetting(setting);
+    }
+
+    // Initialise Workflow Settings
+    Settings workflowSettings = systemRepository.getConfigWithKey(WORKFLOW_SETTINGS.toString());
+    if (workflowSettings == null) {
+      Settings setting =
+          new Settings()
+              .withConfigType(WORKFLOW_SETTINGS)
+              .withConfigValue(
+                  new WorkflowSettings()
+                      .withExecutorConfiguration(new ExecutorConfiguration())
+                      .withHistoryCleanUpConfiguration(new HistoryCleanUpConfiguration()));
+      systemRepository.createNewSetting(setting);
+    }
+
+    Settings lineageSettings = systemRepository.getConfigWithKey(LINEAGE_SETTINGS.toString());
+    if (lineageSettings == null) {
+      // Only in case a config doesn't exist in DB we insert it
+      Settings setting =
+          new Settings()
+              .withConfigType(LINEAGE_SETTINGS)
+              .withConfigValue(
+                  new LineageSettings()
+                      .withDownstreamDepth(2)
+                      .withUpstreamDepth(2)
+                      .withLineageLayer(LineageLayer.ENTITY_LINEAGE));
       systemRepository.createNewSetting(setting);
     }
   }
@@ -144,6 +234,9 @@ public class SettingsCache {
         case EMAIL_CONFIGURATION -> {
           fetchedSettings = systemRepository.getEmailConfigInternal();
           LOG.info("Loaded Email Setting");
+        }
+        case OPEN_METADATA_BASE_URL_CONFIGURATION -> {
+          fetchedSettings = systemRepository.getOMBaseUrlConfigInternal();
         }
         case SLACK_APP_CONFIGURATION -> {
           // Only if available

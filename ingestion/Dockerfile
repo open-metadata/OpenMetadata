@@ -42,7 +42,7 @@ RUN apt-get -qq update \
     && rm -rf /var/lib/apt/lists/*
 COPY --from=mysql /usr/bin/mysqldump /usr/bin/mysqldump
 
-RUN if [[ $(uname -m) == "arm64" || $(uname -m) == "aarch64" ]]; \
+RUN if [ $(uname -m) = "arm64" || $(uname -m) = "aarch64" ]; \
  then \
  wget -q https://download.oracle.com/otn_software/linux/instantclient/191000/instantclient-basic-linux.arm64-19.10.0.0.0dbru.zip -O /oracle-instantclient.zip && \
  unzip -qq -d /instantclient -j /oracle-instantclient.zip && rm -f /oracle-instantclient.zip; \
@@ -54,7 +54,7 @@ RUN if [[ $(uname -m) == "arm64" || $(uname -m) == "aarch64" ]]; \
 ENV LD_LIBRARY_PATH=/instantclient
 
 # Install DB2 iAccess Driver
-RUN if [[ $(uname -m) == "x86_64" ]]; \
+RUN if [ $(uname -m) = "x86_64" ]; \
   then \
   curl https://public.dhe.ibm.com/software/ibmi/products/odbc/debs/dists/1.1.0/ibmi-acs-1.1.0.list | tee /etc/apt/sources.list.d/ibmi-acs-1.1.0.list \
   && apt update \
@@ -82,10 +82,9 @@ RUN pip install "openmetadata-managed-apis~=${RI_VERSION}" --constraint "https:/
 RUN pip install "openmetadata-ingestion[${INGESTION_DEPENDENCY}]~=${RI_VERSION}"
 
 # Temporary workaround for https://github.com/open-metadata/OpenMetadata/issues/9593
-RUN if [[ $(uname -m) == "x86_64" ]]; \
-  then \
-  pip install "openmetadata-ingestion[db2]~=${RI_VERSION}"; \
-  fi
+RUN [ $(uname -m) = "x86_64" ] \
+  && pip install "openmetadata-ingestion[db2]~=${RI_VERSION}" \
+  || echo "DB2 not supported on ARM architectures."
 
 # bump python-daemon for https://github.com/apache/airflow/pull/29916
 RUN pip install "python-daemon>=3.0.0"

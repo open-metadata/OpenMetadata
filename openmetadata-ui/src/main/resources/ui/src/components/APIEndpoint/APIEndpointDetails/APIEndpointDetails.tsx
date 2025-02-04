@@ -256,6 +256,7 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
 
   const {
     editTagsPermission,
+    editGlossaryTermsPermission,
     editDescriptionPermission,
     editCustomAttributePermission,
     editAllPermission,
@@ -266,6 +267,10 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
     () => ({
       editTagsPermission:
         (apiEndpointPermissions.EditTags || apiEndpointPermissions.EditAll) &&
+        !deleted,
+      editGlossaryTermsPermission:
+        (apiEndpointPermissions.EditGlossaryTerms ||
+          apiEndpointPermissions.EditAll) &&
         !deleted,
       editDescriptionPermission:
         (apiEndpointPermissions.EditDescription ||
@@ -337,6 +342,9 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
                         domain={apiEndpointDetails?.domain}
                         editCustomAttributePermission={
                           editCustomAttributePermission
+                        }
+                        editGlossaryTermsPermission={
+                          editGlossaryTermsPermission
                         }
                         editTagPermission={editTagsPermission}
                         entityFQN={decodedApiEndpointFqn}
@@ -437,6 +445,7 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
       onDescriptionUpdate,
       onDataProductsUpdate,
       editTagsPermission,
+      editGlossaryTermsPermission,
       editDescriptionPermission,
       editCustomAttributePermission,
       editLineagePermission,
@@ -455,6 +464,7 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
       <Row gutter={[0, 12]}>
         <Col className="p-x-lg" span={24}>
           <DataAssetsHeader
+            isDqAlertSupported
             isRecursiveDelete
             afterDeleteAction={afterDeleteAction}
             afterDomainUpdateAction={onUpdateApiEndpointDetails}

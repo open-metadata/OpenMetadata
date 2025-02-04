@@ -12,7 +12,6 @@
  */
 
 import { AxiosError } from 'axios';
-import { JwtPayload } from 'jwt-decode';
 import React, { createContext, ReactNode, useContext, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
@@ -40,13 +39,14 @@ import {
 import { resetWebAnalyticSession } from '../../../utils/WebAnalyticsUtils';
 
 import { toLower } from 'lodash';
-import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { extractDetailsFromToken } from '../../../utils/AuthProvider.util';
+import {
+  getOidcToken,
+  getRefreshToken,
+  setOidcToken,
+  setRefreshToken,
+} from '../../../utils/LocalStorageUtils';
 import { OidcUser } from './AuthProvider.interface';
-
-export interface BasicAuthJWTPayload extends JwtPayload {
-  isBot?: false;
-  email?: string;
-}
 
 interface BasicAuthProps {
   children: ReactNode;
@@ -90,13 +90,7 @@ const BasicAuthProvider = ({
   onLoginFailure,
 }: BasicAuthProps) => {
   const { t } = useTranslation();
-  const {
-    setRefreshToken,
-    setOidcToken,
-    getOidcToken,
-    removeOidcToken,
-    getRefreshToken,
-  } = useApplicationStore();
+
   const [loginError, setLoginError] = useState<string | null>(null);
   const history = useHistory();
 
@@ -169,18 +163,7 @@ const BasicAuthProvider = ({
   };
 
   const handleForgotPassword = async (email: string) => {
-    try {
-      await generatePasswordResetLink(email);
-    } catch (err) {
-      if (
-        (err as AxiosError).response?.status ===
-        HTTP_STATUS_CODE.FAILED_DEPENDENCY
-      ) {
-        showErrorToast(t('server.forgot-password-email-error'));
-      } else {
-        showErrorToast(t('server.email-not-found'));
-      }
-    }
+    await generatePasswordResetLink(email);
   };
 
   const handleResetPassword = async (payload: PasswordResetRequest) => {
@@ -193,10 +176,11 @@ const BasicAuthProvider = ({
   const handleLogout = async () => {
     const token = getOidcToken();
     const refreshToken = getRefreshToken();
-    if (token) {
+    const isExpired = extractDetailsFromToken(token).isExpired;
+    if (token && !isExpired) {
       try {
         await logoutUser({ token, refreshToken });
-        removeOidcToken();
+        setOidcToken('');
         history.push(ROUTES.SIGNIN);
       } catch (error) {
         showErrorToast(error as AxiosError);

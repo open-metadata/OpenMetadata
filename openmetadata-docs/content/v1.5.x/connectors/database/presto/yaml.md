@@ -7,8 +7,8 @@ slug: /connectors/database/presto/yaml
 name="Presto"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=["Metadata", "Data Profiler", "Data Quality", "dbt", "Lineage", "Column-level Lineage"]
-unavailableFeatures=["Query Usage", "Owners", "Tags", "Stored Procedures"]
+availableFeatures=["Metadata", "Data Profiler", "Data Quality", "dbt"]
+unavailableFeatures=["Query Usage", "Owners", "Tags", "Stored Procedures", "Lineage", "Column-level Lineage"]
 / %}
 
 In this section, we provide guides and references to use the Presto connector.

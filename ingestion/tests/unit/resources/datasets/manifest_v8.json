@@ -77,7 +77,8 @@
             },
             "tags": [
                 "model_tag_one",
-                "model_tag_two"
+                "model_tag_two",
+                "22.8.5.1"
             ],
             "refs": [
                 [

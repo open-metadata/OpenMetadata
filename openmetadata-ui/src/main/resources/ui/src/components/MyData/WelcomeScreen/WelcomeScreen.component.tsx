@@ -49,7 +49,7 @@ const WelcomeScreen = ({ onClose }: WelcomeScreenProps) => {
           onClick={onClose}
         />
       }>
-      <Row className="p-md welcome-screen-full-height" gutter={16}>
+      <Row className="p-md welcome-screen-full-height">
         <Col span={12}>
           <img
             alt="welcome screen image"

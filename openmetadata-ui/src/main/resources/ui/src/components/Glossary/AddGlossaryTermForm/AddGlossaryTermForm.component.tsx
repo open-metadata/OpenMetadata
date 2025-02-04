@@ -201,7 +201,7 @@ const AddGlossaryTermForm = ({
       type: FieldTypes.DESCRIPTION,
       props: {
         'data-testid': 'description',
-        initialValue: '',
+        initialValue: glossaryTerm?.description,
         height: 'auto',
       },
       rules: [
@@ -314,9 +314,10 @@ const AddGlossaryTermForm = ({
     name: 'owners',
     id: 'root/owner',
     required: false,
-    label: t('label.owner'),
+    label: t('label.owner-plural'),
     type: FieldTypes.USER_TEAM_SELECT,
     props: {
+      owner: ownersList,
       hasPermission: true,
       children: (
         <Button
@@ -342,6 +343,7 @@ const AddGlossaryTermForm = ({
     label: t('label.reviewer-plural'),
     type: FieldTypes.USER_TEAM_SELECT,
     props: {
+      owner: reviewersList,
       hasPermission: true,
       filterCurrentUser: true,
       popoverProps: { placement: 'topLeft' },

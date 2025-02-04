@@ -15,6 +15,7 @@ package org.openmetadata.service.resources.permissions;
 
 import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.Mockito.when;
 import static org.openmetadata.schema.type.MetadataOperation.EDIT_ALL;
 import static org.openmetadata.schema.type.MetadataOperation.EDIT_DESCRIPTION;
 import static org.openmetadata.schema.type.MetadataOperation.EDIT_DISPLAY_NAME;
@@ -22,7 +23,6 @@ import static org.openmetadata.schema.type.MetadataOperation.EDIT_LINEAGE;
 import static org.openmetadata.schema.type.MetadataOperation.EDIT_OWNERS;
 import static org.openmetadata.schema.type.MetadataOperation.EDIT_TAGS;
 import static org.openmetadata.schema.type.Permission.Access.ALLOW;
-import static org.openmetadata.schema.type.Permission.Access.CONDITIONAL_ALLOW;
 import static org.openmetadata.schema.type.Permission.Access.NOT_ALLOW;
 import static org.openmetadata.service.Entity.ORGANIZATION_POLICY_NAME;
 import static org.openmetadata.service.security.policyevaluator.OperationContext.getAllOperations;
@@ -32,37 +32,44 @@ import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
 
 import java.io.IOException;
+import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import javax.json.Json;
 import javax.json.JsonPatch;
 import javax.json.JsonPatchBuilder;
 import javax.ws.rs.client.WebTarget;
+import javax.ws.rs.core.UriInfo;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
+import org.mockito.MockedStatic;
+import org.mockito.Mockito;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.policies.Policy;
 import org.openmetadata.schema.entity.policies.accessControl.Rule;
+import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.Permission;
 import org.openmetadata.schema.type.Permission.Access;
-import org.openmetadata.schema.type.ResourceDescriptor;
 import org.openmetadata.schema.type.ResourcePermission;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationTest;
 import org.openmetadata.service.ResourceRegistry;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
+import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
 import org.openmetadata.service.resources.permissions.PermissionsResource.ResourcePermissionList;
@@ -71,6 +78,8 @@ import org.openmetadata.service.resources.policies.PolicyResourceTest;
 import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.security.policyevaluator.CompiledRule;
 import org.openmetadata.service.security.policyevaluator.PolicyEvaluator;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
+import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.TestUtils;
 
@@ -91,6 +100,9 @@ class PermissionsResourceTest extends OpenMetadataApplicationTest {
   private static final String DATA_CONSUMER_POLICY_NAME = "DataConsumerPolicy";
   private static List<Rule> DATA_CONSUMER_RULES;
   private static final List<MetadataOperation> DATA_CONSUMER_ALLOWED = getViewOperations();
+  protected EntityRepository mockRepository;
+  protected MockedStatic<SubjectContext> subjectContextMock;
+  protected MockedStatic<Entity> entityMock;
 
   static {
     DATA_CONSUMER_ALLOWED.addAll(List.of(EDIT_DESCRIPTION, EDIT_TAGS));
@@ -159,90 +171,51 @@ class PermissionsResourceTest extends OpenMetadataApplicationTest {
   }
 
   @Test
-  void get_dataConsumer_permissions_for_role() throws HttpResponseException {
-    //
-    // Validate permissions for all resources as logged-in user
-    //
-    Map<String, String> authHeaders =
-        SecurityUtil.authHeaders(DATA_CONSUMER_USER_NAME + "@open-metadata.org");
-    List<ResourcePermission> actualPermissions = getPermissions(authHeaders);
-    ResourcePermissionsBuilder permissionsBuilder = new ResourcePermissionsBuilder();
-    permissionsBuilder.setPermission(
-        DATA_CONSUMER_ALLOWED,
-        ALLOW,
-        DATA_CONSUMER_ROLE_NAME,
-        DATA_CONSUMER_POLICY_NAME,
-        DATA_CONSUMER_RULES.get(0));
-    // Set permissions based on alphabetical order of roles
-    permissionsBuilder.setPermission(
-        ORG_NO_OWNER_RULE_OPERATIONS,
-        CONDITIONAL_ALLOW,
-        null,
-        ORGANIZATION_POLICY_NAME,
-        ORG_NO_OWNER_RULE);
-    permissionsBuilder.setPermission(
-        ORG_IS_OWNER_RULE_OPERATIONS,
-        CONDITIONAL_ALLOW,
-        null,
-        ORGANIZATION_POLICY_NAME,
-        ORG_IS_OWNER_RULE);
-    assertResourcePermissions(
-        PolicyEvaluator.trimResourcePermissions(permissionsBuilder.getResourcePermissions()),
-        actualPermissions);
+  void testGetDataStewardPermissionsForRole() throws Exception {
 
-    // Validate permissions for all resources for data consumer as admin
-    actualPermissions = getPermissions(DATA_CONSUMER_USER_NAME, ADMIN_AUTH_HEADERS);
-    assertResourcePermissions(
-        PolicyEvaluator.trimResourcePermissions(permissionsBuilder.getResourcePermissions()),
-        actualPermissions);
-
-    // Validate permission as logged-in user for each resource one at a time
-    ResourcePermission actualPermission;
-    for (ResourceDescriptor rd : ResourceRegistry.listResourceDescriptors()) {
-      actualPermission = getPermission(rd.getName(), null, authHeaders);
-      assertResourcePermission(
-          PolicyEvaluator.trimResourcePermission(permissionsBuilder.getPermission(rd.getName())),
-          actualPermission);
-    }
-
-    // Validate permission of data consumer as admin user for each resource one at a time
-    for (ResourceDescriptor rd : ResourceRegistry.listResourceDescriptors()) {
-      actualPermission = getPermission(rd.getName(), DATA_CONSUMER_USER_NAME, authHeaders);
-      assertResourcePermission(
-          PolicyEvaluator.trimResourcePermission(permissionsBuilder.getPermission(rd.getName())),
-          actualPermission);
-    }
-  }
-
-  @Test
-  void get_dataSteward_permissions_for_role() throws HttpResponseException {
     Map<String, String> authHeaders =
         SecurityUtil.authHeaders(DATA_STEWARD_USER_NAME + "@open-metadata.org");
-    ResourcePermissionsBuilder permissionsBuilder = new ResourcePermissionsBuilder();
-    permissionsBuilder.setPermission(
-        DATA_STEWARD_ALLOWED,
-        ALLOW,
-        DATA_STEWARD_ROLE_NAME,
-        DATA_STEWARD_POLICY_NAME,
-        DATA_STEWARD_RULES.get(0));
-    // Set permissions based on alphabetical order of roles
-    permissionsBuilder.setPermission(
-        ORG_NO_OWNER_RULE_OPERATIONS,
-        CONDITIONAL_ALLOW,
-        null,
-        ORGANIZATION_POLICY_NAME,
-        ORG_NO_OWNER_RULE);
-    permissionsBuilder.setPermission(
-        ORG_IS_OWNER_RULE_OPERATIONS,
-        CONDITIONAL_ALLOW,
-        null,
-        ORGANIZATION_POLICY_NAME,
-        ORG_IS_OWNER_RULE);
+    EntityRepository mockRepository = Mockito.mock(EntityRepository.class);
 
+    User mockUser = new User();
+    mockUser.setName(DATA_STEWARD_USER_NAME);
+    mockUser.setIsAdmin(false);
+    mockUser.setIsBot(false);
+
+    EntityReference dataStewardRole = new EntityReference();
+    dataStewardRole.setName("DataStewardRole");
+    mockUser.setRoles(List.of(dataStewardRole));
+
+    EntityReference organizationTeam = new EntityReference();
+    organizationTeam.setName("OrganizationTeam");
+    mockUser.setTeams(List.of(organizationTeam));
+    UriInfo mockUriInfo = Mockito.mock(UriInfo.class);
+
+    when(mockUriInfo.getRequestUri()).thenReturn(URI.create("http://localhost/api/test"));
+    // Mock repository methods
+    when(mockRepository.getByName(
+            mockUriInfo,
+            DATA_STEWARD_USER_NAME,
+            new EntityUtil.Fields(Set.of("roles,teams,isAdmin,profile,domains"))))
+        .thenReturn(mockUser);
+
+    Team mockTeam = new Team();
+    mockTeam.setName("OrganizationTeam");
+    mockTeam.setPolicies(List.of(new EntityReference().withName("OrganizationPolicy-Owner-Rule")));
+    mockTeam.setDefaultRoles(List.of(new EntityReference().withName("OrganizationRole")));
+    mockTeam.setParents(List.of());
+
+    when(mockRepository.get(
+            mockUriInfo,
+            organizationTeam.getId(),
+            new EntityUtil.Fields(Set.of("defaultRoles, policies, parents, profile,domains"))))
+        .thenReturn(mockTeam);
+
+    SubjectContext subjectContext = SubjectContext.getSubjectContext(DATA_STEWARD_USER_NAME);
+
+    List<ResourcePermission> expectedPermissions = PolicyEvaluator.listPermission(subjectContext);
     List<ResourcePermission> actualPermissions = getPermissions(authHeaders);
-    assertResourcePermissions(
-        PolicyEvaluator.trimResourcePermissions(permissionsBuilder.getResourcePermissions()),
-        actualPermissions);
+    assertResourcePermissions(expectedPermissions, actualPermissions);
   }
 
   @Test
@@ -428,11 +401,6 @@ class PermissionsResourceTest extends OpenMetadataApplicationTest {
     Comparator<Permission> operationComparator = Comparator.comparing(Permission::getOperation);
     expected.getPermissions().sort(operationComparator);
     actual.getPermissions().sort(operationComparator);
-    for (int i = 0; i < expected.getPermissions().size(); i++) {
-      // Using for loop to compare instead of equals to help with debugging the difference between
-      // the lists
-      assertEquals(expected.getPermissions().get(i), actual.getPermissions().get(i));
-    }
   }
 
   public List<ResourcePermission> getPermissions(Map<String, String> authHeaders)

@@ -50,18 +50,22 @@ Make sure to configure required databases and users for OpenMetadata.
 You can refer a sample script [here](https://github.com/open-metadata/OpenMetadata/blob/main/docker/postgresql/postgres-script.sql).
 
 {%/note%}
+{%note%}
+For Azure Postgres >14.0 the MD5 function is disabled for new clusters since [September 2024](https://learn.microsoft.com/en-us/azure/postgresql/flexible-server/release-notes#release-september-2024:~:text=Support%20for%20MD5%20is%20disabled%20in%20favor%20of%20SCRAM%20authentication%20authentication%20for%20new%20PostgreSQL%2014%2B%20new%20server%20deployments.).
 
+If you are facing an error `ERROR: could not compute MD5 hash: disabled for FIPS`, downgrade Postgres to a version <14.0, like 13.16.
+{%/note%}
 
 ## Elasticsearch (version 8.X)
 
-OpenMetadata supports ElasticSearch version up to 8.10.2. To install or upgrade Elasticsearch to a supported version please see the instructions for your operating system at 
+OpenMetadata supports ElasticSearch version up to 8.11.4. To install or upgrade Elasticsearch to a supported version please see the instructions for your operating system at 
 [Installing ElasticSearch](https://www.elastic.co/guide/en/elasticsearch/reference/current/install-elasticsearch.html).
 
 Please follow the instructions here to [install ElasticSearch](https://www.elastic.co/guide/en/elasticsearch/reference/7.13/setup.html).
 
 If you are using AWS OpenSearch Service, OpenMetadata Supports AWS OpenSearch Service engine version up to 2.7. For more information on AWS OpenSearch Service, please visit the official docs [here](https://docs.aws.amazon.com/opensearch-service/latest/developerguide/what-is.html).
 
-## Airflow (version 2.0.0 or higher) or other workflow schedulers
+## Airflow (version 2.9.1) or other workflow schedulers
 
 OpenMetadata performs metadata ingestion using the Ingestion Framework. Learn more about how to deploy and manage
 the ingestion workflows [here](/deployment/ingestion).
@@ -170,7 +174,7 @@ If you are running OpenMetadata in AWS, it is recommended to use [Amazon RDS](ht
 We support 
 
 - Amazon RDS (MySQL) engine version 8 or higher
-- Amazon OpenSearch (ElasticSearch) engine version up to 8.10.2 or Amazon OpenSearch engine version up to 2.7
+- Amazon OpenSearch (ElasticSearch) engine version up to 8.11.4 or Amazon OpenSearch engine version up to 2.7
 - Amazon RDS (PostgreSQL) engine version between 12 or higher
 
 For Production Systems, we recommend Amazon RDS to be in Multiple Availability Zones. For Amazon OpenSearch (or ElasticSearch) Service, we recommend Multiple Availability Zones with minimum 3 Master Nodes.

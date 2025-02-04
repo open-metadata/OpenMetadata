@@ -194,7 +194,7 @@ const ClassificationDetails = forwardRef(
 
     const handleUpdateDisplayName = async (data: {
       name: string;
-      displayName: string;
+      displayName?: string;
     }) => {
       if (
         !isUndefined(currentClassification) &&
@@ -459,10 +459,7 @@ const ClassificationDetails = forwardRef(
                       allowRename={!isSystemClassification}
                       allowSoftDelete={false}
                       canDelete={deletePermission && !isClassificationDisabled}
-                      displayName={
-                        currentClassification.displayName ??
-                        currentClassification.name
-                      }
+                      displayName={getEntityName(currentClassification)}
                       editDisplayNamePermission={
                         editDisplayNamePermission && !isClassificationDisabled
                       }
@@ -521,9 +518,10 @@ const ClassificationDetails = forwardRef(
             size="small"
           />
 
-          {showPagination && !isTagsLoading && (
+          {showPagination && (
             <NextPrevious
               currentPage={currentPage}
+              isLoading={isTagsLoading}
               pageSize={pageSize}
               paging={paging}
               pagingHandler={handleTagsPageChange}

@@ -1,5 +1,7 @@
 package org.openmetadata.service.exception;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+
 import java.io.IOException;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
@@ -13,6 +15,8 @@ import org.openmetadata.service.config.OMWebConfiguration;
 
 @Slf4j
 public class OMErrorPageHandler extends ErrorPageErrorHandler {
+  private static final String CACHE_CONTROL_HEADER = "Cache-Control";
+  private static final String PRAGMA_HEADER = "Pragma";
   private final OMWebConfiguration webConfiguration;
 
   public OMErrorPageHandler(OMWebConfiguration webConfiguration) {
@@ -87,6 +91,16 @@ public class OMErrorPageHandler extends ErrorPageErrorHandler {
 
     // Policy Permission
     webConfiguration.getPermissionPolicyHeaderFactory().build().forEach(response::setHeader);
+
+    // Cache-Control
+    if (!nullOrEmpty(webConfiguration.getCacheControl())) {
+      response.setHeader(CACHE_CONTROL_HEADER, webConfiguration.getCacheControl());
+    }
+
+    // Pragma
+    if (!nullOrEmpty(webConfiguration.getPragma())) {
+      response.setHeader(PRAGMA_HEADER, webConfiguration.getPragma());
+    }
 
     // Additional Headers
     webConfiguration.getHeaders().forEach(response::setHeader);

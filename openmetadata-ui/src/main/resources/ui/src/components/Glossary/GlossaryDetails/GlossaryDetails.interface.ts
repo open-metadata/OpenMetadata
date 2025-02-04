@@ -16,11 +16,6 @@ import { Glossary } from '../../../generated/entity/data/glossary';
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
 import { VotingDataProps } from '../../Entity/Voting/voting.interface';
 
-export enum GlossaryTabs {
-  TERMS = 'terms',
-  ACTIVITY_FEED = 'activity_feed',
-}
-
 export type GlossaryDetailsProps = {
   isVersionView?: boolean;
   permissions: OperationPermission;

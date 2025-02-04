@@ -50,8 +50,8 @@ echo "Running local docker using mode [$mode] database [$database] and skipping 
 cd ../
 
 echo "Stopping any previous Local Docker Containers"
-docker compose -f docker/development/docker-compose-postgres.yml down
-docker compose -f docker/development/docker-compose.yml down
+docker compose -f docker/development/docker-compose-postgres.yml down --remove-orphans
+docker compose -f docker/development/docker-compose.yml down --remove-orphans
 
 if [[ $skipMaven == "false" ]]; then
     if [[ $mode == "no-ui" ]]; then

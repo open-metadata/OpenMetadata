@@ -13,12 +13,13 @@
 
 import { Col, Row } from 'antd';
 import { isEmpty, isUndefined } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import PageHeader from '../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
+import { useApplicationsProvider } from '../../components/Settings/Applications/ApplicationsProvider/ApplicationsProvider';
 import SettingItemCard from '../../components/Settings/SettingItemCard/SettingItemCard.component';
 import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
@@ -38,8 +39,7 @@ const GlobalSettingPage = () => {
 
   const { permissions } = usePermissionProvider();
   const { isAdminUser } = useAuth();
-
-  const [settings, setSettings] = useState<SettingMenuItem[]>([]);
+  const { loading } = useApplicationsProvider();
 
   const settingItems = useMemo(
     () =>
@@ -58,15 +58,11 @@ const GlobalSettingPage = () => {
 
           return false;
         }),
-    [permissions, isAdminUser]
+    [permissions, isAdminUser, loading]
   );
 
   const handleSettingItemClick = useCallback((category: string) => {
     history.push(getSettingPath(category));
-  }, []);
-
-  useEffect(() => {
-    setSettings(settingItems);
   }, []);
 
   if (isEmpty(settingItems)) {
@@ -82,7 +78,7 @@ const GlobalSettingPage = () => {
 
         <Col span={24}>
           <Row gutter={[20, 20]}>
-            {settings.map((setting) => (
+            {settingItems.map((setting) => (
               <Col key={setting?.key} span={6}>
                 <SettingItemCard
                   data={setting}

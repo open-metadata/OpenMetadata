@@ -15,11 +15,18 @@ authenticationConfiguration:
   provider: "google"
   publicKeyUrls:
     - "https://www.googleapis.com/oauth2/v3/certs"
-    - "{your domain}/api/v1/system/config/jwks" # Update with your Domain and Make sure this "/api/v1/system/config/jwks" is always configured to enable JWT tokens
+    - "https://{your domain}/api/v1/system/config/jwks" # Update with your Domain and Make sure this "/api/v1/system/config/jwks" is always configured to enable JWT tokens
   authority: "https://accounts.google.com"
   clientId: "{client id}"
-  callbackUrl: "http://localhost:8585/callback"
+  callbackUrl: "https://{your domain}/callback"
 ```
+
+{% note %}
+
+`AUTHENTICATION_PUBLIC_KEYS` and `AUTHENTICATION_CALLBACK_URL` refers to https://{your domain} this is referring to your OpenMetdata installation domain name
+and please make sure to correctly put http or https depending on your installation.
+
+{% /note %}
 
 Then, 
 - Update `authorizerConfiguration` to add login names of the admin users in `adminPrincipals` section as shown below.

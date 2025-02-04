@@ -26,6 +26,11 @@ import { createNewPage, redirectToHomePage } from '../../utils/common';
 import { addMultiOwner, assignTag, assignTier } from '../../utils/entity';
 import { sidebarClick } from '../../utils/sidebar';
 
+test.describe.configure({
+  // 4 minutes to avoid test timeout happening some times in AUTs
+  timeout: 4 * 60 * 1000,
+});
+
 test.describe('Advanced Search', { tag: '@advanced-search' }, () => {
   // use the admin user to login
   test.use({ storageState: 'playwright/.auth/admin.json' });
@@ -39,11 +44,9 @@ test.describe('Advanced Search', { tag: '@advanced-search' }, () => {
   const tierTag1 = new TagClass({ classification: 'Tier' });
   const tierTag2 = new TagClass({ classification: 'Tier' });
 
-  let searchCriteria = {};
+  let searchCriteria: Record<string, any> = {};
 
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
-    test.setTimeout(150000);
-
     const { page, apiContext, afterAction } = await createNewPage(browser);
     await Promise.all([
       user1.create(apiContext),
@@ -96,8 +99,14 @@ test.describe('Advanced Search', { tag: '@advanced-search' }, () => {
         tierTag2.responseData.fullyQualifiedName,
       ],
       'service.displayName.keyword': [table1.service.name, table2.service.name],
-      'database.displayName': [table1.database.name, table2.database.name],
-      'databaseSchema.displayName': [table1.schema.name, table2.schema.name],
+      'database.displayName.keyword': [
+        table1.database.name,
+        table2.database.name,
+      ],
+      'databaseSchema.displayName.keyword': [
+        table1.schema.name,
+        table2.schema.name,
+      ],
       'columns.name.keyword': ['email', 'shop_id'],
       'displayName.keyword': [
         table1.entity.displayName,

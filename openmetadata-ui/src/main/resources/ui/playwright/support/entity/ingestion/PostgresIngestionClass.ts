@@ -32,7 +32,7 @@ import {
 import ServiceBaseClass from './ServiceBaseClass';
 
 class PostgresIngestionClass extends ServiceBaseClass {
-  name: string;
+  name = '';
   filterPattern: string;
   queryLogFilePath: string;
 

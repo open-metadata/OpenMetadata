@@ -34,6 +34,7 @@ with open(mock_file_path, encoding="utf-8") as file:
 
 EXPECTED_DATABRICKS_DETAILS = [
     TableQuery(
+        dialect="databricks",
         query=' /* {"app": "OpenMetadata", "version": "0.13.0.dev0"} */\nSHOW TABLES IN `test`',
         userName="vijay@getcollate.io",
         startTime="1665566128192",
@@ -44,6 +45,7 @@ EXPECTED_DATABRICKS_DETAILS = [
         databaseSchema=None,
     ),
     TableQuery(
+        dialect="databricks",
         query=' /* {"app": "OpenMetadata", "version": "0.13.0.dev0"} */\nSHOW TABLES IN `test`',
         userName="vijay@getcollate.io",
         startTime="1665566127416",
@@ -54,6 +56,7 @@ EXPECTED_DATABRICKS_DETAILS = [
         databaseSchema=None,
     ),
     TableQuery(
+        dialect="databricks",
         query=' /* {"app": "OpenMetadata", "version": "0.13.0.dev0"} */\nSHOW TABLES IN `default`',
         userName="vijay@getcollate.io",
         startTime="1665566125414",
@@ -64,6 +67,7 @@ EXPECTED_DATABRICKS_DETAILS = [
         databaseSchema=None,
     ),
     TableQuery(
+        dialect="databricks",
         query=' /* {"app": "OpenMetadata", "version": "0.13.0.dev0"} */\nDESCRIBE default.view3',
         userName="vijay@getcollate.io",
         startTime="1665566124428",
@@ -124,10 +128,13 @@ class DatabricksLineageTests(TestCase):
         super().__init__(methodName)
         config = OpenMetadataWorkflowConfig.model_validate(mock_databricks_config)
 
-        self.databricks = DatabricksLineageSource.create(
-            mock_databricks_config["source"],
-            config.workflowConfig.openMetadataServerConfig,
-        )
+        with patch(
+            "metadata.ingestion.source.database.databricks.lineage.DatabricksLineageSource.test_connection"
+        ):
+            self.databricks = DatabricksLineageSource.create(
+                mock_databricks_config["source"],
+                config.workflowConfig.openMetadataServerConfig,
+            )
 
     @patch(
         "metadata.ingestion.source.database.databricks.client.DatabricksClient.list_query_history"

@@ -22,6 +22,7 @@ import {
 } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
+import { Duration } from 'luxon';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
@@ -34,6 +35,58 @@ import { showErrorToast } from '../../../utils/ToastUtils';
 import { ExtraInfoLabel } from '../../DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import { RetentionPeriodProps } from './RetentionPeriod.interface';
 
+// Helper function to detect and format ISO 8601 duration
+const formatRetentionPeriod = (retentionPeriod: string | undefined) => {
+  if (!retentionPeriod) {
+    return NO_DATA_PLACEHOLDER;
+  }
+
+  const isoDurationRegex =
+    /^P(?!$)(\d+Y)?(\d+M)?(\d+W)?(\d+D)?(T(\d+H)?(\d+M)?(\d+S)?)?$/;
+  // Check if the string matches the ISO 8601 duration format
+  if (isoDurationRegex.test(retentionPeriod)) {
+    const duration = Duration.fromISO(retentionPeriod);
+
+    const years = duration.years
+      ? `${duration.years} year${duration.years > 1 ? 's' : ''}`
+      : '';
+    const months = duration.months
+      ? `${duration.months} month${duration.months > 1 ? 's' : ''}`
+      : '';
+    const weeks = duration.weeks
+      ? `${duration.weeks} week${duration.weeks > 1 ? 's' : ''}`
+      : '';
+    const days = duration.days
+      ? `${duration.days} day${duration.days > 1 ? 's' : ''}`
+      : '';
+    const hours = duration.hours
+      ? `${duration.hours} hour${duration.hours > 1 ? 's' : ''}`
+      : '';
+    const minutes = duration.minutes
+      ? `${duration.minutes} minute${duration.minutes > 1 ? 's' : ''}`
+      : '';
+    const seconds = duration.seconds
+      ? `${duration.seconds} second${duration.seconds > 1 ? 's' : ''}`
+      : '';
+
+    const formattedDuration = [
+      years,
+      months,
+      weeks,
+      days,
+      hours,
+      minutes,
+      seconds,
+    ]
+      .filter(Boolean)
+      .join(' ');
+
+    return formattedDuration || NO_DATA_PLACEHOLDER;
+  }
+
+  // If it's not ISO, return the plain string
+  return retentionPeriod;
+};
 const RetentionPeriod = ({
   retentionPeriod,
   onUpdate,
@@ -67,7 +120,7 @@ const RetentionPeriod = ({
       <Space data-testid="retention-period-container">
         <ExtraInfoLabel
           label={t('label.retention-period')}
-          value={retentionPeriod ?? NO_DATA_PLACEHOLDER}
+          value={formatRetentionPeriod(retentionPeriod) ?? NO_DATA_PLACEHOLDER}
         />
 
         {hasPermission && (
@@ -90,6 +143,7 @@ const RetentionPeriod = ({
       <Modal
         centered
         destroyOnClose
+        cancelText={t('label.cancel')}
         closable={false}
         confirmLoading={isLoading}
         data-testid="retention-period-modal"

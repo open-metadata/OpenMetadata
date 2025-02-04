@@ -40,6 +40,7 @@ import { useHistory, useParams } from 'react-router-dom';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg';
 import { ReactComponent as DomainIcon } from '../../../assets/svg/ic-domain.svg';
+import { ReactComponent as SubDomainIcon } from '../../../assets/svg/ic-subdomain.svg';
 import { ReactComponent as VersionIcon } from '../../../assets/svg/ic-version.svg';
 import { ReactComponent as IconDropdown } from '../../../assets/svg/menu.svg';
 import { ReactComponent as StyleIcon } from '../../../assets/svg/style.svg';
@@ -121,7 +122,7 @@ const DomainDetailsPage = ({
 }: DomainDetailsPageProps) => {
   const { t } = useTranslation();
   const [form] = useForm();
-  const { getEntityPermission } = usePermissionProvider();
+  const { getEntityPermission, permissions } = usePermissionProvider();
   const history = useHistory();
   const { tab: activeTab, version } =
     useParams<{ tab: string; version: string }>();
@@ -201,21 +202,29 @@ const DomainDetailsPage = ({
   }, [domainPermission]);
 
   const addButtonContent = [
-    {
-      label: t('label.asset-plural'),
-      key: '1',
-      onClick: () => setAssetModalVisible(true),
-    },
-    {
-      label: t('label.sub-domain-plural'),
-      key: '2',
-      onClick: () => setShowAddSubDomainModal(true),
-    },
-    {
-      label: t('label.data-product-plural'),
-      key: '3',
-      onClick: () => setShowAddDataProductModal(true),
-    },
+    ...(domainPermission.Create
+      ? [
+          {
+            label: t('label.asset-plural'),
+            key: '1',
+            onClick: () => setAssetModalVisible(true),
+          },
+          {
+            label: t('label.sub-domain-plural'),
+            key: '2',
+            onClick: () => setShowAddSubDomainModal(true),
+          },
+        ]
+      : []),
+    ...(permissions.dataProduct.Create
+      ? [
+          {
+            label: t('label.data-product-plural'),
+            key: '3',
+            onClick: () => setShowAddDataProductModal(true),
+          },
+        ]
+      : []),
   ];
 
   const fetchSubDomains = useCallback(async () => {
@@ -381,7 +390,7 @@ const DomainDetailsPage = ({
     setShowAddDataProductModal(true);
   }, []);
 
-  const onNameSave = (obj: { name: string; displayName: string }) => {
+  const onNameSave = (obj: { name: string; displayName?: string }) => {
     const { displayName } = obj;
     let updatedDetails = cloneDeep(domain);
 
@@ -510,6 +519,7 @@ const DomainDetailsPage = ({
           <DocumentationTab
             domain={domain}
             isVersionsView={isVersionsView}
+            permissions={domainPermission}
             onUpdate={(data: Domain | DataProduct) => onUpdate(data as Domain)}
           />
         ),
@@ -629,6 +639,41 @@ const DomainDetailsPage = ({
     fetchSubDomains();
   }, [domainFqn]);
 
+  const iconData = useMemo(() => {
+    if (domain.style?.iconURL) {
+      return (
+        <img
+          alt="domain-icon"
+          className="align-middle"
+          data-testid="icon"
+          height={36}
+          src={domain.style.iconURL}
+          width={32}
+        />
+      );
+    } else if (isSubDomain) {
+      return (
+        <SubDomainIcon
+          className="align-middle"
+          color={DE_ACTIVE_COLOR}
+          height={36}
+          name="folder"
+          width={32}
+        />
+      );
+    }
+
+    return (
+      <DomainIcon
+        className="align-middle"
+        color={DE_ACTIVE_COLOR}
+        height={36}
+        name="folder"
+        width={32}
+      />
+    );
+  }, [domain, isSubDomain]);
+
   return (
     <>
       <Row
@@ -640,33 +685,14 @@ const DomainDetailsPage = ({
             breadcrumb={breadcrumbs}
             entityData={{ ...domain, displayName, name }}
             entityType={EntityType.DOMAIN}
-            icon={
-              domain.style?.iconURL ? (
-                <img
-                  alt="domain-icon"
-                  className="align-middle"
-                  data-testid="icon"
-                  height={36}
-                  src={domain.style.iconURL}
-                  width={32}
-                />
-              ) : (
-                <DomainIcon
-                  className="align-middle"
-                  color={DE_ACTIVE_COLOR}
-                  height={36}
-                  name="folder"
-                  width={32}
-                />
-              )
-            }
+            icon={iconData}
             serviceName=""
             titleColor={domain.style?.color}
           />
         </Col>
         <Col className="p-x-md" flex="320px">
           <div style={{ textAlign: 'right' }}>
-            {!isVersionsView && domainPermission.Create && (
+            {!isVersionsView && addButtonContent.length > 0 && (
               <Dropdown
                 className="m-l-xs"
                 data-testid="domain-details-add-button-menu"
@@ -824,7 +850,7 @@ const DomainDetailsPage = ({
           }}
         />
       )}
-      <EntityNameModal
+      <EntityNameModal<Domain>
         entity={domain}
         title={t('label.edit-entity', {
           entity: t('label.display-name'),

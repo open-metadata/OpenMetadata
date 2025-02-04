@@ -210,6 +210,15 @@
             "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
           },
           "default": null
+        },
+        "relationshipType": {
+          "type": "string",
+          "enum": [
+            "ONE_TO_ONE",
+            "ONE_TO_MANY",
+            "MANY_TO_ONE",
+            "MANY_TO_MANY"
+          ]
         }
       },
       "additionalProperties": false
@@ -319,7 +328,7 @@
           "items": {
             "$ref": "../../type/tagLabel.json"
           },
-          "default": null
+          "default": []
         },
         "constraint": {
           "description": "Column level constraint.",
@@ -785,6 +794,18 @@
         "partitioning": {
           "description": "Partitioning configuration",
           "$ref": "#/definitions/partitionProfilerConfig"
+        },
+        "computeTableMetrics": {
+          "description": "Option to turn on/off table metric computation. If enabled, profiler will compute table level metrics.",
+          "type": "boolean",
+          "default": true,
+          "title": "Compute Table Metrics"
+        },
+        "computeColumnMetrics": {
+          "description": "Option to turn on/off column metric computation. If enabled, profiler will compute column level metrics.",
+          "type": "boolean",
+          "default": true,
+          "title": "Compute Column Metrics"
         }
       }
     },
@@ -900,7 +921,7 @@
           "items": {
             "$ref": "../../type/tagLabel.json"
           },
-          "default": null
+          "default": []
         },
         "columns": {
           "description": "Columns from the schema defined during modeling. In case of DBT, the metadata here comes from `schema.yaml`.",
@@ -1010,6 +1031,11 @@
       "description": "Reference to the Location that contains this table.",
       "$ref": "../../type/entityReference.json"
     },
+    "locationPath": {
+      "description": "Full storage path in case of external and managed tables.",
+      "type": "string",
+      "default": null
+    },
     "schemaDefinition": {
       "description": "DDL for Tables and Views",
       "$ref": "../../type/basic.json#/definitions/sqlQuery"
@@ -1106,6 +1132,9 @@
     "lifeCycle": {
       "description": "Life Cycle of the entity",
       "$ref": "../../type/lifeCycle.json"
+    },
+    "certification": {
+      "$ref": "../../type/assetCertification.json"
     },
     "sourceHash": {
       "description": "Source hash of the entity",

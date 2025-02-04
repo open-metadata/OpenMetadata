@@ -35,6 +35,7 @@ import org.openmetadata.service.util.EntityUtil.Fields;
 @Slf4j
 public class RoleRepository extends EntityRepository<Role> {
   public static final String DOMAIN_ONLY_ACCESS_ROLE = "DomainOnlyAccessRole";
+  public static final String DEFAULT_BOT_ROLE = "DefaultBotRole";
 
   public RoleRepository() {
     super(
@@ -127,7 +128,7 @@ public class RoleRepository extends EntityRepository<Role> {
 
     @Transaction
     @Override
-    public void entitySpecificUpdate() {
+    public void entitySpecificUpdate(boolean consolidatingChanges) {
       updatePolicies(listOrEmpty(original.getPolicies()), listOrEmpty(updated.getPolicies()));
     }
 

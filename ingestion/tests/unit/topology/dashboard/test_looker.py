@@ -47,6 +47,7 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.usageDetails import UsageDetails, UsageStats
 from metadata.generated.schema.type.usageRequest import UsageRequest
 from metadata.ingestion.api.steps import InvalidSourceException
+from metadata.ingestion.lineage.models import Dialect
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardUsage
 from metadata.ingestion.source.dashboard.looker.metadata import LookerSource
@@ -292,13 +293,33 @@ class LookerUnitTest(TestCase):
         """
         Check table cleaning
         """
-        self.assertEqual(self.looker._clean_table_name("MY_TABLE"), "my_table")
+        self.assertEqual(
+            self.looker._clean_table_name("MY_TABLE", Dialect.MYSQL), "my_table"
+        )
 
-        self.assertEqual(self.looker._clean_table_name("  MY_TABLE  "), "my_table")
+        self.assertEqual(
+            self.looker._clean_table_name("  MY_TABLE  ", Dialect.REDSHIFT), "my_table"
+        )
 
-        self.assertEqual(self.looker._clean_table_name("  my_table"), "my_table")
+        self.assertEqual(
+            self.looker._clean_table_name("  my_table", Dialect.SNOWFLAKE), "my_table"
+        )
 
-        self.assertEqual(self.looker._clean_table_name("TABLE AS ALIAS"), "table")
+        self.assertEqual(
+            self.looker._clean_table_name("TABLE AS ALIAS", Dialect.BIGQUERY), "table"
+        )
+
+        self.assertEqual(
+            self.looker._clean_table_name(
+                "`project_id.dataset_id.table_id` AS ALIAS", Dialect.BIGQUERY
+            ),
+            "project_id.dataset_id.table_id",
+        )
+
+        self.assertEqual(
+            self.looker._clean_table_name("`db.schema.table`", Dialect.POSTGRES),
+            "`db.schema.table`",
+        )
 
     def test_render_table_name(self):
         """

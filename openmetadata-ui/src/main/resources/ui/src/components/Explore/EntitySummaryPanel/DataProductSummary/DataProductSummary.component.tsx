@@ -16,7 +16,7 @@ import { useTranslation } from 'react-i18next';
 import { DataProduct } from '../../../../generated/entity/domains/dataProduct';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
-import RichTextEditorPreviewer from '../../../common/RichTextEditor/RichTextEditorPreviewer';
+import RichTextEditorPreviewerV1 from '../../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import SummaryPanelSkeleton from '../../../common/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
 
 interface DataProductSummaryProps {
@@ -62,7 +62,7 @@ const DataProductSummary = ({
           <Col span={24}>
             <div>
               {entityDetails.description?.trim() ? (
-                <RichTextEditorPreviewer
+                <RichTextEditorPreviewerV1
                   markdown={entityDetails.description}
                   maxLength={80}
                 />
@@ -82,7 +82,7 @@ const DataProductSummary = ({
             <Typography.Text
               className="summary-panel-section-title"
               data-testid="owner-header">
-              {t('label.owner')}
+              {t('label.owner-plural')}
             </Typography.Text>
           </Col>
           <Col span={24}>

@@ -3,6 +3,9 @@ package org.openmetadata.service.jdbi3;
 import static org.openmetadata.schema.type.EventType.ENTITY_UPDATED;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.getEntityFields;
+import static org.openmetadata.service.util.jdbi.JdbiUtils.getAfterOffset;
+import static org.openmetadata.service.util.jdbi.JdbiUtils.getBeforeOffset;
+import static org.openmetadata.service.util.jdbi.JdbiUtils.getOffset;
 
 import java.beans.IntrospectionException;
 import java.io.IOException;
@@ -29,7 +32,9 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.search.SearchAggregation;
 import org.openmetadata.service.search.SearchClient;
+import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.SearchListFilter;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.SearchSortFilter;
@@ -280,6 +285,16 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
     return entityRecord;
   }
 
+  public T getLatestRecord(String recordFQN, String extension) {
+    String jsonRecord = timeSeriesDao.getLatestExtension(recordFQN, extension);
+    if (jsonRecord == null) {
+      return null;
+    }
+    T entityRecord = JsonUtils.readValue(jsonRecord, entityClass);
+    setInheritedFields(entityRecord);
+    return entityRecord;
+  }
+
   public T getById(UUID id) {
     String jsonRecord = timeSeriesDao.getById(id);
     if (jsonRecord == null) {
@@ -302,26 +317,6 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
       return;
     }
     timeSeriesDao.deleteById(id);
-  }
-
-  private String getAfterOffset(int offsetInt, int limit, int total) {
-    int afterOffset = offsetInt + limit;
-    // If afterOffset is greater than total, then set it to null to indicate end of list
-    return afterOffset >= total ? null : String.valueOf(afterOffset);
-  }
-
-  private String getBeforeOffset(int offsetInt, int limit) {
-    int beforeOffsetInt = offsetInt - limit;
-    // If offset is negative, then set it to 0 if you pass offset 4 and limit 10, then the previous
-    // page will be at offset 0
-    if (beforeOffsetInt < 0) beforeOffsetInt = 0;
-    // if offsetInt is 0 (i.e. either no offset or offset is 0), then set it to null as there is no
-    // previous page
-    return (offsetInt == 0) ? null : String.valueOf(beforeOffsetInt);
-  }
-
-  private int getOffset(String offset) {
-    return offset != null ? Integer.parseInt(RestUtil.decodeCursor(offset)) : 0;
   }
 
   private Map<String, List<?>> getEntityList(List<String> jsons, boolean skipErrors) {
@@ -408,12 +403,12 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
     setExcludeSearchFields(searchListFilter);
     String aggregationPath = "$.sterms#byTerms.buckets";
     String aggregationStr =
-        "{\"aggregations\":{\"byTerms\":{\"terms\": {\"field\":\"%s\",\"size\":100},\"aggs\":{\"latest\":"
-            + "{\"top_hits\":{\"size\":1,\"sort_field\":\"timestamp\",\"sort_order\":\"desc\"}}}}}}";
+        "bucketName=byTerms:aggType=terms:field=%s&size=100,"
+            + "bucketName=latest:aggType=top_hits:size=1&sort_field=timestamp&sort_order=desc";
     aggregationStr = String.format(aggregationStr, groupBy);
-    JsonObject aggregation = JsonUtils.readJson(aggregationStr).asJsonObject();
+    SearchAggregation searchAggregation = SearchIndexUtils.buildAggregationTree(aggregationStr);
     JsonObject jsonObjResults =
-        searchRepository.aggregate(q, entityType, aggregation, searchListFilter);
+        searchRepository.aggregate(q, entityType, searchAggregation, searchListFilter);
 
     Optional<List> jsonObjects =
         JsonUtils.readJsonAtPath(jsonObjResults.toString(), aggregationPath, List.class);

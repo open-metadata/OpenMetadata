@@ -11,131 +11,137 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Tabs, TabsProps, Typography } from 'antd';
-import { AxiosError } from 'axios';
-import React, { useEffect, useMemo, useState } from 'react';
+import { Col, Menu, MenuProps, Row, Typography } from 'antd';
+import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import {
+  Redirect,
+  Route,
+  Switch,
+  useHistory,
+  useParams,
+} from 'react-router-dom';
+import LeftPanelCard from '../../components/common/LeftPanelCard/LeftPanelCard';
+import ResizableLeftPanels from '../../components/common/ResizablePanels/ResizableLeftPanels';
 import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
-import { SummaryPanel } from '../../components/DataQuality/SummaryPannel/SummaryPanel.component';
-import { TestCases } from '../../components/DataQuality/TestCases/TestCases.component';
-import { TestSuites } from '../../components/DataQuality/TestSuite/TestSuiteList/TestSuites.component';
-import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
-import { INITIAL_TEST_SUMMARY } from '../../constants/TestSuite.constant';
-import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
-import { TestSummary } from '../../generated/tests/testCase';
-import { getTestCaseExecutionSummary } from '../../rest/testAPI';
+import { ROUTES } from '../../constants/constants';
+import { withPageLayout } from '../../hoc/withPageLayout';
 import { getDataQualityPagePath } from '../../utils/RouterUtils';
-import { showErrorToast } from '../../utils/ToastUtils';
+import './data-quality-page.less';
+import DataQualityClassBase from './DataQualityClassBase';
 import { DataQualityPageTabs } from './DataQualityPage.interface';
+import DataQualityProvider from './DataQualityProvider';
 
 const DataQualityPage = () => {
   const { t } = useTranslation();
   const { tab: activeTab } = useParams<{ tab: DataQualityPageTabs }>();
   const history = useHistory();
-  const [summary, setSummary] = useState<TestSummary>(INITIAL_TEST_SUMMARY);
-  const [isSummaryLoading, setIsSummaryLoading] = useState(true);
-  const { permissions } = usePermissionProvider();
-  const { testCase: testCasePermission } = permissions;
 
-  const summaryPanel = useMemo(
-    () => <SummaryPanel isLoading={isSummaryLoading} testSummary={summary} />,
-    [summary, isSummaryLoading]
-  );
+  const menuItems: MenuProps['items'] = useMemo(() => {
+    const data = DataQualityClassBase.getLeftSideBar();
 
-  const tabDetails = useMemo(() => {
-    const tab: TabsProps['items'] = [
-      {
+    return data.map((value) => {
+      const SvgIcon = value.icon;
+
+      return {
+        key: value.key,
         label: (
           <TabsLabel
-            id="by-tables"
-            name={t('label.by-entity', { entity: t('label.table-plural') })}
+            description={value.description}
+            id={value.id}
+            name={value.label}
           />
         ),
-        children: <TestSuites summaryPanel={summaryPanel} />,
-        key: DataQualityPageTabs.TABLES,
-      },
-      {
-        label: (
-          <TabsLabel
-            id="by-test-cases"
-            name={t('label.by-entity', { entity: t('label.test-case-plural') })}
-          />
-        ),
-        key: DataQualityPageTabs.TEST_CASES,
-        children: <TestCases summaryPanel={summaryPanel} />,
-      },
-      {
-        label: (
-          <TabsLabel
-            id="by-test-suites"
-            name={t('label.by-entity', {
-              entity: t('label.test-suite-plural'),
-            })}
-          />
-        ),
-        key: DataQualityPageTabs.TEST_SUITES,
-        children: <TestSuites summaryPanel={summaryPanel} />,
-      },
-    ];
+        icon: <SvgIcon {...value.iconProps} height={16} width={16} />,
+      };
+    });
+  }, []);
 
-    return tab;
-  }, [summaryPanel]);
+  const tabDetailsComponent = useMemo(() => {
+    return DataQualityClassBase.getDataQualityTab();
+  }, []);
 
-  const handleTabChange = (activeKey: string) => {
+  const handleTabChange: MenuProps['onClick'] = (event) => {
+    const activeKey = event.key;
     if (activeKey !== activeTab) {
       history.push(getDataQualityPagePath(activeKey as DataQualityPageTabs));
     }
   };
 
-  const fetchTestSummary = async () => {
-    try {
-      const response = await getTestCaseExecutionSummary();
-      setSummary(response);
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    } finally {
-      setIsSummaryLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    if (testCasePermission?.ViewAll || testCasePermission?.ViewBasic) {
-      fetchTestSummary();
-    } else {
-      setIsSummaryLoading(false);
-    }
-  }, []);
-
   return (
-    <PageLayoutV1 pageTitle="Quality">
-      <Row className="p-t-md" gutter={[0, 16]}>
-        <Col className="p-x-lg" span={24}>
-          <Typography.Title
-            className="m-b-md"
-            data-testid="page-title"
-            level={5}>
-            {t('label.data-quality')}
-          </Typography.Title>
-          <Typography.Paragraph
-            className="text-grey-muted"
-            data-testid="page-sub-title">
-            {t('message.page-sub-header-for-data-quality')}
-          </Typography.Paragraph>
-        </Col>
-        <Col span={24}>
-          <Tabs
-            destroyInactiveTabPane
-            activeKey={activeTab ?? DataQualityPageTabs.TABLES}
-            className="custom-tab-spacing"
-            data-testid="tabs"
-            items={tabDetails}
-            onChange={handleTabChange}
-          />
-        </Col>
-      </Row>
-    </PageLayoutV1>
+    <div className="m--t-sm">
+      <ResizableLeftPanels
+        className="content-height-with-resizable-panel"
+        firstPanel={{
+          className: 'content-resizable-panel-container',
+          minWidth: 280,
+          flex: 0.13,
+          children: (
+            <LeftPanelCard id="data-quality">
+              <Menu
+                className="custom-menu custom-menu-with-description data-quality-page-left-panel-menu"
+                data-testid="tabs"
+                items={menuItems}
+                mode="inline"
+                selectedKeys={[
+                  activeTab ?? DataQualityClassBase.getDefaultActiveTab(),
+                ]}
+                onClick={handleTabChange}
+              />
+            </LeftPanelCard>
+          ),
+        }}
+        pageTitle="Quality"
+        secondPanel={{
+          children: (
+            <DataQualityProvider>
+              <Row
+                className="page-container"
+                data-testid="data-insight-container"
+                gutter={[16, 16]}>
+                <Col span={24}>
+                  <Typography.Title
+                    className="m-b-md p-x-md"
+                    data-testid="page-title"
+                    level={5}>
+                    {t('label.data-quality')}
+                  </Typography.Title>
+                  <Typography.Paragraph
+                    className="text-grey-muted p-x-md"
+                    data-testid="page-sub-title">
+                    {t('message.page-sub-header-for-data-quality')}
+                  </Typography.Paragraph>
+                </Col>
+                <Col span={24}>
+                  <Switch>
+                    {tabDetailsComponent.map((tab) => (
+                      <Route
+                        exact
+                        component={tab.component}
+                        key={tab.key}
+                        path={tab.path}
+                      />
+                    ))}
+
+                    <Route exact path={ROUTES.DATA_QUALITY}>
+                      <Redirect
+                        to={getDataQualityPagePath(
+                          DataQualityClassBase.getDefaultActiveTab()
+                        )}
+                      />
+                    </Route>
+                  </Switch>
+                </Col>
+              </Row>
+            </DataQualityProvider>
+          ),
+          className: 'content-resizable-panel-container p-t-sm',
+          minWidth: 800,
+          flex: 0.87,
+        }}
+      />
+    </div>
   );
 };
 
-export default DataQualityPage;
+export default withPageLayout('quality')(DataQualityPage);

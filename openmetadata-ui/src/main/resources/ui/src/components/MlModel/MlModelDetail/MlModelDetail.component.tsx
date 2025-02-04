@@ -359,6 +359,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
 
   const {
     editTagsPermission,
+    editGlossaryTermsPermission,
     editDescriptionPermission,
     editCustomAttributePermission,
     editLineagePermission,
@@ -367,6 +368,9 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
     () => ({
       editTagsPermission:
         (mlModelPermissions.EditTags || mlModelPermissions.EditAll) && !deleted,
+      editGlossaryTermsPermission:
+        (mlModelPermissions.EditGlossaryTerms || mlModelPermissions.EditAll) &&
+        !deleted,
       editDescriptionPermission:
         (mlModelPermissions.EditDescription || mlModelPermissions.EditAll) &&
         !deleted,
@@ -438,6 +442,9 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
                         domain={mlModelDetail?.domain}
                         editCustomAttributePermission={
                           editCustomAttributePermission
+                        }
+                        editGlossaryTermsPermission={
+                          editGlossaryTermsPermission
                         }
                         editTagPermission={editTagsPermission}
                         entityFQN={decodedMlModelFqn}
@@ -547,6 +554,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
       onDescriptionEdit,
       deleted,
       editTagsPermission,
+      editGlossaryTermsPermission,
       editDescriptionPermission,
       editCustomAttributePermission,
       editLineagePermission,
@@ -563,6 +571,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
       <Row gutter={[0, 12]}>
         <Col className="p-x-lg" span={24}>
           <DataAssetsHeader
+            isDqAlertSupported
             isRecursiveDelete
             afterDeleteAction={afterDeleteAction}
             afterDomainUpdateAction={updateMlModelDetailsState}

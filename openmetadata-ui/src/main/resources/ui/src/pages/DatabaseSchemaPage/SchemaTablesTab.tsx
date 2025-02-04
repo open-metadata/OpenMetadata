@@ -13,24 +13,29 @@
 
 import { Col, Row, Switch, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
-import { isEmpty } from 'lodash';
-import { PagingResponse } from 'Models';
-import React, { useMemo } from 'react';
+import { AxiosError } from 'axios';
+import { compare } from 'fast-json-patch';
+import { isEmpty, isUndefined } from 'lodash';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
+import DisplayName from '../../components/common/DisplayName/DisplayName';
 import DescriptionV1 from '../../components/common/EntityDescription/DescriptionV1';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import NextPrevious from '../../components/common/NextPrevious/NextPrevious';
 import { NextPreviousProps } from '../../components/common/NextPrevious/NextPrevious.interface';
-import RichTextEditorPreviewer from '../../components/common/RichTextEditor/RichTextEditorPreviewer';
+import RichTextEditorPreviewerV1 from '../../components/common/RichTextEditor/RichTextEditorPreviewerV1';
 import TableAntd from '../../components/common/Table/Table';
-import { PAGE_SIZE } from '../../constants/constants';
+import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
+import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType } from '../../enums/entity.enum';
 import { DatabaseSchema } from '../../generated/entity/data/databaseSchema';
 import { Table } from '../../generated/entity/data/table';
+import { UsePagingInterface } from '../../hooks/paging/usePaging';
+import { patchTableDetails } from '../../rest/tableAPI';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../utils/EntityUtils';
+import { showErrorToast } from '../../utils/ToastUtils';
 
 interface SchemaTablesTabProps {
   databaseSchemaDetails: DatabaseSchema;
@@ -39,7 +44,7 @@ interface SchemaTablesTabProps {
   editDescriptionPermission?: boolean;
   isEdit?: boolean;
   showDeletedTables?: boolean;
-  tableData: PagingResponse<Table[]>;
+  tableData: Table[];
   currentTablesPage: number;
   tablePaginationHandler: NextPreviousProps['pagingHandler'];
   onCancel?: () => void;
@@ -48,6 +53,7 @@ interface SchemaTablesTabProps {
   onThreadLinkSelect?: (link: string) => void;
   onShowDeletedTablesChange?: (value: boolean) => void;
   isVersionView?: boolean;
+  pagingInfo: UsePagingInterface;
 }
 
 function SchemaTablesTab({
@@ -66,8 +72,47 @@ function SchemaTablesTab({
   showDeletedTables = false,
   onShowDeletedTablesChange,
   isVersionView = false,
+  pagingInfo,
 }: Readonly<SchemaTablesTabProps>) {
   const { t } = useTranslation();
+  const [localTableData, setLocalTableData] = useState<Table[]>([]);
+
+  const { permissions } = usePermissionProvider();
+
+  const allowEditDisplayNamePermission = useMemo(() => {
+    return (
+      !isVersionView &&
+      (permissions.table.EditAll || permissions.table.EditDisplayName)
+    );
+  }, [permissions, isVersionView]);
+
+  const handleDisplayNameUpdate = useCallback(
+    async (data: EntityName, id?: string) => {
+      try {
+        const tableDetails = localTableData.find((table) => table.id === id);
+        if (!tableDetails) {
+          return;
+        }
+        const updatedData = {
+          ...tableDetails,
+          displayName: data.displayName || undefined,
+        };
+        const jsonPatch = compare(tableDetails, updatedData);
+        const response = await patchTableDetails(tableDetails.id, jsonPatch);
+
+        setLocalTableData((prevData) =>
+          prevData.map((table) => (table.id === id ? response : table))
+        );
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      }
+    },
+    [localTableData]
+  );
+
+  useEffect(() => {
+    setLocalTableData(tableData);
+  }, [tableData]);
 
   const tableColumn: ColumnsType<Table> = useMemo(
     () => [
@@ -78,17 +123,18 @@ function SchemaTablesTab({
         width: 500,
         render: (_, record: Table) => {
           return (
-            <div className="d-inline-flex w-max-90">
-              <Link
-                className="break-word"
-                data-testid={record.name}
-                to={entityUtilClassBase.getEntityLink(
-                  EntityType.TABLE,
-                  record.fullyQualifiedName as string
-                )}>
-                {getEntityName(record)}
-              </Link>
-            </div>
+            <DisplayName
+              allowRename={allowEditDisplayNamePermission}
+              displayName={record.displayName}
+              id={record.id}
+              key={record.id}
+              link={entityUtilClassBase.getEntityLink(
+                EntityType.TABLE,
+                record.fullyQualifiedName as string
+              )}
+              name={record.name}
+              onEditDisplayName={handleDisplayNameUpdate}
+            />
           );
         },
       },
@@ -98,13 +144,13 @@ function SchemaTablesTab({
         key: 'description',
         render: (text: string) =>
           text?.trim() ? (
-            <RichTextEditorPreviewer markdown={text} />
+            <RichTextEditorPreviewerV1 markdown={text} />
           ) : (
             <span className="text-grey-muted">{t('label.no-description')}</span>
           ),
       },
     ],
-    []
+    [handleDisplayNameUpdate, allowEditDisplayNamePermission]
   );
 
   return (
@@ -115,7 +161,7 @@ function SchemaTablesTab({
             description={description}
             entityFqn={databaseSchemaDetails.fullyQualifiedName}
             entityType={EntityType.DATABASE_SCHEMA}
-            isDescriptionExpanded={isEmpty(tableData.data)}
+            isDescriptionExpanded={isEmpty(tableData)}
             showActions={false}
           />
         ) : (
@@ -125,7 +171,7 @@ function SchemaTablesTab({
             entityName={getEntityName(databaseSchemaDetails)}
             entityType={EntityType.DATABASE_SCHEMA}
             hasEditAccess={editDescriptionPermission}
-            isDescriptionExpanded={isEmpty(tableData.data)}
+            isDescriptionExpanded={isEmpty(tableData)}
             isEdit={isEdit}
             showActions={!databaseSchemaDetails.deleted}
             onCancel={onCancel}
@@ -157,7 +203,7 @@ function SchemaTablesTab({
           bordered
           columns={tableColumn}
           data-testid="databaseSchema-tables"
-          dataSource={tableData.data}
+          dataSource={localTableData}
           loading={tableDataLoading}
           locale={{
             emptyText: (
@@ -172,13 +218,15 @@ function SchemaTablesTab({
           size="small"
         />
       </Col>
-      {tableData.paging.total > PAGE_SIZE && tableData.data.length > 0 && (
+      {!isUndefined(pagingInfo) && pagingInfo.showPagination && (
         <Col span={24}>
           <NextPrevious
             currentPage={currentTablesPage}
-            pageSize={PAGE_SIZE}
-            paging={tableData.paging}
+            isLoading={tableDataLoading}
+            pageSize={pagingInfo.pageSize}
+            paging={pagingInfo.paging}
             pagingHandler={tablePaginationHandler}
+            onShowSizeChange={pagingInfo.handlePageSizeChange}
           />
         </Col>
       )}

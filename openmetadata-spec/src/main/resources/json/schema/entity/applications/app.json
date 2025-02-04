@@ -14,7 +14,8 @@
       "enum": [
         "Live",
         "Scheduled",
-        "ScheduledOrManual"
+        "ScheduledOrManual",
+        "NoSchedule"
       ],
       "javaEnums": [
         {
@@ -25,6 +26,9 @@
         },
         {
           "name": "ScheduledOrManual"
+        },
+        {
+          "name": "NoSchedule"
         }
       ]
     },
@@ -251,6 +255,10 @@
       "description": "If the app run can be interrupted as part of the execution.",
       "type": "boolean",
       "default": false
+    },
+    "eventSubscriptions": {
+      "description": "Event Subscriptions for the Application.",
+        "$ref": "../../type/entityReferenceList.json"
     }
   },
   "additionalProperties": false,

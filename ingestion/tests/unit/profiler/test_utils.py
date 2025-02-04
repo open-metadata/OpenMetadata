@@ -22,7 +22,7 @@ from sqlalchemy.orm import declarative_base
 from sqlalchemy.sql.sqltypes import Integer, String
 
 from metadata.ingestion.source.database.snowflake.models import SnowflakeQueryLogEntry
-from metadata.ingestion.source.database.snowflake.profiler.system_metrics import (
+from metadata.ingestion.source.database.snowflake.profiler.system import (
     SnowflakeTableResovler,
     get_snowflake_system_queries,
 )

@@ -47,11 +47,11 @@ import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.data.RestoreEntity;
-import org.openmetadata.schema.api.services.CreateAPIService;
-import org.openmetadata.schema.entity.services.APIService;
+import org.openmetadata.schema.api.services.CreateApiService;
+import org.openmetadata.schema.entity.services.ApiService;
 import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.entity.services.connections.TestConnectionResult;
-import org.openmetadata.schema.type.APIServiceConnection;
+import org.openmetadata.schema.type.ApiConnection;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
@@ -75,12 +75,13 @@ import org.openmetadata.service.util.ResultList;
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "apiServices")
 public class APIServiceResource
-    extends ServiceEntityResource<APIService, APIServiceRepository, APIServiceConnection> {
+    extends ServiceEntityResource<ApiService, APIServiceRepository, ApiConnection> {
+  private final APIServiceMapper mapper = new APIServiceMapper();
   public static final String COLLECTION_PATH = "v1/services/apiServices/";
   static final String FIELDS = "pipelines,owners,tags,domain";
 
   @Override
-  public APIService addHref(UriInfo uriInfo, APIService service) {
+  public ApiService addHref(UriInfo uriInfo, ApiService service) {
     super.addHref(uriInfo, service);
     Entity.withHref(uriInfo, service.getPipelines());
     return service;
@@ -96,7 +97,7 @@ public class APIServiceResource
     return null;
   }
 
-  public static class APIServiceList extends ResultList<APIService> {
+  public static class APIServiceList extends ResultList<ApiService> {
     /* Required for serde */
   }
 
@@ -118,7 +119,7 @@ public class APIServiceResource
                                 org.openmetadata.service.resources.services.apiservices
                                     .APIServiceResource.APIServiceList.class)))
       })
-  public ResultList<APIService> list(
+  public ResultList<ApiService> list(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(
@@ -165,12 +166,12 @@ public class APIServiceResource
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = APIService.class))),
+                    schema = @Schema(implementation = ApiService.class))),
         @ApiResponse(
             responseCode = "404",
             description = "API service for instance {id} is not found")
       })
-  public APIService get(
+  public ApiService get(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @PathParam("id") UUID id,
@@ -185,7 +186,7 @@ public class APIServiceResource
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    APIService apiService = getInternal(uriInfo, securityContext, id, fieldsParam, include);
+    ApiService apiService = getInternal(uriInfo, securityContext, id, fieldsParam, include);
     return decryptOrNullify(securityContext, apiService);
   }
 
@@ -202,12 +203,12 @@ public class APIServiceResource
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = APIService.class))),
+                    schema = @Schema(implementation = ApiService.class))),
         @ApiResponse(
             responseCode = "404",
             description = "API service for instance {id} is not found")
       })
-  public APIService getByName(
+  public ApiService getByName(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @PathParam("name") String name,
@@ -222,7 +223,7 @@ public class APIServiceResource
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    APIService apiService =
+    ApiService apiService =
         getByNameInternal(
             uriInfo, securityContext, EntityInterfaceUtil.quoteName(name), fieldsParam, include);
     return decryptOrNullify(securityContext, apiService);
@@ -241,9 +242,9 @@ public class APIServiceResource
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = APIService.class)))
+                    schema = @Schema(implementation = ApiService.class)))
       })
-  public APIService addTestConnectionResult(
+  public ApiService addTestConnectionResult(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the service", schema = @Schema(type = "UUID"))
@@ -252,7 +253,7 @@ public class APIServiceResource
       @Valid TestConnectionResult testConnectionResult) {
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.CREATE);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    APIService service = repository.addTestConnectionResult(id, testConnectionResult);
+    ApiService service = repository.addTestConnectionResult(id, testConnectionResult);
     return decryptOrNullify(securityContext, service);
   }
 
@@ -283,7 +284,7 @@ public class APIServiceResource
             .map(
                 json -> {
                   try {
-                    APIService apiService = JsonUtils.readValue((String) json, APIService.class);
+                    ApiService apiService = JsonUtils.readValue((String) json, ApiService.class);
                     return JsonUtils.pojoToJson(decryptOrNullify(securityContext, apiService));
                   } catch (Exception e) {
                     return json;
@@ -307,12 +308,12 @@ public class APIServiceResource
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = APIService.class))),
+                    schema = @Schema(implementation = ApiService.class))),
         @ApiResponse(
             responseCode = "404",
             description = "API service for instance {id} and version {version} is not found")
       })
-  public APIService getVersion(
+  public ApiService getVersion(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "API service Id", schema = @Schema(type = "string")) @PathParam("id")
@@ -322,13 +323,13 @@ public class APIServiceResource
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
           String version) {
-    APIService apiService = super.getVersionInternal(securityContext, id, version);
+    ApiService apiService = super.getVersionInternal(securityContext, id, version);
     return decryptOrNullify(securityContext, apiService);
   }
 
   @POST
   @Operation(
-      operationId = "createAPIService",
+      operationId = "createApiService",
       summary = "Create API service",
       description = "Create a new API service.",
       responses = {
@@ -338,16 +339,17 @@ public class APIServiceResource
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = APIService.class))),
+                    schema = @Schema(implementation = ApiService.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response create(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Valid CreateAPIService create) {
-    APIService service = getService(create, securityContext.getUserPrincipal().getName());
+      @Valid CreateApiService create) {
+    ApiService service =
+        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     Response response = create(uriInfo, securityContext, service);
-    decryptOrNullify(securityContext, (APIService) response.getEntity());
+    decryptOrNullify(securityContext, (ApiService) response.getEntity());
     return response;
   }
 
@@ -363,16 +365,17 @@ public class APIServiceResource
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = APIService.class))),
+                    schema = @Schema(implementation = ApiService.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response createOrUpdate(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Valid CreateAPIService update) {
-    APIService service = getService(update, securityContext.getUserPrincipal().getName());
+      @Valid CreateApiService update) {
+    ApiService service =
+        mapper.createToEntity(update, securityContext.getUserPrincipal().getName());
     Response response = createOrUpdate(uriInfo, securityContext, unmask(service));
-    decryptOrNullify(securityContext, (APIService) response.getEntity());
+    decryptOrNullify(securityContext, (ApiService) response.getEntity());
     return response;
   }
 
@@ -504,7 +507,7 @@ public class APIServiceResource
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = APIService.class)))
+                    schema = @Schema(implementation = ApiService.class)))
       })
   public Response restoreAPIService(
       @Context UriInfo uriInfo,
@@ -513,20 +516,13 @@ public class APIServiceResource
     return restoreEntity(uriInfo, securityContext, restore.getId());
   }
 
-  private APIService getService(CreateAPIService create, String user) {
-    return repository
-        .copy(new APIService(), create, user)
-        .withServiceType(create.getServiceType())
-        .withConnection(create.getConnection());
-  }
-
   @Override
-  protected APIService nullifyConnection(APIService service) {
+  protected ApiService nullifyConnection(ApiService service) {
     return service.withConnection(null);
   }
 
   @Override
-  protected String extractServiceType(APIService service) {
+  protected String extractServiceType(ApiService service) {
     return service.getServiceType().value();
   }
 }

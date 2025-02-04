@@ -42,6 +42,7 @@ import org.openmetadata.service.util.ResultList;
 @Collection(name = "storedProcedures")
 public class StoredProcedureResource
     extends EntityResource<StoredProcedure, StoredProcedureRepository> {
+  private final StoredProcedureMapper mapper = new StoredProcedureMapper();
   public static final String COLLECTION_PATH = "v1/storedProcedures/";
   static final String FIELDS = "owners,tags,followers,extension,domain,sourceHash";
 
@@ -271,7 +272,7 @@ public class StoredProcedureResource
       @Context SecurityContext securityContext,
       @Valid CreateStoredProcedure create) {
     StoredProcedure storedProcedure =
-        getStoredProcedure(create, securityContext.getUserPrincipal().getName());
+        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, storedProcedure);
   }
 
@@ -353,7 +354,7 @@ public class StoredProcedureResource
       @Context SecurityContext securityContext,
       @Valid CreateStoredProcedure create) {
     StoredProcedure storedProcedure =
-        getStoredProcedure(create, securityContext.getUserPrincipal().getName());
+        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, storedProcedure);
   }
 
@@ -526,14 +527,5 @@ public class StoredProcedureResource
       @Context SecurityContext securityContext,
       @Valid RestoreEntity restore) {
     return restoreEntity(uriInfo, securityContext, restore.getId());
-  }
-
-  private StoredProcedure getStoredProcedure(CreateStoredProcedure create, String user) {
-    return repository
-        .copy(new StoredProcedure(), create, user)
-        .withDatabaseSchema(getEntityReference(Entity.DATABASE_SCHEMA, create.getDatabaseSchema()))
-        .withStoredProcedureCode(create.getStoredProcedureCode())
-        .withSourceUrl(create.getSourceUrl())
-        .withSourceHash(create.getSourceHash());
   }
 }

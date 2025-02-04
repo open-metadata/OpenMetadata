@@ -41,7 +41,7 @@ import { ReactComponent as ImportIcon } from '../../../../assets/svg/ic-import.s
 import { ReactComponent as IconRestore } from '../../../../assets/svg/ic-restore.svg';
 import { ReactComponent as IconOpenLock } from '../../../../assets/svg/open-lock.svg';
 import { ReactComponent as IconTeams } from '../../../../assets/svg/teams.svg';
-import { ROUTES } from '../../../../constants/constants';
+import { PAGE_SIZE, ROUTES } from '../../../../constants/constants';
 import {
   GLOSSARIES_DOCS,
   ROLE_DOCS,
@@ -55,6 +55,7 @@ import { usePermissionProvider } from '../../../../context/PermissionProvider/Pe
 import { ResourceEntity } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
 import { EntityAction, EntityType } from '../../../../enums/entity.enum';
+import { SearchIndex } from '../../../../enums/search.enum';
 import { OwnerType } from '../../../../enums/user.enum';
 import { Operation } from '../../../../generated/entity/policies/policy';
 import { Team, TeamType } from '../../../../generated/entity/teams/team';
@@ -68,7 +69,7 @@ import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import useCustomLocation from '../../../../hooks/useCustomLocation/useCustomLocation';
 import AddAttributeModal from '../../../../pages/RolesPage/AddAttributeModal/AddAttributeModal';
 import { ImportType } from '../../../../pages/TeamsPage/ImportTeamsPage/ImportTeamsPage.interface';
-import { getSearchedTeams } from '../../../../rest/miscAPI';
+import { searchQuery } from '../../../../rest/searchAPI';
 import { exportTeam, restoreTeam } from '../../../../rest/teamsAPI';
 import { Transi18next } from '../../../../utils/CommonUtils';
 import { getEntityName } from '../../../../utils/EntityUtils';
@@ -209,11 +210,8 @@ const TeamDetailsV1 = ({
   );
 
   const teamCount = useMemo(
-    () =>
-      isOrganization && currentTeam && currentTeam.childrenCount
-        ? currentTeam.childrenCount + 1
-        : childTeamList.length,
-    [childTeamList, isOrganization, currentTeam.childrenCount]
+    () => currentTeam.childrenCount ?? childTeamList.length,
+    [childTeamList, currentTeam.childrenCount]
   );
   const updateActiveTab = (key: string) => {
     history.push({ search: Qs.stringify({ activeTab: key }) });
@@ -267,10 +265,38 @@ const TeamDetailsV1 = ({
 
   const searchTeams = async (text: string) => {
     try {
-      const res = await getSearchedTeams(text, 1, '');
-      const data = res.data.hits.hits.map((value) => value._source as Team);
+      const res = await searchQuery({
+        query: `*${text}*`,
+        pageNumber: 1,
+        pageSize: PAGE_SIZE,
+        queryFilter: {
+          query: {
+            bool: {
+              must_not: [
+                {
+                  term: {
+                    'name.keyword': 'Organization',
+                  },
+                },
+              ],
+            },
+          },
+        },
+        searchIndex: SearchIndex.TEAM,
+      });
 
-      setChildTeamList(data);
+      const data = res.hits.hits.map((value) => value._source as Team);
+
+      setChildTeamList(
+        data.map((team) => {
+          return {
+            ...team,
+            // search data will contain children empty array, so we need to remove it
+            // to avoid expand handler to show in ui
+            children: isEmpty(team.children) ? undefined : team.children,
+          };
+        })
+      );
     } catch (error) {
       setChildTeamList([]);
     }
@@ -681,6 +707,7 @@ const TeamDetailsV1 = ({
             currentTeam={currentTeam}
             data={childTeamList}
             isFetchingAllTeamAdvancedDetails={isFetchingAllTeamAdvancedDetails}
+            searchTerm={searchTerm}
             onTeamExpand={onTeamExpand}
           />
         </Col>
@@ -888,6 +915,7 @@ const TeamDetailsV1 = ({
     () =>
       !isOrganization &&
       !isUndefined(currentUser) &&
+      isGroupType &&
       (isAlreadyJoinedTeam ? (
         <Button
           ghost
@@ -908,7 +936,14 @@ const TeamDetailsV1 = ({
         )
       )),
 
-    [currentUser, isAlreadyJoinedTeam, isAdminUser, joinTeam, deleteUserHandler]
+    [
+      currentUser,
+      isAlreadyJoinedTeam,
+      isGroupType,
+      isAdminUser,
+      joinTeam,
+      deleteUserHandler,
+    ]
   );
 
   const teamsCollapseHeader = useMemo(
@@ -1066,6 +1101,7 @@ const TeamDetailsV1 = ({
     [
       currentTeam,
       searchTerm,
+      isOrganization,
       teamCount,
       currentTab,
       assetsCount,

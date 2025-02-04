@@ -13,7 +13,7 @@ Databricks Unity Catalog Source source methods.
 """
 import json
 import traceback
-from typing import Any, Iterable, List, Optional, Tuple, Union
+from typing import Any, Iterable, List, Optional, Tuple
 
 from databricks.sdk.service.catalog import ColumnInfo
 from databricks.sdk.service.catalog import TableConstraint as DBTableConstraint
@@ -22,12 +22,10 @@ from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequ
 from metadata.generated.schema.api.data.createDatabaseSchema import (
     CreateDatabaseSchemaRequest,
 )
-from metadata.generated.schema.api.data.createQuery import CreateQueryRequest
 from metadata.generated.schema.api.data.createStoredProcedure import (
     CreateStoredProcedureRequest,
 )
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
-from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.table import (
@@ -76,8 +74,8 @@ from metadata.ingestion.source.database.unitycatalog.models import (
 )
 from metadata.ingestion.source.models import TableView
 from metadata.utils import fqn
-from metadata.utils.db_utils import get_view_lineage
 from metadata.utils.filters import filter_by_database, filter_by_schema, filter_by_table
+from metadata.utils.helpers import retry_with_docker_host
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -92,6 +90,7 @@ class UnitycatalogSource(
     the unity catalog source
     """
 
+    @retry_with_docker_host()
     def __init__(self, config: WorkflowSource, metadata: OpenMetadata):
         super().__init__()
         self.config = config
@@ -325,7 +324,7 @@ class UnitycatalogSource(
             ) = self.get_table_constraints(table.table_constraints)
 
             table_constraints = self.update_table_constraints(
-                primary_constraints, foreign_constraints
+                primary_constraints, foreign_constraints, columns
             )
 
             table_request = CreateTableRequest(
@@ -436,7 +435,7 @@ class UnitycatalogSource(
         return table_constraints
 
     def update_table_constraints(
-        self, table_constraints, foreign_columns
+        self, table_constraints, foreign_columns, columns
     ) -> List[TableConstraint]:
         """
         From topology.
@@ -521,18 +520,6 @@ class UnitycatalogSource(
             )
             yield parsed_column
 
-    def yield_view_lineage(self) -> Iterable[Either[AddLineageRequest]]:
-        logger.info("Processing Lineage for Views")
-        for view in [
-            v for v in self.context.get().table_views if v.view_definition is not None
-        ]:
-            yield from get_view_lineage(
-                view=view,
-                metadata=self.metadata,
-                service_name=self.context.get().database_service,
-                connection_type=self.service_connection.type.value,
-            )
-
     def yield_tag(
         self, schema_name: str
     ) -> Iterable[Either[OMetaTagAndClassification]]:
@@ -548,12 +535,6 @@ class UnitycatalogSource(
 
     def get_stored_procedure_queries(self) -> Iterable[QueryByProcedure]:
         """Not Implemented"""
-
-    def yield_procedure_lineage_and_queries(
-        self,
-    ) -> Iterable[Either[Union[AddLineageRequest, CreateQueryRequest]]]:
-        """Not Implemented"""
-        yield from []
 
     def close(self):
         """Nothing to close"""

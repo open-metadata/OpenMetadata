@@ -14,17 +14,7 @@
 import { LoadingState } from 'Models';
 import { HTMLAttributes } from 'react';
 import { Edge as FlowEdge, Node } from 'reactflow';
-import { Column } from '../../../generated/entity/data/container';
 import { EntityReference } from '../../../generated/entity/type';
-
-export interface SelectedNode {
-  name: string;
-  type: string;
-  fqn: string;
-  displayName?: string;
-  id?: string;
-  entityId: string;
-}
 
 export interface Edge {
   edge: {
@@ -65,29 +55,8 @@ export interface CustomEdgeData {
   isExpanded?: false;
 }
 
-export interface SelectedEdge {
-  id: string;
-  source: EntityReference;
-  target: EntityReference;
-  data?: CustomEdgeData;
-}
-
 export type ElementLoadingState = Exclude<LoadingState, 'waiting'>;
 export type CustomElement = { node: Node[]; edge: FlowEdge[] };
-
-export type ModifiedColumn = Column & {
-  type: string;
-};
-
-export interface CustomControlElementsProps {
-  deleted: boolean | undefined;
-  isEditMode: boolean;
-  hasEditAccess: boolean | undefined;
-  onClick: () => void;
-  onExpandColumnClick: () => void;
-  loading: boolean;
-  status: LoadingState;
-}
 
 export enum EdgeTypeEnum {
   UP_STREAM = 'upstream',
@@ -105,15 +74,9 @@ export interface ControlProps extends HTMLAttributes<HTMLDivElement> {
   onLineageConfigUpdate?: (config: LineageConfig) => void;
 }
 
-export type LineagePos = 'from' | 'to';
-
 export interface LeafNodes {
   upStreamNode: Array<string>;
   downStreamNode: Array<string>;
-}
-export interface LoadingNodeState {
-  id: string | undefined;
-  state: boolean;
 }
 
 export interface EntityReferenceChild extends EntityReference {

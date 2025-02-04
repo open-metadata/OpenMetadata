@@ -16,15 +16,8 @@ import { DATA_STEWARD_RULES } from '../../constant/permission';
 import { generateRandomUsername, uuid } from '../../utils/common';
 import { PolicyClass } from '../access-control/PoliciesClass';
 import { RolesClass } from '../access-control/RolesClass';
+import { UserResponseDataType } from '../entity/Entity.interface';
 import { TeamClass } from '../team/TeamClass';
-
-type ResponseDataType = {
-  name: string;
-  displayName: string;
-  description: string;
-  id: string;
-  fullyQualifiedName: string;
-};
 
 type UserData = {
   email: string;
@@ -40,7 +33,7 @@ let dataStewardTeam: TeamClass;
 export class UserClass {
   data: UserData;
 
-  responseData: ResponseDataType;
+  responseData: UserResponseDataType = {} as UserResponseDataType;
   isUserDataSteward = false;
 
   constructor(data?: UserData) {
@@ -164,6 +157,17 @@ export class UserClass {
     const loginRes = page.waitForResponse('/api/v1/users/login');
     await page.getByTestId('login').click();
     await loginRes;
+
+    const modal = await page
+      .getByRole('dialog')
+      .locator('div')
+      .filter({ hasText: 'Getting Started' })
+      .nth(1)
+      .isVisible();
+
+    if (modal) {
+      await page.getByRole('dialog').getByRole('img').first().click();
+    }
   }
 
   async logout(page: Page) {

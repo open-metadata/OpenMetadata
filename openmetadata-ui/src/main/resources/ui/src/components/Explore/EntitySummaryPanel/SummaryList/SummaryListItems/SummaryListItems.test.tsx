@@ -21,7 +21,7 @@ import {
 } from '../../mocks/SummaryListItems.mock';
 import SummaryListItem from './SummaryListItems.component';
 
-jest.mock('../../../../common/RichTextEditor/RichTextEditorPreviewer', () =>
+jest.mock('../../../../common/RichTextEditor/RichTextEditorPreviewerV1', () =>
   jest
     .fn()
     .mockImplementation(() => (

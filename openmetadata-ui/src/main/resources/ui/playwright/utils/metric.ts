@@ -110,6 +110,7 @@ export const updateExpression = async (
   language: string,
   code: string
 ) => {
+  await page.getByRole('tab', { name: 'Expression', exact: true }).click();
   await page.click(`[data-testid="edit-expression-button"]`);
 
   // Select the language
@@ -128,8 +129,10 @@ export const updateExpression = async (
   await patchPromise;
 
   await expect(
-    page.getByLabel('Overview').locator('.CodeMirror-scroll')
+    page.getByLabel('Expression').locator('.CodeMirror-scroll')
   ).toContainText(code);
+
+  await page.getByRole('tab', { name: 'Overview', exact: true }).click();
 };
 
 export const updateRelatedMetric = async (

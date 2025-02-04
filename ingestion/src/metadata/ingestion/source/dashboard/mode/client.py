@@ -67,15 +67,27 @@ class ModeApiClient:
         )
         self.client = REST(client_config)
 
-    def fetch_all_reports(self, workspace_name: str) -> Optional[list]:
+    def fetch_all_reports(
+        self, workspace_name: str, filter: Optional[str] = "all"
+    ) -> Optional[list]:
         """Method to fetch all reports for Mode
         Args:
             workspace_name:
+            filter:
         Returns:
             dict
         """
+        if filter not in ["custom", "all"]:
+            logger.warning(
+                "Invalid value for filter. Should be one of ['custom', 'all']"
+            )
+            return
+
         all_reports = []
-        response_collections = self.client.get(f"/{workspace_name}/{COLLECTIONS}")
+        filter_param = f"?filter={filter}"
+        response_collections = self.client.get(
+            f"/{workspace_name}/{COLLECTIONS}{filter_param}"
+        )
         collections = response_collections[EMBEDDED]["spaces"]
         for collection in collections:
             response_reports = self.get_all_reports_for_collection(
@@ -175,3 +187,18 @@ class ModeApiClient:
             logger.warning(f"Error fetching all data sources: {exc}")
 
         return None
+
+    def get_workspace(self, workspace_name: str) -> Optional[dict]:
+        """Method to get info about a workspace
+        Args:
+            workspace_name:
+        Returns:
+            dict
+        """
+        try:
+            response = self.client.get(f"/{workspace_name}")
+            return response
+        except Exception as exc:  # pylint: disable=broad-except
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Error testing workspace connection: {exc}")
+            raise exc

@@ -10,12 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import test from '@playwright/test';
+import test, { expect } from '@playwright/test';
 import { SidebarItem } from '../../constant/sidebar';
 import { Domain } from '../../support/domain/Domain';
 import { TableClass } from '../../support/entity/TableClass';
 import {
   assignDomain,
+  clickOutside,
   createNewPage,
   redirectToHomePage,
 } from '../../utils/common';
@@ -80,7 +81,7 @@ test('search dropdown should work properly for quick filters', async ({
 
 test('should search for empty or null filters', async ({ page }) => {
   const items = [
-    { label: 'Owner', key: 'owners.displayName.keyword' },
+    { label: 'Owners', key: 'owners.displayName.keyword' },
     { label: 'Tag', key: 'tags.tagFQN' },
     { label: 'Domain', key: 'domain.displayName.keyword' },
     { label: 'Tier', key: 'tier.tagFQN' },
@@ -91,7 +92,7 @@ test('should search for empty or null filters', async ({ page }) => {
   }
 });
 
-test('should search for multiple values alongwith null filters', async ({
+test('should search for multiple values along with null filters', async ({
   page,
 }) => {
   const items = [
@@ -110,4 +111,38 @@ test('should search for multiple values alongwith null filters', async ({
   for (const filter of items) {
     await selectNullOption(page, filter);
   }
+});
+
+test('should persist quick filter on global search', async ({ page }) => {
+  const items = [{ label: 'Owners', key: 'owners.displayName.keyword' }];
+
+  for (const filter of items) {
+    await selectNullOption(page, filter, false);
+  }
+
+  const waitForSearchResponse = page.waitForResponse(
+    '/api/v1/search/query?q=*index=dataAsset*'
+  );
+
+  await page
+    .getByTestId('searchBox')
+    .fill(table.entityResponseData.fullyQualifiedName);
+  await waitForSearchResponse;
+
+  await clickOutside(page);
+
+  // expect the quick filter to be persisted
+  await expect(
+    page.getByRole('button', { name: 'Owners : No Owners' })
+  ).toBeVisible();
+
+  await page.getByTestId('searchBox').click();
+  await page.keyboard.down('Enter');
+
+  await page.waitForLoadState('networkidle');
+
+  // expect the quick filter to be persisted
+  await expect(
+    page.getByRole('button', { name: 'Owners : No Owners' })
+  ).toBeVisible();
 });

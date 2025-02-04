@@ -51,6 +51,7 @@ class PostgresUsageSource(PostgresQueryParserSource, UsageSource):
                     try:
                         queries.append(
                             TableQuery(
+                                dialect=self.dialect.value,
                                 query=row["query_text"],
                                 userName=row["usename"],
                                 analysisDate=DateTime(datetime.now()),

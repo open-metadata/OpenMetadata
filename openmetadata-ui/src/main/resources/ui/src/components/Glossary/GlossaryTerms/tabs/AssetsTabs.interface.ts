@@ -23,6 +23,7 @@ export enum AssetsOfEntity {
   FOLLOWING = 'FOLLOWING',
   ACCESS_TOKEN = 'ACCESS_TOKEN',
   LINEAGE = 'LINEAGE',
+  TAG = 'TAG',
 }
 
 export interface AssetsTabsProps {

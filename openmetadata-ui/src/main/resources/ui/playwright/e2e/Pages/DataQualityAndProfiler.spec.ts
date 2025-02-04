@@ -90,7 +90,7 @@ test('Table test case', PLAYWRIGHT_INGESTION_TAG_OBJ, async ({ page }) => {
       '#tableTestForm_params_columnName',
       NEW_TABLE_TEST_CASE.field
     );
-    await page.fill(descriptionBox, NEW_TABLE_TEST_CASE.description);
+    await page.locator(descriptionBox).fill(NEW_TABLE_TEST_CASE.description);
     await page.click('[data-testid="submit-test"]');
 
     await page.waitForSelector('[data-testid="success-line"]');
@@ -130,7 +130,7 @@ test('Table test case', PLAYWRIGHT_INGESTION_TAG_OBJ, async ({ page }) => {
     ).toBeVisible();
 
     const testCaseResponse = page.waitForResponse(
-      '/api/v1/dataQuality/testCases/search/list?fields=*'
+      '/api/v1/dataQuality/testCases/search/list?*fields=*'
     );
     await page.click(`[data-testid="view-service-button"]`);
     await testCaseResponse;
@@ -191,7 +191,7 @@ test('Column test case', PLAYWRIGHT_INGESTION_TAG_OBJ, async ({ page }) => {
     await testDefinitionResponse;
     await page.fill('#tableTestForm_testName', NEW_COLUMN_TEST_CASE.name);
     await page.click('#tableTestForm_testTypeId');
-    await page.click(`[title="${NEW_COLUMN_TEST_CASE.label}"]`);
+    await page.click(`[data-testid="${NEW_COLUMN_TEST_CASE.type}"]`);
     await page.fill(
       '#tableTestForm_params_minLength',
       NEW_COLUMN_TEST_CASE.min
@@ -200,7 +200,7 @@ test('Column test case', PLAYWRIGHT_INGESTION_TAG_OBJ, async ({ page }) => {
       '#tableTestForm_params_maxLength',
       NEW_COLUMN_TEST_CASE.max
     );
-    await page.fill(descriptionBox, NEW_COLUMN_TEST_CASE.description);
+    await page.locator(descriptionBox).fill(NEW_COLUMN_TEST_CASE.description);
 
     await page.click('[data-testid="submit-test"]');
     await page.waitForSelector('[data-testid="success-line"]');
@@ -210,7 +210,7 @@ test('Column test case', PLAYWRIGHT_INGESTION_TAG_OBJ, async ({ page }) => {
     await page.waitForSelector('[data-testid="view-service-button"]');
 
     const testCaseResponse = page.waitForResponse(
-      '/api/v1/dataQuality/testCases/search/list?fields=*'
+      '/api/v1/dataQuality/testCases/search/list?*fields=*'
     );
     await page.click(`[data-testid="view-service-button"]`);
     await testCaseResponse;
@@ -395,7 +395,7 @@ test(
 
       // Edit test case description
       await page.click(`[data-testid="edit-${testCaseName}"]`);
-      await page.fill(descriptionBox, 'Test case description');
+      await page.locator(descriptionBox).fill('Test case description');
       const updateTestCaseResponse2 = page.waitForResponse(
         (response) =>
           response.url().includes('/api/v1/dataQuality/testCases/') &&
@@ -407,7 +407,11 @@ test(
 
       expect(body2).toEqual(
         JSON.stringify([
-          { op: 'add', path: '/description', value: 'Test case description' },
+          {
+            op: 'add',
+            path: '/description',
+            value: '<p>Test case description</p>',
+          },
         ])
       );
 
@@ -493,8 +497,11 @@ test(
     await page.getByTestId('profiler').click();
     await page
       .getByTestId('profiler-tab-left-panel')
-      .getByText('Table Profile')
+      .getByText('Data Quality')
       .click();
+
+    await page.reload();
+    await page.waitForLoadState('networkidle');
 
     await page.click('[data-testid="profiler-setting-btn"]');
     await page.waitForSelector('.ant-modal-body');
@@ -630,7 +637,7 @@ test('TestCase filters', PLAYWRIGHT_INGESTION_TAG_OBJ, async ({ page }) => {
   await filterTable1.createTestSuiteAndPipelines(apiContext);
   const { testSuiteData: testSuite2Response } =
     await filterTable1.createTestSuiteAndPipelines(apiContext, {
-      executableEntityReference: filterTable2Response?.['fullyQualifiedName'],
+      basicEntityReference: filterTable2Response?.['fullyQualifiedName'],
     });
 
   const testCaseResult = {

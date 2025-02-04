@@ -20,12 +20,14 @@ export interface SearchIndexFieldsTableProps {
   searchIndexFields: Array<SearchIndexField>;
   hasDescriptionEditAccess: boolean;
   hasTagEditAccess: boolean;
+  hasGlossaryTermEditAccess: boolean;
   searchedFields: Array<SearchIndexField>;
   expandableConfig: ExpandableConfig<SearchIndexField>;
   isReadOnly?: boolean;
   entityFqn: string;
   onUpdate: (fields: Array<SearchIndexField>) => Promise<void>;
   onThreadLinkSelect: (value: string, threadType?: ThreadType) => void;
+  searchText?: string;
 }
 
 export type SearchIndexCellRendered<T, K extends keyof T> = (

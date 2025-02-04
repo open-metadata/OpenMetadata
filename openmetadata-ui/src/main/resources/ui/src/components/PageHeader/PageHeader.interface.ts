@@ -22,4 +22,5 @@ export interface HeaderProps {
   };
   titleProps?: TypographyProps;
   subHeaderProps?: ParagraphProps;
+  isBeta?: boolean;
 }

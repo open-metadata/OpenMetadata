@@ -20,6 +20,11 @@ import { Paging } from '../generated/type/paging';
 import { getEncodedFqn } from '../utils/StringsUtils';
 import APIClient from './index';
 
+export type FieldData = {
+  name: string;
+  type: string;
+};
+
 export const getTypeListByCategory = async (category: Category) => {
   const path = `/metadata/types`;
 
@@ -38,6 +43,13 @@ export const getTypeByFQN = async (typeFQN: string) => {
   const params = { fields: TabSpecificField.CUSTOM_PROPERTIES };
 
   const response = await APIClient.get<Type>(path, { params });
+
+  return response.data;
+};
+
+export const getAllCustomProperties = async () => {
+  const path = `/metadata/types/customProperties`;
+  const response = await APIClient.get<Type>(path);
 
   return response.data;
 };

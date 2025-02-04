@@ -13,9 +13,14 @@
 import { APIRequestContext, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
 import { SERVICE_TYPE } from '../../constant/service';
+import { ServiceTypes } from '../../constant/settings';
 import { uuid } from '../../utils/common';
 import { visitEntityPage } from '../../utils/entity';
-import { EntityTypeEndpoint } from './Entity.interface';
+import {
+  EntityTypeEndpoint,
+  ResponseDataType,
+  ResponseDataWithServiceType,
+} from './Entity.interface';
 import { EntityClass } from './EntityClass';
 
 export class SearchIndexClass extends EntityClass {
@@ -90,8 +95,9 @@ export class SearchIndexClass extends EntityClass {
     fields: this.children,
   };
 
-  serviceResponseData: unknown;
-  entityResponseData: unknown;
+  serviceResponseData: ResponseDataType = {} as ResponseDataType;
+  entityResponseData: ResponseDataWithServiceType =
+    {} as ResponseDataWithServiceType;
 
   constructor(name?: string) {
     super(EntityTypeEndpoint.SearchIndex);
@@ -100,6 +106,7 @@ export class SearchIndexClass extends EntityClass {
     this.childrenTabId = 'fields';
     this.childrenSelectorId = this.children[0].fullyQualifiedName;
     this.serviceCategory = SERVICE_TYPE.Search;
+    this.serviceType = ServiceTypes.SEARCH_SERVICES;
   }
 
   async create(apiContext: APIRequestContext) {

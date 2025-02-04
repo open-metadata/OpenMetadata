@@ -10,18 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
-import { Glossary } from '../../../generated/entity/data/glossary';
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
 import { VotingDataProps } from '../../Entity/Voting/voting.interface';
 
 export interface GlossaryHeaderProps {
-  isVersionView?: boolean;
   supportAddOwner?: boolean;
-  permissions: OperationPermission;
-  selectedData: Glossary | GlossaryTerm;
-  isGlossary: boolean;
-  onUpdate: (data: GlossaryTerm | Glossary) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
   onAssetAdd?: () => void;
   updateVote?: (data: VotingDataProps) => Promise<void>;

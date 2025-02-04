@@ -52,6 +52,7 @@ import { GLOSSARIES_DOCS } from '../../../../constants/docs.constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
 import { EntityType, TabSpecificField } from '../../../../enums/entity.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
+import { Tag } from '../../../../generated/entity/classification/tag';
 import { GlossaryTerm } from '../../../../generated/entity/data/glossaryTerm';
 import { DataProduct } from '../../../../generated/entity/domains/dataProduct';
 import { Domain } from '../../../../generated/entity/domains/domain';
@@ -72,7 +73,9 @@ import {
   removeAssetsFromGlossaryTerm,
 } from '../../../../rest/glossaryAPI';
 import { searchQuery } from '../../../../rest/searchAPI';
+import { getTagByFqn, removeAssetsFromTags } from '../../../../rest/tagAPI';
 import { getAssetsPageQuickFilters } from '../../../../utils/AdvancedSearchUtils';
+import { getEntityTypeString } from '../../../../utils/Assets/AssetsUtils';
 import { Transi18next } from '../../../../utils/CommonUtils';
 import {
   getEntityName,
@@ -86,6 +89,7 @@ import {
   escapeESReservedCharacters,
   getEncodedFqn,
 } from '../../../../utils/StringsUtils';
+import { getTagAssetsQueryFilter } from '../../../../utils/TagsUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { ManageButtonItemLabel } from '../../../common/ManageButtonContentItem/ManageButtonContentItem.component';
@@ -153,6 +157,7 @@ const AssetsTabs = forwardRef(
           AssetsOfEntity.DATA_PRODUCT,
           AssetsOfEntity.DOMAIN,
           AssetsOfEntity.GLOSSARY,
+          AssetsOfEntity.TAG,
         ].includes(type),
       [type]
     );
@@ -164,7 +169,7 @@ const AssetsTabs = forwardRef(
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [assetToDelete, setAssetToDelete] = useState<SourceType>();
     const [activeEntity, setActiveEntity] = useState<
-      Domain | DataProduct | GlossaryTerm
+      Domain | DataProduct | GlossaryTerm | Tag
     >();
 
     const [selectedItems, setSelectedItems] = useState<
@@ -177,12 +182,8 @@ const AssetsTabs = forwardRef(
     >([]);
     const [filters, setFilters] = useState<ExploreQuickFilterField[]>([]);
     const [searchValue, setSearchValue] = useState('');
-    const entityTypeString =
-      type === AssetsOfEntity.GLOSSARY
-        ? t('label.glossary-term-lowercase')
-        : type === AssetsOfEntity.DOMAIN
-        ? t('label.domain-lowercase')
-        : t('label.data-product-lowercase');
+
+    const entityTypeString = getEntityTypeString(type);
 
     const handleMenuClick = ({ key }: { key: string }) => {
       setSelectedFilter((prevSelected) => [...prevSelected, key]);
@@ -206,8 +207,8 @@ const AssetsTabs = forwardRef(
           return `(dataProducts.fullyQualifiedName:"${encodedFqn}")`;
 
         case AssetsOfEntity.TEAM:
-          return `(owners.fullyQualifiedName:"${escapeESReservedCharacters(
-            fqn
+          return `(owners.fullyQualifiedName:"${getEncodedFqn(
+            escapeESReservedCharacters(fqn)
           )}")`;
 
         case AssetsOfEntity.MY_DATA:
@@ -215,7 +216,7 @@ const AssetsTabs = forwardRef(
           return queryFilter ?? '';
 
         default:
-          return `(tags.tagFQN:"${encodedFqn}")`;
+          return getTagAssetsQueryFilter(encodedFqn);
       }
     }, [type, fqn, entityFqn]);
 
@@ -310,6 +311,11 @@ const AssetsTabs = forwardRef(
           break;
         case AssetsOfEntity.GLOSSARY:
           data = await getGlossaryTermByFQN(fqn);
+
+          break;
+
+        case AssetsOfEntity.TAG:
+          data = await getTagByFqn(fqn);
 
           break;
         default:
@@ -414,6 +420,11 @@ const AssetsTabs = forwardRef(
                 activeEntity as GlossaryTerm,
                 entities
               );
+
+              break;
+
+            case AssetsOfEntity.TAG:
+              await removeAssetsFromTags(activeEntity.id ?? '', entities);
 
               break;
 
@@ -619,6 +630,7 @@ const AssetsTabs = forwardRef(
                 handleSummaryPanelDisplay={setSelectedCard}
                 id={_id}
                 key={'assets_' + _id}
+                searchValue={searchValue}
                 showCheckboxes={Boolean(activeEntity) && permissions.Create}
                 showTags={false}
                 source={_source}
@@ -631,6 +643,7 @@ const AssetsTabs = forwardRef(
               <NextPrevious
                 isNumberBased
                 currentPage={currentPage}
+                isLoading={isLoading}
                 pageSize={pageSize}
                 paging={paging}
                 pagingHandler={({ currentPage }: PagingHandlerParams) =>
@@ -899,7 +912,7 @@ const AssetsTabs = forwardRef(
         {!(isLoading || isCountLoading) && (
           <div
             className={classNames('asset-tab-delete-notification', {
-              visible: selectedItems.size > 1,
+              visible: selectedItems.size > 0,
             })}>
             <div className="d-flex items-center justify-between">
               <Typography.Text className="text-white">

@@ -14,7 +14,7 @@ import { expect, Page, test as base } from '@playwright/test';
 import { PersonaClass } from '../../support/persona/PersonaClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
-import { redirectToHomePage } from '../../utils/common';
+import { redirectToHomePage, toastNotification } from '../../utils/common';
 import {
   checkAllDefaultWidgets,
   navigateToCustomizeLandingPage,
@@ -239,17 +239,16 @@ test.describe('Customize Landing Page Flow', () => {
           .click();
 
         // Verify the toast notification
-        const toastNotification = adminPage.locator('.Toastify__toast-body');
-
-        await expect(toastNotification).toContainText(
-          'Page layout updated successfully.'
-        );
+        await toastNotification(adminPage, 'Page layout updated successfully.');
 
         // Check if all widgets are present after resetting the layout
         await checkAllDefaultWidgets(adminPage, true);
 
         // Check if all widgets are present on landing page
         await redirectToHomePage(adminPage);
+
+        // Ensures the page is fully loaded
+        await adminPage.waitForLoadState('networkidle');
 
         await checkAllDefaultWidgets(adminPage);
       }

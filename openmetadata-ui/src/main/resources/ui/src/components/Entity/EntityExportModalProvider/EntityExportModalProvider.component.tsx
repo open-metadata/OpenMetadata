@@ -12,11 +12,16 @@
  */
 import { Form, Input, Modal } from 'antd';
 import { AxiosError } from 'axios';
-import React, { ReactNode, useEffect, useMemo, useState } from 'react';
+import classNames from 'classnames';
+import { isString } from 'lodash';
+import React, { ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getCurrentISODate } from '../../../utils/date-time/DateTimeUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import Banner from '../../common/Banner/Banner';
 import {
+  CSVExportJob,
+  CSVExportWebsocketResponse,
   EntityExportModalContextProps,
   ExportData,
 } from './EntityExportModalProvider.interface';
@@ -35,6 +40,11 @@ export const EntityExportModalProvider = ({
   const { t } = useTranslation();
   const [exportData, setExportData] = useState<ExportData | null>(null);
   const [downloading, setDownloading] = useState<boolean>(false);
+
+  const csvExportJobRef = useRef<Partial<CSVExportJob>>();
+
+  const [csvExportJob, setCSVExportJob] = useState<Partial<CSVExportJob>>();
+
   const handleCancel = () => {
     setExportData(null);
   };
@@ -68,13 +78,67 @@ export const EntityExportModalProvider = ({
     }
     try {
       setDownloading(true);
+      // assigning the job data to ref here, as exportData.onExport may take time to return the data
+      // and websocket connection may be respond before that, so we need to keep the job data in ref
+      // to handle the download
+      csvExportJobRef.current = {
+        fileName: fileName,
+      };
       const data = await exportData.onExport(exportData.name);
 
-      handleDownload(data, fileName);
-      handleCancel();
+      if (isString(data)) {
+        handleDownload(data, fileName);
+        handleCancel();
+        setDownloading(false);
+      } else {
+        const jobData = {
+          jobId: data.jobId,
+          fileName: fileName,
+          message: data.message,
+        };
+
+        setCSVExportJob(jobData);
+        csvExportJobRef.current = jobData;
+      }
     } catch (error) {
       showErrorToast(error as AxiosError);
-    } finally {
+      setDownloading(false);
+    }
+  };
+
+  const handleCSVExportSuccess = (data: string, fileName?: string) => {
+    handleDownload(
+      data,
+      fileName ?? `${exportData?.name}_${getCurrentISODate()}`
+    );
+    setDownloading(false);
+    handleCancel();
+    setCSVExportJob(undefined);
+    csvExportJobRef.current = undefined;
+  };
+
+  const handleCSVExportJobUpdate = (
+    response: Partial<CSVExportWebsocketResponse>
+  ) => {
+    // If multiple tab is open, then we need to check if the tab has active job or not before initiating the download
+    if (!csvExportJobRef.current) {
+      return;
+    }
+    const updatedCSVExportJob: Partial<CSVExportJob> = {
+      ...response,
+      ...csvExportJobRef.current,
+    };
+
+    setCSVExportJob(updatedCSVExportJob);
+
+    csvExportJobRef.current = updatedCSVExportJob;
+
+    if (response.status === 'COMPLETED' && response.data) {
+      handleCSVExportSuccess(
+        response.data ?? '',
+        csvExportJobRef.current?.fileName
+      );
+    } else {
       setDownloading(false);
     }
   };
@@ -88,7 +152,13 @@ export const EntityExportModalProvider = ({
     }
   }, [exportData]);
 
-  const providerValue = useMemo(() => ({ showModal }), []);
+  const providerValue = useMemo(
+    () => ({
+      showModal,
+      onUpdateCSVExportJob: handleCSVExportJobUpdate,
+    }),
+    []
+  );
 
   return (
     <EntityExportModalContext.Provider value={providerValue}>
@@ -100,13 +170,13 @@ export const EntityExportModalProvider = ({
             open
             cancelText={t('label.cancel')}
             closable={false}
-            confirmLoading={downloading}
             data-testid="export-entity-modal"
             maskClosable={false}
             okButtonProps={{
               form: 'export-form',
               htmlType: 'submit',
               id: 'submit-button',
+              disabled: downloading,
             }}
             okText={t('label.export')}
             title={exportData.title ?? t('label.export')}
@@ -117,6 +187,7 @@ export const EntityExportModalProvider = ({
               layout="vertical"
               onFinish={handleExport}>
               <Form.Item
+                className={classNames({ 'mb-0': !csvExportJob?.jobId })}
                 label={`${t('label.entity-name', {
                   entity: t('label.file'),
                 })}:`}
@@ -124,6 +195,15 @@ export const EntityExportModalProvider = ({
                 <Input addonAfter=".csv" data-testid="file-name-input" />
               </Form.Item>
             </Form>
+
+            {csvExportJob?.jobId && (
+              <Banner
+                className="border-radius"
+                isLoading={downloading}
+                message={csvExportJob.error ?? csvExportJob.message ?? ''}
+                type={csvExportJob.error ? 'error' : 'success'}
+              />
+            )}
           </Modal>
         )}
       </>

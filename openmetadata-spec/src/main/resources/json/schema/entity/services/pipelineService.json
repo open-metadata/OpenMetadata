@@ -32,7 +32,9 @@
         "OpenLineage",
         "KafkaConnect",
         "DBTCloud",
-        "Matillion"
+        "Matillion",
+        "Stitch",
+        "DataFactory"
       ],
       "javaEnums": [
         {
@@ -82,6 +84,12 @@
         },
         {
           "name": "Matillion"
+        },
+        {
+          "name": "DataFactory"
+        },
+        {
+          "name": "Stitch"
         }
       ]
     },
@@ -143,6 +151,12 @@
             },
             {
               "$ref": "./connections/pipeline/matillionConnection.json"
+            },
+            {
+              "$ref": "./connections/pipeline/datafactoryConnection.json"
+            },
+            {
+              "$ref": "./connections/pipeline/stitchConnection.json"
             }
           ]
         }
@@ -197,7 +211,7 @@
       "items": {
         "$ref": "../../type/tagLabel.json"
       },
-      "default": null
+      "default": []
     },
     "pipelines": {
       "description": "References to pipelines deployed for this pipeline service to extract metadata",

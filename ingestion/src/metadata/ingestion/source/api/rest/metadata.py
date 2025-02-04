@@ -23,8 +23,8 @@ from metadata.generated.schema.api.data.createAPIEndpoint import (
 )
 from metadata.generated.schema.entity.data.apiCollection import APICollection
 from metadata.generated.schema.entity.data.apiEndpoint import ApiRequestMethod
-from metadata.generated.schema.entity.services.connections.apiService.restConnection import (
-    RESTConnection,
+from metadata.generated.schema.entity.services.connections.api.restConnection import (
+    RestConnection,
 )
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
@@ -62,10 +62,10 @@ class RestSource(ApiServiceSource):
         cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
     ):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
-        connection: RESTConnection = config.serviceConnection.root.config
-        if not isinstance(connection, RESTConnection):
+        connection: RestConnection = config.serviceConnection.root.config
+        if not isinstance(connection, RestConnection):
             raise InvalidSourceException(
-                f"Expected RESTConnection, but got {connection}"
+                f"Expected RestConnection, but got {connection}"
             )
         return cls(config, metadata)
 
@@ -171,7 +171,7 @@ class RestSource(ApiServiceSource):
                     break
             return filtered_paths
         except Exception as err:
-            logger.info(
+            logger.warning(
                 f"Error while filtering endpoints for collection {collection.name.root}"
             )
             return None
@@ -184,7 +184,7 @@ class RestSource(ApiServiceSource):
                 endpoint.name = f"{path} - {method_type}"
             return endpoint
         except Exception as err:
-            logger.info(f"Error while parsing endpoint data: {err}")
+            logger.warning(f"Error while parsing endpoint data: {err}")
         return None
 
     def _generate_collection_url(self, collection_name: str) -> Optional[AnyUrl]:
@@ -195,7 +195,7 @@ class RestSource(ApiServiceSource):
                     f"{self.config.serviceConnection.root.config.openAPISchemaURL}#tag/{collection_name}"
                 )
         except Exception as err:
-            logger.info(f"Error while generating collection url: {err}")
+            logger.warning(f"Error while generating collection url: {err}")
         return None
 
     def _generate_endpoint_url(self, endpoint_name: str) -> AnyUrl:
@@ -203,15 +203,14 @@ class RestSource(ApiServiceSource):
         base_url = self.config.serviceConnection.root.config.openAPISchemaURL
         if endpoint_name:
             return AnyUrl(f"{base_url}#operation/{endpoint_name}")
-        else:
-            return AnyUrl(base_url)
+        return AnyUrl(base_url)
 
     def _get_api_request_method(self, method_type: str) -> Optional[str]:
         """fetch endpoint request method"""
         try:
             return ApiRequestMethod[method_type.upper()]
         except KeyError as err:
-            logger.info(f"Keyerror while fetching request method: {err}")
+            logger.warning(f"Keyerror while fetching request method: {err}")
         return None
 
     def _get_request_schema(self, info: dict) -> Optional[APISchema]:
@@ -227,9 +226,9 @@ class RestSource(ApiServiceSource):
             if not schema_ref:
                 logger.debug("No request schema found for the endpoint")
                 return None
-            return self._process_schema(schema_ref)
+            return APISchema(schemaFields=self.process_schema_fields(schema_ref))
         except Exception as err:
-            logger.info(f"Error while parsing request schema: {err}")
+            logger.warning(f"Error while parsing request schema: {err}")
         return None
 
     def _get_response_schema(self, info: dict) -> Optional[APISchema]:
@@ -246,33 +245,43 @@ class RestSource(ApiServiceSource):
             if not schema_ref:
                 logger.debug("No response schema found for the endpoint")
                 return None
-            return self._process_schema(schema_ref)
+            return APISchema(schemaFields=self.process_schema_fields(schema_ref))
         except Exception as err:
-            logger.info(f"Error while parsing response schema: {err}")
+            logger.warning(f"Error while parsing response schema: {err}")
         return None
 
-    def _process_schema(self, schema_ref: str) -> Optional[List[APISchema]]:
-        """process schema"""
+    def process_schema_fields(self, schema_ref: str) -> Optional[List[FieldModel]]:
         try:
-            schema_ref = schema_ref.split("/")[-1]
+            schema_name = schema_ref.split("/")[-1]
             schema_fields = (
-                self.json_response.get("components").get("schemas").get(schema_ref)
+                self.json_response.get("components").get("schemas").get(schema_name)
             )
 
             fetched_fields = []
             for key, val in schema_fields.get("properties", {}).items():
                 dtype = val.get("type")
-                if not dtype:
-                    continue
-                fetched_fields.append(
-                    FieldModel(
-                        name=key,
-                        dataType=DataTypeTopic[dtype.upper()]
+                if dtype:
+                    parsed_dtype = (
+                        DataTypeTopic[dtype.upper()]
                         if dtype.upper() in DataTypeTopic.__members__
-                        else DataTypeTopic.UNKNOWN,
+                        else DataTypeTopic.UNKNOWN
                     )
-                )
-            return APISchema(schemaFields=fetched_fields)
+                    fetched_fields.append(FieldModel(name=key, dataType=parsed_dtype))
+                else:
+                    # If type of field is not defined then check for sub-schema
+                    # Check if it's `object` type field
+                    # check infinite recrusrion by comparing with parent(schema_ref)
+                    object_children = None
+                    if val.get("$ref") and val.get("$ref") != schema_ref:
+                        object_children = self.process_schema_fields(val.get("$ref"))
+                    fetched_fields.append(
+                        FieldModel(
+                            name=key,
+                            dataType=DataTypeTopic.UNKNOWN,
+                            children=object_children,
+                        )
+                    )
+            return fetched_fields
         except Exception as err:
-            logger.info(f"Error while processing request schema: {err}")
+            logger.warning(f"Error while processing schema fields: {err}")
         return None

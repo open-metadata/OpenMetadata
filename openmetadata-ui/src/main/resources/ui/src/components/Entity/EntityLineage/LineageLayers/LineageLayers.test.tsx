@@ -14,7 +14,7 @@ import { act, queryByText, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
 import { ReactFlowProvider } from 'reactflow';
-import { LineageLayerView } from '../../../../context/LineageProvider/LineageProvider.interface';
+import { LineageLayer } from '../../../../generated/settings/settings';
 import LineageLayers from './LineageLayers';
 
 const onMockColumnClick = jest.fn();
@@ -113,13 +113,13 @@ describe('LineageLayers component', () => {
     userEvent.click(columnButton as HTMLElement);
 
     expect(onMockUpdateLayerView).toHaveBeenCalledWith([
-      LineageLayerView.COLUMN,
+      LineageLayer.ColumnLevelLineage,
     ]);
 
     userEvent.click(dataObservabilityBtn as HTMLElement);
 
     expect(onMockUpdateLayerView).toHaveBeenCalledWith([
-      LineageLayerView.DATA_OBSERVARABILITY,
+      LineageLayer.DataObservability,
     ]);
   });
 });

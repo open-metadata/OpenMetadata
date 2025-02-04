@@ -100,7 +100,7 @@ class OMetaTestSuiteTest(TestCase):
                 description=Markdown(
                     root="This is a test suite for the integration tests"
                 ),
-                executableEntityReference=FullyQualifiedEntityName(
+                basicEntityReference=FullyQualifiedEntityName(
                     "sample_data.ecommerce_db.shopify.dim_address"
                 ),
             )

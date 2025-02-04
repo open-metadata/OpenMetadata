@@ -10,55 +10,85 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Col, Row, Space } from 'antd';
+import { noop } from 'lodash';
 import React, { useMemo, useState } from 'react';
+import RGL, { WidthProvider } from 'react-grid-layout';
+import { useParams } from 'react-router-dom';
 import { EntityField } from '../../../../constants/Feeds.constants';
-import { COMMON_RESIZABLE_PANEL_CONFIG } from '../../../../constants/ResizablePanel.constants';
-import { OperationPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
-import { EntityType } from '../../../../enums/entity.enum';
+import { GlossaryTermDetailPageWidgetKeys } from '../../../../enums/CustomizeDetailPage.enum';
+import { EntityTabs, EntityType } from '../../../../enums/entity.enum';
 import { Glossary } from '../../../../generated/entity/data/glossary';
 import { GlossaryTerm } from '../../../../generated/entity/data/glossaryTerm';
 import { ChangeDescription } from '../../../../generated/entity/type';
+import { Page, PageType, Tab } from '../../../../generated/system/ui/page';
 import { TagLabel, TagSource } from '../../../../generated/type/tagLabel';
+import { useGridLayoutDirection } from '../../../../hooks/useGridLayoutDirection';
+import { WidgetConfig } from '../../../../pages/CustomizablePage/CustomizablePage.interface';
+import { useCustomizeStore } from '../../../../pages/CustomizablePage/CustomizeStore';
+import customizeGlossaryTermPageClassBase from '../../../../utils/CustomiseGlossaryTermPage/CustomizeGlossaryTermPage';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import {
   getEntityVersionByField,
   getEntityVersionTags,
 } from '../../../../utils/EntityVersionUtils';
+import { getWidgetFromKey } from '../../../../utils/GlossaryTerm/GlossaryTermUtil';
+import { CustomPropertyTable } from '../../../common/CustomPropertyTable/CustomPropertyTable';
+import { DomainLabel } from '../../../common/DomainLabel/DomainLabel.component';
 import DescriptionV1 from '../../../common/EntityDescription/DescriptionV1';
-import ResizablePanels from '../../../common/ResizablePanels/ResizablePanels';
+import { OwnerLabelV2 } from '../../../DataAssets/OwnerLabelV2/OwnerLabelV2';
+import { ReviewerLabelV2 } from '../../../DataAssets/ReviewerLabelV2/ReviewerLabelV2';
+import { useGenericContext } from '../../../GenericProvider/GenericProvider';
 import TagsContainerV2 from '../../../Tag/TagsContainerV2/TagsContainerV2';
 import { DisplayType } from '../../../Tag/TagsViewer/TagsViewer.interface';
-import GlossaryDetailsRightPanel from '../../GlossaryDetailsRightPanel/GlossaryDetailsRightPanel.component';
 import { GlossaryUpdateConfirmationModal } from '../../GlossaryUpdateConfirmationModal/GlossaryUpdateConfirmationModal';
 import GlossaryTermReferences from './GlossaryTermReferences';
 import GlossaryTermSynonyms from './GlossaryTermSynonyms';
 import RelatedTerms from './RelatedTerms';
 
+const ReactGridLayout = WidthProvider(RGL);
+
 type Props = {
-  selectedData: Glossary | GlossaryTerm;
-  permissions: OperationPermission;
-  onUpdate: (data: GlossaryTerm | Glossary) => Promise<void>;
-  isGlossary: boolean;
-  isVersionView?: boolean;
   onThreadLinkSelect: (value: string) => void;
   editCustomAttributePermission: boolean;
   onExtensionUpdate: (updatedTable: GlossaryTerm) => Promise<void>;
 };
 
 const GlossaryOverviewTab = ({
-  selectedData,
-  permissions,
-  onUpdate,
-  isGlossary,
-  isVersionView,
   onThreadLinkSelect,
   editCustomAttributePermission,
   onExtensionUpdate,
 }: Props) => {
   const [isDescriptionEditable, setIsDescriptionEditable] =
     useState<boolean>(false);
-  const [tagsUpdatating, setTagsUpdating] = useState<TagLabel[]>();
+  const [tagsUpdating, setTagsUpdating] = useState<TagLabel[]>();
+  const { currentPersonaDocStore } = useCustomizeStore();
+  // Since we are rendering this component for all customized tabs we need tab ID to get layout form store
+  const { tab = EntityTabs.OVERVIEW } = useParams<{ tab: EntityTabs }>();
+  const {
+    data: selectedData,
+    permissions,
+    onUpdate,
+    isVersionView,
+    type: entityType,
+  } = useGenericContext<GlossaryTerm | Glossary>();
+
+  const isGlossary = entityType === EntityType.GLOSSARY;
+
+  const layout = useMemo(() => {
+    if (!currentPersonaDocStore) {
+      return customizeGlossaryTermPageClassBase.getDefaultWidgetForTab(tab);
+    }
+    const pageType = isGlossary ? PageType.Glossary : PageType.GlossaryTerm;
+    const page = currentPersonaDocStore?.data?.pages.find(
+      (p: Page) => p.pageType === pageType
+    );
+
+    if (page) {
+      return page.tabs.find((t: Tab) => t.id === tab)?.layout;
+    } else {
+      return customizeGlossaryTermPageClassBase.getDefaultWidgetForTab(tab);
+    }
+  }, [currentPersonaDocStore, isGlossary, tab]);
 
   const onDescriptionUpdate = async (updatedHTML: string) => {
     if (selectedData.description !== updatedHTML) {
@@ -75,6 +105,10 @@ const GlossaryOverviewTab = ({
 
   const hasEditTagsPermissions = useMemo(() => {
     return permissions.EditAll || permissions.EditTags;
+  }, [permissions]);
+
+  const hasViewAllPermission = useMemo(() => {
+    return permissions.ViewAll;
   }, [permissions]);
 
   const glossaryDescription = useMemo(() => {
@@ -108,118 +142,191 @@ const GlossaryOverviewTab = ({
     if (selectedData) {
       await onUpdate({
         ...selectedData,
-        tags: tagsUpdatating,
+        tags: tagsUpdating,
       });
     }
   };
 
+  const descriptionWidget = useMemo(() => {
+    return (
+      <DescriptionV1
+        description={glossaryDescription}
+        entityFqn={selectedData.fullyQualifiedName}
+        entityName={getEntityName(selectedData)}
+        entityType={EntityType.GLOSSARY_TERM}
+        hasEditAccess={permissions.EditDescription || permissions.EditAll}
+        isEdit={isDescriptionEditable}
+        owner={selectedData?.owners}
+        showActions={!selectedData.deleted}
+        onCancel={() => setIsDescriptionEditable(false)}
+        onDescriptionEdit={() => setIsDescriptionEditable(true)}
+        onDescriptionUpdate={onDescriptionUpdate}
+        onThreadLinkSelect={onThreadLinkSelect}
+      />
+    );
+  }, [
+    glossaryDescription,
+    isDescriptionEditable,
+    selectedData,
+    onDescriptionUpdate,
+    onThreadLinkSelect,
+    permissions,
+  ]);
+
+  const tagsWidget = useMemo(() => {
+    return (
+      <TagsContainerV2
+        displayType={DisplayType.READ_MORE}
+        entityFqn={selectedData.fullyQualifiedName}
+        entityType={EntityType.GLOSSARY_TERM}
+        permission={hasEditTagsPermissions}
+        selectedTags={tags ?? []}
+        tagType={TagSource.Classification}
+        onSelectionChange={handleTagsUpdate}
+        onThreadLinkSelect={onThreadLinkSelect}
+      />
+    );
+  }, [
+    tags,
+    selectedData.fullyQualifiedName,
+    hasEditTagsPermissions,
+    onThreadLinkSelect,
+  ]);
+
+  const domainWidget = useMemo(() => {
+    return (
+      <DomainLabel
+        showDomainHeading
+        domain={selectedData.domain}
+        entityFqn={selectedData.fullyQualifiedName ?? ''}
+        entityId={selectedData.id ?? ''}
+        entityType={isGlossary ? EntityType.GLOSSARY : EntityType.GLOSSARY_TERM}
+        // Only allow domain selection at glossary level. Glossary Term will inherit
+        hasPermission={isGlossary ? permissions.EditAll : false}
+      />
+    );
+  }, [
+    selectedData.domain,
+    selectedData.fullyQualifiedName,
+    selectedData.id,
+    permissions.EditAll,
+    isGlossary,
+  ]);
+
+  const customPropertyWidget = useMemo(() => {
+    return (
+      <CustomPropertyTable
+        isRenderedInRightPanel
+        entityDetails={selectedData as GlossaryTerm}
+        entityType={EntityType.GLOSSARY_TERM}
+        handleExtensionUpdate={async (updatedTable) => {
+          await onExtensionUpdate?.(updatedTable);
+        }}
+        hasEditAccess={Boolean(editCustomAttributePermission)}
+        hasPermission={hasViewAllPermission}
+        maxDataCap={5}
+      />
+    );
+  }, [selectedData, editCustomAttributePermission, hasViewAllPermission]);
+
+  const widgets = useMemo(() => {
+    const getWidgetFromKeyInternal = (widgetConfig: WidgetConfig) => {
+      if (
+        widgetConfig.i.startsWith(
+          GlossaryTermDetailPageWidgetKeys.RELATED_TERMS
+        )
+      ) {
+        return <RelatedTerms />;
+      } else if (
+        widgetConfig.i.startsWith(GlossaryTermDetailPageWidgetKeys.SYNONYMS)
+      ) {
+        return <GlossaryTermSynonyms />;
+      } else if (
+        widgetConfig.i.startsWith(GlossaryTermDetailPageWidgetKeys.TAGS)
+      ) {
+        return tagsWidget;
+      } else if (
+        widgetConfig.i.startsWith(GlossaryTermDetailPageWidgetKeys.REFERENCES)
+      ) {
+        return <GlossaryTermReferences />;
+      } else if (
+        widgetConfig.i.startsWith(GlossaryTermDetailPageWidgetKeys.DESCRIPTION)
+      ) {
+        return descriptionWidget;
+      } else if (
+        widgetConfig.i.startsWith(GlossaryTermDetailPageWidgetKeys.OWNER)
+      ) {
+        return <OwnerLabelV2 />;
+      } else if (
+        widgetConfig.i.startsWith(GlossaryTermDetailPageWidgetKeys.DOMAIN)
+      ) {
+        return domainWidget;
+      } else if (
+        widgetConfig.i.startsWith(GlossaryTermDetailPageWidgetKeys.REVIEWER)
+      ) {
+        return <ReviewerLabelV2 />;
+      } else if (
+        widgetConfig.i.startsWith(
+          GlossaryTermDetailPageWidgetKeys.CUSTOM_PROPERTIES
+        ) &&
+        !isGlossary
+      ) {
+        return customPropertyWidget;
+      }
+
+      return getWidgetFromKey({
+        widgetConfig: widgetConfig,
+        handleOpenAddWidgetModal: noop,
+        handlePlaceholderWidgetKey: noop,
+        handleRemoveWidget: noop,
+        isEditView: false,
+      });
+    };
+
+    return layout.map((widget: WidgetConfig) => (
+      <div
+        data-grid={widget}
+        id={widget.i}
+        key={widget.i}
+        style={{ overflow: 'scroll' }}>
+        {getWidgetFromKeyInternal(widget)}
+      </div>
+    ));
+  }, [
+    layout,
+    descriptionWidget,
+    tagsWidget,
+    domainWidget,
+    customPropertyWidget,
+    isGlossary,
+  ]);
+
+  // call the hook to set the direction of the grid layout
+  useGridLayoutDirection();
+
   return (
-    <Row className="glossary-overview-tab h-full" gutter={[32, 0]}>
-      <Col span={24}>
-        <ResizablePanels
-          firstPanel={{
-            children: (
-              <div data-testid="updated-by-container">
-                <Row className="p-md p-r-0" gutter={[0, 32]}>
-                  <Col span={24}>
-                    <DescriptionV1
-                      description={glossaryDescription}
-                      entityFqn={selectedData.fullyQualifiedName}
-                      entityName={getEntityName(selectedData)}
-                      entityType={EntityType.GLOSSARY_TERM}
-                      hasEditAccess={
-                        permissions.EditDescription || permissions.EditAll
-                      }
-                      isEdit={isDescriptionEditable}
-                      owner={selectedData?.owners}
-                      showActions={!selectedData.deleted}
-                      onCancel={() => setIsDescriptionEditable(false)}
-                      onDescriptionEdit={() => setIsDescriptionEditable(true)}
-                      onDescriptionUpdate={onDescriptionUpdate}
-                      onThreadLinkSelect={onThreadLinkSelect}
-                    />
-                  </Col>
-                  <Col span={24}>
-                    <Row gutter={[0, 40]}>
-                      {!isGlossary && (
-                        <>
-                          <Col span={12}>
-                            <GlossaryTermSynonyms
-                              glossaryTerm={selectedData as GlossaryTerm}
-                              isVersionView={isVersionView}
-                              permissions={permissions}
-                              onGlossaryTermUpdate={onUpdate}
-                            />
-                          </Col>
-                          <Col span={12}>
-                            <RelatedTerms
-                              glossaryTerm={selectedData as GlossaryTerm}
-                              isVersionView={isVersionView}
-                              permissions={permissions}
-                              onGlossaryTermUpdate={onUpdate}
-                            />
-                          </Col>
-                          <Col span={12}>
-                            <GlossaryTermReferences
-                              glossaryTerm={selectedData as GlossaryTerm}
-                              isVersionView={isVersionView}
-                              permissions={permissions}
-                              onGlossaryTermUpdate={onUpdate}
-                            />
-                          </Col>
-                        </>
-                      )}
-
-                      <Col span={12}>
-                        <Space className="w-full" direction="vertical">
-                          <TagsContainerV2
-                            displayType={DisplayType.READ_MORE}
-                            entityFqn={selectedData.fullyQualifiedName}
-                            entityType={EntityType.GLOSSARY_TERM}
-                            permission={hasEditTagsPermissions}
-                            selectedTags={tags ?? []}
-                            tagType={TagSource.Classification}
-                            onSelectionChange={handleTagsUpdate}
-                            onThreadLinkSelect={onThreadLinkSelect}
-                          />
-                        </Space>
-                      </Col>
-                    </Row>
-                  </Col>
-                </Row>
-              </div>
-            ),
-            ...COMMON_RESIZABLE_PANEL_CONFIG.LEFT_PANEL,
-          }}
-          secondPanel={{
-            children: (
-              <GlossaryDetailsRightPanel
-                editCustomAttributePermission={editCustomAttributePermission}
-                entityType={EntityType.GLOSSARY_TERM}
-                isGlossary={false}
-                isVersionView={isVersionView}
-                permissions={permissions}
-                selectedData={selectedData}
-                onExtensionUpdate={onExtensionUpdate}
-                onThreadLinkSelect={onThreadLinkSelect}
-                onUpdate={onUpdate}
-              />
-            ),
-            ...COMMON_RESIZABLE_PANEL_CONFIG.RIGHT_PANEL,
-            className: 'entity-resizable-right-panel-container',
-          }}
-        />
-      </Col>
-
-      {tagsUpdatating && (
+    <>
+      <ReactGridLayout
+        className="grid-container"
+        cols={8}
+        isDraggable={false}
+        isResizable={false}
+        margin={[
+          customizeGlossaryTermPageClassBase.detailPageWidgetMargin,
+          customizeGlossaryTermPageClassBase.detailPageWidgetMargin,
+        ]}
+        rowHeight={customizeGlossaryTermPageClassBase.detailPageRowHeight}>
+        {widgets}
+      </ReactGridLayout>
+      {tagsUpdating && (
         <GlossaryUpdateConfirmationModal
           glossaryTerm={selectedData as GlossaryTerm}
-          updatedTags={tagsUpdatating}
+          updatedTags={tagsUpdating}
           onCancel={() => setTagsUpdating(undefined)}
           onValidationSuccess={handleGlossaryTagUpdateValidationConfirm}
         />
       )}
-    </Row>
+    </>
   );
 };
 

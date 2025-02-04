@@ -20,7 +20,7 @@ import {
 } from '../../../../../mocks/DescriptionFeed.mock';
 import DescriptionFeed from './DescriptionFeed';
 
-jest.mock('../../../../common/RichTextEditor/RichTextEditorPreviewer', () => {
+jest.mock('../../../../common/RichTextEditor/RichTextEditorPreviewerV1', () => {
   return jest.fn().mockReturnValue(<p>RichTextEditorPreviewer</p>);
 });
 

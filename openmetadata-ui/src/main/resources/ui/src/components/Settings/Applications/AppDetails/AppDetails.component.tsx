@@ -49,6 +49,7 @@ import { ServiceCategory } from '../../../../enums/service.enum';
 import {
   App,
   ScheduleTimeline,
+  ScheduleType,
 } from '../../../../generated/entity/applications/app';
 import { Include } from '../../../../generated/type/include';
 import { useFqn } from '../../../../hooks/useFqn';
@@ -359,31 +360,40 @@ const AppDetails = () => {
           ]
         : [];
 
+    const showScheduleTab = appData?.scheduleType !== ScheduleType.NoSchedule;
+
     return [
-      {
-        label: (
-          <TabsLabel id={ApplicationTabs.SCHEDULE} name={t('label.schedule')} />
-        ),
-        key: ApplicationTabs.SCHEDULE,
-        children: (
-          <div className="p-lg">
-            {appData && (
-              <AppSchedule
-                appData={appData}
-                loading={{
-                  isRunLoading: loadingState.isRunLoading,
-                  isDeployLoading: loadingState.isDeployLoading,
-                }}
-                onDemandTrigger={onDemandTrigger}
-                onDeployTrigger={onDeployTrigger}
-                onSave={onAppScheduleSave}
-              />
-            )}
-          </div>
-        ),
-      },
+      ...(showScheduleTab
+        ? [
+            {
+              label: (
+                <TabsLabel
+                  id={ApplicationTabs.SCHEDULE}
+                  name={t('label.schedule')}
+                />
+              ),
+              key: ApplicationTabs.SCHEDULE,
+              children: (
+                <div className="p-lg">
+                  {appData && (
+                    <AppSchedule
+                      appData={appData}
+                      loading={{
+                        isRunLoading: loadingState.isRunLoading,
+                        isDeployLoading: loadingState.isDeployLoading,
+                      }}
+                      onDemandTrigger={onDemandTrigger}
+                      onDeployTrigger={onDeployTrigger}
+                      onSave={onAppScheduleSave}
+                    />
+                  )}
+                </div>
+              ),
+            },
+          ]
+        : []),
       ...tabConfiguration,
-      ...(!appData?.deleted
+      ...(!appData?.deleted && showScheduleTab
         ? [
             {
               label: (

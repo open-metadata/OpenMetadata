@@ -16,12 +16,18 @@ import { t } from 'i18next';
 import { isUndefined, toLower } from 'lodash';
 import React from 'react';
 import { Link } from 'react-router-dom';
-import RichTextEditorPreviewer from '../../components/common/RichTextEditor/RichTextEditorPreviewer';
+import { OwnerLabel } from '../../components/common/OwnerLabel/OwnerLabel.component';
+import RichTextEditorPreviewerV1 from '../../components/common/RichTextEditor/RichTextEditorPreviewerV1';
 import {
   getEntityDetailsPath,
   NO_DATA_PLACEHOLDER,
 } from '../../constants/constants';
-import { EntityType, TabSpecificField } from '../../enums/entity.enum';
+import { DetailPageWidgetKeys } from '../../enums/CustomizeDetailPage.enum';
+import {
+  EntityTabs,
+  EntityType,
+  TabSpecificField,
+} from '../../enums/entity.enum';
 import { DatabaseSchema } from '../../generated/entity/data/databaseSchema';
 import { EntityReference } from '../../generated/entity/type';
 import { UsageDetails } from '../../generated/type/entityUsage';
@@ -83,7 +89,7 @@ export const schemaTableColumns: ColumnsType<DatabaseSchema> = [
     key: 'description',
     render: (text: string) =>
       text?.trim() ? (
-        <RichTextEditorPreviewer markdown={text} />
+        <RichTextEditorPreviewerV1 markdown={text} />
       ) : (
         <span className="text-grey-muted">
           {t('label.no-entity', { entity: t('label.description') })}
@@ -91,14 +97,14 @@ export const schemaTableColumns: ColumnsType<DatabaseSchema> = [
       ),
   },
   {
-    title: t('label.owner'),
+    title: t('label.owner-plural'),
     dataIndex: 'owners',
     key: 'owners',
     width: 120,
 
     render: (owners: EntityReference[]) =>
       !isUndefined(owners) && owners.length > 0 ? (
-        owners.map((owner: EntityReference) => getEntityName(owner))
+        <OwnerLabel owners={owners} />
       ) : (
         <Typography.Text data-testid="no-owner-text">
           {NO_DATA_PLACEHOLDER}
@@ -114,3 +120,70 @@ export const schemaTableColumns: ColumnsType<DatabaseSchema> = [
       getUsagePercentile(text?.weeklyStats?.percentileRank ?? 0),
   },
 ];
+
+export const getDatabaseDetailsPageDefaultLayout = (tab: EntityTabs) => {
+  switch (tab) {
+    case EntityTabs.SCHEMA:
+      return [
+        {
+          h: 2,
+          i: DetailPageWidgetKeys.DESCRIPTION,
+          w: 6,
+          x: 0,
+          y: 0,
+          static: false,
+        },
+        {
+          h: 8,
+          i: DetailPageWidgetKeys.TABLE_SCHEMA,
+          w: 6,
+          x: 0,
+          y: 0,
+          static: false,
+        },
+        {
+          h: 1,
+          i: DetailPageWidgetKeys.FREQUENTLY_JOINED_TABLES,
+          w: 2,
+          x: 6,
+          y: 0,
+          static: false,
+        },
+        {
+          h: 1,
+          i: DetailPageWidgetKeys.DATA_PRODUCTS,
+          w: 2,
+          x: 6,
+          y: 1,
+          static: false,
+        },
+        {
+          h: 1,
+          i: DetailPageWidgetKeys.TAGS,
+          w: 2,
+          x: 6,
+          y: 2,
+          static: false,
+        },
+        {
+          h: 1,
+          i: DetailPageWidgetKeys.GLOSSARY_TERMS,
+          w: 2,
+          x: 6,
+          y: 3,
+          static: false,
+        },
+        {
+          h: 3,
+          i: DetailPageWidgetKeys.CUSTOM_PROPERTIES,
+          w: 2,
+          x: 6,
+          y: 4,
+          static: false,
+        },
+      ];
+
+    default:
+      return [];
+  }
+};

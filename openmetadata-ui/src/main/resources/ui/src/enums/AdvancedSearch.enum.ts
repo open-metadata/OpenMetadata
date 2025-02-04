@@ -34,12 +34,15 @@ export enum AdvancedFields {
   FIELD = 'field_suggest',
 }
 
+// This enum contains list of fields that are used in the advanced search for elastic search query
 export enum EntityFields {
   SERVICE_TYPE = 'serviceType',
   DATA_MODEL_TYPE = 'dataModelType',
   ENTITY_TYPE = 'entityType',
   TABLE_TYPE = 'tableType',
+  COLUMN_DESCRIPTION_STATUS = 'columnDescriptionStatus',
   DISPLAY_NAME_KEYWORD = 'displayName.keyword',
+  NAME_KEYWORD = 'name.keyword',
   GLOSSARY = 'glossary.name.keyword',
   CLASSIFICATION = 'classification.name.keyword',
   DOMAIN = 'domain.displayName.keyword',
@@ -52,13 +55,33 @@ export enum EntityFields {
   OWNERS = 'owners.displayName.keyword',
   TAG = 'tags.tagFQN',
   TIER = 'tier.tagFQN',
+  CERTIFICATION = 'certification.tagLabel.tagFQN',
   SERVICE = 'service.displayName.keyword',
-  DATABASE = 'database.displayName',
-  DATABASE_SCHEMA = 'databaseSchema.displayName',
+  DATABASE = 'database.displayName.keyword',
+  DATABASE_SCHEMA = 'databaseSchema.displayName.keyword',
+  DATABASE_DISPLAY_NAME = 'database.displayName',
+  DATABASE_SCHEMA_DISPLAY_NAME = 'databaseSchema.displayName',
   COLUMN = 'columns.name.keyword',
+  API_COLLECTION = 'apiCollection.displayName.keyword',
   CHART = 'charts.displayName.keyword',
   TASK = 'tasks.displayName.keyword',
   GLOSSARY_TERM_STATUS = 'status',
   REQUEST_SCHEMA_FIELD = 'requestSchema.schemaFields.name.keyword',
   RESPONSE_SCHEMA_FIELD = 'responseSchema.schemaFields.name.keyword',
+}
+
+// This enum contains list of fields that are there in the object of the entity
+// For example, in Glossary object, there are fields like name, description, parent, etc.
+export enum EntityReferenceFields {
+  REVIEWERS = 'reviewers.fullyQualifiedName',
+  OWNERS = 'owners.fullyQualifiedName',
+  DATABASE = 'database.fullyQualifiedName',
+  DATABASE_SCHEMA = 'databaseSchema.fullyQualifiedName',
+  DESCRIPTION = 'description',
+  NAME = 'name',
+  DISPLAY_NAME = 'displayName',
+  TAG = 'tags.tagFQN',
+  TIER = 'tier.tagFQN',
+  TABLE_TYPE = 'tableType',
+  EXTENSION = 'extension',
 }

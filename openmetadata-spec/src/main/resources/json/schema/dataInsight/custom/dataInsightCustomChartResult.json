@@ -17,6 +17,14 @@
         "group": {
             "description": "Group of Result",
             "type": "string"
+        },
+        "metric":{
+            "description": "Metric Name",
+            "type": "string"
+        },
+        "term": {
+            "description": "Term of Result, used in case of horizontal axis not timestamp",
+            "type": "string"
         }
     },
     "additionalProperties": false

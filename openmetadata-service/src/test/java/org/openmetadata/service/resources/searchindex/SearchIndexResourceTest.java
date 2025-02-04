@@ -17,6 +17,7 @@ import static java.util.Collections.singletonList;
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static javax.ws.rs.core.Response.Status.OK;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -33,6 +34,13 @@ import static org.openmetadata.service.util.TestUtils.assertListNotNull;
 import static org.openmetadata.service.util.TestUtils.assertListNull;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
 
+import es.org.elasticsearch.script.Script;
+import es.org.elasticsearch.search.aggregations.AggregationBuilders;
+import es.org.elasticsearch.search.aggregations.BaseAggregationBuilder;
+import es.org.elasticsearch.search.aggregations.PipelineAggregatorBuilders;
+import es.org.elasticsearch.search.aggregations.bucket.histogram.DateHistogramInterval;
+import es.org.elasticsearch.search.aggregations.bucket.terms.IncludeExclude;
+import es.org.elasticsearch.search.sort.SortOrder;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -52,6 +60,7 @@ import org.openmetadata.schema.api.services.CreateSearchService;
 import org.openmetadata.schema.entity.data.SearchIndex;
 import org.openmetadata.schema.entity.services.SearchService;
 import org.openmetadata.schema.tests.DataQualityReport;
+import org.openmetadata.schema.tests.type.DataQualityReportMetadata;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.SearchIndexDataType;
@@ -62,8 +71,12 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.services.SearchServiceResourceTest;
+import org.openmetadata.service.search.SearchAggregation;
+import org.openmetadata.service.search.SearchAggregationNode;
 import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.search.elasticsearch.aggregations.ElasticAggregations;
+import org.openmetadata.service.search.elasticsearch.aggregations.ElasticAggregationsBuilder;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
@@ -417,55 +430,6 @@ public class SearchIndexResourceTest extends EntityResourceTest<SearchIndex, Cre
   }
 
   @Test
-  void testBuildAggregationString(TestInfo testInfo) {
-    String aggregationString = "bucketName=my-agg-name:aggType=terms:field=my-field";
-    String expectedAggregationString = "\"my-agg-name\":{\"terms\":{\"field\":\"my-field\"}}";
-    Map<String, Object> actualAggregationstring =
-        SearchIndexUtils.buildAggregationString(aggregationString);
-    assertEquals(expectedAggregationString, actualAggregationstring.get("aggregationStr"));
-
-    // Nested Aggregation (1 level)
-    aggregationString =
-        "bucketName=entityLinks:aggType=terms:field=entityLinks.nonNormalized,bucketName=status_counts:aggType=terms:field=testCaseResults.testCaseStatus";
-    expectedAggregationString =
-        "\"entityLinks\":{\"terms\":{\"field\":\"entityLinks.nonNormalized\"},\"aggs\":{\"status_counts\":{\"terms\":{\"field\":\"testCaseResults.testCaseStatus\"}}}}";
-    actualAggregationstring = SearchIndexUtils.buildAggregationString(aggregationString);
-    assertEquals(expectedAggregationString, actualAggregationstring.get("aggregationStr"));
-
-    // Nested Aggregation (2 levels)
-    aggregationString =
-        "bucketName=entityLinks:aggType=terms:field=entityLinks.nonNormalized,bucketName=statusCount:aggType=terms:field=testCaseResults.testCaseStatus,bucketName=owner:aggType=terms:field=testSuite.owner";
-    expectedAggregationString =
-        "\"entityLinks\":{\"terms\":{\"field\":\"entityLinks.nonNormalized\"},\"aggs\":{\"statusCount\":{\"terms\":{\"field\":\"testCaseResults.testCaseStatus\"},\"aggs\":{\"owner\":{\"terms\":{\"field\":\"testSuite.owner\"}}}}}}";
-    actualAggregationstring = SearchIndexUtils.buildAggregationString(aggregationString);
-    assertEquals(expectedAggregationString, actualAggregationstring.get("aggregationStr"));
-
-    // Metric Aggregation
-    aggregationString =
-        "bucketName=entityLinks:aggType=terms:field=entityLinks.nonNormalized,bucketName=minPrice:aggType=min:field=price.adjusted";
-    actualAggregationstring = SearchIndexUtils.buildAggregationString(aggregationString);
-    expectedAggregationString =
-        "\"entityLinks\":{\"terms\":{\"field\":\"entityLinks.nonNormalized\"},\"aggs\":{\"minPrice\":{\"min\":{\"field\":\"price.adjusted\"}}}}";
-    assertEquals(expectedAggregationString, actualAggregationstring.get("aggregationStr"));
-
-    // Date histogram aggregation
-    aggregationString =
-        "bucketName=dates:aggType=date_histogram:field=timestamp&calendar_interval=2d";
-    actualAggregationstring = SearchIndexUtils.buildAggregationString(aggregationString);
-    expectedAggregationString =
-        "\"dates\":{\"date_histogram\":{\"field\":\"timestamp\",\"calendar_interval\":\"2d\"}}";
-    assertEquals(expectedAggregationString, actualAggregationstring.get("aggregationStr"));
-
-    // Date histogram aggregation with sub aggregation
-    aggregationString =
-        "bucketName=dates:aggType=date_histogram:field=timestamp&calendar_interval=2d,bucketName=minPrice:aggType=min:field=price.adjusted";
-    actualAggregationstring = SearchIndexUtils.buildAggregationString(aggregationString);
-    expectedAggregationString =
-        "\"dates\":{\"date_histogram\":{\"field\":\"timestamp\",\"calendar_interval\":\"2d\"},\"aggs\":{\"minPrice\":{\"min\":{\"field\":\"price.adjusted\"}}}}";
-    assertEquals(expectedAggregationString, actualAggregationstring.get("aggregationStr"));
-  }
-
-  @Test
   void testNewAggregation(TestInfo testInfo) throws IOException {
     DataQualityReport dataQualityReport = new DataQualityReport();
     SearchRepository searchRepository = getSearchRepository();
@@ -474,9 +438,8 @@ public class SearchIndexResourceTest extends EntityResourceTest<SearchIndex, Cre
 
     String aggregationQuery =
         "bucketName=fqn:aggType=terms:field=fullyQualifiedName,bucketName=avgTime:aggType=avg:field=updatedAt";
-    Map<String, Object> aggregationString =
-        SearchIndexUtils.buildAggregationString(aggregationQuery);
-    dataQualityReport = searchRepository.genericAggregation(query, "table", aggregationString);
+    SearchAggregation aggregation = SearchIndexUtils.buildAggregationTree(aggregationQuery);
+    dataQualityReport = searchRepository.genericAggregation(query, "table", aggregation);
     dataQualityReport
         .getData()
         .forEach(
@@ -487,8 +450,8 @@ public class SearchIndexResourceTest extends EntityResourceTest<SearchIndex, Cre
 
     aggregationQuery =
         "bucketName=fqn:aggType=terms:field=fullyQualifiedName,bucketName=owner:aggType=terms:field=owner.name";
-    aggregationString = SearchIndexUtils.buildAggregationString(aggregationQuery);
-    dataQualityReport = searchRepository.genericAggregation(query, "table", aggregationString);
+    aggregation = SearchIndexUtils.buildAggregationTree(aggregationQuery);
+    dataQualityReport = searchRepository.genericAggregation(query, "table", aggregation);
     dataQualityReport
         .getData()
         .forEach(
@@ -499,8 +462,8 @@ public class SearchIndexResourceTest extends EntityResourceTest<SearchIndex, Cre
 
     aggregationQuery =
         "bucketName=fqn:aggType=terms:field=fullyQualifiedName,bucketName=owner:aggType=terms:field=owner.name,bucketName=avgTime:aggType=avg:field=updatedAt";
-    aggregationString = SearchIndexUtils.buildAggregationString(aggregationQuery);
-    dataQualityReport = searchRepository.genericAggregation(query, "table", aggregationString);
+    aggregation = SearchIndexUtils.buildAggregationTree(aggregationQuery);
+    dataQualityReport = searchRepository.genericAggregation(query, "table", aggregation);
     dataQualityReport
         .getData()
         .forEach(
@@ -511,8 +474,8 @@ public class SearchIndexResourceTest extends EntityResourceTest<SearchIndex, Cre
             });
 
     aggregationQuery = "bucketName=avgTime:aggType=avg:field=updatedAt";
-    aggregationString = SearchIndexUtils.buildAggregationString(aggregationQuery);
-    dataQualityReport = searchRepository.genericAggregation(query, "table", aggregationString);
+    aggregation = SearchIndexUtils.buildAggregationTree(aggregationQuery);
+    dataQualityReport = searchRepository.genericAggregation(query, "table", aggregation);
     dataQualityReport
         .getData()
         .forEach(
@@ -522,8 +485,8 @@ public class SearchIndexResourceTest extends EntityResourceTest<SearchIndex, Cre
             });
 
     aggregationQuery = "bucketName=fqn:aggType=terms:field=fullyQualifiedName";
-    aggregationString = SearchIndexUtils.buildAggregationString(aggregationQuery);
-    dataQualityReport = searchRepository.genericAggregation(query, "table", aggregationString);
+    aggregation = SearchIndexUtils.buildAggregationTree(aggregationQuery);
+    dataQualityReport = searchRepository.genericAggregation(query, "table", aggregation);
     dataQualityReport
         .getData()
         .forEach(
@@ -534,9 +497,310 @@ public class SearchIndexResourceTest extends EntityResourceTest<SearchIndex, Cre
 
     aggregationQuery =
         "bucketName=dates:aggType=date_histogram:field=timestamp&calendar_interval=1d,bucketName=dimesion:aggType=terms:field=testDefinition.dataQualityDimension";
-    aggregationString = SearchIndexUtils.buildAggregationString(aggregationQuery);
-    dataQualityReport =
-        searchRepository.genericAggregation(null, "testCaseResult", aggregationString);
+    aggregation = SearchIndexUtils.buildAggregationTree(aggregationQuery);
+    searchRepository.genericAggregation(null, "testCaseResult", aggregation);
+  }
+
+  @Test
+  void testAggregationGraph() {
+    // 1. Test aggregation with no children
+    List<BaseAggregationBuilder> expectedAggregations = new ArrayList<>();
+    String aggregationString = "bucketName=my-agg-name:aggType=terms:field=my-field";
+    SearchAggregation aggregation = SearchIndexUtils.buildAggregationTree(aggregationString);
+
+    SearchAggregationNode expectedTree = new SearchAggregationNode("root", "root", null);
+    expectedTree.addChild(
+        new SearchAggregationNode("terms", "my-agg-name", Map.of("field", "my-field")));
+    assertThat(aggregation.getAggregationTree()).usingRecursiveComparison().isEqualTo(expectedTree);
+
+    DataQualityReportMetadata actualMetadata = aggregation.getAggregationMetadata();
+    DataQualityReportMetadata expectedMetadata =
+        new DataQualityReportMetadata()
+            .withDimensions(List.of("my-field"))
+            .withKeys(List.of("sterms#my-agg-name"))
+            .withMetrics(List.of("document_count"));
+    assertThat(actualMetadata).usingRecursiveComparison().isEqualTo(expectedMetadata);
+
+    expectedAggregations.add(AggregationBuilders.terms("my-agg-name").field("my-field"));
+    List<ElasticAggregations> actualElasticAggregations =
+        ElasticAggregationsBuilder.buildAggregation(
+            aggregation.getAggregationTree(), null, new ArrayList<>());
+
+    validateAggregation(actualElasticAggregations, expectedAggregations);
+
+    // 2. Test aggregation with 1 nested aggregation
+    expectedAggregations = new ArrayList<>();
+    aggregationString =
+        "bucketName=entityLinks:aggType=terms:field=entityLinks.nonNormalized,"
+            + "bucketName=status_counts:aggType=terms:field=testCaseResults.testCaseStatus";
+    aggregation = SearchIndexUtils.buildAggregationTree(aggregationString);
+
+    expectedTree = new SearchAggregationNode("root", "root", null);
+    SearchAggregationNode node1 =
+        new SearchAggregationNode(
+            "terms", "entityLinks", Map.of("field", "entityLinks.nonNormalized"));
+    node1.addChild(
+        new SearchAggregationNode(
+            "terms", "status_counts", Map.of("field", "testCaseResults.testCaseStatus")));
+    expectedTree.addChild(node1);
+    assertThat(aggregation.getAggregationTree()).usingRecursiveComparison().isEqualTo(expectedTree);
+
+    actualMetadata = aggregation.getAggregationMetadata();
+    expectedMetadata =
+        new DataQualityReportMetadata()
+            .withDimensions(List.of("entityLinks.nonNormalized", "testCaseResults.testCaseStatus"))
+            .withKeys(List.of("sterms#entityLinks", "sterms#status_counts"))
+            .withMetrics(List.of("document_count"));
+    assertThat(actualMetadata).usingRecursiveComparison().isEqualTo(expectedMetadata);
+
+    expectedAggregations.add(
+        AggregationBuilders.terms("entityLinks")
+            .field("entityLinks.nonNormalized")
+            .subAggregation(
+                AggregationBuilders.terms("status_counts")
+                    .field("testCaseResults.testCaseStatus")));
+    actualElasticAggregations =
+        ElasticAggregationsBuilder.buildAggregation(
+            aggregation.getAggregationTree(), null, new ArrayList<>());
+
+    validateAggregation(actualElasticAggregations, expectedAggregations);
+
+    // 3. Test aggregation with 2 nested aggregation
+    expectedAggregations = new ArrayList<>();
+    aggregationString =
+        "bucketName=entityLinks:aggType=terms:field=entityLinks.nonNormalized,"
+            + "bucketName=statusCount:aggType=terms:field=testCaseResults.testCaseStatus,"
+            + "bucketName=owner:aggType=terms:field=testSuite.owner";
+    aggregation = SearchIndexUtils.buildAggregationTree(aggregationString);
+
+    expectedTree = new SearchAggregationNode("root", "root", null);
+    node1 =
+        new SearchAggregationNode(
+            "terms", "entityLinks", Map.of("field", "entityLinks.nonNormalized"));
+    SearchAggregationNode node2 =
+        new SearchAggregationNode(
+            "terms", "statusCount", Map.of("field", "testCaseResults.testCaseStatus"));
+    node2.addChild(new SearchAggregationNode("terms", "owner", Map.of("field", "testSuite.owner")));
+    node1.addChild(node2);
+    expectedTree.addChild(node1);
+    assertThat(aggregation.getAggregationTree()).usingRecursiveComparison().isEqualTo(expectedTree);
+
+    actualMetadata = aggregation.getAggregationMetadata();
+    expectedMetadata =
+        new DataQualityReportMetadata()
+            .withDimensions(
+                List.of(
+                    "entityLinks.nonNormalized",
+                    "testCaseResults.testCaseStatus",
+                    "testSuite.owner"))
+            .withKeys(List.of("sterms#entityLinks", "sterms#statusCount", "sterms#owner"))
+            .withMetrics(List.of("document_count"));
+    assertThat(actualMetadata).usingRecursiveComparison().isEqualTo(expectedMetadata);
+
+    expectedAggregations.add(
+        AggregationBuilders.terms("entityLinks")
+            .field("entityLinks.nonNormalized")
+            .subAggregation(
+                AggregationBuilders.terms("statusCount")
+                    .field("testCaseResults.testCaseStatus")
+                    .subAggregation(AggregationBuilders.terms("owner").field("testSuite.owner"))));
+    actualElasticAggregations =
+        ElasticAggregationsBuilder.buildAggregation(
+            aggregation.getAggregationTree(), null, new ArrayList<>());
+
+    validateAggregation(actualElasticAggregations, expectedAggregations);
+
+    // 4. Metric aggregation
+    expectedAggregations = new ArrayList<>();
+    aggregationString =
+        "bucketName=entityLinks:aggType=terms:field=entityLinks.nonNormalized,"
+            + "bucketName=minPrice:aggType=min:field=price.adjusted";
+    aggregation = SearchIndexUtils.buildAggregationTree(aggregationString);
+
+    expectedTree = new SearchAggregationNode("root", "root", null);
+    node1 =
+        new SearchAggregationNode(
+            "terms", "entityLinks", Map.of("field", "entityLinks.nonNormalized"));
+    node2 = new SearchAggregationNode("min", "minPrice", Map.of("field", "price.adjusted"));
+    node1.addChild(node2);
+    expectedTree.addChild(node1);
+    assertThat(aggregation.getAggregationTree()).usingRecursiveComparison().isEqualTo(expectedTree);
+
+    actualMetadata = aggregation.getAggregationMetadata();
+    expectedMetadata =
+        new DataQualityReportMetadata()
+            .withDimensions(List.of("entityLinks.nonNormalized"))
+            .withKeys(List.of("sterms#entityLinks", "min#minPrice"))
+            .withMetrics(List.of("price.adjusted"));
+    assertThat(actualMetadata).usingRecursiveComparison().isEqualTo(expectedMetadata);
+
+    expectedAggregations.add(
+        AggregationBuilders.terms("entityLinks")
+            .field("entityLinks.nonNormalized")
+            .subAggregation(AggregationBuilders.min("minPrice").field("price.adjusted")));
+    actualElasticAggregations =
+        ElasticAggregationsBuilder.buildAggregation(
+            aggregation.getAggregationTree(), null, new ArrayList<>());
+
+    validateAggregation(actualElasticAggregations, expectedAggregations);
+
+    // 6. Date histogram aggregation
+    expectedAggregations = new ArrayList<>();
+    aggregationString =
+        "bucketName=dates:aggType=date_histogram:field=timestamp&calendar_interval=day";
+    aggregation = SearchIndexUtils.buildAggregationTree(aggregationString);
+
+    expectedTree = new SearchAggregationNode("root", "root", null);
+    node1 =
+        new SearchAggregationNode(
+            "date_histogram", "dates", Map.of("field", "timestamp", "calendar_interval", "day"));
+    expectedTree.addChild(node1);
+    assertThat(aggregation.getAggregationTree()).usingRecursiveComparison().isEqualTo(expectedTree);
+
+    actualMetadata = aggregation.getAggregationMetadata();
+    expectedMetadata =
+        new DataQualityReportMetadata()
+            .withDimensions(new ArrayList<>())
+            .withKeys(List.of("date_histogram#dates"))
+            .withMetrics(List.of("timestamp"));
+    assertThat(actualMetadata).usingRecursiveComparison().isEqualTo(expectedMetadata);
+
+    expectedAggregations.add(
+        AggregationBuilders.dateHistogram("dates")
+            .field("timestamp")
+            .calendarInterval(new DateHistogramInterval("day")));
+    actualElasticAggregations =
+        ElasticAggregationsBuilder.buildAggregation(
+            aggregation.getAggregationTree(), null, new ArrayList<>());
+
+    validateAggregation(actualElasticAggregations, expectedAggregations);
+
+    // 7. Date histogram aggregation
+    expectedAggregations = new ArrayList<>();
+    aggregationString =
+        "bucketName=dates:aggType=date_histogram:field=timestamp&calendar_interval=day,"
+            + "bucketName=minPrice:aggType=min:field=price.adjusted";
+    aggregation = SearchIndexUtils.buildAggregationTree(aggregationString);
+
+    expectedTree = new SearchAggregationNode("root", "root", null);
+    node1 =
+        new SearchAggregationNode(
+            "date_histogram", "dates", Map.of("field", "timestamp", "calendar_interval", "day"));
+    node2 = new SearchAggregationNode("min", "minPrice", Map.of("field", "price.adjusted"));
+    node1.addChild(node2);
+    expectedTree.addChild(node1);
+    assertThat(aggregation.getAggregationTree()).usingRecursiveComparison().isEqualTo(expectedTree);
+
+    actualMetadata = aggregation.getAggregationMetadata();
+    expectedMetadata =
+        new DataQualityReportMetadata()
+            .withDimensions(List.of("timestamp"))
+            .withKeys(List.of("date_histogram#dates", "min#minPrice"))
+            .withMetrics(List.of("price.adjusted"));
+    assertThat(actualMetadata).usingRecursiveComparison().isEqualTo(expectedMetadata);
+
+    expectedAggregations.add(
+        AggregationBuilders.dateHistogram("dates")
+            .field("timestamp")
+            .calendarInterval(new DateHistogramInterval("day"))
+            .subAggregation(AggregationBuilders.min("minPrice").field("price.adjusted")));
+    actualElasticAggregations =
+        ElasticAggregationsBuilder.buildAggregation(
+            aggregation.getAggregationTree(), null, new ArrayList<>());
+
+    validateAggregation(actualElasticAggregations, expectedAggregations);
+
+    // 8. Nested aggregation with selector sibling
+    expectedAggregations = new ArrayList<>();
+    aggregationString =
+        "bucketName=entityFQN:aggType=terms:field=originEntityFQN&size=1000,"
+            + "bucketName=status:aggType=terms:field=testCaseStatus.keyword&include=\"Failed,Aborted\"::"
+            + "bucketName=statusFilter:aggType=bucket_selector:pathValues=status._bucket_count&pathKeys=status&script=\"params.status==0\"";
+    aggregation = SearchIndexUtils.buildAggregationTree(aggregationString);
+
+    expectedTree = new SearchAggregationNode("root", "root", null);
+    node1 =
+        new SearchAggregationNode(
+            "terms", "entityFQN", Map.of("field", "originEntityFQN", "size", "1000"));
+    node2 =
+        new SearchAggregationNode(
+            "terms",
+            "status",
+            Map.of("field", "testCaseStatus.keyword", "include", "Failed,Aborted"));
+    SearchAggregationNode node3 =
+        new SearchAggregationNode(
+            "bucket_selector",
+            "statusFilter",
+            Map.of(
+                "pathValues",
+                "status._bucket_count",
+                "pathKeys",
+                "status",
+                "script",
+                "params.status==0"));
+    node1.addChild(node2);
+    node1.addChild(node3);
+    expectedTree.addChild(node1);
+    assertThat(aggregation.getAggregationTree()).usingRecursiveComparison().isEqualTo(expectedTree);
+
+    actualMetadata = aggregation.getAggregationMetadata();
+    expectedMetadata =
+        new DataQualityReportMetadata()
+            .withDimensions(List.of("originEntityFQN", "testCaseStatus.keyword"))
+            .withKeys(List.of("sterms#entityFQN", "sterms#status"))
+            .withMetrics(List.of("document_count"));
+    assertThat(actualMetadata).usingRecursiveComparison().isEqualTo(expectedMetadata);
+
+    String[] include = {"Aborted", "Failed"};
+    expectedAggregations.add(
+        AggregationBuilders.terms("entityFQN")
+            .field("originEntityFQN")
+            .size(1000)
+            .subAggregation(
+                AggregationBuilders.terms("status")
+                    .field("testCaseStatus.keyword")
+                    .includeExclude(new IncludeExclude(include, null)))
+            .subAggregation(
+                PipelineAggregatorBuilders.bucketSelector(
+                    "statusFilter",
+                    Map.of("status", "status._bucket_count"),
+                    new Script("params.status==0"))));
+    actualElasticAggregations =
+        ElasticAggregationsBuilder.buildAggregation(
+            aggregation.getAggregationTree(), null, new ArrayList<>());
+
+    validateAggregation(actualElasticAggregations, expectedAggregations);
+
+    // 9. top hits query
+    expectedAggregations = new ArrayList<>();
+    aggregationString =
+        "bucketName=byTerms:aggType=terms:field=entityFqn&size=100,"
+            + "bucketName=latest:aggType=top_hits:size=1&sort_field=timestamp&sort_order=desc";
+    aggregation = SearchIndexUtils.buildAggregationTree(aggregationString);
+    expectedTree = new SearchAggregationNode("root", "root", null);
+    node1 =
+        new SearchAggregationNode("terms", "byTerms", Map.of("field", "entityFqn", "size", "100"));
+    node2 =
+        new SearchAggregationNode(
+            "top_hits",
+            "latest",
+            Map.of("size", "1", "sort_field", "timestamp", "sort_order", "desc"));
+    node1.addChild(node2);
+    expectedTree.addChild(node1);
+
+    assertThat(aggregation.getAggregationTree()).usingRecursiveComparison().isEqualTo(expectedTree);
+
+    expectedAggregations.add(
+        AggregationBuilders.terms("byTerms")
+            .field("entityFqn")
+            .size(100)
+            .subAggregation(
+                AggregationBuilders.topHits("latest").size(1).sort("timestamp", SortOrder.DESC)));
+    actualElasticAggregations =
+        ElasticAggregationsBuilder.buildAggregation(
+            aggregation.getAggregationTree(), null, new ArrayList<>());
+
+    validateAggregation(actualElasticAggregations, expectedAggregations);
   }
 
   @Override
@@ -669,5 +933,21 @@ public class SearchIndexResourceTest extends EntityResourceTest<SearchIndex, Cre
 
     // Check the nested columns
     assertFields(expectedField.getChildren(), actualField.getChildren());
+  }
+
+  private void validateAggregation(
+      List<ElasticAggregations> actualElasticAggregations,
+      List<BaseAggregationBuilder> expectedAggregations) {
+    for (int i = 0; i < actualElasticAggregations.size(); i++) {
+      ElasticAggregations actualElasticAggregation = actualElasticAggregations.get(i);
+      if (actualElasticAggregation.isPipelineAggregation()) {
+        assertEquals(
+            expectedAggregations.get(i),
+            actualElasticAggregation.getElasticPipelineAggregationBuilder());
+      } else {
+        assertEquals(
+            expectedAggregations.get(i), actualElasticAggregation.getElasticAggregationBuilder());
+      }
+    }
   }
 }

@@ -123,7 +123,10 @@ public class MlModelServiceResourceTest
                     .withTrackingUri("http://localhost:5001"));
 
     CreateMlModelService update =
-        createRequest(test).withDescription("description1").withConnection(MlModelConnection1);
+        createRequest(test)
+            .withDescription("description1")
+            .withConnection(MlModelConnection1)
+            .withName(service.getName());
 
     ChangeDescription change = getChangeDescription(service, MINOR_UPDATE);
     fieldAdded(change, "description", "description1");

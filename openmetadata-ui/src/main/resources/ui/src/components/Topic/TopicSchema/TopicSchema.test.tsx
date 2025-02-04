@@ -35,6 +35,7 @@ const mockProps: TopicSchemaFieldsProps = {
   isReadOnly: false,
   onUpdate: mockOnUpdate,
   hasTagEditAccess: true,
+  hasGlossaryTermEditAccess: true,
   entityFqn: 'topic.fqn',
   onThreadLinkSelect: jest.fn(),
 };
@@ -49,7 +50,7 @@ jest.mock('../../../utils/GlossaryUtils', () => ({
   getGlossaryTermsList: jest.fn().mockImplementation(() => Promise.resolve([])),
 }));
 
-jest.mock('../../common/RichTextEditor/RichTextEditorPreviewer', () =>
+jest.mock('../../common/RichTextEditor/RichTextEditorPreviewerV1', () =>
   jest
     .fn()
     .mockReturnValue(

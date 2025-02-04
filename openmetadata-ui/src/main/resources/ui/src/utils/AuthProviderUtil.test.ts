@@ -23,12 +23,13 @@ const userProfile = {
 
 describe('Test Auth Provider utils', () => {
   it('getNameFromUserData should return name and email from claim: preferred_username', () => {
-    const { name, email } = getNameFromUserData(userProfile, [
+    const { name, email, picture } = getNameFromUserData(userProfile, [
       'preferred_username',
     ]);
 
     expect(name).toEqual('i_am_preferred_username');
     expect(email).toEqual('i_am_preferred_username@');
+    expect(picture).toEqual('');
   });
 
   it('getNameFromUserData should return name and email from claim: email', () => {
@@ -98,6 +99,18 @@ describe('Test Auth Provider utils', () => {
 
     expect(name).toEqual('i_am_preferred_username');
     expect(email).toEqual('i_am_preferred_username@test.com');
+  });
+
+  it('getNameFromUserData should return picture details as it is', () => {
+    const { name, email, picture } = getNameFromUserData(
+      { ...userProfile, picture: 'test_picture' },
+      ['preferred_username', 'email', 'sub'],
+      'test.com'
+    );
+
+    expect(name).toEqual('i_am_preferred_username');
+    expect(email).toEqual('i_am_preferred_username@test.com');
+    expect(picture).toEqual('test_picture');
   });
 });
 

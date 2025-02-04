@@ -34,5 +34,6 @@ public class MessagingServiceRepository
         UPDATE_FIELDS,
         ServiceType.MESSAGING);
     supportsSearch = true;
+    parent = true;
   }
 }
