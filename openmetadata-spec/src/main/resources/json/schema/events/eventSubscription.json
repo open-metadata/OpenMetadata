@@ -155,6 +155,9 @@
             },
             {
               "$ref": "./emailAlertConfig.json"
+            },
+            {
+              "$ref": "../type/basic.json#/definitions/map"
             }
           ]
         }
@@ -230,6 +233,10 @@
     "id": {
       "description": "Unique identifier that identifies this Event Subscription.",
       "$ref": "../type/basic.json#/definitions/uuid"
+    },
+    "className": {
+      "description": "Java class for the Event Subscription.",
+      "type": "string"
     },
     "name": {
       "description": "Name that uniquely identifies this Event Subscription.",

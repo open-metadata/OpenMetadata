@@ -67,6 +67,9 @@ import static org.openmetadata.service.util.EntityUtil.nextMajorVersion;
 import static org.openmetadata.service.util.EntityUtil.nextVersion;
 import static org.openmetadata.service.util.EntityUtil.objectMatch;
 import static org.openmetadata.service.util.EntityUtil.tagLabelMatch;
+import static org.openmetadata.service.util.jdbi.JdbiUtils.getAfterOffset;
+import static org.openmetadata.service.util.jdbi.JdbiUtils.getBeforeOffset;
+import static org.openmetadata.service.util.jdbi.JdbiUtils.getOffset;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -180,11 +183,13 @@ import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.service.util.ListWithOffsetFunction;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.RestUtil.DeleteResponse;
 import org.openmetadata.service.util.RestUtil.PatchResponse;
 import org.openmetadata.service.util.RestUtil.PutResponse;
 import org.openmetadata.service.util.ResultList;
+import software.amazon.awssdk.utils.Either;
 
 /**
  * This is the base class used by Entity Resources to perform READ and WRITE operations to the backend database to
@@ -700,7 +705,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   public final List<T> listAllForCSV(Fields fields, String parentFqn) {
-    List<String> jsons = listAllByParentFqn(parentFqn);
+    ListFilter filter = new ListFilter(Include.NON_DELETED);
+    List<String> jsons = listAllByParentFqn(parentFqn, filter);
     List<T> entities = new ArrayList<>();
     setFieldsInBulk(jsons, fields, entities);
     return entities;
@@ -723,6 +729,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
     String startHash = fqnPrefixHash + ".00000000000000000000000000000000";
     String endHash = fqnPrefixHash + ".ffffffffffffffffffffffffffffffff";
     return dao.listAll(startHash, endHash);
+  }
+
+  public List<String> listAllByParentFqn(String parentFqn, ListFilter filter) {
+    String fqnPrefixHash = FullyQualifiedName.buildHash(parentFqn);
+    String startHash = fqnPrefixHash + ".00000000000000000000000000000000";
+    String endHash = fqnPrefixHash + ".ffffffffffffffffffffffffffffffff";
+    return dao.listAll(startHash, endHash, filter);
   }
 
   public ResultList<T> listAfter(
@@ -756,40 +769,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
     } else {
       // limit == 0 , return total count of entity.
       return getResultList(entities, null, null, total);
-    }
-  }
-
-  public final ResultList<T> listAfterWithSkipFailure(
-      UriInfo uriInfo, Fields fields, ListFilter filter, int limitParam, String after) {
-    List<EntityError> errors = new ArrayList<>();
-    List<T> entities = new ArrayList<>();
-    int beforeOffset = Integer.parseInt(RestUtil.decodeCursor(after));
-    int currentOffset = beforeOffset;
-    int total = dao.listCount(filter);
-    if (limitParam > 0) {
-      List<String> jsons = dao.listAfter(filter, limitParam, currentOffset);
-
-      for (String json : jsons) {
-        T parsedEntity = JsonUtils.readValue(json, entityClass);
-        try {
-          T entity = setFieldsInternal(parsedEntity, fields);
-          setInheritedFields(entity, fields);
-          clearFieldsInternal(entity, fields);
-          entities.add(withHref(uriInfo, entity));
-        } catch (Exception e) {
-          clearFieldsInternal(parsedEntity, fields);
-          EntityError entityError =
-              new EntityError().withMessage(e.getMessage()).withEntity(parsedEntity);
-          errors.add(entityError);
-          LOG.error("[ListForIndexing] Failed for Entity : {}", entityError);
-        }
-      }
-      currentOffset = currentOffset + limitParam;
-      String newAfter = currentOffset > total ? null : String.valueOf(currentOffset);
-      return getResultList(entities, errors, String.valueOf(beforeOffset), newAfter, total);
-    } else {
-      // limit == 0 , return total count of entity.
-      return getResultList(entities, errors, null, null, total);
     }
   }
 
@@ -887,6 +866,45 @@ public abstract class EntityRepository<T extends EntityInterface> {
     oldVersions.forEach(version -> versions.add(version.getEntityJson()));
     return new EntityHistoryWithOffset(
         new EntityHistory().withEntityType(entityType).withVersions(versions), offset + limit);
+  }
+
+  public final ResultList<T> listWithOffset(
+      ListWithOffsetFunction<ListFilter, Integer, Integer, List<String>> callable,
+      Function<ListFilter, Integer> countCallable,
+      ListFilter filter,
+      Integer limitParam,
+      String offset,
+      boolean skipErrors,
+      Fields fields,
+      UriInfo uriInfo) {
+    List<T> entities = new ArrayList<>();
+    List<EntityError> errors = new ArrayList<>();
+
+    Integer total = countCallable.apply(filter);
+
+    int offsetInt = getOffset(offset);
+    String afterOffset = getAfterOffset(offsetInt, limitParam, total);
+    String beforeOffset = getBeforeOffset(offsetInt, limitParam);
+    if (limitParam > 0) {
+      List<String> jsons = callable.apply(filter, limitParam, offsetInt);
+      Iterator<Either<T, EntityError>> iterator = serializeJsons(jsons, fields, uriInfo);
+      while (iterator.hasNext()) {
+        Either<T, EntityError> either = iterator.next();
+        if (either.right().isPresent()) {
+          if (!skipErrors) {
+            throw new RuntimeException(either.right().get().getMessage());
+          } else {
+            errors.add(either.right().get());
+            LOG.error("[List] Failed for Entity : {}", either.right().get());
+          }
+        } else {
+          entities.add(either.left().get());
+        }
+      }
+      return getResultList(entities, errors, beforeOffset, afterOffset, total);
+    } else {
+      return getResultList(entities, errors, null, null, total);
+    }
   }
 
   public final EntityHistory listVersions(UUID id) {
@@ -1570,6 +1588,23 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return daoCollection
         .entityExtensionTimeSeriesDao()
         .listBetweenTimestampsByOrder(fqn, extension, startTs, endTs, orderBy);
+  }
+
+  @Transaction
+  public ResultList<T> getEntitiesWithTestSuite(
+      ListFilter filter, Integer limit, String offset, EntityUtil.Fields fields) {
+    CollectionDAO.TestSuiteDAO testSuiteDAO = daoCollection.testSuiteDAO();
+    return listWithOffset(
+        (filterParam, limitParam, offsetParam) ->
+            testSuiteDAO.listEntitiesWithTestsuite(
+                filterParam, dao.getTableName(), entityType, limitParam, offsetParam),
+        (filterParam) -> testSuiteDAO.countEntitiesWithTestsuite(filterParam, entityType),
+        filter,
+        limit,
+        offset,
+        false,
+        fields,
+        null);
   }
 
   @Transaction
@@ -3916,5 +3951,37 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   private List<String> entityListToStrings(List<T> entities) {
     return entities.stream().map(EntityInterface::getId).map(UUID::toString).toList();
+  }
+
+  private Iterator<Either<T, EntityError>> serializeJsons(
+      List<String> jsons, Fields fields, UriInfo uriInfo) {
+    return new Iterator<>() {
+      private final Iterator<String> iterator = jsons.iterator();
+
+      @Override
+      public boolean hasNext() {
+        return iterator.hasNext();
+      }
+
+      @Override
+      public Either<T, EntityError> next() {
+        String json = iterator.next();
+        T entity = JsonUtils.readValue(json, entityClass);
+        try {
+          setFieldsInternal(entity, fields);
+          setInheritedFields(entity, fields);
+          clearFieldsInternal(entity, fields);
+          if (!nullOrEmpty(uriInfo)) {
+            entity = withHref(uriInfo, entity);
+          }
+          return Either.left(entity);
+        } catch (Exception e) {
+          clearFieldsInternal(entity, fields);
+          EntityError entityError =
+              new EntityError().withMessage(e.getMessage()).withEntity(entity);
+          return Either.right(entityError);
+        }
+      }
+    };
   }
 }

@@ -117,6 +117,19 @@ This is a sample config for Tableau:
 
 {% /codeInfo %}
 
+{% codeInfo srNumber=12 %}
+**verifySSL**: Client SSL verification. Make sure to configure the SSLConfig if enabled. Supported values `no-ssl`, `ignore`, `validate`.
+{% /codeInfo %}
+
+{% codeInfo srNumber=13 %}
+**sslMode**: Mode of SSL. Default is `disabled`. Supported modes are `disable`, `allow`, `prefer`, `require`, `verify-ca`, `verify-full`.
+{% /codeInfo %}
+
+{% codeInfo srNumber=14 %}
+**sslConfig**: Client SSL configuration.
+{% /codeInfo %}
+
+
 #### Source Configuration - Source Config
 
 {% codeInfo srNumber=8 %}
@@ -131,6 +144,7 @@ The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetada
 - **includeDataModels**: Set the 'Include Data Models' toggle to control whether to include tags as part of metadata ingestion.
 - **markDeletedDashboards**: Set the 'Mark Deleted Dashboards' toggle to flag dashboards as soft-deleted if they are not present anymore in the source system.
 
+
 {% /codeInfo %}
 
 #### Sink Configuration
@@ -140,6 +154,7 @@ The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetada
 To send the metadata to OpenMetadata, it needs to be specified as `type: metadata-rest`.
 
 {% /codeInfo %}
+
 
 {% partial file="/v1.6/connectors/yaml/workflow-config-def.md" /%}
 
@@ -183,6 +198,28 @@ source:
 ```yaml {% srNumber=11 %}
       paginationLimit: pagination_limit
 ```
+```yaml {% srNumber=12 %}
+      # verifySSL: no-ssl
+```
+```yaml {% srNumber=13 %}
+      # sslMode: disable
+```
+```yaml {% srNumber=14 %}
+      # sslConfig:
+      #   caCertificate: |
+      #     -----BEGIN CERTIFICATE-----
+      #     sample certificate
+      #     -----END CERTIFICATE-----
+      #   sslCertificate: |
+      #     -----BEGIN CERTIFICATE-----
+      #     sample certificate
+      #     -----END CERTIFICATE-----
+      #   sslKey: |
+      #     -----BEGIN PRIVATE KEY-----
+      #     sample certificate
+      #     -----END PRIVATE KEY-----
+```
+
 
 {% partial file="/v1.6/connectors/yaml/dashboard/source-config.md" /%}
 

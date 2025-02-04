@@ -80,6 +80,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -149,6 +150,8 @@ import org.openmetadata.schema.type.TagLabel.LabelType;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
+import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.jdbi3.TableRepository;
 import org.openmetadata.service.jdbi3.TableRepository.TableCsv;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.databases.TableResource.TableList;
@@ -2267,6 +2270,46 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   }
 
   @Test
+  void test_listTablesWithTestSuite(TestInfo test) throws IOException {
+    CreateDatabase createDb = dbTest.createRequest(test).withOwners(Lists.newArrayList(USER1_REF));
+    Database db = dbTest.createEntity(createDb, ADMIN_AUTH_HEADERS);
+    CreateDatabaseSchema createSchema =
+        schemaTest.createRequest(test).withDatabase(db.getFullyQualifiedName());
+    DatabaseSchema schema = schemaTest.createEntity(createSchema, ADMIN_AUTH_HEADERS);
+    CreateTable createTable =
+        createRequest(test).withDatabaseSchema(schema.getFullyQualifiedName());
+    Table table = createEntity(createTable, ADMIN_AUTH_HEADERS);
+
+    CreateTestSuite createTestSuite =
+        testSuiteResourceTest.createRequest(table.getFullyQualifiedName());
+    TestSuite testSuite =
+        testSuiteResourceTest.createBasicTestSuite(createTestSuite, ADMIN_AUTH_HEADERS);
+
+    CreateTestCase createTestCase =
+        testCaseResourceTest
+            .createRequest(test)
+            .withEntityLink(String.format("<#E::table::%s>", table.getFullyQualifiedName()))
+            .withTestSuite(testSuite.getFullyQualifiedName())
+            .withTestDefinition(TEST_DEFINITION2.getFullyQualifiedName());
+    TestCase testCase = testCaseResourceTest.createEntity(createTestCase, ADMIN_AUTH_HEADERS);
+
+    TableRepository tableRepository = (TableRepository) Entity.getEntityRepository(TABLE);
+
+    ResultList<Table> allTables = listEntities(null, ADMIN_AUTH_HEADERS);
+    ResultList<Table> tablesWithTestSuite =
+        tableRepository.getEntitiesWithTestSuite(
+            new ListFilter(),
+            10,
+            "MA==",
+            new Fields(
+                Set.of(
+                    "tags", "testSuite", "columns", "table.tableProfile", "table.columnProfile")));
+
+    // Ensure the number of tables with test suite is less than the total number of tables
+    assertTrue(allTables.getData().size() > tablesWithTestSuite.getData().size());
+  }
+
+  @Test
   void test_domainInheritance(TestInfo test) throws IOException {
     // Domain is inherited from databaseService > database > databaseSchema > table
     CreateDatabaseService createDbService =
@@ -2441,7 +2484,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     queryParams.put("limit", "100");
 
     ResultList<Table> tables = listEntities(queryParams, ADMIN_AUTH_HEADERS);
-    assertEquals(4, tables.getData().size());
+    assertEquals(5, tables.getData().size());
     assertNotNull(tables.getData().get(0).getTestSuite());
   }
 

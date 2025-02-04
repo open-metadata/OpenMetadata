@@ -13,11 +13,12 @@ Lineage Source Module
 """
 import csv
 import os
+import time
 import traceback
 from abc import ABC
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import ThreadPoolExecutor
 from functools import partial
-from typing import Callable, Iterable, Iterator, List, Optional, Union
+from typing import Any, Callable, Iterable, Iterator, List, Optional, Union
 
 from metadata.generated.schema.api.data.createQuery import CreateQueryRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
@@ -37,8 +38,13 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.tableQuery import TableQuery
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper, Dialect
-from metadata.ingestion.lineage.sql_lineage import get_column_fqn, get_lineage_by_query
+from metadata.ingestion.lineage.sql_lineage import (
+    get_column_fqn,
+    get_lineage_by_graph,
+    get_lineage_by_query,
+)
 from metadata.ingestion.models.ometa_lineage import OMetaLineageRequest
+from metadata.ingestion.models.topology import Queue
 from metadata.ingestion.source.database.query_parser_source import QueryParserSource
 from metadata.ingestion.source.models import TableView
 from metadata.utils import fqn
@@ -46,6 +52,9 @@ from metadata.utils.db_utils import get_view_lineage
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
+
+
+CHUNK_SIZE = 200
 
 
 class LineageSource(QueryParserSource, ABC):
@@ -108,27 +117,57 @@ class LineageSource(QueryParserSource, ABC):
             )
             yield from self.yield_table_query()
 
-    def generate_lineage_in_thread(self, producer_fn: Callable, processor_fn: Callable):
-        with ThreadPoolExecutor(max_workers=self.source_config.threads) as executor:
-            futures = []
+    def generate_lineage_in_thread(
+        self,
+        producer_fn: Callable[[], Iterable[Any]],
+        processor_fn: Callable[[Any], Iterable[Any]],
+        chunk_size: int = CHUNK_SIZE,
+    ):
+        """
+        Optimized multithreaded lineage generation with improved error handling and performance.
 
-            for produced_input in producer_fn():
-                futures.append(executor.submit(processor_fn, produced_input))
+        Args:
+            producer_fn: Function that yields input items
+            processor_fn: Function to process each input item
+            chunk_size: Optional batching to reduce thread creation overhead
+        """
 
-            # Handle remaining futures after the loop
-            for future in as_completed(
-                futures, timeout=self.source_config.parsingTimeoutLimit
-            ):
-                try:
-                    results = future.result(
-                        timeout=self.source_config.parsingTimeoutLimit
-                    )
-                    yield from results
-                except Exception as exc:
-                    logger.debug(traceback.format_exc())
-                    logger.warning(
-                        f"Error processing result for {produced_input}: {exc}"
-                    )
+        def chunk_generator():
+            temp_chunk = []
+            for chunk in producer_fn():
+                temp_chunk.append(chunk)
+                if len(temp_chunk) >= chunk_size:
+                    yield temp_chunk
+                    temp_chunk = []
+
+            if temp_chunk:
+                yield temp_chunk
+
+        thread_pool = ThreadPoolExecutor(max_workers=self.source_config.threads)
+        queue = Queue()
+
+        futures = [
+            thread_pool.submit(
+                processor_fn,
+                chunk,
+                queue,
+            )
+            for chunk in chunk_generator()
+        ]
+        while True:
+            if queue.has_tasks():
+                yield from queue.process()
+
+            else:
+                if not futures:
+                    break
+
+                for i, future in enumerate(futures):
+                    if future.done():
+                        future.result()
+                        futures.pop(i)
+
+            time.sleep(0.01)
 
     def yield_table_query(self) -> Iterator[TableQuery]:
         """
@@ -170,33 +209,45 @@ class LineageSource(QueryParserSource, ABC):
         return fqn.get_query_checksum(table_query.query) in checksums or {}
 
     def query_lineage_generator(
-        self, table_query: TableQuery
+        self, table_queries: List[TableQuery], queue: Queue
     ) -> Iterable[Either[Union[AddLineageRequest, CreateQueryRequest]]]:
-        if not self._query_already_processed(table_query):
-            lineages: Iterable[Either[AddLineageRequest]] = get_lineage_by_query(
-                self.metadata,
-                query=table_query.query,
-                service_name=table_query.serviceName,
-                database_name=table_query.databaseName,
-                schema_name=table_query.databaseSchema,
-                dialect=self.dialect,
-                timeout_seconds=self.source_config.parsingTimeoutLimit,
-            )
+        if self.graph is None and self.source_config.enableTempTableLineage:
+            import networkx as nx
 
-            for lineage_request in lineages or []:
-                yield lineage_request
+            # Create a directed graph
+            self.graph = nx.DiGraph()
 
-                # If we identified lineage properly, ingest the original query
-                if lineage_request.right:
-                    yield Either(
-                        right=CreateQueryRequest(
-                            query=SqlQuery(table_query.query),
-                            query_type=table_query.query_type,
-                            duration=table_query.duration,
-                            processedLineage=True,
-                            service=FullyQualifiedEntityName(self.config.serviceName),
+        for table_query in table_queries or []:
+            if not self._query_already_processed(table_query):
+                lineages: Iterable[Either[AddLineageRequest]] = get_lineage_by_query(
+                    self.metadata,
+                    query=table_query.query,
+                    service_name=table_query.serviceName,
+                    database_name=table_query.databaseName,
+                    schema_name=table_query.databaseSchema,
+                    dialect=self.dialect,
+                    timeout_seconds=self.source_config.parsingTimeoutLimit,
+                    graph=self.graph,
+                )
+
+                for lineage_request in lineages or []:
+                    queue.put(lineage_request)
+
+                    # If we identified lineage properly, ingest the original query
+                    if lineage_request.right:
+                        queue.put(
+                            Either(
+                                right=CreateQueryRequest(
+                                    query=SqlQuery(table_query.query),
+                                    query_type=table_query.query_type,
+                                    duration=table_query.duration,
+                                    processedLineage=True,
+                                    service=FullyQualifiedEntityName(
+                                        self.config.serviceName
+                                    ),
+                                )
+                            )
                         )
-                    )
 
     def yield_query_lineage(
         self,
@@ -209,28 +260,33 @@ class LineageSource(QueryParserSource, ABC):
         self.dialect = ConnectionTypeDialectMapper.dialect_of(connection_type)
         producer_fn = self.get_table_query
         processor_fn = self.query_lineage_generator
-        yield from self.generate_lineage_in_thread(producer_fn, processor_fn)
+        yield from self.generate_lineage_in_thread(
+            producer_fn, processor_fn, CHUNK_SIZE
+        )
 
     def view_lineage_generator(
-        self, view: TableView
+        self, views: List[TableView], queue: Queue
     ) -> Iterable[Either[AddLineageRequest]]:
         try:
-            for lineage in get_view_lineage(
-                view=view,
-                metadata=self.metadata,
-                service_name=self.config.serviceName,
-                connection_type=self.service_connection.type.value,
-                timeout_seconds=self.source_config.parsingTimeoutLimit,
-            ):
-                if lineage.right is not None:
-                    yield Either(
-                        right=OMetaLineageRequest(
-                            lineage_request=lineage.right,
-                            override_lineage=self.source_config.overrideViewLineage,
+            for view in views:
+                for lineage in get_view_lineage(
+                    view=view,
+                    metadata=self.metadata,
+                    service_name=self.config.serviceName,
+                    connection_type=self.service_connection.type.value,
+                    timeout_seconds=self.source_config.parsingTimeoutLimit,
+                ):
+                    if lineage.right is not None:
+                        queue.put(
+                            Either(
+                                right=OMetaLineageRequest(
+                                    lineage_request=lineage.right,
+                                    override_lineage=self.source_config.overrideViewLineage,
+                                )
+                            )
                         )
-                    )
-                else:
-                    yield lineage
+                    else:
+                        queue.put(lineage)
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(f"Error processing view {view}: {exc}")
@@ -321,6 +377,7 @@ class LineageSource(QueryParserSource, ABC):
         if self.source_config.processQueryLineage:
             if hasattr(self.service_connection, "supportsLineageExtraction"):
                 yield from self.yield_query_lineage() or []
+                yield from get_lineage_by_graph(graph=self.graph)
             else:
                 logger.warning(
                     f"Lineage extraction is not supported for {str(self.service_connection.type.value)} connection"

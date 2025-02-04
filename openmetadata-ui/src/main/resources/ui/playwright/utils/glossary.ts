@@ -25,6 +25,7 @@ import {
   UserTeamRef,
 } from '../support/glossary/Glossary.interface';
 import { GlossaryTerm } from '../support/glossary/GlossaryTerm';
+import { UserClass } from '../support/user/UserClass';
 import {
   clickOutside,
   closeFirstPopupAlert,
@@ -1434,4 +1435,29 @@ export const updateGlossaryTermReviewers = async (
   const glossaryTermResponse = page.waitForResponse('/api/v1/glossaryTerms/*');
   await page.getByTestId('save-glossary-term').click();
   await glossaryTermResponse;
+};
+
+export const checkGlossaryTermDetails = async (
+  page: Page,
+  term: GlossaryTermData,
+  owner: UserClass,
+  reviewer: UserClass
+) => {
+  await openEditGlossaryTermModal(page, term);
+
+  await expect(page.locator('[data-testid="name"]')).toHaveValue(term.name);
+  await expect(page.locator('[data-testid="display-name"]')).toHaveValue(
+    term.displayName
+  );
+  await expect(page.getByTestId('editor')).toContainText(term.description);
+
+  await expect(
+    page.locator('[data-testid="owner-container"] [data-testid="owner-link"]')
+  ).toContainText(owner.responseData.displayName);
+
+  await expect(
+    page.locator(
+      '[data-testid="reviewers-container"] [data-testid="owner-link"]'
+    )
+  ).toContainText(reviewer.responseData.displayName);
 };

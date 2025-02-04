@@ -4,6 +4,9 @@
   "title": "PeriodicBatchEntityTriggerDefinition",
   "description": "Periodic Batch Entity Trigger.",
   "javaType": "org.openmetadata.schema.governance.workflows.elements.nodes.trigger.PeriodicBatchEntityTriggerDefinition",
+  "javaInterfaces": [
+    "org.openmetadata.schema.governance.workflows.elements.WorkflowTriggerInterface"
+  ],
   "type": "object",
   "definitions": {
     "config": {
@@ -28,14 +31,18 @@
           "default": 500
         }
       },
-      "required": ["schedule", "entityType", "filters"],
+      "required": [
+        "schedule",
+        "entityType",
+        "filters"
+      ],
       "additionalProperties": false
     }
   },
   "properties": {
     "type": {
       "type": "string",
-      "default": "periodicBatchEntityTrigger"
+      "default": "periodicBatchEntity"
     },
     "config": {
       "$ref": "#/definitions/config"
@@ -45,7 +52,9 @@
       "items": {
         "type": "string"
       },
-      "default": ["relatedEntity"],
+      "default": [
+        "relatedEntity"
+      ],
       "additionalItems": false,
       "minItems": 1,
       "maxItems": 1,

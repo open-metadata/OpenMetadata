@@ -262,6 +262,7 @@ export const ROUTES = {
   EDIT_KPI: `/data-insights/kpi/edit-kpi/${PLACEHOLDER_ROUTE_FQN}`,
 
   SETTINGS_EDIT_CUSTOM_LOGIN_CONFIG: `/settings/OpenMetadata/loginConfiguration/edit-custom-login-configuration`,
+  SETTINGS_OM_URL_CONFIG: `/settings/OpenMetadata/openMetadataBaseUrlConfiguration/edit-open-metadata-url-configuration`,
 
   CUSTOMIZE_PAGE: `/customize-page/${PLACEHOLDER_ROUTE_FQN}/:pageFqn`,
 
@@ -610,4 +611,8 @@ export const STATUS_LABEL = {
   [Status.Started]: 'Started',
   [Status.Stopped]: 'Stopped',
   [Status.Success]: 'Success',
+};
+
+export const INITIAL_TABLE_FILTERS = {
+  showDeletedTables: false,
 };

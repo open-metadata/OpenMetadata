@@ -11,6 +11,8 @@
     "setEntityCertificationTask",
     "setGlossaryTermStatusTask",
     "endEvent",
-    "startEvent"
+    "startEvent",
+    "pythonWorkflowAutomationTask",
+    "jsonLogicTask"
   ]
 }
