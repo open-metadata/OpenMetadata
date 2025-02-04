@@ -218,10 +218,10 @@ export const getLayoutedElements = (
 };
 
 const layoutOptions = {
-  'elk.algorithm': 'layered',
+  'elk.algorithm': 'mrtree',
   'elk.direction': 'RIGHT',
   'elk.layered.spacing.edgeNodeBetweenLayers': '50',
-  'elk.spacing.nodeNode': '60',
+  'elk.spacing.nodeNode': '100',
   'elk.layered.nodePlacement.strategy': 'SIMPLE',
 };
 
