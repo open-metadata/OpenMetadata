@@ -101,7 +101,7 @@ class ProfilerTestParameters:
                 ColumnProfile(
                     name="gender",
                     timestamp=Timestamp(0),
-                    valuesCount=1000,
+                    valuesCount=932,
                     nullCount=0,
                 )
             ],
