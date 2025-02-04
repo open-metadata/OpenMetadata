@@ -1,6 +1,6 @@
 package org.openmetadata.service.governance.workflows;
 
-import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAMESPACE;
+import static org.openmetadata.service.governance.workflows.WorkflowVariableHandler.getNamespacedVariableName;
 import static org.openmetadata.service.governance.workflows.elements.TriggerFactory.getTriggerWorkflowId;
 
 import java.time.Duration;
@@ -20,15 +20,12 @@ import org.flowable.engine.ProcessEngines;
 import org.flowable.engine.RepositoryService;
 import org.flowable.engine.RuntimeService;
 import org.flowable.engine.TaskService;
-import org.flowable.engine.delegate.DelegateExecution;
 import org.flowable.engine.history.HistoricProcessInstance;
 import org.flowable.engine.impl.cfg.StandaloneProcessEngineConfiguration;
 import org.flowable.engine.repository.ProcessDefinition;
 import org.flowable.engine.runtime.Execution;
 import org.flowable.engine.runtime.ProcessInstance;
 import org.flowable.task.api.Task;
-import org.flowable.task.service.delegate.DelegateTask;
-import org.flowable.variable.api.delegate.VariableScope;
 import org.openmetadata.schema.configuration.WorkflowSettings;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.service.Entity;
@@ -354,42 +351,5 @@ public class WorkflowHandler {
               runtimeService.deleteProcessInstance(
                   instance.getId(), "Terminating all instances due to user request.");
             });
-  }
-
-  public static String getNamespacedVariableName(String namespace, String varName) {
-    if (namespace != null) {
-      return String.format("%s_%s", namespace, varName);
-    } else {
-      return varName;
-    }
-  }
-
-  public static void setNodeVariable(DelegateExecution execution, String varName, Object varValue) {
-    String namespace = execution.getParent().getCurrentActivityId();
-    setNamespacedVariable(execution, namespace, varName, varValue);
-  }
-
-  public static void setGlobalVariable(VariableScope execution, String varName, Object varValue) {
-    setNamespacedVariable(execution, GLOBAL_NAMESPACE, varName, varValue);
-  }
-
-  public static void setNamespacedVariable(
-      VariableScope execution, String namespace, String varName, Object varValue) {
-    execution.setVariable(getNamespacedVariableName(namespace, varName), varValue);
-  }
-
-  public static Object getNamespacedVariable(
-      VariableScope execution, String namespace, String varName) {
-    return execution.getVariable(getNamespacedVariableName(namespace, varName));
-  }
-
-  public static void setNodeVariable(DelegateTask delegateTask, String varName, Object varValue) {
-    WorkflowHandler workflowHandler = WorkflowHandler.getInstance();
-    String namespace = workflowHandler.getParentActivityId(delegateTask.getExecutionId());
-    if (namespace != null) {
-      setNamespacedVariable(delegateTask, namespace, varName, varValue);
-    } else {
-      // Raise Error
-    }
   }
 }

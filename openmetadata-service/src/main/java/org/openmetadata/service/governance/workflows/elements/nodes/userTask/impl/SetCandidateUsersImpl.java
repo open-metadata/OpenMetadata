@@ -1,10 +1,8 @@
 package org.openmetadata.service.governance.workflows.elements.nodes.userTask.impl;
 
 import static org.openmetadata.service.governance.workflows.Workflow.EXCEPTION_VARIABLE;
-import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAMESPACE;
 import static org.openmetadata.service.governance.workflows.Workflow.WORKFLOW_RUNTIME_EXCEPTION;
 import static org.openmetadata.service.governance.workflows.WorkflowHandler.getProcessDefinitionKeyFromId;
-import static org.openmetadata.service.governance.workflows.WorkflowHandler.setNamespacedVariable;
 
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
@@ -12,6 +10,7 @@ import org.flowable.common.engine.api.delegate.Expression;
 import org.flowable.engine.delegate.BpmnError;
 import org.flowable.engine.delegate.TaskListener;
 import org.flowable.task.service.delegate.DelegateTask;
+import org.openmetadata.service.governance.workflows.WorkflowVariableHandler;
 import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
@@ -20,6 +19,7 @@ public class SetCandidateUsersImpl implements TaskListener {
 
   @Override
   public void notify(DelegateTask delegateTask) {
+    WorkflowVariableHandler varHandler = new WorkflowVariableHandler(delegateTask);
     try {
       List<String> assignees =
           JsonUtils.readOrConvertValue(
@@ -32,7 +32,7 @@ public class SetCandidateUsersImpl implements TaskListener {
               "[%s] Failure: ",
               getProcessDefinitionKeyFromId(delegateTask.getProcessDefinitionId())),
           exc);
-      setNamespacedVariable(delegateTask, GLOBAL_NAMESPACE, EXCEPTION_VARIABLE, exc.toString());
+      varHandler.setGlobalVariable(EXCEPTION_VARIABLE, exc.toString());
       throw new BpmnError(WORKFLOW_RUNTIME_EXCEPTION, exc.getMessage());
     }
   }

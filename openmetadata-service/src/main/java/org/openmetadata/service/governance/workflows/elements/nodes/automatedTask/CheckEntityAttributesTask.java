@@ -75,6 +75,7 @@ public class CheckEntityAttributesTask implements NodeInterface {
             .build();
     serviceTask.getFieldExtensions().add(rulesExpr);
     serviceTask.getFieldExtensions().add(inputNamespaceMapExpr);
+
     return serviceTask;
   }
 

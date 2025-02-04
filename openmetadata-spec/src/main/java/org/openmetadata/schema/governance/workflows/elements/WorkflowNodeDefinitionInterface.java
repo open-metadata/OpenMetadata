@@ -54,6 +54,10 @@ public interface WorkflowNodeDefinitionInterface {
   }
   ;
 
+  default Object getInputNamespaceMap() {
+    return null;
+  }
+
   void setType(String type);
 
   void setSubType(String subType);
@@ -73,6 +77,10 @@ public interface WorkflowNodeDefinitionInterface {
   }
 
   default void setOutputs(List<String> outputs) {
+    /* no-op implementation to be overridden */
+  }
+
+  default void setInputNamespaceMap(Object inputNamespaceMap) {
     /* no-op implementation to be overridden */
   }
 

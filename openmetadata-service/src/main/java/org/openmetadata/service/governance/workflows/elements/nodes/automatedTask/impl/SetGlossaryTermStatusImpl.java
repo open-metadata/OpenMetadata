@@ -1,13 +1,10 @@
 package org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.impl;
 
 import static org.openmetadata.service.governance.workflows.Workflow.EXCEPTION_VARIABLE;
-import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAMESPACE;
 import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.UPDATED_BY_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.WORKFLOW_RUNTIME_EXCEPTION;
-import static org.openmetadata.service.governance.workflows.WorkflowHandler.getNamespacedVariable;
 import static org.openmetadata.service.governance.workflows.WorkflowHandler.getProcessDefinitionKeyFromId;
-import static org.openmetadata.service.governance.workflows.WorkflowHandler.setNamespacedVariable;
 
 import java.util.Map;
 import java.util.Objects;
@@ -21,6 +18,7 @@ import org.flowable.engine.delegate.JavaDelegate;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.governance.workflows.WorkflowVariableHandler;
 import org.openmetadata.service.jdbi3.GlossaryTermRepository;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.util.JsonUtils;
@@ -32,26 +30,23 @@ public class SetGlossaryTermStatusImpl implements JavaDelegate {
 
   @Override
   public void execute(DelegateExecution execution) {
+    WorkflowVariableHandler varHandler = new WorkflowVariableHandler(execution);
     try {
       Map<String, String> inputNamespaceMap =
           JsonUtils.readOrConvertValue(inputNamespaceMapExpr.getValue(execution), Map.class);
       MessageParser.EntityLink entityLink =
           MessageParser.EntityLink.parse(
               (String)
-                  getNamespacedVariable(
-                      execution,
-                      inputNamespaceMap.get(RELATED_ENTITY_VARIABLE),
-                      RELATED_ENTITY_VARIABLE));
+                  varHandler.getNamespacedVariable(
+                      inputNamespaceMap.get(RELATED_ENTITY_VARIABLE), RELATED_ENTITY_VARIABLE));
       GlossaryTerm glossaryTerm = Entity.getEntity(entityLink, "*", Include.ALL);
 
       String status = (String) statusExpr.getValue(execution);
       String user =
           Optional.ofNullable(
                   (String)
-                      getNamespacedVariable(
-                          execution,
-                          inputNamespaceMap.get(UPDATED_BY_VARIABLE),
-                          UPDATED_BY_VARIABLE))
+                      varHandler.getNamespacedVariable(
+                          inputNamespaceMap.get(UPDATED_BY_VARIABLE), UPDATED_BY_VARIABLE))
               .orElse("governance-bot");
 
       setStatus(glossaryTerm, user, status);
@@ -60,7 +55,7 @@ public class SetGlossaryTermStatusImpl implements JavaDelegate {
           String.format(
               "[%s] Failure: ", getProcessDefinitionKeyFromId(execution.getProcessDefinitionId())),
           exc);
-      setNamespacedVariable(execution, GLOBAL_NAMESPACE, EXCEPTION_VARIABLE, exc.toString());
+      varHandler.setGlobalVariable(EXCEPTION_VARIABLE, exc.toString());
       throw new BpmnError(WORKFLOW_RUNTIME_EXCEPTION, exc.getMessage());
     }
   }

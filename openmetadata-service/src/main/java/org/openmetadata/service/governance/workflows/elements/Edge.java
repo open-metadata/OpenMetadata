@@ -1,7 +1,7 @@
 package org.openmetadata.service.governance.workflows.elements;
 
 import static org.openmetadata.service.governance.workflows.Workflow.RESULT_VARIABLE;
-import static org.openmetadata.service.governance.workflows.WorkflowHandler.getNamespacedVariableName;
+import static org.openmetadata.service.governance.workflows.WorkflowVariableHandler.getNamespacedVariableName;
 
 import org.flowable.bpmn.model.BpmnModel;
 import org.flowable.bpmn.model.Process;
