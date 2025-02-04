@@ -2,6 +2,7 @@ package org.openmetadata.schema.governance.workflows.elements;
 
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
+import java.util.Set;
 import org.openmetadata.schema.governance.workflows.elements.nodes.trigger.PeriodicBatchEntityTriggerDefinition;
 import org.openmetadata.schema.governance.workflows.elements.triggers.EventBasedEntityTriggerDefinition;
 
@@ -18,4 +19,6 @@ public interface WorkflowTriggerInterface {
   String getType();
 
   Object getConfig();
+
+  Set<String> getOutput();
 }

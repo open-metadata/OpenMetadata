@@ -44,12 +44,12 @@ public interface WorkflowNodeDefinitionInterface {
   }
   ;
 
-  default List<String> getInputs() {
+  default List<String> getInput() {
     return null;
   }
   ;
 
-  default List<String> getOutputs() {
+  default List<String> getOutput() {
     return null;
   }
   ;
@@ -72,11 +72,11 @@ public interface WorkflowNodeDefinitionInterface {
     /* no-op implementation to be overridden */
   }
 
-  default void setInputs(List<String> inputs) {
+  default void setInput(List<String> inputs) {
     /* no-op implementation to be overridden */
   }
 
-  default void setOutputs(List<String> outputs) {
+  default void setOutput(List<String> outputs) {
     /* no-op implementation to be overridden */
   }
 
