@@ -1,4 +1,4 @@
-FROM mysql:8.3 as mysql
+FROM mysql:8.3 AS mysql
 
 FROM apache/airflow:2.9.1-python3.10
 USER root
