@@ -84,11 +84,8 @@ function ServiceMainTabContent({
   const { serviceCategory } = useParams<{
     serviceCategory: ServiceTypes;
   }>();
-
   const { fqn: serviceFQN } = useFqn();
   const { permissions } = usePermissionProvider();
-
-  const [isEdit, setIsEdit] = useState(false);
   const [pageData, setPageData] = useState<ServicePageData[]>([]);
 
   const tier = getTierTags(serviceDetails?.tags ?? []);
@@ -131,18 +128,8 @@ function ServiceMainTabContent({
       await onDescriptionUpdate(updatedHTML);
     } catch (e) {
       // Error
-    } finally {
-      setIsEdit(false);
     }
   }, []);
-
-  const onDescriptionEdit = (): void => {
-    setIsEdit(true);
-  };
-
-  const onCancel = () => {
-    setIsEdit(false);
-  };
 
   const handleDisplayNameUpdate = useCallback(
     async (entityData: EntityName, id?: string) => {
@@ -249,11 +236,8 @@ function ServiceMainTabContent({
                       entityName={serviceName}
                       entityType={entityType}
                       hasEditAccess={editDescriptionPermission}
-                      isEdit={isEdit}
                       showActions={!serviceDetails.deleted}
                       showCommentsIcon={false}
-                      onCancel={onCancel}
-                      onDescriptionEdit={onDescriptionEdit}
                       onDescriptionUpdate={handleDescriptionUpdate}
                     />
                   </Col>

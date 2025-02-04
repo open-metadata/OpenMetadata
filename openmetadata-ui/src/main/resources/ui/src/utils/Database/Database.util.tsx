@@ -10,18 +10,27 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from 'antd';
+import { Col, Row, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { t } from 'i18next';
-import { isUndefined, toLower } from 'lodash';
+import { isEmpty, isUndefined, toLower } from 'lodash';
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { ActivityFeedTab } from '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
+import { CustomPropertyTable } from '../../components/common/CustomPropertyTable/CustomPropertyTable';
+import DescriptionV1 from '../../components/common/EntityDescription/DescriptionV1';
 import { OwnerLabel } from '../../components/common/OwnerLabel/OwnerLabel.component';
+import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
 import RichTextEditorPreviewerV1 from '../../components/common/RichTextEditor/RichTextEditorPreviewerV1';
+import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
+import { TabProps } from '../../components/common/TabsLabel/TabsLabel.interface';
+import { DatabaseSchemaTable } from '../../components/Database/DatabaseSchema/DatabaseSchemaTable/DatabaseSchemaTable';
+import EntityRightPanel from '../../components/Entity/EntityRightPanel/EntityRightPanel';
 import {
   getEntityDetailsPath,
   NO_DATA_PLACEHOLDER,
 } from '../../constants/constants';
+import { COMMON_RESIZABLE_PANEL_CONFIG } from '../../constants/ResizablePanel.constants';
 import { DetailPageWidgetKeys } from '../../enums/CustomizeDetailPage.enum';
 import {
   EntityTabs,
@@ -33,6 +42,7 @@ import { EntityReference } from '../../generated/entity/type';
 import { UsageDetails } from '../../generated/type/entityUsage';
 import { getEntityName } from '../EntityUtils';
 import { getUsagePercentile } from '../TableUtils';
+import { DatabaseDetailPageTabProps } from './DatabaseClassBase';
 
 export const getQueryFilterForDatabase = (
   serviceType: string,
@@ -186,4 +196,146 @@ export const getDatabaseDetailsPageDefaultLayout = (tab: EntityTabs) => {
     default:
       return [];
   }
+};
+
+export const getDatabasePageBaseTabs = ({
+  activeTab,
+  database,
+  description,
+  decodedDatabaseFQN,
+  editDescriptionPermission,
+  editGlossaryTermsPermission,
+  editTagsPermission,
+  viewAllPermission,
+  tags,
+  schemaInstanceCount,
+  feedCount,
+  handleFeedCount,
+  getEntityFeedCount,
+  onDescriptionUpdate,
+  onThreadLinkSelect,
+  handleTagSelection,
+  settingsUpdateHandler,
+  deleted,
+  editCustomAttributePermission,
+  getDetailsByFQN,
+}: DatabaseDetailPageTabProps): TabProps[] => {
+  return [
+    {
+      label: (
+        <TabsLabel
+          count={schemaInstanceCount}
+          id={EntityTabs.SCHEMA}
+          isActive={activeTab === EntityTabs.SCHEMA}
+          name={t('label.schema-plural')}
+        />
+      ),
+      key: EntityTabs.SCHEMA,
+      children: (
+        <Row gutter={[0, 16]} wrap={false}>
+          <Col className="tab-content-height-with-resizable-panel" span={24}>
+            <ResizablePanels
+              firstPanel={{
+                className: 'entity-resizable-panel-container',
+                children: (
+                  <div className="p-t-sm m-x-lg">
+                    <Row gutter={[16, 16]}>
+                      <Col data-testid="description-container" span={24}>
+                        <DescriptionV1
+                          description={description}
+                          entityFqn={decodedDatabaseFQN}
+                          entityName={getEntityName(database)}
+                          entityType={EntityType.DATABASE}
+                          hasEditAccess={editDescriptionPermission}
+                          isDescriptionExpanded={isEmpty(database)}
+                          showActions={!database.deleted}
+                          onDescriptionUpdate={onDescriptionUpdate}
+                          onThreadLinkSelect={onThreadLinkSelect}
+                        />
+                      </Col>
+                      <Col span={24}>
+                        <DatabaseSchemaTable isDatabaseDeleted={deleted} />
+                      </Col>
+                    </Row>
+                  </div>
+                ),
+                ...COMMON_RESIZABLE_PANEL_CONFIG.LEFT_PANEL,
+              }}
+              secondPanel={{
+                children: (
+                  <div data-testid="entity-right-panel">
+                    <EntityRightPanel<EntityType.DATABASE>
+                      customProperties={database}
+                      dataProducts={database?.dataProducts ?? []}
+                      domain={database?.domain}
+                      editCustomAttributePermission={
+                        editCustomAttributePermission
+                      }
+                      editGlossaryTermsPermission={editGlossaryTermsPermission}
+                      editTagPermission={editTagsPermission}
+                      entityFQN={decodedDatabaseFQN}
+                      entityId={database?.id ?? ''}
+                      entityType={EntityType.DATABASE}
+                      selectedTags={tags}
+                      viewAllPermission={viewAllPermission}
+                      onExtensionUpdate={settingsUpdateHandler}
+                      onTagSelectionChange={handleTagSelection}
+                      onThreadLinkSelect={onThreadLinkSelect}
+                    />
+                  </div>
+                ),
+                ...COMMON_RESIZABLE_PANEL_CONFIG.RIGHT_PANEL,
+                className:
+                  'entity-resizable-right-panel-container entity-resizable-panel-container',
+              }}
+            />
+          </Col>
+        </Row>
+      ),
+    },
+    {
+      label: (
+        <TabsLabel
+          count={feedCount.totalCount}
+          id={EntityTabs.ACTIVITY_FEED}
+          isActive={activeTab === EntityTabs.ACTIVITY_FEED}
+          name={t('label.activity-feed-plural')}
+        />
+      ),
+      key: EntityTabs.ACTIVITY_FEED,
+      children: (
+        <ActivityFeedTab
+          refetchFeed
+          entityFeedTotalCount={feedCount.totalCount}
+          entityType={EntityType.DATABASE}
+          fqn={database?.fullyQualifiedName ?? ''}
+          onFeedUpdate={getEntityFeedCount}
+          onUpdateEntityDetails={getDetailsByFQN}
+          onUpdateFeedCount={handleFeedCount}
+        />
+      ),
+    },
+
+    {
+      label: (
+        <TabsLabel
+          id={EntityTabs.CUSTOM_PROPERTIES}
+          name={t('label.custom-property-plural')}
+        />
+      ),
+      key: EntityTabs.CUSTOM_PROPERTIES,
+      children: database && (
+        <div className="m-sm">
+          <CustomPropertyTable<EntityType.DATABASE>
+            entityDetails={database}
+            entityType={EntityType.DATABASE}
+            handleExtensionUpdate={settingsUpdateHandler}
+            hasEditAccess={editCustomAttributePermission}
+            hasPermission={viewAllPermission}
+            isVersionView={false}
+          />
+        </div>
+      ),
+    },
+  ];
 };

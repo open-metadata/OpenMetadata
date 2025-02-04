@@ -58,8 +58,6 @@ const GlossaryOverviewTab = ({
   editCustomAttributePermission,
   onExtensionUpdate,
 }: Props) => {
-  const [isDescriptionEditable, setIsDescriptionEditable] =
-    useState<boolean>(false);
   const [tagsUpdating, setTagsUpdating] = useState<TagLabel[]>();
   const { currentPersonaDocStore } = useCustomizeStore();
   // Since we are rendering this component for all customized tabs we need tab ID to get layout form store
@@ -97,9 +95,6 @@ const GlossaryOverviewTab = ({
         description: updatedHTML,
       };
       onUpdate(updatedTableDetails);
-      setIsDescriptionEditable(false);
-    } else {
-      setIsDescriptionEditable(false);
     }
   };
 
@@ -155,18 +150,14 @@ const GlossaryOverviewTab = ({
         entityName={getEntityName(selectedData)}
         entityType={EntityType.GLOSSARY_TERM}
         hasEditAccess={permissions.EditDescription || permissions.EditAll}
-        isEdit={isDescriptionEditable}
         owner={selectedData?.owners}
         showActions={!selectedData.deleted}
-        onCancel={() => setIsDescriptionEditable(false)}
-        onDescriptionEdit={() => setIsDescriptionEditable(true)}
         onDescriptionUpdate={onDescriptionUpdate}
         onThreadLinkSelect={onThreadLinkSelect}
       />
     );
   }, [
     glossaryDescription,
-    isDescriptionEditable,
     selectedData,
     onDescriptionUpdate,
     onThreadLinkSelect,

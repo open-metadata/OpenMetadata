@@ -269,6 +269,12 @@ export const CustomizablePage = () => {
     case PageType.Topic:
     case PageType.StoredProcedure:
     case PageType.DashboardDataModel:
+    case PageType.Dashboard:
+    case PageType.Pipeline:
+    case PageType.DatabaseSchema:
+    case PageType.Database:
+    case PageType.Container:
+    case PageType.SearchIndex:
       return (
         <CustomizeTableDetailPage
           initialPageData={currentPage}

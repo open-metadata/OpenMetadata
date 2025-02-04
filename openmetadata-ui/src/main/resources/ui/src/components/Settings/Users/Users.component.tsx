@@ -70,7 +70,6 @@ const Users = ({
   const [previewAsset, setPreviewAsset] =
     useState<EntityDetailsObjectInterface>();
 
-  const [isDescriptionEdit, setIsDescriptionEdit] = useState(false);
   const { t } = useTranslation();
   const { getResourceLimit } = useLimitStore();
 
@@ -256,10 +255,8 @@ const Users = ({
   const handleDescriptionChange = useCallback(
     async (description: string) => {
       await updateUserDetails({ description }, 'description');
-
-      setIsDescriptionEdit(false);
     },
-    [updateUserDetails, setIsDescriptionEdit]
+    [updateUserDetails]
   );
 
   const descriptionRenderComponent = useMemo(
@@ -270,10 +267,7 @@ const Users = ({
           entityName={getEntityName(userData as unknown as EntityReference)}
           entityType={EntityType.USER}
           hasEditAccess={isLoggedInUser}
-          isEdit={isDescriptionEdit}
           showCommentsIcon={false}
-          onCancel={() => setIsDescriptionEdit(false)}
-          onDescriptionEdit={() => setIsDescriptionEdit(true)}
           onDescriptionUpdate={handleDescriptionChange}
         />
       ) : (
@@ -293,7 +287,6 @@ const Users = ({
     [
       userData,
       isAdminUser,
-      isDescriptionEdit,
       isLoggedInUser,
       getEntityName,
       handleDescriptionChange,

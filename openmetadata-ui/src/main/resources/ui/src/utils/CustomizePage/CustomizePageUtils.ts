@@ -14,10 +14,16 @@ import { TabsProps } from 'antd';
 import { CommonWidgetType } from '../../constants/CustomizeWidgets.constants';
 import { EntityTabs } from '../../enums/entity.enum';
 import { PageType, Tab } from '../../generated/system/ui/page';
+import containerDetailsClassBase from '../ContainerDetailsClassBase';
 import customizeGlossaryPageClassBase from '../CustomizeGlossaryPage/CustomizeGlossaryPage';
 import customizeGlossaryTermPageClassBase from '../CustomizeGlossaryTerm/CustomizeGlossaryTermBaseClass';
 import dashboardDataModelClassBase from '../DashboardDataModelBase';
+import dashboardDetailsClassBase from '../DashboardDetailsClassBase';
+import databaseClassBase from '../Database/DatabaseClassBase';
+import databaseSchemaClassBase from '../DatabaseSchemaClassBase';
 import i18n from '../i18next/LocalUtil';
+import pipelineClassBase from '../PipelineClassBase';
+import searchIndexClassBase from '../SearchIndexDetailsClassBase';
 import storedProcedureClassBase from '../StoredProcedureBase';
 import tableClassBase from '../TableClassBase';
 import topicClassBase from '../TopicClassBase';
@@ -125,6 +131,10 @@ export const getTabLabelFromId = (tab: EntityTabs) => {
       return i18n.t('label.view-definition');
     case EntityTabs.DBT:
       return i18n.t('label.dbt-lowercase');
+    case EntityTabs.CHILDREN:
+      return i18n.t('label.children');
+    case EntityTabs.DETAILS:
+      return i18n.t('label.detail-plural');
     default:
       return '';
   }
@@ -155,6 +165,30 @@ export const getDashboardDataModelDefaultTabs = () => {
   return tabs;
 };
 
+export const getDatabaseDefaultTabs = () => {
+  return databaseClassBase.getDatabaseDetailPageTabsIds();
+};
+
+export const getPipelineDefaultTabs = () => {
+  return pipelineClassBase.getPipelineDetailPageTabsIds();
+};
+
+export const getDatabaseSchemaDefaultTabs = () => {
+  return databaseSchemaClassBase.getDatabaseSchemaPageTabsIds();
+};
+
+export const getSearchIndexDefaultTabs = () => {
+  return searchIndexClassBase.getSearchIndexDetailPageTabsIds();
+};
+
+export const getContainerDefaultTabs = () => {
+  return containerDetailsClassBase.getContainerDetailPageTabsIds();
+};
+
+export const getDashboardDefaultTabs = () => {
+  return dashboardDetailsClassBase.getDashboardDetailPageTabsIds();
+};
+
 export const getDefaultTabs = (pageType?: string): Tab[] => {
   switch (pageType) {
     case PageType.GlossaryTerm:
@@ -170,6 +204,17 @@ export const getDefaultTabs = (pageType?: string): Tab[] => {
     case PageType.DashboardDataModel:
       return getDashboardDataModelDefaultTabs();
     case PageType.Container:
+      return getContainerDefaultTabs();
+    case PageType.Database:
+      return getDatabaseDefaultTabs();
+    case PageType.SearchIndex:
+      return getSearchIndexDefaultTabs();
+    case PageType.DatabaseSchema:
+      return getDatabaseSchemaDefaultTabs();
+    case PageType.Pipeline:
+      return getPipelineDefaultTabs();
+    case PageType.Dashboard:
+      return getDashboardDefaultTabs();
     default:
       return [
         {
@@ -197,6 +242,16 @@ export const getDefaultWidgetForTab = (pageType: PageType, tab: EntityTabs) => {
       return dashboardDataModelClassBase.getDefaultLayout(tab);
     case PageType.StoredProcedure:
       return storedProcedureClassBase.getDefaultLayout(tab);
+    case PageType.Database:
+      return databaseClassBase.getDefaultLayout(tab);
+    case PageType.DatabaseSchema:
+      return databaseSchemaClassBase.getDefaultLayout(tab);
+    case PageType.Pipeline:
+      return pipelineClassBase.getDefaultLayout(tab);
+    case PageType.SearchIndex:
+      return searchIndexClassBase.getDefaultLayout(tab);
+    case PageType.Container:
+      return containerDetailsClassBase.getDefaultLayout(tab);
     default:
       return [];
   }
@@ -254,6 +309,18 @@ export const getDummyDataByPage = (pageType: PageType) => {
       return storedProcedureClassBase.getDummyData();
     case PageType.DashboardDataModel:
       return dashboardDataModelClassBase.getDummyData();
+    case PageType.Container:
+      return containerDetailsClassBase.getDummyData();
+    case PageType.Database:
+      return databaseClassBase.getDummyData();
+    case PageType.DatabaseSchema:
+      return databaseSchemaClassBase.getDummyData();
+    case PageType.Pipeline:
+      return pipelineClassBase.getDummyData();
+    case PageType.SearchIndex:
+      return searchIndexClassBase.getDummyData();
+    case PageType.Dashboard:
+      return dashboardDetailsClassBase.getDummyData();
 
     case PageType.LandingPage:
     default:

@@ -77,6 +77,7 @@ export const CustomizeTableDetailPage = ({
       />
       <div className="m-md">
         <DataAssetsHeader
+          isCustomizedView
           dataAsset={entityDummyData as Table}
           entityType={camelCase(currentPageType) as EntityType.TABLE}
           permissions={{} as OperationPermission}

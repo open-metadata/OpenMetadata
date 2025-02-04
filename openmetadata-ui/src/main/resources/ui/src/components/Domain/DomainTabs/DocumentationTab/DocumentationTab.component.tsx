@@ -59,8 +59,6 @@ const DocumentationTab = ({
   permissions,
 }: DocumentationTabProps) => {
   const { t } = useTranslation();
-  const [isDescriptionEditable, setIsDescriptionEditable] =
-    useState<boolean>(false);
   const [editDomainType, setEditDomainType] = useState(false);
   const resourceType =
     type === DocumentationEntity.DOMAIN
@@ -122,9 +120,6 @@ const DocumentationTab = ({
         description: updatedHTML,
       };
       onUpdate(updatedTableDetails);
-      setIsDescriptionEditable(false);
-    } else {
-      setIsDescriptionEditable(false);
     }
   };
 
@@ -179,10 +174,7 @@ const DocumentationTab = ({
               entityName={getEntityName(domain)}
               entityType={EntityType.DOMAIN}
               hasEditAccess={editDescriptionPermission}
-              isEdit={isDescriptionEditable}
               showCommentsIcon={false}
-              onCancel={() => setIsDescriptionEditable(false)}
-              onDescriptionEdit={() => setIsDescriptionEditable(true)}
               onDescriptionUpdate={onDescriptionUpdate}
             />
           </div>

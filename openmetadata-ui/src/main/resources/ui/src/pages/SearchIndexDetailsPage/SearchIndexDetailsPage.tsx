@@ -99,7 +99,7 @@ function SearchIndexDetailsPage() {
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA
   );
-  const [isEdit, setIsEdit] = useState(false);
+
   const [threadLink, setThreadLink] = useState<string>('');
   const [threadType, setThreadType] = useState<ThreadType>(
     ThreadType.Conversation
@@ -134,13 +134,6 @@ function SearchIndexDetailsPage() {
     } finally {
       setLoading(false);
     }
-  };
-
-  const onDescriptionEdit = (): void => {
-    setIsEdit(true);
-  };
-  const onCancel = () => {
-    setIsEdit(false);
   };
 
   const {
@@ -312,9 +305,6 @@ function SearchIndexDetailsPage() {
         description: updatedHTML,
       };
       await onSearchIndexUpdate(updatedSearchIndexDetails, 'description');
-      setIsEdit(false);
-    } else {
-      setIsEdit(false);
     }
   };
 
@@ -400,11 +390,8 @@ function SearchIndexDetailsPage() {
                         isDescriptionExpanded={isEmpty(
                           searchIndexDetails?.fields
                         )}
-                        isEdit={isEdit}
                         owner={searchIndexDetails?.owners}
                         showActions={!searchIndexDetails?.deleted}
-                        onCancel={onCancel}
-                        onDescriptionEdit={onDescriptionEdit}
                         onDescriptionUpdate={onDescriptionUpdate}
                         onThreadLinkSelect={onThreadLinkSelect}
                       />
@@ -565,10 +552,8 @@ function SearchIndexDetailsPage() {
     editLineagePermission,
     editCustomAttributePermission,
     viewAllPermission,
-    isEdit,
     searchIndexDetails,
     searchIndexDetails?.extension,
-    onDescriptionEdit,
     onDescriptionUpdate,
     editTagsPermission,
     editGlossaryTermsPermission,

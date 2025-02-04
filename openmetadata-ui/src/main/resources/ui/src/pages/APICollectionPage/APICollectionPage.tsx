@@ -127,7 +127,7 @@ const APICollectionPage: FunctionComponent = () => {
   const [apiEndpointsLoading, setAPIEndpointsLoading] = useState<boolean>(true);
   const [isAPICollectionLoading, setIsAPICollectionLoading] =
     useState<boolean>(true);
-  const [isEdit, setIsEdit] = useState(false);
+
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA
   );
@@ -254,14 +254,6 @@ const APICollectionPage: FunctionComponent = () => {
     [decodedAPICollectionFQN, showDeletedEndpoints, apiCollection]
   );
 
-  const onDescriptionEdit = useCallback((): void => {
-    setIsEdit(true);
-  }, []);
-
-  const onEditCancel = useCallback(() => {
-    setIsEdit(false);
-  }, []);
-
   const saveUpdatedAPICollectionData = useCallback(
     (updatedData: APICollection) => {
       let jsonPatch: Operation[] = [];
@@ -293,11 +285,7 @@ const APICollectionPage: FunctionComponent = () => {
           }
         } catch (error) {
           showErrorToast(error as AxiosError);
-        } finally {
-          setIsEdit(false);
         }
-      } else {
-        setIsEdit(false);
       }
     },
     [apiCollection]
@@ -592,11 +580,8 @@ const APICollectionPage: FunctionComponent = () => {
                       description={apiCollection?.description ?? ''}
                       editDescriptionPermission={editDescriptionPermission}
                       endpointPaginationHandler={endpointPaginationHandler}
-                      isEdit={isEdit}
                       pagingInfo={pagingInfo}
                       showDeletedEndpoints={showDeletedEndpoints}
-                      onCancel={onEditCancel}
-                      onDescriptionEdit={onDescriptionEdit}
                       onDescriptionUpdate={onDescriptionUpdate}
                       onShowDeletedEndpointsChange={handleShowDeletedEndPoints}
                       onThreadLinkSelect={onThreadLinkSelect}

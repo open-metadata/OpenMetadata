@@ -116,6 +116,7 @@ export type DataAssetsHeaderProps = {
   onUpdateRetentionPeriod?: (value: string) => Promise<void>;
   extraDropdownContent?: ManageButtonProps['extraDropdownContent'];
   onMetricUpdate?: (updatedData: Metric, key: keyof Metric) => Promise<void>;
+  isCustomizedView?: boolean;
 } & (
   | DataAssetTable
   | DataAssetTopic

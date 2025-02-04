@@ -42,13 +42,10 @@ interface SchemaTablesTabProps {
   tableDataLoading: boolean;
   description: string;
   editDescriptionPermission?: boolean;
-  isEdit?: boolean;
   showDeletedTables?: boolean;
   tableData: Table[];
   currentTablesPage: number;
   tablePaginationHandler: NextPreviousProps['pagingHandler'];
-  onCancel?: () => void;
-  onDescriptionEdit?: () => void;
   onDescriptionUpdate?: (updatedHTML: string) => Promise<void>;
   onThreadLinkSelect?: (link: string) => void;
   onShowDeletedTablesChange?: (value: boolean) => void;
@@ -61,12 +58,9 @@ function SchemaTablesTab({
   tableDataLoading,
   description,
   editDescriptionPermission = false,
-  isEdit = false,
   tableData,
   currentTablesPage,
   tablePaginationHandler,
-  onCancel,
-  onDescriptionEdit,
   onDescriptionUpdate,
   onThreadLinkSelect,
   showDeletedTables = false,
@@ -172,10 +166,7 @@ function SchemaTablesTab({
             entityType={EntityType.DATABASE_SCHEMA}
             hasEditAccess={editDescriptionPermission}
             isDescriptionExpanded={isEmpty(tableData)}
-            isEdit={isEdit}
             showActions={!databaseSchemaDetails.deleted}
-            onCancel={onCancel}
-            onDescriptionEdit={onDescriptionEdit}
             onDescriptionUpdate={onDescriptionUpdate}
             onThreadLinkSelect={onThreadLinkSelect}
           />

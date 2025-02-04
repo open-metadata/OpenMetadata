@@ -15,7 +15,7 @@ import Icon from '@ant-design/icons';
 import { Card, Space, Tooltip, Typography } from 'antd';
 import classNames from 'classnames';
 import { t } from 'i18next';
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { useHistory } from 'react-router';
 import { ReactComponent as CommentIcon } from '../../../assets/svg/comment.svg';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
@@ -41,11 +41,8 @@ const { Text } = Typography;
 
 const DescriptionV1 = ({
   hasEditAccess,
-  onDescriptionEdit,
   description = '',
-  isEdit,
   className,
-  onCancel,
   onDescriptionUpdate,
   isReadOnly = false,
   removeBlur = false,
@@ -63,6 +60,7 @@ const DescriptionV1 = ({
   const history = useHistory();
   const { suggestions = [], selectedUserSuggestions = [] } =
     useSuggestionsContext();
+  const [isEditDescription, setIsEditDescription] = useState(false);
 
   const handleRequestDescription = useCallback(() => {
     history.push(
@@ -75,6 +73,25 @@ const DescriptionV1 = ({
       getUpdateDescriptionPath(entityType as string, entityFqn as string)
     );
   }, [entityType, entityFqn]);
+
+  // Callback to handle the edit button from description
+  const handleEditDescription = useCallback(() => {
+    setIsEditDescription(true);
+  }, []);
+
+  // Callback to handle the cancel button from modal
+  const handleCancelEditDescription = useCallback(() => {
+    setIsEditDescription(false);
+  }, []);
+
+  // Callback to handle the description change from modal
+  const handleDescriptionChange = useCallback(
+    async (description: string) => {
+      await onDescriptionUpdate?.(description);
+      setIsEditDescription(false);
+    },
+    [onDescriptionUpdate]
+  );
 
   const { entityLink, entityLinkWithoutField } = useMemo(() => {
     const entityLink = getEntityFeedLink(
@@ -135,7 +152,7 @@ const DescriptionV1 = ({
               component={EditIcon}
               data-testid="edit-description"
               style={{ color: DE_ACTIVE_COLOR }}
-              onClick={onDescriptionEdit}
+              onClick={handleEditDescription}
             />
           </Tooltip>
         )}
@@ -161,7 +178,7 @@ const DescriptionV1 = ({
     [
       isReadOnly,
       hasEditAccess,
-      onDescriptionEdit,
+      handleEditDescription,
       taskActionButton,
       showCommentsIcon,
       onThreadLinkSelect,
@@ -222,9 +239,9 @@ const DescriptionV1 = ({
             entity: t('label.description'),
           })}
           value={description}
-          visible={Boolean(isEdit)}
-          onCancel={onCancel}
-          onSave={onDescriptionUpdate}
+          visible={Boolean(isEditDescription)}
+          onCancel={handleCancelEditDescription}
+          onSave={handleDescriptionChange}
         />
       </div>
     </Space>

@@ -37,13 +37,10 @@ interface APIEndpointsTabProps {
   apiEndpointsLoading: boolean;
   description: string;
   editDescriptionPermission?: boolean;
-  isEdit?: boolean;
   showDeletedEndpoints?: boolean;
   apiEndpoints: APIEndpoint[];
   currentEndpointsPage: number;
   endpointPaginationHandler: NextPreviousProps['pagingHandler'];
-  onCancel?: () => void;
-  onDescriptionEdit?: () => void;
   onDescriptionUpdate?: (updatedHTML: string) => Promise<void>;
   onThreadLinkSelect?: (link: string) => void;
   onShowDeletedEndpointsChange?: (value: boolean) => void;
@@ -56,12 +53,9 @@ function APIEndpointsTab({
   apiEndpointsLoading,
   description,
   editDescriptionPermission = false,
-  isEdit = false,
   apiEndpoints,
   currentEndpointsPage,
   endpointPaginationHandler,
-  onCancel,
-  onDescriptionEdit,
   onDescriptionUpdate,
   onThreadLinkSelect,
   showDeletedEndpoints = false,
@@ -137,10 +131,7 @@ function APIEndpointsTab({
             entityType={EntityType.API_COLLECTION}
             hasEditAccess={editDescriptionPermission}
             isDescriptionExpanded={isEmpty(apiEndpoints)}
-            isEdit={isEdit}
             showActions={!apiCollectionDetails.deleted}
-            onCancel={onCancel}
-            onDescriptionEdit={onDescriptionEdit}
             onDescriptionUpdate={onDescriptionUpdate}
             onThreadLinkSelect={onThreadLinkSelect}
           />

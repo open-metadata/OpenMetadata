@@ -23,6 +23,8 @@ export enum DetailPageWidgetKeys {
   DESCRIPTION = 'KnowledgePanel.Description',
   TABLE_SCHEMA = 'KnowledgePanel.TableSchema',
   TOPIC_SCHEMA = 'KnowledgePanel.TopicSchema',
+  DATABASE_SCHEMA = 'KnowledgePanel.DatabaseSchema',
+  CHARTS_TABLE = 'KnowledgePanel.ChartsTable',
   FREQUENTLY_JOINED_TABLES = 'KnowledgePanel.FrequentlyJoinedTables',
   DATA_PRODUCTS = 'KnowledgePanel.DataProducts',
   TAGS = 'KnowledgePanel.Tags',
@@ -34,6 +36,7 @@ export enum DetailPageWidgetKeys {
   PARTITIONED_KEYS = 'KnowledgePanel.PartitionedKeys',
   STORED_PROCEDURE_CODE = 'KnowledgePanel.StoredProcedureCode',
   DATA_MODEL = 'KnowledgePanel.DataModel',
+  CONTAINER_CHILDREN = 'KnowledgePanel.ContainerChildren',
 }
 
 export enum GlossaryTermDetailPageWidgetKeys {

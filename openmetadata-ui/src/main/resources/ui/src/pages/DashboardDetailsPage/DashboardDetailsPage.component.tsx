@@ -12,7 +12,7 @@
  */
 
 import { AxiosError } from 'axios';
-import { compare, Operation } from 'fast-json-patch';
+import { compare } from 'fast-json-patch';
 import { isUndefined, omitBy, toString } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -33,7 +33,6 @@ import { Chart } from '../../generated/entity/data/chart';
 import { Dashboard } from '../../generated/entity/data/dashboard';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useFqn } from '../../hooks/useFqn';
-import { updateChart } from '../../rest/chartAPI';
 import {
   addFollower,
   getDashboardByFqn,
@@ -47,11 +46,7 @@ import {
   getEntityMissingError,
   sortTagsCaseInsensitive,
 } from '../../utils/CommonUtils';
-import {
-  defaultFields,
-  fetchCharts,
-  sortTagsForCharts,
-} from '../../utils/DashboardDetailsUtils';
+import { defaultFields } from '../../utils/DashboardDetailsUtils';
 import { getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -71,14 +66,13 @@ const DashboardDetailsPage = () => {
     {} as Dashboard
   );
   const [isLoading, setLoading] = useState<boolean>(false);
-  const [charts, setCharts] = useState<ChartType[]>([]);
   const [isError, setIsError] = useState(false);
 
   const [dashboardPermissions, setDashboardPermissions] = useState(
     DEFAULT_ENTITY_PERMISSION
   );
 
-  const { id: dashboardId, version } = dashboardDetails;
+  const { id: dashboardId, version, charts } = dashboardDetails;
 
   const fetchResourcePermission = async (entityFqn: string) => {
     setLoading(true);
@@ -123,7 +117,7 @@ const DashboardDetailsPage = () => {
       }
       const res = await getDashboardByFqn(dashboardFQN, { fields });
 
-      const { id, fullyQualifiedName, charts: ChartIds, serviceType } = res;
+      const { id, fullyQualifiedName, serviceType } = res;
       setDashboardDetails(res);
 
       addToRecentViewed({
@@ -134,19 +128,6 @@ const DashboardDetailsPage = () => {
         timestamp: 0,
         id: id,
       });
-
-      fetchCharts(ChartIds)
-        .then((chart) => {
-          setCharts(chart);
-        })
-        .catch((error: AxiosError) => {
-          showErrorToast(
-            error,
-            t('server.entity-fetch-error', {
-              entity: t('label.chart-plural'),
-            })
-          );
-        });
 
       setLoading(false);
     } catch (error) {
@@ -226,50 +207,6 @@ const DashboardDetailsPage = () => {
         error as AxiosError,
         t('server.entity-unfollow-error', {
           entity: getEntityName(dashboardDetails),
-        })
-      );
-    }
-  };
-
-  const onChartUpdate = async (
-    index: number,
-    chartId: string,
-    patch: Array<Operation>
-  ) => {
-    try {
-      const response = await updateChart(chartId, patch);
-      setCharts((prevCharts) => {
-        const charts = [...prevCharts];
-        charts[index] = response;
-
-        return charts;
-      });
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    }
-  };
-  const handleChartTagSelection = async (
-    chartId: string,
-    patch: Array<Operation>
-  ) => {
-    try {
-      const res = await updateChart(chartId, patch);
-
-      setCharts((prevCharts) => {
-        const charts = [...prevCharts].map((chart) =>
-          chart.id === chartId ? res : chart
-        );
-
-        // Sorting tags as the response of PATCH request does not return the sorted order
-        // of tags, but is stored in sorted manner in the database
-        // which leads to wrong PATCH payload sent after further tags removal
-        return sortTagsForCharts(charts);
-      });
-    } catch (error) {
-      showErrorToast(
-        error as AxiosError,
-        t('server.entity-updating-error', {
-          entity: t('label.chart-plural'),
         })
       );
     }
@@ -356,9 +293,7 @@ const DashboardDetailsPage = () => {
 
   return (
     <DashboardDetails
-      chartDescriptionUpdateHandler={onChartUpdate}
-      chartTagUpdateHandler={handleChartTagSelection}
-      charts={charts}
+      charts={charts ?? []}
       createThread={createThread}
       dashboardDetails={dashboardDetails}
       fetchDashboard={() => fetchDashboardDetail(dashboardFQN)}

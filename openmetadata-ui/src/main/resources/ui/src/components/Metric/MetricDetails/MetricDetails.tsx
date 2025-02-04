@@ -78,7 +78,6 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
     useParams<{ tab: EntityTabs }>();
   const { fqn: decodedMetricFqn } = useFqn();
   const history = useHistory();
-  const [isEdit, setIsEdit] = useState(false);
   const [threadLink, setThreadLink] = useState<string>('');
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA
@@ -167,10 +166,6 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
     }
   };
 
-  const onDescriptionEdit = (): void => setIsEdit(true);
-
-  const onCancel = () => setIsEdit(false);
-
   const onDescriptionUpdate = async (updatedHTML: string) => {
     if (description !== updatedHTML) {
       const updatedMetricDetails = {
@@ -181,11 +176,7 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
         await onMetricUpdate(updatedMetricDetails, 'description');
       } catch (error) {
         showErrorToast(error as AxiosError);
-      } finally {
-        setIsEdit(false);
       }
-    } else {
-      setIsEdit(false);
     }
   };
   const onOwnerUpdate = useCallback(
@@ -304,11 +295,8 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
                         entityName={entityName}
                         entityType={EntityType.METRIC}
                         hasEditAccess={editDescriptionPermission}
-                        isEdit={isEdit}
                         owner={metricDetails.owners}
                         showActions={!deleted}
-                        onCancel={onCancel}
-                        onDescriptionEdit={onDescriptionEdit}
                         onDescriptionUpdate={onDescriptionUpdate}
                         onThreadLinkSelect={onThreadLinkSelect}
                       />
@@ -431,9 +419,7 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
         ),
       },
     ],
-
     [
-      isEdit,
       activeTab,
       feedCount.totalCount,
       metricTags,
@@ -442,8 +428,6 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
       decodedMetricFqn,
       fetchMetricDetails,
       deleted,
-      onCancel,
-      onDescriptionEdit,
       handleFeedCount,
       onExtensionUpdate,
       onThreadLinkSelect,

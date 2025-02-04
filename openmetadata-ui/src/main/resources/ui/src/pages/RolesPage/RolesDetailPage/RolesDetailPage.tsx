@@ -59,7 +59,6 @@ const RolesDetailPage = () => {
   const [role, setRole] = useState<Role>({} as Role);
   const [isLoading, setLoading] = useState<boolean>(false);
   const [isLoadingOnSave, setIsLoadingOnSave] = useState(false);
-  const [editDescription, setEditDescription] = useState<boolean>(false);
   const [selectedEntity, setEntity] =
     useState<{ attribute: Attribute; record: EntityReference }>();
 
@@ -105,8 +104,6 @@ const RolesDetailPage = () => {
       setRole({ ...role, description: data.description });
     } catch (error) {
       showErrorToast(error as AxiosError);
-    } finally {
-      setEditDescription(false);
     }
   };
 
@@ -266,10 +263,7 @@ const RolesDetailPage = () => {
                 entityFqn={role.fullyQualifiedName}
                 entityName={roleName}
                 entityType={EntityType.ROLE}
-                isEdit={editDescription}
                 showCommentsIcon={false}
-                onCancel={() => setEditDescription(false)}
-                onDescriptionEdit={() => setEditDescription(true)}
                 onDescriptionUpdate={handleDescriptionUpdate}
               />
 

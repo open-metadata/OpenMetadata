@@ -77,7 +77,6 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
     useParams<{ tab: EntityTabs }>();
   const { fqn: decodedApiEndpointFqn } = useFqn();
   const history = useHistory();
-  const [isEdit, setIsEdit] = useState(false);
   const [threadLink, setThreadLink] = useState<string>('');
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA
@@ -172,10 +171,6 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
     }
   };
 
-  const onDescriptionEdit = (): void => setIsEdit(true);
-
-  const onCancel = () => setIsEdit(false);
-
   const onDescriptionUpdate = async (updatedHTML: string) => {
     if (description !== updatedHTML) {
       const updatedApiEndpointDetails = {
@@ -186,11 +181,7 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
         await onApiEndpointUpdate(updatedApiEndpointDetails, 'description');
       } catch (error) {
         showErrorToast(error as AxiosError);
-      } finally {
-        setIsEdit(false);
       }
-    } else {
-      setIsEdit(false);
     }
   };
   const onOwnerUpdate = useCallback(
@@ -315,11 +306,8 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
                         entityName={entityName}
                         entityType={EntityType.API_ENDPOINT}
                         hasEditAccess={editDescriptionPermission}
-                        isEdit={isEdit}
                         owner={apiEndpointDetails.owners}
                         showActions={!deleted}
-                        onCancel={onCancel}
-                        onDescriptionEdit={onDescriptionEdit}
                         onDescriptionUpdate={onDescriptionUpdate}
                         onThreadLinkSelect={onThreadLinkSelect}
                       />
@@ -427,7 +415,6 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
     ],
 
     [
-      isEdit,
       activeTab,
       feedCount.totalCount,
       apiEndpointTags,
@@ -436,8 +423,6 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
       decodedApiEndpointFqn,
       fetchAPIEndpointDetails,
       deleted,
-      onCancel,
-      onDescriptionEdit,
       handleFeedCount,
       onExtensionUpdate,
       onThreadLinkSelect,

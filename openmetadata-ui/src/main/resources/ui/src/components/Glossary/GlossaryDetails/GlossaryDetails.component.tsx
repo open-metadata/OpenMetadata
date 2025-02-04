@@ -83,8 +83,6 @@ const GlossaryDetails = ({
     FEED_COUNT_INITIAL_DATA
   );
   const { selectedPersona } = useApplicationStore();
-  const [isDescriptionEditable, setIsDescriptionEditable] =
-    useState<boolean>(false);
   const { currentPersonaDocStore } = useCustomizeStore();
   // Since we are rendering this component for all customized tabs we need tab ID to get layout form store
   const { tab: activeTab = EntityTabs.TERMS } =
@@ -133,9 +131,6 @@ const GlossaryDetails = ({
         description: updatedHTML,
       };
       await handleGlossaryUpdate(updatedGlossaryDetails);
-      setIsDescriptionEditable(false);
-    } else {
-      setIsDescriptionEditable(false);
     }
   };
 
@@ -218,11 +213,8 @@ const GlossaryDetails = ({
             entityType={EntityType.GLOSSARY}
             hasEditAccess={permissions.EditDescription || permissions.EditAll}
             isDescriptionExpanded={isEmpty(glossary.children)}
-            isEdit={isDescriptionEditable}
             owner={glossary?.owners}
             showActions={!glossary.deleted}
-            onCancel={() => setIsDescriptionEditable(false)}
-            onDescriptionEdit={() => setIsDescriptionEditable(true)}
             onDescriptionUpdate={onDescriptionUpdate}
             onThreadLinkSelect={onThreadLinkSelect}
           />
@@ -287,7 +279,7 @@ const GlossaryDetails = ({
         {widgets}
       </ReactGridLayout>
     );
-  }, [permissions, glossary, termsLoading, isDescriptionEditable, widgets]);
+  }, [permissions, glossary, termsLoading, widgets]);
 
   const tabs = useMemo(() => {
     const tabLabelMap = getTabLabelMap(customizedPage?.tabs);

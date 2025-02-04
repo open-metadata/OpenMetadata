@@ -83,7 +83,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
     useParams<{ tab: EntityTabs }>();
   const { fqn: decodedTopicFQN } = useFqn();
   const history = useHistory();
-  const [isEdit, setIsEdit] = useState(false);
+
   const [threadLink, setThreadLink] = useState<string>('');
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA
@@ -188,10 +188,6 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
     }
   };
 
-  const onDescriptionEdit = (): void => setIsEdit(true);
-
-  const onCancel = () => setIsEdit(false);
-
   const onDescriptionUpdate = async (updatedHTML: string) => {
     if (description !== updatedHTML) {
       const updatedTopicDetails = {
@@ -202,11 +198,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
         await onTopicUpdate(updatedTopicDetails, 'description');
       } catch (error) {
         showErrorToast(error as AxiosError);
-      } finally {
-        setIsEdit(false);
       }
-    } else {
-      setIsEdit(false);
     }
   };
   const onOwnerUpdate = useCallback(
@@ -331,11 +323,8 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
                         isDescriptionExpanded={isEmpty(
                           topicDetails.messageSchema?.schemaFields
                         )}
-                        isEdit={isEdit}
                         owner={topicDetails.owners}
                         showActions={!deleted}
-                        onCancel={onCancel}
-                        onDescriptionEdit={onDescriptionEdit}
                         onDescriptionUpdate={onDescriptionUpdate}
                         onThreadLinkSelect={onThreadLinkSelect}
                       />
@@ -467,9 +456,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
         ),
       },
     ],
-
     [
-      isEdit,
       activeTab,
       feedCount.totalCount,
       topicTags,
@@ -478,8 +465,6 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
       decodedTopicFQN,
       fetchTopic,
       deleted,
-      onCancel,
-      onDescriptionEdit,
       handleFeedCount,
       onExtensionUpdate,
       onThreadLinkSelect,

@@ -83,7 +83,7 @@ const TestSuiteDetailsPage = () => {
     history.push(getDataQualityPagePath(DataQualityPageTabs.TEST_SUITES));
   };
   const [testSuite, setTestSuite] = useState<TestSuite>();
-  const [isDescriptionEditable, setIsDescriptionEditable] = useState(false);
+
   const [isTestCaseLoading, setIsTestCaseLoading] = useState(true);
   const [testCaseResult, setTestCaseResult] = useState<Array<TestCase>>([]);
 
@@ -133,10 +133,6 @@ const TestSuiteDetailsPage = () => {
     const jsonPatch = compare(testSuite as TestSuite, updatedData);
 
     return updateTestSuiteById(testSuiteId as string, jsonPatch);
-  };
-
-  const descriptionHandler = (value: boolean) => {
-    setIsDescriptionEditable(value);
   };
 
   const fetchTestSuitePermission = async () => {
@@ -280,11 +276,7 @@ const TestSuiteDetailsPage = () => {
         }
       } catch (error) {
         showErrorToast(error as AxiosError);
-      } finally {
-        descriptionHandler(false);
       }
-    } else {
-      descriptionHandler(false);
     }
   };
 
@@ -490,10 +482,7 @@ const TestSuiteDetailsPage = () => {
             entityName={getEntityName(testSuite)}
             entityType={EntityType.TEST_SUITE}
             hasEditAccess={isAdminUser}
-            isEdit={isDescriptionEditable}
             showCommentsIcon={false}
-            onCancel={() => descriptionHandler(false)}
-            onDescriptionEdit={() => descriptionHandler(true)}
             onDescriptionUpdate={onDescriptionUpdate}
           />
         </Col>

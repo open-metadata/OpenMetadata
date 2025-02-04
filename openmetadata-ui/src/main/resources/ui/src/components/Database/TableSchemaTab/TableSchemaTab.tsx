@@ -13,7 +13,7 @@
 import { AxiosError } from 'axios';
 import { isEmpty, isEqual, noop } from 'lodash';
 import { EntityTags } from 'Models';
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import RGL, { WidthProvider } from 'react-grid-layout';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
@@ -61,7 +61,6 @@ export const TableSchemaTab = () => {
   const { currentPersonaDocStore } = useCustomizeStore();
   const { tab = EntityTabs.SCHEMA } = useParams<{ tab: EntityTabs }>();
   const { fqn: tableFqn } = useFqn();
-  const [isEdit, setIsEdit] = useState(false);
   const [threadLink, setThreadLink] = useState<string>('');
   const [threadType, setThreadType] = useState<ThreadType>(
     ThreadType.Conversation
@@ -159,9 +158,6 @@ export const TableSchemaTab = () => {
     [tablePermissions, deleted]
   );
 
-  const onDescriptionEdit = useCallback(() => setIsEdit(true), []);
-  const onCancel = useCallback(() => setIsEdit(false), []);
-
   const onThreadLinkSelect = (link: string, threadType?: ThreadType) => {
     setThreadLink(link);
     if (threadType) {
@@ -192,16 +188,11 @@ export const TableSchemaTab = () => {
         entityType={EntityType.TABLE}
         hasEditAccess={editDescriptionPermission}
         isDescriptionExpanded={isEmpty(columns)}
-        isEdit={isEdit}
         owner={owners}
         showActions={!deleted}
-        onCancel={onCancel}
-        onDescriptionEdit={onDescriptionEdit}
         onDescriptionUpdate={async (value) => {
           if (value !== description) {
             await onUpdate({ ...tableDetails, description: value });
-          } else {
-            onCancel();
           }
         }}
         onThreadLinkSelect={onThreadLinkSelect}

@@ -38,7 +38,6 @@ export const getDataBaseSchemaPageBaseTabs = ({
   databaseSchema,
   description,
   editDescriptionPermission,
-  isEdit,
   showDeletedTables,
   tableDataLoading,
   editGlossaryTermsPermission,
@@ -48,12 +47,10 @@ export const getDataBaseSchemaPageBaseTabs = ({
   tags,
   viewAllPermission,
   storedProcedureCount,
-  onEditCancel,
   handleExtensionUpdate,
   handleTagSelection,
   onThreadLinkSelect,
   tablePaginationHandler,
-  onDescriptionEdit,
   onDescriptionUpdate,
   handleShowDeletedTables,
   getEntityFeedCount,
@@ -85,14 +82,11 @@ export const getDataBaseSchemaPageBaseTabs = ({
                       databaseSchemaDetails={databaseSchema}
                       description={description}
                       editDescriptionPermission={editDescriptionPermission}
-                      isEdit={isEdit}
                       pagingInfo={pagingInfo}
                       showDeletedTables={showDeletedTables}
                       tableData={tableData}
                       tableDataLoading={tableDataLoading}
                       tablePaginationHandler={tablePaginationHandler}
-                      onCancel={onEditCancel}
-                      onDescriptionEdit={onDescriptionEdit}
                       onDescriptionUpdate={onDescriptionUpdate}
                       onShowDeletedTablesChange={handleShowDeletedTables}
                       onThreadLinkSelect={onThreadLinkSelect}

@@ -11,26 +11,30 @@
  *  limitations under the License.
  */
 
-import { Card } from 'antd';
+import { Col, Row } from 'antd';
 import { AxiosError } from 'axios';
+import { t } from 'i18next';
+import { isEmpty } from 'lodash';
 import React from 'react';
 import { ActivityFeedTab } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import { CustomPropertyTable } from '../components/common/CustomPropertyTable/CustomPropertyTable';
+import DescriptionV1 from '../components/common/EntityDescription/DescriptionV1';
+import ResizablePanels from '../components/common/ResizablePanels/ResizablePanels';
 import TabsLabel from '../components/common/TabsLabel/TabsLabel.component';
 import { TabProps } from '../components/common/TabsLabel/TabsLabel.interface';
-import SchemaEditor from '../components/Database/SchemaEditor/SchemaEditor';
+import { DashboardChartTable } from '../components/Dashboard/DashboardChartTable/DashboardChartTable';
+import EntityRightPanel from '../components/Entity/EntityRightPanel/EntityRightPanel';
 import Lineage from '../components/Lineage/Lineage.component';
 import { SourceType } from '../components/SearchedData/SearchedData.interface';
+import { COMMON_RESIZABLE_PANEL_CONFIG } from '../constants/ResizablePanel.constants';
 import LineageProvider from '../context/LineageProvider/LineageProvider';
-import { CSMode } from '../enums/codemirror.enum';
 import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 import { EntityTabs, EntityType, TabSpecificField } from '../enums/entity.enum';
 import { Dashboard } from '../generated/entity/data/dashboard';
 import { ChartType } from '../pages/DashboardDetailsPage/DashboardDetailsPage.component';
 import { getChartById } from '../rest/chartAPI';
 import { sortTagsCaseInsensitive } from './CommonUtils';
-import { DashboardDataModelDetailPageTabProps } from './DashboardDataModelBase';
-import i18next from './i18next/LocalUtil';
+import { DashboardDetailsTabsProps } from './DashboardDetailsClassBase';
 
 // eslint-disable-next-line max-len
 export const defaultFields = `${TabSpecificField.DOMAIN},${TabSpecificField.OWNERS}, ${TabSpecificField.FOLLOWERS}, ${TabSpecificField.TAGS}, ${TabSpecificField.CHARTS},${TabSpecificField.VOTES},${TabSpecificField.DATA_PRODUCTS},${TabSpecificField.EXTENSION}`;
@@ -67,19 +71,11 @@ export const fetchCharts = async (charts: Dashboard['charts']) => {
 
 export const getDashboardDetailsPageDefaultLayout = (tab: EntityTabs) => {
   switch (tab) {
-    case EntityTabs.SCHEMA:
+    case EntityTabs.DETAILS:
       return [
         {
           h: 2,
           i: DetailPageWidgetKeys.DESCRIPTION,
-          w: 6,
-          x: 0,
-          y: 0,
-          static: false,
-        },
-        {
-          h: 8,
-          i: DetailPageWidgetKeys.TABLE_SCHEMA,
           w: 6,
           x: 0,
           y: 0,
@@ -132,99 +128,93 @@ export const getDashboardDetailsPageDefaultLayout = (tab: EntityTabs) => {
   }
 };
 
-export const getDashboardDataModelDetailsPageDefaultLayout = (
-  tab: EntityTabs
-) => {
-  switch (tab) {
-    case EntityTabs.SCHEMA:
-      return [
-        {
-          h: 2,
-          i: DetailPageWidgetKeys.DESCRIPTION,
-          w: 6,
-          x: 0,
-          y: 0,
-          static: false,
-        },
-        {
-          h: 8,
-          i: DetailPageWidgetKeys.TABLE_SCHEMA,
-          w: 6,
-          x: 0,
-          y: 0,
-          static: false,
-        },
-        {
-          h: 1,
-          i: DetailPageWidgetKeys.FREQUENTLY_JOINED_TABLES,
-          w: 2,
-          x: 6,
-          y: 0,
-          static: false,
-        },
-        {
-          h: 1,
-          i: DetailPageWidgetKeys.DATA_PRODUCTS,
-          w: 2,
-          x: 6,
-          y: 1,
-          static: false,
-        },
-        {
-          h: 1,
-          i: DetailPageWidgetKeys.TAGS,
-          w: 2,
-          x: 6,
-          y: 2,
-          static: false,
-        },
-        {
-          h: 1,
-          i: DetailPageWidgetKeys.GLOSSARY_TERMS,
-          w: 2,
-          x: 6,
-          y: 3,
-          static: false,
-        },
-        {
-          h: 3,
-          i: DetailPageWidgetKeys.CUSTOM_PROPERTIES,
-          w: 2,
-          x: 6,
-          y: 4,
-          static: false,
-        },
-      ];
-
-    default:
-      return [];
-  }
-};
-
-export const getDashboardDataModelDetailPageTabs = ({
-  modelComponent,
+export const getDashboardDetailPageTabs = ({
+  dashboardDetails,
+  charts,
+  entityName,
+  editDescriptionPermission,
+  editTagsPermission,
+  editGlossaryTermsPermission,
+  editLineagePermission,
+  editCustomAttributePermission,
+  viewAllPermission,
+  dashboardTags,
+  handleFeedCount,
+  onDescriptionUpdate,
+  onThreadLinkSelect,
+  handleTagSelection,
+  onExtensionUpdate,
   feedCount,
   activeTab,
-  handleFeedCount,
-  editLineagePermission,
-  dataModelData,
-  dataModelPermissions,
   deleted,
-  handelExtensionUpdate,
   getEntityFeedCount,
-  fetchDataModel,
-}: DashboardDataModelDetailPageTabProps): TabProps[] => {
+  fetchDashboard,
+}: DashboardDetailsTabsProps): TabProps[] => {
   return [
     {
       label: (
-        <TabsLabel
-          data-testid={EntityTabs.MODEL}
-          id={EntityTabs.MODEL}
-          name={i18next.t('label.model')}
-        />
+        <TabsLabel id={EntityTabs.DETAILS} name={t('label.detail-plural')} />
       ),
-      key: EntityTabs.MODEL,
-      children: modelComponent,
+      key: EntityTabs.DETAILS,
+      children: (
+        <Row gutter={[0, 16]} wrap={false}>
+          <Col className="tab-content-height-with-resizable-panel" span={24}>
+            <ResizablePanels
+              firstPanel={{
+                className: 'entity-resizable-panel-container',
+                children: (
+                  <div className="d-flex flex-col gap-4 p-t-sm m-x-lg">
+                    <DescriptionV1
+                      description={dashboardDetails.description}
+                      entityFqn={dashboardDetails.fullyQualifiedName}
+                      entityName={entityName}
+                      entityType={EntityType.DASHBOARD}
+                      hasEditAccess={editDescriptionPermission}
+                      isDescriptionExpanded={isEmpty(charts)}
+                      owner={dashboardDetails.owners}
+                      showActions={!deleted}
+                      onDescriptionUpdate={onDescriptionUpdate}
+                      onThreadLinkSelect={onThreadLinkSelect}
+                    />
+
+                    <DashboardChartTable
+                      onThreadLinkSelect={onThreadLinkSelect}
+                    />
+                  </div>
+                ),
+                ...COMMON_RESIZABLE_PANEL_CONFIG.LEFT_PANEL,
+              }}
+              secondPanel={{
+                children: (
+                  <div data-testid="entity-right-panel">
+                    <EntityRightPanel<EntityType.DASHBOARD>
+                      customProperties={dashboardDetails}
+                      dataProducts={dashboardDetails?.dataProducts ?? []}
+                      domain={dashboardDetails?.domain}
+                      editCustomAttributePermission={
+                        editCustomAttributePermission
+                      }
+                      editGlossaryTermsPermission={editGlossaryTermsPermission}
+                      editTagPermission={editTagsPermission}
+                      entityFQN={dashboardDetails.fullyQualifiedName ?? ''}
+                      entityId={dashboardDetails.id}
+                      entityType={EntityType.DASHBOARD}
+                      selectedTags={dashboardTags}
+                      viewAllPermission={viewAllPermission}
+                      onExtensionUpdate={onExtensionUpdate}
+                      onTagSelectionChange={handleTagSelection}
+                      onThreadLinkSelect={onThreadLinkSelect}
+                    />
+                  </div>
+                ),
+                ...COMMON_RESIZABLE_PANEL_CONFIG.RIGHT_PANEL,
+                className:
+                  'entity-resizable-right-panel-container entity-resizable-panel-container',
+              }}
+            />
+          </Col>
+        </Row>
+      ),
     },
     {
       label: (
@@ -232,7 +222,7 @@ export const getDashboardDataModelDetailPageTabs = ({
           count={feedCount.totalCount}
           id={EntityTabs.ACTIVITY_FEED}
           isActive={activeTab === EntityTabs.ACTIVITY_FEED}
-          name={i18next.t('label.activity-feed-and-task-plural')}
+          name={t('label.activity-feed-and-task-plural')}
         />
       ),
       key: EntityTabs.ACTIVITY_FEED,
@@ -240,56 +230,23 @@ export const getDashboardDataModelDetailPageTabs = ({
         <ActivityFeedTab
           refetchFeed
           entityFeedTotalCount={feedCount.totalCount}
-          entityType={EntityType.DASHBOARD_DATA_MODEL}
-          fqn={dataModelData?.fullyQualifiedName ?? ''}
+          entityType={EntityType.DASHBOARD}
+          fqn={dashboardDetails?.fullyQualifiedName ?? ''}
           onFeedUpdate={getEntityFeedCount}
-          onUpdateEntityDetails={fetchDataModel}
+          onUpdateEntityDetails={fetchDashboard}
           onUpdateFeedCount={handleFeedCount}
         />
       ),
     },
-    ...(dataModelData?.sql
-      ? [
-          {
-            label: (
-              <TabsLabel
-                data-testid={EntityTabs.SQL}
-                id={EntityTabs.SQL}
-                name={i18next.t('label.sql-uppercase')}
-              />
-            ),
-            key: EntityTabs.SQL,
-            children: (
-              <Card>
-                <SchemaEditor
-                  editorClass="custom-code-mirror-theme full-screen-editor-height"
-                  mode={{ name: CSMode.SQL }}
-                  options={{
-                    styleActiveLine: false,
-                    readOnly: true,
-                  }}
-                  value={dataModelData?.sql}
-                />
-              </Card>
-            ),
-          },
-        ]
-      : []),
     {
-      label: (
-        <TabsLabel
-          data-testid={EntityTabs.LINEAGE}
-          id={EntityTabs.LINEAGE}
-          name={i18next.t('label.lineage')}
-        />
-      ),
+      label: <TabsLabel id={EntityTabs.LINEAGE} name={t('label.lineage')} />,
       key: EntityTabs.LINEAGE,
       children: (
         <LineageProvider>
           <Lineage
             deleted={deleted}
-            entity={dataModelData as SourceType}
-            entityType={EntityType.DASHBOARD_DATA_MODEL}
+            entity={dashboardDetails as SourceType}
+            entityType={EntityType.DASHBOARD}
             hasEditAccess={editLineagePermission}
           />
         </LineageProvider>
@@ -299,22 +256,18 @@ export const getDashboardDataModelDetailPageTabs = ({
       label: (
         <TabsLabel
           id={EntityTabs.CUSTOM_PROPERTIES}
-          name={i18next.t('label.custom-property-plural')}
+          name={t('label.custom-property-plural')}
         />
       ),
       key: EntityTabs.CUSTOM_PROPERTIES,
-      children: (
-        <div className="p-md">
-          <CustomPropertyTable<EntityType.DASHBOARD_DATA_MODEL>
-            entityDetails={dataModelData}
-            entityType={EntityType.DASHBOARD_DATA_MODEL}
-            handleExtensionUpdate={handelExtensionUpdate}
-            hasEditAccess={
-              dataModelPermissions.EditAll ||
-              dataModelPermissions.EditCustomFields
-            }
-            hasPermission={dataModelPermissions.ViewAll}
-            isVersionView={false}
+      children: dashboardDetails && (
+        <div className="m-sm">
+          <CustomPropertyTable<EntityType.DASHBOARD>
+            entityDetails={dashboardDetails}
+            entityType={EntityType.DASHBOARD}
+            handleExtensionUpdate={onExtensionUpdate}
+            hasEditAccess={editCustomAttributePermission}
+            hasPermission={viewAllPermission}
           />
         </div>
       ),

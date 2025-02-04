@@ -107,12 +107,9 @@ export const getStoredProcedureDetailsPageTabs = ({
   decodedStoredProcedureFQN,
   entityName,
   code,
-  isEdit,
   deleted,
   owners,
   editDescriptionPermission,
-  onCancel,
-  onDescriptionEdit,
   onDescriptionUpdate,
   onThreadLinkSelect,
   storedProcedure,
@@ -153,11 +150,8 @@ export const getStoredProcedureDetailsPageTabs = ({
                       entityType={EntityType.STORED_PROCEDURE}
                       hasEditAccess={editDescriptionPermission}
                       isDescriptionExpanded={isEmpty(code)}
-                      isEdit={isEdit}
                       owner={owners}
                       showActions={!deleted}
-                      onCancel={onCancel}
-                      onDescriptionEdit={onDescriptionEdit}
                       onDescriptionUpdate={onDescriptionUpdate}
                       onThreadLinkSelect={onThreadLinkSelect}
                     />

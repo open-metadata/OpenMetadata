@@ -210,6 +210,7 @@ export enum EntityTabs {
   GLOSSARY_TERMS = 'glossary_terms',
   ASSETS = 'assets',
   EXPRESSION = 'expression',
+  DASHBOARD = 'dashboard',
 }
 
 export enum EntityAction {

@@ -165,6 +165,7 @@ export const DataAssetsHeader = ({
   onMetricUpdate,
   badge,
   isDqAlertSupported,
+  isCustomizedView = false,
 }: DataAssetsHeaderProps) => {
   const { currentUser } = useApplicationStore();
   const USER_ID = currentUser?.id ?? '';
@@ -330,7 +331,7 @@ export const DataAssetsHeader = ({
   };
 
   useEffect(() => {
-    if (dataAsset.fullyQualifiedName && !isTourPage) {
+    if (dataAsset.fullyQualifiedName && !isTourPage && !isCustomizedView) {
       fetchActiveAnnouncement();
       fetchDQFailureCount();
     }
@@ -338,7 +339,7 @@ export const DataAssetsHeader = ({
       const asset = dataAsset as Container;
       fetchContainerParent(asset.parent?.fullyQualifiedName ?? '');
     }
-  }, [dataAsset.fullyQualifiedName, isTourPage]);
+  }, [dataAsset.fullyQualifiedName, isTourPage, isCustomizedView]);
 
   const { extraInfo, breadcrumbs }: DataAssetHeaderInfo = useMemo(
     () =>

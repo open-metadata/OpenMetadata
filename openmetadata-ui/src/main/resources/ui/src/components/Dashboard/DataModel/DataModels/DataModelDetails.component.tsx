@@ -31,7 +31,7 @@ import { useFqn } from '../../../../hooks/useFqn';
 import { FeedCounts } from '../../../../interface/feed.interface';
 import { restoreDataModel } from '../../../../rest/dataModelsAPI';
 import { getFeedCounts } from '../../../../utils/CommonUtils';
-import { getDashboardDataModelDetailPageTabs } from '../../../../utils/DashboardDetailsUtils';
+import { getDashboardDataModelDetailPageTabs } from '../../../../utils/DashboardDataModelUtils';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import { getTagsWithoutTier } from '../../../../utils/TableUtils';
 import { createTagObject } from '../../../../utils/TagsUtils';
@@ -72,7 +72,6 @@ const DataModelDetails = ({
 
   const { fqn: decodedDataModelFQN } = useFqn();
 
-  const [isEditDescription, setIsEditDescription] = useState<boolean>(false);
   const [threadLink, setThreadLink] = useState<string>('');
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA
@@ -206,11 +205,6 @@ const DataModelDetails = ({
     };
   }, [dataModelPermissions, deleted]);
 
-  const onDescriptionUpdate = async (value: string) => {
-    await handleUpdateDescription(value);
-
-    setIsEditDescription(false);
-  };
   const handelExtensionUpdate = useCallback(
     async (updatedDataModel: DashboardDataModel) => {
       await onUpdateDataModel(
@@ -240,12 +234,9 @@ const DataModelDetails = ({
                     entityType={EntityType.DASHBOARD_DATA_MODEL}
                     hasEditAccess={editDescriptionPermission}
                     isDescriptionExpanded={isEmpty(dataModelData.columns)}
-                    isEdit={isEditDescription}
                     owner={owners}
                     showActions={!deleted}
-                    onCancel={() => setIsEditDescription(false)}
-                    onDescriptionEdit={() => setIsEditDescription(true)}
-                    onDescriptionUpdate={onDescriptionUpdate}
+                    onDescriptionUpdate={handleUpdateDescription}
                     onThreadLinkSelect={onThreadLinkSelect}
                   />
                   <ModelTab
@@ -298,7 +289,6 @@ const DataModelDetails = ({
     editGlossaryTermsPermission,
     deleted,
     editDescriptionPermission,
-    isEditDescription,
     entityName,
     handleTagSelection,
     onThreadLinkSelect,

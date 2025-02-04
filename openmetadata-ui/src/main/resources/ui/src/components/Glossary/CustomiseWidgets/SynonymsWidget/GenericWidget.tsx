@@ -19,6 +19,7 @@ import {
   GlossaryTermDetailPageWidgetKeys,
 } from '../../../../enums/CustomizeDetailPage.enum';
 import { EntityType } from '../../../../enums/entity.enum';
+import { Container } from '../../../../generated/entity/data/container';
 import { DashboardDataModel } from '../../../../generated/entity/data/dashboardDataModel';
 import { DataType, Table } from '../../../../generated/entity/data/table';
 import { Topic } from '../../../../generated/entity/data/topic';
@@ -27,6 +28,7 @@ import { TagSource } from '../../../../generated/type/tagLabel';
 import { WidgetCommonProps } from '../../../../pages/CustomizablePage/CustomizablePage.interface';
 import { FrequentlyJoinedTables } from '../../../../pages/TableDetailsPageV1/FrequentlyJoinedTables/FrequentlyJoinedTables.component';
 import TableConstraints from '../../../../pages/TableDetailsPageV1/TableConstraints/TableConstraints';
+import containerDetailsClassBase from '../../../../utils/ContainerDetailsClassBase';
 import dashboardDataModelClassBase from '../../../../utils/DashboardDataModelBase';
 import { renderReferenceElement } from '../../../../utils/GlossaryUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../../utils/PermissionsUtils';
@@ -38,6 +40,8 @@ import { DomainLabel } from '../../../common/DomainLabel/DomainLabel.component';
 import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
 import RichTextEditorPreviewerV1 from '../../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import TagButton from '../../../common/TagButton/TagButton.component';
+import ContainerChildren from '../../../Container/ContainerChildren/ContainerChildren';
+import { DashboardChartTable } from '../../../Dashboard/DashboardChartTable/DashboardChartTable';
 import ModelTab from '../../../Dashboard/DataModel/DataModels/ModelTab/ModelTab.component';
 import SchemaTable from '../../../Database/SchemaTable/SchemaTable.component';
 import DataProductsContainer from '../../../DataProducts/DataProductsContainer/DataProductsContainer.component';
@@ -599,6 +603,24 @@ export const GenericWidget = (props: WidgetCommonProps) => {
           <ModelTab isReadOnly={false} onThreadLinkSelect={noop} />
         </GenericProvider>
       );
+    } else if (
+      props.widgetKey.startsWith(DetailPageWidgetKeys.CONTAINER_CHILDREN)
+    ) {
+      return (
+        <GenericProvider<Container>
+          data={containerDetailsClassBase.getDummyData()}
+          permissions={DEFAULT_ENTITY_PERMISSION}
+          type={EntityType.CONTAINER}
+          onUpdate={async () => noop()}>
+          <ContainerChildren
+            childrenList={containerDetailsClassBase.getDummyData().children}
+            fetchChildren={noop}
+            isLoading={false}
+          />
+        </GenericProvider>
+      );
+    } else if (props.widgetKey.startsWith(DetailPageWidgetKeys.CHARTS_TABLE)) {
+      return <DashboardChartTable onThreadLinkSelect={noop} />;
     }
 
     return widgetName;

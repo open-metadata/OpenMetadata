@@ -83,7 +83,6 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
 
   const { fqn: decodedMlModelFqn } = useFqn();
 
-  const [isEdit, setIsEdit] = useState<boolean>(false);
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA
   );
@@ -167,10 +166,6 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
     }
   };
 
-  const onDescriptionEdit = () => setIsEdit(true);
-
-  const onCancel = () => setIsEdit(false);
-
   const onDescriptionUpdate = async (updatedHTML: string) => {
     if (mlModelDetail.description !== updatedHTML) {
       const updatedMlModelDetails = {
@@ -178,9 +173,6 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
         description: updatedHTML,
       };
       await descriptionUpdateHandler(updatedMlModelDetails);
-      setIsEdit(false);
-    } else {
-      setIsEdit(false);
     }
   };
 
@@ -413,11 +405,8 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
                         isDescriptionExpanded={isEmpty(
                           mlModelDetail.mlFeatures
                         )}
-                        isEdit={isEdit}
                         owner={mlModelDetail.owners}
                         showActions={!deleted}
-                        onCancel={onCancel}
-                        onDescriptionEdit={onDescriptionEdit}
                         onDescriptionUpdate={onDescriptionUpdate}
                         onThreadLinkSelect={handleThreadLinkSelect}
                       />
@@ -542,16 +531,13 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
       mlModelDetail,
       mlModelName,
       mlModelPermissions,
-      isEdit,
       getMlHyperParameters,
       getMlModelStore,
-      onCancel,
       handleFeedCount,
       onExtensionUpdate,
       onFeaturesUpdate,
       handleThreadLinkSelect,
       onDescriptionUpdate,
-      onDescriptionEdit,
       deleted,
       editTagsPermission,
       editGlossaryTermsPermission,

@@ -19,8 +19,7 @@ import {
 } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { EntityTabs } from '../../../enums/entity.enum';
-import { ChartType } from '../../../generated/entity/data/chart';
+import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { Dashboard } from '../../../generated/entity/data/dashboard';
 import { mockGlossaryList } from '../../../mocks/Glossary.mock';
 import { mockTagList } from '../../../mocks/Tags.mock';
@@ -49,20 +48,16 @@ const mockUserTeam = [
 const dashboardDetailsProps: DashboardDetailsProps = {
   charts: [
     {
-      sourceUrl: 'http://localhost',
-      chartType: ChartType.Area,
       displayName: 'Test chart',
       id: '1',
       deleted: false,
       name: '',
-      service: { id: '', type: '' },
+      type: EntityType.CHART,
     },
   ],
   dashboardDetails: {} as Dashboard,
   followDashboardHandler: jest.fn(),
   unFollowDashboardHandler: jest.fn(),
-  chartDescriptionUpdateHandler: jest.fn(),
-  chartTagUpdateHandler: jest.fn(),
   onDashboardUpdate: jest.fn(),
   versionHandler: jest.fn(),
   createThread: jest.fn(),

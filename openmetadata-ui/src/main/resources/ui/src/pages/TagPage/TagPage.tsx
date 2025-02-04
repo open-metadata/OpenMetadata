@@ -110,8 +110,7 @@ const TagPage = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [tagItem, setTagItem] = useState<Tag>();
   const [assetModalVisible, setAssetModalVisible] = useState(false);
-  const [isDescriptionEditable, setIsDescriptionEditable] =
-    useState<boolean>(false);
+
   const [isNameEditing, setIsNameEditing] = useState<boolean>(false);
   const [isStyleEditing, setIsStyleEditing] = useState(false);
   const [isDelete, setIsDelete] = useState<boolean>(false);
@@ -210,9 +209,6 @@ const TagPage = () => {
         } catch (error) {
           showErrorToast(error as AxiosError);
         }
-        setIsDescriptionEditable(false);
-      } else {
-        setIsDescriptionEditable(false);
       }
     }
   };
@@ -445,11 +441,8 @@ const TagPage = () => {
                         entityName={getEntityName(tagItem)}
                         entityType={EntityType.TAG}
                         hasEditAccess={editDescriptionPermission}
-                        isEdit={isDescriptionEditable}
                         showActions={!tagItem?.deleted}
                         showCommentsIcon={false}
-                        onCancel={() => setIsDescriptionEditable(false)}
-                        onDescriptionEdit={() => setIsDescriptionEditable(true)}
                         onDescriptionUpdate={onDescriptionUpdate}
                       />
                     </Col>
@@ -540,7 +533,6 @@ const TagPage = () => {
     assetCount,
     assetTabRef,
     handleAssetSave,
-    isDescriptionEditable,
     editTagsPermission,
     editDescriptionPermission,
   ]);

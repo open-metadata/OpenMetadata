@@ -156,7 +156,7 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
     if (
       maxDataCap &&
       customProp.length >= maxDataCap &&
-      entityDetails.fullyQualifiedName
+      entityDetails?.fullyQualifiedName
     ) {
       return (
         <Link

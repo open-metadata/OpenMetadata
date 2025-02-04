@@ -19,33 +19,22 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { useActivityFeedProvider } from '../../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
-import { ActivityFeedTab } from '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import ActivityThreadPanel from '../../components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
 
-import { CustomPropertyTable } from '../../components/common/CustomPropertyTable/CustomPropertyTable';
-import DescriptionV1 from '../../components/common/EntityDescription/DescriptionV1';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';
-import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
-import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
-import ContainerChildren from '../../components/Container/ContainerChildren/ContainerChildren';
-import ContainerDataModel from '../../components/Container/ContainerDataModel/ContainerDataModel';
 import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import { QueryVote } from '../../components/Database/TableQueries/TableQueries.interface';
-import EntityRightPanel from '../../components/Entity/EntityRightPanel/EntityRightPanel';
-import Lineage from '../../components/Lineage/Lineage.component';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
-import { SourceType } from '../../components/SearchedData/SearchedData.interface';
+import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import {
   getEntityDetailsPath,
   getVersionPath,
   ROUTES,
 } from '../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
-import { COMMON_RESIZABLE_PANEL_CONFIG } from '../../constants/ResizablePanel.constants';
-import LineageProvider from '../../context/LineageProvider/LineageProvider';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
@@ -62,12 +51,15 @@ import { CreateThread } from '../../generated/api/feed/createThread';
 import { Tag } from '../../generated/entity/classification/tag';
 import { Container } from '../../generated/entity/data/container';
 import { ThreadType } from '../../generated/entity/feed/thread';
+import { Page } from '../../generated/system/ui/page';
+import { PageType } from '../../generated/system/ui/uiCustomization';
 import { Include } from '../../generated/type/include';
 import { TagLabel } from '../../generated/type/tagLabel';
 import LimitWrapper from '../../hoc/LimitWrapper';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useFqn } from '../../hooks/useFqn';
 import { FeedCounts } from '../../interface/feed.interface';
+import { getDocumentByFQN } from '../../rest/DocStoreAPI';
 import { postThread } from '../../rest/feedsAPI';
 import {
   addContainerFollower,
@@ -83,16 +75,20 @@ import {
   getFeedCounts,
   sortTagsCaseInsensitive,
 } from '../../utils/CommonUtils';
+import containerDetailsClassBase from '../../utils/ContainerDetailsClassBase';
 import { getEntityName } from '../../utils/EntityUtils';
+import {
+  getGlossaryTermDetailTabs,
+  getTabLabelMap,
+} from '../../utils/GlossaryTerm/GlossaryTermUtil';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
 import { createTagObject, updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
-
 const ContainerPage = () => {
   const history = useHistory();
   const { t } = useTranslation();
-  const { currentUser } = useApplicationStore();
+  const { currentUser, selectedPersona } = useApplicationStore();
   const { getEntityPermissionByFqn } = usePermissionProvider();
   const { postFeed, deleteFeed, updateFeed } = useActivityFeedProvider();
   const { tab } = useParams<{ tab: EntityTabs }>();
@@ -104,7 +100,7 @@ const ContainerPage = () => {
   const [isChildrenLoading, setIsChildrenLoading] = useState<boolean>(false);
   const [hasError, setHasError] = useState<boolean>(false);
   const [isEditDescription, setIsEditDescription] = useState<boolean>(false);
-
+  const [customizedPage, setCustomizedPage] = useState<Page | null>(null);
   const [containerData, setContainerData] = useState<Container>();
   const [containerChildrenData, setContainerChildrenData] = useState<
     Container['children']
@@ -572,212 +568,77 @@ const ContainerPage = () => {
     }
   };
 
-  const tabs = useMemo(
-    () => [
-      {
-        label: (
-          <TabsLabel
-            id={isDataModelEmpty ? EntityTabs.CHILDREN : EntityTabs.SCHEMA}
-            name={t(isDataModelEmpty ? 'label.children' : 'label.schema')}
-          />
-        ),
-        key: isDataModelEmpty ? EntityTabs.CHILDREN : EntityTabs.SCHEMA,
-        children: (
-          <Row gutter={[0, 16]} wrap={false}>
-            <Col className="tab-content-height-with-resizable-panel" span={24}>
-              <ResizablePanels
-                firstPanel={{
-                  className: 'entity-resizable-panel-container',
-                  children: (
-                    <div className="d-flex flex-col gap-4 p-t-sm m-x-lg">
-                      <DescriptionV1
-                        description={description}
-                        entityFqn={decodedContainerName}
-                        entityName={entityName}
-                        entityType={EntityType.CONTAINER}
-                        hasEditAccess={editDescriptionPermission}
-                        isDescriptionExpanded={isEmpty(containerChildrenData)}
-                        isEdit={isEditDescription}
-                        owner={owners}
-                        showActions={!deleted}
-                        onCancel={() => setIsEditDescription(false)}
-                        onDescriptionEdit={() => setIsEditDescription(true)}
-                        onDescriptionUpdate={handleUpdateDescription}
-                        onThreadLinkSelect={onThreadLinkSelect}
-                      />
+  const tabs = useMemo(() => {
+    const tabLabelMap = getTabLabelMap(customizedPage?.tabs);
 
-                      {isDataModelEmpty ? (
-                        <ContainerChildren
-                          childrenList={containerChildrenData}
-                          fetchChildren={fetchContainerChildren}
-                          isLoading={isChildrenLoading}
-                        />
-                      ) : (
-                        <ContainerDataModel
-                          dataModel={containerData?.dataModel}
-                          entityFqn={decodedContainerName}
-                          hasDescriptionEditAccess={editDescriptionPermission}
-                          hasGlossaryTermEditAccess={
-                            editGlossaryTermsPermission
-                          }
-                          hasTagEditAccess={editTagsPermission}
-                          isReadOnly={Boolean(deleted)}
-                          onThreadLinkSelect={onThreadLinkSelect}
-                          onUpdate={handleUpdateDataModel}
-                        />
-                      )}
-                    </div>
-                  ),
-                  ...COMMON_RESIZABLE_PANEL_CONFIG.LEFT_PANEL,
-                }}
-                secondPanel={{
-                  children: (
-                    <div data-testid="entity-right-panel">
-                      <EntityRightPanel<EntityType.CONTAINER>
-                        customProperties={containerData}
-                        dataProducts={containerData?.dataProducts ?? []}
-                        domain={containerData?.domain}
-                        editCustomAttributePermission={
-                          editCustomAttributePermission
-                        }
-                        editGlossaryTermsPermission={
-                          editGlossaryTermsPermission
-                        }
-                        editTagPermission={
-                          editTagsPermission && !containerData?.deleted
-                        }
-                        entityFQN={decodedContainerName}
-                        entityId={containerData?.id ?? ''}
-                        entityType={EntityType.CONTAINER}
-                        selectedTags={tags}
-                        viewAllPermission={viewAllPermission}
-                        onExtensionUpdate={handleExtensionUpdate}
-                        onTagSelectionChange={handleTagSelection}
-                        onThreadLinkSelect={onThreadLinkSelect}
-                      />
-                    </div>
-                  ),
-                  ...COMMON_RESIZABLE_PANEL_CONFIG.RIGHT_PANEL,
-                  className:
-                    'entity-resizable-right-panel-container entity-resizable-panel-container',
-                }}
-              />
-            </Col>
-          </Row>
-        ),
-      },
-      ...(isDataModelEmpty
-        ? []
-        : [
-            {
-              label: (
-                <TabsLabel
-                  id={EntityTabs.CHILDREN}
-                  name={t('label.children')}
-                />
-              ),
-              key: EntityTabs.CHILDREN,
-              children: (
-                <Row className="p-md" gutter={[0, 16]}>
-                  <Col span={24}>
-                    <ContainerChildren
-                      childrenList={containerChildrenData}
-                      fetchChildren={fetchContainerChildren}
-                      isLoading={isChildrenLoading}
-                    />
-                  </Col>
-                </Row>
-              ),
-            },
-          ]),
+    if (!containerData) {
+      return [];
+    }
 
-      {
-        label: (
-          <TabsLabel
-            count={feedCount.totalCount}
-            id={EntityTabs.ACTIVITY_FEED}
-            isActive={tab === EntityTabs.ACTIVITY_FEED}
-            name={t('label.activity-feed-and-task-plural')}
-          />
-        ),
-        key: EntityTabs.ACTIVITY_FEED,
-        children: (
-          <ActivityFeedTab
-            refetchFeed
-            entityFeedTotalCount={feedCount.totalCount}
-            entityType={EntityType.CONTAINER}
-            fqn={decodedContainerName}
-            onFeedUpdate={getEntityFeedCount}
-            onUpdateEntityDetails={() =>
-              fetchContainerDetail(decodedContainerName)
-            }
-            onUpdateFeedCount={handleFeedCount}
-          />
-        ),
-      },
-      {
-        label: <TabsLabel id={EntityTabs.LINEAGE} name={t('label.lineage')} />,
-        key: EntityTabs.LINEAGE,
-        children: (
-          <LineageProvider>
-            <Lineage
-              deleted={deleted}
-              entity={containerData as SourceType}
-              entityType={EntityType.CONTAINER}
-              hasEditAccess={editLineagePermission}
-            />
-          </LineageProvider>
-        ),
-      },
-      {
-        label: (
-          <TabsLabel
-            id={EntityTabs.CUSTOM_PROPERTIES}
-            name={t('label.custom-property-plural')}
-          />
-        ),
-        key: EntityTabs.CUSTOM_PROPERTIES,
-        children: containerData && (
-          <div className="m-sm">
-            <CustomPropertyTable<EntityType.CONTAINER>
-              entityDetails={containerData}
-              entityType={EntityType.CONTAINER}
-              handleExtensionUpdate={handleExtensionUpdate}
-              hasEditAccess={editCustomAttributePermission}
-              hasPermission={viewAllPermission}
-            />
-          </div>
-        ),
-      },
-    ],
-    [
+    const tabs = containerDetailsClassBase.getContainerDetailPageTabs({
       isDataModelEmpty,
-      containerData,
-      description,
-      decodedContainerName,
+      description: description ?? '',
       decodedContainerName,
       entityName,
       editDescriptionPermission,
       editTagsPermission,
       editGlossaryTermsPermission,
-      isEditDescription,
       editLineagePermission,
       editCustomAttributePermission,
       viewAllPermission,
-      deleted,
-      owners,
-      isChildrenLoading,
-      tags,
-      feedCount.totalCount,
-      containerChildrenData,
+      containerChildrenData: containerChildrenData ?? [],
+      fetchContainerChildren,
+      isChildrenLoading: isChildrenLoading ?? false,
+      feedCount: feedCount ?? { totalCount: 0 },
+      getEntityFeedCount,
       handleFeedCount,
-      handleUpdateDataModel,
-      handleUpdateDescription,
-      handleTagSelection,
+      tab,
+      deleted: deleted ?? false,
+      owners: owners ?? [],
+      containerData,
+      tags: tags ?? [],
+      fetchContainerDetail,
+      labelMap: tabLabelMap,
       onThreadLinkSelect,
+      handleUpdateDescription,
+      handleUpdateDataModel,
+      handleTagSelection,
       handleExtensionUpdate,
-    ]
-  );
+    });
+
+    return getGlossaryTermDetailTabs(
+      tabs,
+      customizedPage?.tabs,
+      EntityTabs.CHILDREN
+    );
+  }, [
+    isDataModelEmpty,
+    containerData,
+    description,
+    decodedContainerName,
+    decodedContainerName,
+    entityName,
+    editDescriptionPermission,
+    editTagsPermission,
+    editGlossaryTermsPermission,
+    isEditDescription,
+    editLineagePermission,
+    editCustomAttributePermission,
+    viewAllPermission,
+    deleted,
+    owners,
+    isChildrenLoading,
+    tags,
+    feedCount.totalCount,
+    containerChildrenData,
+    handleFeedCount,
+    handleUpdateDataModel,
+    handleUpdateDescription,
+    handleTagSelection,
+    onThreadLinkSelect,
+    handleExtensionUpdate,
+    customizedPage?.tabs,
+  ]);
 
   const updateVote = async (data: QueryVote, id: string) => {
     try {
@@ -800,6 +661,24 @@ const ContainerPage = () => {
       showErrorToast(error as AxiosError);
     }
   };
+
+  const fetchDocument = useCallback(async () => {
+    const pageFQN = `${EntityType.PERSONA}${FQN_SEPARATOR_CHAR}${selectedPersona.fullyQualifiedName}`;
+    try {
+      const doc = await getDocumentByFQN(pageFQN);
+      setCustomizedPage(
+        doc.data?.pages?.find((p: Page) => p.pageType === PageType.Container)
+      );
+    } catch (error) {
+      // fail silent
+    }
+  }, [selectedPersona.fullyQualifiedName]);
+
+  useEffect(() => {
+    if (selectedPersona?.fullyQualifiedName) {
+      fetchDocument();
+    }
+  }, [selectedPersona]);
 
   // Effects
   useEffect(() => {

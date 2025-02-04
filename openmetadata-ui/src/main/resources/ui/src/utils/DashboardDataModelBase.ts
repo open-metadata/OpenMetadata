@@ -25,7 +25,7 @@ import { DashboardDataModel } from '../generated/entity/data/dashboardDataModel'
 import { Tab } from '../generated/system/ui/page';
 import { FeedCounts } from '../interface/feed.interface';
 import { getTabLabelFromId } from './CustomizePage/CustomizePageUtils';
-import { getDashboardDataModelDetailPageTabs } from './DashboardDetailsUtils';
+import { getDashboardDataModelDetailPageTabs } from './DashboardDataModelUtils';
 
 export interface DashboardDataModelDetailPageTabProps {
   modelComponent: JSX.Element;

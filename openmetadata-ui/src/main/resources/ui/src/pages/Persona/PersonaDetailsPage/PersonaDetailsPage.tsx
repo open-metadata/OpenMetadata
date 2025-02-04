@@ -49,7 +49,6 @@ export const PersonaDetailsPage = () => {
   const history = useHistory();
   const [personaDetails, setPersonaDetails] = useState<Persona>();
   const [isLoading, setIsLoading] = useState(true);
-  const [isEdit, setIsEdit] = useState(false);
   const { t } = useTranslation();
   const [entityPermission, setEntityPermission] = useState(
     DEFAULT_ENTITY_PERMISSION
@@ -112,8 +111,6 @@ export const PersonaDetailsPage = () => {
       setPersonaDetails(response);
     } catch (error) {
       showErrorToast(error as AxiosError);
-    } finally {
-      setIsEdit(false);
     }
   };
 
@@ -129,8 +126,6 @@ export const PersonaDetailsPage = () => {
       setPersonaDetails(response);
     } catch (error) {
       showErrorToast(error as AxiosError);
-    } finally {
-      setIsEdit(false);
     }
   };
 
@@ -146,8 +141,6 @@ export const PersonaDetailsPage = () => {
         setPersonaDetails(response);
       } catch (error) {
         showErrorToast(error as AxiosError);
-      } finally {
-        setIsEdit(false);
       }
     },
     [personaDetails]
@@ -242,10 +235,7 @@ export const PersonaDetailsPage = () => {
             hasEditAccess
             description={personaDetails.description}
             entityType={EntityType.PERSONA}
-            isEdit={isEdit}
             showCommentsIcon={false}
-            onCancel={() => setIsEdit(false)}
-            onDescriptionEdit={() => setIsEdit(true)}
             onDescriptionUpdate={handleDescriptionUpdate}
           />
         </Col>

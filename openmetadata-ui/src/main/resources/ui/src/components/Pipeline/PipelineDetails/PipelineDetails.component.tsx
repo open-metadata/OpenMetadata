@@ -131,8 +131,6 @@ const PipelineDetails = ({
 
   // local state variables
 
-  const [isEdit, setIsEdit] = useState(false);
-
   const [editTask, setEditTask] = useState<{
     task: Task;
     index: number;
@@ -272,13 +270,6 @@ const PipelineDetails = ({
     }
   };
 
-  const onDescriptionEdit = (): void => {
-    setIsEdit(true);
-  };
-  const onCancel = () => {
-    setIsEdit(false);
-  };
-
   const onDescriptionUpdate = async (updatedHTML: string) => {
     if (description !== updatedHTML) {
       const updatedPipelineDetails = {
@@ -286,9 +277,6 @@ const PipelineDetails = ({
         description: updatedHTML,
       };
       await descriptionUpdateHandler(updatedPipelineDetails);
-      setIsEdit(false);
-    } else {
-      setIsEdit(false);
     }
   };
 
@@ -616,11 +604,8 @@ const PipelineDetails = ({
                             entityType={EntityType.PIPELINE}
                             hasEditAccess={editDescriptionPermission}
                             isDescriptionExpanded={isEmpty(tasksInternal)}
-                            isEdit={isEdit}
                             owner={owners}
                             showActions={!deleted}
-                            onCancel={onCancel}
-                            onDescriptionEdit={onDescriptionEdit}
                             onDescriptionUpdate={onDescriptionUpdate}
                             onThreadLinkSelect={onThreadLinkSelect}
                           />
@@ -768,7 +753,6 @@ const PipelineDetails = ({
       description,
       activeTab,
       feedCount.totalCount,
-      isEdit,
       deleted,
       owners,
       entityName,
@@ -780,8 +764,6 @@ const PipelineDetails = ({
       handleFeedCount,
       handleTagSelection,
       onExtensionUpdate,
-      onCancel,
-      onDescriptionEdit,
       onDescriptionUpdate,
       onThreadLinkSelect,
       editDescriptionPermission,

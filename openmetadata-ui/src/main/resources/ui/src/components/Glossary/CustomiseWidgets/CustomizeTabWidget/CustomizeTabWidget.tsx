@@ -57,7 +57,7 @@ export const CustomizeTabWidget = () => {
     useCustomizeStore();
   const items = useMemo(() => {
     return currentPage?.tabs ?? getDefaultTabs(currentPageType as PageType);
-  }, [currentPage, currentPageType]);
+  }, [currentPage, currentPageType, currentPage?.tabs]);
   const [activeKey, setActiveKey] = useState<string | null>(
     (items[0]?.id as EntityTabs) ?? null
   );
@@ -78,16 +78,18 @@ export const CustomizeTabWidget = () => {
   const [isWidgetModalOpen, setIsWidgetModalOpen] = useState<boolean>(false);
   const [placeholderWidgetKey, setPlaceholderWidgetKey] = useState<string>('');
 
-  const onChange = (tabKey: string) => {
+  const onChange = (tabKey: string, updatePage = true) => {
     const key = tabKey as EntityTabs;
     setActiveKey(key);
     const newTab = currentPage?.tabs?.find((item) => item.id === key);
 
     // Save current tab layout before changing
-    updateCurrentPage({
-      ...currentPage,
-      tabs: items,
-    } as Page);
+    if (updatePage) {
+      updateCurrentPage({
+        ...currentPage,
+        tabs: items,
+      } as Page);
+    }
 
     // Update tabLayout with new tab selection
     setTabLayouts(
@@ -117,7 +119,7 @@ export const CustomizeTabWidget = () => {
       ],
     } as Page);
 
-    onChange(newActiveKey);
+    onChange(newActiveKey, false);
   };
 
   const remove = (targetKey: TargetKey) => {
