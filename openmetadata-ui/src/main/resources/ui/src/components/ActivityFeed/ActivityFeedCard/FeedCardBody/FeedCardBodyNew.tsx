@@ -11,10 +11,29 @@
  *  limitations under the License.
  */
 
-import { Card, Typography } from 'antd';
+import { Button, Card, Typography } from 'antd';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { getEntityFQN, getEntityType } from '../../../../utils/FeedUtils';
+import { Link } from 'react-router-dom';
+import { ASSET_CARD_STYLES } from '../../../../constants/Feeds.constants';
+import { EntityType } from '../../../../enums/entity.enum';
+import { CardStyle } from '../../../../generated/entity/feed/thread';
+import {
+  AlertType,
+  EventSubscription,
+} from '../../../../generated/events/eventSubscription';
+import entityUtilClassBase from '../../../../utils/EntityUtilClassBase';
+import {
+  getEntityFQN,
+  getEntityType,
+  getFrontEndFormat,
+  MarkdownToHTMLConverter,
+} from '../../../../utils/FeedUtils';
+import RichTextEditorPreviewerV1 from '../../../common/RichTextEditor/RichTextEditorPreviewerV1';
+import ExploreSearchCard from '../../../ExploreV1/ExploreSearchCard/ExploreSearchCard';
+import DescriptionFeed from '../../ActivityFeedCardV2/FeedCardBody/DescriptionFeed/DescriptionFeed';
+import TagsFeed from '../../ActivityFeedCardV2/FeedCardBody/TagsFeed/TagsFeed';
+import ActivityFeedEditor from '../../ActivityFeedEditor/ActivityFeedEditor';
 import './feed-card-body-v1.less';
 import { FeedCardBodyV1Props } from './FeedCardBodyV1.interface';
 
@@ -28,6 +47,7 @@ const FeedCardBodyNew = ({
   announcement,
   onUpdate,
   onEditCancel,
+  showThread,
 }: FeedCardBodyV1Props) => {
   const { t } = useTranslation();
   const [postMessage, setPostMessage] = useState<string>(message);
@@ -44,105 +64,109 @@ const FeedCardBodyNew = ({
     onUpdate?.(postMessage ?? '');
   }, [onUpdate, postMessage]);
 
-  // const getDefaultValue = (defaultMessage: string) => {
-  //   return MarkdownToHTMLConverter.makeHtml(getFrontEndFormat(defaultMessage));
-  // };
+  const getDefaultValue = (defaultMessage: string) => {
+    return MarkdownToHTMLConverter.makeHtml(getFrontEndFormat(defaultMessage));
+  };
 
-  // const feedBodyStyleCardsRender = useMemo(() => {
-  //   if (!isPost) {
-  //     if (cardStyle === CardStyle.Description) {
-  //       return <DescriptionFeed feed={feed} />;
-  //     }
+  const feedBodyStyleCardsRender = useMemo(() => {
+    if (!isPost) {
+      if (cardStyle === CardStyle.Description) {
+        return <DescriptionFeed feed={feed} />;
+      }
 
-  //     if (cardStyle === CardStyle.Tags) {
-  //       return <TagsFeed feed={feed} />;
-  //     }
+      if (cardStyle === CardStyle.Tags) {
+        return <TagsFeed feed={feed} />;
+      }
 
-  //     if (ASSET_CARD_STYLES.includes(cardStyle as CardStyle)) {
-  //       const entityInfo = feed.feedInfo?.entitySpecificInfo?.entity;
-  //       const isExecutableTestSuite =
-  //         entityType === EntityType.TEST_SUITE && entityInfo.basic;
-  //       const isObservabilityAlert =
-  //         entityType === EntityType.EVENT_SUBSCRIPTION &&
-  //         (entityInfo as EventSubscription).alertType ===
-  //           AlertType.Observability;
+      if (ASSET_CARD_STYLES.includes(cardStyle as CardStyle)) {
+        const entityInfo = feed.feedInfo?.entitySpecificInfo?.entity;
+        const isExecutableTestSuite =
+          entityType === EntityType.TEST_SUITE && entityInfo.basic;
+        const isObservabilityAlert =
+          entityType === EntityType.EVENT_SUBSCRIPTION &&
+          (entityInfo as EventSubscription).alertType ===
+            AlertType.Observability;
 
-  //       const entityCard = (
-  //         <ExploreSearchCard
-  //           className="asset-info-card"
-  //           id={`tabledatacard${entityInfo.id}`}
-  //           showTags={false}
-  //           source={{ ...entityInfo, entityType }}
-  //         />
-  //       );
+        const entityCard = (
+          <ExploreSearchCard
+            className="asset-info-card"
+            id={`tabledatacard${entityInfo.id}`}
+            showTags={false}
+            source={{ ...entityInfo, entityType }}
+          />
+        );
 
-  //       return cardStyle === CardStyle.EntityDeleted ? (
-  //         <div className="deleted-entity">{entityCard}</div>
-  //       ) : (
-  //         <Link
-  //           className="no-underline text-body text-hover-body"
-  //           to={entityUtilClassBase.getEntityLink(
-  //             entityType,
-  //             entityFQN,
-  //             '',
-  //             '',
-  //             isExecutableTestSuite,
-  //             isObservabilityAlert
-  //           )}>
-  //           {entityCard}
-  //         </Link>
-  //       );
-  //     }
-  //   }
+        return cardStyle === CardStyle.EntityDeleted ? (
+          <div className="deleted-entity">{entityCard}</div>
+        ) : (
+          <Link
+            className="no-underline text-body text-hover-body"
+            to={entityUtilClassBase.getEntityLink(
+              entityType,
+              entityFQN,
+              '',
+              '',
+              isExecutableTestSuite,
+              isObservabilityAlert
+            )}>
+            {entityCard}
+          </Link>
+        );
+      }
+    }
 
-  //   return (
-  //     <RichTextEditorPreviewerV1
-  //       className="text-wrap"
-  //       markdown={getFrontEndFormat(message)}
-  //     />
-  //   );
-  // }, [isPost, message, postMessage, cardStyle, feed, entityType, entityFQN]);
+    return (
+      <RichTextEditorPreviewerV1
+        className="text-wrap"
+        markdown={getFrontEndFormat(message)}
+      />
+    );
+  }, [isPost, message, postMessage, cardStyle, feed, entityType, entityFQN]);
 
-  // const feedBodyRender = useMemo(() => {
-  //   if (isEditPost) {
-  //     return (
-  //       <ActivityFeedEditor
-  //         focused
-  //         className="mb-8"
-  //         // defaultValue={getDefaultValue(message)}
-  //         editAction={
-  //           <div className="d-flex justify-end gap-2 m-r-xss">
-  //             <Button
-  //               className="border border-primary text-primary rounded-4"
-  //               data-testid="cancel-button"
-  //               size="small"
-  //               onClick={onEditCancel}>
-  //               {t('label.cancel')}
-  //             </Button>
-  //             <Button
-  //               className="rounded-4"
-  //               data-testid="save-button"
-  //               disabled={!message.length}
-  //               size="small"
-  //               type="primary"
-  //               onClick={handleSave}>
-  //               {t('label.save')}
-  //             </Button>
-  //           </div>
-  //         }
-  //         editorClass="is_edit_post"
-  //         onSave={handleSave}
-  //         onTextChange={(message) => setPostMessage(message)}
-  //       />
-  //     );
-  //   }
+  const feedBodyRender = useMemo(() => {
+    if (isEditPost) {
+      return (
+        <ActivityFeedEditor
+          focused
+          className="mb-8"
+          defaultValue={getDefaultValue(message)}
+          editAction={
+            <div className="d-flex justify-end gap-2 m-r-xss">
+              <Button
+                className="border border-primary text-primary rounded-4"
+                data-testid="cancel-button"
+                size="small"
+                onClick={onEditCancel}>
+                {t('label.cancel')}
+              </Button>
+              <Button
+                className="rounded-4"
+                data-testid="save-button"
+                disabled={!message.length}
+                size="small"
+                type="primary"
+                onClick={handleSave}>
+                {t('label.save')}
+              </Button>
+            </div>
+          }
+          editorClass="is_edit_post"
+          onSave={handleSave}
+          onTextChange={(message) => setPostMessage(message)}
+        />
+      );
+    }
 
-  //   return feedBodyStyleCardsRender;
-  // }, [isEditPost, message, feedBodyStyleCardsRender]);
+    return feedBodyStyleCardsRender;
+  }, [isEditPost, message, feedBodyStyleCardsRender]);
 
   return !isPost ? (
     feed.feedInfo?.entitySpecificInfo?.entity?.description ? (
-      <Card bordered className="activity-feed-card-message">
+      <Card
+        bordered
+        className={`activity-feed-card-message ${
+          showThread && 'activity-feed-card-message-right-panel'
+        }`}>
         <Typography.Text
           style={{ wordWrap: 'break-word', whiteSpace: 'normal' }}>
           {feed.feedInfo.entitySpecificInfo.entity.description}
@@ -150,7 +174,7 @@ const FeedCardBodyNew = ({
       </Card>
     ) : null
   ) : isEditPost ? (
-    <></>
+    feedBodyRender
   ) : (
     <Card bordered className="activity-feed-reply-card-message">
       <Typography.Text

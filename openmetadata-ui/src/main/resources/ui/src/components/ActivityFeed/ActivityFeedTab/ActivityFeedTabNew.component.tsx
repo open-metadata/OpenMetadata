@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Skeleton, Typography } from 'antd';
+import { Button, Dropdown, Segmented, Skeleton } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import {
@@ -26,8 +26,11 @@ import {
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory, useParams } from 'react-router-dom';
 import { ReactComponent as CheckIcon } from '../../../assets/svg/ic-check.svg';
+import { ReactComponent as FilterIcon } from '../../../assets/svg/ic-feeds-filter.svg';
 import { ReactComponent as TaskIcon } from '../../../assets/svg/ic-task.svg';
-import { ROUTES } from '../../../constants/constants';
+import { ReactComponent as MentionIcon } from '../../../assets/svg/mention.svg';
+import { ReactComponent as MyTaskIcon } from '../../../assets/svg/task.svg';
+import { ICON_DIMENSION_USER_PAGE, ROUTES } from '../../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
 import { observerOptions } from '../../../constants/Mydata.constants';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
@@ -128,6 +131,10 @@ export const ActivityFeedTabNew = ({
 
   const isTaskActiveTab = useMemo(
     () => activeTab === ActivityFeedTabs.TASKS,
+    [activeTab]
+  );
+  const isMentionTabSelected = useMemo(
+    () => activeTab === ActivityFeedTabs.MENTIONS,
     [activeTab]
   );
 
@@ -328,43 +335,110 @@ export const ActivityFeedTabNew = ({
     handleFeedFetchFromFeedList();
     handleUpdateTaskFilter(ThreadTaskStatus.Closed);
   };
+  const taskFilterOptions = [
+    {
+      key: ThreadTaskStatus.Open,
+      label: (
+        <div
+          className={classNames(
+            'flex items-center justify-between px-4 py-2 gap-2',
+            { active: taskFilter === ThreadTaskStatus.Open }
+          )}>
+          <div className="flex items-center space-x-2">
+            <TaskIcon className="m-r-xss" width={14} />
+            <span className="task-tab-filter-item">{t('label.open')}</span>
+          </div>
+          <span
+            className={classNames('task-count-container d-flex flex-center', {
+              active: taskFilter === ThreadTaskStatus.Open,
+            })}>
+            <span className="task-count-text">
+              {countData.data.openTaskCount}
+            </span>
+          </span>
+        </div>
+      ),
+      onClick: () => {
+        handleUpdateTaskFilter(ThreadTaskStatus.Open);
+        setActiveThread();
+      },
+    },
+    {
+      key: ThreadTaskStatus.Closed,
+      label: (
+        <div
+          className={classNames(
+            'flex items-center justify-between px-4 py-2 gap-2',
+            { active: taskFilter === ThreadTaskStatus.Closed }
+          )}>
+          <div className="flex items-center space-x-2">
+            <CheckIcon className="m-r-xss" width={14} />
+            <span className="task-tab-filter-item">{t('label.closed')}</span>
+          </div>
+          <span
+            className={classNames('task-count-container d-flex flex-center', {
+              active: taskFilter === ThreadTaskStatus.Closed,
+            })}>
+            <span className="task-count-text">
+              {countData.data.closedTaskCount}
+            </span>
+          </span>
+        </div>
+      ),
+      onClick: () => {
+        handleUpdateTaskFilter(ThreadTaskStatus.Closed);
+        setActiveThread();
+      },
+    },
+  ];
+  const TaskToggle = () => {
+    return (
+      <Segmented
+        className="task-toggle"
+        defaultValue={ActivityFeedTabs.TASKS}
+        options={[
+          {
+            label: (
+              <span className="toggle-item">
+                <MyTaskIcon {...ICON_DIMENSION_USER_PAGE} />
+                {t('label.task')}
+              </span>
+            ),
+            value: ActivityFeedTabs.TASKS,
+          },
+          {
+            label: (
+              <span className="toggle-item">
+                <MentionIcon {...ICON_DIMENSION_USER_PAGE} />
+                {t('label.mention-plural')}
+              </span>
+            ),
+            value: ActivityFeedTabs.MENTIONS,
+          },
+        ]}
+        onChange={(value) => handleTabChange(value as ActivityFeedTabs)}
+      />
+    );
+  };
 
   return (
     <div className="activity-feed-tab">
       <div className="center-container @padding-xs" id="center-container">
-        {isTaskActiveTab && (
-          <div className="d-flex gap-4 p-sm p-x-lg activity-feed-task">
-            {getElementWithCountLoader(
-              <Typography.Text
-                className={classNames(
-                  'cursor-pointer p-l-xss d-flex items-center',
-                  {
-                    'font-medium': taskFilter === ThreadTaskStatus.Open,
-                  }
-                )}
-                data-testid="open-task"
-                onClick={() => {
-                  handleUpdateTaskFilter(ThreadTaskStatus.Open);
-                  setActiveThread();
-                }}>
-                <TaskIcon className="m-r-xss" width={14} />{' '}
-                {countData.data.openTaskCount} {t('label.open')}
-              </Typography.Text>
-            )}
-            {getElementWithCountLoader(
-              <Typography.Text
-                className={classNames('cursor-pointer d-flex items-center', {
-                  'font-medium': taskFilter === ThreadTaskStatus.Closed,
-                })}
-                data-testid="closed-task"
-                onClick={() => {
-                  handleUpdateTaskFilter(ThreadTaskStatus.Closed);
-                  setActiveThread();
-                }}>
-                <CheckIcon className="m-r-xss" width={14} />{' '}
-                {countData.data.closedTaskCount} {t('label.closed')}
-              </Typography.Text>
-            )}
+        {(isTaskActiveTab || isMentionTabSelected) && (
+          <div className="d-flex gap-4 p-sm p-x-lg m-b-0  p-b-0 justify-between items-center">
+            <Dropdown
+              menu={{
+                items: taskFilterOptions,
+                selectedKeys: [...taskFilter],
+              }}
+              overlayClassName="task-tab-custom-dropdown"
+              trigger={['click']}>
+              <Button
+                className="flex-center"
+                icon={<FilterIcon height={16} />}
+              />
+            </Dropdown>
+            {TaskToggle()}
           </div>
         )}
         <ActivityFeedListV1New

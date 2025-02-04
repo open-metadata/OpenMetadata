@@ -179,7 +179,7 @@ const DomainSelectableList = ({
         }
         open={popupVisible}
         overlayClassName="domain-select-popover"
-        placement="bottomRight"
+        placement="right"
         showArrow={false}
         trigger="click"
         onOpenChange={setPopupVisible}

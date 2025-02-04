@@ -103,7 +103,7 @@ const UserProfilePersonas = ({ userData }: UserProfileProps) => {
       </div>
       <div className="user-profile-card-body d-flex justify-start gap-2">
         <Typography.Text className="default-persona-text">
-          {/* default persona */}
+          {/* test persona 1 */}
         </Typography.Text>
       </div>
     </div>

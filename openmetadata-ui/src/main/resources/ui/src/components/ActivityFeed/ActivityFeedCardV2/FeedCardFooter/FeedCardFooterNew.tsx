@@ -75,11 +75,9 @@ function FeedCardFooterNew({
   return (
     <Row>
       <Col span={24}>
-        <Space
-          className={`  ${isPost ? 'activity-feed-reply-card-footer' : ''}`}
-          size={8}>
+        <Space size={8}>
           <div
-            className="flex items-center gap-2 p-x-xss w-full rounded-8"
+            className="flex items-center gap-2 w-full rounded-8"
             // type="text"
             // onClick={componentsVisibility.showThreadIcon ? showReplies : noop}
           >

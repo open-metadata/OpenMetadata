@@ -53,9 +53,31 @@ body {
       margin: 0px;
     }
 
-    .activity-feed-card-container.ant-btn:hover {
-      color: inherit;
-      background-color: @white;
+    // .activity-feed-card-container.ant-btn:hover {
+    //   color: inherit;
+    //   background-color: red;
+    // }
+    .activity-feed-comments-container {
+      border-radius: 12px;
+      padding: 16px;
+      margin: 20px 0px;
+      border: 0.8px solid #dfdfdf;
+      background: rgba(239, 244, 250, 0.25);
+    }
+
+    .activity-feed-reply-button {
+      border-radius: 24px;
+      border: 1px solid #d4d4d8;
+      color: #52525b;
+      font-size: 12px;
+    }
+    .comments-input-field {
+      background-color: #f4f5f7;
+      border-radius: 20px;
+      border: 1px solid #d4d4d8;
+      height: 36px;
+      font-size: 12px;
+      line-height: 14.52px;
     }
   }
 
@@ -82,6 +104,7 @@ body {
         width: inherit;
       }
     }
+
     .activity-feed-card-message {
       padding: 12px;
       background-color: @white;
@@ -92,6 +115,10 @@ body {
       .ant-card-body {
         padding: 0px;
       }
+    }
+    .activity-feed-card-message-right-panel {
+      background: rgba(239, 244, 250, 0.25);
+      margin-top: 10px;
     }
   }
   .activity-feed-reply-card {
@@ -108,7 +135,7 @@ body {
       //  margin: 10px  0px 20px 0px;
       padding-top: 20px;
       border-bottom: 1.5px solid #d4d4d8;
-      background-color: #f4f7fe;
+      background: rgba(239, 244, 250, 0.25);
 
       padding-bottom: 16px;
       .ant-space-item {
@@ -118,13 +145,14 @@ body {
     .activity-feed-reply-card-message {
       padding-left: 50px;
       border: none;
-      background: #f4f7fe;
+      background: rgba(239, 244, 250, 0.25);
       .ant-card-body {
         margin: 0px;
         margin-top: -8px;
         margin-bottom: -6px;
         border: none;
         padding: 0px;
+        background: rgba(239, 244, 250, 0.25);
       }
       .activity-feed-comment-text {
         color: #52525b;
@@ -145,28 +173,28 @@ body {
   width: 72px;
 }
 
-.activity-feed-comments-container {
-  border-radius: 12px;
-  padding: 16px;
-  margin: 16px 0px;
-  border: 0.8px solid #dfdfdf;
-  background: rgba(239, 244, 250, 0.25); /* Background with 25% opacity */
-}
+// .activity-feed-comments-container {
+//   border-radius: 12px;
+//   padding: 16px;
+//   margin: 16px 0px;
+//   border: 0.8px solid #dfdfdf;
+//   background: rgba(239, 244, 250, 0.25); /* Background with 25% opacity */
+// }
 
-.activity-feed-reply-button {
-  border-radius: 24px;
-  border: 1px solid #d4d4d8;
-  color: #52525b;
-  font-size: 12px;
-}
-.comments-input-field {
-  background-color: #f4f5f7;
-  border-radius: 20px;
-  border: 1px solid #d4d4d8;
-  height: 36px;
-  font-size: 12px;
-  line-height: 14.52px;
-}
+// .activity-feed-reply-button {
+//   border-radius: 24px;
+//   border: 1px solid #d4d4d8;
+//   color: #52525b;
+//   font-size: 12px;
+// }
+// .comments-input-field {
+//   background-color: #f4f5f7;
+//   border-radius: 20px;
+//   border: 1px solid #d4d4d8;
+//   height: 36px;
+//   font-size: 12px;
+//   line-height: 14.52px;
+// }
 .activity-feed-editor-container-new {
   background-color: #f5f5f5;
   border: none;
@@ -224,3 +252,86 @@ body {
 //   }
 
 // }
+.task-tab-custom-dropdown {
+  border-radius: 6px;
+  .task-tab-filter-item {
+    color: #535862;
+    font-size: 14px;
+    font-weight: 400;
+    line-height: 20px;
+  }
+
+  .task-count-container {
+    background: #f5f5f5;
+    padding: 2px;
+    border-radius: 16px;
+    width: 30px;
+    height: 22px;
+
+    &.active {
+      background-color: #ecfdf3;
+    }
+
+    .task-count-text {
+      color: #535862;
+      text-align: center;
+      font-family: Inter;
+      font-size: 12px;
+      font-weight: 500;
+      line-height: 18px;
+    }
+
+    &.active .task-count-text {
+      color: #039855;
+    }
+  }
+
+  .ant-dropdown-menu .ant-dropdown-menu-item {
+    box-shadow: 0px 1px 2px 0px rgba(10, 13, 18, 0.05);
+    padding: 0px;
+    margin: 8px;
+    .active {
+      box-shadow: 0px 1px 2px 0px rgba(10, 13, 18, 0.05);
+      background-color: #f4f4f5;
+      border-radius: 8px;
+    }
+  }
+}
+
+/* Custom styles for Segmented control */
+.task-toggle {
+  background: white;
+  border-radius: 8px;
+  padding: 4px;
+  border-radius: 8px;
+  border: 1px solid #dce3ec;
+}
+
+/* Style for each toggle item */
+.toggle-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 14px;
+  font-weight: 500;
+  height: 40px;
+  width: 100px;
+}
+
+/* Active (selected) tab */
+.task-toggle .ant-segmented-item-selected {
+  background: #e6f1fe;
+  color: #005bc4;
+  text-align: center;
+}
+
+/* Non-selected tabs */
+.task-toggle .ant-segmented-item {
+  color: #71717a;
+  transition: all 0.3s ease;
+}
+
+/* Hover effect */
+.task-toggle .ant-segmented-item:hover {
+  background: none;
+}

@@ -1,0 +1,110 @@
+/*
+ *  Copyright 2023 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+@import (reference) url('../../../../styles/variables.less');
+
+.assignees-edit-input {
+  .ant-space-item:first-child {
+    width: 100%;
+  }
+}
+
+.task-action-button {
+  button {
+    border: 1px solid @primary-color;
+    color: @primary-color;
+
+    &:first-child {
+      border-right: none;
+      padding-right: 0;
+    }
+    &:last-child {
+      border-left: none;
+    }
+  }
+}
+
+.task-action-dropdown {
+  ul {
+    padding: 4px 8px;
+
+    li {
+      padding: 8px;
+      border-bottom: @global-border;
+
+      &:last-child {
+        border-bottom: none;
+      }
+    }
+  }
+}
+
+.reserve-right-sidebar {
+  .task-cta-buttons {
+    // Right side padding 20 + 64 width of sidebar
+    padding-right: 84px;
+  }
+}
+
+//user profile page
+.action-required-card {
+  display: flex;
+  align-items: center;
+  border-radius: 12px;
+  border: 0.8px solid #dfdfdf;
+  background: linear-gradient(
+    90deg,
+    rgba(85, 155, 238, 0.25) 0%,
+    rgba(96, 167, 251, 0.25) 19%,
+    rgba(245, 245, 245, 0.25) 100%
+  );
+  padding: 12px;
+  box-shadow: none;
+}
+
+.action-required-text {
+  flex-grow: 1;
+  font-size: 16px;
+  font-weight: 500;
+  color: #333;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.approve-button {
+  background-color: #2f74eb;
+  border-color: #2f74eb;
+  border-radius: 8px;
+  font-weight: 500;
+}
+
+.approve-button:hover {
+  background-color: #1f67e9;
+  border-color: #1f67e9;
+}
+
+.reject-button {
+  background-color: #d93025;
+  border-color: #d93025;
+  color: white;
+  border-radius: 8px;
+  font-weight: 500;
+}
+
+.reject-button:hover {
+  background-color: #b1271c;
+  border-color: #b1271c;
+}

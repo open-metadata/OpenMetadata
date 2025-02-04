@@ -73,6 +73,7 @@ const FeedPanelBodyV1: FC<FeedPanelBodyPropV1> = ({
           componentsVisibility={componentsVisibility}
           feed={feed}
           isActive={isActive}
+          isPost={false}
           post={mainFeed}
           showActivityFeedEditor={showActivityFeedEditor}
           showThread={showThread}

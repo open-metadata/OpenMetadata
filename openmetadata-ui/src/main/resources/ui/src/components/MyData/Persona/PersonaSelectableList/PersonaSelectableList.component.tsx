@@ -134,7 +134,7 @@ export const PersonaSelectableList = ({
       }
       open={popupVisible}
       overlayClassName="user-select-popover p-0"
-      placement="bottomRight"
+      placement="right"
       showArrow={false}
       trigger="click"
       onOpenChange={setPopupVisible}

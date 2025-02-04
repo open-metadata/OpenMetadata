@@ -14,7 +14,6 @@ import { Typography } from 'antd';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { User } from '../../generated/entity/teams/user';
-import { formatContent } from '../../utils/BlockEditorUtils';
 import { isMaskedEmail } from '../../utils/Users.util';
 import ProfilePicture from '../common/ProfilePicture/ProfilePicture';
 
@@ -41,7 +40,11 @@ const ProfileSectionUserDetailsCard = ({
   );
 
   return (
-    <div className="d-flex flex-col flex-center profile-section-user-details-card">
+    <div className="d-flex flex-col flex-center relative profile-section-user-details-card">
+      {/* <MenuDots
+        {...ICON_DIMENSION_USER_PAGE}
+        className="absolute top-2 cursor-pointer"
+      /> */}
       <div>
         <ProfilePicture
           avatarType="outlined"
@@ -55,8 +58,17 @@ const ProfileSectionUserDetailsCard = ({
         <p className="profile-details-title">{userData?.fullyQualifiedName}</p>
         {userEmailRender}
         <p className="profile-details-desc">
-          {userData?.description &&
-            formatContent(userData?.description, 'client')}
+          {
+            userData?.description && (
+              // <p>
+              //   Description of admin . Lorem ispum simply dummy text of the
+              //   printing and typesetting industry. Lorem Ipsum has been the
+              //   industry's standard dummy text ever since the 1500s,
+              // </p>
+              <></>
+            )
+            // formatContent(userData?.description, 'client')
+          }
         </p>
       </div>
     </div>

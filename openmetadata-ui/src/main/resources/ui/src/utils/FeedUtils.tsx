@@ -304,7 +304,7 @@ export const getEntityDetail = (item: string) => {
 };
 
 const getEntityLinkList = (message: string) => {
-  return message.match(entityLinkRegEx);
+  return message?.match(entityLinkRegEx);
 };
 
 const getEntityLinkDetail = (item: string) => {

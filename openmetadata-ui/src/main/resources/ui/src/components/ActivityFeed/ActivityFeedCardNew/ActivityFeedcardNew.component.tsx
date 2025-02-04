@@ -14,7 +14,7 @@ import { Card, Col, Input, Space, Tooltip, Typography } from 'antd';
 import { compare } from 'fast-json-patch';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { GeneratedBy, Thread } from '../../../generated/entity/feed/thread';
+import { Thread } from '../../../generated/entity/feed/thread';
 import { useUserProfile } from '../../../hooks/user-profile/useUserProfile';
 import {
   formatDateTime,
@@ -33,7 +33,7 @@ import FeedCardFooterNew from '../ActivityFeedCardV2/FeedCardFooter/FeedCardFoot
 import ActivityFeedEditorNew from '../ActivityFeedEditor/ActivityFeedEditorNew';
 import { useActivityFeedProvider } from '../ActivityFeedProvider/ActivityFeedProvider';
 import '../ActivityFeedTab/activity-feed-tab-new.less';
-import ActivityFeedActions from '../Shared/ActivityFeedActions';
+import CommentCard from './ReplyCard.component';
 
 const { Text, Link } = Typography;
 
@@ -72,7 +72,7 @@ const ActivityFeedCardNew = ({
   const [isEditPost, setIsEditPost] = useState<boolean>(false);
   const [postMessage, setPostMessage] = useState<string>('');
   const { updateFeed } = useActivityFeedProvider();
-  const [isHovered, setIsHovered] = useState(false);
+  // const [isHovered, setIsHovered] = useState(false);
 
   const onSave = (message: string) => {
     postFeed(message, selectedThread?.id ?? '').catch(() => {
@@ -148,8 +148,9 @@ const ActivityFeedCardNew = ({
             }
           : {}
       }
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}>
+      // onMouseEnter={() => setIsHovered(true)}
+      // onMouseLeave={() => setIsHovered(false)}
+    >
       <Space align="start" style={{ width: 'inherit' }}>
         <Space className="d-flex" direction="vertical">
           <Space className="d-inline-flex justify-start">
@@ -237,14 +238,16 @@ const ActivityFeedCardNew = ({
                 ? feed.feedInfo?.entitySpecificInfo?.entity?.description
                 : post.message
             }
+            showThread={showThread}
             onEditCancel={() => setIsEditPost(false)}
             onUpdate={onUpdate}
           />
 
-          <Space className="mt-4">
+          {(isPost || (!showThread && !isPost)) && (
             <FeedCardFooterNew feed={feed} isPost={isPost} post={post} />
-          </Space>
-          {(feed.generatedBy !== GeneratedBy.System ||
+          )}
+
+          {/* {(feed.generatedBy !== GeneratedBy.System ||
             (isPost && isHovered)) && (
             <ActivityFeedActions
               feed={feed}
@@ -252,7 +255,7 @@ const ActivityFeedCardNew = ({
               post={post}
               onEditPost={onEditPost}
             />
-          )}
+          )} */}
         </Space>
       </Space>
       {showThread && (
@@ -269,12 +272,14 @@ const ActivityFeedCardNew = ({
             />
           ) : (
             <div className="d-flex gap-2">
-              <ProfilePicture
-                avatarType="outlined"
-                key={feed.id}
-                name="admin"
-                size={40}
-              />
+              <div style={{ width: '32px', height: '32px' }}>
+                <ProfilePicture
+                  avatarType="outlined"
+                  key={feed.id}
+                  name="admin"
+                  size={32}
+                />
+              </div>
 
               <Input
                 className="comments-input-field"
@@ -287,15 +292,17 @@ const ActivityFeedCardNew = ({
           {showThread && feed?.posts && feed?.posts?.length > 0 && (
             <Col className="p-l-0 p-r-0" data-testid="feed-replies">
               {feed?.posts?.map((reply) => (
-                <ActivityFeedCardNew
-                  isPost
-                  componentsVisibility={componentsVisibility}
-                  feed={feed}
-                  isActive={isActive}
-                  key={reply.id}
-                  post={reply}
-                  showActivityFeedEditor={false}
-                />
+                // <ActivityFeedCardNew
+                //   isPost
+                //   componentsVisibility={componentsVisibility}
+                //   feed={feed}
+                //   isActive={isActive}
+                //   key={reply.id}
+                //   post={reply}
+                //   showActivityFeedEditor={false}
+                //   // showThread={showThread}
+                // />
+                <CommentCard feed={feed} key={reply.id} post={reply} />
               ))}
             </Col>
           )}

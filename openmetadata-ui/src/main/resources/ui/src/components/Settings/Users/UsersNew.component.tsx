@@ -386,7 +386,7 @@ const Users = ({
             /> */}
             <Tabs
               activeKey={activeTab}
-              className="user-page-tabs"
+              className="user-page-tabs-new"
               data-testid="tabs"
               items={tabs.map((tab) => ({
                 key: tab.key,

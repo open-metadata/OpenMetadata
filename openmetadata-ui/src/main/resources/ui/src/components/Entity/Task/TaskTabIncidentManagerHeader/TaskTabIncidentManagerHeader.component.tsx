@@ -131,7 +131,7 @@ const TaskTabIncidentManagerHeader = ({ thread }: { thread: Thread }) => {
         </div>
       </Col>
 
-      <Row gutter={[16, 16]}>
+      <Row className="m-l-0" gutter={[16, 16]}>
         {/* Created Time */}
         <Col className="flex items-center gap-2 text-grey-muted" span={12}>
           <Clock {...ICON_DIMENSION_USER_PAGE} />
