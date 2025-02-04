@@ -67,7 +67,9 @@ const parseAndGenerateDocs = () => {
     try {
       const schemaPath = path.join(SCHEMA_DIR, schemaFile);
       const schema = JSON.parse(fs.readFileSync(schemaPath, 'utf-8'));
-      const baseName = path.basename(schemaFile, '.json');
+      const baseName = path
+        .basename(schemaFile, '.json')
+        .replace('-collate', '');
 
       const markdown = generateMarkdown(schema);
 
