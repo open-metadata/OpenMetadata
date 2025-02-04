@@ -95,6 +95,7 @@ from metadata.generated.schema.api.services.ingestionPipelines.createIngestionPi
 from metadata.generated.schema.api.teams.createRole import CreateRoleRequest
 from metadata.generated.schema.api.teams.createTeam import CreateTeamRequest
 from metadata.generated.schema.api.teams.createUser import CreateUserRequest
+from metadata.generated.schema.api.teams.createPersona import CreatePersonaRequest
 from metadata.generated.schema.api.tests.createTestCase import CreateTestCaseRequest
 from metadata.generated.schema.api.tests.createTestDefinition import (
     CreateTestDefinitionRequest,
@@ -159,6 +160,7 @@ from metadata.generated.schema.entity.services.searchService import SearchServic
 from metadata.generated.schema.entity.services.storageService import StorageService
 from metadata.generated.schema.entity.teams.role import Role
 from metadata.generated.schema.entity.teams.team import Team
+from metadata.generated.schema.entity.teams.persona import Persona
 from metadata.generated.schema.entity.teams.user import AuthenticationMechanism, User
 from metadata.generated.schema.settings.settings import Settings
 from metadata.generated.schema.tests.testCase import TestCase
@@ -217,6 +219,8 @@ ROUTES = {
     CreateTeamRequest.__name__: "/teams",
     User.__name__: "/users",
     CreateUserRequest.__name__: "/users",
+    Persona.__name__: "/personas",
+    CreatePersonaRequest.__name__: "/personas",
     AuthenticationMechanism.__name__: "/users/auth-mechanism",
     Bot.__name__: "/bots",
     CreateBot.__name__: "/bots",
