@@ -12,7 +12,6 @@ import java.util.Optional;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.flowable.bpmn.converter.BpmnXMLConverter;
-import org.flowable.common.engine.api.FlowableException;
 import org.flowable.common.engine.api.FlowableObjectNotFoundException;
 import org.flowable.engine.HistoryService;
 import org.flowable.engine.ProcessEngine;
@@ -241,11 +240,9 @@ public class WorkflowHandler {
         namespacedVariables.put(
             getNamespacedVariableName(namespace, entry.getKey()), entry.getValue());
       }
-
     } else {
-      // LOG
+      LOG.debug(String.format("Flowable Task for Task ID %s not found.", customTaskId));
     }
-
     return namespacedVariables;
   }
 
@@ -267,11 +264,6 @@ public class WorkflowHandler {
       }
     } catch (FlowableObjectNotFoundException ex) {
       LOG.debug(String.format("Flowable Task for Task ID %s not found.", customTaskId));
-    } catch (
-        FlowableException
-            ex) { // TODO: Remove this once we change the Task flow. Currently closeTask() is called
-      // twice.
-      LOG.debug(String.format("Flowable Exception: %s.", ex));
     }
   }
 
@@ -293,11 +285,6 @@ public class WorkflowHandler {
       }
     } catch (FlowableObjectNotFoundException ex) {
       LOG.debug(String.format("Flowable Task for Task ID %s not found.", customTaskId));
-    } catch (
-        FlowableException
-            ex) { // TODO: Remove this once we change the Task flow. Currently closeTask() is called
-      // twice.
-      LOG.debug(String.format("Flowable Exception: %s.", ex));
     }
   }
 
