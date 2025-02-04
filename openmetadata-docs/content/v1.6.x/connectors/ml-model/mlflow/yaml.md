@@ -4,7 +4,7 @@ slug: /connectors/ml-model/mlflow/yaml
 ---
 
 {% connectorDetailsHeader
-name="Mlflow"
+name="MLflow"
 stage="PROD"
 platform="OpenMetadata"
 availableFeatures=["ML Features", "Hyperparameters", "ML Store"]
