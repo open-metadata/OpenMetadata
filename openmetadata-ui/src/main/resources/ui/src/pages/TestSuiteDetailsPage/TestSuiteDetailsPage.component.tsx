@@ -52,7 +52,6 @@ import {
 import { TestCase } from '../../generated/tests/testCase';
 import { EntityReference, TestSuite } from '../../generated/tests/testSuite';
 import { Include } from '../../generated/type/include';
-import { useAuth } from '../../hooks/authHooks';
 import { usePaging } from '../../hooks/paging/usePaging';
 import { useFqn } from '../../hooks/useFqn';
 import { DataQualityPageTabs } from '../../pages/DataQuality/DataQualityPage.interface';
@@ -76,7 +75,6 @@ const TestSuiteDetailsPage = () => {
   const { t } = useTranslation();
   const { getEntityPermissionByFqn } = usePermissionProvider();
   const { fqn: testSuiteFQN } = useFqn();
-  const { isAdminUser } = useAuth();
   const history = useHistory();
 
   const afterDeleteAction = () => {
@@ -115,6 +113,19 @@ const TestSuiteDetailsPage = () => {
       testSuiteDescription: testSuite?.description ?? '',
     };
   }, [testSuite]);
+
+  const permissions = useMemo(() => {
+    return {
+      hasViewPermission:
+        testSuitePermissions?.ViewAll || testSuitePermissions?.ViewBasic,
+      hasEditPermission: testSuitePermissions?.EditAll,
+      hasEditOwnerPermission:
+        testSuitePermissions?.EditAll || testSuitePermissions?.EditOwners,
+      hasEditDescriptionPermission:
+        testSuitePermissions?.EditAll || testSuitePermissions?.EditDescription,
+      hasDeletePermission: testSuitePermissions?.Delete,
+    };
+  }, [testSuitePermissions]);
 
   const incidentUrlState = useMemo(() => {
     return [
@@ -322,10 +333,10 @@ const TestSuiteDetailsPage = () => {
   };
 
   useEffect(() => {
-    if (testSuitePermissions.ViewAll || testSuitePermissions.ViewBasic) {
+    if (permissions.hasViewPermission) {
       fetchTestSuiteByName();
     }
-  }, [testSuitePermissions, testSuiteFQN]);
+  }, [permissions, testSuiteFQN]);
 
   useEffect(() => {
     fetchTestSuitePermission();
@@ -439,7 +450,7 @@ const TestSuiteDetailsPage = () => {
                   isRecursiveDelete
                   afterDeleteAction={afterDeleteAction}
                   allowSoftDelete={false}
-                  canDelete={isAdminUser}
+                  canDelete={permissions.hasDeletePermission}
                   deleted={testSuite?.deleted}
                   displayName={getEntityName(testSuite)}
                   editDisplayNamePermission={
@@ -466,7 +477,7 @@ const TestSuiteDetailsPage = () => {
                 />
                 <Divider className="self-center" type="vertical" />
                 <OwnerLabel
-                  hasPermission={isAdminUser}
+                  hasPermission={permissions.hasEditOwnerPermission}
                   owners={testOwners}
                   onUpdate={onUpdateOwner}
                 />
@@ -481,7 +492,7 @@ const TestSuiteDetailsPage = () => {
             description={testSuiteDescription}
             entityName={getEntityName(testSuite)}
             entityType={EntityType.TEST_SUITE}
-            hasEditAccess={isAdminUser}
+            hasEditAccess={permissions.hasEditDescriptionPermission}
             showCommentsIcon={false}
             onDescriptionUpdate={onDescriptionUpdate}
           />

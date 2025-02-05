@@ -23,17 +23,13 @@ import {
   DE_ACTIVE_COLOR,
   ICON_DIMENSION,
 } from '../../../../constants/constants';
-import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
-import { ResourceEntity } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { CSMode } from '../../../../enums/codemirror.enum';
 import { EntityType } from '../../../../enums/entity.enum';
-import { Operation } from '../../../../generated/entity/policies/policy';
 
 import { ReactComponent as StarIcon } from '../../../../assets/svg/ic-suggestions.svg';
 import { TestCaseParameterValue } from '../../../../generated/tests/testCase';
 import { useTestCaseStore } from '../../../../pages/IncidentManager/IncidentManagerDetailPage/useTestCase.store';
 import { updateTestCaseById } from '../../../../rest/testAPI';
-import { checkPermission } from '../../../../utils/PermissionsUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import DescriptionV1 from '../../../common/EntityDescription/DescriptionV1';
 import TestSummary from '../../../Database/Profiler/TestSummary/TestSummary';
@@ -49,18 +45,19 @@ const TestCaseResultTab = () => {
     testCase: testCaseData,
     setTestCase,
     showAILearningBanner,
+    testCasePermission,
   } = useTestCaseStore();
   const additionalComponent =
     testCaseResultTabClassBase.getAdditionalComponents();
   const [isParameterEdit, setIsParameterEdit] = useState<boolean>(false);
-  const { permissions } = usePermissionProvider();
-  const hasEditPermission = useMemo(() => {
-    return checkPermission(
-      Operation.EditAll,
-      ResourceEntity.TEST_CASE,
-      permissions
-    );
-  }, [permissions]);
+
+  const { hasEditPermission, hasEditDescriptionPermission } = useMemo(() => {
+    return {
+      hasEditPermission: testCasePermission?.EditAll,
+      hasEditDescriptionPermission:
+        testCasePermission?.EditAll || testCasePermission?.EditDescription,
+    };
+  }, [testCasePermission]);
 
   const { withSqlParams, withoutSqlParams } = useMemo(() => {
     const params = testCaseData?.parameterValues ?? [];
@@ -165,7 +162,7 @@ const TestCaseResultTab = () => {
         <DescriptionV1
           description={testCaseData?.description}
           entityType={EntityType.TEST_CASE}
-          hasEditAccess={hasEditPermission}
+          hasEditAccess={hasEditDescriptionPermission}
           showCommentsIcon={false}
           onDescriptionUpdate={handleDescriptionChange}
         />
