@@ -2024,6 +2024,7 @@
     "join-team-success": "Команда присоединилась успешно!",
     "leave-team-error": "Ошибка при выходе из команды!",
     "leave-team-success": "Покинул команду успешно!",
+    "no-application-schema-found": "Схема приложения не найдена для {{appName}}",
     "no-owned-entities": "Вы еще ничем не владели.",
     "no-query-available": "Нет доступных запросов.",
     "no-task-available": "Данных о задании нет.",

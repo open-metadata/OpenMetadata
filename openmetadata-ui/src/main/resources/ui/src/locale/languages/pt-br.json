@@ -2024,6 +2024,7 @@
     "join-team-success": "Equipe ingressada com sucesso!",
     "leave-team-error": "Erro ao sair da equipe!",
     "leave-team-success": "Saiu da equipe com sucesso!",
+    "no-application-schema-found": "Nenhum esquema de aplicação encontrado para {{appName}}",
     "no-owned-entities": "Você ainda não possui nada.",
     "no-query-available": "Nenhuma consulta disponível.",
     "no-task-available": "Não há dados de tarefas disponíveis.",

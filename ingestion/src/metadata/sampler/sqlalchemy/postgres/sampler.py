@@ -66,7 +66,7 @@ class PostgresSampler(SQASampler):
         self.sampling_method_type = SamplingMethodType.BERNOULLI
         if (
             sample_config
-            and sample_config.sampling_method_type == SamplingMethodType.SYSTEM
+            and sample_config.samplingMethodType == SamplingMethodType.SYSTEM
         ):
             self.sampling_fn = func.system
 
@@ -75,15 +75,15 @@ class PostgresSampler(SQASampler):
         Args:
             selectable (Table): _description_
         """
-        if self.sample_config.profile_sample_type == ProfileSampleType.PERCENTAGE:
+        if self.sample_config.profileSampleType == ProfileSampleType.PERCENTAGE:
             return selectable.tablesample(
-                self.sampling_fn(self.sample_config.profile_sample or 100)
+                self.sampling_fn(self.sample_config.profileSample or 100)
             )
 
         return selectable
 
     def get_sample_query(self, *, column=None) -> Query:
-        if self.sample_config.profile_sample_type == ProfileSampleType.PERCENTAGE:
+        if self.sample_config.profileSampleType == ProfileSampleType.PERCENTAGE:
             return self._base_sample_query(column).cte(
                 f"{self.raw_dataset.__tablename__}_rnd"
             )
