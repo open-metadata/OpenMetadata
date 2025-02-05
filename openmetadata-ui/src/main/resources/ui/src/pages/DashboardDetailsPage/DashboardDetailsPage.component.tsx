@@ -44,7 +44,6 @@ import { postThread } from '../../rest/feedsAPI';
 import {
   addToRecentViewed,
   getEntityMissingError,
-  sortTagsCaseInsensitive,
 } from '../../utils/CommonUtils';
 import { defaultFields } from '../../utils/DashboardDetailsUtils';
 import { getEntityName } from '../../utils/EntityUtils';
@@ -151,7 +150,21 @@ const DashboardDetailsPage = () => {
     }
   };
 
-  const onDashboardUpdate = async (
+  const handleDashboardUpdate = async (updatedDashboard: Dashboard) => {
+    try {
+      const response = await saveUpdatedDashboardData(updatedDashboard);
+      setDashboardDetails((previous) => {
+        return {
+          ...previous,
+          ...response,
+        };
+      });
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
+
+  /* const onDashboardUpdate = async (
     updatedDashboard: Dashboard,
     key: keyof Dashboard
   ) => {
@@ -170,7 +183,7 @@ const DashboardDetailsPage = () => {
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
-  };
+  }; */
 
   const followDashboard = async () => {
     try {
@@ -302,7 +315,7 @@ const DashboardDetailsPage = () => {
       unFollowDashboardHandler={unFollowDashboard}
       updateDashboardDetailsState={updateDashboardDetailsState}
       versionHandler={versionHandler}
-      onDashboardUpdate={onDashboardUpdate}
+      onDashboardUpdate={handleDashboardUpdate}
       onUpdateVote={updateVote}
     />
   );

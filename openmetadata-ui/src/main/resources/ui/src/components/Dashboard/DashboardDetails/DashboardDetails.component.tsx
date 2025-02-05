@@ -177,7 +177,7 @@ const DashboardDetails = ({
         description: updatedHTML,
       };
       try {
-        await onDashboardUpdate(updatedDashboard, 'description');
+        await onDashboardUpdate(updatedDashboard);
       } catch (error) {
         showErrorToast(error as AxiosError);
       } finally {
@@ -194,7 +194,7 @@ const DashboardDetails = ({
         ...dashboardDetails,
         owners: newOwners,
       };
-      await onDashboardUpdate(updatedDashboard, 'owners');
+      await onDashboardUpdate(updatedDashboard);
     },
     [owners]
   );
@@ -205,7 +205,7 @@ const DashboardDetails = ({
       ...dashboardDetails,
       tags: tierTag,
     };
-    await onDashboardUpdate(updatedDashboard, 'tags');
+    await onDashboardUpdate(updatedDashboard);
   };
 
   const onUpdateDisplayName = async (data: EntityName) => {
@@ -213,13 +213,13 @@ const DashboardDetails = ({
       ...dashboardDetails,
       displayName: data.displayName,
     };
-    await onDashboardUpdate(updatedData, 'displayName');
+    await onDashboardUpdate(updatedData);
   };
   const onExtensionUpdate = async (updatedData: Dashboard) => {
-    await onDashboardUpdate(
-      { ...dashboardDetails, extension: updatedData.extension },
-      'extension'
-    );
+    await onDashboardUpdate({
+      ...dashboardDetails,
+      extension: updatedData.extension,
+    });
   };
 
   const handleRestoreDashboard = async () => {
@@ -267,7 +267,7 @@ const DashboardDetails = ({
     if (updatedTags && dashboardDetails) {
       const updatedTags = [...(tier ? [tier] : []), ...selectedTags];
       const updatedDashboard = { ...dashboardDetails, tags: updatedTags };
-      await onDashboardUpdate(updatedDashboard, 'tags');
+      await onDashboardUpdate(updatedDashboard);
     }
   };
 

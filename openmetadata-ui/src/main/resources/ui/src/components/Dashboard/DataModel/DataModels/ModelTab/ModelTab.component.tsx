@@ -44,10 +44,11 @@ const ModelTab = ({ isReadOnly, onThreadLinkSelect }: ModelTabProps) => {
   const { t } = useTranslation();
   const [editColumnDescription, setEditColumnDescription] = useState<Column>();
   const {
-    data: { columns: data, fullyQualifiedName: entityFqn },
+    data: dataModel,
     permissions,
     onUpdate,
   } = useGenericContext<DashboardDataModel>();
+  const { columns: data, fullyQualifiedName: entityFqn } = dataModel;
 
   const {
     hasEditDescriptionPermission,
@@ -82,7 +83,7 @@ const ModelTab = ({ isReadOnly, onThreadLinkSelect }: ModelTabProps) => {
         dataModelData
       );
 
-      await onUpdate(dataModelData);
+      await onUpdate({ ...dataModel, columns: dataModelData });
     },
     [data, updateFieldTags]
   );
@@ -96,7 +97,10 @@ const ModelTab = ({ isReadOnly, onThreadLinkSelect }: ModelTabProps) => {
           editColumnDescription?.fullyQualifiedName ?? '',
           updatedDescription
         );
-        await onUpdate(dataModelColumns);
+        await onUpdate({
+          ...dataModel,
+          columns: dataModelColumns,
+        });
       }
       setEditColumnDescription(undefined);
     },

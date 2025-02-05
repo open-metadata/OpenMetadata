@@ -283,16 +283,14 @@ const DataModelsPage = () => {
   };
 
   const handleUpdateDataModel = async (
-    updatedDataModel: DashboardDataModel,
-    key: keyof DashboardDataModel
+    updatedDataModel: DashboardDataModel
   ) => {
     try {
       const response = await handleUpdateDataModelData(updatedDataModel);
 
       setDataModelData((prev) => ({
         ...prev,
-        [key]: response[key],
-        version: response.version,
+        ...response,
       }));
     } catch (error) {
       showErrorToast(error as AxiosError);
