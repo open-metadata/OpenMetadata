@@ -25,7 +25,6 @@ import static org.openmetadata.service.util.EntityUtil.getCustomField;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -284,7 +283,8 @@ public class TypeRepository extends EntityRepository<Type> {
       Map<String, Object> configMap = (Map<String, Object>) enumConfig;
       if (configMap.get("values") instanceof List) {
         List<String> values = (List<String>) configMap.get("values");
-        Collections.sort(values);
+        List<String> sortedValues = values.stream().sorted().collect(Collectors.toList());
+        configMap.put("values", sortedValues);
       }
     }
   }

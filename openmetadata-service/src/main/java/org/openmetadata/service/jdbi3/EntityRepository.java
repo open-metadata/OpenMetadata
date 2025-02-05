@@ -111,6 +111,7 @@ import java.util.function.BiConsumer;
 import java.util.function.BiPredicate;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 import javax.json.JsonPatch;
 import javax.validation.ConstraintViolationException;
 import javax.validation.constraints.NotNull;
@@ -1665,9 +1666,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
       case "table-cp" -> validateTableType(fieldValue, propertyConfig, fieldName);
       case "enum" -> {
         validateEnumKeys(fieldName, fieldValue, propertyConfig);
-        List<String> enumValues = new ArrayList<>();
-        fieldValue.forEach(value -> enumValues.add(value.asText()));
-        Collections.sort(enumValues);
+        List<String> enumValues =
+            StreamSupport.stream(fieldValue.spliterator(), false)
+                .map(JsonNode::asText)
+                .sorted()
+                .collect(Collectors.toList());
         jsonNode.set(fieldName, JsonUtils.valueToTree(enumValues));
         entity.setExtension(jsonNode);
       }
@@ -1843,10 +1846,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
       JsonNode fieldValue = JsonUtils.readTree(extensionRecord.extensionJson());
       String customPropertyType = TypeRegistry.getCustomPropertyType(entityType, fieldName);
       if ("enum".equals(customPropertyType) && fieldValue.isArray() && fieldValue.size() > 1) {
-        ArrayList<String> enumValues = new ArrayList<>(fieldValue.size());
-        fieldValue.forEach(node -> enumValues.add(node.asText()));
-        Collections.sort(enumValues);
-        fieldValue = JsonUtils.valueToTree(enumValues);
+        List<String> sortedEnumValues =
+            StreamSupport.stream(fieldValue.spliterator(), false)
+                .map(JsonNode::asText)
+                .sorted()
+                .collect(Collectors.toList());
+        fieldValue = JsonUtils.valueToTree(sortedEnumValues);
       }
 
       objectNode.set(fieldName, fieldValue);
