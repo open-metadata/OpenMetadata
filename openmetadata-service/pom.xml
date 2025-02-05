@@ -59,7 +59,7 @@
       <artifactId>pac4j-core</artifactId>
       <version>${pac4j.version}</version>
       <exclusions>
-        <exclusion>
+        <exclusion>        
           <groupId>org.slf4j</groupId>
           <artifactId>slf4j-api</artifactId>
         </exclusion>
@@ -532,7 +532,7 @@
       <artifactId>json</artifactId>
       <version>20240303</version>
     </dependency>
-
+    
     <dependency>
       <groupId>com.networknt</groupId>
       <artifactId>json-schema-validator</artifactId>
