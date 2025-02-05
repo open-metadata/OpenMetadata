@@ -203,6 +203,11 @@ REDSHIFT_GET_SCHEMA_COLUMN_INFO = textwrap.dedent(
             """
 )
 
+REDSHIFT_EXTERNAL_TABLE_LOCATION = """
+    SELECT location 
+    FROM svv_external_tables 
+    WHERE schemaname = :schema AND tablename = :table
+"""
 
 REDSHIFT_PARTITION_DETAILS = """
   select "schema", "table", diststyle

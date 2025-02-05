@@ -11,7 +11,6 @@
 """
 Redshift source ingestion
 """
-
 import re
 import traceback
 from typing import Iterable, List, Optional, Tuple
@@ -57,6 +56,9 @@ from metadata.ingestion.source.database.common_db_source import (
     CommonDbSourceService,
     TableNameAndType,
 )
+from metadata.ingestion.source.database.external_table_lineage_mixin import (
+    ExternalTableLineageMixin,
+)
 from metadata.ingestion.source.database.incremental_metadata_extraction import (
     IncrementalConfig,
 )
@@ -69,6 +71,7 @@ from metadata.ingestion.source.database.redshift.incremental_table_processor imp
 )
 from metadata.ingestion.source.database.redshift.models import RedshiftStoredProcedure
 from metadata.ingestion.source.database.redshift.queries import (
+    REDSHIFT_EXTERNAL_TABLE_LOCATION,
     REDSHIFT_GET_ALL_RELATION_INFO,
     REDSHIFT_GET_DATABASE_NAMES,
     REDSHIFT_GET_STORED_PROCEDURES,
@@ -123,11 +126,11 @@ RedshiftDialect._get_all_relation_info = (  # pylint: disable=protected-access
 )
 Inspector.get_all_table_ddls = get_all_table_ddls
 Inspector.get_table_ddl = get_table_ddl
-from metadata.ingestion.source.database.external_table_lineage_mixin import (
-    ExternalTableLineageMixin,
-)
 
-class RedshiftSource(ExternalTableLineageMixin, LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
+
+class RedshiftSource(
+    ExternalTableLineageMixin, LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource
+):
     """
     Implements the necessary methods to extract
     Database metadata from Redshift Source
@@ -170,37 +173,27 @@ class RedshiftSource(ExternalTableLineageMixin, LifeCycleQueryMixin, CommonDbSou
         )
         return cls(config, metadata, incremental_config)
 
-    def _is_external_table(self, schema_name: str, table_name: str) -> bool:
-        query = """
-            SELECT *
-            FROM svv_external_tables 
-            WHERE schemaname = %s AND tablename = %s
-            limit 1;
-        """
-        result = self.connection.execute(query, (schema_name, table_name)).fetchone()
-        return bool(result)
-    
-    def _get_external_table_location(self, schema_name: str, table_name: str) -> Optional[str]:
-        query = """
-            SELECT location 
-            FROM svv_external_tables 
-            WHERE schemaname = %s AND tablename = %s
-        """
-        result = self.connection.execute(query, (schema_name, table_name)).fetchone()
-        return result[0] if result else None
-
-    def get_table_description(
+    def get_table_description(  # pylint: disable=arguments-differ
         self, schema_name: str, table_name: str, inspector: Inspector
-    ) -> str:        
-        # Check if the table is external
-        is_external = self._is_external_table(schema_name, table_name)
-        
-        if is_external:
-            location = self._get_external_table_location(schema_name, table_name)
+    ) -> str:
+        description = super().get_table_description(schema_name, table_name, inspector)
+        try:
+            result = self.connection.execute(
+                sql.text(REDSHIFT_EXTERNAL_TABLE_LOCATION),
+                {"schema": schema_name, "table": table_name},
+            ).fetchone()
+            location = result[0] if result else None
             if location:
                 self.external_location_map[
                     (self.context.get().database, schema_name, table_name)
                 ] = location
+
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Redshift location query failed for [{schema_name}.{table_name}]: {exc}"
+            )
+        return description
 
     def get_partition_details(self) -> None:
         """
