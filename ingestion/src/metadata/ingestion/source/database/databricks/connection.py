@@ -41,6 +41,7 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.databricks.client import DatabricksClient
 from metadata.ingestion.source.database.databricks.queries import (
     DATABRICKS_GET_CATALOGS,
+    DATABRICKS_SQL_STATEMENT_TEST,
 )
 from metadata.utils.constants import THREE_MIN
 from metadata.utils.logger import ingestion_logger
@@ -106,7 +107,13 @@ def test_connection(
             engine=connection,
             statement=DATABRICKS_GET_CATALOGS,
         ),
-        "GetQueries": client.test_query_api_access,
+        "GetQueries": partial(
+            test_database_query,
+            engine=connection,
+            statement=DATABRICKS_SQL_STATEMENT_TEST.format(
+                query_history=service_connection.queryHistoryTable
+            ),
+        ),
     }
 
     return test_connection_steps(
