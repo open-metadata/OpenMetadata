@@ -10,6 +10,15 @@
       "type": "string",
       "enum": ["RemoveTagsAction"],
       "default": "RemoveTagsAction"
+    },
+    "labelType": {
+      "description" : "Remove tags by its label type",
+      "type": "string",
+      "enum": [
+        "Manual",
+        "Propagated",
+        "Automated"
+      ]
     }
   },
   "properties": {
@@ -26,14 +35,12 @@
         "$ref": "../../../../../type/tagLabel.json"
       }
     },
-    "labelType": {
-      "description" : "Remove tags by its label type",
-      "type": "string",
-      "enum": [
-        "Manual",
-        "Propagated",
-        "Automated"
-      ],
+    "labels": {
+      "description": "Remove tags by its label type",
+      "type": "array",
+      "items": {
+          "$ref": "#/definitions/labelType"
+      },
       "default": null
     },
     "applyToChildren": {

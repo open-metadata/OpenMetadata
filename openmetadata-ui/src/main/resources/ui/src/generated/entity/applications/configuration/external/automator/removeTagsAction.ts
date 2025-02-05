@@ -22,7 +22,7 @@ export interface RemoveTagsAction {
     /**
      * Remove tags by its label type
      */
-    labelType?: RemoveTagsActionLabelType;
+    labels?: LabelElement[];
     /**
      * Tags to remove
      */
@@ -36,7 +36,7 @@ export interface RemoveTagsAction {
 /**
  * Remove tags by its label type
  */
-export enum RemoveTagsActionLabelType {
+export enum LabelElement {
     Automated = "Automated",
     Manual = "Manual",
     Propagated = "Propagated",
@@ -65,7 +65,7 @@ export interface TagLabel {
      * label was propagated from upstream based on lineage. 'Automated' is used when a tool was
      * used to determine the tag label.
      */
-    labelType: TagLabelType;
+    labelType: LabelTypeEnum;
     /**
      * Name of the tag or glossary term.
      */
@@ -90,7 +90,7 @@ export interface TagLabel {
  * label was propagated from upstream based on lineage. 'Automated' is used when a tool was
  * used to determine the tag label.
  */
-export enum TagLabelType {
+export enum LabelTypeEnum {
     Automated = "Automated",
     Derived = "Derived",
     Manual = "Manual",
