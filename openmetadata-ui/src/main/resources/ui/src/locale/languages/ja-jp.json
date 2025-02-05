@@ -2024,6 +2024,7 @@
     "join-team-success": "チームへの参加が成功しました！",
     "leave-team-error": "チームからの退会中にエラーが発生しました！",
     "leave-team-success": "チームからの退会に成功しました！",
+    "no-application-schema-found": "{{appName}}のアプリケーションスキーマが見つかりません",
     "no-owned-entities": "あなたはまだ何も所有していません。",
     "no-query-available": "利用可能なクエリはありません。",
     "no-task-available": "タスク情報はありません。",
