@@ -27,7 +27,7 @@ import org.quartz.JobListener;
 public abstract class AbstractOmAppJobListener implements JobListener {
   private final CollectionDAO collectionDAO;
   private final AppRepository repository;
-  public static final String SCHEDULED_APP_RUN_EXTENSION = "AppScheduleRun";
+  private static final String SCHEDULED_APP_RUN_EXTENSION = "AppScheduleRun";
   public static final String WEBSOCKET_STATUS_CHANNEL = "WebsocketStatusUpdateExtension";
 
   public static final String APP_RUN_STATS = "AppRunStats";

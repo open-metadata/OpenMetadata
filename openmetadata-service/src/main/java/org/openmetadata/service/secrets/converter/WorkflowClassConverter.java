@@ -15,7 +15,6 @@ package org.openmetadata.service.secrets.converter;
 
 import java.util.List;
 import java.util.Map;
-
 import org.openmetadata.schema.entity.automations.TestServiceConnectionRequest;
 import org.openmetadata.schema.entity.automations.Workflow;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
@@ -32,7 +31,8 @@ public class WorkflowClassConverter extends ClassConverter {
   public Object convert(Object object) {
     Workflow workflow = (Workflow) JsonUtils.convertValue(object, this.clazz);
 
-    tryToConvertOrFail(workflow.getRequest(), List.of(TestServiceConnectionRequest.class, Map.class))
+    tryToConvertOrFail(
+            workflow.getRequest(), List.of(TestServiceConnectionRequest.class, Map.class))
         .ifPresent(workflow::setRequest);
 
     if (workflow.getOpenMetadataServerConnection() != null) {
