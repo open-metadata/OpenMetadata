@@ -176,8 +176,9 @@ class RedshiftSource(
     def get_table_description(  # pylint: disable=arguments-differ
         self, schema_name: str, table_name: str, inspector: Inspector
     ) -> str:
-        description = super().get_table_description(schema_name, table_name, inspector)
+        description = None
         try:
+            table_info: dict = inspector.get_table_comment(table_name, schema_name)
             result = self.connection.execute(
                 sql.text(REDSHIFT_EXTERNAL_TABLE_LOCATION),
                 {"schema": schema_name, "table": table_name},
@@ -191,8 +192,10 @@ class RedshiftSource(
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(
-                f"Redshift location query failed for [{schema_name}.{table_name}]: {exc}"
+                f"Table description error for table [{schema_name}.{table_name}]: {exc}"
             )
+        else:
+            description = table_info.get("text")
         return description
 
     def get_partition_details(self) -> None:
