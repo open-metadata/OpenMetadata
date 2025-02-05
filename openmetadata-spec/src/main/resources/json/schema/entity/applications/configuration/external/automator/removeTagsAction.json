@@ -45,7 +45,7 @@
     },
     "applyToChildren": {
       "title": "Apply to Children",
-      "description": "Remove tags from all the children of the selected assets. E.g., columns, tasks, topic fields,...",
+      "description": "Remove tags from the children of the selected assets. E.g., columns, tasks, topic fields,...",
       "type": "array",
       "items": {
         "$ref": "../../../../../type/basic.json#/definitions/entityName"

@@ -19,7 +19,7 @@ export interface RemoveTagsAction {
      */
     applyToAll?: boolean;
     /**
-     * Remove tags from all the children of the selected assets. E.g., columns, tasks, topic
+     * Remove tags from the children of the selected assets. E.g., columns, tasks, topic
      * fields,...
      */
     applyToChildren?: string[];
