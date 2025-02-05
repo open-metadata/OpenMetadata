@@ -302,12 +302,7 @@ export const TEXT_FIELD_OPERATORS = [
 
 export const RANGE_FIELD_OPERATORS = ['between', 'not_between'];
 
-export const LIST_VALUE_OPERATORS = [
-  'select_equals',
-  'select_not_equals',
-  'is_null',
-  'is_not_null',
-];
+export const LIST_VALUE_OPERATORS = ['select_equals', 'select_not_equals'];
 
 /**
  * Generates a query builder tree with a group containing an empty rule
