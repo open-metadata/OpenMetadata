@@ -536,7 +536,8 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
     create =
         create.withBasicEntityReference(
             null); // entity reference is not applicable for logical test suites
-    TestSuite testSuite = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
+    TestSuite testSuite =
+        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     testSuite.setBasic(false);
     List<AuthRequest> authRequests = getAuthRequestsForPost(testSuite);
     return create(uriInfo, securityContext, authRequests, AuthorizationLogic.ANY, testSuite);
@@ -628,8 +629,9 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
-      TestSuite testSuite = Entity.getEntity(Entity.TEST_SUITE, id, "", ALL);
-    List<AuthRequest> authRequests = getAuthRequestsForUpdate(testSuite, ResourceContextInterface.Operation.PATCH, patch);
+    TestSuite testSuite = Entity.getEntity(Entity.TEST_SUITE, id, "", ALL);
+    List<AuthRequest> authRequests =
+        getAuthRequestsForUpdate(testSuite, ResourceContextInterface.Operation.PATCH, patch);
     return patchInternal(uriInfo, securityContext, authRequests, AuthorizationLogic.ANY, id, patch);
   }
 
@@ -658,7 +660,9 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
     TestSuite testSuite =
         mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     testSuite.setBasic(false);
-    List<AuthRequest> authRequests = new java.util.ArrayList<>(getAuthRequestsForUpdate(testSuite, ResourceContextInterface.Operation.PUT, null));
+    List<AuthRequest> authRequests =
+        new java.util.ArrayList<>(
+            getAuthRequestsForUpdate(testSuite, ResourceContextInterface.Operation.PUT, null));
     authRequests.addAll(getAuthRequestsForPost(testSuite));
     return createOrUpdate(
         uriInfo, securityContext, authRequests, AuthorizationLogic.ANY, testSuite);
@@ -692,7 +696,9 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
     // https://datatracker.ietf.org/doc/html/draft-ietf-httpapi-deprecation-header-02
     response.setHeader("Deprecation", "Monday, March 24, 2025");
     response.setHeader("Link", "api/v1/dataQuality/testSuites/basic; rel=\"alternate\"");
-    List<AuthRequest> authRequests = new java.util.ArrayList<>(getAuthRequestsForUpdate(testSuite, ResourceContextInterface.Operation.PUT, null));
+    List<AuthRequest> authRequests =
+        new java.util.ArrayList<>(
+            getAuthRequestsForUpdate(testSuite, ResourceContextInterface.Operation.PUT, null));
     authRequests.addAll(getAuthRequestsForPost(testSuite));
     return createOrUpdate(
         uriInfo, securityContext, authRequests, AuthorizationLogic.ANY, testSuite);
@@ -720,7 +726,9 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
     TestSuite testSuite =
         mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     testSuite.setBasic(true);
-    List<AuthRequest> authRequests = new java.util.ArrayList<>(getAuthRequestsForUpdate(testSuite, ResourceContextInterface.Operation.PUT, null));
+    List<AuthRequest> authRequests =
+        new java.util.ArrayList<>(
+            getAuthRequestsForUpdate(testSuite, ResourceContextInterface.Operation.PUT, null));
     authRequests.addAll(getAuthRequestsForPost(testSuite));
     return createOrUpdate(
         uriInfo, securityContext, authRequests, AuthorizationLogic.ANY, testSuite);
@@ -991,39 +999,42 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
   }
 
   private List<AuthRequest> getAuthRequestsForPost(TestSuite testSuite) {
-      ResourceContext<?> entityResourceContext;
-      EntityReference entityReference = testSuite.getBasicEntityReference();
-        if (entityReference != null) {
-            entityResourceContext = new ResourceContext<>(Entity.TABLE, entityReference.getId(), null);
-        } else {
-            entityResourceContext = new ResourceContext<>(Entity.TABLE);
-        }
-        OperationContext entityOperationContext =
+    ResourceContext<?> entityResourceContext;
+    EntityReference entityReference = testSuite.getBasicEntityReference();
+    if (entityReference != null) {
+      entityResourceContext = new ResourceContext<>(Entity.TABLE, entityReference.getId(), null);
+    } else {
+      entityResourceContext = new ResourceContext<>(Entity.TABLE);
+    }
+    OperationContext entityOperationContext =
         new OperationContext(Entity.TABLE, MetadataOperation.EDIT_TESTS);
     ResourceContext<?> testSuiteResourceContext = getResourceContext();
-    OperationContext testSuiteOperationContext = new OperationContext(entityType, MetadataOperation.CREATE);
+    OperationContext testSuiteOperationContext =
+        new OperationContext(entityType, MetadataOperation.CREATE);
 
     return List.of(
         new AuthRequest(entityOperationContext, entityResourceContext),
         new AuthRequest(testSuiteOperationContext, testSuiteResourceContext));
   }
 
-  private List<AuthRequest> getAuthRequestsForUpdate(TestSuite testSuite, ResourceContextInterface.Operation operation, JsonPatch patch) {
-      EntityReference entityReference = testSuite.getBasicEntityReference();
-      ResourceContext<?> entityResourceContext;
-      OperationContext testSuiteOperationContext;
-      if (entityReference != null) {
-          entityResourceContext = new ResourceContext<>(Entity.TABLE, entityReference.getId(), null);
-      } else {
-          entityResourceContext = new ResourceContext<>(Entity.TABLE);
-      }
+  private List<AuthRequest> getAuthRequestsForUpdate(
+      TestSuite testSuite, ResourceContextInterface.Operation operation, JsonPatch patch) {
+    EntityReference entityReference = testSuite.getBasicEntityReference();
+    ResourceContext<?> entityResourceContext;
+    OperationContext testSuiteOperationContext;
+    if (entityReference != null) {
+      entityResourceContext = new ResourceContext<>(Entity.TABLE, entityReference.getId(), null);
+    } else {
+      entityResourceContext = new ResourceContext<>(Entity.TABLE);
+    }
     OperationContext entityOperationContext =
         new OperationContext(Entity.TABLE, MetadataOperation.EDIT_TESTS);
-    ResourceContext<?> testSuiteResourceContext = getResourceContextByName(FullyQualifiedName.quoteName(testSuite.getName()), operation);
+    ResourceContext<?> testSuiteResourceContext =
+        getResourceContextByName(FullyQualifiedName.quoteName(testSuite.getName()), operation);
     if (patch != null) {
-        testSuiteOperationContext = new OperationContext(entityType, patch);
+      testSuiteOperationContext = new OperationContext(entityType, patch);
     } else {
-        testSuiteOperationContext = new OperationContext(entityType, MetadataOperation.EDIT_ALL);
+      testSuiteOperationContext = new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     }
 
     return List.of(
