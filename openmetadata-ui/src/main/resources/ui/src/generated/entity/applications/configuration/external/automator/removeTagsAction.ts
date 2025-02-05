@@ -15,6 +15,10 @@
  */
 export interface RemoveTagsAction {
     /**
+     * Remove tags from all the children and parent of the selected assets.
+     */
+    applyToAll?: boolean;
+    /**
      * Remove tags from all the children of the selected assets. E.g., columns, tasks, topic
      * fields,...
      */

@@ -51,6 +51,12 @@
         "$ref": "../../../../../type/basic.json#/definitions/entityName"
       },
       "default": null
+    },
+    "applyToAll": {
+      "title": "Apply to All",
+      "description": "Remove tags from all the children and parent of the selected assets.",
+      "type": "boolean",
+      "default": null
     }
   },
   "required": ["type", "tags"],
