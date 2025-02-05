@@ -42,10 +42,7 @@ from metadata.generated.schema.type.entityReferenceList import EntityReferenceLi
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.lineage.parser import LineageParser
-from metadata.ingestion.lineage.sql_lineage import (
-    get_column_fqn,
-    get_dashboard_data_model_column_fqn,
-)
+from metadata.ingestion.lineage.sql_lineage import get_column_fqn
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
 from metadata.ingestion.source.dashboard.superset.models import (
@@ -55,6 +52,9 @@ from metadata.ingestion.source.dashboard.superset.models import (
     FetchColumn,
     FetchDashboard,
     SupersetDatasource,
+)
+from metadata.ingestion.source.dashboard.superset.utils import (
+    get_dashboard_data_model_column_fqn,
 )
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
 from metadata.utils import fqn

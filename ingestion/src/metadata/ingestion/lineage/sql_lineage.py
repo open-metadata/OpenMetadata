@@ -20,7 +20,6 @@ from collate_sqllineage.core.models import Column, DataFunction
 from collate_sqllineage.core.models import Table as LineageTable
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
-from metadata.generated.schema.entity.data.dashboardDataModel import DashboardDataModel
 from metadata.generated.schema.entity.data.storedProcedure import (
     Language,
     StoredProcedure,
@@ -63,21 +62,6 @@ def get_column_fqn(table_entity: Table, column: str) -> Optional[str]:
     for tbl_column in table_entity.columns:
         if column.lower() == tbl_column.name.root.lower():
             return tbl_column.fullyQualifiedName.root
-
-    return None
-
-
-def get_dashboard_data_model_column_fqn(
-    dashboard_data_model_entity: DashboardDataModel, column: str
-) -> Optional[str]:
-    """
-    Get fqn of column if exist in dashboard data model entity
-    """
-    if not dashboard_data_model_entity:
-        return None
-    for dashboard_data_model_column in dashboard_data_model_entity.columns:
-        if column.lower() == dashboard_data_model_column.displayName.lower():
-            return dashboard_data_model_column.fullyQualifiedName.root
 
     return None
 
