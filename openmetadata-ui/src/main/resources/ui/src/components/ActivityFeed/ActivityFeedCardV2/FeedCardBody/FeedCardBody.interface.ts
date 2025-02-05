@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,24 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-@import url('../../../../../styles/variables.less');
+import { Thread } from '../../../../generated/entity/feed/thread';
 
-.test-result-container {
-  width: 36px;
-  height: 36px;
-  text-align: center;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-direction: column;
-  border-radius: 5px;
-  &.success {
-    background: @green-2;
-  }
-  &.aborted {
-    background: @yellow-1;
-  }
-  &.failed {
-    background: @red-2;
-  }
+export interface FeedCardBodyProps {
+  feed: Thread;
 }

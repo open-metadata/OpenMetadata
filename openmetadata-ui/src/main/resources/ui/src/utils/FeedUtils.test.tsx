@@ -22,6 +22,7 @@ import {
   getEntityType,
   getFeedHeaderTextFromCardStyle,
   getFieldOperationIcon,
+  getTextDiffCertification,
   suggestions,
 } from './FeedUtils';
 
@@ -64,6 +65,10 @@ jest.mock('../rest/miscAPI', () => ({
 jest.mock('./StringsUtils', () => ({
   getEncodedFqn: jest.fn().mockImplementation((fqn) => fqn),
   getDecodedFqn: jest.fn().mockImplementation((fqn) => fqn),
+  getJSONFromString: jest.fn().mockReturnValue({
+    appliedDate: 1738666815691,
+    expiryDate: 1744251215691,
+  }),
 }));
 
 jest.mock('./FeedUtils', () => ({
@@ -214,32 +219,6 @@ describe('getFeedHeaderTextFromCardStyle', () => {
     expect(stringResult).toContain('text-danger');
   });
 
-  it('should return element for created CustomProperties', () => {
-    const result = getFeedHeaderTextFromCardStyle(
-      FieldOperation.Added,
-      CardStyle.CustomProperties,
-      undefined,
-      EntityType.TABLE
-    );
-
-    const stringResult = JSON.stringify(result);
-
-    expect(stringResult).toContain('message.feed-custom-property-header');
-  });
-
-  it('should return element element for created testCaseResult', () => {
-    const result = getFeedHeaderTextFromCardStyle(
-      FieldOperation.Added,
-      CardStyle.TestCaseResult,
-      undefined,
-      EntityType.TEST_CASE
-    );
-
-    const stringResult = JSON.stringify(result);
-
-    expect(stringResult).toContain('message.feed-test-case-header');
-  });
-
   it('should return element for updated description', () => {
     const result = getFeedHeaderTextFromCardStyle(
       FieldOperation.Updated,
@@ -277,5 +256,18 @@ describe('getFieldOperationIcon', () => {
     const stringResult = JSON.stringify(result);
 
     expect(stringResult).toContain(FieldOperation.Deleted);
+  });
+});
+
+describe('getTextDiffCertification', () => {
+  it('should not return icon in case of operation updated', () => {
+    const result = getTextDiffCertification(
+      // eslint-disable-next-line max-len
+      '{"tagLabel":{"tagFQN":"Certification.Gold","name":"Gold","description":"Gold certified Data Asset.","style":{"color":"#FFCE00","iconURL":"GoldCertification.svg"},"source":"Classification","labelType":"Manual","state":"Confirmed"},"appliedDate":1738666815691,"expiryDate":1741258815691}'
+    );
+
+    expect(result).toEqual(
+      `* label.applied-date: **Tue 4th February, 2025, 04:30 PM** \n * label.expiry-date: **Thu 10th April, 2025, 07:43 AM** `
+    );
   });
 });

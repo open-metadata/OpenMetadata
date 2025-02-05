@@ -20,9 +20,9 @@ import {
   getFrontEndFormat,
 } from '../../../../../utils/FeedUtils';
 import RichTextEditorPreviewerV1 from '../../../../common/RichTextEditor/RichTextEditorPreviewerV1';
-import { DescriptionFeedProps } from './DescriptionFeed.interface';
+import { FeedCardBodyProps } from '../FeedCardBody.interface';
 
-function DescriptionFeed({ feed }: Readonly<DescriptionFeedProps>) {
+function DescriptionFeed({ feed }: Readonly<FeedCardBodyProps>) {
   const { message, fieldOperation } = useMemo(() => {
     return {
       message: (feed.feedInfo?.entitySpecificInfo?.diffMessage ?? '')
