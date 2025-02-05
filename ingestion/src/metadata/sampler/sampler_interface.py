@@ -76,9 +76,6 @@ class SamplerInterface(ABC):
         self._columns: Optional[List[SQALikeColumn]] = None
         self.sample_config = sample_config
 
-        if not self.sample_config.profileSample:
-            self.sample_config.profileSample = 100
-
         self.entity = entity
         self.include_columns = include_columns
         self.exclude_columns = exclude_columns

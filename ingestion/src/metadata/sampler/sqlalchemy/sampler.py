@@ -162,23 +162,23 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
             return self._fetch_sample_data_from_user_query()
 
         # Add new RandomNumFn column
-        rnd = self.get_sample_query()
+        ds = self.get_dataset()
         if not columns:
-            sqa_columns = [col for col in inspect(rnd).c if col.name != RANDOM_LABEL]
+            sqa_columns = [col for col in inspect(ds).c if col.name != RANDOM_LABEL]
         else:
             # we can't directly use columns as it is bound to self.raw_dataset and not the rnd table.
             # If we use it, it will result in a cross join between self.raw_dataset and rnd table
             names = [col.name for col in columns]
             sqa_columns = [
                 col
-                for col in inspect(rnd).c
+                for col in inspect(ds).c
                 if col.name != RANDOM_LABEL and col.name in names
             ]
 
         try:
             sqa_sample = (
                 self.client.query(*sqa_columns)
-                .select_from(rnd)
+                .select_from(ds)
                 .limit(self.sample_limit)
                 .all()
             )
