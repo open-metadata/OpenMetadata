@@ -382,7 +382,15 @@ public class AppRepository extends EntityRepository<App> {
     return new AppRepository.AppUpdater(original, updated, operation);
   }
 
-  public void addEventSubscription(App app, EventSubscription eventSubscription) {
+  public App addEventSubscription(App app, EventSubscription eventSubscription) {
+    EntityReference existing =
+        app.getEventSubscriptions().stream()
+            .filter(e -> e.getId().equals(eventSubscription.getId()))
+            .findFirst()
+            .orElse(null);
+    if (existing != null) {
+      return app;
+    }
     addRelationship(
         app.getId(),
         eventSubscription.getId(),
@@ -394,6 +402,22 @@ public class AppRepository extends EntityRepository<App> {
     App updated = JsonUtils.deepCopy(app, App.class).withEventSubscriptions(newSubs);
     updated.setOpenMetadataServerConnection(null);
     getUpdater(app, updated, EntityRepository.Operation.PATCH).update();
+    return updated;
+  }
+
+  public App deleteEventSubscription(App app, UUID eventSubscriptionId) {
+    deleteRelationship(
+        app.getId(),
+        Entity.APPLICATION,
+        eventSubscriptionId,
+        Entity.EVENT_SUBSCRIPTION,
+        Relationship.CONTAINS);
+    List<EntityReference> newSubs = new ArrayList<>(listOrEmpty(app.getEventSubscriptions()));
+    newSubs.removeIf(sub -> sub.getId().equals(eventSubscriptionId));
+    App updated = JsonUtils.deepCopy(app, App.class).withEventSubscriptions(newSubs);
+    updated.setOpenMetadataServerConnection(null);
+    getUpdater(app, updated, EntityRepository.Operation.PATCH).update();
+    return updated;
   }
 
   public void updateAppStatus(UUID appID, AppRunRecord record) {
