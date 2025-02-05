@@ -2024,6 +2024,7 @@
     "join-team-success": "เข้าร่วมทีมสำเร็จ!",
     "leave-team-error": "เกิดข้อผิดพลาดขณะออกจากทีม!",
     "leave-team-success": "ออกจากทีมสำเร็จ!",
+    "no-application-schema-found": "ไม่พบสคีมาแอปพลิเคชันสำหรับ {{appName}}",
     "no-owned-entities": "คุณยังไม่มีเอนทิตีใด ๆ",
     "no-query-available": "ไม่มีคำสั่งที่สามารถใช้งานได้",
     "no-task-available": "ไม่มีข้อมูลงานที่สามารถใช้งานได้",
