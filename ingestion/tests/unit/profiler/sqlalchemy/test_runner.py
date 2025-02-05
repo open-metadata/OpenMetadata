@@ -90,7 +90,7 @@ class RunnerTest(TestCase):
                 service_connection_config=Mock(),
                 ometa_client=None,
                 entity=None,
-                sample_config=SampleConfig(profile_sample=50.0),
+                sample_config=SampleConfig(profileSample=50.0),
             )
             cls.dataset = sampler.get_dataset()
 
