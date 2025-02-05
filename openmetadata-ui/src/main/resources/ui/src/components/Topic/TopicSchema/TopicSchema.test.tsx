@@ -22,6 +22,8 @@ import {
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
+import { Topic } from '../../../generated/entity/data/topic';
+import { MESSAGE_SCHEMA } from '../TopicDetails/TopicDetails.mock';
 import TopicSchema from './TopicSchema';
 import { TopicSchemaFieldsProps } from './TopicSchema.interface';
 
@@ -80,6 +82,39 @@ jest.mock('../../Database/SchemaEditor/SchemaEditor', () =>
       <div data-testid="schema-editor">SchemaEditor</div>
     ))
 );
+
+const mockOnUpdate = jest.fn();
+
+jest.mock('../../GenericProvider/GenericProvider', () => ({
+  useGenericContext: jest.fn().mockReturnValue({
+    data: {
+      columns: [],
+      displayName: 'test-display-name',
+      description: 'test-description',
+      tags: [],
+      owner: 'test-owner',
+      service: {
+        id: 'test-service-id',
+        name: 'test-service-name',
+        displayName: 'test-service-display-name',
+        description: 'test-service-description',
+        tags: [],
+        owner: 'test-owner',
+      },
+      messageSchema: MESSAGE_SCHEMA as Topic['messageSchema'],
+    },
+    isVersionView: false,
+    permissions: {
+      EditAll: true,
+    },
+    onUpdate: mockOnUpdate,
+    currentVersionData: {},
+  }),
+}));
+
+jest.mock('../../../hooks/useFqn', () => ({
+  useFqn: jest.fn().mockReturnValue('test-fqn'),
+}));
 
 describe('Topic Schema', () => {
   it('Should render the schema component', async () => {

@@ -14,6 +14,7 @@ import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React, { ReactNode } from 'react';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
+import { EntityTabs } from '../../enums/entity.enum';
 import { Include } from '../../generated/type/include';
 import {
   addContainerFollower,
@@ -62,6 +63,13 @@ jest.mock(
 jest.mock('../../hooks/useApplicationStore', () => ({
   useApplicationStore: jest.fn().mockReturnValue({
     id: 'userid',
+    selectedPersona: {
+      id: 'personaid',
+      name: 'persona name',
+      description: 'persona description',
+      type: 'persona type',
+      owner: 'persona owner',
+    },
   }),
 }));
 
@@ -370,7 +378,7 @@ describe('Container Page Component', () => {
   it('children should render on children tab', async () => {
     mockUseParams.mockReturnValue({
       fqn: CONTAINER_DATA_1.fullyQualifiedName,
-      tab: 'children',
+      tab: EntityTabs.CHILDREN,
     });
 
     await act(async () => {

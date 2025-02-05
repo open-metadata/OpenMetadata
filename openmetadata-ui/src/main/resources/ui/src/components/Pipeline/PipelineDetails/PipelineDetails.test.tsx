@@ -89,6 +89,13 @@ jest.mock('../../../hooks/useApplicationStore', () => ({
     currentUser: {
       id: 'testUser',
     },
+    selectedPersona: {
+      id: 'personaid',
+      name: 'persona name',
+      description: 'persona description',
+      type: 'persona type',
+      owner: 'persona owner',
+    },
   }),
 }));
 
