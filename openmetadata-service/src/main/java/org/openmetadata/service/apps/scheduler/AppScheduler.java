@@ -92,7 +92,7 @@ public class AppScheduler {
     // Add OMJob Listener
     this.scheduler
         .getListenerManager()
-        .addJobListener(new OmAppJobListener(dao), jobGroupEquals(APPS_JOB_GROUP));
+        .addJobListener(new OmAppJobListener(), jobGroupEquals(APPS_JOB_GROUP));
 
     this.resetErrorTriggers();
 
