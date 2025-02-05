@@ -76,34 +76,58 @@
 
 .task-feed-card-v1-new {
   padding: 20px;
-  background: #f5f5f5;
-  border-radius: 8px;
+  background: #fafafa;
+  border-radius: 12px;
   margin: 10px 0px;
+
   &.active {
-    border-left: 4px solid @info-color;
+    border-left: 4px solid @primary-color;
+    background: #e6f1fe;
+  }
+  .task-created-by-text {
+    color: @primary-color;
+    font-size: 14px;
+    font-style: normal;
+    font-weight: 400;
+    line-height: 20px;
+  }
+  .task-timestamp-text {
+    color: #717680;
+    font-size: 12px;
+    font-style: normal;
+    font-weight: 400;
+    line-height: 16px;
   }
 
-  .task-feed-body {
-    padding-left: 1.5rem;
+  .task-feed-card-footer {
+    margin-top: 2px;
+    .posts-length {
+      color: #71717a;
+      font-size: 12px;
+      font-style: normal;
+      font-weight: 400;
+      line-height: normal;
+    }
   }
+
   .assignee-item {
     margin: 0;
     margin-right: 4px;
   }
 }
-.task-feed-message-container-new {
-  .task-feed-message-new {
-    height: 100%;
-    display: flex;
-    align-items: flex-start;
-    flex-wrap: wrap;
-    &:hover {
-      .ant-typography {
-        color: @primary-color;
-      }
-    }
-  }
-}
+// .task-feed-message-container-new {
+//   .task-feed-message-new {
+//     height: 100%;
+//     display: flex;
+//     align-items: flex-start;
+//     flex-wrap: wrap;
+//     &:hover {
+//       .ant-typography {
+//         color: @primary-color;
+//       }
+//     }
+//   }
+// }
 .text-wrap {
   word-wrap: break-word;
   white-space: normal;

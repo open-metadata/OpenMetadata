@@ -115,11 +115,7 @@ const ActivityFeedListV1New = ({
     );
   }
 
-  return (
-    <div className="feed-list-container p-x-md p-y-xs" id="feedData">
-      {feeds}
-    </div>
-  );
+  return <div id="feedData">{feeds}</div>;
 };
 
 export default ActivityFeedListV1New;

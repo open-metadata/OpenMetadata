@@ -248,14 +248,14 @@ const ActivityFeedCardNew = ({
           )}
 
           {/* {(feed.generatedBy !== GeneratedBy.System ||
-            (isPost && isHovered)) && (
-            <ActivityFeedActions
-              feed={feed}
-              isPost={isPost}
-              post={post}
-              onEditPost={onEditPost}
-            />
-          )} */}
+            (isPost && isHovered)) && ( */}
+          {/* <ActivityFeedActions
+            feed={feed}
+            isPost={isPost}
+            post={post}
+            onEditPost={onEditPost}
+          /> */}
+          {/* )} */}
         </Space>
       </Space>
       {showThread && (

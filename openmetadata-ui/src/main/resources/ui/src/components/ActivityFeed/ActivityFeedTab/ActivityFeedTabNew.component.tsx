@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Dropdown, Segmented, Skeleton } from 'antd';
+import { Dropdown, Segmented, Skeleton } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import {
@@ -25,11 +25,13 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory, useParams } from 'react-router-dom';
-import { ReactComponent as CheckIcon } from '../../../assets/svg/ic-check.svg';
-import { ReactComponent as FilterIcon } from '../../../assets/svg/ic-feeds-filter.svg';
+import { ReactComponent as TaskCloseIcon } from '../../../assets/svg/check-circle.svg';
+import { ReactComponent as TaskOpenIcon } from '../../../assets/svg/ic-open-task.svg';
 import { ReactComponent as TaskIcon } from '../../../assets/svg/ic-task.svg';
 import { ReactComponent as MentionIcon } from '../../../assets/svg/mention.svg';
+import { ReactComponent as TaskFilterIcon } from '../../../assets/svg/task-filter-button.svg';
 import { ReactComponent as MyTaskIcon } from '../../../assets/svg/task.svg';
+
 import { ICON_DIMENSION_USER_PAGE, ROUTES } from '../../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
 import { observerOptions } from '../../../constants/Mydata.constants';
@@ -53,7 +55,7 @@ import {
 } from '../../../utils/EntityUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import Loader from '../../common/Loader/Loader';
-import { TaskTab } from '../../Entity/Task/TaskTab/TaskTab.component';
+import { TaskTabNew } from '../../Entity/Task/TaskTab/TaskTabNew.component';
 import '../../MyData/Widgets/FeedsWidget/feeds-widget.less';
 import ActivityFeedListV1New from '../ActivityFeedList/ActivityFeedListV1New.component';
 import FeedPanelBodyV1New from '../ActivityFeedPanel/FeedPanelBodyV1New';
@@ -345,7 +347,11 @@ export const ActivityFeedTabNew = ({
             { active: taskFilter === ThreadTaskStatus.Open }
           )}>
           <div className="flex items-center space-x-2">
-            <TaskIcon className="m-r-xss" width={14} />
+            {taskFilter === ThreadTaskStatus.Open ? (
+              <TaskOpenIcon className="m-r-xs" {...ICON_DIMENSION_USER_PAGE} />
+            ) : (
+              <TaskIcon className="m-r-xs" {...ICON_DIMENSION_USER_PAGE} />
+            )}
             <span className="task-tab-filter-item">{t('label.open')}</span>
           </div>
           <span
@@ -372,7 +378,12 @@ export const ActivityFeedTabNew = ({
             { active: taskFilter === ThreadTaskStatus.Closed }
           )}>
           <div className="flex items-center space-x-2">
-            <CheckIcon className="m-r-xss" width={14} />
+            {taskFilter === ThreadTaskStatus.Closed ? (
+              <TaskCloseIcon className="m-r-xs" {...ICON_DIMENSION_USER_PAGE} />
+            ) : (
+              <TaskCloseIcon className="m-r-xs" {...ICON_DIMENSION_USER_PAGE} />
+            )}
+
             <span className="task-tab-filter-item">{t('label.closed')}</span>
           </div>
           <span
@@ -423,9 +434,9 @@ export const ActivityFeedTabNew = ({
 
   return (
     <div className="activity-feed-tab">
-      <div className="center-container @padding-xs" id="center-container">
+      <div className="center-container" id="center-container">
         {(isTaskActiveTab || isMentionTabSelected) && (
-          <div className="d-flex gap-4 p-sm p-x-lg m-b-0  p-b-0 justify-between items-center">
+          <div className="d-flex gap-4 m-y-0  p-b-xs justify-between items-center">
             <Dropdown
               menu={{
                 items: taskFilterOptions,
@@ -433,10 +444,7 @@ export const ActivityFeedTabNew = ({
               }}
               overlayClassName="task-tab-custom-dropdown"
               trigger={['click']}>
-              <Button
-                className="flex-center"
-                icon={<FilterIcon height={16} />}
-              />
+              <TaskFilterIcon className="cursor-pointer" />
             </Dropdown>
             {TaskToggle()}
           </div>
@@ -491,7 +499,7 @@ export const ActivityFeedTabNew = ({
           ) : (
             <div id="task-panel">
               {entityType === EntityType.TABLE ? (
-                <TaskTab
+                <TaskTabNew
                   columns={columns}
                   entityType={EntityType.TABLE}
                   isForFeedTab={isForFeedTab}
@@ -501,7 +509,7 @@ export const ActivityFeedTabNew = ({
                   onUpdateEntityDetails={onUpdateEntityDetails}
                 />
               ) : (
-                <TaskTab
+                <TaskTabNew
                   entityType={isUserEntity ? entityTypeTask : entityType}
                   hasGlossaryReviewer={hasGlossaryReviewer}
                   isForFeedTab={isForFeedTab}

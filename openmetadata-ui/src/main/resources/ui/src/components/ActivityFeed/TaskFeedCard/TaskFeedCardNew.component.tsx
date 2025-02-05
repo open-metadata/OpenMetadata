@@ -13,13 +13,14 @@
 import Icon from '@ant-design/icons';
 import { Button, Card, Col, Row, Tooltip, Typography } from 'antd';
 import classNames from 'classnames';
-import { isUndefined, lowerCase, noop } from 'lodash';
+import { isUndefined, lowerCase } from 'lodash';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
+import { ReactComponent as AssigneesIcon } from '../../../assets/svg/assignees.svg';
+import { ReactComponent as ChatIcon } from '../../../assets/svg/chat-icon-grey.svg';
 import { ReactComponent as TaskCloseIcon } from '../../../assets/svg/ic-close-task.svg';
 import { ReactComponent as TaskOpenIcon } from '../../../assets/svg/ic-open-task.svg';
-import { ReactComponent as ThreadIcon } from '../../../assets/svg/thread.svg';
 import EntityPopOverCard from '../../../components/common/PopOverCard/EntityPopOverCard';
 import UserPopOverCard from '../../../components/common/PopOverCard/UserPopOverCard';
 import {
@@ -35,12 +36,11 @@ import {
 import EntityLink from '../../../utils/EntityLink';
 import { getEntityFQN, getEntityType } from '../../../utils/FeedUtils';
 
+import { ICON_DIMENSION_USER_PAGE } from '../../../constants/constants';
 import { TASK_TYPES } from '../../../constants/Task.constant';
 import { getTaskDetailPath } from '../../../utils/TasksUtils';
-import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
-import ProfilePicture from '../../common/ProfilePicture/ProfilePicture';
+import { OwnerLabelNew } from '../../common/OwnerLabel/OwnerLabelNew.component';
 import { useActivityFeedProvider } from '../ActivityFeedProvider/ActivityFeedProvider';
-import ActivityFeedActions from '../Shared/ActivityFeedActions';
 import './task-feed-card.less';
 
 interface TaskFeedCardProps {
@@ -94,7 +94,7 @@ const TaskFeedCard = ({
 
     if (columnName) {
       return (
-        <Typography.Text className="p-r-xss">
+        <Typography.Text className="p-r-xss column-name">
           {columnName} {t('label.in-lowercase')}
         </Typography.Text>
       );
@@ -125,15 +125,26 @@ const TaskFeedCard = ({
           <Button
             className="p-0 task-feed-message-new"
             data-testid="redirect-task-button-link"
+            style={{
+              display: 'inline-block',
+              maxWidth: '100%',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+            }}
             type="link"
             onClick={handleTaskLinkClick}>
             <Typography.Text className="m-r-xss text-primary">{`#${taskDetails.id} `}</Typography.Text>
 
-            <Typography.Text>{TASK_TYPES[taskDetails.type]}</Typography.Text>
+            <Typography.Text className="m-r-xss  m-r-xss">
+              {TASK_TYPES[taskDetails.type]}
+            </Typography.Text>
 
             {taskColumnName}
 
-            <Typography.Text className="break-all" data-testid="entity-link">
+            <Typography.Text
+              className="break-all text-primary"
+              data-testid="entity-link">
               {getNameFromFQN(entityFQN)}
             </Typography.Text>
 
@@ -160,49 +171,54 @@ const TaskFeedCard = ({
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}>
       <div
-        className={classNames(
-          className,
-          'task-feed-card-v1-new activity-feed-card activity-feed-card-v1',
-          { active: isActive }
-        )}
+        className={classNames(className, 'task-feed-card-v1-new', {
+          active: isActive,
+        })}
         data-testid="task-feed-card">
-        <Row gutter={[0, 8]}>
-          <Col
-            className="d-flex align-start task-feed-message-container-new"
-            span={24}>
-            <Icon
-              className="m-r-xs m-t-xss"
-              component={
-                taskDetails?.status === ThreadTaskStatus.Open
-                  ? TaskOpenIcon
-                  : TaskCloseIcon
-              }
-              data-testid={`task-status-icon-${lowerCase(taskDetails?.status)}`}
-              style={{ fontSize: '18px' }}
-            />
-
-            {taskLinkTitleElement}
+        <Row gutter={[0, 14]}>
+          <Col className="d-flex flex-col align-start">
+            <Col>
+              <Icon
+                className="m-r-xs m-t-xss"
+                component={
+                  taskDetails?.status === ThreadTaskStatus.Open
+                    ? TaskOpenIcon
+                    : TaskCloseIcon
+                }
+                data-testid={`task-status-icon-${lowerCase(
+                  taskDetails?.status
+                )}`}
+                style={{ fontSize: '16px' }}
+              />
+              {taskLinkTitleElement}
+            </Col>
+            <Col className="m-t-0">
+              <Typography.Text>
+                <UserPopOverCard
+                  key={feed.createdBy}
+                  userName={feed.createdBy ?? ''}>
+                  <span
+                    className="task-created-by-text p-r-xss"
+                    data-testid="task-created-by">
+                    {feed.createdBy}
+                  </span>
+                </UserPopOverCard>
+                <span className="task-timestamp-text">
+                  {t('message.created-this-task-lowercase')}
+                </span>
+                {timeStamp && (
+                  <Tooltip title={formatDateTime(timeStamp)}>
+                    <span
+                      className="p-l-xss task-timestamp-text"
+                      data-testid="timestamp">
+                      {getRelativeTime(timeStamp)}
+                    </span>
+                  </Tooltip>
+                )}
+              </Typography.Text>
+            </Col>
           </Col>
           <Col span={24}>
-            <Typography.Text className="task-feed-body text-xs text-grey-muted">
-              <UserPopOverCard
-                key={feed.createdBy}
-                userName={feed.createdBy ?? ''}>
-                <span className="p-r-xss" data-testid="task-created-by">
-                  {feed.createdBy}
-                </span>
-              </UserPopOverCard>
-              {t('message.created-this-task-lowercase')}
-              {timeStamp && (
-                <Tooltip title={formatDateTime(timeStamp)}>
-                  <span className="p-l-xss" data-testid="timestamp">
-                    {getRelativeTime(timeStamp)}
-                  </span>
-                </Tooltip>
-              )}
-            </Typography.Text>
-          </Col>
-          <Col>
             <Card bordered className="activity-feed-card-message">
               <Typography.Text
                 style={{ wordWrap: 'break-word', whiteSpace: 'normal' }}>
@@ -210,60 +226,34 @@ const TaskFeedCard = ({
               </Typography.Text>
             </Card>
           </Col>
-          {!showThread ? (
-            <Col span={24}>
-              <div className="d-flex items-start p-l-lg gap-2">
-                {postLength > 0 && (
-                  <>
-                    <div className="thread-users-profile-pic">
-                      {repliedUniqueUsersList.map((user) => (
-                        <UserPopOverCard key={user} userName={user}>
-                          <span
-                            className="profile-image-span cursor-pointer"
-                            data-testid="authorAvatar">
-                            <ProfilePicture
-                              name={user}
-                              type="circle"
-                              width="24"
-                            />
-                          </span>
-                        </UserPopOverCard>
-                      ))}
-                    </div>
-                    <div
-                      className="d-flex items-center thread-count cursor-pointer m-l-xs"
-                      onClick={!hidePopover ? showReplies : noop}>
-                      <ThreadIcon width={20} />{' '}
-                      <span className="text-xs p-t-xss p-l-xss">
-                        {postLength}
-                      </span>
-                    </div>
-                  </>
-                )}
-
-                <Typography.Text
-                  className={classNames(
-                    'p-t-xss',
-                    postLength > 0
-                      ? 'm-l-sm text-sm text-grey-muted'
-                      : 'text-sm text-grey-muted'
-                  )}>
-                  {`${t('label.assignee-plural')}: `}
-                </Typography.Text>
-                <OwnerLabel className="p-t-05" owners={feed?.task?.assignees} />
-              </div>
+          <Col
+            className="task-feed-card-footer  d-flex align-center justify-between"
+            span={24}>
+            <Col className="d-flex items-center" span={10}>
+              <ChatIcon className="m-r-xss" {...ICON_DIMENSION_USER_PAGE} />
+              {feed.posts && feed.posts?.length > 0 && (
+                <span className="posts-length m-r-xss">
+                  {t(
+                    feed.posts.length === 1
+                      ? 'label.one-reply'
+                      : 'label.number-reply-plural',
+                    { number: feed.posts.length }
+                  )}
+                </span>
+              )}
             </Col>
-          ) : null}
-        </Row>
 
-        {!hidePopover && showActions && (
-          <ActivityFeedActions
-            feed={feed}
-            isPost={false}
-            post={post}
-            onEditPost={onEditPost}
-          />
-        )}
+            <Col className="flex items-center gap-2 text-grey-muted" span={14}>
+              {/* <User {...ICON_DIMENSION_USER_PAGE} /> */}
+              <AssigneesIcon {...ICON_DIMENSION_USER_PAGE} />
+              <OwnerLabelNew
+                avatarSize={16}
+                className="p-t-05"
+                owners={feed?.task?.assignees}
+              />
+            </Col>
+          </Col>
+        </Row>
       </div>
     </Button>
   );

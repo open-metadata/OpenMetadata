@@ -39,6 +39,7 @@ body {
     overflow-y: scroll;
     border-radius: 12px;
     background-color: @white;
+    padding: 20px;
   }
   .right-container {
     flex: 1;
@@ -263,13 +264,15 @@ body {
 
   .task-count-container {
     background: #f5f5f5;
-    padding: 2px;
     border-radius: 16px;
     width: 30px;
     height: 22px;
-
+    display: flex;
+    padding: 2px 8px;
+    justify-content: center;
+    align-items: center;
     &.active {
-      background-color: #ecfdf3;
+      background-color: #ecfdf3 !important;
     }
 
     .task-count-text {
@@ -285,7 +288,6 @@ body {
       color: #039855;
     }
   }
-
   .ant-dropdown-menu .ant-dropdown-menu-item {
     box-shadow: 0px 1px 2px 0px rgba(10, 13, 18, 0.05);
     padding: 0px;
@@ -298,16 +300,42 @@ body {
   }
 }
 
-/* Custom styles for Segmented control */
 .task-toggle {
   background: white;
   border-radius: 8px;
   padding: 4px;
-  border-radius: 8px;
   border: 1px solid #dce3ec;
+
+  .ant-segmented-item {
+    color: #71717a;
+    transition: all 0.3s ease;
+
+    &-selected {
+      background: #e6f1fe;
+      color: #005bc4;
+      text-align: center;
+
+      .ant-segmented-item-label {
+        color: #005bc4; /* Blue color for selected tab */
+      }
+    }
+
+    &:hover {
+      background: none !important; /* Remove the default hover effect */
+    }
+
+    &:focus {
+      background: none !important; /* Remove the focus effect */
+    }
+  }
+
+  /* Remove hover effect from the segmented wrapper */
+  .ant-segmented:not(.ant-segmented-disabled):hover,
+  .ant-segmented:not(.ant-segmented-disabled):focus {
+    background: none !important;
+  }
 }
 
-/* Style for each toggle item */
 .toggle-item {
   display: flex;
   align-items: center;
@@ -316,22 +344,13 @@ body {
   font-weight: 500;
   height: 40px;
   width: 100px;
-}
 
-/* Active (selected) tab */
-.task-toggle .ant-segmented-item-selected {
-  background: #e6f1fe;
-  color: #005bc4;
-  text-align: center;
-}
-
-/* Non-selected tabs */
-.task-toggle .ant-segmented-item {
-  color: #71717a;
-  transition: all 0.3s ease;
-}
-
-/* Hover effect */
-.task-toggle .ant-segmented-item:hover {
-  background: none;
+  .ant-segmented-item-label {
+    color: #71717a;
+    font-size: 12px;
+    font-style: normal;
+    font-weight: 400;
+    line-height: 20px;
+    letter-spacing: -0.072px;
+  }
 }
