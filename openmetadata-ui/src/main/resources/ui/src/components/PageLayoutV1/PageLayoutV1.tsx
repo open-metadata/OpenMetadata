@@ -116,14 +116,16 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
           flex={contentWidth}
           offset={center ? 3 : 0}
           span={center ? 18 : 24}>
-          {alert && (
-            <Col id={`${alert && 'page-alert'}`} span={24}>
-              <AlertBar message={alert.message} type={alert.type} />
+          <Row>
+            {alert && (
+              <Col id="page-alert" span={24}>
+                <AlertBar message={alert.message} type={alert.type} />
+              </Col>
+            )}
+            <Col className={`${alert && 'p-t-sm'}`} span={24}>
+              {children}
             </Col>
-          )}
-          <Col className={`${alert && 'p-t-sm'}`} span={24}>
-            {children}
-          </Col>
+          </Row>
         </Col>
         {rightPanel && (
           <Col
