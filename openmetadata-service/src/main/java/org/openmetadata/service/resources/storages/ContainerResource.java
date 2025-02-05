@@ -46,7 +46,6 @@ import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.ResultList;
 
 @Path("/v1/containers")
@@ -218,27 +217,8 @@ public class ContainerResource extends EntityResource<Container, ContainerReposi
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include,
-      @Parameter(
-              description =
-                  "Limit the number of children returned in response. Currently only supported for children field")
-          @QueryParam("fieldLimit")
-          @Min(0)
-          @Max(1000000)
-          Integer fieldLimit,
-      @Parameter(
-              description =
-                  "Returns list of children after the given offset. Currently only supported for children field")
-          @QueryParam("fieldOffset")
-          @Min(0)
-          Integer fieldOffset) {
-    if (fieldLimit != null && fieldOffset != null) {
-      EntityUtil.Fields.FieldConfig fieldConfig =
-          new EntityUtil.Fields.FieldConfig(fieldLimit, fieldOffset);
-      return getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, fieldConfig, include);
-    } else {
-      return getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
-    }
+          Include include) {
+    return getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
   }
 
   @POST
@@ -565,5 +545,40 @@ public class ContainerResource extends EntityResource<Container, ContainerReposi
       @Context SecurityContext securityContext,
       @Valid RestoreEntity restore) {
     return restoreEntity(uriInfo, securityContext, restore.getId());
+  }
+
+  @GET
+  @Path("/name/{fqn}/children")
+  @Operation(
+      operationId = "listContainerChildren",
+      summary = "List children containers",
+      description = "Get a list of children containers with pagination.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "List of children containers",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ContainerList.class)))
+      })
+  public ResultList<Container> listChildren(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Fully qualified name of the container") @PathParam("fqn")
+          String fqn,
+      @Parameter(
+              description = "Limit the number of children returned. (1 to 1000000, default = 10)")
+          @DefaultValue("10")
+          @Min(0)
+          @Max(1000000)
+          @QueryParam("limit")
+          Integer limit,
+      @Parameter(description = "Returns list of children after the given offset")
+          @DefaultValue("0")
+          @QueryParam("offset")
+          @Min(0)
+          Integer offset) {
+    return repository.listChildren(fqn, limit, offset);
   }
 }

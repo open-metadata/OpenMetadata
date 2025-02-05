@@ -493,21 +493,18 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
     assertEquals(1, rootContainerList.getData().size());
     assertEquals("s3.0_root", rootContainerList.getData().get(0).getFullyQualifiedName());
 
-    // Test with default pagination (no parameters)
-    Container container = getContainerByName(rootContainerFQN, "children", null, null);
-    assertEquals(2, container.getChildren().size());
+    // Test paginated child container list
+    ResultList<Container> children = getContainerChildren(rootContainerFQN, null, null);
+    assertEquals(2, children.getData().size());
 
-    // Test with fieldLimit
-    Container containerWithLimit = getContainerByName(rootContainerFQN, "children", 5, 0);
-    assertEquals(2, containerWithLimit.getChildren().size());
+    ResultList<Container> childrenWithLimit = getContainerChildren(rootContainerFQN, 5, 0);
+    assertEquals(2, childrenWithLimit.getData().size());
 
-    // Test with fieldOffset
-    Container containerWithOffset = getContainerByName(rootContainerFQN, "children", 1, 1);
-    assertEquals(1, containerWithOffset.getChildren().size());
+    ResultList<Container> childrenWithOffset = getContainerChildren(rootContainerFQN, 1, 1);
+    assertEquals(1, childrenWithOffset.getData().size());
 
-    // Test with offset greater than available items
-    Container containerWithLargeOffset = getContainerByName(rootContainerFQN, "children", 1, 3);
-    assertTrue(containerWithLargeOffset.getChildren().isEmpty());
+    ResultList<Container> childrenWithLargeOffset = getContainerChildren(rootContainerFQN, 1, 3);
+    assertTrue(childrenWithLargeOffset.getData().isEmpty());
   }
 
   @Test
@@ -719,14 +716,12 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
         createdEntity.getFullyQualifiedName());
   }
 
-  private Container getContainerByName(
-      String fqn, String fields, Integer fieldLimit, Integer fieldOffset)
+  private ResultList<Container> getContainerChildren(String fqn, Integer limit, Integer offset)
       throws HttpResponseException {
-    WebTarget target = getResource(String.format("containers/name/%s", fqn));
-    target = fields != null ? target.queryParam("fields", fields) : target;
-    target = fieldLimit != null ? target.queryParam("fieldLimit", fieldLimit) : target;
-    target = fieldOffset != null ? target.queryParam("fieldOffset", fieldOffset) : target;
-    return TestUtils.get(target, Container.class, ADMIN_AUTH_HEADERS);
+    WebTarget target = getResource(String.format("containers/name/%s/children", fqn));
+    target = limit != null ? target.queryParam("limit", limit) : target;
+    target = offset != null ? target.queryParam("offset", offset) : target;
+    return TestUtils.get(target, ContainerList.class, ADMIN_AUTH_HEADERS);
   }
 
   @Test
