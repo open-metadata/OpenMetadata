@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Col, Row, Select, Space } from 'antd';
+import { Col, Row, Select, Skeleton, Space } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
@@ -28,6 +28,7 @@ import {
 } from '../../constants/constants';
 import { PROFILER_FILTER_RANGE } from '../../constants/profiler.constant';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
+import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityTabs, EntityType, FqnPart } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
@@ -78,7 +79,10 @@ import NextPrevious from '../common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../common/NextPrevious/NextPrevious.interface';
 import { OwnerLabel } from '../common/OwnerLabel/OwnerLabel.component';
 import Table from '../common/Table/Table';
-import { TableProfilerTab } from '../Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
+import {
+  TableProfilerTab,
+  TestCasePermission,
+} from '../Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
 import Severity from '../DataQuality/IncidentManager/Severity/Severity.component';
 import TestCaseIncidentManagerStatus from '../DataQuality/IncidentManager/TestCaseStatus/TestCaseIncidentManagerStatus.component';
 import { IncidentManagerProps } from './IncidentManager.interface';
@@ -125,14 +129,18 @@ const IncidentManager = ({
     selected: [],
   });
 
+  const { getEntityPermissionByFqn, permissions } = usePermissionProvider();
+  const { testCase: commonTestCasePermission } = permissions;
+
   const [initialAssignees, setInitialAssignees] = useState<EntityReference[]>(
     []
   );
+  const [isPermissionLoading, setIsPermissionLoading] = useState(true);
+  const [testCasePermissions, setTestCasePermissions] = useState<
+    TestCasePermission[]
+  >([]);
 
   const { t } = useTranslation();
-
-  const { permissions } = usePermissionProvider();
-  const { testCase: testCasePermission } = permissions;
 
   const {
     paging,
@@ -184,6 +192,40 @@ const IncidentManager = ({
     },
     [pageSize, setTestCaseListData]
   );
+
+  const fetchTestCasePermissions = async () => {
+    const { data: incident } = testCaseListData;
+    try {
+      setIsPermissionLoading(true);
+      const promises = incident.map((testCase) => {
+        return getEntityPermissionByFqn(
+          ResourceEntity.TEST_CASE,
+          testCase.testCaseReference?.fullyQualifiedName ?? ''
+        );
+      });
+      const testCasePermission = await Promise.allSettled(promises);
+      const data = testCasePermission.reduce((acc, status, i) => {
+        if (status.status === 'fulfilled') {
+          return [
+            ...acc,
+            {
+              ...status.value,
+              fullyQualifiedName:
+                incident[i].testCaseReference?.fullyQualifiedName ?? '',
+            },
+          ];
+        }
+
+        return acc;
+      }, [] as TestCasePermission[]);
+
+      setTestCasePermissions(data);
+    } catch (error) {
+      // do nothing
+    } finally {
+      setIsPermissionLoading(false);
+    }
+  };
 
   const handlePagingClick = ({
     cursorType,
@@ -340,7 +382,10 @@ const IncidentManager = ({
   }, []);
 
   useEffect(() => {
-    if (testCasePermission?.ViewAll || testCasePermission?.ViewBasic) {
+    if (
+      commonTestCasePermission?.ViewAll ||
+      commonTestCasePermission?.ViewBasic
+    ) {
       fetchTestCaseIncidents(filters);
       if (searchParams) {
         history.replace({
@@ -350,7 +395,13 @@ const IncidentManager = ({
     } else {
       setTestCaseListData((prev) => ({ ...prev, isLoading: false }));
     }
-  }, [testCasePermission, pageSize, filters]);
+  }, [commonTestCasePermission, pageSize, filters]);
+
+  useEffect(() => {
+    if (testCaseListData.data.length > 0) {
+      fetchTestCasePermissions();
+    }
+  }, [testCaseListData.data]);
 
   const columns: ColumnsType<TestCaseResolutionStatus> = useMemo(
     () => [
@@ -426,13 +477,25 @@ const IncidentManager = ({
         dataIndex: 'testCaseResolutionStatusType',
         key: 'testCaseResolutionStatusType',
         width: 100,
-        render: (_, record: TestCaseResolutionStatus) => (
-          <TestCaseIncidentManagerStatus
-            data={record}
-            usersList={initialAssignees}
-            onSubmit={handleStatusSubmit}
-          />
-        ),
+        render: (_, record: TestCaseResolutionStatus) => {
+          if (isPermissionLoading) {
+            return <Skeleton.Input size="small" />;
+          }
+          const hasPermission = testCasePermissions.find(
+            (item) =>
+              item.fullyQualifiedName ===
+              record.testCaseReference?.fullyQualifiedName
+          );
+
+          return (
+            <TestCaseIncidentManagerStatus
+              data={record}
+              hasPermission={hasPermission?.EditAll}
+              usersList={initialAssignees}
+              onSubmit={handleStatusSubmit}
+            />
+          );
+        },
       },
       {
         title: t('label.severity'),
@@ -440,8 +503,19 @@ const IncidentManager = ({
         key: 'severity',
         width: 150,
         render: (value: Severities, record: TestCaseResolutionStatus) => {
+          if (isPermissionLoading) {
+            return <Skeleton.Input size="small" />;
+          }
+
+          const hasPermission = testCasePermissions.find(
+            (item) =>
+              item.fullyQualifiedName ===
+              record.testCaseReference?.fullyQualifiedName
+          );
+
           return (
             <Severity
+              hasPermission={hasPermission?.EditAll}
               severity={value}
               onSubmit={(severity) => handleSeveritySubmit(severity, record)}
             />
@@ -461,10 +535,18 @@ const IncidentManager = ({
         ),
       },
     ],
-    [testCaseListData.data, initialAssignees]
+    [
+      testCaseListData.data,
+      initialAssignees,
+      testCasePermissions,
+      isPermissionLoading,
+    ]
   );
 
-  if (!testCasePermission?.ViewAll && !testCasePermission?.ViewBasic) {
+  if (
+    !commonTestCasePermission?.ViewAll &&
+    !commonTestCasePermission?.ViewBasic
+  ) {
     return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
   }
 

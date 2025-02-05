@@ -65,6 +65,8 @@ import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.search.SearchListFilter;
 import org.openmetadata.service.search.SearchSortFilter;
+import org.openmetadata.service.security.AuthRequest;
+import org.openmetadata.service.security.AuthorizationLogic;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.mask.PIIMasker;
 import org.openmetadata.service.security.policyevaluator.CreateResourceContext;
@@ -73,6 +75,7 @@ import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
 import org.openmetadata.service.security.policyevaluator.TestCaseResourceContext;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.RestUtil.DeleteResponse;
 import org.openmetadata.service.util.RestUtil.PatchResponse;
@@ -645,19 +648,29 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateTestCase create) {
-    // Override OperationContext to change the entity to table and operation from CREATE to
-    // EDIT_TESTS
+
     EntityLink entityLink = EntityLink.parse(create.getEntityLink());
     TestCase test = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
-    OperationContext operationContext =
-        new OperationContext(Entity.TABLE, MetadataOperation.EDIT_TESTS);
-    ResourceContextInterface resourceContext =
-        TestCaseResourceContext.builder().entityLink(entityLink).build();
     limits.enforceLimits(
         securityContext,
         new CreateResourceContext<>(entityType, test),
         new OperationContext(Entity.TEST_CASE, MetadataOperation.EDIT_TESTS));
-    authorizer.authorize(securityContext, operationContext, resourceContext);
+
+    OperationContext tableOpContext =
+        new OperationContext(Entity.TABLE, MetadataOperation.EDIT_TESTS);
+    ResourceContextInterface tableResourceContext =
+        TestCaseResourceContext.builder().entityLink(entityLink).build();
+    OperationContext testCaseOpContext =
+        new OperationContext(Entity.TEST_CASE, MetadataOperation.CREATE);
+    ResourceContextInterface testCaseResourceContext =
+        new CreateResourceContext<>(entityType, test);
+    TestCaseResourceContext.builder().name(test.getName()).build();
+
+    List<AuthRequest> requests =
+        List.of(
+            new AuthRequest(tableOpContext, tableResourceContext),
+            new AuthRequest(testCaseOpContext, testCaseResourceContext));
+    authorizer.authorizeRequests(securityContext, requests, AuthorizationLogic.ANY);
     repository.isTestSuiteBasic(create.getTestSuite());
     test = addHref(uriInfo, repository.create(uriInfo, test));
     return Response.created(test.getHref()).entity(test).build();
@@ -745,12 +758,19 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
-    // Override OperationContext to change the entity to table and operation from UPDATE to
-    // EDIT_TESTS
-    ResourceContextInterface resourceContext = TestCaseResourceContext.builder().id(id).build();
-    OperationContext operationContext =
+    OperationContext tableOpContext =
         new OperationContext(Entity.TABLE, MetadataOperation.EDIT_TESTS);
-    authorizer.authorize(securityContext, operationContext, resourceContext);
+    ResourceContextInterface tableRC = TestCaseResourceContext.builder().id(id).build();
+
+    OperationContext testCaseOpContext =
+        new OperationContext(Entity.TEST_CASE, MetadataOperation.EDIT_ALL);
+    ResourceContextInterface testCaseRC = TestCaseResourceContext.builder().id(id).build();
+
+    List<AuthRequest> requests =
+        List.of(
+            new AuthRequest(tableOpContext, tableRC),
+            new AuthRequest(testCaseOpContext, testCaseRC));
+    authorizer.authorizeRequests(securityContext, requests, AuthorizationLogic.ANY);
     PatchResponse<TestCase> response =
         repository.patch(uriInfo, id, securityContext.getUserPrincipal().getName(), patch);
     if (response.entity().getTestCaseResult() != null
@@ -790,12 +810,19 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
-    // Override OperationContext to change the entity to table and operation from UPDATE to
-    // EDIT_TESTS
-    ResourceContextInterface resourceContext = TestCaseResourceContext.builder().name(fqn).build();
-    OperationContext operationContext =
+    OperationContext tableOpContext =
         new OperationContext(Entity.TABLE, MetadataOperation.EDIT_TESTS);
-    authorizer.authorize(securityContext, operationContext, resourceContext);
+    ResourceContextInterface tableRC = TestCaseResourceContext.builder().name(fqn).build();
+
+    OperationContext testCaseOpContext =
+        new OperationContext(Entity.TEST_CASE, MetadataOperation.EDIT_ALL);
+    ResourceContextInterface testCaseRC = TestCaseResourceContext.builder().name(fqn).build();
+
+    List<AuthRequest> requests =
+        List.of(
+            new AuthRequest(tableOpContext, tableRC),
+            new AuthRequest(testCaseOpContext, testCaseRC));
+    authorizer.authorizeRequests(securityContext, requests, AuthorizationLogic.ANY);
     PatchResponse<TestCaseResult> patchResponse =
         repository.patchTestCaseResults(
             fqn, timestamp, patch, securityContext.getUserPrincipal().toString());
@@ -820,14 +847,26 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateTestCase create) {
-    // Override OperationContext to change the entity to table and operation from CREATE/UPDATE to
-    // EDIT_TESTS
     EntityLink entityLink = EntityLink.parse(create.getEntityLink());
-    ResourceContextInterface resourceContext =
-        TestCaseResourceContext.builder().entityLink(entityLink).build();
-    OperationContext operationContext =
+    OperationContext tableOpContext =
         new OperationContext(Entity.TABLE, MetadataOperation.EDIT_TESTS);
-    authorizer.authorize(securityContext, operationContext, resourceContext);
+    ResourceContextInterface tableResourceContext =
+        TestCaseResourceContext.builder().entityLink(entityLink).build();
+    OperationContext testCaseOpCreate =
+        new OperationContext(Entity.TEST_CASE, MetadataOperation.CREATE);
+    ResourceContextInterface testCaseRC =
+        TestCaseResourceContext.builder()
+            .name(FullyQualifiedName.add(entityLink.getEntityFQN(), create.getName()))
+            .build();
+    OperationContext testCaseOpUpdate =
+        new OperationContext(Entity.TEST_CASE, MetadataOperation.EDIT_ALL);
+
+    List<AuthRequest> requests =
+        List.of(
+            new AuthRequest(tableOpContext, tableResourceContext),
+            new AuthRequest(testCaseOpCreate, testCaseRC),
+            new AuthRequest(testCaseOpUpdate, testCaseRC));
+    authorizer.authorizeRequests(securityContext, requests, AuthorizationLogic.ANY);
     TestCase test = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     repository.isTestSuiteBasic(create.getTestSuite());
     repository.prepareInternal(test, true);
@@ -861,12 +900,6 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
       @Parameter(description = "Id of the test case", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    // Override OperationContext to change the entity to table and operation from DELETE to
-    // EDIT_TESTS
-    ResourceContextInterface resourceContext = TestCaseResourceContext.builder().id(id).build();
-    OperationContext operationContext =
-        new OperationContext(Entity.TABLE, MetadataOperation.EDIT_TESTS);
-    authorizer.authorize(securityContext, operationContext, resourceContext);
     return delete(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
@@ -899,7 +932,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
           String fqn) {
     ResourceContextInterface resourceContext = TestCaseResourceContext.builder().name(fqn).build();
     OperationContext operationContext =
-        new OperationContext(Entity.TABLE, MetadataOperation.EDIT_TESTS);
+        new OperationContext(Entity.TEST_CASE, MetadataOperation.DELETE);
     authorizer.authorize(securityContext, operationContext, resourceContext);
     return deleteByName(uriInfo, securityContext, fqn, recursive, hardDelete);
   }
@@ -923,7 +956,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
       @PathParam("id") UUID id) {
     ResourceContextInterface resourceContext = TestCaseResourceContext.builder().id(id).build();
     OperationContext operationContext =
-        new OperationContext(Entity.TEST_SUITE, MetadataOperation.EDIT_TESTS);
+        new OperationContext(Entity.TEST_CASE, MetadataOperation.DELETE);
     authorizer.authorize(securityContext, operationContext, resourceContext);
     DeleteResponse<TestCase> response =
         repository.deleteTestCaseFromLogicalTestSuite(testSuiteId, id);
@@ -976,10 +1009,19 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
           @PathParam("fqn")
           String fqn,
       @Valid TestCaseResult testCaseResult) {
-    ResourceContextInterface resourceContext = TestCaseResourceContext.builder().name(fqn).build();
-    OperationContext operationContext =
+    OperationContext tableOpContext =
         new OperationContext(Entity.TABLE, MetadataOperation.EDIT_TESTS);
-    authorizer.authorize(securityContext, operationContext, resourceContext);
+    ResourceContextInterface tableRC = TestCaseResourceContext.builder().name(fqn).build();
+
+    OperationContext testCaseOpContext =
+        new OperationContext(Entity.TEST_CASE, MetadataOperation.EDIT_ALL);
+    ResourceContextInterface testCaseRC = TestCaseResourceContext.builder().name(fqn).build();
+
+    List<AuthRequest> requests =
+        List.of(
+            new AuthRequest(tableOpContext, tableRC),
+            new AuthRequest(testCaseOpContext, testCaseRC));
+    authorizer.authorizeRequests(securityContext, requests, AuthorizationLogic.ANY);
     if (testCaseResult.getTestCaseStatus() == TestCaseStatus.Success) {
       TestCase testCase = repository.findByName(fqn, Include.ALL);
       repository.deleteTestCaseFailedRowsSample(testCase.getId());

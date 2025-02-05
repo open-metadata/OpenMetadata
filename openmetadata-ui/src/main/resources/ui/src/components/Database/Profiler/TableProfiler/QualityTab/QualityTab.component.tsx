@@ -181,6 +181,7 @@ export const QualityTab = () => {
                 }}
                 breadcrumbData={tableBreadcrumb}
                 fetchTestCases={handleSortTestCase}
+                isEditAllowed={editTest}
                 isLoading={isTestsLoading}
                 showTableColumn={false}
                 testCases={allTestCases}

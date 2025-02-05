@@ -18,4 +18,5 @@ export interface TestCaseStatusIncidentManagerProps {
   data: TestCaseResolutionStatus;
   onSubmit: (data: TestCaseResolutionStatus) => void;
   usersList?: EntityReference[];
+  hasPermission?: boolean;
 }

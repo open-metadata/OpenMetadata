@@ -19,6 +19,7 @@ export interface SeverityFormProps {
 
 export interface SeverityProps extends SeverityFormProps {
   severity?: Severities;
+  hasPermission?: boolean;
 }
 
 export interface SeverityModalProps {

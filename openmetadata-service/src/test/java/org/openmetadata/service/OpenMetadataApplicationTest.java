@@ -139,6 +139,8 @@ public abstract class OpenMetadataApplicationTest {
     sqlContainer.withReuse(false);
     sqlContainer.withStartupTimeoutSeconds(240);
     sqlContainer.withConnectTimeoutSeconds(240);
+    sqlContainer.withPassword("password");
+    sqlContainer.withUsername("username");
     sqlContainer.start();
 
     final String flyWayMigrationScriptsLocation =

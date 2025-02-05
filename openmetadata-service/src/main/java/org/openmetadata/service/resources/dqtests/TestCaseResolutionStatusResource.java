@@ -11,6 +11,8 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.beans.IntrospectionException;
 import java.lang.reflect.InvocationTargetException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
@@ -41,10 +43,14 @@ import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TestCaseResolutionStatusRepository;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityTimeSeriesResource;
+import org.openmetadata.service.resources.feeds.MessageParser;
+import org.openmetadata.service.security.AuthRequest;
+import org.openmetadata.service.security.AuthorizationLogic;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
-import org.openmetadata.service.security.policyevaluator.ReportDataContext;
+import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
+import org.openmetadata.service.security.policyevaluator.TestCaseResourceContext;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
@@ -139,10 +145,19 @@ public class TestCaseResolutionStatusResource
               schema = @Schema(type = "String"))
           @QueryParam("originEntityFQN")
           String originEntityFQN) {
-    OperationContext operationContext =
+    List<AuthRequest> requests = new ArrayList<>();
+    OperationContext testCaseOperationContext =
         new OperationContext(Entity.TEST_CASE, MetadataOperation.VIEW_ALL);
-    ResourceContextInterface resourceContext = ReportDataContext.builder().build();
-    authorizer.authorize(securityContext, operationContext, resourceContext);
+    ResourceContextInterface testCaseResourceContext = getTestCaseResourceContext(testCaseFQN);
+    requests.add(new AuthRequest(testCaseOperationContext, testCaseResourceContext));
+    if (originEntityFQN != null) {
+      OperationContext entityOperationContext =
+          new OperationContext(Entity.TABLE, MetadataOperation.VIEW_TESTS);
+      ResourceContextInterface entityResourceContext =
+          new ResourceContext<>(Entity.TABLE, null, originEntityFQN);
+      requests.add(new AuthRequest(entityOperationContext, entityResourceContext));
+    }
+    authorizer.authorizeRequests(securityContext, requests, AuthorizationLogic.ANY);
 
     ListFilter filter = new ListFilter(null);
     filter.addQueryParam("testCaseResolutionStatusType", testCaseResolutionStatusType);
@@ -172,10 +187,10 @@ public class TestCaseResolutionStatusResource
       @Context SecurityContext securityContext,
       @Parameter(description = "Sequence ID", schema = @Schema(type = "UUID")) @PathParam("stateId")
           UUID stateId) {
-    OperationContext operationContext =
+    OperationContext testCaseOperationContext =
         new OperationContext(Entity.TEST_CASE, MetadataOperation.VIEW_ALL);
-    ResourceContextInterface resourceContext = ReportDataContext.builder().build();
-    authorizer.authorize(securityContext, operationContext, resourceContext);
+    ResourceContextInterface testCaseResourceContext = TestCaseResourceContext.builder().build();
+    authorizer.authorize(securityContext, testCaseOperationContext, testCaseResourceContext);
 
     return repository.listTestCaseResolutionStatusesForStateId(stateId);
   }
@@ -200,10 +215,10 @@ public class TestCaseResolutionStatusResource
       @Parameter(description = "Test Case Failure Status ID", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID testCaseResolutionStatusId) {
-    OperationContext operationContext =
+    OperationContext testCaseOperationContext =
         new OperationContext(Entity.TEST_CASE, MetadataOperation.VIEW_ALL);
-    ResourceContextInterface resourceContext = ReportDataContext.builder().build();
-    authorizer.authorize(securityContext, operationContext, resourceContext);
+    ResourceContextInterface testCaseResourceContext = TestCaseResourceContext.builder().build();
+    authorizer.authorize(securityContext, testCaseOperationContext, testCaseResourceContext);
 
     return repository.getById(testCaseResolutionStatusId);
   }
@@ -226,10 +241,19 @@ public class TestCaseResolutionStatusResource
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateTestCaseResolutionStatus createTestCaseResolutionStatus) {
-    OperationContext operationContext =
+    OperationContext testCaseOperationContext =
         new OperationContext(Entity.TEST_CASE, MetadataOperation.EDIT_TESTS);
-    ResourceContextInterface resourceContext = ReportDataContext.builder().build();
-    authorizer.authorize(securityContext, operationContext, resourceContext);
+    ResourceContextInterface testCaseResourceContext = TestCaseResourceContext.builder().build();
+    OperationContext entityOperationContext =
+        new OperationContext(Entity.TABLE, MetadataOperation.EDIT_TESTS);
+    ResourceContextInterface entityResourceContext = TestCaseResourceContext.builder().build();
+
+    List<AuthRequest> requests =
+        List.of(
+            new AuthRequest(entityOperationContext, entityResourceContext),
+            new AuthRequest(testCaseOperationContext, testCaseResourceContext));
+
+    authorizer.authorizeRequests(securityContext, requests, AuthorizationLogic.ANY);
     TestCaseResolutionStatus testCaseResolutionStatus =
         mapper.createToEntity(
             createTestCaseResolutionStatus, securityContext.getUserPrincipal().getName());
@@ -266,12 +290,34 @@ public class TestCaseResolutionStatusResource
                       }))
           JsonPatch patch)
       throws IntrospectionException, InvocationTargetException, IllegalAccessException {
-    OperationContext operationContext =
+    OperationContext testCaseOperationContext =
         new OperationContext(Entity.TEST_CASE, MetadataOperation.EDIT_TESTS);
-    ResourceContextInterface resourceContext = ReportDataContext.builder().build();
-    authorizer.authorize(securityContext, operationContext, resourceContext);
+    ResourceContextInterface testCaseResourceContext = TestCaseResourceContext.builder().build();
+    authorizer.authorize(securityContext, testCaseOperationContext, testCaseResourceContext);
     RestUtil.PatchResponse<TestCaseResolutionStatus> response =
         repository.patch(id, patch, securityContext.getUserPrincipal().getName());
     return response.toResponse();
+  }
+
+  protected static ResourceContextInterface getEntityResourceContext(
+      String fqn, String entityType) {
+    ResourceContextInterface resourceContext;
+    if (fqn != null) {
+      MessageParser.EntityLink entityLinkParsed = new MessageParser.EntityLink(entityType, fqn);
+      resourceContext = TestCaseResourceContext.builder().entityLink(entityLinkParsed).build();
+    } else {
+      resourceContext = TestCaseResourceContext.builder().build();
+    }
+    return resourceContext;
+  }
+
+  protected static ResourceContextInterface getTestCaseResourceContext(String name) {
+    ResourceContextInterface resourceContext;
+    if (name != null) {
+      resourceContext = TestCaseResourceContext.builder().name(name).build();
+    } else {
+      resourceContext = TestCaseResourceContext.builder().build();
+    }
+    return resourceContext;
   }
 }
