@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon, { FilterOutlined } from '@ant-design/icons';
+import Icon from '@ant-design/icons';
 import { Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
@@ -27,7 +27,6 @@ import { EntityType } from '../../../enums/entity.enum';
 import { TagLabel, TagSource } from '../../../generated/entity/data/chart';
 import { Dashboard } from '../../../generated/entity/data/dashboard';
 import { ThreadType } from '../../../generated/entity/feed/thread';
-import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { ChartType } from '../../../pages/DashboardDetailsPage/DashboardDetailsPage.component';
 import { updateChart } from '../../../rest/chartAPI';
 import {
@@ -36,6 +35,7 @@ import {
 } from '../../../utils/DashboardDetailsUtils';
 import { getColumnSorter, getEntityName } from '../../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
+import { columnFilterIcon } from '../../../utils/TableColumn.util';
 import {
   getAllTags,
   searchTagInData,
@@ -60,7 +60,6 @@ export const DashboardChartTable = ({
 }: DashboardChartTableProps) => {
   const { t } = useTranslation();
   const { getEntityPermission } = usePermissionProvider();
-  const { theme } = useApplicationStore();
 
   const { data: dashboardDetails } = useGenericContext<Dashboard>();
   const { charts: listChartIds } = dashboardDetails ?? {};
@@ -344,14 +343,7 @@ export const DashboardChartTable = ({
         key: 'tags',
         accessor: 'tags',
         width: 300,
-        filterIcon: (filtered) => (
-          <FilterOutlined
-            data-testid="tag-filter"
-            style={{
-              color: filtered ? theme.primaryColor : undefined,
-            }}
-          />
-        ),
+        filterIcon: columnFilterIcon,
         render: (tags: TagLabel[], record: ChartType, index: number) => {
           return (
             <TableTags<ChartType>
@@ -378,14 +370,7 @@ export const DashboardChartTable = ({
         key: 'glossary',
         accessor: 'tags',
         width: 300,
-        filterIcon: (filtered) => (
-          <FilterOutlined
-            data-testid="glossary-filter"
-            style={{
-              color: filtered ? theme.primaryColor : undefined,
-            }}
-          />
-        ),
+        filterIcon: columnFilterIcon,
         render: (tags: TagLabel[], record: ChartType, index: number) => (
           <TableTags<ChartType>
             entityFqn={dashboardDetails?.fullyQualifiedName ?? ''}

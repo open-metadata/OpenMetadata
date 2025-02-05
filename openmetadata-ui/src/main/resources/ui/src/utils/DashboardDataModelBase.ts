@@ -46,10 +46,6 @@ export interface DashboardDataModelDetailPageTabProps {
 }
 
 class DashboardDataModelBase {
-  constructor() {
-    // Do nothing
-  }
-
   public getDashboardDataModelDetailPageTabs(
     tabsProps: DashboardDataModelDetailPageTabProps
   ): TabProps[] {

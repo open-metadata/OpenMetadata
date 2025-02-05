@@ -50,7 +50,7 @@ export interface ContainerDetailPageTabProps {
   editCustomAttributePermission: boolean;
   viewAllPermission: boolean;
   containerChildrenData: EntityReference[];
-  fetchContainerChildren: () => void;
+  fetchContainerChildren: () => Promise<void>;
   isChildrenLoading: boolean;
   onThreadLinkSelect: (link: string, threadType?: ThreadType) => void;
   handleUpdateDescription: (description: string) => Promise<void>;
@@ -58,7 +58,7 @@ export interface ContainerDetailPageTabProps {
   handleTagSelection: (tags: EntityTags[]) => Promise<void>;
   handleExtensionUpdate: (updatedContainer: Container) => Promise<void>;
   feedCount: { totalCount: number };
-  getEntityFeedCount: () => void;
+  getEntityFeedCount: () => Promise<void>;
   handleFeedCount: (data: FeedCounts) => void;
   tab: EntityTabs;
   owners: EntityReference[];

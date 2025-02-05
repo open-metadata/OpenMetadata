@@ -51,16 +51,12 @@ export interface DashboardDetailsTabsProps {
   feedCount: FeedCounts;
   activeTab: EntityTabs;
   deleted: boolean;
-  getEntityFeedCount: () => void;
+  getEntityFeedCount: () => Promise<void>;
   fetchDashboard: () => void;
   labelMap: Record<EntityTabs, string>;
 }
 
 class DashboardDetailsClassBase {
-  constructor() {
-    // Do nothing
-  }
-
   public getDashboardDetailPageTabs(
     tabsProps: DashboardDetailsTabsProps
   ): TabProps[] {

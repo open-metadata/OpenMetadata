@@ -30,7 +30,6 @@ import { SourceType } from '../components/SearchedData/SearchedData.interface';
 import { PIPELINE_TASK_TABS } from '../constants/pipeline.constants';
 import { COMMON_RESIZABLE_PANEL_CONFIG } from '../constants/ResizablePanel.constants';
 import LineageProvider from '../context/LineageProvider/LineageProvider';
-import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 import { EntityTabs, EntityType, TabSpecificField } from '../enums/entity.enum';
 import {
   Pipeline,
@@ -44,7 +43,7 @@ import { PipelineDetailPageTabProps } from './PipelineClassBase';
 export const defaultFields = `${TabSpecificField.FOLLOWERS}, ${TabSpecificField.TAGS}, ${TabSpecificField.OWNERS},${TabSpecificField.TASKS}, ${TabSpecificField.PIPELINE_STATUS}, ${TabSpecificField.DOMAIN},${TabSpecificField.DATA_PRODUCTS},${TabSpecificField.VOTES},${TabSpecificField.EXTENSION}`;
 
 export const getTaskExecStatus = (taskName: string, tasks: TaskStatus[]) => {
-  return tasks.find((task) => task.name === taskName)?.executionStatus || '';
+  return tasks.find((task) => task.name === taskName)?.executionStatus;
 };
 
 export const getStatusBadgeIcon = (status?: StatusType) => {
@@ -77,73 +76,6 @@ export const getFormattedPipelineDetails = (
     return { ...pipelineDetails, tasks: updatedTasks };
   } else {
     return pipelineDetails;
-  }
-};
-
-export const getPipelineDetailsPageDefaultLayout = (tab: EntityTabs) => {
-  switch (tab) {
-    case EntityTabs.SCHEMA:
-      return [
-        {
-          h: 2,
-          i: DetailPageWidgetKeys.DESCRIPTION,
-          w: 6,
-          x: 0,
-          y: 0,
-          static: false,
-        },
-        {
-          h: 8,
-          i: DetailPageWidgetKeys.TABLE_SCHEMA,
-          w: 6,
-          x: 0,
-          y: 0,
-          static: false,
-        },
-        {
-          h: 1,
-          i: DetailPageWidgetKeys.FREQUENTLY_JOINED_TABLES,
-          w: 2,
-          x: 6,
-          y: 0,
-          static: false,
-        },
-        {
-          h: 1,
-          i: DetailPageWidgetKeys.DATA_PRODUCTS,
-          w: 2,
-          x: 6,
-          y: 1,
-          static: false,
-        },
-        {
-          h: 1,
-          i: DetailPageWidgetKeys.TAGS,
-          w: 2,
-          x: 6,
-          y: 2,
-          static: false,
-        },
-        {
-          h: 1,
-          i: DetailPageWidgetKeys.GLOSSARY_TERMS,
-          w: 2,
-          x: 6,
-          y: 3,
-          static: false,
-        },
-        {
-          h: 3,
-          i: DetailPageWidgetKeys.CUSTOM_PROPERTIES,
-          w: 2,
-          x: 6,
-          y: 4,
-          static: false,
-        },
-      ];
-
-    default:
-      return [];
   }
 };
 

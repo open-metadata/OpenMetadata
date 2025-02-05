@@ -50,7 +50,7 @@ export interface PipelineDetailPageTabProps {
   editDescriptionPermission: boolean;
   editGlossaryTermsPermission: boolean;
   editTagsPermission: boolean;
-  getEntityFeedCount: () => void;
+  getEntityFeedCount: () => Promise<void>;
   handleFeedCount: (data: FeedCounts) => void;
   handleTagSelection: (selectedTags: TagLabel[]) => Promise<void>;
   onDescriptionUpdate: (value: string) => Promise<void>;
