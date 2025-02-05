@@ -23,7 +23,23 @@ Managing metadata manually can be challenging, particularly in dynamic environme
 
 ## Key Use Cases for Collate Automations
 
-### 1. Bulk Ownership and Domain Assignment
+### 1. Bulk Description
+
+{% image
+src="/images/v1.6/how-to-guides/governance/automator-description.png"
+alt="Getting started with Automation"
+caption="Getting started with Automation"
+/%}
+
+- **Problem**: Many datasets lack descriptions, making it difficult for users to understand the data's purpose and contents. Sometimes, the same column description needs to be added to multiple datasets.
+- **Solution**: Automations can bulk-apply descriptions to tables and columns, ensuring that all data assets are consistently documented.
+- **Benefit**: This use case improves data discoverability and understanding, making it easier for users to find and use the data effectively.
+
+For the Action Configuration:
+- **Apply to Children**: Lets you apply the description to the selected child assets (e.g., columns) within an asset.
+- **Overwrite Metadata**: Allows you to overwrite existing descriptions with the new description. Otherwise, we will only apply the description to empty tables or columns.
+
+### 2. Bulk Ownership and Domain Assignment
 
 {% image
 src="/images/v1.6/how-to-guides/governance/bulk-ownership-and.png"
@@ -35,7 +51,10 @@ caption="Getting started with Automation"
 - **Solution**: Automations can bulk-assign ownership and domains to datasets, ensuring all data assets are correctly categorized and owned. This process can be applied to tables, schemas, or other assets within Collate.
 - **Benefit**: This use case ensures data assets have a designated owner and are organized under the appropriate domain, making data more discoverable and accountable.
 
-### 2. Bulk Tagging and Glossary Term Assignment
+For the Action Configuration:
+- **Overwrite Metadata**: Allows you to overwrite existing owner or domain with the configured one. Otherwise, we will only apply the owner or domain to assets that do not have an existing owner or domain.
+
+### 3. Bulk Tagging and Glossary Term Assignment
 
 {% image
 src="/images/v1.6/how-to-guides/governance/bulk-tagging-glossary.png"
@@ -47,7 +66,12 @@ caption="Getting started with Automation"
 - **Solution**: Automations allow users to bulk-apply tags (e.g., PII) or glossary terms (e.g., Customer ID) to specific datasets, ensuring uniformity across the platform.
 - **Benefit**: This automation reduces the risk of missing important tags like PII-sensitive and ensures that key metadata elements are applied consistently across datasets.
 
-### 3. Metadata Propagation via Lineage
+For the Action Configuration:
+- **Apply to Children**: Lets you apply the Tags or Glossary Terms to the selected child assets (e.g., columns) within an asset.
+- **Overwrite Metadata**: Allows you to overwrite existing Tags or Terms with the configured one. Otherwise, we will add the new Tags or Terms to the existing ones.
+
+
+### 4. Metadata Propagation via Lineage
 
 {% image
 src="/images/v1.6/how-to-guides/governance/metadata-propogation.png"
@@ -59,13 +83,34 @@ caption="Getting started with Automation"
 - **Solution**: Use automations to propagate metadata across related datasets, ensuring that all relevant data inherits the correct metadata properties from the source dataset.
 - **Benefit**: Metadata consistency is ensured across the entire data lineage, reducing the need for manual updates and maintaining a single source of truth.
 
-### 4. Automatic PII Detection and Tagging
+For the Action Configuration:
+1. First, we can choose if we want the propagation to happen at the Parent level (e.g., Table), Column Level, or both. This can be configured by selecting **Propagate Parent** and/or **Propagate Column Level**.
+2. Then, we can control which pieces of metadata we want to propagate via lineage:
+   - **Propagate Description**: Propagates the description from the source asset to the downstream assets. Works for both parent and column-level.
+   - **Propagate Tags**: Propagates the tags from the source asset to the downstream assets. Works for both parent and column-level.
+   - **Propagate Glossary Terms**: Propagates the glossary terms from the source asset to the downstream assets. Works for both parent and column-level.
+   - **Propagate Owners**: Only applicable for Parent assets. Propagates the owner information to downstream assets.
+   - **Propagate Tier**: Only applicable for Parent assets. Propagated the tier information to downstream assets.
+
+As with other actions, you can choose to **Overwrite Metadata** or keep the existing metadata and only apply the new metadata to assets that do not have the metadata already.
+   
+
+### 5. Automatic PII Detection and Tagging
 
 {% image
 src="/images/v1.6/how-to-guides/governance/automatic-detection.png"
 alt="Getting started with Automation"
 caption="Getting started with Automation"
 /%}
+
+{% note noteType="Warning" %}
+
+Note that we recommend using the **Auto Classification** workflow instead, which allows you to discover PII data automatically,
+even in cases where you don't want to ingest the Sample Data into Collate.
+
+Note that this automation, the ML Tagging, will be deprecated in future releases.
+
+{% /note %}
 
 - **Problem**: Manually identifying and tagging Personally Identifiable Information (PII) across large datasets is labor-intensive and prone to errors.
 - **Solution**: Automations can automatically detect PII data (e.g., emails, usernames) and apply relevant tags to ensure that sensitive data is flagged appropriately for compliance.
