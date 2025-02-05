@@ -126,6 +126,21 @@ export const getQueryFilterToExcludeDomainTerms = (
   };
 };
 
+export const getQueryFilterForDomain = (domainFqn: string) => ({
+  query: {
+    bool: {
+      must: [{ prefix: { 'domain.fullyQualifiedName': domainFqn } }],
+      must_not: [
+        {
+          term: {
+            entityType: 'dataProduct',
+          },
+        },
+      ],
+    },
+  },
+});
+
 // Domain type description which will be shown in tooltip
 export const domainTypeTooltipDataRender = () => (
   <Space direction="vertical" size="middle">
