@@ -23,6 +23,8 @@ import org.openmetadata.schema.system.Stats;
 import org.openmetadata.schema.system.StepStats;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.apps.bundles.insights.DataInsightsApp;
+import org.openmetadata.service.apps.bundles.insights.search.DataInsightsSearchConfiguration;
+import org.openmetadata.service.apps.bundles.insights.search.DataInsightsSearchInterface;
 import org.openmetadata.service.apps.bundles.insights.utils.TimestampUtils;
 import org.openmetadata.service.apps.bundles.insights.workflows.WorkflowStats;
 import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.processors.DataInsightsElasticSearchProcessor;
@@ -43,6 +45,7 @@ import org.openmetadata.service.workflows.searchIndex.PaginatedEntitiesSource;
 @Slf4j
 public class DataAssetsWorkflow {
   public static final String DATA_STREAM_KEY = "DataStreamKey";
+  public static final String ENTITY_TYPE_FIELDS_KEY = "EnityTypeFields";
   private final int retentionDays = 30;
   private final Long startTimestamp;
   private final Long endTimestamp;
@@ -51,6 +54,8 @@ public class DataAssetsWorkflow {
   private final CollectionDAO collectionDAO;
   private final List<PaginatedEntitiesSource> sources = new ArrayList<>();
   private final Set<String> entityTypes;
+  private final DataInsightsSearchConfiguration dataInsightsSearchConfiguration;
+  private final DataInsightsSearchInterface searchInterface;
 
   private DataInsightsEntityEnricherProcessor entityEnricher;
   private Processor entityProcessor;
@@ -63,7 +68,8 @@ public class DataAssetsWorkflow {
       Optional<DataInsightsApp.Backfill> backfill,
       Set<String> entityTypes,
       CollectionDAO collectionDAO,
-      SearchRepository searchRepository) {
+      SearchRepository searchRepository,
+      DataInsightsSearchInterface searchInterface) {
     if (backfill.isPresent()) {
       Long oldestPossibleTimestamp =
           TimestampUtils.getStartOfDayTimestamp(
@@ -95,6 +101,8 @@ public class DataAssetsWorkflow {
     this.searchRepository = searchRepository;
     this.collectionDAO = collectionDAO;
     this.entityTypes = entityTypes;
+    this.searchInterface = searchInterface;
+    this.dataInsightsSearchConfiguration = searchInterface.readDataInsightsSearchConfiguration();
   }
 
   private void initialize() {
@@ -146,6 +154,10 @@ public class DataAssetsWorkflow {
       deleteDataBeforeInserting(getDataStreamName(source.getEntityType()));
       contextData.put(DATA_STREAM_KEY, getDataStreamName(source.getEntityType()));
       contextData.put(ENTITY_TYPE_KEY, source.getEntityType());
+      contextData.put(
+          ENTITY_TYPE_FIELDS_KEY,
+          searchInterface.getEntityAttributeFields(
+              dataInsightsSearchConfiguration, source.getEntityType()));
 
       while (!source.isDone().get()) {
         try {

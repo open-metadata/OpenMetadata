@@ -30,6 +30,7 @@ import { SidebarItem } from '../constant/sidebar';
 import { UserClass } from '../support/user/UserClass';
 import {
   descriptionBox,
+  descriptionBoxReadOnly,
   getAuthContext,
   getToken,
   redirectToHomePage,
@@ -97,6 +98,12 @@ export const deletedUserChecks = async (page: Page) => {
 
 export const visitUserProfilePage = async (page: Page, userName: string) => {
   await settingClick(page, GlobalSettingOptions.USERS);
+  await page.waitForSelector(
+    '[data-testid="user-list-v1-component"] [data-testid="loader"]',
+    {
+      state: 'detached',
+    }
+  );
   const userResponse = page.waitForResponse(
     '/api/v1/search/query?q=**&from=0&size=*&index=*'
   );
@@ -149,11 +156,7 @@ export const softDeleteUserProfilePage = async (
 
   await deleteResponse;
 
-  await expect(page.locator('.Toastify__toast-body')).toHaveText(
-    /deleted successfully!/
-  );
-
-  await page.click('.Toastify__close-button');
+  await toastNotification(page, /deleted successfully!/);
 
   await deletedUserChecks(page);
 };
@@ -259,7 +262,7 @@ export const editDescription = async (
 
   // Verify the updated description
   const description = page.locator(
-    '[data-testid="asset-description-container"] .toastui-editor-contents > p'
+    `[data-testid="asset-description-container"] ${descriptionBoxReadOnly}`
   );
 
   await expect(description).toContainText(updatedDescription);
@@ -470,9 +473,9 @@ export const permanentDeleteUser = async (
   );
   await page.click('[data-testid="confirm-button"]');
   await hardDeleteUserResponse;
-  await reFetchUsers;
 
   await toastNotification(page, `"${displayName}" deleted successfully!`);
+  await reFetchUsers;
 
   // Wait for the loader to disappear
   await page.waitForSelector('[data-testid="loader"]', { state: 'hidden' });
@@ -701,7 +704,7 @@ export const addUser = async (
 
   await page.fill('[data-testid="displayName"]', name);
 
-  await page.fill(descriptionBox, 'Adding new user');
+  await page.locator(descriptionBox).fill('Adding new user');
 
   await page.click(':nth-child(2) > .ant-radio > .ant-radio-input');
   await page.fill('#password', password);

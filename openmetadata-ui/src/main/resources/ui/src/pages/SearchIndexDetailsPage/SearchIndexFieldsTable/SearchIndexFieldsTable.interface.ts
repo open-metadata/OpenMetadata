@@ -27,6 +27,7 @@ export interface SearchIndexFieldsTableProps {
   entityFqn: string;
   onUpdate: (fields: Array<SearchIndexField>) => Promise<void>;
   onThreadLinkSelect: (value: string, threadType?: ThreadType) => void;
+  searchText?: string;
 }
 
 export type SearchIndexCellRendered<T, K extends keyof T> = (

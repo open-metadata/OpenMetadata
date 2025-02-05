@@ -201,7 +201,7 @@ const AddGlossaryTermForm = ({
       type: FieldTypes.DESCRIPTION,
       props: {
         'data-testid': 'description',
-        initialValue: '',
+        initialValue: glossaryTerm?.description,
         height: 'auto',
       },
       rules: [

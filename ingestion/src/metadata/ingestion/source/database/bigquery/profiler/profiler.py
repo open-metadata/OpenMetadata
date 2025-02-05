@@ -24,6 +24,7 @@ class BigQueryProfiler(BigQueryProfilerInterface):
         return self.system_metrics_computer.get_system_metrics(
             table=runner.dataset,
             usage_location=self.service_connection_config.usageLocation,
+            runner=runner,
         )
 
     def initialize_system_metrics_computer(self) -> BigQuerySystemMetricsComputer:

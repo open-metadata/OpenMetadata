@@ -95,7 +95,7 @@ class KafkaconnectSource(PipelineServiceSource):
                 sourceUrl=connection_url,
                 tasks=[
                     Task(
-                        name=task.id,
+                        name=str(task.id),
                     )
                     for task in pipeline_details.tasks or []
                 ],
@@ -205,7 +205,7 @@ class KafkaconnectSource(PipelineServiceSource):
                     metadata=self.metadata,
                     entity_type=Topic,
                     service_name=self.service_connection.messagingServiceName,
-                    topic_name=topic.name,
+                    topic_name=str(topic.name),
                 )
 
                 topic_entity = self.metadata.get_by_name(entity=Topic, fqn=topic_fqn)
@@ -279,7 +279,7 @@ class KafkaconnectSource(PipelineServiceSource):
         try:
             task_status = [
                 TaskStatus(
-                    name=task.id,
+                    name=str(task.id),
                     executionStatus=STATUS_MAP.get(task.state, StatusType.Pending),
                 )
                 for task in pipeline_details.tasks or []

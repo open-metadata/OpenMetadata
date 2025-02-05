@@ -144,7 +144,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     Fields fields = getFields(fieldsParam);
     OperationContext listOperationContext =
         new OperationContext(entityType, getViewOperations(fields));
-
+    ResourceContext resourceContext = filter.getResourceContext(entityType);
     return listInternal(
         uriInfo,
         securityContext,
@@ -154,7 +154,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
         before,
         after,
         listOperationContext,
-        getResourceContext());
+        resourceContext);
   }
 
   public ResultList<T> listInternal(
@@ -171,7 +171,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     authorizer.authorize(securityContext, operationContext, resourceContext);
 
     // Add Domain Filter
-    EntityUtil.addDomainQueryParam(securityContext, filter);
+    EntityUtil.addDomainQueryParam(securityContext, filter, entityType);
 
     // List
     ResultList<T> resultList;
@@ -361,7 +361,6 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
     DeleteResponse<T> response =
         repository.delete(securityContext.getUserPrincipal().getName(), id, recursive, hardDelete);
-    repository.deleteFromSearch(response.entity(), response.changeType());
     if (hardDelete) {
       limits.invalidateCache(entityType);
     }
@@ -380,7 +379,6 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     DeleteResponse<T> response =
         repository.deleteByName(
             securityContext.getUserPrincipal().getName(), name, recursive, hardDelete);
-    repository.deleteFromSearch(response.entity(), response.changeType());
     addHref(uriInfo, response.entity());
     return response.toResponse();
   }

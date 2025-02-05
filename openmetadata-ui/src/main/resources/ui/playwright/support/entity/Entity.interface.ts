@@ -88,7 +88,7 @@ export type TestCaseData = {
 
 export type TestSuiteData = {
   name?: string;
-  executableEntityReference?: string;
+  basicEntityReference?: string;
   description?: string;
 };
 

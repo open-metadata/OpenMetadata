@@ -296,9 +296,10 @@ SELECT
   ARGUMENT_SIGNATURE AS signature,
   COMMENT as comment,
   'StoredProcedure' as procedure_type
-FROM INFORMATION_SCHEMA.PROCEDURES
+FROM SNOWFLAKE.ACCOUNT_USAGE.PROCEDURES
 WHERE PROCEDURE_CATALOG = '{database_name}'
   AND PROCEDURE_SCHEMA = '{schema_name}'
+  AND DELETED IS NOT NULL
     """
 )
 
@@ -312,9 +313,10 @@ SELECT
   ARGUMENT_SIGNATURE AS signature,
   COMMENT as comment,
   'UDF' as procedure_type
-FROM INFORMATION_SCHEMA.FUNCTIONS
+FROM SNOWFLAKE.ACCOUNT_USAGE.FUNCTIONS
 WHERE FUNCTION_CATALOG = '{database_name}'
   AND FUNCTION_SCHEMA = '{schema_name}'
+  AND DELETED IS NOT NULL
     """
 )
 
@@ -337,6 +339,8 @@ WITH SP_HISTORY AS (
     FROM SNOWFLAKE.ACCOUNT_USAGE.QUERY_HISTORY SP
     WHERE QUERY_TYPE = 'CALL'
       AND START_TIME >= '{start_date}'
+      AND QUERY_TEXT <> ''
+      AND QUERY_TEXT IS NOT NULL
 ),
 Q_HISTORY AS (
     SELECT
@@ -354,6 +358,10 @@ Q_HISTORY AS (
       AND QUERY_TEXT NOT LIKE '/* {{"app": "OpenMetadata", %%}} */%%'
       AND QUERY_TEXT NOT LIKE '/* {{"app": "dbt", %%}} */%%'
       AND START_TIME >= '{start_date}'
+      AND (
+        QUERY_TYPE IN ('MERGE', 'UPDATE','CREATE_TABLE_AS_SELECT')
+        OR (QUERY_TYPE = 'INSERT' and query_text ILIKE '%%insert%%into%%select%%')
+    )
 )
 SELECT
   Q.QUERY_TYPE AS QUERY_TYPE,

@@ -48,10 +48,6 @@ export const getDatabases = async (
   return response.data;
 };
 
-export const getTables = (id: number): Promise<AxiosResponse> => {
-  return APIClient.get('/databases/' + id + '/tables');
-};
-
 export const getDatabaseDetailsByFQN = async (
   fqn: string,
   params?: ListParams

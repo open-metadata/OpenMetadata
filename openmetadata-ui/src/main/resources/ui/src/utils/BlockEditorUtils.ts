@@ -12,7 +12,11 @@
  */
 import { EditorState } from '@tiptap/pm/state';
 import { Editor } from '@tiptap/react';
+import { isEmpty } from 'lodash';
+import Showdown from 'showdown';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
+import { ENTITY_URL_MAP } from '../constants/Feeds.constants';
+import { getEntityDetail, getHashTagList, getMentionList } from './FeedUtils';
 
 export const getSelectedText = (state: EditorState) => {
   const { from, to } = state.selection;
@@ -33,6 +37,45 @@ export const isInViewport = (ele: HTMLElement, container: HTMLElement) => {
   return eleTop >= containerTop && eleBottom <= containerBottom;
 };
 
+const _convertMarkdownFormatToHtmlString = (markdown: string) => {
+  let updatedMessage = markdown;
+  const urlEntries = Object.entries(ENTITY_URL_MAP);
+
+  const mentionList = getMentionList(markdown) ?? [];
+  const hashTagList = getHashTagList(markdown) ?? [];
+
+  const mentionMap = new Map<string, RegExpMatchArray | null>(
+    mentionList.map((mention) => [mention, getEntityDetail(mention)])
+  );
+
+  const hashTagMap = new Map<string, RegExpMatchArray | null>(
+    hashTagList.map((hashTag) => [hashTag, getEntityDetail(hashTag)])
+  );
+
+  mentionMap.forEach((value, key) => {
+    if (value) {
+      const [, href, rawEntityType, fqn] = value;
+      const entityType = urlEntries.find((e) => e[1] === rawEntityType)?.[0];
+
+      if (entityType) {
+        const entityLink = `<a href="${href}/${rawEntityType}/${fqn}" data-type="mention" data-entityType="${entityType}" data-fqn="${fqn}" data-label="${fqn}">@${fqn}</a>`;
+        updatedMessage = updatedMessage.replaceAll(key, entityLink);
+      }
+    }
+  });
+
+  hashTagMap.forEach((value, key) => {
+    if (value) {
+      const [, href, rawEntityType, fqn] = value;
+
+      const entityLink = `<a href="${href}/${rawEntityType}/${fqn}" data-type="hashtag" data-entityType="${rawEntityType}" data-fqn="${fqn}" data-label="${fqn}">#${fqn}</a>`;
+      updatedMessage = updatedMessage.replaceAll(key, entityLink);
+    }
+  });
+
+  return updatedMessage;
+};
+
 export type FormatContentFor = 'server' | 'client';
 
 export const formatContent = (
@@ -41,7 +84,10 @@ export const formatContent = (
 ) => {
   // Create a new DOMParser
   const parser = new DOMParser();
-  const doc = parser.parseFromString(htmlString, 'text/html');
+  const doc = parser.parseFromString(
+    _convertMarkdownFormatToHtmlString(htmlString),
+    'text/html'
+  );
 
   // Use querySelectorAll to find all anchor tags with text content starting with "@" or "#"
   const anchorTags = doc.querySelectorAll(
@@ -72,6 +118,9 @@ export const formatContent = (
   return modifiedHtmlString;
 };
 
+export const formatValueBasedOnContent = (value: string) =>
+  value === '<p></p>' ? '' : value;
+
 export const isHTMLString = (content: string) => {
   try {
     const parser = new DOMParser();
@@ -85,12 +134,30 @@ export const isHTMLString = (content: string) => {
 };
 
 /**
+ * Convert a markdown string to an HTML string
+ */
+const _convertMarkdownStringToHtmlString = new Showdown.Converter({
+  ghCodeBlocks: false,
+  encodeEmails: false,
+  ellipsis: false,
+});
+
+export const getHtmlStringFromMarkdownString = (content: string) => {
+  return isHTMLString(content)
+    ? content
+    : _convertMarkdownStringToHtmlString.makeHtml(content);
+};
+
+/**
  * Set the content of the editor
  * @param editor The editor instance
  * @param newContent The new content to set
  */
 export const setEditorContent = (editor: Editor, newContent: string) => {
-  editor.commands.setContent(newContent);
+  // Convert the markdown string to an HTML string
+  const htmlString = getHtmlStringFromMarkdownString(newContent);
+
+  editor.commands.setContent(htmlString);
 
   // Update the editor state to reflect the new content
   const newEditorState = EditorState.create({
@@ -101,4 +168,27 @@ export const setEditorContent = (editor: Editor, newContent: string) => {
     storedMarks: editor.state.storedMarks,
   });
   editor.view.updateState(newEditorState);
+};
+
+/**
+ *
+ * @param content The content to check
+ * @returns Whether the content is empty or not
+ */
+export const isDescriptionContentEmpty = (content: string) => {
+  // Check if the content is empty or has only empty paragraph tags
+  return isEmpty(content) || content === '<p></p>';
+};
+
+/**
+ *
+ * @param description HTML string
+ * @returns Text from HTML string
+ */
+export const getTextFromHtmlString = (description?: string): string => {
+  if (!description) {
+    return '';
+  }
+
+  return description.replace(/<[^>]{1,1000}>/g, '').trim();
 };

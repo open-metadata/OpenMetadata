@@ -116,11 +116,11 @@ export const TestSuites = () => {
         dataIndex: 'name',
         key: 'name',
         sorter: (a, b) => {
-          if (a.executable) {
-            // Sort for executable test suites
+          if (a.basic) {
+            // Sort for basic test suites
             return (
-              a.executableEntityReference?.fullyQualifiedName?.localeCompare(
-                b.executableEntityReference?.fullyQualifiedName ?? ''
+              a.basicEntityReference?.fullyQualifiedName?.localeCompare(
+                b.basicEntityReference?.fullyQualifiedName ?? ''
               ) ?? 0
             );
           } else {
@@ -133,21 +133,21 @@ export const TestSuites = () => {
         },
         sortDirections: ['ascend', 'descend'],
         render: (name, record) => {
-          return record.executable ? (
+          return record.basic ? (
             <Link
               data-testid={name}
               to={{
                 pathname: getEntityDetailsPath(
                   EntityType.TABLE,
-                  record.executableEntityReference?.fullyQualifiedName ?? '',
+                  record.basicEntityReference?.fullyQualifiedName ?? '',
                   EntityTabs.PROFILER
                 ),
                 search: QueryString.stringify({
                   activeTab: TableProfilerTab.DATA_QUALITY,
                 }),
               }}>
-              {record.executableEntityReference?.fullyQualifiedName ??
-                record.executableEntityReference?.name}
+              {record.basicEntityReference?.fullyQualifiedName ??
+                record.basicEntityReference?.name}
             </Link>
           ) : (
             <Link
@@ -206,7 +206,7 @@ export const TestSuites = () => {
         includeEmptyTestSuites: tab !== DataQualityPageTabs.TABLES,
         testSuiteType:
           tab === DataQualityPageTabs.TABLES
-            ? TestSuiteType.executable
+            ? TestSuiteType.basic
             : TestSuiteType.logical,
         sortField: 'testCaseResultSummary.timestamp',
         sortType: SORT_ORDER.DESC,
@@ -321,6 +321,7 @@ export const TestSuites = () => {
 
       <Col span={24}>
         <SummaryPanel
+          showAdditionalSummary
           isLoading={isTestCaseSummaryLoading}
           testSummary={testCaseSummary}
         />

@@ -12,6 +12,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
@@ -38,6 +41,7 @@ import org.quartz.Trigger;
 import org.quartz.TriggerBuilder;
 import org.quartz.TriggerKey;
 import org.quartz.impl.StdSchedulerFactory;
+import org.quartz.impl.matchers.GroupMatcher;
 
 @Slf4j
 public class AppScheduler {
@@ -93,8 +97,35 @@ public class AppScheduler {
         .getListenerManager()
         .addJobListener(new OmAppJobListener(dao), jobGroupEquals(APPS_JOB_GROUP));
 
+    ScheduledExecutorService threadScheduler = Executors.newScheduledThreadPool(1);
+    threadScheduler.scheduleAtFixedRate(this::resetErrorTriggers, 0, 24, TimeUnit.HOURS);
+
     // Start Scheduler
     this.scheduler.start();
+  }
+
+  /* Quartz triggers can go into an "ERROR" state in some cases. Most notably when the jobs
+  constructor throws an error. I do not know why this happens and the issues seem to be transient.
+  This method resets all triggers in the ERROR state to the normal state.
+   */
+  private void resetErrorTriggers() {
+    try {
+      scheduler
+          .getTriggerKeys(GroupMatcher.anyGroup())
+          .forEach(
+              triggerKey -> {
+                try {
+                  if (scheduler.getTriggerState(triggerKey) == Trigger.TriggerState.ERROR) {
+                    LOG.info("Resetting trigger {} from error state", triggerKey);
+                    scheduler.resetTriggerFromErrorState(triggerKey);
+                  }
+                } catch (SchedulerException e) {
+                  throw new RuntimeException(e);
+                }
+              });
+    } catch (SchedulerException ex) {
+      LOG.error("Failed to reset failed triggers", ex);
+    }
   }
 
   public static void initialize(
@@ -133,10 +164,13 @@ public class AppScheduler {
     throw new UnhandledServerException("App Scheduler is not Initialized");
   }
 
-  public void addApplicationSchedule(App application) {
+  public void scheduleApplication(App application) {
     try {
       if (scheduler.getJobDetail(new JobKey(application.getName(), APPS_JOB_GROUP)) != null) {
-        LOG.info("Job already exists for the application, skipping the scheduling");
+        LOG.info(
+            "Job already exists for the application {}, rescheduling it", application.getName());
+        scheduler.rescheduleJob(
+            new TriggerKey(application.getName(), APPS_TRIGGER_GROUP), trigger(application));
         return;
       }
       AppRuntime context = getAppRuntime(application);

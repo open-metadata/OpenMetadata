@@ -54,6 +54,7 @@ import org.openmetadata.schema.type.IndexMappingLanguage;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareAnnotationSqlLocator;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
+import org.openmetadata.service.jobs.JobDAO;
 import org.openmetadata.service.migration.api.MigrationWorkflow;
 import org.openmetadata.service.resources.CollectionRegistry;
 import org.openmetadata.service.resources.databases.DatasourceConfig;
@@ -240,6 +241,7 @@ public abstract class OpenMetadataApplicationTest {
     SearchRepository searchRepository = new SearchRepository(getEsConfig());
     Entity.setSearchRepository(searchRepository);
     Entity.setCollectionDAO(jdbi.onDemand(CollectionDAO.class));
+    Entity.setJobDAO(jdbi.onDemand(JobDAO.class));
     Entity.initializeRepositories(config, jdbi);
     workflow.loadMigrations();
     workflow.runMigrationWorkflows();

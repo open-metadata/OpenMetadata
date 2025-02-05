@@ -18,6 +18,7 @@ import {
   fireEvent,
   render,
   screen,
+  waitFor,
 } from '@testing-library/react';
 import React from 'react';
 import { MOCK_TEST_CASE } from '../../../../mocks/TestSuite.mock';
@@ -68,7 +69,7 @@ jest.mock('../../../common/DeleteWidget/DeleteWidgetModal', () => {
     return (
       visible && (
         <div>
-          DeleteWidgetModal
+          <p>DeleteWidgetModal</p>
           <button onClick={onCancel}>cancel</button>
         </div>
       )
@@ -80,13 +81,35 @@ jest.mock('../../../DataQuality/AddDataQualityTest/EditTestCaseModal', () => {
     return (
       visible && (
         <div>
-          EditTestCaseModal
+          <p>EditTestCaseModal</p>
           <button onClick={onCancel}>cancel</button>
           <button onClick={onUpdate}>submit</button>
         </div>
       )
     );
   });
+});
+jest.mock('../../../Modals/ConfirmationModal/ConfirmationModal', () => {
+  return jest
+    .fn()
+    .mockImplementation(({ visible, onCancel, onConfirm, isLoading }) => {
+      return (
+        visible && (
+          <div>
+            <p>ConfirmationModal</p>
+            <button onClick={onCancel}>cancel</button>
+            <button onClick={onConfirm}>
+              {isLoading ? (
+                <span data-testid="submit-btn-loading">Loading</span>
+              ) : (
+                ''
+              )}
+              submit
+            </button>
+          </div>
+        )
+      );
+    });
 });
 
 describe('DataQualityTab test', () => {
@@ -214,6 +237,53 @@ describe('DataQualityTab test', () => {
     expect(columnName).toBeInTheDocument();
     expect(editButton).toBeInTheDocument();
     expect(deleteButton).toBeInTheDocument();
+  });
+
+  it('Remove functionality', async () => {
+    const firstRowData = MOCK_TEST_CASE[0];
+    await act(async () => {
+      render(
+        <DataQualityTab
+          removeFromTestSuite={{
+            testSuite: {
+              id: 'testSuiteId',
+              name: 'testSuiteName',
+            },
+          }}
+          {...mockProps}
+        />
+      );
+    });
+    const tableRows = await screen.findAllByRole('row');
+    const firstRow = tableRows[1];
+    const closeRemoveModel = screen.queryByText('ConfirmationModal');
+    const removeButton = await findByTestId(
+      firstRow,
+      `remove-${firstRowData.name}`
+    );
+
+    expect(removeButton).toBeInTheDocument();
+    expect(closeRemoveModel).not.toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(removeButton);
+    });
+    const openRemoveModel = await screen.findByText('ConfirmationModal');
+    const submitBtn = await screen.findByText('submit');
+
+    expect(openRemoveModel).toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(submitBtn);
+
+      await waitFor(() => {
+        const loader = screen.getByTestId('submit-btn-loading');
+
+        expect(loader).toBeInTheDocument();
+      });
+    });
+
+    expect(closeRemoveModel).not.toBeInTheDocument();
   });
 
   it('Edit functionality', async () => {

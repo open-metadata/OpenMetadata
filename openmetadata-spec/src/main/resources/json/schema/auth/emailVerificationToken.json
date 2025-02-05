@@ -43,12 +43,6 @@
       "$ref": "../type/basic.json#/definitions/timestamp"
     }
   },
-  "required": [
-    "token",
-    "user",
-    "tokenType",
-    "tokenStatus",
-    "expiryDate"
-  ],
+  "required": ["token", "userId", "tokenType", "tokenStatus", "expiryDate"],
   "additionalProperties": false
 }

@@ -240,8 +240,21 @@ jest.mock('../../components/common/ResizablePanels/ResizableLeftPanels', () =>
   ))
 );
 
+jest.mock('../../hoc/withPageLayout', () => ({
+  withPageLayout: jest.fn().mockImplementation(
+    () =>
+      (Component: React.FC) =>
+      (
+        props: JSX.IntrinsicAttributes & {
+          children?: React.ReactNode | undefined;
+        }
+      ) =>
+        <Component {...props} />
+  ),
+}));
+
 jest.mock(
-  '../../components/common/RichTextEditor/RichTextEditorPreviewer',
+  '../../components/common/RichTextEditor/RichTextEditorPreviewerV1',
   () => {
     return jest.fn().mockReturnValue(<p>RichTextEditorPreviewer</p>);
   }

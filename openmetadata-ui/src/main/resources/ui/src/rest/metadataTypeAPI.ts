@@ -13,7 +13,7 @@
 
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
-import { EntityType, TabSpecificField } from '../enums/entity.enum';
+import { TabSpecificField } from '../enums/entity.enum';
 import { Category, Type } from '../generated/entity/type';
 import { CustomProperty } from '../generated/type/customProperty';
 import { Paging } from '../generated/type/paging';
@@ -33,13 +33,6 @@ export const getTypeListByCategory = async (category: Category) => {
   const response = await APIClient.get<{ data: Type[]; paging: Paging }>(path, {
     params,
   });
-
-  return response.data;
-};
-
-export const getFieldsForEntity = async (entityType: EntityType) => {
-  const path = `/metadata/types/fields/${entityType}`;
-  const response = await APIClient.get<FieldData[]>(path);
 
   return response.data;
 };

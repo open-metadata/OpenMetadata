@@ -210,11 +210,8 @@ const TeamDetailsV1 = ({
   );
 
   const teamCount = useMemo(
-    () =>
-      isOrganization && currentTeam && currentTeam.childrenCount
-        ? currentTeam.childrenCount + 1
-        : childTeamList.length,
-    [childTeamList, isOrganization, currentTeam.childrenCount]
+    () => currentTeam.childrenCount ?? childTeamList.length,
+    [childTeamList, currentTeam.childrenCount]
   );
   const updateActiveTab = (key: string) => {
     history.push({ search: Qs.stringify({ activeTab: key }) });
@@ -710,6 +707,7 @@ const TeamDetailsV1 = ({
             currentTeam={currentTeam}
             data={childTeamList}
             isFetchingAllTeamAdvancedDetails={isFetchingAllTeamAdvancedDetails}
+            searchTerm={searchTerm}
             onTeamExpand={onTeamExpand}
           />
         </Col>

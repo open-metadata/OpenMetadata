@@ -34,8 +34,8 @@ import {
   ClientType,
 } from '../generated/configuration/authenticationConfiguration';
 import { AuthProvider } from '../generated/settings/settings';
-import { useApplicationStore } from '../hooks/useApplicationStore';
 import { isDev } from './EnvironmentUtils';
+import { setOidcToken } from './LocalStorageUtils';
 
 const cookieStorage = new CookieStorage();
 
@@ -293,7 +293,7 @@ export const getNameFromUserData = (
     }
   }
 
-  return { name: userName, email: email };
+  return { name: userName, email: email, picture: user.picture };
 };
 
 export const isProtectedRoute = (pathname: string) => {
@@ -423,7 +423,6 @@ export const prepareUserProfileFromClaims = ({
 export const parseMSALResponse = (response: AuthenticationResult): OidcUser => {
   // Call your API with the access token and return the data you need to save in state
   const { idToken, scopes, account } = response;
-  const { setOidcToken } = useApplicationStore.getState();
 
   const user = {
     id_token: idToken,

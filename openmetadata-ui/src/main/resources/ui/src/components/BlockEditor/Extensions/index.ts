@@ -34,6 +34,7 @@ import { mentionSuggestion } from './mention/mentionSuggestions';
 import slashCommand from './slash-command';
 import { getSuggestionItems } from './slash-command/items';
 import renderItems from './slash-command/renderItems';
+import TextHighlightView from './text-highlight-view';
 import { TrailingNode } from './trailing-node';
 
 export const extensions = [
@@ -112,6 +113,7 @@ export const extensions = [
     suggestion: hashtagSuggestion(),
   }),
   DiffView,
+  TextHighlightView,
   Image.configure({
     allowBase64: true,
     inline: true,

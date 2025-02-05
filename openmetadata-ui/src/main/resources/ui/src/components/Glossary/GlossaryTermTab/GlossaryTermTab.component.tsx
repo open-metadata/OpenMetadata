@@ -33,7 +33,13 @@ import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
 import { cloneDeep, isEmpty, isUndefined } from 'lodash';
-import React, { useCallback, useMemo, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import { useTranslation } from 'react-i18next';
@@ -47,7 +53,7 @@ import { ReactComponent as UpDownArrowIcon } from '../../../assets/svg/ic-up-dow
 import { ReactComponent as PlusOutlinedIcon } from '../../../assets/svg/plus-outlined.svg';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { OwnerLabel } from '../../../components/common/OwnerLabel/OwnerLabel.component';
-import RichTextEditorPreviewer from '../../../components/common/RichTextEditor/RichTextEditorPreviewer';
+import RichTextEditorPreviewerV1 from '../../../components/common/RichTextEditor/RichTextEditorPreviewerV1';
 import StatusBadge from '../../../components/common/StatusBadge/StatusBadge.component';
 import {
   API_RES_MAX_SIZE,
@@ -76,7 +82,8 @@ import Fqn from '../../../utils/Fqn';
 import {
   buildTree,
   findExpandableKeysForArray,
-  findGlossaryTermByFqn,
+  findItemByFqn,
+  glossaryTermTableColumnsWidth,
   StatusClass,
 } from '../../../utils/GlossaryUtils';
 import { getGlossaryPath } from '../../../utils/RouterUtils';
@@ -102,11 +109,20 @@ const GlossaryTermTab = ({
   onEditGlossaryTerm,
   className,
 }: GlossaryTermTabProps) => {
+  const tableRef = useRef<HTMLDivElement>(null);
+  const [tableWidth, setTableWidth] = useState(0);
   const { activeGlossary, glossaryChildTerms, setGlossaryChildTerms } =
     useGlossaryStore();
   const { t } = useTranslation();
 
-  const glossaryTerms = (glossaryChildTerms as ModifiedGlossaryTerm[]) ?? [];
+  const { glossaryTerms, expandableKeys } = useMemo(() => {
+    const terms = (glossaryChildTerms as ModifiedGlossaryTerm[]) ?? [];
+
+    return {
+      expandableKeys: findExpandableKeysForArray(terms),
+      glossaryTerms: terms,
+    };
+  }, [glossaryChildTerms]);
 
   const [movedGlossaryTerm, setMovedGlossaryTerm] =
     useState<MoveGlossaryTermType>();
@@ -140,9 +156,10 @@ const GlossaryTermTab = ({
     return null;
   }, [isGlossary, activeGlossary]);
 
-  const expandableKeys = useMemo(() => {
-    return findExpandableKeysForArray(glossaryTerms);
-  }, [glossaryTerms]);
+  const tableColumnsWidth = useMemo(
+    () => glossaryTermTableColumnsWidth(tableWidth, permissions.Create),
+    [permissions.Create, tableWidth]
+  );
 
   const columns = useMemo(() => {
     const data: ColumnsType<ModifiedGlossaryTerm> = [
@@ -152,7 +169,7 @@ const GlossaryTermTab = ({
         key: 'name',
         className: 'glossary-name-column',
         ellipsis: true,
-        width: '40%',
+        width: tableColumnsWidth.name,
         render: (_, record) => {
           const name = getEntityName(record);
 
@@ -181,10 +198,10 @@ const GlossaryTermTab = ({
         title: t('label.description'),
         dataIndex: 'description',
         key: 'description',
-        width: permissions.Create ? '21%' : '33%',
+        width: tableColumnsWidth.description,
         render: (description: string) =>
           description.trim() ? (
-            <RichTextEditorPreviewer
+            <RichTextEditorPreviewerV1
               enableSeeMoreVariant
               markdown={description}
               maxLength={120}
@@ -197,7 +214,7 @@ const GlossaryTermTab = ({
         title: t('label.reviewer'),
         dataIndex: 'reviewers',
         key: 'reviewers',
-        width: '33%',
+        width: tableColumnsWidth.reviewers,
         render: (reviewers: EntityReference[]) => (
           <OwnerLabel
             owners={reviewers}
@@ -211,7 +228,7 @@ const GlossaryTermTab = ({
         title: t('label.synonym-plural'),
         dataIndex: 'synonyms',
         key: 'synonyms',
-        width: '33%',
+        width: tableColumnsWidth.synonyms,
         render: (synonyms: string[]) => {
           return isEmpty(synonyms) ? (
             <div>{NO_DATA_PLACEHOLDER}</div>
@@ -232,14 +249,18 @@ const GlossaryTermTab = ({
         title: t('label.owner-plural'),
         dataIndex: 'owners',
         key: 'owners',
-        width: '17%',
+        width: tableColumnsWidth.owners,
         render: (owners: EntityReference[]) => <OwnerLabel owners={owners} />,
       },
       {
         title: t('label.status'),
         dataIndex: 'status',
         key: 'status',
-        width: '12%',
+        // this check is added to the width, since the last column is optional and to maintain
+        // the re-sizing of the column should not be affected the others columns width sizes.
+        ...(permissions.Create && {
+          width: tableColumnsWidth.status,
+        }),
         render: (_, record) => {
           const status = record.status ?? Status.Approved;
 
@@ -258,7 +279,6 @@ const GlossaryTermTab = ({
       data.push({
         title: t('label.action-plural'),
         key: 'new-term',
-        width: '10%',
         render: (_, record) => {
           const status = record.status ?? Status.Approved;
           const allowAddTerm = status === Status.Approved;
@@ -305,7 +325,7 @@ const GlossaryTermTab = ({
     }
 
     return data;
-  }, [permissions]);
+  }, [permissions, tableColumnsWidth]);
 
   const defaultCheckedList = useMemo(
     () =>
@@ -652,10 +672,7 @@ const GlossaryTermTab = ({
             );
             const terms = cloneDeep(glossaryTerms) ?? [];
 
-            const item = findGlossaryTermByFqn(
-              terms,
-              record.fullyQualifiedName ?? ''
-            );
+            const item = findItemByFqn(terms, record.fullyQualifiedName ?? '');
 
             (item as ModifiedGlossary).children = data;
 
@@ -790,6 +807,12 @@ const GlossaryTermTab = ({
     return expandedRowKeys.length === expandableKeys.length;
   }, [expandedRowKeys, expandableKeys]);
 
+  useEffect(() => {
+    if (tableRef.current) {
+      setTableWidth(tableRef.current.offsetWidth);
+    }
+  }, []);
+
   if (termsLoading) {
     return <Loader />;
   }
@@ -811,6 +834,10 @@ const GlossaryTermTab = ({
       />
     );
   }
+
+  const filteredGlossaryTerms = glossaryTerms.filter((term) =>
+    selectedStatus.includes(term.status as string)
+  );
 
   return (
     <Row className={className} gutter={[0, 16]}>
@@ -884,21 +911,20 @@ const GlossaryTermTab = ({
           <DndProvider backend={HTML5Backend}>
             <Table
               bordered
+              resizableColumns
               className={classNames('drop-over-background', {
                 'drop-over-table': isTableHovered,
               })}
               columns={rearrangedColumns.filter((col) => !col.hidden)}
               components={TABLE_CONSTANTS}
               data-testid="glossary-terms-table"
-              dataSource={glossaryTerms.filter((term) =>
-                selectedStatus.includes(term.status as string)
-              )}
+              dataSource={filteredGlossaryTerms}
               expandable={expandableConfig}
               loading={isTableLoading}
               pagination={false}
+              ref={tableRef}
               rowKey="fullyQualifiedName"
               size="small"
-              tableLayout="fixed"
               onHeaderRow={onTableHeader}
               onRow={onTableRow}
             />

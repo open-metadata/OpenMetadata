@@ -43,7 +43,7 @@ import { getEntityName } from '../../../utils/EntityUtils';
 import {
   convertGlossaryTermsToTreeOptions,
   filterTreeNodeOptions,
-  findGlossaryTermByFqn,
+  findItemByFqn,
 } from '../../../utils/GlossaryUtils';
 import {
   escapeESReservedCharacters,
@@ -180,6 +180,7 @@ const TreeAsyncSelectList: FC<Omit<AsyncSelectListProps, 'fetchOptions'>> = ({
 
     return (
       <TagsV1
+        isEditTags
         startWith={TAG_START_WITH.SOURCE_ICON}
         tag={tag}
         tagProps={tagProps}
@@ -206,7 +207,7 @@ const TreeAsyncSelectList: FC<Omit<AsyncSelectListProps, 'fetchOptions'>> = ({
       if (lastSelectedMap.has(value)) {
         return lastSelectedMap.get(value) as SelectOption;
       }
-      const initialData = findGlossaryTermByFqn(
+      const initialData = findItemByFqn(
         [
           ...glossaries,
           ...(isNull(searchOptions) ? [] : searchOptions),

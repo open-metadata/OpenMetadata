@@ -227,6 +227,12 @@ class PowerBiApiClient:
                     "$skip": str(index * entities_per_page),
                 }
                 response_data = self.client.get(api_url, data=params_data)
+                if not response_data:
+                    logger.error(
+                        "Error fetching workspaces between results: "
+                        f"{str(index * entities_per_page)} - {str(entities_per_page)}"
+                    )
+                    continue
                 response = GroupsResponse(**response_data)
                 workspaces.extend(response.value)
             return workspaces

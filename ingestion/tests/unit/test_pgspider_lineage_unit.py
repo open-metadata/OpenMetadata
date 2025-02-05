@@ -587,10 +587,13 @@ class PGSpiderLineageUnitTests(TestCase):
     def __init__(self, methodName) -> None:
         super().__init__(methodName)
         config = OpenMetadataWorkflowConfig.model_validate(mock_pgspider_config)
-        self.postgres = PostgresLineageSource.create(
-            mock_pgspider_config["source"],
-            config.workflowConfig.openMetadataServerConfig,
-        )
+        with patch(
+            "metadata.ingestion.source.database.postgres.lineage.PostgresLineageSource.test_connection"
+        ):
+            self.postgres = PostgresLineageSource.create(
+                mock_pgspider_config["source"],
+                config.workflowConfig.openMetadataServerConfig,
+            )
         print(type(self.postgres))
 
     @patch(

@@ -109,12 +109,24 @@ test('Search Index Application', async ({ page }) => {
     );
 
     await page.click('[data-testid="configuration"]');
+    await page.waitForLoadState('networkidle');
+
+    await expect(page.locator('#search-indexing-application')).toContainText(
+      'Search Indexing Application'
+    );
+
     await page.fill('#root\\/batchSize', '0');
 
     await page.getByTestId('tree-select-widget').click();
 
+    // Bring table option to view in dropdown via searching for it
+    await page
+      .getByTestId('tree-select-widget')
+      .getByRole('combobox')
+      .fill('Table');
+
     // uncheck the entity
-    await page.getByRole('tree').getByTitle('Topic').click();
+    await page.getByRole('tree').getByTitle('Table').click();
 
     await page.click(
       '[data-testid="select-widget"] > .ant-select-selector > .ant-select-selection-item'

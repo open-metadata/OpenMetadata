@@ -17,7 +17,7 @@ import { isUndefined, toLower } from 'lodash';
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { OwnerLabel } from '../../components/common/OwnerLabel/OwnerLabel.component';
-import RichTextEditorPreviewer from '../../components/common/RichTextEditor/RichTextEditorPreviewer';
+import RichTextEditorPreviewerV1 from '../../components/common/RichTextEditor/RichTextEditorPreviewerV1';
 import {
   getEntityDetailsPath,
   NO_DATA_PLACEHOLDER,
@@ -89,7 +89,7 @@ export const schemaTableColumns: ColumnsType<DatabaseSchema> = [
     key: 'description',
     render: (text: string) =>
       text?.trim() ? (
-        <RichTextEditorPreviewer markdown={text} />
+        <RichTextEditorPreviewerV1 markdown={text} />
       ) : (
         <span className="text-grey-muted">
           {t('label.no-entity', { entity: t('label.description') })}

@@ -10,7 +10,7 @@
       {
         "name": "matchAnyEventType",
         "effect": "include",
-        "condition": "matchAnyEventType({'entityCreated', 'entityDeleted', 'entitySoftDeleted'}) && !matchUpdatedBy({'ingestion-bot'}) && !matchAnySource({'user', 'team', 'owners', 'databaseService', 'messagingService', 'dashboardService', 'pipelineService', 'storageService', 'mlmodelService', 'metadataService', 'searchService', 'apiService', 'ingestionPipeline', 'workflow'})",
+        "condition": "matchAnyEventType({'entityCreated', 'entityDeleted', 'entitySoftDeleted'}) && !matchUpdatedBy({'ingestion-bot'}) && !matchAnySource({'user', 'team', 'owners', 'databaseService', 'messagingService', 'dashboardService', 'pipelineService', 'storageService', 'mlmodelService', 'metadataService', 'searchService', 'apiService', 'ingestionPipeline', 'workflow', 'testCase', 'testSuite'})",
         "prefixCondition": "AND"
       },
       {

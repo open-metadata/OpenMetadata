@@ -79,6 +79,10 @@ export interface App {
      */
     domain?: EntityReference;
     /**
+     * Event Subscriptions for the Application.
+     */
+    eventSubscriptions?: EntityReference[];
+    /**
      * Features of the Application.
      */
     features?: string;
@@ -171,12 +175,14 @@ export interface App {
  *
  * Configuration for the Automator External Application.
  *
+ * This schema defines the Slack App Token Configuration
+ *
  * No configuration needed to instantiate the Data Insights Pipeline. The logic is handled
  * in the backend.
  *
  * Search Indexing App.
  *
- * This schema defines the Slack App Token Configuration
+ * Configuration for the Collate AI Quality Agent.
  */
 export interface CollateAIAppConfig {
     /**
@@ -201,7 +207,15 @@ export interface CollateAIAppConfig {
     /**
      * Entities selected to run the automation.
      */
-    resources?:             Resource;
+    resources?: Resource;
+    /**
+     * Bot Token
+     */
+    botToken?: string;
+    /**
+     * User Token
+     */
+    userToken?:             string;
     backfillConfiguration?: BackfillConfiguration;
     /**
      * Maximum number of events processed at a time (Default 100).
@@ -262,13 +276,14 @@ export interface CollateAIAppConfig {
      */
     searchIndexMappingLanguage?: SearchIndexMappingLanguage;
     /**
-     * Bot Token
+     * Whether the suggested tests should be active or not upon suggestion
      */
-    botToken?: string;
+    active?: boolean;
     /**
-     * User Token
+     * Enter the retention period for change event records in days (e.g., 7 for one week, 30 for
+     * one month).
      */
-    userToken?: string;
+    changeEventRetentionPeriod?: number;
 }
 
 /**
@@ -283,7 +298,11 @@ export interface CollateAIAppConfig {
  *
  * Remove Owner Action Type
  *
+ * Add a Custom Property to the selected assets.
+ *
  * Add owners to the selected assets.
+ *
+ * Remove Custom Properties Action Type
  *
  * Propagate description, tags and glossary terms via lineage
  *
@@ -314,6 +333,9 @@ export interface Action {
      * Update the description even if they are already defined in the asset. By default, we'll
      * only add the descriptions to assets without the description set.
      *
+     * Update the Custom Property even if it is defined in the asset. By default, we will only
+     * apply the owners to assets without the given Custom Property informed.
+     *
      * Update the tier even if it is defined in the asset. By default, we will only apply the
      * tier to assets without tier.
      *
@@ -343,6 +365,12 @@ export interface Action {
      * Description to apply
      */
     description?: string;
+    /**
+     * Owners to apply
+     *
+     * Custom Properties keys to remove
+     */
+    customProperties?: any;
     /**
      * tier to apply
      */
@@ -546,6 +574,8 @@ export interface Style {
  *
  * Add Description Action Type.
  *
+ * Add Custom Properties Action Type.
+ *
  * Remove Description Action Type
  *
  * Add Tier Action Type.
@@ -554,11 +584,14 @@ export interface Style {
  *
  * Remove Owner Action Type
  *
+ * Remove Custom Properties Action Type.
+ *
  * Lineage propagation action type.
  *
  * ML PII Tagging action type.
  */
 export enum ActionType {
+    AddCustomPropertiesAction = "AddCustomPropertiesAction",
     AddDescriptionAction = "AddDescriptionAction",
     AddDomainAction = "AddDomainAction",
     AddOwnerAction = "AddOwnerAction",
@@ -566,6 +599,7 @@ export enum ActionType {
     AddTierAction = "AddTierAction",
     LineagePropagationAction = "LineagePropagationAction",
     MLTaggingAction = "MLTaggingAction",
+    RemoveCustomPropertiesAction = "RemoveCustomPropertiesAction",
     RemoveDescriptionAction = "RemoveDescriptionAction",
     RemoveDomainAction = "RemoveDomainAction",
     RemoveOwnerAction = "RemoveOwnerAction",
@@ -628,6 +662,7 @@ export enum SearchIndexMappingLanguage {
 export enum Type {
     Automator = "Automator",
     CollateAI = "CollateAI",
+    CollateAIQualityAgent = "CollateAIQualityAgent",
     DataInsights = "DataInsights",
     DataInsightsReport = "DataInsightsReport",
     SearchIndexing = "SearchIndexing",

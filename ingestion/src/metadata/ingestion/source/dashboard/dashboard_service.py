@@ -198,6 +198,9 @@ class DashboardServiceTopology(ServiceTopology):
     )
 
 
+from metadata.utils.helpers import retry_with_docker_host
+
+
 # pylint: disable=too-many-public-methods
 class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
     """
@@ -216,6 +219,7 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
     dashboard_source_state: Set = set()
     datamodel_source_state: Set = set()
 
+    @retry_with_docker_host()
     def __init__(
         self,
         config: WorkflowSource,

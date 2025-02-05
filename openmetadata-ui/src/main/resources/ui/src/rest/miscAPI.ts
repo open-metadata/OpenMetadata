@@ -18,7 +18,6 @@ import { PAGE_SIZE } from '../constants/constants';
 import { SearchIndex } from '../enums/search.enum';
 import { AuthenticationConfiguration } from '../generated/configuration/authenticationConfiguration';
 import { AuthorizerConfiguration } from '../generated/configuration/authorizerConfiguration';
-import { PipelineServiceClientConfiguration } from '../generated/configuration/pipelineServiceClientConfiguration';
 import { ValidationResponse } from '../generated/system/validationResponse';
 import { Paging } from '../generated/type/paging';
 import { SearchResponse } from '../interface/search.interface';
@@ -72,22 +71,6 @@ export const fetchAuthorizerConfig = async () => {
   return response.data;
 };
 
-export const fetchSandboxConfig = async () => {
-  const response = await APIClient.get<{ sandboxModeEnabled: boolean }>(
-    '/system/config/sandbox'
-  );
-
-  return response.data;
-};
-
-export const fetchAirflowConfig = async () => {
-  const response = await APIClient.get<PipelineServiceClientConfiguration>(
-    '/system/config/pipeline-service-client'
-  );
-
-  return response.data;
-};
-
 export const getVersion = async () => {
   const response = await APIClient.get<{ version: string }>('/system/version');
 
@@ -113,23 +96,6 @@ export const deleteLineageEdge = (
   return APIClient.delete(
     `/lineage/${fromEntity}/${fromId}/${toEntity}/${toId}`
   );
-};
-
-export const getTeamsByQuery = async (params: {
-  q: string;
-  from?: number;
-  size?: number;
-}) => {
-  const response = await APIClient.get(`/search/query`, {
-    params: {
-      index: SearchIndex.TEAM,
-      ...params,
-      sort_field: 'name.keyword',
-      sort_order: 'asc',
-    },
-  });
-
-  return response.data;
 };
 
 export const getUserAndTeamSearch = (

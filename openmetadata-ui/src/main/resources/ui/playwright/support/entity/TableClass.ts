@@ -14,6 +14,7 @@ import { APIRequestContext, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
 import { SERVICE_TYPE } from '../../constant/service';
+import { ServiceTypes } from '../../constant/settings';
 import { uuid } from '../../utils/common';
 import { visitEntityPage } from '../../utils/entity';
 import {
@@ -77,16 +78,17 @@ export class TableClass extends EntityClass {
       children: [
         {
           name: 'first_name',
-          dataType: 'VARCHAR',
+          dataType: 'STRUCT',
           dataLength: 100,
-          dataTypeDisplay: 'varchar',
+          dataTypeDisplay:
+            'struct<username:varchar(32),name:varchar(32),sex:char(1),address:varchar(128),mail:varchar(64),birthdate:varchar(16)>',
           description: 'First name of the staff member.',
         },
         {
           name: 'last_name',
-          dataType: 'VARCHAR',
+          dataType: 'ARRAY',
           dataLength: 100,
-          dataTypeDisplay: 'varchar',
+          dataTypeDisplay: 'array<struct<type:string,provider:array<int>>>',
         },
       ],
     },
@@ -124,6 +126,7 @@ export class TableClass extends EntityClass {
     super(EntityTypeEndpoint.Table);
     this.service.name = name ?? this.service.name;
     this.serviceCategory = SERVICE_TYPE.Database;
+    this.serviceType = ServiceTypes.DATABASE_SERVICES;
     this.type = 'Table';
     this.childrenTabId = 'schema';
     this.childrenSelectorId = `${this.entity.databaseSchema}.${this.entity.name}.${this.children[0].name}`;
@@ -234,11 +237,10 @@ export class TableClass extends EntityClass {
     }
 
     const testSuiteData = await apiContext
-      .post('/api/v1/dataQuality/testSuites/executable', {
+      .post('/api/v1/dataQuality/testSuites/basic', {
         data: {
           name: `pw-test-suite-${uuid()}`,
-          executableEntityReference:
-            this.entityResponseData?.['fullyQualifiedName'],
+          basicEntityReference: this.entityResponseData?.['fullyQualifiedName'],
           description: 'Playwright test suite for table',
           ...testSuite,
         },

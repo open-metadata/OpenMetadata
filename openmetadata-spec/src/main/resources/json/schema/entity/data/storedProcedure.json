@@ -15,7 +15,8 @@
       "default": "StoredProcedure",
       "enum": [
         "StoredProcedure",
-        "UDF"
+        "UDF",
+        "StoredPackage"
       ],
       "javaEnums": [
         {
@@ -23,6 +24,9 @@
         },
         {
           "name": "UDF"
+        },
+        {
+          "name": "StoredPackage"
         }
       ]
     },
