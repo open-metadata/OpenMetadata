@@ -92,6 +92,36 @@ public class DefaultAuthorizer implements Authorizer {
     PolicyEvaluator.hasPermission(subjectContext, resourceContext, operationContext);
   }
 
+  public void authorizeRequests(
+      SecurityContext securityContext, List<AuthRequest> requests, AuthorizationLogic logic) {
+    SubjectContext subjectContext = getSubjectContext(securityContext);
+
+    if (subjectContext.isAdmin()) {
+      return;
+    }
+
+    if (logic == AuthorizationLogic.ANY) {
+      boolean anySuccess = false;
+      for (AuthRequest req : requests) {
+        try {
+          PolicyEvaluator.hasPermission(
+              subjectContext, req.resourceContext(), req.operationContext());
+          anySuccess = true;
+          break;
+        } catch (AuthorizationException ignored) {
+        }
+      }
+      if (!anySuccess) {
+        throw new AuthorizationException("User does not have ANY of the required permissions.");
+      }
+    } else { // ALL
+      for (AuthRequest req : requests) {
+        PolicyEvaluator.hasPermission(
+            subjectContext, req.resourceContext(), req.operationContext());
+      }
+    }
+  }
+
   @Override
   public void authorizeAdmin(SecurityContext securityContext) {
     SubjectContext subjectContext = getSubjectContext(securityContext);
