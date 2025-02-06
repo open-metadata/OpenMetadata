@@ -21,6 +21,7 @@ Notes:
 """
 import copy
 import os
+import re
 import traceback
 from datetime import datetime
 from pathlib import Path
@@ -39,6 +40,7 @@ from typing import (
 
 import giturlparse
 import lkml
+import networkx as nx
 from liquid import Template
 from looker_sdk.sdk.api40.methods import Looker40SDK
 from looker_sdk.sdk.api40.models import Dashboard as LookerDashboard
@@ -133,6 +135,7 @@ logger = ingestion_logger()
 
 LIST_DASHBOARD_FIELDS = ["id", "title"]
 IMPORTED_PROJECTS_DIR = "imported_projects"
+DERIVED_REFERENCES = r"\${([\w\s\d_.]+)\.SQL_TABLE_NAME}"
 
 # Here we can update the fields to get further information, such as:
 # created_at, updated_at, last_updater_id, deleted_at, deleter_id, favorite_count, last_viewed_at
@@ -165,6 +168,11 @@ def build_datamodel_name(model_name: str, explore_name: str) -> str:
     return clean_dashboard_name(model_name + "_" + explore_name)
 
 
+def find_derived_references(sql_query):
+    matches = re.findall(DERIVED_REFERENCES, sql_query)
+    return matches
+
+
 class LookerSource(DashboardServiceSource):
     """
     Looker Source Class.
@@ -191,6 +199,9 @@ class LookerSource(DashboardServiceSource):
         self._main_lookml_repo: Optional[LookMLRepo] = None
         self._main__lookml_manifest: Optional[LookMLManifest] = None
         self._view_data_model: Optional[DashboardDataModel] = None
+        self._parsed_views: Optional[Dict[str, str]] = {}
+        self._unparsed_views: Optional[Dict[str, str]] = {}
+        self._derived_dependencies = nx.DiGraph()
 
         self._added_lineage: Optional[Dict] = {}
 
@@ -557,6 +568,71 @@ class LookerSource(DashboardServiceSource):
                     )
                 )
 
+    def replace_derived_references(self, sql_query):
+        """
+        Replace all derived references with the parsed views sql query
+        https://cloud.google.com/looker/docs/derived-tables#referencing_derived_tables_in_other_derived_tables
+        """
+        sql_query = re.sub(
+            DERIVED_REFERENCES,
+            lambda match: f"({self._parsed_views.get(match.group(0)[2:-16], match.group(0))})",
+            sql_query,
+        )
+        return sql_query
+
+    def build_lineage_for_unparsed_views(self) -> Iterable[Either[AddLineageRequest]]:
+        """
+        build lineahe by parsing the unparsed views containing derived references
+        """
+        try:
+            for view_name in reversed(
+                list(nx.topological_sort(self._derived_dependencies))
+            ):
+                if view_name in self._parsed_views:
+                    # Skip if already processed
+                    continue
+                sql_query = self.replace_derived_references(
+                    self._unparsed_views[view_name]
+                )
+                if references := find_derived_references(sql_query):
+                    # There are still derived references in the view query
+                    logger.debug(
+                        f"Views {references} not found for {view_name}. Skipping."
+                    )
+                    continue
+                self._parsed_views[view_name] = sql_query
+                del self._unparsed_views[view_name]
+                logger.debug(f"Processing view [{view_name}] with SQL: \n[{sql_query}]")
+                for db_service_name in self.get_db_service_names() or []:
+                    lineage_parser = LineageParser(
+                        sql_query,
+                        self._get_db_dialect(db_service_name),
+                        timeout_seconds=30,
+                    )
+                    if lineage_parser.source_tables:
+                        for from_table_name in lineage_parser.source_tables:
+                            yield self.build_lineage_request(
+                                source=str(from_table_name),
+                                db_service_name=db_service_name,
+                                to_entity=self._view_data_model,
+                            )
+
+        except Exception as err:
+            yield Either(
+                left=StackTraceError(
+                    name="parse_unparsed_views",
+                    error=f"Error parsing unparsed views: {err}",
+                    stackTrace=traceback.format_exc(),
+                )
+            )
+
+    def _add_dependency_edge(self, view_name, references):
+        """
+        Add a dependency edge between the view and the derived reference
+        """
+        for ref in references:
+            self._derived_dependencies.add_edge(view_name, ref)
+
     def add_view_lineage(
         self, view: LookMlView, explore: LookmlModelExplore
     ) -> Iterable[Either[AddLineageRequest]]:
@@ -589,6 +665,7 @@ class LookerSource(DashboardServiceSource):
                 for db_service_name in db_service_names or []:
                     dialect = self._get_db_dialect(db_service_name)
                     source_table_name = self._clean_table_name(sql_table_name, dialect)
+                    self._parsed_views[view.name] = source_table_name
 
                     # View to the source is only there if we are informing the dbServiceNames
                     yield self.build_lineage_request(
@@ -601,6 +678,15 @@ class LookerSource(DashboardServiceSource):
                 sql_query = view.derived_table.sql
                 if not sql_query:
                     return
+                if find_derived_references(sql_query):
+                    sql_query = self.replace_derived_references(sql_query)
+                    # If we still have derived references, we cannot process the view
+                    if references := find_derived_references(sql_query):
+                        self._add_dependency_edge(view.name, references)
+                        logger.warning(
+                            f"Not all references are replaced for view [{view.name}]. Parsing it later."
+                        )
+                        return
                 logger.debug(f"Processing view [{view.name}] with SQL: \n[{sql_query}]")
                 for db_service_name in db_service_names or []:
                     lineage_parser = LineageParser(
@@ -609,12 +695,15 @@ class LookerSource(DashboardServiceSource):
                         timeout_seconds=30,
                     )
                     if lineage_parser.source_tables:
+                        self._parsed_views[view.name] = sql_query
                         for from_table_name in lineage_parser.source_tables:
                             yield self.build_lineage_request(
                                 source=str(from_table_name),
                                 db_service_name=db_service_name,
                                 to_entity=self._view_data_model,
                             )
+                if self._unparsed_views:
+                    self.build_lineage_for_unparsed_views()
 
         except Exception as err:
             yield Either(
