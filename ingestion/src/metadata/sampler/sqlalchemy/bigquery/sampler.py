@@ -76,11 +76,11 @@ class BigQuerySampler(SQASampler):
             selectable (Table): Table object
         """
         if (
-            self.sample_config.profile_sample_type == ProfileSampleType.PERCENTAGE
+            self.sample_config.profileSampleType == ProfileSampleType.PERCENTAGE
             and self.raw_dataset_type != TableType.View
         ):
             return selectable.tablesample(
-                text(f"{self.sample_config.profile_sample or 100} PERCENT")
+                text(f"{self.sample_config.profileSample or 100} PERCENT")
             )
 
         return selectable
@@ -116,7 +116,7 @@ class BigQuerySampler(SQASampler):
         """get query for sample data"""
         # TABLESAMPLE SYSTEM is not supported for views
         if (
-            self.sample_config.profile_sample_type == ProfileSampleType.PERCENTAGE
+            self.sample_config.profileSampleType == ProfileSampleType.PERCENTAGE
             and self.raw_dataset_type != TableType.View
         ):
             return self._base_sample_query(column).cte(
