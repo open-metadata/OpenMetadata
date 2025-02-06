@@ -79,7 +79,6 @@ public class MigrationUtil {
       MainWorkflow.WorkflowGraph graph = new MainWorkflow.WorkflowGraph(workflowDefinition);
 
       for (WorkflowNodeDefinitionInterface nodeDefinition : workflowDefinition.getNodes()) {
-        //        nodeDefinition.setDefaultInputNamespaceMap();
         setDefaultInputNamespaceMap(nodeDefinition);
 
         Map<String, String> nodeInputNamespaceMap =
@@ -98,8 +97,6 @@ public class MigrationUtil {
               List<String> incomeNodeOutput = graph.getNodeMap().get(incomeNodeName).getOutput();
               if (incomeNodeOutput != null && incomeNodeOutput.contains(UPDATED_BY_VARIABLE)) {
                 nodeInputNamespaceMap.put(UPDATED_BY_VARIABLE, incomeNodeName);
-                //
-                // nodeDefinition.updateInputNamespaceMapFromMap(nodeInputNamespaceMap);
                 updateInputNamespaceMap(nodeDefinition, nodeInputNamespaceMap);
                 break;
               }
