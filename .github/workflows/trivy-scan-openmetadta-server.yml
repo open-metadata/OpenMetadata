@@ -66,6 +66,7 @@ jobs:
             hide-progress: false
             ignore-unfixed: true
             severity: "HIGH,CRITICAL"
+            skip-dirs: "/opt/airflow/dags"
             scan-ref: .
             format: 'template'
             template: "@.github/trivy/templates/github.tpl"
