@@ -129,6 +129,16 @@ export const FIELDS: EntityFields[] = [
     name: 'charts.displayName.keyword',
     localSearch: false,
   },
+  {
+    id: 'Response Schema Field',
+    name: 'responseSchema.schemaFields.name.keyword',
+    localSearch: false,
+  },
+  {
+    id: 'Request Schema Field',
+    name: 'requestSchema.schemaFields.name.keyword',
+    localSearch: false,
+  },
 ];
 
 export const OPERATOR = {

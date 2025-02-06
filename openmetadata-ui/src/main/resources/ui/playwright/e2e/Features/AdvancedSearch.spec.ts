@@ -200,14 +200,12 @@ test.describe('Advanced Search', { tag: '@advanced-search' }, () => {
       'responseSchema.schemaFields.name.keyword': [
         EntityDataClass.apiCollection1.apiEndpoint.responseSchema
           .schemaFields[0].name,
-        EntityDataClass.apiCollection1.apiEndpoint.responseSchema
-          .schemaFields[1].name,
+        'errors',
       ],
       'requestSchema.schemaFields.name.keyword': [
         EntityDataClass.apiCollection1.apiEndpoint.requestSchema.schemaFields[0]
           .name,
-        EntityDataClass.apiCollection1.apiEndpoint.requestSchema.schemaFields[1]
-          .name,
+        'photoUrls',
       ],
       'name.keyword': [
         EntityDataClass.table1.entity.name,
