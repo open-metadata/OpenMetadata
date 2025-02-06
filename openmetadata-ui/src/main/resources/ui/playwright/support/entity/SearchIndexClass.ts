@@ -53,6 +53,14 @@ export class SearchIndexClass extends EntityClass {
       tags: [],
     },
     {
+      name: 'databaseSchema',
+      dataType: 'TEXT',
+      dataTypeDisplay: 'text',
+      description: 'Table Entity Database Schema.',
+      fullyQualifiedName: `${this.fqn}.databaseSchema`,
+      tags: [],
+    },
+    {
       name: 'description',
       dataType: 'TEXT',
       dataTypeDisplay: 'text',

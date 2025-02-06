@@ -83,6 +83,13 @@ export class TopicClass extends EntityClass {
         },
       ],
     },
+    {
+      name: 'secondary',
+      dataType: 'RECORD',
+      fullyQualifiedName: `${this.fqn}.secondary`,
+      tags: [],
+      children: [],
+    },
   ];
 
   entity = {

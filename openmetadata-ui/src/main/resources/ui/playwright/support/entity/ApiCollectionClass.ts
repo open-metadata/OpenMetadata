@@ -94,6 +94,12 @@ export class ApiCollectionClass extends EntityClass {
             },
           ],
         },
+        {
+          name: 'secondary',
+          dataType: 'RECORD',
+          fullyQualifiedName: `${this.fqn}.secondary`,
+          tags: [],
+        },
       ],
     },
     responseSchema: {
@@ -138,6 +144,12 @@ export class ApiCollectionClass extends EntityClass {
               tags: [],
             },
           ],
+        },
+        {
+          name: 'secondary',
+          dataType: 'RECORD',
+          fullyQualifiedName: `${this.fqn}.secondary`,
+          tags: [],
         },
       ],
     },
