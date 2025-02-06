@@ -11,16 +11,8 @@
  *  limitations under the License.
  */
 import ReactDataGrid from '@inovua/reactdatagrid-community';
-import { TypeComputedProps } from '@inovua/reactdatagrid-community/types';
-import React, { MutableRefObject, useCallback } from 'react';
-
-interface TableTypePropertyEditTableProps {
-  columns: string[];
-  dataSource: Record<string, string>[];
-  gridRef: MutableRefObject<TypeComputedProps | null>;
-  handleEditGridRef: (ref: MutableRefObject<TypeComputedProps | null>) => void;
-  handleEditDataSource: (data: Record<string, string>[]) => void;
-}
+import React, { useCallback } from 'react';
+import { TableTypePropertyEditTableProps } from './TableTypePropertyEditTable.interface';
 
 let inEdit = false;
 

@@ -49,6 +49,9 @@ export const getCustomPropertyMomentFormat = (
     SUPPORTED_DATE_TIME_FORMATS_ANTD_FORMAT_MAPPING[
       ((backendFormat as string) ??
         defaultFormat) as keyof typeof SUPPORTED_DATE_TIME_FORMATS_ANTD_FORMAT_MAPPING
+    ] ??
+    SUPPORTED_DATE_TIME_FORMATS_ANTD_FORMAT_MAPPING[
+      defaultFormat as keyof typeof SUPPORTED_DATE_TIME_FORMATS_ANTD_FORMAT_MAPPING
     ];
 
   return format;

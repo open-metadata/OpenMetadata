@@ -16,22 +16,12 @@ import { Button, Modal, Typography } from 'antd';
 import { isEmpty, omit } from 'lodash';
 import React, { FC, MutableRefObject, useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { CustomProperty } from '../../../../generated/type/customProperty';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import { TableTypePropertyValueType } from '../CustomPropertyTable.interface';
 import './edit-table-type-property.less';
+import { EditTableTypePropertyModalProps } from './EditTableTypePropertyModal.interface';
 import TableTypePropertyEditTable from './TableTypePropertyEditTable';
 import TableTypePropertyView from './TableTypePropertyView';
-
-interface EditTableTypePropertyModalProps {
-  isVisible: boolean;
-  isUpdating: boolean;
-  property: CustomProperty;
-  columns: string[];
-  rows: Record<string, string>[];
-  onCancel: () => void;
-  onSave: (data: TableTypePropertyValueType) => Promise<void>;
-}
 
 const EditTableTypePropertyModal: FC<EditTableTypePropertyModalProps> = ({
   isVisible,
