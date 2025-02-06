@@ -196,8 +196,9 @@ const AssetsTabs = forwardRef(
       const encodedFqn = getEncodedFqn(escapeESReservedCharacters(entityFqn));
       switch (type) {
         case AssetsOfEntity.DOMAIN:
-        case AssetsOfEntity.DATA_PRODUCT:
           return '';
+        case AssetsOfEntity.DATA_PRODUCT:
+          return `(dataProducts.fullyQualifiedName:"${encodedFqn}")`;
 
         case AssetsOfEntity.TEAM:
           return `(owners.fullyQualifiedName:"${getEncodedFqn(
