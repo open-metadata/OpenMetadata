@@ -51,6 +51,7 @@ class OpensearchSource(SearchServiceSource):
     """
     Implements the necessary methods to extract
     Search Index metadata from OpenSearch.
+    Excludes system indexes (indexes whose names start with a dot).
     """
 
     def __init__(self, config: Source, metadata: OpenMetadata):
@@ -62,7 +63,7 @@ class OpensearchSource(SearchServiceSource):
         cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
     ):
         """
-        Create an instance of OpenSearchSource.
+        Create an instance of OpensearchSource.
 
         Args:
             config_dict: The configuration dictionary.
@@ -70,7 +71,7 @@ class OpensearchSource(SearchServiceSource):
             pipeline_name: Optional pipeline name.
 
         Returns:
-            An instance of OpenSearchSource.
+            An instance of OpensearchSource.
         """
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: OpensearchConnection = config.serviceConnection.root.config
@@ -80,15 +81,31 @@ class OpensearchSource(SearchServiceSource):
             )
         return cls(config, metadata)
 
+    def _is_system_index(self, index_name: str) -> bool:
+        """
+        Determine if the given index is a system index.
+        By default, system indexes start with a dot ('.').
+
+        Args:
+            index_name: The name of the index.
+
+        Returns:
+            True if it is a system index, False otherwise.
+        """
+        return index_name.startswith(".")
+
     def get_search_index_list(self) -> Iterable[dict]:
         """
-        Get a list of all search indices from OpenSearch.
+        Get a list of all search indices from OpenSearch, excluding system indexes.
 
         Returns:
             Iterable of dictionaries containing index details.
         """
         index_list = self.client.indices.get_alias(expand_wildcards="open") or {}
         for index in index_list.keys():
+            if self._is_system_index(index):
+                logger.debug("Skipping system index: %s", index)
+                continue
             yield self.client.indices.get(index=str(index))
 
     def get_search_index_name(self, search_index_details: dict) -> Optional[str]:
