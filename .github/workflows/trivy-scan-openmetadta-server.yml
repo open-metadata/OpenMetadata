@@ -1,8 +1,9 @@
 name: Trivy Scan For OpenMetadata Server Docker Image
 
 on:
-    pull_request_target:
-        types: [labeled, opened, synchronize, reopened]
+    pull_request:
+    # pull_request_target:
+    #     types: [labeled, opened, synchronize, reopened]
         # paths:
         #   - "openmetadata-service/**"
         #   - "openmetadata-spec/src/main/resources/json/schema/**"
