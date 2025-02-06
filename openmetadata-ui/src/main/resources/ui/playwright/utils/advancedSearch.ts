@@ -63,6 +63,52 @@ export const FIELDS: EntityFields[] = [
     localSearch: false,
     skipConditions: ['isNull', 'isNotNull'], // Null and isNotNull conditions are not present for display name
   },
+  {
+    id: 'Service Type',
+    name: 'serviceType',
+    localSearch: false,
+  },
+  {
+    id: 'Schema Field',
+    name: 'messageSchema.schemaFields.name.keyword',
+    localSearch: false,
+  },
+  {
+    id: 'Container Column',
+    name: 'dataModel.columns.name.keyword',
+    localSearch: false,
+  },
+  {
+    id: 'Data Model Type',
+    name: 'dataModelType',
+    localSearch: false,
+  },
+  {
+    id: 'Field',
+    name: 'fields.name.keyword',
+    localSearch: false,
+  },
+  {
+    id: 'Task',
+    name: 'tasks.displayName.keyword',
+    localSearch: false,
+  },
+  {
+    id: 'Domain',
+    name: 'domain.displayName.keyword',
+    localSearch: false,
+  },
+  {
+    id: 'Name',
+    name: 'name.keyword',
+    localSearch: false,
+    skipConditions: ['isNull', 'isNotNull'], // Null and isNotNull conditions are not present for name
+  },
+  {
+    id: 'Project',
+    name: 'project.keyword',
+    localSearch: false,
+  },
 ];
 
 export const OPERATOR = {
