@@ -586,7 +586,8 @@ class LookerSource(DashboardServiceSource):
         try:
             sql_query = re.sub(
                 DERIVED_REFERENCES,
-                # from `${view_name.SQL_TABLE_NAME}` we want the `view_name`. match.group(1) will give us the `view_name`
+                # from `${view_name.SQL_TABLE_NAME}` we want the `view_name`.
+                # match.group(1) will give us the `view_name`
                 lambda match: f"({self._parsed_views.get(match.group(1), match.group(0))})",
                 sql_query,
             )
