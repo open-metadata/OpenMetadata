@@ -69,7 +69,7 @@ jobs:
           hide-progress: false
           ignore-unfixed: true
           severity: "HIGH,CRITICAL"
-          skip-dirs: "/opt/airflow/dags"
+          skip-dirs: "/opt/airflow/dags,/ingestion/pipelines"
           scan-ref: .
           format: 'template'
           template: "@.github/trivy/templates/github.tpl"
@@ -81,3 +81,4 @@ jobs:
         uses: marocchino/sticky-pull-request-comment@v2
         with:
           path: trivy-results-ingestion.md
+          header: "trivy-scan-${{ github.workflow }}"

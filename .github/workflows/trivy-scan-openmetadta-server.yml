@@ -74,5 +74,6 @@ jobs:
       - name: Comment Trivy Scan Results on PR
         uses: marocchino/sticky-pull-request-comment@v2
         with:
-            path: trivy-results-openmetadata-server.md
+            path: trivy-result-openmetadata-server.md
+            header: "trivy-scan-${{ github.workflow }}"
        
