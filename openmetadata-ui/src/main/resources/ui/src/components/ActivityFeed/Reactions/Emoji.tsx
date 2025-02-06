@@ -120,7 +120,11 @@ const Emoji: FC<EmojiProps> = ({
         key={reaction}
         shape="round"
         size="small"
-        style={{ background: 'transparent', border: '1px solid  #757575' }}
+        style={{
+          background: 'transparent',
+          border: '1px solid #75757533',
+          padding: '4px 6px',
+        }}
         onClick={handleEmojiOnClick}
         onMouseOver={() => setVisible(true)}>
         {element}

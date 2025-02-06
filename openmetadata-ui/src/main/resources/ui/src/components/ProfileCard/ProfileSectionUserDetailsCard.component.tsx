@@ -10,12 +10,19 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from 'antd';
+import { Button, Popover, Typography } from 'antd';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ReactComponent as MenuDots } from '../../assets/svg/dot (1).svg';
+import { ReactComponent as EditProfileIcon } from '../../assets/svg/edit-profile.svg';
+import { ReactComponent as ChangePassword } from '../../assets/svg/key.svg';
+import { ReactComponent as DeleteIcon } from '../../assets/svg/trash.svg';
 import { User } from '../../generated/entity/teams/user';
+import { getTextFromHtmlString } from '../../utils/BlockEditorUtils';
 import { isMaskedEmail } from '../../utils/Users.util';
 import ProfilePicture from '../common/ProfilePicture/ProfilePicture';
+
+import { ICON_DIMENSION_USER_PAGE } from '../../constants/constants';
 
 interface ProfileSectionUserDetailsCardProps {
   userData: User;
@@ -38,14 +45,58 @@ const ProfileSectionUserDetailsCard = ({
       ),
     [userData.email]
   );
+  const content = (
+    <div className="profile-manage-dropdown" style={{ width: '196px' }}>
+      <Button
+        className="profile-manage-item d-flex item-center"
+        icon={
+          <EditProfileIcon
+            className="m-r-xss"
+            style={{ marginRight: '10px' }}
+            {...ICON_DIMENSION_USER_PAGE}
+          />
+        }
+        type="text">
+        {t('label.edit-profile')}
+      </Button>
+      <Button
+        className="profile-manage-item d-flex item-center"
+        icon={
+          <ChangePassword
+            className="m-r-xss"
+            style={{ marginRight: '10px' }}
+            {...ICON_DIMENSION_USER_PAGE}
+          />
+        }
+        type="text">
+        {t('label.delete-profile')}
+      </Button>
+      <Button
+        className="profile-manage-item d-flex item-center"
+        icon={
+          <DeleteIcon
+            className="m-r-xss"
+            style={{ marginTop: '3px', marginRight: '10px' }}
+            {...ICON_DIMENSION_USER_PAGE}
+          />
+        }
+        type="text">
+        {t('label.delete-profile')}
+      </Button>
+    </div>
+  );
 
   return (
-    <div className="d-flex flex-col flex-center relative profile-section-user-details-card">
-      {/* <MenuDots
-        {...ICON_DIMENSION_USER_PAGE}
-        className="absolute top-2 cursor-pointer"
-      /> */}
-      <div>
+    <div className="d-flex flex-col w-full flex-center relative profile-section-user-details-card">
+      <Popover
+        className="profile-management-popover relative"
+        content={content}
+        placement="right"
+        trigger="click">
+        <MenuDots className="cursor-pointer user-details-menu-icon" />
+      </Popover>
+
+      <div className="m-t-sm">
         <ProfilePicture
           avatarType="outlined"
           data-testid="replied-user"
@@ -58,17 +109,8 @@ const ProfileSectionUserDetailsCard = ({
         <p className="profile-details-title">{userData?.fullyQualifiedName}</p>
         {userEmailRender}
         <p className="profile-details-desc">
-          {
-            userData?.description && (
-              // <p>
-              //   Description of admin . Lorem ispum simply dummy text of the
-              //   printing and typesetting industry. Lorem Ipsum has been the
-              //   industry's standard dummy text ever since the 1500s,
-              // </p>
-              <></>
-            )
-            // formatContent(userData?.description, 'client')
-          }
+          {userData?.description &&
+            getTextFromHtmlString(userData?.description)}
         </p>
       </div>
     </div>

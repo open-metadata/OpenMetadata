@@ -1,5 +1,5 @@
 /*
- *  Copyright 2023 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -48,15 +48,13 @@ const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
     const { i18n } = useTranslation();
     const editorSlots = useRef<EditorSlotsRef>(null);
 
-    // this hook to initialize the editor
+    // Custom editor hook to initialize and update editor
     const editor = useCustomEditor({
       ...EDITOR_OPTIONS,
       extensions,
       onUpdate({ editor }) {
         const htmlContent = editor.getHTML();
-
         const backendFormat = formatContent(htmlContent, 'server');
-
         onChange?.(backendFormat);
       },
       editorProps: {
@@ -68,19 +66,17 @@ const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
       autofocus: autoFocus,
     });
 
-    // this hook to expose the editor instance
+    // Expose the editor instance using useImperativeHandle
     useImperativeHandle(ref, () => ({
       editor,
     }));
 
-    // this effect to handle the content change
+    // Set content whenever it changes
     useEffect(() => {
       if (isNil(editor) || editor.isDestroyed || content === undefined) {
         return;
       }
 
-      // We use setTimeout to avoid any flushSync console errors as
-      // mentioned here https://github.com/ueberdosis/tiptap/issues/3764#issuecomment-1546854730
       setTimeout(() => {
         if (content !== undefined) {
           const htmlContent = formatContent(content, 'client');
@@ -89,7 +85,7 @@ const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
       });
     }, [content, editor]);
 
-    // this effect to handle the editable state
+    // Handle editable state change
     useEffect(() => {
       if (
         isNil(editor) ||
@@ -99,25 +95,47 @@ const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
         return;
       }
 
-      // We use setTimeout to avoid any flushSync console errors as
-      // mentioned here https://github.com/ueberdosis/tiptap/issues/3764#issuecomment-1546854730
       setTimeout(() => editor.setEditable(editable));
     }, [editable, editor]);
 
-    // this effect to handle the RTL and LTR direction
+    // Handle RTL/LTR direction changes
     useEffect(() => {
       const editorWrapper = document.getElementById('block-editor-wrapper');
       if (!editorWrapper) {
         return;
       }
       editorWrapper.setAttribute('dir', i18n.dir());
-      // text align right if rtl
-      if (i18n.dir() === 'rtl') {
-        editorWrapper.style.textAlign = 'right';
-      } else {
-        editorWrapper.style.textAlign = 'left';
-      }
+      editorWrapper.style.textAlign = i18n.dir() === 'rtl' ? 'right' : 'left';
     }, [i18n]);
+
+    // Function to update <p> tags (called when content changes)
+    const updatePTags = () => {
+      const pTags = document.querySelectorAll('div.tiptap p');
+
+      pTags.forEach((pTag) => {
+        const diffRemovedSpans = pTag.querySelectorAll('.diff-removed');
+
+        // If there are diff-removed elements in the <p> tag, hide them
+        if (diffRemovedSpans.length > 0) {
+          diffRemovedSpans.forEach((span) => {
+            const element = span as HTMLElement;
+            element.style.display = 'none'; // Hide the removed content
+          });
+        }
+
+        // If the <p> tag is empty after removing diff-removed spans, remove the <p> tag
+        if ((pTag as HTMLElement).textContent?.trim() === '') {
+          pTag.remove();
+        }
+      });
+    };
+
+    // Call the updatePTags function whenever editor content changes
+    useEffect(() => {
+      if (editor) {
+        updatePTags();
+      }
+    }, [editor?.getHTML()]); // Trigger whenever editor's HTML content is updated
 
     return (
       <div

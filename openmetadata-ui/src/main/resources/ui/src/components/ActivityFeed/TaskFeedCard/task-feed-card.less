@@ -76,7 +76,7 @@
 
 .task-feed-card-v1-new {
   padding: 20px;
-  background: #fafafa;
+  background: #f4f4f5;
   border-radius: 12px;
   margin: 10px 0px;
 
@@ -108,6 +108,41 @@
       font-weight: 400;
       line-height: normal;
     }
+    .action-buttons {
+      display: flex;
+      gap: 8px;
+    }
+
+    .approve-btn {
+      background-color: @primary-color;
+      border-color: @primary-color;
+      color: @white;
+      border-radius: 8px;
+      font-size: 12px;
+      font-style: normal;
+      font-weight: 500;
+      line-height: 20px;
+      letter-spacing: 0.1px;
+      padding: 8px 16px 8px 8px;
+    }
+
+    .reject-btn {
+      border-color: @primary-color;
+      color: @primary-color;
+      border-radius: 8px;
+      font-size: 12px;
+      font-style: normal;
+      font-weight: 500;
+      line-height: 20px;
+      letter-spacing: 0.1px;
+      padding: 8px 16px 8px 8px;
+    }
+
+    .approve-btn .anticon,
+    .reject-btn .anticon {
+      font-size: 14px;
+      margin-left: 8px;
+    }
   }
 
   .assignee-item {
@@ -131,4 +166,11 @@
 .text-wrap {
   word-wrap: break-word;
   white-space: normal;
+}
+.task-feed-desc-diff {
+  background-color: @white;
+  margin-top: 14px;
+}
+.task-card-assignee {
+  margin-left: 18px;
 }

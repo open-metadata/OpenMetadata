@@ -14,15 +14,8 @@
 import { Button, Card, Typography } from 'antd';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
 import { ASSET_CARD_STYLES } from '../../../../constants/Feeds.constants';
-import { EntityType } from '../../../../enums/entity.enum';
 import { CardStyle } from '../../../../generated/entity/feed/thread';
-import {
-  AlertType,
-  EventSubscription,
-} from '../../../../generated/events/eventSubscription';
-import entityUtilClassBase from '../../../../utils/EntityUtilClassBase';
 import {
   getEntityFQN,
   getEntityType,
@@ -30,7 +23,6 @@ import {
   MarkdownToHTMLConverter,
 } from '../../../../utils/FeedUtils';
 import RichTextEditorPreviewerV1 from '../../../common/RichTextEditor/RichTextEditorPreviewerV1';
-import ExploreSearchCard from '../../../ExploreV1/ExploreSearchCard/ExploreSearchCard';
 import DescriptionFeed from '../../ActivityFeedCardV2/FeedCardBody/DescriptionFeed/DescriptionFeed';
 import TagsFeed from '../../ActivityFeedCardV2/FeedCardBody/TagsFeed/TagsFeed';
 import ActivityFeedEditor from '../../ActivityFeedEditor/ActivityFeedEditor';
@@ -79,39 +71,46 @@ const FeedCardBodyNew = ({
       }
 
       if (ASSET_CARD_STYLES.includes(cardStyle as CardStyle)) {
-        const entityInfo = feed.feedInfo?.entitySpecificInfo?.entity;
-        const isExecutableTestSuite =
-          entityType === EntityType.TEST_SUITE && entityInfo.basic;
-        const isObservabilityAlert =
-          entityType === EntityType.EVENT_SUBSCRIPTION &&
-          (entityInfo as EventSubscription).alertType ===
-            AlertType.Observability;
+        <Card bordered className="activity-feed-reply-card-message">
+          <Typography.Text
+            className="activity-feed-comment-text"
+            style={{ wordWrap: 'break-word', whiteSpace: 'normal' }}>
+            {message}
+          </Typography.Text>
+        </Card>;
+        // const entityInfo = feed.feedInfo?.entitySpecificInfo?.entity;
+        // const isExecutableTestSuite =
+        //   entityType === EntityType.TEST_SUITE && entityInfo.basic;
+        // const isObservabilityAlert =
+        //   entityType === EntityType.EVENT_SUBSCRIPTION &&
+        //   (entityInfo as EventSubscription).alertType ===
+        //     AlertType.Observability;
 
-        const entityCard = (
-          <ExploreSearchCard
-            className="asset-info-card"
-            id={`tabledatacard${entityInfo.id}`}
-            showTags={false}
-            source={{ ...entityInfo, entityType }}
-          />
-        );
+        // const entityCard = (
+        //   <ExploreSearchCard
+        //     className="asset-info-card"
+        //     id={`tabledatacard${entityInfo.id}`}
+        //     showTags={false}
+        //     source={{ ...entityInfo, entityType }}
+        //   />
+        // );
 
-        return cardStyle === CardStyle.EntityDeleted ? (
-          <div className="deleted-entity">{entityCard}</div>
-        ) : (
-          <Link
-            className="no-underline text-body text-hover-body"
-            to={entityUtilClassBase.getEntityLink(
-              entityType,
-              entityFQN,
-              '',
-              '',
-              isExecutableTestSuite,
-              isObservabilityAlert
-            )}>
-            {entityCard}
-          </Link>
-        );
+        // return cardStyle === CardStyle.EntityDeleted ? (
+        //   <div className="deleted-entity">{entityCard}</div>
+        // ) : (
+        //   <Link
+        //     className="no-underline text-body text-hover-body"
+        //     to={entityUtilClassBase.getEntityLink(
+        //       entityType,
+        //       entityFQN,
+        //       '',
+        //       '',
+        //       isExecutableTestSuite,
+        //       isObservabilityAlert
+        //     )}>
+        //     {entityCard}
+        //   </Link>
+        // );
       }
     }
 
@@ -160,29 +159,64 @@ const FeedCardBodyNew = ({
     return feedBodyStyleCardsRender;
   }, [isEditPost, message, feedBodyStyleCardsRender]);
 
-  return !isPost ? (
-    feed.feedInfo?.entitySpecificInfo?.entity?.description ? (
-      <Card
-        bordered
-        className={`activity-feed-card-message ${
-          showThread && 'activity-feed-card-message-right-panel'
-        }`}>
-        <Typography.Text
-          style={{ wordWrap: 'break-word', whiteSpace: 'normal' }}>
-          {feed.feedInfo.entitySpecificInfo.entity.description}
-        </Typography.Text>
-      </Card>
-    ) : null
-  ) : isEditPost ? (
-    feedBodyRender
-  ) : (
-    <Card bordered className="activity-feed-reply-card-message">
-      <Typography.Text
-        className="activity-feed-comment-text"
-        style={{ wordWrap: 'break-word', whiteSpace: 'normal' }}>
-        {message}
-      </Typography.Text>
-    </Card>
+  function stripHtml(html: any) {
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = html;
+
+    return tempDiv.innerText || tempDiv.textContent;
+  }
+
+  // return !isPost ? (
+  //   feed.feedInfo?.entitySpecificInfo?.entity?.description ? (
+  //     <Card
+  //       bordered
+  //       className={`activity-feed-card-message ${
+  //         showThread && 'activity-feed-card-message-right-panel'
+  //       }`}>
+  //       <Typography.Text
+  //         style={{ wordWrap: 'break-word', whiteSpace: 'normal' }}>
+  //         {/* {feed.feedInfo.entitySpecificInfo.entity.description} */}
+  //         {stripHtml(feed.feedInfo.entitySpecificInfo.entity.description)}
+  //       </Typography.Text>
+  //     </Card>
+  //   ) : null
+  // ) : isEditPost ? (
+  //   feedBodyRender
+  // ) : (
+  //   <Card bordered className="activity-feed-reply-card-message">
+  //     <Typography.Text
+  //       className="activity-feed-comment-text"
+  //       style={{ wordWrap: 'break-word', whiteSpace: 'normal' }}>
+  //       {message}
+  //     </Typography.Text>
+  //   </Card>
+  // );
+  return (
+    <div
+      style={
+        showThread
+          ? {
+              background: 'rgba(239, 244, 250, 0.25)',
+              padding:
+                feed.cardStyle === 'description'
+                  ? '20px 20px 20px 6px'
+                  : '12px',
+              borderRadius: '8px',
+              border: '0.8px solid #dfdfdf',
+              marginTop: '20px',
+            }
+          : {
+              background: 'white',
+              padding:
+                feed.cardStyle === 'description'
+                  ? '20px 20px 20px 6px'
+                  : '12px',
+              borderRadius: '8px',
+              marginTop: '2px',
+            }
+      }>
+      {feedBodyRender}
+    </div>
   );
 };
 

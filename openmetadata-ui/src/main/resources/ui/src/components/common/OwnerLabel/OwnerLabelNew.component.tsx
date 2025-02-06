@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Avatar, Button, Typography } from 'antd';
+import { Avatar, Typography } from 'antd';
 import classNames from 'classnames';
 import React, { ReactNode, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -79,11 +79,19 @@ export const OwnerLabelNew = ({
                   size={avatarSize}
                 />
               ))}
-              {visibleOwners.length > 2 && (
-                <div className="extra-count">+{visibleOwners.length - 2}</div>
+              {remainingOwnersCount > 0 && (
+                <Avatar
+                  size={avatarSize}
+                  style={{
+                    background: '#f9f5ff',
+                    color: '#7f56d9',
+                    border: '1px solid #7f56d9',
+                  }}>
+                  {t('label.plus-symbol')}
+                  {remainingOwnersCount}
+                </Avatar>
               )}
             </Avatar.Group>
-
             {/* {visibleOwners.map((owner, index) => {
               const displayName = getEntityName(owner);
               const profilePicture =
@@ -139,7 +147,7 @@ export const OwnerLabelNew = ({
               return (
                 <div
                   className="d-inline-flex items-center gap-1"
-                  key={owner.id}>
+                key={owner.id}>
                   <div className="owner-avatar-icon d-flex">
                     {profilePicture}
                   </div>
@@ -150,7 +158,7 @@ export const OwnerLabelNew = ({
                 </div>
               );
             })} */}
-            {remainingOwnersCount > 0 && (
+            {/* {remainingOwnersCount > 0 && (
               <Button
                 className="more-owners-button text-xs h-auto"
                 size="small"
@@ -158,7 +166,7 @@ export const OwnerLabelNew = ({
                 onClick={() => setShowAllOwners(!showAllOwners)}>
                 {showAllOwners ? t('label.less') : remainingCountLabel}
               </Button>
-            )}
+            )} */}
           </div>
         ) : (
           <div className="d-inline-flex items-center gap-1">

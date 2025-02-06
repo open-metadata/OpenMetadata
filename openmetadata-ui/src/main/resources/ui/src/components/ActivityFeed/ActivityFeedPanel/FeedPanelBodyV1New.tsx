@@ -33,6 +33,8 @@ const FeedPanelBodyV1: FC<FeedPanelBodyPropV1> = ({
   hidePopover = false,
   isForFeedTab = false,
   showActivityFeedEditor = false,
+  onAfterClose,
+  onUpdateEntityDetails,
 }) => {
   const mainFeed = useMemo(
     () =>
@@ -67,6 +69,8 @@ const FeedPanelBodyV1: FC<FeedPanelBodyPropV1> = ({
           key={feed.id}
           post={mainFeed}
           showThread={showThread}
+          onAfterClose={onAfterClose}
+          onUpdateEntityDetails={onUpdateEntityDetails}
         />
       ) : (
         <ActivityFeedCardNew

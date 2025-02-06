@@ -10,21 +10,23 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons';
+import Icon, { CheckCircleFilled, CloseCircleFilled } from '@ant-design/icons';
 import { Button, Card, Col, Row, Tooltip, Typography } from 'antd';
+
 import classNames from 'classnames';
-import { isUndefined, lowerCase } from 'lodash';
+import { isEmpty, isUndefined, lowerCase } from 'lodash';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import { ReactComponent as AssigneesIcon } from '../../../assets/svg/assignees.svg';
-import { ReactComponent as ChatIcon } from '../../../assets/svg/chat-icon-grey.svg';
 import { ReactComponent as TaskCloseIcon } from '../../../assets/svg/ic-close-task.svg';
 import { ReactComponent as TaskOpenIcon } from '../../../assets/svg/ic-open-task.svg';
+import { ReactComponent as ReplyIcon } from '../../../assets/svg/reply-2.svg';
 import EntityPopOverCard from '../../../components/common/PopOverCard/EntityPopOverCard';
 import UserPopOverCard from '../../../components/common/PopOverCard/UserPopOverCard';
 import {
   Post,
+  TaskDetails,
   Thread,
   ThreadTaskStatus,
 } from '../../../generated/entity/feed/thread';
@@ -36,9 +38,22 @@ import {
 import EntityLink from '../../../utils/EntityLink';
 import { getEntityFQN, getEntityType } from '../../../utils/FeedUtils';
 
+import { AxiosError } from 'axios';
 import { ICON_DIMENSION_USER_PAGE } from '../../../constants/constants';
+import { TaskOperation } from '../../../constants/Feeds.constants';
 import { TASK_TYPES } from '../../../constants/Task.constant';
-import { getTaskDetailPath } from '../../../utils/TasksUtils';
+import { TaskType } from '../../../generated/api/feed/createThread';
+import { ResolveTask } from '../../../generated/api/feed/resolveTask';
+import DescriptionTaskNew from '../../../pages/TasksPage/shared/DescriptionTaskNew';
+import TagsTask from '../../../pages/TasksPage/shared/TagsTask';
+import { updateTask } from '../../../rest/feedsAPI';
+import { getErrorText } from '../../../utils/StringsUtils';
+import {
+  getTaskDetailPath,
+  isDescriptionTask,
+  isTagsTask,
+} from '../../../utils/TasksUtils';
+import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { OwnerLabelNew } from '../../common/OwnerLabel/OwnerLabelNew.component';
 import { useActivityFeedProvider } from '../ActivityFeedProvider/ActivityFeedProvider';
 import './task-feed-card.less';
@@ -52,6 +67,8 @@ interface TaskFeedCardProps {
   isActive?: boolean;
   isForFeedTab?: boolean;
   hidePopover: boolean;
+  onAfterClose: any;
+  onUpdateEntityDetails: any;
 }
 
 const TaskFeedCard = ({
@@ -61,6 +78,8 @@ const TaskFeedCard = ({
   showThread = true,
   isActive,
   hidePopover = false,
+  onAfterClose,
+  onUpdateEntityDetails,
 }: TaskFeedCardProps) => {
   const history = useHistory();
   const { t } = useTranslation();
@@ -75,6 +94,8 @@ const TaskFeedCard = ({
   const [isEditPost, setIsEditPost] = useState(false);
   const repliedUsers = [...new Set((feed?.posts ?? []).map((f) => f.from))];
   const repliedUniqueUsersList = repliedUsers.slice(0, postLength >= 3 ? 2 : 1);
+  const isTaskTags = isTagsTask(taskDetails?.type as TaskType);
+  const isTaskDescription = isDescriptionTask(taskDetails?.type as TaskType);
 
   const { entityType, entityFQN } = useMemo(
     () => ({
@@ -127,10 +148,11 @@ const TaskFeedCard = ({
             data-testid="redirect-task-button-link"
             style={{
               display: 'inline-block',
-              maxWidth: '100%',
+              maxWidth: 'inherit',
               overflow: 'hidden',
               textOverflow: 'ellipsis',
               whiteSpace: 'nowrap',
+              width: 'fit-content',
             }}
             type="link"
             onClick={handleTaskLinkClick}>
@@ -163,6 +185,45 @@ const TaskFeedCard = ({
     setShowActions(false);
   };
 
+  const updateTaskData = (data: TaskDetails | ResolveTask) => {
+    if (!taskDetails?.id) {
+      return;
+    }
+    updateTask(TaskOperation.RESOLVE, taskDetails?.id + '', data)
+      .then(() => {
+        showSuccessToast(t('server.task-resolved-successfully'));
+        onAfterClose?.();
+        onUpdateEntityDetails?.();
+      })
+      .catch((err: AxiosError) =>
+        showErrorToast(getErrorText(err, t('server.unexpected-error')))
+      );
+  };
+  const onTaskResolve = () => {
+    if (isEmpty(taskDetails?.suggestion)) {
+      showErrorToast(
+        t('message.field-text-is-required', {
+          fieldText: isTaskTags
+            ? t('label.tag-plural')
+            : t('label.description'),
+        })
+      );
+
+      return;
+    }
+    if (isTaskTags) {
+      const tagsData = {
+        newValue: taskDetails?.suggestion || '[]',
+      };
+
+      updateTaskData(tagsData as TaskDetails);
+    } else {
+      const newValue = taskDetails?.suggestion;
+      const data = { newValue: newValue };
+      updateTaskData(data as TaskDetails);
+    }
+  };
+
   return (
     <Button
       block
@@ -175,7 +236,7 @@ const TaskFeedCard = ({
           active: isActive,
         })}
         data-testid="task-feed-card">
-        <Row gutter={[0, 14]}>
+        <Row gutter={isTaskDescription ? undefined : [0, 14]}>
           <Col className="d-flex flex-col align-start">
             <Col>
               <Icon
@@ -219,18 +280,29 @@ const TaskFeedCard = ({
             </Col>
           </Col>
           <Col span={24}>
-            <Card bordered className="activity-feed-card-message">
-              <Typography.Text
-                style={{ wordWrap: 'break-word', whiteSpace: 'normal' }}>
-                {feed?.entityRef?.description}
-              </Typography.Text>
-            </Card>
+            {isTaskTags && (
+              <Card bordered className="activity-feed-card-message">
+                <TagsTask
+                  hasEditAccess={false}
+                  isTaskActionEdit={false}
+                  task={taskDetails}
+                />
+              </Card>
+            )}
           </Col>
+          {isTaskDescription && (
+            <DescriptionTaskNew
+              customClassName="task-feed-desc-diff"
+              hasEditAccess={false}
+              isTaskActionEdit={false}
+              taskThread={feed}
+            />
+          )}
           <Col
             className="task-feed-card-footer  d-flex align-center justify-between"
             span={24}>
-            <Col className="d-flex items-center" span={10}>
-              <ChatIcon className="m-r-xss" {...ICON_DIMENSION_USER_PAGE} />
+            <Col className="d-flex items-center">
+              <ReplyIcon className="m-r-xss" />
               {feed.posts && feed.posts?.length > 0 && (
                 <span className="posts-length m-r-xss">
                   {t(
@@ -241,16 +313,36 @@ const TaskFeedCard = ({
                   )}
                 </span>
               )}
+              <Col
+                className={`flex items-center gap-2 text-grey-muted ${
+                  feed?.posts && feed?.posts?.length > 0
+                    ? 'task-card-assignee'
+                    : ''
+                }`}>
+                {/* <User {...ICON_DIMENSION_USER_PAGE} /> */}
+                <AssigneesIcon {...ICON_DIMENSION_USER_PAGE} />
+                <OwnerLabelNew
+                  avatarSize={16}
+                  className="p-t-05"
+                  owners={feed?.task?.assignees}
+                />
+              </Col>
             </Col>
 
-            <Col className="flex items-center gap-2 text-grey-muted" span={14}>
-              {/* <User {...ICON_DIMENSION_USER_PAGE} /> */}
-              <AssigneesIcon {...ICON_DIMENSION_USER_PAGE} />
-              <OwnerLabelNew
-                avatarSize={16}
-                className="p-t-05"
-                owners={feed?.task?.assignees}
-              />
+            <Col className="d-flex gap-2">
+              <Button
+                className="approve-btn d-flex items-center"
+                icon={<CheckCircleFilled />}
+                type="primary"
+                onClick={onTaskResolve}>
+                {t('label.approve')}
+              </Button>
+              <Button
+                className="reject-btn  d-flex items-center"
+                icon={<CloseCircleFilled />}
+                type="default">
+                {t('label.reject')}
+              </Button>
             </Col>
           </Col>
         </Row>

@@ -147,6 +147,38 @@ body {
     align-items: center;
     border-radius: 12px;
 
+    .profile-manage-dropdown {
+      display: flex;
+      padding: 16px 16px 16px 0px;
+      flex-direction: column;
+      align-items: flex-start;
+      border-radius: 5px;
+
+      border: 1px solid #dde3ea;
+      background: #fff;
+      box-shadow: 0px 0px 5px 0px rgba(41, 41, 41, 0.15);
+      gap: 12px;
+
+      .profile-manage-item {
+        color: #52525b;
+        font-size: 14px;
+        font-style: normal;
+        font-weight: 400;
+        line-height: normal;
+        cursor: pointer;
+
+        .ant-btn-text {
+          padding: 0px;
+        }
+      }
+    }
+
+    .user-details-menu-icon {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+    }
+
     .profile-details-title {
       margin-top: 20px;
       font-size: 18px;
@@ -203,6 +235,9 @@ body {
   width: 100%;
   border-radius: 8px;
   margin-bottom: 16px;
+  .ant-tabs-nav::before {
+    border-bottom: none !important;
+  }
 }
 .tab-label {
   color: #71717a;
@@ -255,4 +290,8 @@ body {
 }
 .user-page-icon {
   width: 16px;
+}
+
+.ant-popover-inner-content {
+  padding: 8px 0px;
 }

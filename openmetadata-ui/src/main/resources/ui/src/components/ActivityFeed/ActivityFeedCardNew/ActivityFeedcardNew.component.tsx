@@ -14,12 +14,14 @@ import { Card, Col, Input, Space, Tooltip, Typography } from 'antd';
 import { compare } from 'fast-json-patch';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
 import { Thread } from '../../../generated/entity/feed/thread';
 import { useUserProfile } from '../../../hooks/user-profile/useUserProfile';
 import {
   formatDateTime,
   getRelativeTime,
 } from '../../../utils/date-time/DateTimeUtils';
+import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../../utils/EntityUtils';
 import {
   entityDisplayName,
@@ -34,8 +36,7 @@ import ActivityFeedEditorNew from '../ActivityFeedEditor/ActivityFeedEditorNew';
 import { useActivityFeedProvider } from '../ActivityFeedProvider/ActivityFeedProvider';
 import '../ActivityFeedTab/activity-feed-tab-new.less';
 import CommentCard from './ReplyCard.component';
-
-const { Text, Link } = Typography;
+const { Text } = Typography;
 
 interface ActivityFeedCardNewProps {
   componentsVisibility: any;
@@ -153,7 +154,7 @@ const ActivityFeedCardNew = ({
     >
       <Space align="start" style={{ width: 'inherit' }}>
         <Space className="d-flex" direction="vertical">
-          <Space className="d-inline-flex justify-start">
+          <Space className="d-inline-flex justify-start items-start">
             {/* <Badge
               dot
               offset={[-5, 30]}
@@ -207,22 +208,17 @@ const ActivityFeedCardNew = ({
                   </Typography.Text>
 
                   <Link
-                    className="break-all text-body"
+                    className="break-all"
                     data-testid="entity-link"
                     style={{ wordWrap: 'break-word', whiteSpace: 'normal' }}
-                    // to={entityUtilClassBase.getEntityLink(entityType, entityFQN)}
-                  >
-                    <span>
-                      {(() => {
-                        const text = feed?.entityRef
-                          ? getEntityName(feed.entityRef)
-                          : entityDisplayName(entityType, entityFQN);
-                        const safeText = text || ''; // Ensure text is always a string
-
-                        return safeText.length > 50
-                          ? `${safeText.slice(0, 50)}...`
-                          : safeText;
-                      })()}
+                    to={entityUtilClassBase.getEntityLink(
+                      entityType,
+                      entityFQN
+                    )}>
+                    <span className={!showThread ? `max-one-line` : ''}>
+                      {feed?.entityRef
+                        ? getEntityName(feed.entityRef)
+                        : entityDisplayName(entityType, entityFQN)}
                     </span>
                   </Link>
                 </Space>
@@ -262,7 +258,7 @@ const ActivityFeedCardNew = ({
         <div className="activity-feed-comments-container d-flex flex-col">
           {showActivityFeedEditor && (
             <Typography.Text className="activity-feed-comments-title mb-2">
-              {/* Comments */}
+              {t('label.comment-plural')}
             </Typography.Text>
           )}
           {showFeedEditor ? (

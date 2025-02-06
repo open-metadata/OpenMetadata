@@ -139,7 +139,7 @@ const TaskTabIncidentManagerHeaderNew = ({ thread }: { thread: Thread }) => {
             avatarType="outlined"
             key={thread.id}
             name="admin"
-            size={24}
+            size={16}
           />{' '}
           <Typography.Text>{thread.createdBy}</Typography.Text>
         </Col>

@@ -24,22 +24,24 @@ import {
 } from '../../../generated/entity/feed/thread';
 import { getDescriptionDiff } from '../../../utils/TasksUtils';
 import { DescriptionTabs } from './DescriptionTabs';
-import { DiffView } from './DiffView';
+import { DiffViewNew } from './DiffViewNew';
 
 interface DescriptionTaskProps {
   taskThread: Thread;
   isTaskActionEdit: boolean;
   hasEditAccess: boolean;
-  onChange: (value: string) => void;
+  onChange?: (value: string) => void;
   customClassName?: string;
+  showDescTitle?: boolean;
 }
 
-const DescriptionTask: FC<DescriptionTaskProps> = ({
+const DescriptionTaskNew: FC<DescriptionTaskProps> = ({
   taskThread,
   isTaskActionEdit,
   hasEditAccess,
   onChange,
   customClassName,
+  showDescTitle = false,
 }) => {
   const { task } = taskThread;
   const { t } = useTranslation();
@@ -63,9 +65,10 @@ const DescriptionTask: FC<DescriptionTaskProps> = ({
       );
     } else {
       return (
-        <DiffView
+        <DiffViewNew
           className="border border-main p-xs rounded-4 m-y-xss m-b-sm"
           diffArr={getDescriptionDiff(oldValue ?? '', newValue ?? '')}
+          showDescTitle={showDescTitle}
         />
       );
     }
@@ -89,14 +92,16 @@ const DescriptionTask: FC<DescriptionTaskProps> = ({
         {t('label.no-entity', { entity: t('label.suggestion') })}
       </Typography.Text>
     ) : (
-      <DiffView className="p-xs" diffArr={diffs} />
+      <DiffViewNew
+        className="p-xs"
+        diffArr={diffs}
+        showDescTitle={showDescTitle}
+      />
     );
   };
 
   return (
-    <div
-      className={classNames(customClassName)}
-      data-testid="task-description-tabs">
+    <div data-testid="task-description-tabs">
       <Fragment>
         {isTaskClosed ? (
           getDiffView()
@@ -130,7 +135,11 @@ const DescriptionTask: FC<DescriptionTaskProps> = ({
                     onChange={onChange}
                   />
                 ) : (
-                  <div className="d-flex border border-main rounded-4 m-b-md">
+                  <div
+                    className={classNames(
+                      'd-flex border border-main rounded-4 m-b-md',
+                      customClassName
+                    )}>
                     {getSuggestedDescriptionDiff()}
                   </div>
                 )}
@@ -143,4 +152,4 @@ const DescriptionTask: FC<DescriptionTaskProps> = ({
   );
 };
 
-export default DescriptionTask;
+export default DescriptionTaskNew;

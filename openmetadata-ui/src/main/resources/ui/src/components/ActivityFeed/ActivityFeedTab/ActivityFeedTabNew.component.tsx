@@ -489,6 +489,8 @@ export const ActivityFeedTabNew = ({
                   feed={selectedThread}
                   hidePopover={false}
                   isForFeedTab={isForFeedTab}
+                  onAfterClose={handleAfterTaskClose}
+                  onUpdateEntityDetails={onUpdateEntityDetails}
                 />
                 {/* <ActivityFeedEditor
                   className="m-t-md feed-editor"

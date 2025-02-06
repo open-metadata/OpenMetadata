@@ -36,7 +36,6 @@ const RichTextEditorPreviewerV1: FC<PreviewerProp> = ({
 }) => {
   const { t, i18n } = useTranslation();
   const [content, setContent] = useState<string>('');
-
   const [readMore, setReadMore] = useState<boolean>(false);
 
   const handleReadMoreToggle = () => setReadMore((pre) => !pre);
@@ -92,9 +91,10 @@ const RichTextEditorPreviewerV1: FC<PreviewerProp> = ({
         <Button
           className="text-xs text-right"
           data-testid={`read-${readMore ? 'less' : 'more'}-button`}
+          style={{ fontSize: '14px' }}
           type="link"
           onClick={handleReadMoreToggle}>
-          {readMore ? t('label.less-lowercase') : t('label.more-lowercase')}
+          {readMore ? t('label.view-less') : t('label.view-more')}
         </Button>
       )}
     </div>

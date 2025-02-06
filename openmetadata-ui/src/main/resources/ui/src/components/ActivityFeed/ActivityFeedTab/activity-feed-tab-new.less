@@ -35,7 +35,7 @@ body {
   .center-container {
     flex: 1;
     min-width: 0;
-    height: @profile-entity-details-tab-height;
+    height: @user-profile-page-panel-height;
     overflow-y: scroll;
     border-radius: 12px;
     background-color: @white;
@@ -46,7 +46,7 @@ body {
     min-width: 0;
 
     border-left: @global-border;
-    height: @profile-entity-details-tab-height;
+    height: @user-profile-page-panel-height;
     overflow-y: scroll;
     background-color: @white;
     border-radius: 12px;
@@ -339,6 +339,7 @@ body {
 .toggle-item {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 5px;
   font-size: 14px;
   font-weight: 500;
@@ -351,6 +352,13 @@ body {
     font-style: normal;
     font-weight: 400;
     line-height: 20px;
-    letter-spacing: -0.072px;
   }
+}
+
+.ant-btn:hover,
+.ant-btn:focus {
+  background-color: inherit !important;
+  color: inherit !important;
+  // border-color: inherit !important;
+  // box-shadow: none !important;
 }

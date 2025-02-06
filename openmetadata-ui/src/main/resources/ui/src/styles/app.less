@@ -128,7 +128,12 @@ a[href].link-text-grey,
     background: initial;
   }
 }
-
+.remove-button-default-styling:hover {
+  background: none !important;
+  box-shadow: none !important;
+  border: none !important;
+  color: inherit !important;
+}
 // used in glossary + query right panel, to keep both consistent
 .right-panel-label {
   font-size: 14px;
@@ -610,23 +615,69 @@ a[href].link-text-grey,
 /* Diff style */
 
 .diff-added {
-  background: @success-background-color;
+  // background: @success-background-color;
   width: fit-content;
   color: @success-color;
   * {
     color: @success-color;
   }
 }
-
-.diff-removed {
-  text-decoration: line-through;
+.diff-added-new {
+  font-family: Inter, sans-serif;
+  text-decoration: none;
+  font-size: 14px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 20px;
   width: fit-content;
-  color: @text-grey-muted;
-  * {
-    color: @text-grey-muted;
-  }
+  color: #027a48;
 }
 
+.diff-removed-new {
+  font-family: Inter, sans-serif;
+  font-size: 14px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 20px;
+  width: fit-content;
+  text-decoration: line-through;
+  text-decoration-thickness: 1.5px;
+  text-decoration-color: #f97066;
+  text-decoration-skip-ink: auto;
+  color: #f97066;
+}
+.diff-normal-new {
+  font-family: Inter, sans-serif;
+  font-size: 14px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 20px;
+  color: #535862;
+}
+.clamp-text-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: clip;
+}
+
+.clamp-text-3 {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: clip;
+}
+.text-expand {
+  font-family: Inter, sans-serif;
+  color: @primary-color;
+  font-size: 14px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 20px;
+  cursor: pointer;
+}
 .diff-description {
   color: @success-color;
 }
@@ -858,22 +909,20 @@ a[href].link-text-grey,
   justify-content: space-between;
   border-radius: 12px;
   border: 0.8px solid #dfdfdf;
+  padding: 16px;
   background: linear-gradient(
     90deg,
     rgba(85, 155, 238, 0.25) 0%,
     rgba(96, 167, 251, 0.25) 19%,
     rgba(245, 245, 245, 0.25) 100%
   );
-
   box-shadow: none;
-  .ant-card-body {
-    display: flex;
-    justify-content: space-between;
-  }
+
   .action-required-text {
     font-size: 16px;
-    font-weight: 500;
+    font-weight: 400;
     color: #333;
+    line-height: 24px;
   }
 
   .action-buttons {
