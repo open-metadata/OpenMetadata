@@ -72,6 +72,7 @@ public class MainWorkflow {
     }
   }
 
+  @Getter
   public static class WorkflowGraph {
     private final Map<String, WorkflowNodeDefinitionInterface> nodeMap;
     private final Map<String, List<String>> incomingEdgesMap;

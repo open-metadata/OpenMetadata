@@ -70,6 +70,7 @@ import org.openmetadata.service.apps.scheduler.AppScheduler;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.fernet.Fernet;
+import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.AppMarketPlaceRepository;
 import org.openmetadata.service.jdbi3.AppRepository;
 import org.openmetadata.service.jdbi3.CollectionDAO;
@@ -1002,6 +1003,9 @@ public class OpenMetadataOperations implements Callable<Integer> {
     Entity.setCollectionDAO(collectionDAO);
     Entity.setSystemRepository(new SystemRepository());
     Entity.initializeRepositories(config, jdbi);
+
+    // Initialize Workflow Handler
+    WorkflowHandler.initialize(config);
   }
 
   private void promptUserForDelete() {
