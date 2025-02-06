@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,14 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * OpenSearch Connection.
  */
 export interface OpenSearchConnection {
+    /**
+     * Choose Auth Config Type.
+     */
+    authType?:            AuthConfigurationType;
     connectionArguments?: { [key: string]: any };
-    connectionOptions?:   { [key: string]: string };
     /**
      * Connection Timeout in Seconds
      */
@@ -25,44 +26,92 @@ export interface OpenSearchConnection {
     /**
      * Host and port of the OpenSearch service.
      */
-    hostPort: string;
-    /**
-     * Keep Alive Timeout in Seconds
-     */
-    keepAliveTimeoutSecs?: number;
-    /**
-     * OpenSearch Password for Login
-     */
-    password?: string;
-    /**
-     * Http/Https connection scheme
-     */
-    scheme?: string;
-    /**
-     * Socket Timeout in Seconds
-     */
-    socketTimeoutSecs?:          number;
+    hostPort?:                   string;
+    sslConfig?:                  SSLConfig;
     supportsMetadataExtraction?: boolean;
     /**
-     * Truststore Password
-     */
-    truststorePassword?: string;
-    /**
-     * Truststore Path
-     */
-    truststorePath?: string;
-    /**
-     * Service Type
+     * OpenSearch Type
      */
     type?: OpenSearchType;
-    /**
-     * OpenSearch Username for Login
-     */
-    username?: string;
 }
 
 /**
- * Service Type
+ * Choose Auth Config Type.
+ *
+ * Basic Auth Configuration for ElasticSearch
+ *
+ * API Key Authentication for ElasticSearch
+ */
+export interface AuthConfigurationType {
+    /**
+     * Elastic Search Password for Login
+     */
+    password?: string;
+    /**
+     * Elastic Search Username for Login
+     */
+    username?: string;
+    /**
+     * Elastic Search API Key for API Authentication
+     */
+    apiKey?: string;
+    /**
+     * Elastic Search API Key ID for API Authentication
+     */
+    apiKeyId?: string;
+}
+
+/**
+ * SSL Config
+ */
+export interface SSLConfig {
+    /**
+     * SSL Certificates
+     */
+    certificates?: SSLCertificates;
+    [property: string]: any;
+}
+
+/**
+ * SSL Certificates
+ *
+ * SSL Certificates By Path
+ *
+ * SSL Certificates By Values
+ */
+export interface SSLCertificates {
+    /**
+     * CA Certificate Path
+     */
+    caCertPath?: string;
+    /**
+     * Client Certificate Path
+     */
+    clientCertPath?: string;
+    /**
+     * Private Key Path
+     */
+    privateKeyPath?: string;
+    /**
+     * CA Certificate Value
+     */
+    caCertValue?: string;
+    /**
+     * Client Certificate Value
+     */
+    clientCertValue?: string;
+    /**
+     * Private Key Value
+     */
+    privateKeyValue?: string;
+    /**
+     * Staging Directory Path
+     */
+    stagingDir?: string;
+}
+
+/**
+ * OpenSearch Type
  *
  * OpenSearch service type
  */

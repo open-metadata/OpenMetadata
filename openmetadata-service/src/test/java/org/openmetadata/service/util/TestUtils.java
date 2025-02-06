@@ -184,7 +184,7 @@ public final class TestUtils {
 
   public static final SearchConnection OPEN_SEARCH_CONNECTION =
       new SearchConnection()
-          .withConfig(new OpenSearchConnection().withHostPort("http://localhost:9200"));
+          .withConfig(new OpenSearchConnection().withHostPort(getUri("http://localhost:9200")));
 
   public static final ApiConnection API_SERVICE_CONNECTION =
       new ApiConnection()
