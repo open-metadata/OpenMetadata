@@ -109,6 +109,26 @@ export const FIELDS: EntityFields[] = [
     name: 'project.keyword',
     localSearch: false,
   },
+  {
+    id: 'Status',
+    name: 'status',
+    localSearch: false,
+  },
+  {
+    id: 'Table Type',
+    name: 'tableType',
+    localSearch: false,
+  },
+  {
+    id: 'Entity Type',
+    name: 'entityType',
+    localSearch: false,
+  },
+  {
+    id: 'Chart',
+    name: 'charts.displayName.keyword',
+    localSearch: false,
+  },
 ];
 
 export const OPERATOR = {

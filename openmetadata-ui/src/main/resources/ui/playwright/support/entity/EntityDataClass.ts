@@ -45,10 +45,7 @@ export class EntityDataClass {
   static readonly topic1 = new TopicClass();
   static readonly topic2 = new TopicClass();
   static readonly dashboard1 = new DashboardClass();
-  static readonly dashboard2 = new DashboardClass(
-    'Dashboard 2',
-    'LookMlExplore'
-  );
+  static readonly dashboard2 = new DashboardClass(undefined, 'LookMlExplore');
   static readonly mlModel1 = new MlModelClass();
   static readonly pipeline1 = new PipelineClass();
   static readonly dashboardDataModel1 = new DashboardDataModelClass();
