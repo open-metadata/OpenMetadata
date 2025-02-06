@@ -3,7 +3,6 @@ package org.openmetadata.service.util;
 import java.util.HashMap;
 import java.util.Map;
 
-
 /**
  * Dependency Injection container to manage resources. This is a simple implementation and does not
  * support any lifecycle management. It allows registering resources and retrieving them by a
