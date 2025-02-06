@@ -13,7 +13,7 @@
 Source connection handler
 """
 from copy import deepcopy
-from typing import Literal, Optional
+from typing import Optional
 from urllib.parse import quote_plus
 
 from requests import Session
@@ -136,6 +136,7 @@ def get_connection(connection: TrinoConnection) -> Engine:
     # add auth params to connectionArguments, which we do no intend to store
     # in original connection object and in OpenMetadata database
     from trino.sqlalchemy.dialect import TrinoDialect
+
     TrinoDialect.is_disconnect = _is_disconnect
 
     connection_copy = deepcopy(connection)
@@ -186,6 +187,7 @@ def test_connection(
         queries=queries,
         timeout_seconds=timeout_seconds,
     )
+
 
 # pylint: disable=unused-argument
 def _is_disconnect(self, e, connection, cursor):
