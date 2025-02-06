@@ -116,13 +116,13 @@ export const toastNotification = async (
   page: Page,
   message: string | RegExp
 ) => {
-  await page.waitForSelector('[data-testid="alert-bar"]', { state: 'visible' });
-
   await expect(page.getByTestId('alert-bar')).toHaveText(message);
 
   await expect(page.getByTestId('alert-icon')).toBeVisible();
 
   await expect(page.getByTestId('alert-icon-close')).toBeVisible();
+
+  await page.getByTestId('alert-icon-close').click();
 };
 
 export const clickOutside = async (page: Page) => {
