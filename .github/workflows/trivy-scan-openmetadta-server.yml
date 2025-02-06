@@ -90,5 +90,5 @@ jobs:
       - name: Comment Trivy Scan Results on PR
         uses: marocchino/sticky-pull-request-comment@v2
         with:
-            path: trivy-result.md
+            path: trivy-results.md
        
