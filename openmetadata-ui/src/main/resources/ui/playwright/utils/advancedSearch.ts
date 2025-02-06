@@ -99,16 +99,6 @@ export const FIELDS: EntityFields[] = [
     localSearch: false,
   },
   {
-    id: 'Response Schema Field',
-    name: 'responseSchema.schemaFields.name.keyword',
-    localSearch: false,
-  },
-  {
-    id: 'Request Schema Field',
-    name: 'requestSchema.schemaFields.name.keyword',
-    localSearch: false,
-  },
-  {
     id: 'Name',
     name: 'name.keyword',
     localSearch: false,
@@ -117,11 +107,6 @@ export const FIELDS: EntityFields[] = [
   {
     id: 'Project',
     name: 'project.keyword',
-    localSearch: false,
-  },
-  {
-    id: 'Status',
-    name: 'status',
     localSearch: false,
   },
 ];
