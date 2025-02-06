@@ -30,7 +30,7 @@ export interface RemoveTagsAction {
     /**
      * Tags to remove
      */
-    tags: TagLabel[];
+    tags?: TagLabel[];
     /**
      * Application Type
      */

@@ -59,6 +59,6 @@
       "default": null
     }
   },
-  "required": ["type", "tags"],
+  "required": ["type"],
   "additionalProperties": false
 }
