@@ -56,6 +56,21 @@ jobs:
     #     run: |
     #       docker build -t openmetadata-server:trivy -f docker/development/Dockerfile .
 
+    #   - name: Run Trivy Image Scan
+    #     id: trivy_scan
+    #     uses: aquasecurity/trivy-action@master
+    #     with:
+    #         scan-type: "image"
+    #         image-ref: openmetadata-server:trivy
+    #         hide-progress: false
+    #         ignore-unfixed: true
+    #         severity: "HIGH,CRITICAL"
+    #         scan-ref: .
+    #         format: 'template'
+    #         template: "@.github/trivy/templates/github.tpl"
+    #         output: trivy-result.md
+    #     env:
+    #         TRIVY_DISABLE_VEX_NOTICE: "true"
       - name: Run Trivy Image Scan
         id: trivy_scan
         uses: aquasecurity/trivy-action@master
@@ -71,11 +86,9 @@ jobs:
             format: 'template'
             template: "@.github/trivy/templates/github.tpl"
             output: trivy-results.md
-        env:
-            TRIVY_DISABLE_VEX_NOTICE: "true"
   
       - name: Comment Trivy Scan Results on PR
         uses: marocchino/sticky-pull-request-comment@v2
         with:
-            path: trivy-results.md
+            path: trivy-result.md
        

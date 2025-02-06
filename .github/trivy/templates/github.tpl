@@ -1,6 +1,6 @@
 {{- range . }}
   <h2> 🛡️ TRIVY SCAN RESULT 🛡️ </h2>
-  <h4> Target: <code>{{ .Target }}</code></h3>
+  <h4> Target: <code>{{ .Target }}</code></h4>
   {{- if .Vulnerabilities }}
     <h4>Vulnerabilities ({{ len .Vulnerabilities }})</h4>
     <table border="1" cellspacing="0" cellpadding="5">
@@ -17,7 +17,7 @@
       {{- range .Vulnerabilities }}
         <tr>
           <td><code>{{ .PkgName }}</code></td>
-          <td>{{ .VulnerabilityID }}</td>
+          <td><a href="{{ .PrimaryURL }}" target="_blank">{{ .VulnerabilityID }}</a></td>
           <td>
             {{- if eq .Severity "CRITICAL" }} 🔥 CRITICAL 
             {{- else if eq .Severity "HIGH" }} 🚨 HIGH 
