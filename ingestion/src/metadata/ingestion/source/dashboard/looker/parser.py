@@ -181,6 +181,9 @@ class LkmlParser:
         Otherwise, return None
         """
         if view_name in self._views_cache:
+            logger.debug(
+                f"Found view [{view_name}] in cache: \n{self._views_cache[view_name]}"
+            )
             return self._views_cache[view_name]
 
         return None

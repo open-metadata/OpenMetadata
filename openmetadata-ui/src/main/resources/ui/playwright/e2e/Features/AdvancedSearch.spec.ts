@@ -23,6 +23,11 @@ import { createNewPage, redirectToHomePage } from '../../utils/common';
 import { assignTier } from '../../utils/entity';
 import { sidebarClick } from '../../utils/sidebar';
 
+test.describe.configure({
+  // 4 minutes to avoid test timeout happening some times in AUTs
+  timeout: 4 * 60 * 1000,
+});
+
 test.describe('Advanced Search', { tag: '@advanced-search' }, () => {
   // use the admin user to login
   test.use({ storageState: 'playwright/.auth/admin.json' });
@@ -30,8 +35,6 @@ test.describe('Advanced Search', { tag: '@advanced-search' }, () => {
   let searchCriteria: Record<string, any> = {};
 
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
-    test.setTimeout(150000);
-
     const { page, apiContext, afterAction } = await createNewPage(browser);
     await EntityDataClass.preRequisitesForTests(apiContext);
 
