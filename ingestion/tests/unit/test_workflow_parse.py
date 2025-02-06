@@ -16,6 +16,7 @@ from unittest import TestCase
 
 from pydantic import ValidationError
 
+from metadata.generated.schema.entity.automations import testServiceConnection
 from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
 )
@@ -644,9 +645,15 @@ class TestWorkflowParse(TestCase):
         }
 
         with self.assertRaises(ValidationError) as err:
-            parse_automation_workflow_gracefully(config_dict_ko)
+            workflow = parse_automation_workflow_gracefully(config_dict_ko)
+            assert not isinstance(
+                workflow.request, testServiceConnection.TestServiceConnectionRequest
+            )
+            testServiceConnection.TestServiceConnectionRequest.model_validate(
+                workflow.request.model_dump()
+            )
         self.assertIn(
-            "1 validation error for AirflowConnection\nhostPort\n  Input should be a valid URL",
+            "AirflowConnection].hostPort\n  Input should be a valid URL",
             str(err.exception),
         )
 
@@ -689,10 +696,21 @@ class TestWorkflowParse(TestCase):
 
         with self.assertRaises(ValidationError) as err:
             parse_automation_workflow_gracefully(config_dict_ko_2)
-        self.assertIn(
-            "3 validation errors for MysqlConnection\nusername\n  Field required",
-            str(err.exception),
-        )
+            assert not isinstance(
+                workflow.request, testServiceConnection.TestServiceConnectionRequest
+            )
+            testServiceConnection.TestServiceConnectionRequest.model_validate(
+                workflow.request.model_dump()
+            )
+        for value in (
+            "MysqlConnection].username",
+            "MysqlConnection].connection",
+            "MysqlConnection].type",
+        ):
+            self.assertIn(
+                value,
+                str(err.exception),
+            )
 
     def test_parsing_automation_workflow_athena(self):
         """
@@ -771,9 +789,15 @@ class TestWorkflowParse(TestCase):
         }
 
         with self.assertRaises(ValidationError) as err:
-            parse_automation_workflow_gracefully(config_dict_ko)
+            workflow = parse_automation_workflow_gracefully(config_dict_ko)
+            assert not isinstance(
+                workflow.request, testServiceConnection.TestServiceConnectionRequest
+            )
+            testServiceConnection.TestServiceConnectionRequest.model_validate(
+                workflow.request.model_dump()
+            )
         self.assertIn(
-            "1 validation error for AthenaConnection\ns3StagingDir\n  Input should be a valid URL",
+            "AthenaConnection].s3StagingDir\n  Input should be a valid URL",
             str(err.exception),
         )
 
