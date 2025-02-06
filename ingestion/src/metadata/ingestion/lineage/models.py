@@ -96,6 +96,7 @@ class Dialect(Enum):
     IMPALA = "impala"
     MATERIALIZE = "materialize"
     MYSQL = "mysql"
+    MARIADB = "mariadb"
     ORACLE = "oracle"
     POSTGRES = "postgres"
     REDSHIFT = "redshift"
@@ -126,7 +127,7 @@ MAP_CONNECTION_TYPE_DIALECT: Dict[str, Dialect] = {
     str(MssqlType.Mssql.value): Dialect.TSQL,
     str(AzureSQLType.AzureSQL.value): Dialect.TSQL,
     str(TeradataType.Teradata.value): Dialect.TERADATA,
-    str(MariaDBType.MariaDB.value): Dialect.MYSQL,
+    str(MariaDBType.MariaDB.value): Dialect.MARIADB,
     str(SingleStoreType.SingleStore.value): Dialect.MYSQL,
 }
 
