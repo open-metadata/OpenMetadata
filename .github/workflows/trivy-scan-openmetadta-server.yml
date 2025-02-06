@@ -70,12 +70,12 @@ jobs:
             scan-ref: .
             format: 'template'
             template: "@.github/trivy/templates/github.tpl"
-            output: trivy-result.md
+            output: trivy-results.md
         env:
             TRIVY_DISABLE_VEX_NOTICE: "true"
   
       - name: Comment Trivy Scan Results on PR
         uses: marocchino/sticky-pull-request-comment@v2
         with:
-            path: trivy-result.md
+            path: trivy-results.md
        
