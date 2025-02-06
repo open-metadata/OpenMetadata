@@ -175,7 +175,7 @@ class RedshiftSource(
 
     def get_table_description(  # pylint: disable=arguments-differ
         self, schema_name: str, table_name: str, inspector: Inspector
-    ) -> str:
+    ) -> Optional[str]:
         description = None
         try:
             table_info: dict = inspector.get_table_comment(table_name, schema_name)
