@@ -542,7 +542,7 @@ To continue pursuing this objective, the application was completely refactored t
 
 ## Ingestion Connectors
 
-80+ connectors to help teams to centralize metadata. We continue to push the boundaries of this mission, in
+90+ connectors to help teams to centralize metadata. We continue to push the boundaries of this mission, in
 
 - **Apache Flink** as a Pipeline Connector
 - **SAP ERP**, after a long and successful collaboration with our community and SAP experts
