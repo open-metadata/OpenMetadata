@@ -15,6 +15,8 @@ import traceback
 from datetime import datetime
 from typing import Iterable
 
+from sqlalchemy.exc import OperationalError
+
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
 )
@@ -70,11 +72,8 @@ class PostgresUsageSource(PostgresQueryParserSource, UsageSource):
                         logger.error(str(err))
             if queries:
                 yield TableQueries(queries=queries)
-        except Exception as err:
-            if query:
-                logger.debug(
-                    f"###### USAGE QUERY #######\n{query}\n##########################"
-                )
+
+        except OperationalError as err:
             self.status.failed(
                 StackTraceError(
                     name="Usage",
@@ -82,6 +81,14 @@ class PostgresUsageSource(PostgresQueryParserSource, UsageSource):
                     stackTrace=traceback.format_exc(),
                 )
             )
+
+        except Exception as err:
+            if query:
+                logger.debug(
+                    f"###### USAGE QUERY #######\n{query}\n##########################"
+                )
+            logger.error(f"Source usage processing error - {err}")
+            logger.debug(traceback.format_exc())
 
     def get_filters(self) -> str:
         if filter_condition := self.source_config.filterCondition:
