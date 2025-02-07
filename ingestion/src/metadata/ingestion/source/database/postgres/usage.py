@@ -15,6 +15,9 @@ import traceback
 from datetime import datetime
 from typing import Iterable
 
+from metadata.generated.schema.entity.services.ingestionPipelines.status import (
+    StackTraceError,
+)
 from metadata.generated.schema.type.basic import DateTime
 from metadata.generated.schema.type.tableQuery import TableQueries, TableQuery
 from metadata.ingestion.source.connections import get_connection
@@ -72,8 +75,13 @@ class PostgresUsageSource(PostgresQueryParserSource, UsageSource):
                 logger.debug(
                     f"###### USAGE QUERY #######\n{query}\n##########################"
                 )
-            logger.error(f"Source usage processing error - {err}")
-            logger.debug(traceback.format_exc())
+            self.status.failed(
+                StackTraceError(
+                    name="Usage",
+                    error=f"Source Usage failed due to - {err}",
+                    stackTrace=traceback.format_exc(),
+                )
+            )
 
     def get_filters(self) -> str:
         if filter_condition := self.source_config.filterCondition:
