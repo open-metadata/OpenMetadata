@@ -30,6 +30,7 @@ Configure and schedule Matillion metadata and profiler workflows from the OpenMe
 To extract metadata from Matillion, you need to create a user with the following permissions:
 
 - `API` Permission ( While Creating the User, from Admin -> User )
+- To retrieve lineage data, the user must be granted [Component-level permissions](https://docs.matillion.com/metl/docs/2932106/#component).
 
 ### Matillion Versions
 
