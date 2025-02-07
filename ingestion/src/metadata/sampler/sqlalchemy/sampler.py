@@ -12,6 +12,7 @@
 Helper module to handle data sampling
 for the profiler
 """
+import contextlib
 import traceback
 from typing import List, Optional, Union, cast
 
@@ -80,6 +81,15 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
         session_factory = create_and_bind_thread_safe_session(self.connection)
         return session_factory()
 
+    @contextlib.contextmanager
+    def context_client(self):
+        """Context manager for the SQA Client"""
+        client = self.get_client()
+        try:
+            yield client
+        finally:
+            client.close()
+
     def set_tablesample(self, selectable: Table):
         """Set the tablesample for the table. To be implemented by the child SQA sampler class
         Args:
@@ -100,13 +110,14 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
         selectable = self.set_tablesample(self.raw_dataset.__table__)
 
         entity = selectable if column is None else selectable.c.get(column.key)
-        if label is not None:
-            query = self.client.query(entity, label)
-        else:
-            query = self.client.query(entity)
+        with self.context_client() as client:
+            if label is not None:
+                query = client.query(entity, label)
+            else:
+                query = client.query(entity)
 
-        if self.partition_details:
-            query = self.get_partitioned_query(query)
+            if self.partition_details:
+                query = self.get_partitioned_query(query)
         return query
 
     def get_sample_query(self, *, column=None) -> Query:
@@ -116,12 +127,13 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
                 column,
                 (ModuloFn(RandomNumFn(), 100)).label(RANDOM_LABEL),
             ).cte(f"{self.raw_dataset.__tablename__}_rnd")
-            session_query = self.client.query(rnd)
+            with self.context_client() as client:
+                session_query = client.query(rnd)
             return session_query.where(
                 rnd.c.random <= self.sample_config.profileSample
             ).cte(f"{self.raw_dataset.__tablename__}_sample")
-
-        table_query = self.client.query(self.raw_dataset)
+        with self.context_client() as client:
+            table_query = client.query(self.raw_dataset)
         session_query = self._base_sample_query(
             column,
             (ModuloFn(RandomNumFn(), table_query.count())).label(RANDOM_LABEL),
@@ -174,38 +186,38 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
                 for col in inspect(ds).c
                 if col.name != RANDOM_LABEL and col.name in names
             ]
-
-        try:
-            sqa_sample = (
-                self.client.query(*sqa_columns)
-                .select_from(ds)
-                .limit(self.sample_limit)
-                .all()
+        with self.context_client() as client:
+            try:
+                sqa_sample = (
+                    client.query(*sqa_columns)
+                    .select_from(ds)
+                    .limit(self.sample_limit)
+                    .all()
+                )
+            except Exception:
+                logger.debug(
+                    "Cannot fetch sample data with random sampling. Falling back to 100 rows."
+                )
+                logger.debug(traceback.format_exc())
+                sqa_columns = list(inspect(self.raw_dataset).c)
+                sqa_sample = (
+                    client.query(*sqa_columns)
+                    .select_from(self.raw_dataset)
+                    .limit(100)
+                    .all()
+                )
+            return TableData(
+                columns=[column.name for column in sqa_columns],
+                rows=[list(row) for row in sqa_sample],
             )
-        except Exception:
-            logger.debug(
-                "Cannot fetch sample data with random sampling. Falling back to 100 rows."
-            )
-            logger.debug(traceback.format_exc())
-            sqa_columns = list(inspect(self.raw_dataset).c)
-            sqa_sample = (
-                self.client.query(*sqa_columns)
-                .select_from(self.raw_dataset)
-                .limit(100)
-                .all()
-            )
-
-        return TableData(
-            columns=[column.name for column in sqa_columns],
-            rows=[list(row) for row in sqa_sample],
-        )
 
     def _fetch_sample_data_from_user_query(self) -> TableData:
         """Returns a table data object using results from query execution"""
         if not is_safe_sql_query(self.sample_query):
             raise RuntimeError(f"SQL expression is not safe\n\n{self.sample_query}")
 
-        rnd = self.client.execute(f"{self.sample_query}")
+        with self.context_client() as client:
+            rnd = client.execute(f"{self.sample_query}")
         try:
             columns = [col.name for col in rnd.cursor.description]
         except AttributeError:
@@ -222,10 +234,13 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
 
         stmt = text(f"{self.sample_query}")
         stmt = stmt.columns(*list(inspect(self.raw_dataset).c))
-
-        return self.client.query(stmt.subquery()).cte(
-            f"{self.raw_dataset.__tablename__}_user_sampled"
-        )
+        client = self.get_client()
+        try:
+            return client.query(stmt.subquery()).cte(
+                f"{self.raw_dataset.__tablename__}_user_sampled"
+            )
+        finally:
+            client.close()
 
     def _partitioned_table(self) -> Query:
         """Return the Query object for partitioned tables"""
@@ -242,7 +257,8 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
         )
         if query is not None:
             return query.filter(partition_filter)
-        return self.client.query(self.raw_dataset).filter(partition_filter)
+        with self.context_client() as client:
+            return client.query(self.raw_dataset).filter(partition_filter)
 
     def get_columns(self):
         """get columns from entity"""
