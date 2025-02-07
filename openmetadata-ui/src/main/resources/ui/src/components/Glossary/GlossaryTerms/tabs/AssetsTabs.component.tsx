@@ -12,7 +12,7 @@
  *  limitations under the License.
  */
 
-import { PlusOutlined } from '@ant-design/icons';
+import Icon, { PlusOutlined } from '@ant-design/icons';
 import {
   Button,
   Checkbox,
@@ -22,6 +22,7 @@ import {
   notification,
   Row,
   Skeleton,
+  Space,
   Tooltip,
   Typography,
 } from 'antd';
@@ -593,7 +594,7 @@ const AssetsTabs = forwardRef(
     const assetListing = useMemo(
       () =>
         data.length ? (
-          <div className="assets-data-container p-t-sm">
+          <div className="assets-data-container">
             {data.map(({ _source, _id = '' }) => (
               <ExploreSearchCard
                 showEntityIcon
@@ -695,8 +696,10 @@ const AssetsTabs = forwardRef(
 
     const assetsHeader = useMemo(() => {
       return (
-        <div className="w-full d-flex justify-between items-center p-l-sm">
-          {activeEntity && permissions.Create && data.length > 0 && (
+        activeEntity &&
+        permissions.Create &&
+        data.length > 0 && (
+          <div className="w-full d-flex justify-between items-center">
             <Checkbox
               className="assets-checkbox p-x-sm"
               onChange={(e) => onSelectAll(e.target.checked)}>
@@ -704,8 +707,8 @@ const AssetsTabs = forwardRef(
                 field: t('label.all'),
               })}
             </Checkbox>
-          )}
-        </div>
+          </div>
+        )
       );
     }, [
       activeFilter,
@@ -723,10 +726,10 @@ const AssetsTabs = forwardRef(
 
     const layout = useMemo(() => {
       return (
-        <>
+        <Col span={24}>
           {assetsHeader}
           {assetListing}
-        </>
+        </Col>
       );
     }, [assetsHeader, assetListing, selectedCard]);
 
@@ -823,24 +826,15 @@ const AssetsTabs = forwardRef(
     return (
       <>
         <div
-          className={classNames('assets-tab-container p-md relative')}
+          className={classNames('assets-tab-container relative')}
           data-testid="table-container"
           id="asset-tab">
-          {assetCount > 0 && (
-            <Row className="filters-row gap-2 p-l-lg">
-              <Col span={18}>
-                <div className="d-flex items-center gap-3">
-                  <Dropdown
-                    menu={{
-                      items: filterMenu,
-                      selectedKeys: selectedFilter,
-                    }}
-                    trigger={['click']}>
-                    <Button
-                      className="flex-center"
-                      icon={<FilterIcon height={16} />}
-                    />
-                  </Dropdown>
+          <Row
+            className="filters-row gap-2 bg-white p-md border-radius-card"
+            gutter={[0, 20]}>
+            {assetCount > 0 && (
+              <>
+                <Col className="d-flex items-center gap-3" span={24}>
                   <div className="flex-1">
                     <Searchbar
                       removeMargin
@@ -852,43 +846,55 @@ const AssetsTabs = forwardRef(
                       onSearch={setSearchValue}
                     />
                   </div>
-                </div>
-              </Col>
-              <Col className="searched-data-container m-b-xs" span={24}>
-                <div className="d-flex justify-between">
-                  <ExploreQuickFilters
-                    aggregations={aggregations}
-                    fields={selectedQuickFilters}
-                    index={SearchIndex.ALL}
-                    showDeleted={false}
-                    onFieldValueSelect={handleQuickFiltersValueSelect}
-                  />
-                  {quickFilterQuery && (
-                    <Typography.Text
-                      className="text-primary self-center cursor-pointer"
-                      onClick={clearFilters}>
-                      {t('label.clear-entity', {
-                        entity: '',
-                      })}
-                    </Typography.Text>
-                  )}
-                </div>
-              </Col>
-            </Row>
-          )}
-
-          {isLoading || isCountLoading ? (
-            <Row className="p-lg" gutter={[0, 16]}>
+                  <Dropdown
+                    menu={{
+                      items: filterMenu,
+                      selectedKeys: selectedFilter,
+                    }}
+                    trigger={['click']}>
+                    <Button
+                      className="text-secondary-new border-secondary-new font-medium"
+                      icon={<Icon component={FilterIcon} height={16} />}>
+                      {t('label.filter')}
+                    </Button>
+                  </Dropdown>
+                </Col>
+                {selectedFilter.length > 0 && (
+                  <Col className="searched-data-container" span={24}>
+                    <div className="d-flex justify-between">
+                      <ExploreQuickFilters
+                        aggregations={aggregations}
+                        fields={selectedQuickFilters}
+                        index={SearchIndex.ALL}
+                        showDeleted={false}
+                        onFieldValueSelect={handleQuickFiltersValueSelect}
+                      />
+                      {quickFilterQuery && (
+                        <Typography.Text
+                          className="text-primary self-center cursor-pointer"
+                          onClick={clearFilters}>
+                          {t('label.clear-entity', {
+                            entity: '',
+                          })}
+                        </Typography.Text>
+                      )}
+                    </div>
+                  </Col>
+                )}
+              </>
+            )}
+            {isLoading || isCountLoading ? (
               <Col span={24}>
-                <Skeleton />
+                <Space direction="vertical" size={16}>
+                  <Skeleton />
+                  <Skeleton />
+                  <Skeleton />
+                </Space>
               </Col>
-              <Col span={24}>
-                <Skeleton />
-              </Col>
-            </Row>
-          ) : (
-            layout
-          )}
+            ) : (
+              layout
+            )}
+          </Row>
 
           <ConfirmationModal
             bodyText={t('message.are-you-sure-action-property', {
