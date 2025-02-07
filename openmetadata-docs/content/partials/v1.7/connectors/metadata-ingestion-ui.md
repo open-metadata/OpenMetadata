@@ -3,6 +3,7 @@
 {% step srNumber=1 %}
 
 {% stepDescription title="1. Visit the Services Page" %}
+Click `Settings` in the side navigation bar and then `Services`.
 
 The first step is to ingest the metadata from your sources. To do that, you first need to create a Service connection first. 
 
