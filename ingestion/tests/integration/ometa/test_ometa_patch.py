@@ -252,7 +252,7 @@ class OMetaTableTest(TestCase):
         )
 
     def test_patch_table(self):
-        new_patched_table = self.patch_test_table.copy(deep=True)
+        new_patched_table = self.patch_test_table.model_copy(deep=True)
 
         # Test adding a new column to the table
         new_patched_table.columns.append(
@@ -289,7 +289,7 @@ class OMetaTableTest(TestCase):
         assert patched_table.owners.root[0].id == self.owner_user_1.root[0].id
 
         # After this we'll again update the descriptions, tags and owner
-        new_patched_table = patched_table.copy(deep=True)
+        new_patched_table = patched_table.model_copy(deep=True)
 
         # Descriptions should not override already present descriptions
         new_patched_table.description = Markdown("This should NOT get patched")
@@ -587,7 +587,7 @@ class OMetaTableTest(TestCase):
         assert updated.owners == EntityReferenceList(root=[])
 
         # Table with non-existent id, force -> Unmodified
-        non_existent_table = self.table.copy(deep=True)
+        non_existent_table = self.table.model_copy(deep=True)
         non_existent_table.id = "9facb7b3-1dee-4017-8fca-1254b700afef"
         updated: Table = self.metadata.patch_owner(
             entity=Table,
