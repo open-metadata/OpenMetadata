@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.flowable.bpmn.converter.BpmnXMLConverter;
 import org.flowable.common.engine.api.FlowableObjectNotFoundException;
@@ -46,7 +47,7 @@ public class WorkflowHandler {
   private HistoryService historyService;
   private final Map<Object, Object> expressionMap = new HashMap<>();
   private static WorkflowHandler instance;
-  private static volatile boolean initialized = false;
+  @Getter private static volatile boolean initialized = false;
 
   private WorkflowHandler(OpenMetadataApplicationConfig config) {
     ProcessEngineConfiguration processEngineConfiguration =
