@@ -6,7 +6,7 @@
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.app.internal.CollateAITierAgentAppPrivateConfig",
   "definitions": {
-    "collateAILimits": {
+    "collateAITierAgentLimits": {
       "description": "Limits for the CollateAITierAgent Application.",
       "type": "object",
       "javaType": "org.openmetadata.schema.entity.app.internal.collateAI.CollateAITierAgentLimits",
@@ -26,7 +26,7 @@
     "limits": {
       "title": "Limits",
       "description": "Limits for the CollateAI Application.",
-      "$ref": "#/definitions/collateAILimits"
+      "$ref": "#/definitions/collateAITierAgentLimits"
     }
   },
   "additionalProperties": false,

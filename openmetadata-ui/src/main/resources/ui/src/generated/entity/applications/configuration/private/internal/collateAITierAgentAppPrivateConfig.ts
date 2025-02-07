@@ -17,7 +17,7 @@ export interface CollateAITierAgentAppPrivateConfig {
     /**
      * Limits for the CollateAI Application.
      */
-    limits: CollateAILimits;
+    limits: CollateAITierAgentLimits;
 }
 
 /**
@@ -25,7 +25,7 @@ export interface CollateAITierAgentAppPrivateConfig {
  *
  * Limits for the CollateAITierAgent Application.
  */
-export interface CollateAILimits {
+export interface CollateAITierAgentLimits {
     /**
      * Start of the billing cycle.
      */
