@@ -135,6 +135,10 @@ def get_connection(connection: TrinoConnection) -> Engine:
     # here we are creating a copy of connection, because we need to dynamically
     # add auth params to connectionArguments, which we do no intend to store
     # in original connection object and in OpenMetadata database
+    from trino.sqlalchemy.dialect import TrinoDialect
+
+    TrinoDialect.is_disconnect = _is_disconnect
+
     connection_copy = deepcopy(connection)
     if connection_copy.verify:
         connection_copy.connectionArguments = (
@@ -183,3 +187,11 @@ def test_connection(
         queries=queries,
         timeout_seconds=timeout_seconds,
     )
+
+
+# pylint: disable=unused-argument
+def _is_disconnect(self, e, connection, cursor):
+    """is_disconnect method for the Databricks dialect"""
+    if "JWT expired" in str(e):
+        return True
+    return False
