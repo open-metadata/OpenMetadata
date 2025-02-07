@@ -644,6 +644,9 @@ public class UserRepository extends EntityRepository<User> {
     }
 
     private void updateRoles(User original, User updated) {
+      if(Boolean.TRUE.equals(original.getIsBot())){
+        throw new IllegalArgumentException("Roles cannot be updated for bot users.");
+      }
       // Remove roles from original and add roles from updated
       deleteFrom(original.getId(), USER, Relationship.HAS, Entity.ROLE);
       assignRoles(updated, updated.getRoles());
