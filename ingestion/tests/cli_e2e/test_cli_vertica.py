@@ -74,7 +74,7 @@ class VerticaCliTest(CliCommonDB.TestSuite, SQACommonMethods):
         return 2
 
     def expected_lineage_node(self) -> str:
-        return "e2e_vertica.VMart.public.vendor_dimension_v"
+        return "e2e_vertica.VMart.public.vendor_dimension"
 
     @staticmethod
     def fqn_created_table() -> str:
