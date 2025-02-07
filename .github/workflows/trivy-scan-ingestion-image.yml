@@ -1,19 +1,18 @@
 name: Trivy Scan For OpenMetadata Ingestion Docker Image
 
 on:
-    pull_request:
-    # pull_request_target:
-    #     types: [labeled, opened, synchronize, reopened]
-    #     paths:
-    #       - "openmetadata-service/**"
-    #       - "openmetadata-spec/src/main/resources/json/schema/**"
-    #       - "openmetadata-dist/**"
-    #       - "openmetadata-clients/**"
-    #       - "common/**"
-    #       - "pom.xml"
-    #       - "yarn.lock"
-    #       - "Makefile"
-    #       - "bootstrap/**"
+    pull_request_target:
+        types: [labeled, opened, synchronize, reopened]
+        paths:
+          - "openmetadata-service/**"
+          - "openmetadata-spec/src/main/resources/json/schema/**"
+          - "openmetadata-dist/**"
+          - "openmetadata-clients/**"
+          - "common/**"
+          - "pom.xml"
+          - "yarn.lock"
+          - "Makefile"
+          - "bootstrap/**"
     
 concurrency: 
   group: trivy-ingestion-scan-${{ github.head_ref || github.run_id }}
@@ -25,23 +24,23 @@ jobs:
     permissions:
       pull-requests: write
     steps:
-      # - name: Wait for the labeler
-      #   uses: lewagon/wait-on-check-action@v1.3.3
-      #   if: ${{ github.event_name == 'pull_request_target' }}
-      #   with:
-      #     ref: ${{ github.event.pull_request.head.sha }}
-      #     check-name: Team Label
-      #     repo-token: ${{ secrets.GITHUB_TOKEN }}
-      #     wait-interval: 90
+      - name: Wait for the labeler
+        uses: lewagon/wait-on-check-action@v1.3.3
+        if: ${{ github.event_name == 'pull_request_target' }}
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          check-name: Team Label
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          wait-interval: 90
 
-      # - name: Verify PR labels
-      #   uses: jesusvasquez333/verify-pr-label-action@v1.4.0
-      #   if: ${{ github.event_name == 'pull_request_target' }}
-      #   with:
-      #     github-token: '${{ secrets.GITHUB_TOKEN }}'
-      #     valid-labels: 'safe to test'
-      #     pull-request-number: '${{ github.event.pull_request.number }}'
-      #     disable-reviews: true  # To not auto approve changes
+      - name: Verify PR labels
+        uses: jesusvasquez333/verify-pr-label-action@v1.4.0
+        if: ${{ github.event_name == 'pull_request_target' }}
+        with:
+          github-token: '${{ secrets.GITHUB_TOKEN }}'
+          valid-labels: 'safe to test'
+          pull-request-number: '${{ github.event.pull_request.number }}'
+          disable-reviews: true  # To not auto approve changes
 
       - name: Checkout Repository
         uses: actions/checkout@v4
