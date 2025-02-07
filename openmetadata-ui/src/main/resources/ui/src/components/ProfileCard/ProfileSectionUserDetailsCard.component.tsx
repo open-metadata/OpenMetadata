@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { Button, Popover, Typography } from 'antd';
-import React, { useMemo } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as MenuDots } from '../../assets/svg/dot (1).svg';
 import { ReactComponent as EditProfileIcon } from '../../assets/svg/edit-profile.svg';
@@ -22,16 +22,146 @@ import { getTextFromHtmlString } from '../../utils/BlockEditorUtils';
 import { isMaskedEmail } from '../../utils/Users.util';
 import ProfilePicture from '../common/ProfilePicture/ProfilePicture';
 
+import { AxiosError } from 'axios';
+import { isEmpty } from 'lodash';
 import { ICON_DIMENSION_USER_PAGE } from '../../constants/constants';
+import { EntityType } from '../../enums/entity.enum';
+import {
+  ChangePasswordRequest,
+  RequestType,
+} from '../../generated/auth/changePasswordRequest';
+import { AuthProvider } from '../../generated/settings/settings';
+import { useAuth } from '../../hooks/authHooks';
+import { useApplicationStore } from '../../hooks/useApplicationStore';
+import { useFqn } from '../../hooks/useFqn';
+import { changePassword } from '../../rest/auth-API';
+import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
+import DeleteWidgetModal from '../common/DeleteWidget/DeleteWidgetModal';
+import { ProfileEditModal } from '../Modals/ProfileEditModal/ProfileEditModal';
+import ChangePasswordForm from '../Settings/Users/ChangePasswordForm';
+import './profile-details.less';
 
 interface ProfileSectionUserDetailsCardProps {
   userData: User;
+  afterDeleteAction: (isSoftDelete?: boolean, version?: number) => void;
+  updateUserDetails: (data: Partial<User>, key: keyof User) => Promise<void>;
 }
 
 const ProfileSectionUserDetailsCard = ({
   userData,
+  afterDeleteAction,
+  updateUserDetails,
 }: ProfileSectionUserDetailsCardProps) => {
   const { t } = useTranslation();
+  const { fqn: username } = useFqn();
+  const { isAdminUser } = useAuth();
+  const { authConfig, currentUser } = useApplicationStore();
+  const [selectedKey, setSelectedKey] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isChangePassword, setIsChangePassword] = useState<boolean>(false);
+  const [displayName, setDisplayName] = useState(userData.displayName);
+  const [isDisplayNameEdit, setIsDisplayNameEdit] = useState(false);
+  const [isDelete, setIsDelete] = useState<boolean>(false);
+  const [editProfile, setEditProfile] = useState<boolean>(false);
+  const [isPopoverVisible, setisPopoverVisible] = useState<boolean>(false);
+  const isAuthProviderBasic = useMemo(
+    () =>
+      authConfig?.provider === AuthProvider.Basic ||
+      authConfig?.provider === AuthProvider.LDAP,
+    [authConfig]
+  );
+
+  const isLoggedInUser = useMemo(
+    () => username === currentUser?.name,
+    [username, currentUser]
+  );
+
+  const hasEditPermission = useMemo(
+    () => (isAdminUser || isLoggedInUser) && !userData.deleted,
+    [isAdminUser, isLoggedInUser, userData.deleted]
+  );
+
+  const showChangePasswordComponent = useMemo(
+    () => isAuthProviderBasic && hasEditPermission,
+    [isAuthProviderBasic, hasEditPermission]
+  );
+
+  const defaultPersona = useMemo(
+    () =>
+      userData.personas?.find(
+        (persona) => persona.id === userData.defaultPersona?.id
+      ),
+    [userData]
+  );
+
+  const onDisplayNameChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => setDisplayName(e.target.value),
+    []
+  );
+
+  const handleDisplayNameSave = useCallback(async () => {
+    if (displayName !== userData.displayName) {
+      setIsLoading(true);
+      await updateUserDetails(
+        { displayName: isEmpty(displayName) ? undefined : displayName },
+        'displayName'
+      );
+      setIsLoading(false);
+    }
+    setIsDisplayNameEdit(false);
+  }, [userData.displayName, displayName, updateUserDetails]);
+
+  const handleCloseEditDisplayName = useCallback(() => {
+    setDisplayName(userData.displayName);
+    setIsDisplayNameEdit(false);
+  }, [userData.displayName]);
+
+  const changePasswordRenderComponent = useMemo(
+    () =>
+      showChangePasswordComponent && (
+        <Button
+          className="w-full text-xs"
+          data-testid="change-password-button"
+          type="primary"
+          onClick={(e) => {
+            // Used to stop click propagation event to parent User.component collapsible panel
+            e.stopPropagation();
+            setIsChangePassword(true);
+          }}>
+          {t('label.change-entity', {
+            entity: t('label.password-lowercase'),
+          })}
+        </Button>
+      ),
+    [showChangePasswordComponent]
+  );
+  const handleChangePassword = async (data: ChangePasswordRequest) => {
+    try {
+      setIsLoading(true);
+
+      const newData = {
+        username: userData.name,
+        requestType: isLoggedInUser ? RequestType.Self : RequestType.User,
+      };
+
+      const sendData = {
+        ...data,
+        ...newData,
+      };
+
+      await changePassword(sendData);
+
+      showSuccessToast(
+        t('server.update-entity-success', { entity: t('label.password') })
+      );
+
+      setIsChangePassword(false);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setIsLoading(false);
+    }
+  };
   const userEmailRender = useMemo(
     () =>
       !isMaskedEmail(userData.email) && (
@@ -45,55 +175,83 @@ const ProfileSectionUserDetailsCard = ({
       ),
     [userData.email]
   );
+
   const content = (
-    <div className="profile-manage-dropdown" style={{ width: '196px' }}>
-      <Button
+    <div style={{ width: '180px' }}>
+      <div
         className="profile-manage-item d-flex item-center"
-        icon={
-          <EditProfileIcon
-            className="m-r-xss"
-            style={{ marginRight: '10px' }}
-            {...ICON_DIMENSION_USER_PAGE}
-          />
-        }
-        type="text">
-        {t('label.edit-profile')}
-      </Button>
-      <Button
-        className="profile-manage-item d-flex item-center"
-        icon={
+        onClick={() => {
+          setEditProfile(true);
+          setisPopoverVisible(false);
+        }}>
+        <EditProfileIcon
+          className="m-r-xss"
+          style={{ marginRight: '10px' }}
+          {...ICON_DIMENSION_USER_PAGE}
+        />
+        <Typography.Text className="profile-manage-label">
+          {t('label.edit-profile')}
+        </Typography.Text>
+      </div>
+      {showChangePasswordComponent && (
+        <div
+          className="profile-manage-item d-flex item-center"
+          onClick={() => {
+            setIsChangePassword(true);
+            setisPopoverVisible(false);
+          }}>
           <ChangePassword
             className="m-r-xss"
             style={{ marginRight: '10px' }}
             {...ICON_DIMENSION_USER_PAGE}
           />
-        }
-        type="text">
-        {t('label.delete-profile')}
-      </Button>
-      <Button
+          <Typography.Text className="profile-manage-label">
+            {t('label.change-entity', {
+              entity: t('label.password-lowercase'),
+            })}
+          </Typography.Text>
+        </div>
+      )}
+      <div
         className="profile-manage-item d-flex item-center"
-        icon={
-          <DeleteIcon
-            className="m-r-xss"
-            style={{ marginTop: '3px', marginRight: '10px' }}
-            {...ICON_DIMENSION_USER_PAGE}
-          />
-        }
-        type="text">
-        {t('label.delete-profile')}
-      </Button>
+        onClick={() => {
+          setIsDelete(true);
+          setisPopoverVisible(false);
+        }}>
+        <DeleteIcon
+          className="m-r-xss"
+          style={{ marginRight: '10px' }}
+          {...ICON_DIMENSION_USER_PAGE}
+        />
+        <Typography.Text className="profile-manage-label">
+          {t('label.delete-profile')}
+        </Typography.Text>
+      </div>
     </div>
+  );
+
+  const handleDescriptionChange = useCallback(
+    async (description: string) => {
+      await updateUserDetails({ description }, 'description');
+
+      setEditProfile(false);
+    },
+    [updateUserDetails, setEditProfile]
   );
 
   return (
     <div className="d-flex flex-col w-full flex-center relative profile-section-user-details-card">
       <Popover
-        className="profile-management-popover relative"
+        destroyTooltipOnHide
         content={content}
-        placement="right"
+        open={isPopoverVisible}
+        overlayClassName="profile-management-popover"
+        placement="bottomLeft"
         trigger="click">
-        <MenuDots className="cursor-pointer user-details-menu-icon" />
+        <MenuDots
+          className="cursor-pointer user-details-menu-icon"
+          onClick={() => setisPopoverVisible(!isPopoverVisible)}
+        />
       </Popover>
 
       <div className="m-t-sm">
@@ -106,13 +264,55 @@ const ProfileSectionUserDetailsCard = ({
         />
       </div>
       <div>
-        <p className="profile-details-title">{userData?.fullyQualifiedName}</p>
+        <p className="profile-details-title">{userData?.displayName}</p>
         {userEmailRender}
         <p className="profile-details-desc">
           {userData?.description &&
             getTextFromHtmlString(userData?.description)}
         </p>
       </div>
+      {showChangePasswordComponent && (
+        <ChangePasswordForm
+          isLoading={isLoading}
+          isLoggedInUser={isLoggedInUser}
+          visible={isChangePassword}
+          onCancel={() => setIsChangePassword(false)}
+          onSave={(data) => handleChangePassword(data)}
+        />
+      )}
+
+      {isDelete && (
+        <DeleteWidgetModal
+          afterDeleteAction={afterDeleteAction}
+          allowSoftDelete={!userData.deleted}
+          // deleteMessage={deleteMessage}
+          // deleteOptions={deleteOptions}
+          entityId={userData.id}
+          entityName={userData.fullyQualifiedName ?? userData.name}
+          entityType={EntityType.USER}
+          // hardDeleteMessagePostFix={hardDeleteMessagePostFix}
+          // isRecursiveDelete={isRecursiveDelete}
+          // prepareType={p}
+          // softDeleteMessagePostFix={softDeleteMessagePostFix}
+          // successMessage={successMessage}
+          visible={isDelete}
+          onCancel={() => setIsDelete(false)}
+        />
+      )}
+      {editProfile && (
+        <ProfileEditModal
+          header={t('label.edit-profile')}
+          placeholder={t('label.enter-entity', {
+            entity: t('label.description'),
+          })}
+          updateUserDetails={updateUserDetails}
+          userData={userData}
+          value={userData.description as string}
+          visible={Boolean(editProfile)}
+          onCancel={() => setEditProfile(false)}
+          onSave={handleDescriptionChange}
+        />
+      )}
     </div>
   );
 };

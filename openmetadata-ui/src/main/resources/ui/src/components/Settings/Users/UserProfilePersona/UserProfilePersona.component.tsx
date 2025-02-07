@@ -12,39 +12,104 @@
  */
 
 import { Divider, Typography } from 'antd';
-import React, { useCallback } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { ReactComponent as Persona } from '../../../../assets/svg/Persona.svg';
-import { ICON_DIMENSION_USER_PAGE } from '../../../../constants/constants';
+import { ReactComponent as PersonaIcon } from '../../../../assets/svg/Persona.svg';
 import { EntityType } from '../../../../enums/entity.enum';
 import { EntityReference, User } from '../../../../generated/entity/teams/user';
 import { useAuth } from '../../../../hooks/authHooks';
+import { useApplicationStore } from '../../../../hooks/useApplicationStore';
+import { useFqn } from '../../../../hooks/useFqn';
 import Chip from '../../../common/Chip/Chip.component';
 import { PersonaSelectableList } from '../../../MyData/Persona/PersonaSelectableList/PersonaSelectableList.component';
 import '../users.less';
 
 interface UserProfileProps {
   userData: User;
+  updateUserDetails: (data: Partial<User>, key: keyof User) => Promise<void>;
 }
-const UserProfilePersonas = ({ userData }: UserProfileProps) => {
+const UserProfilePersonas = ({
+  userData,
+  updateUserDetails,
+}: UserProfileProps) => {
   const { t } = useTranslation();
   const { isAdminUser } = useAuth();
+  const { fqn: username } = useFqn();
+  const { currentUser } = useApplicationStore();
   const handlePersonaUpdate = useCallback(
     async (personas: EntityReference[]) => {
-      // await updateUserDetails({ personas }, 'personas');
+      await updateUserDetails({ personas }, 'personas');
+
       return personas;
     },
     []
+  );
+  const isLoggedInUser = useMemo(
+    () => username === currentUser?.name,
+    [username, currentUser]
+  );
+  const hasEditPermission = useMemo(
+    () => (isAdminUser || isLoggedInUser) && !userData.deleted,
+    [isAdminUser, isLoggedInUser, userData.deleted]
+  );
+  const defaultPersona = useMemo(
+    () =>
+      userData.personas?.find(
+        (persona) => persona.id === userData.defaultPersona?.id
+      ),
+    [userData]
+  );
+  const handleDefaultPersonaUpdate = useCallback(
+    async (defaultPersona?: EntityReference) => {
+      await updateUserDetails({ defaultPersona }, 'defaultPersona');
+    },
+    [updateUserDetails]
+  );
+  const defaultPersonaRender = useMemo(
+    () => (
+      <>
+        <div className="user-profile-card-header d-flex items-center justify-start gap-2 w-full">
+          <div
+            className="d-flex flex-center"
+            style={{ width: '16px', paddingLeft: '2px', cursor: 'pointer' }}>
+            <PersonaIcon height={16} />
+          </div>
+          <div className="d-flex justify-between w-full">
+            <Typography.Text
+              className="user-profile-card-title"
+              data-testid="persona-list">
+              {t('label.default-persona')}
+            </Typography.Text>
+            <PersonaSelectableList
+              hasPermission={hasEditPermission}
+              multiSelect={false}
+              personaList={userData.personas}
+              selectedPersonas={defaultPersona ? [defaultPersona] : []}
+              onUpdate={handleDefaultPersonaUpdate}
+            />
+          </div>
+        </div>
+        <div className="user-profile-card-body d-flex justify-start gap-2">
+          <Typography.Text className="default-persona-text text-primary">
+            {defaultPersona?.displayName}
+          </Typography.Text>
+        </div>
+      </>
+    ),
+    [
+      defaultPersona,
+      userData.personas,
+      hasEditPermission,
+      handleDefaultPersonaUpdate,
+    ]
   );
 
   return (
     <div className="d-flex flex-col mb-4 w-full h-full p-[20px] user-profile-card">
       <div className="user-profile-card-header d-flex items-center justify-start gap-2 w-full">
-        <div
-          className="d-flex flex-center user-page-icon"
-          style={{ paddingLeft: '2px' }}>
-          <Persona {...ICON_DIMENSION_USER_PAGE} />
+        <div className="d-flex flex-center user-page-icon cursor-pointer">
+          <PersonaIcon height={16} />
         </div>
         <div className="d-flex justify-between w-full">
           <Typography.Text
@@ -81,31 +146,7 @@ const UserProfilePersonas = ({ userData }: UserProfileProps) => {
       </div>
 
       {/** Default persona**/}
-      <div className="user-profile-card-header d-flex items-center justify-start gap-2 w-full">
-        <div
-          className="d-flex flex-center"
-          style={{ width: '16px', paddingLeft: '2px' }}>
-          <Persona {...ICON_DIMENSION_USER_PAGE} />
-        </div>
-        <div className="d-flex justify-between w-full">
-          <Typography.Text
-            className="user-profile-card-title"
-            data-testid="persona-list">
-            {t('label.default-persona')}
-          </Typography.Text>
-          <PersonaSelectableList
-            multiSelect
-            hasPermission={Boolean(isAdminUser) && !userData.deleted}
-            selectedPersonas={userData.personas ?? []}
-            onUpdate={handlePersonaUpdate}
-          />
-        </div>
-      </div>
-      <div className="user-profile-card-body d-flex justify-start gap-2">
-        <Typography.Text className="default-persona-text text-primary">
-          {/* test persona 1 */}
-        </Typography.Text>
-      </div>
+      {defaultPersonaRender}
     </div>
   );
 };

@@ -348,8 +348,15 @@ const Users = ({
     <Row gutter={[16, 16]} style={{ padding: '16px' }}>
       <Col span={5}>
         <div className="profile-section">
-          <ProfileSectionUserDetailsCard userData={userData} />
-          <UserProfilePersonas userData={userData} />
+          <ProfileSectionUserDetailsCard
+            afterDeleteAction={afterDeleteAction}
+            updateUserDetails={updateUserDetails}
+            userData={userData}
+          />
+          <UserProfilePersonas
+            updateUserDetails={updateUserDetails}
+            userData={userData}
+          />
           <DomainLabelNew
             multiple
             domain={userData?.domains}
