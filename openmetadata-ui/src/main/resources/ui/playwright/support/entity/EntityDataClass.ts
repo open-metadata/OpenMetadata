@@ -17,6 +17,14 @@ import { GlossaryTerm } from '../glossary/GlossaryTerm';
 import { TagClass } from '../tag/TagClass';
 import { TeamClass } from '../team/TeamClass';
 import { UserClass } from '../user/UserClass';
+import { ApiCollectionClass } from './ApiCollectionClass';
+import { DashboardClass } from './DashboardClass';
+import { DashboardDataModelClass } from './DashboardDataModelClass';
+import { MlModelClass } from './MlModelClass';
+import { PipelineClass } from './PipelineClass';
+import { SearchIndexClass } from './SearchIndexClass';
+import { TableClass } from './TableClass';
+import { TopicClass } from './TopicClass';
 
 export class EntityDataClass {
   static readonly domain1 = new Domain();
@@ -31,6 +39,24 @@ export class EntityDataClass {
   static readonly team1 = new TeamClass();
   static readonly team2 = new TeamClass();
   static readonly tierTag1 = new TagClass({ classification: 'Tier' });
+  static readonly tierTag2 = new TagClass({ classification: 'Tier' });
+  static readonly table1 = new TableClass();
+  static readonly table2 = new TableClass();
+  static readonly topic1 = new TopicClass();
+  static readonly topic2 = new TopicClass();
+  static readonly dashboard1 = new DashboardClass();
+  static readonly dashboard2 = new DashboardClass(
+    'Dashboard 2',
+    'LookMlExplore'
+  );
+  static readonly mlModel1 = new MlModelClass();
+  static readonly pipeline1 = new PipelineClass();
+  static readonly dashboardDataModel1 = new DashboardDataModelClass();
+  static readonly dashboardDataModel2 = new DashboardDataModelClass();
+  static readonly apiCollection1 = new ApiCollectionClass();
+  static readonly apiCollection2 = new ApiCollectionClass();
+  static readonly searchIndex1 = new SearchIndexClass();
+  static readonly searchIndex2 = new SearchIndexClass();
 
   static async preRequisitesForTests(apiContext: APIRequestContext) {
     // Add pre-requisites for tests
@@ -46,6 +72,21 @@ export class EntityDataClass {
     await this.team1.create(apiContext);
     await this.team2.create(apiContext);
     await this.tierTag1.create(apiContext);
+    await this.tierTag2.create(apiContext);
+    await this.table1.create(apiContext);
+    await this.table2.create(apiContext);
+    await this.topic1.create(apiContext);
+    await this.topic2.create(apiContext);
+    await this.dashboard1.create(apiContext);
+    await this.dashboard2.create(apiContext);
+    await this.mlModel1.create(apiContext);
+    await this.pipeline1.create(apiContext);
+    await this.dashboardDataModel1.create(apiContext);
+    await this.dashboardDataModel2.create(apiContext);
+    await this.apiCollection1.create(apiContext);
+    await this.apiCollection2.create(apiContext);
+    await this.searchIndex1.create(apiContext);
+    await this.searchIndex2.create(apiContext);
   }
 
   static async postRequisitesForTests(apiContext: APIRequestContext) {
@@ -61,5 +102,20 @@ export class EntityDataClass {
     await this.team1.delete(apiContext);
     await this.team2.delete(apiContext);
     await this.tierTag1.delete(apiContext);
+    await this.tierTag2.delete(apiContext);
+    await this.table1.delete(apiContext);
+    await this.table2.delete(apiContext);
+    await this.topic1.delete(apiContext);
+    await this.topic2.delete(apiContext);
+    await this.dashboard1.delete(apiContext);
+    await this.dashboard2.delete(apiContext);
+    await this.mlModel1.delete(apiContext);
+    await this.pipeline1.delete(apiContext);
+    await this.dashboardDataModel1.delete(apiContext);
+    await this.dashboardDataModel2.delete(apiContext);
+    await this.apiCollection1.delete(apiContext);
+    await this.apiCollection2.delete(apiContext);
+    await this.searchIndex1.delete(apiContext);
+    await this.searchIndex2.delete(apiContext);
   }
 }
