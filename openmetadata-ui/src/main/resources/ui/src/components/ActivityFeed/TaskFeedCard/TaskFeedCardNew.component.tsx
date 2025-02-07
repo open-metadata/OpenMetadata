@@ -147,12 +147,14 @@ const TaskFeedCard = ({
             className="p-0 task-feed-message-new"
             data-testid="redirect-task-button-link"
             style={{
-              display: 'inline-block',
-              maxWidth: 'inherit',
+              // display: 'inline-block',
+
               overflow: 'hidden',
               textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
-              width: 'fit-content',
+              // whiteSpace: 'nowrap',
+              width: '100%',
+              wordWrap: 'break-word',
+              // whiteSpace: 'normal',
             }}
             type="link"
             onClick={handleTaskLinkClick}>

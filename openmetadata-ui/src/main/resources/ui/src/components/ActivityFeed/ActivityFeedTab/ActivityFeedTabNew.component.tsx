@@ -436,7 +436,9 @@ export const ActivityFeedTabNew = ({
     <div className="activity-feed-tab">
       <div className="center-container" id="center-container">
         {(isTaskActiveTab || isMentionTabSelected) && (
-          <div className="d-flex gap-4 m-y-0  p-b-xs justify-between items-center">
+          <div
+            className="d-flex gap-4  p-b-xs justify-between items-center"
+            style={{ marginTop: '6px' }}>
             <Dropdown
               menu={{
                 items: taskFilterOptions,

@@ -10,18 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon, {
-  CheckCircleOutlined,
-  CloseCircleOutlined,
-  DownOutlined,
-} from '@ant-design/icons';
+import Icon, { DownOutlined } from '@ant-design/icons';
 import {
   Button,
-  Card,
   Col,
   Dropdown,
   Form,
-  Input,
   MenuProps,
   Row,
   Select,
@@ -109,17 +103,16 @@ import {
   TASK_ACTION_LIST,
 } from '../../../../utils/TasksUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
-import { EditorContentRef } from '../../../ActivityFeed/ActivityFeedEditor/ActivityFeedEditor';
+import ActivityFeedCardV2 from '../../../ActivityFeed/ActivityFeedCardV2/ActivityFeedCardV2';
+import ActivityFeedEditor, {
+  EditorContentRef,
+} from '../../../ActivityFeed/ActivityFeedEditor/ActivityFeedEditor';
 import { useActivityFeedProvider } from '../../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import InlineEdit from '../../../common/InlineEdit/InlineEdit.component';
 import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
 import EntityPopOverCard from '../../../common/PopOverCard/EntityPopOverCard';
 import TaskTabIncidentManagerHeader from '../TaskTabIncidentManagerHeader/TaskTabIncidentManagerHeader.component';
-import './task-tab-new.less';
-// import '../../../ActivityFeed/ActivityFeedTab/activity-feed-tab-new.less';
-import CommentCard from '../../../ActivityFeed/ActivityFeedCardNew/ReplyCard.component';
-import ActivityFeedEditorNew from '../../../ActivityFeed/ActivityFeedEditor/ActivityFeedEditorNew';
-import ProfilePicture from '../../../common/ProfilePicture/ProfilePicture';
+import './task-tab.less';
 import { TaskTabProps } from './TaskTab.interface';
 
 export const TaskTab = ({
@@ -241,7 +234,6 @@ export const TaskTab = ({
   const [comment, setComment] = useState('');
   const [isEditAssignee, setIsEditAssignee] = useState<boolean>(false);
   const [options, setOptions] = useState<Option[]>([]);
-  const [showFeedEditor, setShowFeedEditor] = useState<boolean>(false);
   const [isAssigneeLoading, setIsAssigneeLoading] = useState<boolean>(false);
   const { initialAssignees, assigneeOptions } = useMemo(() => {
     const initialAssignees = generateOptions(taskDetails?.assignees ?? []);
@@ -934,24 +926,6 @@ export const TaskTab = ({
     }),
     []
   );
-  const ActionRequired = () => {
-    return (
-      <Card className="action-required-card d-flex justify-between">
-        <Space className="action-required-text">{/* Action Required */}</Space>
-        <Space className="action-buttons">
-          <Button
-            className="approve-button"
-            icon={<CheckCircleOutlined />}
-            type="primary">
-            {/* Approve */}
-          </Button>
-          <Button className="reject-button" icon={<CloseCircleOutlined />}>
-            {/* Reject */}
-          </Button>
-        </Space>
-      </Card>
-    );
-  };
 
   return (
     <Row className="p-y-sm p-x-md" data-testid="task-tab" gutter={[0, 24]}>
@@ -990,78 +964,23 @@ export const TaskTab = ({
           />
         )}
 
-        {/* <div className="m-l-lg">
+        <div className="m-l-lg">
           {taskThread?.posts?.map((reply) => (
-            <ActivityFeedCardNew
-            isPost
-            componentsVisibility={{
-              showRepliesContainer: false,
-              showThreadIcon: false,
-            }}
-            feed={taskThread}
-            // isActive={isActive}
-            key={reply.id}
-            post={reply}
-            showActivityFeedEditor={false}
-          />
-           
+            <ActivityFeedCardV2
+              isPost
+              componentsVisibility={{
+                showRepliesContainer: false,
+                showThreadIcon: false,
+              }}
+              feed={taskThread}
+              key={reply.id}
+              post={reply}
+            />
           ))}
-        </div> */}
-        {ActionRequired()}
-        <Col span={24}>
-          <div className="activity-feed-comments-container d-flex flex-col">
-            <Typography.Text className="activity-feed-comments-title mb-2">
-              {/* Comments */}
-            </Typography.Text>
-
-            {showFeedEditor ? (
-              <ActivityFeedEditorNew
-                className="m-t-md feed-editor activity-feed-editor-container-new"
-                onSave={onSave}
-                onTextChange={setComment}
-              />
-            ) : (
-              <div className="d-flex gap-2">
-                <div style={{ width: '40px', height: '40px' }}>
-                  <ProfilePicture
-                    avatarType="outlined"
-                    key={taskThread.id}
-                    name="admin"
-                    size={40}
-                  />
-                </div>
-
-                <Input
-                  className="comments-input-field"
-                  placeholder="Use @mention to tag and comment..."
-                  onMouseEnter={() => setShowFeedEditor(true)}
-                />
-              </div>
-            )}
-
-            {taskThread?.posts && taskThread?.posts?.length > 0 && (
-              <Col className="p-l-0 p-r-0" data-testid="feed-replies">
-                {taskThread?.posts?.map((reply) => (
-                  <CommentCard feed={taskThread} key={reply.id} post={reply} />
-                  // <ActivityFeedCardV2
-                  //   isPost
-                  //   componentsVisibility={{
-                  //     showRepliesContainer: false,
-                  //     showThreadIcon: false,
-                  //   }}
-                  //   feed={taskThread}
-                  //   // isActive={isActive}
-                  //   key={reply.id}
-                  //   post={reply}
-                  // />
-                ))}
-              </Col>
-            )}
-          </div>
-        </Col>
+        </div>
       </Col>
 
-      {/* <Col span={24}>
+      <Col span={24}>
         {taskDetails?.status === ThreadTaskStatus.Open && (
           <ActivityFeedEditor
             editAction={actionButtons}
@@ -1070,7 +989,7 @@ export const TaskTab = ({
             onTextChange={setComment}
           />
         )}
-      </Col> */}
+      </Col>
       {isTaskTestCaseResult ? (
         <Modal
           destroyOnClose
