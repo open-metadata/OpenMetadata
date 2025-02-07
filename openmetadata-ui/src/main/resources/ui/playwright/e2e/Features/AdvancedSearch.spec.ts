@@ -178,8 +178,8 @@ test.describe('Advanced Search', { tag: '@advanced-search' }, () => {
         EntityDataClass.topic1.entity.messageSchema.schemaFields[1].name,
       ],
       'dataModel.columns.name.keyword': [
-        EntityDataClass.dashboard1.dataModel.columns[0].name,
-        EntityDataClass.dashboard1.dataModel.columns[1].name,
+        EntityDataClass.container1.entity.dataModel.columns[0].name,
+        EntityDataClass.container2.entity.dataModel.columns[1].name,
       ],
       dataModelType: [
         EntityDataClass.dashboard1.dataModel.dataModelType,
@@ -217,7 +217,7 @@ test.describe('Advanced Search', { tag: '@advanced-search' }, () => {
       ],
       status: ['Approved', 'In Review'],
       tableType: ['View', 'Regular'],
-      entityType: ['table', 'topic'],
+      entityType: ['dashboard', 'pipeline'],
       'charts.displayName.keyword': [
         EntityDataClass.dashboard1.charts.displayName,
         EntityDataClass.dashboard2.charts.displayName,
