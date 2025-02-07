@@ -40,6 +40,7 @@ import { AppScheduleProps } from './AppScheduleProps.interface';
 const AppSchedule = ({
   appData,
   loading: { isRunLoading, isDeployLoading },
+  jsonSchema,
   onSave,
   onDemandTrigger,
   onDeployTrigger,
@@ -127,6 +128,7 @@ const AppSchedule = ({
       return (
         <AppRunsHistory
           appData={appData}
+          jsonSchema={jsonSchema}
           maxRecords={1}
           ref={appRunsHistoryRef}
           showPagination={false}
