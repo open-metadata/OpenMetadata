@@ -37,6 +37,18 @@ const mockGetApplicationRuns = jest.fn().mockReturnValue({
 const mockShowErrorToast = jest.fn();
 const mockPush = jest.fn();
 
+jest.mock('../../../../utils/EntityUtils', () => ({
+  getEntityName: jest.fn().mockReturnValue('username'),
+}));
+
+jest.mock('../../../common/FormBuilder/FormBuilder', () =>
+  jest
+    .fn()
+    .mockImplementation(({ onSubmit }) => (
+      <button onClick={onSubmit}>Configure Save</button>
+    ))
+);
+
 jest.mock('../../../../hooks/paging/usePaging', () => ({
   usePaging: jest.fn().mockReturnValue({
     currentPage: 8,
@@ -132,6 +144,7 @@ const mockProps1 = {
   appData: mockApplicationData,
   maxRecords: 10,
   showPagination: true,
+  jsonSchema: {},
 };
 
 const mockProps2 = {
@@ -256,7 +269,7 @@ describe('AppRunsHistory component', () => {
   });
 
   it('checking behaviour of component when no prop is passed', async () => {
-    render(<AppRunsHistory />);
+    render(<AppRunsHistory jsonSchema={{}} />);
     await waitForElementToBeRemoved(() => screen.getByText('TableLoader'));
 
     expect(screen.getByText('--')).toBeInTheDocument();

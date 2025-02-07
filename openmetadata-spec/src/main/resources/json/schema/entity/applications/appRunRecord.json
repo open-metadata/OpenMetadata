@@ -34,7 +34,8 @@
         "active",
         "activeError",
         "stopped",
-        "success"
+        "success",
+        "pending"
       ]
     },
     "runType": {
@@ -63,6 +64,10 @@
     },
     "scheduleInfo": {
       "$ref": "./app.json#/definitions/appSchedule"
+    },
+    "config": {
+      "descripton": "The configuration used for this application run. It's type will be based on the application type. Old runs might not be compatible with schema of app configuration.",
+      "$ref": "../../type/basic.json#/definitions/map"
     }
   },
   "additionalProperties": false

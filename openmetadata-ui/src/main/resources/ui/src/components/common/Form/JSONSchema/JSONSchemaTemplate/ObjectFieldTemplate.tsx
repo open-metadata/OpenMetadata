@@ -64,7 +64,7 @@ export const ObjectFieldTemplate: FunctionComponent<ObjectFieldTemplateProps> =
 
     const fieldElement = (
       <Fragment>
-        <Space className="w-full justify-between">
+        <Space className="w-full justify-between header-title-wrapper">
           <label
             className={classNames('control-label', {
               'font-medium text-base-color text-md':
@@ -104,23 +104,21 @@ export const ObjectFieldTemplate: FunctionComponent<ObjectFieldTemplateProps> =
           </div>
         ))}
         {!isEmpty(advancedProperties) && (
-          <>
-            <Collapse
-              className="advanced-properties-collapse"
-              expandIconPosition="end">
-              <Panel header={`${title} ${t('label.advanced-config')}`} key="1">
-                {advancedProperties.map((element, index) => (
-                  <div
-                    className={classNames('property-wrapper', {
-                      'additional-fields': schema.additionalProperties,
-                    })}
-                    key={`${element.content.key}-${index}`}>
-                    {element.content}
-                  </div>
-                ))}
-              </Panel>
-            </Collapse>
-          </>
+          <Collapse
+            className="advanced-properties-collapse"
+            expandIconPosition="end">
+            <Panel header={`${title} ${t('label.advanced-config')}`} key="1">
+              {advancedProperties.map((element, index) => (
+                <div
+                  className={classNames('property-wrapper', {
+                    'additional-fields': schema.additionalProperties,
+                  })}
+                  key={`${element.content.key}-${index}`}>
+                  {element.content}
+                </div>
+              ))}
+            </Panel>
+          </Collapse>
         )}
       </Fragment>
     );

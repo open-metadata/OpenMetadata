@@ -365,6 +365,7 @@ const AppDetails = () => {
                   {appData && (
                     <AppSchedule
                       appData={appData}
+                      jsonSchema={jsonSchema as RJSFSchema}
                       loading={{
                         isRunLoading: loadingState.isRunLoading,
                         isDeployLoading: loadingState.isDeployLoading,
@@ -392,7 +393,10 @@ const AppDetails = () => {
               key: ApplicationTabs.RECENT_RUNS,
               children: (
                 <div className="p-lg">
-                  <AppRunsHistory appData={appData} />
+                  <AppRunsHistory
+                    appData={appData}
+                    jsonSchema={jsonSchema as RJSFSchema}
+                  />
                 </div>
               ),
             },
