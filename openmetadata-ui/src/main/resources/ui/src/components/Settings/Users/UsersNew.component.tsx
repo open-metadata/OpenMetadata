@@ -345,8 +345,8 @@ const Users = ({
   }, [activeTab]);
 
   return (
-    <Row gutter={[16, 16]} style={{ padding: '16px' }}>
-      <Col span={5}>
+    <Row gutter={[16, 16]} style={{ padding: '16px 16px 0px 16px' }}>
+      <Col span={6}>
         <div className="profile-section">
           <ProfileSectionUserDetailsCard
             afterDeleteAction={afterDeleteAction}
@@ -380,17 +380,9 @@ const Users = ({
           />
         </div>
       </Col>
-      <Col span={19}>
+      <Col span={18}>
         <Row className="mb-sm w-full">
           <div className="tabs-container d-flex justify-center">
-            {/* <Tabs
-              destroyInactiveTabPane
-              activeKey={activeTab ?? UserPageTabs.ACTIVITY}
-              className="user-page-tabs"
-              data-testid="tabs"
-              items={tabs}
-              onChange={activeTabHandler}
-            /> */}
             <Tabs
               activeKey={activeTab}
               className="user-page-tabs-new"
@@ -410,8 +402,6 @@ const Users = ({
         </Row>
         <Row gutter={[16, 16]}>
           <Col span={24}>
-            {/* <ActivityFeedCardNew />
-            <ActivityFeedCardNew /> */}
             {tabs.find((tab) => tab.key === activeTab)?.children}
           </Col>
         </Row>

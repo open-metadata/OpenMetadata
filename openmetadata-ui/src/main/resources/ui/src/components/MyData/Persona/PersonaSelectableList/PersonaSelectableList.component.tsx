@@ -14,12 +14,8 @@ import { Popover, Space, Tooltip, Typography } from 'antd';
 import { t } from 'i18next';
 import React, { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
-import {
-  DE_ACTIVE_COLOR,
-  ICON_DIMENSION_USER_PAGE,
-  PAGE_SIZE_LARGE,
-} from '../../../../constants/constants';
+import { ReactComponent as EditIcon } from '../../../../assets/svg/user-profile-edit.svg';
+import { PAGE_SIZE_LARGE } from '../../../../constants/constants';
 import { EntityType } from '../../../../enums/entity.enum';
 import { EntityReference } from '../../../../generated/entity/type';
 import { getAllPersonas } from '../../../../rest/PersonaAPI';
@@ -144,11 +140,7 @@ export const PersonaSelectableList = ({
           title={t('label.edit-entity', {
             entity: t('label.persona'),
           })}>
-          <EditIcon
-            color={DE_ACTIVE_COLOR}
-            data-testid="edit-persona"
-            {...ICON_DIMENSION_USER_PAGE}
-          />
+          <EditIcon data-testid="edit-persona" height={16} />
         </Tooltip>
       )}
     </Popover>

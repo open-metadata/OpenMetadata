@@ -154,7 +154,7 @@ const ActivityFeedCardNew = ({
     >
       <Space align="start" style={{ width: 'inherit' }}>
         <Space className="d-flex" direction="vertical">
-          <Space className="d-inline-flex justify-start items-start">
+          <Space className="d-inline-flex justify-start items-start gap-3">
             {/* <Badge
               dot
               offset={[-5, 30]}

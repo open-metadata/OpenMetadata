@@ -15,7 +15,6 @@ import { Divider, Typography } from 'antd';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as InheritedRolesIcon } from '../../../../../assets/svg/InheritedRoles.svg';
-import { ICON_DIMENSION_USER_PAGE } from '../../../../../constants/constants';
 import { EntityType } from '../../../../../enums/entity.enum';
 import Chip from '../../../../common/Chip/Chip.component';
 import { UserProfileInheritedRolesProps } from './UserProfileInheritedRoles.interface';
@@ -27,11 +26,11 @@ const UserProfileInheritedRoles = ({
 
   return (
     <div
-      className="d-flex flex-col mb-4 w-full h-full p-[20px] user-profile-card p-0"
+      className="d-flex flex-col  w-full h-full p-[20px] user-profile-card p-0 m-b-0"
       data-testid="user-profile-inherited-roles">
       <div className="user-profile-card-header d-flex items-center justify-start gap-2 w-full">
         <div className="d-flex flex-center user-page-icon">
-          <InheritedRolesIcon {...ICON_DIMENSION_USER_PAGE} />
+          <InheritedRolesIcon height={16} />
         </div>
         <div className="d-flex justify-between w-full">
           <Typography.Text className="user-profile-card-title">

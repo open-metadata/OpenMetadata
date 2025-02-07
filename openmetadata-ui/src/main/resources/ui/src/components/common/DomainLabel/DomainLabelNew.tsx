@@ -17,9 +17,8 @@ import { compare } from 'fast-json-patch';
 import { get, isEmpty, isUndefined } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as Domain } from '../../../assets/svg/ic-domain.svg';
+import { ReactComponent as DomainIcon } from '../../../assets/svg/ic-domain.svg';
 import { ReactComponent as InheritIcon } from '../../../assets/svg/ic-inherit.svg';
-import { ICON_DIMENSION_USER_PAGE } from '../../../constants/constants';
 
 import { EntityReference } from '../../../generated/entity/type';
 import {
@@ -169,8 +168,8 @@ export const DomainLabelNew = ({
   return (
     <div className="d-flex flex-col mb-4 w-full h-full p-[20px] user-profile-card">
       <div className="user-profile-card-header d-flex items-center justify-start gap-2 w-full">
-        <div>
-          <Domain {...ICON_DIMENSION_USER_PAGE} />
+        <div style={{ width: '16px' }}>
+          <DomainIcon height={16} style={{ marginLeft: '2px' }} />
         </div>
 
         <div className="d-flex justify-between w-full">

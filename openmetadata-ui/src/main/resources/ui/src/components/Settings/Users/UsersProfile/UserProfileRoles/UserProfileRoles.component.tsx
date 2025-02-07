@@ -17,18 +17,14 @@ import { AxiosError } from 'axios';
 import { isEmpty, toLower } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as EditIcon } from '../../../../../assets/svg/edit-new.svg';
 import { ReactComponent as RoleIcon } from '../../../../../assets/svg/roles.svg';
+import { ReactComponent as EditIcon } from '../../../../../assets/svg/user-profile-edit.svg';
 import {
-  DE_ACTIVE_COLOR,
-  ICON_DIMENSION,
-  ICON_DIMENSION_USER_PAGE,
   PAGE_SIZE_LARGE,
   TERM_ADMIN,
 } from '../../../../../constants/constants';
 import { EntityType } from '../../../../../enums/entity.enum';
 import { Role } from '../../../../../generated/entity/teams/role';
-import { useAuth } from '../../../../../hooks/authHooks';
 import { getRoles } from '../../../../../rest/rolesAPIV1';
 import { handleSearchFilterOption } from '../../../../../utils/CommonUtils';
 import { getEntityName } from '../../../../../utils/EntityUtils';
@@ -40,14 +36,12 @@ import { UserProfileRolesProps } from './UserProfileRoles.interface';
 
 const UserProfileRoles = ({
   userRoles,
-  isDeletedUser,
   updateUserDetails,
   isUserAdmin,
   userData,
 }: UserProfileRolesProps) => {
   const { t } = useTranslation();
 
-  const { isAdminUser } = useAuth();
   const [isRolesEdit, setIsRolesEdit] = useState(false);
   const [isRolesLoading, setIsRolesLoading] = useState(false);
   const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
@@ -163,10 +157,10 @@ const UserProfileRoles = ({
   }, [isRolesEdit, roles]);
 
   return (
-    <div className="d-flex flex-col mb-4 w-full h-full p-[20px] user-profile-card">
+    <div className="d-flex flex-col m-b-0 w-full h-full p-[20px] user-profile-card">
       <div className="user-profile-card-header d-flex items-center justify-start gap-2 w-full">
         <div className="d-flex flex-center user-page-icon">
-          <RoleIcon {...ICON_DIMENSION_USER_PAGE} />
+          <RoleIcon height={16} />
         </div>
         <div className="d-flex justify-between w-full">
           <Typography.Text className="user-profile-card-title">
@@ -176,7 +170,7 @@ const UserProfileRoles = ({
             content={
               <div className="w-full p-xs bg-white rounded-lg shadow-lg user-profile-edit-popover-card">
                 <div className="d-flex justify-start align-center gap-2 mb-4">
-                  <RoleIcon {...ICON_DIMENSION} />
+                  <RoleIcon height={16} />
                   <Typography.Text className="user-profile-edit-popover-card-title">
                     {t('label.role-plural')}
                   </Typography.Text>
@@ -233,9 +227,8 @@ const UserProfileRoles = ({
             onOpenChange={setIsRolesEdit}>
             <EditIcon
               className="cursor-pointer align-middle"
-              color={DE_ACTIVE_COLOR}
               data-testid="edit-roles-button"
-              {...ICON_DIMENSION}
+              height={16}
               onClick={() => setIsRolesEdit(true)}
             />
           </Popover>
@@ -256,111 +249,6 @@ const UserProfileRoles = ({
       </div>
       <UserProfileInheritedRoles inheritedRoles={userData?.inheritedRoles} />
     </div>
-
-    // <div c<div className="m-b-md">{rolesRenderElement}</div>lassName="d-flex flex-col mb-4 w-full  p-[20px]">
-    //   <div
-    //     className="d-flex  w-full grey-1 gap-2"
-    //     data-testid="user-team-card-container"
-    //     key="teams-card"
-    //     style={{
-    //       background: '#F5F5F5',
-    //       padding: '20px',
-    //       borderRadius: '12px 12px 0px 0px',
-    //     }}>
-    //     <div>
-    //       <div className="d-flex flex-col h-full flex-center">
-    //         <RoleIcon height={24} style={{ marginLeft: '8px' }} width={24} />
-    // <Divider
-    //   style={{
-    //     height: '100%',
-    //     width: '2px',
-    //     background: '#D9D9D9',
-    //   }}
-    //   type="vertical"
-    // />
-    //       </div>
-    //     </div>
-    //     <div className="w-full">
-    //       <div className="d-flex justify-between w-full">
-    //         <Typography.Text className="profile-section-card-title">
-    //           {t('label.role-plural')}
-    //         </Typography.Text>
-    //         {isAdminUser && !isDeletedUser && (
-    //           <Popover
-    //             content={
-    //               <div className="w-full p-xs bg-white rounded-lg shadow-lg user-profile-edit-popover-card">
-    //                 <div className="d-flex justify-start align-center gap-2 mb-4">
-    //                   <RoleIcon {...ICON_DIMENSION} />
-    //                   <Typography.Text className="user-profile-edit-popover-card-title">
-    //                     {t('label.role-plural')}
-    //                   </Typography.Text>
-    //                 </div>
-
-    //                 <div
-    //                   className="border p-2 bg-gray-100 rounded-md"
-    //                   style={{
-    //                     overflowY: 'auto',
-    //                     height: isSelectOpen ? '300px' : 'auto',
-    //                   }}>
-    // <Select
-    //   allowClear
-    //   showSearch
-    //   aria-label="Roles"
-    //   className="w-full"
-    //   dropdownMatchSelectWidth={false}
-    //   filterOption={handleSearchFilterOption}
-    //   getPopupContainer={(trigger) => trigger.parentElement}
-    //   loading={isLoading}
-    //   maxTagCount={4}
-    //   mode="multiple"
-    //   open={isSelectOpen}
-    //   options={useRolesOption}
-    //   value={selectedRoles}
-    //   onChange={setSelectedRoles}
-    //   onDropdownVisibleChange={setIsSelectOpen}
-    // />
-    //                 </div>
-    //                 {!isSelectOpen && (
-    //                   <div className="flex justify-end gap-2 mt-4">
-    //                     <Button
-    //                       data-testid="inline-cancel-btn"
-    //                       icon={<CloseOutlined />}
-    //                       size="small"
-    //                       type="primary"
-    //                       onClick={handleCloseEditRole}
-    //                     />
-    //                     <Button
-    //                       data-testid="inline-save-btn"
-    //                       icon={<CheckOutlined />}
-    //                       size="small"
-    //                       type="primary"
-    //                       onClick={handleRolesSave}
-    //                     />
-    //                   </div>
-    //                 )}
-    //               </div>
-    //             }
-    //             open={isRolesEdit}
-    //             overlayStyle={{ width: '379px', zIndex: 9 }}
-    //             placement="right"
-    //             trigger="click"
-    //             onOpenChange={setIsRolesEdit}>
-    //             <EditIcon
-    //               className="cursor-pointer align-middle"
-    //               color={DE_ACTIVE_COLOR}
-    //               data-testid="edit-roles-button"
-    //               {...ICON_DIMENSION}
-    //               onClick={() => setIsRolesEdit(true)}
-    //             />
-    //           </Popover>
-    //         )}
-    //       </div>
-
-    //       <div className="m-b-md">{rolesRenderElement}</div>
-    //     </div>
-    //   </div>
-    //   <UserProfileInheritedRoles inheritedRoles={userData?.inheritedRoles} />
-    // </div>
   );
 };
 

@@ -126,7 +126,6 @@
   }
 }
 .profile-section {
-  max-width: 300px;
   padding: 20px;
   display: flex;
   flex-direction: column;
@@ -138,7 +137,7 @@
   overflow-y: scroll;
   .profile-section-user-details-card {
     padding: 20px;
-    margin-bottom: 16px;
+    margin-bottom: 20px;
     background: #f5f5f5;
     justify-content: center;
     align-items: center;
@@ -162,6 +161,8 @@
     .profile-details-email {
       color: #175cd3;
       text-align: center;
+      font-size: 14px;
+      line-height: 20px;
     }
     .profile-details-desc {
       font-size: 14px;
@@ -228,6 +229,7 @@
   background: #f5f5f5;
   padding: 20px 20px 10px 20px;
   border-radius: 12px;
+  margin-bottom: 20px;
   .user-profile-card-header {
     margin-bottom: @margin-xs;
   }
@@ -253,16 +255,15 @@
 }
 
 .chip-text {
-  background-color: #535862;
+  color: #175cd3;
+  border: none;
+  font-size: 12px;
 }
 .default-persona-text {
   padding-left: 26px;
   color: #535862;
+  font-size: 14px;
 }
 .user-page-icon {
-  padding-left: 2px;
-}
-
-.ant-popover-inner-content {
-  padding: 8px 0px;
+  margin: 2px;
 }

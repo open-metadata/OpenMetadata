@@ -72,7 +72,7 @@ const UserProfilePersonas = ({
         <div className="user-profile-card-header d-flex items-center justify-start gap-2 w-full">
           <div
             className="d-flex flex-center"
-            style={{ width: '16px', paddingLeft: '2px', cursor: 'pointer' }}>
+            style={{ width: '16px', margin: '2px', cursor: 'pointer' }}>
             <PersonaIcon height={16} />
           </div>
           <div className="d-flex justify-between w-full">
@@ -109,7 +109,7 @@ const UserProfilePersonas = ({
     <div className="d-flex flex-col mb-4 w-full h-full p-[20px] user-profile-card">
       <div className="user-profile-card-header d-flex items-center justify-start gap-2 w-full">
         <div className="d-flex flex-center user-page-icon cursor-pointer">
-          <PersonaIcon height={16} />
+          <PersonaIcon height={16} style={{ paddingLeft: '2px' }} />
         </div>
         <div className="d-flex justify-between w-full">
           <Typography.Text

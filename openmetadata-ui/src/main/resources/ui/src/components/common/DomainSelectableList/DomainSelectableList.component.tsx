@@ -13,8 +13,8 @@
 import { Button, Popover, Tooltip, Typography } from 'antd';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as DomainIcon } from '../../../assets/svg/ic-domain.svg';
+import { ReactComponent as EditIcon } from '../../../assets/svg/user-profile-edit.svg';
 import {
   DE_ACTIVE_COLOR,
   PAGE_SIZE_MEDIUM,
@@ -53,11 +53,8 @@ export const DomainListItemRenderer = (props: EntityReference) => {
       <div className="d-flex items-center w-max-400">
         <Typography.Text ellipsis>{getEntityName(props)}</Typography.Text>
         {isSubDomain && (
-          <Typography.Text
-            ellipsis
-            className="m-l-xss text-xs"
-            type="secondary">
-            {fqn}
+          <Typography.Text ellipsis className="m-l-xss text-xs">
+            {/* {fqn} */}
           </Typography.Text>
         )}
       </div>
@@ -198,7 +195,7 @@ const DomainSelectableList = ({
               className="p-0 flex-center"
               data-testid="add-domain"
               disabled={!hasPermission}
-              icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
+              icon={<EditIcon height={16} />}
               size="small"
               type="text"
             />

@@ -171,7 +171,7 @@ export const renderDomainLink = (
 ) => (
   <Link
     className={classNames(
-      'text-primary no-underline domain-link',
+      'no-underline domain-link',
       { 'font-medium text-xs': !showDomainHeading },
       textClassName
     )}

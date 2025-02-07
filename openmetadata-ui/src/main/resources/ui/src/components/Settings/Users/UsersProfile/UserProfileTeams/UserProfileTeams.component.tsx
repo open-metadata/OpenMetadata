@@ -15,12 +15,9 @@ import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
 import { Button, Divider, Popover, Typography } from 'antd';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as EditIcon } from '../../../../../assets/svg/edit-new.svg';
 import { ReactComponent as IconTeamsGrey } from '../../../../../assets/svg/teams-grey.svg';
-import {
-  DE_ACTIVE_COLOR,
-  ICON_DIMENSION_USER_PAGE,
-} from '../../../../../constants/constants';
+import { ReactComponent as EditIcon } from '../../../../../assets/svg/user-profile-edit.svg';
+import { ICON_DIMENSION_USER_PAGE } from '../../../../../constants/constants';
 import { EntityType } from '../../../../../enums/entity.enum';
 import { EntityReference } from '../../../../../generated/entity/type';
 import { useAuth } from '../../../../../hooks/authHooks';
@@ -83,7 +80,7 @@ const UserProfileTeams = ({
   };
 
   return (
-    <div className="d-flex flex-col mb-4 w-full h-full p-[20px] user-profile-card">
+    <div className="d-flex flex-col w-full h-full p-[20px] user-profile-card">
       <div className="user-profile-card-header d-flex items-center justify-start gap-2 w-full">
         <div>
           <IconTeamsGrey {...ICON_DIMENSION_USER_PAGE} />
@@ -148,9 +145,8 @@ const UserProfileTeams = ({
               onOpenChange={setIsTeamsEdit}>
               <EditIcon
                 className="cursor-pointer"
-                color={DE_ACTIVE_COLOR}
                 data-testid="edit-teams-button"
-                {...ICON_DIMENSION_USER_PAGE}
+                height={16}
                 onClick={() => setIsTeamsEdit(true)}
               />
             </Popover>
