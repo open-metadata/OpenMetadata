@@ -20,7 +20,7 @@ export type AlertType = {
 
 interface AlertStore {
   alert: AlertType | undefined;
-  timeoutId: NodeJS.Timeout | null;
+  timeoutId: ReturnType<typeof setTimeout> | null;
   animationClass: string;
   addAlert: (alert: AlertType, timer?: number) => void;
   resetAlert: VoidFunction;
