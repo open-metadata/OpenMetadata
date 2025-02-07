@@ -8,10 +8,10 @@ collate: true
 
 Get started with your Collate service in just few simple steps:
 
-1. Set up a Data Connector: Connect your data sources to begin collecting metadata.
-2. Ingest Metadata: Run the metadata ingestion to gather and push data insights.
-3. Invite Users: Add team members to collaborate and manage metadata together.
-4. Explore the Features: Dive into Collate's rich feature set to unlock the full potential of your data.
+1. **Set up a Data Connector**: Connect your data sources to begin collecting metadata.
+2. **Ingest Metadata**: Run the metadata ingestion to gather and push data insights.
+3. **Invite Users**: Add team members to collaborate and manage metadata together.
+4. **Explore the Features**: Dive into Collate's rich feature set to unlock the full potential of your data.
 
 **Ready to begin? Let's get started!**
 
@@ -24,7 +24,7 @@ with links to more detailed documentation.
 ## Step 1: Set up a Data Connector
 
 Once you’re able to login to your Collate instance, set up a data connector to start bringing metadata into Collate. 
-There are [80+ turnkey connectors](/connectors) to various services: data warehouses, data lakes, databases, dashboards,
+There are [90+ turnkey connectors](/connectors) to various services: data warehouses, data lakes, databases, dashboards,
 messaging services, pipelines, ML models, storage services, and other Metadata Services.
 Connections to [custom data sources](/connectors/custom-connectors) can also be created via API.
 
