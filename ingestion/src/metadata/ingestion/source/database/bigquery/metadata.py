@@ -706,8 +706,10 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
             database = self.context.get().database
             table = self.client.get_table(fqn._build(database, schema_name, table_name))
             columns = inspector.get_columns(table_name, schema_name, db_name=database)
-            if hasattr(table, "external_data_configuration") and hasattr(
-                table.external_data_configuration, "hive_partitioning"
+            if (
+                hasattr(table, "external_data_configuration")
+                and hasattr(table.external_data_configuration, "hive_partitioning")
+                and table.external_data_configuration.hive_partitioning
             ):
                 # Ingesting External Hive Partitioned Tables
                 from google.cloud.bigquery.external_config import (  # pylint: disable=import-outside-toplevel
@@ -772,6 +774,30 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
                     table_partition.interval = table.range_partitioning.range_.interval
                 table_partition.columnName = table.range_partitioning.field
                 return True, TablePartition(columns=[table_partition])
+            if (
+                hasattr(table, "_properties")
+                and table._properties.get("partitionDefinition")
+                and table._properties.get("partitionDefinition").get(
+                    "partitionedColumn"
+                )
+            ):
+
+                return True, TablePartition(
+                    columns=[
+                        PartitionColumnDetails(
+                            columnName=self._get_partition_column_name(
+                                columns=columns,
+                                partition_field_name=field.get("field"),
+                            ),
+                            intervalType=PartitionIntervalTypes.OTHER,
+                        )
+                        for field in table._properties.get("partitionDefinition").get(
+                            "partitionedColumn"
+                        )
+                        if field and field.get("field")
+                    ]
+                )
+
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(
