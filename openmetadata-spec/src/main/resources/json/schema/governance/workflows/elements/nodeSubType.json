@@ -11,6 +11,7 @@
     "setEntityCertificationTask",
     "setGlossaryTermStatusTask",
     "endEvent",
-    "startEvent"
+    "startEvent",
+    "createIngestionPipelineTask"
   ]
 }

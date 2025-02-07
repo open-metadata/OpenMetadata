@@ -13,6 +13,7 @@ import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.flowable.bpmn.converter.BpmnXMLConverter;
 import org.flowable.common.engine.api.FlowableObjectNotFoundException;
+import org.flowable.common.engine.impl.el.DefaultExpressionManager;
 import org.flowable.engine.HistoryService;
 import org.flowable.engine.ProcessEngine;
 import org.flowable.engine.ProcessEngineConfiguration;
@@ -30,9 +31,11 @@ import org.openmetadata.schema.configuration.WorkflowSettings;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
 import org.openmetadata.service.exception.UnhandledServerException;
 import org.openmetadata.service.jdbi3.SystemRepository;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
+import org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineMapper;
 
 @Slf4j
 public class WorkflowHandler {
@@ -41,6 +44,7 @@ public class WorkflowHandler {
   private RuntimeService runtimeService;
   private TaskService taskService;
   private HistoryService historyService;
+  private final Map<Object, Object> expressionMap = new HashMap<>();
   private static WorkflowHandler instance;
   private static volatile boolean initialized = false;
 
@@ -59,7 +63,16 @@ public class WorkflowHandler {
       processEngineConfiguration.setDatabaseType(ProcessEngineConfiguration.DATABASE_TYPE_POSTGRES);
     }
 
+    initializeExpressionMap(config);
     initializeNewProcessEngine(processEngineConfiguration);
+  }
+
+  public void initializeExpressionMap(OpenMetadataApplicationConfig config) {
+    expressionMap.put("IngestionPipelineMapper", new IngestionPipelineMapper(config));
+    expressionMap.put(
+        "PipelineServiceClient",
+        PipelineServiceClientFactory.createPipelineServiceClient(
+            config.getPipelineServiceClientConfiguration()));
   }
 
   public void initializeNewProcessEngine(
@@ -96,6 +109,9 @@ public class WorkflowHandler {
         .setCleanInstancesEndedAfter(
             Duration.ofDays(
                 workflowSettings.getHistoryCleanUpConfiguration().getCleanAfterNumberOfDays()));
+
+    // Add Expression Manager
+    processEngineConfiguration.setExpressionManager(new DefaultExpressionManager(expressionMap));
 
     // Add Global Failure Listener
     processEngineConfiguration.setEventListeners(List.of(new WorkflowFailureListener()));
