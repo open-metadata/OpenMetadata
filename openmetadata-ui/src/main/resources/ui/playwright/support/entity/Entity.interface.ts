@@ -102,3 +102,15 @@ export interface UserResponseDataType extends ResponseDataType {
   isBot: boolean;
   href?: string;
 }
+
+export interface EntityReference {
+  id: string;
+  type: string;
+  name: string;
+  displayName?: string;
+  deleted?: boolean;
+  description?: string;
+  fullyQualifiedName?: string;
+  href?: string;
+  inherited?: boolean;
+}

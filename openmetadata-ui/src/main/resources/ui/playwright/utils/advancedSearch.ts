@@ -109,6 +109,36 @@ export const FIELDS: EntityFields[] = [
     name: 'project.keyword',
     localSearch: false,
   },
+  {
+    id: 'Status',
+    name: 'status',
+    localSearch: false,
+  },
+  {
+    id: 'Table Type',
+    name: 'tableType',
+    localSearch: false,
+  },
+  {
+    id: 'Entity Type',
+    name: 'entityType',
+    localSearch: false,
+  },
+  {
+    id: 'Chart',
+    name: 'charts.displayName.keyword',
+    localSearch: false,
+  },
+  {
+    id: 'Response Schema Field',
+    name: 'responseSchema.schemaFields.name.keyword',
+    localSearch: false,
+  },
+  {
+    id: 'Request Schema Field',
+    name: 'requestSchema.schemaFields.name.keyword',
+    localSearch: false,
+  },
 ];
 
 export const OPERATOR = {

@@ -189,6 +189,7 @@ test.describe('User with Admin Roles', () => {
   }) => {
     await redirectToHomePage(adminPage);
     await settingClick(adminPage, GlobalSettingOptions.USERS);
+    await adminPage.waitForLoadState('networkidle');
     await softDeleteUserProfilePage(
       adminPage,
       user.responseData.name,
