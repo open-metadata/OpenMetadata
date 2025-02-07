@@ -41,6 +41,8 @@ export interface OpenSearchConnection {
  * Basic Auth Configuration for ElasticSearch
  *
  * API Key Authentication for ElasticSearch
+ *
+ * Authentication for OpenSearch using AWS IAM credentials
  */
 export interface AuthConfigurationType {
     /**
@@ -58,7 +60,11 @@ export interface AuthConfigurationType {
     /**
      * Elastic Search API Key ID for API Authentication
      */
-    apiKeyId?: string;
+    apiKeyId?:           string;
+    awsAccessKeyId?:     string;
+    awsRegion?:          string;
+    awsSecretAccessKey?: string;
+    awsSessionToken?:    string;
 }
 
 /**

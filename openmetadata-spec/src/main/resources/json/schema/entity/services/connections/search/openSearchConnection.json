@@ -35,6 +35,9 @@
         },
         {
           "$ref": "./openSearch/apiAuth.json"
+        },
+        {
+          "$ref": "./openSearch/awsIamAuth.json"
         }
       ]
     },

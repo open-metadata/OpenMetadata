@@ -1,0 +1,30 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/search/awsIamAuth.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AWS IAM Authentication",
+  "description": "Authentication for OpenSearch using AWS IAM credentials",
+  "type": "object",
+  "properties": {
+    "awsAccessKeyId": {
+      "title": "AWS Access Key ID",
+      "type": "string",
+      "format": "password"
+    },
+    "awsSecretAccessKey": {
+      "title": "AWS Secret Access Key",
+      "type": "string",
+      "format": "password"
+    },
+    "awsRegion": {
+      "title": "AWS Region",
+      "type": "string"
+    },
+    "awsSessionToken": {
+      "title": "AWS Session Token",
+      "type": "string",
+      "format": "password"
+    }
+  },
+  "required": ["awsAccessKeyId", "awsSecretAccessKey", "awsRegion"],
+  "additionalProperties": false
+}

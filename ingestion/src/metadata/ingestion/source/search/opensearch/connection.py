@@ -10,14 +10,15 @@
 #  limitations under the License.
 
 """
-Source connection handler for OpenSearch
+Source connection handler for OpenSearch with AWS IAM support.
 """
 import ssl
 from pathlib import Path
 from typing import Optional
 
 from httpx import create_ssl_context
-from opensearchpy import OpenSearch
+from opensearchpy import OpenSearch, RequestsHttpConnection
+from requests_aws4auth import AWS4Auth  # New: AWS4Auth for AWS IAM authentication
 
 from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
@@ -33,6 +34,11 @@ from metadata.generated.schema.entity.services.connections.common.sslConfig impo
 )
 from metadata.generated.schema.entity.services.connections.search.openSearch.apiAuth import (
     ApiKeyAuthentication,
+)
+
+# New: Import AWS IAM authentication class.
+from metadata.generated.schema.entity.services.connections.search.openSearch.awsIamAuth import (
+    AwsIamAuthentication,
 )
 from metadata.generated.schema.entity.services.connections.search.openSearch.basicAuth import (
     BasicAuthentication,
@@ -142,12 +148,14 @@ def get_ssl_context(ssl_config: SslConfig) -> Optional[ssl.SSLContext]:
 
 def get_connection(connection: OpensearchConnection) -> OpenSearch:
     """
-    Create OpenSearch connection.
+    Create OpenSearch connection supporting Basic, API Key, and AWS IAM authentication.
     """
     basic_auth = None
     api_key = None
+    aws_auth = None  # New: AWS IAM auth placeholder
     ssl_context = None
 
+    # Check for Basic Authentication
     if (
         isinstance(connection.authType, BasicAuthentication)
         and connection.authType.username
@@ -159,6 +167,7 @@ def get_connection(connection: OpensearchConnection) -> OpenSearch:
             else None,
         )
 
+    # Check for API Key Authentication
     if isinstance(connection.authType, ApiKeyAuthentication):
         if connection.authType.apiKeyId and connection.authType.apiKey:
             api_key = (
@@ -168,17 +177,48 @@ def get_connection(connection: OpensearchConnection) -> OpenSearch:
         elif connection.authType.apiKey:
             api_key = connection.authType.apiKey.get_secret_value()
 
+    # Check for AWS IAM Authentication
+    if isinstance(connection.authType, AwsIamAuthentication):
+        aws_access_key = (
+            connection.authType.awsAccessKeyId.get_secret_value()
+            if connection.authType.awsAccessKeyId
+            else None
+        )
+        aws_secret_key = (
+            connection.authType.awsSecretAccessKey.get_secret_value()
+            if connection.authType.awsSecretAccessKey
+            else None
+        )
+        aws_region = connection.authType.awsRegion  # Region as a plain string
+        aws_session_token = (
+            connection.authType.awsSessionToken.get_secret_value()
+            if hasattr(connection.authType, "awsSessionToken")
+            and connection.authType.awsSessionToken
+            else None
+        )
+        aws_auth = AWS4Auth(
+            aws_access_key,
+            aws_secret_key,
+            aws_region,
+            "es",
+            session_token=aws_session_token,
+        )
+
     if not connection.connectionArguments:
         connection.connectionArguments = init_empty_connection_arguments()
 
     if connection.sslConfig:
         ssl_context = get_ssl_context(connection.sslConfig)
 
+    # Determine the http_auth based on the available authentication method.
+    # AWS IAM takes precedence, followed by Basic Authentication, then API Key.
+    http_auth = aws_auth if aws_auth else (basic_auth if basic_auth else api_key)
+
     return OpenSearch(
         str(connection.hostPort),
-        http_auth=basic_auth,
-        api_key=api_key,
+        http_auth=http_auth,
         ssl_context=ssl_context,
+        connection_class=RequestsHttpConnection,  # Use RequestsHttpConnection for AWS auth support.
         **connection.connectionArguments.root,
     )
 
