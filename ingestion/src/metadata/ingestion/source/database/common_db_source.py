@@ -143,6 +143,7 @@ class CommonDbSourceService(
         self._inspector_map = {}
         self.table_constraints = None
         self.database_source_state = set()
+        self.set_default_FilterPatterns()
         self.context.get_global().table_views = []
         self.context.get_global().table_constrains = []
         self.context.get_global().foreign_tables = []
@@ -165,6 +166,12 @@ class CommonDbSourceService(
 
         self._connection_map = {}  # Lazy init as well
         self._inspector_map = {}
+
+    def set_default_FilterPatterns(self) -> None:
+        """
+        Set default Database, Schema, Table filter patterns to
+        exlude system entities not required in metadata
+        """
 
     def get_database_names(self) -> Iterable[str]:
         """
