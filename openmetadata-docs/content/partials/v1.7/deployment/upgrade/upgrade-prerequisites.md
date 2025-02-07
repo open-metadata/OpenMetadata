@@ -46,6 +46,23 @@ You can refer to the following guide to get more details about the backup and re
   {% /inlineCallout %}
 {% /inlineCalloutContainer %}
 
+## Understanding the "Running" State in OpenMetadata
+
+In OpenMetadata, the **"Running"** state indicates that the OpenMetadata server has received a response from Airflow confirming that a workflow is in progress. However, if Airflow unexpectedly stops or crashes before it can send a failure status update through the **Failure Callback**, OpenMetadata remains unaware of the workflow’s actual state. As a result, the workflow may appear to be stuck in **"Running"** even though it is no longer executing.  
+
+This situation can also occur during an OpenMetadata upgrade. If an ingestion pipeline was running at the time of the upgrade and the process caused Airflow to shut down, OpenMetadata would not receive any further updates from Airflow. Consequently, the pipeline status remains **"Running"** indefinitely.
+
+{% image
+  src="/images/v1.7/deployment/upgrade/running-state-in-openmetadata.png"
+  alt="Running State in OpenMetadata"
+  caption="Running State in OpenMetadata" /%}
+
+### Expected Steps to Resolve
+To resolve this issue:  
+- Ensure that Airflow is restarted properly after an unexpected shutdown.  
+- Manually update the pipeline status if necessary.  
+- Check Airflow logs to verify if the DAG execution was interrupted.
+
 ### Update `sort_buffer_size` (MySQL) or `work_mem` (Postgres)
 
 Before running the migrations, it is important to update these parameters to ensure there are no runtime errors.
