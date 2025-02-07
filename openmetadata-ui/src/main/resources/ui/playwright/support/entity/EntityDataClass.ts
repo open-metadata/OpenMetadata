@@ -18,6 +18,7 @@ import { TagClass } from '../tag/TagClass';
 import { TeamClass } from '../team/TeamClass';
 import { UserClass } from '../user/UserClass';
 import { ApiCollectionClass } from './ApiCollectionClass';
+import { ContainerClass } from './ContainerClass';
 import { DashboardClass } from './DashboardClass';
 import { DashboardDataModelClass } from './DashboardDataModelClass';
 import { MlModelClass } from './MlModelClass';
@@ -45,10 +46,7 @@ export class EntityDataClass {
   static readonly topic1 = new TopicClass();
   static readonly topic2 = new TopicClass();
   static readonly dashboard1 = new DashboardClass();
-  static readonly dashboard2 = new DashboardClass(
-    'Dashboard 2',
-    'LookMlExplore'
-  );
+  static readonly dashboard2 = new DashboardClass(undefined, 'LookMlExplore');
   static readonly mlModel1 = new MlModelClass();
   static readonly pipeline1 = new PipelineClass();
   static readonly dashboardDataModel1 = new DashboardDataModelClass();
@@ -57,6 +55,8 @@ export class EntityDataClass {
   static readonly apiCollection2 = new ApiCollectionClass();
   static readonly searchIndex1 = new SearchIndexClass();
   static readonly searchIndex2 = new SearchIndexClass();
+  static readonly container1 = new ContainerClass();
+  static readonly container2 = new ContainerClass();
 
   static async preRequisitesForTests(apiContext: APIRequestContext) {
     // Add pre-requisites for tests
@@ -87,6 +87,8 @@ export class EntityDataClass {
     await this.apiCollection2.create(apiContext);
     await this.searchIndex1.create(apiContext);
     await this.searchIndex2.create(apiContext);
+    await this.container1.create(apiContext);
+    await this.container2.create(apiContext);
   }
 
   static async postRequisitesForTests(apiContext: APIRequestContext) {
@@ -117,5 +119,7 @@ export class EntityDataClass {
     await this.apiCollection2.delete(apiContext);
     await this.searchIndex1.delete(apiContext);
     await this.searchIndex2.delete(apiContext);
+    await this.container1.delete(apiContext);
+    await this.container2.delete(apiContext);
   }
 }
