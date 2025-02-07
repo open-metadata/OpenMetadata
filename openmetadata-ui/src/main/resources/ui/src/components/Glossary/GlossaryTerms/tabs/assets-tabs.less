@@ -75,10 +75,13 @@
 .assets-tab-container {
   .explore-search-card {
     border-radius: 12px;
-    border-left: 4px solid #2081f0;
+    border-left: 4px solid transparent;
     opacity: 0.95;
     background: #f5f5f5;
-    margin: 10px 0px;
+    &.highlight-card {
+      border-color: #2081f0;
+    }
+    margin: 0 0 20px;
     .service-icon {
       height: 16px;
     }
