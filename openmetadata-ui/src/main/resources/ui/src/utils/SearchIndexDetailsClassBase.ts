@@ -313,8 +313,8 @@ class SearchIndexClassBase {
     return [
       DESCRIPTION_WIDGET,
       {
-        fullyQualifiedName: DetailPageWidgetKeys.TABLE_SCHEMA,
-        name: i18n.t('label.schema'),
+        fullyQualifiedName: DetailPageWidgetKeys.SEARCH_INDEX_FIELDS,
+        name: i18n.t('label.field-plural'),
         data: {
           gridSizes: ['large'] as GridSizes[],
         },
@@ -322,20 +322,6 @@ class SearchIndexClassBase {
       DATA_PRODUCTS_WIDGET,
       TAGS_WIDGET,
       GLOSSARY_TERMS_WIDGET,
-      {
-        fullyQualifiedName: DetailPageWidgetKeys.FREQUENTLY_JOINED_TABLES,
-        name: i18n.t('label.frequently-joined-table-plural'),
-        data: {
-          gridSizes: ['small'] as GridSizes[],
-        },
-      },
-      {
-        fullyQualifiedName: DetailPageWidgetKeys.TABLE_CONSTRAINTS,
-        name: i18n.t('label.table-constraints'),
-        data: {
-          gridSizes: ['small'] as GridSizes[],
-        },
-      },
       CUSTOM_PROPERTIES_WIDGET,
     ];
   }

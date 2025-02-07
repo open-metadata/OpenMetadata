@@ -38,6 +38,7 @@ export enum DetailPageWidgetKeys {
   DATA_MODEL = 'KnowledgePanel.DataModel',
   CONTAINER_CHILDREN = 'KnowledgePanel.ContainerChildren',
   PIPELINE_TASKS = 'KnowledgePanel.PipelineTasks',
+  SEARCH_INDEX_FIELDS = 'KnowledgePanel.SearchIndexFields',
 }
 
 export enum GlossaryTermDetailPageWidgetKeys {

@@ -215,8 +215,8 @@ class ContainerDetailsClassBase {
     return [
       DESCRIPTION_WIDGET,
       {
-        fullyQualifiedName: DetailPageWidgetKeys.TABLE_SCHEMA,
-        name: i18n.t('label.schema'),
+        fullyQualifiedName: DetailPageWidgetKeys.CONTAINER_CHILDREN,
+        name: i18n.t('label.children'),
         data: {
           gridSizes: ['large'] as GridSizes[],
         },
@@ -224,20 +224,6 @@ class ContainerDetailsClassBase {
       DATA_PRODUCTS_WIDGET,
       TAGS_WIDGET,
       GLOSSARY_TERMS_WIDGET,
-      {
-        fullyQualifiedName: DetailPageWidgetKeys.FREQUENTLY_JOINED_TABLES,
-        name: i18n.t('label.frequently-joined-table-plural'),
-        data: {
-          gridSizes: ['small'] as GridSizes[],
-        },
-      },
-      {
-        fullyQualifiedName: DetailPageWidgetKeys.TABLE_CONSTRAINTS,
-        name: i18n.t('label.table-constraints'),
-        data: {
-          gridSizes: ['small'] as GridSizes[],
-        },
-      },
       CUSTOM_PROPERTIES_WIDGET,
     ];
   }

@@ -58,8 +58,9 @@ export const CustomizeTabWidget = () => {
   const items = useMemo(() => {
     return currentPage?.tabs ?? getDefaultTabs(currentPageType as PageType);
   }, [currentPage, currentPageType, currentPage?.tabs]);
+
   const [activeKey, setActiveKey] = useState<string | null>(
-    (items[0]?.id as EntityTabs) ?? null
+    items.find((i) => i.editable)?.id ?? null
   );
   const { t } = useTranslation();
 

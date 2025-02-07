@@ -105,7 +105,7 @@ class StoredProcedureClassBase {
             static: false,
           },
           {
-            h: 11,
+            h: 7,
             i: DetailPageWidgetKeys.TOPIC_SCHEMA,
             w: 6,
             x: 0,

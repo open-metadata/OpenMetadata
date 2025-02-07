@@ -13,6 +13,14 @@
 import { EntityTags } from 'Models';
 import { PagingHandlerParams } from '../components/common/NextPrevious/NextPrevious.interface';
 import { TabProps } from '../components/common/TabsLabel/TabsLabel.interface';
+import {
+  CUSTOM_PROPERTIES_WIDGET,
+  DATA_PRODUCTS_WIDGET,
+  DESCRIPTION_WIDGET,
+  GLOSSARY_TERMS_WIDGET,
+  GridSizes,
+  TAGS_WIDGET,
+} from '../constants/CustomizeWidgets.constants';
 import { OperationPermission } from '../context/PermissionProvider/PermissionProvider.interface';
 import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 import { EntityTabs } from '../enums/entity.enum';
@@ -29,6 +37,7 @@ import { UsePagingInterface } from '../hooks/paging/usePaging';
 import { FeedCounts } from '../interface/feed.interface';
 import { getTabLabelFromId } from './CustomizePage/CustomizePageUtils';
 import { getDataBaseSchemaPageBaseTabs } from './DatabaseSchemaDetailsUtils';
+import i18n from './i18next/LocalUtil';
 
 export interface DatabaseSchemaPageTabProps {
   feedCount: FeedCounts;
@@ -212,6 +221,23 @@ class DatabaseSchemaClassBase {
         return [];
     }
   };
+
+  public getCommonWidgetList() {
+    return [
+      DESCRIPTION_WIDGET,
+      {
+        fullyQualifiedName: DetailPageWidgetKeys.TABLE_SCHEMA,
+        name: i18n.t('label.table-plural'),
+        data: {
+          gridSizes: ['large'] as GridSizes[],
+        },
+      },
+      DATA_PRODUCTS_WIDGET,
+      TAGS_WIDGET,
+      GLOSSARY_TERMS_WIDGET,
+      CUSTOM_PROPERTIES_WIDGET,
+    ];
+  }
 
   public getDummyData(): DatabaseSchema {
     return {

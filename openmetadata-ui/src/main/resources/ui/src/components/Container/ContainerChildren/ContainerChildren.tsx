@@ -23,19 +23,20 @@ import { getColumnSorter, getEntityName } from '../../../utils/EntityUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import Table from '../../common/Table/Table';
+import { useGenericContext } from '../../GenericProvider/GenericProvider';
 
 interface ContainerChildrenProps {
-  childrenList: Container['children'];
   isLoading?: boolean;
   fetchChildren: () => void;
 }
 
 const ContainerChildren: FC<ContainerChildrenProps> = ({
-  childrenList,
   isLoading,
   fetchChildren,
 }) => {
   const { t } = useTranslation();
+  const { data } = useGenericContext<Container>();
+  const { children: childrenList } = data ?? {};
 
   const columns: ColumnsType<EntityReference> = useMemo(
     () => [

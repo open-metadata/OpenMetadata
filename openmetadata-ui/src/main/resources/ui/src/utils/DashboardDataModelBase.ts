@@ -16,6 +16,7 @@ import {
   DATA_PRODUCTS_WIDGET,
   DESCRIPTION_WIDGET,
   GLOSSARY_TERMS_WIDGET,
+  GridSizes,
   TAGS_WIDGET,
 } from '../constants/CustomizeWidgets.constants';
 import { OperationPermission } from '../context/PermissionProvider/PermissionProvider.interface';
@@ -26,6 +27,7 @@ import { Tab } from '../generated/system/ui/page';
 import { FeedCounts } from '../interface/feed.interface';
 import { getTabLabelFromId } from './CustomizePage/CustomizePageUtils';
 import { getDashboardDataModelDetailPageTabs } from './DashboardDataModelUtils';
+import i18n from './i18next/LocalUtil';
 
 export interface DashboardDataModelDetailPageTabProps {
   modelComponent: JSX.Element;
@@ -226,7 +228,13 @@ class DashboardDataModelBase {
   public getCommonWidgetList() {
     return [
       DESCRIPTION_WIDGET,
-
+      {
+        fullyQualifiedName: DetailPageWidgetKeys.DATA_MODEL,
+        name: i18n.t('label.data-model'),
+        data: {
+          gridSizes: ['large'] as GridSizes[],
+        },
+      },
       DATA_PRODUCTS_WIDGET,
       TAGS_WIDGET,
       GLOSSARY_TERMS_WIDGET,

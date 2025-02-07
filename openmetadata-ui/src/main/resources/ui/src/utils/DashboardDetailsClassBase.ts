@@ -17,6 +17,7 @@ import {
   DATA_PRODUCTS_WIDGET,
   DESCRIPTION_WIDGET,
   GLOSSARY_TERMS_WIDGET,
+  GridSizes,
   TAGS_WIDGET,
 } from '../constants/CustomizeWidgets.constants';
 import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
@@ -31,6 +32,7 @@ import { Tab } from '../generated/system/ui/page';
 import { FeedCounts } from '../interface/feed.interface';
 import { getTabLabelFromId } from './CustomizePage/CustomizePageUtils';
 import { getDashboardDetailPageTabs } from './DashboardDetailsUtils';
+import i18n from './i18next/LocalUtil';
 
 export interface DashboardDetailsTabsProps {
   dashboardDetails: Dashboard;
@@ -213,7 +215,13 @@ class DashboardDetailsClassBase {
   public getCommonWidgetList() {
     return [
       DESCRIPTION_WIDGET,
-
+      {
+        fullyQualifiedName: DetailPageWidgetKeys.CHARTS_TABLE,
+        name: i18n.t('label.chart-plural'),
+        data: {
+          gridSizes: ['large'] as GridSizes[],
+        },
+      },
       DATA_PRODUCTS_WIDGET,
       TAGS_WIDGET,
       GLOSSARY_TERMS_WIDGET,

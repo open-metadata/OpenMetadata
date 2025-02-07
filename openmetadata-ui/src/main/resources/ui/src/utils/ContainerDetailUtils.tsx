@@ -178,7 +178,6 @@ export const getContainerDetailPageTabs = ({
 
                     {isDataModelEmpty ? (
                       <ContainerChildren
-                        childrenList={containerChildrenData}
                         fetchChildren={fetchContainerChildren}
                         isLoading={isChildrenLoading}
                       />
@@ -244,7 +243,6 @@ export const getContainerDetailPageTabs = ({
               <Row className="p-md" gutter={[0, 16]}>
                 <Col span={24}>
                   <ContainerChildren
-                    childrenList={containerChildrenData}
                     fetchChildren={fetchContainerChildren}
                     isLoading={isChildrenLoading}
                   />

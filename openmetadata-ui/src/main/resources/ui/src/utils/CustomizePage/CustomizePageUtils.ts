@@ -293,6 +293,18 @@ export const getCustomizableWidgetByPage = (
       return tableClassBase.getCommonWidgetList();
     case PageType.Topic:
       return topicClassBase.getCommonWidgetList();
+    case PageType.Dashboard:
+      return dashboardDetailsClassBase.getCommonWidgetList();
+    case PageType.Container:
+      return containerDetailsClassBase.getCommonWidgetList();
+    case PageType.Database:
+      return databaseClassBase.getCommonWidgetList();
+    case PageType.DatabaseSchema:
+      return databaseSchemaClassBase.getCommonWidgetList();
+    case PageType.Pipeline:
+      return pipelineClassBase.getCommonWidgetList();
+    case PageType.SearchIndex:
+      return searchIndexClassBase.getCommonWidgetList();
     case PageType.LandingPage:
     default:
       return [];
