@@ -136,8 +136,6 @@ export const getDataAssetsHeaderInfo = (
     case EntityType.PIPELINE:
       const pipelineDetails = dataAsset as Pipeline;
 
-      returnData.extraInfo = <></>;
-
       returnData.breadcrumbs =
         getBreadcrumbForEntitiesWithServiceOnly(pipelineDetails);
 
