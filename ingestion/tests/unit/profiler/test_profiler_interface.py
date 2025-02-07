@@ -159,8 +159,8 @@ class ProfilerInterfaceTest(TestCase):
         source_config = DatabaseServiceProfilerPipeline()
 
         expected = SampleConfig(
-            profile_sample=11,
-            profile_sample_type=ProfileSampleType.PERCENTAGE,
+            profileSample=11,
+            profileSampleType=ProfileSampleType.PERCENTAGE,
         )
         actual = get_profile_sample_config(
             entity=self.table,
@@ -168,9 +168,9 @@ class ProfilerInterfaceTest(TestCase):
             database_entity=self.database_entity,
             entity_config=None,
             default_sample_config=SampleConfig(
-                profile_sample=source_config.profileSample,
-                profile_sample_type=source_config.profileSampleType,
-                sampling_method_type=source_config.samplingMethodType,
+                profileSample=source_config.profileSample,
+                profileSampleType=source_config.profileSampleType,
+                samplingMethodType=source_config.samplingMethodType,
             ),
         )
         self.assertEqual(expected, actual)
@@ -181,8 +181,8 @@ class ProfilerInterfaceTest(TestCase):
             fullyQualifiedName="demo",
         )
         expected = SampleConfig(
-            profile_sample=11,
-            profile_sample_type=ProfileSampleType.PERCENTAGE,
+            profileSample=11,
+            profileSampleType=ProfileSampleType.PERCENTAGE,
         )
         actual = get_profile_sample_config(
             entity=self.table,
@@ -190,17 +190,17 @@ class ProfilerInterfaceTest(TestCase):
             database_entity=self.database_entity,
             entity_config=profiler,
             default_sample_config=SampleConfig(
-                profile_sample=source_config.profileSample,
-                profile_sample_type=source_config.profileSampleType,
-                sampling_method_type=source_config.samplingMethodType,
+                profileSample=source_config.profileSample,
+                profileSampleType=source_config.profileSampleType,
+                samplingMethodType=source_config.samplingMethodType,
             ),
         )
         self.assertEqual(expected, actual)
 
         profiler = None
         expected = SampleConfig(
-            profile_sample=22,
-            profile_sample_type=ProfileSampleType.PERCENTAGE,
+            profileSample=22,
+            profileSampleType=ProfileSampleType.PERCENTAGE,
         )
         table_copy = deepcopy(self.table)
         table_copy.tableProfilerConfig = None
@@ -210,9 +210,9 @@ class ProfilerInterfaceTest(TestCase):
             database_entity=self.database_entity,
             entity_config=profiler,
             default_sample_config=SampleConfig(
-                profile_sample=source_config.profileSample,
-                profile_sample_type=source_config.profileSampleType,
-                sampling_method_type=source_config.samplingMethodType,
+                profileSample=source_config.profileSample,
+                profileSampleType=source_config.profileSampleType,
+                samplingMethodType=source_config.samplingMethodType,
             ),
         )
         self.assertEqual(expected, actual)

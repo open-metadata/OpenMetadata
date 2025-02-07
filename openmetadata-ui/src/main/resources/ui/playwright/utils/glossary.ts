@@ -1094,6 +1094,7 @@ export const approveTagsTask = async (
   await sidebarClick(page, SidebarItem.GLOSSARY);
   await glossaryTermsResponse;
   await selectActiveGlossary(page, entity.data.displayName);
+  await page.waitForLoadState('networkidle');
 
   const tagVisibility = await page.isVisible(
     `[data-testid="tag-${value.tag}"]`
