@@ -494,6 +494,7 @@ export const getDataAssetsHeaderInfo = (
       <>
         {returnData.extraInfo}
         <ExtraInfoLink
+          ellipsis
           newTab
           href={dataAsset.sourceUrl}
           label=""
