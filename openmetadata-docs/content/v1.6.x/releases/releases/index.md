@@ -202,7 +202,7 @@ OpenMetadata 1.6 extends Role-Based Access Control (RBAC) to search functionalit
 
 ## Expanded Connector Ecosystem and Diversity
 
-OpenMetadata's ingestion framework contains 80+ native connectors. These connectors are the foundation of the platform and bring in all the metadata your team needs: technical metadata, lineage, usage, profiling, etc.
+OpenMetadata's ingestion framework contains 90+ native connectors. These connectors are the foundation of the platform and bring in all the metadata your team needs: technical metadata, lineage, usage, profiling, etc.
 
 We bring new connectors in each release, continuously expanding our coverage. This time, release 1.6 comes with seven new connectors:
 
@@ -770,7 +770,7 @@ To continue pursuing this objective, the application was completely refactored t
 
 ## Ingestion Connectors
 
-80+ connectors to help teams to centralize metadata. We continue to push the boundaries of this mission, in
+90+ connectors to help teams to centralize metadata. We continue to push the boundaries of this mission, in
 
 - **Apache Flink** as a Pipeline Connector
 - **SAP ERP**, after a long and successful collaboration with our community and SAP experts
