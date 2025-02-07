@@ -1,12 +1,12 @@
 {
-  "$id": "https://open-metadata.org/schema/governance/workflows/elements/nodes/automatedTask/createIngestionPipelineTask.json",
+  "$id": "https://open-metadata.org/schema/governance/workflows/elements/nodes/automatedTask/runIngestionPipelineTask.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "CreateIngestionPipelineTask",
-  "description": "Creates an Ingestion Pipeline",
+  "title": "RunIngestionPipelineTaskDefinition",
+  "description": "Runs an Ingestion Pipeline based on its ID.",
   "javaInterfaces": [
     "org.openmetadata.schema.governance.workflows.elements.WorkflowNodeDefinitionInterface"
   ],
-  "javaType": "org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.CreateIngestionPipelineTaskDefinition",
+  "javaType": "org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.RunIngestionPipelineTaskDefinition",
   "type": "object",
   "properties": {
     "type": {
@@ -15,7 +15,7 @@
     },
     "subType": {
       "type": "string",
-      "default": "createIngestionPipelineTask"
+      "default": "runIngestionPipelineTask"
     },
     "name": {
       "description": "Name that identifies this Node.",
@@ -32,26 +32,19 @@
     "config": {
       "type": "object",
       "properties": {
-        "pipelineType": {
-          "$ref": "../../../../../entity/services/ingestionPipelines/ingestionPipeline.json#/definitions/pipelineType"
-        },
-        "deploy": {
+        "waitForCompletion": {
           "type": "boolean",
           "default": true
+        },
+        "timeoutSeconds": {
+          "type": "integer",
+          "default": 3600
         }
       },
       "additionalProperties": false,
-      "required": ["pipelineType", "deploy"]
+      "required": ["waitForCompletion", "timeoutSeconds"]
     },
     "input": {
-      "type": "array",
-      "items": { "type":  "string" },
-      "default": ["relatedEntity"],
-      "additionalItems": false,
-      "minItems": 1,
-      "maxItems": 1
-    },
-    "output": {
       "type": "array",
       "items": { "type":  "string" },
       "default": ["ingestionPipelineId"],
@@ -62,13 +55,13 @@
     "inputNamespaceMap": {
       "type": "object",
       "properties": {
-        "relatedEntity": {
+        "ingestionPipelineId": {
           "type": "string",
-          "default": "global"
+          "default": null
         }
       },
       "additionalProperties": false,
-      "required": ["relatedEntity"]
+      "required": ["ingestionPipelineId"]
     },
     "branches": {
       "type": "array",

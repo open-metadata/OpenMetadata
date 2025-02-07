@@ -12,6 +12,7 @@
     "setGlossaryTermStatusTask",
     "endEvent",
     "startEvent",
-    "createIngestionPipelineTask"
+    "createIngestionPipelineTask",
+    "runIngestionPipelineTask"
   ]
 }

@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 /**
- * Creates an Ingestion Pipeline
+ * Runs an Ingestion Pipeline based on its ID.
  */
-export interface CreateIngestionPipelineTask {
+export interface RunIngestionPipelineTask {
     branches?: string[];
     config?:   Config;
     /**
@@ -30,33 +30,16 @@ export interface CreateIngestionPipelineTask {
      * Name that identifies this Node.
      */
     name?:    string;
-    output?:  string[];
     subType?: string;
     type?:    string;
     [property: string]: any;
 }
 
 export interface Config {
-    deploy:       boolean;
-    pipelineType: PipelineType;
-}
-
-/**
- * Type of Pipeline - metadata, usage
- */
-export enum PipelineType {
-    Application = "application",
-    AutoClassification = "autoClassification",
-    DataInsight = "dataInsight",
-    Dbt = "dbt",
-    ElasticSearchReindex = "elasticSearchReindex",
-    Lineage = "lineage",
-    Metadata = "metadata",
-    Profiler = "profiler",
-    TestSuite = "TestSuite",
-    Usage = "usage",
+    timeoutSeconds:    number;
+    waitForCompletion: boolean;
 }
 
 export interface InputNamespaceMap {
-    relatedEntity: string;
+    ingestionPipelineId: string;
 }

@@ -11,6 +11,7 @@ import static org.openmetadata.service.Entity.SEARCH_SERVICE;
 import static org.openmetadata.service.Entity.STORAGE_SERVICE;
 import static org.openmetadata.service.governance.workflows.Workflow.INGESTION_PIPELINE_ID_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_VARIABLE;
+import static org.openmetadata.service.governance.workflows.Workflow.RESULT_VARIABLE;
 
 import java.time.LocalDate;
 import java.time.ZoneId;
@@ -26,6 +27,7 @@ import org.flowable.engine.delegate.JavaDelegate;
 import org.openmetadata.schema.ServiceEntityInterface;
 import org.openmetadata.schema.entity.services.ingestionPipelines.AirflowConfig;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
+import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
 import org.openmetadata.schema.metadataIngestion.ApiServiceMetadataPipeline;
 import org.openmetadata.schema.metadataIngestion.DashboardServiceMetadataPipeline;
@@ -98,7 +100,7 @@ public class CreateIngestionPipelineImpl implements JavaDelegate {
         JsonUtils.readOrConvertValue(inputNamespaceMapExpr.getValue(execution), Map.class);
     PipelineType pipelineType =
         PipelineType.fromValue((String) pipelineTypeExpr.getValue(execution));
-    boolean deploy = (boolean) deployExpr.getValue(execution);
+    boolean deploy = Boolean.parseBoolean((String) deployExpr.getValue(execution));
     IngestionPipelineMapper mapper =
         (IngestionPipelineMapper) ingestionPipelineMapperExpr.getValue(execution);
     PipelineServiceClientInterface pipelineServiceClient =
@@ -116,9 +118,13 @@ public class CreateIngestionPipelineImpl implements JavaDelegate {
       IngestionPipeline ingestionPipeline = createIngestionPipeline(mapper, pipelineType, service);
       varHandler.setNodeVariable(INGESTION_PIPELINE_ID_VARIABLE, ingestionPipeline.getId());
 
+      boolean wasSuccessful = true;
+
       if (deploy) {
-        deployPipeline(pipelineServiceClient, ingestionPipeline, service);
+        wasSuccessful = deployPipeline(pipelineServiceClient, ingestionPipeline, service);
       }
+      // TODO: Use this variable to either continue the flow or send some kind of notification
+      varHandler.setNodeVariable(RESULT_VARIABLE, wasSuccessful);
     }
   }
 
@@ -129,11 +135,13 @@ public class CreateIngestionPipelineImpl implements JavaDelegate {
         .orElse(false);
   }
 
-  private void deployPipeline(
+  private boolean deployPipeline(
       PipelineServiceClientInterface pipelineServiceClient,
       IngestionPipeline ingestionPipeline,
       ServiceEntityInterface service) {
-    pipelineServiceClient.deployPipeline(ingestionPipeline, service);
+    PipelineServiceClientResponse response =
+        pipelineServiceClient.deployPipeline(ingestionPipeline, service);
+    return response.getCode() == 200;
   }
 
   private IngestionPipeline createIngestionPipeline(
