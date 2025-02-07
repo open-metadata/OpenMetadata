@@ -38,12 +38,13 @@ class TrinoSampler(SQASampler):
             col for col in inspect(self.raw_dataset).c if col.name != RANDOM_LABEL
         ]
         entity = self.raw_dataset if column is None else column
-        return self.client.query(entity, label).where(
-            or_(
-                *[
-                    text(f'is_nan("{cols.name}") = False')
-                    for cols in sqa_columns
-                    if type(cols.type) in FLOAT_SET
-                ]
+        with self.context_client() as client:
+            return client.query(entity, label).where(
+                or_(
+                    *[
+                        text(f'is_nan("{cols.name}") = False')
+                        for cols in sqa_columns
+                        if type(cols.type) in FLOAT_SET
+                    ]
+                )
             )
-        )
