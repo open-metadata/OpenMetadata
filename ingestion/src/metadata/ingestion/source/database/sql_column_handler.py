@@ -226,12 +226,16 @@ class SqlColumnHandlerMixin:
             if len(col) == 1:
                 column_level_unique_constraints.add(col[0])
             else:
-                table_constraints.append(
-                    TableConstraint(
-                        constraintType=ConstraintType.UNIQUE,
-                        columns=col,
+                if not any(
+                    tc.constraintType == ConstraintType.UNIQUE and tc.columns == col
+                    for tc in table_constraints
+                ):
+                    table_constraints.append(
+                        TableConstraint(
+                            constraintType=ConstraintType.UNIQUE,
+                            columns=col,
+                        )
                     )
-                )
         if len(pk_columns) > 1:
             table_constraints.append(
                 TableConstraint(

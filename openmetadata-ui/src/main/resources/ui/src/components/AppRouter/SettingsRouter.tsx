@@ -28,7 +28,9 @@ import AppearanceConfigSettingsPage from '../../pages/AppearanceConfigSettingsPa
 import ApplicationPage from '../../pages/Application/ApplicationPage';
 import BotsPageV1 from '../../pages/BotsPageV1/BotsPageV1.component';
 import EditLoginConfiguration from '../../pages/Configuration/EditLoginConfiguration/EditLoginConfigurationPage';
+import EditUrlConfigurationPage from '../../pages/Configuration/EditUrlConfiguration/EditUrlConfigurationPage';
 import LoginConfigurationPage from '../../pages/Configuration/LoginConfigurationDetails/LoginConfigurationPage';
+import UrlConfigurationPage from '../../pages/Configuration/UrlConfiguration/UrlConfigurationPage';
 import { CustomPageSettings } from '../../pages/CustomPageSettings/CustomPageSettings';
 import CustomPropertiesPageV1 from '../../pages/CustomPropertiesPageV1/CustomPropertiesPageV1';
 import EditEmailConfigPage from '../../pages/EditEmailConfigPage/EditEmailConfigPage.component';
@@ -101,6 +103,13 @@ const SettingsRouter = () => {
         component={EditEmailConfigPage}
         hasPermission={false}
         path={ROUTES.SETTINGS_EDIT_EMAIL_CONFIG}
+      />
+
+      <AdminProtectedRoute
+        exact
+        component={EditUrlConfigurationPage}
+        hasPermission={false}
+        path={ROUTES.SETTINGS_OM_URL_CONFIG}
       />
 
       <AdminProtectedRoute
@@ -266,6 +275,15 @@ const SettingsRouter = () => {
         path={getSettingPath(
           GlobalSettingsMenuCategory.PREFERENCES,
           GlobalSettingOptions.LINEAGE_CONFIG
+        )}
+      />
+
+      <AdminProtectedRoute
+        exact
+        component={UrlConfigurationPage}
+        path={getSettingPath(
+          GlobalSettingsMenuCategory.PREFERENCES,
+          GlobalSettingOptions.OM_URL_CONFIG
         )}
       />
 

@@ -98,6 +98,21 @@ If you are using DB2 for IBM i:
 - In Host and Port you should not add the Port Number.
 {% /note %}
 
+{% note %}
+If you have a **db2jcc_license_cisuz.jar** file, it will not work with **ibm_db**. This file is a **Db2 Connect** license for the Java Driver.  
+For **non-Java drivers**, such as the Python Client used in OpenMetadata ingestion, a **Db2 Connect** client-side license is required, typically named **db2con*.lic**.  
+
+The **db2jcc_license_cisuz.jar** is specifically for Java-based clients, whereas OpenMetadata ingestion operates with a Python Client, making the `.jar` file incompatible.  
+ 
+For activating a **non-Java license** for Db2 Connect **Application Server Edition**, **Advanced Application Server Edition**, **Enterprise Edition**, or **Trial**, follow these steps:  
+- Download the **license activation kit** from IBM Passport Advantage: [IBM PPA](https://www.ibm.com/software/passportadvantage/pao_customer.html).  
+- Unzip the package and locate the **non-Java license file** (e.g., `db2consv_ee.lic`).  
+- Apply the `.lic` file to activate the license.
+
+For further reference, check this IBM post: [Everything About Db2 Connect Licensing](https://community.ibm.com/community/user/datamanagement/blogs/shilu-mathai2/2023/05/05/everything-about-db2-connect-licensing).  
+
+{% /note %}
+
 {% partial file="/v1.6/connectors/database/advanced-configuration.md" /%}
 
 {% /extraContent %}

@@ -13,6 +13,7 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import QueryString from 'qs';
 import React from 'react';
+import { MOCK_PERMISSIONS } from '../../mocks/Glossary.mock';
 import { getListTestCaseIncidentStatus } from '../../rest/incidentManagerAPI';
 import IncidentManager from './IncidentManager.component';
 
@@ -55,18 +56,12 @@ jest.mock('react-router-dom', () => ({
 jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockReturnValue({
     permissions: {
-      testCase: {
-        Create: true,
-        Delete: true,
-        ViewAll: true,
-        EditAll: true,
-        EditDescription: true,
-        EditDisplayName: true,
-        EditCustomFields: true,
-      },
+      testCase: MOCK_PERMISSIONS,
     },
+    getEntityPermissionByFqn: jest.fn().mockReturnValue(MOCK_PERMISSIONS),
   }),
 }));
+
 jest.mock('../../hooks/paging/usePaging', () => ({
   usePaging: jest.fn().mockReturnValue({
     currentPage: 1,

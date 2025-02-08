@@ -141,9 +141,13 @@ test.describe('Domains', () => {
     const dataProduct1 = new DataProduct(domain);
     const dataProduct2 = new DataProduct(domain);
     await domain.create(apiContext);
-    await sidebarClick(page, SidebarItem.DOMAIN);
     await page.reload();
-    await addAssetsToDomain(page, domain, assets);
+
+    await test.step('Add assets to domain', async () => {
+      await redirectToHomePage(page);
+      await sidebarClick(page, SidebarItem.DOMAIN);
+      await addAssetsToDomain(page, domain, assets);
+    });
 
     await test.step('Create DataProducts', async () => {
       await selectDomain(page, domain.data);
@@ -582,7 +586,7 @@ test.describe('Domains Rbac', () => {
         const urlParams = new URLSearchParams(queryString);
         const qParam = urlParams.get('q');
 
-        expect(qParam).toContain(`domain.fullyQualifiedName:`);
+        expect(qParam).toEqual('');
       });
 
       for (const asset of domainAssset2) {

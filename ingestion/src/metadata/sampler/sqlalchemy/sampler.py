@@ -111,14 +111,14 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
 
     def get_sample_query(self, *, column=None) -> Query:
         """get query for sample data"""
-        if self.sample_config.profile_sample_type == ProfileSampleType.PERCENTAGE:
+        if self.sample_config.profileSampleType == ProfileSampleType.PERCENTAGE:
             rnd = self._base_sample_query(
                 column,
                 (ModuloFn(RandomNumFn(), 100)).label(RANDOM_LABEL),
             ).cte(f"{self.raw_dataset.__tablename__}_rnd")
             session_query = self.client.query(rnd)
             return session_query.where(
-                rnd.c.random <= self.sample_config.profile_sample
+                rnd.c.random <= self.sample_config.profileSample
             ).cte(f"{self.raw_dataset.__tablename__}_sample")
 
         table_query = self.client.query(self.raw_dataset)
@@ -128,7 +128,7 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
         )
         return (
             session_query.order_by(RANDOM_LABEL)
-            .limit(self.sample_config.profile_sample)
+            .limit(self.sample_config.profileSample)
             .cte(f"{self.raw_dataset.__tablename__}_rnd")
         )
 
@@ -140,10 +140,7 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
         if self.sample_query:
             return self._rdn_sample_from_user_query()
 
-        if not self.sample_config.profile_sample or (
-            int(self.sample_config.profile_sample) == 100
-            and self.sample_config.profile_sample_type == ProfileSampleType.PERCENTAGE
-        ):
+        if not self.sample_config.profileSample:
             if self.partition_details:
                 partitioned = self._partitioned_table()
                 return partitioned.cte(f"{self.raw_dataset.__tablename__}_partitioned")
@@ -165,23 +162,23 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
             return self._fetch_sample_data_from_user_query()
 
         # Add new RandomNumFn column
-        rnd = self.get_sample_query()
+        ds = self.get_dataset()
         if not columns:
-            sqa_columns = [col for col in inspect(rnd).c if col.name != RANDOM_LABEL]
+            sqa_columns = [col for col in inspect(ds).c if col.name != RANDOM_LABEL]
         else:
             # we can't directly use columns as it is bound to self.raw_dataset and not the rnd table.
             # If we use it, it will result in a cross join between self.raw_dataset and rnd table
             names = [col.name for col in columns]
             sqa_columns = [
                 col
-                for col in inspect(rnd).c
+                for col in inspect(ds).c
                 if col.name != RANDOM_LABEL and col.name in names
             ]
 
         try:
             sqa_sample = (
                 self.client.query(*sqa_columns)
-                .select_from(rnd)
+                .select_from(ds)
                 .limit(self.sample_limit)
                 .all()
             )
