@@ -37,7 +37,6 @@ import {
   noop,
   omitBy,
   toNumber,
-  toUpper,
 } from 'lodash';
 import moment, { Moment } from 'moment';
 import React, {
@@ -65,6 +64,7 @@ import { CSMode } from '../../../enums/codemirror.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { EntityReference } from '../../../generated/entity/type';
 import { Config } from '../../../generated/type/customProperty';
+import { getCustomPropertyMomentFormat } from '../../../utils/CustomProperty.utils';
 import { calculateInterval } from '../../../utils/date-time/DateTimeUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../../utils/EntityUtils';
@@ -278,9 +278,9 @@ export const PropertyValue: FC<PropertyValueProps> = ({
 
       case 'date-cp':
       case 'dateTime-cp': {
-        // Default format is 'yyyy-mm-dd'
-        const format = toUpper(
-          (property.customPropertyConfig?.config as string) ?? 'yyyy-mm-dd'
+        const format = getCustomPropertyMomentFormat(
+          propertyType.name,
+          property.customPropertyConfig?.config
         );
 
         const initialValues = {
@@ -327,8 +327,11 @@ export const PropertyValue: FC<PropertyValueProps> = ({
       }
 
       case 'time-cp': {
-        const format =
-          (property.customPropertyConfig?.config as string) ?? 'HH:mm:ss';
+        const format = getCustomPropertyMomentFormat(
+          propertyType.name,
+          property.customPropertyConfig?.config
+        );
+
         const initialValues = {
           time: value ? moment(value, format) : undefined,
         };
