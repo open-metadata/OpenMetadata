@@ -461,6 +461,7 @@ export const ActivityFeedTabNew = ({
           isLoading={false}
           selectedThread={selectedThread}
           showThread={false}
+          onAfterClose={handleAfterTaskClose}
           onFeedClick={handleFeedClick}
         />
         {loader}

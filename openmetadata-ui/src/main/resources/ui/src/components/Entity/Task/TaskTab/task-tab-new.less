@@ -23,6 +23,15 @@
   button {
     border: 1px solid @primary-color;
     color: @primary-color;
+    // padding: 10px 16px;
+    height: 40px;
+    span {
+      color: #1570ef;
+      font-size: 14px;
+      font-style: normal;
+      font-weight: 500;
+      line-height: 20px;
+    }
 
     &:first-child {
       border-right: none;
@@ -34,24 +43,69 @@
   }
 }
 
+// .task-action-dropdown {
+//   ul {
+//     padding: 4px 8px;
+//     border-radius: 8px;
+
+//     li {
+//       color: #414651;
+//       font-size: 14px;
+//       font-style: normal;
+//       font-weight: 500;
+//       line-height: 20px;
+//       padding: 10px 16px;
+
+//       &:last-child {
+//         border-bottom: none;
+//       }
+//     }
+//   }
+// }
 .task-action-dropdown {
   ul {
-    padding: 4px 8px;
+    padding: 4px 0;
     border-radius: 8px;
 
     li {
-      padding: 8px;
-      color: #414651;
+      // color: #414651;
       font-size: 14px;
-      font-style: normal;
       font-weight: 500;
       line-height: 20px;
+      padding: 10px 16px;
+      cursor: pointer;
+
+      // &:hover {
+      //   background: #F5FAFF;
+      //   color:#1570EF !important;
+      // }
+
+      // &.selected {
+      //   background: #F5FAFF;
+      //   color:#1570EF !important;
+      //   border-radius: 4px;
+      // }
 
       &:last-child {
         border-bottom: none;
       }
     }
   }
+}
+
+.task-details-id {
+  color: #175cd3;
+  font-size: 14px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 20px;
+}
+.task-details-entity-link {
+  color: #535862;
+  font-size: 14px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 20px;
 }
 
 .reserve-right-sidebar {

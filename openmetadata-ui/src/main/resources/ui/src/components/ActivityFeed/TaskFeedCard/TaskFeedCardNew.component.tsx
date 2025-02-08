@@ -147,20 +147,17 @@ const TaskFeedCard = ({
             className="p-0 task-feed-message-new"
             data-testid="redirect-task-button-link"
             style={{
-              // display: 'inline-block',
-
               overflow: 'hidden',
               textOverflow: 'ellipsis',
-              // whiteSpace: 'nowrap',
               width: '100%',
               wordWrap: 'break-word',
-              // whiteSpace: 'normal',
+              whiteSpace: 'nowrap',
             }}
             type="link"
             onClick={handleTaskLinkClick}>
-            <Typography.Text className="m-r-xss text-primary">{`#${taskDetails.id} `}</Typography.Text>
+            <Typography.Text className="m-r-xss task-details-id">{`#${taskDetails.id} `}</Typography.Text>
 
-            <Typography.Text className="m-r-xss  m-r-xss">
+            <Typography.Text className="m-r-xss  m-r-xss task-details-entity-link">
               {TASK_TYPES[taskDetails.type]}
             </Typography.Text>
 
@@ -168,11 +165,14 @@ const TaskFeedCard = ({
 
             <Typography.Text
               className="break-all text-primary"
-              data-testid="entity-link">
+              data-testid="entity-link"
+              style={{ fontSize: '14px' }}>
               {getNameFromFQN(entityFQN)}
             </Typography.Text>
 
-            <Typography.Text className="p-l-xss">{`(${entityType})`}</Typography.Text>
+            <Typography.Text
+              className="p-l-xss"
+              style={{ fontSize: '14px' }}>{`(${entityType})`}</Typography.Text>
           </Button>
         </EntityPopOverCard>
       ) : null,
@@ -186,6 +186,9 @@ const TaskFeedCard = ({
   const handleMouseLeave = () => {
     setShowActions(false);
   };
+  const isTaskTestCaseResult =
+    taskDetails?.type === TaskType.RequestTestCaseFailureResolution;
+  const isTaskGlossaryApproval = taskDetails?.type === TaskType.RequestApproval;
 
   const updateTaskData = (data: TaskDetails | ResolveTask) => {
     if (!taskDetails?.id) {
@@ -225,6 +228,25 @@ const TaskFeedCard = ({
       updateTaskData(data as TaskDetails);
     }
   };
+  const onTaskReject = () => {
+    // if (!isTaskGlossaryApproval && isEmpty(comment)) {
+    //   showErrorToast(t('server.task-closed-without-comment'));
+
+    //   return;
+    // }
+
+    // const updatedComment = isTaskGlossaryApproval ? 'Rejected' : comment;
+    const updatedComment = isTaskGlossaryApproval ? 'Rejected' : 'Rejected';
+    updateTask(TaskOperation.REJECT, taskDetails?.id + '', {
+      comment: updatedComment,
+    } as unknown as TaskDetails)
+      .then(() => {
+        showSuccessToast(t('server.task-closed-successfully'));
+        onAfterClose?.();
+        onUpdateEntityDetails?.();
+      })
+      .catch((err: AxiosError) => showErrorToast(err));
+  };
 
   return (
     <Button
@@ -255,7 +277,7 @@ const TaskFeedCard = ({
               />
               {taskLinkTitleElement}
             </Col>
-            <Col className="m-t-0">
+            <Col style={{ marginTop: '-8px' }}>
               <Typography.Text>
                 <UserPopOverCard
                   key={feed.createdBy}
@@ -303,18 +325,21 @@ const TaskFeedCard = ({
           <Col
             className="task-feed-card-footer  d-flex align-center justify-between"
             span={24}>
-            <Col className="d-flex items-center">
-              <ReplyIcon className="m-r-xss" />
-              {feed.posts && feed.posts?.length > 0 && (
-                <span className="posts-length m-r-xss">
-                  {t(
-                    feed.posts.length === 1
-                      ? 'label.one-reply'
-                      : 'label.number-reply-plural',
-                    { number: feed.posts.length }
-                  )}
-                </span>
-              )}
+            <Col className="d-flex">
+              <Col className="d-flex flex-center">
+                <ReplyIcon className="m-r-xs" />
+                {feed.posts && feed.posts?.length > 0 && (
+                  <span className="posts-length m-r-xss">
+                    {t(
+                      feed.posts.length === 1
+                        ? 'label.one-reply'
+                        : 'label.number-reply-plural',
+                      { number: feed.posts.length }
+                    )}
+                  </span>
+                )}
+              </Col>
+
               <Col
                 className={`flex items-center gap-2 text-grey-muted ${
                   feed?.posts && feed?.posts?.length > 0
@@ -332,19 +357,24 @@ const TaskFeedCard = ({
             </Col>
 
             <Col className="d-flex gap-2">
-              <Button
-                className="approve-btn d-flex items-center"
-                icon={<CheckCircleFilled />}
-                type="primary"
-                onClick={onTaskResolve}>
-                {t('label.approve')}
-              </Button>
-              <Button
-                className="reject-btn  d-flex items-center"
-                icon={<CloseCircleFilled />}
-                type="default">
-                {t('label.reject')}
-              </Button>
+              {feed.task?.status === ThreadTaskStatus.Open && (
+                <Button
+                  className="approve-btn d-flex items-center"
+                  icon={<CheckCircleFilled />}
+                  type="primary"
+                  onClick={onTaskResolve}>
+                  {t('label.approve')}
+                </Button>
+              )}
+              {feed.task?.status === ThreadTaskStatus.Open && (
+                <Button
+                  className="reject-btn  d-flex items-center"
+                  icon={<CloseCircleFilled />}
+                  type="default"
+                  onClick={onTaskReject}>
+                  {t('label.reject')}
+                </Button>
+              )}
             </Col>
           </Col>
         </Row>

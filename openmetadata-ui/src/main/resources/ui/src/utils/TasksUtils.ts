@@ -16,7 +16,9 @@ import i18Next from 'i18next';
 import { isEmpty, isEqual, isUndefined } from 'lodash';
 import React from 'react';
 import { ReactComponent as CancelColored } from '../assets/svg/cancel-colored.svg';
-import { ReactComponent as EditColored } from '../assets/svg/edit-colored.svg';
+import { ReactComponent as CheckIcon } from '../assets/svg/check-circle.svg';
+import { ReactComponent as CloseIcon } from '../assets/svg/close-circle.svg';
+import { ReactComponent as EditSuggestionIcon } from '../assets/svg/edit-suggestion.svg';
 import { ReactComponent as SuccessColored } from '../assets/svg/success-colored.svg';
 import { ActivityFeedTabs } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
@@ -695,14 +697,18 @@ export const TASK_ACTION_LIST: TaskAction[] = [
   {
     label: i18Next.t('label.accept-suggestion'),
     key: TaskActionMode.VIEW,
-    icon: SuccessColored,
+    icon: CheckIcon,
   },
   {
-    label: i18Next.t('label.edit-amp-accept-suggestion'),
+    label: i18Next.t('label.edit-suggestion'),
     key: TaskActionMode.EDIT,
-    icon: EditColored,
+    icon: EditSuggestionIcon,
   },
-  ...TASK_ACTION_COMMON_ITEM,
+  {
+    label: i18Next.t('label.close'),
+    key: TaskActionMode.CLOSE,
+    icon: CloseIcon,
+  },
 ];
 
 export const GLOSSARY_TASK_ACTION_LIST: TaskAction[] = [

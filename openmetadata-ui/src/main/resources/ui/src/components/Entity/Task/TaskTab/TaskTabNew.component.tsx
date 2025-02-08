@@ -302,21 +302,48 @@ export const TaskTabNew = ({
           <Button
             className="p-0 task-feed-message font-medium text-md"
             data-testid="task-title"
+            style={{ marginTop: '-8px' }}
             type="link"
             onClick={handleTaskLinkClick}>
-            <Typography.Text className="p-0 text-primary">{`#${taskDetails.id} `}</Typography.Text>
+            <Typography.Text
+              className="p-0"
+              style={{
+                fontSize: '14px',
+                fontWeight: 600,
+                color: '#0950C5',
+                lineHeight: '20px',
+              }}>{`#${taskDetails.id} `}</Typography.Text>
 
-            <Typography.Text className="p-xss">
+            <Typography.Text
+              className="p-xss"
+              style={{
+                fontSize: '14px',
+                color: '#535862',
+                lineHeight: '20px',
+              }}>
               {TASK_TYPES[taskDetails.type]}
             </Typography.Text>
 
             {taskColumnName}
 
-            <Typography.Text className="break-all" data-testid="entity-link">
+            <Typography.Text
+              className="break-all"
+              data-testid="entity-link"
+              style={{
+                fontSize: '14px',
+                fontWeight: 600,
+                lineHeight: '20px',
+              }}>
               {getNameFromFQN(entityFQN)}
             </Typography.Text>
 
-            <Typography.Text className="p-l-xss">{`(${entityType})`}</Typography.Text>
+            <Typography.Text
+              className="p-l-xss"
+              style={{
+                fontSize: '14px',
+                fontWeight: 600,
+                lineHeight: '20px',
+              }}>{`(${entityType})`}</Typography.Text>
           </Button>
         </EntityPopOverCard>
       ) : null,
@@ -960,10 +987,8 @@ export const TaskTabNew = ({
   };
 
   return (
-    <Row className="p-y-sm p-x-md" data-testid="task-tab" gutter={[0, 24]}>
-      <Col
-        className="d-flex items-center task-feed-message-container"
-        span={24}>
+    <Row data-testid="task-tab" gutter={[0, 20]} style={{ padding: '20px' }}>
+      <Col className="d-flex items-start task-feed-message-container" span={24}>
         <Icon
           className="m-r-xs"
           component={
@@ -971,7 +996,7 @@ export const TaskTabNew = ({
               ? TaskOpenIcon
               : TaskCloseIcon
           }
-          style={{ fontSize: '18px' }}
+          height={14}
         />
 
         {taskLinkTitleElement}
