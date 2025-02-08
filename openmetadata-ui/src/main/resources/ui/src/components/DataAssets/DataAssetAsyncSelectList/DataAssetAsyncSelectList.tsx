@@ -36,6 +36,7 @@ import {
 
 const DataAssetAsyncSelectList: FC<DataAssetAsyncSelectListProps> = ({
   mode,
+  autoFocus = true,
   onChange,
   debounceTimeout = 800,
   initialOptions,
@@ -242,8 +243,8 @@ const DataAssetAsyncSelectList: FC<DataAssetAsyncSelectListProps> = ({
   return (
     <Select
       allowClear
-      autoFocus
       showSearch
+      autoFocus={autoFocus}
       data-testid="asset-select-list"
       dropdownRender={dropdownRender}
       filterOption={false}
