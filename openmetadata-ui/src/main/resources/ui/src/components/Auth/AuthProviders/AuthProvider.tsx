@@ -184,6 +184,9 @@ export const AuthProvider = ({
 
     setApplicationLoading(false);
 
+    // Clear the refresh flag (used after refresh is complete)
+    tokenService.current.clearRefreshInProgress();
+
     // Upon logout, redirect to the login page
     history.push(ROUTES.SIGNIN);
   }, [timeoutId]);
