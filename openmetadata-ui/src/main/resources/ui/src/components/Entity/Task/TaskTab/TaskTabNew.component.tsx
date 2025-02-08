@@ -1042,7 +1042,7 @@ export const TaskTabNew = ({
                 <Input
                   className="comments-input-field"
                   placeholder="Use @mention to tag and comment..."
-                  onMouseEnter={() => setShowFeedEditor(true)}
+                  onClick={() => setShowFeedEditor(true)}
                 />
               </div>
             )}
@@ -1051,17 +1051,6 @@ export const TaskTabNew = ({
               <Col className="p-l-0 p-r-0" data-testid="feed-replies">
                 {taskThread?.posts?.map((reply) => (
                   <CommentCard feed={taskThread} key={reply.id} post={reply} />
-                  // <ActivityFeedCardV2
-                  //   isPost
-                  //   componentsVisibility={{
-                  //     showRepliesContainer: false,
-                  //     showThreadIcon: false,
-                  //   }}
-                  //   feed={taskThread}
-                  //   // isActive={isActive}
-                  //   key={reply.id}
-                  //   post={reply}
-                  // />
                 ))}
               </Col>
             )}
@@ -1069,16 +1058,6 @@ export const TaskTabNew = ({
         </Col>
       </Col>
 
-      {/* <Col span={24}>
-          {taskDetails?.status === ThreadTaskStatus.Open && (
-            <ActivityFeedEditor
-              editAction={actionButtons}
-              ref={editorRef}
-              onSave={onSave}
-              onTextChange={setComment}
-            />
-          )}
-        </Col> */}
       {isTaskTestCaseResult ? (
         <Modal
           destroyOnClose

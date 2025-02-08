@@ -125,9 +125,7 @@ const CommentCard = ({ feed, post }: CommentCardInterface) => {
         margin: '10px 0px',
         borderBottom: '1.5px solid  #E4E4E4',
         position: 'relative',
-      }}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}>
+      }}>
       <ProfilePicture
         avatarType="outlined"
         // key={user.id}
@@ -170,7 +168,9 @@ const CommentCard = ({ feed, post }: CommentCardInterface) => {
               whiteSpace: 'normal',
               wordBreak: 'break-word',
               display: 'block',
-            }}>
+            }}
+            onMouseEnter={() => setIsHovered(true)}
+            onMouseLeave={() => setIsHovered(false)}>
             {post.message}
           </Text>
         )}

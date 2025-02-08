@@ -16,7 +16,7 @@ import { Button, Popover } from 'antd';
 import { groupBy, uniqueId } from 'lodash';
 import React, { FC, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as AddReactionIcon } from '../../../assets/svg/ic-reaction.svg';
+import { ReactComponent as AddReactionIcon } from '../../../assets/svg/add-emoji.svg';
 import {
   REACTION_LIST,
   REACTION_TYPE_LIST,
@@ -98,7 +98,9 @@ const Reactions: FC<ReactionsProps> = ({ reactions, onReactionSelect }) => {
   });
 
   return (
-    <div className="d-flex items-center" data-testid="feed-reaction-container">
+    <div
+      className="d-flex items-center m-l-xss"
+      data-testid="feed-reaction-container">
       {emojis}
       <Popover
         arrowPointAtCenter
@@ -113,7 +115,7 @@ const Reactions: FC<ReactionsProps> = ({ reactions, onReactionSelect }) => {
         <Button
           className="flex-center p-0"
           data-testid="add-reactions"
-          icon={<AddReactionIcon width={18} />}
+          icon={<AddReactionIcon height={16} />}
           shape="circle"
           size="small"
           title={t('label.add-entity', {

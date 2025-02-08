@@ -53,8 +53,11 @@ export const DomainListItemRenderer = (props: EntityReference) => {
       <div className="d-flex items-center w-max-400">
         <Typography.Text ellipsis>{getEntityName(props)}</Typography.Text>
         {isSubDomain && (
-          <Typography.Text ellipsis className="m-l-xss text-xs">
-            {/* {fqn} */}
+          <Typography.Text
+            ellipsis
+            className="m-l-xss text-xs"
+            type="secondary">
+            {fqn}
           </Typography.Text>
         )}
       </div>

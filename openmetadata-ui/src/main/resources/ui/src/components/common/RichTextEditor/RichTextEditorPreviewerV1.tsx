@@ -19,7 +19,6 @@ import {
   formatContent,
   isDescriptionContentEmpty,
 } from '../../../utils/BlockEditorUtils';
-import { getTrimmedContent } from '../../../utils/CommonUtils';
 import BlockEditor from '../../BlockEditor/BlockEditor';
 import './rich-text-editor-previewerV1.less';
 import { PreviewerProp } from './RichTextEditor.interface';
@@ -32,7 +31,6 @@ const RichTextEditorPreviewerV1: FC<PreviewerProp> = ({
   showReadMoreBtn = true,
   maxLength = DESCRIPTION_MAX_PREVIEW_CHARACTERS,
   isDescriptionExpanded = false,
-  reducePreviewLineClass,
 }) => {
   const { t, i18n } = useTranslation();
   const [content, setContent] = useState<string>('');
@@ -45,18 +43,6 @@ const RichTextEditorPreviewerV1: FC<PreviewerProp> = ({
     () => enableSeeMoreVariant && markdown.length > maxLength,
     [enableSeeMoreVariant, markdown, maxLength]
   );
-
-  /**
-   * if hasReadMore is true then value will be based on read more state
-   * else value will be content
-   */
-  const viewerValue = useMemo(() => {
-    if (hasReadMore) {
-      return readMore ? content : `${getTrimmedContent(content, maxLength)}...`;
-    }
-
-    return content;
-  }, [hasReadMore, readMore, maxLength, content]);
 
   useEffect(() => {
     setContent(formatContent(markdown, 'client'));
@@ -82,16 +68,16 @@ const RichTextEditorPreviewerV1: FC<PreviewerProp> = ({
         className={classNames(
           'markdown-parser',
           textVariant,
-          readMore ? '' : reducePreviewLineClass
+          readMore ? '' : 'text-clamp-2'
         )}
         data-testid="markdown-parser">
-        <BlockEditor autoFocus={false} content={viewerValue} editable={false} />
+        <BlockEditor autoFocus={false} content={content} editable={false} />
       </div>
       {hasReadMore && showReadMoreBtn && (
         <Button
           className="text-xs text-right"
           data-testid={`read-${readMore ? 'less' : 'more'}-button`}
-          style={{ fontSize: '14px' }}
+          style={{ fontSize: '14px', color: '#175CD3 !important' }}
           type="link"
           onClick={handleReadMoreToggle}>
           {readMore ? t('label.view-less') : t('label.view-more')}

@@ -15,7 +15,7 @@ import { Avatar, Button, Col, Row, Space } from 'antd';
 import { min, noop, sortBy } from 'lodash';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as ThreadIcon } from '../../../../assets/svg/thread-icon.svg';
+import { ReactComponent as ThreadIcon } from '../../../../assets/svg/reply-2.svg';
 import { ReactionOperation } from '../../../../enums/reactions.enum';
 import { ReactionType } from '../../../../generated/type/reaction';
 import ProfilePicture from '../../../common/ProfilePicture/ProfilePicture';
@@ -73,11 +73,11 @@ function FeedCardFooterNew({
   // };
 
   return (
-    <Row>
-      <Col span={24}>
-        <Space size={8}>
+    <Row align="top">
+      <Col span={24} style={{ height: '24px' }}>
+        <Space>
           <div
-            className="flex items-center gap-2 w-full rounded-8"
+            className="flex items-center gap-2  w-full rounded-8"
             // type="text"
             // onClick={componentsVisibility.showThreadIcon ? showReplies : noop}
           >
@@ -103,9 +103,10 @@ function FeedCardFooterNew({
               <Button
                 className="flex-center p-0"
                 data-testid="thread-count"
-                icon={<ThreadIcon width={18} />}
+                icon={<ThreadIcon height={20} />}
                 shape="circle"
                 size="small"
+                style={{ marginTop: '2px' }}
                 type="text"
                 onClick={showReplies}
               />

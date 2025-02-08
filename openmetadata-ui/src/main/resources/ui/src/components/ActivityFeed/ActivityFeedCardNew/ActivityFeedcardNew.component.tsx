@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 import { Card, Col, Input, Space, Tooltip, Typography } from 'antd';
+import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { Thread } from '../../../generated/entity/feed/thread';
@@ -49,7 +50,6 @@ interface ActivityFeedCardNewProps {
 }
 
 const ActivityFeedCardNew = ({
-  componentsVisibility,
   feed,
   isPost = false,
   post,
@@ -82,18 +82,12 @@ const ActivityFeedCardNew = ({
     });
     setShowFeedEditor(false);
   };
-  const onEditPost = () => {
-    setIsEditPost(!isEditPost);
-  };
   const onUpdate = (message: string) => {
     const updatedPost = { ...feed, message };
     const patch = compare(feed, updatedPost);
     updateFeed(feed.id, post.id, !isPost, patch);
     setIsEditPost(!isEditPost);
   };
-  const handleSave = useCallback(() => {
-    onUpdate?.(postMessage ?? '');
-  }, [onUpdate, postMessage]);
   // const getDefaultValue = (defaultMessage: string) => {
   //   return MarkdownToHTMLConverter.makeHtml(getFrontEndFormat(defaultMessage));
   // };
@@ -148,57 +142,57 @@ const ActivityFeedCardNew = ({
               background: '#E6F1FE',
             }
           : {}
-      }
-      // onMouseEnter={() => setIsHovered(true)}
-      // onMouseLeave={() => setIsHovered(false)}
-    >
+      }>
       <Space align="start" style={{ width: 'inherit' }}>
         <Space className="d-flex" direction="vertical">
-          <Space className="d-inline-flex justify-start items-start gap-3">
-            {/* <Badge
-              dot
-              offset={[-5, 30]}
-              status="success"
-              style={{
-                width: '8px',
-                height: '8px',
-                borderRadius: '50%',
-                backgroundColor: 'green',
-              }}>
-                 </Badge> */}
+          <Space
+            className={classNames('d-inline-flex justify-start items-start', {
+              'items-center': showThread,
+            })}
+            style={showThread ? { marginBottom: '-8px' } : {}}>
             <ProfilePicture
               avatarType="outlined"
               key={feed.id}
-              name="admin"
-              size={40}
+              name={feed.updatedBy!}
+              size={showThread ? 40 : 32}
             />
-
-            <Space className="d-flex flex-col align-start gap-0" size={0}>
-              <Space className="d-flex gap-0" size={0}>
+            <Space className="d-flex flex-col align-start gap-2" size={0}>
+              <Space
+                className="d-flex align-center gap-2"
+                size={0}
+                style={
+                  showThread ? { marginTop: '-4px' } : { marginTop: '-6px' }
+                }>
                 <Typography.Text
                   className={`mr-2 ${
                     !isPost ? 'activity-feed-user-name' : 'reply-card-user-name'
                   }`}>
                   {feed.updatedBy}
                 </Typography.Text>
-                <Typography.Text>
-                  {post.postTs && (
-                    <Tooltip
-                      color="white"
-                      overlayClassName="timestamp-tooltip"
-                      title={formatDateTime(post.postTs)}>
-                      <span
-                        className="feed-card-header-v2-timestamp mr-2"
-                        data-testid="timestamp">
-                        {getRelativeTime(post.postTs)}
-                      </span>
-                    </Tooltip>
-                  )}
-                </Typography.Text>
+                {post.postTs && (
+                  <Tooltip
+                    color="white"
+                    overlayClassName="timestamp-tooltip"
+                    title={formatDateTime(post.postTs)}>
+                    <Typography.Text
+                      className="feed-card-header-v2-timestamp"
+                      data-testid="timestamp">
+                      {getRelativeTime(post.postTs)}
+                    </Typography.Text>
+                  </Tooltip>
+                )}
               </Space>
               {!isPost && (
-                <Space className="align-start">
-                  <Typography.Text>
+                <Space
+                  className="d-flex align-center gap-1"
+                  style={
+                    !showThread
+                      ? { marginTop: '-6px' }
+                      : { marginTop: '-6px', alignItems: 'flex-start' }
+                  }>
+                  <Typography.Text
+                    className="card-style-feed-header"
+                    style={{ fontSize: '14px' }}>
                     {getFeedHeaderTextFromCardStyle(
                       feed.fieldOperation,
                       feed.cardStyle,
@@ -215,7 +209,9 @@ const ActivityFeedCardNew = ({
                       entityType,
                       entityFQN
                     )}>
-                    <span className={!showThread ? `max-one-line` : ''}>
+                    <span
+                      className={!showThread ? `max-one-line` : ''}
+                      style={{ fontSize: '14px' }}>
                       {feed?.entityRef
                         ? getEntityName(feed.entityRef)
                         : entityDisplayName(entityType, entityFQN)}
@@ -280,26 +276,19 @@ const ActivityFeedCardNew = ({
               <Input
                 className="comments-input-field"
                 placeholder="Use @mention to tag and comment..."
-                onMouseEnter={() => setShowFeedEditor(true)}
+                onClick={() => setShowFeedEditor(true)}
               />
             </div>
           )}
 
           {showThread && feed?.posts && feed?.posts?.length > 0 && (
             <Col className="p-l-0 p-r-0" data-testid="feed-replies">
-              {feed?.posts?.map((reply) => (
-                // <ActivityFeedCardNew
-                //   isPost
-                //   componentsVisibility={componentsVisibility}
-                //   feed={feed}
-                //   isActive={isActive}
-                //   key={reply.id}
-                //   post={reply}
-                //   showActivityFeedEditor={false}
-                //   // showThread={showThread}
-                // />
-                <CommentCard feed={feed} key={reply.id} post={reply} />
-              ))}
+              {feed?.posts
+                ?.slice()
+                .sort((a, b) => (b.postTs as number) - (a.postTs as number))
+                .map((reply) => (
+                  <CommentCard feed={feed} key={reply.id} post={reply} />
+                ))}
             </Col>
           )}
         </div>

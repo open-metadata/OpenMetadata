@@ -74,7 +74,11 @@ const FeedCardBodyNew = ({
         <Card bordered className="activity-feed-reply-card-message">
           <Typography.Text
             className="activity-feed-comment-text"
-            style={{ wordWrap: 'break-word', whiteSpace: 'normal' }}>
+            style={{
+              wordWrap: 'break-word',
+              whiteSpace: 'normal',
+              color: '#535862 !important',
+            }}>
             {message}
           </Typography.Text>
         </Card>;
@@ -200,19 +204,26 @@ const FeedCardBodyNew = ({
               padding:
                 feed.cardStyle === 'description'
                   ? '20px 20px 20px 6px'
-                  : '12px',
+                  : '20px',
               borderRadius: '8px',
               border: '0.8px solid #dfdfdf',
               marginTop: '20px',
+              fontSize: '14px',
+              color: '#535862',
+              lineHeight: '20px',
             }
           : {
               background: 'white',
               padding:
-                feed.cardStyle === 'description'
-                  ? '20px 20px 20px 6px'
-                  : '12px',
+                feed.cardStyle === 'description' &&
+                feed.fieldOperation === 'updated'
+                  ? '20px 6px 20px 6px'
+                  : '20px',
               borderRadius: '8px',
               marginTop: '2px',
+              fontSize: '14px',
+              color: '#535862',
+              lineHeight: '20px',
             }
       }>
       {feedBodyRender}

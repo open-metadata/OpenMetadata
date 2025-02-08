@@ -778,7 +778,12 @@ export const getFeedHeaderTextFromCardStyle = (
       return (
         <Transi18next
           i18nKey="message.feed-field-action-entity-header"
-          renderElement={<Typography.Text className="font-bold" />}
+          renderElement={
+            <Typography.Text
+              className="font-bold"
+              style={{ fontSize: '14px' }}
+            />
+          }
           values={{
             field: i18next.t(
               `label.${cardStyle === CardStyle.Tags ? 'tag-plural' : cardStyle}`

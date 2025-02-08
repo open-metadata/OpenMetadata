@@ -108,23 +108,17 @@ const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
       editorWrapper.style.textAlign = i18n.dir() === 'rtl' ? 'right' : 'left';
     }, [i18n]);
 
-    // Function to update <p> tags (called when content changes)
     const updatePTags = () => {
       const pTags = document.querySelectorAll('div.tiptap p');
 
       pTags.forEach((pTag) => {
-        const diffRemovedSpans = pTag.querySelectorAll('.diff-removed');
+        // Check if <p> tag is empty or contains only a <br class="ProseMirror-trailingBreak">
+        const hasOnlyTrailingBreak =
+          pTag.children.length === 1 &&
+          pTag.children[0].tagName === 'BR' &&
+          pTag.children[0].classList.contains('ProseMirror-trailingBreak');
 
-        // If there are diff-removed elements in the <p> tag, hide them
-        if (diffRemovedSpans.length > 0) {
-          diffRemovedSpans.forEach((span) => {
-            const element = span as HTMLElement;
-            element.style.display = 'none'; // Hide the removed content
-          });
-        }
-
-        // If the <p> tag is empty after removing diff-removed spans, remove the <p> tag
-        if ((pTag as HTMLElement).textContent?.trim() === '') {
+        if (pTag.textContent?.trim() === '' || hasOnlyTrailingBreak) {
           pTag.remove();
         }
       });
