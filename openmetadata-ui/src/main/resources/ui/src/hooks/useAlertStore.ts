@@ -20,23 +20,32 @@ export type AlertType = {
 
 interface AlertStore {
   alert: AlertType | undefined;
+  timeoutId: ReturnType<typeof setTimeout> | null;
   animationClass: string;
   addAlert: (alert: AlertType, timer?: number) => void;
   resetAlert: VoidFunction;
 }
 
-export const useAlertStore = create<AlertStore>()((set) => ({
+export const useAlertStore = create<AlertStore>()((set, get) => ({
   alert: undefined,
   animationClass: '',
+  timeoutId: null,
   addAlert: (alert: AlertType, timer?: number) => {
+    const { timeoutId } = get();
     set({ alert, animationClass: 'show-alert' });
+
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
 
     const autoCloseTimer = timer ?? (alert.type === 'error' ? Infinity : 5000);
 
     if (autoCloseTimer !== Infinity) {
-      setTimeout(() => {
+      const newTimeoutId = setTimeout(() => {
         set({ animationClass: 'hide-alert', alert: undefined });
       }, autoCloseTimer);
+
+      set({ timeoutId: newTimeoutId });
     }
   },
   resetAlert: () => {

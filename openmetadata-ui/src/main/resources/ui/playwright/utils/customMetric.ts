@@ -169,7 +169,5 @@ export const deleteCustomMetric = async ({
   await deleteMetricResponse;
 
   // Verifying the deletion
-  await expect(page.getByRole('alert').first()).toHaveText(
-    `"${metric.name}" deleted successfully!`
-  );
+  await toastNotification(page, `"${metric.name}" deleted successfully!`);
 };
