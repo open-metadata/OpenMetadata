@@ -16,6 +16,7 @@ import {
   descriptionBox,
   getApiContext,
   redirectToHomePage,
+  toastNotification,
 } from '../../utils/common';
 import { deleteTestCase, visitDataQualityTab } from '../../utils/testCases';
 
@@ -133,11 +134,7 @@ test('Table difference test case', async ({ page }) => {
       await page.getByTitle('name', { exact: true }).click();
       await page.getByRole('button', { name: 'Submit' }).click();
 
-      await expect(page.getByRole('alert')).toContainText(
-        'Test case updated successfully.'
-      );
-
-      await page.getByLabel('close', { exact: true }).click();
+      await toastNotification(page, 'Test case updated successfully.');
     });
 
     await test.step('Delete', async () => {
@@ -233,11 +230,7 @@ test('Custom SQL Query', async ({ page }) => {
       await page.getByPlaceholder('Enter a Threshold').fill('244');
       await page.getByRole('button', { name: 'Submit' }).click();
 
-      await expect(page.getByRole('alert')).toContainText(
-        'Test case updated successfully.'
-      );
-
-      await page.getByLabel('close', { exact: true }).click();
+      await toastNotification(page, 'Test case updated successfully.');
     });
 
     await test.step('Delete', async () => {
@@ -333,11 +326,7 @@ test('Column Values To Be Not Null', async ({ page }) => {
       await page.keyboard.type(' update');
       await page.getByRole('button', { name: 'Submit' }).click();
 
-      await expect(page.getByRole('alert')).toContainText(
-        'Test case updated successfully.'
-      );
-
-      await page.getByLabel('close', { exact: true }).click();
+      await toastNotification(page, 'Test case updated successfully.');
     });
 
     await test.step('Delete', async () => {
