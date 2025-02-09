@@ -249,13 +249,7 @@ public class LineageRepository {
     SearchLineageResult result =
         Entity.getSearchRepository()
             .searchLineageForExport(
-                fqn,
-                upstreamDepth,
-                downstreamDepth,
-                queryFilter,
-                deleted,
-                entityType,
-                LineageDirection.UPSTREAM);
+                fqn, upstreamDepth, downstreamDepth, queryFilter, deleted, entityType);
     CsvFile csvFile = new CsvFile().withHeaders(headers);
 
     addRecords(csvFile, result.getUpstreamEdges().values().stream().toList());

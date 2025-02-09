@@ -34,12 +34,12 @@
     "layerFrom": {
       "description": "Layer to start the search from.",
       "type": "integer",
-      "default": 3
+      "default": 0
     },
     "layerSize": {
       "description": "Size of the search result.",
       "type": "integer",
-      "default": 3
+      "default": 1000
     },
     "queryFilter": {
       "description": "Query Filter",

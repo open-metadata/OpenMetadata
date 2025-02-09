@@ -872,6 +872,7 @@ public class ElasticSearchClient implements SearchClient {
     // Add All nodes and edges from upstream lineage to result
     result.getNodes().putAll(upstreamLineage.getNodes());
     result.getUpstreamEdges().putAll(upstreamLineage.getUpstreamEdges());
+    result.getPaging().getUpstream().addAll(upstreamLineage.getPaging().getUpstream());
     return result;
   }
 

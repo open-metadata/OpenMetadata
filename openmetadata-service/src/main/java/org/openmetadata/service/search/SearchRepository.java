@@ -60,7 +60,6 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.EntityTimeSeriesInterface;
 import org.openmetadata.schema.analytics.ReportData;
-import org.openmetadata.schema.api.lineage.LineageDirection;
 import org.openmetadata.schema.api.lineage.SearchLineageRequest;
 import org.openmetadata.schema.api.lineage.SearchLineageResult;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
@@ -995,8 +994,7 @@ public class SearchRepository {
       int downstreamDepth,
       String queryFilter,
       boolean deleted,
-      String entityType,
-      LineageDirection direction)
+      String entityType)
       throws IOException {
     return searchClient.searchLineage(
         new SearchLineageRequest()
@@ -1005,8 +1003,7 @@ public class SearchRepository {
             .withDownstreamDepth(downstreamDepth)
             .withQueryFilter(queryFilter)
             .withIncludeDeleted(deleted)
-            .withEntityType(entityType)
-            .withDirection(direction));
+            .withEntityType(entityType));
   }
 
   public Response searchByField(String fieldName, String fieldValue, String index)
