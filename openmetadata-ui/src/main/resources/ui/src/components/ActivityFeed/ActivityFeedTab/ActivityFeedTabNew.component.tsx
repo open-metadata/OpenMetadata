@@ -352,7 +352,12 @@ export const ActivityFeedTabNew = ({
             ) : (
               <TaskIcon className="m-r-xs" {...ICON_DIMENSION_USER_PAGE} />
             )}
-            <span className="task-tab-filter-item">{t('label.open')}</span>
+            <span
+              className={classNames('task-tab-filter-item', {
+                selected: taskFilter === ThreadTaskStatus.Open,
+              })}>
+              {t('label.open')}
+            </span>
           </div>
           <span
             className={classNames('task-count-container d-flex flex-center', {
@@ -384,7 +389,12 @@ export const ActivityFeedTabNew = ({
               <TaskCloseIcon className="m-r-xs" {...ICON_DIMENSION_USER_PAGE} />
             )}
 
-            <span className="task-tab-filter-item">{t('label.closed')}</span>
+            <span
+              className={classNames('task-tab-filter-item', {
+                selected: taskFilter === ThreadTaskStatus.Closed,
+              })}>
+              {t('label.closed')}
+            </span>
           </div>
           <span
             className={classNames('task-count-container d-flex flex-center', {

@@ -176,7 +176,7 @@ const ProfileSectionUserDetailsCard = ({
     [userData.email]
   );
 
-  const content = (
+  const manageProfileOptions = (
     <div style={{ width: '180px' }}>
       <div
         className="profile-manage-item d-flex item-center"
@@ -257,7 +257,7 @@ const ProfileSectionUserDetailsCard = ({
     <div className="d-flex flex-col w-full flex-center relative profile-section-user-details-card">
       <Popover
         destroyTooltipOnHide
-        content={content}
+        content={manageProfileOptions}
         open={isPopoverVisible}
         overlayClassName="profile-management-popover"
         placement="bottomLeft"

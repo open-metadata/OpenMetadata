@@ -14,6 +14,8 @@ import { Col, Row, Steps, Typography } from 'antd';
 import { last, toLower } from 'lodash';
 import React, { ReactNode, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ReactComponent as AssigneesIcon } from '../../../../assets/svg/assignees.svg';
+import { ReactComponent as UserIcon } from '../../../../assets/svg/user-profile.svg';
 import { NO_DATA_PLACEHOLDER } from '../../../../constants/constants';
 import { TEST_CASE_STATUS } from '../../../../constants/TestSuite.constant';
 import { Thread } from '../../../../generated/entity/feed/thread';
@@ -129,7 +131,7 @@ const TaskTabIncidentManagerHeaderNew = ({ thread }: { thread: Thread }) => {
 
       <Row className="m-l-0" gutter={[16, 16]}>
         <Col className="flex items-center gap-2 text-grey-muted" span={12}>
-          {/* <User {...ICON_DIMENSION_USER_PAGE} /> */}
+          <UserIcon height={16} />
           <Typography.Text className="incident-manager-details-label @grey-8">
             {t('label.created-by')}
           </Typography.Text>
@@ -139,12 +141,12 @@ const TaskTabIncidentManagerHeaderNew = ({ thread }: { thread: Thread }) => {
             avatarType="outlined"
             key={thread.id}
             name="admin"
-            size={16}
+            size={24}
           />{' '}
           <Typography.Text>{thread.createdBy}</Typography.Text>
         </Col>
         <Col className="flex items-center gap-2 text-grey-muted" span={12}>
-          {/* <User {...ICON_DIMENSION_USER_PAGE} /> */}
+          <AssigneesIcon height={16} />
           <Typography.Text className="incident-manager-details-label @grey-8">
             {`${t('label.assignee-plural')} `}
           </Typography.Text>

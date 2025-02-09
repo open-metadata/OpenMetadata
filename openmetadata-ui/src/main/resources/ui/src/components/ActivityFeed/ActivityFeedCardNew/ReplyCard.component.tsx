@@ -69,7 +69,7 @@ const CommentCard = ({ feed, post }: CommentCardInterface) => {
   const onUpdate = (message: string) => {
     const updatedPost = { ...feed, message };
     const patch = compare(feed, updatedPost);
-    updateFeed(feed.id, post.id, true, patch);
+    updateFeed(feed.id, post.id, false, patch);
     setIsEditPost(!isEditPost);
   };
   const handleSave = useCallback(() => {

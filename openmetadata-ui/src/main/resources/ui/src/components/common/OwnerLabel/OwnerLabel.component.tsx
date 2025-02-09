@@ -94,7 +94,7 @@ export const OwnerLabel = ({
                       key="profile-picture"
                       name={owner.name ?? ''}
                       type="circle"
-                      width="18"
+                      width="24"
                     />
                   </div>
                 );
