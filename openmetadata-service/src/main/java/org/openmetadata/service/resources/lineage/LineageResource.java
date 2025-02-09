@@ -276,7 +276,7 @@ public class LineageResource {
           int size)
       throws IOException {
     return Entity.getSearchRepository()
-        .searchLineage(
+        .searchLineageWithDirection(
             new SearchLineageRequest()
                 .withFqn(fqn)
                 .withUpstreamDepth(upstreamDepth + 1)

@@ -967,7 +967,7 @@ public class SearchRepository {
 
   public SearchLineageResult searchLineageWithDirection(SearchLineageRequest lineageRequest)
       throws IOException {
-    return searchClient.searchLineage(lineageRequest);
+    return searchClient.searchLineageWithDirection(lineageRequest);
   }
 
   public Response searchEntityRelationship(
