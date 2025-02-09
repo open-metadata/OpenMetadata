@@ -261,7 +261,7 @@
   }
 
   .task-count-container {
-    background: #f5f5f5;
+    background: #e9eaeb;
     border-radius: 16px;
     width: 30px;
     height: 22px;
@@ -270,11 +270,11 @@
     justify-content: center;
     align-items: center;
     &.active {
-      background-color: #ecfdf3 !important;
+      background-color: #2e90fa !important;
     }
 
     .task-count-text {
-      color: #535862;
+      color: #414651;
       text-align: center;
       font-family: Inter;
       font-size: 12px;
@@ -283,7 +283,8 @@
     }
 
     &.active .task-count-text {
-      color: #039855;
+      // color: #039855;
+      color: @white;
     }
   }
   .ant-dropdown-menu .ant-dropdown-menu-item {
@@ -294,6 +295,9 @@
       box-shadow: 0px 1px 2px 0px rgba(10, 13, 18, 0.05);
       background-color: #f4f4f5;
       border-radius: 8px;
+      svg path {
+        stroke: #2e90fa;
+      }
     }
   }
 }
@@ -314,20 +318,21 @@
       text-align: center;
 
       .ant-segmented-item-label {
-        color: #005bc4; /* Blue color for selected tab */
+        color: #005bc4;
+      }
+      svg {
+        stroke: #005bc4;
       }
     }
-
-    &:hover {
-      background: none !important; /* Remove the default hover effect */
-    }
-
-    &:focus {
-      background: none !important; /* Remove the focus effect */
-    }
+  }
+  &:hover {
+    background: none !important;
   }
 
-  /* Remove hover effect from the segmented wrapper */
+  &:focus {
+    background: none !important;
+  }
+
   .ant-segmented:not(.ant-segmented-disabled):hover,
   .ant-segmented:not(.ant-segmented-disabled):focus {
     background: none !important;
@@ -369,4 +374,9 @@
 }
 .feed-card-header-v2-timestamp {
   color: #717680;
+}
+.close-tab-icon {
+  position: absolute;
+  top: 20px;
+  right: 20px;
 }

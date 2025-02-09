@@ -21,16 +21,15 @@
 
 .task-action-button {
   button {
-    border: 1px solid @primary-color;
-    color: @primary-color;
-    // padding: 10px 16px;
     height: 40px;
     span {
-      color: #1570ef;
       font-size: 14px;
       font-style: normal;
       font-weight: 500;
       line-height: 20px;
+    }
+    &:hover {
+      color: #1570ef !important;
     }
 
     &:first-child {
@@ -43,48 +42,36 @@
   }
 }
 
-// .task-action-dropdown {
-//   ul {
-//     padding: 4px 8px;
-//     border-radius: 8px;
-
-//     li {
-//       color: #414651;
-//       font-size: 14px;
-//       font-style: normal;
-//       font-weight: 500;
-//       line-height: 20px;
-//       padding: 10px 16px;
-
-//       &:last-child {
-//         border-bottom: none;
-//       }
-//     }
-//   }
-// }
 .task-action-dropdown {
+  .anticon svg {
+    fill: none;
+  }
   ul {
     padding: 4px 0;
     border-radius: 8px;
 
     li {
-      // color: #414651;
       font-size: 14px;
       font-weight: 500;
       line-height: 20px;
       padding: 10px 16px;
       cursor: pointer;
+      border-bottom: none;
+      &:hover {
+        background: #f5faff;
+        color: #1570ef !important;
+        .anticon svg path {
+          stroke: #1570ef;
+        }
+      }
 
-      // &:hover {
-      //   background: #F5FAFF;
-      //   color:#1570EF !important;
-      // }
-
-      // &.selected {
-      //   background: #F5FAFF;
-      //   color:#1570EF !important;
-      //   border-radius: 4px;
-      // }
+      &.ant-dropdown-menu-item-selected {
+        background: #f5faff;
+        color: #1570ef !important;
+        .anticon svg path {
+          stroke: #1570ef !important;
+        }
+      }
 
       &:last-child {
         border-bottom: none;

@@ -29,9 +29,16 @@ export const DiffViewNew = ({
   const { t } = useTranslation();
   const [expanded, setExpanded] = useState(false);
 
+  // function stripHtml(html: string) {
+  //   // Remove all HTML tags except <strong>
+  //   return html.replace(/<(?!\/?strong\b)[^>]+>/g, '').trim();
+  // }
   function stripHtml(html: string) {
-    // Remove all HTML tags except <strong>
-    return html.replace(/<(?!\/?strong\b)[^>]+>/g, '').trim();
+    // Preserve <strong> tags and their content, removing all other HTML tags
+    return html
+      .replace(/<(?!\/?strong\b)[^>]+>/g, '') // Keep <strong> tags, remove others
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') // Convert **bold** to <strong>bold</strong>
+      .trim();
   }
 
   const elements = diffArr.map((diff) => {

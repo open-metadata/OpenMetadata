@@ -14,8 +14,8 @@ import Icon, { CheckCircleFilled, CloseCircleFilled } from '@ant-design/icons';
 import { Button, Card, Col, Row, Tooltip, Typography } from 'antd';
 
 import classNames from 'classnames';
-import { isEmpty, isUndefined, lowerCase } from 'lodash';
-import React, { useMemo, useState } from 'react';
+import { isEmpty, isEqual, isUndefined, lowerCase } from 'lodash';
+import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import { ReactComponent as AssigneesIcon } from '../../../assets/svg/assignees.svg';
@@ -44,6 +44,7 @@ import { TaskOperation } from '../../../constants/Feeds.constants';
 import { TASK_TYPES } from '../../../constants/Task.constant';
 import { TaskType } from '../../../generated/api/feed/createThread';
 import { ResolveTask } from '../../../generated/api/feed/resolveTask';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import DescriptionTaskNew from '../../../pages/TasksPage/shared/DescriptionTaskNew';
 import TagsTask from '../../../pages/TasksPage/shared/TagsTask';
 import { updateTask } from '../../../rest/feedsAPI';
@@ -186,9 +187,23 @@ const TaskFeedCard = ({
   const handleMouseLeave = () => {
     setShowActions(false);
   };
+  const { currentUser } = useApplicationStore();
   const isTaskTestCaseResult =
     taskDetails?.type === TaskType.RequestTestCaseFailureResolution;
   const isTaskGlossaryApproval = taskDetails?.type === TaskType.RequestApproval;
+  const isAssignee = taskDetails?.assignees?.some((assignee) =>
+    isEqual(assignee.id, currentUser?.id)
+  );
+  const isPartOfAssigneeTeam = taskDetails?.assignees?.some((assignee) =>
+    assignee.type === 'team' ? checkIfUserPartOfTeam(assignee.id) : false
+  );
+
+  const checkIfUserPartOfTeam = useCallback(
+    (teamId: string): boolean => {
+      return Boolean(currentUser?.teams?.find((team) => teamId === team.id));
+    },
+    [currentUser]
+  );
 
   const updateTaskData = (data: TaskDetails | ResolveTask) => {
     if (!taskDetails?.id) {

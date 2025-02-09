@@ -28,6 +28,7 @@ import FeedCardFooterNew from '../ActivityFeedCardV2/FeedCardFooter/FeedCardFoot
 import { useActivityFeedProvider } from '../ActivityFeedProvider/ActivityFeedProvider';
 import ActivityFeedActions from '../Shared/ActivityFeedActions';
 // import ActivityFeedEditor from '../ActivityFeedEditor/ActivityFeedEditor';
+import { useTranslation } from 'react-i18next';
 import ActivityFeedEditor from '../ActivityFeedEditor/ActivityFeedEditorNew';
 
 const { Text } = Typography;
@@ -49,7 +50,7 @@ const CommentCard = ({ feed, post }: CommentCardInterface) => {
     permission: true,
     name: post.from ?? '',
   });
-
+  const { t } = useTranslation();
   const { selectedThread, postFeed } = useActivityFeedProvider();
   const [showFeedEditor, setShowFeedEditor] = useState<boolean>(false);
   const [isEditPost, setIsEditPost] = useState<boolean>(false);
@@ -125,7 +126,9 @@ const CommentCard = ({ feed, post }: CommentCardInterface) => {
         margin: '10px 0px',
         borderBottom: '1.5px solid  #E4E4E4',
         position: 'relative',
-      }}>
+      }}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}>
       <ProfilePicture
         avatarType="outlined"
         // key={user.id}
@@ -145,6 +148,17 @@ const CommentCard = ({ feed, post }: CommentCardInterface) => {
                             `}>
             {feed.updatedBy}
           </Typography.Text>
+          <Typography.Text
+            style={{
+              verticalAlign: 'middle',
+              fontSize: '18px',
+              fontWeight: 400,
+              margin: 'auto 0px',
+              color: '#A1A1AA',
+              marginBottom: '8px',
+            }}>
+            {t('label.dot')}
+          </Typography.Text>
           <Typography.Text>
             <Tooltip
               color="white"
@@ -153,7 +167,6 @@ const CommentCard = ({ feed, post }: CommentCardInterface) => {
               <span
                 className="feed-card-header-v2-timestamp mr-2"
                 data-testid="timestamp">
-                {/* {'.'} */}
                 {getRelativeTime(post.postTs)}
               </span>
             </Tooltip>
@@ -168,9 +181,9 @@ const CommentCard = ({ feed, post }: CommentCardInterface) => {
               whiteSpace: 'normal',
               wordBreak: 'break-word',
               display: 'block',
-            }}
-            onMouseEnter={() => setIsHovered(true)}
-            onMouseLeave={() => setIsHovered(false)}>
+              fontSize: '12px',
+              fontWeight: 400,
+            }}>
             {post.message}
           </Text>
         )}

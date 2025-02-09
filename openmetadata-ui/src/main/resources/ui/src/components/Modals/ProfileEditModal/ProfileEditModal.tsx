@@ -19,6 +19,7 @@ import { useTranslation } from 'react-i18next';
 // import RichTextEditor from '../../common/RichTextEditor/RichTextEditor';
 import { isEmpty } from 'lodash';
 import { User } from '../../../generated/entity/teams/user';
+import { getBackendFormat, HTMLToMarkdown } from '../../../utils/FeedUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { FeedEditor } from '../../ActivityFeed/FeedEditor/FeedEditor';
 import { EditorContentRef } from '../ModalWithMarkdownEditor/ModalWithMarkdownEditor.interface';
@@ -33,7 +34,7 @@ interface ProfileEditModalProps {
   header: string;
   value: string;
   placeholder: string;
-  onSave?: (text: string) => Promise<void>;
+  onSave?: (editorValue: any, displayName: any) => void;
   onCancel?: () => void;
   visible: boolean;
   updateUserDetails: (data: Partial<User>, key: keyof User) => Promise<void>;
@@ -70,19 +71,23 @@ export const ProfileEditModal: FunctionComponent<ProfileEditModalProps> = ({
       }
     }
   }, [displayName, updateUserDetails, userData.displayName]);
-
+  const handleDescriptionChange = useCallback(
+    async (description: string) => {
+      await updateUserDetails({ description }, 'description');
+    },
+    [updateUserDetails]
+  );
   const handleSaveData = async () => {
-    await handleDisplayNameSave();
-    if (markdownRef.current) {
-      setIsLoading(true);
-      try {
-        const content = markdownRef.current?.getEditorContent?.()?.trim() ?? '';
-        await onSave?.(content);
-      } catch (error) {
-        showErrorToast(error as AxiosError);
-      } finally {
-        setIsLoading(false);
-      }
+    setIsLoading(true);
+    try {
+      const content = markdownRef.current?.getEditorContent?.()?.trim() ?? '';
+      await updateUserDetails({ description: editorValue }, 'description');
+      await updateUserDetails({ displayName }, 'displayName');
+      onSave?.(editorValue, displayName);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -90,6 +95,11 @@ export const ProfileEditModal: FunctionComponent<ProfileEditModalProps> = ({
     (e: React.ChangeEvent<HTMLInputElement>) => setDisplayName(e.target.value),
     []
   );
+  const onChangeHandler = (value: string) => {
+    const markdown = HTMLToMarkdown.turndown(value);
+    const backendFormat = getBackendFormat(markdown);
+    setEditorValue(markdown);
+  };
 
   return (
     <Modal
@@ -145,8 +155,8 @@ export const ProfileEditModal: FunctionComponent<ProfileEditModalProps> = ({
       <FeedEditor
         defaultValue={userData.description}
         placeHolder={userData.description}
-        // ref={editorRef}
-        // onChangeHandler={()=>setDes}
+        ref={markdownRef}
+        onChangeHandler={onChangeHandler}
         onSave={handleSaveData}
       />
     </Modal>

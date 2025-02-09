@@ -16,10 +16,9 @@ import i18Next from 'i18next';
 import { isEmpty, isEqual, isUndefined } from 'lodash';
 import React from 'react';
 import { ReactComponent as CancelColored } from '../assets/svg/cancel-colored.svg';
-import { ReactComponent as CheckIcon } from '../assets/svg/check-circle.svg';
 import { ReactComponent as CloseIcon } from '../assets/svg/close-circle.svg';
 import { ReactComponent as EditSuggestionIcon } from '../assets/svg/edit-suggestion.svg';
-import { ReactComponent as SuccessColored } from '../assets/svg/success-colored.svg';
+import { ReactComponent as CheckIcon } from '../assets/svg/tick-circle.svg';
 import { ActivityFeedTabs } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
@@ -715,12 +714,12 @@ export const GLOSSARY_TASK_ACTION_LIST: TaskAction[] = [
   {
     label: i18Next.t('label.approve'),
     key: TaskActionMode.RESOLVE,
-    icon: SuccessColored,
+    icon: CheckIcon,
   },
   {
     label: i18Next.t('label.reject'),
     key: TaskActionMode.CLOSE,
-    icon: CancelColored,
+    icon: CloseIcon,
   },
 ];
 

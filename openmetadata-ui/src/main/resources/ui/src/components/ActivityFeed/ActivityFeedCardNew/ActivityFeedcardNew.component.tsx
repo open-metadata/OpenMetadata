@@ -16,6 +16,7 @@ import { compare } from 'fast-json-patch';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
+import { ReactComponent as CloseTabIcon } from '../../../assets/svg/close-tab.svg';
 import { Thread } from '../../../generated/entity/feed/thread';
 import { useUserProfile } from '../../../hooks/user-profile/useUserProfile';
 import {
@@ -88,50 +89,11 @@ const ActivityFeedCardNew = ({
     updateFeed(feed.id, post.id, !isPost, patch);
     setIsEditPost(!isEditPost);
   };
-  // const getDefaultValue = (defaultMessage: string) => {
-  //   return MarkdownToHTMLConverter.makeHtml(getFrontEndFormat(defaultMessage));
-  // };
-  // const feedBodyRender = useMemo(() => {
-  //   if (isEditPost) {
-  //     return (
-  //       <ActivityFeedEditor
-  //         focused
-  //         className="mb-8"
-  //         defaultValue={getDefaultValue(post.message)}
-  //         editAction={
-  //           <div className="d-flex justify-end gap-2 m-r-xss">
-  //             <Button
-  //               className="border border-primary text-primary rounded-4"
-  //               data-testid="cancel-button"
-  //               size="small"
-  //               // onClick={onEditCancel}
-  //             >
-  //               {t('label.cancel')}
-  //             </Button>
-  //             <Button
-  //               className="rounded-4"
-  //               data-testid="save-button"
-  //               // disabled={!message.length}
-  //               size="small"
-  //               type="primary"
-  //               onClick={handleSave}>
-  //               {t('label.save')}
-  //             </Button>
-  //           </div>
-  //         }
-  //         editorClass="is_edit_post"
-  //         onSave={handleSave}
-  //         onTextChange={(message) => setPostMessage(message)}
-  //       />
-  //     );
-  //   }
 
-  //   // return feedBodyStyleCardsRender;
-  // }, [isEditPost, message]);
   return (
     <Card
       bordered={showThread ? false : true}
-      className={`activity-feed-card-new ${
+      className={`realtive activity-feed-card-new ${
         showThread || isPost
           ? 'activity-feed-card-new-right-panel m-0 gap-0'
           : ''
@@ -217,10 +179,14 @@ const ActivityFeedCardNew = ({
                         : entityDisplayName(entityType, entityFQN)}
                     </span>
                   </Link>
+                  {showThread && (
+                    <CloseTabIcon className="close-tab-icon" height={16} />
+                  )}
                 </Space>
               )}
             </Space>
           </Space>
+
           <FeedCardBodyNew
             feed={feed}
             isEditPost={isEditPost}

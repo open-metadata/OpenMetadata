@@ -230,14 +230,28 @@ const ProfileSectionUserDetailsCard = ({
     </div>
   );
 
-  const handleDescriptionChange = useCallback(
-    async (description: string) => {
-      await updateUserDetails({ description }, 'description');
+  // const handleDescriptionChange = useCallback(
+  //   async (description: string) => {
+  //     await updateUserDetails({ description }, 'description');
 
-      setEditProfile(false);
-    },
-    [updateUserDetails, setEditProfile]
-  );
+  //     setEditProfile(false);
+  //   },
+  //   [updateUserDetails, setEditProfile]
+  // );
+  // const handleProfileUpdate = useCallback(
+  //   async (displayName: string, description: string) => {
+  //     await updateUserDetails({
+  //       updatedDisplayName: displayName,
+  //       updatedDescription: description,
+  //     });
+
+  //     setEditProfile(false);
+  //   },
+  //   [updateUserDetails, setEditProfile]
+  // );
+  const handleModalClose = async () => {
+    setEditProfile(false);
+  };
 
   return (
     <div className="d-flex flex-col w-full flex-center relative profile-section-user-details-card">
@@ -310,7 +324,7 @@ const ProfileSectionUserDetailsCard = ({
           value={userData.description as string}
           visible={Boolean(editProfile)}
           onCancel={() => setEditProfile(false)}
-          onSave={handleDescriptionChange}
+          onSave={handleModalClose}
         />
       )}
     </div>

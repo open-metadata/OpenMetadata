@@ -48,8 +48,9 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
+import { ReactComponent as TaskCloseIcon } from '../../../../assets/svg/close-circle.svg';
+import { ReactComponent as CloseTabIcon } from '../../../../assets/svg/close-tab.svg';
 import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
-import { ReactComponent as TaskCloseIcon } from '../../../../assets/svg/ic-close-task.svg';
 import { ReactComponent as TaskOpenIcon } from '../../../../assets/svg/ic-open-task.svg';
 import { ReactComponent as AddColored } from '../../../../assets/svg/plus-colored.svg';
 
@@ -333,6 +334,7 @@ export const TaskTabNew = ({
                 fontSize: '14px',
                 fontWeight: 600,
                 lineHeight: '20px',
+                color: '#0950C5',
               }}>
               {getNameFromFQN(entityFQN)}
             </Typography.Text>
@@ -343,6 +345,7 @@ export const TaskTabNew = ({
                 fontSize: '14px',
                 fontWeight: 600,
                 lineHeight: '20px',
+                color: '#0950C5',
               }}>{`(${entityType})`}</Typography.Text>
           </Button>
         </EntityPopOverCard>
@@ -453,6 +456,7 @@ export const TaskTabNew = ({
       })
       .finally(() => {
         editorRef.current?.clearEditorValue();
+        setShowFeedEditor(false);
       });
   };
 
@@ -851,7 +855,7 @@ export const TaskTabNew = ({
     <TaskTabIncidentManagerHeaderNew thread={taskThread} />
   ) : (
     <div
-      className={classNames('d-flex justify-between flex-wrap gap-2', {
+      className={classNames('d-flex justify-between flex-wrap gap-2 relative', {
         'flex-column': isEditAssignee,
       })}>
       <div className="d-flex gap-2" data-testid="task-assignees">
@@ -912,7 +916,7 @@ export const TaskTabNew = ({
                 </Typography.Text>
               </Col>
               <Col className="flex items-center gap-2" span={12}>
-                <ProfilePicture name={taskThread.createdBy ?? ''} width="16" />
+                <ProfilePicture name={taskThread.createdBy ?? ''} width="24" />
                 <Typography.Text>{taskThread.createdBy}</Typography.Text>
               </Col>
               <Col
@@ -924,7 +928,7 @@ export const TaskTabNew = ({
               </Col>
               <Col className="flex items-center gap-2" span={12}>
                 <OwnerLabelNew
-                  avatarSize={16}
+                  avatarSize={24}
                   className="p-t-05"
                   owners={taskThread?.task?.assignees}
                 />
@@ -1244,6 +1248,7 @@ export const TaskTabNew = ({
           </Form>
         </Modal>
       )}
+      <CloseTabIcon className="close-tab-icon" height={16} />
     </Row>
   );
 };
