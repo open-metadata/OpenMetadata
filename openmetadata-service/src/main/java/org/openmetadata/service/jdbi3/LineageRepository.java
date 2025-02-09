@@ -37,9 +37,7 @@ import com.opencsv.CSVWriter;
 import java.io.IOException;
 import java.io.StringWriter;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -248,7 +246,6 @@ public class LineageRepository {
       throws IOException {
     CsvDocumentation documentation = getCsvDocumentation("lineage");
     List<CsvHeader> headers = documentation.getHeaders();
-    // TODO: Fix the lineage we need booth the lineage
     SearchLineageResult result =
         Entity.getSearchRepository()
             .searchLineageForExport(
@@ -261,8 +258,8 @@ public class LineageRepository {
                 LineageDirection.UPSTREAM);
     CsvFile csvFile = new CsvFile().withHeaders(headers);
 
-    // TODO: Fix This
-    // addRecords(csvFile, result);
+    addRecords(csvFile, result.getUpstreamEdges().values().stream().toList());
+    addRecords(csvFile, result.getDownstreamEdges().values().stream().toList());
     return CsvUtil.formatCsv(csvFile);
   }
 
@@ -285,7 +282,6 @@ public class LineageRepository {
       String entityType,
       boolean deleted) {
     try {
-      // TODO: fix Export to consider for both the nodes
       SearchLineageResult response =
           Entity.getSearchRepository()
               .searchLineage(
@@ -332,61 +328,67 @@ public class LineageRepository {
       };
       csvWriter.writeNext(headers);
 
-      JsonNode edges = rootNode.path("edges");
-      for (JsonNode edge : edges) {
-        String fromEntityId = edge.path("fromEntity").path("id").asText();
-        String toEntityId = edge.path("toEntity").path("id").asText();
-
-        JsonNode fromEntity = entityMap.getOrDefault(fromEntityId, null);
-        JsonNode toEntity = entityMap.getOrDefault(toEntityId, null);
-
-        Map<String, String> baseRow = new HashMap<>();
-        baseRow.put("fromEntityFQN", getText(fromEntity, "fullyQualifiedName"));
-        baseRow.put("fromServiceName", getText(fromEntity.path("service"), "name"));
-        baseRow.put("fromServiceType", getText(fromEntity, "serviceType"));
-        baseRow.put("fromOwners", getOwners(fromEntity.path("owners")));
-        baseRow.put("fromDomain", getDomainFQN(fromEntity.path("domain")));
-
-        baseRow.put("toEntityFQN", getText(toEntity, "fullyQualifiedName"));
-        baseRow.put("toServiceName", getText(toEntity.path("service"), "name"));
-        baseRow.put("toServiceType", getText(toEntity, "serviceType"));
-        baseRow.put("toOwners", getOwners(toEntity.path("owners")));
-        baseRow.put("toDomain", getDomainFQN(toEntity.path("domain")));
-
-        JsonNode columns = edge.path("columns");
-        JsonNode pipeline = edge.path("pipeline");
-
-        if (columns.isArray() && columns.size() > 0) {
-          // Process column mappings
-          List<ColumnMapping> columnMappings = extractColumnMappingsFromEdge(columns);
-          for (ColumnMapping mapping : columnMappings) {
-            writeCsvRow(
-                csvWriter,
-                baseRow,
-                mapping.getFromChildFQN(),
-                mapping.getToChildFQN(),
-                "",
-                "",
-                "",
-                "",
-                "",
-                "",
-                "");
-            LOG.debug(
-                "Exported ColumnMapping: from='{}', to='{}'",
-                mapping.getFromChildFQN(),
-                mapping.getToChildFQN());
-          }
-        } else if (!pipeline.isMissingNode() && !pipeline.isNull()) {
-          writePipelineRow(csvWriter, baseRow, pipeline);
-        } else {
-          writeCsvRow(csvWriter, baseRow, "", "", "", "", "", "", "", "", "");
-        }
-      }
+      JsonNode upstreamEdges = rootNode.path("upstreamEdges");
+      writeEdge(csvWriter, entityMap, upstreamEdges);
+      JsonNode downstreamEdges = rootNode.path("downstreamEdges");
+      writeEdge(csvWriter, entityMap, downstreamEdges);
       csvWriter.close();
       return csvContent.toString();
     } catch (IOException e) {
       throw CSVExportException.byMessage("Failed to export lineage data to CSV", e.getMessage());
+    }
+  }
+
+  private void writeEdge(CSVWriter csvWriter, Map<String, JsonNode> entityMap, JsonNode edges) {
+    for (JsonNode edge : edges) {
+      String fromEntityId = edge.path("fromEntity").path("id").asText();
+      String toEntityId = edge.path("toEntity").path("id").asText();
+
+      JsonNode fromEntity = entityMap.getOrDefault(fromEntityId, null);
+      JsonNode toEntity = entityMap.getOrDefault(toEntityId, null);
+
+      Map<String, String> baseRow = new HashMap<>();
+      baseRow.put("fromEntityFQN", getText(fromEntity, "fullyQualifiedName"));
+      baseRow.put("fromServiceName", getText(fromEntity.path("service"), "name"));
+      baseRow.put("fromServiceType", getText(fromEntity, "serviceType"));
+      baseRow.put("fromOwners", getOwners(fromEntity.path("owners")));
+      baseRow.put("fromDomain", getDomainFQN(fromEntity.path("domain")));
+
+      baseRow.put("toEntityFQN", getText(toEntity, "fullyQualifiedName"));
+      baseRow.put("toServiceName", getText(toEntity.path("service"), "name"));
+      baseRow.put("toServiceType", getText(toEntity, "serviceType"));
+      baseRow.put("toOwners", getOwners(toEntity.path("owners")));
+      baseRow.put("toDomain", getDomainFQN(toEntity.path("domain")));
+
+      JsonNode columns = edge.path("columns");
+      JsonNode pipeline = edge.path("pipeline");
+
+      if (columns.isArray() && columns.size() > 0) {
+        // Process column mappings
+        List<ColumnMapping> columnMappings = extractColumnMappingsFromEdge(columns);
+        for (ColumnMapping mapping : columnMappings) {
+          writeCsvRow(
+              csvWriter,
+              baseRow,
+              mapping.getFromChildFQN(),
+              mapping.getToChildFQN(),
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "");
+          LOG.debug(
+              "Exported ColumnMapping: from='{}', to='{}'",
+              mapping.getFromChildFQN(),
+              mapping.getToChildFQN());
+        }
+      } else if (!pipeline.isMissingNode() && !pipeline.isNull()) {
+        writePipelineRow(csvWriter, baseRow, pipeline);
+      } else {
+        writeCsvRow(csvWriter, baseRow, "", "", "", "", "", "", "", "", "");
+      }
     }
   }
 
@@ -501,59 +503,58 @@ public class LineageRepository {
     return mappings;
   }
 
-  private String getStringOrNull(HashMap map, String key) {
+  private String getStringOrNull(Map<String, Object> map, String key) {
     return nullOrEmpty(map.get(key)) ? "" : map.get(key).toString();
   }
 
-  private String getStringOrNull(HashMap map, String key, String nestedKey) {
+  private String getStringOrNull(Map<String, Object> map, String key, String nestedKey) {
     return nullOrEmpty(map.get(key))
         ? ""
-        : getStringOrNull((HashMap<String, Object>) map.get(key), nestedKey);
+        : getStringOrNull((Map<String, Object>) map.get(key), nestedKey);
   }
 
-  private String processColumnLineage(HashMap lineageMap) {
-
-    if (lineageMap.get("columns") != null) {
-      StringBuilder str = new StringBuilder();
-      Collection collection = (Collection<ColumnLineage>) lineageMap.get("columns");
-      HashSet<HashMap> hashSet = new HashSet<HashMap>(collection);
-      for (HashMap colLineage : hashSet) {
-        for (String fromColumn : (List<String>) colLineage.get("fromColumns")) {
-          str.append(fromColumn);
-          str.append(":");
-          str.append(colLineage.get("toColumn"));
-          str.append(";");
-        }
-      }
-      // remove the last ;
-      return str.substring(0, str.toString().length() - 1);
-    }
-    return "";
+  private String getStringOrNull(String value) {
+    return nullOrEmpty(value) ? "" : value;
   }
 
-  protected void addRecords(CsvFile csvFile, Map<String, Object> lineageMap) {
-    if (lineageMap.get("edges") != null && lineageMap.get("edges") instanceof Collection<?>) {
-      Collection collection = (Collection<HashMap>) lineageMap.get("edges");
-      HashSet<HashMap> edges = new HashSet<HashMap>(collection);
-      List<List<String>> finalRecordList = csvFile.getRecords();
-      for (HashMap edge : edges) {
-        List<String> recordList = new ArrayList<>();
-        addField(recordList, getStringOrNull(edge, "fromEntity", "id"));
-        addField(recordList, getStringOrNull(edge, "fromEntity", "type"));
-        addField(recordList, getStringOrNull(edge, "fromEntity", "fqn"));
-        addField(recordList, getStringOrNull(edge, "toEntity", "id"));
-        addField(recordList, getStringOrNull(edge, "toEntity", "type"));
-        addField(recordList, getStringOrNull(edge, "toEntity", "fqn"));
-        addField(recordList, getStringOrNull(edge, "description"));
-        addField(recordList, getStringOrNull(edge, "pipeline", "id"));
-        addField(recordList, getStringOrNull(edge, "pipeline", "fullyQualifiedName"));
-        addField(recordList, processColumnLineage(edge));
-        addField(recordList, getStringOrNull(edge, "sqlQuery"));
-        addField(recordList, getStringOrNull(edge, "source"));
-        finalRecordList.add(recordList);
-      }
-      csvFile.withRecords(finalRecordList);
+  private String processColumnLineage(List<ColumnLineage> columns) {
+    if (nullOrEmpty(columns)) {
+      return "";
     }
+
+    StringBuilder str = new StringBuilder();
+    for (ColumnLineage colLineage : columns) {
+      for (String fromColumn : colLineage.getFromColumns()) {
+        str.append(fromColumn);
+        str.append(":");
+        str.append(colLineage.getToColumn());
+        str.append(";");
+      }
+    }
+    return str.substring(0, str.toString().length() - 1);
+  }
+
+  protected void addRecords(CsvFile csvFile, List<EsLineageData> edges) {
+    List<List<String>> finalRecordList = csvFile.getRecords();
+    for (EsLineageData data : edges) {
+      List<String> recordList = new ArrayList<>();
+      Map<String, Object> pipeline =
+          nullOrEmpty(data.getPipeline()) ? new HashMap<>() : JsonUtils.getMap(data.getPipeline());
+      addField(recordList, getStringOrNull(data.getFromEntity().getId().toString()));
+      addField(recordList, getStringOrNull(data.getFromEntity().getType()));
+      addField(recordList, getStringOrNull(data.getFromEntity().getFullyQualifiedName()));
+      addField(recordList, getStringOrNull(data.getToEntity().getId().toString()));
+      addField(recordList, getStringOrNull(data.getToEntity().getType()));
+      addField(recordList, getStringOrNull(data.getToEntity().getFullyQualifiedName()));
+      addField(recordList, getStringOrNull(data.getDescription()));
+      addField(recordList, getStringOrNull(pipeline, "pipeline", "id"));
+      addField(recordList, getStringOrNull(pipeline, "pipeline", "fullyQualifiedName"));
+      addField(recordList, processColumnLineage(data.getColumns()));
+      addField(recordList, getStringOrNull(data.getSqlQuery()));
+      addField(recordList, getStringOrNull(data.getSource()));
+      finalRecordList.add(recordList);
+    }
+    csvFile.withRecords(finalRecordList);
   }
 
   private void validateChildren(String columnFQN, EntityReference entityReference) {
