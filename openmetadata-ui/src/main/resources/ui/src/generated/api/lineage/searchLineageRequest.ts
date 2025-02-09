@@ -36,6 +36,14 @@ export interface SearchLineageRequest {
      */
     includeDeleted?: boolean;
     /**
+     * Layer to start the search from.
+     */
+    layerFrom?: number;
+    /**
+     * Size of the search result.
+     */
+    layerSize?: number;
+    /**
      * Query Filter
      */
     queryFilter?: string;

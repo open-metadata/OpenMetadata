@@ -31,6 +31,16 @@
       "type": "integer",
       "default": 3
     },
+    "layerFrom": {
+      "description": "Layer to start the search from.",
+      "type": "integer",
+      "default": 3
+    },
+    "layerSize": {
+      "description": "Size of the search result.",
+      "type": "integer",
+      "default": 3
+    },
     "queryFilter": {
       "description": "Query Filter",
       "type": "string"
@@ -38,7 +48,7 @@
     "includeDeleted": {
       "description": "Include deleted entities",
       "type": "boolean",
-      "default": false
+      "default": null
     }
   },
   "required": ["fqn", "entityType", "direction"],

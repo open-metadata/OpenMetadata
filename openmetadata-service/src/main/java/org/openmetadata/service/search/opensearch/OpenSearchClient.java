@@ -2,7 +2,6 @@ package org.openmetadata.service.search.opensearch;
 
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static javax.ws.rs.core.Response.Status.OK;
-import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.AGGREGATED_COST_ANALYSIS_REPORT_DATA;
 import static org.openmetadata.service.Entity.DATA_PRODUCT;
@@ -70,7 +69,6 @@ import org.jetbrains.annotations.NotNull;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.lineage.EsLineageData;
 import org.openmetadata.schema.api.lineage.LineageDirection;
-import org.openmetadata.schema.api.lineage.RelationshipRef;
 import org.openmetadata.schema.api.lineage.SearchLineageRequest;
 import org.openmetadata.schema.api.lineage.SearchLineageResult;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
@@ -173,11 +171,9 @@ import os.org.opensearch.cluster.metadata.MappingMetadata;
 import os.org.opensearch.common.lucene.search.function.CombineFunction;
 import os.org.opensearch.common.lucene.search.function.FieldValueFactorFunction;
 import os.org.opensearch.common.lucene.search.function.FunctionScoreQuery;
-import os.org.opensearch.common.settings.Settings;
 import os.org.opensearch.common.unit.Fuzziness;
 import os.org.opensearch.common.unit.TimeValue;
 import os.org.opensearch.common.xcontent.LoggingDeprecationHandler;
-import os.org.opensearch.common.xcontent.NamedXContentRegistry;
 import os.org.opensearch.common.xcontent.XContentParser;
 import os.org.opensearch.common.xcontent.XContentType;
 import os.org.opensearch.index.IndexNotFoundException;
@@ -201,7 +197,6 @@ import os.org.opensearch.script.Script;
 import os.org.opensearch.script.ScriptType;
 import os.org.opensearch.search.SearchHit;
 import os.org.opensearch.search.SearchHits;
-import os.org.opensearch.search.SearchModule;
 import os.org.opensearch.search.aggregations.AggregationBuilder;
 import os.org.opensearch.search.aggregations.AggregationBuilders;
 import os.org.opensearch.search.aggregations.BucketOrder;
@@ -230,10 +225,11 @@ import os.org.opensearch.search.suggest.completion.context.CategoryQueryContext;
 // Not tagged with Repository annotation as it is programmatically initialized
 public class OpenSearchClient implements SearchClient {
   @Getter protected final RestHighLevelClient client;
-  public static final NamedXContentRegistry X_CONTENT_REGISTRY;
   private final boolean isClientAvailable;
   private final RBACConditionEvaluator rbacConditionEvaluator;
   private final QueryBuilderFactory queryBuilderFactory;
+
+  private final OSLineageGraphBuilder lineageGraphBuilder;
 
   private final String clusterAlias;
 
@@ -253,17 +249,13 @@ public class OpenSearchClient implements SearchClient {
       Stream.concat(FIELDS_TO_REMOVE.stream(), Stream.of("schemaDefinition", "customMetrics"))
           .toList();
 
-  static {
-    SearchModule searchModule = new SearchModule(Settings.EMPTY, List.of());
-    X_CONTENT_REGISTRY = new NamedXContentRegistry(searchModule.getNamedXContents());
-  }
-
   public OpenSearchClient(ElasticSearchConfiguration config) {
     client = createOpenSearchClient(config);
     clusterAlias = config != null ? config.getClusterAlias() : "";
     isClientAvailable = client != null;
     queryBuilderFactory = new OpenSearchQueryBuilderFactory();
     rbacConditionEvaluator = new RBACConditionEvaluator(queryBuilderFactory);
+    lineageGraphBuilder = new OSLineageGraphBuilder(client);
   }
 
   @Override
@@ -388,7 +380,7 @@ public class OpenSearchClient implements SearchClient {
             XContentType.JSON
                 .xContent()
                 .createParser(
-                    X_CONTENT_REGISTRY,
+                    OsUtils.osXContentRegistry,
                     LoggingDeprecationHandler.INSTANCE,
                     request.getPostFilter());
         QueryBuilder filter = SearchSourceBuilder.fromXContent(filterParser).query();
@@ -848,9 +840,19 @@ public class OpenSearchClient implements SearchClient {
   @Override
   public SearchLineageResult searchLineage(SearchLineageRequest lineageRequest) throws IOException {
     SearchLineageResult result =
-        getDownStreamLineage(lineageRequest.withDirection(LineageDirection.DOWNSTREAM));
+        lineageGraphBuilder.getUpstreamLineage(
+            lineageRequest
+                .withDirection(LineageDirection.UPSTREAM)
+                .withDirectionValue(
+                    SearchClient.getLineageDirection(
+                        lineageRequest.getDirection(), lineageRequest.getEntityType())));
     SearchLineageResult upstreamLineage =
-        getDownStreamLineage(lineageRequest.withDirection(LineageDirection.UPSTREAM));
+        lineageGraphBuilder.getDownstreamLineage(
+            lineageRequest
+                .withDirection(LineageDirection.DOWNSTREAM)
+                .withDirectionValue(
+                    SearchClient.getLineageDirection(
+                        lineageRequest.getDirection(), lineageRequest.getEntityType())));
 
     // Add All nodes and edges from upstream lineage to result
     result.getNodes().putAll(upstreamLineage.getNodes());
@@ -861,9 +863,9 @@ public class OpenSearchClient implements SearchClient {
   public SearchLineageResult searchLineageWithDirection(SearchLineageRequest lineageRequest)
       throws IOException {
     if (lineageRequest.getDirection().equals(LineageDirection.UPSTREAM)) {
-      return getUpstreamLineage(lineageRequest);
+      return lineageGraphBuilder.getUpstreamLineage(lineageRequest);
     } else {
-      return getDownStreamLineage(lineageRequest);
+      return lineageGraphBuilder.getDownstreamLineage(lineageRequest);
     }
   }
 
@@ -897,7 +899,8 @@ public class OpenSearchClient implements SearchClient {
         XContentParser filterParser =
             XContentType.JSON
                 .xContent()
-                .createParser(X_CONTENT_REGISTRY, LoggingDeprecationHandler.INSTANCE, queryFilter);
+                .createParser(
+                    OsUtils.osXContentRegistry, LoggingDeprecationHandler.INSTANCE, queryFilter);
         QueryBuilder filter = SearchSourceBuilder.fromXContent(filterParser).query();
         BoolQueryBuilder newQuery =
             QueryBuilders.boolQuery().must(searchSourceBuilder.query()).filter(filter);
@@ -1066,154 +1069,6 @@ public class OpenSearchClient implements SearchClient {
         searchSchemaEntityRelationshipInternal(
             fqn, upstreamDepth, downstreamDepth, queryFilter, deleted);
     return Response.status(OK).entity(responseMap).build();
-  }
-
-  @Override
-  public Map<String, Object> searchEntityByKey(
-      String indexAlias, String keyName, String keyValue, List<String> fieldsToRemove)
-      throws IOException {
-    os.org.opensearch.action.search.SearchRequest searchRequest =
-        getSearchRequest(indexAlias, null, keyName, keyValue, null, null, fieldsToRemove);
-    os.org.opensearch.action.search.SearchResponse searchResponse =
-        client.search(searchRequest, RequestOptions.DEFAULT);
-    int noOfHits = searchResponse.getHits().getHits().length;
-    if (noOfHits == 1) {
-      return new HashMap<>(
-          JsonUtils.getMap(searchResponse.getHits().getHits()[0].getSourceAsMap()));
-    } else {
-      throw new SearchException(
-          String.format(
-              "Issue in Search Entity By Key: %s, Value: %s , Number of Hits: %s",
-              keyName, keyValue, noOfHits));
-    }
-  }
-
-  private os.org.opensearch.action.search.SearchRequest getSearchRequest(
-      String indexAlias,
-      String queryFilter,
-      String key,
-      String value,
-      Boolean deleted,
-      List<String> fieldsToInclude,
-      List<String> fieldsToRemove) {
-    os.org.opensearch.action.search.SearchRequest searchRequest =
-        new os.org.opensearch.action.search.SearchRequest(
-            Entity.getSearchRepository().getIndexOrAliasName(indexAlias));
-    SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
-    searchSourceBuilder.fetchSource(
-        listOrEmpty(fieldsToInclude).toArray(String[]::new),
-        listOrEmpty(fieldsToRemove).toArray(String[]::new));
-    searchSourceBuilder.query(QueryBuilders.boolQuery().must(QueryBuilders.termQuery(key, value)));
-    if (!CommonUtil.nullOrEmpty(deleted)) {
-      searchSourceBuilder.query(
-          QueryBuilders.boolQuery()
-              .must(QueryBuilders.termQuery(key, value))
-              .must(QueryBuilders.termQuery("deleted", deleted)));
-    }
-
-    buildSearchSourceFilter(queryFilter, searchSourceBuilder);
-    searchRequest.source(searchSourceBuilder.size(1000));
-    return searchRequest;
-  }
-
-  public SearchLineageResult getUpstreamLineage(SearchLineageRequest lineageRequest)
-      throws IOException {
-    SearchLineageResult result = new SearchLineageResult().withNodes(new HashMap<>());
-    getUpstreamLineageRecursively(lineageRequest, result);
-    return result;
-  }
-
-  private void getUpstreamLineageRecursively(
-      SearchLineageRequest lineageRequest, SearchLineageResult result) throws IOException {
-    if (lineageRequest.getUpstreamDepth() <= 0) {
-      return;
-    }
-
-    Map<String, Object> entityMap =
-        searchEntityByKey(
-            GLOBAL_SEARCH_ALIAS, FQN_FIELD, lineageRequest.getFqn(), SOURCE_FIELDS_TO_EXCLUDE);
-    if (!entityMap.isEmpty()) {
-      result.getNodes().putIfAbsent(entityMap.get("id").toString(), entityMap);
-      // Contains Upstream Lineage
-      if (entityMap.containsKey(UPSTREAM_LINEAGE_FIELD)) {
-        List<EsLineageData> upStreamEntities =
-            JsonUtils.readOrConvertValues(
-                entityMap.get(UPSTREAM_LINEAGE_FIELD), EsLineageData.class);
-        for (EsLineageData esLineageData : upStreamEntities) {
-          result
-              .getUpstreamEdges()
-              .putIfAbsent(
-                  esLineageData.getDocId(),
-                  esLineageData.withToEntity(SearchClient.getRelationshipRef(entityMap)));
-          String upstreamEntityId = esLineageData.getFromEntity().getId().toString();
-          if (!result.getNodes().containsKey(upstreamEntityId)) {
-            SearchLineageRequest updatedRequest =
-                JsonUtils.deepCopy(lineageRequest, SearchLineageRequest.class)
-                    .withUpstreamDepth(lineageRequest.getUpstreamDepth() - 1)
-                    .withFqn(esLineageData.getFromEntity().getFqn());
-            getUpstreamLineageRecursively(updatedRequest, result);
-          }
-        }
-      }
-    }
-  }
-
-  public SearchLineageResult getDownStreamLineage(SearchLineageRequest lineageRequest)
-      throws IOException {
-    SearchLineageResult result = new SearchLineageResult().withNodes(new HashMap<>());
-    Map<String, Object> entityMap =
-        searchEntityByKey(
-            GLOBAL_SEARCH_ALIAS, FQN_FIELD, lineageRequest.getFqn(), SOURCE_FIELDS_TO_EXCLUDE);
-    if (!entityMap.isEmpty()) {
-      result.getNodes().putIfAbsent(entityMap.get("id").toString(), entityMap);
-      getDownStreamRecursively(SearchClient.getRelationshipRef(entityMap), lineageRequest, result);
-    }
-    return result;
-  }
-
-  private void getDownStreamRecursively(
-      RelationshipRef fromEntity, SearchLineageRequest lineageRequest, SearchLineageResult result)
-      throws IOException {
-    if (lineageRequest.getDownstreamDepth() <= 0) {
-      return;
-    }
-
-    os.org.opensearch.action.search.SearchRequest searchDownstreamEntities =
-        getSearchRequest(
-            GLOBAL_SEARCH_ALIAS,
-            lineageRequest.getQueryFilter(),
-            "upstreamLineage.fromEntity.fqnHash",
-            FullyQualifiedName.buildHash(lineageRequest.getFqn()),
-            lineageRequest.getIncludeDeleted(),
-            null,
-            SOURCE_FIELDS_TO_EXCLUDE);
-    os.org.opensearch.action.search.SearchResponse downstreamEntities =
-        client.search(searchDownstreamEntities, RequestOptions.DEFAULT);
-    for (os.org.opensearch.search.SearchHit searchHit : downstreamEntities.getHits().getHits()) {
-      Map<String, Object> entityMap = new HashMap<>(searchHit.getSourceAsMap());
-      if (!entityMap.isEmpty()) {
-        result.getNodes().putIfAbsent(entityMap.get(ID_FIELD).toString(), entityMap);
-        List<EsLineageData> upStreamEntities =
-            JsonUtils.readOrConvertValues(
-                entityMap.get(UPSTREAM_LINEAGE_FIELD), EsLineageData.class);
-        EsLineageData esLineageData =
-            SearchClient.getEsLineageDataFromUpstreamLineage(fromEntity.getFqn(), upStreamEntities);
-        if (esLineageData != null) {
-          RelationshipRef toEntity = SearchClient.getRelationshipRef(entityMap);
-          result
-              .getDownstreamEdges()
-              .putIfAbsent(esLineageData.getDocId(), esLineageData.withToEntity(toEntity));
-          String downStreamEntityId = toEntity.getId().toString();
-          if (!result.getNodes().containsKey(downStreamEntityId)) {
-            SearchLineageRequest updatedRequest =
-                JsonUtils.deepCopy(lineageRequest, SearchLineageRequest.class)
-                    .withDownstreamDepth(lineageRequest.getDownstreamDepth() - 1)
-                    .withFqn(toEntity.getFqn());
-            getDownStreamRecursively(toEntity, updatedRequest, result);
-          }
-        }
-      }
-    }
   }
 
   private void searchDataQualityLineage(
@@ -1430,7 +1285,7 @@ public class OpenSearchClient implements SearchClient {
     XContentParser filterParser =
         XContentType.JSON
             .xContent()
-            .createParser(X_CONTENT_REGISTRY, LoggingDeprecationHandler.INSTANCE, query);
+            .createParser(OsUtils.osXContentRegistry, LoggingDeprecationHandler.INSTANCE, query);
     QueryBuilder filter = SearchSourceBuilder.fromXContent(filterParser).query();
 
     BoolQueryBuilder boolQueryBuilder = QueryBuilders.boolQuery().must(filter);
@@ -1473,7 +1328,7 @@ public class OpenSearchClient implements SearchClient {
       XContentParser queryParser =
           XContentType.JSON
               .xContent()
-              .createParser(X_CONTENT_REGISTRY, LoggingDeprecationHandler.INSTANCE, query);
+              .createParser(OsUtils.osXContentRegistry, LoggingDeprecationHandler.INSTANCE, query);
       QueryBuilder parsedQuery = SearchSourceBuilder.fromXContent(queryParser).query();
       BoolQueryBuilder boolQueryBuilder = QueryBuilders.boolQuery().must(parsedQuery);
       searchSourceBuilder.query(boolQueryBuilder);
@@ -1516,7 +1371,7 @@ public class OpenSearchClient implements SearchClient {
       XContentParser queryParser =
           XContentType.JSON
               .xContent()
-              .createParser(X_CONTENT_REGISTRY, LoggingDeprecationHandler.INSTANCE, query);
+              .createParser(OsUtils.osXContentRegistry, LoggingDeprecationHandler.INSTANCE, query);
       QueryBuilder parsedQuery = SearchSourceBuilder.fromXContent(queryParser).query();
       BoolQueryBuilder boolQueryBuilder = QueryBuilders.boolQuery().must(parsedQuery);
       searchSourceBuilder.query(boolQueryBuilder);
@@ -2776,7 +2631,7 @@ public class OpenSearchClient implements SearchClient {
     try {
       return XContentType.JSON
           .xContent()
-          .createParser(X_CONTENT_REGISTRY, LoggingDeprecationHandler.INSTANCE, query);
+          .createParser(OsUtils.osXContentRegistry, LoggingDeprecationHandler.INSTANCE, query);
     } catch (IOException e) {
       LOG.error("Failed to create XContentParser", e);
       throw e;
@@ -2829,7 +2684,8 @@ public class OpenSearchClient implements SearchClient {
         XContentParser filterParser =
             XContentType.JSON
                 .xContent()
-                .createParser(X_CONTENT_REGISTRY, LoggingDeprecationHandler.INSTANCE, queryFilter);
+                .createParser(
+                    OsUtils.osXContentRegistry, LoggingDeprecationHandler.INSTANCE, queryFilter);
         QueryBuilder filter = SearchSourceBuilder.fromXContent(filterParser).query();
         BoolQueryBuilder newQuery =
             QueryBuilders.boolQuery().must(searchSourceBuilder.query()).filter(filter);

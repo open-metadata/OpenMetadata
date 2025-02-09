@@ -17,6 +17,7 @@ import javax.ws.rs.core.Response;
 import lombok.Getter;
 import org.apache.commons.lang3.tuple.Pair;
 import org.openmetadata.schema.api.lineage.EsLineageData;
+import org.openmetadata.schema.api.lineage.LineageDirection;
 import org.openmetadata.schema.api.lineage.RelationshipRef;
 import org.openmetadata.schema.api.lineage.SearchLineageRequest;
 import org.openmetadata.schema.api.lineage.SearchLineageResult;
@@ -28,6 +29,7 @@ import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearch
 import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.tests.DataQualityReport;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CustomExceptionMessage;
 import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.search.models.IndexMapping;
@@ -202,10 +204,6 @@ public interface SearchClient {
   SearchLineageResult searchLineageWithDirection(SearchLineageRequest lineageRequest)
       throws IOException;
 
-  SearchLineageResult getUpstreamLineage(SearchLineageRequest lineageRequest) throws IOException;
-
-  SearchLineageResult getDownStreamLineage(SearchLineageRequest lineageRequest) throws IOException;
-
   Response searchEntityRelationship(
       String fqn, int upstreamDepth, int downstreamDepth, String queryFilter, boolean deleted)
       throws IOException;
@@ -215,10 +213,6 @@ public interface SearchClient {
 
   Response searchSchemaEntityRelationship(
       String fqn, int upstreamDepth, int downstreamDepth, String queryFilter, boolean deleted)
-      throws IOException;
-
-  Map<String, Object> searchEntityByKey(
-      String indexAlias, String keyName, String keyValue, List<String> fieldsToRemove)
       throws IOException;
 
   /*
@@ -398,19 +392,24 @@ public interface SearchClient {
         && rbacConditionEvaluator != null;
   }
 
-  //  default String getLineageDirection(LineageDirection direction, String entityType) {
-  //    if (LineageDirection.UPSTREAM.equals(direction)) {
-  //      if (Boolean.FALSE.equals(entityType.equals(Entity.PIPELINE)) &&
-  // Boolean.FALSE.equals(entityType.equals(Entity.STORED_PROCEDURE))) {
-  //        return
-  //      }else{
-  //
-  //      }
-  //    } else {
-  //
-  //    }
-  //    return "";
-  //  }
+  static String getLineageDirection(LineageDirection direction, String entityType) {
+    boolean notPipelineOrStoredProcedure =
+        Boolean.FALSE.equals(entityType.equals(Entity.PIPELINE))
+            && Boolean.FALSE.equals(entityType.equals(Entity.STORED_PROCEDURE));
+    if (LineageDirection.UPSTREAM.equals(direction)) {
+      if (notPipelineOrStoredProcedure) {
+        return "fullyQualifiedName";
+      } else {
+        return "upstreamLineage.pipeline.fullyQualifiedName";
+      }
+    } else {
+      if (notPipelineOrStoredProcedure) {
+        return "upstreamLineage.fromEntity.fullyQualifiedName";
+      } else {
+        return "upstreamLineage.pipeline.fullyQualifiedName";
+      }
+    }
+  }
 
   SearchHealthStatus getSearchHealthStatus() throws IOException;
 
@@ -421,16 +420,6 @@ public interface SearchClient {
         .withType(entityMap.get("entityType").toString())
         .withFqn(entityMap.get("fullyQualifiedName").toString())
         .withFqnHash(FullyQualifiedName.buildHash(entityMap.get("fullyQualifiedName").toString()));
-  }
-
-  static EsLineageData getEsLineageDataFromUpstreamLineage(
-      String fqn, List<EsLineageData> upstream) {
-    for (EsLineageData esLineageData : upstream) {
-      if (esLineageData.getFromEntity().getFqn().equals(fqn)) {
-        return esLineageData;
-      }
-    }
-    return null;
   }
 
   static EsLineageData copyEsLineageData(EsLineageData data) {

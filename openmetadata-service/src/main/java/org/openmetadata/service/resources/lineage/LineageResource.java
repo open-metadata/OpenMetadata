@@ -210,17 +210,27 @@ public class LineageResource {
       @Parameter(description = "Filter documents by deleted param. By default deleted is false")
           @QueryParam("includeDeleted")
           boolean deleted,
-      @Parameter(description = "entity type") @QueryParam("type") String entityType)
+      @Parameter(description = "entity type") @QueryParam("type") String entityType,
+      @Parameter(description = "From field to paginate the results, defaults to 0")
+          @DefaultValue("0")
+          @QueryParam("from")
+          int from,
+      @Parameter(description = "Size field to limit the no.of results returned, defaults to 10")
+          @DefaultValue("1000")
+          @QueryParam("size")
+          int size)
       throws IOException {
     return Entity.getSearchRepository()
         .searchLineage(
             new SearchLineageRequest()
                 .withFqn(fqn)
-                .withUpstreamDepth(upstreamDepth)
-                .withDownstreamDepth(downstreamDepth)
+                .withUpstreamDepth(upstreamDepth + 1)
+                .withDownstreamDepth(downstreamDepth + 1)
                 .withQueryFilter(queryFilter)
                 .withIncludeDeleted(deleted)
-                .withEntityType(entityType));
+                .withEntityType(entityType)
+                .withLayerFrom(from)
+                .withLayerSize(size));
   }
 
   @GET
@@ -255,7 +265,15 @@ public class LineageResource {
       @Parameter(description = "Filter documents by deleted param. By default deleted is false")
           @QueryParam("includeDeleted")
           boolean deleted,
-      @Parameter(description = "entity type") @QueryParam("type") String entityType)
+      @Parameter(description = "entity type") @QueryParam("type") String entityType,
+      @Parameter(description = "From field to paginate the results, defaults to 0")
+          @DefaultValue("0")
+          @QueryParam("from")
+          int from,
+      @Parameter(description = "Size field to limit the no.of results returned, defaults to 10")
+          @DefaultValue("1000")
+          @QueryParam("size")
+          int size)
       throws IOException {
     return Entity.getSearchRepository()
         .searchLineage(
@@ -266,7 +284,9 @@ public class LineageResource {
                 .withQueryFilter(queryFilter)
                 .withIncludeDeleted(deleted)
                 .withEntityType(entityType)
-                .withDirection(direction));
+                .withDirection(direction)
+                .withLayerFrom(from)
+                .withLayerSize(size));
   }
 
   @GET

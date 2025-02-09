@@ -182,7 +182,8 @@ public class LineageRepository {
       EntityReference fromEntity, EntityReference toEntity, LineageDetails lineageDetails) {
     EsLineageData lineageData =
         new EsLineageData()
-            .withDocId(fromEntity.getId().toString() + "-->" + toEntity.getId().toString())
+            .withDocId(
+                fromEntity.getFullyQualifiedName() + "--->" + toEntity.getFullyQualifiedName())
             .withFromEntity(buildEntityRefLineage(fromEntity));
     if (lineageDetails != null) {
       // Add Pipeline Details

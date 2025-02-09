@@ -6,17 +6,39 @@
   "javaType": "org.openmetadata.schema.api.lineage.SearchLineageResult",
   "type": "object",
   "definitions": {
-      "entity" : {
-        "description": "A general object to hold any object."
-      }
+    "entity" : {
+      "description": "A general object to hold any object."
+    },
+    "layerPaging": {
+      "description": "Type used for cursor based pagination information in GET list responses.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.type.LayerPaging",
+      "properties": {
+        "layerNumber": {
+          "description": "Layer Number in the lineage.",
+          "type": "integer",
+          "default": null
+        },
+        "nextFrom": {
+          "description": "Next from to be used for further request.",
+          "type": "integer",
+          "default": null
+        },
+        "total": {
+          "description": "Total number of search results in layer.",
+          "existingJavaType": "java.lang.Long"
+        }
+      },
+      "additionalProperties": false
+    }
+    
   },
   "properties": {
     "paging": {
-      "$ref": "../../type/paging.json"
-    },
-    "direction": {
-      "description": "Lineage Direction Value.",
-      "type": "string"
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/layerPaging"
+      }
     },
     "nodes" : {
       "description": "Nodes in the lineage response.",

@@ -15,10 +15,6 @@
  */
 export interface SearchLineageResult {
     /**
-     * Lineage Direction Value.
-     */
-    direction?: string;
-    /**
      * Downstream Edges for the node.
      */
     downstreamEdges?: any;
@@ -26,7 +22,7 @@ export interface SearchLineageResult {
      * Nodes in the lineage response.
      */
     nodes?:  any;
-    paging?: Paging;
+    paging?: LayerPaging[];
     /**
      * Upstream Edges for the entity.
      */
@@ -36,25 +32,17 @@ export interface SearchLineageResult {
 /**
  * Type used for cursor based pagination information in GET list responses.
  */
-export interface Paging {
+export interface LayerPaging {
     /**
-     * After cursor used for getting the next page (see API pagination for details).
+     * Layer Number in the lineage.
      */
-    after?: string;
+    layerNumber?: number;
     /**
-     * Before cursor used for getting the previous page (see API pagination for details).
+     * Next from to be used for further request.
      */
-    before?: string;
+    nextFrom?: number;
     /**
-     * Limit used in case of offset based pagination.
+     * Total number of search results in layer.
      */
-    limit?: number;
-    /**
-     * Offset used in case of offset based pagination.
-     */
-    offset?: number;
-    /**
-     * Total number of entries available to page through.
-     */
-    total: number;
+    total?: any;
 }
