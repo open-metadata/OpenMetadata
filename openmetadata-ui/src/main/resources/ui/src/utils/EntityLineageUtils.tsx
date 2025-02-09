@@ -217,11 +217,12 @@ export const getLayoutedElements = (
   return { node: uNode, edge: edgesRequired };
 };
 
+// Layout options for the elk graph https://eclipse.dev/elk/reference/algorithms/org-eclipse-elk-mrtree.html
 const layoutOptions = {
-  'elk.algorithm': 'layered',
+  'elk.algorithm': 'mrtree',
   'elk.direction': 'RIGHT',
   'elk.layered.spacing.edgeNodeBetweenLayers': '50',
-  'elk.spacing.nodeNode': '60',
+  'elk.spacing.nodeNode': '100',
   'elk.layered.nodePlacement.strategy': 'SIMPLE',
 };
 

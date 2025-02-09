@@ -56,7 +56,7 @@ VERSIONS = {
     "elasticsearch8": "elasticsearch8~=8.9.0",
     "giturlparse": "giturlparse",
     "validators": "validators~=0.22.0",
-    "teradata": "teradatasqlalchemy>=20.0.0.0",
+    "teradata": "teradatasqlalchemy==20.0.0.2",
     "cockroach": "sqlalchemy-cockroachdb~=2.0",
     "cassandra": "cassandra-driver>=3.28.0",
 }
@@ -185,7 +185,7 @@ plugins: Dict[str, Set[str]] = {
         "google-cloud",
         VERSIONS["boto3"],
         VERSIONS["google-cloud-storage"],
-        "dbt-artifacts-parser",
+        "collate-dbt-artifacts-parser",
         VERSIONS["azure-storage-blob"],
         VERSIONS["azure-identity"],
     },
@@ -363,7 +363,7 @@ test = {
     "pytest-order",
     "dirty-equals",
     # install dbt dependency
-    "dbt-artifacts-parser",
+    "collate-dbt-artifacts-parser",
     "freezegun",
     VERSIONS["sqlalchemy-databricks"],
     VERSIONS["databricks-sdk"],

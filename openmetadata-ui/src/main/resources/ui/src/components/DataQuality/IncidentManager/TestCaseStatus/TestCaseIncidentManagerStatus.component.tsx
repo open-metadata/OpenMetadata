@@ -35,18 +35,22 @@ const TestCaseIncidentManagerStatus = ({
   data,
   onSubmit,
   usersList,
+  hasPermission,
 }: TestCaseStatusIncidentManagerProps) => {
   const [isEditStatus, setIsEditStatus] = useState<boolean>(false);
 
   const statusType = useMemo(() => data.testCaseResolutionStatusType, [data]);
   const { permissions } = usePermissionProvider();
   const hasEditPermission = useMemo(() => {
-    return checkPermission(
-      Operation.EditAll,
-      ResourceEntity.TEST_CASE,
-      permissions
+    return (
+      hasPermission ??
+      checkPermission(
+        Operation.EditAll,
+        ResourceEntity.TEST_CASE_RESOLUTION_STATUS,
+        permissions
+      )
     );
-  }, [permissions]);
+  }, [permissions, hasPermission]);
 
   const onEditStatus = useCallback(() => setIsEditStatus(true), []);
   const onCancel = useCallback(() => setIsEditStatus(false), []);
