@@ -418,7 +418,7 @@ public interface SearchClient {
     return new RelationshipRef()
         .withId(UUID.fromString(entityMap.get("id").toString()))
         .withType(entityMap.get("entityType").toString())
-        .withFqn(entityMap.get("fullyQualifiedName").toString())
+        .withFullyQualifiedName(entityMap.get("fullyQualifiedName").toString())
         .withFqnHash(FullyQualifiedName.buildHash(entityMap.get("fullyQualifiedName").toString()));
   }
 

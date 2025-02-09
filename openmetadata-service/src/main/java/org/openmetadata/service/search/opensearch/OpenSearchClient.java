@@ -840,16 +840,16 @@ public class OpenSearchClient implements SearchClient {
   @Override
   public SearchLineageResult searchLineage(SearchLineageRequest lineageRequest) throws IOException {
     SearchLineageResult result =
-        lineageGraphBuilder.getUpstreamLineage(
+        lineageGraphBuilder.getDownstreamLineage(
             lineageRequest
-                .withDirection(LineageDirection.UPSTREAM)
+                .withDirection(LineageDirection.DOWNSTREAM)
                 .withDirectionValue(
                     SearchClient.getLineageDirection(
                         lineageRequest.getDirection(), lineageRequest.getEntityType())));
     SearchLineageResult upstreamLineage =
-        lineageGraphBuilder.getDownstreamLineage(
+        lineageGraphBuilder.getUpstreamLineage(
             lineageRequest
-                .withDirection(LineageDirection.DOWNSTREAM)
+                .withDirection(LineageDirection.UPSTREAM)
                 .withDirectionValue(
                     SearchClient.getLineageDirection(
                         lineageRequest.getDirection(), lineageRequest.getEntityType())));

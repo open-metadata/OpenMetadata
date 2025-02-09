@@ -38,17 +38,17 @@ public class OsUtils {
   }
 
   public static Map<String, Object> searchEntityByKey(
-      String indexAlias, String keyName, Set<String> keyValues, List<String> fieldsToRemove)
+      String indexAlias, String keyName, String keyValue, List<String> fieldsToRemove)
       throws IOException {
     Map<String, Object> result =
-        searchEntitiesByKey(indexAlias, keyName, keyValues, 0, 1, fieldsToRemove);
+        searchEntitiesByKey(indexAlias, keyName, Set.of(keyValue), 0, 1, fieldsToRemove);
     if (result.size() == 1) {
       return (Map<String, Object>) result.get(0);
     } else {
       throw new SearchException(
           String.format(
               "Issue in Search Entity By Key: %s, Value: %s , Number of Hits: %s",
-              keyName, keyValues, result.size()));
+              keyName, keyValue, result.size()));
     }
   }
 

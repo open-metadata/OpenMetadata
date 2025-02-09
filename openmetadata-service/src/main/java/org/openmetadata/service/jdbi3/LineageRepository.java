@@ -174,7 +174,7 @@ public class LineageRepository {
     return new RelationshipRef()
         .withId(entityRef.getId())
         .withType(entityRef.getType())
-        .withFqn(entityRef.getFullyQualifiedName())
+        .withFullyQualifiedName(entityRef.getFullyQualifiedName())
         .withFqnHash(FullyQualifiedName.buildHash(entityRef.getFullyQualifiedName()));
   }
 

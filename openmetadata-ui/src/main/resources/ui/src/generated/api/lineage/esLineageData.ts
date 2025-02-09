@@ -80,13 +80,13 @@ export interface ColumnLineage {
  */
 export interface RelationshipRef {
     /**
-     * FullyQualifiedName of the entity.
-     */
-    fqn?: string;
-    /**
      * FullyQualifiedName Hash of the entity.
      */
     fqnHash?: string;
+    /**
+     * FullyQualifiedName of the entity.
+     */
+    fullyQualifiedName?: string;
     /**
      * Unique identifier of this entity instance.
      */

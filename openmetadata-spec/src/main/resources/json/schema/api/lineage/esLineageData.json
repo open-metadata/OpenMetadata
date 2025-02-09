@@ -14,7 +14,7 @@
           "description": "Unique identifier of this entity instance.",
           "$ref": "../../type/basic.json#/definitions/uuid"
         },
-        "fqn": {
+        "fullyQualifiedName": {
           "description": "FullyQualifiedName of the entity.",
           "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
         },
