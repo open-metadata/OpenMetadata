@@ -196,11 +196,9 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
               JsonArray entityLinkBuckets = getAggregationBuckets(entityLinkAggJson);
               for (JsonValue entityLinkBucket : entityLinkBuckets) {
                 JsonObject statusAgg =
-                    getAggregationObject(
-                        (JsonObject) entityLinkBucket, "sterms#status_counts");
+                    getAggregationObject((JsonObject) entityLinkBucket, "sterms#status_counts");
                 JsonArray statusBuckets = getAggregationBuckets(statusAgg);
-                String entityLinkString =
-                    getAggregationKeyValue((JsonObject) entityLinkBucket);
+                String entityLinkString = getAggregationKeyValue((JsonObject) entityLinkBucket);
 
                 MessageParser.EntityLink entityLink =
                     entityLinkString != null
