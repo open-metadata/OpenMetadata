@@ -224,8 +224,8 @@ public class LineageResource {
         .searchLineage(
             new SearchLineageRequest()
                 .withFqn(fqn)
-                .withUpstreamDepth(upstreamDepth + 1)
-                .withDownstreamDepth(downstreamDepth + 1)
+                .withUpstreamDepth(upstreamDepth)
+                .withDownstreamDepth(downstreamDepth)
                 .withQueryFilter(queryFilter)
                 .withIncludeDeleted(deleted)
                 .withEntityType(entityType)
