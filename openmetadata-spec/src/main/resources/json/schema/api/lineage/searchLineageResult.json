@@ -9,6 +9,22 @@
     "entity" : {
       "description": "A general object to hold any object."
     },
+    "directionPaging": {
+      "properties": {
+        "upstream": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/layerPaging"
+          }
+        },
+        "downstream": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/layerPaging"
+          }
+        }
+      }
+    },
     "layerPaging": {
       "description": "Type used for cursor based pagination information in GET list responses.",
       "type": "object",
@@ -35,10 +51,7 @@
   },
   "properties": {
     "paging": {
-      "type": "array",
-      "items": {
-        "$ref": "#/definitions/layerPaging"
-      }
+      "$ref": "#/definitions/directionPaging"
     },
     "nodes" : {
       "description": "Nodes in the lineage response.",

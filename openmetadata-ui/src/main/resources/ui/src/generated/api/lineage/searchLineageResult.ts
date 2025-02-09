@@ -22,11 +22,17 @@ export interface SearchLineageResult {
      * Nodes in the lineage response.
      */
     nodes?:  any;
-    paging?: LayerPaging[];
+    paging?: any[] | boolean | number | number | null | DirectionPagingObject | string;
     /**
      * Upstream Edges for the entity.
      */
     upstreamEdges?: any;
+}
+
+export interface DirectionPagingObject {
+    downstream?: LayerPaging[];
+    upstream?:   LayerPaging[];
+    [property: string]: any;
 }
 
 /**

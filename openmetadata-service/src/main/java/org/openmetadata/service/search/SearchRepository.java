@@ -919,7 +919,7 @@ public class SearchRepository {
     return searchClient.getDocByID(indexName, entityId.toString());
   }
 
-  public SearchClient.SearchResultListMapper listWithOffset(
+  public SearchResultListMapper listWithOffset(
       SearchListFilter filter,
       int limit,
       int offset,
@@ -937,7 +937,7 @@ public class SearchRepository {
         q);
   }
 
-  public SearchClient.SearchResultListMapper listWithDeepPagination(
+  public SearchResultListMapper listWithDeepPagination(
       String entityType,
       String query,
       String filter,

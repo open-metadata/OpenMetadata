@@ -11,6 +11,9 @@ import static org.openmetadata.service.Entity.TEST_CASE_RESULT;
 import static org.openmetadata.service.Entity.TEST_SUITE;
 import static org.openmetadata.service.Entity.getEntity;
 import static org.openmetadata.service.Entity.getEntityTimeSeriesRepository;
+import static org.openmetadata.service.search.SearchUtils.getAggregationBuckets;
+import static org.openmetadata.service.search.SearchUtils.getAggregationKeyValue;
+import static org.openmetadata.service.search.SearchUtils.getAggregationObject;
 import static org.openmetadata.service.util.FullyQualifiedName.quoteName;
 
 import java.io.IOException;
@@ -185,19 +188,19 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
         new TestSummary().withAborted(0).withFailed(0).withSuccess(0).withQueued(0).withTotal(0);
     List<ColumnTestSummaryDefinition> columnTestSummaries = new ArrayList<>();
     Optional<JsonObject> entityLinkAgg =
-        Optional.ofNullable(SearchClient.getAggregationObject(aggregation, "sterms#entityLinks"));
+        Optional.ofNullable(getAggregationObject(aggregation, "sterms#entityLinks"));
 
     return entityLinkAgg
         .map(
             entityLinkAggJson -> {
-              JsonArray entityLinkBuckets = SearchClient.getAggregationBuckets(entityLinkAggJson);
+              JsonArray entityLinkBuckets = getAggregationBuckets(entityLinkAggJson);
               for (JsonValue entityLinkBucket : entityLinkBuckets) {
                 JsonObject statusAgg =
-                    SearchClient.getAggregationObject(
+                    getAggregationObject(
                         (JsonObject) entityLinkBucket, "sterms#status_counts");
-                JsonArray statusBuckets = SearchClient.getAggregationBuckets(statusAgg);
+                JsonArray statusBuckets = getAggregationBuckets(statusAgg);
                 String entityLinkString =
-                    SearchClient.getAggregationKeyValue((JsonObject) entityLinkBucket);
+                    getAggregationKeyValue((JsonObject) entityLinkBucket);
 
                 MessageParser.EntityLink entityLink =
                     entityLinkString != null

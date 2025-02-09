@@ -37,6 +37,7 @@ import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.SearchListFilter;
 import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.search.SearchResultListMapper;
 import org.openmetadata.service.search.SearchSortFilter;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
@@ -375,7 +376,7 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
     setIncludeSearchFields(searchListFilter);
     setExcludeSearchFields(searchListFilter);
     if (limit > 0) {
-      SearchClient.SearchResultListMapper results =
+      SearchResultListMapper results =
           searchRepository.listWithOffset(
               searchListFilter, limit, offset, entityType, searchSortFilter, q);
       total = results.getTotal();
@@ -387,7 +388,7 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
       }
       return new ResultList<>(entityList, offset, limit, (int) total);
     } else {
-      SearchClient.SearchResultListMapper results =
+      SearchResultListMapper results =
           searchRepository.listWithOffset(
               searchListFilter, limit, offset, entityType, searchSortFilter, q);
       total = results.getTotal();
@@ -443,7 +444,7 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
     setIncludeSearchFields(searchListFilter);
     setExcludeSearchFields(searchListFilter);
     SearchSortFilter searchSortFilter = new SearchSortFilter("timestamp", "desc", null, null);
-    SearchClient.SearchResultListMapper results =
+    SearchResultListMapper results =
         searchRepository.listWithOffset(searchListFilter, 1, 0, entityType, searchSortFilter, q);
     for (Map<String, Object> json : results.getResults()) {
       T entity = setFieldsInternal(JsonUtils.readOrConvertValue(json, entityClass), fields);

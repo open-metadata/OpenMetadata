@@ -3,41 +3,27 @@ package org.openmetadata.service.search;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.NOT_IMPLEMENTED_METHOD;
 
 import java.io.IOException;
-import java.security.KeyStoreException;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import javax.json.JsonArray;
 import javax.json.JsonObject;
-import javax.net.ssl.SSLContext;
 import javax.ws.rs.core.Response;
-import lombok.Getter;
 import org.apache.commons.lang3.tuple.Pair;
 import org.openmetadata.schema.api.lineage.EsLineageData;
-import org.openmetadata.schema.api.lineage.LineageDirection;
-import org.openmetadata.schema.api.lineage.RelationshipRef;
 import org.openmetadata.schema.api.lineage.SearchLineageRequest;
 import org.openmetadata.schema.api.lineage.SearchLineageResult;
-import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChartResultList;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
-import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.tests.DataQualityReport;
 import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CustomExceptionMessage;
-import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.search.models.IndexMapping;
-import org.openmetadata.service.search.security.RBACConditionEvaluator;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
-import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.ResultList;
-import org.openmetadata.service.util.SSLUtil;
 import os.org.opensearch.action.bulk.BulkRequest;
 import os.org.opensearch.action.bulk.BulkResponse;
 import os.org.opensearch.client.RequestOptions;
@@ -45,7 +31,6 @@ import os.org.opensearch.client.RequestOptions;
 public interface SearchClient {
   String UPSTREAM_LINEAGE_FIELD = "upstreamLineage";
   String FQN_FIELD = "fullyQualifiedName";
-  String ID_FIELD = "id";
   ExecutorService asyncExecutor = Executors.newFixedThreadPool(1);
   String UPDATE = "update";
 
@@ -327,47 +312,6 @@ public interface SearchClient {
 
   void close();
 
-  default SSLContext createElasticSearchSSLContext(
-      ElasticSearchConfiguration elasticSearchConfiguration) throws KeyStoreException {
-    return elasticSearchConfiguration.getScheme().equals("https")
-        ? SSLUtil.createSSLContext(
-            elasticSearchConfiguration.getTruststorePath(),
-            elasticSearchConfiguration.getTruststorePassword(),
-            "ElasticSearch")
-        : null;
-  }
-
-  @Getter
-  class SearchResultListMapper {
-    public List<Map<String, Object>> results;
-    public long total;
-    public Object[] lastHitSortValues;
-
-    public SearchResultListMapper(List<Map<String, Object>> results, long total) {
-      this.results = results;
-      this.total = total;
-    }
-
-    public SearchResultListMapper(
-        List<Map<String, Object>> results, long total, Object[] lastHitSortValues) {
-      this.results = results;
-      this.total = total;
-      this.lastHitSortValues = lastHitSortValues;
-    }
-  }
-
-  static JsonArray getAggregationBuckets(JsonObject aggregationJson) {
-    return aggregationJson.getJsonArray("buckets");
-  }
-
-  static JsonObject getAggregationObject(JsonObject aggregationJson, String key) {
-    return aggregationJson.getJsonObject(key);
-  }
-
-  static String getAggregationKeyValue(JsonObject aggregationJson) {
-    return aggregationJson.getString("key");
-  }
-
   default DataInsightCustomChartResultList buildDIChart(
       DataInsightCustomChart diChart, long start, long end) throws IOException {
     return null;
@@ -381,57 +325,5 @@ public interface SearchClient {
 
   Object getClient();
 
-  static boolean shouldApplyRbacConditions(
-      SubjectContext subjectContext, RBACConditionEvaluator rbacConditionEvaluator) {
-    return Boolean.TRUE.equals(
-            SettingsCache.getSetting(SettingsType.SEARCH_SETTINGS, SearchSettings.class)
-                .getEnableAccessControl())
-        && subjectContext != null
-        && !subjectContext.isAdmin()
-        && !subjectContext.isBot()
-        && rbacConditionEvaluator != null;
-  }
-
-  static String getLineageDirection(LineageDirection direction, String entityType) {
-    boolean notPipelineOrStoredProcedure =
-        Boolean.FALSE.equals(entityType.equals(Entity.PIPELINE))
-            && Boolean.FALSE.equals(entityType.equals(Entity.STORED_PROCEDURE));
-    if (LineageDirection.UPSTREAM.equals(direction)) {
-      if (notPipelineOrStoredProcedure) {
-        return "fullyQualifiedName";
-      } else {
-        return "upstreamLineage.pipeline.fullyQualifiedName";
-      }
-    } else {
-      if (notPipelineOrStoredProcedure) {
-        return "upstreamLineage.fromEntity.fullyQualifiedName";
-      } else {
-        return "upstreamLineage.pipeline.fullyQualifiedName";
-      }
-    }
-  }
-
   SearchHealthStatus getSearchHealthStatus() throws IOException;
-
-  static RelationshipRef getRelationshipRef(Map<String, Object> entityMap) {
-    // This assumes these keys exists in the map, use it with caution
-    return new RelationshipRef()
-        .withId(UUID.fromString(entityMap.get("id").toString()))
-        .withType(entityMap.get("entityType").toString())
-        .withFullyQualifiedName(entityMap.get("fullyQualifiedName").toString())
-        .withFqnHash(FullyQualifiedName.buildHash(entityMap.get("fullyQualifiedName").toString()));
-  }
-
-  static EsLineageData copyEsLineageData(EsLineageData data) {
-    return new EsLineageData()
-        .withDocId(data.getDocId())
-        .withFromEntity(data.getFromEntity())
-        .withToEntity(data.getToEntity())
-        .withPipeline(data.getPipeline())
-        .withSqlQuery(data.getSqlQuery())
-        .withColumns(data.getColumns())
-        .withDescription(data.getDescription())
-        .withSource(data.getSource())
-        .withPipelineEntityType(data.getPipelineEntityType());
-  }
 }

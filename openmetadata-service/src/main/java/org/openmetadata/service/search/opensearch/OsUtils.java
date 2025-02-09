@@ -43,7 +43,7 @@ public class OsUtils {
     Map<String, Object> result =
         searchEntitiesByKey(indexAlias, keyName, Set.of(keyValue), 0, 1, fieldsToRemove);
     if (result.size() == 1) {
-      return (Map<String, Object>) result.get(0);
+      return (Map<String, Object>) result.get(keyValue);
     } else {
       throw new SearchException(
           String.format(

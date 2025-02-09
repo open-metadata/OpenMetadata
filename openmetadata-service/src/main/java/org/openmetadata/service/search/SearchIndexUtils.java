@@ -1,5 +1,8 @@
 package org.openmetadata.service.search;
 
+import static org.openmetadata.service.search.SearchUtils.getAggregationBuckets;
+import static org.openmetadata.service.search.SearchUtils.getAggregationObject;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -141,12 +144,11 @@ public final class SearchIndexUtils {
     // The current key represent the node in the aggregation tree (i.e. the current bucket)
     String currentKey = keys.get(0);
     Optional<JsonObject> aggregation =
-        Optional.ofNullable(SearchClient.getAggregationObject(aggregationResults, currentKey));
+        Optional.ofNullable(getAggregationObject(aggregationResults, currentKey));
 
     aggregation.ifPresent(
         agg -> {
-          Optional<JsonArray> buckets =
-              Optional.ofNullable(SearchClient.getAggregationBuckets(agg));
+          Optional<JsonArray> buckets = Optional.ofNullable(getAggregationBuckets(agg));
           if (buckets.isEmpty()) {
             if ((keys.size() > 1) && (agg.containsKey(keys.get(1)))) {
               // If the current node in the aggregation tree does not have further buckets

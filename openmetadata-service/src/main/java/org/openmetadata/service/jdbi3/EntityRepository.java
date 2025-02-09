@@ -178,6 +178,7 @@ import org.openmetadata.service.resources.tags.TagLabelUtil;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchListFilter;
 import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.search.SearchResultListMapper;
 import org.openmetadata.service.search.SearchSortFilter;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -1278,7 +1279,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     Long total;
 
     if (limit > 0) {
-      SearchClient.SearchResultListMapper results =
+      SearchResultListMapper results =
           searchRepository.listWithOffset(
               searchListFilter, limit, offset, entityType, searchSortFilter, q);
       total = results.getTotal();
@@ -1288,7 +1289,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       }
       return new ResultList<>(entityList, offset, limit, total.intValue());
     } else {
-      SearchClient.SearchResultListMapper results =
+      SearchResultListMapper results =
           searchRepository.listWithOffset(
               searchListFilter, limit, offset, entityType, searchSortFilter, q);
       total = results.getTotal();

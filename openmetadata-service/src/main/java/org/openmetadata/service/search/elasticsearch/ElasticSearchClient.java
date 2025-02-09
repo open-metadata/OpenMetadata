@@ -34,6 +34,9 @@ import static org.openmetadata.service.search.EntityBuilderConstant.POST_TAG;
 import static org.openmetadata.service.search.EntityBuilderConstant.PRE_TAG;
 import static org.openmetadata.service.search.EntityBuilderConstant.SCHEMA_FIELD_NAMES;
 import static org.openmetadata.service.search.EntityBuilderConstant.UNIFIED;
+import static org.openmetadata.service.search.SearchUtils.createElasticSearchSSLContext;
+import static org.openmetadata.service.search.SearchUtils.getLineageDirection;
+import static org.openmetadata.service.search.SearchUtils.shouldApplyRbacConditions;
 import static org.openmetadata.service.search.UpdateSearchEventsConstant.SENDING_REQUEST_TO_ELASTIC_SEARCH;
 import static org.openmetadata.service.search.elasticsearch.ElasticSearchEntitiesProcessor.getUpdateRequest;
 import static org.openmetadata.service.util.FullyQualifiedName.getParentFQN;
@@ -177,6 +180,7 @@ import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchHealthStatus;
 import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.SearchRequest;
+import org.openmetadata.service.search.SearchResultListMapper;
 import org.openmetadata.service.search.SearchSortFilter;
 import org.openmetadata.service.search.UpdateSearchEventsConstant;
 import org.openmetadata.service.search.elasticsearch.aggregations.ElasticAggregations;
@@ -849,14 +853,14 @@ public class ElasticSearchClient implements SearchClient {
             lineageRequest
                 .withDirection(LineageDirection.DOWNSTREAM)
                 .withDirectionValue(
-                    SearchClient.getLineageDirection(
+                    getLineageDirection(
                         lineageRequest.getDirection(), lineageRequest.getEntityType())));
     SearchLineageResult upstreamLineage =
         lineageGraphBuilder.getUpstreamLineage(
             lineageRequest
                 .withDirection(LineageDirection.UPSTREAM)
                 .withDirectionValue(
-                    SearchClient.getLineageDirection(
+                    getLineageDirection(
                         lineageRequest.getDirection(), lineageRequest.getEntityType())));
 
     // Add All nodes and edges from upstream lineage to result
@@ -2713,7 +2717,7 @@ public class ElasticSearchClient implements SearchClient {
 
   private void buildSearchRBACQuery(
       SubjectContext subjectContext, SearchSourceBuilder searchSourceBuilder) {
-    if (SearchClient.shouldApplyRbacConditions(subjectContext, rbacConditionEvaluator)) {
+    if (shouldApplyRbacConditions(subjectContext, rbacConditionEvaluator)) {
       OMQueryBuilder rbacQuery = rbacConditionEvaluator.evaluateConditions(subjectContext);
       if (rbacQuery != null) {
         searchSourceBuilder.query(
