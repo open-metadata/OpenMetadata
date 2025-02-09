@@ -848,9 +848,13 @@ public class ElasticSearchClient implements SearchClient {
 
   @Override
   public SearchLineageResult searchLineage(SearchLineageRequest lineageRequest) throws IOException {
+    int upstreamDepth = lineageRequest.getUpstreamDepth();
+    int downstreamDepth = lineageRequest.getDownstreamDepth();
     SearchLineageResult result =
         lineageGraphBuilder.getDownstreamLineage(
             lineageRequest
+                .withUpstreamDepth(upstreamDepth + 1)
+                .withDownstreamDepth(downstreamDepth + 1)
                 .withDirection(LineageDirection.DOWNSTREAM)
                 .withDirectionValue(
                     getLineageDirection(
@@ -858,6 +862,8 @@ public class ElasticSearchClient implements SearchClient {
     SearchLineageResult upstreamLineage =
         lineageGraphBuilder.getUpstreamLineage(
             lineageRequest
+                .withUpstreamDepth(upstreamDepth + 1)
+                .withDownstreamDepth(downstreamDepth + 1)
                 .withDirection(LineageDirection.UPSTREAM)
                 .withDirectionValue(
                     getLineageDirection(
@@ -872,10 +878,18 @@ public class ElasticSearchClient implements SearchClient {
   @Override
   public SearchLineageResult searchLineageWithDirection(SearchLineageRequest lineageRequest)
       throws IOException {
+    int upstreamDepth = lineageRequest.getUpstreamDepth();
+    int downstreamDepth = lineageRequest.getDownstreamDepth();
     if (lineageRequest.getDirection().equals(LineageDirection.UPSTREAM)) {
-      return lineageGraphBuilder.getUpstreamLineage(lineageRequest);
+      return lineageGraphBuilder.getUpstreamLineage(
+          lineageRequest
+              .withUpstreamDepth(upstreamDepth + 1)
+              .withDownstreamDepth(downstreamDepth + 1));
     } else {
-      return lineageGraphBuilder.getDownstreamLineage(lineageRequest);
+      return lineageGraphBuilder.getDownstreamLineage(
+          lineageRequest
+              .withUpstreamDepth(upstreamDepth + 1)
+              .withDownstreamDepth(downstreamDepth + 1));
     }
   }
 
