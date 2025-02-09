@@ -73,11 +73,12 @@ public class ESLineageGraphBuilder {
         result.getNodes().putIfAbsent(fqn, esDoc);
 
         if (esDoc.containsKey(UPSTREAM_LINEAGE_FIELD)) {
+          RelationshipRef toEntity = SearchClient.getRelationshipRef(esDoc);
           List<EsLineageData> upStreamEntities =
               JsonUtils.readOrConvertValues(esDoc.get(UPSTREAM_LINEAGE_FIELD), EsLineageData.class);
 
           for (EsLineageData data : upStreamEntities) {
-            result.getUpstreamEdges().putIfAbsent(data.getDocId(), data);
+            result.getUpstreamEdges().putIfAbsent(data.getDocId(), data.withToEntity(toEntity));
             String fromFqn = data.getFromEntity().getFqn();
             if (!result.getNodes().containsKey(fromFqn)) {
               fqnSet.add(fromFqn);
@@ -142,13 +143,13 @@ public class ESLineageGraphBuilder {
         String fqn = entityMap.get(FQN_FIELD).toString();
         result.getNodes().putIfAbsent(fqn, entityMap);
 
-        RelationshipRef toEntity = SearchClient.getRelationshipRef(entityMap);
-        List<EsLineageData> upstreamEntities =
-            JsonUtils.readOrConvertValues(
-                entityMap.get(UPSTREAM_LINEAGE_FIELD), EsLineageData.class);
+        if (entityMap.containsKey(UPSTREAM_LINEAGE_FIELD)) {
+          RelationshipRef toEntity = SearchClient.getRelationshipRef(entityMap);
+          List<EsLineageData> upstreamEntities =
+              JsonUtils.readOrConvertValues(
+                  entityMap.get(UPSTREAM_LINEAGE_FIELD), EsLineageData.class);
 
-        for (EsLineageData esLineageData : upstreamEntities) {
-          if (toEntity != null) {
+          for (EsLineageData esLineageData : upstreamEntities) {
             result
                 .getDownstreamEdges()
                 .putIfAbsent(esLineageData.getDocId(), esLineageData.withToEntity(toEntity));
