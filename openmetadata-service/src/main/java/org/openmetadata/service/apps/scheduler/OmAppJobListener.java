@@ -59,7 +59,8 @@ public class OmAppJobListener implements JobListener {
               .withTimestamp(jobStartTime)
               .withRunType(runType)
               .withStatus(AppRunRecord.Status.RUNNING)
-              .withScheduleInfo(jobApp.getAppSchedule());
+              .withScheduleInfo(jobApp.getAppSchedule())
+              .withConfig(JsonUtils.getMap(jobApp.getAppConfiguration()));
 
       boolean update = false;
       if (jobExecutionContext.isRecovering()) {
@@ -152,7 +153,7 @@ public class OmAppJobListener implements JobListener {
       if (update) {
         repository.updateAppStatus(appId, runRecord);
       } else {
-        repository.addAppStatus(appId, runRecord);
+        repository.addAppStatus(runRecord);
       }
     }
   }

@@ -430,7 +430,7 @@ public class AppRepository extends EntityRepository<App> {
             AppExtension.ExtensionType.STATUS.toString());
   }
 
-  public void addAppStatus(UUID appID, AppRunRecord record) {
+  public void addAppStatus(AppRunRecord record) {
     daoCollection
         .appExtensionTimeSeriesDao()
         .insert(JsonUtils.pojoToJson(record), AppExtension.ExtensionType.STATUS.toString());
