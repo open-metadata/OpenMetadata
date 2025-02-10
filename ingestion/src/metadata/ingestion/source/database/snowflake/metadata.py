@@ -141,6 +141,8 @@ SnowflakeDialect.get_columns = get_columns
 Inspector.get_all_table_ddls = get_all_table_ddls
 Inspector.get_table_ddl = get_table_ddl
 SnowflakeDialect._get_schema_foreign_keys = get_schema_foreign_keys
+DEFAULT_EXCLUDE_SCHEMAS = ["information_schema.*", "performance_schema.*", "sys.*"]
+DEFAULT_EXCLUDE_DATABASES = ["^snowflake$"]
 
 
 class SnowflakeSource(
@@ -160,6 +162,10 @@ class SnowflakeSource(
         pipeline_name,
         incremental_configuration: IncrementalConfig,
     ):
+        self.default_entities = {
+            "database": {"excludes": DEFAULT_EXCLUDE_DATABASES},
+            "schema": {"excludes": DEFAULT_EXCLUDE_SCHEMAS},
+        }
         super().__init__(config, metadata)
         self.partition_details = {}
         self.schema_desc_map = {}
