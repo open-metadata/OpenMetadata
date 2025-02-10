@@ -14,12 +14,15 @@ import Icon from '@ant-design/icons';
 import { Button, Col, Divider, Row, Space, Tooltip, Typography } from 'antd';
 import ButtonGroup from 'antd/lib/button/button-group';
 import { AxiosError } from 'axios';
+import classNames from 'classnames';
 import { capitalize, get, isEmpty } from 'lodash';
+import QueryString from 'qs';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory } from 'react-router-dom';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as IconExternalLink } from '../../../assets/svg/external-links.svg';
+import { ReactComponent as RedAlertIcon } from '../../../assets/svg/ic-alert-red.svg';
 import { ReactComponent as TaskOpenIcon } from '../../../assets/svg/ic-open-task.svg';
 import { ReactComponent as ShareIcon } from '../../../assets/svg/ic-share.svg';
 import { ReactComponent as StarFilledIcon } from '../../../assets/svg/ic-star-filled.svg';
@@ -36,18 +39,23 @@ import {
   getEntityDetailsPath,
 } from '../../../constants/constants';
 import { SERVICE_TYPES } from '../../../constants/Services.constant';
+import { TAG_START_WITH } from '../../../constants/Tag.constants';
 import { useTourProvider } from '../../../context/TourProvider/TourProvider';
 import {
   EntityTabs,
   EntityType,
   TabSpecificField,
 } from '../../../enums/entity.enum';
+import { LineageLayer } from '../../../generated/configuration/lineageSettings';
 import { Container } from '../../../generated/entity/data/container';
+import { Metric } from '../../../generated/entity/data/metric';
 import { Table } from '../../../generated/entity/data/table';
 import { Thread } from '../../../generated/entity/feed/thread';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useClipboard } from '../../../hooks/useClipBoard';
 import { SearchSourceAlias } from '../../../interface/search.interface';
 import { getActiveAnnouncement } from '../../../rest/feedsAPI';
+import { getDataQualityLineage } from '../../../rest/lineageAPI';
 import { getContainerByName } from '../../../rest/storageAPI';
 import { getDataAssetsHeaderInfo } from '../../../utils/DataAssetsHeader.utils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
@@ -57,17 +65,9 @@ import {
   getEntityVoteStatus,
 } from '../../../utils/EntityUtils';
 import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
+import tableClassBase from '../../../utils/TableClassBase';
 import { getTierTags } from '../../../utils/TableUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-
-import QueryString from 'qs';
-import { ReactComponent as RedAlertIcon } from '../../../assets/svg/ic-alert-red.svg';
-import { TAG_START_WITH } from '../../../constants/Tag.constants';
-import { LineageLayer } from '../../../generated/configuration/lineageSettings';
-import { Metric } from '../../../generated/entity/data/metric';
-import { useApplicationStore } from '../../../hooks/useApplicationStore';
-import { getDataQualityLineage } from '../../../rest/lineageAPI';
-import tableClassBase from '../../../utils/TableClassBase';
 import AnnouncementCard from '../../common/EntityPageInfos/AnnouncementCard/AnnouncementCard';
 import AnnouncementDrawer from '../../common/EntityPageInfos/AnnouncementDrawer/AnnouncementDrawer';
 import ManageButton from '../../common/EntityPageInfos/ManageButton/ManageButton';
@@ -114,19 +114,25 @@ export const ExtraInfoLink = ({
   value,
   href,
   newTab = false,
+  ellipsis = false,
 }: {
   label: string;
   value: string | number;
   href: string;
   newTab?: boolean;
+  ellipsis?: boolean;
 }) => (
   <>
     <Divider className="self-center" type="vertical" />
-    <div className="d-flex items-center text-xs">
+    <div
+      className={classNames('d-flex items-center text-xs', {
+        'w-48': ellipsis,
+      })}>
       {!isEmpty(label) && (
         <span className="text-grey-muted m-r-xss">{`${label}: `}</span>
       )}
       <Typography.Link
+        ellipsis
         href={href}
         rel={newTab ? 'noopener noreferrer' : undefined}
         style={{ fontSize: '12px' }}
