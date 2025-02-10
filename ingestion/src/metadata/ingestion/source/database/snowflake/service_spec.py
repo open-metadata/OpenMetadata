@@ -1,6 +1,9 @@
 from metadata.data_quality.interface.sqlalchemy.snowflake.test_suite_interface import (
     SnowflakeTestSuiteInterface,
 )
+from metadata.ingestion.source.database.snowflake.data_diff.data_diff import (
+    SnowflakeTableParameter,
+)
 from metadata.ingestion.source.database.snowflake.lineage import SnowflakeLineageSource
 from metadata.ingestion.source.database.snowflake.metadata import SnowflakeSource
 from metadata.ingestion.source.database.snowflake.profiler.profiler import (
@@ -17,4 +20,5 @@ ServiceSpec = DefaultDatabaseSpec(
     profiler_class=SnowflakeProfiler,
     test_suite_class=SnowflakeTestSuiteInterface,
     sampler_class=SnowflakeSampler,
+    data_diff=SnowflakeTableParameter,
 )
