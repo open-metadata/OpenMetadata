@@ -348,6 +348,7 @@ export default function EntitySummaryPanel({
       getContainer={false}
       headerStyle={{ padding: 16 }}
       mask={false}
+      style={{ borderRadius: '12px' }}
       title={
         viewPermission && (
           <Link
