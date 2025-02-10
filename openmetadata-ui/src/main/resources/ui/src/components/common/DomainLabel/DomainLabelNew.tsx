@@ -146,6 +146,7 @@ export const DomainLabelNew = ({
     return (
       hasPermission && (
         <DomainSelectableList
+          domains={domain as any}
           hasPermission={Boolean(hasPermission)}
           multiple={multiple}
           selectedDomain={activeDomain}

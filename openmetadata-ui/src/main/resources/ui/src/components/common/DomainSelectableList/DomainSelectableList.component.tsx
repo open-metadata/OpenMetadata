@@ -10,31 +10,17 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Popover, Tooltip, Typography } from 'antd';
-import React, { useCallback, useMemo, useState } from 'react';
+import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
+import { Button, Popover, Select, Tooltip, Typography } from 'antd';
+import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as DomainIcon } from '../../../assets/svg/ic-domain.svg';
 import { ReactComponent as EditIcon } from '../../../assets/svg/user-profile-edit.svg';
-import {
-  DE_ACTIVE_COLOR,
-  PAGE_SIZE_MEDIUM,
-} from '../../../constants/constants';
-import { NO_PERMISSION_FOR_ACTION } from '../../../constants/HelperTextUtil';
-import { EntityType } from '../../../enums/entity.enum';
-import { SearchIndex } from '../../../enums/search.enum';
+import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import { EntityReference } from '../../../generated/entity/type';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
-import { getDomainList } from '../../../rest/domainAPI';
-import { searchData } from '../../../rest/miscAPI';
-import { formatDomainsResponse } from '../../../utils/APIUtils';
-import { Transi18next } from '../../../utils/CommonUtils';
-import {
-  getEntityName,
-  getEntityReferenceListFromEntities,
-} from '../../../utils/EntityUtils';
+import { getEntityName } from '../../../utils/EntityUtils';
 import Fqn from '../../../utils/Fqn';
-import { getDomainPath } from '../../../utils/RouterUtils';
-import { SelectableList } from '../SelectableList/SelectableList.component';
 import './domain-select-dropdown.less';
 import { DomainSelectableListProps } from './DomainSelectableList.interface';
 
@@ -66,16 +52,20 @@ export const DomainListItemRenderer = (props: EntityReference) => {
 };
 
 const DomainSelectableList = ({
-  onUpdate,
   children,
-  hasPermission,
-  popoverProps,
-  selectedDomain,
+  domains,
   multiple = false,
+  onUpdate,
+  selectedDomain,
 }: DomainSelectableListProps) => {
   const { t } = useTranslation();
   const { theme } = useApplicationStore();
   const [popupVisible, setPopupVisible] = useState(false);
+  const [isSelectOpen, setIsSelectOpen] = useState<boolean>(false);
+  const [isDropdownOpen, setIsDropdownOpen] = useState<boolean>(false);
+  const [currentlySelectedDomains, setCurrentlySelectedDomains] = useState<
+    EntityReference[]
+  >([]);
 
   const selectedDomainsList = useMemo(() => {
     if (selectedDomain) {
@@ -85,57 +75,14 @@ const DomainSelectableList = ({
     return [];
   }, [selectedDomain]);
 
-  const fetchOptions = async (searchText: string, after?: string) => {
-    if (searchText) {
-      try {
-        const res = await searchData(
-          searchText,
-          1,
-          PAGE_SIZE_MEDIUM,
-          '',
-          '',
-          '',
-          SearchIndex.DOMAIN
-        );
-
-        const data = getEntityReferenceListFromEntities(
-          formatDomainsResponse(res.data.hits.hits),
-          EntityType.DOMAIN
-        );
-
-        return { data, paging: { total: res.data.hits.total.value } };
-      } catch (error) {
-        return { data: [], paging: { total: 0 } };
-      }
+  const handleUpdate = async () => {
+    if (multiple) {
+      await onUpdate(currentlySelectedDomains);
     } else {
-      try {
-        const { data, paging } = await getDomainList({
-          limit: PAGE_SIZE_MEDIUM,
-          after: after ?? undefined,
-        });
-        const filterData = getEntityReferenceListFromEntities(
-          data,
-          EntityType.DOMAIN
-        );
-
-        return { data: filterData, paging };
-      } catch (error) {
-        return { data: [], paging: { total: 0 } };
-      }
+      await onUpdate(currentlySelectedDomains[0]);
     }
+    setPopupVisible(false);
   };
-
-  const handleUpdate = useCallback(
-    async (domains: EntityReference[]) => {
-      if (multiple) {
-        await onUpdate(domains);
-      } else {
-        await onUpdate(domains[0]);
-      }
-      setPopupVisible(false);
-    },
-    [onUpdate, multiple]
-  );
 
   return (
     // Used Button to stop click propagation event anywhere in the component to parent
@@ -146,61 +93,86 @@ const DomainSelectableList = ({
       <Popover
         destroyTooltipOnHide
         content={
-          <SelectableList
-            customTagRenderer={DomainListItemRenderer}
-            emptyPlaceholderText={
-              <Transi18next
-                i18nKey="message.no-domain-available"
-                renderElement={
-                  <a
-                    href={getDomainPath()}
-                    rel="noreferrer"
-                    style={{ color: theme.primaryColor }}
-                    target="_blank"
-                  />
+          <div className="user-profile-edit-popover-card">
+            <div className="d-flex justify-start items-center gap-2 m-b-xss">
+              <div className="user-page-icon d-flex-center">
+                <DomainIcon height={16} />
+              </div>
+
+              <Typography.Text className="user-profile-edit-popover-card-title">
+                {t('label.domain')}
+              </Typography.Text>
+            </div>
+
+            <div className="border" style={{ borderRadius: '5px' }}>
+              <Select
+                allowClear
+                className="profile-edit-popover"
+                defaultValue={selectedDomainsList.map((domain) => domain.id)}
+                maxTagCount={3}
+                maxTagPlaceholder={(omittedValues) =>
+                  `+${omittedValues.length} more`
                 }
-                values={{
-                  link: t('label.domain-plural'),
+                mode="multiple"
+                options={domains?.map((domain) => ({
+                  label: domain.displayName || domain.name,
+                  value: domain.id,
+                }))}
+                placeholder="Please select"
+                onChange={(selectedIds) => {
+                  const selectedDomainList = domains.filter((domain) =>
+                    selectedIds.includes(domain.id)
+                  );
+                  setCurrentlySelectedDomains(selectedDomainList as any);
                 }}
               />
-            }
-            fetchOptions={fetchOptions}
-            multiSelect={multiple}
-            removeIconTooltipLabel={t('label.remove-entity', {
-              entity: t('label.domain-lowercase'),
-            })}
-            searchPlaceholder={t('label.search-for-type', {
-              type: t('label.domain'),
-            })}
-            selectedItems={selectedDomainsList}
-            onCancel={() => setPopupVisible(false)}
-            onUpdate={handleUpdate}
-          />
+            </div>
+
+            <div className="flex justify-end gap-2 m-t-xs">
+              <Button
+                data-testid="inline-cancel-btn"
+                icon={<CloseOutlined />}
+                // onClick={handleCloseEditTeam}
+                size="small"
+                style={{
+                  width: '30px',
+                  height: '30px',
+                  background: '#0950C5',
+                }}
+                type="primary"
+              />
+
+              <Button
+                data-testid="inline-save-btn"
+                icon={<CheckOutlined />}
+                size="small"
+                style={{
+                  width: '30px',
+                  height: '30px',
+                  background: '#0950C5',
+                }}
+                type="primary"
+                onClick={handleUpdate}
+              />
+            </div>
+          </div>
         }
         open={popupVisible}
-        overlayClassName="domain-select-popover"
-        placement="right"
+        overlayClassName="profile-edit-popover-card"
+        placement="bottomLeft"
         showArrow={false}
+        style={{ borderRadius: '12px' }}
         trigger="click"
-        onOpenChange={setPopupVisible}
-        {...popoverProps}>
+        onOpenChange={setPopupVisible}>
         {children ?? (
           <Tooltip
-            placement="topRight"
-            title={
-              hasPermission
-                ? t('label.edit-entity', {
-                    entity: t('label.domain'),
-                  })
-                : NO_PERMISSION_FOR_ACTION
-            }>
-            <Button
-              className="p-0 flex-center"
-              data-testid="add-domain"
-              disabled={!hasPermission}
-              icon={<EditIcon height={16} />}
-              size="small"
-              type="text"
+            title={t('label.edit-entity', {
+              entity: t('label.persona'),
+            })}>
+            <EditIcon
+              className="cursor-pointer"
+              data-testid="edit-persona"
+              height={16}
             />
           </Tooltip>
         )}

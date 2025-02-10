@@ -168,8 +168,8 @@ const UserProfileRoles = ({
           </Typography.Text>
           <Popover
             content={
-              <div className="w-full p-xs bg-white rounded-lg shadow-lg user-profile-edit-popover-card">
-                <div className="d-flex justify-start align-center gap-2 mb-4">
+              <div className="user-profile-edit-popover-card">
+                <div className="d-flex justify-start align-center gap-2 m-b-xs">
                   <RoleIcon height={16} />
                   <Typography.Text className="user-profile-edit-popover-card-title">
                     {t('label.role-plural')}
@@ -179,8 +179,9 @@ const UserProfileRoles = ({
                 <div
                   className="border p-2 bg-gray-100 rounded-md"
                   style={{
-                    overflowY: 'auto',
-                    height: isSelectOpen ? '300px' : 'auto',
+                    borderRadius: '5px',
+                    // overflowY: 'auto',
+                    // height: isSelectOpen ? '300px' : 'auto',
                   }}>
                   <Select
                     allowClear
@@ -200,28 +201,38 @@ const UserProfileRoles = ({
                     onDropdownVisibleChange={setIsSelectOpen}
                   />
                 </div>
-                {!isSelectOpen && (
-                  <div className="flex justify-end gap-2 mt-4">
-                    <Button
-                      data-testid="inline-cancel-btn"
-                      icon={<CloseOutlined />}
-                      size="small"
-                      type="primary"
-                      onClick={handleCloseEditRole}
-                    />
-                    <Button
-                      data-testid="inline-save-btn"
-                      icon={<CheckOutlined />}
-                      size="small"
-                      type="primary"
-                      onClick={handleRolesSave}
-                    />
-                  </div>
-                )}
+
+                <div className="flex justify-end gap-2 mt-4">
+                  <Button
+                    data-testid="inline-cancel-btn"
+                    icon={<CloseOutlined />}
+                    size="small"
+                    style={{
+                      width: '30px',
+                      height: '30px',
+                      background: '#0950C5',
+                    }}
+                    type="primary"
+                    onClick={handleCloseEditRole}
+                  />
+                  <Button
+                    data-testid="inline-save-btn"
+                    icon={<CheckOutlined />}
+                    loading={isLoading}
+                    size="small"
+                    style={{
+                      width: '30px',
+                      height: '30px',
+                      background: '#0950C5',
+                    }}
+                    type="primary"
+                    onClick={handleRolesSave}
+                  />
+                </div>
               </div>
             }
             open={isRolesEdit}
-            overlayStyle={{ width: '379px', zIndex: 9 }}
+            overlayClassName="profile-edit-popover-card"
             placement="right"
             trigger="click"
             onOpenChange={setIsRolesEdit}>

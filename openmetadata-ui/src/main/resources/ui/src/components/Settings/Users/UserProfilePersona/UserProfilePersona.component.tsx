@@ -82,6 +82,7 @@ const UserProfilePersonas = ({
               {t('label.default-persona')}
             </Typography.Text>
             <PersonaSelectableList
+              isDefaultPersona
               hasPermission={hasEditPermission}
               multiSelect={false}
               personaList={userData.personas}
@@ -115,11 +116,12 @@ const UserProfilePersonas = ({
           <Typography.Text
             className="user-profile-card-title"
             data-testid="persona-list">
-            {t('label.persona')}
+            {t('label.default-persona')}
           </Typography.Text>
           <PersonaSelectableList
             multiSelect
             hasPermission={Boolean(isAdminUser) && !userData.deleted}
+            isDefaultPersona={false}
             selectedPersonas={userData.personas ?? []}
             onUpdate={handlePersonaUpdate}
           />

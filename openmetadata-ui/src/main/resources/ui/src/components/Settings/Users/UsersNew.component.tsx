@@ -193,7 +193,7 @@ const Users = ({
           <TabsLabel
             id={UserPageTabs.TASK}
             isActive={activeTab === UserPageTabs.TASK}
-            name={t('label.task')}
+            name={t('label.task-plural')}
           />
         ),
         key: UserPageTabs.TASK,

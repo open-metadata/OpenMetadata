@@ -243,10 +243,14 @@
     color: #414651;
   }
 }
-.user-profile-edit-popover-card {
-  border-radius: 12px;
-  box-shadow: #00000040;
-}
+// .user-profile-edit-popover-card {
+//   border-radius: 12px;
+//   box-shadow: #00000040;
+//   width: 379px;
+//   padding: 20px !important;
+// background: #FFF;
+
+// }
 
 .user-profile-edit-popover-card-title {
   font-size: 14px;
@@ -266,4 +270,93 @@
 }
 .user-page-icon {
   margin: 2px;
+}
+// .profile-edit-popover{
+//   .ant-select:not(.ant-select-customize-input) .ant-select-selector{
+//     padding: 12px;
+//     border-radius: 5px;
+// border: 1px solid #DDE3EA;
+
+// background: #FDFDFD;
+// .ant-select-selection-item{
+//   border-radius: 4px;
+//   border: 0.5px solid #D4D4D8;
+// }
+//   }
+// }
+
+.custom-dropdown {
+  position: absolute !important;
+  top: 100% !important; // Ensures dropdown appears directly below input
+  left: 0 !important;
+  width: 100% !important;
+  max-height: 200px !important;
+  overflow-y: auto !important;
+  background: white !important;
+  z-index: 1000 !important;
+}
+
+.profile-edit-popover-card {
+  //     border-radius: 12px !important;
+  //   box-shadow: #00000040;
+  //   width: 379px;
+  //   padding: 20px !important;
+  // background: #FFF;
+  .ant-popover {
+    overflow: visible !important;
+    z-index: 1050; /* Higher than default */
+  }
+
+  .ant-popover-inner {
+    border-radius: 12px;
+  }
+  .ant-popover-inner-content {
+    border-radius: 12px;
+    padding: 20px;
+    width: 379px;
+    box-shadow: 0px 4px 4px 0px rgba(0, 0, 0, 0.25);
+  }
+  .ant-select-selection-search-input {
+    position: relative !important;
+  }
+  .ant-popover-arrow {
+    display: none;
+  }
+  .ant-select {
+    border-radius: 5px;
+  }
+
+  .ant-select-item-option-content {
+    font-size: 14px;
+  }
+  .ant-select:not(.ant-select-customize-input) {
+    .ant-select-selector {
+      border-radius: 5px;
+      border: none;
+      background: #fdfdfd;
+      display: flex;
+      align-items: center;
+      padding: 12px;
+
+      .ant-select-selection-item {
+        border-radius: 4px;
+        border: 0.5px solid #d4d4d8;
+        background: none;
+        align-items: center;
+        margin-right: 8px;
+        padding: 4px 8px; // Adjust padding inside selected items
+      }
+      .ant-select-selection-item-content {
+        color: #292929;
+        font-family: Inter;
+        font-size: 12px;
+        font-style: normal;
+        font-weight: 400;
+        line-height: normal;
+      }
+    }
+  }
+}
+.single-select .ant-select-selection-item {
+  border: none !important;
 }
