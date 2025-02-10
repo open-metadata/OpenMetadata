@@ -8,6 +8,7 @@ import org.flowable.bpmn.model.ServiceTask;
 public class ServiceTaskBuilder extends FlowableElementBuilder<ServiceTaskBuilder> {
   private String implementation;
   private String implementationType = "class";
+  private boolean async = false;
   private final List<FieldExtension> fieldExtensions = new ArrayList<>();
 
   public ServiceTaskBuilder implementation(String implementation) {
@@ -25,6 +26,11 @@ public class ServiceTaskBuilder extends FlowableElementBuilder<ServiceTaskBuilde
     return this;
   }
 
+  public ServiceTaskBuilder setAsync(boolean async) {
+    this.async = async;
+    return this;
+  }
+
   @Override
   public ServiceTask build() {
     ServiceTask serviceTask = new ServiceTask();
@@ -32,6 +38,7 @@ public class ServiceTaskBuilder extends FlowableElementBuilder<ServiceTaskBuilde
     serviceTask.setName(id);
     serviceTask.setImplementationType(implementationType);
     serviceTask.setImplementation(implementation);
+    serviceTask.setAsynchronous(async);
 
     for (FieldExtension fieldExtension : fieldExtensions) {
       serviceTask.getFieldExtensions().add(fieldExtension);

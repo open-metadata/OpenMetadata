@@ -102,6 +102,7 @@ public class CreateIngestionPipelineTask implements NodeInterface {
         .addFieldExtension(ingestionPipelineMapperExpr)
         .addFieldExtension(pipelineServiceClientExpr)
         .addFieldExtension(inputNamespaceMapExpr)
+        .setAsync(true)
         .build();
   }
 

@@ -12,6 +12,7 @@ import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.SetEntityCertificationTaskDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.SetGlossaryTermStatusTaskDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.endEvent.EndEventDefinition;
+import org.openmetadata.schema.governance.workflows.elements.nodes.gateway.ParallelGatewayDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.startEvent.StartEventDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.userTask.UserApprovalTaskDefinition;
 
@@ -35,6 +36,7 @@ import org.openmetadata.schema.governance.workflows.elements.nodes.userTask.User
   @JsonSubTypes.Type(
       value = RunIngestionPipelineTaskDefinition.class,
       name = "runIngestionPipelineTask"),
+  @JsonSubTypes.Type(value = ParallelGatewayDefinition.class, name = "parallelGateway"),
 })
 public interface WorkflowNodeDefinitionInterface {
   String getType();

@@ -94,6 +94,7 @@ public class RunIngestionPipelineTask implements NodeInterface {
         .addFieldExtension(timeoutSecondsExpr)
         .addFieldExtension(inputNamespaceMapExpr)
         .addFieldExtension(pipelineServiceClientExpr)
+        .setAsync(true)
         .build();
   }
 

@@ -154,7 +154,7 @@ public class CreateIngestionPipelineImpl implements JavaDelegate {
             .withAirflowConfig(new AirflowConfig().withStartDate(getYesterdayDate()))
             .withLoggerLevel(LogLevels.INFO)
             .withName(UUID.randomUUID().toString())
-            .withDisplayName(String.format("%s-metadata", service.getName()))
+            .withDisplayName(String.format("[%s] %s", service.getName(), pipelineType))
             .withOwners(service.getOwners())
             .withPipelineType(pipelineType)
             .withService(service.getEntityReference())

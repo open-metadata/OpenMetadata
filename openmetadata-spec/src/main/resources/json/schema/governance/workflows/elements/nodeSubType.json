@@ -13,6 +13,7 @@
     "endEvent",
     "startEvent",
     "createIngestionPipelineTask",
-    "runIngestionPipelineTask"
+    "runIngestionPipelineTask",
+    "parallelGateway"
   ]
 }

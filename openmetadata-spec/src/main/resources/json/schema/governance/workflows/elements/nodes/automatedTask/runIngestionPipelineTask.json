@@ -66,7 +66,7 @@
     "branches": {
       "type": "array",
       "items": { "type":  "string" },
-      "default": ["success", "failure"],
+      "default": ["true", "false"],
       "additionalItems": false,
       "minItems": 2,
       "maxItems": 2
