@@ -363,7 +363,6 @@ export const extractDetailsFromToken = (token: string) => {
   return {
     exp: 0,
     isExpired: true,
-
     timeoutExpiry: 0,
   };
 };
