@@ -72,6 +72,14 @@ const DomainSelectableList = ({
     return [];
   }, [selectedDomain]);
 
+  const initialDomains = useMemo(() => {
+    if (selectedDomain) {
+      return Array.isArray(selectedDomain) ? selectedDomain : [selectedDomain];
+    }
+
+    return [];
+  }, [selectedDomain]);
+
   const handleUpdate = useCallback(
     async (domains: EntityReference[]) => {
       if (multiple) {
@@ -95,6 +103,7 @@ const DomainSelectableList = ({
         destroyTooltipOnHide
         content={
           <DomainSelectablTree
+            initialDomains={initialDomains}
             isMultiple={multiple}
             value={selectedDomainsList as string[]}
             visible={popupVisible || Boolean(popoverProps?.open)}

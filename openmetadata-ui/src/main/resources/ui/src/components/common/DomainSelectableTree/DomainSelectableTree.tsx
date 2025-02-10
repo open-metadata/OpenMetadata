@@ -50,6 +50,7 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
   visible,
   onCancel,
   isMultiple = false,
+  initialDomains,
 }) => {
   const { t } = useTranslation();
   const [treeData, setTreeData] = useState<TreeListItem[]>([]);
@@ -85,14 +86,26 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
     try {
       setIsLoading(true);
       const data = await listDomainHierarchy({ limit: 100 });
-      setTreeData(convertDomainsToTreeOptions(data.data, 0, isMultiple));
-      setDomains(data.data);
+
+      const combinedData = [...data.data];
+      initialDomains?.forEach((selectedDomain) => {
+        const exists = combinedData.some(
+          (domain) =>
+            domain.fullyQualifiedName === selectedDomain.fullyQualifiedName
+        );
+        if (!exists) {
+          combinedData.push(selectedDomain as unknown as Domain);
+        }
+      });
+
+      setTreeData(convertDomainsToTreeOptions(combinedData, 0, isMultiple));
+      setDomains(combinedData);
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [initialDomains]);
 
   const onSelect = (selectedKeys: React.Key[]) => {
     if (!isMultiple) {
