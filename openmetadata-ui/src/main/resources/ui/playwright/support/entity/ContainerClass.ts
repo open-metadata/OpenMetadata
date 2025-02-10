@@ -46,6 +46,41 @@ export class ContainerClass extends EntityClass {
     name: this.containerName,
     displayName: this.containerName,
     service: this.service.name,
+    dataModel: {
+      isPartitioned: true,
+      columns: [
+        {
+          name: 'merchant',
+          dataType: 'VARCHAR',
+          dataLength: 100,
+          dataTypeDisplay: 'varchar',
+          description: 'The merchant for this transaction.',
+          fullyQualifiedName: 's3_storage_sample.transactions.merchant',
+          tags: [],
+          ordinalPosition: 2,
+        },
+        {
+          name: 'columbia',
+          dataType: 'NUMERIC',
+          dataTypeDisplay: 'numeric',
+          description:
+            'The ID of the executed transaction. This column is the primary key for this table.',
+          fullyQualifiedName: 's3_storage_sample.transactions.columbia',
+          tags: [],
+          constraint: 'PRIMARY_KEY',
+          ordinalPosition: 1,
+        },
+        {
+          name: 'delivery',
+          dataType: 'TIMESTAMP',
+          dataTypeDisplay: 'timestamp',
+          description: 'The time the transaction took place.',
+          fullyQualifiedName: 's3_storage_sample.transactions.delivery',
+          tags: [],
+          ordinalPosition: 3,
+        },
+      ],
+    },
   };
   childContainer = {
     name: this.childContainerName,

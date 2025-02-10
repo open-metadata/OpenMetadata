@@ -1,5 +1,5 @@
 /*
- *  Copyright 2023 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,17 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { RJSFSchema } from '@rjsf/utils';
-import { App } from '../../../../generated/entity/applications/app';
+import { CustomProperty } from '../../../../generated/entity/type';
+import { TableTypePropertyValueType } from '../CustomPropertyTable.interface';
 
-export interface AppScheduleProps {
-  appData: App;
-  loading: {
-    isRunLoading: boolean;
-    isDeployLoading: boolean;
-  };
-  jsonSchema: RJSFSchema;
-  onSave: (cron: string) => Promise<void>;
-  onDemandTrigger: () => Promise<void>;
-  onDeployTrigger: () => Promise<void>;
+export interface EditTableTypePropertyModalProps {
+  isVisible: boolean;
+  isUpdating: boolean;
+  property: CustomProperty;
+  columns: string[];
+  rows: Record<string, string>[];
+  onCancel: () => void;
+  onSave: (data: TableTypePropertyValueType) => Promise<void>;
 }
