@@ -102,6 +102,16 @@ class TableNameAndType(BaseModel):
     type_: TableType = TableType.Regular
 
 
+class DefaultExcludeFilters(BaseModel):
+    """
+    default exclude filter pattern
+    """
+
+    database: Optional[List[str]] = []
+    schema: Optional[List[str]] = []
+    table: Optional[List[str]] = []
+
+
 # pylint: disable=too-many-public-methods
 class CommonDbSourceService(
     DatabaseServiceSource, SqlColumnHandlerMixin, SqlAlchemySource, ABC
@@ -173,43 +183,51 @@ class CommonDbSourceService(
         Set default Database, Schema, Table filter patterns to
         exlude system entities not required in metadata
         """
-        if not hasattr(self, "default_entities"):
+        self.initialise_default_exclude_filters()
+        if not hasattr(self, "default_exclude_filters"):
             logger.debug(
-                "Default filter patterns for entities(schemas, databases, tables) to include/exclude not applied"
+                f"Default exclude filter patterns not applied for db_service: {self.config.serviceName}"
             )
             return None
 
-        if not self.source_config.schemaFilterPattern:
-            self.source_config.schemaFilterPattern = FilterPattern()
-        self.source_config.schemaFilterPattern.excludes.extend(
-            [
-                schema
-                for schema in self.default_entities.get("schema", {}).get(
-                    "excludes", []
-                )
-                if schema not in self.source_config.schemaFilterPattern.excludes
-            ]
-        )
+        if hasattr(self.default_exclude_filters, "database"):
+            if not self.source_config.databaseFilterPattern:
+                self.source_config.databaseFilterPattern = FilterPattern()
+            self.source_config.databaseFilterPattern.excludes.extend(
+                [
+                    db
+                    for db in self.default_exclude_filters.database
+                    if db not in self.source_config.databaseFilterPattern.excludes
+                ]
+            )
 
-        if not self.source_config.databaseFilterPattern:
-            self.source_config.databaseFilterPattern = FilterPattern()
-        self.source_config.databaseFilterPattern.excludes.extend(
-            [
-                db
-                for db in self.default_entities.get("database", {}).get("excludes", [])
-                if db not in self.source_config.databaseFilterPattern.excludes
-            ]
-        )
+        if hasattr(self.default_exclude_filters, "schema"):
+            if not self.source_config.schemaFilterPattern:
+                self.source_config.schemaFilterPattern = FilterPattern()
+            self.source_config.schemaFilterPattern.excludes.extend(
+                [
+                    schema
+                    for schema in self.default_exclude_filters.schema
+                    if schema not in self.source_config.schemaFilterPattern.excludes
+                ]
+            )
 
-        if not self.source_config.tableFilterPattern:
-            self.source_config.tableFilterPattern = FilterPattern()
-        self.source_config.tableFilterPattern.excludes.extend(
-            [
-                db
-                for db in self.default_entities.get("table", {}).get("excludes", [])
-                if db not in self.source_config.tableFilterPattern.excludes
-            ]
-        )
+        if hasattr(self.default_exclude_filters, "table"):
+            if not self.source_config.tableFilterPattern:
+                self.source_config.tableFilterPattern = FilterPattern()
+            self.source_config.tableFilterPattern.excludes.extend(
+                [
+                    table
+                    for table in self.default_exclude_filters.table
+                    if table not in self.source_config.tableFilterPattern.excludes
+                ]
+            )
+
+    def initialise_default_exclude_filters(self) -> None:
+        """
+        define exclude filters in child class if required
+        using pydantic class `DefaultExcludeFilters`
+        """
 
     def get_database_names(self) -> Iterable[str]:
         """

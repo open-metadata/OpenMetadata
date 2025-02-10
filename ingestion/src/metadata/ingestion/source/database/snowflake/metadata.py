@@ -60,6 +60,7 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.column_type_parser import create_sqlalchemy_type
 from metadata.ingestion.source.database.common_db_source import (
     CommonDbSourceService,
+    DefaultExcludeFilters,
     TableNameAndType,
 )
 from metadata.ingestion.source.database.external_table_lineage_mixin import (
@@ -141,8 +142,8 @@ SnowflakeDialect.get_columns = get_columns
 Inspector.get_all_table_ddls = get_all_table_ddls
 Inspector.get_table_ddl = get_table_ddl
 SnowflakeDialect._get_schema_foreign_keys = get_schema_foreign_keys
-DEFAULT_EXCLUDE_SCHEMAS = ["information_schema.*", "performance_schema.*", "sys.*"]
 DEFAULT_EXCLUDE_DATABASES = ["^snowflake$"]
+DEFAULT_EXCLUDE_SCHEMAS = ["information_schema.*", "performance_schema.*", "sys.*"]
 
 
 class SnowflakeSource(
@@ -162,10 +163,6 @@ class SnowflakeSource(
         pipeline_name,
         incremental_configuration: IncrementalConfig,
     ):
-        self.default_entities = {
-            "database": {"excludes": DEFAULT_EXCLUDE_DATABASES},
-            "schema": {"excludes": DEFAULT_EXCLUDE_SCHEMAS},
-        }
         super().__init__(config, metadata)
         self.partition_details = {}
         self.schema_desc_map = {}
@@ -223,6 +220,14 @@ class SnowflakeSource(
             self._org_name = self._get_org_name()
 
         return self._org_name
+
+    def initialise_default_exclude_filters(self) -> None:
+        """
+        define exclude filters
+        """
+        self.default_exclude_filters = DefaultExcludeFilters(
+            database=DEFAULT_EXCLUDE_DATABASES, schema=DEFAULT_EXCLUDE_SCHEMAS
+        )
 
     def set_session_query_tag(self) -> None:
         """

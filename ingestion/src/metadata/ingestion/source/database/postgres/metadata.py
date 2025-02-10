@@ -47,6 +47,7 @@ from metadata.ingestion.models.ometa_classification import OMetaTagAndClassifica
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.common_db_source import (
     CommonDbSourceService,
+    DefaultExcludeFilters,
     TableNameAndType,
 )
 from metadata.ingestion.source.database.common_pg_mappings import (
@@ -114,8 +115,8 @@ Inspector.get_table_ddl = get_table_ddl
 Inspector.get_table_owner = get_etable_owner
 
 PGDialect.get_foreign_keys = get_foreign_keys
+DEFAULT_EXCLUDE_DATABASES = ["^template1$", "^template0$"]
 DEFAULT_EXCLUDE_SCHEMAS = ["pg_catalog.*", "information_schema.*", "pg_toast.*"]
-DEFAULT_EXCLUDE_DATABASES = ["template1", "template0"]
 
 
 class PostgresSource(CommonDbSourceService, MultiDBSource):
@@ -125,10 +126,6 @@ class PostgresSource(CommonDbSourceService, MultiDBSource):
     """
 
     def __init__(self, config: WorkflowSource, metadata: OpenMetadata):
-        self.default_entities = {
-            "database": {"excludes": DEFAULT_EXCLUDE_DATABASES},
-            "schema": {"excludes": DEFAULT_EXCLUDE_SCHEMAS},
-        }
         super().__init__(config, metadata)
         self.schema_desc_map = {}
 
@@ -143,6 +140,14 @@ class PostgresSource(CommonDbSourceService, MultiDBSource):
                 f"Expected PostgresConnection, but got {connection}"
             )
         return cls(config, metadata)
+
+    def initialise_default_exclude_filters(self) -> None:
+        """
+        define exclude filters
+        """
+        self.default_exclude_filters = DefaultExcludeFilters(
+            database=DEFAULT_EXCLUDE_DATABASES, schema=DEFAULT_EXCLUDE_SCHEMAS
+        )
 
     def get_schema_description(self, schema_name: str) -> Optional[str]:
         """

@@ -34,7 +34,10 @@ from metadata.generated.schema.type.basic import EntityName
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
+from metadata.ingestion.source.database.common_db_source import (
+    CommonDbSourceService,
+    DefaultExcludeFilters,
+)
 from metadata.ingestion.source.database.mssql.models import (
     STORED_PROC_LANGUAGE_MAP,
     MssqlStoredProcedure,
@@ -86,6 +89,9 @@ MSDialect.get_view_names = get_view_names
 
 Inspector.get_all_table_ddls = get_all_table_ddls
 Inspector.get_table_ddl = get_table_ddl
+DEFAULT_EXCLUDE_DATABASES = ["^master$"]
+DEFAULT_EXCLUDE_SCHEMAS = ["^db_.*", "^dbo$", "^guest$"]
+DEFAULT_EXCLUDE_TABLES = ["sys.*"]
 
 
 class MssqlSource(CommonDbSourceService, MultiDBSource):
@@ -106,6 +112,16 @@ class MssqlSource(CommonDbSourceService, MultiDBSource):
                 f"Expected MssqlConnection, but got {connection}"
             )
         return cls(config, metadata)
+
+    def initialise_default_exclude_filters(self) -> None:
+        """
+        define exclude filters
+        """
+        self.default_exclude_filters = DefaultExcludeFilters(
+            database=DEFAULT_EXCLUDE_DATABASES,
+            schema=DEFAULT_EXCLUDE_SCHEMAS,
+            table=DEFAULT_EXCLUDE_TABLES,
+        )
 
     def get_configured_database(self) -> Optional[str]:
         if not self.service_connection.ingestAllDatabases:
