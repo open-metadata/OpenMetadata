@@ -422,7 +422,7 @@ export const ActivityFeedTabNew = ({
             label: (
               <span className="toggle-item">
                 <MyTaskIcon {...ICON_DIMENSION_USER_PAGE} />
-                {t('label.task')}
+                {t('label.my-task-plural')}
               </span>
             ),
             value: ActivityFeedTabs.TASKS,

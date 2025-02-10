@@ -130,6 +130,7 @@ const DomainSelectableList = ({
 
             <div className="flex justify-end gap-2 m-t-xs">
               <Button
+                className="profile-edit-save"
                 data-testid="inline-cancel-btn"
                 icon={<CloseOutlined />}
                 // onClick={handleCloseEditTeam}
@@ -143,6 +144,7 @@ const DomainSelectableList = ({
               />
 
               <Button
+                className="profile-edit-cancel"
                 data-testid="inline-save-btn"
                 icon={<CheckOutlined />}
                 size="small"

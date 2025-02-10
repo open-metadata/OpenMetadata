@@ -197,6 +197,7 @@ export const PersonaSelectableList = ({
           {!isSelectOpen && (
             <div className="flex justify-end gap-2 m-t-xs">
               <Button
+                className="profile-edit-save"
                 data-testid="inline-cancel-btn"
                 icon={<CloseOutlined />}
                 size="small"
@@ -209,6 +210,7 @@ export const PersonaSelectableList = ({
                 onClick={handleCloseEditTeam}
               />
               <Button
+                className="profile-edit-cancel"
                 data-testid="inline-save-btn"
                 icon={<CheckOutlined />}
                 loading={isSaving}

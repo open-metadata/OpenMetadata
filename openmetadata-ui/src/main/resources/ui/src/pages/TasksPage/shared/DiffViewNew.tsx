@@ -76,8 +76,17 @@ export const DiffViewNew = ({
 
   return (
     <div
-      className={classNames('w-full h-max-56 overflow-y-auto', className)}
-      style={showDescTitle ? { background: 'rgba(239, 244, 250, 0.25' } : {}}>
+      className={classNames(
+        'w-full h-max-56 overflow-y-auto p-md border-radius-base'
+      )}
+      style={
+        showDescTitle
+          ? {
+              background: 'rgba(239, 244, 250, 0.25',
+              borderRadius: '8px !important',
+            }
+          : { padding: '16px !important', borderRadius: '8px !important' }
+      }>
       {showDescTitle && (
         <span style={{ marginBottom: '14px' }}>{t('label.description')}</span>
       )}

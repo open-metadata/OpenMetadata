@@ -122,6 +122,7 @@ const UserProfileTeams = ({
 
                   <div className="flex justify-end gap-2 mt-4">
                     <Button
+                      className="profile-edit-save"
                       data-testid="inline-cancel-btn"
                       icon={<CloseOutlined />}
                       size="small"
@@ -134,6 +135,7 @@ const UserProfileTeams = ({
                       onClick={handleCloseEditTeam}
                     />
                     <Button
+                      className="profile-edit-cancel"
                       data-testid="inline-save-btn"
                       icon={<CheckOutlined />}
                       loading={isLoading}

@@ -122,8 +122,8 @@ const CommentCard = ({ feed, post }: CommentCardInterface) => {
         display: 'flex',
         alignItems: 'flex-start',
         gap: '12px',
-        padding: '16px 0px 8px 0px',
-        margin: '10px 0px',
+        padding: '16px 0px 0px 0px',
+        // margin: '10px 0px',
         borderBottom: '1.5px solid  #E4E4E4',
         position: 'relative',
       }}
@@ -143,7 +143,7 @@ const CommentCard = ({ feed, post }: CommentCardInterface) => {
             gap: '8px',
           }}>
           <Typography.Text
-            className={`mr-2 
+            className={` 
                               activity-feed-user-name reply-card-user-name'
                             `}>
             {feed.updatedBy}
@@ -152,7 +152,7 @@ const CommentCard = ({ feed, post }: CommentCardInterface) => {
             style={{
               verticalAlign: 'middle',
               fontSize: '18px',
-              fontWeight: 400,
+              fontWeight: 800,
               margin: 'auto 0px',
               color: '#A1A1AA',
               marginBottom: '8px',

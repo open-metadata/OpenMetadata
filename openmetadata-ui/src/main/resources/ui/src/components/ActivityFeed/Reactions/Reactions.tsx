@@ -98,9 +98,7 @@ const Reactions: FC<ReactionsProps> = ({ reactions, onReactionSelect }) => {
   });
 
   return (
-    <div
-      className="d-flex items-center m-l-xss"
-      data-testid="feed-reaction-container">
+    <div className="d-flex items-center" data-testid="feed-reaction-container">
       {emojis}
       <Popover
         arrowPointAtCenter
