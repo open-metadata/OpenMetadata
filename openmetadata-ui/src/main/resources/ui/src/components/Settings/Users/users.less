@@ -94,20 +94,18 @@
     }
   }
 
-  .user-page-layout {
-    .user-layout-scroll {
-      height: @users-page-tabs-height;
-      overflow-y: scroll;
-    }
+  .user-layout-scroll {
+    height: @profile-entity-details-tab-height;
+    overflow-y: scroll;
+  }
 
-    .user-page-layout-right-panel {
-      padding-right: 0 !important;
-      background-color: @white;
-      border: 1px solid @border-color;
-      border-radius: 0;
-      padding-left: 0 !important;
-      border-top: 0;
-    }
+  .user-page-layout-right-panel {
+    padding-right: 0 !important;
+    background-color: @white;
+    border: 1px solid @border-color;
+    border-radius: 0;
+    padding-left: 0 !important;
+    border-top: 0;
   }
 
   .activity-feed-tab {
@@ -120,9 +118,34 @@
   }
   .summary-panel-container {
     height: @users-page-tabs-height;
+    padding: 20px;
+    border-radius: 12px;
+    background-color: @white;
   }
   .explore-search-card {
     margin: 0 12px;
+  }
+}
+
+.summary-panel-container {
+  height: @users-page-tabs-height;
+  border-radius: 12px;
+  background-color: @white;
+
+  .ant-card-head {
+    border-bottom: none;
+    padding: 20px;
+    padding-bottom: 0;
+
+    .ant-card-head-title {
+      font-size: 18px;
+      line-height: 18px;
+      color: #0950c5;
+    }
+  }
+
+  .ant-card-body {
+    padding: 20px;
   }
 }
 .profile-section {

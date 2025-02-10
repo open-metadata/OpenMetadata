@@ -15,22 +15,25 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import TagsViewer from '../../../components/Tag/TagsViewer/TagsViewer';
 import { BasicEntityInfo } from '../../Explore/EntitySummaryPanel/SummaryList/SummaryList.interface';
-import { EntityUnion } from '../../Explore/ExplorePage.interface';
 import RichTextEditorPreviewerV1 from '../RichTextEditor/RichTextEditorPreviewerV1';
+
+export interface EntityWithDescription {
+  description?: string;
+}
 
 const SummaryTagsDescription = ({
   tags = [],
   entityDetail,
 }: {
   tags: BasicEntityInfo['tags'];
-  entityDetail: EntityUnion;
+  entityDetail: EntityWithDescription;
 }) => {
   const { t } = useTranslation();
 
   return (
     <>
       <Row
-        className="m-md p-md border-radius-card"
+        className="p-md border-radius-card"
         gutter={[0, 8]}
         style={{ background: '#f5f5f5' }}>
         <Col span={24}>
@@ -54,7 +57,7 @@ const SummaryTagsDescription = ({
       <Divider className="m-y-xs" />
 
       <Row
-        className="m-md p-md border-radius-card"
+        className="p-md border-radius-card"
         gutter={[0, 8]}
         style={{ background: '#f5f5f5' }}>
         <Col span={24}>

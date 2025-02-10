@@ -140,7 +140,7 @@ const Users = ({
       type: AssetsOfEntity;
       noDataPlaceholder: AssetNoDataPlaceholderProps;
     }) => (
-      <Row className="user-page-layout" gutter={[40, 0]} wrap={false}>
+      <Row className="user-page-layout" gutter={[20, 0]} wrap={false}>
         <Col className="user-layout-scroll" flex="auto">
           <AssetsTabs
             isSummaryPanelOpen
