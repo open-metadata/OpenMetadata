@@ -41,7 +41,6 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.type.basic import EntityName, FullyQualifiedEntityName
-from metadata.generated.schema.type.filterPattern import FilterPattern
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
@@ -115,6 +114,8 @@ Inspector.get_table_ddl = get_table_ddl
 Inspector.get_table_owner = get_etable_owner
 
 PGDialect.get_foreign_keys = get_foreign_keys
+DEFAULT_EXCLUDE_SCHEMAS = ["pg_catalog.*", "information_schema.*", "pg_toast.*"]
+DEFAULT_EXCLUDE_DATABASES = ["template1", "template0"]
 
 
 class PostgresSource(CommonDbSourceService, MultiDBSource):
@@ -124,6 +125,10 @@ class PostgresSource(CommonDbSourceService, MultiDBSource):
     """
 
     def __init__(self, config: WorkflowSource, metadata: OpenMetadata):
+        self.default_entities = {
+            "database": {"excludes": DEFAULT_EXCLUDE_DATABASES},
+            "schema": {"excludes": DEFAULT_EXCLUDE_SCHEMAS},
+        }
         super().__init__(config, metadata)
         self.schema_desc_map = {}
 
@@ -138,33 +143,6 @@ class PostgresSource(CommonDbSourceService, MultiDBSource):
                 f"Expected PostgresConnection, but got {connection}"
             )
         return cls(config, metadata)
-
-    def set_default_FilterPatterns(self):
-        """Set default Database, Schema, Table filter patterns"""
-        DEFAULT_EXCLUDE_SCHEMAS = ["pg_catalog.*", "information_schema.*", "pg_toast.*"]
-        DEFAULT_EXCLUDE_DATABASES = ["template1", "template0"]
-
-        if not self.source_config.schemaFilterPattern:
-            self.source_config.schemaFilterPattern = FilterPattern()
-        self.source_config.schemaFilterPattern.excludes.extend(
-            [
-                schema
-                for schema in DEFAULT_EXCLUDE_SCHEMAS
-                if schema not in self.source_config.schemaFilterPattern.excludes
-            ]
-        )
-
-        if self.config.serviceConnection.root.config.ingestAllDatabases:
-            # for postgres databaseFilterPattern only applied when ingest all dbs configured
-            if not self.source_config.databaseFilterPattern:
-                self.source_config.databaseFilterPattern = FilterPattern()
-            self.source_config.databaseFilterPattern.excludes.extend(
-                [
-                    db
-                    for db in DEFAULT_EXCLUDE_DATABASES
-                    if db not in self.source_config.databaseFilterPattern.excludes
-                ]
-            )
 
     def get_schema_description(self, schema_name: str) -> Optional[str]:
         """

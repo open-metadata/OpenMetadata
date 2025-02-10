@@ -56,6 +56,7 @@ from metadata.generated.schema.type.basic import (
     Markdown,
     SourceUrl,
 )
+from metadata.generated.schema.type.filterPattern import FilterPattern
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.connections.session import create_and_bind_thread_safe_session
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
@@ -143,7 +144,7 @@ class CommonDbSourceService(
         self._inspector_map = {}
         self.table_constraints = None
         self.database_source_state = set()
-        self.set_default_FilterPatterns()
+        self.set_default_filter_patterns()
         self.context.get_global().table_views = []
         self.context.get_global().table_constrains = []
         self.context.get_global().foreign_tables = []
@@ -167,11 +168,48 @@ class CommonDbSourceService(
         self._connection_map = {}  # Lazy init as well
         self._inspector_map = {}
 
-    def set_default_FilterPatterns(self) -> None:
+    def set_default_filter_patterns(self) -> None:
         """
         Set default Database, Schema, Table filter patterns to
         exlude system entities not required in metadata
         """
+        if not hasattr(self, "default_entities"):
+            logger.debug(
+                "Default filter patterns for entities(schemas, databases, tables) to include/exclude not applied"
+            )
+            return None
+
+        if not self.source_config.schemaFilterPattern:
+            self.source_config.schemaFilterPattern = FilterPattern()
+        self.source_config.schemaFilterPattern.excludes.extend(
+            [
+                schema
+                for schema in self.default_entities.get("schema", {}).get(
+                    "excludes", []
+                )
+                if schema not in self.source_config.schemaFilterPattern.excludes
+            ]
+        )
+
+        if not self.source_config.databaseFilterPattern:
+            self.source_config.databaseFilterPattern = FilterPattern()
+        self.source_config.databaseFilterPattern.excludes.extend(
+            [
+                db
+                for db in self.default_entities.get("database", {}).get("excludes", [])
+                if db not in self.source_config.databaseFilterPattern.excludes
+            ]
+        )
+
+        if not self.source_config.tableFilterPattern:
+            self.source_config.tableFilterPattern = FilterPattern()
+        self.source_config.tableFilterPattern.excludes.extend(
+            [
+                db
+                for db in self.default_entities.get("table", {}).get("excludes", [])
+                if db not in self.source_config.tableFilterPattern.excludes
+            ]
+        )
 
     def get_database_names(self) -> Iterable[str]:
         """
