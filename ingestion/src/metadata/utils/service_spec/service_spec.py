@@ -52,6 +52,7 @@ class BaseSpec(BaseModel):
     lineage_source_class: Optional[str] = None
     usage_source_class: Optional[str] = None
     sampler_class: Optional[str] = None
+    reverse_ingestion_source_class: Optional[str] = None
 
     @model_validator(mode="before")
     @classmethod
@@ -94,7 +95,7 @@ def import_source_class(
     service_type: ServiceType, source_type: str, from_: str = "ingestion"
 ) -> Type[Source]:
     source_class_type = source_type.split(TYPE_SEPARATOR)[-1]
-    if source_class_type in ["usage", "lineage"]:
+    if source_class_type in ["usage", "lineage", "reverse_ingestion"]:
         field = f"{source_class_type}_source_class"
     else:
         field = "metadata_source_class"
