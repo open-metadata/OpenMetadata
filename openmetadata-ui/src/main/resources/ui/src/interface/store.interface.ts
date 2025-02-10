@@ -79,7 +79,6 @@ export interface ApplicationStore
     entityDetails: EntityUnion;
   }) => void;
   updateSearchCriteria: (criteria: ExploreSearchIndex | '') => void;
-  trySilentSignIn: (forceLogout?: boolean) => void;
   setApplicationsName: (applications: string[]) => void;
 }
 
