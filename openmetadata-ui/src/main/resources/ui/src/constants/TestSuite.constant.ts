@@ -13,7 +13,7 @@
 
 import i18next from 'i18next';
 import { StepperStepType } from 'Models';
-import { DatabaseServiceType } from '../generated/entity/data/database';
+import { DatabaseServiceType } from '../generated/entity/data/table';
 import { TestCaseResolutionStatusTypes } from '../generated/tests/testCaseResolutionStatus';
 import { DataQualityPageTabs } from '../pages/DataQuality/DataQualityPage.interface';
 
