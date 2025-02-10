@@ -13,12 +13,11 @@
 import { Button, Popover, Typography } from 'antd';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ReactComponent as ChangePassword } from '../../assets/svg/change-pw.svg';
 import { ReactComponent as MenuDots } from '../../assets/svg/dot (1).svg';
 import { ReactComponent as EditProfileIcon } from '../../assets/svg/edit-profile.svg';
-import { ReactComponent as ChangePassword } from '../../assets/svg/key.svg';
 import { ReactComponent as DeleteIcon } from '../../assets/svg/trash.svg';
 import { User } from '../../generated/entity/teams/user';
-import { getTextFromHtmlString } from '../../utils/BlockEditorUtils';
 import { isMaskedEmail } from '../../utils/Users.util';
 import ProfilePicture from '../common/ProfilePicture/ProfilePicture';
 
@@ -280,10 +279,10 @@ const ProfileSectionUserDetailsCard = ({
       <div>
         <p className="profile-details-title">{userData?.displayName}</p>
         {userEmailRender}
-        <p className="profile-details-desc">
+        {/* <p className="profile-details-desc">
           {userData?.description &&
             getTextFromHtmlString(userData?.description)}
-        </p>
+        </p> */}
       </div>
       {showChangePasswordComponent && (
         <ChangePasswordForm
