@@ -58,6 +58,7 @@ const DomainSelectableList = ({
   popoverProps,
   selectedDomain,
   multiple = false,
+  onCancel,
 }: DomainSelectableListProps) => {
   const { t } = useTranslation();
   const [popupVisible, setPopupVisible] = useState(false);
@@ -93,6 +94,11 @@ const DomainSelectableList = ({
     [onUpdate, multiple]
   );
 
+  const handleCancel = useCallback(() => {
+    setPopupVisible(false);
+    onCancel?.();
+  }, [onCancel]);
+
   return (
     // Used Button to stop click propagation event anywhere in the component to parent
     // TeamDetailV1 collapsible panel
@@ -107,7 +113,7 @@ const DomainSelectableList = ({
             isMultiple={multiple}
             value={selectedDomainsList as string[]}
             visible={popupVisible || Boolean(popoverProps?.open)}
-            onCancel={() => setPopupVisible(false)}
+            onCancel={handleCancel}
             onSubmit={handleUpdate}
           />
         }

@@ -351,7 +351,7 @@ const DomainDetailsPage = ({
           query: '',
           pageNumber: 0,
           pageSize: 0,
-          queryFilter: queryFilter,
+          queryFilter,
           searchIndex: SearchIndex.ALL,
           filters: '',
         });

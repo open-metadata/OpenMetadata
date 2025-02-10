@@ -29,7 +29,10 @@ import { EntityType } from '../../../enums/entity.enum';
 import { Domain } from '../../../generated/entity/domains/domain';
 import { EntityReference } from '../../../generated/tests/testCase';
 import { listDomainHierarchy, searchDomains } from '../../../rest/domainAPI';
-import { convertDomainsToTreeOptions } from '../../../utils/DomainUtils';
+import {
+  convertDomainsToTreeOptions,
+  isDomainExist,
+} from '../../../utils/DomainUtils';
 import { getEntityReferenceFromEntity } from '../../../utils/EntityUtils';
 import { findItemByFqn } from '../../../utils/GlossaryUtils';
 import {
@@ -61,25 +64,42 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
   const [searchTerm, setSearchTerm] = useState<string>('');
 
   const handleSave = async () => {
-    setIsSubmitLoading(true);
     if (isMultiple) {
-      const domains1 = selectedDomains.map((item) =>
-        getEntityReferenceFromEntity<Domain>(item, EntityType.DOMAIN)
-      );
-      await onSubmit(domains1);
-    } else {
-      let retn: EntityReference[] = [];
-      if (selectedDomains.length > 0) {
-        const domain = getEntityReferenceFromEntity<Domain>(
-          selectedDomains[0],
-          EntityType.DOMAIN
-        );
-        retn = [domain];
-      }
-      await onSubmit(retn);
-    }
+      const selectedFqns = selectedDomains
+        .map((domain) => domain.fullyQualifiedName)
+        .sort();
+      const initialFqns = (value as string[]).sort();
 
-    setIsSubmitLoading(false);
+      if (JSON.stringify(selectedFqns) !== JSON.stringify(initialFqns)) {
+        setIsSubmitLoading(true);
+        const domains1 = selectedDomains.map((item) =>
+          getEntityReferenceFromEntity<Domain>(item, EntityType.DOMAIN)
+        );
+        await onSubmit(domains1);
+        setIsSubmitLoading(false);
+      } else {
+        onCancel();
+      }
+    } else {
+      const selectedFqn = selectedDomains[0]?.fullyQualifiedName;
+      const initialFqn = value?.[0];
+
+      if (selectedFqn !== initialFqn) {
+        setIsSubmitLoading(true);
+        let retn: EntityReference[] = [];
+        if (selectedDomains.length > 0) {
+          const domain = getEntityReferenceFromEntity<Domain>(
+            selectedDomains[0],
+            EntityType.DOMAIN
+          );
+          retn = [domain];
+        }
+        await onSubmit(retn);
+        setIsSubmitLoading(false);
+      } else {
+        onCancel();
+      }
+    }
   };
 
   const fetchAPI = useCallback(async () => {
@@ -89,9 +109,8 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
 
       const combinedData = [...data.data];
       initialDomains?.forEach((selectedDomain) => {
-        const exists = combinedData.some(
-          (domain) =>
-            domain.fullyQualifiedName === selectedDomain.fullyQualifiedName
+        const exists = combinedData.some((domain: Domain) =>
+          isDomainExist(domain, selectedDomain.fullyQualifiedName ?? '')
         );
         if (!exists) {
           combinedData.push(selectedDomain as unknown as Domain);

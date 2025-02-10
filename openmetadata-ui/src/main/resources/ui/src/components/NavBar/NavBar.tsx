@@ -585,6 +585,7 @@ const NavBar = ({
               hasPermission
               popoverProps={{ open: isDomainDropdownOpen }}
               selectedDomain={activeDomainEntityRef}
+              onCancel={() => setIsDomainDropdownOpen(false)}
               onUpdate={handleDomainChange}>
               <Row
                 data-testid="domain-dropdown"

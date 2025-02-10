@@ -284,3 +284,26 @@ export const convertDomainsToTreeOptions = (
 
   return treeData;
 };
+
+/**
+ * Recursively checks if a domain exists in the hierarchy
+ * @param domain The domain to search in
+ * @param searchDomain The domain to search for
+ * @returns boolean indicating if the domain exists
+ */
+export const isDomainExist = (
+  domain: Domain,
+  searchDomainFqn: string
+): boolean => {
+  if (domain.fullyQualifiedName === searchDomainFqn) {
+    return true;
+  }
+
+  if (domain.children?.length) {
+    return domain.children.some((child) =>
+      isDomainExist(child as unknown as Domain, searchDomainFqn)
+    );
+  }
+
+  return false;
+};
