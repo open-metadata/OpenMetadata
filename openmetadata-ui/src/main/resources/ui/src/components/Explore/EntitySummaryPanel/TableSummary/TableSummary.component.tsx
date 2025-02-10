@@ -246,7 +246,10 @@ function TableSummary({
   return (
     <SummaryPanelSkeleton loading={isLoading || isEmpty(tableDetails)}>
       <>
-        <Row className="m-md m-t-0" gutter={[0, 4]}>
+        <Row
+          className="m-md m-t-0 p-md border-radius-card"
+          gutter={[0, 4]}
+          style={{ background: '#f5f5f5' }}>
           <Col span={24}>
             <CommonEntitySummaryInfo
               componentType={componentType}
@@ -257,7 +260,10 @@ function TableSummary({
 
         <Divider className="m-y-xs" />
 
-        <Row className="m-md" gutter={[0, 8]}>
+        <Row
+          className="m-md p-md border-radius-card"
+          gutter={[0, 8]}
+          style={{ background: '#f5f5f5' }}>
           <Col span={24}>
             <Typography.Text
               className="summary-panel-section-title"
@@ -282,7 +288,10 @@ function TableSummary({
         />
         <Divider className="m-y-xs" />
 
-        <Row className="m-md" gutter={[0, 8]}>
+        <Row
+          className="m-md p-md border-radius-card"
+          gutter={[0, 8]}
+          style={{ background: '#f5f5f5' }}>
           <Col span={24}>
             <Typography.Text
               className="summary-panel-section-title"
