@@ -50,7 +50,7 @@ def get_connection(connection: Db2Connection) -> Engine:
             "w",
             encoding=UTF_8,
         ) as file:
-            file.write(connection.license)
+            file.write(connection.license.encode("utf-8").decode("unicode-escape"))
 
     return create_generic_db_connection(
         connection=connection,
