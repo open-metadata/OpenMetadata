@@ -1,5 +1,5 @@
 /*
- *  Copyright 2023 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,16 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { EntityTags } from 'Models';
+import { EntityType } from '../../enums/entity.enum';
+import { DRAWER_NAVIGATION_OPTIONS } from '../../utils/EntityUtils';
+import { SearchedDataProps } from '../SearchedData/SearchedData.interface';
 
-import { Database } from '../../../../generated/entity/data/database';
-import { TagLabel } from '../../../../generated/type/tagLabel';
-import { DRAWER_NAVIGATION_OPTIONS } from '../../../../utils/EntityUtils';
-import { SearchedDataProps } from '../../../SearchedData/SearchedData.interface';
-
-export interface DatabaseSummaryProps {
-  entityDetails: Database;
+export type DataAssetSummaryPanelProps = {
+  tags?: EntityTags[];
   componentType?: DRAWER_NAVIGATION_OPTIONS;
-  tags?: TagLabel[];
   isLoading?: boolean;
   highlights?: SearchedDataProps['data'][number]['highlight'];
-}
+  dataAsset: SearchedDataProps['data'][number]['_source'];
+  entityType: EntityType;
+};
