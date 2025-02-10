@@ -35,7 +35,8 @@
     "check-i18n": "npm run i18n -- --check",
     "playwright:run": "playwright test",
     "playwright:open": "playwright test --ui",
-    "playwright:codegen": "playwright codegen"
+    "playwright:codegen": "playwright codegen",
+    "generate:app-docs": "node generateApplicationDocs.js"
   },
   "dependencies": {
     "@analytics/session-utils": "^0.1.17",

@@ -22,6 +22,7 @@ export interface AppRunRecord {
      * Name of the application.
      */
     appName?: string;
+    config?:  { [key: string]: any };
     /**
      * End time of the job status.
      */
@@ -93,6 +94,7 @@ export enum Status {
     ActiveError = "activeError",
     Completed = "completed",
     Failed = "failed",
+    Pending = "pending",
     Running = "running",
     Started = "started",
     Stopped = "stopped",
