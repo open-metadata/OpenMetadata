@@ -5,13 +5,27 @@
   "description": "Ingestion Pipeline Config is used to set up a DAG and deploy. This entity is used to setup metadata/quality pipelines on Apache Airflow.",
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline",
-  "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
+  "javaInterfaces": [
+    "org.openmetadata.schema.EntityInterface"
+  ],
   "definitions": {
     "pipelineType": {
       "description": "Type of Pipeline - metadata, usage",
       "type": "string",
       "javaType": "org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType",
-      "enum": ["metadata", "usage", "lineage", "profiler", "autoClassification", "TestSuite", "dataInsight", "elasticSearchReindex", "dbt", "application"]
+      "enum": [
+        "metadata",
+        "usage",
+        "lineage",
+        "profiler",
+        "autoClassification",
+        "TestSuite",
+        "dataInsight",
+        "elasticSearchReindex",
+        "dbt",
+        "application",
+        "reverseIngestion"
+      ]
     },
     "pipelineStatus": {
       "type": "object",
@@ -26,7 +40,13 @@
           "description": "Pipeline status denotes if its failed or succeeded.",
           "type": "string",
           "javaType": "org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatusType",
-          "enum": ["queued","success","failed","running","partialSuccess"]
+          "enum": [
+            "queued",
+            "success",
+            "failed",
+            "running",
+            "partialSuccess"
+          ]
         },
         "startDate": {
           "description": "startDate of the pipeline run for this particular execution.",
@@ -211,10 +231,10 @@
       "type": "boolean",
       "default": false
     },
-    "provider" : {
+    "provider": {
       "$ref": "../../../type/basic.json#/definitions/providerType"
     },
-    "domain" : {
+    "domain": {
       "description": "Domain the asset belongs to. When not set, the asset inherits the domain from the parent it belongs to.",
       "$ref": "../../../type/entityReference.json"
     },
