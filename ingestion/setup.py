@@ -59,6 +59,7 @@ VERSIONS = {
     "teradata": "teradatasqlalchemy==20.0.0.2",
     "cockroach": "sqlalchemy-cockroachdb~=2.0",
     "cassandra": "cassandra-driver>=3.28.0",
+    "opensearch": "opensearch-py~=2.4.0",
 }
 
 COMMONS = {
@@ -229,7 +230,9 @@ plugins: Dict[str, Set[str]] = {
     "dynamodb": {VERSIONS["boto3"]},
     "elasticsearch": {
         VERSIONS["elasticsearch8"],
+        "httpx>=0.28.1",
     },  # also requires requests-aws4auth which is in base
+    "opensearch": {VERSIONS["opensearch"], "httpx>=0.28.1"},
     "exasol": {"sqlalchemy_exasol>=5,<6"},
     "glue": {VERSIONS["boto3"]},
     "great-expectations": {VERSIONS["great-expectations"]},
