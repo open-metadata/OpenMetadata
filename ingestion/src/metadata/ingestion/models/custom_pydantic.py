@@ -20,9 +20,10 @@ import logging
 from typing import Any, Dict, Literal, Optional, Union
 
 from pydantic import BaseModel as PydanticBaseModel
-from pydantic import PlainSerializer, model_validator
+from pydantic import WrapSerializer, model_validator
 from pydantic.main import IncEx
 from pydantic.types import SecretStr
+from pydantic_core.core_schema import SerializationInfo
 from typing_extensions import Annotated
 
 from metadata.ingestion.models.custom_basemodel_validation import (
@@ -110,6 +111,11 @@ class BaseModel(PydanticBaseModel):
             ensure_ascii=True,
         )
 
+    def model_dump_masked(self, *args, **kwargs):
+        context = kwargs.pop("context", {})
+        context["mask_secrets"] = True
+        return self.model_dump(*args, context=context, **kwargs)
+
 
 class _CustomSecretStr(SecretStr):
     """
@@ -154,9 +160,19 @@ class _CustomSecretStr(SecretStr):
         return self._secret_value
 
 
-CustomSecretStr = Annotated[
-    _CustomSecretStr, PlainSerializer(lambda secret: secret.get_secret_value())
-]
+def handle_secret(value: Any, handler, info: SerializationInfo) -> str:
+    """
+    Handle the secret value in the model.
+    """
+
+    return (
+        handler(value.get_secret_value())
+        if not info.context.get("mask_secrets", False)
+        else "*******"
+    )
+
+
+CustomSecretStr = Annotated[_CustomSecretStr, WrapSerializer(handle_secret)]
 
 
 def ignore_type_decoder(type_: Any) -> None:

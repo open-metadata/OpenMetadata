@@ -15,7 +15,7 @@ from pydantic import AnyUrl
 from pydantic.v1 import BaseModel as BaseModelV1
 
 from metadata.generated.schema.type.basic import DateTime
-from metadata.ingestion.models.custom_pydantic import BaseModel
+from metadata.ingestion.models.custom_pydantic import BaseModel, CustomSecretStr
 
 
 def test_simple_dump():
@@ -101,3 +101,36 @@ def test_get_secret_string():
 
     # key is shown when serialized
     assert model.model_dump()["secret"] == "password"
+
+
+def test_model_dump_masked():
+    """Test model_dump_masked with root, nested, and list structures."""
+
+    class NestedModel(BaseModel):
+        secret: CustomSecretStr
+        value: int
+
+    class RootModel(BaseModel):
+        root_secret: CustomSecretStr
+        nested: NestedModel
+        items: list[NestedModel]
+
+    data = {
+        "root_secret": "root_password",
+        "nested": {"secret": "nested_password", "value": 42},
+        "items": [
+            {"secret": "item1_password", "value": 1},
+            {"secret": "item2_password", "value": 2},
+        ],
+    }
+
+    model = RootModel(**data)
+    masked_data = model.model_dump_masked()
+
+    assert masked_data["root_secret"] == "*******"
+    assert masked_data["nested"]["secret"] == "*******"
+    assert masked_data["nested"]["value"] == 42
+    assert masked_data["items"][0]["secret"] == "*******"
+    assert masked_data["items"][0]["value"] == 1
+    assert masked_data["items"][1]["secret"] == "*******"
+    assert masked_data["items"][1]["value"] == 2
