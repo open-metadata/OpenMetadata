@@ -1,0 +1,45 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/applications/configuration/private/appLimitsConfig.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AppLimitsConfig",
+  "description": "Private Configuration for the App Limits.",
+  "type": "object",
+  "javaType": "io.collate.schema.entity.app.Limits",
+  "definitions": {
+    "action": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "title": "Action Name",
+          "description": "The action that is being performed and limited",
+          "type": "string"
+        },
+        "limit": {
+          "title": "Action Limits",
+          "description": "Limit for the action in the cycle on an annual basis.",
+          "type": "integer"
+        }
+      }
+    }
+  },
+  "properties": {
+    "actions": {
+      "title": "Records",
+      "description": "The records of the limits.",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/action"
+      }
+    },
+    "billingCycleStart": {
+      "title": "Cycle Start",
+      "description": "The start of this limit cycle.",
+      "$ref": "../../../../type/basic.json#/definitions/date"
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "actions",
+    "billingCycleStart"
+  ]
+}
