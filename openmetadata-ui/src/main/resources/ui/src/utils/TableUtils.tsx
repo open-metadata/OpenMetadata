@@ -252,7 +252,7 @@ export const getConstraintIcon = ({
       title = t('label.entity-key', {
         entity: t('label.cluster'),
       });
-      icon = isConstraintDeleted ? IconSortLineThrough : IconSortKey;
+      icon = isConstraintDeleted ? IconDistLineThrough : IconDistKey;
       dataTestId = 'cluster-key';
 
       break;
