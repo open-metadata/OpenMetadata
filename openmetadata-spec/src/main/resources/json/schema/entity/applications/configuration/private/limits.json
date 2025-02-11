@@ -14,7 +14,7 @@
           "description": "The action that is being performed and limited",
           "type": "string"
         },
-        "limit": {
+        "count": {
           "title": "Action Limits",
           "description": "Limit for the action in the cycle on an annual basis.",
           "type": "integer"
@@ -23,8 +23,8 @@
     }
   },
   "properties": {
-    "actions": {
-      "title": "Records",
+    "limits": {
+      "title": "Limits",
       "description": "The records of the limits.",
       "type": "array",
       "items": {
