@@ -164,10 +164,9 @@ def handle_secret(value: Any, handler, info: SerializationInfo) -> str:
     """
     Handle the secret value in the model.
     """
-
     return (
         handler(value.get_secret_value())
-        if not info.context.get("mask_secrets", False)
+        if not (info.context is not None and info.context.get("mask_secrets", False))
         else "*******"
     )
 
