@@ -444,6 +444,7 @@
     "enter-property-value": "Introducir o valor da propiedade",
     "enter-type-password": "Introducir contrasinal de {{type}}",
     "entity": "Entidade",
+    "entity-configuration": "Configuración de {{entity}}",
     "entity-count": "Contador de {{entity}}",
     "entity-detail-plural": "Detalles de {{entity}}",
     "entity-feed-plural": "Fontes de entidade",

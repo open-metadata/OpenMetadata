@@ -444,6 +444,7 @@
     "enter-property-value": "Enter Property Value",
     "enter-type-password": "Enter {{type}} Password",
     "entity": "Entity",
+    "entity-configuration": "{{entity}} Configuration",
     "entity-count": "{{entity}} Count",
     "entity-detail-plural": "{{entity}} Details",
     "entity-feed-plural": "Entity feeds",

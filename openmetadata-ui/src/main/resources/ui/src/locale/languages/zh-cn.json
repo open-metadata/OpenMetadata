@@ -444,6 +444,7 @@
     "enter-property-value": "输入属性值",
     "enter-type-password": "输入{{type}}密码",
     "entity": "实体",
+    "entity-configuration": "{{entity}} 配置",
     "entity-count": "{{entity}}计数",
     "entity-detail-plural": "{{entity}}详情",
     "entity-feed-plural": "实体信息流",

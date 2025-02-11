@@ -444,6 +444,7 @@
     "enter-property-value": "गुणधर्म मूल्य प्रविष्ट करा",
     "enter-type-password": "{{type}} पासवर्ड प्रविष्ट करा",
     "entity": "घटक",
+    "entity-configuration": "{{entity}} संरचना",
     "entity-count": "{{entity}} संख्या",
     "entity-detail-plural": "{{entity}} तपशील",
     "entity-feed-plural": "घटक फीड्स",

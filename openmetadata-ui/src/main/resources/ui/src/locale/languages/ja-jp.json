@@ -444,6 +444,7 @@
     "enter-property-value": "プロパティの値を入力",
     "enter-type-password": "{{type}} のパスワードを入力",
     "entity": "Entity",
+    "entity-configuration": "{{entity}}の構成",
     "entity-count": "{{entity}}の数",
     "entity-detail-plural": "{{entity}} details",
     "entity-feed-plural": "Entity feeds",

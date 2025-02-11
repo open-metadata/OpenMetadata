@@ -444,6 +444,7 @@
     "enter-property-value": "הזן ערך נכס",
     "enter-type-password": "הזן סיסמה עבור {{type}}",
     "entity": "ישות",
+    "entity-configuration": "תצורת {{entity}}",
     "entity-count": "ספירת {{entity}}",
     "entity-detail-plural": "פרטי {{entity}}",
     "entity-feed-plural": "הזנות ישויות",
