@@ -63,42 +63,42 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
   const [selectedDomains, setSelectedDomains] = useState<Domain[]>([]);
   const [searchTerm, setSearchTerm] = useState<string>('');
 
-  const handleSave = async () => {
-    if (isMultiple) {
-      const selectedFqns = selectedDomains
-        .map((domain) => domain.fullyQualifiedName)
-        .sort();
-      const initialFqns = (value as string[]).sort();
+  const handleMultiDomainSave = async () => {
+    const selectedFqns = selectedDomains
+      .map((domain) => domain.fullyQualifiedName)
+      .sort((a, b) => (a ?? '').localeCompare(b ?? ''));
+    const initialFqns = (value as string[]).sort((a, b) => a.localeCompare(b));
 
-      if (JSON.stringify(selectedFqns) !== JSON.stringify(initialFqns)) {
-        setIsSubmitLoading(true);
-        const domains1 = selectedDomains.map((item) =>
-          getEntityReferenceFromEntity<Domain>(item, EntityType.DOMAIN)
-        );
-        await onSubmit(domains1);
-        setIsSubmitLoading(false);
-      } else {
-        onCancel();
-      }
+    if (JSON.stringify(selectedFqns) !== JSON.stringify(initialFqns)) {
+      setIsSubmitLoading(true);
+      const domains1 = selectedDomains.map((item) =>
+        getEntityReferenceFromEntity<Domain>(item, EntityType.DOMAIN)
+      );
+      await onSubmit(domains1);
+      setIsSubmitLoading(false);
     } else {
-      const selectedFqn = selectedDomains[0]?.fullyQualifiedName;
-      const initialFqn = value?.[0];
+      onCancel();
+    }
+  };
 
-      if (selectedFqn !== initialFqn) {
-        setIsSubmitLoading(true);
-        let retn: EntityReference[] = [];
-        if (selectedDomains.length > 0) {
-          const domain = getEntityReferenceFromEntity<Domain>(
-            selectedDomains[0],
-            EntityType.DOMAIN
-          );
-          retn = [domain];
-        }
-        await onSubmit(retn);
-        setIsSubmitLoading(false);
-      } else {
-        onCancel();
+  const handleSingleDomainSave = async () => {
+    const selectedFqn = selectedDomains[0]?.fullyQualifiedName;
+    const initialFqn = value?.[0];
+
+    if (selectedFqn !== initialFqn) {
+      setIsSubmitLoading(true);
+      let retn: EntityReference[] = [];
+      if (selectedDomains.length > 0) {
+        const domain = getEntityReferenceFromEntity<Domain>(
+          selectedDomains[0],
+          EntityType.DOMAIN
+        );
+        retn = [domain];
       }
+      await onSubmit(retn);
+      setIsSubmitLoading(false);
+    } else {
+      onCancel();
     }
   };
 
@@ -247,7 +247,9 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
           loading={isSubmitLoading}
           size="small"
           type="default"
-          onClick={() => handleSave()}>
+          onClick={() =>
+            isMultiple ? handleMultiDomainSave() : handleSingleDomainSave()
+          }>
           {t('label.update')}
         </Button>
         <Button
