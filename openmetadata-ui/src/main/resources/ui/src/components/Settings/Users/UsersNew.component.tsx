@@ -140,16 +140,22 @@ const Users = ({
       type: AssetsOfEntity;
       noDataPlaceholder: AssetNoDataPlaceholderProps;
     }) => (
-      <Row className="user-page-layout" gutter={[20, 0]} wrap={false}>
-        <Col className="user-layout-scroll" flex="auto">
-          <AssetsTabs
-            isSummaryPanelOpen
-            assetCount={assetCount}
-            permissions={{ ...DEFAULT_ENTITY_PERMISSION, Create: true }}
-            onAddAsset={() => history.push(ROUTES.EXPLORE)}
-            onAssetClick={handleAssetClick}
-            {...props}
-          />
+      <Row
+        className="user-page-layout"
+        gutter={[20, 0]}
+        key={activeTab}
+        wrap={false}>
+        <Col flex="auto">
+          <div className="user-layout-scroll">
+            <AssetsTabs
+              assetCount={assetCount}
+              isSummaryPanelOpen={Boolean(previewAsset)}
+              permissions={{ ...DEFAULT_ENTITY_PERMISSION, Create: true }}
+              onAddAsset={() => history.push(ROUTES.EXPLORE)}
+              onAssetClick={handleAssetClick}
+              {...props}
+            />
+          </div>
         </Col>
 
         {previewAsset && (
@@ -162,7 +168,7 @@ const Users = ({
         )}
       </Row>
     ),
-    [previewAsset, assetCount, handleAssetClick, setPreviewAsset]
+    [previewAsset, assetCount, handleAssetClick, setPreviewAsset, activeTab]
   );
 
   const tabs = useMemo(

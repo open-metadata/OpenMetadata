@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Col, Divider, Row, Typography } from 'antd';
+import { Col, Row, Typography } from 'antd';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import TagsViewer from '../../../components/Tag/TagsViewer/TagsViewer';
@@ -53,8 +53,6 @@ const SummaryTagsDescription = ({
           )}
         </Col>
       </Row>
-
-      <Divider className="m-y-xs" />
 
       <Row
         className="p-md border-radius-card"
