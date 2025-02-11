@@ -42,6 +42,19 @@ The Auto Classification Workflow enables automatic tagging of sensitive informat
 - When set to `true`, filtering patterns will be applied to the Fully Qualified Name of a table (e.g., `service_name.db_name.schema_name.table_name`).
 - When set to `false`, filtering applies only to raw table names.
 
+## Auto Classification Workflow Execution  
+
+To execute the **Auto Classification Workflow**, follow the steps below:  
+
+### 1. Install the Required Python Package  
+Ensure you have the correct OpenMetadata ingestion package installed, including the **PII Processor** module:  
+
+```bash
+pip install "openmetadata-ingestion[pii-processor]"
+```
+## 2. Define and Execute the Python Workflow
+Instead of using a YAML configuration, use the AutoClassificationWorkflow from OpenMetadata to trigger the ingestion process programmatically.
+
 ## Sample Auto Classification Workflow yaml
 
 ```yaml
@@ -102,6 +115,14 @@ workflowConfig:
     securityConfig:
       jwtToken: "eyJraWQiOiJHYjM4OWEtOWY3Ni1nZGpzLWE5MmotMDI0MmJrOTQzNTYiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJhZG1pbiIsImlzQm90IjpmYWxzZSwiaXNzIjoib3Blbi1tZXRhZGF0YS5vcmciLCJpYXQiOjE2NjM5Mzg0NjIsImVtYWlsIjoiYWRtaW5Ab3Blbm1ldGFkYXRhLm9yZyJ9.tS8um_5DKu7HgzGBzS1VTA5uUjKWOCU0B_j08WXBiEC0mr0zNREkqVfwFDD-d24HlNEbrqioLsBuFRiwIWKc1m_ZlVQbG7P36RUxhuv2vbSp80FKyNM-Tj93FDzq91jsyNmsQhyNv_fNr3TXfzzSPjHt8Go0FMMP66weoKMgW2PbXlhVKwEuXUHyakLLzewm9UMeQaEiRzhiTMU3UkLXcKbYEJJvfNFcLwSl9W8JCO_l0Yj3ud-qt_nQYEZwqW6u5nfdQllN133iikV4fM5QZsMCnm8Rq1mvLR0y9bmJiD7fwM1tmJ791TUWqmKaTnP49U493VanKpUAfzIiOiIbhg"
 ```
+
+### 3. Expected Outcome
+- Automatically classifies and tags sensitive data based on predefined patterns and confidence levels.
+- Improves metadata enrichment and enhances data governance practices.
+- Provides visibility into sensitive data across databases.
+This approach ensures that the Auto Classification Workflow is executed correctly using the appropriate OpenMetadata ingestion framework.
+
+{% partial file="/v1.6/connectors/yaml/auto-classification.md" variables={connector: "snowflake"} /%}
 
 ## Workflow Execution
 
