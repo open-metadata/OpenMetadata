@@ -13,6 +13,7 @@
 import { AxiosError } from 'axios';
 import { toString } from 'lodash';
 import React, { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { EntityType } from '../../../enums/entity.enum';
 import { Glossary } from '../../../generated/entity/data/glossary';
@@ -53,6 +54,7 @@ const GlossaryVersion = ({ isGlossary = false }: GlossaryVersionProps) => {
   const [selectedData, setSelectedData] = useState<Glossary | GlossaryTerm>();
   const [isVersionLoading, setIsVersionLoading] = useState<boolean>(true);
   const { setActiveGlossary } = useGlossaryStore();
+  const { t } = useTranslation();
 
   const fetchVersionsInfo = async () => {
     try {
@@ -103,7 +105,7 @@ const GlossaryVersion = ({ isGlossary = false }: GlossaryVersionProps) => {
   }, [id, version]);
 
   return (
-    <PageLayoutV1 pageTitle="Glossary version">
+    <PageLayoutV1 pageTitle={t('label.glossary-version')}>
       <div className="version-data">
         {/* TODO: Need to implement version component for Glossary */}
         {isVersionLoading ? (
