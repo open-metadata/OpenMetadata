@@ -4,7 +4,7 @@ slug: /connectors/database/singlestore/yaml
 ---
 
 {% connectorDetailsHeader
-name="Singlestore"
+name="SingleStore"
 stage="PROD"
 platform="OpenMetadata"
 availableFeatures=["Metadata", "Data Profiler", "Data Quality", "View Lineage", "View Column-level Lineage", "dbt"]
@@ -12,9 +12,9 @@ unavailableFeatures=["Query Usage", "Stored Procedures", "Owners", "Tags"]
 / %}
 
 
-In this section, we provide guides and references to use the Singlestore connector.
+In this section, we provide guides and references to use the SingleStore connector.
 
-Configure and schedule Singlestore metadata and profiler workflows from the OpenMetadata UI:
+Configure and schedule SingleStore metadata and profiler workflows from the OpenMetadata UI:
 
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
@@ -31,7 +31,7 @@ Configure and schedule Singlestore metadata and profiler workflows from the Open
 
 {% partial file="/v1.6/connectors/python-requirements.md" /%}
 
-To run the Singlestore ingestion, you will need to install:
+To run the SingleStore ingestion, you will need to install:
 
 ```bash
 pip3 install "openmetadata-ingestion[singlestore]"
@@ -52,7 +52,7 @@ The workflow is modeled around the following
 
 ### 1. Define the YAML Config
 
-This is a sample config for Singlestore:
+This is a sample config for SingleStore:
 
 {% codePreview %}
 

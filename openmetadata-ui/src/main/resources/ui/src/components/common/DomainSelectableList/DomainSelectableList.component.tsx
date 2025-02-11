@@ -58,6 +58,7 @@ const DomainSelectableList = ({
   popoverProps,
   selectedDomain,
   multiple = false,
+  onCancel,
 }: DomainSelectableListProps) => {
   const { t } = useTranslation();
   const [popupVisible, setPopupVisible] = useState(false);
@@ -67,6 +68,14 @@ const DomainSelectableList = ({
       return Array.isArray(selectedDomain)
         ? selectedDomain.map((item) => item.fullyQualifiedName)
         : [selectedDomain.fullyQualifiedName];
+    }
+
+    return [];
+  }, [selectedDomain]);
+
+  const initialDomains = useMemo(() => {
+    if (selectedDomain) {
+      return Array.isArray(selectedDomain) ? selectedDomain : [selectedDomain];
     }
 
     return [];
@@ -85,6 +94,11 @@ const DomainSelectableList = ({
     [onUpdate, multiple]
   );
 
+  const handleCancel = useCallback(() => {
+    setPopupVisible(false);
+    onCancel?.();
+  }, [onCancel]);
+
   return (
     // Used Button to stop click propagation event anywhere in the component to parent
     // TeamDetailV1 collapsible panel
@@ -95,10 +109,11 @@ const DomainSelectableList = ({
         destroyTooltipOnHide
         content={
           <DomainSelectablTree
+            initialDomains={initialDomains}
             isMultiple={multiple}
             value={selectedDomainsList as string[]}
             visible={popupVisible || Boolean(popoverProps?.open)}
-            onCancel={() => setPopupVisible(false)}
+            onCancel={handleCancel}
             onSubmit={handleUpdate}
           />
         }

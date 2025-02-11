@@ -153,6 +153,14 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
     }
   }
 
+  @Override
+  public EntityInterface getParentEntity(TestSuite entity, String fields) {
+    if (entity.getBasic()) {
+      return Entity.getEntity(entity.getBasicEntityReference(), fields, ALL);
+    }
+    return null;
+  }
+
   private TestSummary getTestCasesExecutionSummary(JsonObject aggregation) {
     // Initialize the test summary with 0 values
     TestSummary testSummary =
