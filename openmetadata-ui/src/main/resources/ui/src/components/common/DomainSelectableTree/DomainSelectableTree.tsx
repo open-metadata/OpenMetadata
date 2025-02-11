@@ -247,9 +247,7 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
           loading={isSubmitLoading}
           size="small"
           type="default"
-          onClick={() =>
-            isMultiple ? handleMultiDomainSave() : handleSingleDomainSave()
-          }>
+          onClick={isMultiple ? handleMultiDomainSave : handleSingleDomainSave}>
           {t('label.update')}
         </Button>
         <Button
