@@ -206,6 +206,8 @@ class DatabaseFetcherStrategy(FetcherStrategy):
             )
             return True
 
+        return False
+
     def _filter_column_metrics_computation(self):
         """Filter"""
 
