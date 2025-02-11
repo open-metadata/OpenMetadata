@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Col, Row, Space } from 'antd';
+import { Col, Row } from 'antd';
 import { get, isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
@@ -144,21 +144,29 @@ export const DataAssetSummaryPanel = ({
 
   const commonEntitySummaryInfo = useMemo(() => {
     switch (entityType) {
-      case EntityType.TABLE:
-      case EntityType.DASHBOARD:
+      case EntityType.API_COLLECTION:
+      case EntityType.API_ENDPOINT:
+      case EntityType.API_SERVICE:
       case EntityType.CHART:
-      case EntityType.PIPELINE:
-      case EntityType.TOPIC:
       case EntityType.CONTAINER:
-      case EntityType.SEARCH_INDEX:
+      case EntityType.DASHBOARD:
+      case EntityType.DASHBOARD_DATA_MODEL:
       case EntityType.DASHBOARD_SERVICE:
+      case EntityType.DATABASE:
+      case EntityType.DATABASE_SCHEMA:
+      case EntityType.DATABASE_SERVICE:
+      case EntityType.MESSAGING_SERVICE:
+      case EntityType.METRIC:
+      case EntityType.MLMODEL:
       case EntityType.MLMODEL_SERVICE:
+      case EntityType.PIPELINE:
+      case EntityType.PIPELINE_SERVICE:
+      case EntityType.SEARCH_INDEX:
       case EntityType.SEARCH_SERVICE:
       case EntityType.STORAGE_SERVICE:
-      case EntityType.MESSAGING_SERVICE:
-      case EntityType.DATABASE_SERVICE:
-      case EntityType.API_SERVICE:
-      case EntityType.API_COLLECTION:
+      case EntityType.STORED_PROCEDURE:
+      case EntityType.TABLE:
+      case EntityType.TOPIC:
         return (
           <>
             <Row
@@ -202,11 +210,11 @@ export const DataAssetSummaryPanel = ({
 
   return (
     <SummaryPanelSkeleton loading={isLoading || isEmpty(dataAsset)}>
-      <Space direction="vertical" size={20}>
+      <div className="d-flex flex-col gap-5">
         {commonEntitySummaryInfo}
 
         {entityDetails}
-      </Space>
+      </div>
     </SummaryPanelSkeleton>
   );
 };

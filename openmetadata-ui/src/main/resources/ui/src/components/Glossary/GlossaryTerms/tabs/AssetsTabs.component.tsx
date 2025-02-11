@@ -826,12 +826,12 @@ const AssetsTabs = forwardRef(
     return (
       <>
         <div
-          className={classNames('assets-tab-container relative')}
+          className={classNames(
+            'assets-tab-container relative bg-white p-box border-radius-card'
+          )}
           data-testid="table-container"
           id="asset-tab">
-          <Row
-            className="filters-row gap-2 bg-white p-md border-radius-card"
-            gutter={[0, 20]}>
+          <Row className="filters-row gap-2 " gutter={[0, 20]}>
             {assetCount > 0 && (
               <>
                 <Col className="d-flex items-center gap-3" span={24}>
@@ -914,7 +914,7 @@ const AssetsTabs = forwardRef(
             }
           />
         </div>
-        {!(isLoading || isCountLoading) && (
+        {!(isLoading || isCountLoading) && permissions?.EditAll && (
           <div
             className={classNames('asset-tab-delete-notification', {
               visible: selectedItems.size > 0,

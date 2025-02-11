@@ -88,7 +88,7 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
         </div>
       )}
       <Row
-        className={classNames(className, 'bg-white')}
+        className={classNames('bg-white', className)}
         data-testid="page-layout-v1"
         style={{ ...pageContainerStyles, ...pageContainerStyle }}>
         {leftPanel && (
