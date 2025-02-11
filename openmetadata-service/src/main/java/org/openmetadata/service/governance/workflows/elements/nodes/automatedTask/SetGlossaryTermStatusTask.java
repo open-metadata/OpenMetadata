@@ -19,6 +19,7 @@ import org.openmetadata.service.governance.workflows.flowable.builders.FieldExte
 import org.openmetadata.service.governance.workflows.flowable.builders.ServiceTaskBuilder;
 import org.openmetadata.service.governance.workflows.flowable.builders.StartEventBuilder;
 import org.openmetadata.service.governance.workflows.flowable.builders.SubProcessBuilder;
+import org.openmetadata.service.util.JsonUtils;
 
 public class SetGlossaryTermStatusTask implements NodeInterface {
   private final SubProcess subProcess;
@@ -34,7 +35,9 @@ public class SetGlossaryTermStatusTask implements NodeInterface {
 
     ServiceTask setGlossaryTermStatus =
         getSetGlossaryTermStatusServiceTask(
-            subProcessId, nodeDefinition.getConfig().getGlossaryTermStatus().toString());
+            subProcessId,
+            nodeDefinition.getConfig().getGlossaryTermStatus().toString(),
+            JsonUtils.pojoToJson(nodeDefinition.getInputNamespaceMap()));
 
     EndEvent endEvent =
         new EndEventBuilder().id(getFlowableElementId(subProcessId, "endEvent")).build();
@@ -55,9 +58,15 @@ public class SetGlossaryTermStatusTask implements NodeInterface {
     return runtimeExceptionBoundaryEvent;
   }
 
-  private ServiceTask getSetGlossaryTermStatusServiceTask(String subProcessId, String status) {
+  private ServiceTask getSetGlossaryTermStatusServiceTask(
+      String subProcessId, String status, String inputNamespaceMap) {
     FieldExtension statusExpr =
         new FieldExtensionBuilder().fieldName("statusExpr").fieldValue(status).build();
+    FieldExtension inputNamespaceMapExpr =
+        new FieldExtensionBuilder()
+            .fieldName("inputNamespaceMapExpr")
+            .fieldValue(inputNamespaceMap)
+            .build();
 
     ServiceTask serviceTask =
         new ServiceTaskBuilder()
@@ -65,6 +74,7 @@ public class SetGlossaryTermStatusTask implements NodeInterface {
             .implementation(SetGlossaryTermStatusImpl.class.getName())
             .build();
     serviceTask.getFieldExtensions().add(statusExpr);
+    serviceTask.getFieldExtensions().add(inputNamespaceMapExpr);
     return serviceTask;
   }
 
