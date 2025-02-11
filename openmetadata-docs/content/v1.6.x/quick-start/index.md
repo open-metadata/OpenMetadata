@@ -51,7 +51,7 @@ Set up and explore OpenMetadata's core features, from basic configuration to adv
 {% tile
     title="Getting Started"
     description="Unlock metadata insights for informed business decisions."
-    link="/how-to-guides/getting-started"
+    link="/quick-start/getting-started"
     icon="discovery"
 /%}
 {% /tilesContainer %}

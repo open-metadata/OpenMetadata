@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,7 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-/**
+
+
+ /**
  * Configuration for the Automator External Application.
  */
 export interface AutomatorAppConfig {
@@ -111,7 +113,7 @@ export interface Action {
     /**
      * Owners to apply
      *
-     * Custom Properties to remove
+     * Custom Properties keys to remove
      */
     customProperties?: any;
     /**

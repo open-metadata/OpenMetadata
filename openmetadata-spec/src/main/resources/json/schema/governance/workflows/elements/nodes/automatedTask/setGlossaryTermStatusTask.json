@@ -36,7 +36,7 @@
           "$ref": "../../../../../entity/data/glossaryTerm.json#/definitions/status"
         }
       },
-      "required": ["status"],
+      "required": [],
       "additionalProperties": false
     },
     "input": {

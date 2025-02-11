@@ -108,8 +108,6 @@ The operations **ViewBasic** and **ViewAll** in OpenMetadata differ in the level
 - Suitable for viewing foundational asset metadata.
 - Limited access for users who do not require in-depth technical details.
 
----
-
 ### ViewAll
 - Provides access to **all details** of an asset.
 - Includes everything available in **ViewBasic**, along with:
@@ -122,8 +120,6 @@ The operations **ViewBasic** and **ViewAll** in OpenMetadata differ in the level
 ### Key Points:
 - Designed for users who need a complete view of the asset.
 - Offers comprehensive insights and detailed metadata.
-
----
 
 ## Summary Table
 

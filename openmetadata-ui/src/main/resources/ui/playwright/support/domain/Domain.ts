@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { APIRequestContext } from '@playwright/test';
+import { Operation } from 'fast-json-patch';
 import { uuid } from '../../utils/common';
 
 type UserTeamRef = {
@@ -71,5 +72,29 @@ export class Domain {
     );
 
     return response.body;
+  }
+
+  async patch({
+    apiContext,
+    patchData,
+  }: {
+    apiContext: APIRequestContext;
+    patchData: Operation[];
+  }) {
+    const response = await apiContext.patch(
+      `/api/v1/domains/${this.responseData?.id}`,
+      {
+        data: patchData,
+        headers: {
+          'Content-Type': 'application/json-patch+json',
+        },
+      }
+    );
+
+    this.responseData = await response.json();
+
+    return {
+      entity: this.responseData,
+    };
   }
 }

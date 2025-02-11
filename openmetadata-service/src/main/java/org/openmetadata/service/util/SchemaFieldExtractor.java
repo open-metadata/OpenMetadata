@@ -596,8 +596,9 @@ public class SchemaFieldExtractor {
         Map.of(
             "dashboard", "data",
             "table", "data",
-            "pipeline", "services",
-            "votes", "data");
+            "pipeline", "data",
+            "votes", "data",
+            "dataProduct", "domains");
     return entityTypeToSubdirectory.getOrDefault(entityType, "data");
   }
 

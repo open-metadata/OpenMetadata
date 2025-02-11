@@ -824,3 +824,16 @@ const hexToRgba = (hex: string, opacity: number): string => {
 
   return `rgba(${r}, ${g}, ${b}, ${opacity.toFixed(2)})`;
 };
+
+/**
+ * Provide the calculated percentage value from the number provided
+ * @param value - value on which percentage will be calculated
+ * @param percentageValue - PercentageValue like 20, 35 or 50
+ * @returns {number} - value derived after calculating percentage, like for 1000 on 10% = 100
+ */
+export const calculatePercentageFromValue = (
+  value: number,
+  percentageValue: number
+) => {
+  return (value * percentageValue) / 100;
+};

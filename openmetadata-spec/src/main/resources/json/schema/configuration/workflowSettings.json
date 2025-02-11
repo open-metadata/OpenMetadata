@@ -50,10 +50,10 @@
       "description": "Used to set up the Workflow Executor Settings."
     },
     "historyCleanUpConfiguration": {
-      "$ref":  "#/definitions/historyCleanUpConfiguration",
+      "$ref": "#/definitions/historyCleanUpConfiguration",
       "description": "Used to set up the History CleanUp Settings."
     }
   },
-  "required": ["allowedClassification", "validityPeriod"],
+  "required": [],
   "additionalProperties": false
 }
