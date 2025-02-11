@@ -23,7 +23,6 @@ import org.flowable.engine.RepositoryService;
 import org.flowable.engine.RuntimeService;
 import org.flowable.engine.TaskService;
 import org.flowable.engine.history.HistoricProcessInstance;
-import org.flowable.engine.impl.cfg.ProcessEngineConfigurationImpl;
 import org.flowable.engine.impl.cfg.StandaloneProcessEngineConfiguration;
 import org.flowable.engine.repository.ProcessDefinition;
 import org.flowable.engine.runtime.Execution;
@@ -102,7 +101,8 @@ public class WorkflowHandler {
         .setAsyncExecutorMaxPoolSize(workflowSettings.getExecutorConfiguration().getMaxPoolSize())
         .setAsyncExecutorThreadPoolQueueSize(
             workflowSettings.getExecutorConfiguration().getQueueSize())
-            .setAsyncExecutorAsyncJobLockTimeInMillis(workflowSettings.getExecutorConfiguration().getJobLockTimeInMillis())
+        .setAsyncExecutorAsyncJobLockTimeInMillis(
+            workflowSettings.getExecutorConfiguration().getJobLockTimeInMillis())
         .setAsyncExecutorMaxAsyncJobsDuePerAcquisition(
             workflowSettings.getExecutorConfiguration().getTasksDuePerAcquisition());
 
