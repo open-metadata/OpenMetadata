@@ -80,7 +80,6 @@ export const ProfileEditModal: FunctionComponent<ProfileEditModalProps> = ({
     setIsLoading(true);
     try {
       const content = markdownRef.current?.getEditorContent?.()?.trim() ?? '';
-      await updateUserDetails({ description: editorValue }, 'description');
       await updateUserDetails({ displayName }, 'displayName');
       onSave?.(editorValue, displayName);
     } catch (error) {

@@ -69,6 +69,7 @@ const DescriptionTaskNew: FC<DescriptionTaskProps> = ({
           className="border border-main p-xs rounded-4 m-y-xss m-b-sm"
           diffArr={getDescriptionDiff(oldValue ?? '', newValue ?? '')}
           showDescTitle={showDescTitle}
+          task={taskThread}
         />
       );
     }
@@ -137,7 +138,7 @@ const DescriptionTaskNew: FC<DescriptionTaskProps> = ({
                 ) : (
                   <div
                     className={classNames(
-                      'd-flex border border-main rounded-4 m-b-md',
+                      'd-flex  rounded-4',
                       customClassName
                     )}>
                     {getSuggestedDescriptionDiff()}

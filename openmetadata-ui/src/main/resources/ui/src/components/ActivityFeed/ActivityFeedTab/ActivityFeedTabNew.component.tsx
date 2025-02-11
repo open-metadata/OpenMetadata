@@ -26,6 +26,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory, useParams } from 'react-router-dom';
 import { ReactComponent as TaskCloseIcon } from '../../../assets/svg/check-circle.svg';
+import { ReactComponent as TaskCloseIconBlue } from '../../../assets/svg/ic-close-task.svg';
 import { ReactComponent as TaskOpenIcon } from '../../../assets/svg/ic-open-task.svg';
 import { ReactComponent as TaskIcon } from '../../../assets/svg/ic-task.svg';
 import { ReactComponent as MentionIcon } from '../../../assets/svg/mention.svg';
@@ -384,7 +385,10 @@ export const ActivityFeedTabNew = ({
           )}>
           <div className="flex items-center space-x-2">
             {taskFilter === ThreadTaskStatus.Closed ? (
-              <TaskCloseIcon className="m-r-xs" {...ICON_DIMENSION_USER_PAGE} />
+              <TaskCloseIconBlue
+                className="m-r-xs"
+                {...ICON_DIMENSION_USER_PAGE}
+              />
             ) : (
               <TaskCloseIcon className="m-r-xs" {...ICON_DIMENSION_USER_PAGE} />
             )}
@@ -456,7 +460,7 @@ export const ActivityFeedTabNew = ({
               }}
               overlayClassName="task-tab-custom-dropdown"
               trigger={['click']}>
-              <TaskFilterIcon className="cursor-pointer" />
+              <TaskFilterIcon className="cursor-pointer task-filter-icon" />
             </Dropdown>
             {TaskToggle()}
           </div>

@@ -31,10 +31,10 @@
     line-height: 22px;
   }
   .display-name-edit-input {
-    margin-bottom: 20px;
     border-radius: 4px;
     border: 1px solid #dde3ea;
     padding: 8px;
+    color: 757575;
     .ant-input {
       color: #757575;
       font-family: Inter;
@@ -63,14 +63,20 @@
   .cancel-name-edit-btn {
     background-color: @white;
     color: @primary-color;
-    &:hover {
-      background-color: inherit !important;
-      color: inherit !important;
-      box-shadow: none;
-    }
+    box-shadow: none;
   }
   .editor-container {
     border-radius: 4px;
     border: none;
   }
+}
+.profile-edit-modal .ant-btn.cancel-name-edit-btn:hover {
+  background-color: inherit !important;
+  color: @primary-color !important;
+  box-shadow: none !important;
+}
+.profile-edit-modal .ant-btn.save-updated-name-btn:hover {
+  background-color: @primary-color !important;
+  color: @white !important;
+  box-shadow: none !important;
 }

@@ -148,7 +148,9 @@ export const PersonaSelectableList = ({
             </div>
 
             <Typography.Text className="user-profile-edit-popover-card-title">
-              {t('label.persona')}
+              {isDefaultPersona
+                ? t('label.default-persona')
+                : t('label.persona')}
             </Typography.Text>
           </div>
 

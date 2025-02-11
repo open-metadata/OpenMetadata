@@ -16,15 +16,21 @@ import { Change } from 'diff';
 import { uniqueId } from 'lodash';
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import {
+  Thread,
+  ThreadTaskStatus,
+} from '../../../generated/entity/feed/thread';
 
 export const DiffViewNew = ({
   diffArr,
   className,
   showDescTitle = false,
+  task,
 }: {
   diffArr: Change[];
   className?: string;
   showDescTitle?: boolean;
+  task?: Thread;
 }) => {
   const { t } = useTranslation();
   const [expanded, setExpanded] = useState(false);
@@ -77,16 +83,46 @@ export const DiffViewNew = ({
   return (
     <div
       className={classNames(
-        'w-full h-max-56 overflow-y-auto p-md border-radius-base'
+        'w-full h-max-56 overflow-y-auto p-md border-radius-xs'
       )}
-      style={
-        showDescTitle
+      // style={
+      //   showDescTitle
+      //     ? {
+      //         background: 'rgba(239, 244, 250, 0.25',
+      //         borderRadius: '8px !important',
+      //         border: '0.8px solid #DFDFDF',
+      //       }
+      //     : {
+      //         padding: '16px !important',
+      //         borderRadius: '8px !important',
+      //         background: 'white',
+
+      //         margin: '16px 0px',
+      //       }
+
+      // }
+      style={{
+        ...(showDescTitle
           ? {
-              background: 'rgba(239, 244, 250, 0.25',
-              borderRadius: '8px !important',
+              background: 'rgba(239, 244, 250, 0.25)',
+              borderRadius: '8px',
+              border: '0.8px solid #DFDFDF',
+              // margin: '16px 0px',
             }
-          : { padding: '16px !important', borderRadius: '8px !important' }
-      }>
+          : {
+              padding: '20px',
+              borderRadius: '8px',
+              background: 'white',
+              margin: '16px 0px',
+            }),
+        ...(task?.task?.status === ThreadTaskStatus.Closed &&
+          !showDescTitle && {
+            margin: '16px 0px',
+          }),
+        ...(task?.task?.status === ThreadTaskStatus.Open && {
+          borderRadius: '8px',
+        }),
+      }}>
       {showDescTitle && (
         <span style={{ marginBottom: '14px' }}>{t('label.description')}</span>
       )}

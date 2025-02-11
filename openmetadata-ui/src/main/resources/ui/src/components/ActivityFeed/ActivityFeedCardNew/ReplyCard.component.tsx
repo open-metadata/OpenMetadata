@@ -116,6 +116,13 @@ const CommentCard = ({ feed, post }: CommentCardInterface) => {
     return null;
   }, [isEditPost, postMessage, handleSave]);
 
+  function stripHtml(html: any) {
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = html;
+
+    return tempDiv.innerText || tempDiv.textContent;
+  }
+
   return (
     <div
       style={{
@@ -129,12 +136,14 @@ const CommentCard = ({ feed, post }: CommentCardInterface) => {
       }}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}>
-      <ProfilePicture
-        avatarType="outlined"
-        // key={user.id}
-        name="admin"
-        size={32}
-      />
+      <div style={{ width: '32px' }}>
+        <ProfilePicture
+          avatarType="outlined"
+          // key={feed.id}
+          name={feed.updatedBy!}
+          size={32}
+        />
+      </div>
       <div>
         <div
           style={{
@@ -184,7 +193,7 @@ const CommentCard = ({ feed, post }: CommentCardInterface) => {
               fontSize: '12px',
               fontWeight: 400,
             }}>
-            {post.message}
+            {stripHtml(post.message)}
           </Text>
         )}
 

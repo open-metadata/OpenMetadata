@@ -41,8 +41,7 @@
   .right-container {
     flex: 1;
     min-width: 0;
-
-    border-left: @global-border;
+    border: none;
     height: @user-profile-page-panel-height;
     overflow-y: scroll;
     background-color: @white;
@@ -107,12 +106,12 @@
     .activity-feed-card-message {
       padding: 12px;
       background-color: @white;
-      border-radius: 4px;
       width: inherit;
       margin-top: 2px;
-
       .ant-card-body {
         padding: 0px;
+        border: none;
+        border-radius: 12px;
       }
     }
     .activity-feed-card-message-right-panel {
@@ -263,6 +262,10 @@
     }
   }
 
+  .task-filter-icon:hover path {
+    stroke: #2e90fa;
+    stroke-width: 2;
+  }
   .task-count-container {
     background: #e9eaeb;
     border-radius: 16px;
@@ -299,7 +302,8 @@
       background-color: #f4f4f5;
       border-radius: 8px;
       svg path {
-        stroke: #2e90fa;
+        // stroke: #2e90fa;
+        fill: #2e90fa;
       }
     }
   }
@@ -323,8 +327,9 @@
       .ant-segmented-item-label {
         color: #005bc4;
       }
-      svg {
-        stroke: #005bc4;
+      svg path {
+        // stroke: #005bc4;
+        fill: #005bc4;
       }
     }
   }

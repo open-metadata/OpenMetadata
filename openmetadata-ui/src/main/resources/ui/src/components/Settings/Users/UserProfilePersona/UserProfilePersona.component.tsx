@@ -116,7 +116,7 @@ const UserProfilePersonas = ({
           <Typography.Text
             className="user-profile-card-title"
             data-testid="persona-list">
-            {t('label.default-persona')}
+            {t('label.persona')}
           </Typography.Text>
           <PersonaSelectableList
             multiSelect

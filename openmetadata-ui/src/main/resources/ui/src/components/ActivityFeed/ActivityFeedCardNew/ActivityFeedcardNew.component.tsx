@@ -219,7 +219,7 @@ const ActivityFeedCardNew = ({
       {showThread && (
         <div className="activity-feed-comments-container d-flex flex-col">
           {showActivityFeedEditor && (
-            <Typography.Text className="activity-feed-comments-title mb-2">
+            <Typography.Text className="activity-feed-comments-title m-b-md">
               {t('label.comment-plural')}
             </Typography.Text>
           )}

@@ -996,7 +996,10 @@ export const TaskTabNew = ({
   };
 
   return (
-    <Row data-testid="task-tab" gutter={[0, 20]} style={{ padding: '20px' }}>
+    <Row
+      data-testid="task-tab"
+      gutter={[0, 20]}
+      style={{ padding: '20px', position: 'relative' }}>
       <Col className="d-flex items-start task-feed-message-container" span={24}>
         <Icon
           className="m-r-xs"
@@ -1052,7 +1055,7 @@ export const TaskTabNew = ({
 
         <Col span={24}>
           <div className="activity-feed-comments-container d-flex flex-col">
-            <Typography.Text className="activity-feed-comments-title mb-2">
+            <Typography.Text className="activity-feed-comments-title m-b-md">
               {t('label.comment')}
             </Typography.Text>
 
@@ -1083,9 +1086,16 @@ export const TaskTabNew = ({
 
             {taskThread?.posts && taskThread?.posts?.length > 0 && (
               <Col className="p-l-0 p-r-0" data-testid="feed-replies">
-                {taskThread?.posts?.map((reply) => (
-                  <CommentCard feed={taskThread} key={reply.id} post={reply} />
-                ))}
+                {taskThread?.posts
+                  ?.slice()
+                  .sort((a, b) => (b.postTs as number) - (a.postTs as number))
+                  .map((reply) => (
+                    <CommentCard
+                      feed={taskThread}
+                      key={reply.id}
+                      post={reply}
+                    />
+                  ))}
               </Col>
             )}
           </div>

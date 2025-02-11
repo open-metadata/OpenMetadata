@@ -150,7 +150,7 @@ const TaskFeedCard = ({
             style={{
               overflow: 'hidden',
               textOverflow: 'ellipsis',
-              width: '100%',
+              width: '98%',
               wordWrap: 'break-word',
               whiteSpace: 'nowrap',
             }}
@@ -320,7 +320,10 @@ const TaskFeedCard = ({
           </Col>
           <Col span={24}>
             {isTaskTags && (
-              <Card bordered className="activity-feed-card-message">
+              <Card
+                bordered
+                className="activity-feed-card-message"
+                style={{ borderRadius: '12px', border: 'none' }}>
                 <TagsTask
                   hasEditAccess={false}
                   isTaskActionEdit={false}
@@ -331,7 +334,7 @@ const TaskFeedCard = ({
           </Col>
           {isTaskDescription && (
             <DescriptionTaskNew
-              customClassName="task-feed-desc-diff"
+              // customClassName="task-feed-desc-diff"
               hasEditAccess={false}
               isTaskActionEdit={false}
               taskThread={feed}
