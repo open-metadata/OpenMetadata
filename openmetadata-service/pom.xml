@@ -87,11 +87,6 @@
       </exclusions>
     </dependency>
     <dependency>
-      <groupId>net.minidev</groupId>
-      <artifactId>json-smart</artifactId>
-      <version>2.5.1</version>
-    </dependency>
-    <dependency>
       <groupId>org.open-metadata</groupId>
       <artifactId>common</artifactId>
       <version>${project.version}</version>
