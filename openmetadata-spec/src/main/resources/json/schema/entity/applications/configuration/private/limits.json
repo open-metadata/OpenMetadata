@@ -8,6 +8,7 @@
   "definitions": {
     "action": {
       "type": "object",
+      "javaType": "io.collate.schema.entity.app.Action",
       "properties": {
         "name": {
           "title": "Action Name",
