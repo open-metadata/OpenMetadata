@@ -37,6 +37,9 @@
     border-radius: 12px;
     background-color: @white;
     padding: 14px 20px 20px 20px;
+    .full-width {
+      flex: 10;
+    }
   }
   .right-container {
     flex: 1;
@@ -46,6 +49,9 @@
     overflow-y: scroll;
     background-color: @white;
     border-radius: 12px;
+    .full-width {
+      flex: 0;
+    }
     // padding: 4px;
     .activity-feed-card-container {
       margin: 0px;
@@ -85,7 +91,7 @@
   }
   .activity-feed-card-new {
     border-radius: 8px;
-    margin: 8px 0px;
+    margin: 10px 0px;
     background: #f5f5f5;
     display: flex;
     flex-direction: column;
@@ -384,4 +390,7 @@
   position: absolute;
   top: 20px;
   right: 20px;
+}
+.full-width {
+  flex: auto !important; // Applies when .full-width is added to .center-container
 }

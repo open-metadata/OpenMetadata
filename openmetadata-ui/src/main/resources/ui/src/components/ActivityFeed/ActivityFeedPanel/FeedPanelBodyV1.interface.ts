@@ -30,4 +30,5 @@ export interface FeedPanelBodyPropV1 {
   showActivityFeedEditor?: boolean;
   onAfterClose: any;
   onUpdateEntityDetails: any;
+  handlePanelResize: () => void;
 }

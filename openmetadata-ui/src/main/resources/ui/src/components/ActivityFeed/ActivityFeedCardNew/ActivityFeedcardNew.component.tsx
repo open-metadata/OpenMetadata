@@ -48,6 +48,7 @@ interface ActivityFeedCardNewProps {
   post?: any;
   showActivityFeedEditor?: boolean;
   showThread?: boolean;
+  handlePanelResize?: () => void;
 }
 
 const ActivityFeedCardNew = ({
@@ -57,6 +58,7 @@ const ActivityFeedCardNew = ({
   showActivityFeedEditor,
   showThread,
   isActive,
+  handlePanelResize,
 }: ActivityFeedCardNewProps) => {
   const { entityFQN, entityType } = useMemo(() => {
     const entityFQN = getEntityFQN(feed.about) ?? '';
@@ -180,7 +182,11 @@ const ActivityFeedCardNew = ({
                     </span>
                   </Link>
                   {showThread && (
-                    <CloseTabIcon className="close-tab-icon" height={16} />
+                    <CloseTabIcon
+                      className="close-tab-icon"
+                      height={16}
+                      onClick={handlePanelResize}
+                    />
                   )}
                 </Space>
               )}

@@ -100,6 +100,7 @@ export const ActivityFeedTabNew = ({
   const [taskFilter, setTaskFilter] = useState<ThreadTaskStatus>(
     ThreadTaskStatus.Open
   );
+  const [isFullWidth, setIsFullWidth] = useState<boolean>(false);
   const [countData, setCountData] = useState<{
     loading: boolean;
     data: FeedCounts;
@@ -162,6 +163,7 @@ export const ActivityFeedTabNew = ({
       )
     );
     setActiveThread();
+    setIsFullWidth(false);
   };
 
   const placeholderText = useMemo(() => {
@@ -445,10 +447,15 @@ export const ActivityFeedTabNew = ({
       />
     );
   };
+  const handlePanelResize = () => {
+    setIsFullWidth(true);
+  };
 
   return (
     <div className="activity-feed-tab">
-      <div className="center-container" id="center-container">
+      <div
+        className={`center-container ${isFullWidth ? 'full-width' : ''}`}
+        id="center-container">
         {(isTaskActiveTab || isMentionTabSelected) && (
           <div
             className="d-flex gap-4  p-b-xs justify-between items-center"
@@ -504,6 +511,7 @@ export const ActivityFeedTabNew = ({
                     showRepliesContainer: true,
                   }}
                   feed={selectedThread}
+                  handlePanelResize={handlePanelResize}
                   hidePopover={false}
                   isForFeedTab={isForFeedTab}
                   onAfterClose={handleAfterTaskClose}
@@ -521,6 +529,7 @@ export const ActivityFeedTabNew = ({
                 <TaskTabNew
                   columns={columns}
                   entityType={EntityType.TABLE}
+                  handlePanelResize={handlePanelResize}
                   isForFeedTab={isForFeedTab}
                   owners={owners}
                   taskThread={selectedThread}
@@ -530,6 +539,7 @@ export const ActivityFeedTabNew = ({
               ) : (
                 <TaskTabNew
                   entityType={isUserEntity ? entityTypeTask : entityType}
+                  handlePanelResize={handlePanelResize}
                   hasGlossaryReviewer={hasGlossaryReviewer}
                   isForFeedTab={isForFeedTab}
                   owners={owners}

@@ -1263,7 +1263,11 @@ export const TaskTabNew = ({
           </Form>
         </Modal>
       )}
-      <CloseTabIcon className="close-tab-icon" height={16} />
+      <CloseTabIcon
+        className="close-tab-icon cursor-pointer"
+        height={16}
+        onClick={rest.handlePanelResize}
+      />
     </Row>
   );
 };
