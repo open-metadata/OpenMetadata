@@ -391,7 +391,7 @@ const DataProductsDetailsPage = ({
   const handelExtensionUpdate = useCallback(
     async (updatedDataProduct: DataProduct) => {
       await onUpdate({
-        ...(dataProduct as DataProduct),
+        ...dataProduct,
         extension: updatedDataProduct.extension,
       });
     },

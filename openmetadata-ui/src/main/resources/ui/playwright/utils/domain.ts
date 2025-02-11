@@ -347,11 +347,8 @@ export const addAssetsToDomain = async (
   await page.getByTestId('save-btn').click();
   await assetsAddRes;
 
-  const countRes = page.waitForResponse(
-    '/api/v1/search/query?q=*&index=all&from=0&size=15'
-  );
   await page.reload();
-  await countRes;
+  await page.waitForLoadState('networkidle');
 
   await checkAssetsCount(page, assets.length);
 };
