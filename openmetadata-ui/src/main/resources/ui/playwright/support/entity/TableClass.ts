@@ -106,6 +106,7 @@ export class TableClass extends EntityClass {
     displayName: `pw table ${uuid()}`,
     description: 'description',
     columns: this.children,
+    tableType: 'View',
     databaseSchema: `${this.service.name}.${this.database.name}.${this.schema.name}`,
   };
 
@@ -122,13 +123,14 @@ export class TableClass extends EntityClass {
   queryResponseData: ResponseDataType[] = [];
   additionalEntityTableResponseData: ResponseDataType[] = [];
 
-  constructor(name?: string) {
+  constructor(name?: string, tableType?: string) {
     super(EntityTypeEndpoint.Table);
     this.service.name = name ?? this.service.name;
     this.serviceCategory = SERVICE_TYPE.Database;
     this.serviceType = ServiceTypes.DATABASE_SERVICES;
     this.type = 'Table';
     this.childrenTabId = 'schema';
+    this.entity.tableType = tableType ?? this.entity.tableType;
     this.childrenSelectorId = `${this.entity.databaseSchema}.${this.entity.name}.${this.children[0].name}`;
   }
 

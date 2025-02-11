@@ -31,6 +31,7 @@ To extract metadata from Matillion, you need to create a user with the following
 
 - `API` Permission ( While Creating the User, from Admin -> User )
 - To retrieve lineage data, the user must be granted [Component-level permissions](https://docs.matillion.com/metl/docs/2932106/#component).
+- To enable lineage tracking in Matillion, **Matillion Enterprise Mode** is required. For detailed setup instructions and further information, refer to the official documentation: [Matillion Lineage Documentation](https://docs.matillion.com/metl/docs/2881895/).
 
 ### Matillion Versions
 

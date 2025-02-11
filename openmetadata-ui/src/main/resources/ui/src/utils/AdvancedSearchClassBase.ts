@@ -31,6 +31,7 @@ import {
 } from '../constants/AdvancedSearch.constants';
 import { EntityFields, SuggestionField } from '../enums/AdvancedSearch.enum';
 import { SearchIndex } from '../enums/search.enum';
+import { CustomPropertySummary } from '../rest/metadataTypeAPI.interface';
 import { getAggregateFieldOptions } from '../rest/miscAPI';
 import {
   getCustomPropertyAdvanceSearchEnumOptions,
@@ -899,13 +900,7 @@ class AdvancedSearchClassBase {
     };
   };
 
-  public getCustomPropertiesSubFields(field: {
-    name: string;
-    type: string;
-    customPropertyConfig: {
-      config: string | string[] | CustomPropertyEnumConfig;
-    };
-  }) {
+  public getCustomPropertiesSubFields(field: CustomPropertySummary) {
     {
       switch (field.type) {
         case 'array<entityReference>':
@@ -918,7 +913,7 @@ class AdvancedSearchClassBase {
               fieldSettings: {
                 asyncFetch: this.autocomplete({
                   searchIndex: (
-                    (field.customPropertyConfig.config ?? []) as string[]
+                    (field.customPropertyConfig?.config ?? []) as string[]
                   ).join(',') as SearchIndex,
                   entityField: EntityFields.DISPLAY_NAME_KEYWORD,
                 }),
@@ -937,7 +932,7 @@ class AdvancedSearchClassBase {
                 listValues: getCustomPropertyAdvanceSearchEnumOptions(
                   (
                     field.customPropertyConfig
-                      .config as CustomPropertyEnumConfig
+                      ?.config as CustomPropertyEnumConfig
                   ).values
                 ),
               },
