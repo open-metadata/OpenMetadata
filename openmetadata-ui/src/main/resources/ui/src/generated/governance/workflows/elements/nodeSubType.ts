@@ -16,8 +16,6 @@
 export enum NodeSubType {
     CheckEntityAttributesTask = "checkEntityAttributesTask",
     EndEvent = "endEvent",
-    JSONLogicTask = "jsonLogicTask",
-    PythonWorkflowAutomationTask = "pythonWorkflowAutomationTask",
     SetEntityCertificationTask = "setEntityCertificationTask",
     SetGlossaryTermStatusTask = "setGlossaryTermStatusTask",
     StartEvent = "startEvent",

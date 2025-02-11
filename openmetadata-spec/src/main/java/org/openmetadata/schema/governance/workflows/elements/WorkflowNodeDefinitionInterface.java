@@ -7,8 +7,6 @@ import java.util.List;
 import java.util.Map;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.CheckEntityAttributesTaskDefinition;
-import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.JsonLogicTaskDefinition;
-import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.PythonWorkflowAutomationTaskDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.SetEntityCertificationTaskDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.SetGlossaryTermStatusTaskDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.endEvent.EndEventDefinition;
@@ -29,10 +27,6 @@ import org.openmetadata.schema.governance.workflows.elements.nodes.userTask.User
       value = SetGlossaryTermStatusTaskDefinition.class,
       name = "setGlossaryTermStatusTask"),
   @JsonSubTypes.Type(value = UserApprovalTaskDefinition.class, name = "userApprovalTask"),
-  @JsonSubTypes.Type(
-      value = PythonWorkflowAutomationTaskDefinition.class,
-      name = "pythonWorkflowAutomationTask"),
-  @JsonSubTypes.Type(value = JsonLogicTaskDefinition.class, name = "jsonLogicTask"),
 })
 public interface WorkflowNodeDefinitionInterface {
   String getType();
@@ -50,15 +44,19 @@ public interface WorkflowNodeDefinitionInterface {
   }
   ;
 
-  default List<String> getInputs() {
+  default List<String> getInput() {
     return null;
   }
   ;
 
-  default List<String> getOutputs() {
+  default List<String> getOutput() {
     return null;
   }
   ;
+
+  default Object getInputNamespaceMap() {
+    return null;
+  }
 
   void setType(String type);
 
@@ -74,11 +72,15 @@ public interface WorkflowNodeDefinitionInterface {
     /* no-op implementation to be overridden */
   }
 
-  default void setInputs(List<String> inputs) {
+  default void setInput(List<String> inputs) {
     /* no-op implementation to be overridden */
   }
 
-  default void setOutputs(List<String> outputs) {
+  default void setOutput(List<String> outputs) {
+    /* no-op implementation to be overridden */
+  }
+
+  default void setInputNamespaceMap(Object inputNamespaceMap) {
     /* no-op implementation to be overridden */
   }
 
