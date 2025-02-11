@@ -111,34 +111,25 @@ public class TypeRegistry {
   }
 
   public static String getCustomPropertyType(String entityType, String propertyName) {
-    Type type = TypeRegistry.TYPES.get(entityType);
-    if (type != null && type.getCustomProperties() != null) {
-      for (CustomProperty property : type.getCustomProperties()) {
-        if (property.getName().equals(propertyName)) {
-          return property.getPropertyType().getName();
-        }
-      }
+    String fqn = getCustomPropertyFQN(entityType, propertyName);
+    CustomProperty property = CUSTOM_PROPERTIES.get(fqn);
+    if (property == null) {
+      throw EntityNotFoundException.byMessage(
+          CatalogExceptionMessage.entityNotFound(propertyName, entityType));
     }
-    throw EntityNotFoundException.byMessage(
-        CatalogExceptionMessage.entityNotFound(Entity.TYPE, String.valueOf(type)));
+    return property.getPropertyType().getName();
   }
 
   public static String getCustomPropertyConfig(String entityType, String propertyName) {
-    Type type = TypeRegistry.TYPES.get(entityType);
-    if (type != null && type.getCustomProperties() != null) {
-      for (CustomProperty property : type.getCustomProperties()) {
-        if (property.getName().equals(propertyName)
-            && property.getCustomPropertyConfig() != null
-            && property.getCustomPropertyConfig().getConfig() != null) {
-          Object config = property.getCustomPropertyConfig().getConfig();
-          if (config instanceof String || config instanceof Integer) {
-            return config.toString(); // for simple type config return as string
-          } else {
-            return JsonUtils.pojoToJson(
-                config); // for complex object in config return as JSON string
-          }
-        }
-      }
+    String fqn = getCustomPropertyFQN(entityType, propertyName);
+    CustomProperty property = CUSTOM_PROPERTIES.get(fqn);
+    if (property != null
+        && property.getCustomPropertyConfig() != null
+        && property.getCustomPropertyConfig().getConfig() != null) {
+      Object config = property.getCustomPropertyConfig().getConfig();
+      return (config instanceof String || config instanceof Integer)
+          ? config.toString() // for simple type config return as string
+          : JsonUtils.pojoToJson(config); // for complex object in config return as JSON string
     }
     return null;
   }

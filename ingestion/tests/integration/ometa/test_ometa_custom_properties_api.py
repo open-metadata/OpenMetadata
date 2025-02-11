@@ -93,7 +93,7 @@ EXPECTED_CUSTOM_PROPERTIES = [
         "description": "Rating of a table",
         "propertyType": {"name": "enum"},
         "customPropertyConfig": {
-            "config": {"values": ["Good", "Average", "Bad"], "multiSelect": False},
+            "config": {"values": ["Average", "Bad", "Good"], "multiSelect": False},
         },
     },
     {
