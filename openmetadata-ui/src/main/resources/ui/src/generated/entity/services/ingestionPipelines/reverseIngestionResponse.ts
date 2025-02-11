@@ -15,10 +15,6 @@
  */
 export interface ReverseIngestionResponse {
     /**
-     * The id of the database service to be modified
-     */
-    database_service: string;
-    /**
      * Error message in case of failure
      */
     message?: string;
@@ -26,6 +22,10 @@ export interface ReverseIngestionResponse {
      * List of operations to be performed on the service
      */
     results: ReverseIngestionOperationResult[];
+    /**
+     * The id of the service to be modified
+     */
+    serviceId: string;
     /**
      * Whether the workflow was successful. Failure indicates a critical failure such as
      * connection issues.

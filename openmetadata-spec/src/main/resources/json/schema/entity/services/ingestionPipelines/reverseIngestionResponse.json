@@ -30,8 +30,8 @@
         }
     },
     "properties": {
-        "database_service": {
-            "description": "The id of the database service to be modified",
+        "serviceId": {
+            "description": "The id of the service to be modified",
             "$ref": "../../../type/basic.json#/definitions/uuid"
         },
         "success": {
@@ -52,7 +52,7 @@
     },
     "additionalProperties": false,
     "required": [
-        "database_service",
+        "serviceId",
         "results"
     ]
 }
