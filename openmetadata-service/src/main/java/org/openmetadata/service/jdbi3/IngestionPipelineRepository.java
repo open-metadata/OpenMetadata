@@ -63,11 +63,9 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   private static final String PIPELINE_STATUS_JSON_SCHEMA = "ingestionPipelineStatus";
   private static final String PIPELINE_STATUS_EXTENSION = "ingestionPipeline.pipelineStatus";
   private static final String RUN_ID_EXTENSION_KEY = "runId";
-  @Setter
-  private PipelineServiceClientInterface pipelineServiceClient;
+  @Setter private PipelineServiceClientInterface pipelineServiceClient;
 
-  @Getter
-  private final OpenMetadataApplicationConfig openMetadataApplicationConfig;
+  @Getter private final OpenMetadataApplicationConfig openMetadataApplicationConfig;
 
   public IngestionPipelineRepository(OpenMetadataApplicationConfig config) {
     super(
@@ -156,8 +154,11 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   public void storeRelationships(IngestionPipeline ingestionPipeline) {
     addServiceRelationship(ingestionPipeline, ingestionPipeline.getService());
     addRelationship(
-        ingestionPipeline.getService().getId(), ingestionPipeline.getId(),
-        ingestionPipeline.getService().getType(), entityType, Relationship.HAS);
+        ingestionPipeline.getService().getId(),
+        ingestionPipeline.getId(),
+        ingestionPipeline.getService().getType(),
+        entityType,
+        Relationship.HAS);
   }
 
   @Override
