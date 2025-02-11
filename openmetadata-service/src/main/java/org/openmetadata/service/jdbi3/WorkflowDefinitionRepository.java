@@ -52,7 +52,11 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
 
   @Override
   protected void setFields(WorkflowDefinition entity, EntityUtil.Fields fields) {
-    entity.withDeployed(WorkflowHandler.getInstance().isDeployed(entity));
+    if (WorkflowHandler.isInitialized()) {
+      entity.withDeployed(WorkflowHandler.getInstance().isDeployed(entity));
+    } else {
+      LOG.debug("Can't get `deploy` status since WorkflowHandler is not initialized.");
+    }
   }
 
   @Override

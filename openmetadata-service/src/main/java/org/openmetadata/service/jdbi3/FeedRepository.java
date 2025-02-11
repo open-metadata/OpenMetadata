@@ -310,8 +310,13 @@ public class FeedRepository {
     for (Triple<String, String, String> task : tasks) {
       if (task.getMiddle().equals(Entity.THREAD)) {
         UUID threadId = UUID.fromString(task.getLeft());
-        Thread thread =
-            EntityUtil.validate(threadId, dao.feedDAO().findById(threadId), Thread.class);
+        Thread thread;
+        try {
+          thread = EntityUtil.validate(threadId, dao.feedDAO().findById(threadId), Thread.class);
+        } catch (EntityNotFoundException exc) {
+          LOG.debug(String.format("Thread '%s' not found.", threadId));
+          continue;
+        }
         if (Optional.ofNullable(taskStatus).isPresent()) {
           if (thread.getTask() != null
               && thread.getTask().getType() == taskType

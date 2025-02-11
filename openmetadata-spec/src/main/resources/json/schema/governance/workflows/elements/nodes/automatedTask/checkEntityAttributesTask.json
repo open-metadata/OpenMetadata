@@ -48,13 +48,24 @@
       "minItems": 1,
       "maxItems": 1
     },
-    "output": {
+    "inputNamespaceMap": {
+      "type": "object",
+      "properties": {
+        "relatedEntity": {
+          "type": "string",
+          "default": "global"
+        }
+      },
+      "additionalProperties": false,
+      "required": ["relatedEntity"]
+    },
+    "branches": {
       "type": "array",
       "items": { "type":  "string" },
-      "default": ["result"],
+      "default": ["true", "false"],
       "additionalItems": false,
-      "minItems": 1,
-      "maxItems": 1
+      "minItems": 2,
+      "maxItems": 2
     }
   }
 }

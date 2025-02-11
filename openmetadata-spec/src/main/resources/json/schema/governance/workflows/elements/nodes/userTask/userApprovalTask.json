@@ -55,10 +55,29 @@
       "minItems": 1,
       "maxItems": 1
     },
+    "inputNamespaceMap": {
+      "type": "object",
+      "properties": {
+        "relatedEntity": {
+          "type": "string",
+          "default": "global"
+        }
+      },
+      "additionalProperties": false,
+      "required": ["relatedEntity"]
+    },
     "output": {
       "type": "array",
       "items": { "type":  "string" },
-      "default": ["result", "resolvedBy"],
+      "default": ["updatedBy"],
+      "additionalItems": false,
+      "minItems": 1,
+      "maxItems": 1
+    },
+    "branches": {
+      "type": "array",
+      "items": { "type":  "string" },
+      "default": ["true", "false"],
       "additionalItems": false,
       "minItems": 2,
       "maxItems": 2

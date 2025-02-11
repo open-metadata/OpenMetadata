@@ -21,6 +21,7 @@ import org.openmetadata.service.governance.workflows.flowable.builders.FieldExte
 import org.openmetadata.service.governance.workflows.flowable.builders.ServiceTaskBuilder;
 import org.openmetadata.service.governance.workflows.flowable.builders.StartEventBuilder;
 import org.openmetadata.service.governance.workflows.flowable.builders.SubProcessBuilder;
+import org.openmetadata.service.util.JsonUtils;
 
 public class SetEntityCertificationTask implements NodeInterface {
   private final SubProcess subProcess;
@@ -38,7 +39,8 @@ public class SetEntityCertificationTask implements NodeInterface {
         getSetEntityCertificationServiceTask(
             subProcessId,
             (CertificationConfiguration.CertificationEnum)
-                nodeDefinition.getConfig().getCertification());
+                nodeDefinition.getConfig().getCertification(),
+            JsonUtils.pojoToJson(nodeDefinition.getInputNamespaceMap()));
 
     EndEvent endEvent =
         new EndEventBuilder().id(getFlowableElementId(subProcessId, "endEvent")).build();
@@ -60,7 +62,9 @@ public class SetEntityCertificationTask implements NodeInterface {
   }
 
   private ServiceTask getSetEntityCertificationServiceTask(
-      String subProcessId, CertificationConfiguration.CertificationEnum certification) {
+      String subProcessId,
+      CertificationConfiguration.CertificationEnum certification,
+      String inputNamespaceMap) {
     FieldExtension certificationExpr =
         new FieldExtensionBuilder()
             .fieldName("certificationExpr")
@@ -69,6 +73,11 @@ public class SetEntityCertificationTask implements NodeInterface {
                     .map(CertificationConfiguration.CertificationEnum::value)
                     .orElse(""))
             .build();
+    FieldExtension inputNamespaceMapExpr =
+        new FieldExtensionBuilder()
+            .fieldName("inputNamespaceMapExpr")
+            .fieldValue(inputNamespaceMap)
+            .build();
 
     ServiceTask serviceTask =
         new ServiceTaskBuilder()
@@ -76,6 +85,7 @@ public class SetEntityCertificationTask implements NodeInterface {
             .implementation(SetEntityCertificationImpl.class.getName())
             .build();
     serviceTask.getFieldExtensions().add(certificationExpr);
+    serviceTask.getFieldExtensions().add(inputNamespaceMapExpr);
     return serviceTask;
   }
 

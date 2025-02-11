@@ -43,6 +43,9 @@
       "displayName": "Check if Glossary Term has Reviewers",
       "config": {
         "rules": "{\"and\":[{\"!!\":[{\"var\":\"reviewers\"}]}]}"
+      },
+      "inputNamespaceMap": {
+        "relatedEntity": "global"
       }
     },
     {
@@ -52,6 +55,9 @@
       "displayName": "Check if Glossary Term is Ready to be Reviewed",
       "config": {
         "rules": "{\"and\":[{\"!!\":[{\"var\":\"description\"}]}]}"
+      },
+      "inputNamespaceMap": {
+        "relatedEntity": "global"
       }
     },
     {
@@ -61,6 +67,9 @@
       "displayName": "Set Status to 'In Review'",
       "config": {
         "glossaryTermStatus": "In Review"
+      },
+      "inputNamespaceMap": {
+        "relatedEntity": "global"
       }
     },
     {
@@ -70,6 +79,9 @@
       "displayName": "Set Status to 'Draft'",
       "config": {
         "glossaryTermStatus": "Draft"
+      },
+      "inputNamespaceMap": {
+        "relatedEntity": "global"
       }
     },
     {
@@ -81,6 +93,9 @@
         "assignees": {
           "addReviewers": true
         }
+      },
+      "inputNamespaceMap": {
+        "relatedEntity": "global"
       }
     },
     {
@@ -90,6 +105,10 @@
       "displayName": "Set Status to 'Approved'",
       "config": {
         "glossaryTermStatus": "Approved"
+      },
+      "inputNamespaceMap": {
+        "relatedEntity": "global",
+        "updatedBy": "ApproveGlossaryTerm"
       }
     },
     {
@@ -99,6 +118,10 @@
       "displayName": "Set Status to 'Rejected'",
       "config": {
         "glossaryTermStatus": "Rejected"
+      },
+      "inputNamespaceMap": {
+        "relatedEntity": "global",
+        "updatedBy": "ApproveGlossaryTerm"
       }
     }
   ],
@@ -110,17 +133,17 @@
     {
       "from": "CheckGlossaryTermHasReviewers",
       "to": "SetGlossaryTermStatusToApproved",
-      "condition": false
+      "condition": "false"
     },
     {
       "from": "CheckGlossaryTermHasReviewers",
       "to": "CheckGlossaryTermIsReadyToBeReviewed",
-      "condition": true
+      "condition": "true"
     },
     {
       "from": "CheckGlossaryTermIsReadyToBeReviewed",
       "to": "SetGlossaryTermStatusToDraft",
-      "condition": false
+      "condition": "false"
     },
     {
       "from": "SetGlossaryTermStatusToDraft",
@@ -129,7 +152,7 @@
     {
       "from": "CheckGlossaryTermIsReadyToBeReviewed",
       "to": "SetGlossaryTermStatusToInReview",
-      "condition": true
+      "condition": "true"
     },
     {
       "from": "SetGlossaryTermStatusToInReview",
@@ -138,12 +161,12 @@
     {
       "from": "ApproveGlossaryTerm",
       "to": "SetGlossaryTermStatusToApproved",
-      "condition": true
+      "condition": "true"
     },
     {
       "from": "ApproveGlossaryTerm",
       "to": "SetGlossaryTermStatusToRejected",
-      "condition": false
+      "condition": "false"
     },
     {
       "from": "SetGlossaryTermStatusToApproved",
