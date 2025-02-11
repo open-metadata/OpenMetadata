@@ -136,6 +136,7 @@ const DomainSelectableList = ({
                   value: domain.id,
                 }))}
                 placeholder="Please select"
+                placement="topLeft"
                 style={{ width: '100%' }}
                 onChange={(selectedIds) => {
                   const selectedDomainList = domains.filter((domain) =>

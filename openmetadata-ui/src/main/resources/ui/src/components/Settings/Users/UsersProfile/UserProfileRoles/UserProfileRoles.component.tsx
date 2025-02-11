@@ -207,6 +207,7 @@ const UserProfileRoles = ({
                     mode="multiple"
                     open={isSelectOpen}
                     options={useRolesOption}
+                    placement="topLeft"
                     value={selectedRoles}
                     onChange={setSelectedRoles}
                     onDropdownVisibleChange={setIsSelectOpen}

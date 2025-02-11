@@ -162,9 +162,6 @@ export const PersonaSelectableList = ({
                 'single-select': isDefaultPersona,
               })}
               defaultValue={selectedPersonas.map((persona) => persona.id)}
-              getPopupContainer={(triggerNode) =>
-                triggerNode.closest('.user-profile-edit-popover-card')
-              }
               maxTagCount={3}
               maxTagPlaceholder={(omittedValues) => (
                 <span className="max-tag-text">
@@ -177,6 +174,7 @@ export const PersonaSelectableList = ({
                 value: persona.id,
               }))}
               placeholder="Please select"
+              placement="topLeft"
               style={{ width: '100%' }}
               onChange={(selectedIds) => {
                 const selectedPersonasList = selectOptions.filter((persona) =>

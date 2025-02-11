@@ -121,6 +121,7 @@ const TeamsSelectableNew = ({
           </span>
         )}
         placeholder={placeholder}
+        placement="bottomLeft"
         showCheckedStrategy={TreeSelect.SHOW_CHILD}
         style={{ width: '100%' }}
         treeData={teamsTree}
