@@ -36,7 +36,7 @@ export interface AssetsTabsProps {
   isSummaryPanelOpen: boolean;
   isEntityDeleted?: boolean;
   type?: AssetsOfEntity;
-  queryFilter?: string;
+  queryFilter?: string | Record<string, unknown>;
   noDataPlaceholder?: string | AssetNoDataPlaceholderProps;
 }
 

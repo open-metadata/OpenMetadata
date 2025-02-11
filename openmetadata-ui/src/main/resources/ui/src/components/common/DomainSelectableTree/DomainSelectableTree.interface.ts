@@ -19,6 +19,7 @@ export interface DomainSelectableTreeProps {
   visible: boolean;
   onCancel: () => void;
   isMultiple?: boolean;
+  initialDomains?: EntityReference[];
 }
 
 export type TreeListItem = Omit<DefaultOptionType, 'label'>;
