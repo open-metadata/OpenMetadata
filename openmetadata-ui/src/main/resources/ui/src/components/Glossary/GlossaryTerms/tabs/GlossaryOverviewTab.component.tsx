@@ -202,7 +202,7 @@ const GlossaryOverviewTab = ({
         entityId={selectedData.id ?? ''}
         entityType={isGlossary ? EntityType.GLOSSARY : EntityType.GLOSSARY_TERM}
         // Only allow domain selection at glossary level. Glossary Term will inherit
-        hasPermission={isGlossary ? permissions.EditAll : false}
+        hasPermission={permissions.EditAll}
       />
     );
   }, [

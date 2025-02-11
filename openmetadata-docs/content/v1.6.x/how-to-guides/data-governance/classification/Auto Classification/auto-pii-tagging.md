@@ -7,11 +7,6 @@ slug: /how-to-guides/data-governance/classification/auto/auto-pii-tagging
 
 Auto PII tagging for Sensitive/NonSensitive at the column level is performed based on the two approaches described below.
 
-{% note %}
-PII Tagging is only available during `Profiler Ingestion`.
-{% /note %}
-
-
 ## Tagging logic
 
 1. **Column Name Scanner**: We validate the column names of the table against a set of regex rules that help us identify
