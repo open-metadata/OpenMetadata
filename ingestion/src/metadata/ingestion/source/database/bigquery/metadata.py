@@ -686,14 +686,18 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
             foreign_columns,
             columns,
         )
-        table = self.client.get_table(fqn._build(db_name, schema_name, table_name))
-        if hasattr(table, "clustering_fields") and table.clustering_fields:
-            table_constraints.append(
-                TableConstraint(
-                    constraintType=ConstraintType.CLUSTER_KEY,
-                    columns=table.clustering_fields,
+        try:
+            table = self.client.get_table(fqn._build(db_name, schema_name, table_name))
+            if hasattr(table, "clustering_fields") and table.clustering_fields:
+                table_constraints.append(
+                    TableConstraint(
+                        constraintType=ConstraintType.CLUSTER_KEY,
+                        columns=table.clustering_fields,
+                    )
                 )
-            )
+        except Exception as exc:
+            logger.warning(f"Error getting clustering fields for {table_name}: {exc}")
+            logger.debug(traceback.format_exc())
         return table_constraints
 
     def get_table_partition_details(
