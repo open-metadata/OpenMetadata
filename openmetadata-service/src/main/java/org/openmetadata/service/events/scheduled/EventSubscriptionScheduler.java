@@ -49,6 +49,7 @@ import org.openmetadata.service.jdbi3.EventSubscriptionRepository;
 import org.openmetadata.service.resources.events.subscription.TypedEvent;
 import org.openmetadata.service.util.DIContainer;
 import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
 import org.quartz.Job;
 import org.quartz.JobBuilder;
 import org.quartz.JobDataMap;
@@ -87,10 +88,13 @@ public class EventSubscriptionScheduler {
     }
   }
 
-  private EventSubscriptionScheduler(PipelineServiceClientInterface pipelineServiceClient)
+  private EventSubscriptionScheduler(
+      PipelineServiceClientInterface pipelineServiceClient,
+      OpenMetadataConnectionBuilder openMetadataConnectionBuilder)
       throws SchedulerException {
     DIContainer di = new DIContainer();
     di.registerResource(PipelineServiceClientInterface.class, pipelineServiceClient);
+    di.registerResource(OpenMetadataConnectionBuilder.class, openMetadataConnectionBuilder);
     this.alertsScheduler.setJobFactory(new CustomJobFactory(di));
     this.alertsScheduler.start();
   }
@@ -104,12 +108,13 @@ public class EventSubscriptionScheduler {
   }
 
   public static void initialize(OpenMetadataApplicationConfig openMetadataApplicationConfig) {
-    PipelineServiceClientInterface pipelineServiceClient =
-        PipelineServiceClientFactory.createPipelineServiceClient(
-            openMetadataApplicationConfig.getPipelineServiceClientConfiguration());
     if (!initialized) {
       try {
-        instance = new EventSubscriptionScheduler(pipelineServiceClient);
+        instance =
+            new EventSubscriptionScheduler(
+                PipelineServiceClientFactory.createPipelineServiceClient(
+                    openMetadataApplicationConfig.getPipelineServiceClientConfiguration()),
+                new OpenMetadataConnectionBuilder(openMetadataApplicationConfig));
       } catch (SchedulerException e) {
         throw new RuntimeException("Failed to initialize Event Subscription Scheduler", e);
       }
