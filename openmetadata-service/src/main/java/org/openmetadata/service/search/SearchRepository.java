@@ -381,10 +381,17 @@ public class SearchRepository {
         IndexMapping indexMapping = entityIndexMap.get(entityType);
         String scriptTxt = DEFAULT_UPDATE_SCRIPT;
         Map<String, Object> doc = new HashMap<>();
-        if (entity.getChangeDescription() != null
+
+        @SuppressWarnings("unchecked")
+        EntityRepository<EntityInterface> repository =
+            (EntityRepository<EntityInterface>) Entity.getEntityRepository(entityType);
+        ChangeDescription changeDescription = repository.getIncrementalChangeDescription();
+
+        if (changeDescription != null
+            && entity.getChangeDescription() != null
             && Objects.equals(
                 entity.getVersion(), entity.getChangeDescription().getPreviousVersion())) {
-          scriptTxt = getScriptWithParams(entity, doc);
+          scriptTxt = getScriptWithParams(entity, doc, changeDescription);
         } else {
           SearchIndex elasticSearchIndex = searchIndexFactory.buildIndex(entityType, entity);
           doc = elasticSearchIndex.buildSearchIndexDoc();
@@ -392,12 +399,10 @@ public class SearchRepository {
         searchClient.updateEntity(
             indexMapping.getIndexName(clusterAlias), entityId, doc, scriptTxt);
         propagateInheritedFieldsToChildren(
-            entityType, entityId, entity.getChangeDescription(), indexMapping, entity);
-        propagateGlossaryTags(
-            entityType, entity.getFullyQualifiedName(), entity.getChangeDescription());
-        propagateCertificationTags(entityType, entity);
-        propagatetoRelatedEntities(
-            entityType, entityId, entity.getChangeDescription(), indexMapping, entity);
+            entityType, entityId, changeDescription, indexMapping, entity);
+        propagateGlossaryTags(entityType, entity.getFullyQualifiedName(), changeDescription);
+        propagateCertificationTags(entityType, entity, changeDescription);
+        propagatetoRelatedEntities(entityType, entityId, changeDescription, indexMapping, entity);
       } catch (Exception ie) {
         LOG.error(
             "Issue in Updating the search document for entity [{}] and entityType [{}]. Reason[{}], Cause[{}], Stack [{}]",
@@ -481,8 +486,8 @@ public class SearchRepository {
     }
   }
 
-  public void propagateCertificationTags(String entityType, EntityInterface entity) {
-    ChangeDescription changeDescription = entity.getChangeDescription();
+  public void propagateCertificationTags(
+      String entityType, EntityInterface entity, ChangeDescription changeDescription) {
     if (changeDescription != null && entityType.equalsIgnoreCase(Entity.TAG)) {
       Tag tagEntity = (Tag) entity;
       if (tagEntity.getClassification().getFullyQualifiedName().equals("Certification")) {
@@ -841,9 +846,10 @@ public class SearchRepository {
     }
   }
 
-  public String getScriptWithParams(EntityInterface entity, Map<String, Object> fieldAddParams) {
-    ChangeDescription changeDescription = entity.getChangeDescription();
-
+  public String getScriptWithParams(
+      EntityInterface entity,
+      Map<String, Object> fieldAddParams,
+      ChangeDescription changeDescription) {
     List<FieldChange> fieldsAdded = changeDescription.getFieldsAdded();
     StringBuilder scriptTxt = new StringBuilder();
     fieldAddParams.put("updatedAt", entity.getUpdatedAt());

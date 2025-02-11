@@ -494,6 +494,11 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
                           .withName("testSuites")
                           .withNewValue(testCase.getTestSuites())));
       testCase.setChangeDescription(change);
+      // Update the incrementalChangeDescription in the EntityRepository
+      @SuppressWarnings("unchecked")
+      EntityRepository<TestCase> repository =
+          (EntityRepository<TestCase>) Entity.getEntityRepository(Entity.TEST_CASE);
+      repository.setIncrementalChangeDescription(change);
       postUpdate(testCase, testCase);
     }
     updateLogicalTestSuite(testSuite.getId());
@@ -514,6 +519,13 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
                         .withName("testSuites")
                         .withNewValue(updatedTestCase.getTestSuites())));
     updatedTestCase.setChangeDescription(change);
+
+    // Update the incrementalChangeDescription in the EntityRepository
+    @SuppressWarnings("unchecked")
+    EntityRepository<TestCase> repository =
+        (EntityRepository<TestCase>) Entity.getEntityRepository(Entity.TEST_CASE);
+    repository.setIncrementalChangeDescription(change);
+
     postUpdate(testCase, updatedTestCase);
     updateLogicalTestSuite(testSuiteId);
     testCase.setTestSuite(updatedTestCase.getTestSuite());
