@@ -150,6 +150,14 @@ This is a sample config for Snowflake:
 
 {% /codeInfo %}
 
+{% codeInfo srNumber=40 %}
+
+**accountUsageSchema**: Full name of account usage schema, used in case your used do not have direct access to `SNOWFLAKE.ACCOUNT_USAGE` schema. In such case you can replicate tables `QUERY_HISTORY`, `TAG_REFERENCES`, `PROCEDURES`, `FUNCTIONS` to a custom schema let's say `CUSTOM_DB.CUSTOM_SCHEMA` and provide the same name in this field.
+
+When using this field make sure you have all these tables available within your custom schema  `QUERY_HISTORY`, `TAG_REFERENCES`, `PROCEDURES`, `FUNCTIONS`.
+
+{% /codeInfo %}
+
 {% codeInfo srNumber=6 %}
 
 **includeTransientTables**: Optional configuration for ingestion of TRANSIENT and TEMPORARY tables, By default, it will skip the TRANSIENT and TEMPORARY tables.
@@ -230,6 +238,9 @@ source:
 ```
 ```yaml {% srNumber=5 %}
       # database: <database>
+```
+```yaml {% srNumber=40 %}
+      # accountUsageSchema: SNOWFLAKE.ACCOUNT_USAGE
 ```
 ```yaml {% srNumber=6 %}
       includeTransientTables: false
