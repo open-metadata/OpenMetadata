@@ -1451,3 +1451,35 @@ export const getColumnFunctionValue = (
 
   return column?.function;
 };
+
+export const parseLineageData: (
+  data: any,
+  entityFqn: string
+) => {
+  nodes: EntityReference[];
+  edges: EdgeDetails[];
+  entity: EntityReference;
+} = (data: any, entityFqn: string) => {
+  const { nodes, downstreamEdges, upstreamEdges } = data;
+
+  const nodesArray: EntityReference[] = Object.values(
+    nodes
+  ) as EntityReference[];
+
+  const entity: EntityReference = nodesArray.find(
+    (node) => node.fullyQualifiedName === entityFqn
+  ) as EntityReference;
+
+  const downstreamEdgesArray: EdgeDetails[] = Object.values(
+    downstreamEdges
+  ) as EdgeDetails[];
+  const upstreamEdgesArray: EdgeDetails[] = Object.values(
+    upstreamEdges
+  ) as EdgeDetails[];
+
+  return {
+    nodes: nodesArray,
+    edges: [...downstreamEdgesArray, ...upstreamEdgesArray],
+    entity,
+  };
+};

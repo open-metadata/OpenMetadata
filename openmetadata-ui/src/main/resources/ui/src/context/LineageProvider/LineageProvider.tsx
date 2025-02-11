@@ -97,7 +97,6 @@ import {
   decodeLineageHandles,
   getAllTracedColumnEdge,
   getAllTracedNodes,
-  getChildMap,
   getClassifiedEdge,
   getConnectedNodesEdges,
   getELKLayoutedElements,
@@ -110,6 +109,7 @@ import {
   getUpdatedColumnsFromEdge,
   getUpstreamDownstreamNodesEdges,
   onLoad,
+  parseLineageData,
   positionNodesUsingElk,
   removeLineageHandler,
 } from '../../utils/EntityLineageUtils';
@@ -262,50 +262,13 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
           config,
           queryFilter
         );
-        if (res) {
-          const { nodes = [], entity } = res;
-          const allNodes = uniqWith(
-            [...nodes, entity].filter(Boolean),
-            isEqual
-          );
 
-          if (
-            entityType !== EntityType.PIPELINE &&
-            entityType !== EntityType.STORED_PROCEDURE
-          ) {
-            const { map: childMapObj } = getChildMap(
-              { ...res, nodes: allNodes },
-              decodedFqn
-            );
-            setChildMap(childMapObj);
-            const { nodes: newNodes, edges: newEdges } = getPaginatedChildMap(
-              {
-                ...res,
-                nodes: allNodes,
-              },
-              childMapObj,
-              {},
-              config?.nodesPerLayer ?? 50
-            );
-
-            setEntityLineage({
-              ...res,
-              nodes: newNodes,
-              edges: [...(res.edges ?? []), ...newEdges],
-            });
-          } else {
-            setEntityLineage({
-              ...res,
-              nodes: allNodes,
-            });
-          }
-        } else {
-          showErrorToast(
-            t('server.entity-fetch-error', {
-              entity: t('label.lineage-data-lowercase'),
-            })
-          );
-        }
+        const { nodes, edges, entity } = parseLineageData(res, fqn);
+        setEntityLineage({
+          nodes,
+          edges,
+          entity,
+        });
       } catch (err) {
         showErrorToast(
           err as AxiosError,
