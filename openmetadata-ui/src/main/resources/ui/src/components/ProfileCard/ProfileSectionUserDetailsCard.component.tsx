@@ -180,8 +180,8 @@ const ProfileSectionUserDetailsCard = ({
       <div
         className="profile-manage-item d-flex item-center"
         onClick={() => {
-          setEditProfile(true);
-          setisPopoverVisible(false);
+          setEditProfile(!editProfile);
+          setisPopoverVisible(!isPopoverVisible);
         }}>
         <EditProfileIcon
           className="m-r-xss"

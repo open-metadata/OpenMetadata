@@ -727,10 +727,12 @@ export const INCIDENT_TASK_ACTION_LIST: TaskAction[] = [
   {
     label: i18Next.t('label.re-assign'),
     key: TaskActionMode.RE_ASSIGN,
+    icon: EditSuggestionIcon,
   },
   {
     label: i18Next.t('label.resolve'),
     key: TaskActionMode.RESOLVE,
+    icon: CloseIcon,
   },
 ];
 

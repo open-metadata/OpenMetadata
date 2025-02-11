@@ -34,6 +34,19 @@
     margin-bottom: 20px;
     border-radius: 4px;
     border: 1px solid #dde3ea;
+    padding: 8px;
+    .ant-input {
+      color: #757575;
+      font-family: Inter;
+      font-size: 14px;
+      font-style: normal;
+      font-weight: 400;
+      line-height: normal;
+
+      &::placeholder {
+        color: #757575;
+      }
+    }
   }
   .ant-modal-footer {
     border-top: none;
@@ -47,9 +60,14 @@
     font-weight: 500;
     line-height: 24px;
   }
-  .cancel-btn {
+  .cancel-name-edit-btn {
     background-color: @white;
     color: @primary-color;
+    &:hover {
+      background-color: inherit !important;
+      color: inherit !important;
+      box-shadow: none;
+    }
   }
   .editor-container {
     border-radius: 4px;

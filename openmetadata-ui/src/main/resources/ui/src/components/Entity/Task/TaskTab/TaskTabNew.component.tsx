@@ -48,11 +48,13 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
-import { ReactComponent as TaskCloseIcon } from '../../../../assets/svg/close-circle.svg';
+import { ReactComponent as AssigneesIcon } from '../../../../assets/svg/assignees.svg';
 import { ReactComponent as CloseTabIcon } from '../../../../assets/svg/close-tab.svg';
 import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
+import { ReactComponent as TaskCloseIcon } from '../../../../assets/svg/ic-close-task.svg';
 import { ReactComponent as TaskOpenIcon } from '../../../../assets/svg/ic-open-task.svg';
 import { ReactComponent as AddColored } from '../../../../assets/svg/plus-colored.svg';
+import { ReactComponent as UserIcon } from '../../../../assets/svg/user-profile.svg';
 
 import { DE_ACTIVE_COLOR } from '../../../../constants/constants';
 import { TaskOperation } from '../../../../constants/Feeds.constants';
@@ -702,12 +704,13 @@ export const TaskTabNew = ({
           icon={<DownOutlined />}
           loading={isActionLoading}
           menu={{
-            items: INCIDENT_TASK_ACTION_LIST,
+            items: getFormattedMenuOptions(INCIDENT_TASK_ACTION_LIST),
             selectable: true,
             selectedKeys: [taskAction.key],
             onClick: handleTaskMenuClick,
             disabled: !hasApprovalAccess,
           }}
+          overlayClassName="task-action-dropdown"
           onClick={onTestCaseTaskDropdownClick}>
           {taskAction.label}
         </Dropdown.Button>
@@ -911,6 +914,7 @@ export const TaskTabNew = ({
               <Col
                 className="flex items-center gap-2 text-grey-muted"
                 span={12}>
+                <UserIcon height={16} />
                 <Typography.Text className="incident-manager-details-label @grey-8">
                   {t('label.created-by')}:{' '}
                 </Typography.Text>
@@ -922,6 +926,7 @@ export const TaskTabNew = ({
               <Col
                 className="flex items-center gap-2 text-grey-muted"
                 span={12}>
+                <AssigneesIcon height={16} />
                 <Typography.Text className="incident-manager-details-label @grey-8">
                   {t('label.assignee-plural')}:{' '}
                 </Typography.Text>

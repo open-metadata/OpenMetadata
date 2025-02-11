@@ -11,14 +11,16 @@
  *  limitations under the License.
  */
 
-import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
 import { Button, Divider, Popover, Select, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, toLower } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ReactComponent as ClosePopoverIcon } from '../../../../../assets/svg/popover-close.svg';
+import { ReactComponent as SavePopoverIcon } from '../../../../../assets/svg/popover-save.svg';
 import { ReactComponent as RoleIcon } from '../../../../../assets/svg/roles.svg';
 import { ReactComponent as EditIcon } from '../../../../../assets/svg/user-profile-edit.svg';
+
 import {
   PAGE_SIZE_LARGE,
   TERM_ADMIN,
@@ -169,8 +171,10 @@ const UserProfileRoles = ({
           <Popover
             content={
               <div className="user-profile-edit-popover-card">
-                <div className="d-flex justify-start align-center gap-2 m-b-xs">
-                  <RoleIcon height={16} />
+                <div className="d-flex justify-start items-center gap-2 m-b-sm">
+                  <div className="d-flex flex-start items-center">
+                    <RoleIcon height={16} />
+                  </div>
                   <Typography.Text className="user-profile-edit-popover-card-title">
                     {t('label.role-plural')}
                   </Typography.Text>
@@ -193,6 +197,13 @@ const UserProfileRoles = ({
                     getPopupContainer={(trigger) => trigger.parentElement}
                     loading={isLoading}
                     maxTagCount={4}
+                    maxTagPlaceholder={(omittedValues) => (
+                      <span className="max-tag-text">
+                        {t('label.plus-count-more', {
+                          count: omittedValues.length,
+                        })}
+                      </span>
+                    )}
                     mode="multiple"
                     open={isSelectOpen}
                     options={useRolesOption}
@@ -206,7 +217,12 @@ const UserProfileRoles = ({
                   <Button
                     className="profile-edit-save"
                     data-testid="inline-cancel-btn"
-                    icon={<CloseOutlined />}
+                    icon={
+                      <ClosePopoverIcon
+                        height={24}
+                        style={{ marginTop: '2px' }}
+                      />
+                    }
                     size="small"
                     style={{
                       width: '30px',
@@ -219,7 +235,12 @@ const UserProfileRoles = ({
                   <Button
                     className="profile-edit-cancel"
                     data-testid="inline-save-btn"
-                    icon={<CheckOutlined />}
+                    icon={
+                      <SavePopoverIcon
+                        height={24}
+                        style={{ marginTop: '2px' }}
+                      />
+                    }
                     loading={isLoading}
                     size="small"
                     style={{

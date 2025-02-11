@@ -294,40 +294,11 @@
 .user-page-icon {
   margin: 2px;
 }
-// .profile-edit-popover{
-//   .ant-select:not(.ant-select-customize-input) .ant-select-selector{
-//     padding: 12px;
-//     border-radius: 5px;
-// border: 1px solid #DDE3EA;
-
-// background: #FDFDFD;
-// .ant-select-selection-item{
-//   border-radius: 4px;
-//   border: 0.5px solid #D4D4D8;
-// }
-//   }
-// }
-
-.custom-dropdown {
-  position: absolute !important;
-  top: 100% !important; // Ensures dropdown appears directly below input
-  left: 0 !important;
-  width: 100% !important;
-  max-height: 200px !important;
-  overflow-y: auto !important;
-  background: white !important;
-  z-index: 1000 !important;
-}
 
 .profile-edit-popover-card {
-  //     border-radius: 12px !important;
-  //   box-shadow: #00000040;
-  //   width: 379px;
-  //   padding: 20px !important;
-  // background: #FFF;
   .ant-popover {
     overflow: visible !important;
-    z-index: 1050; /* Higher than default */
+    z-index: 1050;
   }
 
   .ant-popover-inner {
@@ -352,9 +323,14 @@
   .ant-select-item-option-content {
     font-size: 14px;
   }
+  .ant-select-item-option-selected,
+  .ant-select-selection-item {
+    font-size: 14px;
+  }
   .ant-select:not(.ant-select-customize-input) {
+    border-radius: 5px !important;
     .ant-select-selector {
-      border-radius: 5px;
+      border-radius: 5px !important;
       border: none;
       background: #fdfdfd;
       display: flex;
@@ -367,7 +343,8 @@
         background: none;
         align-items: center;
         margin-right: 8px;
-        padding: 4px 8px; // Adjust padding inside selected items
+        padding: 4px 8px;
+        background: #f5f5f5;
       }
       .ant-select-selection-item-content {
         color: #292929;
@@ -382,6 +359,13 @@
 }
 .single-select .ant-select-selection-item {
   border: none !important;
+  background: none !important;
+}
+.profile-edit-save,
+.profile-edit-cancel {
+  width: 30px;
+  height: 30px;
+  background: '#0950C5' !important;
 }
 .profile-edit-save:hover,
 .profile-edit-save:focus,
@@ -395,8 +379,18 @@
   background-color: @primary-color !important;
   color: @white !important;
 }
-// .task-feed-card-v1-new .task-feed-card-footer .reject-btn.ant-btn:hover,
-// .task-feed-card-v1-new .task-feed-card-footer .reject-btn.ant-btn:focus {
-//   background-color: @white !important;
-//   color: @primary-color !important;
-// }
+
+.max-tag-text {
+  font-family: Inter;
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 22px;
+  color: #175cd3;
+}
+.ant-select-selection-item:has(.max-tag-text) {
+  background: none !important;
+  border: none !important;
+  padding: 0 !important;
+  box-shadow: none !important;
+}

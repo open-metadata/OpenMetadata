@@ -143,7 +143,9 @@ const TaskTabIncidentManagerHeaderNew = ({ thread }: { thread: Thread }) => {
             name="admin"
             size={24}
           />{' '}
-          <Typography.Text>{thread.createdBy}</Typography.Text>
+          <Typography.Text style={{ fontSize: '14px', color: '#292929' }}>
+            {thread.createdBy}
+          </Typography.Text>
         </Col>
         <Col className="flex items-center gap-2 text-grey-muted" span={12}>
           <AssigneesIcon height={16} />
@@ -169,14 +171,14 @@ const TaskTabIncidentManagerHeaderNew = ({ thread }: { thread: Thread }) => {
         {isResolved && (
           <Col className="flex items-center gap-2 text-grey-muted" span={12}>
             {/* <User {...ICON_DIMENSION_USER_PAGE} /> */}
-            <Typography.Text className="incident-manager-details-label @grey-8">{`${t(
+            <Typography.Text className="incident-manager-details-label">{`${t(
               'label.failure-reason'
             )}: `}</Typography.Text>
           </Col>
         )}
         {isResolved && (
           <Col className="flex items-center gap-2" span={12}>
-            <Typography.Text>
+            <Typography.Text style={{ fontSize: '14px', color: '#292929' }}>
               {latestTestCaseResolutionStatus?.testCaseResolutionStatusDetails
                 ?.testCaseFailureReason ?? NO_DATA_PLACEHOLDER}
             </Typography.Text>
@@ -192,7 +194,7 @@ const TaskTabIncidentManagerHeaderNew = ({ thread }: { thread: Thread }) => {
           </Col>
         )}
         {isResolved && (
-          <Col className="flex items-center gap-2" span={12}>
+          <Col className="flex items-center gap-2 " span={12}>
             <RichTextEditorPreviewerV1
               markdown={
                 latestTestCaseResolutionStatus?.testCaseResolutionStatusDetails
@@ -202,7 +204,9 @@ const TaskTabIncidentManagerHeaderNew = ({ thread }: { thread: Thread }) => {
           </Col>
         )}
         <Col span={24}>
-          <div className="task-resolution-steps-container">
+          <div
+            className="task-resolution-steps-container"
+            style={{ marginBottom: '-20px' }}>
             <Steps
               className="task-resolution-steps w-full"
               current={testCaseResolutionStatus.length}

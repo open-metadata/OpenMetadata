@@ -10,14 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
 import { Button, Popover, Select, Space, Tooltip, Typography } from 'antd';
 import classNames from 'classnames';
 import { t } from 'i18next';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as PersonaIcon } from '../../../../assets/svg/persona (2).svg';
+import { ReactComponent as ClosePopoverIcon } from '../../../../assets/svg/popover-close.svg';
+import { ReactComponent as SavePopoverIcon } from '../../../../assets/svg/popover-save.svg';
 import { ReactComponent as EditIcon } from '../../../../assets/svg/user-profile-edit.svg';
+
 import { PAGE_SIZE_LARGE } from '../../../../constants/constants';
 import { EntityType } from '../../../../enums/entity.enum';
 import { EntityReference } from '../../../../generated/entity/type';
@@ -110,9 +112,6 @@ export const PersonaSelectableList = ({
     loadOptions();
   }, []);
 
-  // const handlePersonaUpdate = useCallback(() => {
-  //   onUpdate(currentlySelectedPersonas);
-  // }, [onUpdate, currentlySelectedPersonas]);
   const handlePersonaUpdate = () => {
     setIsSaving(true);
 
@@ -135,7 +134,7 @@ export const PersonaSelectableList = ({
     setIsSelectOpen(visible);
   };
   const handleCloseEditTeam = () => {
-    setIsSelectOpen(false);
+    setPopupVisible(false);
   };
 
   return (
@@ -143,8 +142,8 @@ export const PersonaSelectableList = ({
       destroyTooltipOnHide
       content={
         <div className="user-profile-edit-popover-card">
-          <div className="d-flex justify-start items-center gap-2 m-b-xss">
-            <div className="user-page-icon d-flex-center">
+          <div className="d-flex justify-start items-center gap-2 m-b-sm">
+            <div className="d-flex flex-start items-center">
               <PersonaIcon height={16} />
             </div>
 
@@ -154,28 +153,24 @@ export const PersonaSelectableList = ({
           </div>
 
           <div
-            className="border"
-            // className={!isDropdownOpen ? 'border' : ''}
+            className={!isDropdownOpen ? 'border' : ''}
             id="area"
-            // style={
-            //   isDropdownOpen
-            //     ? { height: '350px' }
-            //     : { borderRadius: '5px', height: 'auto' }
-            // }
-          >
+            style={{ borderRadius: '5px' }}>
             <Select
               allowClear
               className={classNames('profile-edit-popover', {
-                'single-select': isDefaultPersona, // Apply class when it's single select
+                'single-select': isDefaultPersona,
               })}
               defaultValue={selectedPersonas.map((persona) => persona.id)}
               getPopupContainer={(triggerNode) =>
-                triggerNode.closest('.profile-edit-popover-card')
+                triggerNode.closest('.user-profile-edit-popover-card')
               }
               maxTagCount={3}
-              maxTagPlaceholder={(omittedValues) =>
-                `+${omittedValues.length} more`
-              }
+              maxTagPlaceholder={(omittedValues) => (
+                <span className="max-tag-text">
+                  {t('label.plus-count-more', { count: omittedValues.length })}
+                </span>
+              )}
               mode={!isDefaultPersona ? 'multiple' : undefined}
               options={selectOptions?.map((persona) => ({
                 label: persona.displayName || persona.name,
@@ -194,33 +189,40 @@ export const PersonaSelectableList = ({
               }}
             />
           </div>
-          {!isSelectOpen && (
-            <div className="flex justify-end gap-2 m-t-xs">
-              <Button
-                className="profile-edit-save"
-                data-testid="inline-cancel-btn"
-                icon={<CloseOutlined />}
-                size="small"
-                style={{
-                  width: '30px',
-                  height: '30px',
-                  background: '#0950C5',
-                }}
-                type="primary"
-                onClick={handleCloseEditTeam}
-              />
-              <Button
-                className="profile-edit-cancel"
-                data-testid="inline-save-btn"
-                icon={<CheckOutlined />}
-                loading={isSaving}
-                size="small"
-                style={{ width: '30px', height: '30px', background: '#0950C5' }}
-                type="primary"
-                onClick={handlePersonaUpdate as any}
-              />
-            </div>
-          )}
+
+          <div className="flex justify-end gap-2 m-t-xs">
+            <Button
+              className="profile-edit-save"
+              data-testid="user-profile-persona-edit-save"
+              icon={
+                <ClosePopoverIcon height={24} style={{ marginTop: '2px' }} />
+              }
+              size="small"
+              style={{
+                width: '30px',
+                height: '30px',
+                background: '#0950C5',
+              }}
+              type="primary"
+              onClick={handleCloseEditTeam}
+            />
+            <Button
+              className="profile-edit-cancel"
+              data-testid="user-profile-persona-edit-cancel"
+              icon={
+                <SavePopoverIcon height={24} style={{ marginTop: '2px' }} />
+              }
+              loading={isSaving}
+              size="small"
+              style={{
+                width: '30px',
+                height: '30px',
+                background: '#0950C5',
+              }}
+              type="primary"
+              onClick={handlePersonaUpdate as any}
+            />
+          </div>
         </div>
       }
       open={popupVisible}

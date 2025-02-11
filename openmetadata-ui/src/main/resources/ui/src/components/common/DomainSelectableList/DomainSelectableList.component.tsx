@@ -10,12 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
 import { Button, Popover, Select, Tooltip, Typography } from 'antd';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as DomainIcon } from '../../../assets/svg/ic-domain.svg';
+import { ReactComponent as ClosePopoverIcon } from '../../../assets/svg/popover-close.svg';
+import { ReactComponent as SavePopoverIcon } from '../../../assets/svg/popover-save.svg';
 import { ReactComponent as EditIcon } from '../../../assets/svg/user-profile-edit.svg';
+
 import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import { EntityReference } from '../../../generated/entity/type';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
@@ -61,6 +63,7 @@ const DomainSelectableList = ({
   const { t } = useTranslation();
   const { theme } = useApplicationStore();
   const [popupVisible, setPopupVisible] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [isSelectOpen, setIsSelectOpen] = useState<boolean>(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState<boolean>(false);
   const [currentlySelectedDomains, setCurrentlySelectedDomains] = useState<
@@ -76,11 +79,21 @@ const DomainSelectableList = ({
   }, [selectedDomain]);
 
   const handleUpdate = async () => {
-    if (multiple) {
-      await onUpdate(currentlySelectedDomains);
-    } else {
-      await onUpdate(currentlySelectedDomains[0]);
+    setIsSaving(true);
+
+    try {
+      if (multiple) {
+        await onUpdate(currentlySelectedDomains);
+      } else {
+        await onUpdate(currentlySelectedDomains[0]);
+      }
+    } finally {
+      setIsSaving(false);
+      setPopupVisible(false);
     }
+  };
+
+  const handleClosePopup = () => {
     setPopupVisible(false);
   };
 
@@ -94,8 +107,8 @@ const DomainSelectableList = ({
         destroyTooltipOnHide
         content={
           <div className="user-profile-edit-popover-card">
-            <div className="d-flex justify-start items-center gap-2 m-b-xss">
-              <div className="user-page-icon d-flex-center">
+            <div className="d-flex justify-start items-center gap-2 m-b-sm">
+              <div className="d-flex flex-start items-center">
                 <DomainIcon height={16} />
               </div>
 
@@ -110,15 +123,20 @@ const DomainSelectableList = ({
                 className="profile-edit-popover"
                 defaultValue={selectedDomainsList.map((domain) => domain.id)}
                 maxTagCount={3}
-                maxTagPlaceholder={(omittedValues) =>
-                  `+${omittedValues.length} more`
-                }
+                maxTagPlaceholder={(omittedValues) => (
+                  <span className="max-tag-text">
+                    {t('label.plus-count-more', {
+                      count: omittedValues.length,
+                    })}
+                  </span>
+                )}
                 mode="multiple"
                 options={domains?.map((domain) => ({
                   label: domain.displayName || domain.name,
                   value: domain.id,
                 }))}
                 placeholder="Please select"
+                style={{ width: '100%' }}
                 onChange={(selectedIds) => {
                   const selectedDomainList = domains.filter((domain) =>
                     selectedIds.includes(domain.id)
@@ -132,8 +150,9 @@ const DomainSelectableList = ({
               <Button
                 className="profile-edit-save"
                 data-testid="inline-cancel-btn"
-                icon={<CloseOutlined />}
-                // onClick={handleCloseEditTeam}
+                icon={
+                  <ClosePopoverIcon height={24} style={{ marginTop: '2px' }} />
+                }
                 size="small"
                 style={{
                   width: '30px',
@@ -141,12 +160,16 @@ const DomainSelectableList = ({
                   background: '#0950C5',
                 }}
                 type="primary"
+                onClick={handleClosePopup}
               />
 
               <Button
                 className="profile-edit-cancel"
                 data-testid="inline-save-btn"
-                icon={<CheckOutlined />}
+                icon={
+                  <SavePopoverIcon height={24} style={{ marginTop: '2px' }} />
+                }
+                loading={isSaving}
                 size="small"
                 style={{
                   width: '30px',

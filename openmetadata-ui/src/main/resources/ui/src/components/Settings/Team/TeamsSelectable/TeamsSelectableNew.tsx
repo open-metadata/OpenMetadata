@@ -115,6 +115,11 @@ const TeamsSelectableNew = ({
         getPopupContainer={(trigger) => trigger.parentElement}
         loading={isLoading}
         maxTagCount={maxValueCount}
+        maxTagPlaceholder={(omittedValues) => (
+          <span className="max-tag-text">
+            {t('label.plus-count-more', { count: omittedValues.length })}
+          </span>
+        )}
         placeholder={placeholder}
         showCheckedStrategy={TreeSelect.SHOW_CHILD}
         style={{ width: '100%' }}

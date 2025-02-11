@@ -11,13 +11,14 @@
  *  limitations under the License.
  */
 
-import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
 import { Button, Divider, Popover, Typography } from 'antd';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ReactComponent as ClosePopoverIcon } from '../../../../../assets/svg/popover-close.svg';
+import { ReactComponent as SavePopoverIcon } from '../../../../../assets/svg/popover-save.svg';
 import { ReactComponent as IconTeamsGrey } from '../../../../../assets/svg/teams-grey.svg';
 import { ReactComponent as EditIcon } from '../../../../../assets/svg/user-profile-edit.svg';
-import { ICON_DIMENSION_USER_PAGE } from '../../../../../constants/constants';
+
 import { EntityType } from '../../../../../enums/entity.enum';
 import { EntityReference } from '../../../../../generated/entity/type';
 import { useAuth } from '../../../../../hooks/authHooks';
@@ -83,7 +84,7 @@ const UserProfileTeams = ({
     <div className="d-flex flex-col w-full h-full p-[20px] user-profile-card">
       <div className="user-profile-card-header d-flex items-center justify-start gap-2 w-full">
         <div>
-          <IconTeamsGrey {...ICON_DIMENSION_USER_PAGE} />
+          <IconTeamsGrey height={16} />
         </div>
 
         <div className="d-flex justify-between w-full">
@@ -94,9 +95,9 @@ const UserProfileTeams = ({
             <Popover
               content={
                 <div className="user-profile-edit-popover-card">
-                  <div className="d-flex justify-start items-center gap-2 m-b-xss">
-                    <div className="user-page-icon d-flex-center">
-                      <IconTeamsGrey className="m-b-0" height={16} />
+                  <div className="d-flex justify-start items-center gap-2 m-b-sm">
+                    <div className="d-flex flex-start items-center">
+                      <IconTeamsGrey height={16} />
                     </div>
 
                     <Typography.Text className="user-profile-edit-popover-card-title">
@@ -124,7 +125,12 @@ const UserProfileTeams = ({
                     <Button
                       className="profile-edit-save"
                       data-testid="inline-cancel-btn"
-                      icon={<CloseOutlined />}
+                      icon={
+                        <ClosePopoverIcon
+                          height={24}
+                          style={{ marginTop: '2px' }}
+                        />
+                      }
                       size="small"
                       style={{
                         width: '30px',
@@ -137,7 +143,12 @@ const UserProfileTeams = ({
                     <Button
                       className="profile-edit-cancel"
                       data-testid="inline-save-btn"
-                      icon={<CheckOutlined />}
+                      icon={
+                        <SavePopoverIcon
+                          height={24}
+                          style={{ marginTop: '2px' }}
+                        />
+                      }
                       loading={isLoading}
                       size="small"
                       style={{

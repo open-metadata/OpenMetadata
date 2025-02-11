@@ -101,12 +101,10 @@ export const OwnerLabel = ({
 
               const ownerLink = (
                 <Link
-                  className={classNames(
-                    'no-underline font-medium text-xs text-primary',
-                    className
-                  )}
+                  className={classNames('no-underline', className)}
                   data-testid="owner-link"
                   key={owner.id}
+                  style={{ fontSize: '14px', color: '#292929' }}
                   to={
                     owner.type === OwnerType.TEAM
                       ? getTeamAndUserDetailsPath(

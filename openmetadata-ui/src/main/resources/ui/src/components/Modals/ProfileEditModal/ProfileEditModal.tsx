@@ -21,7 +21,6 @@ import { isEmpty } from 'lodash';
 import { User } from '../../../generated/entity/teams/user';
 import { getBackendFormat, HTMLToMarkdown } from '../../../utils/FeedUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import { FeedEditor } from '../../ActivityFeed/FeedEditor/FeedEditor';
 import { EditorContentRef } from '../ModalWithMarkdownEditor/ModalWithMarkdownEditor.interface';
 import './profile-edit-modal.less';
 // import {
@@ -110,7 +109,7 @@ export const ProfileEditModal: FunctionComponent<ProfileEditModalProps> = ({
       data-testid="profile-edit-modal"
       footer={[
         <Button
-          className="m-t-xs m-r-xs cancel-btn"
+          className="m-t-xs m-r-xs cancel-name-edit-btn"
           data-testid="cancel"
           disabled={isLoading}
           key="cancelButton"
@@ -119,7 +118,7 @@ export const ProfileEditModal: FunctionComponent<ProfileEditModalProps> = ({
           {t('label.cancel')}
         </Button>,
         <Button
-          className="m-t-xs"
+          className="m-t-xs save-updated-name-btn"
           data-testid="save"
           key="saveButton"
           loading={isLoading}
@@ -149,7 +148,7 @@ export const ProfileEditModal: FunctionComponent<ProfileEditModalProps> = ({
         value={displayName}
         onChange={onDisplayNameChange}
       />
-      <Typography.Text className="modal-label m-b-xs">
+      {/* <Typography.Text className="modal-label m-b-xs">
         {t('label.description')}
       </Typography.Text>
       <FeedEditor
@@ -158,7 +157,7 @@ export const ProfileEditModal: FunctionComponent<ProfileEditModalProps> = ({
         ref={markdownRef}
         onChangeHandler={onChangeHandler}
         onSave={handleSaveData}
-      />
+      /> */}
     </Modal>
   );
 };
