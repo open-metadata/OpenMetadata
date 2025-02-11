@@ -124,7 +124,7 @@ const MsalAuthenticator = forwardRef<AuthenticatorRef, Props>(
     };
 
     const renewIdToken = async () => {
-      const user = await fetchIdToken(true);
+      const user = await fetchIdToken();
 
       return user.id_token;
     };
