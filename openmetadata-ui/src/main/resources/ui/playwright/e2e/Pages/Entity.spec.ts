@@ -193,10 +193,7 @@ entities.forEach((EntityClass) => {
       );
     });
 
-    if (
-      EntityClass === DashboardDataModelClass ||
-      EntityClass === DashboardClass
-    ) {
+    if (['Dashboard', 'Dashboard Data Model'].includes(entityName)) {
       test(`${entityName} page should show the project name`, async ({
         page,
       }) => {
