@@ -193,18 +193,10 @@ def test_connection(
             engine_wrapper=engine_wrapper,
         ),
         "GetQueries": partial(
-            test_query,
-            statement=SNOWFLAKE_TEST_GET_QUERIES.format(
-                account_usage=service_connection.accountUsageSchema
-            ),
-            engine=engine,
+            test_query, statement=SNOWFLAKE_TEST_GET_QUERIES, engine=engine
         ),
         "GetTags": partial(
-            test_query,
-            statement=SNOWFLAKE_TEST_FETCH_TAG.format(
-                account_usage=service_connection.accountUsageSchema
-            ),
-            engine=engine,
+            test_query, statement=SNOWFLAKE_TEST_FETCH_TAG, engine=engine
         ),
     }
 

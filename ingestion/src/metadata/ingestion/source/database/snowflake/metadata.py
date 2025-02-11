@@ -418,7 +418,6 @@ class SnowflakeSource(
                     SNOWFLAKE_FETCH_ALL_TAGS.format(
                         database_name=self.context.get().database,
                         schema_name=schema_name,
-                        account_usage=self.service_connection.accountUsageSchema,
                     )
                 )
 
@@ -432,7 +431,6 @@ class SnowflakeSource(
                         SNOWFLAKE_FETCH_ALL_TAGS.format(
                             database_name=f'"{self.context.get().database}"',
                             schema_name=f'"{self.context.get().database_schema}"',
-                            account_usage=self.service_connection.accountUsageSchema,
                         )
                     )
                 except Exception as inner_exc:
@@ -637,7 +635,6 @@ class SnowflakeSource(
             query.format(
                 database_name=self.context.get().database,
                 schema_name=self.context.get().database_schema,
-                account_usage=self.service_connection.accountUsageSchema,
             )
         ).all()
         for row in results:
