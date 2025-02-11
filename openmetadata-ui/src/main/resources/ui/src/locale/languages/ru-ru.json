@@ -444,6 +444,7 @@
     "enter-property-value": "Введите значение свойства",
     "enter-type-password": "Введите {{type}} пароль",
     "entity": "Entity",
+    "entity-configuration": "Конфигурация {{entity}}",
     "entity-count": "Количество \"{{entity}}\"",
     "entity-detail-plural": "{{entity}} детали",
     "entity-feed-plural": "Фиды объектов",

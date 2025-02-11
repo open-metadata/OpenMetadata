@@ -444,6 +444,7 @@
     "enter-property-value": "مقدار ویژگی را وارد کنید",
     "enter-type-password": "رمز عبور {{type}} را وارد کنید",
     "entity": "نهاد",
+    "entity-configuration": "Configuración de {{entity}}",
     "entity-count": "تعداد {{entity}}",
     "entity-detail-plural": "جزئیات {{entity}}",
     "entity-feed-plural": "فیدهای نهاد",

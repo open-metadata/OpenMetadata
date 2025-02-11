@@ -444,6 +444,7 @@
     "enter-property-value": "Inserir Valor da Propriedade",
     "enter-type-password": "Inserir Senha de {{type}}",
     "entity": "Entidade",
+    "entity-configuration": "Configuração de {{entity}}",
     "entity-count": "Contagem de {{entity}}",
     "entity-detail-plural": "Detalhes de {{entity}}",
     "entity-feed-plural": "Feeds de Entidade",

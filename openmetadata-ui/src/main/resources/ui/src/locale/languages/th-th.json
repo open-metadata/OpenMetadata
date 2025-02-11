@@ -444,6 +444,7 @@
     "enter-property-value": "ป้อนค่าของคุณสมบัติ",
     "enter-type-password": "ป้อนรหัสผ่าน {{type}}",
     "entity": "เอนทิตี",
+    "entity-configuration": "การตั้งค่า {{entity}}",
     "entity-count": "จำนวน {{entity}}",
     "entity-detail-plural": "รายละเอียด {{entity}}",
     "entity-feed-plural": "ฟีดเอนทิตี",

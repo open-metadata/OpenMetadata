@@ -444,6 +444,7 @@
     "enter-property-value": "Eigenschapswaarde invoeren",
     "enter-type-password": "{{type}}-wachtwoord invoeren",
     "entity": "Entiteit",
+    "entity-configuration": "{{entity}} Configuratie",
     "entity-count": "Aantal {{entity}}",
     "entity-detail-plural": "{{entity}}-details",
     "entity-feed-plural": "Entiteitsfeeds",
