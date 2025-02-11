@@ -50,6 +50,6 @@ public interface ColumnIndex extends SearchIndex {
         }
       }
     }
-    return CommonUtil.nullOrEmpty(entity.getDescription()) ? "INCOMPLETE" : "COMPLETE";
+    return "COMPLETE";
   }
 }
