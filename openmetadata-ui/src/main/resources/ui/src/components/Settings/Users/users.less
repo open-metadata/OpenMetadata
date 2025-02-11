@@ -94,11 +94,6 @@
     }
   }
 
-  .user-layout-scroll {
-    height: @profile-entity-details-tab-height;
-    overflow-y: scroll;
-  }
-
   .user-page-layout-right-panel {
     padding-right: 0 !important;
     background-color: @white;
@@ -117,7 +112,7 @@
     }
   }
   .summary-panel-container {
-    height: @users-page-tabs-height;
+    height: @profile-entity-details-tab-height;
     padding: 20px;
     border-radius: 12px;
     background-color: @white;
@@ -127,8 +122,13 @@
   }
 }
 
+.user-layout-scroll {
+  height: @profile-entity-details-tab-height;
+  overflow-y: scroll;
+}
+
 .summary-panel-container {
-  height: @users-page-tabs-height;
+  height: @profile-entity-details-tab-height;
   border-radius: 12px;
   background-color: @white;
 
@@ -400,3 +400,7 @@
 //   background-color: @white !important;
 //   color: @primary-color !important;
 // }
+
+.page-layout-v1-vertical-scroll {
+  background: #f5f5f5;
+}

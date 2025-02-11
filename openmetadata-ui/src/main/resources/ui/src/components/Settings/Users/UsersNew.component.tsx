@@ -345,68 +345,70 @@ const Users = ({
   }, [activeTab]);
 
   return (
-    <Row gutter={[16, 16]} style={{ padding: '16px 16px 0px 16px' }}>
-      <Col span={6}>
-        <div className="profile-section">
-          <ProfileSectionUserDetailsCard
-            afterDeleteAction={afterDeleteAction}
-            updateUserDetails={updateUserDetails}
-            userData={userData}
-          />
-          <UserProfilePersonas
-            updateUserDetails={updateUserDetails}
-            userData={userData}
-          />
-          <DomainLabelNew
-            multiple
-            domain={userData?.domains}
-            entityFqn={userData.fullyQualifiedName ?? ''}
-            entityId={userData.id ?? ''}
-            entityType={EntityType.USER}
-            hasPermission={Boolean(isAdminUser) && !userData.deleted}
-            textClassName="text-sm text-grey-muted"
-          />
-          <UserProfileTeams
-            isDeletedUser={userData.deleted}
-            teams={userData.teams}
-            updateUserDetails={updateUserDetails}
-          />
-          <UserProfileRoles
-            isDeletedUser={userData.deleted}
-            isUserAdmin={userData.isAdmin}
-            updateUserDetails={updateUserDetails}
-            userData={userData}
-            userRoles={userData.roles}
-          />
-        </div>
-      </Col>
-      <Col span={18}>
-        <Row className="mb-sm w-full">
-          <div className="tabs-container d-flex justify-center">
-            <Tabs
-              activeKey={activeTab}
-              className="user-page-tabs-new"
-              data-testid="tabs"
-              items={tabs.map((tab) => ({
-                key: tab.key,
-                label: tab.label,
-              }))}
-              renderTabBar={(props, DefaultTabBar) => (
-                <div>
-                  <DefaultTabBar {...props} />
-                </div>
-              )}
-              onChange={activeTabHandler}
+    <div className="p-t-xs bg-grey p-x-box">
+      <Row gutter={[20, 0]} wrap={false}>
+        <Col flex="312px">
+          <div className="profile-section">
+            <ProfileSectionUserDetailsCard
+              afterDeleteAction={afterDeleteAction}
+              updateUserDetails={updateUserDetails}
+              userData={userData}
+            />
+            <UserProfilePersonas
+              updateUserDetails={updateUserDetails}
+              userData={userData}
+            />
+            <DomainLabelNew
+              multiple
+              domain={userData?.domains}
+              entityFqn={userData.fullyQualifiedName ?? ''}
+              entityId={userData.id ?? ''}
+              entityType={EntityType.USER}
+              hasPermission={Boolean(isAdminUser) && !userData.deleted}
+              textClassName="text-sm text-grey-muted"
+            />
+            <UserProfileTeams
+              isDeletedUser={userData.deleted}
+              teams={userData.teams}
+              updateUserDetails={updateUserDetails}
+            />
+            <UserProfileRoles
+              isDeletedUser={userData.deleted}
+              isUserAdmin={userData.isAdmin}
+              updateUserDetails={updateUserDetails}
+              userData={userData}
+              userRoles={userData.roles}
             />
           </div>
-        </Row>
-        <Row gutter={[16, 16]}>
-          <Col span={24}>
-            {tabs.find((tab) => tab.key === activeTab)?.children}
-          </Col>
-        </Row>
-      </Col>
-    </Row>
+        </Col>
+        <Col flex="auto">
+          <Row className="mb-sm w-full">
+            <div className="tabs-container d-flex justify-center">
+              <Tabs
+                activeKey={activeTab}
+                className="user-page-tabs-new"
+                data-testid="tabs"
+                items={tabs.map((tab) => ({
+                  key: tab.key,
+                  label: tab.label,
+                }))}
+                renderTabBar={(props, DefaultTabBar) => (
+                  <div>
+                    <DefaultTabBar {...props} />
+                  </div>
+                )}
+                onChange={activeTabHandler}
+              />
+            </div>
+          </Row>
+          <Row gutter={[16, 16]}>
+            <Col span={24}>
+              {tabs.find((tab) => tab.key === activeTab)?.children}
+            </Col>
+          </Row>
+        </Col>
+      </Row>
+    </div>
   );
 };
 

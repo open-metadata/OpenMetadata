@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Col, Row, Space } from 'antd';
+import { Col, Row } from 'antd';
 import { get, isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
@@ -210,11 +210,11 @@ export const DataAssetSummaryPanel = ({
 
   return (
     <SummaryPanelSkeleton loading={isLoading || isEmpty(dataAsset)}>
-      <Space direction="vertical" size={20}>
+      <div className="d-flex flex-col gap-5">
         {commonEntitySummaryInfo}
 
         {entityDetails}
-      </Space>
+      </div>
     </SummaryPanelSkeleton>
   );
 };
