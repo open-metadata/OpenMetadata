@@ -511,7 +511,7 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
         else:
             # Convert UUID in string
             data = result_data[PatchField.VALUE]
-            data["database_service"] = str(data["database_service"])
+            data["serviceId"] = str(data["serviceId"])
             for operation_result in data["results"]:
                 operation_result["id"] = str(operation_result["id"])
 
