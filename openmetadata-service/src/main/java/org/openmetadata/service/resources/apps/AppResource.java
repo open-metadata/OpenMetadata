@@ -291,7 +291,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
           ingestionPipelineRepository.get(
               uriInfo, pipelineRef.getId(), ingestionPipelineRepository.getFields(FIELD_OWNERS));
       return ingestionPipelineRepository
-          .listPipelineStatus(ingestionPipeline.getFullyQualifiedName(), startTs, endTs)
+          .listExternalAppStatus(ingestionPipeline.getFullyQualifiedName(), startTs, endTs)
           .map(pipelineStatus -> convertPipelineStatus(installation, pipelineStatus));
     }
     throw new IllegalArgumentException("App does not have a scheduled deployment");
@@ -301,6 +301,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
     return new AppRunRecord()
         .withAppId(app.getId())
         .withAppName(app.getName())
+        .withStartTime(pipelineStatus.getStartDate())
         .withExecutionTime(pipelineStatus.getStartDate())
         .withEndTime(pipelineStatus.getEndDate())
         .withStatus(
