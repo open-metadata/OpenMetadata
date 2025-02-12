@@ -835,17 +835,6 @@ const AssetsTabs = forwardRef(
             {assetCount > 0 && (
               <>
                 <Col className="d-flex items-center gap-3" span={24}>
-                  <div className="flex-1">
-                    <Searchbar
-                      removeMargin
-                      showClearSearch
-                      placeholder={t('label.search-entity', {
-                        entity: t('label.asset-plural'),
-                      })}
-                      searchValue={searchValue}
-                      onSearch={setSearchValue}
-                    />
-                  </div>
                   <Dropdown
                     menu={{
                       items: filterMenu,
@@ -858,6 +847,17 @@ const AssetsTabs = forwardRef(
                       {t('label.filter')}
                     </Button>
                   </Dropdown>
+                  <div className="flex-1">
+                    <Searchbar
+                      removeMargin
+                      showClearSearch
+                      placeholder={t('label.search-entity', {
+                        entity: t('label.asset-plural'),
+                      })}
+                      searchValue={searchValue}
+                      onSearch={setSearchValue}
+                    />
+                  </div>
                 </Col>
                 {selectedFilter.length > 0 && (
                   <Col className="searched-data-container" span={24}>

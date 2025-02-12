@@ -15,6 +15,9 @@ import { last, toLower } from 'lodash';
 import React, { ReactNode, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as AssigneesIcon } from '../../../../assets/svg/assignees.svg';
+import { ReactComponent as FailureCommentIcon } from '../../../../assets/svg/Failure Comment.svg';
+import { ReactComponent as FailureReasonIcon } from '../../../../assets/svg/Failure Reason.svg';
+import { ReactComponent as SeverityIcon } from '../../../../assets/svg/Severity.svg';
 import { ReactComponent as UserIcon } from '../../../../assets/svg/user-profile.svg';
 import { NO_DATA_PLACEHOLDER } from '../../../../constants/constants';
 import { TEST_CASE_STATUS } from '../../../../constants/TestSuite.constant';
@@ -158,7 +161,7 @@ const TaskTabIncidentManagerHeaderNew = ({ thread }: { thread: Thread }) => {
         </Col>
 
         <Col className="flex items-center gap-2 text-grey-muted" span={12}>
-          {/* <User {...ICON_DIMENSION_USER_PAGE} /> */}
+          <SeverityIcon height={16} />
           <Typography.Text className="incident-manager-details-label">
             {' '}
             {`${t('label.severity')} `}
@@ -170,7 +173,7 @@ const TaskTabIncidentManagerHeaderNew = ({ thread }: { thread: Thread }) => {
 
         {isResolved && (
           <Col className="flex items-center gap-2 text-grey-muted" span={12}>
-            {/* <User {...ICON_DIMENSION_USER_PAGE} /> */}
+            <FailureReasonIcon height={16} />
             <Typography.Text className="incident-manager-details-label">{`${t(
               'label.failure-reason'
             )}: `}</Typography.Text>
@@ -186,7 +189,7 @@ const TaskTabIncidentManagerHeaderNew = ({ thread }: { thread: Thread }) => {
         )}
         {isResolved && (
           <Col className="flex items-center gap-2 text-grey-muted" span={12}>
-            {/* <User {...ICON_DIMENSION_USER_PAGE} /> */}
+            <FailureCommentIcon height={16} />
             <Typography.Text className="incident-manager-details-label">
               {' '}
               {`${t('label.failure-comment')} `}
