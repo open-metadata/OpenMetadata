@@ -239,6 +239,12 @@ export const getDataAssetsHeaderInfo = (
               value={dataModelDetails.dataModelType}
             />
           )}
+          {dataModelDetails.project && (
+            <ExtraInfoLabel
+              label={t('label.project')}
+              value={dataModelDetails.project}
+            />
+          )}
         </>
       );
 
