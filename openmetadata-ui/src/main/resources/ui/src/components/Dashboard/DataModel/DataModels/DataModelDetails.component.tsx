@@ -226,7 +226,6 @@ const DataModelDetails = ({
                 <div className="d-flex flex-col gap-4 p-t-sm m-x-lg">
                   <DescriptionV1
                     description={description}
-                    entityFqn={decodedDataModelFQN}
                     entityName={entityName}
                     entityType={EntityType.DASHBOARD_DATA_MODEL}
                     hasEditAccess={editDescriptionPermission}
@@ -258,7 +257,6 @@ const DataModelDetails = ({
                     }
                     editGlossaryTermsPermission={editGlossaryTermsPermission}
                     editTagPermission={editTagsPermission}
-                    entityFQN={decodedDataModelFQN}
                     entityId={dataModelData.id}
                     entityType={EntityType.DASHBOARD_DATA_MODEL}
                     selectedTags={tags}

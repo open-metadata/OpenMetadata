@@ -398,7 +398,6 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
                     <div className="d-flex flex-col gap-4 p-t-sm m-l-lg p-r-lg">
                       <DescriptionV1
                         description={mlModelDetail.description}
-                        entityFqn={decodedMlModelFqn}
                         entityName={mlModelName}
                         entityType={EntityType.MLMODEL}
                         hasEditAccess={editDescriptionPermission}
@@ -436,7 +435,6 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
                           editGlossaryTermsPermission
                         }
                         editTagPermission={editTagsPermission}
-                        entityFQN={decodedMlModelFqn}
                         entityId={mlModelDetail.id}
                         entityType={EntityType.MLMODEL}
                         selectedTags={mlModelTags}
@@ -471,7 +469,6 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
             refetchFeed
             entityFeedTotalCount={feedCount.totalCount}
             entityType={EntityType.MLMODEL}
-            fqn={mlModelDetail?.fullyQualifiedName ?? ''}
             onFeedUpdate={fetchEntityFeedCount}
             onUpdateEntityDetails={fetchMlModel}
             onUpdateFeedCount={handleFeedCount}

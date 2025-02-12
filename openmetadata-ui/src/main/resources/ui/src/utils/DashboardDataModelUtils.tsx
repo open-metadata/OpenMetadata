@@ -66,7 +66,6 @@ export const getDashboardDataModelDetailPageTabs = ({
           refetchFeed
           entityFeedTotalCount={feedCount.totalCount}
           entityType={EntityType.DASHBOARD_DATA_MODEL}
-          fqn={dataModelData?.fullyQualifiedName ?? ''}
           onFeedUpdate={getEntityFeedCount}
           onUpdateEntityDetails={fetchDataModel}
           onUpdateFeedCount={handleFeedCount}

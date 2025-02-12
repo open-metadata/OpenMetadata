@@ -38,7 +38,6 @@ export interface DatabaseDetailPageTabProps {
   activeTab: EntityTabs;
   database: Database;
   description: string;
-  decodedDatabaseFQN: string;
   editDescriptionPermission: boolean;
   editGlossaryTermsPermission: boolean;
   editTagsPermission: boolean;

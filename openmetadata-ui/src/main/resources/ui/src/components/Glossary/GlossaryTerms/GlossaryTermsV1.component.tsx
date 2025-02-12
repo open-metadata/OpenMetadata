@@ -268,7 +268,6 @@ const GlossaryTermsV1 = ({
               children: (
                 <ActivityFeedTab
                   entityType={EntityType.GLOSSARY_TERM}
-                  fqn={glossaryTerm.fullyQualifiedName ?? ''}
                   hasGlossaryReviewer={!isEmpty(glossaryTerm.reviewers)}
                   owners={glossaryTerm.owners}
                   onFeedUpdate={getEntityFeedCount}

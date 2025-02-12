@@ -208,7 +208,6 @@ const GlossaryDetails = ({
         return (
           <DescriptionV1
             description={updatedGlossary.description}
-            entityFqn={glossary.fullyQualifiedName}
             entityName={getEntityName(glossary)}
             entityType={EntityType.GLOSSARY}
             hasEditAccess={permissions.EditDescription || permissions.EditAll}
@@ -316,7 +315,6 @@ const GlossaryDetails = ({
                   refetchFeed
                   entityFeedTotalCount={feedCount.totalCount}
                   entityType={EntityType.GLOSSARY}
-                  fqn={glossary.fullyQualifiedName ?? ''}
                   hasGlossaryReviewer={!isEmpty(glossary.reviewers)}
                   owners={glossary.owners}
                   onFeedUpdate={getEntityFeedCount}

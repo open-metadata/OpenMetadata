@@ -108,8 +108,7 @@ const TableDetailsPageV1: React.FC = () => {
   const { currentUser, selectedPersona } = useApplicationStore();
   const { setDqLineageData } = useTestCaseStore();
   const [tableDetails, setTableDetails] = useState<Table>();
-  const { tab: activeTab = EntityTabs.SCHEMA } =
-    useParams<{ tab: EntityTabs }>();
+  const { tab: activeTab } = useParams<{ tab: EntityTabs }>();
   const { fqn: datasetFQN } = useFqn();
   const { t } = useTranslation();
   const history = useHistory();
@@ -375,7 +374,7 @@ const TableDetailsPageV1: React.FC = () => {
     [tableDetails, tableId]
   );
 
-  const onTableUpdate = async (updatedTable: Table, key: keyof Table) => {
+  const onTableUpdate = async (updatedTable: Table, key?: keyof Table) => {
     try {
       const res = await saveUpdatedTableData(updatedTable);
 
@@ -393,12 +392,13 @@ const TableDetailsPageV1: React.FC = () => {
 
         const updatedObj = {
           ...previous,
+          ...res,
           version: res.version,
-          [key]: res[key],
+          ...(key && { [key]: res[key] }),
         };
 
         // If operation was to remove let's remove the key itself
-        if (res[key] === undefined) {
+        if (key && res[key] === undefined) {
           delete updatedObj[key];
         }
 
@@ -524,11 +524,13 @@ const TableDetailsPageV1: React.FC = () => {
       labelMap: tabLabelMap,
     });
 
-    return getGlossaryTermDetailTabs(
+    const updatedTabs = getGlossaryTermDetailTabs(
       tabs,
       customizedPage?.tabs,
       EntityTabs.SCHEMA
     );
+
+    return updatedTabs;
   }, [
     schemaTab,
     queryCount,
@@ -802,9 +804,7 @@ const TableDetailsPageV1: React.FC = () => {
         isVersionView={false}
         permissions={tablePermissions}
         type={EntityType.TABLE}
-        onUpdate={async (data) => {
-          await saveUpdatedTableData(data);
-        }}>
+        onUpdate={onTableUpdate}>
         <Row gutter={[0, 12]}>
           {/* Entity Heading */}
           <Col className="p-x-lg" data-testid="entity-page-header" span={24}>

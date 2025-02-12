@@ -302,7 +302,6 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
                     <div className="d-flex flex-col gap-4 p-t-sm m-x-lg">
                       <DescriptionV1
                         description={apiEndpointDetails.description}
-                        entityFqn={decodedApiEndpointFqn}
                         entityName={entityName}
                         entityType={EntityType.API_ENDPOINT}
                         hasEditAccess={editDescriptionPermission}
@@ -335,7 +334,6 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
                           editGlossaryTermsPermission
                         }
                         editTagPermission={editTagsPermission}
-                        entityFQN={decodedApiEndpointFqn}
                         entityId={apiEndpointDetails.id}
                         entityType={EntityType.API_ENDPOINT}
                         selectedTags={apiEndpointTags}
@@ -370,7 +368,6 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
             refetchFeed
             entityFeedTotalCount={feedCount.totalCount}
             entityType={EntityType.API_ENDPOINT}
-            fqn={apiEndpointDetails?.fullyQualifiedName ?? ''}
             onFeedUpdate={getEntityFeedCount}
             onUpdateEntityDetails={fetchAPIEndpointDetails}
             onUpdateFeedCount={handleFeedCount}

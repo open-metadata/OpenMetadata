@@ -43,7 +43,6 @@ export const getDataBaseSchemaPageBaseTabs = ({
   editGlossaryTermsPermission,
   editCustomAttributePermission,
   editTagsPermission,
-  decodedDatabaseSchemaFQN,
   tags,
   viewAllPermission,
   storedProcedureCount,
@@ -107,7 +106,6 @@ export const getDataBaseSchemaPageBaseTabs = ({
                       }
                       editGlossaryTermsPermission={editGlossaryTermsPermission}
                       editTagPermission={editTagsPermission}
-                      entityFQN={decodedDatabaseSchemaFQN}
                       entityId={databaseSchema?.id ?? ''}
                       entityType={EntityType.DATABASE_SCHEMA}
                       selectedTags={tags}
@@ -155,7 +153,6 @@ export const getDataBaseSchemaPageBaseTabs = ({
             refetchFeed
             entityFeedTotalCount={feedCount.totalCount}
             entityType={EntityType.DATABASE_SCHEMA}
-            fqn={databaseSchema.fullyQualifiedName ?? ''}
             onFeedUpdate={getEntityFeedCount}
             onUpdateEntityDetails={fetchDatabaseSchemaDetails}
             onUpdateFeedCount={handleFeedCount}

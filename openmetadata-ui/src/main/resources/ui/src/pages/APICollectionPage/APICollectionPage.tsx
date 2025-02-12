@@ -602,7 +602,6 @@ const APICollectionPage: FunctionComponent = () => {
                       }
                       editGlossaryTermsPermission={editGlossaryTermsPermission}
                       editTagPermission={editTagsPermission}
-                      entityFQN={decodedAPICollectionFQN}
                       entityId={apiCollection?.id ?? ''}
                       entityType={EntityType.API_COLLECTION}
                       selectedTags={tags}
@@ -638,7 +637,6 @@ const APICollectionPage: FunctionComponent = () => {
             refetchFeed
             entityFeedTotalCount={feedCount.totalCount}
             entityType={EntityType.API_COLLECTION}
-            fqn={apiCollection?.fullyQualifiedName ?? ''}
             onFeedUpdate={getEntityFeedCount}
             onUpdateEntityDetails={fetchAPICollectionDetails}
             onUpdateFeedCount={handleFeedCount}

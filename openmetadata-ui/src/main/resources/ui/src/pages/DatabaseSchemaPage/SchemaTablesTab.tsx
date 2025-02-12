@@ -153,7 +153,6 @@ function SchemaTablesTab({
         {isVersionView ? (
           <DescriptionV1
             description={description}
-            entityFqn={databaseSchemaDetails.fullyQualifiedName}
             entityType={EntityType.DATABASE_SCHEMA}
             isDescriptionExpanded={isEmpty(tableData)}
             showActions={false}
@@ -161,7 +160,6 @@ function SchemaTablesTab({
         ) : (
           <DescriptionV1
             description={description}
-            entityFqn={databaseSchemaDetails.fullyQualifiedName}
             entityName={getEntityName(databaseSchemaDetails)}
             entityType={EntityType.DATABASE_SCHEMA}
             hasEditAccess={editDescriptionPermission}

@@ -682,6 +682,18 @@ export const searchInFields = <T extends SearchIndexField | Column>(
   return searchedValue;
 };
 
+export const getUpdatedTags = (newFieldTags: Array<EntityTags>): TagLabel[] => {
+  const mappedNewTags: TagLabel[] = newFieldTags.map((tag) => ({
+    ...omit(tag, 'isRemovable'),
+    labelType: LabelType.Manual,
+    state: State.Confirmed,
+    source: tag.source || 'Classification',
+    tagFQN: tag.tagFQN,
+  }));
+
+  return mappedNewTags;
+};
+
 export const updateFieldTags = <T extends TableFieldsInfoCommonEntities>(
   changedFieldFQN: string,
   newFieldTags: EntityTags[],
@@ -698,18 +710,6 @@ export const updateFieldTags = <T extends TableFieldsInfoCommonEntities>(
       );
     }
   });
-};
-
-export const getUpdatedTags = (newFieldTags: Array<EntityTags>): TagLabel[] => {
-  const mappedNewTags: TagLabel[] = newFieldTags.map((tag) => ({
-    ...omit(tag, 'isRemovable'),
-    labelType: LabelType.Manual,
-    state: State.Confirmed,
-    source: tag.source || 'Classification',
-    tagFQN: tag.tagFQN,
-  }));
-
-  return mappedNewTags;
 };
 
 export const updateFieldDescription = <T extends TableFieldsInfoCommonEntities>(
@@ -786,7 +786,6 @@ export const getTableDetailPageBaseTabs = ({
           columns={tableDetails?.columns}
           entityFeedTotalCount={totalFeedCount}
           entityType={EntityType.TABLE}
-          fqn={tableDetails?.fullyQualifiedName ?? ''}
           owners={tableDetails?.owners}
           onFeedUpdate={getEntityFeedCount}
           onUpdateEntityDetails={fetchTableDetails}

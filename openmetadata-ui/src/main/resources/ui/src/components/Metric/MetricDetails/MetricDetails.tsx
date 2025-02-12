@@ -291,7 +291,6 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
                       <DescriptionV1
                         isDescriptionExpanded
                         description={metricDetails.description}
-                        entityFqn={decodedMetricFqn}
                         entityName={entityName}
                         entityType={EntityType.METRIC}
                         hasEditAccess={editDescriptionPermission}
@@ -327,7 +326,6 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
                           editGlossaryTermsPermission
                         }
                         editTagPermission={editTagsPermission}
-                        entityFQN={decodedMetricFqn}
                         entityId={metricDetails.id}
                         entityType={EntityType.METRIC}
                         selectedTags={metricTags}
@@ -376,7 +374,6 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
             refetchFeed
             entityFeedTotalCount={feedCount.totalCount}
             entityType={EntityType.METRIC}
-            fqn={metricDetails?.fullyQualifiedName ?? ''}
             onFeedUpdate={getEntityFeedCount}
             onUpdateEntityDetails={fetchMetricDetails}
             onUpdateFeedCount={handleFeedCount}

@@ -124,7 +124,6 @@ export const getPipelineDetailPageTabs = ({
                       <Col span={24}>
                         <DescriptionV1
                           description={description}
-                          entityFqn={pipelineFQN}
                           entityName={entityName}
                           entityType={EntityType.PIPELINE}
                           hasEditAccess={editDescriptionPermission}
@@ -180,7 +179,6 @@ export const getPipelineDetailPageTabs = ({
                       }
                       editGlossaryTermsPermission={editGlossaryTermsPermission}
                       editTagPermission={editTagsPermission}
-                      entityFQN={pipelineFQN}
                       entityId={pipelineDetails.id}
                       entityType={EntityType.PIPELINE}
                       selectedTags={tags}
@@ -215,7 +213,6 @@ export const getPipelineDetailPageTabs = ({
           refetchFeed
           entityFeedTotalCount={feedCount.totalCount}
           entityType={EntityType.PIPELINE}
-          fqn={pipelineDetails?.fullyQualifiedName ?? ''}
           onFeedUpdate={getEntityFeedCount}
           onUpdateEntityDetails={fetchPipeline}
           onUpdateFeedCount={handleFeedCount}

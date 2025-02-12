@@ -23,6 +23,7 @@ import { ReactComponent as RequestIcon } from '../../../assets/svg/request-icon.
 import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { EntityType } from '../../../enums/entity.enum';
+import { useFqn } from '../../../hooks/useFqn';
 import { isDescriptionContentEmpty } from '../../../utils/BlockEditorUtils';
 import { getEntityFeedLink } from '../../../utils/EntityUtils';
 import {
@@ -49,7 +50,6 @@ const DescriptionV1 = ({
   entityName,
   onThreadLinkSelect,
   entityType,
-  entityFqn,
   wrapInCard = false,
   showActions = true,
   showCommentsIcon = true,
@@ -61,6 +61,7 @@ const DescriptionV1 = ({
   const { suggestions = [], selectedUserSuggestions = [] } =
     useSuggestionsContext();
   const [isEditDescription, setIsEditDescription] = useState(false);
+  const { fqn: entityFqn } = useFqn();
 
   const handleRequestDescription = useCallback(() => {
     history.push(

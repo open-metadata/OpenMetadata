@@ -146,7 +146,6 @@ const GlossaryOverviewTab = ({
     return (
       <DescriptionV1
         description={glossaryDescription}
-        entityFqn={selectedData.fullyQualifiedName}
         entityName={getEntityName(selectedData)}
         entityType={EntityType.GLOSSARY_TERM}
         hasEditAccess={permissions.EditDescription || permissions.EditAll}

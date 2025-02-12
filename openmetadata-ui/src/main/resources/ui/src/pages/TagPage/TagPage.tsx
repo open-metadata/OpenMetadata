@@ -437,7 +437,6 @@ const TagPage = () => {
                       <DescriptionV1
                         removeBlur
                         description={tagItem?.description}
-                        entityFqn={tagItem?.fullyQualifiedName}
                         entityName={getEntityName(tagItem)}
                         entityType={EntityType.TAG}
                         hasEditAccess={editDescriptionPermission}

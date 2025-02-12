@@ -22,7 +22,6 @@ export interface DescriptionProps {
   description?: string;
   isReadOnly?: boolean;
   entityType: EntityType;
-  entityFqn?: string;
   onThreadLinkSelect?: (value: string) => void;
   onDescriptionUpdate?: (value: string) => Promise<void>;
   onSuggest?: (value: string) => void;

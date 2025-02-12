@@ -18,6 +18,7 @@ import { TablePartition } from '../../../generated/entity/data/table';
 import { ThreadType } from '../../../generated/entity/feed/thread';
 import { EntityReference } from '../../../generated/entity/type';
 import { TagSource } from '../../../generated/type/tagLabel';
+import { useFqn } from '../../../hooks/useFqn';
 import { PartitionedKeys } from '../../../pages/TableDetailsPageV1/PartitionedKeys/PartitionedKeys.component';
 import entityRightPanelClassBase from '../../../utils/EntityRightPanelClassBase';
 import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
@@ -34,7 +35,6 @@ interface EntityRightPanelProps<T extends ExtentionEntitiesKeys> {
   editTagPermission: boolean;
   editGlossaryTermsPermission: boolean;
   entityType: EntityType;
-  entityFQN: string;
   entityId: string;
   selectedTags: EntityTags[];
   beforeSlot?: React.ReactNode;
@@ -54,7 +54,6 @@ interface EntityRightPanelProps<T extends ExtentionEntitiesKeys> {
 const EntityRightPanel = <T extends ExtentionEntitiesKeys>({
   domain,
   dataProducts,
-  entityFQN,
   entityType,
   selectedTags,
   editTagPermission,
@@ -74,6 +73,7 @@ const EntityRightPanel = <T extends ExtentionEntitiesKeys>({
 }: EntityRightPanelProps<T>) => {
   const KnowledgeArticles =
     entityRightPanelClassBase.getKnowLedgeArticlesWidget();
+  const { fqn: entityFQN } = useFqn();
 
   return (
     <>

@@ -35,7 +35,6 @@ import { EntityType } from '../../enums/entity.enum';
 import { DatabaseService } from '../../generated/entity/services/databaseService';
 import { Paging } from '../../generated/type/paging';
 import { UsePagingInterface } from '../../hooks/paging/usePaging';
-import { useFqn } from '../../hooks/useFqn';
 import { ServicesType } from '../../interface/service.interface';
 import {
   callServicePatchAPI,
@@ -84,7 +83,6 @@ function ServiceMainTabContent({
   const { serviceCategory } = useParams<{
     serviceCategory: ServiceTypes;
   }>();
-  const { fqn: serviceFQN } = useFqn();
   const { permissions } = usePermissionProvider();
   const [pageData, setPageData] = useState<ServicePageData[]>([]);
 
@@ -232,7 +230,6 @@ function ServiceMainTabContent({
                   <Col data-testid="description-container" span={24}>
                     <DescriptionV1
                       description={serviceDetails.description}
-                      entityFqn={serviceFQN}
                       entityName={serviceName}
                       entityType={entityType}
                       hasEditAccess={editDescriptionPermission}
@@ -304,7 +301,6 @@ function ServiceMainTabContent({
                   domain={(serviceDetails as DatabaseService)?.domain}
                   editGlossaryTermsPermission={editGlossaryTermsPermission}
                   editTagPermission={editTagsPermission}
-                  entityFQN={serviceFQN}
                   entityId={serviceDetails.id}
                   entityType={entityType}
                   selectedTags={tags}

@@ -365,7 +365,6 @@ const RolesDetailPage = () => {
                 hasEditAccess
                 className="m-y-md"
                 description={role.description || ''}
-                entityFqn={role.fullyQualifiedName}
                 entityName={roleName}
                 entityType={EntityType.ROLE}
                 showCommentsIcon={false}

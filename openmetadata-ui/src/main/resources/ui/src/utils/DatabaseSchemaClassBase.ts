@@ -53,8 +53,7 @@ export interface DatabaseSchemaPageTabProps {
   editCustomAttributePermission: boolean;
   editTagsPermission: boolean;
   editGlossaryTermsPermission: boolean;
-  decodedDatabaseSchemaFQN: string;
-  tags: any[];
+  tags: EntityTags[];
   viewAllPermission: boolean;
   storedProcedureCount: number;
   databaseSchemaPermission: OperationPermission;

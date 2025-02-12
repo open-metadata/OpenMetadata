@@ -316,7 +316,6 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
                     <div className="d-flex flex-col gap-4 p-t-sm m-x-lg">
                       <DescriptionV1
                         description={topicDetails.description}
-                        entityFqn={decodedTopicFQN}
                         entityName={entityName}
                         entityType={EntityType.TOPIC}
                         hasEditAccess={editDescriptionPermission}
@@ -350,7 +349,6 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
                           editGlossaryTermsPermission
                         }
                         editTagPermission={editTagsPermission}
-                        entityFQN={decodedTopicFQN}
                         entityId={topicDetails.id}
                         entityType={EntityType.TOPIC}
                         selectedTags={topicTags}
@@ -385,7 +383,6 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
             refetchFeed
             entityFeedTotalCount={feedCount.totalCount}
             entityType={EntityType.TOPIC}
-            fqn={topicDetails?.fullyQualifiedName ?? ''}
             onFeedUpdate={getEntityFeedCount}
             onUpdateEntityDetails={fetchTopic}
             onUpdateFeedCount={handleFeedCount}

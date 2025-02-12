@@ -440,7 +440,6 @@ const PoliciesDetailPage = () => {
                 hasEditAccess
                 className="m-y-md"
                 description={policy.description || ''}
-                entityFqn={policy.fullyQualifiedName}
                 entityName={policyName}
                 entityType={EntityType.POLICY}
                 showCommentsIcon={false}

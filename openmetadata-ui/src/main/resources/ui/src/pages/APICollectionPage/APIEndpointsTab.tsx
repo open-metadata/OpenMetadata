@@ -118,7 +118,6 @@ function APIEndpointsTab({
         {isVersionView ? (
           <DescriptionV1
             description={description}
-            entityFqn={apiCollectionDetails.fullyQualifiedName}
             entityType={EntityType.API_COLLECTION}
             isDescriptionExpanded={isEmpty(apiEndpoints)}
             showActions={false}
@@ -126,7 +125,6 @@ function APIEndpointsTab({
         ) : (
           <DescriptionV1
             description={description}
-            entityFqn={apiCollectionDetails.fullyQualifiedName}
             entityName={getEntityName(apiCollectionDetails)}
             entityType={EntityType.API_COLLECTION}
             hasEditAccess={editDescriptionPermission}

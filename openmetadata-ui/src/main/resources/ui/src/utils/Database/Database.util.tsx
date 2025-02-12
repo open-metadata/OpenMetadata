@@ -202,7 +202,6 @@ export const getDatabasePageBaseTabs = ({
   activeTab,
   database,
   description,
-  decodedDatabaseFQN,
   editDescriptionPermission,
   editGlossaryTermsPermission,
   editTagsPermission,
@@ -243,7 +242,6 @@ export const getDatabasePageBaseTabs = ({
                       <Col data-testid="description-container" span={24}>
                         <DescriptionV1
                           description={description}
-                          entityFqn={decodedDatabaseFQN}
                           entityName={getEntityName(database)}
                           entityType={EntityType.DATABASE}
                           hasEditAccess={editDescriptionPermission}
@@ -273,7 +271,6 @@ export const getDatabasePageBaseTabs = ({
                       }
                       editGlossaryTermsPermission={editGlossaryTermsPermission}
                       editTagPermission={editTagsPermission}
-                      entityFQN={decodedDatabaseFQN}
                       entityId={database?.id ?? ''}
                       entityType={EntityType.DATABASE}
                       selectedTags={tags}
@@ -308,7 +305,6 @@ export const getDatabasePageBaseTabs = ({
           refetchFeed
           entityFeedTotalCount={feedCount.totalCount}
           entityType={EntityType.DATABASE}
-          fqn={database?.fullyQualifiedName ?? ''}
           onFeedUpdate={getEntityFeedCount}
           onUpdateEntityDetails={getDetailsByFQN}
           onUpdateFeedCount={handleFeedCount}

@@ -104,7 +104,6 @@ export const getStoredProcedureDetailsPageTabs = ({
   activeTab,
   feedCount,
   description,
-  decodedStoredProcedureFQN,
   entityName,
   code,
   deleted,
@@ -145,7 +144,6 @@ export const getStoredProcedureDetailsPageTabs = ({
                   <div className="d-flex flex-col gap-4 p-t-sm m-l-lg p-r-lg">
                     <DescriptionV1
                       description={description}
-                      entityFqn={decodedStoredProcedureFQN}
                       entityName={entityName}
                       entityType={EntityType.STORED_PROCEDURE}
                       hasEditAccess={editDescriptionPermission}
@@ -183,7 +181,6 @@ export const getStoredProcedureDetailsPageTabs = ({
                       }
                       editGlossaryTermsPermission={editGlossaryTermsPermission}
                       editTagPermission={editTagsPermission}
-                      entityFQN={decodedStoredProcedureFQN}
                       entityId={storedProcedure?.id ?? ''}
                       entityType={EntityType.STORED_PROCEDURE}
                       selectedTags={tags}
@@ -218,7 +215,6 @@ export const getStoredProcedureDetailsPageTabs = ({
           refetchFeed
           entityFeedTotalCount={feedCount.totalCount}
           entityType={EntityType.STORED_PROCEDURE}
-          fqn={decodedStoredProcedureFQN}
           owners={storedProcedure?.owners}
           onFeedUpdate={getEntityFeedCount}
           onUpdateEntityDetails={fetchStoredProcedureDetails}

@@ -165,7 +165,6 @@ export const getContainerDetailPageTabs = ({
                   <div className="d-flex flex-col gap-4 p-t-sm m-x-lg">
                     <DescriptionV1
                       description={description}
-                      entityFqn={decodedContainerName}
                       entityName={entityName}
                       entityType={EntityType.CONTAINER}
                       hasEditAccess={editDescriptionPermission}
@@ -211,7 +210,6 @@ export const getContainerDetailPageTabs = ({
                       editTagPermission={
                         editTagsPermission && !containerData?.deleted
                       }
-                      entityFQN={decodedContainerName}
                       entityId={containerData?.id ?? ''}
                       entityType={EntityType.CONTAINER}
                       selectedTags={tags}
@@ -267,7 +265,6 @@ export const getContainerDetailPageTabs = ({
           refetchFeed
           entityFeedTotalCount={feedCount.totalCount}
           entityType={EntityType.CONTAINER}
-          fqn={decodedContainerName}
           onFeedUpdate={getEntityFeedCount}
           onUpdateEntityDetails={() =>
             fetchContainerDetail(decodedContainerName)

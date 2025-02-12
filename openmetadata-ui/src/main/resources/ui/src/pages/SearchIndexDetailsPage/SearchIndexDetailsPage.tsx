@@ -383,7 +383,6 @@ function SearchIndexDetailsPage() {
                     <div className="d-flex flex-col gap-4 p-t-sm m-l-lg p-r-lg">
                       <DescriptionV1
                         description={searchIndexDetails?.description}
-                        entityFqn={decodedSearchIndexFQN}
                         entityName={entityName}
                         entityType={EntityType.SEARCH_INDEX}
                         hasEditAccess={editDescriptionPermission}
@@ -423,7 +422,6 @@ function SearchIndexDetailsPage() {
                           editGlossaryTermsPermission
                         }
                         editTagPermission={editTagsPermission}
-                        entityFQN={decodedSearchIndexFQN}
                         entityId={searchIndexDetails?.id ?? ''}
                         entityType={EntityType.SEARCH_INDEX}
                         selectedTags={searchIndexTags}
@@ -459,7 +457,6 @@ function SearchIndexDetailsPage() {
               refetchFeed
               entityFeedTotalCount={feedCount.totalCount}
               entityType={EntityType.SEARCH_INDEX}
-              fqn={searchIndexDetails?.fullyQualifiedName ?? ''}
               owners={searchIndexDetails?.owners}
               onFeedUpdate={getEntityFeedCount}
               onUpdateEntityDetails={fetchSearchIndexDetails}

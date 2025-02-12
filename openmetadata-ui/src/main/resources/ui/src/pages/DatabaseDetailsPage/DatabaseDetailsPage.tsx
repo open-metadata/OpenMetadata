@@ -509,7 +509,6 @@ const DatabaseDetails: FunctionComponent = () => {
       activeTab,
       database,
       description,
-      decodedDatabaseFQN,
       editDescriptionPermission,
       editGlossaryTermsPermission,
       editTagsPermission,

@@ -166,7 +166,6 @@ export const getDashboardDetailPageTabs = ({
                   <div className="d-flex flex-col gap-4 p-t-sm m-x-lg">
                     <DescriptionV1
                       description={dashboardDetails.description}
-                      entityFqn={dashboardDetails.fullyQualifiedName}
                       entityName={entityName}
                       entityType={EntityType.DASHBOARD}
                       hasEditAccess={editDescriptionPermission}
@@ -196,7 +195,6 @@ export const getDashboardDetailPageTabs = ({
                       }
                       editGlossaryTermsPermission={editGlossaryTermsPermission}
                       editTagPermission={editTagsPermission}
-                      entityFQN={dashboardDetails.fullyQualifiedName ?? ''}
                       entityId={dashboardDetails.id}
                       entityType={EntityType.DASHBOARD}
                       selectedTags={dashboardTags}
@@ -231,7 +229,6 @@ export const getDashboardDetailPageTabs = ({
           refetchFeed
           entityFeedTotalCount={feedCount.totalCount}
           entityType={EntityType.DASHBOARD}
-          fqn={dashboardDetails?.fullyQualifiedName ?? ''}
           onFeedUpdate={getEntityFeedCount}
           onUpdateEntityDetails={fetchDashboard}
           onUpdateFeedCount={handleFeedCount}
