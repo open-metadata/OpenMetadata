@@ -191,6 +191,7 @@ const TaskFeedCard = ({
   const isTaskTestCaseResult =
     taskDetails?.type === TaskType.RequestTestCaseFailureResolution;
   const isTaskGlossaryApproval = taskDetails?.type === TaskType.RequestApproval;
+
   const isAssignee = taskDetails?.assignees?.some((assignee) =>
     isEqual(assignee.id, currentUser?.id)
   );
@@ -220,7 +221,7 @@ const TaskFeedCard = ({
       );
   };
   const onTaskResolve = () => {
-    if (isEmpty(taskDetails?.suggestion)) {
+    if (!isTaskGlossaryApproval && isEmpty(taskDetails?.suggestion)) {
       showErrorToast(
         t('message.field-text-is-required', {
           fieldText: isTaskTags
@@ -238,7 +239,9 @@ const TaskFeedCard = ({
 
       updateTaskData(tagsData as TaskDetails);
     } else {
-      const newValue = taskDetails?.suggestion;
+      const newValue = isTaskGlossaryApproval
+        ? 'approved'
+        : taskDetails?.suggestion;
       const data = { newValue: newValue };
       updateTaskData(data as TaskDetails);
     }
@@ -252,6 +255,12 @@ const TaskFeedCard = ({
 
     // const updatedComment = isTaskGlossaryApproval ? 'Rejected' : comment;
     const updatedComment = isTaskGlossaryApproval ? 'Rejected' : 'Rejected';
+    if (isTaskGlossaryApproval) {
+      const data = { newValue: 'rejected' };
+      updateTaskData(data as TaskDetails);
+
+      return;
+    }
     updateTask(TaskOperation.REJECT, taskDetails?.id + '', {
       comment: updatedComment,
     } as unknown as TaskDetails)
@@ -279,7 +288,7 @@ const TaskFeedCard = ({
           <Col className="d-flex flex-col align-start">
             <Col>
               <Icon
-                className="m-r-xs m-t-xss"
+                className="m-r-xss m-t-xss"
                 component={
                   taskDetails?.status === ThreadTaskStatus.Open
                     ? TaskOpenIcon
@@ -374,26 +383,28 @@ const TaskFeedCard = ({
               </Col>
             </Col>
 
-            <Col className="d-flex gap-2">
-              {feed.task?.status === ThreadTaskStatus.Open && (
-                <Button
-                  className="approve-btn d-flex items-center"
-                  icon={<CheckCircleFilled />}
-                  type="primary"
-                  onClick={onTaskResolve}>
-                  {t('label.approve')}
-                </Button>
-              )}
-              {feed.task?.status === ThreadTaskStatus.Open && (
-                <Button
-                  className="reject-btn  d-flex items-center"
-                  icon={<CloseCircleFilled />}
-                  type="default"
-                  onClick={onTaskReject}>
-                  {t('label.reject')}
-                </Button>
-              )}
-            </Col>
+            {!isTaskTestCaseResult && (
+              <Col className="d-flex gap-2">
+                {feed.task?.status === ThreadTaskStatus.Open && (
+                  <Button
+                    className="approve-btn d-flex items-center"
+                    icon={<CheckCircleFilled />}
+                    type="primary"
+                    onClick={onTaskResolve}>
+                    {t('label.approve')}
+                  </Button>
+                )}
+                {feed.task?.status === ThreadTaskStatus.Open && (
+                  <Button
+                    className="reject-btn  d-flex items-center"
+                    icon={<CloseCircleFilled />}
+                    type="default"
+                    onClick={onTaskReject}>
+                    {t('label.reject')}
+                  </Button>
+                )}
+              </Col>
+            )}
           </Col>
         </Row>
       </div>

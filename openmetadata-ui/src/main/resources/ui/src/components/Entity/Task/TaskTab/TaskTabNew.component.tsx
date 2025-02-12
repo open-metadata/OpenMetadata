@@ -305,7 +305,7 @@ export const TaskTabNew = ({
           <Button
             className="p-0 task-feed-message font-medium text-md"
             data-testid="task-title"
-            style={{ marginTop: '-8px' }}
+            style={{ marginTop: '-8px', width: '90%' }}
             type="link"
             onClick={handleTaskLinkClick}>
             <Typography.Text
@@ -394,6 +394,7 @@ export const TaskTabNew = ({
 
       return;
     }
+
     if (isTaskTags) {
       const tagsData = {
         newValue: taskDetails?.suggestion || '[]',
