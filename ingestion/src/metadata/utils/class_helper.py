@@ -56,6 +56,10 @@ from metadata.generated.schema.metadataIngestion.mlmodelServiceMetadataPipeline 
 from metadata.generated.schema.metadataIngestion.pipelineServiceMetadataPipeline import (
     PipelineServiceMetadataPipeline,
 )
+from metadata.generated.schema.metadataIngestion.reverseIngestionPipeline import (
+    ReverseIngestionPipeline,
+    ReverseIngestionType,
+)
 from metadata.generated.schema.metadataIngestion.searchServiceMetadataPipeline import (
     SearchServiceMetadataPipeline,
 )
@@ -82,6 +86,7 @@ SERVICE_TYPE_REF = {
     ServiceType.Storage.value: "storageService",
     # We use test suites as "services" for DQ Ingestion Pipelines
     TestSuiteServiceType.TestSuite.value: "testSuite",
+    ReverseIngestionType.ReverseIngestion.value: "reverseIngestion",
 }
 
 SOURCE_CONFIG_TYPE_INGESTION = {
@@ -97,6 +102,7 @@ SOURCE_CONFIG_TYPE_INGESTION = {
     StorageServiceMetadataPipeline.__name__: PipelineType.metadata,
     SearchServiceMetadataPipeline.__name__: PipelineType.metadata,
     TestSuitePipeline.__name__: PipelineType.TestSuite,
+    ReverseIngestionPipeline.__name__: PipelineType.reverseIngestion,
     MetadataToElasticSearchPipeline.__name__: PipelineType.elasticSearchReindex,
     DataInsightPipeline.__name__: PipelineType.dataInsight,
     DbtPipeline.__name__: PipelineType.dbt,
@@ -107,6 +113,7 @@ def _clean(source_type: str):
     source_type = source_type.replace("-", "_")
     source_type = source_type.replace("_usage", "")
     source_type = source_type.replace("_lineage", "")
+    source_type = source_type.replace("_reverse_ingestion", "")
     source_type = source_type.replace("_", "")
     if source_type == "metadataelasticsearch":
         source_type = "metadataes"
@@ -130,6 +137,9 @@ def _get_service_type_from(  # pylint: disable=inconsistent-return-statements
 ) -> ServiceType:
     if service_subtype.lower() == "testsuite":
         return TestSuiteServiceType.TestSuite
+    if service_subtype.lower() == "reverseingestion":
+        return ReverseIngestionType.ReverseIngestion
+
     for service_type in ServiceType:
         if service_subtype.lower() in [
             subtype.value.lower()
