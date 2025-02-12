@@ -189,7 +189,7 @@ const GlossaryOverviewTab = ({
       <DomainLabelV2
         showDomainHeading
         // Only allow domain selection at glossary level. Glossary Term will inherit
-        hasPermission={isGlossary ? permissions.EditAll : false}
+        hasPermission={permissions.EditAll}
       />
     );
   }, [

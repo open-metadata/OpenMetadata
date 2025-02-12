@@ -129,7 +129,7 @@ export interface EdgeDefinition {
     /**
      * Defines if the edge will follow a path depending on the source node result.
      */
-    condition?: boolean;
+    condition?: string;
     /**
      * Element from which the edge will start.
      */
@@ -202,7 +202,6 @@ export interface TriggerObject {
 }
 
 export enum Type {
-    CustomSignal = "customSignal",
     EventBasedEntity = "eventBasedEntity",
     PeriodicBatchEntity = "periodicBatchEntity",
 }

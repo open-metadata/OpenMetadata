@@ -14,7 +14,8 @@
  * Defines a Task for a given User to approve.
  */
 export interface UserApprovalTask {
-    config?: Config;
+    branches?: string[];
+    config?:   Config;
     /**
      * Description of the Node.
      */
@@ -22,8 +23,9 @@ export interface UserApprovalTask {
     /**
      * Display Name that identifies this Node.
      */
-    displayName?: string;
-    input?:       string[];
+    displayName?:       string;
+    input?:             string[];
+    inputNamespaceMap?: InputNamespaceMap;
     /**
      * Name that identifies this Node.
      */
@@ -50,4 +52,8 @@ export interface Assignees {
      */
     addReviewers?: boolean;
     [property: string]: any;
+}
+
+export interface InputNamespaceMap {
+    relatedEntity: string;
 }

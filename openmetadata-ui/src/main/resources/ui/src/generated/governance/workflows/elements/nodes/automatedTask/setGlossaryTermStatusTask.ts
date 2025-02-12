@@ -22,8 +22,9 @@ export interface SetGlossaryTermStatusTask {
     /**
      * Display Name that identifies this Node.
      */
-    displayName?: string;
-    input?:       string[];
+    displayName?:       string;
+    input?:             string[];
+    inputNamespaceMap?: InputNamespaceMap;
     /**
      * Name that identifies this Node.
      */
@@ -43,4 +44,9 @@ export enum Status {
     Draft = "Draft",
     InReview = "In Review",
     Rejected = "Rejected",
+}
+
+export interface InputNamespaceMap {
+    relatedEntity: string;
+    updatedBy?:    string;
 }
