@@ -56,6 +56,32 @@ WHERE
 """
 )
 
+MSSQL_GET_DATABASE_COMMENTS = textwrap.dedent(
+    """
+    SELECT 
+    DB_NAME() AS DATABASE_NAME,
+    ep.value AS COMMENT 
+FROM sys.extended_properties ep
+WHERE ep.class = 0  
+AND ep.name = 'MS_Description'
+"""
+)
+
+MSSQL_GET_SCHEMA_COMMENTS = textwrap.dedent(
+    """
+     SELECT 
+    DB_NAME() AS DATABASE_NAME, 
+    s.name AS SCHEMA_NAME, 
+    ep.value AS COMMENT
+FROM sys.schemas s
+LEFT JOIN sys.extended_properties ep 
+    ON ep.major_id = s.schema_id -- ID of the main object (table, schema, etc.).
+    AND ep.minor_id = 0 
+    AND ep.class = 3  -- Class 3 represents Schema properties
+    AND ep.name = 'MS_Description'
+"""
+)
+
 MSSQL_ALL_VIEW_DEFINITIONS = textwrap.dedent(
     """
 SELECT

@@ -41,6 +41,8 @@ from metadata.ingestion.source.database.mssql.models import (
 )
 from metadata.ingestion.source.database.mssql.queries import (
     MSSQL_GET_DATABASE,
+    MSSQL_GET_DATABASE_COMMENTS,
+    MSSQL_GET_SCHEMA_COMMENTS,
     MSSQL_GET_STORED_PROCEDURES,
 )
 from metadata.ingestion.source.database.mssql.utils import (
@@ -94,6 +96,15 @@ class MssqlSource(CommonDbSourceService, MultiDBSource):
     Database metadata from MSSQL Source
     """
 
+    def __init__(
+        self,
+        config,
+        metadata,
+    ):
+        super().__init__(config, metadata)
+        self.schema_desc_map = {}
+        self.database_desc_map = {}
+
     @classmethod
     def create(
         cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
@@ -112,12 +123,38 @@ class MssqlSource(CommonDbSourceService, MultiDBSource):
             return self.service_connection.database
         return None
 
+    def set_schema_description_map(self) -> None:
+        self.schema_desc_map.clear()
+        results = self.engine.execute(MSSQL_GET_SCHEMA_COMMENTS).all()
+        self.schema_desc_map = {
+            (row.DATABASE_NAME, row.SCHEMA_NAME): row.COMMENT for row in results
+        }
+
+    def set_database_description_map(self) -> None:
+        self.database_desc_map.clear()
+        results = self.engine.execute(MSSQL_GET_DATABASE_COMMENTS).all()
+        self.database_desc_map = {row.DATABASE_NAME: row.COMMENT for row in results}
+
+    def get_schema_description(self, schema_name: str) -> Optional[str]:
+        """
+        Method to fetch the schema description
+        """
+        return self.schema_desc_map.get((self.context.get().database, schema_name))
+
+    def get_database_description(self, database_name: str) -> Optional[str]:
+        """
+        Method to fetch the database description
+        """
+        return self.database_desc_map.get(database_name)
+
     def get_database_names_raw(self) -> Iterable[str]:
         yield from self._execute_database_query(MSSQL_GET_DATABASE)
 
     def get_database_names(self) -> Iterable[str]:
         if not self.config.serviceConnection.root.config.ingestAllDatabases:
             configured_db = self.config.serviceConnection.root.config.database
+            self.set_schema_description_map()
+            self.set_database_description_map()
             self.set_inspector(database_name=configured_db)
             yield configured_db
         else:
@@ -139,6 +176,8 @@ class MssqlSource(CommonDbSourceService, MultiDBSource):
                     continue
 
                 try:
+                    self.set_schema_description_map()
+                    self.set_database_description_map()
                     self.set_inspector(database_name=new_database)
                     yield new_database
                 except Exception as exc:
