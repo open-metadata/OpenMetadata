@@ -29,7 +29,10 @@ import { EntityType } from '../../../enums/entity.enum';
 import { Domain } from '../../../generated/entity/domains/domain';
 import { EntityReference } from '../../../generated/tests/testCase';
 import { listDomainHierarchy, searchDomains } from '../../../rest/domainAPI';
-import { convertDomainsToTreeOptions } from '../../../utils/DomainUtils';
+import {
+  convertDomainsToTreeOptions,
+  isDomainExist,
+} from '../../../utils/DomainUtils';
 import { getEntityReferenceFromEntity } from '../../../utils/EntityUtils';
 import { findItemByFqn } from '../../../utils/GlossaryUtils';
 import {
@@ -50,6 +53,7 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
   visible,
   onCancel,
   isMultiple = false,
+  initialDomains,
 }) => {
   const { t } = useTranslation();
   const [treeData, setTreeData] = useState<TreeListItem[]>([]);
@@ -59,14 +63,30 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
   const [selectedDomains, setSelectedDomains] = useState<Domain[]>([]);
   const [searchTerm, setSearchTerm] = useState<string>('');
 
-  const handleSave = async () => {
-    setIsSubmitLoading(true);
-    if (isMultiple) {
+  const handleMultiDomainSave = async () => {
+    const selectedFqns = selectedDomains
+      .map((domain) => domain.fullyQualifiedName)
+      .sort((a, b) => (a ?? '').localeCompare(b ?? ''));
+    const initialFqns = (value as string[]).sort((a, b) => a.localeCompare(b));
+
+    if (JSON.stringify(selectedFqns) !== JSON.stringify(initialFqns)) {
+      setIsSubmitLoading(true);
       const domains1 = selectedDomains.map((item) =>
         getEntityReferenceFromEntity<Domain>(item, EntityType.DOMAIN)
       );
       await onSubmit(domains1);
+      setIsSubmitLoading(false);
     } else {
+      onCancel();
+    }
+  };
+
+  const handleSingleDomainSave = async () => {
+    const selectedFqn = selectedDomains[0]?.fullyQualifiedName;
+    const initialFqn = value?.[0];
+
+    if (selectedFqn !== initialFqn) {
+      setIsSubmitLoading(true);
       let retn: EntityReference[] = [];
       if (selectedDomains.length > 0) {
         const domain = getEntityReferenceFromEntity<Domain>(
@@ -76,23 +96,35 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
         retn = [domain];
       }
       await onSubmit(retn);
+      setIsSubmitLoading(false);
+    } else {
+      onCancel();
     }
-
-    setIsSubmitLoading(false);
   };
 
   const fetchAPI = useCallback(async () => {
     try {
       setIsLoading(true);
       const data = await listDomainHierarchy({ limit: 100 });
-      setTreeData(convertDomainsToTreeOptions(data.data, 0, isMultiple));
-      setDomains(data.data);
+
+      const combinedData = [...data.data];
+      initialDomains?.forEach((selectedDomain) => {
+        const exists = combinedData.some((domain: Domain) =>
+          isDomainExist(domain, selectedDomain.fullyQualifiedName ?? '')
+        );
+        if (!exists) {
+          combinedData.push(selectedDomain as unknown as Domain);
+        }
+      });
+
+      setTreeData(convertDomainsToTreeOptions(combinedData, 0, isMultiple));
+      setDomains(combinedData);
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [initialDomains]);
 
   const onSelect = (selectedKeys: React.Key[]) => {
     if (!isMultiple) {
@@ -120,13 +152,11 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
 
       setSelectedDomains(selectedData);
     } else {
-      setSelectedDomains([
-        findItemByFqn(
-          domains,
-          checked.checked as unknown as string,
-          false
-        ) as Domain,
-      ]);
+      const selected = checked.checked.map(
+        (item) => findItemByFqn(domains, item as string, false) as Domain
+      );
+
+      setSelectedDomains(selected);
     }
   };
 
@@ -217,7 +247,7 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
           loading={isSubmitLoading}
           size="small"
           type="default"
-          onClick={() => handleSave()}>
+          onClick={isMultiple ? handleMultiDomainSave : handleSingleDomainSave}>
           {t('label.update')}
         </Button>
         <Button

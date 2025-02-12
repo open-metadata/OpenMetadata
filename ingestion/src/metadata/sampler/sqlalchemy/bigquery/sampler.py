@@ -54,7 +54,6 @@ class BigQuerySampler(SQASampler):
         sample_query: Optional[str] = None,
         storage_config: DataStorageConfig = None,
         sample_data_count: Optional[int] = SAMPLE_DATA_DEFAULT_COUNT,
-        table_type: TableType = None,
         **kwargs,
     ):
         super().__init__(
@@ -68,7 +67,7 @@ class BigQuerySampler(SQASampler):
             sample_data_count=sample_data_count,
             **kwargs,
         )
-        self.raw_dataset_type: TableType = table_type
+        self.raw_dataset_type: Optional[TableType] = entity.tableType
 
     def set_tablesample(self, selectable: SqaTable):
         """Set the TABLESAMPLE clause for BigQuery

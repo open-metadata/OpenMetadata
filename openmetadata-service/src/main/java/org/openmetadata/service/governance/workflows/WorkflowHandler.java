@@ -1,16 +1,18 @@
 package org.openmetadata.service.governance.workflows;
 
+import static org.openmetadata.service.governance.workflows.WorkflowVariableHandler.getNamespacedVariableName;
 import static org.openmetadata.service.governance.workflows.elements.TriggerFactory.getTriggerWorkflowId;
 
 import java.time.Duration;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.flowable.bpmn.converter.BpmnXMLConverter;
-import org.flowable.common.engine.api.FlowableException;
 import org.flowable.common.engine.api.FlowableObjectNotFoundException;
 import org.flowable.engine.HistoryService;
 import org.flowable.engine.ProcessEngine;
@@ -41,7 +43,7 @@ public class WorkflowHandler {
   private TaskService taskService;
   private HistoryService historyService;
   private static WorkflowHandler instance;
-  private static volatile boolean initialized = false;
+  @Getter private static volatile boolean initialized = false;
 
   private WorkflowHandler(OpenMetadataApplicationConfig config) {
     ProcessEngineConfiguration processEngineConfiguration =
@@ -198,19 +200,57 @@ public class WorkflowHandler {
     taskService.setVariable(taskId, "customTaskId", customTaskId.toString());
   }
 
+  public String getParentActivityId(String executionId) {
+    String activityId = null;
+
+    Execution execution =
+        runtimeService.createExecutionQuery().executionId(executionId).singleResult();
+
+    if (execution != null && execution.getParentId() != null) {
+      Execution parentExecution =
+          runtimeService.createExecutionQuery().executionId(execution.getParentId()).singleResult();
+
+      if (parentExecution != null) {
+        activityId = parentExecution.getActivityId();
+      }
+    }
+
+    return activityId;
+  }
+
+  private Task getTaskFromCustomTaskId(UUID customTaskId) {
+    return taskService
+        .createTaskQuery()
+        .processVariableValueEquals("customTaskId", customTaskId.toString())
+        .singleResult();
+  }
+
+  public Map<String, Object> transformToNodeVariables(
+      UUID customTaskId, Map<String, Object> variables) {
+    Map<String, Object> namespacedVariables = null;
+    Optional<Task> oTask = Optional.ofNullable(getTaskFromCustomTaskId(customTaskId));
+
+    if (oTask.isPresent()) {
+      Task task = oTask.get();
+      String namespace = getParentActivityId(task.getExecutionId());
+      namespacedVariables = new HashMap<>();
+      for (Map.Entry<String, Object> entry : variables.entrySet()) {
+        namespacedVariables.put(
+            getNamespacedVariableName(namespace, entry.getKey()), entry.getValue());
+      }
+    } else {
+      LOG.debug(String.format("Flowable Task for Task ID %s not found.", customTaskId));
+    }
+    return namespacedVariables;
+  }
+
   public void resolveTask(UUID taskId) {
     resolveTask(taskId, null);
   }
 
   public void resolveTask(UUID customTaskId, Map<String, Object> variables) {
     try {
-      Optional<Task> oTask =
-          Optional.ofNullable(
-              taskService
-                  .createTaskQuery()
-                  .processVariableValueEquals("customTaskId", customTaskId.toString())
-                  .singleResult());
-
+      Optional<Task> oTask = Optional.ofNullable(getTaskFromCustomTaskId(customTaskId));
       if (oTask.isPresent()) {
         Task task = oTask.get();
         Optional.ofNullable(variables)
@@ -222,11 +262,6 @@ public class WorkflowHandler {
       }
     } catch (FlowableObjectNotFoundException ex) {
       LOG.debug(String.format("Flowable Task for Task ID %s not found.", customTaskId));
-    } catch (
-        FlowableException
-            ex) { // TODO: Remove this once we change the Task flow. Currently closeTask() is called
-      // twice.
-      LOG.debug(String.format("Flowable Exception: %s.", ex));
     }
   }
 
@@ -248,11 +283,6 @@ public class WorkflowHandler {
       }
     } catch (FlowableObjectNotFoundException ex) {
       LOG.debug(String.format("Flowable Task for Task ID %s not found.", customTaskId));
-    } catch (
-        FlowableException
-            ex) { // TODO: Remove this once we change the Task flow. Currently closeTask() is called
-      // twice.
-      LOG.debug(String.format("Flowable Exception: %s.", ex));
     }
   }
 

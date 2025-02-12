@@ -89,7 +89,7 @@ test.describe.serial('My Data page', () => {
     // Verify entities
     await verifyEntities(
       page,
-      '/api/v1/search/query?q=*&index=all&from=0&size=25',
+      '/api/v1/search/query?q=*&index=all&from=0&size=25*',
       TableEntities
     );
   });
@@ -105,7 +105,7 @@ test.describe.serial('My Data page', () => {
     // Verify entities
     await verifyEntities(
       page,
-      '/api/v1/search/query?q=*followers:*&index=all&from=0&size=25',
+      '/api/v1/search/query?q=*followers:*&index=all&from=0&size=25*',
       TableEntities
     );
   });
