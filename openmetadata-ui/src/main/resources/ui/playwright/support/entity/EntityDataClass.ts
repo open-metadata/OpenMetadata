@@ -42,7 +42,7 @@ export class EntityDataClass {
   static readonly tierTag1 = new TagClass({ classification: 'Tier' });
   static readonly tierTag2 = new TagClass({ classification: 'Tier' });
   static readonly table1 = new TableClass();
-  static readonly table2 = new TableClass();
+  static readonly table2 = new TableClass(undefined, 'MaterializedView');
   static readonly topic1 = new TopicClass();
   static readonly topic2 = new TopicClass();
   static readonly dashboard1 = new DashboardClass();

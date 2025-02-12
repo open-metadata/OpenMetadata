@@ -164,7 +164,10 @@ test.describe('Advanced Search', { tag: '@advanced-search' }, () => {
         EntityDataClass.table1.schema.name,
         EntityDataClass.table2.schema.name,
       ],
-      'columns.name.keyword': ['email', 'shop_id'],
+      'columns.name.keyword': [
+        EntityDataClass.table1.entity.columns[0].name,
+        EntityDataClass.table2.entity.columns[1].name,
+      ],
       'displayName.keyword': [
         EntityDataClass.table1.entity.displayName,
         EntityDataClass.table2.entity.displayName,
@@ -200,12 +203,14 @@ test.describe('Advanced Search', { tag: '@advanced-search' }, () => {
       'responseSchema.schemaFields.name.keyword': [
         EntityDataClass.apiCollection1.apiEndpoint.responseSchema
           .schemaFields[0].name,
-        'errors',
+        EntityDataClass.apiCollection1.apiEndpoint.responseSchema
+          .schemaFields[1].name,
       ],
       'requestSchema.schemaFields.name.keyword': [
         EntityDataClass.apiCollection1.apiEndpoint.requestSchema.schemaFields[0]
           .name,
-        'photoUrls',
+        EntityDataClass.apiCollection1.apiEndpoint.requestSchema.schemaFields[1]
+          .name,
       ],
       'name.keyword': [
         EntityDataClass.table1.entity.name,
@@ -216,8 +221,8 @@ test.describe('Advanced Search', { tag: '@advanced-search' }, () => {
         EntityDataClass.dashboardDataModel2.entity.project,
       ],
       status: ['Approved', 'In Review'],
-      tableType: ['View', 'Regular'],
-      entityType: ['dashboard', 'pipeline'],
+      tableType: [table.entity.tableType, 'MaterializedView'],
+      entityType: ['mlmodel', 'dashboardDataModel'],
       'charts.displayName.keyword': [
         EntityDataClass.dashboard1.charts.displayName,
         EntityDataClass.dashboard2.charts.displayName,
