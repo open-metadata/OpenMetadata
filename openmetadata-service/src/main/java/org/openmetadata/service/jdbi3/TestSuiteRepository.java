@@ -127,7 +127,7 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
 
   @Override
   public void setInheritedFields(TestSuite testSuite, EntityUtil.Fields fields) {
-    if (Boolean.TRUE.equals(testSuite.getBasic())) {
+    if (Boolean.TRUE.equals(testSuite.getBasic()) && testSuite.getBasicEntityReference() != null) {
       Table table =
           Entity.getEntity(
               TABLE, testSuite.getBasicEntityReference().getId(), "owners,domain", ALL);

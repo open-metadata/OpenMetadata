@@ -77,6 +77,8 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
       "Cannot delete logical test suite. To delete logical test suite, use DELETE /v1/dataQuality/testSuites/<...>";
   public static final String NON_BASIC_TEST_SUITE_DELETION_ERROR =
       "Cannot delete executable test suite. To delete executable test suite, use DELETE /v1/dataQuality/testSuites/basic/<...>";
+  public static final String BASIC_TEST_SUITE_WITHOUT_REF_ERROR =
+      "Cannot create a basic test suite without the BasicEntityReference field informed.";
 
   static final String FIELDS = "owners,tests,summary";
   static final String SEARCH_FIELDS_EXCLUDE = "table,database,databaseSchema,service";
@@ -583,6 +585,9 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
       @Context HttpServletResponse response,
       @Valid CreateTestSuite create) {
     TestSuite testSuite = getTestSuite(create, securityContext.getUserPrincipal().getName());
+    if (testSuite.getBasicEntityReference() == null) {
+      throw new IllegalArgumentException(BASIC_TEST_SUITE_WITHOUT_REF_ERROR);
+    }
     testSuite.setBasic(true);
     // Set the deprecation header based on draft specification from IETF
     // https://datatracker.ietf.org/doc/html/draft-ietf-httpapi-deprecation-header-02
@@ -613,6 +618,9 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
       @Context HttpServletResponse response,
       @Valid CreateTestSuite create) {
     TestSuite testSuite = getTestSuite(create, securityContext.getUserPrincipal().getName());
+    if (testSuite.getBasicEntityReference() == null) {
+      throw new IllegalArgumentException(BASIC_TEST_SUITE_WITHOUT_REF_ERROR);
+    }
     testSuite.setBasic(true);
     return create(uriInfo, securityContext, testSuite);
   }
