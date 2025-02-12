@@ -183,6 +183,15 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
   }
 
   @Test
+  void create_basicTestSuiteWithoutRef(TestInfo test) {
+    CreateTestSuite createTestSuite = createRequest(test);
+    assertResponse(
+        () -> createBasicEmptySuite(createTestSuite, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        "Cannot create a basic test suite without the BasicEntityReference field informed.");
+  }
+
+  @Test
   void list_testSuitesIncludeEmpty_200(TestInfo test) throws IOException {
     List<CreateTestSuite> testSuites = new ArrayList<>();
     TestCaseResourceTest testCaseResourceTest = new TestCaseResourceTest();
@@ -831,6 +840,12 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
       CreateTestSuite createTestSuite, Map<String, String> authHeaders) throws IOException {
     WebTarget target = getResource("dataQuality/testSuites/basic");
     createTestSuite.setBasicEntityReference(createTestSuite.getName());
+    return TestUtils.post(target, createTestSuite, TestSuite.class, authHeaders);
+  }
+
+  public TestSuite createBasicEmptySuite(
+      CreateTestSuite createTestSuite, Map<String, String> authHeaders) throws IOException {
+    WebTarget target = getResource("dataQuality/testSuites/basic");
     return TestUtils.post(target, createTestSuite, TestSuite.class, authHeaders);
   }
 
