@@ -151,6 +151,7 @@ class FetchChart(BaseModel):
     sqlalchemy_uri: Optional[str] = None
     viz_type: Optional[str] = None
     datasource_id: Optional[int] = None
+    sql: Optional[str] = None
 
 
 class FetchColumn(BaseModel):
