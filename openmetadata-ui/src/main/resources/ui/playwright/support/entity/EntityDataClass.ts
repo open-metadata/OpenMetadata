@@ -48,7 +48,9 @@ export class EntityDataClass {
   static readonly dashboard1 = new DashboardClass();
   static readonly dashboard2 = new DashboardClass(undefined, 'LookMlExplore');
   static readonly mlModel1 = new MlModelClass();
+  static readonly mlModel2 = new MlModelClass();
   static readonly pipeline1 = new PipelineClass();
+  static readonly pipeline2 = new PipelineClass();
   static readonly dashboardDataModel1 = new DashboardDataModelClass();
   static readonly dashboardDataModel2 = new DashboardDataModelClass();
   static readonly apiCollection1 = new ApiCollectionClass();
@@ -80,7 +82,9 @@ export class EntityDataClass {
     await this.dashboard1.create(apiContext);
     await this.dashboard2.create(apiContext);
     await this.mlModel1.create(apiContext);
+    await this.mlModel2.create(apiContext);
     await this.pipeline1.create(apiContext);
+    await this.pipeline2.create(apiContext);
     await this.dashboardDataModel1.create(apiContext);
     await this.dashboardDataModel2.create(apiContext);
     await this.apiCollection1.create(apiContext);
@@ -112,7 +116,9 @@ export class EntityDataClass {
     await this.dashboard1.delete(apiContext);
     await this.dashboard2.delete(apiContext);
     await this.mlModel1.delete(apiContext);
+    await this.mlModel2.delete(apiContext);
     await this.pipeline1.delete(apiContext);
+    await this.pipeline2.delete(apiContext);
     await this.dashboardDataModel1.delete(apiContext);
     await this.dashboardDataModel2.delete(apiContext);
     await this.apiCollection1.delete(apiContext);

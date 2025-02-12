@@ -45,7 +45,7 @@ test.beforeAll(async ({ browser }) => {
   );
   await table2.createTestCase(apiContext, {
     name: `email_column_values_to_be_in_set_${uuid()}`,
-    entityLink: `<#E::table::${table2.entityResponseData?.['fullyQualifiedName']}::columns::email>`,
+    entityLink: `<#E::table::${table2.entityResponseData?.['fullyQualifiedName']}::columns::${table2.entity?.columns[3].name}>`,
     parameterValues: [
       { name: 'allowedValues', value: '["gmail","yahoo","collate"]' },
     ],
@@ -170,7 +170,7 @@ test('Column test case', PLAYWRIGHT_INGESTION_TAG_OBJ, async ({ page }) => {
 
   const NEW_COLUMN_TEST_CASE = {
     name: 'email_column_value_lengths_to_be_between',
-    column: 'email',
+    column: table1.entity?.columns[3].name,
     type: 'columnValueLengthsToBeBetween',
     label: 'Column Value Lengths To Be Between',
     min: '3',
@@ -285,7 +285,10 @@ test(
     const getProfilerInfo = page.waitForResponse(
       '/api/v1/tables/*/columnProfile?*'
     );
-    await page.locator('[data-row-key="shop_id"]').getByText('shop_id').click();
+    await page
+      .locator(`[data-row-key="${table1.entity?.columns[1].name}"]`)
+      .getByText(table1.entity?.columns[1].name)
+      .click();
     await getProfilerInfo;
 
     await expect(page.locator('#count_graph')).toBeVisible();
@@ -365,7 +368,9 @@ test(
       await expect(page.locator('#tableTestForm_table')).toHaveValue(
         table2.entityResponseData?.['name']
       );
-      await expect(page.locator('#tableTestForm_column')).toHaveValue('email');
+      await expect(page.locator('#tableTestForm_column')).toHaveValue(
+        table2.entity?.columns[3].name
+      );
       await expect(page.locator('#tableTestForm_name')).toHaveValue(
         testCaseName
       );
@@ -486,9 +491,9 @@ test(
       profileSample: '60',
       sampleDataCount: '100',
       profileQuery: 'select * from table',
-      excludeColumns: 'user_id',
-      includeColumns: 'shop_id',
-      partitionColumnName: 'name',
+      excludeColumns: table1.entity?.columns[0].name,
+      includeColumns: table1.entity?.columns[1].name,
+      partitionColumnName: table1.entity?.columns[2].name,
       partitionIntervalType: 'COLUMN-VALUE',
       partitionValues: 'test',
     };
@@ -561,13 +566,13 @@ test(
 
     expect(requestBody).toEqual(
       JSON.stringify({
-        excludeColumns: ['user_id'],
+        excludeColumns: [table1.entity?.columns[0].name],
         profileQuery: 'select * from table',
         profileSample: 60,
         profileSampleType: 'PERCENTAGE',
-        includeColumns: [{ columnName: 'shop_id' }],
+        includeColumns: [{ columnName: table1.entity?.columns[1].name }],
         partitioning: {
-          partitionColumnName: 'name',
+          partitionColumnName: table1.entity?.columns[2].name,
           partitionIntervalType: 'COLUMN-VALUE',
           partitionValues: ['test'],
           enablePartitioning: true,

@@ -165,8 +165,8 @@ test.describe('Advanced Search', { tag: '@advanced-search' }, () => {
         EntityDataClass.table2.schema.name,
       ],
       'columns.name.keyword': [
-        EntityDataClass.table1.entity.columns[0].name,
-        EntityDataClass.table2.entity.columns[1].name,
+        EntityDataClass.table1.entity.columns[2].name,
+        EntityDataClass.table2.entity.columns[3].name,
       ],
       'displayName.keyword': [
         EntityDataClass.table1.entity.displayName,
@@ -178,7 +178,7 @@ test.describe('Advanced Search', { tag: '@advanced-search' }, () => {
       ],
       'messageSchema.schemaFields.name.keyword': [
         EntityDataClass.topic1.entity.messageSchema.schemaFields[0].name,
-        EntityDataClass.topic1.entity.messageSchema.schemaFields[1].name,
+        EntityDataClass.topic2.entity.messageSchema.schemaFields[1].name,
       ],
       'dataModel.columns.name.keyword': [
         EntityDataClass.container1.entity.dataModel.columns[0].name,
@@ -190,11 +190,11 @@ test.describe('Advanced Search', { tag: '@advanced-search' }, () => {
       ],
       'fields.name.keyword': [
         EntityDataClass.searchIndex1.entity.fields[1].name,
-        EntityDataClass.searchIndex1.entity.fields[3].name,
+        EntityDataClass.searchIndex2.entity.fields[3].name,
       ],
       'tasks.displayName.keyword': [
         EntityDataClass.pipeline1.entity.tasks[0].displayName,
-        EntityDataClass.pipeline1.entity.tasks[1].displayName,
+        EntityDataClass.pipeline2.entity.tasks[1].displayName,
       ],
       'domain.displayName.keyword': [
         EntityDataClass.domain1.data.displayName,
@@ -203,13 +203,13 @@ test.describe('Advanced Search', { tag: '@advanced-search' }, () => {
       'responseSchema.schemaFields.name.keyword': [
         EntityDataClass.apiCollection1.apiEndpoint.responseSchema
           .schemaFields[0].name,
-        EntityDataClass.apiCollection1.apiEndpoint.responseSchema
+        EntityDataClass.apiCollection2.apiEndpoint.responseSchema
           .schemaFields[1].name,
       ],
       'requestSchema.schemaFields.name.keyword': [
         EntityDataClass.apiCollection1.apiEndpoint.requestSchema.schemaFields[0]
           .name,
-        EntityDataClass.apiCollection1.apiEndpoint.requestSchema.schemaFields[1]
+        EntityDataClass.apiCollection2.apiEndpoint.requestSchema.schemaFields[1]
           .name,
       ],
       'name.keyword': [
@@ -222,7 +222,7 @@ test.describe('Advanced Search', { tag: '@advanced-search' }, () => {
       ],
       status: ['Approved', 'In Review'],
       tableType: [table.entity.tableType, 'MaterializedView'],
-      entityType: ['mlmodel', 'dashboardDataModel'],
+      entityType: ['dashboard', 'mlmodel'],
       'charts.displayName.keyword': [
         EntityDataClass.dashboard1.charts.displayName,
         EntityDataClass.dashboard2.charts.displayName,
