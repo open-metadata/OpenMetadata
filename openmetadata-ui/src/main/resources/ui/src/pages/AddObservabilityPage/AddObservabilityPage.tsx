@@ -36,6 +36,7 @@ import {
   ProviderType,
 } from '../../generated/events/eventSubscription';
 import { FilterResourceDescriptor } from '../../generated/events/filterResourceDescriptor';
+import { withPageLayout } from '../../hoc/withPageLayout';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useFqn } from '../../hooks/useFqn';
 import {
@@ -342,4 +343,4 @@ function AddObservabilityPage() {
   );
 }
 
-export default AddObservabilityPage;
+export default withPageLayout('')(AddObservabilityPage);

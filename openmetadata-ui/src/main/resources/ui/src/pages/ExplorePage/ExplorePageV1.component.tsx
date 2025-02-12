@@ -46,6 +46,7 @@ import { useTourProvider } from '../../context/TourProvider/TourProvider';
 import { SORT_ORDER } from '../../enums/common.enum';
 import { EntityType } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
+import { withPageLayout } from '../../hoc/withPageLayout';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import { Aggregations, SearchResponse } from '../../interface/search.interface';
@@ -478,4 +479,4 @@ const ExplorePageV1: FunctionComponent = () => {
   );
 };
 
-export default withAdvanceSearch(ExplorePageV1);
+export default withPageLayout('')(withAdvanceSearch(ExplorePageV1));

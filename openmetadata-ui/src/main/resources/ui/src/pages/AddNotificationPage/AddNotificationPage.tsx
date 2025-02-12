@@ -47,6 +47,7 @@ import {
   ProviderType,
 } from '../../generated/events/eventSubscription';
 import { FilterResourceDescriptor } from '../../generated/events/filterResourceDescriptor';
+import { withPageLayout } from '../../hoc/withPageLayout';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useFqn } from '../../hooks/useFqn';
 import {
@@ -220,7 +221,7 @@ const AddNotificationPage = () => {
   return (
     <ResizablePanels
       hideSecondPanel
-      className="content-height-with-resizable-panel"
+      className="content-height-with-resizable-panel m--t-sm"
       firstPanel={{
         className: 'content-resizable-panel-container',
         children: (
@@ -357,4 +358,4 @@ const AddNotificationPage = () => {
   );
 };
 
-export default AddNotificationPage;
+export default withPageLayout('')(AddNotificationPage);

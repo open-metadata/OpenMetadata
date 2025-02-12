@@ -37,6 +37,7 @@ import {
 import { ServiceCategory } from '../../enums/service.enum';
 import { SMTPSettings } from '../../generated/email/smtpSettings';
 import { Settings, SettingType } from '../../generated/settings/settings';
+import { withPageLayout } from '../../hoc/withPageLayout';
 import {
   getSettingsConfigFromConfigType,
   updateSettingsConfig,
@@ -172,7 +173,7 @@ function EditEmailConfigPage() {
 
   return (
     <ResizablePanels
-      className="content-height-with-resizable-panel"
+      className="content-height-with-resizable-panel m--t-sm"
       firstPanel={{
         children: firstPanelChildren,
         minWidth: 700,
@@ -190,4 +191,4 @@ function EditEmailConfigPage() {
   );
 }
 
-export default EditEmailConfigPage;
+export default withPageLayout('')(EditEmailConfigPage);

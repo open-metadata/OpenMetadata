@@ -31,6 +31,7 @@ import {
 import { ServiceCategory } from '../../../enums/service.enum';
 import { LoginConfiguration } from '../../../generated/configuration/loginConfiguration';
 import { Settings, SettingType } from '../../../generated/settings/settings';
+import { withPageLayout } from '../../../hoc/withPageLayout';
 import { FieldProp, FieldTypes } from '../../../interface/FormUtils.interface';
 import {
   getLoginConfig,
@@ -212,7 +213,7 @@ const EditLoginConfiguration = () => {
 
   return (
     <ResizablePanels
-      className="content-height-with-resizable-panel"
+      className="content-height-with-resizable-panel m--t-sm"
       firstPanel={{
         children: firstPanelChildren,
         minWidth: 700,
@@ -230,4 +231,4 @@ const EditLoginConfiguration = () => {
   );
 };
 
-export default EditLoginConfiguration;
+export default withPageLayout('')(EditLoginConfiguration);

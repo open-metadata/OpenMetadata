@@ -42,6 +42,7 @@ import { KPI_DATE_PICKER_FORMAT } from '../../constants/DataInsight.constants';
 import { TabSpecificField } from '../../enums/entity.enum';
 import { DataInsightChart } from '../../generated/api/dataInsight/kpi/createKpiRequest';
 import { Kpi, KpiTargetType } from '../../generated/dataInsight/kpi/kpi';
+import { withPageLayout } from '../../hoc/withPageLayout';
 import { useAuth } from '../../hooks/authHooks';
 import { useFqn } from '../../hooks/useFqn';
 import { FieldProp, FieldTypes } from '../../interface/FormUtils.interface';
@@ -222,7 +223,7 @@ const EditKPIPage = () => {
 
   return (
     <ResizablePanels
-      className="content-height-with-resizable-panel"
+      className="content-height-with-resizable-panel m--t-sm"
       firstPanel={{
         className: 'content-resizable-panel-container',
         children: (
@@ -450,4 +451,4 @@ const EditKPIPage = () => {
   );
 };
 
-export default EditKPIPage;
+export default withPageLayout('')(EditKPIPage);

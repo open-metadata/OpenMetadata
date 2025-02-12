@@ -27,6 +27,7 @@ import {
   Effect,
   Rule,
 } from '../../../generated/api/policies/createPolicy';
+import { withPageLayout } from '../../../hoc/withPageLayout';
 import { FieldProp, FieldTypes } from '../../../interface/FormUtils.interface';
 import { addPolicy } from '../../../rest/rolesAPIV1';
 import { getIsErrorMatch } from '../../../utils/CommonUtils';
@@ -129,7 +130,7 @@ const AddPolicyPage = () => {
 
   return (
     <ResizablePanels
-      className="content-height-with-resizable-panel"
+      className="content-height-with-resizable-panel m--t-sm"
       firstPanel={{
         className: 'content-resizable-panel-container',
         children: (
@@ -216,4 +217,4 @@ const AddPolicyPage = () => {
   );
 };
 
-export default AddPolicyPage;
+export default withPageLayout('')(AddPolicyPage);

@@ -30,6 +30,7 @@ import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.const
 import { OPEN_METADATA } from '../../constants/Services.constant';
 import { TabSpecificField } from '../../enums/entity.enum';
 import { ServiceCategory } from '../../enums/service.enum';
+import { withPageLayout } from '../../hoc/withPageLayout';
 import { useFqn } from '../../hooks/useFqn';
 import { SearchSourceAlias } from '../../interface/search.interface';
 import { ConfigData, ServicesType } from '../../interface/service.interface';
@@ -188,7 +189,7 @@ function EditConnectionFormPage() {
 
   return (
     <ResizablePanels
-      className="content-height-with-resizable-panel"
+      className="content-height-with-resizable-panel m--t-sm"
       firstPanel={{
         children: firstPanelChildren,
         minWidth: 700,
@@ -213,4 +214,4 @@ function EditConnectionFormPage() {
   );
 }
 
-export default EditConnectionFormPage;
+export default withPageLayout('')(EditConnectionFormPage);

@@ -22,6 +22,7 @@ import {
   EventSubscription,
   FilteringRules,
 } from '../../generated/events/eventSubscription';
+import { withPageLayout } from '../../hoc/withPageLayout';
 import { getAlertsFromName } from '../../rest/alertsAPI';
 import { getEntityName } from '../../utils/EntityUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -98,4 +99,4 @@ const AlertsActivityFeedPage = () => {
   );
 };
 
-export default AlertsActivityFeedPage;
+export default withPageLayout('')(AlertsActivityFeedPage);

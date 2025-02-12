@@ -28,6 +28,7 @@ import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.const
 import { IngestionActionMessage } from '../../enums/ingestion.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { CreateIngestionPipeline } from '../../generated/api/services/ingestionPipelines/createIngestionPipeline';
+import { withPageLayout } from '../../hoc/withPageLayout';
 import { DataObj } from '../../interface/service.interface';
 import {
   addIngestionPipeline,
@@ -176,4 +177,4 @@ const AddServicePage = () => {
   );
 };
 
-export default AddServicePage;
+export default withPageLayout('')(AddServicePage);

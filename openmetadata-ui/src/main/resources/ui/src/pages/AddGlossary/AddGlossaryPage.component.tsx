@@ -28,6 +28,7 @@ import { usePermissionProvider } from '../../context/PermissionProvider/Permissi
 import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { CreateGlossary } from '../../generated/api/data/createGlossary';
 import { Operation } from '../../generated/entity/policies/policy';
+import { withPageLayout } from '../../hoc/withPageLayout';
 import { addGlossaries } from '../../rest/glossaryAPI';
 import { getIsErrorMatch } from '../../utils/CommonUtils';
 import { checkPermission } from '../../utils/PermissionsUtils';
@@ -135,7 +136,7 @@ const AddGlossaryPage: FunctionComponent = () => {
   }, []);
 
   return (
-    <div className="self-center">
+    <div className="self-center m--t-sm">
       <AddGlossary
         allowAccess={createPermission}
         fetchTags={fetchTags}
@@ -153,4 +154,4 @@ const AddGlossaryPage: FunctionComponent = () => {
   );
 };
 
-export default AddGlossaryPage;
+export default withPageLayout('')(AddGlossaryPage);
