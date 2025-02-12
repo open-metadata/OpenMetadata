@@ -28,7 +28,7 @@ function CommonEntitySummaryInfo({
   const { t } = useTranslation();
 
   return (
-    <Row gutter={[0, 4]}>
+    <Row gutter={[0, 4]} style={{ fontSize: '14px' }}>
       {entityInfo.map((info) => {
         const isOwner = info.name === t('label.owner-plural');
 
