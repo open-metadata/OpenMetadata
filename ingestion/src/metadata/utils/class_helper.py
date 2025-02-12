@@ -130,7 +130,6 @@ def _get_service_type_from(  # pylint: disable=inconsistent-return-statements
 ) -> ServiceType:
     if service_subtype.lower() == "testsuite":
         return TestSuiteServiceType.TestSuite
-
     for service_type in ServiceType:
         if service_subtype.lower() in [
             subtype.value.lower()
