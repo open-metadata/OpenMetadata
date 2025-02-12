@@ -193,7 +193,8 @@
             "PRIMARY_KEY",
             "FOREIGN_KEY",
             "SORT_KEY",
-            "DIST_KEY"
+            "DIST_KEY",
+            "CLUSTER_KEY"
           ]
         },
         "columns": {

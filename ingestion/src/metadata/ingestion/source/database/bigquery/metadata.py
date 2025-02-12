@@ -34,9 +34,11 @@ from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.storedProcedure import StoredProcedureCode
 from metadata.generated.schema.entity.data.table import (
+    ConstraintType,
     PartitionColumnDetails,
     PartitionIntervalTypes,
     Table,
+    TableConstraint,
     TablePartition,
     TableType,
 )
@@ -96,6 +98,7 @@ from metadata.ingestion.source.database.life_cycle_query_mixin import (
 from metadata.ingestion.source.database.multi_db_source import MultiDBSource
 from metadata.utils import fqn
 from metadata.utils.credentials import GOOGLE_CREDENTIALS
+from metadata.utils.execution_time_tracker import calculate_execution_time
 from metadata.utils.filters import filter_by_database, filter_by_schema
 from metadata.utils.helpers import retry_with_docker_host
 from metadata.utils.logger import ingestion_logger
@@ -660,6 +663,42 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
                 f"Error getting partition column name for {partition_field_name}: {exc}"
             )
         return None
+
+    @calculate_execution_time()
+    def update_table_constraints(
+        self,
+        table_name,
+        schema_name,
+        db_name,
+        table_constraints,
+        foreign_columns,
+        columns,
+    ) -> List[TableConstraint]:
+        """
+        From topology.
+        process the table constraints of all tables
+        """
+        table_constraints = super().update_table_constraints(
+            table_name,
+            schema_name,
+            db_name,
+            table_constraints,
+            foreign_columns,
+            columns,
+        )
+        try:
+            table = self.client.get_table(fqn._build(db_name, schema_name, table_name))
+            if hasattr(table, "clustering_fields") and table.clustering_fields:
+                table_constraints.append(
+                    TableConstraint(
+                        constraintType=ConstraintType.CLUSTER_KEY,
+                        columns=table.clustering_fields,
+                    )
+                )
+        except Exception as exc:
+            logger.warning(f"Error getting clustering fields for {table_name}: {exc}")
+            logger.debug(traceback.format_exc())
+        return table_constraints
 
     def get_table_partition_details(
         self, table_name: str, schema_name: str, inspector: Inspector
