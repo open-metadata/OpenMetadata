@@ -174,7 +174,7 @@ const AsyncSelectList: FC<AsyncSelectListProps & SelectProps> = ({
   };
 
   const dropdownRender = (menu: React.ReactElement) => (
-    <>
+    <div data-testid="tags-dropdown">
       {menu}
       {hasContentLoading ? <Loader size="small" /> : null}
       {onCancel && (
@@ -197,7 +197,7 @@ const AsyncSelectList: FC<AsyncSelectListProps & SelectProps> = ({
           </Button>
         </Space>
       )}
-    </>
+    </div>
   );
 
   const customTagRender = (data: CustomTagProps) => {
@@ -315,6 +315,7 @@ const AsyncSelectList: FC<AsyncSelectListProps & SelectProps> = ({
       style={{ width: '100%' }}
       tagRender={customTagRender}
       onChange={handleChange}
+      onDropdownVisibleChange={(open) => !open && onCancel?.()}
       onInputKeyDown={(event) => {
         if (event.key === 'Backspace') {
           return event.stopPropagation();

@@ -709,6 +709,21 @@ export const removeGlossaryTermFromChildren = async ({
   }
 };
 
+export const dropdownVisibility = async (page: Page, tagType: string) => {
+  await page
+    .getByTestId('entity-right-panel')
+    .getByTestId(`${tagType}-container`)
+    .getByTestId('add-tag')
+    .click();
+  await page.waitForSelector(`[data-testid="${tagType}-dropdown"]`);
+
+  await expect(page.getByTestId(`${tagType}-dropdown`)).toBeVisible();
+
+  await page.getByTestId('activity_feed').click();
+
+  await expect(page.getByTestId(`${tagType}-dropdown`)).not.toBeVisible();
+};
+
 export const upVote = async (page: Page, endPoint: string) => {
   const patchRequest = page.waitForResponse(`/api/v1/${endPoint}/*/vote`);
 
