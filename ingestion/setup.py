@@ -62,7 +62,7 @@ VERSIONS = {
     "pydoris": "pydoris==1.0.2",
     "pyiceberg": "pyiceberg==0.5.1",
     "google-cloud-bigtable": "google-cloud-bigtable>=2.0.0",
-    "pyathena":"pyathena~=3.0",
+    "pyathena": "pyathena~=3.0",
 }
 
 COMMONS = {
@@ -172,7 +172,11 @@ plugins: Dict[str, Set[str]] = {
         VERSIONS["numpy"],
         "sqlalchemy-bigquery>=1.2.2",
     },
-    "bigtable": {VERSIONS["google-cloud-bigtable"], VERSIONS["pandas"], VERSIONS["numpy"]},
+    "bigtable": {
+        VERSIONS["google-cloud-bigtable"],
+        VERSIONS["pandas"],
+        VERSIONS["numpy"],
+    },
     "clickhouse": {
         "clickhouse-driver~=0.2",
         "clickhouse-sqlalchemy~=0.2",
