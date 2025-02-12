@@ -73,6 +73,7 @@ class BaseModel(PydanticBaseModel):
     def model_dump_json(  # pylint: disable=too-many-arguments
         self,
         *,
+        mask_secrets: bool = False,
         indent: Optional[int] = None,
         include: IncEx = None,
         exclude: IncEx = None,
@@ -97,6 +98,7 @@ class BaseModel(PydanticBaseModel):
         return json.dumps(
             self.model_dump(
                 mode="json",
+                mask_secrets=mask_secrets,
                 include=include,
                 exclude=exclude,
                 context=context,
@@ -111,10 +113,17 @@ class BaseModel(PydanticBaseModel):
             ensure_ascii=True,
         )
 
-    def model_dump_masked(self, *args, **kwargs):
-        context = kwargs.pop("context", {})
-        context["mask_secrets"] = True
-        return self.model_dump(*args, context=context, **kwargs)
+    def model_dump(
+        self,
+        *,
+        mask_secrets: bool = False,
+        **kwargs,
+    ) -> dict[str, Any]:
+        if mask_secrets:
+            context = kwargs.pop("context", {})
+            context["mask_secrets"] = True
+            kwargs["context"] = context
+        return super().model_dump(**kwargs)
 
 
 class _CustomSecretStr(SecretStr):
