@@ -59,6 +59,10 @@ VERSIONS = {
     "teradata": "teradatasqlalchemy==20.0.0.2",
     "cockroach": "sqlalchemy-cockroachdb~=2.0",
     "cassandra": "cassandra-driver>=3.28.0",
+    "pydoris": "pydoris==1.0.2",
+    "pyiceberg": "pyiceberg==0.5.1",
+    "google-cloud-bigtable": "google-cloud-bigtable>=2.0.0",
+    "pyathena": "pyathena~=3.0",
 }
 
 COMMONS = {
@@ -155,7 +159,7 @@ plugins: Dict[str, Set[str]] = {
         VERSIONS["airflow"],
     },  # Same as ingestion container. For development.
     "amundsen": {VERSIONS["neo4j"]},
-    "athena": {"pyathena~=3.0"},
+    "athena": {VERSIONS["pyathena"]},
     "atlas": {},
     "azuresql": {VERSIONS["pyodbc"]},
     "azure-sso": {VERSIONS["msal"]},
@@ -168,7 +172,11 @@ plugins: Dict[str, Set[str]] = {
         VERSIONS["numpy"],
         "sqlalchemy-bigquery>=1.2.2",
     },
-    "bigtable": {"google-cloud-bigtable>=2.0.0", VERSIONS["pandas"], VERSIONS["numpy"]},
+    "bigtable": {
+        VERSIONS["google-cloud-bigtable"],
+        VERSIONS["pandas"],
+        VERSIONS["numpy"],
+    },
     "clickhouse": {
         "clickhouse-driver~=0.2",
         "clickhouse-sqlalchemy~=0.2",
@@ -247,7 +255,7 @@ plugins: Dict[str, Set[str]] = {
         "impyla~=0.18.0",
     },
     "iceberg": {
-        "pyiceberg==0.5.1",
+        VERSIONS["pyiceberg"],
         # Forcing the version of a few packages so it plays nicely with other requirements.
         VERSIONS["pydantic"],
         VERSIONS["adlfs"],
@@ -386,6 +394,8 @@ test = {
     VERSIONS["grpc-tools"],
     VERSIONS["neo4j"],
     VERSIONS["cockroach"],
+    VERSIONS["pydoris"],
+    VERSIONS["pyiceberg"],
     "testcontainers==3.7.1;python_version<'3.9'",
     "testcontainers~=4.8.0;python_version>='3.9'",
     "minio==7.2.5",
@@ -404,6 +414,13 @@ test = {
     *plugins["dagster"],
     *plugins["oracle"],
     *plugins["mssql"],
+    VERSIONS["validators"],
+    VERSIONS["pyathena"],
+    VERSIONS["pyiceberg"],
+    VERSIONS["pydoris"],
+    "python-liquid",
+    VERSIONS["google-cloud-bigtable"],
+    *plugins["bigquery"],
 }
 
 e2e_test = {
