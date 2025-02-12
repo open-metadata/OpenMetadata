@@ -28,7 +28,10 @@ import org.openmetadata.schema.services.connections.database.*;
 import org.openmetadata.schema.services.connections.database.datalake.GCSConfig;
 import org.openmetadata.schema.services.connections.database.deltalake.StorageConfig;
 import org.openmetadata.schema.services.connections.database.iceberg.IcebergFileSystem;
+import org.openmetadata.schema.services.connections.mlmodel.VertexAIConnection;
 import org.openmetadata.schema.services.connections.pipeline.AirflowConnection;
+import org.openmetadata.schema.services.connections.pipeline.MatillionConnection;
+import org.openmetadata.schema.services.connections.pipeline.NifiConnection;
 import org.openmetadata.schema.services.connections.search.ElasticSearchConnection;
 import org.openmetadata.schema.services.connections.storage.GCSConnection;
 
@@ -72,7 +75,12 @@ public final class ClassConverterFactory {
                 TestServiceConnectionRequest.class,
                 new TestServiceConnectionRequestClassConverter()),
             Map.entry(TrinoConnection.class, new TrinoConnectionClassConverter()),
-            Map.entry(Workflow.class, new WorkflowClassConverter()));
+            Map.entry(Workflow.class, new WorkflowClassConverter()),
+            Map.entry(NifiConnection.class, new NifiConnectionClassConverter()),
+            Map.entry(MatillionConnection.class, new MatillionConnectionClassConverter()),
+            Map.entry(VertexAIConnection.class, new VertexAIConnectionClassConverter()));
+    Map.entry(Workflow.class, new WorkflowClassConverter());
+    Map.entry(CassandraConnection.class, new CassandraConnectionClassConverter());
   }
 
   public static ClassConverter getConverter(Class<?> clazz) {
