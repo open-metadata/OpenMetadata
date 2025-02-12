@@ -65,6 +65,33 @@
       "type": "boolean",
       "default": false
     },
+    "defaultExcludeDatabases": {
+      "title": "Exclude Default Databases",
+      "description": "List of default databases to exclude in ingestion.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": ["^master$"]
+    },
+    "defaultExcludeSchemas": {
+      "title": "Exclude Default Schemas",
+      "description": "List of default schemas to exclude in ingestion.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": ["^db_.*", "^dbo$", "^guest$"]
+    },
+    "defaultExcludeTables": {
+      "title": "Exclude Default Tables",
+      "description": "List of default tables to exclude in ingestion.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": ["sys.*"]
+    },
     "connectionOptions": {
       "title": "Connection Options",
       "$ref": "../connectionBasicType.json#/definitions/connectionOptions"
