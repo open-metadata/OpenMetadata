@@ -11,26 +11,9 @@
  *  limitations under the License.
  */
 /**
- * Matillion Connection
- */
-export interface MatillionConnection {
-    /**
-     * Matillion Auth Configuration
-     */
-    connection?:                 Matillion;
-    supportsMetadataExtraction?: boolean;
-    /**
-     * Service Type
-     */
-    type?: MatillionType;
-}
-
-/**
- * Matillion Auth Configuration
- *
  * Matillion ETL Auth Config.
  */
-export interface Matillion {
+export interface MatillionETL {
     /**
      * Matillion Host
      */
@@ -70,13 +53,4 @@ export interface Config {
 
 export enum Type {
     MatillionETL = "MatillionETL",
-}
-
-/**
- * Service Type
- *
- * Service type.
- */
-export enum MatillionType {
-    Matillion = "Matillion",
 }
