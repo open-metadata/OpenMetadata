@@ -84,7 +84,7 @@
     },
     "additionalProperties": false,
     "required": [
-        "database_service",
+        "serviceId",
         "operations"
     ]
 }
