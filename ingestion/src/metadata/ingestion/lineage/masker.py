@@ -127,4 +127,4 @@ def mask_query(
     except Exception as exc:
         logger.debug(f"Failed to mask query with sqlfluff: {exc}")
         logger.debug(traceback.format_exc())
-    return query
+    return None
