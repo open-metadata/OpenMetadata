@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { Button, Popover, Select, Tooltip, Typography } from 'antd';
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as DomainIcon } from '../../../assets/svg/ic-domain.svg';
 import { ReactComponent as ClosePopoverIcon } from '../../../assets/svg/popover-close.svg';
@@ -96,6 +96,31 @@ const DomainSelectableList = ({
   const handleClosePopup = () => {
     setPopupVisible(false);
   };
+  const [popoverHeight, setPopoverHeight] = useState<number>(136);
+  const dropdownRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const observer = new MutationObserver(() => {
+      const dropdown = document.querySelector(
+        '.ant-select-dropdown'
+      ) as HTMLElement;
+
+      if (dropdown) {
+        setPopoverHeight(dropdown.scrollHeight + 136);
+      }
+    });
+
+    const dropdown = document.querySelector('.ant-select-dropdown');
+    if (dropdown) {
+      observer.observe(dropdown, {
+        attributes: true,
+        childList: true,
+        subtree: true,
+      });
+    }
+
+    return () => observer.disconnect();
+  }, [isDropdownOpen]);
 
   return (
     // Used Button to stop click propagation event anywhere in the component to parent
@@ -106,7 +131,11 @@ const DomainSelectableList = ({
       <Popover
         destroyTooltipOnHide
         content={
-          <div className="user-profile-edit-popover-card">
+          <div
+            className="user-profile-edit-popover-card relative"
+            style={{
+              height: `${popoverHeight}px`,
+            }}>
             <div className="d-flex justify-start items-center gap-2 m-b-sm">
               <div className="d-flex flex-start items-center">
                 <DomainIcon height={16} />
@@ -136,7 +165,7 @@ const DomainSelectableList = ({
                   value: domain.id,
                 }))}
                 placeholder="Please select"
-                placement="topLeft"
+                ref={dropdownRef as any}
                 style={{ width: '100%' }}
                 onChange={(selectedIds) => {
                   const selectedDomainList = domains.filter((domain) =>
@@ -144,10 +173,13 @@ const DomainSelectableList = ({
                   );
                   setCurrentlySelectedDomains(selectedDomainList as any);
                 }}
+                onDropdownVisibleChange={(open) => {
+                  setIsDropdownOpen(open);
+                }}
               />
             </div>
 
-            <div className="flex justify-end gap-2 m-t-xs">
+            <div className="flex justify-end gap-2">
               <Button
                 className="profile-edit-save"
                 data-testid="inline-cancel-btn"
@@ -159,6 +191,9 @@ const DomainSelectableList = ({
                   width: '30px',
                   height: '30px',
                   background: '#0950C5',
+                  position: 'absolute',
+                  bottom: '0px',
+                  right: '38px',
                 }}
                 type="primary"
                 onClick={handleClosePopup}
@@ -176,6 +211,8 @@ const DomainSelectableList = ({
                   width: '30px',
                   height: '30px',
                   background: '#0950C5',
+                  position: 'absolute',
+                  bottom: '0px',
                 }}
                 type="primary"
                 onClick={handleUpdate}

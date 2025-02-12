@@ -14,7 +14,13 @@
 import { Button, Divider, Popover, Select, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, toLower } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as ClosePopoverIcon } from '../../../../../assets/svg/popover-close.svg';
 import { ReactComponent as SavePopoverIcon } from '../../../../../assets/svg/popover-save.svg';
@@ -158,6 +164,33 @@ const UserProfileRoles = ({
     }
   }, [isRolesEdit, roles]);
 
+  const [isDropdownOpen, setIsDropdownOpen] = useState<boolean>(false);
+  const [popoverHeight, setPopoverHeight] = useState<number>(156);
+  const dropdownRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const observer = new MutationObserver(() => {
+      const dropdown = document.querySelector(
+        '.ant-select-dropdown'
+      ) as HTMLElement;
+
+      if (dropdown) {
+        setPopoverHeight(dropdown.scrollHeight + 156);
+      }
+    });
+
+    const dropdown = document.querySelector('.ant-select-dropdown');
+    if (dropdown) {
+      observer.observe(dropdown, {
+        attributes: true,
+        childList: true,
+        subtree: true,
+      });
+    }
+
+    return () => observer.disconnect();
+  }, [isDropdownOpen]);
+
   return (
     <div className="d-flex flex-col m-b-0 w-full h-full p-[20px] user-profile-card">
       <div className="user-profile-card-header d-flex items-center justify-start gap-2 w-full">
@@ -170,7 +203,11 @@ const UserProfileRoles = ({
           </Typography.Text>
           <Popover
             content={
-              <div className="user-profile-edit-popover-card">
+              <div
+                className="user-profile-edit-popover-card relative"
+                style={{
+                  height: `${popoverHeight}px`,
+                }}>
                 <div className="d-flex justify-start items-center gap-2 m-b-sm">
                   <div className="d-flex flex-start items-center">
                     <RoleIcon height={16} />
@@ -205,12 +242,14 @@ const UserProfileRoles = ({
                       </span>
                     )}
                     mode="multiple"
-                    open={isSelectOpen}
+                    open={isDropdownOpen}
                     options={useRolesOption}
-                    placement="topLeft"
+                    ref={dropdownRef as any}
                     value={selectedRoles}
                     onChange={setSelectedRoles}
-                    onDropdownVisibleChange={setIsSelectOpen}
+                    onDropdownVisibleChange={(open) => {
+                      setIsDropdownOpen(open);
+                    }}
                   />
                 </div>
 
@@ -229,6 +268,9 @@ const UserProfileRoles = ({
                       width: '30px',
                       height: '30px',
                       background: '#0950C5',
+                      position: 'absolute',
+                      bottom: '0px',
+                      right: '38px',
                     }}
                     type="primary"
                     onClick={handleCloseEditRole}
@@ -248,6 +290,8 @@ const UserProfileRoles = ({
                       width: '30px',
                       height: '30px',
                       background: '#0950C5',
+                      position: 'absolute',
+                      bottom: '0px',
                     }}
                     type="primary"
                     onClick={handleRolesSave}

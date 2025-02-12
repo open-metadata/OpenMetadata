@@ -12,7 +12,13 @@
  */
 
 import { Button, Divider, Popover, Typography } from 'antd';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as ClosePopoverIcon } from '../../../../../assets/svg/popover-close.svg';
 import { ReactComponent as SavePopoverIcon } from '../../../../../assets/svg/popover-save.svg';
@@ -37,6 +43,7 @@ const UserProfileTeams = ({
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isTeamsEdit, setIsTeamsEdit] = useState(false);
   const [selectedTeams, setSelectedTeams] = useState<EntityReference[]>([]);
+  const [isDropdownOpen, setIsDropdownOpen] = useState<boolean>(false);
   const [isSelectOpen, setIsSelectOpen] = useState<boolean>(false);
 
   const handleTeamsSave = async () => {
@@ -78,7 +85,34 @@ const UserProfileTeams = ({
 
   const handleDropdownChange = (visible: boolean) => {
     setIsSelectOpen(visible);
+    setIsDropdownOpen(visible);
   };
+  const [popoverHeight, setPopoverHeight] = useState<number>(156);
+  const dropdownRef = useRef<HTMLDivElement | null>(null);
+  const teamsSelectableRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const observer = new MutationObserver(() => {
+      const dropdown = document.querySelector(
+        '.ant-select-dropdown'
+      ) as HTMLElement;
+
+      if (dropdown) {
+        setPopoverHeight(dropdown.scrollHeight + 156);
+      }
+    });
+
+    const dropdown = document.querySelector('.ant-select-dropdown');
+    if (dropdown) {
+      observer.observe(dropdown, {
+        attributes: true,
+        childList: true,
+        subtree: true,
+      });
+    }
+
+    return () => observer.disconnect();
+  }, [isDropdownOpen]);
 
   return (
     <div className="d-flex flex-col w-full h-full p-[20px] user-profile-card">
@@ -94,7 +128,11 @@ const UserProfileTeams = ({
           {isAdminUser && !isDeletedUser && (
             <Popover
               content={
-                <div className="user-profile-edit-popover-card">
+                <div
+                  className="user-profile-edit-popover-card relative"
+                  style={{
+                    height: `${popoverHeight}px`,
+                  }}>
                   <div className="d-flex justify-start items-center gap-2 m-b-sm">
                     <div className="d-flex flex-start items-center">
                       <IconTeamsGrey height={16} />
@@ -116,6 +154,7 @@ const UserProfileTeams = ({
                       filterJoinable
                       handleDropdownChange={handleDropdownChange}
                       maxValueCount={4}
+                      ref={teamsSelectableRef}
                       selectedTeams={selectedTeams}
                       onSelectionChange={setSelectedTeams}
                     />
@@ -136,6 +175,9 @@ const UserProfileTeams = ({
                         width: '30px',
                         height: '30px',
                         background: '#0950C5',
+                        position: 'absolute',
+                        bottom: '0px',
+                        right: '38px',
                       }}
                       type="primary"
                       onClick={handleCloseEditTeam}
@@ -155,6 +197,8 @@ const UserProfileTeams = ({
                         width: '30px',
                         height: '30px',
                         background: '#0950C5',
+                        position: 'absolute',
+                        bottom: '0px',
                       }}
                       type="primary"
                       onClick={handleTeamsSave}

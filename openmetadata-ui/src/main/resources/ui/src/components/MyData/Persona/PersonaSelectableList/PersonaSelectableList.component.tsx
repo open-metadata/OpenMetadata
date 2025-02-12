@@ -13,7 +13,7 @@
 import { Button, Popover, Select, Space, Tooltip, Typography } from 'antd';
 import classNames from 'classnames';
 import { t } from 'i18next';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as PersonaIcon } from '../../../../assets/svg/persona (2).svg';
 import { ReactComponent as ClosePopoverIcon } from '../../../../assets/svg/popover-close.svg';
@@ -64,6 +64,35 @@ export const PersonaSelectableList = ({
   const [isDropdownOpen, setIsDropdownOpen] = useState<boolean>(false);
   const [currentlySelectedPersonas, setCurrentlySelectedPersonas] =
     useState<any>([]);
+  const [popoverHeight, setPopoverHeight] = useState<number>(
+    isDefaultPersona ? 116 : 156
+  );
+  const dropdownRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const observer = new MutationObserver(() => {
+      const dropdown = document.querySelector(
+        '.ant-select-dropdown'
+      ) as HTMLElement;
+
+      if (dropdown) {
+        setPopoverHeight(
+          dropdown.scrollHeight + (isDefaultPersona ? 116 : 156)
+        );
+      }
+    });
+
+    const dropdown = document.querySelector('.ant-select-dropdown');
+    if (dropdown) {
+      observer.observe(dropdown, {
+        attributes: true,
+        childList: true,
+        subtree: true,
+      });
+    }
+
+    return () => observer.disconnect();
+  }, [isDropdownOpen]);
 
   const fetchOptions = async (searchText: string, after?: string) => {
     if (searchText) {
@@ -141,7 +170,11 @@ export const PersonaSelectableList = ({
     <Popover
       destroyTooltipOnHide
       content={
-        <div className="user-profile-edit-popover-card">
+        <div
+          className="user-profile-edit-popover-card relative"
+          style={{
+            height: `${popoverHeight}px`,
+          }}>
           <div className="d-flex justify-start items-center gap-2 m-b-sm">
             <div className="d-flex flex-start items-center">
               <PersonaIcon height={16} />
@@ -154,10 +187,7 @@ export const PersonaSelectableList = ({
             </Typography.Text>
           </div>
 
-          <div
-            className={!isDropdownOpen ? 'border' : ''}
-            id="area"
-            style={{ borderRadius: '5px' }}>
+          <div className="border" id="area" style={{ borderRadius: '5px' }}>
             <Select
               allowClear
               className={classNames('profile-edit-popover', {
@@ -176,7 +206,7 @@ export const PersonaSelectableList = ({
                 value: persona.id,
               }))}
               placeholder="Please select"
-              placement="topLeft"
+              ref={dropdownRef as any}
               style={{ width: '100%' }}
               onChange={(selectedIds) => {
                 const selectedPersonasList = selectOptions.filter((persona) =>
@@ -190,7 +220,7 @@ export const PersonaSelectableList = ({
             />
           </div>
 
-          <div className="flex justify-end gap-2 m-t-xs">
+          <div className="flex justify-end gap-2">
             <Button
               className="profile-edit-save"
               data-testid="user-profile-persona-edit-save"
@@ -202,6 +232,9 @@ export const PersonaSelectableList = ({
                 width: '30px',
                 height: '30px',
                 background: '#0950C5',
+                position: 'absolute',
+                bottom: '0px',
+                right: '38px',
               }}
               type="primary"
               onClick={handleCloseEditTeam}
@@ -218,6 +251,8 @@ export const PersonaSelectableList = ({
                 width: '30px',
                 height: '30px',
                 background: '#0950C5',
+                position: 'absolute',
+                bottom: '0px',
               }}
               type="primary"
               onClick={handlePersonaUpdate as any}
@@ -246,6 +281,5 @@ export const PersonaSelectableList = ({
         </Tooltip>
       )}
     </Popover>
-    // </Button>
   );
 };
