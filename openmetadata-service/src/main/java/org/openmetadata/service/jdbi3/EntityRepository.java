@@ -120,6 +120,7 @@ import javax.ws.rs.core.UriInfo;
 import lombok.Getter;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
@@ -132,6 +133,7 @@ import org.openmetadata.schema.api.VoteRequest.VoteType;
 import org.openmetadata.schema.api.feed.ResolveTask;
 import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.configuration.AssetCertificationSettings;
+import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.feed.Suggestion;
 import org.openmetadata.schema.entity.teams.Team;
@@ -254,6 +256,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   @Getter protected final boolean supportsStyle;
   @Getter protected final boolean supportsLifeCycle;
   @Getter protected final boolean supportsCertification;
+  @Getter protected final boolean supportsChildren;
   protected final boolean supportsFollower;
   protected final boolean supportsExtension;
   protected final boolean supportsVotes;
@@ -354,6 +357,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       this.patchFields.addField(allowedFields, FIELD_CERTIFICATION);
       this.putFields.addField(allowedFields, FIELD_CERTIFICATION);
     }
+    this.supportsChildren = allowedFields.contains(FIELD_CHILDREN);
 
     Map<String, Pair<Boolean, BiConsumer<List<T>, Fields>>> fieldSupportMap = new HashMap<>();
 
@@ -362,6 +366,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     fieldSupportMap.put(FIELD_DOMAIN, Pair.of(supportsDomain, this::fetchAndSetDomain));
     fieldSupportMap.put(FIELD_REVIEWERS, Pair.of(supportsReviewers, this::fetchAndSetReviewers));
     fieldSupportMap.put(FIELD_EXTENSION, Pair.of(supportsExtension, this::fetchAndSetExtension));
+    fieldSupportMap.put(FIELD_CHILDREN, Pair.of(supportsChildren, this::fetchAndSetChildren));
 
     for (Map.Entry<String, Pair<Boolean, BiConsumer<List<T>, Fields>>> entry :
         fieldSupportMap.entrySet()) {
@@ -371,8 +376,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
       if (supportsField) {
         this.fieldFetchers.put(fieldName, fetcher);
-        this.patchFields.addField(allowedFields, fieldName);
-        this.putFields.addField(allowedFields, fieldName);
       }
     }
 
@@ -453,7 +456,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
-  @SuppressWarnings("unused")
+  /**
+   * The default behavior is to execute one by one. For batch execution, override this method in the subclass.
+   *
+   * @see GlossaryTermRepository#setInheritedFields(List, Fields) for an example implementation
+   */
   protected void setInheritedFields(List<T> entities, Fields fields) {
     for (T entity : entities) {
       setInheritedFields(entity, fields);
@@ -599,10 +606,22 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return withHref(uriInfo, entityClone);
   }
 
+  public final List<T> get(UriInfo uriInfo, List<UUID> ids, Fields fields, Include include) {
+    List<T> entities = find(ids, include);
+    setFieldsInBulk(fields, entities);
+    entities.forEach(entity -> withHref(uriInfo, entity));
+    return entities;
+  }
+
   /** getReference is used for getting the entity references from the entity in the cache. */
   public final EntityReference getReference(UUID id, Include include)
       throws EntityNotFoundException {
     return find(id, include).getEntityReference();
+  }
+
+  public final List<EntityReference> getReferences(List<UUID> id, Include include)
+      throws EntityNotFoundException {
+    return find(id, include).stream().map(EntityInterface::getEntityReference).toList();
   }
 
   /**
@@ -627,6 +646,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
     } catch (ExecutionException | UncheckedExecutionException e) {
       throw new EntityNotFoundException(entityNotFound(entityType, id));
     }
+  }
+
+  public final List<T> find(List<UUID> ids, Include include) {
+    return dao.findEntitiesByIds(ids, include);
   }
 
   public T getByName(UriInfo uriInfo, String fqn, Fields fields) {
@@ -657,6 +680,14 @@ public abstract class EntityRepository<T extends EntityInterface> {
   public final EntityReference getReferenceByName(String fqn, Include include) {
     fqn = quoteFqn ? EntityInterfaceUtil.quoteName(fqn) : fqn;
     return findByName(fqn, include).getEntityReference();
+  }
+
+  public final List<T> getByNames(
+      UriInfo uriInfo, List<String> entityFQNs, Fields fields, Include include) {
+    List<T> entities = findByNames(entityFQNs, include);
+    setFieldsInBulk(fields, entities);
+    entities.forEach(entity -> withHref(uriInfo, entity));
+    return entities;
   }
 
   public final T findByNameOrNull(String fqn, Include include) {
@@ -692,16 +723,19 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
+  public List<T> findByNames(List<String> entityFQNs, Include include) {
+    return dao.findEntityByNames(entityFQNs, include);
+  }
+
   public final List<T> listAll(Fields fields, ListFilter filter) {
     // forward scrolling, if after == null then first page is being asked
     List<String> jsons = dao.listAfter(filter, Integer.MAX_VALUE, "", "");
     List<T> entities = new ArrayList<>();
     for (String json : jsons) {
       T entity = setFieldsInternal(JsonUtils.readValue(json, entityClass), fields);
-      setInheritedFields(entity, fields);
-      clearFieldsInternal(entity, fields);
       entities.add(entity);
     }
+    setFieldsInBulk(fields, entities);
     return entities;
   }
 
@@ -709,17 +743,27 @@ public abstract class EntityRepository<T extends EntityInterface> {
     ListFilter filter = new ListFilter(Include.NON_DELETED);
     List<String> jsons = listAllByParentFqn(parentFqn, filter);
     List<T> entities = new ArrayList<>();
-    setFieldsInBulk(jsons, fields, entities);
-    return entities;
-  }
-
-  public void setFieldsInBulk(List<String> jsons, Fields fields, List<T> entities) {
     for (String json : jsons) {
       T entity = JsonUtils.readValue(json, entityClass);
       entities.add(entity);
     }
+    // TODO: Ensure consistent behavior with setFieldsInBulk when all repositories implement it
     fetchAndSetFields(entities, fields);
+    setInheritedFields(entities, fields);
     for (T entity : entities) {
+      clearFieldsInternal(entity, fields);
+    }
+    return entities;
+  }
+
+  /**
+   * The default behavior is to execute one by one. For batch execution, override this method in the subclass.
+   *
+   * @see GlossaryTermRepository#setFieldsInBulk(Fields, List) for an example implementation
+   */
+  public void setFieldsInBulk(Fields fields, List<T> entities) {
+    for (T entity : entities) {
+      setFieldsInternal(entity, fields);
       setInheritedFields(entity, fields);
       clearFieldsInternal(entity, fields);
     }
@@ -752,11 +796,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
       List<String> jsons = dao.listAfter(filter, limitParam + 1, afterName, afterId);
 
       for (String json : jsons) {
-        T entity = setFieldsInternal(JsonUtils.readValue(json, entityClass), fields);
-        setInheritedFields(entity, fields);
-        clearFieldsInternal(entity, fields);
-        entities.add(withHref(uriInfo, entity));
+        T entity = JsonUtils.readValue(json, entityClass);
+        entities.add(entity);
       }
+      setFieldsInBulk(fields, entities);
+      entities.forEach(entity -> withHref(uriInfo, entity));
 
       String beforeCursor;
       String afterCursor = null;
@@ -798,11 +842,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     List<T> entities = new ArrayList<>();
     for (String json : jsons) {
-      T entity = setFieldsInternal(JsonUtils.readValue(json, entityClass), fields);
-      setInheritedFields(entity, fields);
-      clearFieldsInternal(entity, fields);
-      entities.add(withHref(uriInfo, entity));
+      T entity = JsonUtils.readValue(json, entityClass);
+      entities.add(entity);
     }
+    setFieldsInBulk(fields, entities);
+    entities.forEach(entity -> withHref(uriInfo, entity));
+
     int total = dao.listCount(filter);
 
     String beforeCursor = null;
@@ -3759,13 +3804,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
-  private void fetchAndSetFields(List<T> entities, Fields fields) {
-    for (String field : fields) {
-      BiConsumer<List<T>, Fields> fetcher = fieldFetchers.get(field);
-      if (fetcher != null) {
-        fetcher.accept(entities, fields);
-      }
-    }
+  protected void fetchAndSetFields(List<T> entities, Fields fields) {
+    fieldFetchers.values().forEach(fetcher -> fetcher.accept(entities, fields));
   }
 
   private void fetchAndSetOwners(List<T> entities, Fields fields) {
@@ -3824,6 +3864,18 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
+  protected void fetchAndSetChildren(List<T> entities, Fields fields) {
+    if (!fields.contains(FIELD_CHILDREN) || entities == null || entities.isEmpty()) {
+      return;
+    }
+
+    Map<UUID, List<EntityReference>> childrenMap = batchFetchChildren(entities);
+
+    for (T entity : entities) {
+      entity.setChildren(childrenMap.get(entity.getId()));
+    }
+  }
+
   private void fetchAndSetReviewers(List<T> entities, Fields fields) {
     if (!fields.contains(FIELD_REVIEWERS) || !supportsReviewers || entities.isEmpty()) {
       return;
@@ -3867,6 +3919,15 @@ public abstract class EntityRepository<T extends EntityInterface> {
     List<CollectionDAO.TagUsageDAO.TagLabelWithFQNHash> tags =
         daoCollection.tagUsageDAO().getTagsInternalBatch(entityFQNs);
 
+    List<String> tagFQNs =
+        tags.stream()
+            .distinct()
+            .map(CollectionDAO.TagUsageDAO.TagLabelWithFQNHash::getTagFQN)
+            .toList();
+    Map<String, TagLabel> tagFQNLabelMap =
+        EntityUtil.toTagLabels(TagLabelUtil.getTags(tagFQNs).toArray(new Tag[0])).stream()
+            .collect(Collectors.toMap(TagLabel::getTagFQN, Function.identity()));
+
     // Map from targetFQNHash to targetFQN
     Map<String, String> fqnHashToFqnMap =
         entityFQNs.stream().collect(Collectors.toMap(FullyQualifiedName::buildHash, fqn -> fqn));
@@ -3878,7 +3939,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
       String targetFQN = fqnHashToFqnMap.get(targetFQNHash);
 
       if (targetFQN != null) {
-        tagsMap.computeIfAbsent(targetFQN, k -> new ArrayList<>()).add(tagWithHash.toTagLabel());
+        TagLabel tagLabel = tagFQNLabelMap.get(tagWithHash.getTagFQN());
+        tagsMap.computeIfAbsent(targetFQN, k -> new ArrayList<>()).add(tagLabel);
       }
     }
 
@@ -3968,6 +4030,36 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
 
     return result;
+  }
+
+  private Map<UUID, List<EntityReference>> batchFetchChildren(List<T> entities) {
+    List<CollectionDAO.EntityRelationshipObject> records =
+        daoCollection
+            .relationshipDAO()
+            .findToBatch(
+                entityListToStrings(entities), Relationship.CONTAINS.ordinal(), entityType);
+
+    Map<UUID, List<EntityReference>> childrenMap = new HashMap<>();
+
+    if (CollectionUtils.isEmpty(records)) {
+      return childrenMap;
+    }
+
+    Map<String, EntityReference> idReferenceMap =
+        Entity.getEntityReferencesByIds(
+                records.get(0).getToEntity(),
+                records.stream().map(e -> UUID.fromString(e.getToId())).distinct().toList(),
+                ALL)
+            .stream()
+            .collect(Collectors.toMap(e -> e.getId().toString(), Function.identity()));
+
+    for (CollectionDAO.EntityRelationshipObject rec : records) {
+      UUID entityId = UUID.fromString(rec.getFromId());
+      EntityReference childrenRef = idReferenceMap.get(rec.getToId());
+      childrenMap.computeIfAbsent(entityId, k -> new ArrayList<>()).add(childrenRef);
+    }
+
+    return childrenMap;
   }
 
   private List<String> entityListToStrings(List<T> entities) {

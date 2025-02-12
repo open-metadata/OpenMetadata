@@ -57,6 +57,7 @@ import java.util.stream.Collectors;
 import javax.json.JsonPatch;
 import javax.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.common.utils.CommonUtil;
@@ -136,6 +137,15 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   }
 
   @Override
+  public void setFieldsInBulk(Fields fields, List<GlossaryTerm> entities) {
+    fetchAndSetFields(entities, fields);
+    setInheritedFields(entities, fields);
+    for (GlossaryTerm entity : entities) {
+      clearFieldsInternal(entity, fields);
+    }
+  }
+
+  @Override
   public void clearFields(GlossaryTerm entity, Fields fields) {
     entity.setRelatedTerms(fields.contains("relatedTerms") ? entity.getRelatedTerms() : null);
     entity.withUsageCount(fields.contains("usageCount") ? entity.getUsageCount() : null);
@@ -148,6 +158,25 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     inheritOwners(glossaryTerm, fields, parent);
     inheritDomain(glossaryTerm, fields, parent);
     inheritReviewers(glossaryTerm, fields, parent);
+  }
+
+  @Override
+  public void setInheritedFields(List<GlossaryTerm> glossaryTerms, Fields fields) {
+    List<? extends EntityInterface> parents =
+        getParentEntities(glossaryTerms, "owners,domain,reviewers");
+    Map<UUID, EntityInterface> parentMap =
+        parents.stream().collect(Collectors.toMap(EntityInterface::getId, e -> e));
+    for (GlossaryTerm glossaryTerm : glossaryTerms) {
+      EntityInterface parent = null;
+      if (glossaryTerm.getParent() != null) {
+        parent = parentMap.get(glossaryTerm.getParent().getId());
+      } else if (glossaryTerm.getGlossary() != null) {
+        parent = parentMap.get(glossaryTerm.getGlossary().getId());
+      }
+      inheritOwners(glossaryTerm, fields, parent);
+      inheritDomain(glossaryTerm, fields, parent);
+      inheritReviewers(glossaryTerm, fields, parent);
+    }
   }
 
   private Integer getUsageCount(GlossaryTerm term) {
@@ -624,6 +653,24 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
         : Entity.getEntity(entity.getGlossary(), fields, Include.ALL);
   }
 
+  public List<EntityInterface> getParentEntities(List<GlossaryTerm> entities, String fields) {
+    List<EntityInterface> result = new ArrayList<>();
+    if (CollectionUtils.isEmpty(entities)) {
+      return result;
+    }
+    List<EntityReference> parents =
+        entities.stream().map(GlossaryTerm::getParent).filter(Objects::nonNull).distinct().toList();
+    result.addAll(Entity.getEntities(parents, fields, Include.ALL));
+    List<EntityReference> glossaries =
+        entities.stream()
+            .map(GlossaryTerm::getGlossary)
+            .filter(Objects::nonNull)
+            .distinct()
+            .toList();
+    result.addAll(Entity.getEntities(glossaries, fields, Include.ALL));
+    return result;
+  }
+
   private void addGlossaryRelationship(GlossaryTerm term) {
     Relationship relationship = term.getParent() != null ? Relationship.HAS : Relationship.CONTAINS;
     addRelationship(
@@ -840,7 +887,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   }
 
   private void fetchAndSetParentOrGlossary(List<GlossaryTerm> terms, Fields fields) {
-    if (terms == null || terms.isEmpty() || (!fields.contains("parent"))) {
+    if (terms == null || terms.isEmpty()) {
       return;
     }
 
