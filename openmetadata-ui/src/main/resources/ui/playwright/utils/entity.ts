@@ -715,13 +715,16 @@ export const dropdownVisibility = async (page: Page, tagType: string) => {
     .getByTestId(`${tagType}-container`)
     .getByTestId('add-tag')
     .click();
-  await page.waitForSelector(`[data-testid="${tagType}-dropdown"]`);
+  await page.waitForSelector(
+    '.ant-select-dropdown [data-testid="saveAssociatedTag"]',
+    { state: 'visible' }
+  );
 
-  await expect(page.getByTestId(`${tagType}-dropdown`)).toBeVisible();
+  await expect(page.getByTestId('saveAssociatedTag')).toBeVisible();
 
   await page.getByTestId('activity_feed').click();
 
-  await expect(page.getByTestId(`${tagType}-dropdown`)).not.toBeVisible();
+  await expect(page.getByTestId('saveAssociatedTag')).not.toBeVisible();
 };
 
 export const upVote = async (page: Page, endPoint: string) => {

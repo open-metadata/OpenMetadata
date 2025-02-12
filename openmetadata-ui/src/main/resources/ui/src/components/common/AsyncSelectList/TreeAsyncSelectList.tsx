@@ -100,7 +100,7 @@ const TreeAsyncSelectList: FC<Omit<AsyncSelectListProps, 'fetchOptions'>> = ({
   }, []);
 
   const dropdownRender = (menu: React.ReactElement) => (
-    <div data-testid="glossary-dropdown">
+    <>
       {isLoading ? <Loader size="small" /> : menu}
       <Space className="p-sm p-b-xss p-l-xs custom-dropdown-render" size={8}>
         <Button
@@ -122,7 +122,7 @@ const TreeAsyncSelectList: FC<Omit<AsyncSelectListProps, 'fetchOptions'>> = ({
           {t('label.cancel')}
         </Button>
       </Space>
-    </div>
+    </>
   );
 
   const customTagRender = (data: CustomTagProps) => {
