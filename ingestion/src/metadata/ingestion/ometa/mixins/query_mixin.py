@@ -42,6 +42,8 @@ class OMetaQueryMixin:
         return str(result.hexdigest())
 
     def _get_or_create_query(self, query: CreateQueryRequest) -> Optional[Query]:
+        if query.query.root is None:
+            return None
         query_hash = self._get_query_hash(query=query.query.root)
         query_entity = self.get_by_name(entity=Query, fqn=query_hash)
         if query_entity is None:
