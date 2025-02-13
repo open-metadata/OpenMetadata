@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { Page } from '@playwright/test';
-import { redirectToHomePage } from './common';
+import { clickOutside, redirectToHomePage } from './common';
 
 export const redirectToUserPage = async (page: Page) => {
   await redirectToHomePage(page);
@@ -30,5 +30,5 @@ export const redirectToUserPage = async (page: Page) => {
   await getUserDetails;
 
   // Close the profile dropdown
-  await page.getByTestId('dropdown-profile').click();
+  await clickOutside(page);
 };
