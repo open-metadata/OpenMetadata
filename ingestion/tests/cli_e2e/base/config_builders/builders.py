@@ -90,8 +90,8 @@ class LineageConfigBuilder(BaseBuilder):
                 "type": "DatabaseLineage",
                 "queryLogDuration": 1,
                 "resultLimit": 10000,
-                "processQueryLineage": True,
-                "processStoredProcedureLineage": True,
+                "processQueryLineage": False,
+                "processStoredProcedureLineage": False,
             }
         }
         return self.config

@@ -27,6 +27,7 @@ from metadata.generated.schema.type.entityLineage import (
     EntitiesEdge,
     LineageDetails,
 )
+from metadata.generated.schema.type.entityLineage import Source as LineageSource
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException, Source
@@ -111,7 +112,9 @@ class UnitycatalogLineageSource(Source):
                     )
                 )
         if col_lineage:
-            return LineageDetails(columnsLineage=col_lineage)
+            return LineageDetails(
+                columnsLineage=col_lineage, source=LineageSource.QueryLineage
+            )
         return None
 
     def _iter(self, *_, **__) -> Iterable[Either[AddLineageRequest]]:
