@@ -77,6 +77,11 @@ const UserProfileDetails = ({
     [username, currentUser]
   );
 
+  const hasDomainPersonaEditPermission = useMemo(
+    () => Boolean(isAdminUser) && !userData.deleted,
+    [isAdminUser, userData.deleted]
+  );
+
   const hasEditPermission = useMemo(
     () => (isAdminUser || isLoggedInUser) && !userData.deleted,
     [isAdminUser, isLoggedInUser, userData.deleted]
@@ -201,7 +206,7 @@ const UserProfileDetails = ({
           entityFqn={userData.fullyQualifiedName ?? ''}
           entityId={userData.id ?? ''}
           entityType={EntityType.USER}
-          hasPermission={Boolean(isAdminUser) && !userData.deleted}
+          hasPermission={hasDomainPersonaEditPermission}
           textClassName="text-sm text-grey-muted"
         />
       </div>
@@ -233,7 +238,7 @@ const UserProfileDetails = ({
         />
 
         <PersonaSelectableList
-          hasPermission={hasEditPermission}
+          hasPermission={hasDomainPersonaEditPermission}
           multiSelect={false}
           personaList={userData.personas}
           selectedPersonas={defaultPersona ? [defaultPersona] : []}
