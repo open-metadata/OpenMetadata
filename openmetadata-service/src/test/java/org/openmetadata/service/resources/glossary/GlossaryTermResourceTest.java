@@ -20,6 +20,7 @@ import static java.util.Collections.emptyList;
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
+import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
@@ -59,6 +60,8 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Predicate;
+import java.util.stream.IntStream;
+import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
@@ -1059,6 +1062,21 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     }
   }
 
+  @Test
+  void test_performance_listEntities() throws IOException {
+    Glossary glossary = createGlossary("词汇表三", null, null);
+    List<Map<String, Object>> result =
+        createTerms(glossary, IntStream.range(0, 500).mapToObj(i -> "term" + i).toList());
+
+    Map<String, String> queryParams = new HashMap<>();
+    queryParams.put("fields", "children,relatedTerms,reviewers,tags");
+    queryParams.put("limit", "10000");
+    queryParams.put("directChildrenOf", "词汇表三");
+    ResultList<GlossaryTerm> list =
+        assertTimeout(Duration.ofSeconds(1), () -> listEntities(queryParams, ADMIN_AUTH_HEADERS));
+    assertEquals(result.size(), list.getData().size());
+  }
+
   public GlossaryTerm createTerm(Glossary glossary, GlossaryTerm parent, String termName)
       throws IOException {
     return createTerm(glossary, parent, termName, glossary.getReviewers());
@@ -1086,6 +1104,25 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
             .withOwners(owners)
             .withReviewers(reviewers);
     return createAndCheckEntity(createGlossaryTerm, createdBy);
+  }
+
+  private List<Map<String, Object>> createTerms(Glossary glossary, List<String> termNames)
+      throws HttpResponseException {
+    String pathUrl = "/createMany/";
+    String glossaryFqn = getFqn(glossary);
+    WebTarget target = getCollection().path(pathUrl);
+    List<CreateGlossaryTerm> createGlossaryTerms =
+        termNames.stream()
+            .map(
+                name ->
+                    createRequest(name, "d", "", null)
+                        .withRelatedTerms(null)
+                        .withSynonyms(List.of("performance1", "performance2"))
+                        .withStyle(new Style().withColor("#FF5733").withIconURL("https://img"))
+                        .withGlossary(glossaryFqn))
+            .toList();
+    return TestUtils.post(
+        target, createGlossaryTerms, List.class, OK.getStatusCode(), ADMIN_AUTH_HEADERS);
   }
 
   public void assertContains(List<GlossaryTerm> expectedTerms, List<GlossaryTerm> actualTerms)

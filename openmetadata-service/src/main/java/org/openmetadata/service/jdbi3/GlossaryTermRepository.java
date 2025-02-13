@@ -41,6 +41,7 @@ import static org.openmetadata.service.util.EntityUtil.termReferenceMatch;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.google.gson.Gson;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -244,6 +245,24 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
         .withParent(parentTerm)
         .withRelatedTerms(relatedTerms)
         .withReviewers(reviewers);
+  }
+
+  @Override
+  public void storeEntities(List<GlossaryTerm> entities) {
+    List<GlossaryTerm> entitiesToStore = new ArrayList<>();
+    Gson gson = new Gson();
+    for (GlossaryTerm entity : entities) {
+      EntityReference glossary = entity.getGlossary();
+      EntityReference parentTerm = entity.getParent();
+      List<EntityReference> reviewers = entity.getReviewers();
+
+      String jsonCopy = gson.toJson(entity.withGlossary(null).withParent(null).withReviewers(null));
+      entitiesToStore.add(gson.fromJson(jsonCopy, GlossaryTerm.class));
+
+      // restore the relationships
+      entity.withGlossary(glossary).withParent(parentTerm).withReviewers(reviewers);
+    }
+    storeMany(entitiesToStore);
   }
 
   @Override
