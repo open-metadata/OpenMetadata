@@ -119,7 +119,6 @@ import javax.ws.rs.core.Response.Status;
 import javax.ws.rs.core.UriInfo;
 import lombok.Getter;
 import lombok.NonNull;
-import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
@@ -274,8 +273,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   protected boolean supportsSearch = false;
   protected final Map<String, BiConsumer<List<T>, Fields>> fieldFetchers = new HashMap<>();
-
-  @Getter @Setter protected ChangeDescription incrementalChangeDescription = null;
 
   protected EntityRepository(
       String collectionPath,
@@ -2850,6 +2847,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
       changeDescription = new ChangeDescription();
       updateInternal();
       storeUpdate();
+      if (operation.isPatch() || (operation.isPut() && incrementalFieldsChanged())) {
+        updated.setChangeDescription(incrementalChangeDescription);
+      }
       postUpdate(original, updated);
     }
 
@@ -2858,7 +2858,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
       updateInternal(false);
       incrementalChangeDescription = changeDescription;
       incrementalChangeDescription.setPreviousVersion(original.getVersion());
-      EntityRepository.this.incrementalChangeDescription = incrementalChangeDescription;
     }
 
     @Transaction
