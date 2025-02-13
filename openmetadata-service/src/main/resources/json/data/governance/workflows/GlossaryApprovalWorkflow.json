@@ -28,6 +28,12 @@
     {
       "type": "endEvent",
       "subType": "endEvent",
+      "name": "ApprovedEndAfterUserTask",
+      "displayName": "Glossary Term Status: Approved"
+    },
+    {
+      "type": "endEvent",
+      "subType": "endEvent",
       "name": "RejectedEnd",
       "displayName": "Glossary Term Status: Rejected"
     },
@@ -96,6 +102,15 @@
     {
       "type": "automatedTask",
       "subType": "setGlossaryTermStatusTask",
+      "name": "SetGlossaryTermStatusToApprovedAfterUserTask",
+      "displayName": "Set Status to 'Approved'",
+      "config": {
+        "glossaryTermStatus": "Approved"
+      }
+    },
+    {
+      "type": "automatedTask",
+      "subType": "setGlossaryTermStatusTask",
       "name": "SetGlossaryTermStatusToRejected",
       "displayName": "Set Status to 'Rejected'",
       "config": {
@@ -138,7 +153,7 @@
     },
     {
       "from": "ApproveGlossaryTerm",
-      "to": "SetGlossaryTermStatusToApproved",
+      "to": "SetGlossaryTermStatusToApprovedAfterUserTask",
       "condition": true
     },
     {
@@ -149,6 +164,10 @@
     {
       "from": "SetGlossaryTermStatusToApproved",
       "to": "ApprovedEnd"
+    },
+    {
+      "from": "SetGlossaryTermStatusToApprovedAfterUserTask",
+      "to": "ApprovedEndAfterUserTask"
     },
     {
       "from": "SetGlossaryTermStatusToRejected",
