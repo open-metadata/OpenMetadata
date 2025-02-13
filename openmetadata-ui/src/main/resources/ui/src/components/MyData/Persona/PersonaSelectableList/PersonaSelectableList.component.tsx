@@ -72,7 +72,7 @@ export const PersonaSelectableList = ({
   useEffect(() => {
     const observer = new MutationObserver(() => {
       const dropdown = document.querySelector(
-        '.ant-select-dropdown'
+        '.persona-custom-dropdown-class'
       ) as HTMLElement;
 
       if (dropdown) {
@@ -82,7 +82,7 @@ export const PersonaSelectableList = ({
       }
     });
 
-    const dropdown = document.querySelector('.ant-select-dropdown');
+    const dropdown = document.querySelector('.persona-custom-dropdown-class');
     if (dropdown) {
       observer.observe(dropdown, {
         attributes: true,
@@ -206,6 +206,7 @@ export const PersonaSelectableList = ({
                 value: persona.id,
               }))}
               placeholder="Please select"
+              popupClassName="persona-custom-dropdown-class"
               ref={dropdownRef as any}
               style={{ width: '100%' }}
               onChange={(selectedIds) => {

@@ -94,7 +94,7 @@ const UserProfileTeams = ({
   useEffect(() => {
     const observer = new MutationObserver(() => {
       const dropdown = document.querySelector(
-        '.ant-select-dropdown'
+        '.teams-custom-dropdown-class'
       ) as HTMLElement;
 
       if (dropdown) {
@@ -102,7 +102,7 @@ const UserProfileTeams = ({
       }
     });
 
-    const dropdown = document.querySelector('.ant-select-dropdown');
+    const dropdown = document.querySelector('.teams-custom-dropdown-class');
     if (dropdown) {
       observer.observe(dropdown, {
         attributes: true,

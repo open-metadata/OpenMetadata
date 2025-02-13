@@ -102,7 +102,7 @@ const DomainSelectableList = ({
   useEffect(() => {
     const observer = new MutationObserver(() => {
       const dropdown = document.querySelector(
-        '.ant-select-dropdown'
+        '.domain-custom-dropdown-class'
       ) as HTMLElement;
 
       if (dropdown) {
@@ -110,7 +110,7 @@ const DomainSelectableList = ({
       }
     });
 
-    const dropdown = document.querySelector('.ant-select-dropdown');
+    const dropdown = document.querySelector('.domain-custom-dropdown-class');
     if (dropdown) {
       observer.observe(dropdown, {
         attributes: true,
@@ -165,6 +165,7 @@ const DomainSelectableList = ({
                   value: domain.id,
                 }))}
                 placeholder="Please select"
+                popupClassName="domain-custom-dropdown-class"
                 ref={dropdownRef as any}
                 style={{ width: '100%' }}
                 onChange={(selectedIds) => {

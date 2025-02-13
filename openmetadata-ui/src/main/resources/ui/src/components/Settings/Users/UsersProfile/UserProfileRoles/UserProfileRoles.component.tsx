@@ -171,7 +171,7 @@ const UserProfileRoles = ({
   useEffect(() => {
     const observer = new MutationObserver(() => {
       const dropdown = document.querySelector(
-        '.ant-select-dropdown'
+        '.roles-custom-dropdown-class'
       ) as HTMLElement;
 
       if (dropdown) {
@@ -179,7 +179,7 @@ const UserProfileRoles = ({
       }
     });
 
-    const dropdown = document.querySelector('.ant-select-dropdown');
+    const dropdown = document.querySelector('.roles-custom-dropdown-class');
     if (dropdown) {
       observer.observe(dropdown, {
         attributes: true,
@@ -231,7 +231,6 @@ const UserProfileRoles = ({
                     className="w-full"
                     dropdownMatchSelectWidth={false}
                     filterOption={handleSearchFilterOption}
-                    getPopupContainer={(trigger) => trigger.parentElement}
                     loading={isLoading}
                     maxTagCount={4}
                     maxTagPlaceholder={(omittedValues) => (
@@ -244,6 +243,7 @@ const UserProfileRoles = ({
                     mode="multiple"
                     open={isDropdownOpen}
                     options={useRolesOption}
+                    popupClassName="roles-custom-dropdown-class"
                     ref={dropdownRef as any}
                     value={selectedRoles}
                     onChange={setSelectedRoles}

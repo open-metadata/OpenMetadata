@@ -120,6 +120,7 @@ const TeamsSelectableNew = forwardRef<any, TeamsSelectableProps>(
           )}
           placeholder={placeholder}
           placement="bottomLeft"
+          popupClassName="teams-custom-dropdown-class"
           ref={ref as any}
           showCheckedStrategy={TreeSelect.SHOW_CHILD}
           style={{ width: '100%' }}
