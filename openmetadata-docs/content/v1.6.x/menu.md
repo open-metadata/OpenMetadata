@@ -223,6 +223,9 @@ site_menu:
   - category: Deployment / Metrics
     url: /deployment/metrics
 
+  - category: Deployment / OSS Security
+    url: /deployment/oss-security
+
   - category: Connectors
     url: /connectors
 
