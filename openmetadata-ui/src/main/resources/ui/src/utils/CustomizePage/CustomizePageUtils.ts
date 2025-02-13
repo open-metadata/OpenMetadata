@@ -21,6 +21,7 @@ import dashboardDataModelClassBase from '../DashboardDataModelBase';
 import dashboardDetailsClassBase from '../DashboardDetailsClassBase';
 import databaseClassBase from '../Database/DatabaseClassBase';
 import databaseSchemaClassBase from '../DatabaseSchemaClassBase';
+import domainClassBase from '../Domain/DomainClassBase';
 import i18n from '../i18next/LocalUtil';
 import pipelineClassBase from '../PipelineClassBase';
 import searchIndexClassBase from '../SearchIndexDetailsClassBase';
@@ -108,7 +109,7 @@ export const getTabLabelFromId = (tab: EntityTabs) => {
     case EntityTabs.GLOSSARY_TERMS:
       return i18n.t('label.glossary-terms');
     case EntityTabs.ASSETS:
-      return i18n.t('label.assets');
+      return i18n.t('label.asset-plural');
     case EntityTabs.ACTIVITY_FEED:
       return i18n.t('label.activity-feed-and-task-plural');
     case EntityTabs.CUSTOM_PROPERTIES:
@@ -135,6 +136,13 @@ export const getTabLabelFromId = (tab: EntityTabs) => {
       return i18n.t('label.children');
     case EntityTabs.DETAILS:
       return i18n.t('label.detail-plural');
+    case EntityTabs.SUBDOMAINS:
+      return i18n.t('label.sub-domain-plural');
+    case EntityTabs.DATA_PRODUCTS:
+      return i18n.t('label.data-product-plural');
+    case EntityTabs.DOCUMENTATION:
+      return i18n.t('label.documentation');
+
     default:
       return '';
   }
@@ -189,6 +197,10 @@ export const getDashboardDefaultTabs = () => {
   return dashboardDetailsClassBase.getDashboardDetailPageTabsIds();
 };
 
+export const getDomainDefaultTabs = () => {
+  return domainClassBase.getDomainDetailPageTabsIds();
+};
+
 export const getDefaultTabs = (pageType?: string): Tab[] => {
   switch (pageType) {
     case PageType.GlossaryTerm:
@@ -215,6 +227,8 @@ export const getDefaultTabs = (pageType?: string): Tab[] => {
       return getPipelineDefaultTabs();
     case PageType.Dashboard:
       return getDashboardDefaultTabs();
+    case PageType.Domain:
+      return getDomainDefaultTabs();
     default:
       return [
         {
@@ -252,6 +266,8 @@ export const getDefaultWidgetForTab = (pageType: PageType, tab: EntityTabs) => {
       return searchIndexClassBase.getDefaultLayout(tab);
     case PageType.Container:
       return containerDetailsClassBase.getDefaultLayout(tab);
+    case PageType.Domain:
+      return domainClassBase.getDefaultLayout(tab);
     default:
       return [];
   }
@@ -305,6 +321,8 @@ export const getCustomizableWidgetByPage = (
       return pipelineClassBase.getCommonWidgetList();
     case PageType.SearchIndex:
       return searchIndexClassBase.getCommonWidgetList();
+    case PageType.Domain:
+      return domainClassBase.getCommonWidgetList();
     case PageType.LandingPage:
     default:
       return [];
@@ -333,6 +351,8 @@ export const getDummyDataByPage = (pageType: PageType) => {
       return searchIndexClassBase.getDummyData();
     case PageType.Dashboard:
       return dashboardDetailsClassBase.getDummyData();
+    case PageType.Domain:
+      return domainClassBase.getDummyData();
 
     case PageType.LandingPage:
     default:

@@ -105,7 +105,7 @@ export const CustomizeTabWidget = () => {
   };
 
   const add = () => {
-    const newActiveKey = uniqueId(`newTab`);
+    const newActiveKey = uniqueId(`custom`);
 
     updateCurrentPage({
       ...currentPage,

@@ -30,6 +30,7 @@ import { FrequentlyJoinedTables } from '../../../../pages/TableDetailsPageV1/Fre
 import TableConstraints from '../../../../pages/TableDetailsPageV1/TableConstraints/TableConstraints';
 import containerDetailsClassBase from '../../../../utils/ContainerDetailsClassBase';
 import dashboardDataModelClassBase from '../../../../utils/DashboardDataModelBase';
+import domainClassBase from '../../../../utils/Domain/DomainClassBase';
 import { renderReferenceElement } from '../../../../utils/GlossaryUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../../utils/PermissionsUtils';
 import tableClassBase from '../../../../utils/TableClassBase';
@@ -268,6 +269,8 @@ export const GenericWidget = (props: WidgetCommonProps) => {
           label="synonym"
         />
       );
+    } else if (props.widgetKey.startsWith(DetailPageWidgetKeys.DOMAIN_TYPE)) {
+      return domainClassBase.getDummyData().domainType;
     } else if (
       props.widgetKey.startsWith(DetailPageWidgetKeys.DOMAIN) ||
       props.widgetKey.startsWith(GlossaryTermDetailPageWidgetKeys.DOMAIN)
@@ -614,6 +617,13 @@ export const GenericWidget = (props: WidgetCommonProps) => {
       );
     } else if (props.widgetKey.startsWith(DetailPageWidgetKeys.CHARTS_TABLE)) {
       return <DashboardChartTable onThreadLinkSelect={noop} />;
+    } else if (props.widgetKey.startsWith(DetailPageWidgetKeys.EXPERTS)) {
+      return (
+        <OwnerLabel
+          hasPermission={false}
+          owners={domainClassBase.getDummyData().experts ?? []}
+        />
+      );
     }
 
     return widgetName;

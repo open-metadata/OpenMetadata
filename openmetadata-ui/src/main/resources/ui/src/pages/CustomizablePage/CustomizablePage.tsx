@@ -43,6 +43,7 @@ import { getPersonaByName } from '../../rest/PersonaAPI';
 import { Transi18next } from '../../utils/CommonUtils';
 import { getSettingPath } from '../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
+import CustomizableDomainPage from '../CustomizableDomainPage/CustomizableDomainPage';
 import { CustomizeTableDetailPage } from '../CustomizeTableDetailPage/CustomizeTableDetailPage';
 import { SettingsNavigationPage } from '../SettingsNavigationPage/SettingsNavigationPage';
 import { useCustomizeStore } from './CustomizeStore';
@@ -249,6 +250,14 @@ export const CustomizablePage = () => {
     case 'homepage':
       return (
         <CustomizeMyData
+          initialPageData={currentPage}
+          personaDetails={personaDetails}
+          onSaveLayout={handlePageCustomizeSave}
+        />
+      );
+    case PageType.Domain:
+      return (
+        <CustomizableDomainPage
           initialPageData={currentPage}
           personaDetails={personaDetails}
           onSaveLayout={handlePageCustomizeSave}
