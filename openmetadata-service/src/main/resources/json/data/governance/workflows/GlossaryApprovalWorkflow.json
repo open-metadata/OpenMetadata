@@ -101,7 +101,7 @@
     {
       "type": "automatedTask",
       "subType": "setGlossaryTermStatusTask",
-      "name": "SetGlossaryTermStatusToApproved",
+      "name": "SetGlossaryTermStatusToApprovedAfterApproval",
       "displayName": "Set Status to 'Approved'",
       "config": {
         "glossaryTermStatus": "Approved"
@@ -109,6 +109,18 @@
       "inputNamespaceMap": {
         "relatedEntity": "global",
         "updatedBy": "ApproveGlossaryTerm"
+      }
+    },
+    {
+      "type": "automatedTask",
+      "subType": "setGlossaryTermStatusTask",
+      "name": "SetGlossaryTermStatusToApproved",
+      "displayName": "Set Status to 'Approved'",
+      "config": {
+        "glossaryTermStatus": "Approved"
+      },
+      "inputNamespaceMap": {
+        "relatedEntity": "global"
       }
     },
     {
@@ -160,13 +172,17 @@
     },
     {
       "from": "ApproveGlossaryTerm",
-      "to": "SetGlossaryTermStatusToApproved",
+      "to": "SetGlossaryTermStatusToApprovedAfterApproval",
       "condition": "true"
     },
     {
       "from": "ApproveGlossaryTerm",
       "to": "SetGlossaryTermStatusToRejected",
       "condition": "false"
+    },
+    {
+      "from": "SetGlossaryTermStatusToApprovedAfterApproval",
+      "to": "ApprovedEnd"
     },
     {
       "from": "SetGlossaryTermStatusToApproved",
