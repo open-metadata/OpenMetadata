@@ -472,7 +472,7 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
             .findTo(id, entityType, Relationship.CONTAINS.ordinal(), Entity.INGESTION_PIPELINE);
 
     if (childrenRecords.isEmpty()) {
-      LOG.info("No children to delete");
+      LOG.debug("No children to delete");
       return;
     }
     // Delete all the contained entities
