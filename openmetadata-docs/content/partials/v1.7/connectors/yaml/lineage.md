@@ -195,14 +195,14 @@ source:
       processStoredProcedureLineage: true
 ```
 
+```yaml {% srNumber=55 %}
+      threads: 1
+```
+
 ```yaml {% srNumber=49 %}
 sink:
   type: metadata-rest
   config: {}
-```
-
-```yaml {% srNumber=55 %}
-      threads: 1
 ```
 
 {% partial file="/v1.7/connectors/yaml/workflow-config.md" /%}
