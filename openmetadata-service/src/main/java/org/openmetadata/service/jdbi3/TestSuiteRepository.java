@@ -440,6 +440,7 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
     String updatedBy = securityContext.getUserPrincipal().getName();
     preDelete(original, updatedBy);
     setFieldsInternal(original, putFields);
+    deleteChildIngestionPipelines(original.getId(), hardDelete, updatedBy);
 
     EventType changeType;
     TestSuite updated = JsonUtils.readValue(JsonUtils.pojoToJson(original), TestSuite.class);
@@ -458,6 +459,24 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
     }
     LOG.info("{} deleted {}", hardDelete ? "Hard" : "Soft", updated.getFullyQualifiedName());
     return new RestUtil.DeleteResponse<>(updated, changeType);
+  }
+
+  /**
+   * Always delete as if it was marked recursive. Deleting a Logical Suite should
+   * just go ahead and clean the Ingestion Pipelines
+   */
+  private void deleteChildIngestionPipelines(UUID id, boolean hardDelete, String updatedBy) {
+    List<CollectionDAO.EntityRelationshipRecord> childrenRecords =
+        daoCollection
+            .relationshipDAO()
+            .findTo(id, entityType, Relationship.CONTAINS.ordinal(), Entity.INGESTION_PIPELINE);
+
+    if (childrenRecords.isEmpty()) {
+      LOG.info("No children to delete");
+      return;
+    }
+    // Delete all the contained entities
+    deleteChildren(childrenRecords, hardDelete, updatedBy);
   }
 
   private void updateTestSummaryFromBucket(JsonObject bucket, TestSummary testSummary) {
