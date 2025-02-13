@@ -27,6 +27,12 @@
     {
       "type": "endEvent",
       "subType": "endEvent",
+      "name": "ApprovedEndAfterApproval",
+      "displayName": "Glossary Term Status: Approved"
+    },
+    {
+      "type": "endEvent",
+      "subType": "endEvent",
       "name": "RejectedEnd",
       "displayName": "Glossary Term Status: Rejected"
     },
@@ -182,7 +188,7 @@
     },
     {
       "from": "SetGlossaryTermStatusToApprovedAfterApproval",
-      "to": "ApprovedEnd"
+      "to": "ApprovedEndAfterApproval"
     },
     {
       "from": "SetGlossaryTermStatusToApproved",
