@@ -19,6 +19,7 @@ import org.openmetadata.service.governance.workflows.flowable.builders.FieldExte
 import org.openmetadata.service.governance.workflows.flowable.builders.ServiceTaskBuilder;
 import org.openmetadata.service.governance.workflows.flowable.builders.StartEventBuilder;
 import org.openmetadata.service.governance.workflows.flowable.builders.SubProcessBuilder;
+import org.openmetadata.service.util.JsonUtils;
 
 public class CheckEntityAttributesTask implements NodeInterface {
   private final SubProcess subProcess;
@@ -33,7 +34,10 @@ public class CheckEntityAttributesTask implements NodeInterface {
         new StartEventBuilder().id(getFlowableElementId(subProcessId, "startEvent")).build();
 
     ServiceTask checkEntityAttributes =
-        getCheckEntityAttributesServiceTask(subProcessId, nodeDefinition.getConfig().getRules());
+        getCheckEntityAttributesServiceTask(
+            subProcessId,
+            nodeDefinition.getConfig().getRules(),
+            JsonUtils.pojoToJson(nodeDefinition.getInputNamespaceMap()));
 
     EndEvent endEvent =
         new EndEventBuilder().id(getFlowableElementId(subProcessId, "endEvent")).build();
@@ -54,17 +58,22 @@ public class CheckEntityAttributesTask implements NodeInterface {
     return runtimeExceptionBoundaryEvent;
   }
 
-  private ServiceTask getCheckEntityAttributesServiceTask(String subProcessId, String rules) {
+  private ServiceTask getCheckEntityAttributesServiceTask(
+      String subProcessId, String rules, String inputNamespaceMap) {
     FieldExtension rulesExpr =
         new FieldExtensionBuilder().fieldName("rulesExpr").fieldValue(rules).build();
-
-    ServiceTask serviceTask =
-        new ServiceTaskBuilder()
-            .id(getFlowableElementId(subProcessId, "checkEntityAttributes"))
-            .implementation(CheckEntityAttributesImpl.class.getName())
+    FieldExtension inputNamespaceMapExpr =
+        new FieldExtensionBuilder()
+            .fieldName("inputNamespaceMapExpr")
+            .fieldValue(inputNamespaceMap)
             .build();
-    serviceTask.getFieldExtensions().add(rulesExpr);
-    return serviceTask;
+
+    return new ServiceTaskBuilder()
+        .id(getFlowableElementId(subProcessId, "checkEntityAttributes"))
+        .implementation(CheckEntityAttributesImpl.class.getName())
+        .addFieldExtension(rulesExpr)
+        .addFieldExtension(inputNamespaceMapExpr)
+        .build();
   }
 
   public void addToWorkflow(BpmnModel model, Process process) {

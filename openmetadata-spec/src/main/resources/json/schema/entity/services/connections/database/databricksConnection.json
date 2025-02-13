@@ -64,6 +64,12 @@
       "type": "integer",
       "default": 120
     },
+    "queryHistoryTable":{
+      "title": "Query History Table",
+      "description": "Table name to fetch the query history.",
+      "type": "string",
+      "default": "system.query.history"
+    },
     "connectionOptions": {
       "title": "Connection Options",
       "$ref": "../connectionBasicType.json#/definitions/connectionOptions"

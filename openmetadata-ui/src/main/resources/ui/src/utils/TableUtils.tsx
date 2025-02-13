@@ -248,6 +248,15 @@ export const getConstraintIcon = ({
 
       break;
     }
+    case ConstraintType.ClusterKey: {
+      title = t('label.entity-key', {
+        entity: t('label.cluster'),
+      });
+      icon = isConstraintDeleted ? IconDistLineThrough : IconDistKey;
+      dataTestId = 'cluster-key';
+
+      break;
+    }
     default:
       return null;
   }

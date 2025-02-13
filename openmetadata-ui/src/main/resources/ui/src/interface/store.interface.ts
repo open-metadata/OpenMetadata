@@ -79,7 +79,6 @@ export interface ApplicationStore
     entityDetails: EntityUnion;
   }) => void;
   updateSearchCriteria: (criteria: ExploreSearchIndex | '') => void;
-  trySilentSignIn: (forceLogout?: boolean) => void;
   setApplicationsName: (applications: string[]) => void;
 }
 
@@ -91,7 +90,7 @@ export interface DomainStore {
   activeDomainEntityRef?: EntityReference;
   domainOptions: ItemType[];
   updateDomains: (domainsArr: Domain[], selectDefault?: boolean) => void;
-  updateActiveDomain: (activeDomainKey: string) => void;
+  updateActiveDomain: (domain: EntityReference) => void;
   setDomains: (domains: Domain[]) => void;
   setUserDomains: (userDomainsArr: EntityReference[]) => void;
   updateDomainLoading: (loading: boolean) => void;

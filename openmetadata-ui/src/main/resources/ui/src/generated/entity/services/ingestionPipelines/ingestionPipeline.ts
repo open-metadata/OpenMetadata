@@ -62,6 +62,10 @@ export interface IngestionPipeline {
      */
     id?: string;
     /**
+     * The ingestion agent responsible for executing the ingestion pipeline.
+     */
+    ingestionAgent?: EntityReference;
+    /**
      * Set the logging level for the workflow.
      */
     loggerLevel?: LogLevels;
@@ -212,6 +216,8 @@ export interface FieldChange {
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
+ *
+ * The ingestion agent responsible for executing the ingestion pipeline.
  *
  * Owners of this Pipeline.
  *
