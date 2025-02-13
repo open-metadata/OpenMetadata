@@ -372,6 +372,7 @@ const Users = ({
               entityType={EntityType.USER}
               hasPermission={Boolean(isAdminUser) && !userData.deleted}
               textClassName="text-sm text-grey-muted"
+              userData={userData}
             />
             <UserProfileTeams
               isDeletedUser={userData.deleted}

@@ -11,16 +11,16 @@
  *  limitations under the License.
  */
 import { Button, Popover, Tooltip, Typography } from 'antd';
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as DomainIcon } from '../../../assets/svg/ic-domain.svg';
+import { ReactComponent as EditIcon } from '../../../assets/svg/user-profile-edit.svg';
+
 import { DE_ACTIVE_COLOR } from '../../../constants/constants';
-import { NO_PERMISSION_FOR_ACTION } from '../../../constants/HelperTextUtil';
 import { EntityReference } from '../../../generated/entity/type';
 import { getEntityName } from '../../../utils/EntityUtils';
 import Fqn from '../../../utils/Fqn';
-import DomainSelectablTree from '../DomainSelectableTree/DomainSelectableTree';
+import DomainSelectablTreeNew from '../DomainSelectableTree/DomainSelectableTreeNew';
 import './domain-select-dropdown.less';
 import { DomainSelectableListProps } from './DomainSelectableList.interface';
 
@@ -51,17 +51,22 @@ export const DomainListItemRenderer = (props: EntityReference) => {
   );
 };
 
-const DomainSelectableList = ({
-  onUpdate,
+const DomainSelectableListNew = ({
   children,
   hasPermission,
-  popoverProps,
-  selectedDomain,
   multiple = false,
+  onUpdate,
+  selectedDomain,
   onCancel,
 }: DomainSelectableListProps) => {
   const { t } = useTranslation();
   const [popupVisible, setPopupVisible] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isSelectOpen, setIsSelectOpen] = useState<boolean>(false);
+  const [isDropdownOpen, setIsDropdownOpen] = useState<boolean>(false);
+  const [currentlySelectedDomains, setCurrentlySelectedDomains] = useState<
+    EntityReference[]
+  >([]);
 
   const selectedDomainsList = useMemo(() => {
     if (selectedDomain) {
@@ -81,23 +86,52 @@ const DomainSelectableList = ({
     return [];
   }, [selectedDomain]);
 
-  const handleUpdate = useCallback(
-    async (domains: EntityReference[]) => {
+  const handleUpdate = async (domains: EntityReference[]) => {
+    setIsSaving(true);
+
+    try {
       if (multiple) {
         await onUpdate(domains);
       } else {
         await onUpdate(domains[0]);
       }
-
+    } finally {
+      setIsSaving(false);
       setPopupVisible(false);
-    },
-    [onUpdate, multiple]
-  );
+    }
+  };
 
-  const handleCancel = useCallback(() => {
+  const handleClosePopup = () => {
     setPopupVisible(false);
-    onCancel?.();
-  }, [onCancel]);
+  };
+  const [popoverHeight, setPopoverHeight] = useState<number>(136);
+  const dropdownRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const observer = new MutationObserver(() => {
+      const dropdown = document.querySelector(
+        '.domain-custom-dropdown-class'
+      ) as HTMLElement;
+
+      if (dropdown) {
+        setPopoverHeight(dropdown.scrollHeight + 136);
+      }
+    });
+
+    const dropdown = document.querySelector('.domain-custom-dropdown-class');
+    if (dropdown) {
+      observer.observe(dropdown, {
+        attributes: true,
+        childList: true,
+        subtree: true,
+      });
+    }
+
+    return () => observer.disconnect();
+  }, [isDropdownOpen]);
+  const handleDropdownChange = (open: boolean) => {
+    setIsDropdownOpen(open);
+  };
 
   return (
     // Used Button to stop click propagation event anywhere in the component to parent
@@ -108,39 +142,48 @@ const DomainSelectableList = ({
       <Popover
         destroyTooltipOnHide
         content={
-          <DomainSelectablTree
-            initialDomains={initialDomains}
-            isMultiple={multiple}
-            value={selectedDomainsList as string[]}
-            visible={popupVisible || Boolean(popoverProps?.open)}
-            onCancel={handleCancel}
-            onSubmit={handleUpdate}
-          />
+          <div
+            className="user-profile-edit-popover-card"
+            style={{
+              height: `${popoverHeight}px`,
+            }}>
+            <div className="d-flex justify-start items-center gap-2 m-b-sm">
+              <div className="d-flex flex-start items-center">
+                <DomainIcon height={16} />
+              </div>
+
+              <Typography.Text className="user-profile-edit-popover-card-title">
+                {t('label.domain')}
+              </Typography.Text>
+            </div>
+            <DomainSelectablTreeNew
+              dropdownRef={dropdownRef}
+              handleDropdownChange={handleDropdownChange}
+              initialDomains={initialDomains}
+              isMultiple={multiple}
+              value={selectedDomainsList as string[]}
+              visible={popupVisible}
+              onCancel={() => setPopupVisible(false)}
+              onSubmit={handleUpdate}
+            />
+          </div>
         }
         open={popupVisible}
-        overlayClassName="domain-select-popover w-400"
-        placement="bottomRight"
+        overlayClassName="profile-edit-popover-card"
+        placement="bottomLeft"
         showArrow={false}
+        style={{ borderRadius: '12px' }}
         trigger="click"
-        onOpenChange={setPopupVisible}
-        {...popoverProps}>
-        {children ?? (
+        onOpenChange={setPopupVisible}>
+        {hasPermission && (
           <Tooltip
-            placement="topRight"
-            title={
-              hasPermission
-                ? t('label.edit-entity', {
-                    entity: t('label.domain'),
-                  })
-                : NO_PERMISSION_FOR_ACTION
-            }>
-            <Button
-              className="p-0 flex-center"
-              data-testid="add-domain"
-              disabled={!hasPermission}
-              icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
-              size="small"
-              type="text"
+            title={t('label.edit-entity', {
+              entity: t('label.persona'),
+            })}>
+            <EditIcon
+              className="cursor-pointer"
+              data-testid="edit-persona"
+              height={16}
             />
           </Tooltip>
         )}
@@ -149,4 +192,4 @@ const DomainSelectableList = ({
   );
 };
 
-export default DomainSelectableList;
+export default DomainSelectableListNew;

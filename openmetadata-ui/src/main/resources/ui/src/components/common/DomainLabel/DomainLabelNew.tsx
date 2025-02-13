@@ -21,6 +21,7 @@ import { ReactComponent as DomainIcon } from '../../../assets/svg/ic-domain.svg'
 import { ReactComponent as InheritIcon } from '../../../assets/svg/ic-inherit.svg';
 
 import { EntityReference } from '../../../generated/entity/type';
+import { useAuth } from '../../../hooks/authHooks';
 import {
   getAPIfromSource,
   getEntityAPIfromSource,
@@ -32,7 +33,7 @@ import {
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { AssetsUnion } from '../../DataAssets/AssetsSelectionModal/AssetSelectionModal.interface';
 import { DataAssetWithDomains } from '../../DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
-import DomainSelectableList from '../DomainSelectableList/DomainSelectableList.component';
+import DomainSelectableListNew from '../DomainSelectableList/DomainSelectableListNew.component';
 import { DomainLabelProps } from './DomainLabel.interface';
 
 export const DomainLabelNew = ({
@@ -47,9 +48,11 @@ export const DomainLabelNew = ({
   showDomainHeading = false,
   multiple = false,
   onUpdate,
+  userData,
 }: DomainLabelProps) => {
   const { t } = useTranslation();
   const [activeDomain, setActiveDomain] = useState<EntityReference[]>([]);
+  const isAdminUser = useAuth();
 
   const handleDomainSave = useCallback(
     async (selectedDomain: EntityReference | EntityReference[]) => {
@@ -145,9 +148,8 @@ export const DomainLabelNew = ({
   const selectableList = useMemo(() => {
     return (
       hasPermission && (
-        <DomainSelectableList
-          domains={domain as any}
-          hasPermission={Boolean(hasPermission)}
+        <DomainSelectableListNew
+          hasPermission={Boolean(isAdminUser) && !userData?.deleted}
           multiple={multiple}
           selectedDomain={activeDomain}
           onUpdate={onUpdate ?? handleDomainSave}
@@ -159,7 +161,7 @@ export const DomainLabelNew = ({
   const label = useMemo(() => {
     return (
       <div
-        className="d-flex flex-col items-center gap-1 flex-wrap"
+        className="d-flex flex-col items-start gap-1 flex-wrap"
         data-testid="header-domain-container">
         {domainLink}
       </div>
