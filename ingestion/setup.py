@@ -59,6 +59,7 @@ VERSIONS = {
     "teradata": "teradatasqlalchemy==20.0.0.2",
     "cockroach": "sqlalchemy-cockroachdb~=2.0",
     "cassandra": "cassandra-driver>=3.28.0",
+    "collate-data-diff": "collate-data-diff<=0.11.3",
 }
 
 COMMONS = {
@@ -96,7 +97,7 @@ COMMONS = {
 }
 
 DATA_DIFF = {
-    driver: f"collate-data-diff[{driver}]"
+    driver: f"{VERSIONS['collate-data-diff']}[{driver}]"
     # data-diff uses different drivers out-of-the-box than OpenMetadata
     # the exrtas are described here:
     # https://github.com/open-metadata/collate-data-diff/blob/main/pyproject.toml#L68
@@ -144,7 +145,7 @@ base_requirements = {
     "typing-inspect",
     "packaging",  # For version parsing
     "shapely",
-    "collate-data-diff",
+    VERSIONS["collate-data-diff"],
 }
 
 plugins: Dict[str, Set[str]] = {
