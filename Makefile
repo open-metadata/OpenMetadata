@@ -110,6 +110,7 @@ snyk-server-report:  ## Uses Snyk CLI to validate the catalog code and container
 .PHONY: snyk-ui-report
 snyk-ui-report:  ## Uses Snyk CLI to validate the UI dependencies. Don't stop the execution
 	snyk test --file=openmetadata-ui/src/main/resources/ui/yarn.lock $(SNYK_ARGS) --json > security-report/ui-dep-scan.json | true;
+	snyk test --file=yarn.lock $(SNYK_ARGS) --json > security-report/ui-dep-root-scan.json | true;
 
 .PHONY: snyk-dependencies-report
 snyk-dependencies-report:  ## Uses Snyk CLI to validate the project dependencies: MySQL, Postgres and ES. Only local testing.
