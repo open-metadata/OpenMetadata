@@ -240,11 +240,13 @@ test.describe('Domains', () => {
     await domain.create(apiContext);
     await page.reload();
     await page.getByTestId('domain-dropdown').click();
+
     await page
-      .locator(
-        `[data-menu-id*="${domain.data.name}"] > .ant-dropdown-menu-title-content`
-      )
+      .getByTestId(`tag-${domain.responseData.fullyQualifiedName}`)
       .click();
+    await page.getByTestId('saveAssociatedTag').click();
+
+    await page.waitForLoadState('networkidle');
 
     await redirectToHomePage(page);
 
@@ -566,14 +568,11 @@ test.describe('Domains Rbac', () => {
         .click();
 
       await expect(
-        userPage
-          .getByRole('menuitem', { name: domain1.data.displayName })
-          .locator('span')
+        userPage.getByTestId(`tag-${domain1.responseData.fullyQualifiedName}`)
       ).toBeVisible();
+
       await expect(
-        userPage
-          .getByRole('menuitem', { name: domain3.data.displayName })
-          .locator('span')
+        userPage.getByTestId(`tag-${domain3.responseData.fullyQualifiedName}`)
       ).toBeVisible();
 
       // Visit explore page and verify if domain is passed in the query

@@ -549,8 +549,7 @@ def test_workflow_values_partition(ingest, metadata, service_name):
     profile = metadata.get_latest_table_profile(table.fullyQualifiedName).profile
 
     assert profile.rowCount == 4.0
-    # If we don't have any sample, default to 100
-    assert profile.profileSample == 100.0
+    assert profile.profileSample == None
 
     workflow_config["processor"] = {
         "type": "orm-profiler",

@@ -47,6 +47,8 @@ class SnowflakeLineageSource(
         AND (
             QUERY_TYPE IN ('MERGE', 'UPDATE','CREATE_TABLE_AS_SELECT')
             OR (QUERY_TYPE = 'INSERT' and query_text ILIKE '%%insert%%into%%select%%')
+            OR (QUERY_TYPE = 'ALTER' and query_text ILIKE '%%alter%%table%%swap%%')
+            OR (QUERY_TYPE = 'CREATE_TABLE' and query_text ILIKE '%%clone%%')
         )
     """
 
@@ -60,6 +62,7 @@ class SnowflakeLineageSource(
         start, _ = get_start_and_end(self.source_config.queryLogDuration)
         query = self.stored_procedure_query.format(
             start_date=start,
+            account_usage=self.service_connection.accountUsageSchema,
         )
         queries_dict = self.procedure_queries_dict(
             query=query,

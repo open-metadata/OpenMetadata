@@ -127,7 +127,7 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
 
   @Override
   public void setInheritedFields(TestSuite testSuite, EntityUtil.Fields fields) {
-    if (Boolean.TRUE.equals(testSuite.getBasic())) {
+    if (Boolean.TRUE.equals(testSuite.getBasic()) && testSuite.getBasicEntityReference() != null) {
       Table table =
           Entity.getEntity(
               TABLE, testSuite.getBasicEntityReference().getId(), "owners,domain", ALL);
@@ -152,6 +152,14 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
     } else {
       testSuite.setFullyQualifiedName(quoteName(testSuite.getName()));
     }
+  }
+
+  @Override
+  public EntityInterface getParentEntity(TestSuite entity, String fields) {
+    if (entity.getBasic() && entity.getBasicEntityReference() != null) {
+      return Entity.getEntity(entity.getBasicEntityReference(), fields, ALL);
+    }
+    return null;
   }
 
   private TestSummary getTestCasesExecutionSummary(JsonObject aggregation) {

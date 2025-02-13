@@ -19,7 +19,7 @@ import { SidebarItem } from '../../constant/sidebar';
 import { AdminClass } from '../../support/user/AdminClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
-import { redirectToHomePage } from '../../utils/common';
+import { redirectToHomePage, toastNotification } from '../../utils/common';
 import { sidebarClick } from '../../utils/sidebar';
 
 const user = new UserClass();
@@ -123,7 +123,8 @@ test.describe('Profiler Configuration Page', () => {
         );
       });
 
-      await expect(adminPage.getByRole('alert').first()).toHaveText(
+      await toastNotification(
+        adminPage,
         /Profiler Configuration updated successfully./
       );
     });

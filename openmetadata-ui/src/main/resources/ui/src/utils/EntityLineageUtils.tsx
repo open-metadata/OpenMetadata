@@ -30,6 +30,7 @@ import React, { MouseEvent as ReactMouseEvent } from 'react';
 import {
   Connection,
   Edge,
+  getBezierPath,
   getConnectedEdges,
   getIncomers,
   getOutgoers,
@@ -217,11 +218,12 @@ export const getLayoutedElements = (
   return { node: uNode, edge: edgesRequired };
 };
 
+// Layout options for the elk graph https://eclipse.dev/elk/reference/algorithms/org-eclipse-elk-mrtree.html
 const layoutOptions = {
-  'elk.algorithm': 'layered',
+  'elk.algorithm': 'mrtree',
   'elk.direction': 'RIGHT',
   'elk.layered.spacing.edgeNodeBetweenLayers': '50',
-  'elk.spacing.nodeNode': '60',
+  'elk.spacing.nodeNode': '100',
   'elk.layered.nodePlacement.strategy': 'SIMPLE',
 };
 
@@ -1449,4 +1451,113 @@ export const getColumnFunctionValue = (
   );
 
   return column?.function;
+};
+
+interface EdgeAlignmentPathDataProps {
+  sourceX: number;
+  sourceY: number;
+  targetX: number;
+  targetY: number;
+  sourcePosition: Position;
+  targetPosition: Position;
+}
+
+export const isSelfConnectingEdge = (source: string, target: string) => {
+  return source === target;
+};
+
+const getSelfConnectingEdgePath = ({
+  sourceX,
+  sourceY,
+  targetX,
+  targetY,
+}: EdgeAlignmentPathDataProps) => {
+  const radiusX = (sourceX - targetX) * 0.6;
+  const radiusY = 50;
+
+  return `M ${sourceX - 5} ${sourceY} A ${radiusX} ${radiusY} 0 1 0 ${
+    targetX + 2
+  } ${targetY}`;
+};
+
+export const getEdgePathAlignmentData = (
+  source: string,
+  target: string,
+  edgePathData: {
+    sourceX: number;
+    sourceY: number;
+    targetX: number;
+    targetY: number;
+  }
+) => {
+  if (isSelfConnectingEdge(source, target)) {
+    // modify the edge path data as per the self connecting edges behavior
+    return {
+      sourceX: edgePathData.sourceX - 5,
+      sourceY: edgePathData.sourceY - 80,
+      targetX: edgePathData.targetX + 2,
+      targetY: edgePathData.targetY - 80,
+    };
+  }
+
+  return edgePathData;
+};
+
+const getEdgePath = (
+  edgePath: string,
+  source: string,
+  target: string,
+  alignmentPathData: EdgeAlignmentPathDataProps
+) => {
+  return isSelfConnectingEdge(source, target)
+    ? getSelfConnectingEdgePath(alignmentPathData)
+    : edgePath;
+};
+
+export const getEdgePathData = (
+  source: string,
+  target: string,
+  offset: number,
+  edgePathData: EdgeAlignmentPathDataProps
+) => {
+  const { sourceX, sourceY, targetX, targetY } = getEdgePathAlignmentData(
+    source,
+    target,
+    edgePathData
+  );
+  const { sourcePosition, targetPosition } = edgePathData;
+
+  const [edgePath, edgeCenterX, edgeCenterY] = getBezierPath({
+    sourceX,
+    sourceY,
+    sourcePosition,
+    targetX,
+    targetY,
+    targetPosition,
+  });
+
+  const [invisibleEdgePath] = getBezierPath({
+    sourceX: sourceX + offset,
+    sourceY: sourceY + offset,
+    sourcePosition,
+    targetX: targetX + offset,
+    targetY: targetY + offset,
+    targetPosition,
+  });
+  const [invisibleEdgePath1] = getBezierPath({
+    sourceX: sourceX - offset,
+    sourceY: sourceY - offset,
+    sourcePosition,
+    targetX: targetX - offset,
+    targetY: targetY - offset,
+    targetPosition,
+  });
+
+  return {
+    edgePath: getEdgePath(edgePath, source, target, edgePathData), // pass the initial data edgePathData, as edge modification will be done based on the initial data
+    edgeCenterX,
+    edgeCenterY,
+    invisibleEdgePath,
+    invisibleEdgePath1,
+  };
 };
