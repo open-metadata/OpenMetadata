@@ -392,7 +392,6 @@ const TableDetailsPageV1: React.FC = () => {
         const updatedObj = {
           ...previous,
           ...res,
-          version: res.version,
           ...(key && { [key]: res[key] }),
         };
 

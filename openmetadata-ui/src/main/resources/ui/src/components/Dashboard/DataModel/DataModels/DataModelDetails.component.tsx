@@ -115,7 +115,7 @@ const DataModelDetails = ({
       displayName: data.displayName,
     };
 
-    await onUpdateDataModel(updatedData);
+    await onUpdateDataModel(updatedData, 'displayName');
   };
 
   const versionHandler = () => {
@@ -207,10 +207,13 @@ const DataModelDetails = ({
 
   const handelExtensionUpdate = useCallback(
     async (updatedDataModel: DashboardDataModel) => {
-      await onUpdateDataModel({
-        ...dataModelData,
-        extension: updatedDataModel.extension,
-      });
+      await onUpdateDataModel(
+        {
+          ...dataModelData,
+          extension: updatedDataModel.extension,
+        },
+        'extension'
+      );
     },
     [onUpdateDataModel, dataModelData]
   );

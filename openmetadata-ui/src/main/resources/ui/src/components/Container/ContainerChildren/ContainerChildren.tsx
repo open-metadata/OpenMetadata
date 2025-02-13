@@ -36,7 +36,9 @@ const ContainerChildren: FC<ContainerChildrenProps> = ({
 }) => {
   const { t } = useTranslation();
   const { data } = useGenericContext<Container>();
-  const { children: childrenList } = data ?? {};
+  const { children: childrenList } = useMemo(() => {
+    return data ?? {};
+  }, [data?.children]);
 
   const columns: ColumnsType<EntityReference> = useMemo(
     () => [

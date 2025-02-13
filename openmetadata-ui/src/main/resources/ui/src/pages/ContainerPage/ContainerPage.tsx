@@ -21,11 +21,11 @@ import { useHistory, useParams } from 'react-router-dom';
 import { useActivityFeedProvider } from '../../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import ActivityThreadPanel from '../../components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
-
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';
 import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import { QueryVote } from '../../components/Database/TableQueries/TableQueries.interface';
+import { GenericProvider } from '../../components/GenericProvider/GenericProvider';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
@@ -289,7 +289,7 @@ const ContainerPage = () => {
   };
 
   const handleUpdateContainerData = useCallback(
-    (updatedData: Container) => {
+    async (updatedData: Container) => {
       const jsonPatch = compare(
         omitBy(containerData, isUndefined),
         updatedData
@@ -569,6 +569,11 @@ const ContainerPage = () => {
     }
   };
 
+  const handleContainerUpdate = async (updatedData: Container) => {
+    const updatedContainer = await handleUpdateContainerData(updatedData);
+    setContainerData(updatedContainer);
+  };
+
   const tabs = useMemo(() => {
     const tabLabelMap = getTabLabelMap(customizedPage?.tabs);
 
@@ -733,18 +738,24 @@ const ContainerPage = () => {
             onVersionClick={versionHandler}
           />
         </Col>
-        <Col span={24}>
-          <Tabs
-            activeKey={
-              tab ??
-              (isDataModelEmpty ? EntityTabs.CHILDREN : EntityTabs.SCHEMA)
-            }
-            className="entity-details-page-tabs"
-            data-testid="tabs"
-            items={tabs}
-            onChange={handleTabChange}
-          />
-        </Col>
+        <GenericProvider<Container>
+          data={{ ...containerData, children: containerChildrenData }}
+          permissions={containerPermissions}
+          type={EntityType.CONTAINER}
+          onUpdate={handleContainerUpdate}>
+          <Col span={24}>
+            <Tabs
+              activeKey={
+                tab ??
+                (isDataModelEmpty ? EntityTabs.CHILDREN : EntityTabs.SCHEMA)
+              }
+              className="entity-details-page-tabs"
+              data-testid="tabs"
+              items={tabs}
+              onChange={handleTabChange}
+            />
+          </Col>
+        </GenericProvider>
 
         <LimitWrapper resource="container">
           <></>

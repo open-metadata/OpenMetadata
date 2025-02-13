@@ -34,6 +34,9 @@ export interface DataModelDetailsProps {
   handleUpdateDescription: (value: string) => Promise<void>;
   handleColumnUpdateDataModel: (updatedDataModel: Column[]) => Promise<void>;
   onUpdateVote: (data: QueryVote, id: string) => Promise<void>;
-  onUpdateDataModel: (updatedDataModel: DashboardDataModel) => Promise<void>;
+  onUpdateDataModel: (
+    updatedDataModel: DashboardDataModel,
+    key?: keyof DashboardDataModel
+  ) => Promise<void>;
   handleToggleDelete: (version?: number) => void;
 }

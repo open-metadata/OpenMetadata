@@ -14,7 +14,6 @@ import { Space } from 'antd';
 import { EntityTags } from 'Models';
 import React from 'react';
 import { EntityType } from '../../../enums/entity.enum';
-import { TablePartition } from '../../../generated/entity/data/table';
 import { ThreadType } from '../../../generated/entity/feed/thread';
 import { EntityReference } from '../../../generated/entity/type';
 import { TagSource } from '../../../generated/type/tagLabel';
@@ -46,7 +45,6 @@ interface EntityRightPanelProps<T extends ExtentionEntitiesKeys> {
   onThreadLinkSelect?: (value: string, threadType?: ThreadType) => void;
   viewAllPermission?: boolean;
   customProperties?: ExtentionEntities[T];
-  tablePartition?: TablePartition;
   editCustomAttributePermission?: boolean;
   onExtensionUpdate?: (updatedTable: ExtentionEntities[T]) => Promise<void>;
 }
@@ -67,7 +65,6 @@ const EntityRightPanel = <T extends ExtentionEntitiesKeys>({
   showDataProductContainer = true,
   viewAllPermission,
   customProperties,
-  tablePartition,
   editCustomAttributePermission,
   onExtensionUpdate,
 }: EntityRightPanelProps<T>) => {
@@ -124,7 +121,7 @@ const EntityRightPanel = <T extends ExtentionEntitiesKeys>({
             maxDataCap={5}
           />
         )}
-        {tablePartition ? <PartitionedKeys /> : null}
+        <PartitionedKeys />
       </Space>
       {afterSlot}
     </>

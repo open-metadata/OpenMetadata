@@ -27,6 +27,7 @@ import {
   getColumnSorter,
   getEntityName,
 } from '../../../../../utils/EntityUtils';
+import { columnFilterIcon } from '../../../../../utils/TableColumn.util';
 import {
   getAllTags,
   searchTagInData,
@@ -160,6 +161,7 @@ const ModelTab = ({ isReadOnly, onThreadLinkSelect }: ModelTabProps) => {
         accessor: 'tags',
         width: 250,
         filters: tagFilter.Classification,
+        filterIcon: columnFilterIcon,
         filterDropdown: ColumnFilter,
         onFilter: searchTagInData,
         render: (tags: TagLabel[], record: Column, index: number) => (
@@ -183,6 +185,7 @@ const ModelTab = ({ isReadOnly, onThreadLinkSelect }: ModelTabProps) => {
         key: 'glossary',
         accessor: 'tags',
         width: 250,
+        filterIcon: columnFilterIcon,
         filters: tagFilter.Glossary,
         filterDropdown: ColumnFilter,
         onFilter: searchTagInData,
