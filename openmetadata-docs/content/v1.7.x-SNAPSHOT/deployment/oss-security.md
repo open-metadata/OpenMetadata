@@ -31,8 +31,6 @@ OpenMetadata supports **encrypted connections** to various databases and service
   - Follow the detailed guide for enabling SSL in OpenMetadata:  
     🔗 [Enable SSL in OpenMetadata](https://docs.open-metadata.org/latest/deployment/security/enable-ssl)
 
----
-
 ## **Additional Security Measures**  
 
 - **Role-Based Access Control (RBAC)**: OpenMetadata allows administrators to define user roles and permissions.  
