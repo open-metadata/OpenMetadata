@@ -62,6 +62,10 @@ export interface IngestionPipeline {
      */
     id?: string;
     /**
+     * The ingestion agent responsible for executing the ingestion pipeline.
+     */
+    ingestionAgent?: EntityReference;
+    /**
      * Set the logging level for the workflow.
      */
     loggerLevel?: LogLevels;
@@ -212,6 +216,8 @@ export interface FieldChange {
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
+ *
+ * The ingestion agent responsible for executing the ingestion pipeline.
  *
  * Owners of this Pipeline.
  *
@@ -538,6 +544,10 @@ export enum VerifySSL {
  */
 export interface PipelineStatus {
     /**
+     * Pipeline configuration for this particular execution.
+     */
+    config?: { [key: string]: any };
+    /**
      * endDate of the pipeline run for this particular execution.
      */
     endDate?: number;
@@ -817,6 +827,10 @@ export interface Pipeline {
      * Set 'Cross Database Service Names' to process lineage with the database.
      */
     crossDatabaseServiceNames?: string[];
+    /**
+     * Handle Lineage for Snowflake Temporary and Transient Tables.
+     */
+    enableTempTableLineage?: boolean;
     /**
      * Set the 'Override View Lineage' toggle to control whether to override the existing view
      * lineage.

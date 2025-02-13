@@ -3,20 +3,6 @@
 After running a Metadata Ingestion workflow, we can run Lineage workflow.
 While the `serviceName` will be the same to that was used in Metadata Ingestion, so the ingestion bot can get the `serviceConnection` details from the server.
 
-{% note %}
-If you have a **db2jcc_license_cisuz.jar** file, it will not work with **ibm_db**. This file is a **Db2 Connect** license for the Java Driver.  
-For **non-Java drivers**, such as the Python Client used in OpenMetadata ingestion, a **Db2 Connect** client-side license is required, typically named **db2con*.lic**.  
-
-The **db2jcc_license_cisuz.jar** is specifically for Java-based clients, whereas OpenMetadata ingestion operates with a Python Client, making the `.jar` file incompatible.  
- 
-For activating a **non-Java license** for Db2 Connect **Application Server Edition**, **Advanced Application Server Edition**, **Enterprise Edition**, or **Trial**, follow these steps:  
-- Download the **license activation kit** from IBM Passport Advantage: [IBM PPA](https://www.ibm.com/software/passportadvantage/pao_customer.html).  
-- Unzip the package and locate the **non-Java license file** (e.g., `db2consv_ee.lic`).  
-- Apply the `.lic` file to activate the license.
-
-For further reference, check this IBM post: [Everything About Db2 Connect Licensing](https://community.ibm.com/community/user/datamanagement/blogs/shilu-mathai2/2023/05/05/everything-about-db2-connect-licensing).  
-{% /note %}
-
 ### 1. Define the YAML Config
 
 This is a sample config for BigQuery Lineage:
@@ -80,35 +66,35 @@ You can find all the definitions and types for the  `sourceConfig` [here](https:
 {% /codeInfo %}
 
 
-{% codeInfo srNumber=49 %}
+{% codeInfo srNumber=51 %}
 
 **overrideViewLineage**: Set the 'Override View Lineage' toggle to control whether to override the existing view lineage.
 
 {% /codeInfo %}
 
 
-{% codeInfo srNumber=51 %}
+{% codeInfo srNumber=52 %}
 
 **processViewLineage**: Set the 'Process View Lineage' toggle to control whether to process view lineage.
 
 {% /codeInfo %}
 
 
-{% codeInfo srNumber=52 %}
+{% codeInfo srNumber=53 %}
 
 **processQueryLineage**: Set the 'Process Query Lineage' toggle to control whether to process query lineage.
 
 {% /codeInfo %}
 
 
-{% codeInfo srNumber=53 %}
+{% codeInfo srNumber=54 %}
 
 **processStoredProcedureLineage**: Set the 'Process Stored ProcedureLog Lineage' toggle to control whether to process stored procedure lineage.
 
 {% /codeInfo %}
 
 
-{% codeInfo srNumber=54 %}
+{% codeInfo srNumber=55 %}
 
 **threads**: Number of Threads to use in order to parallelize lineage ingestion.
 
@@ -120,6 +106,7 @@ You can find all the definitions and types for the  `sourceConfig` [here](https:
 #### Sink Configuration
 
 To send the metadata to OpenMetadata, it needs to be specified as `type: metadata-rest`.
+
 {% /codeInfo %}
 
 
@@ -191,13 +178,6 @@ source:
       #     - table3
       #     - table4
 ```
-
-```yaml {% srNumber=49 %}
-sink:
-  type: metadata-rest
-  config: {}
-```
-
 ```yaml {% srNumber=51 %}
       overrideViewLineage: false
 ```
@@ -216,6 +196,12 @@ sink:
 
 ```yaml {% srNumber=55 %}
       threads: 1
+```
+
+```yaml {% srNumber=49 %}
+sink:
+  type: metadata-rest
+  config: {}
 ```
 
 {% partial file="/v1.6/connectors/yaml/workflow-config.md" /%}
