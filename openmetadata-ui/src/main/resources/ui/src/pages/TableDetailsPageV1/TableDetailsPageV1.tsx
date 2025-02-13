@@ -27,7 +27,6 @@ import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/Error
 import Loader from '../../components/common/Loader/Loader';
 import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import { QueryVote } from '../../components/Database/TableQueries/TableQueries.interface';
-import { TableSchemaTab } from '../../components/Database/TableSchemaTab/TableSchemaTab';
 import { GenericProvider } from '../../components/GenericProvider/GenericProvider';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
@@ -495,13 +494,10 @@ const TableDetailsPageV1: React.FC = () => {
     [tablePermissions, deleted]
   );
 
-  const schemaTab = useMemo(() => <TableSchemaTab />, []);
-
   const tabs = useMemo(() => {
     const tabLabelMap = getTabLabelMap(customizedPage?.tabs);
 
     const tabs = tableClassBase.getTableDetailPageTabs({
-      schemaTab,
       queryCount,
       isTourOpen,
       tablePermissions,
@@ -532,7 +528,6 @@ const TableDetailsPageV1: React.FC = () => {
 
     return updatedTabs;
   }, [
-    schemaTab,
     queryCount,
     isTourOpen,
     tablePermissions,

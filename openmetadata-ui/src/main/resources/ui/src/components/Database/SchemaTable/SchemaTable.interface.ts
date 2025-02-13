@@ -12,18 +12,7 @@
  */
 
 import { ReactNode } from 'react';
-import { ThreadType } from '../../../generated/api/feed/createThread';
 import { Column } from '../../../generated/entity/data/table';
-
-export interface SchemaTableProps {
-  hasDescriptionEditAccess: boolean;
-  hasTagEditAccess: boolean;
-  hasGlossaryTermEditAccess: boolean;
-  searchText?: string;
-  isReadOnly?: boolean;
-  onUpdate: (columns: Column[]) => Promise<void>;
-  onThreadLinkSelect: (value: string, threadType?: ThreadType) => void;
-}
 
 export type TableCellRendered<T, K extends keyof T> = (
   value: T[K],

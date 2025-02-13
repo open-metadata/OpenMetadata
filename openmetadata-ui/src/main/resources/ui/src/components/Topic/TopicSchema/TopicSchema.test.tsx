@@ -27,10 +27,7 @@ import { MESSAGE_SCHEMA } from '../TopicDetails/TopicDetails.mock';
 import TopicSchema from './TopicSchema';
 import { TopicSchemaFieldsProps } from './TopicSchema.interface';
 
-const mockProps: TopicSchemaFieldsProps = {
-  isReadOnly: false,
-  onThreadLinkSelect: jest.fn(),
-};
+const mockProps: TopicSchemaFieldsProps = {};
 
 jest.mock('../../../utils/TagsUtils', () => ({
   getAllTagsList: jest.fn().mockImplementation(() => Promise.resolve([])),
@@ -187,7 +184,7 @@ describe('Topic Schema', () => {
   });
 
   it('Should not render the edit action if isReadOnly', async () => {
-    render(<TopicSchema {...mockProps} isReadOnly />);
+    render(<TopicSchema {...mockProps} />);
 
     const rows = await screen.findAllByRole('row');
 

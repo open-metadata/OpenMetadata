@@ -43,7 +43,6 @@ export interface TableDetailPageTabProps {
   isTourOpen: boolean;
   activeTab: EntityTabs;
   totalFeedCount: number;
-  schemaTab: JSX.Element;
   isViewTableType: boolean;
   viewAllPermission: boolean;
   viewQueriesPermission: boolean;

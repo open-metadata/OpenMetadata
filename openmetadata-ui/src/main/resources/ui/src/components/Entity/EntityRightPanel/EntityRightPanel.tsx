@@ -124,9 +124,7 @@ const EntityRightPanel = <T extends ExtentionEntitiesKeys>({
             maxDataCap={5}
           />
         )}
-        {tablePartition ? (
-          <PartitionedKeys tablePartition={tablePartition} />
-        ) : null}
+        {tablePartition ? <PartitionedKeys /> : null}
       </Space>
       {afterSlot}
     </>

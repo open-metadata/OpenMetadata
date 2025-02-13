@@ -15,19 +15,9 @@ import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { FrequentlyJoinedTables } from './FrequentlyJoinedTables.component';
 
-const mockFrequentlyJoinedTablesProps = {
-  joinedTables: [
-    {
-      name: 'test',
-      fullyQualifiedName: 'test',
-      joinCount: 1,
-    },
-  ],
-};
-
 describe('FrequentlyJoinedTables component', () => {
   it('should render the component', async () => {
-    render(<FrequentlyJoinedTables {...mockFrequentlyJoinedTablesProps} />, {
+    render(<FrequentlyJoinedTables />, {
       wrapper: MemoryRouter,
     });
 
@@ -43,7 +33,7 @@ describe('FrequentlyJoinedTables component', () => {
   });
 
   it("should show the table's name and join count", async () => {
-    render(<FrequentlyJoinedTables {...mockFrequentlyJoinedTablesProps} />, {
+    render(<FrequentlyJoinedTables />, {
       wrapper: MemoryRouter,
     });
 

@@ -12,12 +12,13 @@
  */
 import { Button, Space, Tooltip, Typography } from 'antd';
 import { isEmpty, map } from 'lodash';
-import React, { FC, useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as IconEdit } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as PlusIcon } from '../../../assets/svg/plus-primary.svg';
 import TagButton from '../../../components/common/TagButton/TagButton.component';
+import { useGenericContext } from '../../../components/GenericProvider/GenericProvider';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { DE_ACTIVE_COLOR, ICON_DIMENSION } from '../../../constants/constants';
 import { EntityType, FqnPart } from '../../../enums/entity.enum';
@@ -29,19 +30,17 @@ import ForeignKeyConstraint from './ForeignKeyConstraint';
 import './table-constraints.less';
 import TableConstraintsModal from './TableConstraintsModal/TableConstraintsModal.component';
 
-interface TableConstraintsProps {
-  hasPermission: boolean;
-  tableDetails?: Table;
-  onUpdate: (updateData: Table['tableConstraints']) => Promise<void>;
-}
-
-const TableConstraints: FC<TableConstraintsProps> = ({
-  tableDetails,
-  hasPermission,
-  onUpdate,
-}) => {
+const TableConstraints = () => {
   const { t } = useTranslation();
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const { data, permissions, onUpdate } = useGenericContext<Table>();
+
+  const { deleted } = data ?? {};
+
+  const hasPermission = useMemo(
+    () => permissions.EditAll && !deleted,
+    [permissions, deleted]
+  );
 
   const handleOpenEditConstraintModal = useCallback(
     () => setIsModalOpen(true),
@@ -53,7 +52,7 @@ const TableConstraints: FC<TableConstraintsProps> = ({
   );
 
   const handleSubmit = async (values: Table['tableConstraints']) => {
-    await onUpdate(values);
+    await onUpdate({ ...data, tableConstraints: values });
     setIsModalOpen(false);
   };
 
@@ -65,7 +64,7 @@ const TableConstraints: FC<TableConstraintsProps> = ({
             {t('label.table-constraints')}
           </Typography.Text>
 
-          {hasPermission && !isEmpty(tableDetails?.tableConstraints) && (
+          {hasPermission && !isEmpty(data?.tableConstraints) && (
             <Tooltip
               placement="right"
               title={t('label.edit-entity', {
@@ -89,7 +88,7 @@ const TableConstraints: FC<TableConstraintsProps> = ({
           )}
         </Space>
 
-        {hasPermission && isEmpty(tableDetails?.tableConstraints) && (
+        {hasPermission && isEmpty(data?.tableConstraints) && (
           <TagButton
             className="text-primary cursor-pointer"
             dataTestId="table-constraints-add-button"
@@ -100,7 +99,7 @@ const TableConstraints: FC<TableConstraintsProps> = ({
           />
         )}
 
-        {tableDetails?.tableConstraints?.map(
+        {data?.tableConstraints?.map(
           ({ constraintType, columns, referredColumns }) => {
             if (constraintType === ConstraintType.PrimaryKey) {
               return tableConstraintRendererBasedOnType(
@@ -180,8 +179,8 @@ const TableConstraints: FC<TableConstraintsProps> = ({
 
       {isModalOpen && (
         <TableConstraintsModal
-          constraint={tableDetails?.tableConstraints}
-          tableDetails={tableDetails}
+          constraint={data?.tableConstraints}
+          tableDetails={data}
           onClose={handleCloseEditConstraintModal}
           onSave={handleSubmit}
         />

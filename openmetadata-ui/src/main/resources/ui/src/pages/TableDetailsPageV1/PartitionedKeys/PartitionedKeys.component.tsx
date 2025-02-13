@@ -10,27 +10,27 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Table, Typography } from 'antd';
+import { Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { t } from 'i18next';
 import React, { useMemo } from 'react';
+import Table from '../../../components/common/Table/Table';
+import { useGenericContext } from '../../../components/GenericProvider/GenericProvider';
 import {
   PartitionColumnDetails,
-  TablePartition,
+  Table as TableType,
 } from '../../../generated/entity/data/table';
 
-interface PartitionedKeysProps {
-  tablePartition: TablePartition;
-}
+export const PartitionedKeys = () => {
+  const { data } = useGenericContext<TableType>();
 
-export const PartitionedKeys = ({ tablePartition }: PartitionedKeysProps) => {
   const partitionColumnDetails = useMemo(
     () =>
-      tablePartition?.columns?.map((column) => ({
+      data?.tablePartition?.columns?.map((column) => ({
         ...column,
         key: column.columnName,
       })),
-    [tablePartition.columns]
+    [data?.tablePartition?.columns]
   );
 
   const columns = useMemo(() => {
@@ -56,6 +56,10 @@ export const PartitionedKeys = ({ tablePartition }: PartitionedKeysProps) => {
 
     return data;
   }, []);
+
+  if (!data.tablePartition) {
+    return null;
+  }
 
   return (
     <>

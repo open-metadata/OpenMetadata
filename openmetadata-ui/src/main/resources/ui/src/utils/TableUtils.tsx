@@ -158,6 +158,7 @@ import { ReactComponent as IconUnknown } from '../assets/svg/data-type-icon/unkn
 import { ReactComponent as IconVarchar } from '../assets/svg/data-type-icon/varchar.svg';
 import { ReactComponent as IconVariant } from '../assets/svg/data-type-icon/variant.svg';
 import { ReactComponent as IconXML } from '../assets/svg/data-type-icon/xml.svg';
+import { TableGenericTab } from '../components/Database/TableGenericTab/TableGenericTab';
 import { Joined } from '../pages/TableDetailsPageV1/FrequentlyJoinedTables/FrequentlyJoinedTables.component';
 import ConstraintIcon from '../pages/TableDetailsPageV1/TableConstraints/ConstraintIcon';
 
@@ -731,7 +732,6 @@ export const updateFieldDescription = <T extends TableFieldsInfoCommonEntities>(
 };
 
 export const getTableDetailPageBaseTabs = ({
-  schemaTab,
   queryCount,
   isTourOpen,
   tablePermissions,
@@ -764,7 +764,7 @@ export const getTableDetailPageBaseTabs = ({
         />
       ),
       key: EntityTabs.SCHEMA,
-      children: schemaTab,
+      children: <TableGenericTab />,
     },
     {
       label: (

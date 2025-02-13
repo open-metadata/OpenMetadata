@@ -33,7 +33,6 @@ import dashboardDataModelClassBase from '../../../../utils/DashboardDataModelBas
 import { renderReferenceElement } from '../../../../utils/GlossaryUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../../utils/PermissionsUtils';
 import tableClassBase from '../../../../utils/TableClassBase';
-import { getJoinsFromTableJoins } from '../../../../utils/TableUtils';
 import topicClassBase from '../../../../utils/TopicClassBase';
 import { ExtensionTable } from '../../../common/CustomPropertyTable/ExtensionTable';
 import { DomainLabel } from '../../../common/DomainLabel/DomainLabel.component';
@@ -533,24 +532,20 @@ export const GenericWidget = (props: WidgetCommonProps) => {
           permissions={DEFAULT_ENTITY_PERMISSION}
           type={EntityType.TABLE}
           onUpdate={async () => noop()}>
-          <SchemaTable
-            hasDescriptionEditAccess={false}
-            hasGlossaryTermEditAccess={false}
-            hasTagEditAccess={false}
-            onThreadLinkSelect={noop}
-            onUpdate={async () => noop()}
-          />
+          <SchemaTable />
         </GenericProvider>
       );
     } else if (
       props.widgetKey.startsWith(DetailPageWidgetKeys.FREQUENTLY_JOINED_TABLES)
     ) {
       return (
-        <FrequentlyJoinedTables
-          joinedTables={getJoinsFromTableJoins(
-            tableClassBase.getDummyData().joins
-          )}
-        />
+        <GenericProvider<Table>
+          data={tableClassBase.getDummyData()}
+          permissions={DEFAULT_ENTITY_PERMISSION}
+          type={EntityType.TABLE}
+          onUpdate={async () => noop()}>
+          <FrequentlyJoinedTables />
+        </GenericProvider>
       );
     } else if (props.widgetKey.startsWith(DetailPageWidgetKeys.DATA_PRODUCTS)) {
       return (
@@ -577,11 +572,13 @@ export const GenericWidget = (props: WidgetCommonProps) => {
       props.widgetKey.startsWith(DetailPageWidgetKeys.TABLE_CONSTRAINTS)
     ) {
       return (
-        <TableConstraints
-          hasPermission={false}
-          tableDetails={tableClassBase.getDummyData()}
-          onUpdate={async () => noop()}
-        />
+        <GenericProvider<Table>
+          data={tableClassBase.getDummyData()}
+          permissions={DEFAULT_ENTITY_PERMISSION}
+          type={EntityType.TABLE}
+          onUpdate={async () => noop()}>
+          <TableConstraints />
+        </GenericProvider>
       );
     } else if (props.widgetKey.startsWith(DetailPageWidgetKeys.TOPIC_SCHEMA)) {
       return (
@@ -590,7 +587,7 @@ export const GenericWidget = (props: WidgetCommonProps) => {
           permissions={DEFAULT_ENTITY_PERMISSION}
           type={EntityType.TOPIC}
           onUpdate={async () => noop()}>
-          <TopicSchemaFields isReadOnly />
+          <TopicSchemaFields />
         </GenericProvider>
       );
     } else if (props.widgetKey.startsWith(DetailPageWidgetKeys.DATA_MODEL)) {

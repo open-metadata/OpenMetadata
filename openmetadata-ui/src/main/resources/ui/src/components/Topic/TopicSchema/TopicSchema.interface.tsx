@@ -13,16 +13,13 @@
 
 import { TableProps } from 'antd';
 import { HTMLAttributes, ReactNode } from 'react';
-import { ThreadType } from '../../../generated/api/feed/createThread';
 import { Field } from '../../../generated/entity/data/topic';
 
 export interface TopicSchemaFieldsProps
   extends HTMLAttributes<TableProps<Field>> {
-  isReadOnly: boolean;
   schemaTypePlaceholder?: ReactNode;
   defaultExpandAllRows?: boolean;
   showSchemaDisplayTypeSwitch?: boolean;
-  onThreadLinkSelect?: (value: string, threadType?: ThreadType) => void;
 }
 
 export enum SchemaViewType {

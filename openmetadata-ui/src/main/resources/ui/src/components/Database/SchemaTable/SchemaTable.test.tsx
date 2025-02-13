@@ -18,11 +18,7 @@ import { Column } from '../../../generated/entity/data/container';
 import { Table } from '../../../generated/entity/data/table';
 import { MOCK_TABLE } from '../../../mocks/TableData.mock';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
-import EntityTableV1 from './SchemaTable.component';
-import { SchemaTableProps } from './SchemaTable.interface';
-
-const onThreadLinkSelect = jest.fn();
-const onUpdate = jest.fn();
+import SchemaTable from './SchemaTable.component';
 
 const mockTableConstraints = [
   {
@@ -67,16 +63,6 @@ const mockColumns = [
     ordinalPosition: 3,
   },
 ] as Column[];
-
-const mockEntityTableProp: SchemaTableProps = {
-  searchText: '',
-  hasDescriptionEditAccess: true,
-  isReadOnly: false,
-  hasTagEditAccess: true,
-  hasGlossaryTermEditAccess: true,
-  onThreadLinkSelect,
-  onUpdate,
-};
 
 const mockGenericContextProps = {
   data: {
@@ -198,7 +184,7 @@ jest.mock('../../../utils/EntityUtils', () => ({
 
 describe('Test EntityTable Component', () => {
   it('Initially, Table should load', async () => {
-    render(<EntityTableV1 {...mockEntityTableProp} />, {
+    render(<SchemaTable />, {
       wrapper: MemoryRouter,
     });
 
@@ -210,7 +196,7 @@ describe('Test EntityTable Component', () => {
   });
 
   it('Should render tags and description components', async () => {
-    render(<EntityTableV1 {...mockEntityTableProp} />, {
+    render(<SchemaTable />, {
       wrapper: MemoryRouter,
     });
 
@@ -225,7 +211,7 @@ describe('Test EntityTable Component', () => {
 
   it('Table should load empty when no data present', async () => {
     mockGenericContextProps.data = { ...MOCK_TABLE, columns: [] } as Table;
-    render(<EntityTableV1 {...mockEntityTableProp} />, {
+    render(<SchemaTable />, {
       wrapper: MemoryRouter,
     });
 
@@ -243,7 +229,7 @@ describe('Test EntityTable Component', () => {
       ...MOCK_TABLE,
       columns: mockColumns,
     } as Table;
-    render(<EntityTableV1 {...mockEntityTableProp} />, {
+    render(<SchemaTable />, {
       wrapper: MemoryRouter,
     });
 
@@ -261,7 +247,7 @@ describe('Test EntityTable Component', () => {
       ...MOCK_TABLE,
       columns: columnsWithDisplayName,
     } as Table;
-    render(<EntityTableV1 {...mockEntityTableProp} />, {
+    render(<SchemaTable />, {
       wrapper: MemoryRouter,
     });
 
@@ -282,7 +268,7 @@ describe('Test EntityTable Component', () => {
       ...MOCK_TABLE,
       columns: columnsWithDisplayName,
     } as Table;
-    render(<EntityTableV1 {...mockEntityTableProp} isReadOnly />, {
+    render(<SchemaTable />, {
       wrapper: MemoryRouter,
     });
 

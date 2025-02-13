@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Form, Select, Tooltip, Typography } from 'antd';
+import { Button, Col, Form, Row, Select, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { ExpandableConfig } from 'antd/lib/table/interface';
 import {
@@ -72,6 +72,7 @@ import {
   updateFieldTags,
 } from '../../../utils/TableUtils';
 import FilterTablePlaceHolder from '../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
+import Searchbar from '../../common/SearchBarComponent/SearchBar.component';
 import Table from '../../common/Table/Table';
 import TestCaseStatusSummaryIndicator from '../../common/TestCaseStatusSummaryIndicator/TestCaseStatusSummaryIndicator.component';
 import { useGenericContext } from '../../GenericProvider/GenericProvider';
@@ -85,42 +86,40 @@ import { ColumnFilter } from '../ColumnFilter/ColumnFilter.component';
 import TableDescription from '../TableDescription/TableDescription.component';
 import TableTags from '../TableTags/TableTags.component';
 import {
-  SchemaTableProps,
   TableCellRendered,
   UpdatedColumnFieldData,
 } from './SchemaTable.interface';
 
-const SchemaTable = ({
-  searchText,
-  hasDescriptionEditAccess,
-  hasTagEditAccess,
-  hasGlossaryTermEditAccess,
-  isReadOnly = false,
-  onUpdate,
-  onThreadLinkSelect,
-}: SchemaTableProps) => {
+const SchemaTable = () => {
   const { t } = useTranslation();
   const [testCaseSummary, setTestCaseSummary] = useState<TestSummary>();
   const [searchedColumns, setSearchedColumns] = useState<Column[]>([]);
   const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
+  const [searchText, setSearchText] = useState('');
 
   const [editColumn, setEditColumn] = useState<Column>();
 
   const { fqn: decodedEntityFqn } = useFqn();
 
   const [editColumnDisplayName, setEditColumnDisplayName] = useState<Column>();
-  const { permissions: tablePermissions, data: table } =
-    useGenericContext<TableType>();
+  const {
+    permissions: tablePermissions,
+    data: table,
+    onUpdate,
+    onThreadLinkSelect,
+  } = useGenericContext<TableType>();
 
-  const { testCaseCounts, tableColumns, joins, tableConstraints } = useMemo(
-    () => ({
-      testCaseCounts: testCaseSummary?.columnTestSummary ?? [],
-      tableColumns: table?.columns ?? [],
-      joins: table?.joins?.columnJoins ?? [],
-      tableConstraints: table?.tableConstraints,
-    }),
-    [table, testCaseSummary]
-  );
+  const { testCaseCounts, tableColumns, joins, tableConstraints, deleted } =
+    useMemo(
+      () => ({
+        testCaseCounts: testCaseSummary?.columnTestSummary ?? [],
+        tableColumns: table?.columns ?? [],
+        joins: table?.joins?.columnJoins ?? [],
+        tableConstraints: table?.tableConstraints,
+        deleted: table?.deleted,
+      }),
+      [table, testCaseSummary]
+    );
 
   const tableFqn = useMemo(
     () =>
@@ -130,6 +129,42 @@ const SchemaTable = ({
         FQN_SEPARATOR_CHAR
       ),
     [decodedEntityFqn]
+  );
+
+  const {
+    editTagsPermission,
+    editGlossaryTermsPermission,
+    editDescriptionPermission,
+    editDisplayNamePermission,
+  } = useMemo(
+    () => ({
+      editTagsPermission:
+        (tablePermissions.EditTags || tablePermissions.EditAll) && !deleted,
+      editDescriptionPermission:
+        (tablePermissions.EditDescription || tablePermissions.EditAll) &&
+        !deleted,
+      editGlossaryTermsPermission:
+        (tablePermissions.EditGlossaryTerms || tablePermissions.EditAll) &&
+        !deleted,
+      editAllPermission: tablePermissions.EditAll && !deleted,
+      editLineagePermission:
+        (tablePermissions.EditAll || tablePermissions.EditLineage) && !deleted,
+      viewSampleDataPermission:
+        tablePermissions.ViewAll || tablePermissions.ViewSampleData,
+      viewQueriesPermission:
+        tablePermissions.ViewAll || tablePermissions.ViewQueries,
+      viewProfilerPermission:
+        tablePermissions.ViewAll ||
+        tablePermissions.ViewDataProfile ||
+        tablePermissions.ViewTests,
+      viewAllPermission: tablePermissions.ViewAll,
+      viewBasicPermission:
+        tablePermissions.ViewAll || tablePermissions.ViewBasic,
+      editDisplayNamePermission:
+        (tablePermissions.EditDisplayName || tablePermissions.EditAll) &&
+        !deleted,
+    }),
+    [tablePermissions, deleted]
   );
 
   const sortByOrdinalPosition = useMemo(
@@ -168,6 +203,16 @@ const SchemaTable = ({
     setEditColumn(undefined);
   };
 
+  const handleColumnUpdate = async (updatedColumns: Column[]) => {
+    if (table && !isEqual(tableColumns, updatedColumns)) {
+      const updatedTableDetails = {
+        ...table,
+        columns: updatedColumns,
+      };
+      await onUpdate(updatedTableDetails);
+    }
+  };
+
   const updateColumnFields = ({
     fqn,
     field,
@@ -197,7 +242,7 @@ const SchemaTable = ({
         field: 'description',
         columns: tableCols,
       });
-      await onUpdate(tableCols);
+      await handleColumnUpdate(tableCols);
       setEditColumn(undefined);
     } else {
       setEditColumn(undefined);
@@ -216,7 +261,7 @@ const SchemaTable = ({
         selectedTags,
         tableCols
       );
-      await onUpdate(tableCols);
+      await handleColumnUpdate(tableCols);
     }
   };
 
@@ -260,9 +305,9 @@ const SchemaTable = ({
           }}
           entityFqn={tableFqn}
           entityType={EntityType.TABLE}
-          hasEditPermission={hasDescriptionEditAccess}
+          hasEditPermission={editDescriptionPermission}
           index={index}
-          isReadOnly={isReadOnly}
+          isReadOnly={deleted}
           onClick={() => handleUpdate(record)}
           onThreadLinkSelect={onThreadLinkSelect}
         />
@@ -325,7 +370,7 @@ const SchemaTable = ({
         field: 'constraint',
         columns: tableCols,
       });
-      await onUpdate(tableCols);
+      await handleColumnUpdate(tableCols);
       setEditColumnDisplayName(undefined);
     } else {
       setEditColumnDisplayName(undefined);
@@ -340,6 +385,10 @@ const SchemaTable = ({
       TagFilterOptions[]
     >;
   }, [data]);
+
+  const handleSearchAction = (searchValue: string) => {
+    setSearchText(searchValue);
+  };
 
   const columns: ColumnsType<Column> = useMemo(
     () => [
@@ -379,26 +428,24 @@ const SchemaTable = ({
                 </Typography.Text>
               ) : null}
 
-              {(tablePermissions?.EditAll ||
-                tablePermissions?.EditDisplayName) &&
-                !isReadOnly && (
-                  <Tooltip placement="right" title={t('label.edit')}>
-                    <Button
-                      className="cursor-pointer hover-cell-icon w-fit-content"
-                      data-testid="edit-displayName-button"
-                      style={{
-                        color: DE_ACTIVE_COLOR,
-                        padding: 0,
-                        border: 'none',
-                        background: 'transparent',
-                      }}
-                      onClick={() => handleEditDisplayNameClick(record)}>
-                      <IconEdit
-                        style={{ color: DE_ACTIVE_COLOR, ...ICON_DIMENSION }}
-                      />
-                    </Button>
-                  </Tooltip>
-                )}
+              {editDisplayNamePermission && (
+                <Tooltip placement="right" title={t('label.edit')}>
+                  <Button
+                    className="cursor-pointer hover-cell-icon w-fit-content"
+                    data-testid="edit-displayName-button"
+                    style={{
+                      color: DE_ACTIVE_COLOR,
+                      padding: 0,
+                      border: 'none',
+                      background: 'transparent',
+                    }}
+                    onClick={() => handleEditDisplayNameClick(record)}>
+                    <IconEdit
+                      style={{ color: DE_ACTIVE_COLOR, ...ICON_DIMENSION }}
+                    />
+                  </Button>
+                </Tooltip>
+              )}
             </div>
           );
         },
@@ -431,9 +478,9 @@ const SchemaTable = ({
             entityFqn={tableFqn}
             entityType={EntityType.TABLE}
             handleTagSelection={handleTagSelection}
-            hasTagEditAccess={hasTagEditAccess}
+            hasTagEditAccess={editTagsPermission}
             index={index}
-            isReadOnly={isReadOnly}
+            isReadOnly={deleted}
             record={record}
             tags={tags}
             type={TagSource.Classification}
@@ -456,9 +503,9 @@ const SchemaTable = ({
             entityFqn={tableFqn}
             entityType={EntityType.TABLE}
             handleTagSelection={handleTagSelection}
-            hasTagEditAccess={hasGlossaryTermEditAccess}
+            hasTagEditAccess={editGlossaryTermsPermission}
             index={index}
-            isReadOnly={isReadOnly}
+            isReadOnly={deleted}
             record={record}
             tags={tags}
             type={TagSource.Glossary}
@@ -490,10 +537,10 @@ const SchemaTable = ({
     ],
     [
       tableFqn,
-      isReadOnly,
+      deleted,
       tableConstraints,
-      hasTagEditAccess,
-      hasGlossaryTermEditAccess,
+      editTagsPermission,
+      editGlossaryTermsPermission,
       handleUpdate,
       handleTagSelection,
       renderDataTypeDisplay,
@@ -545,22 +592,33 @@ const SchemaTable = ({
   }, [data, decodedEntityFqn]);
 
   return (
-    <>
-      <Table
-        bordered
-        className="m-b-sm align-table-filter-left"
-        columns={columns}
-        data-testid="entity-table"
-        dataSource={data}
-        expandable={expandableConfig}
-        locale={{
-          emptyText: <FilterTablePlaceHolder />,
-        }}
-        pagination={false}
-        rowKey="fullyQualifiedName"
-        scroll={TABLE_SCROLL_VALUE}
-        size="middle"
-      />
+    <Row gutter={[16, 16]}>
+      <Col span={8}>
+        <Searchbar
+          removeMargin
+          placeholder={t('message.find-in-table')}
+          searchValue={searchText}
+          typingInterval={500}
+          onSearch={handleSearchAction}
+        />
+      </Col>
+      <Col span={24}>
+        <Table
+          bordered
+          className="m-b-sm align-table-filter-left"
+          columns={columns}
+          data-testid="entity-table"
+          dataSource={data}
+          expandable={expandableConfig}
+          locale={{
+            emptyText: <FilterTablePlaceHolder />,
+          }}
+          pagination={false}
+          rowKey="fullyQualifiedName"
+          scroll={TABLE_SCROLL_VALUE}
+          size="middle"
+        />
+      </Col>
       {editColumn && (
         <ModalWithMarkdownEditor
           header={`${t('label.edit-entity', {
@@ -585,7 +643,7 @@ const SchemaTable = ({
           onSave={handleEditColumnData}
         />
       )}
-    </>
+    </Row>
   );
 };
 

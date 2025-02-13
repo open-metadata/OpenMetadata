@@ -13,7 +13,7 @@
 
 import { Col, Row, Space, Tabs, TabsProps, Tag } from 'antd';
 import classNames from 'classnames';
-import { isEmpty, noop } from 'lodash';
+import { isEmpty } from 'lodash';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
@@ -141,11 +141,7 @@ const TopicVersion: FC<TopicVersionProp> = ({
                   />
                 </Col>
                 <Col span={24}>
-                  <TopicSchemaFields
-                    isReadOnly
-                    schemaTypePlaceholder={schemaType}
-                    onThreadLinkSelect={noop}
-                  />
+                  <TopicSchemaFields schemaTypePlaceholder={schemaType} />
                 </Col>
               </Row>
             </Col>

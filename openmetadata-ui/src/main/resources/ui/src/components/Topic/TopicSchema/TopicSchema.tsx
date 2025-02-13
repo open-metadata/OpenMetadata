@@ -67,8 +67,6 @@ import {
 
 const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
   className,
-  isReadOnly,
-  onThreadLinkSelect,
   schemaTypePlaceholder,
 }) => {
   const { t } = useTranslation();
@@ -84,7 +82,13 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
     permissions,
     onUpdate,
     currentVersionData,
+    onThreadLinkSelect,
   } = useGenericContext<Topic>();
+
+  const isReadOnly = useMemo(() => {
+    // If there is a current version, it should be read only
+    return currentVersionData ? true : topicDetails.deleted;
+  }, [currentVersionData, topicDetails.deleted]);
 
   const messageSchema = useMemo(
     () =>
