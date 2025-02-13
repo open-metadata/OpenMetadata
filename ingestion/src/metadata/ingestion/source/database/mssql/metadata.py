@@ -120,13 +120,14 @@ class MssqlSource(CommonDbSourceService, MultiDBSource):
         """
         Method to fetch the stored procedure description
         """
-        return self.stored_procedure_desc_map.get(
+        description = self.stored_procedure_desc_map.get(
             (
                 self.context.get().database,
                 self.context.get().database_schema,
                 stored_procedure,
             )
         )
+        return Markdown(description) if description else None
 
     def set_stored_procedure_description_map(self) -> None:
         self.stored_procedure_desc_map.clear()
@@ -208,14 +209,8 @@ class MssqlSource(CommonDbSourceService, MultiDBSource):
         try:
             stored_procedure_request = CreateStoredProcedureRequest(
                 name=EntityName(stored_procedure.name),
-                description=(
-                    Markdown(stored_procedure_description)
-                    if (
-                        stored_procedure_description := self.get_stored_procedure_description(
-                            stored_procedure.name
-                        )
-                    )
-                    else None
+                description=self.get_stored_procedure_description(
+                    stored_procedure.name
                 ),
                 storedProcedureCode=StoredProcedureCode(
                     language=STORED_PROC_LANGUAGE_MAP.get(stored_procedure.language),
