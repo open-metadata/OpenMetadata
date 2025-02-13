@@ -157,7 +157,9 @@ class UnitycatalogLineageSource(Source):
                     )
             except Exception:
                 logger.debug(
-                    f"Error while processing lineage for {upstream_table.catalog_name}.{upstream_table.schema_name}.{upstream_table.name} -> {databricks_table_fqn}"
+                    "Error while processing lineage for "
+                    f"{upstream_table.catalog_name}.{upstream_table.schema_name}.{upstream_table.name}"
+                    f" -> {databricks_table_fqn}"
                 )
                 logger.debug(traceback.format_exc())
 
