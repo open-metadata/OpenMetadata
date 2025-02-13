@@ -128,6 +128,7 @@ function SearchIndexFieldsTab({
         hasTagEditAccess={hasTagEditAccess}
         isReadOnly={isReadOnly}
         searchIndexFields={fields}
+        searchText={searchText}
         searchedFields={searchedFields}
         onThreadLinkSelect={onThreadLinkSelect}
         onUpdate={onUpdate}

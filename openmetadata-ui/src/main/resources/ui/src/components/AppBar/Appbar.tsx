@@ -20,6 +20,7 @@ import { useTourProvider } from '../../context/TourProvider/TourProvider';
 import { CurrentTourPageType } from '../../enums/tour.enum';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
+import TokenService from '../../utils/Auth/TokenService/TokenServiceUtil';
 import {
   extractDetailsFromToken,
   isProtectedRoute,
@@ -38,8 +39,7 @@ const Appbar: React.FC = (): JSX.Element => {
   const { isTourOpen, updateTourPage, updateTourSearch, tourSearchValue } =
     useTourProvider();
 
-  const { isAuthenticated, searchCriteria, trySilentSignIn } =
-    useApplicationStore();
+  const { isAuthenticated, searchCriteria } = useApplicationStore();
 
   const parsedQueryString = Qs.parse(
     location.search.startsWith('?')
@@ -76,7 +76,7 @@ const Appbar: React.FC = (): JSX.Element => {
         getExplorePath({
           tab: defaultTab,
           search: value,
-          isPersistFilters: false,
+          isPersistFilters: true,
           extraParameters: {
             sort: '_score',
           },
@@ -126,7 +126,7 @@ const Appbar: React.FC = (): JSX.Element => {
       const { isExpired } = extractDetailsFromToken(getOidcToken());
       if (!document.hidden && isExpired) {
         // force logout
-        trySilentSignIn(true);
+        TokenService.getInstance().refreshToken();
       }
     };
 

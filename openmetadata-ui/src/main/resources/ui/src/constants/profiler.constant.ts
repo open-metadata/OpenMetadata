@@ -12,7 +12,7 @@
  */
 
 import { t } from 'i18next';
-import { capitalize, map, startCase, values } from 'lodash';
+import { map, startCase, values } from 'lodash';
 import { DateFilterType, StepperStepType } from 'Models';
 import { StatusData } from '../components/DataQuality/ChartWidgets/StatusCardWidget/StatusCardWidget.interface';
 import { TestCaseSearchParams } from '../components/DataQuality/DataQuality.interface';
@@ -378,7 +378,7 @@ export const TIME_BASED_PARTITION = [
 
 export const TEST_CASE_TYPE_OPTION = [
   ...map(TestCaseType, (value) => ({
-    label: capitalize(value),
+    label: t('label.' + value),
     value: value,
   })),
 ];
@@ -389,7 +389,7 @@ export const TEST_CASE_STATUS_OPTION = [
     value: '',
   },
   ...values(TestCaseStatus).map((value) => ({
-    label: value,
+    label: t('label.' + value.toLowerCase()),
     value: value,
   })),
 ];

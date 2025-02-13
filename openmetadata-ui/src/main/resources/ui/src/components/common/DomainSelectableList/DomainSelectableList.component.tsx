@@ -20,7 +20,6 @@ import { ReactComponent as EditIcon } from '../../../assets/svg/user-profile-edi
 
 import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import { EntityReference } from '../../../generated/entity/type';
-import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { getEntityName } from '../../../utils/EntityUtils';
 import Fqn from '../../../utils/Fqn';
 import './domain-select-dropdown.less';
@@ -59,9 +58,9 @@ const DomainSelectableList = ({
   multiple = false,
   onUpdate,
   selectedDomain,
+  onCancel,
 }: DomainSelectableListProps) => {
   const { t } = useTranslation();
-  const { theme } = useApplicationStore();
   const [popupVisible, setPopupVisible] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isSelectOpen, setIsSelectOpen] = useState<boolean>(false);
@@ -71,6 +70,16 @@ const DomainSelectableList = ({
   >([]);
 
   const selectedDomainsList = useMemo(() => {
+    if (selectedDomain) {
+      return Array.isArray(selectedDomain)
+        ? selectedDomain.map((item) => item.fullyQualifiedName)
+        : [selectedDomain.fullyQualifiedName];
+    }
+
+    return [];
+  }, [selectedDomain]);
+
+  const initialDomains = useMemo(() => {
     if (selectedDomain) {
       return Array.isArray(selectedDomain) ? selectedDomain : [selectedDomain];
     }
@@ -222,7 +231,7 @@ const DomainSelectableList = ({
           </div>
         }
         open={popupVisible}
-        overlayClassName="profile-edit-popover-card"
+        overlayClassName="profile-edit-popover-card w-400"
         placement="bottomLeft"
         showArrow={false}
         style={{ borderRadius: '12px' }}

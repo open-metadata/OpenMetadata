@@ -11,12 +11,14 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Modal, Row, Space, Tabs } from 'antd';
+import { Button, Col, Divider, Modal, Row, Space, Tabs } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
+import { ReactComponent as TestSuiteIcon } from '../../assets/svg/icon-test-suite.svg';
+import { DomainLabel } from '../../components/common/DomainLabel/DomainLabel.component';
 import DescriptionV1 from '../../components/common/EntityDescription/DescriptionV1';
 import ManageButton from '../../components/common/EntityPageInfos/ManageButton/ManageButton';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -31,6 +33,8 @@ import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/Ti
 import DataQualityTab from '../../components/Database/Profiler/DataQualityTab/DataQualityTab';
 import { AddTestCaseList } from '../../components/DataQuality/AddTestCaseList/AddTestCaseList.component';
 import TestSuitePipelineTab from '../../components/DataQuality/TestSuite/TestSuitePipelineTab/TestSuitePipelineTab.component';
+import EntityHeaderTitle from '../../components/Entity/EntityHeaderTitle/EntityHeaderTitle.component';
+import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { INITIAL_PAGING_VALUE } from '../../constants/constants';
 import { DEFAULT_SORT_ORDER } from '../../constants/profiler.constant';
@@ -39,16 +43,15 @@ import {
   OperationPermission,
   ResourceEntity,
 } from '../../context/PermissionProvider/PermissionProvider.interface';
-import { ACTION_TYPE, ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
+import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import {
   EntityTabs,
   EntityType,
   TabSpecificField,
 } from '../../enums/entity.enum';
 import { TestCase } from '../../generated/tests/testCase';
-import { TestSuite } from '../../generated/tests/testSuite';
+import { EntityReference, TestSuite } from '../../generated/tests/testSuite';
 import { Include } from '../../generated/type/include';
-import { useAuth } from '../../hooks/authHooks';
 import { usePaging } from '../../hooks/paging/usePaging';
 import { useFqn } from '../../hooks/useFqn';
 import { DataQualityPageTabs } from '../../pages/DataQuality/DataQualityPage.interface';
@@ -72,7 +75,6 @@ const TestSuiteDetailsPage = () => {
   const { t } = useTranslation();
   const { getEntityPermissionByFqn } = usePermissionProvider();
   const { fqn: testSuiteFQN } = useFqn();
-  const { isAdminUser } = useAuth();
   const history = useHistory();
 
   const afterDeleteAction = () => {
@@ -111,6 +113,19 @@ const TestSuiteDetailsPage = () => {
       testSuiteDescription: testSuite?.description ?? '',
     };
   }, [testSuite]);
+
+  const permissions = useMemo(() => {
+    return {
+      hasViewPermission:
+        testSuitePermissions?.ViewAll || testSuitePermissions?.ViewBasic,
+      hasEditPermission: testSuitePermissions?.EditAll,
+      hasEditOwnerPermission:
+        testSuitePermissions?.EditAll || testSuitePermissions?.EditOwners,
+      hasEditDescriptionPermission:
+        testSuitePermissions?.EditAll || testSuitePermissions?.EditDescription,
+      hasDeletePermission: testSuitePermissions?.Delete,
+    };
+  }, [testSuitePermissions]);
 
   const incidentUrlState = useMemo(() => {
     return [
@@ -229,38 +244,35 @@ const TestSuiteDetailsPage = () => {
     }
   };
 
-  const updateTestSuiteData = (updatedTestSuite: TestSuite, type: string) => {
-    saveAndUpdateTestSuiteData(updatedTestSuite)
-      .then((res) => {
-        if (res) {
-          setTestSuite(res);
-        } else {
-          showErrorToast(t('server.unexpected-response'));
-        }
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          t(
-            `server.entity-${
-              type === ACTION_TYPE.UPDATE ? 'updating' : 'removing'
-            }-error`,
-            {
-              entity: t('label.owner'),
-            }
-          )
-        );
-      });
+  const updateTestSuiteData = async (updatedTestSuite: TestSuite) => {
+    try {
+      const res = await saveAndUpdateTestSuiteData(updatedTestSuite);
+      setTestSuite(res);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
   };
 
   const onUpdateOwner = useCallback(
-    (updatedOwners: TestSuite['owners']) => {
+    async (updatedOwners: TestSuite['owners']) => {
       const updatedTestSuite = {
         ...testSuite,
         owners: updatedOwners,
       } as TestSuite;
 
-      updateTestSuiteData(updatedTestSuite, ACTION_TYPE.UPDATE);
+      await updateTestSuiteData(updatedTestSuite);
+    },
+    [testOwners, testSuite]
+  );
+
+  const handleDomainUpdate = useCallback(
+    async (updateDomain?: EntityReference | EntityReference[]) => {
+      const updatedTestSuite: TestSuite = {
+        ...testSuite,
+        domain: updateDomain,
+      } as TestSuite;
+
+      await updateTestSuiteData(updatedTestSuite);
     },
     [testOwners, testSuite]
   );
@@ -287,6 +299,28 @@ const TestSuiteDetailsPage = () => {
     }
   };
 
+  const handleDisplayNameChange = async (entityName?: EntityName) => {
+    try {
+      if (testSuite) {
+        const updatedTestSuite = {
+          ...testSuite,
+          ...entityName,
+        };
+        const jsonPatch = compare(testSuite, updatedTestSuite);
+
+        if (jsonPatch.length && testSuite.id) {
+          const response = await saveAndUpdateTestSuiteData(
+            updatedTestSuite as TestSuite
+          );
+
+          setTestSuite(response);
+        }
+      }
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
+
   const handleTestCasePaging = ({ currentPage }: PagingHandlerParams) => {
     if (currentPage) {
       handlePageChange(currentPage);
@@ -307,10 +341,10 @@ const TestSuiteDetailsPage = () => {
   };
 
   useEffect(() => {
-    if (testSuitePermissions.ViewAll || testSuitePermissions.ViewBasic) {
+    if (permissions.hasViewPermission) {
       fetchTestSuiteByName();
     }
-  }, [testSuitePermissions, testSuiteFQN]);
+  }, [permissions, testSuiteFQN]);
 
   useEffect(() => {
     fetchTestSuitePermission();
@@ -389,53 +423,84 @@ const TestSuiteDetailsPage = () => {
       pageTitle={t('label.entity-detail-plural', {
         entity: getEntityName(testSuite),
       })}>
-      <Row className="page-container" gutter={[0, 32]}>
+      <Row className="page-container" gutter={[0, 24]}>
         <Col span={24}>
-          <Space align="center" className="justify-between w-full">
-            <TitleBreadcrumb
-              data-testid="test-suite-breadcrumb"
-              titleLinks={slashedBreadCrumb}
-            />
-            <Space>
-              {(testSuitePermissions.EditAll ||
-                testSuitePermissions.EditTests) && (
-                <Button
-                  data-testid="add-test-case-btn"
-                  type="primary"
-                  onClick={() => setIsTestCaseModalOpen(true)}>
-                  {t('label.add-entity', {
-                    entity: t('label.test-case-plural'),
-                  })}
-                </Button>
-              )}
-              <ManageButton
-                isRecursiveDelete
-                afterDeleteAction={afterDeleteAction}
-                allowSoftDelete={false}
-                canDelete={isAdminUser}
-                deleted={testSuite?.deleted}
-                displayName={getEntityName(testSuite)}
-                entityId={testSuite?.id}
-                entityName={testSuite?.fullyQualifiedName as string}
-                entityType={EntityType.TEST_SUITE}
+          <TitleBreadcrumb
+            data-testid="test-suite-breadcrumb"
+            titleLinks={slashedBreadCrumb}
+          />
+        </Col>
+        <Col span={24}>
+          <Row gutter={[16, 16]}>
+            <Col span={18}>
+              <EntityHeaderTitle
+                className="w-max-full-45"
+                displayName={testSuite?.displayName}
+                icon={<TestSuiteIcon className="h-9" />}
+                name={testSuite?.name ?? ''}
+                serviceName="testSuite"
               />
-            </Space>
-          </Space>
+            </Col>
+            <Col className="d-flex justify-end" span={6}>
+              <Space>
+                {(testSuitePermissions.EditAll ||
+                  testSuitePermissions.EditTests) && (
+                  <Button
+                    data-testid="add-test-case-btn"
+                    type="primary"
+                    onClick={() => setIsTestCaseModalOpen(true)}>
+                    {t('label.add-entity', {
+                      entity: t('label.test-case-plural'),
+                    })}
+                  </Button>
+                )}
+                <ManageButton
+                  isRecursiveDelete
+                  afterDeleteAction={afterDeleteAction}
+                  allowSoftDelete={false}
+                  canDelete={permissions.hasDeletePermission}
+                  deleted={testSuite?.deleted}
+                  displayName={getEntityName(testSuite)}
+                  editDisplayNamePermission={
+                    testSuitePermissions.EditAll ||
+                    testSuitePermissions.EditDisplayName
+                  }
+                  entityId={testSuite?.id}
+                  entityName={testSuite?.fullyQualifiedName as string}
+                  entityType={EntityType.TEST_SUITE}
+                  onEditDisplayName={handleDisplayNameChange}
+                />
+              </Space>
+            </Col>
 
-          <div className="w-full m-t-xxs m-b-xs">
-            <OwnerLabel
-              hasPermission={isAdminUser}
-              owners={testOwners}
-              onUpdate={onUpdateOwner}
-            />
-          </div>
+            <Col span={24}>
+              <div className="d-flex flex-wrap gap-2">
+                <DomainLabel
+                  domain={testSuite?.domain}
+                  entityFqn={testSuite?.fullyQualifiedName ?? ''}
+                  entityId={testSuite?.id ?? ''}
+                  entityType={EntityType.TEST_SUITE}
+                  hasPermission={testSuitePermissions.EditAll}
+                  onUpdate={handleDomainUpdate}
+                />
+                <Divider className="self-center" type="vertical" />
+                <OwnerLabel
+                  hasPermission={permissions.hasEditOwnerPermission}
+                  owners={testOwners}
+                  onUpdate={onUpdateOwner}
+                />
+              </div>
+            </Col>
+          </Row>
+        </Col>
 
+        <Col span={24}>
           <DescriptionV1
             className="test-suite-description"
             description={testSuiteDescription}
             entityName={getEntityName(testSuite)}
             entityType={EntityType.TEST_SUITE}
-            hasEditAccess={isAdminUser}
+            hasEditAccess={permissions.hasEditDescriptionPermission}
             isEdit={isDescriptionEditable}
             showCommentsIcon={false}
             onCancel={() => descriptionHandler(false)}

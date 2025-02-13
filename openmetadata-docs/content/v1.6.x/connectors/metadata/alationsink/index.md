@@ -7,7 +7,7 @@ slug: /connectors/metadata/alationsink
 name="AlationSink"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=[]
+availableFeatures=["Metadata"]
 unavailableFeatures=[]
 / %}
 

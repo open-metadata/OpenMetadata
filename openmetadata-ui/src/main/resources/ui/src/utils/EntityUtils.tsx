@@ -1919,6 +1919,13 @@ export const getEntityBreadcrumbs = (
           ),
         },
         ...getBreadcrumbForEntitiesWithServiceOnly(entity as Database),
+        {
+          name: entity.name,
+          url: getEntityLinkFromType(
+            entity.fullyQualifiedName ?? '',
+            (entity as SourceType).entityType as EntityType
+          ),
+        },
       ];
 
     case EntityType.DATABASE_SCHEMA:
@@ -1947,6 +1954,13 @@ export const getEntityBreadcrumbs = (
           url: getEntityDetailsPath(
             EntityType.DATABASE,
             (entity as DatabaseSchema).database?.fullyQualifiedName ?? ''
+          ),
+        },
+        {
+          name: entity.name,
+          url: getEntityLinkFromType(
+            entity.fullyQualifiedName ?? '',
+            (entity as SourceType).entityType as EntityType
           ),
         },
       ];

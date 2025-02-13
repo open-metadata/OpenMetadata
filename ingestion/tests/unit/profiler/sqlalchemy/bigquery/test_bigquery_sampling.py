@@ -110,7 +110,7 @@ class SampleTest(TestCase):
             ometa_client=None,
             entity=self.table_entity,
             sample_config=SampleConfig(
-                profile_sample_type=ProfileSampleType.PERCENTAGE, profile_sample=50.0
+                profileSampleType=ProfileSampleType.PERCENTAGE, profileSample=50.0
             ),
             table_type=TableType.Regular,
         )
@@ -127,14 +127,25 @@ class SampleTest(TestCase):
         """
         Test view sampling
         """
+        view_entity = Table(
+            id=uuid4(),
+            name="user",
+            columns=[
+                EntityColumn(
+                    name=ColumnName("id"),
+                    dataType=DataType.INT,
+                ),
+            ],
+            tableType=TableType.View,
+        )
+
         sampler = BigQuerySampler(
             service_connection_config=self.bq_conn,
             ometa_client=None,
-            entity=self.table_entity,
+            entity=view_entity,
             sample_config=SampleConfig(
-                profile_sample_type=ProfileSampleType.PERCENTAGE, profile_sample=50.0
+                profileSampleType=ProfileSampleType.PERCENTAGE, profileSample=50.0
             ),
-            table_type=TableType.View,
         )
         query: CTE = sampler.get_sample_query()
         expected_query = (
@@ -151,12 +162,24 @@ class SampleTest(TestCase):
         """
         Test view sampling with partition
         """
+        view_entity = Table(
+            id=uuid4(),
+            name="user",
+            columns=[
+                EntityColumn(
+                    name=ColumnName("id"),
+                    dataType=DataType.INT,
+                ),
+            ],
+            tableType=TableType.View,
+        )
+
         sampler = BigQuerySampler(
             service_connection_config=self.bq_conn,
             ometa_client=None,
-            entity=self.table_entity,
+            entity=view_entity,
             sample_config=SampleConfig(
-                profile_sample_type=ProfileSampleType.PERCENTAGE, profile_sample=50.0
+                profileSampleType=ProfileSampleType.PERCENTAGE, profileSample=50.0
             ),
             partition_details=PartitionProfilerConfig(
                 enablePartitioning=True,
@@ -186,7 +209,7 @@ class SampleTest(TestCase):
             ometa_client=None,
             entity=self.table_entity,
             sample_config=SampleConfig(
-                profile_sample_type=ProfileSampleType.PERCENTAGE, profile_sample=50.0
+                profileSampleType=ProfileSampleType.PERCENTAGE, profileSample=50.0
             ),
             partition_details=PartitionProfilerConfig(
                 enablePartitioning=True,

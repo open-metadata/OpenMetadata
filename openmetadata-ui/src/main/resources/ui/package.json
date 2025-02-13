@@ -35,7 +35,8 @@
     "check-i18n": "npm run i18n -- --check",
     "playwright:run": "playwright test",
     "playwright:open": "playwright test --ui",
-    "playwright:codegen": "playwright codegen"
+    "playwright:codegen": "playwright codegen",
+    "generate:app-docs": "node generateApplicationDocs.js"
   },
   "dependencies": {
     "@analytics/session-utils": "^0.1.17",
@@ -250,6 +251,7 @@
     "terser-webpack-plugin": "5.1.1",
     "cookie": "0.7.0",
     "jsonpath-plus": "10.2.0",
-    "cross-spawn": "7.0.5"
+    "cross-spawn": "7.0.5",
+    "serialize-javascript": "6.0.2"
   }
 }

@@ -14,12 +14,16 @@ import { Divider, Space, Typography } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import classNames from 'classnames';
 import { t } from 'i18next';
-import { isEmpty, isUndefined } from 'lodash';
+import { get, isEmpty, isUndefined } from 'lodash';
 import React, { Fragment, ReactNode } from 'react';
 import { Link } from 'react-router-dom';
+import { ReactComponent as DomainIcon } from '../assets/svg/ic-domain.svg';
+import { ReactComponent as SubDomainIcon } from '../assets/svg/ic-subdomain.svg';
+import { TreeListItem } from '../components/common/DomainSelectableTree/DomainSelectableTree.interface';
 import { OwnerLabel } from '../components/common/OwnerLabel/OwnerLabel.component';
 import {
   DEFAULT_DOMAIN_VALUE,
+  DE_ACTIVE_COLOR,
   NO_DATA_PLACEHOLDER,
 } from '../constants/constants';
 import { DOMAIN_TYPE_DATA } from '../constants/Domain.constants';
@@ -122,6 +126,21 @@ export const getQueryFilterToExcludeDomainTerms = (
   };
 };
 
+export const getQueryFilterForDomain = (domainFqn: string) => ({
+  query: {
+    bool: {
+      must: [{ prefix: { 'domain.fullyQualifiedName': domainFqn } }],
+      must_not: [
+        {
+          term: {
+            entityType: 'dataProduct',
+          },
+        },
+      ],
+    },
+  },
+});
+
 // Domain type description which will be shown in tooltip
 export const domainTypeTooltipDataRender = () => (
   <Space direction="vertical" size="middle">
@@ -140,23 +159,33 @@ export const domainTypeTooltipDataRender = () => (
   </Space>
 );
 
-export const getDomainOptions = (
-  domains: Domain[] | EntityReference[],
-  isAdmin = true
-) => {
-  const domainOptions: ItemType[] =
-    isAdmin || domains.length === 0
-      ? [
-          {
-            label: t('label.all-domain-plural'),
-            key: DEFAULT_DOMAIN_VALUE,
-          },
-        ]
-      : [];
+export const getDomainOptions = (domains: Domain[] | EntityReference[]) => {
+  const domainOptions: ItemType[] = [
+    {
+      label: t('label.all-domain-plural'),
+      key: DEFAULT_DOMAIN_VALUE,
+    },
+  ];
+
   domains.forEach((domain) => {
     domainOptions.push({
       label: getEntityName(domain),
       key: domain.fullyQualifiedName ?? '',
+      icon: get(domain, 'parent') ? (
+        <SubDomainIcon
+          color={DE_ACTIVE_COLOR}
+          height={20}
+          name="subdomain"
+          width={20}
+        />
+      ) : (
+        <DomainIcon
+          color={DE_ACTIVE_COLOR}
+          height={20}
+          name="domain"
+          width={20}
+        />
+      ),
     });
   });
 
@@ -204,4 +233,78 @@ export const getDomainFieldFromEntityType = (
   } else {
     return 'domain';
   }
+};
+
+export const convertDomainsToTreeOptions = (
+  options: EntityReference[] | Domain[] = [],
+  level = 0,
+  multiple = false
+): TreeListItem[] => {
+  const treeData = options.map((option) => {
+    const hasChildren = 'children' in option && !isEmpty(option?.children);
+
+    return {
+      id: option.id,
+      value: option.fullyQualifiedName,
+      name: option.name,
+      label: option.name,
+      key: option.fullyQualifiedName,
+      title: (
+        <div className="d-flex items-center gap-1">
+          {level === 0 ? (
+            <DomainIcon
+              color={DE_ACTIVE_COLOR}
+              height={20}
+              name="domain"
+              width={20}
+            />
+          ) : (
+            <SubDomainIcon
+              color={DE_ACTIVE_COLOR}
+              height={20}
+              name="subdomain"
+              width={20}
+            />
+          )}
+
+          <Typography.Text ellipsis>{getEntityName(option)}</Typography.Text>
+        </div>
+      ),
+      'data-testid': `tag-${option.fullyQualifiedName}`,
+      isLeaf: !hasChildren,
+      selectable: !multiple,
+      children: hasChildren
+        ? convertDomainsToTreeOptions(
+            (option as unknown as Domain)?.children as EntityReference[],
+            level + 1,
+            multiple
+          )
+        : undefined,
+    };
+  });
+
+  return treeData;
+};
+
+/**
+ * Recursively checks if a domain exists in the hierarchy
+ * @param domain The domain to search in
+ * @param searchDomain The domain to search for
+ * @returns boolean indicating if the domain exists
+ */
+export const isDomainExist = (
+  domain: Domain,
+  searchDomainFqn: string
+): boolean => {
+  if (domain.fullyQualifiedName === searchDomainFqn) {
+    return true;
+  }
+
+  if (domain.children?.length) {
+    return domain.children.some((child) =>
+      isDomainExist(child as unknown as Domain, searchDomainFqn)
+    );
+  }
+
+  return false;
 };

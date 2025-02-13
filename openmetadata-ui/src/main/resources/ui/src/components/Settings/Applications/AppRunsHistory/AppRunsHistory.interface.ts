@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { RJSFSchema } from '@rjsf/utils';
 import { App } from '../../../../generated/entity/applications/app';
 import { AppRunRecord } from '../../../../generated/entity/applications/appRunRecord';
 
@@ -26,4 +27,5 @@ export interface AppRunsHistoryProps {
   maxRecords?: number;
   appData?: App;
   showPagination?: boolean;
+  jsonSchema: RJSFSchema;
 }

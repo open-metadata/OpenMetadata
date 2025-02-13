@@ -14,6 +14,7 @@ import Icon from '@ant-design/icons';
 import { Button, Col, Divider, Row, Space, Tooltip, Typography } from 'antd';
 import ButtonGroup from 'antd/lib/button/button-group';
 import { AxiosError } from 'axios';
+import classNames from 'classnames';
 import { capitalize, get, isEmpty } from 'lodash';
 import QueryString from 'qs';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
@@ -113,19 +114,25 @@ export const ExtraInfoLink = ({
   value,
   href,
   newTab = false,
+  ellipsis = false,
 }: {
   label: string;
   value: string | number;
   href: string;
   newTab?: boolean;
+  ellipsis?: boolean;
 }) => (
   <>
     <Divider className="self-center" type="vertical" />
-    <div className="d-flex items-center text-xs">
+    <div
+      className={classNames('d-flex items-center text-xs', {
+        'w-48': ellipsis,
+      })}>
       {!isEmpty(label) && (
         <span className="text-grey-muted m-r-xss">{`${label}: `}</span>
       )}
       <Typography.Link
+        ellipsis
         href={href}
         rel={newTab ? 'noopener noreferrer' : undefined}
         style={{ fontSize: '12px' }}
