@@ -27,7 +27,6 @@ const mockPropsData: UserProfileDetailsProps = {
   userData: USER_DATA,
   afterDeleteAction: jest.fn(),
   updateUserDetails: jest.fn(),
-  hasEditPermission: false,
 };
 
 jest.mock('../../../../../hooks/useFqn', () => ({

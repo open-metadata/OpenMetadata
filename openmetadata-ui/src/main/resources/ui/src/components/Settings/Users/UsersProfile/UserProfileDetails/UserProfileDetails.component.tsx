@@ -54,7 +54,6 @@ const UserProfileDetails = ({
   userData,
   afterDeleteAction,
   updateUserDetails,
-  hasEditPermission,
 }: UserProfileDetailsProps) => {
   const { t } = useTranslation();
   const { fqn: username } = useFqn();
@@ -78,12 +77,14 @@ const UserProfileDetails = ({
     [username, currentUser]
   );
 
+  const hasEditPermission = useMemo(
+    () => (isAdminUser || isLoggedInUser) && !userData.deleted,
+    [isAdminUser, isLoggedInUser, userData.deleted]
+  );
+
   const showChangePasswordComponent = useMemo(
-    () =>
-      isAuthProviderBasic &&
-      (isAdminUser || isLoggedInUser) &&
-      !userData.deleted,
-    [isAuthProviderBasic, isAdminUser, isLoggedInUser, userData.deleted]
+    () => isAuthProviderBasic && hasEditPermission,
+    [isAuthProviderBasic, hasEditPermission]
   );
 
   const defaultPersona = useMemo(
@@ -200,7 +201,7 @@ const UserProfileDetails = ({
           entityFqn={userData.fullyQualifiedName ?? ''}
           entityId={userData.id ?? ''}
           entityType={EntityType.USER}
-          hasPermission={hasEditPermission}
+          hasPermission={Boolean(isAdminUser) && !userData.deleted}
           textClassName="text-sm text-grey-muted"
         />
       </div>

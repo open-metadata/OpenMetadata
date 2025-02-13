@@ -188,7 +188,9 @@ test.describe('User with different Roles', () => {
     await expect(userPage.getByTestId('user-profile-roles')).toBeVisible();
 
     // Edit Persona icon shouldn't be visible
-    await expect(userPage.getByTestId('edit-persona')).not.toBeVisible();
+    await expect(
+      userPage.getByTestId('persona-list').getByTestId('edit-persona')
+    ).not.toBeVisible();
 
     // Edit Roles icon shouldn't be visible
     await expect(userPage.getByTestId('edit-roles-button')).not.toBeVisible();
