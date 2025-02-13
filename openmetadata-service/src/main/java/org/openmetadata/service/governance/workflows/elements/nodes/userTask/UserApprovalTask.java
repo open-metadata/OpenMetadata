@@ -112,15 +112,13 @@ public class UserApprovalTask implements NodeInterface {
       FieldExtension assigneesExpr,
       FieldExtension assigneesVarNameExpr,
       FieldExtension inputNamespaceMapExpr) {
-    ServiceTask serviceTask =
-        new ServiceTaskBuilder()
-            .id(getFlowableElementId(subProcessId, "setAssigneesVariable"))
-            .implementation(SetApprovalAssigneesImpl.class.getName())
-            .build();
-    serviceTask.getFieldExtensions().add(assigneesExpr);
-    serviceTask.getFieldExtensions().add(assigneesVarNameExpr);
-    serviceTask.getFieldExtensions().add(inputNamespaceMapExpr);
-    return serviceTask;
+    return new ServiceTaskBuilder()
+        .id(getFlowableElementId(subProcessId, "setAssigneesVariable"))
+        .implementation(SetApprovalAssigneesImpl.class.getName())
+        .addFieldExtension(assigneesExpr)
+        .addFieldExtension(assigneesVarNameExpr)
+        .addFieldExtension(inputNamespaceMapExpr)
+        .build();
   }
 
   private UserTask getUserTask(
@@ -131,22 +129,21 @@ public class UserApprovalTask implements NodeInterface {
         new FlowableListenerBuilder()
             .event("create")
             .implementation(SetCandidateUsersImpl.class.getName())
+            .addFieldExtension(assigneesVarNameExpr)
             .build();
-    setCandidateUsersListener.getFieldExtensions().add(assigneesVarNameExpr);
 
     FlowableListener createOpenMetadataTaskListener =
         new FlowableListenerBuilder()
             .event("create")
             .implementation(CreateApprovalTaskImpl.class.getName())
+            .addFieldExtension(inputNamespaceMapExpr)
             .build();
-    createOpenMetadataTaskListener.getFieldExtensions().add(inputNamespaceMapExpr);
 
-    UserTask userTask =
-        new UserTaskBuilder().id(getFlowableElementId(subProcessId, "approvalTask")).build();
-    userTask.getTaskListeners().add(setCandidateUsersListener);
-    userTask.getTaskListeners().add(createOpenMetadataTaskListener);
-
-    return userTask;
+    return new UserTaskBuilder()
+        .id(getFlowableElementId(subProcessId, "approvalTask"))
+        .addListener(setCandidateUsersListener)
+        .addListener(createOpenMetadataTaskListener)
+        .build();
   }
 
   private BoundaryEvent getTerminationEvent() {

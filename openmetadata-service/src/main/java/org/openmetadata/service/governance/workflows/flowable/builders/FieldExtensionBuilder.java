@@ -4,7 +4,9 @@ import org.flowable.bpmn.model.FieldExtension;
 
 public class FieldExtensionBuilder {
   private String fieldName;
-  private String fieldValue;
+  private String fieldValue = null;
+
+  private String expression = null;
 
   public FieldExtensionBuilder fieldName(String fieldName) {
     this.fieldName = fieldName;
@@ -16,10 +18,22 @@ public class FieldExtensionBuilder {
     return this;
   }
 
+  public FieldExtensionBuilder expression(String expression) {
+    this.expression = expression;
+    return this;
+  }
+
   public FieldExtension build() {
     FieldExtension fieldExtension = new FieldExtension();
     fieldExtension.setFieldName(fieldName);
-    fieldExtension.setStringValue(fieldValue);
+    if (fieldValue != null) {
+      fieldExtension.setStringValue(fieldValue);
+    } else if (expression != null) {
+      fieldExtension.setExpression(expression);
+    } else {
+      throw new RuntimeException(
+          "FieldExtension must have either a 'fieldValue' or an  'expression'");
+    }
     return fieldExtension;
   }
 }
