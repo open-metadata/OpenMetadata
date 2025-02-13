@@ -801,6 +801,11 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
         NOT_FOUND,
         String.format(
             "ingestionPipeline instance for %s not found", actualIngestionPipeline.getId()));
+
+    // Test Cases are already there
+    TestCase testCaseInLogical =
+        testCaseResourceTest.getEntity(testCases1.get(0).getId(), "*", ADMIN_AUTH_HEADERS);
+    assertNotNull(testCaseInLogical);
   }
 
   @Test
