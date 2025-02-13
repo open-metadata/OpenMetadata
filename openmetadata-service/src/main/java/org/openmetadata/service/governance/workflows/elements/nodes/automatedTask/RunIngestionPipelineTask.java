@@ -11,9 +11,9 @@ import org.flowable.bpmn.model.SequenceFlow;
 import org.flowable.bpmn.model.ServiceTask;
 import org.flowable.bpmn.model.StartEvent;
 import org.flowable.bpmn.model.SubProcess;
-import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.CheckEntityAttributesTaskDefinition;
+import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.RunIngestionPipelineTaskDefinition;
 import org.openmetadata.service.governance.workflows.elements.NodeInterface;
-import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.impl.CheckEntityAttributesImpl;
+import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.impl.RunIngestionPipelineImpl;
 import org.openmetadata.service.governance.workflows.flowable.builders.EndEventBuilder;
 import org.openmetadata.service.governance.workflows.flowable.builders.FieldExtensionBuilder;
 import org.openmetadata.service.governance.workflows.flowable.builders.ServiceTaskBuilder;
@@ -21,11 +21,11 @@ import org.openmetadata.service.governance.workflows.flowable.builders.StartEven
 import org.openmetadata.service.governance.workflows.flowable.builders.SubProcessBuilder;
 import org.openmetadata.service.util.JsonUtils;
 
-public class CheckEntityAttributesTask implements NodeInterface {
+public class RunIngestionPipelineTask implements NodeInterface {
   private final SubProcess subProcess;
   private final BoundaryEvent runtimeExceptionBoundaryEvent;
 
-  public CheckEntityAttributesTask(CheckEntityAttributesTaskDefinition nodeDefinition) {
+  public RunIngestionPipelineTask(RunIngestionPipelineTaskDefinition nodeDefinition) {
     String subProcessId = nodeDefinition.getName();
 
     SubProcess subProcess = new SubProcessBuilder().id(subProcessId).build();
@@ -33,21 +33,22 @@ public class CheckEntityAttributesTask implements NodeInterface {
     StartEvent startEvent =
         new StartEventBuilder().id(getFlowableElementId(subProcessId, "startEvent")).build();
 
-    ServiceTask checkEntityAttributes =
-        getCheckEntityAttributesServiceTask(
+    ServiceTask runIngestionWorkflow =
+        getRunIngestionWorkflowServiceTask(
             subProcessId,
-            nodeDefinition.getConfig().getRules(),
+            nodeDefinition.getConfig().getWaitForCompletion(),
+            nodeDefinition.getConfig().getTimeoutSeconds(),
             JsonUtils.pojoToJson(nodeDefinition.getInputNamespaceMap()));
 
     EndEvent endEvent =
         new EndEventBuilder().id(getFlowableElementId(subProcessId, "endEvent")).build();
 
     subProcess.addFlowElement(startEvent);
-    subProcess.addFlowElement(checkEntityAttributes);
+    subProcess.addFlowElement(runIngestionWorkflow);
     subProcess.addFlowElement(endEvent);
 
-    subProcess.addFlowElement(new SequenceFlow(startEvent.getId(), checkEntityAttributes.getId()));
-    subProcess.addFlowElement(new SequenceFlow(checkEntityAttributes.getId(), endEvent.getId()));
+    subProcess.addFlowElement(new SequenceFlow(startEvent.getId(), runIngestionWorkflow.getId()));
+    subProcess.addFlowElement(new SequenceFlow(runIngestionWorkflow.getId(), endEvent.getId()));
 
     this.runtimeExceptionBoundaryEvent = getRuntimeExceptionBoundaryEvent(subProcess);
     this.subProcess = subProcess;
@@ -58,21 +59,42 @@ public class CheckEntityAttributesTask implements NodeInterface {
     return runtimeExceptionBoundaryEvent;
   }
 
-  private ServiceTask getCheckEntityAttributesServiceTask(
-      String subProcessId, String rules, String inputNamespaceMap) {
-    FieldExtension rulesExpr =
-        new FieldExtensionBuilder().fieldName("rulesExpr").fieldValue(rules).build();
+  private ServiceTask getRunIngestionWorkflowServiceTask(
+      String subProcessId,
+      boolean waitForCompletion,
+      long timeoutSeconds,
+      String inputNamespaceMap) {
+    FieldExtension waitExpr =
+        new FieldExtensionBuilder()
+            .fieldName("waitForCompletionExpr")
+            .fieldValue(String.valueOf(waitForCompletion))
+            .build();
+    FieldExtension timeoutSecondsExpr =
+        new FieldExtensionBuilder()
+            .fieldName("timeoutSecondsExpr")
+            .fieldValue(String.valueOf(timeoutSeconds))
+            .build();
+
     FieldExtension inputNamespaceMapExpr =
         new FieldExtensionBuilder()
             .fieldName("inputNamespaceMapExpr")
             .fieldValue(inputNamespaceMap)
             .build();
 
+    FieldExtension pipelineServiceClientExpr =
+        new FieldExtensionBuilder()
+            .fieldName("pipelineServiceClientExpr")
+            .expression("${PipelineServiceClient}")
+            .build();
+
     return new ServiceTaskBuilder()
-        .id(getFlowableElementId(subProcessId, "checkEntityAttributes"))
-        .implementation(CheckEntityAttributesImpl.class.getName())
-        .addFieldExtension(rulesExpr)
+        .id(getFlowableElementId(subProcessId, "triggerIngestionWorkflow"))
+        .implementation(RunIngestionPipelineImpl.class.getName())
+        .addFieldExtension(waitExpr)
+        .addFieldExtension(timeoutSecondsExpr)
         .addFieldExtension(inputNamespaceMapExpr)
+        .addFieldExtension(pipelineServiceClientExpr)
+        .setAsync(true)
         .build();
   }
 
