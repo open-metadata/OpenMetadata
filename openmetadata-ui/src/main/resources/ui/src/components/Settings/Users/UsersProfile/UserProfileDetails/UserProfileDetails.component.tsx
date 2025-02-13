@@ -54,6 +54,7 @@ const UserProfileDetails = ({
   userData,
   afterDeleteAction,
   updateUserDetails,
+  hasEditPermission,
 }: UserProfileDetailsProps) => {
   const { t } = useTranslation();
   const { fqn: username } = useFqn();
@@ -77,19 +78,12 @@ const UserProfileDetails = ({
     [username, currentUser]
   );
 
-  const hasDomainPersonaEditPermission = useMemo(
-    () => Boolean(isAdminUser) && !userData.deleted,
-    [isAdminUser, userData.deleted]
-  );
-
-  const hasEditPermission = useMemo(
-    () => (isAdminUser || isLoggedInUser) && !userData.deleted,
-    [isAdminUser, isLoggedInUser, userData.deleted]
-  );
-
   const showChangePasswordComponent = useMemo(
-    () => isAuthProviderBasic && hasEditPermission,
-    [isAuthProviderBasic, hasEditPermission]
+    () =>
+      isAuthProviderBasic &&
+      (isAdminUser || isLoggedInUser) &&
+      !userData.deleted,
+    [isAuthProviderBasic, isAdminUser, isLoggedInUser, userData.deleted]
   );
 
   const defaultPersona = useMemo(
@@ -206,7 +200,7 @@ const UserProfileDetails = ({
           entityFqn={userData.fullyQualifiedName ?? ''}
           entityId={userData.id ?? ''}
           entityType={EntityType.USER}
-          hasPermission={hasDomainPersonaEditPermission}
+          hasPermission={hasEditPermission}
           textClassName="text-sm text-grey-muted"
         />
       </div>
@@ -238,7 +232,7 @@ const UserProfileDetails = ({
         />
 
         <PersonaSelectableList
-          hasPermission={hasDomainPersonaEditPermission}
+          hasPermission={hasEditPermission}
           multiSelect={false}
           personaList={userData.personas}
           selectedPersonas={defaultPersona ? [defaultPersona] : []}

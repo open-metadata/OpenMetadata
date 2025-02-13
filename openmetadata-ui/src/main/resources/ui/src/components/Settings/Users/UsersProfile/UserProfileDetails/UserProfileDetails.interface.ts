@@ -17,4 +17,5 @@ export interface UserProfileDetailsProps {
   userData: User;
   afterDeleteAction: (isSoftDelete?: boolean, version?: number) => void;
   updateUserDetails: (data: Partial<User>, key: keyof User) => Promise<void>;
+  hasEditPermission: boolean;
 }

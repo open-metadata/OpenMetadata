@@ -81,6 +81,11 @@ const Users = ({
     [decodedUsername]
   );
 
+  const hasEditPermission = useMemo(
+    () => Boolean(isAdminUser) && !userData.deleted,
+    [isAdminUser, userData.deleted]
+  );
+
   const fetchAssetsCount = async (query: string) => {
     try {
       const res = await searchData('', 1, 0, query, '', '', SearchIndex.ALL);
@@ -304,6 +309,7 @@ const Users = ({
     () => (
       <UserProfileDetails
         afterDeleteAction={afterDeleteAction}
+        hasEditPermission={hasEditPermission}
         updateUserDetails={updateUserDetails}
         userData={userData}
       />
@@ -344,7 +350,7 @@ const Users = ({
                   </Col>
                   <Col className="p-x-sm border-right" span={6}>
                     <UserProfileRoles
-                      isDeletedUser={userData.deleted}
+                      hasEditPermission={hasEditPermission}
                       isUserAdmin={userData.isAdmin}
                       updateUserDetails={updateUserDetails}
                       userRoles={userData.roles}
