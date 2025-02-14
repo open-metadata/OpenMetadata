@@ -17,6 +17,7 @@ import static org.openmetadata.service.apps.bundles.changeEvent.AbstractEventCon
 import static org.openmetadata.service.apps.bundles.changeEvent.AbstractEventConsumer.ALERT_OFFSET_KEY;
 import static org.openmetadata.service.events.subscription.AlertUtil.getStartingOffset;
 
+import java.lang.reflect.InvocationTargetException;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
@@ -37,6 +38,7 @@ import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.entity.events.SubscriptionStatus;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.apps.bundles.changeEvent.AbstractEventConsumer;
 import org.openmetadata.service.apps.bundles.changeEvent.AlertPublisher;
 import org.openmetadata.service.events.subscription.AlertUtil;
 import org.openmetadata.service.jdbi3.EntityRepository;
@@ -61,7 +63,6 @@ public class EventSubscriptionScheduler {
   public static final String ALERT_TRIGGER_GROUP = "OMAlertJobGroup";
   private static EventSubscriptionScheduler instance;
   private static volatile boolean initialized = false;
-  public static volatile boolean cleanupJobInitialised = false;
 
   private final Scheduler alertsScheduler = new StdSchedulerFactory().getScheduler();
 
@@ -87,9 +88,23 @@ public class EventSubscriptionScheduler {
   }
 
   @Transaction
-  public void addSubscriptionPublisher(EventSubscription eventSubscription)
-      throws SchedulerException {
-    AlertPublisher alertPublisher = new AlertPublisher();
+  public void addSubscriptionPublisher(EventSubscription eventSubscription, boolean reinstall)
+      throws SchedulerException,
+          ClassNotFoundException,
+          NoSuchMethodException,
+          InvocationTargetException,
+          InstantiationException,
+          IllegalAccessException {
+    Class<? extends AbstractEventConsumer> defaultClass = AlertPublisher.class;
+    Class<? extends AbstractEventConsumer> clazz =
+        Class.forName(
+                Optional.ofNullable(eventSubscription.getClassName())
+                    .orElse(defaultClass.getCanonicalName()))
+            .asSubclass(AbstractEventConsumer.class);
+    AbstractEventConsumer publisher = clazz.getDeclaredConstructor().newInstance();
+    if (reinstall && isSubscriptionRegistered(eventSubscription)) {
+      deleteEventSubscriptionPublisher(eventSubscription);
+    }
     if (Boolean.FALSE.equals(
         eventSubscription.getEnabled())) { // Only add webhook that is enabled for publishing events
       eventSubscription
@@ -111,14 +126,13 @@ public class EventSubscriptionScheduler {
                       getSubscriptionStatusAtCurrentTime(SubscriptionStatus.Status.ACTIVE)));
       JobDetail jobDetail =
           jobBuilder(
-              alertPublisher,
+              publisher,
               eventSubscription,
               String.format("%s", eventSubscription.getId().toString()));
       Trigger trigger = trigger(eventSubscription);
 
       // Schedule the Job
       alertsScheduler.scheduleJob(jobDetail, trigger);
-      instance.scheduleCleanupJob();
 
       LOG.info(
           "Event Subscription started as {} : status {} for all Destinations",
@@ -127,8 +141,17 @@ public class EventSubscriptionScheduler {
     }
   }
 
+  public boolean isSubscriptionRegistered(EventSubscription eventSubscription) {
+    try {
+      return alertsScheduler.checkExists(getJobKey(eventSubscription));
+    } catch (SchedulerException e) {
+      LOG.error("Failed to check if subscription is registered: {}", eventSubscription.getId(), e);
+      return false;
+    }
+  }
+
   private JobDetail jobBuilder(
-      AlertPublisher publisher, EventSubscription eventSubscription, String jobIdentity) {
+      AbstractEventConsumer publisher, EventSubscription eventSubscription, String jobIdentity) {
     JobDataMap dataMap = new JobDataMap();
     dataMap.put(ALERT_INFO_KEY, eventSubscription);
     dataMap.put(ALERT_OFFSET_KEY, getStartingOffset(eventSubscription.getId()));
@@ -158,7 +181,7 @@ public class EventSubscriptionScheduler {
     // Remove Existing Subscription Publisher
     deleteEventSubscriptionPublisher(eventSubscription);
     if (Boolean.TRUE.equals(eventSubscription.getEnabled())) {
-      addSubscriptionPublisher(eventSubscription);
+      addSubscriptionPublisher(eventSubscription, true);
     }
   }
 
@@ -169,33 +192,6 @@ public class EventSubscriptionScheduler {
     alertsScheduler.unscheduleJob(
         new TriggerKey(deletedEntity.getId().toString(), ALERT_TRIGGER_GROUP));
     LOG.info("Alert publisher deleted for {}", deletedEntity.getName());
-  }
-
-  public void scheduleCleanupJob() {
-    if (!cleanupJobInitialised) {
-      try {
-        JobDetail cleanupJob =
-            JobBuilder.newJob(EventSubscriptionCleanupJob.class)
-                .withIdentity("CleanupJob", ALERT_JOB_GROUP)
-                .build();
-
-        Trigger cleanupTrigger =
-            TriggerBuilder.newTrigger()
-                .withIdentity("CleanupTrigger", ALERT_TRIGGER_GROUP)
-                .withSchedule(
-                    SimpleScheduleBuilder.simpleSchedule()
-                        .withIntervalInSeconds(10)
-                        .repeatForever())
-                .startNow()
-                .build();
-
-        alertsScheduler.scheduleJob(cleanupJob, cleanupTrigger);
-        cleanupJobInitialised = true;
-        LOG.info("Scheduled periodic cleanup job to run every 10 seconds.");
-      } catch (SchedulerException e) {
-        LOG.error("Failed to schedule cleanup job", e);
-      }
-    }
   }
 
   @Transaction
@@ -534,6 +530,14 @@ public class EventSubscriptionScheduler {
 
   public boolean doesRecordExist(UUID id) {
     return Entity.getCollectionDAO().changeEventDAO().recordExists(id.toString()) > 0;
+  }
+
+  public static JobKey getJobKey(EventSubscription eventSubscription) {
+    return getJobKey(eventSubscription.getId());
+  }
+
+  private static JobKey getJobKey(UUID subscriptionId) {
+    return new JobKey(subscriptionId.toString(), ALERT_JOB_GROUP);
   }
 
   public static void shutDown() throws SchedulerException {

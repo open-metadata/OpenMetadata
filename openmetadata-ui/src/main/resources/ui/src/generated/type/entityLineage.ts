@@ -19,8 +19,8 @@ export interface EntityLineage {
     /**
      * Primary entity for which this lineage graph is created.
      */
-    entity: EntityReference;
-    nodes?: EntityReference[];
+    entity:         EntityReference;
+    nodes?:         EntityReference[];
     upstreamEdges?: Edge[];
 }
 

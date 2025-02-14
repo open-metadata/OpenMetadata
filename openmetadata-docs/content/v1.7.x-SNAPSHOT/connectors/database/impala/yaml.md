@@ -17,6 +17,7 @@ Configure and schedule Impala metadata and profiler workflows from the OpenMetad
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
 - [Data Profiler](#data-profiler)
+- [Lineage](#lineage)
 - [Data Quality](#data-quality)
 - [dbt Integration](#dbt-integration)
 - [Enable Security](#securing-impala-connection-with-ssl-in-openmetadata)
@@ -98,6 +99,8 @@ This is a sample config for Hive:
 
 {% partial file="/v1.7/connectors/yaml/workflow-config-def.md" /%}
 
+{% /codeInfo %}
+
 #### Advanced Configuration
 
 {% codeInfo srNumber=6 %}
@@ -159,6 +162,8 @@ source:
 {% /codePreview %}
 
 {% partial file="/v1.7/connectors/yaml/ingestion-cli.md" /%}
+
+{% partial file="/v1.7/connectors/yaml/lineage.md" variables={connector: "impala"} /%}
 
 {% partial file="/v1.7/connectors/yaml/data-profiler.md" variables={connector: "impala"} /%}
 

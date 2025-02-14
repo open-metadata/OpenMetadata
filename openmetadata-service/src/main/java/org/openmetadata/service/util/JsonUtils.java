@@ -17,6 +17,7 @@ import static org.openmetadata.service.util.RestUtil.DATE_TIME_FORMAT;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.StreamReadConstraints;
 import com.fasterxml.jackson.core.StreamReadFeature;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -39,6 +40,7 @@ import java.io.StringReader;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -86,6 +88,10 @@ public final class JsonUtils {
 
   static {
     OBJECT_MAPPER = new ObjectMapper();
+    OBJECT_MAPPER
+        .getFactory()
+        .setStreamReadConstraints(
+            StreamReadConstraints.builder().maxStringLength(Integer.MAX_VALUE).build());
     // Ensure the date-time fields are serialized in ISO-8601 format
     OBJECT_MAPPER.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
     OBJECT_MAPPER.setDateFormat(DATE_TIME_FORMAT);
@@ -638,6 +644,24 @@ public final class JsonUtils {
       LOG.error("Failed to convert POJO to JsonNode", e);
       throw new RuntimeException("POJO to JsonNode conversion failed", e);
     }
+  }
+
+  @SuppressWarnings("unused")
+  public static Map<String, Object> getMapFromJson(String json) {
+    return (Map<String, Object>) (JsonUtils.readValue(json, Map.class));
+  }
+
+  @SuppressWarnings("unused")
+  public static <T> T convertObjectWithFilteredFields(
+      Object input, Set<String> fields, Class<T> clazz) {
+    Map<String, Object> inputMap = JsonUtils.getMap(input);
+    Map<String, Object> result = new HashMap<>();
+    for (String field : fields) {
+      if (inputMap.containsKey(field)) {
+        result.put(field, inputMap.get(field));
+      }
+    }
+    return JsonUtils.convertValue(result, clazz);
   }
 
   public static JsonPatch convertFgeToJavax(com.github.fge.jsonpatch.JsonPatch fgeJsonPatch) {

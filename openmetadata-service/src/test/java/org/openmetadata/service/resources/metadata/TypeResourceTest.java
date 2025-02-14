@@ -244,12 +244,16 @@ public class TypeResourceTest extends EntityResourceTest<Type, CreateType> {
     enumFieldA.setCustomPropertyConfig(
         new CustomPropertyConfig().withConfig(new EnumConfig().withValues(List.of("A", "B"))));
     ChangeDescription change3 = getChangeDescription(tableEntity, MINOR_UPDATE);
-    assertResponseContains(
-        () ->
-            addCustomPropertyAndCheck(
-                tableEntity1.getId(), enumFieldA, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change3),
-        Status.BAD_REQUEST,
-        "Existing Enum Custom Property values cannot be removed.");
+    fieldUpdated(
+        change3,
+        EntityUtil.getCustomField(enumFieldA, "customPropertyConfig"),
+        new CustomPropertyConfig().withConfig(new EnumConfig().withValues(List.of("A", "B", "C"))),
+        new CustomPropertyConfig().withConfig(new EnumConfig().withValues(List.of("A", "B"))));
+    tableEntity =
+        addCustomPropertyAndCheck(
+            tableEntity.getId(), enumFieldA, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change3);
+    assertCustomProperties(new ArrayList<>(List.of(enumFieldA)), tableEntity.getCustomProperties());
+    prevConfig = enumFieldA.getCustomPropertyConfig();
 
     enumFieldA.setCustomPropertyConfig(
         new CustomPropertyConfig()
@@ -264,8 +268,7 @@ public class TypeResourceTest extends EntityResourceTest<Type, CreateType> {
 
     ChangeDescription change5 = getChangeDescription(tableEntity, MINOR_UPDATE);
     enumFieldA.setCustomPropertyConfig(
-        new CustomPropertyConfig()
-            .withConfig(new EnumConfig().withValues(List.of("A", "B", "C", "D"))));
+        new CustomPropertyConfig().withConfig(new EnumConfig().withValues(List.of("A", "B", "D"))));
     fieldUpdated(
         change5,
         EntityUtil.getCustomField(enumFieldA, "customPropertyConfig"),

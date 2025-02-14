@@ -24,6 +24,7 @@ import azuresql from '../assets/img/service-icon-azuresql.png';
 import bigtable from '../assets/img/service-icon-bigtable.png';
 import cassandra from '../assets/img/service-icon-cassandra.png';
 import clickhouse from '../assets/img/service-icon-clickhouse.png';
+import cockroach from '../assets/img/service-icon-cockroach.png';
 import couchbase from '../assets/img/service-icon-couchbase.svg';
 import dagster from '../assets/img/service-icon-dagster.png';
 import databrick from '../assets/img/service-icon-databrick.png';
@@ -202,6 +203,7 @@ export const ICEBERGE = iceberge;
 export const TERADATA = teradata;
 export const FLINK = flink;
 export const REST_SERVICE = restService;
+export const COCKROACH = cockroach;
 export const excludedService = [
   MlModelServiceType.Sklearn,
   MetadataServiceType.MetadataES,
@@ -305,6 +307,13 @@ export const INGESTION_WORKFLOW_UI_SCHEMA = {
   ],
 };
 
+export const EXCLUDE_INCREMENTAL_EXTRACTION_SUPPORT_UI_SCHEMA = {
+  incremental: {
+    'ui:widget': 'hidden',
+    'ui:hideError': true,
+  },
+};
+
 export const COMMON_UI_SCHEMA = {
   ...DEF_UI_SCHEMA,
   connection: {
@@ -399,6 +408,7 @@ export const BETA_SERVICES = [
   DatabaseServiceType.Cassandra,
   MetadataServiceType.AlationSink,
   DatabaseServiceType.Synapse,
+  DatabaseServiceType.Cockroach,
 ];
 
 export const TEST_CONNECTION_INITIAL_MESSAGE = i18n.t(
@@ -442,6 +452,7 @@ export const ADVANCED_PROPERTIES = [
   'sslConfig',
   'sslMode',
   'schemaRegistrySSL',
+  'consumerConfigSSL',
   'verify',
 ];
 

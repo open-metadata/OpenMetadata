@@ -15,6 +15,7 @@ import { PlusOutlined } from '@ant-design/icons';
 import { Button, Col, Row } from 'antd';
 import { AxiosError } from 'axios';
 import { sortBy } from 'lodash';
+import QueryString from 'qs';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
@@ -27,6 +28,7 @@ import { PipelineType } from '../../../../generated/api/services/ingestionPipeli
 import { Table as TableType } from '../../../../generated/entity/data/table';
 import { Operation } from '../../../../generated/entity/policies/policy';
 import { IngestionPipeline } from '../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { TestSuite } from '../../../../generated/tests/testCase';
 import { useAirflowStatus } from '../../../../hooks/useAirflowStatus';
 import {
   deployIngestionPipelineById,
@@ -43,10 +45,14 @@ import ErrorPlaceHolderIngestion from '../../../common/ErrorWithPlaceholder/Erro
 import IngestionListTable from '../../../Settings/Services/Ingestion/IngestionListTable/IngestionListTable';
 
 interface Props {
-  testSuite: TableType['testSuite'];
+  testSuite: TableType['testSuite'] | TestSuite;
+  isLogicalTestSuite?: boolean;
 }
 
-const TestSuitePipelineTab = ({ testSuite }: Props) => {
+const TestSuitePipelineTab = ({
+  testSuite,
+  isLogicalTestSuite = false,
+}: Props) => {
   const airflowInformation = useAirflowStatus();
   const { t } = useTranslation();
   const testSuiteFQN = testSuite?.fullyQualifiedName ?? testSuite?.name ?? '';
@@ -101,6 +107,15 @@ const TestSuitePipelineTab = ({ testSuite }: Props) => {
       setIsLoading(false);
     }
   }, [testSuiteFQN]);
+
+  const handleAddPipelineRedirection = () => {
+    history.push({
+      pathname: getTestSuiteIngestionPath(testSuiteFQN),
+      search: isLogicalTestSuite
+        ? QueryString.stringify({ testSuiteId: testSuite?.id })
+        : undefined,
+    });
+  };
 
   const handleEnableDisableIngestion = useCallback(
     async (id: string) => {
@@ -194,9 +209,7 @@ const TestSuitePipelineTab = ({ testSuite }: Props) => {
               data-testid="add-placeholder-button"
               icon={<PlusOutlined />}
               type="primary"
-              onClick={() => {
-                history.push(getTestSuiteIngestionPath(testSuiteFQN));
-              }}>
+              onClick={handleAddPipelineRedirection}>
               {t('label.add')}
             </Button>
           }
@@ -225,9 +238,7 @@ const TestSuitePipelineTab = ({ testSuite }: Props) => {
           <Button
             data-testid="add-pipeline-button"
             type="primary"
-            onClick={() => {
-              history.push(getTestSuiteIngestionPath(testSuiteFQN));
-            }}>
+            onClick={handleAddPipelineRedirection}>
             {t('label.add-entity', { entity: t('label.pipeline') })}
           </Button>
         </Col>

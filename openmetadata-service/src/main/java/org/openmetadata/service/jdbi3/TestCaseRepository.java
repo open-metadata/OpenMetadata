@@ -17,12 +17,15 @@ import static org.openmetadata.service.Entity.populateEntityFieldTags;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.entityNotFound;
 import static org.openmetadata.service.security.mask.PIIMasker.maskSampleData;
 
+import com.google.gson.Gson;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import javax.json.JsonPatch;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.UriInfo;
@@ -33,7 +36,6 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.EntityTimeSeriesInterface;
 import org.openmetadata.schema.api.feed.CloseTask;
 import org.openmetadata.schema.api.feed.ResolveTask;
-import org.openmetadata.schema.api.tests.CreateTestCaseResult;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.tests.TestCase;
@@ -76,8 +78,9 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   private static final String UPDATE_FIELDS =
       "owners,entityLink,testSuite,testSuites,testDefinition";
   private static final String PATCH_FIELDS =
-      "owners,entityLink,testSuite,testDefinition,computePassedFailedRowCount,useDynamicAssertion";
+      "owners,entityLink,testSuite,testSuites,testDefinition,computePassedFailedRowCount,useDynamicAssertion";
   public static final String FAILED_ROWS_SAMPLE_EXTENSION = "testCase.failedRowsSample";
+  private final ExecutorService asyncExecutor = Executors.newFixedThreadPool(1);
 
   public TestCaseRepository() {
     super(
@@ -185,7 +188,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
         findFromRecords(test.getId(), entityType, Relationship.CONTAINS, TEST_SUITE);
     for (CollectionDAO.EntityRelationshipRecord testSuiteId : records) {
       TestSuite testSuite = Entity.getEntity(TEST_SUITE, testSuiteId.getId(), "", Include.ALL);
-      if (Boolean.TRUE.equals(testSuite.getExecutable())) {
+      if (Boolean.TRUE.equals(testSuite.getBasic())) {
         return testSuite.getEntityReference();
       }
     }
@@ -245,16 +248,47 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     EntityReference testSuite = test.getTestSuite();
     EntityReference testDefinition = test.getTestDefinition();
     TestCaseResult testCaseResult = test.getTestCaseResult();
+    List<TestSuite> testSuites = test.getTestSuites();
 
     // Don't store testCaseResult, owner, database, href and tags as JSON.
     // Build it on the fly based on relationships
-    test.withTestSuite(null).withTestDefinition(null).withTestCaseResult(null);
+    test.withTestSuite(null).withTestSuites(null).withTestDefinition(null).withTestCaseResult(null);
     store(test, update);
 
     // Restore the relationships
     test.withTestSuite(testSuite)
+        .withTestSuites(testSuites)
         .withTestDefinition(testDefinition)
         .withTestCaseResult(testCaseResult);
+  }
+
+  @Override
+  public void storeEntities(List<TestCase> testCases) {
+    List<TestCase> testCasesToStore = new ArrayList<>();
+    Gson gson = new Gson();
+    for (TestCase testCase : testCases) {
+      EntityReference testSuite = testCase.getTestSuite();
+      EntityReference testDefinition = testCase.getTestDefinition();
+      TestCaseResult testCaseResult = testCase.getTestCaseResult();
+      List<TestSuite> testSuites = testCase.getTestSuites();
+
+      String jsonCopy =
+          gson.toJson(
+              testCase
+                  .withTestSuite(null)
+                  .withTestSuites(null)
+                  .withTestDefinition(null)
+                  .withTestCaseResult(null));
+      testCasesToStore.add(gson.fromJson(jsonCopy, TestCase.class));
+
+      // restore the relationships
+      testCase
+          .withTestSuite(testSuite)
+          .withTestSuites(testSuites)
+          .withTestDefinition(testDefinition)
+          .withTestCaseResult(testCaseResult);
+    }
+    storeMany(testCasesToStore);
   }
 
   @Override
@@ -304,26 +338,10 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
 
   public RestUtil.PutResponse<TestCaseResult> addTestCaseResult(
       String updatedBy, UriInfo uriInfo, String fqn, TestCaseResult testCaseResult) {
-    // TODO: REMOVED ONCE DEPRECATED IN TEST CASE RESOURCE
-    CreateTestCaseResult createTestCaseResult =
-        new CreateTestCaseResult()
-            .withTimestamp(testCaseResult.getTimestamp())
-            .withTestCaseStatus(testCaseResult.getTestCaseStatus())
-            .withResult(testCaseResult.getResult())
-            .withSampleData(testCaseResult.getSampleData())
-            .withTestResultValue(testCaseResult.getTestResultValue())
-            .withPassedRows(testCaseResult.getPassedRows())
-            .withFailedRows(testCaseResult.getFailedRows())
-            .withPassedRowsPercentage(testCaseResult.getPassedRowsPercentage())
-            .withFailedRowsPercentage(testCaseResult.getFailedRowsPercentage())
-            .withIncidentId(testCaseResult.getIncidentId())
-            .withMaxBound(testCaseResult.getMaxBound())
-            .withMinBound(testCaseResult.getMinBound());
-
     TestCaseResultRepository testCaseResultRepository =
         (TestCaseResultRepository) Entity.getEntityTimeSeriesRepository(TEST_CASE_RESULT);
     Response response =
-        testCaseResultRepository.addTestCaseResult(updatedBy, uriInfo, fqn, createTestCaseResult);
+        testCaseResultRepository.addTestCaseResult(updatedBy, uriInfo, fqn, testCaseResult);
     return new RestUtil.PutResponse<>(
         Response.Status.CREATED, (TestCaseResult) response.getEntity(), ENTITY_UPDATED);
   }
@@ -367,10 +385,17 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   }
 
   private void deleteAllTestCaseResults(String fqn) {
-    // Delete all the test case results
     TestCaseResultRepository testCaseResultRepository =
         (TestCaseResultRepository) Entity.getEntityTimeSeriesRepository(TEST_CASE_RESULT);
     testCaseResultRepository.deleteAllTestCaseResults(fqn);
+    asyncExecutor.submit(
+        () -> {
+          try {
+            testCaseResultRepository.deleteAllTestCaseResults(fqn);
+          } catch (Exception e) {
+            LOG.error("Error deleting test case results for test case {}", fqn, e);
+          }
+        });
   }
 
   @SneakyThrows
@@ -444,13 +469,13 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     return daoCollection.testCaseDAO().countOfTestCases(testCaseIds);
   }
 
-  public void isTestSuiteExecutable(String testSuiteFqn) {
+  public void isTestSuiteBasic(String testSuiteFqn) {
     TestSuite testSuite = Entity.getEntityByName(Entity.TEST_SUITE, testSuiteFqn, null, null);
-    if (Boolean.FALSE.equals(testSuite.getExecutable())) {
+    if (Boolean.FALSE.equals(testSuite.getBasic())) {
       throw new IllegalArgumentException(
           "Test suite "
               + testSuite.getName()
-              + " is not executable. Cannot create test cases for non-executable test suites.");
+              + " is not basic. Cannot create test cases for non-basic test suites.");
     }
   }
 

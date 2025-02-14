@@ -248,6 +248,7 @@ const AsyncSelectList: FC<AsyncSelectListProps & SelectProps> = ({
 
     return (
       <TagsV1
+        isEditTags
         size={props.size}
         startWith={TAG_START_WITH.SOURCE_ICON}
         tag={tag}
@@ -314,6 +315,7 @@ const AsyncSelectList: FC<AsyncSelectListProps & SelectProps> = ({
       style={{ width: '100%' }}
       tagRender={customTagRender}
       onChange={handleChange}
+      onDropdownVisibleChange={(open) => !open && onCancel?.()}
       onInputKeyDown={(event) => {
         if (event.key === 'Backspace') {
           return event.stopPropagation();

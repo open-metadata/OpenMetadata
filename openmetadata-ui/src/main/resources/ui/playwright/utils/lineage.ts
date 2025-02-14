@@ -133,10 +133,9 @@ export const dragAndDropNode = async (
   await page.hover(originSelector);
   await page.mouse.down();
   const box = (await destinationElement.boundingBox())!;
-  const x = (box.x + box.width / 2) * 0.25; // 0.25 as zoom factor
-  const y = (box.y + box.height / 2) * 0.25; // 0.25 as zoom factor
-  await page.mouse.move(x, y);
-  await destinationElement.hover();
+  const x = box.x + 250;
+  const y = box.y + box.height / 2;
+  await page.mouse.move(x, y, { steps: 20 });
   await page.mouse.up();
 };
 
@@ -370,6 +369,10 @@ export const applyPipelineFromModal = async (
   const saveRes = page.waitForResponse('/api/v1/lineage');
   await page.click('[data-testid="save-button"]');
   await saveRes;
+
+  await page.waitForSelector('[data-testid="add-edge-modal"]', {
+    state: 'detached',
+  });
 };
 
 export const deleteNode = async (page: Page, node: EntityClass) => {

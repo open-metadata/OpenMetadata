@@ -16,8 +16,6 @@ package org.openmetadata.service.resources.events.subscription;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.api.events.CreateEventSubscription.AlertType.NOTIFICATION;
-import static org.openmetadata.service.events.subscription.AlertUtil.validateAndBuildFilteringConditions;
-import static org.openmetadata.service.fernet.Fernet.encryptWebhookSecretKey;
 
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
@@ -29,6 +27,7 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -108,6 +107,7 @@ public class EventSubscriptionResource
     extends EntityResource<EventSubscription, EventSubscriptionRepository> {
   public static final String COLLECTION_PATH = "/v1/events/subscriptions";
   public static final String FIELDS = "owners,filteringRules";
+  private final EventSubscriptionMapper mapper = new EventSubscriptionMapper();
 
   public EventSubscriptionResource(Authorizer authorizer, Limits limits) {
     super(Entity.EVENT_SUBSCRIPTION, authorizer, limits);
@@ -144,19 +144,18 @@ public class EventSubscriptionResource
   }
 
   private void initializeEventSubscriptions() {
-    try {
-      CollectionDAO daoCollection = repository.getDaoCollection();
-      List<String> listAllEventsSubscriptions =
-          daoCollection.eventSubscriptionDAO().listAllEventsSubscriptions();
-      List<EventSubscription> eventSubList =
-          JsonUtils.readObjects(listAllEventsSubscriptions, EventSubscription.class);
-      for (EventSubscription subscription : eventSubList) {
-        EventSubscriptionScheduler.getInstance().addSubscriptionPublisher(subscription);
-      }
-    } catch (Exception ex) {
-      // Starting application should not fail
-      LOG.warn("Exception during initializeEventSubscriptions", ex);
-    }
+    CollectionDAO daoCollection = repository.getDaoCollection();
+    daoCollection.eventSubscriptionDAO().listAllEventsSubscriptions().stream()
+        .map(obj -> JsonUtils.readValue(obj, EventSubscription.class))
+        .forEach(
+            subscription -> {
+              try {
+                EventSubscriptionScheduler.getInstance()
+                    .addSubscriptionPublisher(subscription, true);
+              } catch (Exception ex) {
+                LOG.error("Failed to initialize subscription: {}", subscription.getId(), ex);
+              }
+            });
   }
 
   @GET
@@ -294,12 +293,17 @@ public class EventSubscriptionResource
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateEventSubscription request)
-      throws SchedulerException {
+      throws SchedulerException,
+          ClassNotFoundException,
+          InvocationTargetException,
+          NoSuchMethodException,
+          InstantiationException,
+          IllegalAccessException {
     EventSubscription eventSub =
-        getEventSubscription(request, securityContext.getUserPrincipal().getName());
+        mapper.createToEntity(request, securityContext.getUserPrincipal().getName());
     // Only one Creation is allowed
     Response response = create(uriInfo, securityContext, eventSub);
-    EventSubscriptionScheduler.getInstance().addSubscriptionPublisher(eventSub);
+    EventSubscriptionScheduler.getInstance().addSubscriptionPublisher(eventSub, false);
     return response;
   }
 
@@ -323,7 +327,7 @@ public class EventSubscriptionResource
       @Context SecurityContext securityContext,
       @Valid CreateEventSubscription create) {
     EventSubscription eventSub =
-        getEventSubscription(create, securityContext.getUserPrincipal().getName());
+        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     Response response = createOrUpdate(uriInfo, securityContext, eventSub);
     EventSubscriptionScheduler.getInstance()
         .updateEventSubscription((EventSubscription) response.getEntity());
@@ -1352,36 +1356,6 @@ public class EventSubscriptionResource
             });
 
     return Response.ok(resultDestinations).build();
-  }
-
-  private EventSubscription getEventSubscription(CreateEventSubscription create, String user) {
-    return repository
-        .copy(new EventSubscription(), create, user)
-        .withAlertType(create.getAlertType())
-        .withTrigger(create.getTrigger())
-        .withEnabled(create.getEnabled())
-        .withBatchSize(create.getBatchSize())
-        .withFilteringRules(
-            validateAndBuildFilteringConditions(
-                create.getResources(), create.getAlertType(), create.getInput()))
-        .withDestinations(encryptWebhookSecretKey(getSubscriptions(create.getDestinations())))
-        .withProvider(create.getProvider())
-        .withRetries(create.getRetries())
-        .withPollInterval(create.getPollInterval())
-        .withInput(create.getInput());
-  }
-
-  private List<SubscriptionDestination> getSubscriptions(
-      List<SubscriptionDestination> subscriptions) {
-    List<SubscriptionDestination> result = new ArrayList<>();
-    subscriptions.forEach(
-        subscription -> {
-          if (nullOrEmpty(subscription.getId())) {
-            subscription.withId(UUID.randomUUID());
-          }
-          result.add(subscription);
-        });
-    return result;
   }
 
   public static List<FilterResourceDescriptor> getNotificationsFilterDescriptors()

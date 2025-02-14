@@ -4,20 +4,21 @@ slug: /connectors/database/singlestore
 ---
 
 {% connectorDetailsHeader
-name="Singlestore"
+name="SingleStore"
 stage="PROD"
 platform="OpenMetadata"
 availableFeatures=["Metadata", "Data Profiler", "Data Quality", "View Lineage", "View Column-level Lineage", "dbt"]
 unavailableFeatures=["Query Usage", "Stored Procedures", "Owners", "Tags"]
 / %}
 
-In this section, we provide guides and references to use the Singlestore connector.
+In this section, we provide guides and references to use the SingleStore connector.
 
-Configure and schedule Singlestore metadata and profiler workflows from the OpenMetadata UI:
+Configure and schedule SingleStore metadata and profiler workflows from the OpenMetadata UI:
 
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
 - [Data Profiler](/how-to-guides/data-quality-observability/profiler/workflow)
+- [Lineage](/how-to-guides/data-lineage/workflow)
 - [Data Quality](/how-to-guides/data-quality-observability/quality)
 - [dbt Integration](/connectors/ingestion/workflows/dbt)
 

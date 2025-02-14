@@ -23,6 +23,7 @@
         "sandboxModeEnabled",
         "slackChat",
         "emailConfiguration",
+        "openMetadataBaseUrlConfiguration",
         "customUiThemePreference",
         "loginConfiguration",
         "slackAppConfiguration",
@@ -70,6 +71,9 @@
         },
         {
           "$ref": "../email/smtpSettings.json"
+        },
+        {
+          "$ref": "../configuration/openMetadataBaseUrlConfiguration.json"
         },
         {
           "$ref": "../configuration/slackAppConfiguration.json"

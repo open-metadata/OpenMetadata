@@ -48,7 +48,7 @@ import { ReactComponent as APIEndpointIcon } from '../assets/svg/ic-api-endpoint
 import { ReactComponent as APIServiceIcon } from '../assets/svg/ic-api-service-default.svg';
 import { ReactComponent as IconDown } from '../assets/svg/ic-arrow-down.svg';
 import { ReactComponent as IconRight } from '../assets/svg/ic-arrow-right.svg';
-import { ReactComponent as IconTestSuite } from '../assets/svg/ic-checklist.svg';
+import { ReactComponent as IconTestCase } from '../assets/svg/ic-checklist.svg';
 import { ReactComponent as DashboardIcon } from '../assets/svg/ic-dashboard.svg';
 import { ReactComponent as DataQualityIcon } from '../assets/svg/ic-data-contract.svg';
 import { ReactComponent as DataProductIcon } from '../assets/svg/ic-data-product.svg';
@@ -68,6 +68,7 @@ import { ReactComponent as IconKeyLineThrough } from '../assets/svg/icon-key-lin
 import { ReactComponent as IconKey } from '../assets/svg/icon-key.svg';
 import { ReactComponent as IconNotNullLineThrough } from '../assets/svg/icon-not-null-line-through.svg';
 import { ReactComponent as IconSortLineThrough } from '../assets/svg/icon-sort-line-through.svg';
+import { ReactComponent as IconTestSuite } from '../assets/svg/icon-test-suite.svg';
 
 import { ReactComponent as IconNotNull } from '../assets/svg/icon-not-null.svg';
 import { ReactComponent as RoleIcon } from '../assets/svg/icon-role-grey.svg';
@@ -247,6 +248,15 @@ export const getConstraintIcon = ({
 
       break;
     }
+    case ConstraintType.ClusterKey: {
+      title = t('label.entity-key', {
+        entity: t('label.cluster'),
+      });
+      icon = isConstraintDeleted ? IconDistLineThrough : IconDistKey;
+      dataTestId = 'cluster-key';
+
+      break;
+    }
     default:
       return null;
   }
@@ -390,7 +400,7 @@ export const getEntityIcon = (
     [EntityType.METADATA_SERVICE]: MetadataServiceIcon,
     [SearchIndex.DATA_PRODUCT]: DataProductIcon,
     [EntityType.DATA_PRODUCT]: DataProductIcon,
-    [EntityType.TEST_CASE]: IconTestSuite,
+    [EntityType.TEST_CASE]: IconTestCase,
     [EntityType.TEST_SUITE]: IconTestSuite,
     [EntityType.BOT]: BotIcon,
     [EntityType.TEAM]: TeamIcon,
@@ -753,7 +763,14 @@ export const getTableDetailPageBaseTabs = ({
 }: TableDetailPageTabProps): TabProps[] => {
   return [
     {
-      label: <TabsLabel id={EntityTabs.SCHEMA} name={t('label.schema')} />,
+      label: (
+        <TabsLabel
+          count={tableDetails?.columns.length}
+          id={EntityTabs.SCHEMA}
+          isActive={activeTab === EntityTabs.SCHEMA}
+          name={t('label.schema')}
+        />
+      ),
       key: EntityTabs.SCHEMA,
       children: schemaTab,
     },

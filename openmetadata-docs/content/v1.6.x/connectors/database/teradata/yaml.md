@@ -17,6 +17,7 @@ Configure and schedule Greenplum Teradata and profiler workflows from the OpenMe
 
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
+- [Lineage](#lineage)
 - [Data Profiler](#data-profiler)
 - [Data Quality](#data-quality)
 
@@ -111,6 +112,8 @@ source:
 {% /codePreview %}
 
 {% partial file="/v1.6/connectors/yaml/ingestion-cli.md" /%}
+
+{% partial file="/v1.6/connectors/yaml/lineage.md" variables={connector: "teradata"} /%}
 
 {% partial file="/v1.6/connectors/yaml/data-profiler.md" variables={connector: "teradata"} /%}
 

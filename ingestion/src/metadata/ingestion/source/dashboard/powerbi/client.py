@@ -94,7 +94,7 @@ class PowerBiApiClient:
         auth_response = PowerBiToken(**response_data)
         if not auth_response.access_token:
             raise InvalidSourceException(
-                "Failed to generate the PowerBi access token. Please check provided config"
+                f"Failed to generate the PowerBi access token. Please check provided config {response_data}"
             )
 
         logger.info("PowerBi Access Token generated successfully")
@@ -105,19 +105,12 @@ class PowerBiApiClient:
         Returns:
             List[PowerBIDashboard]
         """
-        try:
-            if self.config.useAdminApis:
-                response_data = self.client.get("/myorg/admin/dashboards")
-                response = DashboardsResponse(**response_data)
-                return response.value
-            group = self.fetch_all_workspaces()[0]
-            return self.fetch_all_org_dashboards(group_id=group.id)
-
-        except Exception as exc:  # pylint: disable=broad-except
-            logger.debug(traceback.format_exc())
-            logger.warning(f"Error fetching dashboards: {exc}")
-
-        return None
+        if self.config.useAdminApis:
+            response_data = self.client.get("/myorg/admin/dashboards")
+            response = DashboardsResponse(**response_data)
+            return response.value
+        group = self.fetch_all_workspaces()[0]
+        return self.fetch_all_org_dashboards(group_id=group.id)
 
     def fetch_all_org_dashboards(
         self, group_id: str
@@ -227,6 +220,12 @@ class PowerBiApiClient:
                     "$skip": str(index * entities_per_page),
                 }
                 response_data = self.client.get(api_url, data=params_data)
+                if not response_data:
+                    logger.error(
+                        "Error fetching workspaces between results: "
+                        f"{str(index * entities_per_page)} - {str(entities_per_page)}"
+                    )
+                    continue
                 response = GroupsResponse(**response_data)
                 workspaces.extend(response.value)
             return workspaces

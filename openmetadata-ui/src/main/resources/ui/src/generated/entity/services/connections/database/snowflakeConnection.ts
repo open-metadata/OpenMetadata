@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * Snowflake Connection Config
  */
 export interface SnowflakeConnection {
@@ -21,6 +19,10 @@ export interface SnowflakeConnection {
      * account is xyz1234.us-east-1.gcp
      */
     account: string;
+    /**
+     * Full name of the schema where the account usage data is stored.
+     */
+    accountUsageSchema?: string;
     /**
      * Optional configuration for ingestion to keep the client session active in case the
      * ingestion process runs for longer durations.
@@ -64,16 +66,17 @@ export interface SnowflakeConnection {
     /**
      * Snowflake Passphrase Key used with Private Key
      */
-    snowflakePrivatekeyPassphrase?: string;
-    supportsDatabase?:              boolean;
-    supportsDataDiff?:              boolean;
-    supportsDBTExtraction?:         boolean;
-    supportsLineageExtraction?:     boolean;
-    supportsMetadataExtraction?:    boolean;
-    supportsProfiler?:              boolean;
-    supportsQueryComment?:          boolean;
-    supportsSystemProfile?:         boolean;
-    supportsUsageExtraction?:       boolean;
+    snowflakePrivatekeyPassphrase?:         string;
+    supportsDatabase?:                      boolean;
+    supportsDataDiff?:                      boolean;
+    supportsDBTExtraction?:                 boolean;
+    supportsIncrementalMetadataExtraction?: boolean;
+    supportsLineageExtraction?:             boolean;
+    supportsMetadataExtraction?:            boolean;
+    supportsProfiler?:                      boolean;
+    supportsQueryComment?:                  boolean;
+    supportsSystemProfile?:                 boolean;
+    supportsUsageExtraction?:               boolean;
     /**
      * Service Type
      */

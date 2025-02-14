@@ -262,6 +262,7 @@ export const ROUTES = {
   EDIT_KPI: `/data-insights/kpi/edit-kpi/${PLACEHOLDER_ROUTE_FQN}`,
 
   SETTINGS_EDIT_CUSTOM_LOGIN_CONFIG: `/settings/OpenMetadata/loginConfiguration/edit-custom-login-configuration`,
+  SETTINGS_OM_URL_CONFIG: `/settings/OpenMetadata/openMetadataBaseUrlConfiguration/edit-open-metadata-url-configuration`,
 
   CUSTOMIZE_PAGE: `/customize-page/${PLACEHOLDER_ROUTE_FQN}/:pageFqn`,
 
@@ -294,6 +295,7 @@ export const SOCKET_EVENTS = {
   DATA_INSIGHTS_JOB_BROADCAST_CHANNEL: 'dataInsightsJobStatus',
   BULK_ASSETS_CHANNEL: 'bulkAssetsChannel',
   CSV_IMPORT_CHANNEL: 'csvImportChannel',
+  BACKGROUND_JOB_CHANNEL: 'backgroundJobStatus',
 };
 
 export const IN_PAGE_SEARCH_ROUTES: Record<string, Array<string>> = {
@@ -609,4 +611,8 @@ export const STATUS_LABEL = {
   [Status.Started]: 'Started',
   [Status.Stopped]: 'Stopped',
   [Status.Success]: 'Success',
+};
+
+export const INITIAL_TABLE_FILTERS = {
+  showDeletedTables: false,
 };

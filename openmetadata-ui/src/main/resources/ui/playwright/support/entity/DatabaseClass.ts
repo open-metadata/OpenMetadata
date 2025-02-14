@@ -13,6 +13,7 @@
 import { APIRequestContext, expect, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
 import { SERVICE_TYPE } from '../../constant/service';
+import { ServiceTypes } from '../../constant/settings';
 import {
   assignDomain,
   removeDomain,
@@ -127,6 +128,7 @@ export class DatabaseClass extends EntityClass {
     super(EntityTypeEndpoint.Database);
     this.service.name = name ?? this.service.name;
     this.type = 'Database';
+    this.serviceType = ServiceTypes.DATABASE_SERVICES;
   }
 
   async create(apiContext: APIRequestContext) {
@@ -346,6 +348,6 @@ export class DatabaseClass extends EntityClass {
     await assignDomain(page, domain1);
     await this.verifyDomainPropagation(page, domain1);
     await updateDomain(page, domain2);
-    await removeDomain(page);
+    await removeDomain(page, domain2);
   }
 }

@@ -19,6 +19,7 @@ import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import { descriptionBox, redirectToHomePage } from '../../utils/common';
 import { settingClick } from '../../utils/sidebar';
+import { redirectToUserPage } from '../../utils/userDetails';
 
 const user1 = new UserClass();
 const user2 = new UserClass();
@@ -65,26 +66,7 @@ test.describe('User with different Roles', () => {
   test('Non admin user should be able to edit display name and description on own profile', async ({
     userPage,
   }) => {
-    await redirectToHomePage(userPage);
-
-    await userPage.getByTestId('dropdown-profile').click();
-
-    // Hover on the profile avatar to close the name tooltip
-    await userPage.getByTestId('profile-avatar').hover();
-
-    await userPage.waitForSelector('.profile-dropdown', { state: 'visible' });
-
-    const getUserDetails = userPage.waitForResponse(`/api/v1/users/name/*`);
-
-    await userPage
-      .locator('.profile-dropdown')
-      .getByTestId('user-name')
-      .click();
-
-    await getUserDetails;
-
-    // Close the profile dropdown
-    await userPage.getByTestId('dropdown-profile').click();
+    await redirectToUserPage(userPage);
 
     // Check if the display name is present
     await expect(
@@ -130,6 +112,10 @@ test.describe('User with different Roles', () => {
       .getByTestId('edit-description')
       .click();
 
+    await userPage.waitForSelector('[role="dialog"].ant-modal', {
+      state: 'visible',
+    });
+
     // Add description content
     await userPage.locator(descriptionBox).fill(USER_DESCRIPTION);
 
@@ -155,7 +141,17 @@ test.describe('User with different Roles', () => {
       .getByTestId('edit-description')
       .click();
 
-    await userPage.locator(descriptionBox).clear();
+    await userPage.waitForSelector('[role="dialog"].ant-modal', {
+      state: 'visible',
+    });
+
+    await userPage.click(descriptionBox);
+    await userPage.keyboard.press('ControlOrMeta+A');
+    await userPage.keyboard.press('Backspace');
+
+    await expect(userPage.locator(descriptionBox)).not.toContainText(
+      'Name of the User'
+    );
 
     const removeUserDescription = userPage.waitForResponse(
       (response) => response.request().method() === 'PATCH'
@@ -172,6 +168,32 @@ test.describe('User with different Roles', () => {
     await expect(
       userPage.getByTestId('asset-description-container')
     ).toContainText('No description');
+  });
+
+  test('Non admin user should not be able to edit the persona or roles', async ({
+    userPage,
+  }) => {
+    await redirectToUserPage(userPage);
+
+    // Check if the display name is present
+    await expect(
+      userPage.getByTestId('user-profile-details').getByTestId('user-name')
+    ).toHaveText(user1.responseData.displayName);
+
+    await userPage
+      .locator('.user-profile-container [data-icon="right"]')
+      .click();
+
+    // Check for Roles field visibility
+    await expect(userPage.getByTestId('user-profile-roles')).toBeVisible();
+
+    // Edit Persona icon shouldn't be visible
+    await expect(
+      userPage.getByTestId('persona-list').getByTestId('edit-persona')
+    ).not.toBeVisible();
+
+    // Edit Roles icon shouldn't be visible
+    await expect(userPage.getByTestId('edit-roles-button')).not.toBeVisible();
   });
 
   test('Non logged in user should not be able to edit display name and description on other users', async ({

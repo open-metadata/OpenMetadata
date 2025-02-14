@@ -13,18 +13,30 @@
 import { act, fireEvent, render } from '@testing-library/react';
 import React from 'react';
 import { useBasicAuth } from '../../components/Auth/AuthProviders/BasicAuthProvider';
+import { showErrorToast } from '../../utils/ToastUtils';
 import ForgotPassword from './ForgotPassword.component';
 
 const mockPush = jest.fn();
-const handleForgotPassword = jest.fn();
+const mockHandleForgotPassword = jest.fn();
+const mockHandleError = jest.fn().mockImplementation(() => {
+  return Promise.reject({
+    response: {
+      data: { message: 'Error!' },
+    },
+  });
+});
 
 jest.mock('../../components/Auth/AuthProviders/BasicAuthProvider', () => {
   return {
     useBasicAuth: jest.fn().mockImplementation(() => ({
-      handleResetPassword: handleForgotPassword,
+      handleForgotPassword: mockHandleForgotPassword,
     })),
   };
 });
+
+jest.mock('../../utils/ToastUtils', () => ({
+  showErrorToast: jest.fn(),
+}));
 
 jest.mock('react-router-dom', () => ({
   useHistory: jest.fn().mockImplementation(() => ({
@@ -43,7 +55,9 @@ describe('ForgotPassword', () => {
   });
 
   it('calls handleForgotPassword with the correct email', async () => {
-    (useBasicAuth as jest.Mock).mockReturnValue({ handleForgotPassword });
+    (useBasicAuth as jest.Mock).mockReturnValue({
+      handleForgotPassword: mockHandleForgotPassword,
+    });
 
     const { getByLabelText, getByText } = render(<ForgotPassword />);
     const emailInput = getByLabelText('label.email');
@@ -55,7 +69,7 @@ describe('ForgotPassword', () => {
       fireEvent.click(submitButton);
     });
 
-    expect(handleForgotPassword).toHaveBeenCalledWith('test@example.com');
+    expect(mockHandleForgotPassword).toHaveBeenCalledWith('test@example.com');
   });
 
   it('shows an error when email is not provided', async () => {
@@ -89,7 +103,7 @@ describe('ForgotPassword', () => {
       fireEvent.click(submitButton);
     });
 
-    expect(handleForgotPassword).toHaveBeenCalledWith('test@example.com');
+    expect(mockHandleForgotPassword).toHaveBeenCalledWith('test@example.com');
     expect(getByTestId('success-screen-container')).toBeInTheDocument();
     expect(getByTestId('success-icon')).toBeInTheDocument();
     expect(getByTestId('success-line')).toBeInTheDocument();
@@ -103,5 +117,27 @@ describe('ForgotPassword', () => {
     });
 
     expect(mockPush).toHaveBeenCalled();
+  });
+
+  it('should call show error toast', async () => {
+    (useBasicAuth as jest.Mock).mockReturnValueOnce({
+      handleForgotPassword: mockHandleError,
+    });
+
+    const { getByLabelText, getByText, queryByTestId } = render(
+      <ForgotPassword />
+    );
+    const emailInput = getByLabelText('label.email');
+    const submitButton = getByText('label.submit');
+    await act(async () => {
+      fireEvent.change(emailInput, { target: { value: 'test@example.com' } });
+    });
+    await act(async () => {
+      fireEvent.click(submitButton);
+    });
+
+    expect(showErrorToast).toHaveBeenCalledWith('server.email-not-found');
+    expect(mockHandleError).toHaveBeenCalledWith('test@example.com');
+    expect(queryByTestId('success-screen-container')).not.toBeInTheDocument();
   });
 });

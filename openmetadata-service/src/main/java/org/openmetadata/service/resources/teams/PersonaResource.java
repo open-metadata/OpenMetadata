@@ -46,7 +46,6 @@ import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.ResultList;
 
 @Slf4j
@@ -60,6 +59,7 @@ import org.openmetadata.service.util.ResultList;
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "personas", order = 2)
 public class PersonaResource extends EntityResource<Persona, PersonaRepository> {
+  private final PersonaMapper mapper = new PersonaMapper();
   public static final String COLLECTION_PATH = "/v1/personas";
   static final String FIELDS = "users";
 
@@ -278,7 +278,7 @@ public class PersonaResource extends EntityResource<Persona, PersonaRepository> 
       })
   public Response create(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreatePersona cp) {
-    Persona persona = getPersona(cp, securityContext.getUserPrincipal().getName());
+    Persona persona = mapper.createToEntity(cp, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, persona);
   }
 
@@ -299,7 +299,7 @@ public class PersonaResource extends EntityResource<Persona, PersonaRepository> 
       })
   public Response createOrUpdate(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreatePersona cp) {
-    Persona persona = getPersona(cp, securityContext.getUserPrincipal().getName());
+    Persona persona = mapper.createToEntity(cp, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, persona);
   }
 
@@ -397,11 +397,5 @@ public class PersonaResource extends EntityResource<Persona, PersonaRepository> 
           @PathParam("name")
           String name) {
     return deleteByName(uriInfo, securityContext, name, false, true);
-  }
-
-  private Persona getPersona(CreatePersona cp, String user) {
-    return repository
-        .copy(new Persona(), cp, user)
-        .withUsers(EntityUtil.toEntityReferences(cp.getUsers(), Entity.USER));
   }
 }

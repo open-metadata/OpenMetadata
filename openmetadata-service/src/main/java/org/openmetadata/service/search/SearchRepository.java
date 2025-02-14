@@ -16,6 +16,7 @@ import static org.openmetadata.service.search.SearchClient.GLOBAL_SEARCH_ALIAS;
 import static org.openmetadata.service.search.SearchClient.PROPAGATE_ENTITY_REFERENCE_FIELD_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.PROPAGATE_FIELD_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.PROPAGATE_TEST_SUITES_SCRIPT;
+import static org.openmetadata.service.search.SearchClient.REMOVE_DATA_PRODUCTS_CHILDREN_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.REMOVE_DOMAINS_CHILDREN_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.REMOVE_OWNERS_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.REMOVE_PROPAGATED_ENTITY_REFERENCE_FIELD_SCRIPT;
@@ -289,6 +290,31 @@ public class SearchRepository {
         LOG.error(
             "Issue in Creating new search document for entity [{}] and entityType [{}]. Reason[{}], Cause[{}], Stack [{}]",
             entityId,
+            entityType,
+            ie.getMessage(),
+            ie.getCause(),
+            ExceptionUtils.getStackTrace(ie));
+      }
+    }
+  }
+
+  public void createEntities(List<EntityInterface> entities) {
+    if (!nullOrEmpty(entities)) {
+      // All entities in the list are of the same type
+      String entityType = entities.get(0).getEntityReference().getType();
+      IndexMapping indexMapping = entityIndexMap.get(entityType);
+      List<Map<String, String>> docs = new ArrayList<>();
+      for (EntityInterface entity : entities) {
+        SearchIndex index = searchIndexFactory.buildIndex(entityType, entity);
+        String doc = JsonUtils.pojoToJson(index.buildSearchIndexDoc());
+        docs.add(Collections.singletonMap(entity.getId().toString(), doc));
+      }
+
+      try {
+        searchClient.createEntities(indexMapping.getIndexName(clusterAlias), docs);
+      } catch (Exception ie) {
+        LOG.error(
+            "Issue in Creating entities document for entityType [{}]. Reason[{}], Cause[{}], Stack [{}]",
             entityType,
             ie.getMessage(),
             ie.getCause(),
@@ -727,6 +753,13 @@ public class SearchRepository {
             indexMapping.getChildAliases(clusterAlias),
             List.of(new ImmutablePair<>(entityType + ".id", docId)));
       }
+      case Entity.DATA_PRODUCT -> searchClient.updateChildren(
+          GLOBAL_SEARCH_ALIAS,
+          new ImmutablePair<>("dataProducts.id", docId),
+          new ImmutablePair<>(
+              REMOVE_DATA_PRODUCTS_CHILDREN_SCRIPT,
+              Collections.singletonMap("fqn", entity.getFullyQualifiedName())));
+
       case Entity.TAG, Entity.GLOSSARY_TERM -> searchClient.updateChildren(
           GLOBAL_SEARCH_ALIAS,
           new ImmutablePair<>("tags.tagFQN", entity.getFullyQualifiedName()),
@@ -745,7 +778,7 @@ public class SearchRepository {
       }
       case Entity.TEST_SUITE -> {
         TestSuite testSuite = (TestSuite) entity;
-        if (Boolean.TRUE.equals(testSuite.getExecutable())) {
+        if (Boolean.TRUE.equals(testSuite.getBasic())) {
           searchClient.deleteEntityByFields(
               indexMapping.getChildAliases(clusterAlias),
               List.of(new ImmutablePair<>("testSuite.id", docId)));

@@ -194,6 +194,8 @@ source:
 
 {% partial file="/v1.7/connectors/yaml/ingestion-cli.md" /%}
 
+{% partial file="/v1.7/connectors/yaml/lineage.md" variables={connector: "db2"} /%}
+
 {% partial file="/v1.7/connectors/yaml/data-profiler.md" variables={connector: "db2"} /%}
 
 {% partial file="/v1.7/connectors/yaml/auto-classification.md" variables={connector: "db2"} /%}

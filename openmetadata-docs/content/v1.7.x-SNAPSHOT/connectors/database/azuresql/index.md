@@ -20,6 +20,7 @@ Configure and schedule AzureSQL metadata and profiler workflows from the OpenMet
     - [Service Name](#service-name)
     - [Connection Options](#connection-options)
     - [Metadata Ingestion Options](#metadata-ingestion-options)
+- [Data Lineage](/how-to-guides/data-lineage/workflow)
 - [Troubleshooting](#troubleshooting)
   - [Workflow Deployment Error](#workflow-deployment-error)
 - [Related](#related)

@@ -46,6 +46,7 @@ import {
   EventSubscription,
   ProviderType,
 } from '../../generated/events/eventSubscription';
+import { withPageLayout } from '../../hoc/withPageLayout';
 import { useFqn } from '../../hooks/useFqn';
 import { updateNotificationAlert } from '../../rest/alertsAPI';
 import {
@@ -450,7 +451,9 @@ function AlertDetailsPage({
         minWidth: 700,
         flex: 0.7,
       }}
-      pageTitle={t('label.entity-detail-plural', { entity: t('label.alert') })}
+      pageTitle={t('label.entity-detail-plural', {
+        entity: t('label.alert'),
+      })}
       secondPanel={{
         children: <></>,
         minWidth: 0,
@@ -460,4 +463,6 @@ function AlertDetailsPage({
   );
 }
 
-export default AlertDetailsPage;
+export default withPageLayout<AlertDetailsPageProps>('alert-detail-plural')(
+  AlertDetailsPage
+);

@@ -55,7 +55,7 @@ const EntityHeaderTitle = ({
       data-testid={`${serviceName}-${name}`}
       gutter={12}
       wrap={false}>
-      {icon && <Col>{icon}</Col>}
+      {icon && <Col className="flex-center">{icon}</Col>}
       <Col
         className={
           deleted || badge ? 'w-max-full-140' : 'entity-header-content'

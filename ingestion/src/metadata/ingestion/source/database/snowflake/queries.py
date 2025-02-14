@@ -25,7 +25,7 @@ SNOWFLAKE_SQL_STATEMENT = textwrap.dedent(
       start_time "start_time",
       end_time "end_time",
       total_elapsed_time "duration"
-    from snowflake.account_usage.query_history
+    from {account_usage}.query_history
     WHERE query_text NOT LIKE '/* {{"app": "OpenMetadata", %%}} */%%'
     AND query_text NOT LIKE '/* {{"app": "dbt", %%}} */%%'
     AND start_time between to_timestamp_ltz('{start_time}') and to_timestamp_ltz('{end_time}')
@@ -39,7 +39,7 @@ SNOWFLAKE_SESSION_TAG_QUERY = 'ALTER SESSION SET QUERY_TAG="{query_tag}"'
 SNOWFLAKE_FETCH_ALL_TAGS = textwrap.dedent(
     """
     select TAG_NAME, TAG_VALUE, OBJECT_DATABASE, OBJECT_SCHEMA, OBJECT_NAME, COLUMN_NAME
-    from snowflake.account_usage.tag_references
+    from {account_usage}.tag_references
     where OBJECT_DATABASE = '{database_name}'
       and OBJECT_SCHEMA = '{schema_name}'
 """
@@ -234,11 +234,11 @@ SHOW EXTERNAL TABLES IN DATABASE "{database_name}"
 """
 
 SNOWFLAKE_TEST_FETCH_TAG = """
-select TAG_NAME from snowflake.account_usage.tag_references limit 1
+select TAG_NAME from {account_usage}.tag_references limit 1
 """
 
 SNOWFLAKE_TEST_GET_QUERIES = """
-SELECT query_text from snowflake.account_usage.query_history limit 1
+SELECT query_text from {account_usage}.query_history limit 1
 """
 
 SNOWFLAKE_TEST_GET_TABLES = """
@@ -296,9 +296,10 @@ SELECT
   ARGUMENT_SIGNATURE AS signature,
   COMMENT as comment,
   'StoredProcedure' as procedure_type
-FROM INFORMATION_SCHEMA.PROCEDURES
+FROM {account_usage}.PROCEDURES
 WHERE PROCEDURE_CATALOG = '{database_name}'
   AND PROCEDURE_SCHEMA = '{schema_name}'
+  AND DELETED IS NULL
     """
 )
 
@@ -312,9 +313,10 @@ SELECT
   ARGUMENT_SIGNATURE AS signature,
   COMMENT as comment,
   'UDF' as procedure_type
-FROM INFORMATION_SCHEMA.FUNCTIONS
+FROM {account_usage}.FUNCTIONS
 WHERE FUNCTION_CATALOG = '{database_name}'
   AND FUNCTION_SCHEMA = '{schema_name}'
+  AND DELETED IS NULL
     """
 )
 
@@ -334,9 +336,11 @@ WITH SP_HISTORY AS (
       SESSION_ID,
       START_TIME,
       END_TIME
-    FROM SNOWFLAKE.ACCOUNT_USAGE.QUERY_HISTORY SP
+    FROM {account_usage}.QUERY_HISTORY SP
     WHERE QUERY_TYPE = 'CALL'
       AND START_TIME >= '{start_date}'
+      AND QUERY_TEXT <> ''
+      AND QUERY_TEXT IS NOT NULL
 ),
 Q_HISTORY AS (
     SELECT
@@ -349,11 +353,15 @@ Q_HISTORY AS (
       USER_NAME,
       SCHEMA_NAME,
       DATABASE_NAME
-    FROM SNOWFLAKE.ACCOUNT_USAGE.QUERY_HISTORY SP
+    FROM {account_usage}.QUERY_HISTORY SP
     WHERE QUERY_TYPE <> 'CALL'
       AND QUERY_TEXT NOT LIKE '/* {{"app": "OpenMetadata", %%}} */%%'
       AND QUERY_TEXT NOT LIKE '/* {{"app": "dbt", %%}} */%%'
       AND START_TIME >= '{start_date}'
+      AND (
+        QUERY_TYPE IN ('MERGE', 'UPDATE','CREATE_TABLE_AS_SELECT')
+        OR (QUERY_TYPE = 'INSERT' and query_text ILIKE '%%insert%%into%%select%%')
+    )
 )
 SELECT
   Q.QUERY_TYPE AS QUERY_TYPE,

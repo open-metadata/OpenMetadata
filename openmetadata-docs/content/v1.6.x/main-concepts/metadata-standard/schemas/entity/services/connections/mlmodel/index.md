@@ -5,4 +5,13 @@ slug: /main-concepts/metadata-standard/schemas/entity/services/connections/mlmod
 
 # Mlmodel
 
-Documentation file automatically generated at 2023-10-27 13:55:46.343512.
+This folder contains the following items:
+
+- [**SklearnConnection**](/main-concepts/metadata-standard/schemas/entity/services/connections/mlmodel/sklearnconnection)
+- [**SageMakerConnection**](/main-concepts/metadata-standard/schemas/entity/services/connections/mlmodel/sagemakerconnection)
+- [**VertexaiConnection**](/main-concepts/metadata-standard/schemas/entity/services/connections/mlmodel/vertexaiconnection)
+- [**MlflowConnection**](/main-concepts/metadata-standard/schemas/entity/services/connections/mlmodel/mlflowconnection)
+- [**CustomMlModelConnection**](/main-concepts/metadata-standard/schemas/entity/services/connections/mlmodel/custommlmodelconnection)
+
+
+Documentation file automatically generated at 2025-01-15 09:05:25.266839+00:00.

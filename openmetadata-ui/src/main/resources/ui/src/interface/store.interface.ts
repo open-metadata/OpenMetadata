@@ -37,7 +37,6 @@ export interface HelperFunctions {
   handleSuccessfulLogin: (user: OidcUser) => Promise<void>;
   handleFailedLogin: () => void;
   updateAxiosInterceptors: () => void;
-  trySilentSignIn: (forceLogout?: boolean) => Promise<void>;
 }
 
 export interface AppPreferences {
@@ -53,8 +52,6 @@ export interface ApplicationStore
   userProfilePics: Record<string, User>;
   cachedEntityData: Record<string, EntityUnion>;
   selectedPersona: EntityReference;
-  oidcIdToken: string;
-  refreshTokenKey: string;
   authConfig?: AuthenticationConfigurationWithScope;
   applicationConfig?: UIThemePreference;
   searchCriteria: ExploreSearchIndex | '';
@@ -81,15 +78,7 @@ export interface ApplicationStore
     id: string;
     entityDetails: EntityUnion;
   }) => void;
-
-  getRefreshToken: () => string;
-  setRefreshToken: (refreshToken: string) => void;
-  getOidcToken: () => string;
-  setOidcToken: (oidcToken: string) => void;
-  removeOidcToken: () => void;
-  removeRefreshToken: () => void;
   updateSearchCriteria: (criteria: ExploreSearchIndex | '') => void;
-  trySilentSignIn: (forceLogout?: boolean) => void;
   setApplicationsName: (applications: string[]) => void;
 }
 
@@ -101,7 +90,7 @@ export interface DomainStore {
   activeDomainEntityRef?: EntityReference;
   domainOptions: ItemType[];
   updateDomains: (domainsArr: Domain[], selectDefault?: boolean) => void;
-  updateActiveDomain: (activeDomainKey: string) => void;
+  updateActiveDomain: (domain: EntityReference) => void;
   setDomains: (domains: Domain[]) => void;
   setUserDomains: (userDomainsArr: EntityReference[]) => void;
   updateDomainLoading: (loading: boolean) => void;

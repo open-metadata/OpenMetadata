@@ -17,6 +17,7 @@ Configure and schedule PinotDB metadata and profiler workflows from the OpenMeta
 
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
+- [Lineage](#lineage)
 - [Data Profiler](#data-profiler)
 - [Data Quality](#data-quality)
 - [dbt Integration](#dbt-integration)
@@ -148,6 +149,8 @@ source:
 {% /codePreview %}
 
 {% partial file="/v1.6/connectors/yaml/ingestion-cli.md" /%}
+
+{% partial file="/v1.6/connectors/yaml/lineage.md" variables={connector: "pinotdb"} /%}
 
 {% partial file="/v1.6/connectors/yaml/data-profiler.md" variables={connector: "pinotdb"} /%}
 

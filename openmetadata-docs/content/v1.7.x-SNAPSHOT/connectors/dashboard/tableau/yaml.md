@@ -19,7 +19,7 @@ Configure and schedule Tableau metadata and profiler workflows from the OpenMeta
 - [Metadata Ingestion](#metadata-ingestion)
 - [Enable Security](#securing-tableau-connection-with-ssl-in-openmetadata)
 
-{% partial file="/v1.7/connectors/external-ingestion-deployment.md" /%}
+{% partial file="/v1.6/connectors/external-ingestion-deployment.md" /%}
 
 ## Requirements
 
@@ -30,7 +30,7 @@ For more information on enabling the Tableau Metadata APIs follow the link [here
 
 ### Python Requirements
 
-{% partial file="/v1.7/connectors/python-requirements.md" /%}
+{% partial file="/v1.6/connectors/python-requirements.md" /%}
 
 To run the Tableau ingestion, you will need to install:
 
@@ -117,6 +117,19 @@ This is a sample config for Tableau:
 
 {% /codeInfo %}
 
+{% codeInfo srNumber=12 %}
+**verifySSL**: Client SSL verification. Make sure to configure the SSLConfig if enabled. Supported values `no-ssl`, `ignore`, `validate`.
+{% /codeInfo %}
+
+{% codeInfo srNumber=13 %}
+**sslMode**: Mode of SSL. Default is `disabled`. Supported modes are `disable`, `allow`, `prefer`, `require`, `verify-ca`, `verify-full`.
+{% /codeInfo %}
+
+{% codeInfo srNumber=14 %}
+**sslConfig**: Client SSL configuration.
+{% /codeInfo %}
+
+
 #### Source Configuration - Source Config
 
 {% codeInfo srNumber=8 %}
@@ -131,6 +144,7 @@ The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetada
 - **includeDataModels**: Set the 'Include Data Models' toggle to control whether to include tags as part of metadata ingestion.
 - **markDeletedDashboards**: Set the 'Mark Deleted Dashboards' toggle to flag dashboards as soft-deleted if they are not present anymore in the source system.
 
+
 {% /codeInfo %}
 
 #### Sink Configuration
@@ -141,7 +155,8 @@ To send the metadata to OpenMetadata, it needs to be specified as `type: metadat
 
 {% /codeInfo %}
 
-{% partial file="/v1.7/connectors/yaml/workflow-config-def.md" /%}
+
+{% partial file="/v1.6/connectors/yaml/workflow-config-def.md" /%}
 
 {% /codeInfoContainer %}
 
@@ -183,12 +198,34 @@ source:
 ```yaml {% srNumber=11 %}
       paginationLimit: pagination_limit
 ```
+```yaml {% srNumber=12 %}
+      # verifySSL: no-ssl
+```
+```yaml {% srNumber=13 %}
+      # sslMode: disable
+```
+```yaml {% srNumber=14 %}
+      # sslConfig:
+      #   caCertificate: |
+      #     -----BEGIN CERTIFICATE-----
+      #     sample certificate
+      #     -----END CERTIFICATE-----
+      #   sslCertificate: |
+      #     -----BEGIN CERTIFICATE-----
+      #     sample certificate
+      #     -----END CERTIFICATE-----
+      #   sslKey: |
+      #     -----BEGIN PRIVATE KEY-----
+      #     sample certificate
+      #     -----END PRIVATE KEY-----
+```
 
-{% partial file="/v1.7/connectors/yaml/dashboard/source-config.md" /%}
 
-{% partial file="/v1.7/connectors/yaml/ingestion-sink.md" /%}
+{% partial file="/v1.6/connectors/yaml/dashboard/source-config.md" /%}
 
-{% partial file="/v1.7/connectors/yaml/workflow-config.md" /%}
+{% partial file="/v1.6/connectors/yaml/ingestion-sink.md" /%}
+
+{% partial file="/v1.6/connectors/yaml/workflow-config.md" /%}
 
 {% /codeBlock %}
 
@@ -326,4 +363,4 @@ To establish secure connections between OpenMetadata and Tableau, in the `YAML` 
             sslKey: "/path/to/your/ssl_key"
 ```
 
-{% partial file="/v1.7/connectors/yaml/ingestion-cli.md" /%}
+{% partial file="/v1.6/connectors/yaml/ingestion-cli.md" /%}

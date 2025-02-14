@@ -25,7 +25,7 @@ VERSIONS = {
     "boto3": "boto3>=1.20,<2.0",  # No need to add botocore separately. It's a dep from boto3
     "geoalchemy2": "GeoAlchemy2~=0.12",
     "google-cloud-monitoring": "google-cloud-monitoring>=2.0.0",
-    "google-cloud-storage": "google-cloud-storage==1.43.0",
+    "google-cloud-storage": "google-cloud-storage>=1.43.0",
     "gcsfs": "gcsfs>=2023.1.0",
     "great-expectations": "great-expectations>=0.18.0,<0.18.14",
     "grpc-tools": "grpcio-tools>=1.47.2",
@@ -56,8 +56,13 @@ VERSIONS = {
     "elasticsearch8": "elasticsearch8~=8.9.0",
     "giturlparse": "giturlparse",
     "validators": "validators~=0.22.0",
-    "teradata": "teradatasqlalchemy>=20.0.0.0",
+    "teradata": "teradatasqlalchemy==20.0.0.2",
+    "cockroach": "sqlalchemy-cockroachdb~=2.0",
     "cassandra": "cassandra-driver>=3.28.0",
+    "pydoris": "pydoris==1.0.2",
+    "pyiceberg": "pyiceberg==0.5.1",
+    "google-cloud-bigtable": "google-cloud-bigtable>=2.0.0",
+    "pyathena": "pyathena~=3.0",
 }
 
 COMMONS = {
@@ -77,7 +82,7 @@ COMMONS = {
     },
     "kafka": {
         VERSIONS["avro"],
-        "confluent_kafka==2.1.1",
+        "confluent_kafka>=2.1.1,<=2.6.1",
         "fastavro>=1.2.0",
         # Due to https://github.com/grpc/grpc/issues/30843#issuecomment-1303816925
         # use >= v1.47.2 https://github.com/grpc/grpc/blob/v1.47.2/tools/distrib/python/grpcio_tools/grpc_version.py#L17
@@ -138,7 +143,7 @@ base_requirements = {
     "requests>=2.23",
     "requests-aws4auth~=1.1",  # Only depends on requests as external package. Leaving as base.
     "sqlalchemy>=1.4.0,<2",
-    "collate-sqllineage~=1.5.0",
+    "collate-sqllineage~=1.6.0",
     "tabulate==0.9.0",
     "typing-inspect",
     "packaging",  # For version parsing
@@ -154,7 +159,7 @@ plugins: Dict[str, Set[str]] = {
         VERSIONS["airflow"],
     },  # Same as ingestion container. For development.
     "amundsen": {VERSIONS["neo4j"]},
-    "athena": {"pyathena~=3.0"},
+    "athena": {VERSIONS["pyathena"]},
     "atlas": {},
     "azuresql": {VERSIONS["pyodbc"]},
     "azure-sso": {VERSIONS["msal"]},
@@ -167,7 +172,11 @@ plugins: Dict[str, Set[str]] = {
         VERSIONS["numpy"],
         "sqlalchemy-bigquery>=1.2.2",
     },
-    "bigtable": {"google-cloud-bigtable>=2.0.0", VERSIONS["pandas"], VERSIONS["numpy"]},
+    "bigtable": {
+        VERSIONS["google-cloud-bigtable"],
+        VERSIONS["pandas"],
+        VERSIONS["numpy"],
+    },
     "clickhouse": {
         "clickhouse-driver~=0.2",
         "clickhouse-sqlalchemy~=0.2",
@@ -184,7 +193,7 @@ plugins: Dict[str, Set[str]] = {
         "google-cloud",
         VERSIONS["boto3"],
         VERSIONS["google-cloud-storage"],
-        "dbt-artifacts-parser",
+        "collate-dbt-artifacts-parser",
         VERSIONS["azure-storage-blob"],
         VERSIONS["azure-identity"],
     },
@@ -233,6 +242,10 @@ plugins: Dict[str, Set[str]] = {
     "glue": {VERSIONS["boto3"]},
     "great-expectations": {VERSIONS["great-expectations"]},
     "greenplum": {*COMMONS["postgres"]},
+    "cockroach": {
+        VERSIONS["cockroach"],
+        "psycopg2-binary",
+    },
     "hive": {
         *COMMONS["hive"],
         "thrift>=0.13,<1",
@@ -242,7 +255,7 @@ plugins: Dict[str, Set[str]] = {
         "impyla~=0.18.0",
     },
     "iceberg": {
-        "pyiceberg==0.5.1",
+        VERSIONS["pyiceberg"],
         # Forcing the version of a few packages so it plays nicely with other requirements.
         VERSIONS["pydantic"],
         VERSIONS["adlfs"],
@@ -358,7 +371,7 @@ test = {
     "pytest-order",
     "dirty-equals",
     # install dbt dependency
-    "dbt-artifacts-parser",
+    "collate-dbt-artifacts-parser",
     "freezegun",
     VERSIONS["sqlalchemy-databricks"],
     VERSIONS["databricks-sdk"],
@@ -380,6 +393,9 @@ test = {
     VERSIONS["avro"],  # Sample Data
     VERSIONS["grpc-tools"],
     VERSIONS["neo4j"],
+    VERSIONS["cockroach"],
+    VERSIONS["pydoris"],
+    VERSIONS["pyiceberg"],
     "testcontainers==3.7.1;python_version<'3.9'",
     "testcontainers~=4.8.0;python_version>='3.9'",
     "minio==7.2.5",
@@ -398,6 +414,13 @@ test = {
     *plugins["dagster"],
     *plugins["oracle"],
     *plugins["mssql"],
+    VERSIONS["validators"],
+    VERSIONS["pyathena"],
+    VERSIONS["pyiceberg"],
+    VERSIONS["pydoris"],
+    "python-liquid",
+    VERSIONS["google-cloud-bigtable"],
+    *plugins["bigquery"],
 }
 
 e2e_test = {

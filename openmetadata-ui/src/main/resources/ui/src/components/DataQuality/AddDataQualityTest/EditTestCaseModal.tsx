@@ -48,7 +48,6 @@ import { generateFormFields } from '../../../utils/formUtils';
 import { isValidJSONString } from '../../../utils/StringsUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import Loader from '../../common/Loader/Loader';
-import RichTextEditor from '../../common/RichTextEditor/RichTextEditor';
 import { EditTestCaseModalProps } from './AddDataQualityTest.interface';
 import ParameterForm from './components/ParameterForm';
 
@@ -214,6 +213,24 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
     }
   };
 
+  const descriptionField: FieldProp = useMemo(
+    () => ({
+      name: 'description',
+      required: false,
+      label: t('label.description'),
+      id: 'root/description',
+      type: FieldTypes.DESCRIPTION,
+      props: {
+        'data-testid': 'description',
+        initialValue: testCase?.description ?? '',
+        style: {
+          margin: 0,
+        },
+      },
+    }),
+    [testCase?.description]
+  );
+
   useEffect(() => {
     if (testCase) {
       fetchTestDefinitionById();
@@ -317,19 +334,7 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
 
           {!showOnlyParameter && (
             <>
-              <Form.Item
-                label={t('label.description')}
-                name="description"
-                trigger="onTextChange"
-                valuePropName="initialValue">
-                <RichTextEditor
-                  height="200px"
-                  initialValue={testCase?.description ?? ''}
-                  style={{
-                    margin: 0,
-                  }}
-                />
-              </Form.Item>
+              {generateFormFields([descriptionField])}
               {isComputeRowCountFieldVisible
                 ? generateFormFields(formFields)
                 : null}

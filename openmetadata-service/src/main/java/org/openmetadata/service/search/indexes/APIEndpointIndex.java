@@ -75,7 +75,7 @@ public class APIEndpointIndex implements SearchIndex {
         && apiEndpoint.getRequestSchema().getSchemaFields() != null
         && !apiEndpoint.getRequestSchema().getSchemaFields().isEmpty()) {
       List<FlattenSchemaField> flattenFields = new ArrayList<>();
-      parseSchemaFields(apiEndpoint.getResponseSchema().getSchemaFields(), flattenFields, null);
+      parseSchemaFields(apiEndpoint.getRequestSchema().getSchemaFields(), flattenFields, null);
 
       for (FlattenSchemaField field : flattenFields) {
         fieldSuggest.add(SearchSuggest.builder().input(field.getName()).weight(5).build());

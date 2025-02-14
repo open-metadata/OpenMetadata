@@ -12,7 +12,14 @@
  */
 import { expect, test } from '@playwright/test';
 import { GlobalSettingOptions } from '../../constant/settings';
-import { descriptionBox, redirectToHomePage, uuid } from '../../utils/common';
+import { RolesClass } from '../../support/access-control/RolesClass';
+import {
+  descriptionBox,
+  redirectToHomePage,
+  toastNotification,
+  getApiContext,
+  uuid,
+} from '../../utils/common';
 import { removePolicyFromRole } from '../../utils/roles';
 import { settingClick } from '../../utils/sidebar';
 
@@ -30,6 +37,7 @@ const errorMessageValidation = {
 
 const roleName = `Role-test-${uuid()}`;
 const description = `This is ${roleName} description`;
+const updatedRoleName = `PW Updated ${roleName}`;
 
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
@@ -152,6 +160,18 @@ test('Roles page should work properly', async ({ page }) => {
     ).toContainText(`${description}-updated`);
   });
 
+  await test.step('Edit role display name', async () => {
+    await page.getByTestId('manage-button').click();
+    await page.getByTestId('rename-button-title').click();
+    await page.locator('#displayName').click();
+    await page.locator('#displayName').fill(updatedRoleName);
+    await page.getByTestId('save-button').click();
+
+    await expect(page.getByTestId('entity-header-display-name')).toContainText(
+      updatedRoleName
+    );
+  });
+
   await test.step('Add new policy to created role', async () => {
     await settingClick(page, GlobalSettingOptions.ROLES);
     await page.getByRole('link', { name: roleName }).click();
@@ -179,7 +199,11 @@ test('Roles page should work properly', async ({ page }) => {
     await settingClick(page, GlobalSettingOptions.ROLES);
     await page.getByRole('link', { name: roleName }).click();
     // Asserting navigation
-    await removePolicyFromRole(page, policies.organizationPolicy, roleName);
+    await removePolicyFromRole(
+      page,
+      policies.organizationPolicy,
+      updatedRoleName
+    );
 
     // Validating if the policy is removed successfully
     await expect(page.locator('.ant-table-row').last()).not.toContainText(
@@ -191,7 +215,11 @@ test('Roles page should work properly', async ({ page }) => {
     await settingClick(page, GlobalSettingOptions.ROLES);
     await page.getByRole('link', { name: roleName }).click();
     // Removing second policy from the role
-    await removePolicyFromRole(page, policies.dataStewardPolicy, roleName);
+    await removePolicyFromRole(
+      page,
+      policies.dataStewardPolicy,
+      updatedRoleName
+    );
 
     // Validating if the policy is removed successfully
     await expect(page.locator('.ant-table-row').last()).not.toContainText(
@@ -199,11 +227,17 @@ test('Roles page should work properly', async ({ page }) => {
     );
 
     // Removing the last policy and validating the error message
-    await removePolicyFromRole(page, policies.dataConsumerPolicy, roleName);
+    await removePolicyFromRole(
+      page,
+      policies.dataConsumerPolicy,
+      updatedRoleName
+    );
 
-    await expect(page.locator('.Toastify__toast-body')).toContainText(
+    await toastNotification(
+      page,
       errorMessageValidation.lastPolicyCannotBeRemoved
     );
+
     await expect(page.locator('.ant-table-row')).toContainText(
       policies.dataConsumerPolicy
     );
@@ -211,7 +245,9 @@ test('Roles page should work properly', async ({ page }) => {
 
   await test.step('Delete created Role', async () => {
     await settingClick(page, GlobalSettingOptions.ROLES);
-    await page.locator(`[data-testid="delete-action-${roleName}"]`).click();
+    await page
+      .locator(`[data-testid="delete-action-${updatedRoleName}"]`)
+      .click();
     await page
       .locator('[data-testid="confirmation-text-input"]')
       .fill('DELETE');
@@ -220,8 +256,32 @@ test('Roles page should work properly', async ({ page }) => {
     // Validate deleted role
     await expect(
       page.locator(
-        `[data-testid="role-name"][href="/settings/access/roles/${roleName}"]`
+        `[data-testid="role-name"][href="/settings/access/roles/${updatedRoleName}"]`
       )
     ).not.toBeVisible();
   });
+});
+
+test('Delete role action from manage button options', async ({ page }) => {
+  const { apiContext, afterAction } = await getApiContext(page);
+
+  const role = new RolesClass();
+  const policies = ['ApplicationBotPolicy'];
+  const roleLocator = `[data-testid="role-name"][href="/settings/access/roles/${encodeURIComponent(
+    role.data.name
+  )}"]`;
+
+  await role.create(apiContext, policies);
+
+  await settingClick(page, GlobalSettingOptions.ROLES);
+  await page.locator(roleLocator).click();
+  await page.getByTestId('manage-button').click();
+  await page.getByTestId('delete-button').click();
+  await page.locator('[data-testid="confirmation-text-input"]').fill('DELETE');
+  await page.locator('[data-testid="confirm-button"]').click();
+
+  await expect(page.locator(roleLocator)).not.toBeVisible();
+
+  await role.delete(apiContext);
+  await afterAction();
 });

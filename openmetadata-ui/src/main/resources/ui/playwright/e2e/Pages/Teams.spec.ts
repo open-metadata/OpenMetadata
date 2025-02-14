@@ -23,6 +23,7 @@ import { performAdminLogin } from '../../utils/admin';
 import {
   createNewPage,
   descriptionBox,
+  descriptionBoxReadOnly,
   getApiContext,
   redirectToHomePage,
   toastNotification,
@@ -33,6 +34,7 @@ import { settingClick } from '../../utils/sidebar';
 import {
   addTeamOwnerToEntity,
   addUserInTeam,
+  checkTeamTabCount,
   createTeam,
   hardDeleteTeam,
   searchTeam,
@@ -112,7 +114,7 @@ test.describe('Teams Page', () => {
 
   test('Teams Page Flow', async ({ page }) => {
     await test.step('Create a new team', async () => {
-      await settingClick(page, GlobalSettingOptions.TEAMS);
+      await checkTeamTabCount(page);
       await page.waitForLoadState('networkidle');
 
       await page.waitForSelector('[data-testid="add-team"]');
@@ -303,7 +305,9 @@ test.describe('Teams Page', () => {
 
       // Validating the updated description
       await expect(
-        page.locator('[data-testid="asset-description-container"] p')
+        page.locator(
+          `[data-testid="asset-description-container"] ${descriptionBoxReadOnly}`
+        )
       ).toContainText(updatedDescription);
     });
 

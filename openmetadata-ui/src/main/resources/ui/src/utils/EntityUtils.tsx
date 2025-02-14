@@ -163,11 +163,13 @@ export const getEntityLabel = (entity: {
   name?: string;
   fullyQualifiedName?: string;
 }): JSX.Element => (
-  <Space direction="vertical" size={0}>
-    <Typography.Text>{getEntityName(entity)}</Typography.Text>
-    <Typography.Text className="text-gray-400 text-xs break-word">
+  <Space className="w-full whitespace-normal" direction="vertical" size={0}>
+    <Typography.Paragraph className="m-b-0">
+      {getEntityName(entity)}
+    </Typography.Paragraph>
+    <Typography.Paragraph className="text-grey-muted text-xs">
       {entity?.fullyQualifiedName}
-    </Typography.Text>
+    </Typography.Paragraph>
   </Space>
 );
 
@@ -1777,12 +1779,12 @@ export const getBreadcrumbForTestCase = (entity: TestCase): TitleLink[] => [
 ];
 
 export const getBreadcrumbForTestSuite = (entity: TestSuite) => {
-  return entity.executable
+  return entity.basic
     ? [
         {
-          name: getEntityName(entity.executableEntityReference),
+          name: getEntityName(entity.basicEntityReference),
           url: getEntityLinkFromType(
-            entity.executableEntityReference?.fullyQualifiedName ?? '',
+            entity.basicEntityReference?.fullyQualifiedName ?? '',
             EntityType.TABLE
           ),
         },
@@ -1895,6 +1897,13 @@ export const getEntityBreadcrumbs = (
           ),
         },
         ...getBreadcrumbForEntitiesWithServiceOnly(entity as Database),
+        {
+          name: entity.name,
+          url: getEntityLinkFromType(
+            entity.fullyQualifiedName ?? '',
+            (entity as SourceType).entityType as EntityType
+          ),
+        },
       ];
 
     case EntityType.DATABASE_SCHEMA:
@@ -1923,6 +1932,13 @@ export const getEntityBreadcrumbs = (
           url: getEntityDetailsPath(
             EntityType.DATABASE,
             (entity as DatabaseSchema).database?.fullyQualifiedName ?? ''
+          ),
+        },
+        {
+          name: entity.name,
+          url: getEntityLinkFromType(
+            entity.fullyQualifiedName ?? '',
+            (entity as SourceType).entityType as EntityType
           ),
         },
       ];
@@ -2352,6 +2368,9 @@ export const getEntityNameLabel = (entityName?: string) => {
     query: t('label.query'),
     THREAD: t('label.thread'),
     app: t('label.application'),
+    apiCollection: t('label.api-collection'),
+    apiEndpoint: t('label.api-endpoint'),
+    metric: t('label.metric'),
   };
 
   return (
@@ -2392,4 +2411,47 @@ export const getColumnSorter = <T, K extends keyof T>(field: K) => {
 
     return 0;
   };
+};
+
+export const highlightSearchText = (
+  text?: string,
+  searchText?: string
+): string => {
+  if (!searchText || !text) {
+    return text ?? '';
+  }
+
+  const regex = new RegExp(`(${searchText})`, 'gi');
+
+  return text.replace(
+    regex,
+    `<span data-highlight="true" class="text-highlighter">$1</span>`
+  );
+};
+
+/**
+ * It searches for a given text in a given string and returns an array that contains the string parts that have
+ * highlighted element if match found.
+ * @param text - The text to search in.
+ * @param searchText - The text to search for.
+ * @returns An Array of string or JSX.Element which contains highlighted element.
+ */
+export const highlightSearchArrayElement = (
+  text?: string,
+  searchText?: string
+): string | (string | JSX.Element)[] => {
+  if (!searchText || !text) {
+    return text ?? '';
+  }
+  const stringParts = text.split(new RegExp(`(${searchText})`, 'gi'));
+
+  return stringParts.map((part, index) =>
+    part.toLowerCase() === (searchText ?? '').toLowerCase() ? (
+      <span className="text-highlighter" key={`${part}-${index}`}>
+        {part}
+      </span>
+    ) : (
+      part
+    )
+  );
 };

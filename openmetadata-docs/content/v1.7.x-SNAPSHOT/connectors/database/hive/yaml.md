@@ -17,6 +17,7 @@ Configure and schedule Hive metadata and profiler workflows from the OpenMetadat
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
 - [Data Profiler](#data-profiler)
+- [Lineage](#lineage)
 - [Data Quality](#data-quality)
 - [dbt Integration](#dbt-integration)
 - [Enable Security](#securing-hive-connection-with-ssl-in-openmetadata)
@@ -197,6 +198,8 @@ source:
 {% /codePreview %}
 
 {% partial file="/v1.7/connectors/yaml/ingestion-cli.md" /%}
+
+{% partial file="/v1.7/connectors/yaml/lineage.md" variables={connector: "hive"} /%}
 
 {% partial file="/v1.7/connectors/yaml/data-profiler.md" variables={connector: "hive"} /%}
 

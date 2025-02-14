@@ -41,14 +41,18 @@ import {
   patchDatabaseSchemaDetails,
 } from '../../../../rest/databaseAPI';
 import { searchQuery } from '../../../../rest/searchAPI';
-import { getEntityName } from '../../../../utils/EntityUtils';
+import {
+  getEntityName,
+  highlightSearchText,
+} from '../../../../utils/EntityUtils';
+import { stringToHTML } from '../../../../utils/StringsUtils';
 import { getUsagePercentile } from '../../../../utils/TableUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import DisplayName from '../../../common/DisplayName/DisplayName';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import NextPrevious from '../../../common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../../common/NextPrevious/NextPrevious.interface';
-import RichTextEditorPreviewer from '../../../common/RichTextEditor/RichTextEditorPreviewer';
+import RichTextEditorPreviewerV1 from '../../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import Searchbar from '../../../common/SearchBarComponent/SearchBar.component';
 import Table from '../../../common/Table/Table';
 import { EntityName } from '../../../Modals/EntityNameModal/EntityNameModal.interface';
@@ -221,7 +225,9 @@ export const DatabaseSchemaTable = ({
         render: (_, record: DatabaseSchema) => (
           <DisplayName
             allowRename={allowEditDisplayNamePermission}
-            displayName={record.displayName}
+            displayName={stringToHTML(
+              highlightSearchText(record.displayName, searchValue)
+            )}
             id={record.id ?? ''}
             key={record.id}
             link={
@@ -232,7 +238,7 @@ export const DatabaseSchemaTable = ({
                   )
                 : ''
             }
-            name={record.name}
+            name={stringToHTML(highlightSearchText(record.name, searchValue))}
             onEditDisplayName={handleDisplayNameUpdate}
           />
         ),
@@ -243,7 +249,7 @@ export const DatabaseSchemaTable = ({
         key: 'description',
         render: (text: string) =>
           text?.trim() ? (
-            <RichTextEditorPreviewer markdown={text} />
+            <RichTextEditorPreviewerV1 markdown={text} />
           ) : (
             <span className="text-grey-muted">
               {t('label.no-entity', { entity: t('label.description') })}

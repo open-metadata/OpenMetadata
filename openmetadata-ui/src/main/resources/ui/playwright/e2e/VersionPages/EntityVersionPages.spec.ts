@@ -22,7 +22,12 @@ import { SearchIndexClass } from '../../support/entity/SearchIndexClass';
 import { StoredProcedureClass } from '../../support/entity/StoredProcedureClass';
 import { TableClass } from '../../support/entity/TableClass';
 import { TopicClass } from '../../support/entity/TopicClass';
-import { createNewPage, redirectToHomePage } from '../../utils/common';
+import {
+  createNewPage,
+  descriptionBoxReadOnly,
+  redirectToHomePage,
+  toastNotification,
+} from '../../utils/common';
 import { addMultiOwner, assignTier } from '../../utils/entity';
 
 const entities = [
@@ -123,7 +128,7 @@ entities.forEach((EntityClass) => {
 
           await expect(
             page.locator(
-              '[data-testid="viewer-container"] [data-testid="diff-added"]'
+              `[data-testid="asset-description-container"] ${descriptionBoxReadOnly} [data-testid="diff-added"]`
             )
           ).toBeVisible();
 
@@ -233,11 +238,7 @@ entities.forEach((EntityClass) => {
 
           await deleteResponse;
 
-          await expect(page.locator('.Toastify__toast-body')).toHaveText(
-            /deleted successfully!/
-          );
-
-          await page.click('.Toastify__close-button');
+          await toastNotification(page, /deleted successfully!/);
 
           await page.reload();
 

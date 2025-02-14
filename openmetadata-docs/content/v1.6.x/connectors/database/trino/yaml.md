@@ -16,6 +16,7 @@ In this section, we provide guides and references to use the Trino connector.
 Configure and schedule Trino metadata and profiler workflows from the OpenMetadata UI:
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
+- [Lineage](#lineage)
 - [Data Profiler](#data-profiler)
 - [Data Quality](#data-quality)
 - [dbt Integration](#dbt-integration)
@@ -221,6 +222,8 @@ source:
 {% /codePreview %}
 
 {% partial file="/v1.6/connectors/yaml/ingestion-cli.md" /%}
+
+{% partial file="/v1.6/connectors/yaml/lineage.md" variables={connector: "trino"} /%}
 
 {% partial file="/v1.6/connectors/yaml/data-profiler.md" variables={connector: "trino"} /%}
 

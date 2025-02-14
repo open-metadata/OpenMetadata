@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -43,7 +43,11 @@ export interface AutomatorAppConfig {
  *
  * Remove Owner Action Type
  *
+ * Add a Custom Property to the selected assets.
+ *
  * Add owners to the selected assets.
+ *
+ * Remove Custom Properties Action Type
  *
  * Propagate description, tags and glossary terms via lineage
  *
@@ -74,6 +78,9 @@ export interface Action {
      * Update the description even if they are already defined in the asset. By default, we'll
      * only add the descriptions to assets without the description set.
      *
+     * Update the Custom Property even if it is defined in the asset. By default, we will only
+     * apply the owners to assets without the given Custom Property informed.
+     *
      * Update the tier even if it is defined in the asset. By default, we will only apply the
      * tier to assets without tier.
      *
@@ -103,6 +110,12 @@ export interface Action {
      * Description to apply
      */
     description?: string;
+    /**
+     * Owners to apply
+     *
+     * Custom Properties keys to remove
+     */
+    customProperties?: any;
     /**
      * tier to apply
      */
@@ -301,6 +314,8 @@ export interface Style {
  *
  * Add Description Action Type.
  *
+ * Add Custom Properties Action Type.
+ *
  * Remove Description Action Type
  *
  * Add Tier Action Type.
@@ -309,11 +324,14 @@ export interface Style {
  *
  * Remove Owner Action Type
  *
+ * Remove Custom Properties Action Type.
+ *
  * Lineage propagation action type.
  *
  * ML PII Tagging action type.
  */
 export enum ActionType {
+    AddCustomPropertiesAction = "AddCustomPropertiesAction",
     AddDescriptionAction = "AddDescriptionAction",
     AddDomainAction = "AddDomainAction",
     AddOwnerAction = "AddOwnerAction",
@@ -321,6 +339,7 @@ export enum ActionType {
     AddTierAction = "AddTierAction",
     LineagePropagationAction = "LineagePropagationAction",
     MLTaggingAction = "MLTaggingAction",
+    RemoveCustomPropertiesAction = "RemoveCustomPropertiesAction",
     RemoveDescriptionAction = "RemoveDescriptionAction",
     RemoveDomainAction = "RemoveDomainAction",
     RemoveOwnerAction = "RemoveOwnerAction",

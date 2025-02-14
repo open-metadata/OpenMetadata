@@ -371,7 +371,7 @@ def get_create_test_suite(
     return CreateTestSuiteRequest(
         name=TestSuiteEntityName(name),
         description=Markdown(description),
-        executableEntityReference=FullyQualifiedEntityName(executable_entity_reference),
+        basicEntityReference=FullyQualifiedEntityName(executable_entity_reference),
     )
 
 

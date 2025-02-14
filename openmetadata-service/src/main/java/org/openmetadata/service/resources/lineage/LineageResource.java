@@ -60,6 +60,7 @@ import org.openmetadata.service.jdbi3.LineageRepository;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
 import org.openmetadata.service.util.AsyncService;
 import org.openmetadata.service.util.CSVExportMessage;
@@ -349,8 +350,20 @@ public class LineageResource {
       @Valid AddLineage addLineage) {
     authorizer.authorize(
         securityContext,
-        new OperationContext(LINEAGE_FIELD, MetadataOperation.EDIT_LINEAGE),
-        new LineageResourceContext());
+        new OperationContext(
+            addLineage.getEdge().getFromEntity().getType(), MetadataOperation.EDIT_LINEAGE),
+        new ResourceContext<>(
+            addLineage.getEdge().getFromEntity().getType(),
+            addLineage.getEdge().getFromEntity().getId(),
+            addLineage.getEdge().getFromEntity().getName()));
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(
+            addLineage.getEdge().getToEntity().getType(), MetadataOperation.EDIT_LINEAGE),
+        new ResourceContext<>(
+            addLineage.getEdge().getToEntity().getType(),
+            addLineage.getEdge().getToEntity().getId(),
+            addLineage.getEdge().getToEntity().getName()));
     dao.addLineage(addLineage);
     return Response.status(Status.OK).build();
   }
@@ -426,8 +439,12 @@ public class LineageResource {
           JsonPatch patch) {
     authorizer.authorize(
         securityContext,
-        new OperationContext(LINEAGE_FIELD, MetadataOperation.EDIT_LINEAGE),
-        new LineageResourceContext());
+        new OperationContext(fromEntity, MetadataOperation.EDIT_LINEAGE),
+        new ResourceContext<>(fromEntity, fromId, null));
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(toEntity, MetadataOperation.EDIT_LINEAGE),
+        new ResourceContext<>(toEntity, toId, null));
     return dao.patchLineageEdge(fromEntity, fromId, toEntity, toId, patch);
   }
 
@@ -467,8 +484,12 @@ public class LineageResource {
           String toId) {
     authorizer.authorize(
         securityContext,
-        new OperationContext(LINEAGE_FIELD, MetadataOperation.EDIT_LINEAGE),
-        new LineageResourceContext());
+        new OperationContext(fromEntity, MetadataOperation.EDIT_LINEAGE),
+        new ResourceContext<>(fromEntity, UUID.fromString(fromId), null));
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(toEntity, MetadataOperation.EDIT_LINEAGE),
+        new ResourceContext<>(toEntity, UUID.fromString(toId), null));
 
     boolean deleted = dao.deleteLineage(fromEntity, fromId, toEntity, toId);
     if (!deleted) {

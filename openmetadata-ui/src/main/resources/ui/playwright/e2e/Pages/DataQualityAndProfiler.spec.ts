@@ -45,7 +45,7 @@ test.beforeAll(async ({ browser }) => {
   );
   await table2.createTestCase(apiContext, {
     name: `email_column_values_to_be_in_set_${uuid()}`,
-    entityLink: `<#E::table::${table2.entityResponseData?.['fullyQualifiedName']}::columns::email>`,
+    entityLink: `<#E::table::${table2.entityResponseData?.['fullyQualifiedName']}::columns::${table2.entity?.columns[3].name}>`,
     parameterValues: [
       { name: 'allowedValues', value: '["gmail","yahoo","collate"]' },
     ],
@@ -90,7 +90,7 @@ test('Table test case', PLAYWRIGHT_INGESTION_TAG_OBJ, async ({ page }) => {
       '#tableTestForm_params_columnName',
       NEW_TABLE_TEST_CASE.field
     );
-    await page.fill(descriptionBox, NEW_TABLE_TEST_CASE.description);
+    await page.locator(descriptionBox).fill(NEW_TABLE_TEST_CASE.description);
     await page.click('[data-testid="submit-test"]');
 
     await page.waitForSelector('[data-testid="success-line"]');
@@ -170,7 +170,7 @@ test('Column test case', PLAYWRIGHT_INGESTION_TAG_OBJ, async ({ page }) => {
 
   const NEW_COLUMN_TEST_CASE = {
     name: 'email_column_value_lengths_to_be_between',
-    column: 'email',
+    column: table1.entity?.columns[3].name,
     type: 'columnValueLengthsToBeBetween',
     label: 'Column Value Lengths To Be Between',
     min: '3',
@@ -200,7 +200,7 @@ test('Column test case', PLAYWRIGHT_INGESTION_TAG_OBJ, async ({ page }) => {
       '#tableTestForm_params_maxLength',
       NEW_COLUMN_TEST_CASE.max
     );
-    await page.fill(descriptionBox, NEW_COLUMN_TEST_CASE.description);
+    await page.locator(descriptionBox).fill(NEW_COLUMN_TEST_CASE.description);
 
     await page.click('[data-testid="submit-test"]');
     await page.waitForSelector('[data-testid="success-line"]');
@@ -365,7 +365,9 @@ test(
       await expect(page.locator('#tableTestForm_table')).toHaveValue(
         table2.entityResponseData?.['name']
       );
-      await expect(page.locator('#tableTestForm_column')).toHaveValue('email');
+      await expect(page.locator('#tableTestForm_column')).toHaveValue(
+        table2.entity?.columns[3].name
+      );
       await expect(page.locator('#tableTestForm_name')).toHaveValue(
         testCaseName
       );
@@ -395,7 +397,7 @@ test(
 
       // Edit test case description
       await page.click(`[data-testid="edit-${testCaseName}"]`);
-      await page.fill(descriptionBox, 'Test case description');
+      await page.locator(descriptionBox).fill('Test case description');
       const updateTestCaseResponse2 = page.waitForResponse(
         (response) =>
           response.url().includes('/api/v1/dataQuality/testCases/') &&
@@ -407,7 +409,11 @@ test(
 
       expect(body2).toEqual(
         JSON.stringify([
-          { op: 'add', path: '/description', value: 'Test case description' },
+          {
+            op: 'add',
+            path: '/description',
+            value: '<p>Test case description</p>',
+          },
         ])
       );
 
@@ -482,9 +488,9 @@ test(
       profileSample: '60',
       sampleDataCount: '100',
       profileQuery: 'select * from table',
-      excludeColumns: 'user_id',
-      includeColumns: 'shop_id',
-      partitionColumnName: 'name',
+      excludeColumns: table1.entity?.columns[0].name,
+      includeColumns: table1.entity?.columns[1].name,
+      partitionColumnName: table1.entity?.columns[2].name,
       partitionIntervalType: 'COLUMN-VALUE',
       partitionValues: 'test',
     };
@@ -557,13 +563,13 @@ test(
 
     expect(requestBody).toEqual(
       JSON.stringify({
-        excludeColumns: ['user_id'],
+        excludeColumns: [table1.entity?.columns[0].name],
         profileQuery: 'select * from table',
         profileSample: 60,
         profileSampleType: 'PERCENTAGE',
-        includeColumns: [{ columnName: 'shop_id' }],
+        includeColumns: [{ columnName: table1.entity?.columns[1].name }],
         partitioning: {
-          partitionColumnName: 'name',
+          partitionColumnName: table1.entity?.columns[2].name,
           partitionIntervalType: 'COLUMN-VALUE',
           partitionValues: ['test'],
           enablePartitioning: true,
@@ -633,7 +639,7 @@ test('TestCase filters', PLAYWRIGHT_INGESTION_TAG_OBJ, async ({ page }) => {
   await filterTable1.createTestSuiteAndPipelines(apiContext);
   const { testSuiteData: testSuite2Response } =
     await filterTable1.createTestSuiteAndPipelines(apiContext, {
-      executableEntityReference: filterTable2Response?.['fullyQualifiedName'],
+      basicEntityReference: filterTable2Response?.['fullyQualifiedName'],
     });
 
   const testCaseResult = {
@@ -937,10 +943,13 @@ test('TestCase filters', PLAYWRIGHT_INGESTION_TAG_OBJ, async ({ page }) => {
     await expect(page.locator('[value="tier"]')).not.toBeVisible();
 
     // Apply domain globally
-    await page.locator('[data-testid="domain-dropdown"]').click();
+    await page.getByTestId('domain-dropdown').click();
+
     await page
-      .locator(`li[data-menu-id*='${domain.responseData?.['name']}']`)
+      .getByTestId(`tag-${domain.responseData.fullyQualifiedName}`)
       .click();
+    await page.getByTestId('saveAssociatedTag').click();
+
     await sidebarClick(page, SidebarItem.DATA_QUALITY);
     const getTestCaseList = page.waitForResponse(
       '/api/v1/dataQuality/testCases/search/list?*'

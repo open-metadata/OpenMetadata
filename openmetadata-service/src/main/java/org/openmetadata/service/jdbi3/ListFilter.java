@@ -11,6 +11,7 @@ import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.databases.DatasourceConfig;
+import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 public class ListFilter extends Filter<ListFilter> {
@@ -50,6 +51,25 @@ public class ListFilter extends Filter<ListFilter> {
     conditions.add(getWorkflowDefinitionIdCondition());
     String condition = addCondition(conditions);
     return condition.isEmpty() ? "WHERE TRUE" : "WHERE " + condition;
+  }
+
+  public ResourceContext getResourceContext(String entityType) {
+    if (queryParams.containsKey("service") && queryParams.get("service") != null) {
+      return new ResourceContext<>(
+          Entity.getServiceType(entityType), null, queryParams.get("service"));
+    } else if (queryParams.containsKey(Entity.DATABASE)
+        && queryParams.get(Entity.DATABASE) != null) {
+      return new ResourceContext<>(Entity.DATABASE, null, queryParams.get(Entity.DATABASE));
+    } else if (queryParams.containsKey(Entity.DATABASE_SCHEMA)
+        && queryParams.get(Entity.DATABASE_SCHEMA) != null) {
+      return new ResourceContext<>(
+          Entity.DATABASE_SCHEMA, null, queryParams.get(Entity.DATABASE_SCHEMA));
+    } else if (queryParams.containsKey(Entity.API_COLLCECTION)
+        && queryParams.get(Entity.API_COLLCECTION) != null) {
+      return new ResourceContext<>(
+          Entity.API_COLLCECTION, null, queryParams.get(Entity.API_COLLCECTION));
+    }
+    return new ResourceContext<>(entityType);
   }
 
   private String getAssignee() {
@@ -272,22 +292,22 @@ public class ListFilter extends Filter<ListFilter> {
     }
 
     return switch (testSuiteType) {
-      case ("executable") -> {
+        // We'll clean up the executable when we deprecate the /executable endpoints
+      case "basic", "executable" -> {
         if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
           yield String.format(
-              "(JSON_UNQUOTE(JSON_EXTRACT(%s.json, '$.executable')) = 'true')", tableName);
+              "(JSON_UNQUOTE(JSON_EXTRACT(%s.json, '$.basic')) = 'true')", tableName);
         }
-        yield String.format("(%s.json->>'executable' = 'true')", tableName);
+        yield String.format("(%s.json->>'basic' = 'true')", tableName);
       }
-      case ("logical") -> {
+      case "logical" -> {
         if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
           yield String.format(
-              "(JSON_UNQUOTE(JSON_EXTRACT(%s.json, '$.executable')) = 'false' OR JSON_UNQUOTE(JSON_EXTRACT(%s.json, '$.executable')) IS NULL)",
+              "(JSON_UNQUOTE(JSON_EXTRACT(%s.json, '$.basic')) = 'false' OR JSON_UNQUOTE(JSON_EXTRACT(%s.json, '$.basic')) IS NULL)",
               tableName, tableName);
         }
         yield String.format(
-            "(%s.json->>'executable' = 'false' or %s.json -> 'executable' is null)",
-            tableName, tableName);
+            "(%s.json->>'basic' = 'false' or %s.json -> 'basic' is null)", tableName, tableName);
       }
       default -> "";
     };
