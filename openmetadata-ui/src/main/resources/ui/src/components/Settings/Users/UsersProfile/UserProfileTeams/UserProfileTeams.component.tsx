@@ -112,7 +112,7 @@ const UserProfileTeams = ({
           onCancel={handleCloseEditTeam}
           onSave={handleTeamsSave}>
           <TeamsSelectable
-            filterJoinable
+            filterJoinable={!isAdminUser}
             maxValueCount={4}
             selectedTeams={selectedTeams}
             onSelectionChange={setSelectedTeams}
