@@ -26,14 +26,13 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import { useActivityFeedProvider } from '../../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
-import ActivityThreadPanel from '../../components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';
 import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import ProfilerSettings from '../../components/Database/Profiler/ProfilerSettings/ProfilerSettings';
 import { QueryVote } from '../../components/Database/TableQueries/TableQueries.interface';
+import { GenericProvider } from '../../components/GenericProvider/GenericProvider';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
@@ -56,7 +55,6 @@ import {
   EntityType,
   TabSpecificField,
 } from '../../enums/entity.enum';
-import { CreateThread } from '../../generated/api/feed/createThread';
 import { Tag } from '../../generated/entity/classification/tag';
 import { Database } from '../../generated/entity/data/database';
 import { Page } from '../../generated/system/ui/page';
@@ -74,12 +72,7 @@ import {
   updateDatabaseVotes,
 } from '../../rest/databaseAPI';
 import { getDocumentByFQN } from '../../rest/DocStoreAPI';
-import { postThread } from '../../rest/feedsAPI';
-import {
-  getEntityMissingError,
-  getFeedCounts,
-  sortTagsCaseInsensitive,
-} from '../../utils/CommonUtils';
+import { getEntityMissingError, getFeedCounts } from '../../utils/CommonUtils';
 import { getQueryFilterForDatabase } from '../../utils/Database/Database.util';
 import databaseClassBase from '../../utils/Database/DatabaseClassBase';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
@@ -95,7 +88,7 @@ import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 
 const DatabaseDetails: FunctionComponent = () => {
   const { t } = useTranslation();
-  const { postFeed, deleteFeed, updateFeed } = useActivityFeedProvider();
+
   const { getEntityPermissionByFqn } = usePermissionProvider();
   const { withinPageSearch } =
     useLocationSearch<{ withinPageSearch: string }>();
@@ -123,8 +116,6 @@ const DatabaseDetails: FunctionComponent = () => {
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA
   );
-
-  const [threadLink, setThreadLink] = useState<string>('');
 
   const [updateProfilerSetting, setUpdateProfilerSetting] =
     useState<boolean>(false);
@@ -165,14 +156,6 @@ const DatabaseDetails: FunctionComponent = () => {
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const onThreadLinkSelect = (link: string) => {
-    setThreadLink(link);
-  };
-
-  const onThreadPanelClose = () => {
-    setThreadLink('');
   };
 
   const handleFeedCount = useCallback((data: FeedCounts) => {
@@ -274,20 +257,11 @@ const DatabaseDetails: FunctionComponent = () => {
     }
   };
 
-  const settingsUpdateHandler = async (
-    data: Database,
-    key?: keyof Database
-  ) => {
+  const settingsUpdateHandler = async (data: Database) => {
     try {
       const res = await saveUpdatedDatabaseData(data);
 
-      setDatabase(() => {
-        if (key === 'tags') {
-          return { ...res, tags: sortTagsCaseInsensitive(res.tags ?? []) };
-        }
-
-        return res;
-      });
+      setDatabase(res);
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -309,19 +283,6 @@ const DatabaseDetails: FunctionComponent = () => {
     },
     [database, database?.owners, settingsUpdateHandler]
   );
-
-  const createThread = async (data: CreateThread) => {
-    try {
-      await postThread(data);
-    } catch (error) {
-      showErrorToast(
-        error as AxiosError,
-        t('server.create-entity-error', {
-          entity: t('label.conversation-lowercase'),
-        })
-      );
-    }
-  };
 
   useEffect(() => {
     getEntityFeedCount();
@@ -392,8 +353,8 @@ const DatabaseDetails: FunctionComponent = () => {
   const onTagUpdate = async (selectedTags?: Array<EntityTags>) => {
     if (selectedTags) {
       const updatedTags = [...(tier ? [tier] : []), ...selectedTags];
-      const updatedTable = { ...database, tags: updatedTags };
-      await settingsUpdateHandler(updatedTable as Database, 'tags');
+      const updatedDatabase = { ...database, tags: updatedTags };
+      await settingsUpdateHandler(updatedDatabase);
     }
   };
 
@@ -519,7 +480,6 @@ const DatabaseDetails: FunctionComponent = () => {
       handleFeedCount,
       getEntityFeedCount,
       onDescriptionUpdate,
-      onThreadLinkSelect,
       handleTagSelection,
       settingsUpdateHandler,
       deleted: database.deleted ?? false,
@@ -627,27 +587,22 @@ const DatabaseDetails: FunctionComponent = () => {
               onVersionClick={versionHandler}
             />
           </Col>
-          <Col span={24}>
-            <Tabs
-              activeKey={activeTab ?? EntityTabs.SCHEMA}
-              className="entity-details-page-tabs"
-              data-testid="tabs"
-              items={tabs}
-              onChange={activeTabHandler}
-            />
-          </Col>
+          <GenericProvider<Database>
+            data={database}
+            permissions={databasePermission}
+            type={EntityType.DATABASE}
+            onUpdate={settingsUpdateHandler}>
+            <Col span={24}>
+              <Tabs
+                activeKey={activeTab ?? EntityTabs.SCHEMA}
+                className="entity-details-page-tabs"
+                data-testid="tabs"
+                items={tabs}
+                onChange={activeTabHandler}
+              />
+            </Col>
+          </GenericProvider>
 
-          {threadLink ? (
-            <ActivityThreadPanel
-              createThread={createThread}
-              deletePostHandler={deleteFeed}
-              open={Boolean(threadLink)}
-              postFeedHandler={postFeed}
-              threadLink={threadLink}
-              updateThreadHandler={updateFeed}
-              onCancel={onThreadPanelClose}
-            />
-          ) : null}
           {updateProfilerSetting && (
             <ProfilerSettings
               entityId={database.id ?? ''}

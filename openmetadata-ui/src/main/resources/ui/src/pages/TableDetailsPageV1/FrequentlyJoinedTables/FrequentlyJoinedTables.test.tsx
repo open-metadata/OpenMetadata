@@ -15,6 +15,16 @@ import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { FrequentlyJoinedTables } from './FrequentlyJoinedTables.component';
 
+jest.mock('../../../utils/TableUtils', () => ({
+  getJoinsFromTableJoins: jest.fn().mockReturnValue([
+    {
+      name: 'test',
+      fullyQualifiedName: 'test',
+      joinCount: 1,
+    },
+  ]),
+}));
+
 describe('FrequentlyJoinedTables component', () => {
   it('should render the component', async () => {
     render(<FrequentlyJoinedTables />, {

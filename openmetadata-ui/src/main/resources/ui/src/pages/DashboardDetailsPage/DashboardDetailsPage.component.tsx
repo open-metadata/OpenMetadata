@@ -28,7 +28,6 @@ import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvi
 import { ClientErrors } from '../../enums/Axios.enum';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
-import { CreateThread } from '../../generated/api/feed/createThread';
 import { Chart } from '../../generated/entity/data/chart';
 import { Dashboard } from '../../generated/entity/data/dashboard';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
@@ -40,7 +39,6 @@ import {
   removeFollower,
   updateDashboardVotes,
 } from '../../rest/dashboardAPI';
-import { postThread } from '../../rest/feedsAPI';
 import {
   addToRecentViewed,
   getEntityMissingError,
@@ -232,19 +230,6 @@ const DashboardDetailsPage = () => {
       );
   };
 
-  const createThread = async (data: CreateThread) => {
-    try {
-      await postThread(data);
-    } catch (error) {
-      showErrorToast(
-        error as AxiosError,
-        t('server.create-entity-error', {
-          entity: t('label.conversation'),
-        })
-      );
-    }
-  };
-
   const handleToggleDelete = (version?: number) => {
     setDashboardDetails((prev) => {
       if (!prev) {
@@ -307,7 +292,6 @@ const DashboardDetailsPage = () => {
   return (
     <DashboardDetails
       charts={charts ?? []}
-      createThread={createThread}
       dashboardDetails={dashboardDetails}
       fetchDashboard={() => fetchDashboardDetail(dashboardFQN)}
       followDashboardHandler={followDashboard}

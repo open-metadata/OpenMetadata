@@ -48,7 +48,6 @@ export const getDataBaseSchemaPageBaseTabs = ({
   storedProcedureCount,
   handleExtensionUpdate,
   handleTagSelection,
-  onThreadLinkSelect,
   tablePaginationHandler,
   onDescriptionUpdate,
   handleShowDeletedTables,
@@ -88,7 +87,6 @@ export const getDataBaseSchemaPageBaseTabs = ({
                       tablePaginationHandler={tablePaginationHandler}
                       onDescriptionUpdate={onDescriptionUpdate}
                       onShowDeletedTablesChange={handleShowDeletedTables}
-                      onThreadLinkSelect={onThreadLinkSelect}
                     />
                   </div>
                 ),
@@ -112,7 +110,6 @@ export const getDataBaseSchemaPageBaseTabs = ({
                       viewAllPermission={viewAllPermission}
                       onExtensionUpdate={handleExtensionUpdate}
                       onTagSelectionChange={handleTagSelection}
-                      onThreadLinkSelect={onThreadLinkSelect}
                     />
                   </div>
                 ),

@@ -33,7 +33,6 @@ import { PIPELINE_TASK_TABS } from '../../../constants/pipeline.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
-import { CreateThread } from '../../../generated/api/feed/createThread';
 import { Tag } from '../../../generated/entity/classification/tag';
 import {
   Pipeline,
@@ -41,7 +40,6 @@ import {
   TagLabel,
   Task,
 } from '../../../generated/entity/data/pipeline';
-import { ThreadType } from '../../../generated/entity/feed/thread';
 import { Page } from '../../../generated/system/ui/page';
 import { PageType } from '../../../generated/system/ui/uiCustomization';
 import { TagSource } from '../../../generated/type/schema';
@@ -49,7 +47,6 @@ import LimitWrapper from '../../../hoc/LimitWrapper';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { getDocumentByFQN } from '../../../rest/DocStoreAPI';
-import { postThread } from '../../../rest/feedsAPI';
 import { restorePipeline } from '../../../rest/pipelineAPI';
 import { getFeedCounts } from '../../../utils/CommonUtils';
 import { getColumnSorter, getEntityName } from '../../../utils/EntityUtils';
@@ -67,14 +64,13 @@ import {
 import { getTagsWithoutTier, getTierTags } from '../../../utils/TableUtils';
 import { createTagObject, updateTierTag } from '../../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
-import { useActivityFeedProvider } from '../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
-import ActivityThreadPanel from '../../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import { withActivityFeed } from '../../AppRouter/withActivityFeed';
 import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
 import { DataAssetsHeader } from '../../DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import { ColumnFilter } from '../../Database/ColumnFilter/ColumnFilter.component';
 import TableDescription from '../../Database/TableDescription/TableDescription.component';
 import TableTags from '../../Database/TableTags/TableTags.component';
+import { GenericProvider } from '../../GenericProvider/GenericProvider';
 import { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.interface';
 import { ModalWithMarkdownEditor } from '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import PageLayoutV1 from '../../PageLayoutV1/PageLayoutV1';
@@ -101,7 +97,6 @@ const PipelineDetails = ({
   const { tab } = useParams<{ tab: EntityTabs }>();
   const { t } = useTranslation();
   const { currentUser, selectedPersona } = useApplicationStore();
-  const { postFeed, deleteFeed, updateFeed } = useActivityFeedProvider();
   const userID = currentUser?.id ?? '';
   const {
     deleted,
@@ -138,13 +133,8 @@ const PipelineDetails = ({
     FEED_COUNT_INITIAL_DATA
   );
 
-  const [threadLink, setThreadLink] = useState<string>('');
-
   const [selectedExecution] = useState<PipelineStatus | undefined>(
     pipelineStatus
-  );
-  const [threadType, setThreadType] = useState<ThreadType>(
-    ThreadType.Conversation
   );
 
   const [pipelinePermissions, setPipelinePermissions] = useState(
@@ -286,17 +276,6 @@ const PipelineDetails = ({
     }
   }, [isFollowing, followPipelineHandler, unFollowPipelineHandler]);
 
-  const onThreadLinkSelect = (link: string, threadType?: ThreadType) => {
-    setThreadLink(link);
-    if (threadType) {
-      setThreadType(threadType);
-    }
-  };
-
-  const onThreadPanelClose = () => {
-    setThreadLink('');
-  };
-
   const handleTableTagSelection = async (
     selectedTags: EntityTags[],
     editColumnTag: Task
@@ -421,7 +400,6 @@ const PipelineDetails = ({
             index={index}
             isReadOnly={deleted}
             onClick={() => setEditTask({ task: record, index })}
-            onThreadLinkSelect={onThreadLinkSelect}
           />
         ),
       },
@@ -452,7 +430,6 @@ const PipelineDetails = ({
             record={record}
             tags={tags}
             type={TagSource.Classification}
-            onThreadLinkSelect={onThreadLinkSelect}
           />
         ),
         filters: tagFilter.Classification,
@@ -480,7 +457,6 @@ const PipelineDetails = ({
             record={record}
             tags={tags}
             type={TagSource.Glossary}
-            onThreadLinkSelect={onThreadLinkSelect}
           />
         ),
       },
@@ -491,7 +467,6 @@ const PipelineDetails = ({
       editTagsPermission,
       editGlossaryTermsPermission,
       getEntityName,
-      onThreadLinkSelect,
       handleTableTagSelection,
       editDescriptionPermission,
     ]
@@ -506,19 +481,6 @@ const PipelineDetails = ({
           tabValue
         ),
       });
-    }
-  };
-
-  const createThread = async (data: CreateThread) => {
-    try {
-      await postThread(data);
-    } catch (error) {
-      showErrorToast(
-        error as AxiosError,
-        t('server.create-entity-error', {
-          entity: t('label.conversation'),
-        })
-      );
     }
   };
 
@@ -578,7 +540,6 @@ const PipelineDetails = ({
       handleTagSelection,
       onExtensionUpdate,
       onDescriptionUpdate,
-      onThreadLinkSelect,
       editDescriptionPermission: editDescriptionPermission ?? false,
       editTagsPermission: editTagsPermission ?? false,
       editGlossaryTermsPermission: editGlossaryTermsPermission ?? false,
@@ -614,7 +575,6 @@ const PipelineDetails = ({
     handleTagSelection,
     onExtensionUpdate,
     onDescriptionUpdate,
-    onThreadLinkSelect,
     editDescriptionPermission,
     editTagsPermission,
     editGlossaryTermsPermission,
@@ -671,16 +631,21 @@ const PipelineDetails = ({
             onVersionClick={versionHandler}
           />
         </Col>
-
-        <Col span={24}>
-          <Tabs
-            activeKey={tab ?? EntityTabs.TASKS}
-            className="entity-details-page-tabs"
-            data-testid="tabs"
-            items={tabs}
-            onChange={handleTabChange}
-          />
-        </Col>
+        <GenericProvider<Pipeline>
+          data={pipelineDetails}
+          permissions={pipelinePermissions}
+          type={EntityType.PIPELINE}
+          onUpdate={settingsUpdateHandler}>
+          <Col span={24}>
+            <Tabs
+              activeKey={tab ?? EntityTabs.TASKS}
+              className="entity-details-page-tabs"
+              data-testid="tabs"
+              items={tabs}
+              onChange={handleTabChange}
+            />
+          </Col>
+        </GenericProvider>
       </Row>
 
       {editTask && (
@@ -701,19 +666,6 @@ const PipelineDetails = ({
       <LimitWrapper resource="pipeline">
         <></>
       </LimitWrapper>
-
-      {threadLink ? (
-        <ActivityThreadPanel
-          createThread={createThread}
-          deletePostHandler={deleteFeed}
-          open={Boolean(threadLink)}
-          postFeedHandler={postFeed}
-          threadLink={threadLink}
-          threadType={threadType}
-          updateThreadHandler={updateFeed}
-          onCancel={onThreadPanelClose}
-        />
-      ) : null}
     </PageLayoutV1>
   );
 };

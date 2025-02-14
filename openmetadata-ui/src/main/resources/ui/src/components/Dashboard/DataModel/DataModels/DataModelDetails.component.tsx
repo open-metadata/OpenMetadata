@@ -36,8 +36,6 @@ import { getEntityName } from '../../../../utils/EntityUtils';
 import { getTagsWithoutTier } from '../../../../utils/TableUtils';
 import { createTagObject } from '../../../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
-import { useActivityFeedProvider } from '../../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
-import ActivityThreadPanel from '../../../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import { withActivityFeed } from '../../../AppRouter/withActivityFeed';
 import DescriptionV1 from '../../../common/EntityDescription/DescriptionV1';
 import ResizablePanels from '../../../common/ResizablePanels/ResizablePanels';
@@ -54,7 +52,6 @@ const DataModelDetails = ({
   dataModelData,
   dataModelPermissions,
   fetchDataModel,
-  createThread,
   handleFollowDataModel,
   handleUpdateTags,
   handleUpdateOwner,
@@ -67,12 +64,9 @@ const DataModelDetails = ({
 }: DataModelDetailsProps) => {
   const { t } = useTranslation();
   const history = useHistory();
-  const { postFeed, deleteFeed, updateFeed } = useActivityFeedProvider();
   const { tab: activeTab } = useParams<{ tab: EntityTabs }>();
-
   const { fqn: decodedDataModelFQN } = useFqn();
 
-  const [threadLink, setThreadLink] = useState<string>('');
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA
   );
@@ -126,14 +120,6 @@ const DataModelDetails = ({
         toString(version)
       )
     );
-  };
-
-  const onThreadLinkSelect = (link: string) => {
-    setThreadLink(link);
-  };
-
-  const onThreadPanelClose = () => {
-    setThreadLink('');
   };
 
   const handleTabChange = (tabValue: EntityTabs) => {
@@ -236,12 +222,8 @@ const DataModelDetails = ({
                     owner={owners}
                     showActions={!deleted}
                     onDescriptionUpdate={handleUpdateDescription}
-                    onThreadLinkSelect={onThreadLinkSelect}
                   />
-                  <ModelTab
-                    isReadOnly={Boolean(deleted)}
-                    onThreadLinkSelect={onThreadLinkSelect}
-                  />
+                  <ModelTab />
                 </div>
               ),
               ...COMMON_RESIZABLE_PANEL_CONFIG.LEFT_PANEL,
@@ -266,7 +248,6 @@ const DataModelDetails = ({
                     viewAllPermission={dataModelPermissions.ViewAll}
                     onExtensionUpdate={handelExtensionUpdate}
                     onTagSelectionChange={handleTagSelection}
-                    onThreadLinkSelect={onThreadLinkSelect}
                   />
                 </div>
               ),
@@ -289,7 +270,6 @@ const DataModelDetails = ({
     editDescriptionPermission,
     entityName,
     handleTagSelection,
-    onThreadLinkSelect,
     handleColumnUpdateDataModel,
     handleUpdateDescription,
   ]);
@@ -364,18 +344,6 @@ const DataModelDetails = ({
             />
           </Col>
         </GenericProvider>
-
-        {threadLink ? (
-          <ActivityThreadPanel
-            createThread={createThread}
-            deletePostHandler={deleteFeed}
-            open={Boolean(threadLink)}
-            postFeedHandler={postFeed}
-            threadLink={threadLink}
-            updateThreadHandler={updateFeed}
-            onCancel={onThreadPanelClose}
-          />
-        ) : null}
       </Row>
     </PageLayoutV1>
   );

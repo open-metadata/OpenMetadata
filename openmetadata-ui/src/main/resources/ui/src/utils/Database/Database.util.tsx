@@ -212,7 +212,6 @@ export const getDatabasePageBaseTabs = ({
   handleFeedCount,
   getEntityFeedCount,
   onDescriptionUpdate,
-  onThreadLinkSelect,
   handleTagSelection,
   settingsUpdateHandler,
   deleted,
@@ -248,7 +247,6 @@ export const getDatabasePageBaseTabs = ({
                           isDescriptionExpanded={isEmpty(database)}
                           showActions={!database.deleted}
                           onDescriptionUpdate={onDescriptionUpdate}
-                          onThreadLinkSelect={onThreadLinkSelect}
                         />
                       </Col>
                       <Col span={24}>
@@ -277,7 +275,6 @@ export const getDatabasePageBaseTabs = ({
                       viewAllPermission={viewAllPermission}
                       onExtensionUpdate={settingsUpdateHandler}
                       onTagSelectionChange={handleTagSelection}
-                      onThreadLinkSelect={onThreadLinkSelect}
                     />
                   </div>
                 ),

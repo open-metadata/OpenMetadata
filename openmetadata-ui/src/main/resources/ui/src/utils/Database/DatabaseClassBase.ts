@@ -48,7 +48,6 @@ export interface DatabaseDetailPageTabProps {
   handleFeedCount: (data: FeedCounts) => void;
   getEntityFeedCount: () => void;
   onDescriptionUpdate: (updatedHTML: string) => Promise<void>;
-  onThreadLinkSelect: (link: string) => void;
   handleTagSelection: (selectedTags: EntityTags[]) => Promise<void>;
   settingsUpdateHandler: (
     data: Database,

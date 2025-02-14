@@ -16,6 +16,7 @@ import { lowerCase } from 'lodash';
 import React from 'react';
 import { EntityField } from '../../../constants/Feeds.constants';
 import EntityTasks from '../../../pages/TasksPage/EntityTasks/EntityTasks.component';
+import { useGenericContext } from '../../GenericProvider/GenericProvider';
 import TagsContainerV2 from '../../Tag/TagsContainerV2/TagsContainerV2';
 import { TableTagsComponentProps, TableUnion } from './TableTags.interface';
 
@@ -28,10 +29,11 @@ const TableTags = <T extends TableUnion>({
   isReadOnly,
   hasTagEditAccess,
   showInlineEditTagButton,
-  onThreadLinkSelect,
   handleTagSelection,
   entityType,
 }: TableTagsComponentProps<T>) => {
+  const { onThreadLinkSelect } = useGenericContext();
+
   return (
     <div
       className="hover-icon-group"

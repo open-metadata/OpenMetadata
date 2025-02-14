@@ -31,6 +31,7 @@ import {
   getUpdateDescriptionPath,
   TASK_ENTITIES,
 } from '../../../utils/TasksUtils';
+import { useGenericContext } from '../../GenericProvider/GenericProvider';
 import { ModalWithMarkdownEditor } from '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import SuggestionsAlert from '../../Suggestions/SuggestionsAlert/SuggestionsAlert';
 import { useSuggestionsContext } from '../../Suggestions/SuggestionsProvider/SuggestionsProvider';
@@ -48,7 +49,6 @@ const DescriptionV1 = ({
   isReadOnly = false,
   removeBlur = false,
   entityName,
-  onThreadLinkSelect,
   entityType,
   wrapInCard = false,
   showActions = true,
@@ -62,6 +62,7 @@ const DescriptionV1 = ({
     useSuggestionsContext();
   const [isEditDescription, setIsEditDescription] = useState(false);
   const { fqn: entityFqn } = useFqn();
+  const { onThreadLinkSelect } = useGenericContext();
 
   const handleRequestDescription = useCallback(() => {
     history.push(

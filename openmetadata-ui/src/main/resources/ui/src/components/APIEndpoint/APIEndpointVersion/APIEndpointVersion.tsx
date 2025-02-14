@@ -13,7 +13,6 @@
 
 import { Col, Row, Space, Tabs, TabsProps } from 'antd';
 import classNames from 'classnames';
-import { noop } from 'lodash';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
@@ -128,7 +127,6 @@ const APIEndpointVersion: FC<APIEndpointVersionProp> = ({
                     isVersionView
                     apiEndpointDetails={currentVersionData}
                     permissions={entityPermissions}
-                    onThreadLinkSelect={noop}
                   />
                 </Col>
               </Row>

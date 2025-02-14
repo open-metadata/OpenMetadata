@@ -19,11 +19,8 @@ import { EntityTags } from 'Models';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import ActivityFeedProvider, {
-  useActivityFeedProvider,
-} from '../../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
+import ActivityFeedProvider from '../../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import { ActivityFeedTab } from '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
-import ActivityThreadPanel from '../../components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import { CustomPropertyTable } from '../../components/common/CustomPropertyTable/CustomPropertyTable';
 import DescriptionV1 from '../../components/common/EntityDescription/DescriptionV1';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -35,6 +32,7 @@ import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/D
 import SampleDataWithMessages from '../../components/Database/SampleDataWithMessages/SampleDataWithMessages';
 import { QueryVote } from '../../components/Database/TableQueries/TableQueries.interface';
 import EntityRightPanel from '../../components/Entity/EntityRightPanel/EntityRightPanel';
+import { GenericProvider } from '../../components/GenericProvider/GenericProvider';
 import Lineage from '../../components/Lineage/Lineage.component';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
@@ -53,17 +51,12 @@ import {
 } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
-import {
-  CreateThread,
-  ThreadType,
-} from '../../generated/api/feed/createThread';
 import { Tag } from '../../generated/entity/classification/tag';
 import { SearchIndex, TagLabel } from '../../generated/entity/data/searchIndex';
 import LimitWrapper from '../../hoc/LimitWrapper';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useFqn } from '../../hooks/useFqn';
 import { FeedCounts } from '../../interface/feed.interface';
-import { postThread } from '../../rest/feedsAPI';
 import {
   addFollower,
   getSearchIndexDetailsByFQN,
@@ -72,11 +65,7 @@ import {
   restoreSearchIndex,
   updateSearchIndexVotes,
 } from '../../rest/SearchIndexAPI';
-import {
-  addToRecentViewed,
-  getFeedCounts,
-  sortTagsCaseInsensitive,
-} from '../../utils/CommonUtils';
+import { addToRecentViewed, getFeedCounts } from '../../utils/CommonUtils';
 import { getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { defaultFields } from '../../utils/SearchIndexUtils';
@@ -86,7 +75,6 @@ import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import SearchIndexFieldsTab from './SearchIndexFieldsTab/SearchIndexFieldsTab';
 
 function SearchIndexDetailsPage() {
-  const { postFeed, deleteFeed, updateFeed } = useActivityFeedProvider();
   const { getEntityPermissionByFqn } = usePermissionProvider();
   const { tab: activeTab = EntityTabs.FIELDS } = useParams<{ tab: string }>();
   const { fqn: decodedSearchIndexFQN } = useFqn();
@@ -100,10 +88,6 @@ function SearchIndexDetailsPage() {
     FEED_COUNT_INITIAL_DATA
   );
 
-  const [threadLink, setThreadLink] = useState<string>('');
-  const [threadType, setThreadType] = useState<ThreadType>(
-    ThreadType.Conversation
-  );
   const [searchIndexPermissions, setSearchIndexPermissions] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
 
@@ -253,7 +237,7 @@ function SearchIndexDetailsPage() {
 
   const onSearchIndexUpdate = async (
     updatedSearchIndex: SearchIndex,
-    key: keyof SearchIndex
+    key?: keyof SearchIndex
   ) => {
     try {
       const res = await saveUpdatedSearchIndexData(updatedSearchIndex);
@@ -262,18 +246,11 @@ function SearchIndexDetailsPage() {
         if (!previous) {
           return;
         }
-        if (key === 'tags') {
-          return {
-            ...previous,
-            version: res.version,
-            [key]: sortTagsCaseInsensitive(res.tags ?? []),
-          };
-        }
 
         return {
           ...previous,
-          version: res.version,
-          [key]: res[key],
+          ...res,
+          ...(key && { [key]: res[key] }),
         };
       });
     } catch (error) {
@@ -318,13 +295,6 @@ function SearchIndexDetailsPage() {
         fields: updateFields,
       };
       await onSearchIndexUpdate(updatedSearchIndexDetails, 'fields');
-    }
-  };
-
-  const onThreadLinkSelect = (link: string, threadType?: ThreadType) => {
-    setThreadLink(link);
-    if (threadType) {
-      setThreadType(threadType);
     }
   };
 
@@ -392,7 +362,6 @@ function SearchIndexDetailsPage() {
                         owner={searchIndexDetails?.owners}
                         showActions={!searchIndexDetails?.deleted}
                         onDescriptionUpdate={onDescriptionUpdate}
-                        onThreadLinkSelect={onThreadLinkSelect}
                       />
                       <SearchIndexFieldsTab
                         entityFqn={decodedSearchIndexFQN}
@@ -401,7 +370,6 @@ function SearchIndexDetailsPage() {
                         hasGlossaryTermEditAccess={editGlossaryTermsPermission}
                         hasTagEditAccess={editTagsPermission}
                         isReadOnly={searchIndexDetails?.deleted}
-                        onThreadLinkSelect={onThreadLinkSelect}
                         onUpdate={onFieldsUpdate}
                       />
                     </div>
@@ -428,7 +396,6 @@ function SearchIndexDetailsPage() {
                         viewAllPermission={viewAllPermission}
                         onExtensionUpdate={onExtensionUpdate}
                         onTagSelectionChange={handleTagSelection}
-                        onThreadLinkSelect={onThreadLinkSelect}
                       />
                     </div>
                   ),
@@ -718,23 +685,6 @@ function SearchIndexDetailsPage() {
     }
   }, [decodedSearchIndexFQN, viewPermission]);
 
-  const onThreadPanelClose = () => {
-    setThreadLink('');
-  };
-
-  const createThread = async (data: CreateThread) => {
-    try {
-      await postThread(data);
-    } catch (error) {
-      showErrorToast(
-        error as AxiosError,
-        t('server.create-entity-error', {
-          entity: t('label.conversation'),
-        })
-      );
-    }
-  };
-
   if (loading) {
     return <Loader />;
   }
@@ -777,32 +727,25 @@ function SearchIndexDetailsPage() {
           />
         </Col>
 
-        <Col span={24}>
-          <Tabs
-            activeKey={activeTab ?? EntityTabs.FIELDS}
-            className="entity-details-page-tabs"
-            data-testid="tabs"
-            items={tabs}
-            onChange={handleTabChange}
-          />
-        </Col>
+        <GenericProvider<SearchIndex>
+          data={searchIndexDetails}
+          permissions={searchIndexPermissions}
+          type={EntityType.SEARCH_INDEX}
+          onUpdate={onSearchIndexUpdate}>
+          <Col span={24}>
+            <Tabs
+              activeKey={activeTab ?? EntityTabs.FIELDS}
+              className="entity-details-page-tabs"
+              data-testid="tabs"
+              items={tabs}
+              onChange={handleTabChange}
+            />
+          </Col>
+        </GenericProvider>
 
         <LimitWrapper resource="searchIndex">
           <></>
         </LimitWrapper>
-
-        {threadLink ? (
-          <ActivityThreadPanel
-            createThread={createThread}
-            deletePostHandler={deleteFeed}
-            open={Boolean(threadLink)}
-            postFeedHandler={postFeed}
-            threadLink={threadLink}
-            threadType={threadType}
-            updateThreadHandler={updateFeed}
-            onCancel={onThreadPanelClose}
-          />
-        ) : null}
       </Row>
     </PageLayoutV1>
   );

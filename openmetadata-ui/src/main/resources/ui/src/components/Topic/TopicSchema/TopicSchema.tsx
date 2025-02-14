@@ -23,7 +23,7 @@ import {
 import Table, { ColumnsType } from 'antd/lib/table';
 import { Key } from 'antd/lib/table/interface';
 import classNames from 'classnames';
-import { cloneDeep, groupBy, isEmpty, isUndefined, noop, uniqBy } from 'lodash';
+import { cloneDeep, groupBy, isEmpty, isUndefined, uniqBy } from 'lodash';
 import { EntityTags, TagFilterOptions } from 'Models';
 import React, { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -82,7 +82,6 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
     permissions,
     onUpdate,
     currentVersionData,
-    onThreadLinkSelect,
   } = useGenericContext<Topic>();
 
   const isReadOnly = useMemo(() => {
@@ -242,7 +241,6 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
             index={index}
             isReadOnly={isReadOnly}
             onClick={() => setEditFieldDescription(record)}
-            onThreadLinkSelect={onThreadLinkSelect ?? noop}
           />
         ),
       },
@@ -264,7 +262,6 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
             record={record}
             tags={tags}
             type={TagSource.Classification}
-            onThreadLinkSelect={onThreadLinkSelect ?? noop}
           />
         ),
         filters: tagFilter.Classification,
@@ -289,7 +286,6 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
             record={record}
             tags={tags}
             type={TagSource.Glossary}
-            onThreadLinkSelect={onThreadLinkSelect ?? noop}
           />
         ),
         filters: tagFilter.Glossary,

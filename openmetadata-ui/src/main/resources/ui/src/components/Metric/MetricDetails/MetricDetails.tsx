@@ -25,7 +25,6 @@ import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { Tag } from '../../../generated/entity/classification/tag';
 import { Metric } from '../../../generated/entity/data/metric';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
-import { ThreadType } from '../../../generated/entity/feed/thread';
 import { TagLabel } from '../../../generated/type/schema';
 import LimitWrapper from '../../../hoc/LimitWrapper';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
@@ -40,9 +39,7 @@ import {
 import { getTagsWithoutTier, getTierTags } from '../../../utils/TableUtils';
 import { createTagObject, updateTierTag } from '../../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
-import { useActivityFeedProvider } from '../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import { ActivityFeedTab } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
-import ActivityThreadPanel from '../../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import { withActivityFeed } from '../../AppRouter/withActivityFeed';
 import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
 import DescriptionV1 from '../../common/EntityDescription/DescriptionV1';
@@ -50,6 +47,7 @@ import ResizablePanels from '../../common/ResizablePanels/ResizablePanels';
 import TabsLabel from '../../common/TabsLabel/TabsLabel.component';
 import { DataAssetsHeader } from '../../DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import EntityRightPanel from '../../Entity/EntityRightPanel/EntityRightPanel';
+import { GenericProvider } from '../../GenericProvider/GenericProvider';
 import Lineage from '../../Lineage/Lineage.component';
 import { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../PageLayoutV1/PageLayoutV1';
@@ -61,7 +59,6 @@ import { MetricDetailsProps } from './MetricDetails.interface';
 const MetricDetails: React.FC<MetricDetailsProps> = ({
   metricDetails,
   metricPermissions,
-  onCreateThread,
   fetchMetricDetails,
   onFollowMetric,
   onMetricUpdate,
@@ -73,18 +70,12 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
 }: MetricDetailsProps) => {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
-  const { postFeed, deleteFeed, updateFeed } = useActivityFeedProvider();
   const { tab: activeTab = EntityTabs.OVERVIEW } =
     useParams<{ tab: EntityTabs }>();
   const { fqn: decodedMetricFqn } = useFqn();
   const history = useHistory();
-  const [threadLink, setThreadLink] = useState<string>('');
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA
-  );
-
-  const [threadType, setThreadType] = useState<ThreadType>(
-    ThreadType.Conversation
   );
 
   const {
@@ -129,14 +120,6 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
       'extension'
     );
   };
-
-  const onThreadLinkSelect = (link: string, threadType?: ThreadType) => {
-    setThreadLink(link);
-    if (threadType) {
-      setThreadType(threadType);
-    }
-  };
-  const onThreadPanelClose = () => setThreadLink('');
 
   const handleRestoreMetric = async () => {
     try {
@@ -297,7 +280,6 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
                         owner={metricDetails.owners}
                         showActions={!deleted}
                         onDescriptionUpdate={onDescriptionUpdate}
-                        onThreadLinkSelect={onThreadLinkSelect}
                       />
                     </div>
                   ),
@@ -332,7 +314,6 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
                         viewAllPermission={viewAllPermission}
                         onExtensionUpdate={onExtensionUpdate}
                         onTagSelectionChange={handleTagSelection}
-                        onThreadLinkSelect={onThreadLinkSelect}
                       />
                     </div>
                   ),
@@ -427,7 +408,6 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
       deleted,
       handleFeedCount,
       onExtensionUpdate,
-      onThreadLinkSelect,
       handleTagSelection,
       onDescriptionUpdate,
       onDataProductsUpdate,
@@ -469,32 +449,25 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
             onVersionClick={onVersionChange}
           />
         </Col>
-        <Col span={24}>
-          <Tabs
-            activeKey={activeTab ?? EntityTabs.OVERVIEW}
-            className="entity-details-page-tabs"
-            data-testid="tabs"
-            items={tabs}
-            onChange={handleTabChange}
-          />
-        </Col>
+        <GenericProvider<Metric>
+          data={metricDetails}
+          permissions={metricPermissions}
+          type={EntityType.METRIC}
+          onUpdate={onMetricUpdate}>
+          <Col span={24}>
+            <Tabs
+              activeKey={activeTab ?? EntityTabs.OVERVIEW}
+              className="entity-details-page-tabs"
+              data-testid="tabs"
+              items={tabs}
+              onChange={handleTabChange}
+            />
+          </Col>
+        </GenericProvider>
       </Row>
       <LimitWrapper resource="metric">
         <></>
       </LimitWrapper>
-
-      {threadLink ? (
-        <ActivityThreadPanel
-          createThread={onCreateThread}
-          deletePostHandler={deleteFeed}
-          open={Boolean(threadLink)}
-          postFeedHandler={postFeed}
-          threadLink={threadLink}
-          threadType={threadType}
-          updateThreadHandler={updateFeed}
-          onCancel={onThreadPanelClose}
-        />
-      ) : null}
     </PageLayoutV1>
   );
 };

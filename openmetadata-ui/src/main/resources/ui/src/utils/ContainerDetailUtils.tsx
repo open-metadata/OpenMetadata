@@ -131,7 +131,6 @@ export const getContainerDetailPageTabs = ({
   containerChildrenData,
   fetchContainerChildren,
   isChildrenLoading,
-  onThreadLinkSelect,
   handleUpdateDescription,
   handleUpdateDataModel,
   handleTagSelection,
@@ -172,7 +171,6 @@ export const getContainerDetailPageTabs = ({
                       owner={owners}
                       showActions={!deleted}
                       onDescriptionUpdate={handleUpdateDescription}
-                      onThreadLinkSelect={onThreadLinkSelect}
                     />
 
                     {isDataModelEmpty ? (
@@ -188,7 +186,6 @@ export const getContainerDetailPageTabs = ({
                         hasGlossaryTermEditAccess={editGlossaryTermsPermission}
                         hasTagEditAccess={editTagsPermission}
                         isReadOnly={Boolean(deleted)}
-                        onThreadLinkSelect={onThreadLinkSelect}
                         onUpdate={handleUpdateDataModel}
                       />
                     )}
@@ -216,7 +213,6 @@ export const getContainerDetailPageTabs = ({
                       viewAllPermission={viewAllPermission}
                       onExtensionUpdate={handleExtensionUpdate}
                       onTagSelectionChange={handleTagSelection}
-                      onThreadLinkSelect={onThreadLinkSelect}
                     />
                   </div>
                 ),

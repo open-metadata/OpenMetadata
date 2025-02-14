@@ -34,7 +34,6 @@ import {
   Field,
   TagSource,
 } from '../../../generated/entity/data/apiEndpoint';
-import { ThreadType } from '../../../generated/entity/feed/thread';
 import { APISchema } from '../../../generated/type/apiSchema';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
@@ -62,7 +61,6 @@ import { APIEndpointDetailsProps } from '../APIEndpointDetails/APIEndpointDetail
 interface APIEndpointSchemaProps {
   apiEndpointDetails: APIEndpoint;
   permissions: OperationPermission;
-  onThreadLinkSelect: (link: string, threadType?: ThreadType) => void;
   onApiEndpointUpdate?: APIEndpointDetailsProps['onApiEndpointUpdate'];
   isVersionView?: boolean;
 }
@@ -75,7 +73,6 @@ export enum SchemaViewType {
 const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
   apiEndpointDetails,
   permissions,
-  onThreadLinkSelect,
   onApiEndpointUpdate,
   isVersionView = false,
 }) => {
@@ -313,7 +310,6 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
             index={index}
             isReadOnly={Boolean(apiEndpointDetails.deleted) || isVersionView}
             onClick={() => setEditFieldDescription(record)}
-            onThreadLinkSelect={onThreadLinkSelect}
           />
         ),
       },
@@ -335,7 +331,6 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
             record={record}
             tags={tags}
             type={TagSource.Classification}
-            onThreadLinkSelect={onThreadLinkSelect}
           />
         ),
         filters: tagFilter.Classification,
@@ -362,7 +357,6 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
             record={record}
             tags={tags}
             type={TagSource.Glossary}
-            onThreadLinkSelect={onThreadLinkSelect}
           />
         ),
         filters: tagFilter.Glossary,

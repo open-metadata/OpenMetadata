@@ -47,7 +47,6 @@ export interface DashboardDetailsTabsProps {
   dashboardTags: Tag[];
   handleFeedCount: (data: FeedCounts) => void;
   onDescriptionUpdate: (value: string) => Promise<void>;
-  onThreadLinkSelect: (value: string) => void;
   handleTagSelection: (selectedTags: EntityTags[]) => Promise<void>;
   onExtensionUpdate: (data: Dashboard) => Promise<void>;
   feedCount: FeedCounts;

@@ -51,7 +51,6 @@ describe('EntityRightPanel component test', () => {
   const mockDataProducts: EntityReference[] = [];
   const mockSelectedTags: EntityTags[] = [];
   const mockOnTagSelectionChange = jest.fn();
-  const mockOnThreadLinkSelect = jest.fn();
   const mockCustomProperties = {
     extension: {
       test1: 'test',
@@ -72,7 +71,6 @@ describe('EntityRightPanel component test', () => {
         selectedTags={mockSelectedTags}
         onExtensionUpdate={mockExtensionUpdate}
         onTagSelectionChange={mockOnTagSelectionChange}
-        onThreadLinkSelect={mockOnThreadLinkSelect}
       />
     );
 
@@ -94,7 +92,6 @@ describe('EntityRightPanel component test', () => {
         showDataProductContainer={false}
         onExtensionUpdate={mockExtensionUpdate}
         onTagSelectionChange={mockOnTagSelectionChange}
-        onThreadLinkSelect={mockOnThreadLinkSelect}
       />
     );
 
@@ -117,7 +114,6 @@ describe('EntityRightPanel component test', () => {
         showDataProductContainer={false}
         onExtensionUpdate={mockExtensionUpdate}
         onTagSelectionChange={mockOnTagSelectionChange}
-        onThreadLinkSelect={mockOnThreadLinkSelect}
       />
     );
 
@@ -139,7 +135,6 @@ describe('EntityRightPanel component test', () => {
         showDataProductContainer={false}
         onExtensionUpdate={mockExtensionUpdate}
         onTagSelectionChange={mockOnTagSelectionChange}
-        onThreadLinkSelect={mockOnThreadLinkSelect}
       />
     );
 
@@ -167,7 +162,6 @@ describe('EntityRightPanel component test', () => {
         showDataProductContainer={false}
         onExtensionUpdate={mockExtensionUpdate}
         onTagSelectionChange={mockOnTagSelectionChange}
-        onThreadLinkSelect={mockOnThreadLinkSelect}
       />
     );
 
@@ -193,7 +187,6 @@ describe('EntityRightPanel component test', () => {
         showDataProductContainer={false}
         onExtensionUpdate={mockExtensionUpdate}
         onTagSelectionChange={mockOnTagSelectionChange}
-        onThreadLinkSelect={mockOnThreadLinkSelect}
       />
     );
 
@@ -217,7 +210,6 @@ describe('EntityRightPanel component test', () => {
         showDataProductContainer={false}
         onExtensionUpdate={mockExtensionUpdate}
         onTagSelectionChange={mockOnTagSelectionChange}
-        onThreadLinkSelect={mockOnThreadLinkSelect}
       />
     );
 
@@ -242,7 +234,6 @@ describe('EntityRightPanel component test', () => {
         showDataProductContainer={false}
         onExtensionUpdate={mockExtensionUpdate}
         onTagSelectionChange={mockOnTagSelectionChange}
-        onThreadLinkSelect={mockOnThreadLinkSelect}
       />
     );
 

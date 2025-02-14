@@ -25,11 +25,8 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import ActivityFeedProvider, {
-  useActivityFeedProvider,
-} from '../../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
+import ActivityFeedProvider from '../../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import { ActivityFeedTab } from '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
-import ActivityThreadPanel from '../../components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
 import { CustomPropertyTable } from '../../components/common/CustomPropertyTable/CustomPropertyTable';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -63,11 +60,9 @@ import {
   EntityType,
   TabSpecificField,
 } from '../../enums/entity.enum';
-import { CreateThread } from '../../generated/api/feed/createThread';
 import { Tag } from '../../generated/entity/classification/tag';
 import { APICollection } from '../../generated/entity/data/apiCollection';
 import { APIEndpoint } from '../../generated/entity/data/apiEndpoint';
-import { ThreadType } from '../../generated/entity/feed/thread';
 import { Include } from '../../generated/type/include';
 import { TagLabel } from '../../generated/type/tagLabel';
 import { usePaging } from '../../hooks/paging/usePaging';
@@ -83,12 +78,7 @@ import {
   getApiEndPoints,
   GetApiEndPointsType,
 } from '../../rest/apiEndpointsAPI';
-import { postThread } from '../../rest/feedsAPI';
-import {
-  getEntityMissingError,
-  getFeedCounts,
-  sortTagsCaseInsensitive,
-} from '../../utils/CommonUtils';
+import { getEntityMissingError, getFeedCounts } from '../../utils/CommonUtils';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
@@ -98,7 +88,6 @@ import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import APIEndpointsTab from './APIEndpointsTab';
 
 const APICollectionPage: FunctionComponent = () => {
-  const { postFeed, deleteFeed, updateFeed } = useActivityFeedProvider();
   const { t } = useTranslation();
   const { getEntityPermissionByFqn } = usePermissionProvider();
   const pagingInfo = usePaging(PAGE_SIZE);
@@ -116,9 +105,6 @@ const APICollectionPage: FunctionComponent = () => {
   const { fqn: decodedAPICollectionFQN } = useFqn();
   const history = useHistory();
 
-  const [threadType, setThreadType] = useState<ThreadType>(
-    ThreadType.Conversation
-  );
   const [isPermissionsLoading, setIsPermissionsLoading] = useState(true);
   const [apiCollection, setAPICollection] = useState<APICollection>(
     {} as APICollection
@@ -131,7 +117,7 @@ const APICollectionPage: FunctionComponent = () => {
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA
   );
-  const [threadLink, setThreadLink] = useState<string>('');
+
   const [apiCollectionPermission, setAPICollectionPermission] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
   const [showDeletedEndpoints, setShowDeletedEndpoints] =
@@ -181,20 +167,6 @@ const APICollectionPage: FunctionComponent = () => {
     () => apiCollectionPermission.ViewAll || apiCollectionPermission.ViewBasic,
     [apiCollectionPermission?.ViewAll, apiCollectionPermission?.ViewBasic]
   );
-
-  const onThreadLinkSelect = useCallback(
-    (link: string, threadType?: ThreadType) => {
-      setThreadLink(link);
-      if (threadType) {
-        setThreadType(threadType);
-      }
-    },
-    []
-  );
-
-  const onThreadPanelClose = useCallback(() => {
-    setThreadLink('');
-  }, []);
 
   const handleFeedCount = useCallback((data: FeedCounts) => {
     setFeedCount(data);
@@ -340,10 +312,7 @@ const APICollectionPage: FunctionComponent = () => {
         const res = await saveUpdatedAPICollectionData(
           updatedData as APICollection
         );
-        setAPICollection({
-          ...res,
-          tags: sortTagsCaseInsensitive(res.tags ?? []),
-        });
+        setAPICollection(res);
       } catch (error) {
         showErrorToast(error as AxiosError, t('server.api-error'));
       }
@@ -386,22 +355,6 @@ const APICollectionPage: FunctionComponent = () => {
       }
     },
     [apiCollection, saveUpdatedAPICollectionData]
-  );
-
-  const createThread = useCallback(
-    async (data: CreateThread) => {
-      try {
-        await postThread(data);
-      } catch (error) {
-        showErrorToast(
-          error as AxiosError,
-          t('server.create-entity-error', {
-            entity: t('label.conversation'),
-          })
-        );
-      }
-    },
-    [getEntityFeedCount]
   );
 
   const handleToggleDelete = (version?: number) => {
@@ -584,7 +537,6 @@ const APICollectionPage: FunctionComponent = () => {
                       showDeletedEndpoints={showDeletedEndpoints}
                       onDescriptionUpdate={onDescriptionUpdate}
                       onShowDeletedEndpointsChange={handleShowDeletedEndPoints}
-                      onThreadLinkSelect={onThreadLinkSelect}
                     />
                   </div>
                 ),
@@ -608,7 +560,6 @@ const APICollectionPage: FunctionComponent = () => {
                       viewAllPermission={viewAllPermission}
                       onExtensionUpdate={handleExtensionUpdate}
                       onTagSelectionChange={handleTagSelection}
-                      onThreadLinkSelect={onThreadLinkSelect}
                     />
                   </div>
                 ),
@@ -740,20 +691,6 @@ const APICollectionPage: FunctionComponent = () => {
               items={tabs}
               onChange={activeTabHandler}
             />
-          </Col>
-          <Col span={24}>
-            {threadLink ? (
-              <ActivityThreadPanel
-                createThread={createThread}
-                deletePostHandler={deleteFeed}
-                open={Boolean(threadLink)}
-                postFeedHandler={postFeed}
-                threadLink={threadLink}
-                threadType={threadType}
-                updateThreadHandler={updateFeed}
-                onCancel={onThreadPanelClose}
-              />
-            ) : null}
           </Col>
         </Row>
       )}

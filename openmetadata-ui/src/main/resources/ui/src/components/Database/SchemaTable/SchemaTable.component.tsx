@@ -309,7 +309,6 @@ const SchemaTable = () => {
           index={index}
           isReadOnly={deleted}
           onClick={() => handleUpdate(record)}
-          onThreadLinkSelect={onThreadLinkSelect}
         />
         {getFrequentlyJoinedColumns(
           record?.name,
@@ -484,7 +483,6 @@ const SchemaTable = () => {
             record={record}
             tags={tags}
             type={TagSource.Classification}
-            onThreadLinkSelect={onThreadLinkSelect}
           />
         ),
         filters: tagFilter.Classification,
@@ -509,7 +507,6 @@ const SchemaTable = () => {
             record={record}
             tags={tags}
             type={TagSource.Glossary}
-            onThreadLinkSelect={onThreadLinkSelect}
           />
         ),
         filters: tagFilter.Glossary,

@@ -25,7 +25,6 @@ import { ResourceEntity } from '../../../context/PermissionProvider/PermissionPr
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { Tag } from '../../../generated/entity/classification/tag';
 import { Dashboard } from '../../../generated/entity/data/dashboard';
-import { ThreadType } from '../../../generated/entity/feed/thread';
 import { Page } from '../../../generated/system/ui/page';
 import { PageType } from '../../../generated/system/ui/uiCustomization';
 import { TagLabel } from '../../../generated/type/tagLabel';
@@ -46,8 +45,6 @@ import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { getTagsWithoutTier, getTierTags } from '../../../utils/TableUtils';
 import { createTagObject, updateTierTag } from '../../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
-import { useActivityFeedProvider } from '../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
-import ActivityThreadPanel from '../../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import { withActivityFeed } from '../../AppRouter/withActivityFeed';
 import { DataAssetsHeader } from '../../DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import { GenericProvider } from '../../GenericProvider/GenericProvider';
@@ -63,7 +60,6 @@ const DashboardDetails = ({
   followDashboardHandler,
   unFollowDashboardHandler,
   versionHandler,
-  createThread,
   onUpdateVote,
   onDashboardUpdate,
   handleToggleDelete,
@@ -76,17 +72,12 @@ const DashboardDetails = ({
   const [customizedPage, setCustomizedPage] = useState<Page | null>(null);
   const { fqn: decodedDashboardFQN } = useFqn();
 
-  const { postFeed, deleteFeed, updateFeed } = useActivityFeedProvider();
   const [isEdit, setIsEdit] = useState(false);
 
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA
   );
-  const [threadLink, setThreadLink] = useState<string>('');
 
-  const [threadType, setThreadType] = useState<ThreadType>(
-    ThreadType.Conversation
-  );
   const [dashboardPermissions, setDashboardPermissions] = useState(
     DEFAULT_ENTITY_PERMISSION
   );
@@ -250,17 +241,6 @@ const DashboardDetails = ({
       : await followDashboardHandler();
   };
 
-  const onThreadLinkSelect = (link: string, threadType?: ThreadType) => {
-    setThreadLink(link);
-    if (threadType) {
-      setThreadType(threadType);
-    }
-  };
-
-  const onThreadPanelClose = () => {
-    setThreadLink('');
-  };
-
   const handleTagSelection = async (selectedTags: EntityTags[]) => {
     const updatedTags: TagLabel[] | undefined = createTagObject(selectedTags);
 
@@ -327,7 +307,6 @@ const DashboardDetails = ({
       deleted: deleted ?? false,
       dashboardTags,
       handleFeedCount,
-      onThreadLinkSelect,
       handleTagSelection,
       onDescriptionUpdate,
       onExtensionUpdate,
@@ -356,7 +335,6 @@ const DashboardDetails = ({
     handleFeedCount,
     onDescriptionEdit,
     onDescriptionUpdate,
-    onThreadLinkSelect,
     handleTagSelection,
     editTagsPermission,
     editGlossaryTermsPermission,
@@ -433,18 +411,6 @@ const DashboardDetails = ({
       <LimitWrapper resource="dashboard">
         <></>
       </LimitWrapper>
-      {threadLink ? (
-        <ActivityThreadPanel
-          createThread={createThread}
-          deletePostHandler={deleteFeed}
-          open={Boolean(threadLink)}
-          postFeedHandler={postFeed}
-          threadLink={threadLink}
-          threadType={threadType}
-          updateThreadHandler={updateFeed}
-          onCancel={onThreadPanelClose}
-        />
-      ) : null}
     </PageLayoutV1>
   );
 };

@@ -47,7 +47,6 @@ interface SchemaTablesTabProps {
   currentTablesPage: number;
   tablePaginationHandler: NextPreviousProps['pagingHandler'];
   onDescriptionUpdate?: (updatedHTML: string) => Promise<void>;
-  onThreadLinkSelect?: (link: string) => void;
   onShowDeletedTablesChange?: (value: boolean) => void;
   isVersionView?: boolean;
   pagingInfo: UsePagingInterface;
@@ -62,7 +61,6 @@ function SchemaTablesTab({
   currentTablesPage,
   tablePaginationHandler,
   onDescriptionUpdate,
-  onThreadLinkSelect,
   showDeletedTables = false,
   onShowDeletedTablesChange,
   isVersionView = false,
@@ -166,7 +164,6 @@ function SchemaTablesTab({
             isDescriptionExpanded={isEmpty(tableData)}
             showActions={!databaseSchemaDetails.deleted}
             onDescriptionUpdate={onDescriptionUpdate}
-            onThreadLinkSelect={onThreadLinkSelect}
           />
         )}
       </Col>

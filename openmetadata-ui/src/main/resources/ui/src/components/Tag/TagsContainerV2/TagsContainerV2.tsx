@@ -39,6 +39,7 @@ import {
 } from '../../../utils/TasksUtils';
 import { SelectOption } from '../../common/AsyncSelectList/AsyncSelectList.interface';
 import { TableTagsProps } from '../../Database/TableTags/TableTags.interface';
+import { useGenericContext } from '../../GenericProvider/GenericProvider';
 import TagSelectForm from '../TagsSelectForm/TagsSelectForm.component';
 import TagsV1 from '../TagsV1/TagsV1.component';
 import TagsViewer from '../TagsViewer/TagsViewer';
@@ -59,7 +60,6 @@ const TagsContainerV2 = ({
   showBottomEditButton,
   showInlineEditButton,
   onSelectionChange,
-  onThreadLinkSelect,
   children,
   defaultLabelType,
   defaultState,
@@ -67,6 +67,7 @@ const TagsContainerV2 = ({
   const history = useHistory();
   const [form] = Form.useForm();
   const { t } = useTranslation();
+  const { onThreadLinkSelect } = useGenericContext();
 
   const [isEditTags, setIsEditTags] = useState(false);
   const [tags, setTags] = useState<TableTagsProps>();
@@ -297,7 +298,7 @@ const TagsContainerV2 = ({
               {showTaskHandler && (
                 <>
                   {tagType === TagSource.Classification && requestTagElement}
-                  {onThreadLinkSelect && conversationThreadElement}
+                  {conversationThreadElement}
                 </>
               )}
             </Row>

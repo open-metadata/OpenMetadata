@@ -53,7 +53,6 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
   isReadOnly,
   onUpdate,
   entityFqn,
-  onThreadLinkSelect,
 }) => {
   const { t } = useTranslation();
 
@@ -161,7 +160,6 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
             index={index}
             isReadOnly={isReadOnly}
             onClick={() => setEditContainerColumnDescription(record)}
-            onThreadLinkSelect={onThreadLinkSelect}
           />
         ),
       },
@@ -186,7 +184,6 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
             record={record}
             tags={tags}
             type={TagSource.Classification}
-            onThreadLinkSelect={onThreadLinkSelect}
           />
         ),
       },
@@ -211,7 +208,6 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
             record={record}
             tags={tags}
             type={TagSource.Glossary}
-            onThreadLinkSelect={onThreadLinkSelect}
           />
         ),
       },
@@ -224,7 +220,6 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
       hasDescriptionEditAccess,
       editContainerColumnDescription,
       getEntityName,
-      onThreadLinkSelect,
       handleFieldTagsChange,
     ]
   );

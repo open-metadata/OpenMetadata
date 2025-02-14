@@ -28,11 +28,9 @@ import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvi
 import { ClientErrors } from '../../enums/Axios.enum';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
-import { CreateThread } from '../../generated/api/feed/createThread';
 import { Mlmodel } from '../../generated/entity/data/mlmodel';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useFqn } from '../../hooks/useFqn';
-import { postThread } from '../../rest/feedsAPI';
 import {
   addFollower,
   getMlModelByFQN,
@@ -43,7 +41,6 @@ import {
 import {
   addToRecentViewed,
   getEntityMissingError,
-  sortTagsCaseInsensitive,
 } from '../../utils/CommonUtils';
 import { getEntityName } from '../../utils/EntityUtils';
 import { defaultFields } from '../../utils/MlModelDetailsUtils';
@@ -191,8 +188,8 @@ const MlModelPage = () => {
       const { tags, version } = await saveUpdatedMlModelData(updatedMlModel);
       setMlModelDetail((preVDetail) => ({
         ...preVDetail,
-        tags: sortTagsCaseInsensitive(tags ?? []),
-        version: version,
+        tags,
+        version,
       }));
     } catch (error) {
       showErrorToast(
@@ -262,19 +259,6 @@ const MlModelPage = () => {
     [saveUpdatedMlModelData, setMlModelDetail, mlModelDetail]
   );
 
-  const createThread = async (data: CreateThread) => {
-    try {
-      await postThread(data);
-    } catch (error) {
-      showErrorToast(
-        error as AxiosError,
-        t('server.create-entity-error', {
-          entity: t('label.conversation'),
-        })
-      );
-    }
-  };
-
   const versionHandler = () => {
     history.push(
       getVersionPath(
@@ -342,7 +326,6 @@ const MlModelPage = () => {
 
   return (
     <MlModelDetailComponent
-      createThread={createThread}
       descriptionUpdateHandler={descriptionUpdateHandler}
       fetchMlModel={() => fetchMlModelDetails(mlModelFqn)}
       followMlModelHandler={followMlModel}

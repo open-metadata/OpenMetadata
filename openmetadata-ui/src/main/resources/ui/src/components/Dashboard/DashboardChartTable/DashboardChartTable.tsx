@@ -26,13 +26,9 @@ import { ResourceEntity } from '../../../context/PermissionProvider/PermissionPr
 import { EntityType } from '../../../enums/entity.enum';
 import { TagLabel, TagSource } from '../../../generated/entity/data/chart';
 import { Dashboard } from '../../../generated/entity/data/dashboard';
-import { ThreadType } from '../../../generated/entity/feed/thread';
 import { ChartType } from '../../../pages/DashboardDetailsPage/DashboardDetailsPage.component';
 import { updateChart } from '../../../rest/chartAPI';
-import {
-  fetchCharts,
-  sortTagsForCharts,
-} from '../../../utils/DashboardDetailsUtils';
+import { fetchCharts } from '../../../utils/DashboardDetailsUtils';
 import { getColumnSorter, getEntityName } from '../../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { columnFilterIcon } from '../../../utils/TableColumn.util';
@@ -51,15 +47,10 @@ import { useGenericContext } from '../../GenericProvider/GenericProvider';
 import { ModalWithMarkdownEditor } from '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import { ChartsPermissions } from '../DashboardDetails/DashboardDetails.interface';
 
-interface DashboardChartTableProps {
-  onThreadLinkSelect: (link: string, threadType?: ThreadType) => void;
-}
-
-export const DashboardChartTable = ({
-  onThreadLinkSelect,
-}: DashboardChartTableProps) => {
+export const DashboardChartTable = () => {
   const { t } = useTranslation();
   const { getEntityPermission } = usePermissionProvider();
+  const { onThreadLinkSelect } = useGenericContext<Dashboard>();
 
   const { data: dashboardDetails } = useGenericContext<Dashboard>();
   const { charts: listChartIds } = dashboardDetails ?? {};
@@ -222,14 +213,9 @@ export const DashboardChartTable = ({
       const res = await updateChart(chartId, patch);
 
       setCharts((prevCharts) => {
-        const charts = [...prevCharts].map((chart) =>
+        return [...prevCharts].map((chart) =>
           chart.id === chartId ? res : chart
         );
-
-        // Sorting tags as the response of PATCH request does not return the sorted order
-        // of tags, but is stored in sorted manner in the database
-        // which leads to wrong PATCH payload sent after further tags removal
-        return sortTagsForCharts(charts);
       });
     } catch (error) {
       showErrorToast(
@@ -332,7 +318,6 @@ export const DashboardChartTable = ({
               index={index}
               isReadOnly={dashboardDetails?.deleted}
               onClick={() => handleUpdateChart(record, index)}
-              onThreadLinkSelect={onThreadLinkSelect}
             />
           );
         },
@@ -356,7 +341,6 @@ export const DashboardChartTable = ({
               record={record}
               tags={tags}
               type={TagSource.Classification}
-              onThreadLinkSelect={onThreadLinkSelect}
             />
           );
         },
@@ -382,7 +366,6 @@ export const DashboardChartTable = ({
             record={record}
             tags={tags}
             type={TagSource.Glossary}
-            onThreadLinkSelect={onThreadLinkSelect}
           />
         ),
         filters: tagFilter.Glossary,

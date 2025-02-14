@@ -33,7 +33,6 @@ function SearchIndexFieldsTab({
   hasDescriptionEditAccess,
   hasTagEditAccess,
   hasGlossaryTermEditAccess,
-  onThreadLinkSelect,
   isReadOnly = false,
   entityFqn,
 }: SearchIndexFieldsTabProps) {
@@ -130,7 +129,6 @@ function SearchIndexFieldsTab({
         searchIndexFields={fields}
         searchText={searchText}
         searchedFields={searchedFields}
-        onThreadLinkSelect={onThreadLinkSelect}
         onUpdate={onUpdate}
       />
     </>

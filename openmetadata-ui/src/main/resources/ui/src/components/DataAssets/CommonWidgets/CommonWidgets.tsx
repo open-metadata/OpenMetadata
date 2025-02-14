@@ -48,7 +48,7 @@ interface CommonWidgetsProps {
 }
 
 export const CommonWidgets = ({ widgetConfig }: CommonWidgetsProps) => {
-  const { data, type, onUpdate, permissions, onThreadLinkSelect } =
+  const { data, type, onUpdate, permissions } =
     useGenericContext<GenericEntity>();
 
   const {
@@ -133,7 +133,6 @@ export const CommonWidgets = ({ widgetConfig }: CommonWidgetsProps) => {
         selectedTags={tags}
         tagType={TagSource.Classification}
         onSelectionChange={handleTagSelection}
-        onThreadLinkSelect={onThreadLinkSelect}
       />
     );
   }, [type]);
@@ -148,7 +147,6 @@ export const CommonWidgets = ({ widgetConfig }: CommonWidgetsProps) => {
         selectedTags={tags}
         tagType={TagSource.Glossary}
         onSelectionChange={handleTagSelection}
-        onThreadLinkSelect={onThreadLinkSelect}
       />
     );
   }, []);
@@ -170,7 +168,6 @@ export const CommonWidgets = ({ widgetConfig }: CommonWidgetsProps) => {
             await onUpdate({ ...data, description: value });
           }
         }}
-        onThreadLinkSelect={onThreadLinkSelect}
       />
     );
   }, []);

@@ -31,7 +31,6 @@ import { APIEndpoint } from '../../generated/entity/data/apiEndpoint';
 import { UsePagingInterface } from '../../hooks/paging/usePaging';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../utils/EntityUtils';
-
 interface APIEndpointsTabProps {
   apiCollectionDetails: APICollection;
   apiEndpointsLoading: boolean;
@@ -42,7 +41,6 @@ interface APIEndpointsTabProps {
   currentEndpointsPage: number;
   endpointPaginationHandler: NextPreviousProps['pagingHandler'];
   onDescriptionUpdate?: (updatedHTML: string) => Promise<void>;
-  onThreadLinkSelect?: (link: string) => void;
   onShowDeletedEndpointsChange?: (value: boolean) => void;
   isVersionView?: boolean;
   pagingInfo: UsePagingInterface;
@@ -57,7 +55,6 @@ function APIEndpointsTab({
   currentEndpointsPage,
   endpointPaginationHandler,
   onDescriptionUpdate,
-  onThreadLinkSelect,
   showDeletedEndpoints = false,
   onShowDeletedEndpointsChange,
   isVersionView = false,
@@ -131,7 +128,6 @@ function APIEndpointsTab({
             isDescriptionExpanded={isEmpty(apiEndpoints)}
             showActions={!apiCollectionDetails.deleted}
             onDescriptionUpdate={onDescriptionUpdate}
-            onThreadLinkSelect={onThreadLinkSelect}
           />
         )}
       </Col>

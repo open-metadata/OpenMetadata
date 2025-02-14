@@ -48,13 +48,11 @@ import RelatedTerms from './RelatedTerms';
 const ReactGridLayout = WidthProvider(RGL);
 
 type Props = {
-  onThreadLinkSelect: (value: string) => void;
   editCustomAttributePermission: boolean;
   onExtensionUpdate: (updatedTable: GlossaryTerm) => Promise<void>;
 };
 
 const GlossaryOverviewTab = ({
-  onThreadLinkSelect,
   editCustomAttributePermission,
   onExtensionUpdate,
 }: Props) => {
@@ -152,16 +150,9 @@ const GlossaryOverviewTab = ({
         owner={selectedData?.owners}
         showActions={!selectedData.deleted}
         onDescriptionUpdate={onDescriptionUpdate}
-        onThreadLinkSelect={onThreadLinkSelect}
       />
     );
-  }, [
-    glossaryDescription,
-    selectedData,
-    onDescriptionUpdate,
-    onThreadLinkSelect,
-    permissions,
-  ]);
+  }, [glossaryDescription, selectedData, onDescriptionUpdate, permissions]);
 
   const tagsWidget = useMemo(() => {
     return (
@@ -173,15 +164,9 @@ const GlossaryOverviewTab = ({
         selectedTags={tags ?? []}
         tagType={TagSource.Classification}
         onSelectionChange={handleTagsUpdate}
-        onThreadLinkSelect={onThreadLinkSelect}
       />
     );
-  }, [
-    tags,
-    selectedData.fullyQualifiedName,
-    hasEditTagsPermissions,
-    onThreadLinkSelect,
-  ]);
+  }, [tags, selectedData.fullyQualifiedName, hasEditTagsPermissions]);
 
   const domainWidget = useMemo(() => {
     return (

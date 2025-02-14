@@ -82,7 +82,6 @@ const GlossaryTermsV1 = ({
   updateVote,
   refreshActiveGlossaryTerm,
   isVersionView,
-  onThreadLinkSelect,
 }: GlossaryTermsV1Props) => {
   const { tab, version } = useParams<{ tab: string; version: string }>();
   const { fqn: glossaryFqn } = useFqn();
@@ -196,7 +195,6 @@ const GlossaryTermsV1 = ({
               (permissions.EditAll || permissions.EditCustomFields)
             }
             onExtensionUpdate={onExtensionUpdate}
-            onThreadLinkSelect={onThreadLinkSelect}
           />
         ),
       },
@@ -390,15 +388,22 @@ const GlossaryTermsV1 = ({
           />
         </Col>
 
-        <Col span={24}>
-          <Tabs
-            destroyInactiveTabPane
-            activeKey={activeTab}
-            className="glossary-tabs custom-tab-spacing"
-            items={tabItems}
-            onChange={activeTabHandler}
-          />
-        </Col>
+        <GenericProvider<GlossaryTerm>
+          data={updatedGlossaryTerm}
+          isVersionView={isVersionView}
+          permissions={permissions}
+          type={EntityType.GLOSSARY_TERM}
+          onUpdate={onTermUpdate}>
+          <Col span={24}>
+            <Tabs
+              destroyInactiveTabPane
+              activeKey={activeTab}
+              className="glossary-tabs custom-tab-spacing"
+              items={tabItems}
+              onChange={activeTabHandler}
+            />
+          </Col>
+        </GenericProvider>
       </Row>
       {glossaryTerm.fullyQualifiedName && assetModalVisible && (
         <AssetSelectionModal

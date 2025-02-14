@@ -17,8 +17,6 @@ import { EntityTags } from 'Models';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import { useActivityFeedProvider } from '../../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
-import ActivityThreadPanel from '../../components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';
@@ -41,10 +39,6 @@ import {
 import { ClientErrors } from '../../enums/Axios.enum';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
-import {
-  CreateThread,
-  ThreadType,
-} from '../../generated/api/feed/createThread';
 import { Tag } from '../../generated/entity/classification/tag';
 import {
   StoredProcedure,
@@ -56,7 +50,6 @@ import LimitWrapper from '../../hoc/LimitWrapper';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useFqn } from '../../hooks/useFqn';
 import { FeedCounts } from '../../interface/feed.interface';
-import { postThread } from '../../rest/feedsAPI';
 import {
   addStoredProceduresFollower,
   getStoredProceduresByFqn,
@@ -65,11 +58,7 @@ import {
   restoreStoredProcedures,
   updateStoredProcedureVotes,
 } from '../../rest/storedProceduresAPI';
-import {
-  addToRecentViewed,
-  getFeedCounts,
-  sortTagsCaseInsensitive,
-} from '../../utils/CommonUtils';
+import { addToRecentViewed, getFeedCounts } from '../../utils/CommonUtils';
 import { getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import {
@@ -88,10 +77,7 @@ const StoredProcedurePage = () => {
   const { tab: activeTab = EntityTabs.CODE } = useParams<{ tab: string }>();
 
   const { fqn: decodedStoredProcedureFQN } = useFqn();
-
   const { getEntityPermissionByFqn } = usePermissionProvider();
-  const { postFeed, deleteFeed, updateFeed } = useActivityFeedProvider();
-
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [storedProcedure, setStoredProcedure] = useState<StoredProcedure>();
   const [storedProcedurePermissions, setStoredProcedurePermissions] =
@@ -100,11 +86,6 @@ const StoredProcedurePage = () => {
 
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA
-  );
-  const [threadLink, setThreadLink] = useState<string>('');
-
-  const [threadType, setThreadType] = useState<ThreadType>(
-    ThreadType.Conversation
   );
 
   const {
@@ -233,18 +214,11 @@ const StoredProcedurePage = () => {
         if (!previous) {
           return;
         }
-        if (key === 'tags') {
-          return {
-            ...previous,
-            version: res.version,
-            [key]: sortTagsCaseInsensitive(res.tags ?? []),
-          };
-        }
 
         return {
           ...previous,
-          version: res.version,
           ...res,
+          ...(key && { [key]: res[key] }),
         };
       });
     } catch (error) {
@@ -432,13 +406,6 @@ const StoredProcedurePage = () => {
     }
   };
 
-  const onThreadLinkSelect = (link: string, threadType?: ThreadType) => {
-    setThreadLink(link);
-    if (threadType) {
-      setThreadType(threadType);
-    }
-  };
-
   const handleTagSelection = async (selectedTags: EntityTags[]) => {
     const updatedTags: TagLabel[] | undefined = createTagObject(selectedTags);
 
@@ -447,23 +414,6 @@ const StoredProcedurePage = () => {
       const updatedData = { ...storedProcedure, tags: updatedTags };
       await handleStoreProcedureUpdate(updatedData, 'tags');
     }
-  };
-
-  const createThread = async (data: CreateThread) => {
-    try {
-      await postThread(data);
-    } catch (error) {
-      showErrorToast(
-        error as AxiosError,
-        t('server.create-entity-error', {
-          entity: t('label.conversation'),
-        })
-      );
-    }
-  };
-
-  const onThreadPanelClose = () => {
-    setThreadLink('');
   };
 
   const onExtensionUpdate = useCallback(
@@ -541,7 +491,6 @@ const StoredProcedurePage = () => {
       onCancel,
       onDescriptionEdit,
       onDescriptionUpdate,
-      onThreadLinkSelect,
       storedProcedure: storedProcedure as StoredProcedure,
       tags: tags ?? [],
       editTagsPermission,
@@ -642,7 +591,7 @@ const StoredProcedurePage = () => {
           />
         </Col>
 
-        <GenericProvider
+        <GenericProvider<StoredProcedure>
           data={storedProcedure}
           permissions={storedProcedurePermissions}
           type={EntityType.STORED_PROCEDURE}
@@ -664,19 +613,6 @@ const StoredProcedurePage = () => {
         <LimitWrapper resource="storedProcedure">
           <></>
         </LimitWrapper>
-
-        {threadLink ? (
-          <ActivityThreadPanel
-            createThread={createThread}
-            deletePostHandler={deleteFeed}
-            open={Boolean(threadLink)}
-            postFeedHandler={postFeed}
-            threadLink={threadLink}
-            threadType={threadType}
-            updateThreadHandler={updateFeed}
-            onCancel={onThreadPanelClose}
-          />
-        ) : null}
       </Row>
     </PageLayoutV1>
   );

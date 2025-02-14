@@ -33,18 +33,10 @@ import { EntityTabs, EntityType, TabSpecificField } from '../enums/entity.enum';
 import { Dashboard } from '../generated/entity/data/dashboard';
 import { ChartType } from '../pages/DashboardDetailsPage/DashboardDetailsPage.component';
 import { getChartById } from '../rest/chartAPI';
-import { sortTagsCaseInsensitive } from './CommonUtils';
 import { DashboardDetailsTabsProps } from './DashboardDetailsClassBase';
 
 // eslint-disable-next-line max-len
 export const defaultFields = `${TabSpecificField.DOMAIN},${TabSpecificField.OWNERS}, ${TabSpecificField.FOLLOWERS}, ${TabSpecificField.TAGS}, ${TabSpecificField.CHARTS},${TabSpecificField.VOTES},${TabSpecificField.DATA_PRODUCTS},${TabSpecificField.EXTENSION}`;
-
-export const sortTagsForCharts = (charts: ChartType[]) => {
-  return charts.map((chart) => ({
-    ...chart,
-    tags: sortTagsCaseInsensitive(chart.tags || []),
-  }));
-};
 
 export const fetchCharts = async (charts: Dashboard['charts']) => {
   let chartsData: ChartType[] = [];
@@ -141,7 +133,6 @@ export const getDashboardDetailPageTabs = ({
   dashboardTags,
   handleFeedCount,
   onDescriptionUpdate,
-  onThreadLinkSelect,
   handleTagSelection,
   onExtensionUpdate,
   feedCount,
@@ -173,12 +164,9 @@ export const getDashboardDetailPageTabs = ({
                       owner={dashboardDetails.owners}
                       showActions={!deleted}
                       onDescriptionUpdate={onDescriptionUpdate}
-                      onThreadLinkSelect={onThreadLinkSelect}
                     />
 
-                    <DashboardChartTable
-                      onThreadLinkSelect={onThreadLinkSelect}
-                    />
+                    <DashboardChartTable />
                   </div>
                 ),
                 ...COMMON_RESIZABLE_PANEL_CONFIG.LEFT_PANEL,
@@ -201,7 +189,6 @@ export const getDashboardDetailPageTabs = ({
                       viewAllPermission={viewAllPermission}
                       onExtensionUpdate={onExtensionUpdate}
                       onTagSelectionChange={handleTagSelection}
-                      onThreadLinkSelect={onThreadLinkSelect}
                     />
                   </div>
                 ),

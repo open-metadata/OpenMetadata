@@ -38,7 +38,6 @@ import {
 import { ClientErrors } from '../../enums/Axios.enum';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
-import { CreateThread } from '../../generated/api/feed/createThread';
 import { Tag } from '../../generated/entity/classification/tag';
 import { DashboardDataModel } from '../../generated/entity/data/dashboardDataModel';
 import { Include } from '../../generated/type/include';
@@ -51,13 +50,10 @@ import {
   removeDataModelFollower,
   updateDataModelVotes,
 } from '../../rest/dataModelsAPI';
-import { postThread } from '../../rest/feedsAPI';
 import {
   addToRecentViewed,
   getEntityMissingError,
-  sortTagsCaseInsensitive,
 } from '../../utils/CommonUtils';
-import { getSortedDataModelColumnTags } from '../../utils/DataModelsUtils';
 import { getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getTierTags } from '../../utils/TableUtils';
@@ -115,18 +111,6 @@ const DataModelsPage = () => {
     }
   };
 
-  const createThread = async (data: CreateThread) => {
-    try {
-      await postThread(data);
-    } catch (error) {
-      showErrorToast(
-        error as AxiosError,
-        t('server.create-entity-error', {
-          entity: t('label.conversation'),
-        })
-      );
-    }
-  };
   const fetchDataModelDetails = async (dashboardDataModelFQN: string) => {
     setIsLoading(true);
     try {
@@ -217,7 +201,7 @@ const DataModelsPage = () => {
 
       setDataModelData((prev) => ({
         ...(prev as DashboardDataModel),
-        tags: sortTagsCaseInsensitive(newTags ?? []),
+        tags: newTags,
         version,
       }));
     } catch (error) {
@@ -274,7 +258,7 @@ const DataModelsPage = () => {
 
       setDataModelData((prev) => ({
         ...(prev as DashboardDataModel),
-        columns: getSortedDataModelColumnTags(newColumns),
+        columns: newColumns,
         version,
       }));
     } catch (error) {
@@ -375,7 +359,6 @@ const DataModelsPage = () => {
 
   return (
     <DataModelDetails
-      createThread={createThread}
       dataModelData={dataModelData}
       dataModelPermissions={dataModelPermissions}
       fetchDataModel={() => fetchDataModelDetails(dashboardDataModelFQN)}

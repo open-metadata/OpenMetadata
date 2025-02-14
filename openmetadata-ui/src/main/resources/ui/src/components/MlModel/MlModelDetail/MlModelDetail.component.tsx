@@ -29,7 +29,6 @@ import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { MlHyperParameter } from '../../../generated/api/data/createMlModel';
 import { Tag } from '../../../generated/entity/classification/tag';
 import { Mlmodel, MlStore } from '../../../generated/entity/data/mlmodel';
-import { ThreadType } from '../../../generated/entity/feed/thread';
 import { TagLabel } from '../../../generated/type/schema';
 import LimitWrapper from '../../../hoc/LimitWrapper';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
@@ -42,9 +41,7 @@ import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { getTagsWithoutTier, getTierTags } from '../../../utils/TableUtils';
 import { createTagObject, updateTierTag } from '../../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
-import { useActivityFeedProvider } from '../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import { ActivityFeedTab } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
-import ActivityThreadPanel from '../../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import { withActivityFeed } from '../../AppRouter/withActivityFeed';
 import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
 import DescriptionV1 from '../../common/EntityDescription/DescriptionV1';
@@ -52,6 +49,7 @@ import ResizablePanels from '../../common/ResizablePanels/ResizablePanels';
 import TabsLabel from '../../common/TabsLabel/TabsLabel.component';
 import { DataAssetsHeader } from '../../DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import EntityRightPanel from '../../Entity/EntityRightPanel/EntityRightPanel';
+import { GenericProvider } from '../../GenericProvider/GenericProvider';
 import Lineage from '../../Lineage/Lineage.component';
 import { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../PageLayoutV1/PageLayoutV1';
@@ -69,7 +67,6 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
   settingsUpdateHandler,
   updateMlModelFeatures,
   onExtensionUpdate,
-  createThread,
   onUpdateVote,
   versionHandler,
   tagUpdateHandler,
@@ -78,7 +75,6 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
   const history = useHistory();
-  const { postFeed, deleteFeed, updateFeed } = useActivityFeedProvider();
   const { tab: activeTab } = useParams<{ tab: EntityTabs }>();
 
   const { fqn: decodedMlModelFqn } = useFqn();
@@ -90,11 +86,6 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
   const [mlModelPermissions, setMlModelPermissions] = useState(
     DEFAULT_ENTITY_PERMISSION
   );
-
-  const [threadType, setThreadType] = useState<ThreadType>(
-    ThreadType.Conversation
-  );
-  const [threadLink, setThreadLink] = useState<string>('');
 
   const { getEntityPermission } = usePermissionProvider();
 
@@ -228,17 +219,6 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
 
   const onFeaturesUpdate = async (features: Mlmodel['mlFeatures']) => {
     await updateMlModelFeatures({ ...mlModelDetail, mlFeatures: features });
-  };
-
-  const handleThreadLinkSelect = (link: string, threadType?: ThreadType) => {
-    setThreadLink(link);
-    if (threadType) {
-      setThreadType(threadType);
-    }
-  };
-
-  const handleThreadPanelClose = () => {
-    setThreadLink('');
   };
 
   const getMlHyperParametersColumn: ColumnsType<MlHyperParameter> = useMemo(
@@ -407,7 +387,6 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
                         owner={mlModelDetail.owners}
                         showActions={!deleted}
                         onDescriptionUpdate={onDescriptionUpdate}
-                        onThreadLinkSelect={handleThreadLinkSelect}
                       />
                       <MlModelFeaturesList
                         entityFqn={decodedMlModelFqn}
@@ -415,7 +394,6 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
                         isDeleted={mlModelDetail.deleted}
                         mlFeatures={mlModelDetail.mlFeatures}
                         permissions={mlModelPermissions}
-                        onThreadLinkSelect={handleThreadLinkSelect}
                       />
                     </div>
                   ),
@@ -441,7 +419,6 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
                         viewAllPermission={viewAllPermission}
                         onExtensionUpdate={onExtensionUpdate}
                         onTagSelectionChange={handleTagSelection}
-                        onThreadLinkSelect={handleThreadLinkSelect}
                       />
                     </div>
                   ),
@@ -533,7 +510,6 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
       handleFeedCount,
       onExtensionUpdate,
       onFeaturesUpdate,
-      handleThreadLinkSelect,
       onDescriptionUpdate,
       deleted,
       editTagsPermission,
@@ -571,33 +547,26 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
             onVersionClick={versionHandler}
           />
         </Col>
-        <Col span={24}>
-          <Tabs
-            activeKey={activeTab ?? EntityTabs.FEATURES}
-            className="entity-details-page-tabs"
-            data-testid="tabs"
-            items={tabs}
-            onChange={handleTabChange}
-          />
-        </Col>
+        <GenericProvider<Mlmodel>
+          data={mlModelDetail}
+          permissions={mlModelPermissions}
+          type={EntityType.MLMODEL}
+          onUpdate={settingsUpdateHandler}>
+          <Col span={24}>
+            <Tabs
+              activeKey={activeTab ?? EntityTabs.FEATURES}
+              className="entity-details-page-tabs"
+              data-testid="tabs"
+              items={tabs}
+              onChange={handleTabChange}
+            />
+          </Col>
+        </GenericProvider>
       </Row>
 
       <LimitWrapper resource="mlmodel">
         <></>
       </LimitWrapper>
-
-      {threadLink ? (
-        <ActivityThreadPanel
-          createThread={createThread}
-          deletePostHandler={deleteFeed}
-          open={Boolean(threadLink)}
-          postFeedHandler={postFeed}
-          threadLink={threadLink}
-          threadType={threadType}
-          updateThreadHandler={updateFeed}
-          onCancel={handleThreadPanelClose}
-        />
-      ) : null}
     </PageLayoutV1>
   );
 };

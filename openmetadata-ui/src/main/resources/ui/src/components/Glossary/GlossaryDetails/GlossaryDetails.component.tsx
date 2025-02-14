@@ -74,7 +74,6 @@ const GlossaryDetails = ({
   onAddGlossaryTerm,
   onEditGlossaryTerm,
   isVersionView,
-  onThreadLinkSelect,
 }: GlossaryDetailsProps) => {
   const { t } = useTranslation();
   const history = useHistory();
@@ -197,10 +196,9 @@ const GlossaryDetails = ({
         onSelectionChange={async (updatedTags: TagLabel[]) =>
           await handleGlossaryUpdate({ ...glossary, tags: updatedTags })
         }
-        onThreadLinkSelect={onThreadLinkSelect}
       />
     );
-  }, [tags, glossary, handleGlossaryUpdate, permissions, onThreadLinkSelect]);
+  }, [tags, glossary, handleGlossaryUpdate, permissions]);
 
   const widgets = useMemo(() => {
     const getWidgetFromKeyInternal = (widget: WidgetConfig) => {
@@ -215,7 +213,6 @@ const GlossaryDetails = ({
             owner={glossary?.owners}
             showActions={!glossary.deleted}
             onDescriptionUpdate={onDescriptionUpdate}
-            onThreadLinkSelect={onThreadLinkSelect}
           />
         );
       } else if (

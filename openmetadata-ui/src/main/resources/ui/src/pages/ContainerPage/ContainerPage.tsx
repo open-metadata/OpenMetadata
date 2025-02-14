@@ -18,8 +18,6 @@ import { EntityTags } from 'Models';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import { useActivityFeedProvider } from '../../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
-import ActivityThreadPanel from '../../components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';
@@ -47,10 +45,8 @@ import {
   EntityType,
   TabSpecificField,
 } from '../../enums/entity.enum';
-import { CreateThread } from '../../generated/api/feed/createThread';
 import { Tag } from '../../generated/entity/classification/tag';
 import { Container } from '../../generated/entity/data/container';
-import { ThreadType } from '../../generated/entity/feed/thread';
 import { Page } from '../../generated/system/ui/page';
 import { PageType } from '../../generated/system/ui/uiCustomization';
 import { Include } from '../../generated/type/include';
@@ -60,7 +56,6 @@ import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useFqn } from '../../hooks/useFqn';
 import { FeedCounts } from '../../interface/feed.interface';
 import { getDocumentByFQN } from '../../rest/DocStoreAPI';
-import { postThread } from '../../rest/feedsAPI';
 import {
   addContainerFollower,
   getContainerByName,
@@ -73,7 +68,6 @@ import {
   addToRecentViewed,
   getEntityMissingError,
   getFeedCounts,
-  sortTagsCaseInsensitive,
 } from '../../utils/CommonUtils';
 import containerDetailsClassBase from '../../utils/ContainerDetailsClassBase';
 import { getEntityName } from '../../utils/EntityUtils';
@@ -91,7 +85,6 @@ const ContainerPage = () => {
   const { t } = useTranslation();
   const { currentUser, selectedPersona } = useApplicationStore();
   const { getEntityPermissionByFqn } = usePermissionProvider();
-  const { postFeed, deleteFeed, updateFeed } = useActivityFeedProvider();
   const { tab } = useParams<{ tab: EntityTabs }>();
 
   const { fqn: decodedContainerName } = useFqn();
@@ -111,11 +104,6 @@ const ContainerPage = () => {
 
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA
-  );
-
-  const [threadLink, setThreadLink] = useState<string>('');
-  const [threadType, setThreadType] = useState<ThreadType>(
-    ThreadType.Conversation
   );
 
   const fetchContainerDetail = async (containerFQN: string) => {
@@ -143,10 +131,7 @@ const ContainerPage = () => {
         timestamp: 0,
         id: response.id,
       });
-      setContainerData({
-        ...response,
-        tags: sortTagsCaseInsensitive(response.tags ?? []),
-      });
+      setContainerData(response);
     } catch (error) {
       showErrorToast(error as AxiosError);
       setHasError(true);
@@ -473,10 +458,7 @@ const ContainerPage = () => {
           ...containerData,
           tags: updatedContainer.tags,
         });
-        setContainerData({
-          ...response,
-          tags: sortTagsCaseInsensitive(response.tags ?? []),
-        });
+        setContainerData(response);
       } catch (error) {
         showErrorToast(error as AxiosError);
       }
@@ -495,10 +477,7 @@ const ContainerPage = () => {
           ...containerData,
           extension: updatedContainer.extension,
         });
-        setContainerData({
-          ...response,
-          tags: sortTagsCaseInsensitive(response.tags ?? []),
-        });
+        setContainerData(response);
       } catch (error) {
         showErrorToast(error as AxiosError);
       }
@@ -534,30 +513,6 @@ const ContainerPage = () => {
         toString(version)
       )
     );
-
-  const onThreadLinkSelect = (link: string, threadType?: ThreadType) => {
-    setThreadLink(link);
-    if (threadType) {
-      setThreadType(threadType);
-    }
-  };
-
-  const onThreadPanelClose = () => {
-    setThreadLink('');
-  };
-
-  const createThread = async (data: CreateThread) => {
-    try {
-      await postThread(data);
-    } catch (error) {
-      showErrorToast(
-        error as AxiosError,
-        t('server.create-entity-error', {
-          entity: t('label.conversation'),
-        })
-      );
-    }
-  };
 
   const handleTagSelection = async (selectedTags: EntityTags[]) => {
     const updatedTags: TagLabel[] | undefined = createTagObject(selectedTags);
@@ -605,7 +560,6 @@ const ContainerPage = () => {
       tags: tags ?? [],
       fetchContainerDetail,
       labelMap: tabLabelMap,
-      onThreadLinkSelect,
       handleUpdateDescription,
       handleUpdateDataModel,
       handleTagSelection,
@@ -641,7 +595,6 @@ const ContainerPage = () => {
     handleUpdateDataModel,
     handleUpdateDescription,
     handleTagSelection,
-    onThreadLinkSelect,
     handleExtensionUpdate,
     customizedPage?.tabs,
   ]);
@@ -760,19 +713,6 @@ const ContainerPage = () => {
         <LimitWrapper resource="container">
           <></>
         </LimitWrapper>
-
-        {threadLink ? (
-          <ActivityThreadPanel
-            createThread={createThread}
-            deletePostHandler={deleteFeed}
-            open={Boolean(threadLink)}
-            postFeedHandler={postFeed}
-            threadLink={threadLink}
-            threadType={threadType}
-            updateThreadHandler={updateFeed}
-            onCancel={onThreadPanelClose}
-          />
-        ) : null}
       </Row>
     </PageLayoutV1>
   );

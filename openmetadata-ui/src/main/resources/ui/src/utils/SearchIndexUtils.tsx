@@ -15,28 +15,15 @@ import { uniqueId } from 'lodash';
 import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 import { EntityTabs, TabSpecificField } from '../enums/entity.enum';
 import { SearchIndexField } from '../generated/entity/data/searchIndex';
-import { sortTagsCaseInsensitive } from './CommonUtils';
 
 // eslint-disable-next-line max-len
 export const defaultFields = `${TabSpecificField.FIELDS},${TabSpecificField.FOLLOWERS},${TabSpecificField.TAGS},${TabSpecificField.OWNERS},${TabSpecificField.DOMAIN},${TabSpecificField.VOTES},${TabSpecificField.DATA_PRODUCTS},${TabSpecificField.EXTENSION}`;
-
-export const makeRow = (column: SearchIndexField) => {
-  return {
-    description: column.description ?? '',
-    // Sorting tags as the response of PATCH request does not return the sorted order
-    // of tags, but is stored in sorted manner in the database
-    // which leads to wrong PATCH payload sent after further tags removal
-    tags: sortTagsCaseInsensitive(column.tags ?? []),
-    key: column?.name,
-    ...column,
-  };
-};
 
 export const makeData = (
   columns: SearchIndexField[] = []
 ): Array<SearchIndexField & { id: string }> => {
   return columns.map((column) => ({
-    ...makeRow(column),
+    ...column,
     id: uniqueId(column.name),
     children: column.children ? makeData(column.children) : undefined,
   }));

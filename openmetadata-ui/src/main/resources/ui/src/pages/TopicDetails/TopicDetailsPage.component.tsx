@@ -35,11 +35,9 @@ import {
 import { ClientErrors } from '../../enums/Axios.enum';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
-import { CreateThread } from '../../generated/api/feed/createThread';
 import { Topic } from '../../generated/entity/data/topic';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useFqn } from '../../hooks/useFqn';
-import { postThread } from '../../rest/feedsAPI';
 import {
   addFollower,
   getTopicByFqn,
@@ -50,7 +48,6 @@ import {
 import {
   addToRecentViewed,
   getEntityMissingError,
-  sortTagsCaseInsensitive,
 } from '../../utils/CommonUtils';
 import { getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
@@ -85,18 +82,10 @@ const TopicDetailsPage: FunctionComponent = () => {
       const res = await saveUpdatedTopicData(updatedData);
 
       setTopicDetails((previous) => {
-        if (key === 'tags') {
-          return {
-            ...previous,
-            version: res.version,
-            [key]: sortTagsCaseInsensitive(res.tags ?? []),
-          };
-        }
-
         return {
           ...previous,
           ...res,
-          version: res.version,
+          ...(key && { [key]: res[key] }),
         };
       });
     } catch (error) {
@@ -215,19 +204,6 @@ const TopicDetailsPage: FunctionComponent = () => {
       );
   };
 
-  const createThread = async (data: CreateThread) => {
-    try {
-      await postThread(data);
-    } catch (error) {
-      showErrorToast(
-        error as AxiosError,
-        t('server.create-entity-error', {
-          entity: t('label.conversation'),
-        })
-      );
-    }
-  };
-
   const handleToggleDelete = (version?: number) => {
     setTopicDetails((prev) => {
       if (!prev) {
@@ -294,7 +270,6 @@ const TopicDetailsPage: FunctionComponent = () => {
 
   return (
     <TopicDetails
-      createThread={createThread}
       fetchTopic={() => fetchTopicDetail(topicFQN)}
       followTopicHandler={followTopic}
       handleToggleDelete={handleToggleDelete}

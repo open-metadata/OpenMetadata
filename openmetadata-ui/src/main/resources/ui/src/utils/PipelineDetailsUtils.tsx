@@ -13,7 +13,7 @@
 
 import { Col, Radio, Row, Table } from 'antd';
 import { t } from 'i18next';
-import { isEmpty, isUndefined } from 'lodash';
+import { isEmpty } from 'lodash';
 import React from 'react';
 import { ReactComponent as IconFailBadge } from '../assets/svg/fail-badge.svg';
 import { ReactComponent as IconSkippedBadge } from '../assets/svg/skipped-badge.svg';
@@ -31,12 +31,7 @@ import { PIPELINE_TASK_TABS } from '../constants/pipeline.constants';
 import { COMMON_RESIZABLE_PANEL_CONFIG } from '../constants/ResizablePanel.constants';
 import LineageProvider from '../context/LineageProvider/LineageProvider';
 import { EntityTabs, EntityType, TabSpecificField } from '../enums/entity.enum';
-import {
-  Pipeline,
-  StatusType,
-  TaskStatus,
-} from '../generated/entity/data/pipeline';
-import { sortTagsCaseInsensitive } from './CommonUtils';
+import { StatusType, TaskStatus } from '../generated/entity/data/pipeline';
 import { PipelineDetailPageTabProps } from './PipelineClassBase';
 
 // eslint-disable-next-line max-len
@@ -59,26 +54,6 @@ export const getStatusBadgeIcon = (status?: StatusType) => {
   }
 };
 
-export const getFormattedPipelineDetails = (
-  pipelineDetails: Pipeline
-): Pipeline => {
-  if (pipelineDetails.tasks) {
-    const updatedTasks = pipelineDetails.tasks.map((task) => ({
-      ...task,
-      // Sorting tags as the response of PATCH request does not return the sorted order
-      // of tags, but is stored in sorted manner in the database
-      // which leads to wrong PATCH payload sent after further tags removal
-      tags: isUndefined(task.tags)
-        ? undefined
-        : sortTagsCaseInsensitive(task.tags),
-    }));
-
-    return { ...pipelineDetails, tasks: updatedTasks };
-  } else {
-    return pipelineDetails;
-  }
-};
-
 export const getPipelineDetailPageTabs = ({
   description,
   editDescriptionPermission,
@@ -91,7 +66,6 @@ export const getPipelineDetailPageTabs = ({
   handleTagSelection,
   onDescriptionUpdate,
   onExtensionUpdate,
-  onThreadLinkSelect,
   pipelineDetails,
   pipelineFQN,
   tasksInternal,
@@ -131,7 +105,6 @@ export const getPipelineDetailPageTabs = ({
                           owner={owners}
                           showActions={!deleted}
                           onDescriptionUpdate={onDescriptionUpdate}
-                          onThreadLinkSelect={onThreadLinkSelect}
                         />
                       </Col>
                       <Col span={24}>
@@ -185,7 +158,6 @@ export const getPipelineDetailPageTabs = ({
                       viewAllPermission={viewAllPermission}
                       onExtensionUpdate={onExtensionUpdate}
                       onTagSelectionChange={handleTagSelection}
-                      onThreadLinkSelect={onThreadLinkSelect}
                     />
                   </div>
                 ),

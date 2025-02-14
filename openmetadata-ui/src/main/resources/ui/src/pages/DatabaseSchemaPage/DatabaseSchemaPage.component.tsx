@@ -25,8 +25,6 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import { useActivityFeedProvider } from '../../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
-import ActivityThreadPanel from '../../components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';
@@ -34,6 +32,7 @@ import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPr
 import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import ProfilerSettings from '../../components/Database/Profiler/ProfilerSettings/ProfilerSettings';
 import { QueryVote } from '../../components/Database/TableQueries/TableQueries.interface';
+import { GenericProvider } from '../../components/GenericProvider/GenericProvider';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import {
@@ -57,11 +56,9 @@ import {
   EntityType,
   TabSpecificField,
 } from '../../enums/entity.enum';
-import { CreateThread } from '../../generated/api/feed/createThread';
 import { Tag } from '../../generated/entity/classification/tag';
 import { DatabaseSchema } from '../../generated/entity/data/databaseSchema';
 import { Table } from '../../generated/entity/data/table';
-import { ThreadType } from '../../generated/entity/feed/thread';
 import { Include } from '../../generated/type/include';
 import { TagLabel } from '../../generated/type/tagLabel';
 import { usePaging } from '../../hooks/paging/usePaging';
@@ -74,14 +71,9 @@ import {
   restoreDatabaseSchema,
   updateDatabaseSchemaVotes,
 } from '../../rest/databaseAPI';
-import { postThread } from '../../rest/feedsAPI';
 import { getStoredProceduresList } from '../../rest/storedProceduresAPI';
 import { getTableList, TableListParams } from '../../rest/tableAPI';
-import {
-  getEntityMissingError,
-  getFeedCounts,
-  sortTagsCaseInsensitive,
-} from '../../utils/CommonUtils';
+import { getEntityMissingError, getFeedCounts } from '../../utils/CommonUtils';
 import databaseSchemaClassBase from '../../utils/DatabaseSchemaClassBase';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../utils/EntityUtils';
@@ -91,7 +83,6 @@ import { createTagObject, updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 
 const DatabaseSchemaPage: FunctionComponent = () => {
-  const { postFeed, deleteFeed, updateFeed } = useActivityFeedProvider();
   const { t } = useTranslation();
   const { getEntityPermissionByFqn } = usePermissionProvider();
   const pagingInfo = usePaging(PAGE_SIZE);
@@ -112,9 +103,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     useParams<{ tab: EntityTabs }>();
   const { fqn: decodedDatabaseSchemaFQN } = useFqn();
   const history = useHistory();
-  const [threadType, setThreadType] = useState<ThreadType>(
-    ThreadType.Conversation
-  );
+
   const [isPermissionsLoading, setIsPermissionsLoading] = useState(true);
   const [databaseSchema, setDatabaseSchema] = useState<DatabaseSchema>(
     {} as DatabaseSchema
@@ -128,7 +117,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA
   );
-  const [threadLink, setThreadLink] = useState<string>('');
+
   const [databaseSchemaPermission, setDatabaseSchemaPermission] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
   const [storedProcedureCount, setStoredProcedureCount] = useState(0);
@@ -189,20 +178,6 @@ const DatabaseSchemaPage: FunctionComponent = () => {
       databaseSchemaPermission.ViewAll || databaseSchemaPermission.ViewBasic,
     [databaseSchemaPermission?.ViewAll, databaseSchemaPermission?.ViewBasic]
   );
-
-  const onThreadLinkSelect = useCallback(
-    (link: string, threadType?: ThreadType) => {
-      setThreadLink(link);
-      if (threadType) {
-        setThreadType(threadType);
-      }
-    },
-    []
-  );
-
-  const onThreadPanelClose = useCallback(() => {
-    setThreadLink('');
-  }, []);
 
   const handleFeedCount = useCallback((data: FeedCounts) => {
     setFeedCount(data);
@@ -367,10 +342,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
         const res = await saveUpdatedDatabaseSchemaData(
           updatedData as DatabaseSchema
         );
-        setDatabaseSchema({
-          ...res,
-          tags: sortTagsCaseInsensitive(res.tags ?? []),
-        });
+        setDatabaseSchema(res);
       } catch (error) {
         showErrorToast(error as AxiosError, t('server.api-error'));
       }
@@ -413,22 +385,6 @@ const DatabaseSchemaPage: FunctionComponent = () => {
       }
     },
     [databaseSchema, saveUpdatedDatabaseSchemaData]
-  );
-
-  const createThread = useCallback(
-    async (data: CreateThread) => {
-      try {
-        await postThread(data);
-      } catch (error) {
-        showErrorToast(
-          error as AxiosError,
-          t('server.create-entity-error', {
-            entity: t('label.conversation'),
-          })
-        );
-      }
-    },
-    [getEntityFeedCount]
   );
 
   const handleToggleDelete = (version?: number) => {
@@ -611,6 +567,20 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     });
   };
 
+  const handleUpdateDatabaseSchema = async (data: DatabaseSchema) => {
+    try {
+      const response = await saveUpdatedDatabaseSchemaData(data);
+      setDatabaseSchema(response);
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('server.entity-updating-error', {
+          entity: t('label.database-schema'),
+        })
+      );
+    }
+  };
+
   const tabs: TabsProps['items'] = useMemo(
     () =>
       databaseSchemaClassBase.getDatabaseSchemaPageTabs({
@@ -634,7 +604,6 @@ const DatabaseSchemaPage: FunctionComponent = () => {
         onEditCancel,
         handleExtensionUpdate,
         handleTagSelection,
-        onThreadLinkSelect,
         tablePaginationHandler,
         onDescriptionEdit,
         onDescriptionUpdate,
@@ -664,7 +633,6 @@ const DatabaseSchemaPage: FunctionComponent = () => {
       databaseSchemaPermission,
       handleExtensionUpdate,
       handleTagSelection,
-      onThreadLinkSelect,
       tablePaginationHandler,
       onEditCancel,
       onDescriptionEdit,
@@ -750,29 +718,21 @@ const DatabaseSchemaPage: FunctionComponent = () => {
               />
             )}
           </Col>
-          <Col span={24}>
-            <Tabs
-              activeKey={activeTab}
-              className="entity-details-page-tabs"
-              data-testid="tabs"
-              items={tabs}
-              onChange={activeTabHandler}
-            />
-          </Col>
-          <Col span={24}>
-            {threadLink ? (
-              <ActivityThreadPanel
-                createThread={createThread}
-                deletePostHandler={deleteFeed}
-                open={Boolean(threadLink)}
-                postFeedHandler={postFeed}
-                threadLink={threadLink}
-                threadType={threadType}
-                updateThreadHandler={updateFeed}
-                onCancel={onThreadPanelClose}
+          <GenericProvider<DatabaseSchema>
+            data={databaseSchema}
+            permissions={databaseSchemaPermission}
+            type={EntityType.DATABASE_SCHEMA}
+            onUpdate={handleUpdateDatabaseSchema}>
+            <Col span={24}>
+              <Tabs
+                activeKey={activeTab}
+                className="entity-details-page-tabs"
+                data-testid="tabs"
+                items={tabs}
+                onChange={activeTabHandler}
               />
-            ) : null}
-          </Col>
+            </Col>
+          </GenericProvider>
           {updateProfilerSetting && (
             <ProfilerSettings
               entityId={databaseSchemaId}

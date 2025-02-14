@@ -110,7 +110,6 @@ export const getStoredProcedureDetailsPageTabs = ({
   owners,
   editDescriptionPermission,
   onDescriptionUpdate,
-  onThreadLinkSelect,
   storedProcedure,
   tags,
   editTagsPermission,
@@ -151,7 +150,6 @@ export const getStoredProcedureDetailsPageTabs = ({
                       owner={owners}
                       showActions={!deleted}
                       onDescriptionUpdate={onDescriptionUpdate}
-                      onThreadLinkSelect={onThreadLinkSelect}
                     />
 
                     <Card className="m-b-md" data-testid="code-component">
@@ -187,7 +185,6 @@ export const getStoredProcedureDetailsPageTabs = ({
                       viewAllPermission={viewAllPermission}
                       onExtensionUpdate={onExtensionUpdate}
                       onTagSelectionChange={handleTagSelection}
-                      onThreadLinkSelect={onThreadLinkSelect}
                     />
                   </div>
                 ),

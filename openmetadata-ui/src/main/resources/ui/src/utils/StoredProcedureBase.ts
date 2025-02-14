@@ -24,7 +24,6 @@ import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 import { EntityTabs } from '../enums/entity.enum';
 import { Tag } from '../generated/entity/classification/tag';
 import { StoredProcedure } from '../generated/entity/data/storedProcedure';
-import { ThreadType } from '../generated/entity/feed/thread';
 import { EntityReference } from '../generated/entity/type';
 import { Tab } from '../generated/system/ui/uiCustomization';
 import { FeedCounts } from '../interface/feed.interface';
@@ -48,7 +47,6 @@ export interface StoredProcedureDetailPageTabProps {
   onCancel: () => void;
   onDescriptionEdit: () => void;
   onDescriptionUpdate: (value: string) => Promise<void>;
-  onThreadLinkSelect: (link: string, threadType?: ThreadType) => void;
   storedProcedure: StoredProcedure;
   tags: Tag[];
   editTagsPermission: boolean;

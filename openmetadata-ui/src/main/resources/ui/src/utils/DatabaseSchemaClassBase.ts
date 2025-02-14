@@ -30,7 +30,6 @@ import {
   State,
 } from '../generated/entity/data/databaseSchema';
 import { Table } from '../generated/entity/data/table';
-import { ThreadType } from '../generated/entity/feed/thread';
 import { Tab } from '../generated/system/ui/uiCustomization';
 import { LabelType, TagSource } from '../generated/type/tagLabel';
 import { UsePagingInterface } from '../hooks/paging/usePaging';
@@ -59,7 +58,6 @@ export interface DatabaseSchemaPageTabProps {
   databaseSchemaPermission: OperationPermission;
   handleExtensionUpdate: (schema: DatabaseSchema) => Promise<void>;
   handleTagSelection: (selectedTags: EntityTags[]) => Promise<void>;
-  onThreadLinkSelect: (link: string, threadType?: ThreadType) => void;
   tablePaginationHandler: ({
     cursorType,
     currentPage,

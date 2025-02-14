@@ -25,7 +25,6 @@ import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { Tag } from '../../../generated/entity/classification/tag';
 import { Topic } from '../../../generated/entity/data/topic';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
-import { ThreadType } from '../../../generated/entity/feed/thread';
 import { TagLabel } from '../../../generated/type/schema';
 import LimitWrapper from '../../../hoc/LimitWrapper';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
@@ -40,9 +39,7 @@ import {
 import { getTagsWithoutTier, getTierTags } from '../../../utils/TableUtils';
 import { createTagObject, updateTierTag } from '../../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
-import { useActivityFeedProvider } from '../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import { ActivityFeedTab } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
-import ActivityThreadPanel from '../../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import { withActivityFeed } from '../../AppRouter/withActivityFeed';
 import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -65,7 +62,6 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
   followTopicHandler,
   unFollowTopicHandler,
   versionHandler,
-  createThread,
   onTopicUpdate,
   topicPermissions,
   handleToggleDelete,
@@ -73,19 +69,13 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
 }: TopicDetailsProps) => {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
-  const { postFeed, deleteFeed, updateFeed } = useActivityFeedProvider();
   const { tab: activeTab = EntityTabs.SCHEMA } =
     useParams<{ tab: EntityTabs }>();
   const { fqn: decodedTopicFQN } = useFqn();
   const history = useHistory();
 
-  const [threadLink, setThreadLink] = useState<string>('');
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA
-  );
-
-  const [threadType, setThreadType] = useState<ThreadType>(
-    ThreadType.Conversation
   );
 
   const {
@@ -130,14 +120,6 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
       'extension'
     );
   };
-
-  const onThreadLinkSelect = (link: string, threadType?: ThreadType) => {
-    setThreadLink(link);
-    if (threadType) {
-      setThreadType(threadType);
-    }
-  };
-  const onThreadPanelClose = () => setThreadLink('');
 
   const handleSchemaFieldsUpdate = async (
     updatedMessageSchema: Topic['messageSchema']
@@ -399,7 +381,6 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
       deleted,
       handleFeedCount,
       onExtensionUpdate,
-      onThreadLinkSelect,
       handleTagSelection,
       onDescriptionUpdate,
       onDataProductsUpdate,
@@ -460,19 +441,6 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
       <LimitWrapper resource="topic">
         <></>
       </LimitWrapper>
-
-      {threadLink ? (
-        <ActivityThreadPanel
-          createThread={createThread}
-          deletePostHandler={deleteFeed}
-          open={Boolean(threadLink)}
-          postFeedHandler={postFeed}
-          threadLink={threadLink}
-          threadType={threadType}
-          updateThreadHandler={updateFeed}
-          onCancel={onThreadPanelClose}
-        />
-      ) : null}
     </PageLayoutV1>
   );
 };

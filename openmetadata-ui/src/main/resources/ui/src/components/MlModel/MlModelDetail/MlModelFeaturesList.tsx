@@ -34,7 +34,6 @@ const MlModelFeaturesList = ({
   permissions,
   isDeleted,
   entityFqn,
-  onThreadLinkSelect,
 }: MlModelFeaturesListProp) => {
   const { t } = useTranslation();
   const [selectedFeature, setSelectedFeature] = useState<MlFeature>(
@@ -162,7 +161,6 @@ const MlModelFeaturesList = ({
                             record={feature}
                             tags={feature.tags ?? []}
                             type={TagSource.Glossary}
-                            onThreadLinkSelect={onThreadLinkSelect}
                           />
                         </Col>
                       </Row>
@@ -186,7 +184,6 @@ const MlModelFeaturesList = ({
                             record={feature}
                             tags={feature.tags ?? []}
                             type={TagSource.Classification}
-                            onThreadLinkSelect={onThreadLinkSelect}
                           />
                         </Col>
                       </Row>
@@ -216,7 +213,6 @@ const MlModelFeaturesList = ({
                               setSelectedFeature(feature);
                               setEditDescription(true);
                             }}
-                            onThreadLinkSelect={onThreadLinkSelect}
                           />
                         </Col>
                       </Row>

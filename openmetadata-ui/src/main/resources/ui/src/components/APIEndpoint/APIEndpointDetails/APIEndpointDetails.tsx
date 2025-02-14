@@ -25,7 +25,6 @@ import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { Tag } from '../../../generated/entity/classification/tag';
 import { APIEndpoint } from '../../../generated/entity/data/apiEndpoint';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
-import { ThreadType } from '../../../generated/entity/feed/thread';
 import { TagLabel } from '../../../generated/type/schema';
 import LimitWrapper from '../../../hoc/LimitWrapper';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
@@ -40,9 +39,7 @@ import {
 import { getTagsWithoutTier, getTierTags } from '../../../utils/TableUtils';
 import { createTagObject, updateTierTag } from '../../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
-import { useActivityFeedProvider } from '../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import { ActivityFeedTab } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
-import ActivityThreadPanel from '../../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import { withActivityFeed } from '../../AppRouter/withActivityFeed';
 import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
 import DescriptionV1 from '../../common/EntityDescription/DescriptionV1';
@@ -50,6 +47,7 @@ import ResizablePanels from '../../common/ResizablePanels/ResizablePanels';
 import TabsLabel from '../../common/TabsLabel/TabsLabel.component';
 import { DataAssetsHeader } from '../../DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import EntityRightPanel from '../../Entity/EntityRightPanel/EntityRightPanel';
+import { GenericProvider } from '../../GenericProvider/GenericProvider';
 import Lineage from '../../Lineage/Lineage.component';
 import { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../PageLayoutV1/PageLayoutV1';
@@ -60,7 +58,7 @@ import { APIEndpointDetailsProps } from './APIEndpointDetails.interface';
 const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
   apiEndpointDetails,
   apiEndpointPermissions,
-  onCreateThread,
+
   fetchAPIEndpointDetails,
   onFollowApiEndPoint,
   onApiEndpointUpdate,
@@ -72,18 +70,12 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
 }: APIEndpointDetailsProps) => {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
-  const { postFeed, deleteFeed, updateFeed } = useActivityFeedProvider();
   const { tab: activeTab = EntityTabs.SCHEMA } =
     useParams<{ tab: EntityTabs }>();
   const { fqn: decodedApiEndpointFqn } = useFqn();
   const history = useHistory();
-  const [threadLink, setThreadLink] = useState<string>('');
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA
-  );
-
-  const [threadType, setThreadType] = useState<ThreadType>(
-    ThreadType.Conversation
   );
 
   const {
@@ -128,14 +120,6 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
       'extension'
     );
   };
-
-  const onThreadLinkSelect = (link: string, threadType?: ThreadType) => {
-    setThreadLink(link);
-    if (threadType) {
-      setThreadType(threadType);
-    }
-  };
-  const onThreadPanelClose = () => setThreadLink('');
 
   const handleRestoreApiEndpoint = async () => {
     try {
@@ -308,13 +292,11 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
                         owner={apiEndpointDetails.owners}
                         showActions={!deleted}
                         onDescriptionUpdate={onDescriptionUpdate}
-                        onThreadLinkSelect={onThreadLinkSelect}
                       />
                       <APIEndpointSchema
                         apiEndpointDetails={apiEndpointDetails}
                         permissions={apiEndpointPermissions}
                         onApiEndpointUpdate={onApiEndpointUpdate}
-                        onThreadLinkSelect={onThreadLinkSelect}
                       />
                     </div>
                   ),
@@ -340,7 +322,6 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
                         viewAllPermission={viewAllPermission}
                         onExtensionUpdate={onExtensionUpdate}
                         onTagSelectionChange={handleTagSelection}
-                        onThreadLinkSelect={onThreadLinkSelect}
                       />
                     </div>
                   ),
@@ -422,7 +403,6 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
       deleted,
       handleFeedCount,
       onExtensionUpdate,
-      onThreadLinkSelect,
       handleTagSelection,
       onDescriptionUpdate,
       onDataProductsUpdate,
@@ -463,32 +443,25 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
             onVersionClick={onVersionChange}
           />
         </Col>
-        <Col span={24}>
-          <Tabs
-            activeKey={activeTab ?? EntityTabs.SCHEMA}
-            className="entity-details-page-tabs"
-            data-testid="tabs"
-            items={tabs}
-            onChange={handleTabChange}
-          />
-        </Col>
+        <GenericProvider<APIEndpoint>
+          data={apiEndpointDetails}
+          permissions={apiEndpointPermissions}
+          type={EntityType.API_ENDPOINT}
+          onUpdate={onApiEndpointUpdate}>
+          <Col span={24}>
+            <Tabs
+              activeKey={activeTab ?? EntityTabs.SCHEMA}
+              className="entity-details-page-tabs"
+              data-testid="tabs"
+              items={tabs}
+              onChange={handleTabChange}
+            />
+          </Col>
+        </GenericProvider>
       </Row>
       <LimitWrapper resource="apiEndpoint">
         <></>
       </LimitWrapper>
-
-      {threadLink ? (
-        <ActivityThreadPanel
-          createThread={onCreateThread}
-          deletePostHandler={deleteFeed}
-          open={Boolean(threadLink)}
-          postFeedHandler={postFeed}
-          threadLink={threadLink}
-          threadType={threadType}
-          updateThreadHandler={updateFeed}
-          onCancel={onThreadPanelClose}
-        />
-      ) : null}
     </PageLayoutV1>
   );
 };

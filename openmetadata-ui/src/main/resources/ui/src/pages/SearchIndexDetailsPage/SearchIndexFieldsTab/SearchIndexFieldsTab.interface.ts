@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { ThreadType } from '../../../generated/api/feed/createThread';
 import { SearchIndexField } from '../../../generated/entity/data/searchIndex';
 
 export interface SearchIndexFieldsTabProps {
@@ -21,6 +20,5 @@ export interface SearchIndexFieldsTabProps {
   hasGlossaryTermEditAccess: boolean;
   isReadOnly?: boolean;
   entityFqn: string;
-  onThreadLinkSelect: (value: string, threadType?: ThreadType) => void;
   onUpdate: (fields: Array<SearchIndexField>) => Promise<void>;
 }

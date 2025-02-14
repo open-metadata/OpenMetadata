@@ -12,7 +12,6 @@
  */
 
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
-import { CreateThread } from '../../../generated/api/feed/createThread';
 import { Topic } from '../../../generated/entity/data/topic';
 import { DataAssetWithDomains } from '../../DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
 import { QueryVote } from '../../Database/TableQueries/TableQueries.interface';
@@ -22,7 +21,6 @@ export interface TopicDetailsProps {
   topicDetails: Topic;
   topicPermissions: OperationPermission;
   fetchTopic: () => void;
-  createThread: (data: CreateThread) => Promise<void>;
   followTopicHandler: () => Promise<void>;
   unFollowTopicHandler: () => Promise<void>;
   versionHandler: () => void;

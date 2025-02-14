@@ -12,7 +12,6 @@
  */
 
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
-import { CreateThread } from '../../../generated/api/feed/createThread';
 import { Chart } from '../../../generated/entity/data/chart';
 import { Dashboard } from '../../../generated/entity/data/dashboard';
 import { EntityReference } from '../../../generated/type/entityReference';
@@ -32,7 +31,6 @@ export interface DashboardDetailsProps {
   charts: Array<EntityReference>;
   dashboardDetails: Dashboard;
   fetchDashboard: () => void;
-  createThread: (data: CreateThread) => Promise<void>;
   followDashboardHandler: () => Promise<void>;
   unFollowDashboardHandler: () => Promise<void>;
   versionHandler: () => void;

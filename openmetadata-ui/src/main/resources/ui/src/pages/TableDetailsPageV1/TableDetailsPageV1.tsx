@@ -79,7 +79,6 @@ import {
   addToRecentViewed,
   getFeedCounts,
   getPartialNameFromTableFQN,
-  sortTagsCaseInsensitive,
 } from '../../utils/CommonUtils';
 import { defaultFields } from '../../utils/DatasetDetailsUtils';
 import EntityLink from '../../utils/EntityLink';
@@ -380,13 +379,6 @@ const TableDetailsPageV1: React.FC = () => {
       setTableDetails((previous) => {
         if (!previous) {
           return;
-        }
-        if (key === 'tags') {
-          return {
-            ...previous,
-            version: res.version,
-            [key]: sortTagsCaseInsensitive(res.tags ?? []),
-          };
         }
 
         const updatedObj = {
@@ -793,7 +785,7 @@ const TableDetailsPageV1: React.FC = () => {
         entity: t('label.table'),
       })}
       title="Table details">
-      <GenericProvider
+      <GenericProvider<Table>
         data={tableDetails}
         isVersionView={false}
         permissions={tablePermissions}

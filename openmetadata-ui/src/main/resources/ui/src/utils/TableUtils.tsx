@@ -119,7 +119,6 @@ import { LabelType, State, TagLabel } from '../generated/type/tagLabel';
 import {
   getPartialNameFromTableFQN,
   getTableFQNFromColumnFQN,
-  sortTagsCaseInsensitive,
 } from './CommonUtils';
 import EntityLink from './EntityLink';
 import searchClassBase from './SearchClassBase';
@@ -479,23 +478,11 @@ export const getServiceIcon = (source: SourceType) => {
   }
 };
 
-export const makeRow = <T extends Column | SearchIndexField>(column: T) => {
-  return {
-    description: column.description ?? '',
-    // Sorting tags as the response of PATCH request does not return the sorted order
-    // of tags, but is stored in sorted manner in the database
-    // which leads to wrong PATCH payload sent after further tags removal
-    tags: sortTagsCaseInsensitive(column.tags ?? []),
-    key: column?.name,
-    ...column,
-  };
-};
-
 export const makeData = <T extends Column | SearchIndexField>(
   columns: T[] = []
 ): Array<T & { id: string }> => {
   return columns.map((column) => ({
-    ...makeRow(column),
+    ...column,
     id: uniqueId(column.name),
     children: column.children ? makeData<T>(column.children as T[]) : undefined,
   }));

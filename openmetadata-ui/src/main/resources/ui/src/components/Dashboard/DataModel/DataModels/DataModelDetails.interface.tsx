@@ -13,7 +13,6 @@
 
 import { EntityTags } from 'Models';
 import { OperationPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
-import { CreateThread } from '../../../../generated/api/feed/createThread';
 import { Tag } from '../../../../generated/entity/classification/tag';
 import { DashboardDataModel } from '../../../../generated/entity/data/dashboardDataModel';
 import { Column } from '../../../../generated/entity/data/table';
@@ -26,7 +25,6 @@ export interface DataModelDetailsProps {
   dataModelData: DashboardDataModel;
   dataModelPermissions: OperationPermission;
   fetchDataModel: () => void;
-  createThread: (data: CreateThread) => Promise<void>;
   handleFollowDataModel: () => Promise<void>;
   handleUpdateTags: (selectedTags?: EntityTags[]) => Promise<void>;
   handleUpdateOwner: (owner?: EntityReference[]) => Promise<void>;

@@ -600,7 +600,7 @@ export const GenericWidget = (props: WidgetCommonProps) => {
           permissions={DEFAULT_ENTITY_PERMISSION}
           type={EntityType.DASHBOARD_DATA_MODEL}
           onUpdate={async () => noop()}>
-          <ModelTab isReadOnly={false} onThreadLinkSelect={noop} />
+          <ModelTab />
         </GenericProvider>
       );
     } else if (
@@ -616,7 +616,7 @@ export const GenericWidget = (props: WidgetCommonProps) => {
         </GenericProvider>
       );
     } else if (props.widgetKey.startsWith(DetailPageWidgetKeys.CHARTS_TABLE)) {
-      return <DashboardChartTable onThreadLinkSelect={noop} />;
+      return <DashboardChartTable />;
     } else if (props.widgetKey.startsWith(DetailPageWidgetKeys.EXPERTS)) {
       return (
         <OwnerLabel

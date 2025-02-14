@@ -14,7 +14,6 @@ import { Space } from 'antd';
 import { EntityTags } from 'Models';
 import React from 'react';
 import { EntityType } from '../../../enums/entity.enum';
-import { ThreadType } from '../../../generated/entity/feed/thread';
 import { EntityReference } from '../../../generated/entity/type';
 import { TagSource } from '../../../generated/type/tagLabel';
 import { useFqn } from '../../../hooks/useFqn';
@@ -42,7 +41,6 @@ interface EntityRightPanelProps<T extends ExtentionEntitiesKeys> {
   afterSlot?: React.ReactNode;
   domain?: EntityReference;
   onTagSelectionChange?: (selectedTags: EntityTags[]) => Promise<void>;
-  onThreadLinkSelect?: (value: string, threadType?: ThreadType) => void;
   viewAllPermission?: boolean;
   customProperties?: ExtentionEntities[T];
   editCustomAttributePermission?: boolean;
@@ -57,7 +55,6 @@ const EntityRightPanel = <T extends ExtentionEntitiesKeys>({
   editTagPermission,
   editGlossaryTermsPermission,
   onTagSelectionChange,
-  onThreadLinkSelect,
   beforeSlot,
   afterSlot,
   entityId,
@@ -93,7 +90,6 @@ const EntityRightPanel = <T extends ExtentionEntitiesKeys>({
           showTaskHandler={showTaskHandler}
           tagType={TagSource.Classification}
           onSelectionChange={onTagSelectionChange}
-          onThreadLinkSelect={onThreadLinkSelect}
         />
 
         <TagsContainerV2
@@ -105,7 +101,6 @@ const EntityRightPanel = <T extends ExtentionEntitiesKeys>({
           showTaskHandler={showTaskHandler}
           tagType={TagSource.Glossary}
           onSelectionChange={onTagSelectionChange}
-          onThreadLinkSelect={onThreadLinkSelect}
         />
         {KnowledgeArticles && (
           <KnowledgeArticles entityId={entityId} entityType={entityType} />

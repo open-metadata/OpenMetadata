@@ -21,7 +21,6 @@ import SearchIndexFieldsTab from './SearchIndexFieldsTab';
 import { SearchIndexFieldsTabProps } from './SearchIndexFieldsTab.interface';
 
 const mockOnUpdate = jest.fn();
-const mockOnThreadLinkSelect = jest.fn();
 
 const mockProps: SearchIndexFieldsTabProps = {
   fields: MOCK_SEARCH_INDEX_FIELDS,
@@ -30,7 +29,6 @@ const mockProps: SearchIndexFieldsTabProps = {
   hasTagEditAccess: true,
   hasGlossaryTermEditAccess: true,
   isReadOnly: false,
-  onThreadLinkSelect: mockOnThreadLinkSelect,
   entityFqn: 'search_service.search_index_fqn',
 };
 

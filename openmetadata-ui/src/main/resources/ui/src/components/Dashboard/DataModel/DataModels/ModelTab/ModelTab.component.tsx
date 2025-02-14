@@ -39,9 +39,8 @@ import TableDescription from '../../../../Database/TableDescription/TableDescrip
 import TableTags from '../../../../Database/TableTags/TableTags.component';
 import { useGenericContext } from '../../../../GenericProvider/GenericProvider';
 import { ModalWithMarkdownEditor } from '../../../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
-import { ModelTabProps } from './ModelTab.interface';
 
-const ModelTab = ({ isReadOnly, onThreadLinkSelect }: ModelTabProps) => {
+const ModelTab = () => {
   const { t } = useTranslation();
   const [editColumnDescription, setEditColumnDescription] = useState<Column>();
   const {
@@ -49,7 +48,11 @@ const ModelTab = ({ isReadOnly, onThreadLinkSelect }: ModelTabProps) => {
     permissions,
     onUpdate,
   } = useGenericContext<DashboardDataModel>();
-  const { columns: data, fullyQualifiedName: entityFqn } = dataModel;
+  const {
+    columns: data,
+    fullyQualifiedName: entityFqn,
+    deleted: isReadOnly,
+  } = dataModel;
 
   const {
     hasEditDescriptionPermission,
@@ -150,7 +153,6 @@ const ModelTab = ({ isReadOnly, onThreadLinkSelect }: ModelTabProps) => {
             index={index}
             isReadOnly={isReadOnly}
             onClick={() => setEditColumnDescription(record)}
-            onThreadLinkSelect={onThreadLinkSelect}
           />
         ),
       },
@@ -175,7 +177,6 @@ const ModelTab = ({ isReadOnly, onThreadLinkSelect }: ModelTabProps) => {
             record={record}
             tags={tags}
             type={TagSource.Classification}
-            onThreadLinkSelect={onThreadLinkSelect}
           />
         ),
       },
@@ -200,7 +201,6 @@ const ModelTab = ({ isReadOnly, onThreadLinkSelect }: ModelTabProps) => {
             record={record}
             tags={tags}
             type={TagSource.Glossary}
-            onThreadLinkSelect={onThreadLinkSelect}
           />
         ),
       },
@@ -213,7 +213,6 @@ const ModelTab = ({ isReadOnly, onThreadLinkSelect }: ModelTabProps) => {
       hasEditGlossaryTermPermission,
       editColumnDescription,
       hasEditDescriptionPermission,
-      onThreadLinkSelect,
       handleFieldTagsChange,
     ]
   );

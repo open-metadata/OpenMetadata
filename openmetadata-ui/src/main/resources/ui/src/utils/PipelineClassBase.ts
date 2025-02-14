@@ -32,7 +32,6 @@ import {
   StatusType,
   Task,
 } from '../generated/entity/data/pipeline';
-import { ThreadType } from '../generated/entity/feed/thread';
 import { EntityReference } from '../generated/entity/type';
 import { Tab } from '../generated/system/ui/uiCustomization';
 import { LabelType, TagLabel, TagSource } from '../generated/type/tagLabel';
@@ -55,7 +54,6 @@ export interface PipelineDetailPageTabProps {
   handleTagSelection: (selectedTags: TagLabel[]) => Promise<void>;
   onDescriptionUpdate: (value: string) => Promise<void>;
   onExtensionUpdate: (updatedPipeline: Pipeline) => Promise<void>;
-  onThreadLinkSelect: (link: string, threadType?: ThreadType) => void;
   pipelineDetails: Pipeline;
   pipelineFQN: string;
   tasksInternal: Task[];

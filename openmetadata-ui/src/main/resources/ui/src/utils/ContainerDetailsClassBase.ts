@@ -29,7 +29,6 @@ import {
   FileFormat,
   StorageServiceType,
 } from '../generated/entity/data/container';
-import { ThreadType } from '../generated/entity/feed/thread';
 import { Tab } from '../generated/system/ui/uiCustomization';
 import { getContainerDetailPageTabs } from './ContainerDetailUtils';
 
@@ -52,7 +51,6 @@ export interface ContainerDetailPageTabProps {
   containerChildrenData: EntityReference[];
   fetchContainerChildren: () => Promise<void>;
   isChildrenLoading: boolean;
-  onThreadLinkSelect: (link: string, threadType?: ThreadType) => void;
   handleUpdateDescription: (description: string) => Promise<void>;
   handleUpdateDataModel: (dataModel?: ContainerDataModel) => Promise<void>;
   handleTagSelection: (tags: EntityTags[]) => Promise<void>;
