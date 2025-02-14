@@ -92,9 +92,15 @@ const UserProfilePersonas = ({
           </div>
         </div>
         <div className="user-profile-card-body d-flex justify-start gap-2">
-          <Typography.Text className="default-persona-text text-primary">
-            {defaultPersona?.displayName}
-          </Typography.Text>
+          {defaultPersona?.displayName ? (
+            <Typography.Text className="default-persona-text text-primary">
+              {defaultPersona?.displayName}
+            </Typography.Text>
+          ) : (
+            <Typography.Paragraph className="text-grey-muted m-b-0 text-sm m-l-lg">
+              {t('message.no-default-persona')}
+            </Typography.Paragraph>
+          )}
         </div>
       </>
     ),

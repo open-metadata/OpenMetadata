@@ -33,6 +33,7 @@ import {
 } from '../../../../../constants/constants';
 import { EntityType } from '../../../../../enums/entity.enum';
 import { Role } from '../../../../../generated/entity/teams/role';
+import { useAuth } from '../../../../../hooks/authHooks';
 import { getRoles } from '../../../../../rest/rolesAPIV1';
 import { handleSearchFilterOption } from '../../../../../utils/CommonUtils';
 import { getEntityName } from '../../../../../utils/EntityUtils';
@@ -49,6 +50,7 @@ const UserProfileRoles = ({
   userData,
 }: UserProfileRolesProps) => {
   const { t } = useTranslation();
+  const { isAdminUser } = useAuth();
 
   const [isRolesEdit, setIsRolesEdit] = useState(false);
   const [isRolesLoading, setIsRolesLoading] = useState(false);
@@ -304,12 +306,14 @@ const UserProfileRoles = ({
             placement="right"
             trigger="click"
             onOpenChange={setIsRolesEdit}>
-            <EditIcon
-              className="cursor-pointer align-middle"
-              data-testid="edit-roles-button"
-              height={16}
-              onClick={() => setIsRolesEdit(true)}
-            />
+            {isAdminUser && (
+              <EditIcon
+                className="cursor-pointer align-middle"
+                data-testid="edit-roles-button"
+                height={16}
+                onClick={() => setIsRolesEdit(true)}
+              />
+            )}
           </Popover>
         </div>
       </div>

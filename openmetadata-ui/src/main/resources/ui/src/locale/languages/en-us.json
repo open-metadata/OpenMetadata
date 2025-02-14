@@ -1725,6 +1725,7 @@
     "no-data-available-for-search": "No data found. Try searching a different text.",
     "no-data-available-for-selected-filter": "No data found. Try changing the filters.",
     "no-data-quality-test-case": "It appears that there are no data quality tests configured for this table. To find out how to set up data quality tests, <0>{{explore}}</0>",
+    "no-default-persona": "No default persona",
     "no-domain-assigned-to-entity": "No Domains are Assigned to {{entity}}",
     "no-domain-available": "No Domains are available to configure. Click on <0>{{link}}</0> to add Domains",
     "no-entity-activity-message": "There is no activity on the {{entity}} yet. Start a conversation by clicking on the",

@@ -34,7 +34,7 @@ const UserProfileInheritedRoles = ({
         </div>
         <div className="d-flex justify-between w-full">
           <Typography.Text className="user-profile-card-title">
-            {t('label.role-plural')}
+            {t('label.inherited-role-plural')}
           </Typography.Text>
         </div>
       </div>

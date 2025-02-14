@@ -125,100 +125,101 @@ const UserProfileTeams = ({
           <Typography.Text className="user-profile-card-title">
             {t('label.team-plural')}
           </Typography.Text>
-          {isAdminUser && !isDeletedUser && (
-            <Popover
-              content={
-                <div
-                  className="user-profile-edit-popover-card relative"
-                  style={{
-                    height: `${popoverHeight}px`,
-                  }}>
-                  <div className="d-flex justify-start items-center gap-2 m-b-sm">
-                    <div className="d-flex flex-start items-center">
-                      <IconTeamsGrey height={16} />
-                    </div>
 
-                    <Typography.Text className="user-profile-edit-popover-card-title">
-                      {t('label.team-plural')}
-                    </Typography.Text>
+          <Popover
+            content={
+              <div
+                className="user-profile-edit-popover-card relative"
+                style={{
+                  height: `${popoverHeight}px`,
+                }}>
+                <div className="d-flex justify-start items-center gap-2 m-b-sm">
+                  <div className="d-flex flex-start items-center">
+                    <IconTeamsGrey height={16} />
                   </div>
 
-                  <div
-                    className="border p-2 bg-gray-100 rounded-md"
-                    style={{
-                      borderRadius: '5px',
-                      // overflowY: 'auto',
-                      // height: isSelectOpen ? '300px' : 'auto',
-                    }}>
-                    <TeamsSelectableNew
-                      filterJoinable
-                      handleDropdownChange={handleDropdownChange}
-                      maxValueCount={4}
-                      ref={teamsSelectableRef}
-                      selectedTeams={selectedTeams}
-                      onSelectionChange={setSelectedTeams}
-                    />
-                  </div>
-
-                  <div className="flex justify-end gap-2 mt-4">
-                    <Button
-                      className="profile-edit-save"
-                      data-testid="inline-cancel-btn"
-                      icon={
-                        <ClosePopoverIcon
-                          height={24}
-                          style={{ marginTop: '2px' }}
-                        />
-                      }
-                      size="small"
-                      style={{
-                        width: '30px',
-                        height: '30px',
-                        background: '#0950C5',
-                        position: 'absolute',
-                        bottom: '0px',
-                        right: '38px',
-                      }}
-                      type="primary"
-                      onClick={handleCloseEditTeam}
-                    />
-                    <Button
-                      className="profile-edit-cancel"
-                      data-testid="inline-save-btn"
-                      icon={
-                        <SavePopoverIcon
-                          height={24}
-                          style={{ marginTop: '2px' }}
-                        />
-                      }
-                      loading={isLoading}
-                      size="small"
-                      style={{
-                        width: '30px',
-                        height: '30px',
-                        background: '#0950C5',
-                        position: 'absolute',
-                        bottom: '0px',
-                      }}
-                      type="primary"
-                      onClick={handleTeamsSave}
-                    />
-                  </div>
+                  <Typography.Text className="user-profile-edit-popover-card-title">
+                    {t('label.team-plural')}
+                  </Typography.Text>
                 </div>
-              }
-              open={isTeamsEdit}
-              overlayClassName="profile-edit-popover-card"
-              placement="topRight"
-              trigger="click"
-              onOpenChange={setIsTeamsEdit}>
+
+                <div
+                  className="border p-2 bg-gray-100 rounded-md"
+                  style={{
+                    borderRadius: '5px',
+                    // overflowY: 'auto',
+                    // height: isSelectOpen ? '300px' : 'auto',
+                  }}>
+                  <TeamsSelectableNew
+                    filterJoinable
+                    handleDropdownChange={handleDropdownChange}
+                    maxValueCount={4}
+                    ref={teamsSelectableRef}
+                    selectedTeams={selectedTeams}
+                    onSelectionChange={setSelectedTeams}
+                  />
+                </div>
+
+                <div className="flex justify-end gap-2 mt-4">
+                  <Button
+                    className="profile-edit-save"
+                    data-testid="inline-cancel-btn"
+                    icon={
+                      <ClosePopoverIcon
+                        height={24}
+                        style={{ marginTop: '2px' }}
+                      />
+                    }
+                    size="small"
+                    style={{
+                      width: '30px',
+                      height: '30px',
+                      background: '#0950C5',
+                      position: 'absolute',
+                      bottom: '0px',
+                      right: '38px',
+                    }}
+                    type="primary"
+                    onClick={handleCloseEditTeam}
+                  />
+                  <Button
+                    className="profile-edit-cancel"
+                    data-testid="inline-save-btn"
+                    icon={
+                      <SavePopoverIcon
+                        height={24}
+                        style={{ marginTop: '2px' }}
+                      />
+                    }
+                    loading={isLoading}
+                    size="small"
+                    style={{
+                      width: '30px',
+                      height: '30px',
+                      background: '#0950C5',
+                      position: 'absolute',
+                      bottom: '0px',
+                    }}
+                    type="primary"
+                    onClick={handleTeamsSave}
+                  />
+                </div>
+              </div>
+            }
+            open={isTeamsEdit}
+            overlayClassName="profile-edit-popover-card"
+            placement="topRight"
+            trigger="click"
+            onOpenChange={setIsTeamsEdit}>
+            {isAdminUser && !isDeletedUser && (
               <EditIcon
                 className="cursor-pointer"
                 data-testid="edit-teams-button"
                 height={16}
                 onClick={() => setIsTeamsEdit(true)}
               />
-            </Popover>
-          )}
+            )}
+          </Popover>
         </div>
       </div>
       <div className="user-profile-card-body d-flex justify-start gap-2">
