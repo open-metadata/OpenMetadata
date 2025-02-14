@@ -38,6 +38,12 @@ const mockDataProps = {
   fetchChildren: mockFetchChildren,
 };
 
+jest.mock('../../GenericProvider/GenericProvider', () => ({
+  useGenericContext: jest.fn().mockImplementation(() => ({
+    data: { children: mockChildrenList },
+  })),
+}));
+
 describe('ContainerChildren', () => {
   beforeEach(() => {
     jest.useFakeTimers();

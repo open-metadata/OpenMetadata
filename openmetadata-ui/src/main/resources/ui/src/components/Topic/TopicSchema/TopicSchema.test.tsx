@@ -29,6 +29,27 @@ import { TopicSchemaFieldsProps } from './TopicSchema.interface';
 
 const mockProps: TopicSchemaFieldsProps = {};
 
+jest.mock('../../Database/TableDescription/TableDescription.component', () =>
+  jest.fn().mockImplementation(({ onClick, isReadOnly }) => (
+    <div data-testid="table-description">
+      Table Description
+      {!isReadOnly && (
+        <button data-testid="edit-button" onClick={onClick}>
+          Edit
+        </button>
+      )}
+    </div>
+  ))
+);
+
+jest.mock('../../common/RichTextEditor/RichTextEditorPreviewerV1', () =>
+  jest
+    .fn()
+    .mockReturnValue(
+      <div data-testid="description-preview">Description Preview</div>
+    )
+);
+
 jest.mock('../../../utils/TagsUtils', () => ({
   getAllTagsList: jest.fn().mockImplementation(() => Promise.resolve([])),
   getTagsHierarchy: jest.fn().mockReturnValue([]),
@@ -81,32 +102,33 @@ jest.mock('../../Database/SchemaEditor/SchemaEditor', () =>
 );
 
 const mockOnUpdate = jest.fn();
+const mockTopicDetails = {
+  columns: [],
+  displayName: 'test-display-name',
+  description: 'test-description',
+  tags: [],
+  owner: 'test-owner',
+  deleted: false,
+  service: {
+    id: 'test-service-id',
+    name: 'test-service-name',
+    displayName: 'test-service-display-name',
+    description: 'test-service-description',
+    tags: [],
+    owner: 'test-owner',
+  },
+  messageSchema: MESSAGE_SCHEMA as Topic['messageSchema'],
+};
 
 jest.mock('../../GenericProvider/GenericProvider', () => ({
-  useGenericContext: jest.fn().mockReturnValue({
-    data: {
-      columns: [],
-      displayName: 'test-display-name',
-      description: 'test-description',
-      tags: [],
-      owner: 'test-owner',
-      service: {
-        id: 'test-service-id',
-        name: 'test-service-name',
-        displayName: 'test-service-display-name',
-        description: 'test-service-description',
-        tags: [],
-        owner: 'test-owner',
-      },
-      messageSchema: MESSAGE_SCHEMA as Topic['messageSchema'],
-    },
+  useGenericContext: jest.fn().mockImplementation(() => ({
+    data: mockTopicDetails,
     isVersionView: false,
     permissions: {
       EditAll: true,
     },
     onUpdate: mockOnUpdate,
-    currentVersionData: {},
-  }),
+  })),
 }));
 
 jest.mock('../../../hooks/useFqn', () => ({
@@ -129,7 +151,7 @@ describe('Topic Schema', () => {
 
     const name = await findByText(row1, 'Order');
     const dataType = await findByText(row1, 'RECORD');
-    const description = await findByText(row1, 'Description Preview');
+    const description = await findByText(row1, 'Table Description');
     const tagsContainer = await findAllByTestId(row1, 'table-tag-container');
 
     expect(name).toBeInTheDocument();
@@ -184,6 +206,7 @@ describe('Topic Schema', () => {
   });
 
   it('Should not render the edit action if isReadOnly', async () => {
+    mockTopicDetails.deleted = true;
     render(<TopicSchema {...mockProps} />);
 
     const rows = await screen.findAllByRole('row');

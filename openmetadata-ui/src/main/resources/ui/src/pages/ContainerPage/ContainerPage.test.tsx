@@ -325,24 +325,6 @@ describe('Container Page Component', () => {
     expect(screen.getByText('EntityRightPanel')).toBeVisible();
   });
 
-  it('activity thread panel should render after selecting thread link', async () => {
-    await act(async () => {
-      render(<ContainerPage />);
-
-      expect(screen.getByText('Loader')).toBeVisible();
-    });
-
-    const DescriptionV1 = screen.getByText('DescriptionV1');
-
-    expect(DescriptionV1).toBeVisible();
-
-    expect(screen.queryByText('ActivityThreadPanel')).not.toBeInTheDocument();
-
-    userEvent.click(DescriptionV1);
-
-    expect(screen.getByText('ActivityThreadPanel')).toBeInTheDocument();
-  });
-
   it('onClick of follow container should call addContainerFollower', async () => {
     await act(async () => {
       render(<ContainerPage />);

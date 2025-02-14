@@ -47,6 +47,15 @@ jest.mock('react-router-dom', () => ({
     .mockImplementation(({ children, ...rest }) => <a {...rest}>{children}</a>),
 }));
 
+jest.mock(
+  '../../../pages/TableDetailsPageV1/PartitionedKeys/PartitionedKeys.component',
+  () => ({
+    PartitionedKeys: jest
+      .fn()
+      .mockImplementation(() => <div>PartitionedKeys</div>),
+  })
+);
+
 describe('EntityRightPanel component test', () => {
   const mockDataProducts: EntityReference[] = [];
   const mockSelectedTags: EntityTags[] = [];

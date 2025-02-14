@@ -37,7 +37,6 @@ const mockGetDataModelByFqn = jest.fn().mockResolvedValue({});
 const mockPatchDataModelDetails = jest.fn().mockResolvedValue({});
 const mockRemoveDataModelFollower = jest.fn().mockResolvedValue({});
 const mockUpdateDataModelVotes = jest.fn().mockResolvedValue({});
-const mockPostThread = jest.fn().mockResolvedValue({});
 const mockGetEntityPermissionByFqn = jest.fn().mockResolvedValue({
   ViewAll: true,
   ViewBasic: true,
@@ -118,10 +117,6 @@ jest.mock('../../rest/dataModelsAPI', () => ({
   patchDataModelDetails: () => mockPatchDataModelDetails(),
   removeDataModelFollower: () => mockRemoveDataModelFollower(),
   updateDataModelVotes: () => mockUpdateDataModelVotes(),
-}));
-
-jest.mock('../../rest/feedsAPI', () => ({
-  postThread: () => mockPostThread(),
 }));
 
 jest.mock('../../utils/CommonUtils', () => ({
@@ -218,20 +213,6 @@ describe('DataModelPage component', () => {
     expect(mockRemoveDataModelFollower).toHaveBeenCalled();
   });
 
-  it('create thread action checks', async () => {
-    render(<DataModelsPage />);
-    await waitForElementToBeRemoved(() => screen.getByText('Loader'));
-
-    // create thread
-    userEvent.click(
-      screen.getByRole('button', {
-        name: CREATE_THREAD,
-      })
-    );
-
-    expect(mockPostThread).toHaveBeenCalled();
-  });
-
   it('update data model action check', async () => {
     render(<DataModelsPage />);
     await waitForElementToBeRemoved(() => screen.getByText('Loader'));
@@ -265,7 +246,6 @@ describe('DataModelPage component', () => {
   });
 
   it('errors check', async () => {
-    mockPostThread.mockRejectedValueOnce(ERROR);
     mockPatchDataModelDetails.mockRejectedValue(ERROR);
     mockAddDataModelFollower.mockRejectedValueOnce(ERROR);
     mockUpdateDataModelVotes.mockRejectedValueOnce(ERROR);
@@ -304,7 +284,7 @@ describe('DataModelPage component', () => {
       );
     });
 
-    expect(mockShowErrorToast).toHaveBeenCalledTimes(9);
+    expect(mockShowErrorToast).toHaveBeenCalledTimes(8);
 
     mockPatchDataModelDetails.mockResolvedValue({});
   });
