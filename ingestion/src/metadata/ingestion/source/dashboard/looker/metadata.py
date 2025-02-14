@@ -1192,3 +1192,7 @@ class LookerSource(DashboardServiceSource):
                     stackTrace=traceback.format_exc(),
                 )
             )
+
+    def close(self):
+        self.metadata.compute_percentile(Dashboard, self.today)
+        self.metadata.close()
