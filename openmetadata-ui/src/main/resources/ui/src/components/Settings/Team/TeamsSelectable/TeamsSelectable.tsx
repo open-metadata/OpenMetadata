@@ -56,12 +56,14 @@ const TeamsSelectable = ({
     try {
       setIsLoading(true);
       const { data } = await getTeamsHierarchy(filterJoinable);
-      const sortedData = data.toSorted((a, b) => {
+      const compareNames = (a: TeamHierarchy, b: TeamHierarchy) => {
         const nameA = a.fullyQualifiedName ?? '';
         const nameB = b.fullyQualifiedName ?? '';
 
         return nameA.localeCompare(nameB);
-      });
+      };
+
+      const sortedData = data.sort(compareNames);
       setTeams(sortedData);
       showTeamsAlert && setNoTeam(isEmpty(data));
     } catch (error) {
