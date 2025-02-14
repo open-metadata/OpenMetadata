@@ -73,6 +73,7 @@ const OperationDateBarChart = ({
         <Tooltip
           content={
             <CustomTooltip
+              customValueKey="data"
               dateTimeFormatter={formatDateTime}
               timeStampKey="timestamp"
               valueFormatter={(value) => tooltipFormatter(value)}
