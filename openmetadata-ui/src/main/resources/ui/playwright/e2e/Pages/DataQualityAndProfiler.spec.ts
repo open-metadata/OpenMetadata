@@ -285,10 +285,7 @@ test(
     const getProfilerInfo = page.waitForResponse(
       '/api/v1/tables/*/columnProfile?*'
     );
-    await page
-      .locator(`[data-row-key="${table1.entity?.columns[1].name}"]`)
-      .getByText(table1.entity?.columns[1].name)
-      .click();
+    await page.locator('[data-row-key="shop_id"]').getByText('shop_id').click();
     await getProfilerInfo;
 
     await expect(page.locator('#count_graph')).toBeVisible();
