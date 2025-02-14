@@ -79,17 +79,36 @@ export type DataAssetsWithoutServiceField =
   | MetadataService
   | StorageService
   | SearchService
-  | APIService;
+  | APIService
+  | Metric;
 
-export type DataAssetsWithFollowersField = Exclude<
-  DataAssetsType,
-  DataAssetsWithoutServiceField | Database | DatabaseSchema | APICollection
->;
+export type DataAssetsWithFollowersField =
+  | Table
+  | Topic
+  | Dashboard
+  | Pipeline
+  | Mlmodel
+  | Container
+  | SearchIndex
+  | DashboardDataModel
+  | StoredProcedure
+  | APIEndpoint
+  | Metric;
 
-export type DataAssetsWithServiceField = Exclude<
-  DataAssetsType,
-  DataAssetsWithoutServiceField | Metric
->;
+export type DataAssetsWithServiceField =
+  | Table
+  | Topic
+  | Dashboard
+  | Pipeline
+  | Mlmodel
+  | Container
+  | SearchIndex
+  | Database
+  | DashboardDataModel
+  | StoredProcedure
+  | DatabaseSchema
+  | APICollection
+  | APIEndpoint;
 
 export type DataAssetWithDomains =
   | Exclude<DataAssetsType, MetadataService>

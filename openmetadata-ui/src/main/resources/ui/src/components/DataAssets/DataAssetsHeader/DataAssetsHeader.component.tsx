@@ -57,7 +57,10 @@ import { SearchSourceAlias } from '../../../interface/search.interface';
 import { getActiveAnnouncement } from '../../../rest/feedsAPI';
 import { getDataQualityLineage } from '../../../rest/lineageAPI';
 import { getContainerByName } from '../../../rest/storageAPI';
-import { getDataAssetsHeaderInfo } from '../../../utils/DataAssetsHeader.utils';
+import {
+  getDataAssetsHeaderInfo,
+  isDataAssetsWithServiceField,
+} from '../../../utils/DataAssetsHeader.utils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import {
   getEntityFeedLink,
@@ -81,9 +84,7 @@ import './data-asset-header.less';
 import {
   DataAssetHeaderInfo,
   DataAssetsHeaderProps,
-  DataAssetsType,
   DataAssetsWithFollowersField,
-  DataAssetsWithServiceField,
   EntitiesWithDomainField,
 } from './DataAssetsHeader.interface';
 
@@ -378,13 +379,6 @@ export const DataAssetsHeader = ({
     setCopyTooltip(t('message.link-copy-to-clipboard'));
     setTimeout(() => setCopyTooltip(''), 2000);
   };
-
-  const isDataAssetsWithServiceField = useCallback(
-    (asset: DataAssetsType): asset is DataAssetsWithServiceField => {
-      return (asset as DataAssetsWithServiceField).service !== undefined;
-    },
-    []
-  );
 
   const dataAssetServiceName = useMemo(() => {
     if (isDataAssetsWithServiceField(dataAsset)) {
