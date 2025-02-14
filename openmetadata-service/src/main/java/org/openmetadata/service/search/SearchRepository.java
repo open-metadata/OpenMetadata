@@ -394,10 +394,22 @@ public class SearchRepository {
         String scriptTxt = DEFAULT_UPDATE_SCRIPT;
         Map<String, Object> doc = new HashMap<>();
 
-        ChangeDescription changeDescription = entity.getChangeDescription();
+        ChangeDescription incrementalChangeDescription = entity.getIncrementalChangeDescription();
+        ChangeDescription changeDescription;
+
+        if (incrementalChangeDescription != null
+            && (!incrementalChangeDescription.getFieldsAdded().isEmpty()
+                || !incrementalChangeDescription.getFieldsUpdated().isEmpty()
+                || !incrementalChangeDescription.getFieldsDeleted().isEmpty())) {
+          changeDescription = incrementalChangeDescription;
+        } else {
+          changeDescription = entity.getChangeDescription();
+        }
 
         if (changeDescription != null
-            && Objects.equals(entity.getVersion(), changeDescription.getPreviousVersion())) {
+            && entity.getChangeDescription() != null
+            && Objects.equals(
+                entity.getVersion(), entity.getChangeDescription().getPreviousVersion())) {
           scriptTxt = getScriptWithParams(entity, doc, changeDescription);
         } else {
           SearchIndex elasticSearchIndex = searchIndexFactory.buildIndex(entityType, entity);

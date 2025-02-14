@@ -2847,9 +2847,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
       changeDescription = new ChangeDescription();
       updateInternal();
       storeUpdate();
-      if (operation.isPatch() || (operation.isPut() && incrementalFieldsChanged())) {
-        updated.setChangeDescription(incrementalChangeDescription);
-      }
       postUpdate(original, updated);
     }
 
@@ -2858,6 +2855,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       updateInternal(false);
       incrementalChangeDescription = changeDescription;
       incrementalChangeDescription.setPreviousVersion(original.getVersion());
+      updated.setIncrementalChangeDescription(incrementalChangeDescription);
     }
 
     @Transaction
