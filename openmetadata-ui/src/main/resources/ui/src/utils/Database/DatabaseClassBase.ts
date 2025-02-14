@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { EntityTags } from 'Models';
 import { TabProps } from '../../components/common/TabsLabel/TabsLabel.interface';
 import {
   CUSTOM_PROPERTIES_WIDGET,
@@ -37,18 +36,11 @@ import { getDatabasePageBaseTabs } from './Database.util';
 export interface DatabaseDetailPageTabProps {
   activeTab: EntityTabs;
   database: Database;
-  description: string;
-  editDescriptionPermission: boolean;
-  editGlossaryTermsPermission: boolean;
-  editTagsPermission: boolean;
   viewAllPermission: boolean;
-  tags: EntityTags[];
   schemaInstanceCount: number;
   feedCount: FeedCounts;
   handleFeedCount: (data: FeedCounts) => void;
   getEntityFeedCount: () => void;
-  onDescriptionUpdate: (updatedHTML: string) => Promise<void>;
-  handleTagSelection: (selectedTags: EntityTags[]) => Promise<void>;
   settingsUpdateHandler: (
     data: Database,
     key?: keyof Database
@@ -70,23 +62,13 @@ class DatabaseClassBase {
     return [
       EntityTabs.SCHEMA,
       EntityTabs.ACTIVITY_FEED,
-      EntityTabs.SAMPLE_DATA,
-      EntityTabs.TABLE_QUERIES,
-      EntityTabs.PROFILER,
-      EntityTabs.INCIDENTS,
-      EntityTabs.LINEAGE,
-      EntityTabs.VIEW_DEFINITION,
       EntityTabs.CUSTOM_PROPERTIES,
     ].map((tab: EntityTabs) => ({
       id: tab,
       name: tab,
       displayName: getTabLabelFromId(tab),
       layout: this.getDefaultLayout(tab),
-      editable: [
-        EntityTabs.SCHEMA,
-        EntityTabs.OVERVIEW,
-        EntityTabs.TERMS,
-      ].includes(tab),
+      editable: tab === EntityTabs.SCHEMA,
     }));
   }
 

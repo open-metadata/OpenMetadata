@@ -11,19 +11,15 @@
  *  limitations under the License.
  */
 
-import { Col, Row } from 'antd';
 import { t } from 'i18next';
 import React from 'react';
 import ActivityFeedProvider from '../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import { ActivityFeedTab } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import { CustomPropertyTable } from '../components/common/CustomPropertyTable/CustomPropertyTable';
-import ResizablePanels from '../components/common/ResizablePanels/ResizablePanels';
 import TabsLabel from '../components/common/TabsLabel/TabsLabel.component';
 import { TabProps } from '../components/common/TabsLabel/TabsLabel.interface';
-import EntityRightPanel from '../components/Entity/EntityRightPanel/EntityRightPanel';
-import { COMMON_RESIZABLE_PANEL_CONFIG } from '../constants/ResizablePanel.constants';
+import { DatabaseSchemaTableTab } from '../components/Database/DatabaseSchema/DatabaseSchemaTableTab/DatabaseSchemaTableTab';
 import { EntityTabs, EntityType, TabSpecificField } from '../enums/entity.enum';
-import SchemaTablesTab from '../pages/DatabaseSchemaPage/SchemaTablesTab';
 import StoredProcedureTab from '../pages/StoredProcedure/StoredProcedureTab';
 import { DatabaseSchemaPageTabProps } from './DatabaseSchemaClassBase';
 
@@ -33,14 +29,10 @@ export const defaultFields = `${TabSpecificField.TAGS},${TabSpecificField.OWNERS
 export const getDataBaseSchemaPageBaseTabs = ({
   feedCount,
   activeTab,
-  editGlossaryTermsPermission,
   editCustomAttributePermission,
-  editTagsPermission,
-  tags,
   viewAllPermission,
   storedProcedureCount,
   handleExtensionUpdate,
-  handleTagSelection,
   getEntityFeedCount,
   fetchDatabaseSchemaDetails,
   handleFeedCount,
@@ -57,44 +49,7 @@ export const getDataBaseSchemaPageBaseTabs = ({
         />
       ),
       key: EntityTabs.TABLE,
-      children: (
-        <Row gutter={[0, 16]} wrap={false}>
-          <Col className="tab-content-height-with-resizable-panel" span={24}>
-            <ResizablePanels
-              firstPanel={{
-                className: 'entity-resizable-panel-container',
-                children: (
-                  <div className="p-t-sm m-x-lg">
-                    <SchemaTablesTab />
-                  </div>
-                ),
-                ...COMMON_RESIZABLE_PANEL_CONFIG.LEFT_PANEL,
-              }}
-              secondPanel={{
-                children: (
-                  <div data-testid="entity-right-panel">
-                    <EntityRightPanel<EntityType.DATABASE_SCHEMA>
-                      editCustomAttributePermission={
-                        editCustomAttributePermission
-                      }
-                      editGlossaryTermsPermission={editGlossaryTermsPermission}
-                      editTagPermission={editTagsPermission}
-                      entityType={EntityType.DATABASE_SCHEMA}
-                      selectedTags={tags}
-                      viewAllPermission={viewAllPermission}
-                      onExtensionUpdate={handleExtensionUpdate}
-                      onTagSelectionChange={handleTagSelection}
-                    />
-                  </div>
-                ),
-                ...COMMON_RESIZABLE_PANEL_CONFIG.RIGHT_PANEL,
-                className:
-                  'entity-resizable-right-panel-container entity-resizable-panel-container',
-              }}
-            />
-          </Col>
-        </Row>
-      ),
+      children: <DatabaseSchemaTableTab />,
     },
     {
       label: (

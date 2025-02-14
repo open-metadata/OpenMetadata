@@ -13,7 +13,6 @@
 import { Col, Row, Tabs } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import { EntityTags } from 'Models';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
@@ -25,6 +24,7 @@ import { QueryVote } from '../../components/Database/TableQueries/TableQueries.i
 import { GenericProvider } from '../../components/GenericProvider/GenericProvider';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
+import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import {
   getEntityDetailsPath,
   getVersionPath,
@@ -44,12 +44,13 @@ import {
   StoredProcedure,
   StoredProcedureCodeObject,
 } from '../../generated/entity/data/storedProcedure';
+import { Page, PageType } from '../../generated/system/ui/page';
 import { Include } from '../../generated/type/include';
-import { TagLabel } from '../../generated/type/tagLabel';
 import LimitWrapper from '../../hoc/LimitWrapper';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useFqn } from '../../hooks/useFqn';
 import { FeedCounts } from '../../interface/feed.interface';
+import { getDocumentByFQN } from '../../rest/DocStoreAPI';
 import {
   addStoredProceduresFollower,
   getStoredProceduresByFqn,
@@ -60,18 +61,22 @@ import {
 } from '../../rest/storedProceduresAPI';
 import { addToRecentViewed, getFeedCounts } from '../../utils/CommonUtils';
 import { getEntityName } from '../../utils/EntityUtils';
+import {
+  getGlossaryTermDetailTabs,
+  getTabLabelMap,
+} from '../../utils/GlossaryTerm/GlossaryTermUtil';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import {
   getStoredProcedureDetailsPageTabs,
   STORED_PROCEDURE_DEFAULT_FIELDS,
 } from '../../utils/StoredProceduresUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
-import { createTagObject, updateTierTag } from '../../utils/TagsUtils';
+import { updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 
 const StoredProcedurePage = () => {
   const { t } = useTranslation();
-  const { currentUser } = useApplicationStore();
+  const { currentUser, selectedPersona } = useApplicationStore();
   const USER_ID = currentUser?.id ?? '';
   const history = useHistory();
   const { tab: activeTab = EntityTabs.CODE } = useParams<{ tab: string }>();
@@ -82,8 +87,7 @@ const StoredProcedurePage = () => {
   const [storedProcedure, setStoredProcedure] = useState<StoredProcedure>();
   const [storedProcedurePermissions, setStoredProcedurePermissions] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
-  const [isEdit, setIsEdit] = useState(false);
-
+  const [customizedPage, setCustomizedPage] = useState<Page | null>(null);
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA
   );
@@ -93,10 +97,8 @@ const StoredProcedurePage = () => {
     followers,
     owners,
     tags,
-    tier,
     version,
     code,
-    description,
     deleted,
     entityName,
     entityFQN,
@@ -381,41 +383,6 @@ const StoredProcedurePage = () => {
     }
   };
 
-  const onDescriptionEdit = (): void => {
-    setIsEdit(true);
-  };
-  const onCancel = () => {
-    setIsEdit(false);
-  };
-
-  const onDescriptionUpdate = async (updatedHTML: string) => {
-    if (description !== updatedHTML && storedProcedure) {
-      const updatedData = {
-        ...storedProcedure,
-        description: updatedHTML,
-      };
-      try {
-        await handleStoreProcedureUpdate(updatedData, 'description');
-      } catch (error) {
-        showErrorToast(error as AxiosError);
-      } finally {
-        setIsEdit(false);
-      }
-    } else {
-      setIsEdit(false);
-    }
-  };
-
-  const handleTagSelection = async (selectedTags: EntityTags[]) => {
-    const updatedTags: TagLabel[] | undefined = createTagObject(selectedTags);
-
-    if (updatedTags && storedProcedure) {
-      const updatedTags = [...(tier ? [tier] : []), ...selectedTags];
-      const updatedData = { ...storedProcedure, tags: updatedTags };
-      await handleStoreProcedureUpdate(updatedData, 'tags');
-    }
-  };
-
   const onExtensionUpdate = useCallback(
     async (updatedData: StoredProcedure) => {
       if (storedProcedure) {
@@ -439,9 +406,6 @@ const StoredProcedurePage = () => {
   );
 
   const {
-    editTagsPermission,
-    editGlossaryTermsPermission,
-    editDescriptionPermission,
     editCustomAttributePermission,
     editLineagePermission,
     viewAllPermission,
@@ -477,51 +441,49 @@ const StoredProcedurePage = () => {
   );
 
   const tabs = useMemo(() => {
-    return getStoredProcedureDetailsPageTabs({
+    const tabLabelMap = getTabLabelMap(customizedPage?.tabs);
+
+    const tabs = getStoredProcedureDetailsPageTabs({
       activeTab: activeTab as EntityTabs,
       feedCount,
-      description: description ?? '',
       decodedStoredProcedureFQN,
       entityName,
       code,
-      isEdit,
       deleted: deleted ?? false,
       owners: owners ?? [],
-      editDescriptionPermission,
-      onCancel,
-      onDescriptionEdit,
-      onDescriptionUpdate,
       storedProcedure: storedProcedure as StoredProcedure,
-      tags: tags ?? [],
-      editTagsPermission,
-      editGlossaryTermsPermission,
       editLineagePermission,
       editCustomAttributePermission,
       viewAllPermission,
       onExtensionUpdate,
-      handleTagSelection,
       getEntityFeedCount: getEntityFeedCount,
       fetchStoredProcedureDetails,
       handleFeedCount: handleFeedCount,
+      labelMap: tabLabelMap,
     });
+
+    const updatedTabs = getGlossaryTermDetailTabs(
+      tabs,
+      customizedPage?.tabs,
+      EntityTabs.CODE
+    );
+
+    return updatedTabs;
   }, [
     code,
-    tags,
-    isEdit,
     deleted,
     feedCount.totalCount,
     activeTab,
     entityFQN,
     entityName,
-    description,
     storedProcedure,
     decodedStoredProcedureFQN,
-    editTagsPermission,
-    editGlossaryTermsPermission,
     editLineagePermission,
-    editDescriptionPermission,
     editCustomAttributePermission,
     viewAllPermission,
+    onExtensionUpdate,
+    getEntityFeedCount,
+    fetchStoredProcedureDetails,
     handleFeedCount,
   ]);
 
@@ -539,6 +501,26 @@ const StoredProcedurePage = () => {
       showErrorToast(error as AxiosError);
     }
   };
+
+  const fetchDocument = useCallback(async () => {
+    const pageFQN = `${EntityType.PERSONA}${FQN_SEPARATOR_CHAR}${selectedPersona.fullyQualifiedName}`;
+    try {
+      const doc = await getDocumentByFQN(pageFQN);
+      setCustomizedPage(
+        doc.data?.pages?.find(
+          (p: Page) => p.pageType === PageType.StoredProcedure
+        )
+      );
+    } catch (error) {
+      // fail silent
+    }
+  }, [selectedPersona.fullyQualifiedName]);
+
+  useEffect(() => {
+    if (selectedPersona?.fullyQualifiedName) {
+      fetchDocument();
+    }
+  }, [selectedPersona]);
 
   useEffect(() => {
     if (decodedStoredProcedureFQN) {

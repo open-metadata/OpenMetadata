@@ -28,6 +28,7 @@ import {
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import { EntityType, TabSpecificField } from '../../../../enums/entity.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
+import { Database } from '../../../../generated/entity/data/database';
 import { DatabaseSchema } from '../../../../generated/entity/data/databaseSchema';
 import { EntityReference } from '../../../../generated/entity/type';
 import { UsageDetails } from '../../../../generated/type/entityUsage';
@@ -55,21 +56,23 @@ import { PagingHandlerParams } from '../../../common/NextPrevious/NextPrevious.i
 import RichTextEditorPreviewerV1 from '../../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import Searchbar from '../../../common/SearchBarComponent/SearchBar.component';
 import Table from '../../../common/Table/Table';
+import { useGenericContext } from '../../../GenericProvider/GenericProvider';
 import { EntityName } from '../../../Modals/EntityNameModal/EntityNameModal.interface';
 import { DatabaseSchemaTableProps } from './DatabaseSchemaTable.interface';
 
 export const DatabaseSchemaTable = ({
-  isDatabaseDeleted,
   isVersionPage = false,
 }: Readonly<DatabaseSchemaTableProps>) => {
   const { fqn: decodedDatabaseFQN } = useFqn();
   const history = useHistory();
   const location = useCustomLocation();
   const { permissions } = usePermissionProvider();
-
   const [schemas, setSchemas] = useState<DatabaseSchema[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showDeletedSchemas, setShowDeletedSchemas] = useState<boolean>(false);
+  const { data } = useGenericContext<Database>();
+
+  const { deleted: isDatabaseDeleted } = data ?? {};
 
   const allowEditDisplayNamePermission = useMemo(() => {
     return (

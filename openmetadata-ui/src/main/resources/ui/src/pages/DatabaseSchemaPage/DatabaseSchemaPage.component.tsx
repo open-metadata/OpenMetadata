@@ -15,7 +15,6 @@ import { Col, Row, Skeleton, Tabs, TabsProps } from 'antd';
 import { AxiosError } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
 import { isEmpty, isUndefined } from 'lodash';
-import { EntityTags } from 'Models';
 import React, {
   FunctionComponent,
   useCallback,
@@ -59,7 +58,6 @@ import { Tag } from '../../generated/entity/classification/tag';
 import { DatabaseSchema } from '../../generated/entity/data/databaseSchema';
 import { Page, PageType } from '../../generated/system/ui/page';
 import { Include } from '../../generated/type/include';
-import { TagLabel } from '../../generated/type/tagLabel';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useFqn } from '../../hooks/useFqn';
 import { useTableFilters } from '../../hooks/useTableFilters';
@@ -82,8 +80,7 @@ import {
   getTabLabelMap,
 } from '../../utils/GlossaryTerm/GlossaryTermUtil';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
-import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
-import { createTagObject, updateTierTag } from '../../utils/TagsUtils';
+import { updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 
 const DatabaseSchemaPage: FunctionComponent = () => {
@@ -125,21 +122,8 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     [databaseSchemaPermission, decodedDatabaseSchemaFQN]
   );
 
-  const { version: currentVersion } = useMemo(
+  const { version: currentVersion, id: databaseSchemaId = '' } = useMemo(
     () => databaseSchema,
-    [databaseSchema]
-  );
-
-  const { tags, tier } = useMemo(
-    () => ({
-      tier: getTierTags(databaseSchema.tags ?? []),
-      tags: getTagsWithoutTier(databaseSchema.tags ?? []),
-    }),
-    [databaseSchema]
-  );
-
-  const databaseSchemaId = useMemo(
-    () => databaseSchema?.id ?? '',
     [databaseSchema]
   );
 
@@ -254,27 +238,6 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     },
     [databaseSchema, databaseSchema?.owners]
   );
-
-  const handleTagsUpdate = async (selectedTags?: Array<EntityTags>) => {
-    if (selectedTags) {
-      const updatedTags = [...(tier ? [tier] : []), ...selectedTags];
-      const updatedData = { ...databaseSchema, tags: updatedTags };
-
-      try {
-        const res = await saveUpdatedDatabaseSchemaData(
-          updatedData as DatabaseSchema
-        );
-        setDatabaseSchema(res);
-      } catch (error) {
-        showErrorToast(error as AxiosError, t('server.api-error'));
-      }
-    }
-  };
-
-  const handleTagSelection = async (selectedTags: EntityTags[]) => {
-    const updatedTags: TagLabel[] | undefined = createTagObject(selectedTags);
-    await handleTagsUpdate(updatedTags);
-  };
 
   const handleUpdateTier = useCallback(
     async (newTier?: Tag) => {
@@ -417,27 +380,15 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     }
   }, [viewDatabaseSchemaPermission]);
 
-  const {
-    editTagsPermission,
-    editGlossaryTermsPermission,
-    editCustomAttributePermission,
-    viewAllPermission,
-  } = useMemo(
+  const { editCustomAttributePermission, viewAllPermission } = useMemo(
     () => ({
-      editTagsPermission:
-        (databaseSchemaPermission.EditTags ||
-          databaseSchemaPermission.EditAll) &&
-        !databaseSchema.deleted,
-      editGlossaryTermsPermission:
-        (databaseSchemaPermission.EditGlossaryTerms ||
-          databaseSchemaPermission.EditAll) &&
-        !databaseSchema.deleted,
       editCustomAttributePermission:
         (databaseSchemaPermission.EditAll ||
           databaseSchemaPermission.EditCustomFields) &&
         !databaseSchema.deleted,
       viewAllPermission: databaseSchemaPermission.ViewAll,
     }),
+
     [databaseSchemaPermission, databaseSchema]
   );
 
@@ -479,14 +430,10 @@ const DatabaseSchemaPage: FunctionComponent = () => {
       feedCount,
       activeTab,
       editCustomAttributePermission,
-      editTagsPermission,
-      editGlossaryTermsPermission,
-      tags,
       viewAllPermission,
       databaseSchemaPermission,
       storedProcedureCount,
       handleExtensionUpdate,
-      handleTagSelection,
       getEntityFeedCount,
       fetchDatabaseSchemaDetails,
       handleFeedCount,
@@ -504,15 +451,11 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     activeTab,
     databaseSchema,
     editCustomAttributePermission,
-    editTagsPermission,
-    editGlossaryTermsPermission,
-    tags,
     tableCount,
     viewAllPermission,
     storedProcedureCount,
     databaseSchemaPermission,
     handleExtensionUpdate,
-    handleTagSelection,
     getEntityFeedCount,
     fetchDatabaseSchemaDetails,
     handleFeedCount,

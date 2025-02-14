@@ -84,11 +84,7 @@ class TableClassBase {
       name: tab,
       displayName: getTabLabelFromId(tab),
       layout: this.getDefaultLayout(tab),
-      editable: [
-        EntityTabs.SCHEMA,
-        EntityTabs.OVERVIEW,
-        EntityTabs.TERMS,
-      ].includes(tab),
+      editable: tab === EntityTabs.SCHEMA,
     }));
   }
 
@@ -97,7 +93,7 @@ class TableClassBase {
       case EntityTabs.SCHEMA:
         return [
           {
-            h: 2,
+            h: 1,
             i: DetailPageWidgetKeys.DESCRIPTION,
             w: 6,
             x: 0,
@@ -113,7 +109,7 @@ class TableClassBase {
             static: false,
           },
           {
-            h: 2,
+            h: 1,
             i: DetailPageWidgetKeys.FREQUENTLY_JOINED_TABLES,
             w: 2,
             x: 6,
@@ -129,7 +125,7 @@ class TableClassBase {
             static: false,
           },
           {
-            h: 2,
+            h: 1,
             i: DetailPageWidgetKeys.TAGS,
             w: 2,
             x: 6,
@@ -137,7 +133,7 @@ class TableClassBase {
             static: false,
           },
           {
-            h: 2,
+            h: 1,
             i: DetailPageWidgetKeys.GLOSSARY_TERMS,
             w: 2,
             x: 6,
@@ -145,7 +141,7 @@ class TableClassBase {
             static: false,
           },
           {
-            h: 3,
+            h: 1,
             i: DetailPageWidgetKeys.TABLE_CONSTRAINTS,
             w: 2,
             x: 6,
@@ -153,7 +149,7 @@ class TableClassBase {
             static: false,
           },
           {
-            h: 4,
+            h: 1,
             i: DetailPageWidgetKeys.CUSTOM_PROPERTIES,
             w: 2,
             x: 6,

@@ -10,53 +10,39 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { isEmpty } from 'lodash';
 import React, { useMemo } from 'react';
 import RGL, { WidthProvider } from 'react-grid-layout';
 import { useParams } from 'react-router-dom';
 import { DetailPageWidgetKeys } from '../../../enums/CustomizeDetailPage.enum';
 import { EntityTabs } from '../../../enums/entity.enum';
-import { Table } from '../../../generated/entity/data/table';
 import { Page, PageType, Tab } from '../../../generated/system/ui/page';
 import { useGridLayoutDirection } from '../../../hooks/useGridLayoutDirection';
 import { WidgetConfig } from '../../../pages/CustomizablePage/CustomizablePage.interface';
 import { useCustomizeStore } from '../../../pages/CustomizablePage/CustomizeStore';
-import { FrequentlyJoinedTables } from '../../../pages/TableDetailsPageV1/FrequentlyJoinedTables/FrequentlyJoinedTables.component';
-import { PartitionedKeys } from '../../../pages/TableDetailsPageV1/PartitionedKeys/PartitionedKeys.component';
-import TableConstraints from '../../../pages/TableDetailsPageV1/TableConstraints/TableConstraints';
 import { getDefaultWidgetForTab } from '../../../utils/CustomizePage/CustomizePageUtils';
-import tableClassBase from '../../../utils/TableClassBase';
-import { getJoinsFromTableJoins } from '../../../utils/TableUtils';
+import storedProcedureClassBase from '../../../utils/StoredProcedureBase';
 import { CommonWidgets } from '../../DataAssets/CommonWidgets/CommonWidgets';
-import { useGenericContext } from '../../GenericProvider/GenericProvider';
-import SchemaTable from '../SchemaTable/SchemaTable.component';
 import { StoredProcedureCodeCard } from '../StoredProcedureCodeCard/StoredProcedureCodeCard';
 
 const ReactGridLayout = WidthProvider(RGL);
 
-export const TableGenericTab = () => {
+export const StoredProcedureGenericTab = () => {
   const { currentPersonaDocStore } = useCustomizeStore();
-  const { tab = EntityTabs.SCHEMA } = useParams<{ tab: EntityTabs }>();
-
-  const { data: tableDetails } = useGenericContext<Table>();
-  const joins = useMemo(
-    () => getJoinsFromTableJoins(tableDetails?.joins),
-    [tableDetails?.joins]
-  );
+  const { tab = EntityTabs.CODE } = useParams<{ tab: EntityTabs }>();
 
   const layout = useMemo(() => {
     if (!currentPersonaDocStore) {
-      return tableClassBase.getDefaultLayout(tab);
+      return storedProcedureClassBase.getDefaultLayout(tab);
     }
 
     const page = currentPersonaDocStore?.data?.pages?.find(
-      (p: Page) => p.pageType === PageType.Table
+      (p: Page) => p.pageType === PageType.StoredProcedure
     );
 
     if (page) {
       return page.tabs.find((t: Tab) => t.id === tab)?.layout;
     } else {
-      return getDefaultWidgetForTab(PageType.Table, tab);
+      return getDefaultWidgetForTab(PageType.StoredProcedure, tab);
     }
   }, [currentPersonaDocStore, tab]);
 
@@ -64,21 +50,7 @@ export const TableGenericTab = () => {
     const getWidgetFromKeyInternal = (
       widgetConfig: WidgetConfig
     ): JSX.Element | null => {
-      if (widgetConfig.i.startsWith(DetailPageWidgetKeys.TABLE_SCHEMA)) {
-        return <SchemaTable />;
-      } else if (
-        widgetConfig.i.startsWith(DetailPageWidgetKeys.TABLE_CONSTRAINTS)
-      ) {
-        return <TableConstraints />;
-      } else if (
-        widgetConfig.i.startsWith(DetailPageWidgetKeys.FREQUENTLY_JOINED_TABLES)
-      ) {
-        return isEmpty(joins) ? null : <FrequentlyJoinedTables />;
-      } else if (
-        widgetConfig.i.startsWith(DetailPageWidgetKeys.PARTITIONED_KEYS)
-      ) {
-        return <PartitionedKeys />;
-      } else if (
+      if (
         widgetConfig.i.startsWith(DetailPageWidgetKeys.STORED_PROCEDURE_CODE)
       ) {
         return <StoredProcedureCodeCard />;
@@ -87,20 +59,16 @@ export const TableGenericTab = () => {
       }
     };
 
-    return layout.map((widget: WidgetConfig) => {
-      const renderedWidget = getWidgetFromKeyInternal(widget);
-
-      return renderedWidget ? (
-        <div
-          data-grid={widget}
-          id={widget.i}
-          key={widget.i}
-          style={{ overflow: 'scroll' }}>
-          {renderedWidget}
-        </div>
-      ) : null;
-    });
-  }, [layout, joins]);
+    return layout.map((widget: WidgetConfig) => (
+      <div
+        data-grid={widget}
+        id={widget.i}
+        key={widget.i}
+        style={{ overflow: 'scroll' }}>
+        {getWidgetFromKeyInternal(widget)}
+      </div>
+    ));
+  }, [layout]);
 
   // call the hook to set the direction of the grid layout
   useGridLayoutDirection();

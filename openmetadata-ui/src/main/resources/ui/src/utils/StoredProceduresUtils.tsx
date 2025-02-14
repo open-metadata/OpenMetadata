@@ -10,22 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Card, Col, Row } from 'antd';
 import { t } from 'i18next';
-import { isEmpty } from 'lodash';
 import React from 'react';
 import { ActivityFeedTab } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import { CustomPropertyTable } from '../components/common/CustomPropertyTable/CustomPropertyTable';
-import DescriptionV1 from '../components/common/EntityDescription/DescriptionV1';
-import ResizablePanels from '../components/common/ResizablePanels/ResizablePanels';
 import TabsLabel from '../components/common/TabsLabel/TabsLabel.component';
-import SchemaEditor from '../components/Database/SchemaEditor/SchemaEditor';
-import EntityRightPanel from '../components/Entity/EntityRightPanel/EntityRightPanel';
+import { TableGenericTab } from '../components/Database/TableGenericTab/TableGenericTab';
 import Lineage from '../components/Lineage/Lineage.component';
 import { SourceType } from '../components/SearchedData/SearchedData.interface';
-import { COMMON_RESIZABLE_PANEL_CONFIG } from '../constants/ResizablePanel.constants';
 import LineageProvider from '../context/LineageProvider/LineageProvider';
-import { CSMode } from '../enums/codemirror.enum';
 import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 import { EntityTabs, EntityType, TabSpecificField } from '../enums/entity.enum';
 import { StoredProcedureDetailPageTabProps } from './StoredProcedureBase';
@@ -103,22 +96,12 @@ export const getStoredProceduresPageDefaultLayout = (tab: EntityTabs) => {
 export const getStoredProcedureDetailsPageTabs = ({
   activeTab,
   feedCount,
-  description,
-  entityName,
-  code,
   deleted,
-  owners,
-  editDescriptionPermission,
-  onDescriptionUpdate,
   storedProcedure,
-  tags,
-  editTagsPermission,
-  editGlossaryTermsPermission,
   editLineagePermission,
   editCustomAttributePermission,
   viewAllPermission,
   onExtensionUpdate,
-  handleTagSelection,
   getEntityFeedCount,
   fetchStoredProcedureDetails,
   handleFeedCount,
@@ -133,65 +116,7 @@ export const getStoredProcedureDetailsPageTabs = ({
         />
       ),
       key: EntityTabs.CODE,
-      children: (
-        <Row gutter={[0, 16]} wrap={false}>
-          <Col className="tab-content-height-with-resizable-panel" span={24}>
-            <ResizablePanels
-              firstPanel={{
-                className: 'entity-resizable-panel-container',
-                children: (
-                  <div className="d-flex flex-col gap-4 p-t-sm m-l-lg p-r-lg">
-                    <DescriptionV1
-                      description={description}
-                      entityName={entityName}
-                      entityType={EntityType.STORED_PROCEDURE}
-                      hasEditAccess={editDescriptionPermission}
-                      isDescriptionExpanded={isEmpty(code)}
-                      owner={owners}
-                      showActions={!deleted}
-                      onDescriptionUpdate={onDescriptionUpdate}
-                    />
-
-                    <Card className="m-b-md" data-testid="code-component">
-                      <SchemaEditor
-                        editorClass="custom-code-mirror-theme full-screen-editor-height"
-                        mode={{ name: CSMode.SQL }}
-                        options={{
-                          styleActiveLine: false,
-                          readOnly: true,
-                        }}
-                        value={code}
-                      />
-                    </Card>
-                  </div>
-                ),
-                ...COMMON_RESIZABLE_PANEL_CONFIG.LEFT_PANEL,
-              }}
-              secondPanel={{
-                children: (
-                  <div data-testid="entity-right-panel">
-                    <EntityRightPanel<EntityType.STORED_PROCEDURE>
-                      editCustomAttributePermission={
-                        editCustomAttributePermission
-                      }
-                      editGlossaryTermsPermission={editGlossaryTermsPermission}
-                      editTagPermission={editTagsPermission}
-                      entityType={EntityType.STORED_PROCEDURE}
-                      selectedTags={tags}
-                      viewAllPermission={viewAllPermission}
-                      onExtensionUpdate={onExtensionUpdate}
-                      onTagSelectionChange={handleTagSelection}
-                    />
-                  </div>
-                ),
-                ...COMMON_RESIZABLE_PANEL_CONFIG.RIGHT_PANEL,
-                className:
-                  'entity-resizable-right-panel-container entity-resizable-panel-container',
-              }}
-            />
-          </Col>
-        </Row>
-      ),
+      children: <TableGenericTab />,
     },
     {
       label: (

@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { EntityTags } from 'Models';
 import { TabProps } from '../components/common/TabsLabel/TabsLabel.interface';
 import {
   CUSTOM_PROPERTIES_WIDGET,
@@ -39,14 +38,10 @@ export interface DatabaseSchemaPageTabProps {
   feedCount: FeedCounts;
   activeTab: EntityTabs;
   editCustomAttributePermission: boolean;
-  editTagsPermission: boolean;
-  editGlossaryTermsPermission: boolean;
-  tags: EntityTags[];
   viewAllPermission: boolean;
   databaseSchemaPermission: OperationPermission;
   storedProcedureCount: number;
   handleExtensionUpdate: (schema: DatabaseSchema) => Promise<void>;
-  handleTagSelection: (selectedTags: EntityTags[]) => Promise<void>;
   getEntityFeedCount: () => void;
   fetchDatabaseSchemaDetails: () => Promise<void>;
   handleFeedCount: (data: FeedCounts) => void;

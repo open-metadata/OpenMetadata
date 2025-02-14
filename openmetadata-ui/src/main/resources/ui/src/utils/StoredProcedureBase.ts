@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { EntityTags } from 'Models';
 import { TabProps } from '../components/common/TabsLabel/TabsLabel.interface';
 import {
   CUSTOM_PROPERTIES_WIDGET,
@@ -22,7 +21,6 @@ import {
 } from '../constants/CustomizeWidgets.constants';
 import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 import { EntityTabs } from '../enums/entity.enum';
-import { Tag } from '../generated/entity/classification/tag';
 import { StoredProcedure } from '../generated/entity/data/storedProcedure';
 import { EntityReference } from '../generated/entity/type';
 import { Tab } from '../generated/system/ui/uiCustomization';
@@ -36,27 +34,17 @@ export interface StoredProcedureDetailPageTabProps {
   feedCount: {
     totalCount: number;
   };
-  description: string;
   decodedStoredProcedureFQN: string;
   entityName: string;
   code: string;
-  isEdit: boolean;
   deleted: boolean;
   owners: EntityReference[];
-  editDescriptionPermission: boolean;
-  onCancel: () => void;
-  onDescriptionEdit: () => void;
-  onDescriptionUpdate: (value: string) => Promise<void>;
   storedProcedure: StoredProcedure;
-  tags: Tag[];
-  editTagsPermission: boolean;
-  editGlossaryTermsPermission: boolean;
   editLineagePermission: boolean;
   editCustomAttributePermission: boolean;
   viewAllPermission: boolean;
   labelMap?: Record<EntityTabs, string>;
   onExtensionUpdate: (value: StoredProcedure) => Promise<void>;
-  handleTagSelection: (selectedTags: EntityTags[]) => Promise<void>;
   getEntityFeedCount: () => void;
   fetchStoredProcedureDetails: () => Promise<void>;
   handleFeedCount: (data: FeedCounts) => void;

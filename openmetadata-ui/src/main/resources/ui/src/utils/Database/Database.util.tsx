@@ -10,27 +10,23 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Col, Row, Typography } from 'antd';
+import { Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { t } from 'i18next';
-import { isEmpty, isUndefined, toLower } from 'lodash';
+import { isUndefined, toLower } from 'lodash';
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { ActivityFeedTab } from '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import { CustomPropertyTable } from '../../components/common/CustomPropertyTable/CustomPropertyTable';
-import DescriptionV1 from '../../components/common/EntityDescription/DescriptionV1';
 import { OwnerLabel } from '../../components/common/OwnerLabel/OwnerLabel.component';
-import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
 import RichTextEditorPreviewerV1 from '../../components/common/RichTextEditor/RichTextEditorPreviewerV1';
 import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
 import { TabProps } from '../../components/common/TabsLabel/TabsLabel.interface';
-import { DatabaseSchemaTable } from '../../components/Database/DatabaseSchema/DatabaseSchemaTable/DatabaseSchemaTable';
-import EntityRightPanel from '../../components/Entity/EntityRightPanel/EntityRightPanel';
+import { DatabaseSchemaTab } from '../../components/Database/DatabaseSchemaTab/DatabaseSchemaTab';
 import {
   getEntityDetailsPath,
   NO_DATA_PLACEHOLDER,
 } from '../../constants/constants';
-import { COMMON_RESIZABLE_PANEL_CONFIG } from '../../constants/ResizablePanel.constants';
 import { DetailPageWidgetKeys } from '../../enums/CustomizeDetailPage.enum';
 import {
   EntityTabs,
@@ -201,20 +197,12 @@ export const getDatabaseDetailsPageDefaultLayout = (tab: EntityTabs) => {
 export const getDatabasePageBaseTabs = ({
   activeTab,
   database,
-  description,
-  editDescriptionPermission,
-  editGlossaryTermsPermission,
-  editTagsPermission,
   viewAllPermission,
-  tags,
   schemaInstanceCount,
   feedCount,
   handleFeedCount,
   getEntityFeedCount,
-  onDescriptionUpdate,
-  handleTagSelection,
   settingsUpdateHandler,
-  deleted,
   editCustomAttributePermission,
   getDetailsByFQN,
 }: DatabaseDetailPageTabProps): TabProps[] => {
@@ -229,59 +217,7 @@ export const getDatabasePageBaseTabs = ({
         />
       ),
       key: EntityTabs.SCHEMA,
-      children: (
-        <Row gutter={[0, 16]} wrap={false}>
-          <Col className="tab-content-height-with-resizable-panel" span={24}>
-            <ResizablePanels
-              firstPanel={{
-                className: 'entity-resizable-panel-container',
-                children: (
-                  <div className="p-t-sm m-x-lg">
-                    <Row gutter={[16, 16]}>
-                      <Col data-testid="description-container" span={24}>
-                        <DescriptionV1
-                          description={description}
-                          entityName={getEntityName(database)}
-                          entityType={EntityType.DATABASE}
-                          hasEditAccess={editDescriptionPermission}
-                          isDescriptionExpanded={isEmpty(database)}
-                          showActions={!database.deleted}
-                          onDescriptionUpdate={onDescriptionUpdate}
-                        />
-                      </Col>
-                      <Col span={24}>
-                        <DatabaseSchemaTable isDatabaseDeleted={deleted} />
-                      </Col>
-                    </Row>
-                  </div>
-                ),
-                ...COMMON_RESIZABLE_PANEL_CONFIG.LEFT_PANEL,
-              }}
-              secondPanel={{
-                children: (
-                  <div data-testid="entity-right-panel">
-                    <EntityRightPanel<EntityType.DATABASE>
-                      editCustomAttributePermission={
-                        editCustomAttributePermission
-                      }
-                      editGlossaryTermsPermission={editGlossaryTermsPermission}
-                      editTagPermission={editTagsPermission}
-                      entityType={EntityType.DATABASE}
-                      selectedTags={tags}
-                      viewAllPermission={viewAllPermission}
-                      onExtensionUpdate={settingsUpdateHandler}
-                      onTagSelectionChange={handleTagSelection}
-                    />
-                  </div>
-                ),
-                ...COMMON_RESIZABLE_PANEL_CONFIG.RIGHT_PANEL,
-                className:
-                  'entity-resizable-right-panel-container entity-resizable-panel-container',
-              }}
-            />
-          </Col>
-        </Row>
-      ),
+      children: <DatabaseSchemaTab />,
     },
     {
       label: (

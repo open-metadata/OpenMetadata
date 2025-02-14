@@ -134,7 +134,7 @@ export const CommonWidgets = ({ widgetConfig }: CommonWidgetsProps) => {
         onSelectionChange={handleTagSelection}
       />
     );
-  }, [type]);
+  }, [editTagsPermission, tags, type]);
 
   const glossaryWidget = useMemo(() => {
     return (
@@ -148,7 +148,7 @@ export const CommonWidgets = ({ widgetConfig }: CommonWidgetsProps) => {
         onSelectionChange={handleTagSelection}
       />
     );
-  }, []);
+  }, [editGlossaryTermsPermission, tags, type]);
 
   const descriptionWidget = useMemo(() => {
     return (
@@ -169,7 +169,15 @@ export const CommonWidgets = ({ widgetConfig }: CommonWidgetsProps) => {
         }}
       />
     );
-  }, []);
+  }, [
+    description,
+    entityName,
+    type,
+    editDescriptionPermission,
+    deleted,
+    columns,
+    owners,
+  ]);
 
   const handleExtensionUpdate = async (updatedTable: Table) => {
     await onUpdate(updatedTable as unknown as GenericEntity);
@@ -212,7 +220,7 @@ export const CommonWidgets = ({ widgetConfig }: CommonWidgetsProps) => {
       handleRemoveWidget: noop,
       isEditView: false,
     });
-  }, [widgetConfig]);
+  }, [widgetConfig, descriptionWidget, glossaryWidget, tagsWidget]);
 
   return (
     <div

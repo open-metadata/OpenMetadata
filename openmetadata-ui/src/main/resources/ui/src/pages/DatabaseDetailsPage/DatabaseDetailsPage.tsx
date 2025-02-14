@@ -15,7 +15,6 @@ import { Col, Row, Tabs } from 'antd';
 import { AxiosError } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
 import { isEmpty, isUndefined, toString } from 'lodash';
-import { EntityTags } from 'Models';
 import React, {
   FunctionComponent,
   useCallback,
@@ -82,8 +81,8 @@ import {
   getTabLabelMap,
 } from '../../utils/GlossaryTerm/GlossaryTermUtil';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
-import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
-import { createTagObject, updateTierTag } from '../../utils/TagsUtils';
+import { getTierTags } from '../../utils/TableUtils';
+import { updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 
 const DatabaseDetails: FunctionComponent = () => {
@@ -103,13 +102,8 @@ const DatabaseDetails: FunctionComponent = () => {
   const [database, setDatabase] = useState<Database>({} as Database);
   const [serviceType, setServiceType] = useState<string>();
 
-  const [databaseName, setDatabaseName] = useState<string>(
-    decodedDatabaseFQN.split(FQN_SEPARATOR_CHAR).slice(-1).pop() ?? ''
-  );
   const [isDatabaseDetailsLoading, setIsDatabaseDetailsLoading] =
     useState<boolean>(true);
-  const [description, setDescription] = useState('');
-  const [databaseId, setDatabaseId] = useState('');
 
   const [schemaInstanceCount, setSchemaInstanceCount] = useState<number>(0);
 
@@ -129,7 +123,6 @@ const DatabaseDetails: FunctionComponent = () => {
   );
 
   const tier = getTierTags(database?.tags ?? []);
-  const tags = getTagsWithoutTier(database?.tags ?? []);
 
   const [databasePermission, setDatabasePermission] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
@@ -194,11 +187,8 @@ const DatabaseDetails: FunctionComponent = () => {
     })
       .then((res) => {
         if (res) {
-          const { description, id, name, serviceType } = res;
+          const { serviceType } = res;
           setDatabase(res);
-          setDescription(description ?? '');
-          setDatabaseId(id ?? '');
-          setDatabaseName(name);
           setServiceType(serviceType);
         }
       })
@@ -222,27 +212,7 @@ const DatabaseDetails: FunctionComponent = () => {
       jsonPatch = compare(database, updatedData);
     }
 
-    return patchDatabaseDetails(databaseId, jsonPatch);
-  };
-
-  const onDescriptionUpdate = async (updatedHTML: string) => {
-    if (description !== updatedHTML && database) {
-      const updatedDatabaseDetails = {
-        ...database,
-        description: updatedHTML,
-      };
-      try {
-        const response = await saveUpdatedDatabaseData(updatedDatabaseDetails);
-        if (response) {
-          setDatabase(response);
-          setDescription(updatedHTML);
-        } else {
-          throw t('server.unexpected-response');
-        }
-      } catch (error) {
-        showErrorToast(error as AxiosError);
-      }
-    }
+    return patchDatabaseDetails(database.id ?? '', jsonPatch);
   };
 
   const activeTabHandler = (key: string) => {
@@ -295,7 +265,7 @@ const DatabaseDetails: FunctionComponent = () => {
           search: withinPageSearch,
           isPersistFilters: false,
           extraParameters: {
-            quickFilter: getQueryFilterForDatabase(serviceType, databaseName),
+            quickFilter: getQueryFilterForDatabase(serviceType, database.name),
           },
         })
       );
@@ -346,37 +316,6 @@ const DatabaseDetails: FunctionComponent = () => {
     return settingsUpdateHandler(updatedTableDetails);
   };
 
-  /**
-   * Formulates updated tags and updates table entity data for API call
-   * @param selectedTags
-   */
-  const onTagUpdate = async (selectedTags?: Array<EntityTags>) => {
-    if (selectedTags) {
-      const updatedTags = [...(tier ? [tier] : []), ...selectedTags];
-      const updatedDatabase = { ...database, tags: updatedTags };
-      await settingsUpdateHandler(updatedDatabase);
-    }
-  };
-
-  const handleTagSelection = async (selectedTags: EntityTags[]) => {
-    if (selectedTags) {
-      const prevTags =
-        tags?.filter((tag) =>
-          selectedTags
-            .map((selTag) => selTag.tagFQN)
-            .includes(tag?.tagFQN as string)
-        ) || [];
-      const newTags = createTagObject(
-        selectedTags.filter((tag) => {
-          return !prevTags
-            ?.map((prevTag) => prevTag.tagFQN)
-            .includes(tag.tagFQN);
-        })
-      );
-      await onTagUpdate([...prevTags, ...newTags]);
-    }
-  };
-
   const handleToggleDelete = (version?: number) => {
     setDatabase((prev) => {
       if (!prev) {
@@ -393,7 +332,7 @@ const DatabaseDetails: FunctionComponent = () => {
 
   const handleRestoreDatabase = useCallback(async () => {
     try {
-      const { version: newVersion } = await restoreDatabase(databaseId);
+      const { version: newVersion } = await restoreDatabase(database.id ?? '');
       showSuccessToast(
         t('message.restore-entities-success', {
           entity: t('label.database'),
@@ -409,7 +348,7 @@ const DatabaseDetails: FunctionComponent = () => {
         })
       );
     }
-  }, [databaseId]);
+  }, [database.id]);
 
   const versionHandler = useCallback(() => {
     currentVersion &&
@@ -423,23 +362,8 @@ const DatabaseDetails: FunctionComponent = () => {
       );
   }, [currentVersion, decodedDatabaseFQN]);
 
-  const {
-    editTagsPermission,
-    editGlossaryTermsPermission,
-    editDescriptionPermission,
-    editCustomAttributePermission,
-    viewAllPermission,
-  } = useMemo(
+  const { editCustomAttributePermission, viewAllPermission } = useMemo(
     () => ({
-      editTagsPermission:
-        (databasePermission.EditTags || databasePermission.EditAll) &&
-        !database.deleted,
-      editGlossaryTermsPermission:
-        (databasePermission.EditGlossaryTerms || databasePermission.EditAll) &&
-        !database.deleted,
-      editDescriptionPermission:
-        (databasePermission.EditDescription || databasePermission.EditAll) &&
-        !database.deleted,
       editCustomAttributePermission:
         (databasePermission.EditAll || databasePermission.EditCustomFields) &&
         !database.deleted,
@@ -469,18 +393,11 @@ const DatabaseDetails: FunctionComponent = () => {
     const tabs = databaseClassBase.getDatabaseDetailPageTabs({
       activeTab,
       database,
-      description,
-      editDescriptionPermission,
-      editGlossaryTermsPermission,
-      editTagsPermission,
       viewAllPermission,
-      tags,
       schemaInstanceCount,
       feedCount,
       handleFeedCount,
       getEntityFeedCount,
-      onDescriptionUpdate,
-      handleTagSelection,
       settingsUpdateHandler,
       deleted: database.deleted ?? false,
       editCustomAttributePermission,
@@ -494,18 +411,10 @@ const DatabaseDetails: FunctionComponent = () => {
       EntityTabs.CHILDREN
     );
   }, [
-    tags,
-    database,
-    description,
-    databaseName,
-    decodedDatabaseFQN,
     activeTab,
-    databasePermission,
+    database,
     schemaInstanceCount,
     feedCount.totalCount,
-    editTagsPermission,
-    editGlossaryTermsPermission,
-    editDescriptionPermission,
     editCustomAttributePermission,
     viewAllPermission,
     deleted,

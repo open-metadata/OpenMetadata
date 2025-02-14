@@ -15,11 +15,10 @@ import { Col, Row, Switch, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import { isEmpty, isUndefined } from 'lodash';
+import { isUndefined } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import DisplayName from '../../components/common/DisplayName/DisplayName';
-import DescriptionV1 from '../../components/common/EntityDescription/DescriptionV1';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import NextPrevious from '../../components/common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
@@ -47,7 +46,6 @@ import {
   TableListParams,
 } from '../../rest/tableAPI';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
-import { getEntityName } from '../../utils/EntityUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 interface SchemaTablesTabProps {
@@ -63,11 +61,8 @@ function SchemaTablesTab({
   const { permissions } = usePermissionProvider();
   const { fqn: decodedDatabaseSchemaFQN } = useFqn();
   const pagingInfo = usePaging(PAGE_SIZE);
-  const {
-    data: databaseSchemaDetails,
-    permissions: databaseSchemaPermission,
-    onUpdate,
-  } = useGenericContext<DatabaseSchema>();
+  const { data: databaseSchemaDetails, permissions: databaseSchemaPermission } =
+    useGenericContext<DatabaseSchema>();
 
   const { filters: tableFilters, setFilters } = useTableFilters(
     INITIAL_TABLE_FILTERS
@@ -89,13 +84,10 @@ function SchemaTablesTab({
     );
   }, [permissions, isVersionView]);
 
-  const { viewDatabaseSchemaPermission, editDescriptionPermission } = useMemo(
+  const { viewDatabaseSchemaPermission } = useMemo(
     () => ({
       viewDatabaseSchemaPermission:
         databaseSchemaPermission.ViewAll || databaseSchemaPermission.ViewBasic,
-      editDescriptionPermission:
-        databaseSchemaPermission.EditAll ||
-        databaseSchemaPermission.EditDescription,
     }),
     [databaseSchemaPermission?.ViewAll, databaseSchemaPermission?.ViewBasic]
   );
@@ -236,28 +228,6 @@ function SchemaTablesTab({
 
   return (
     <Row gutter={[16, 16]}>
-      <Col data-testid="description-container" span={24}>
-        {isVersionView ? (
-          <DescriptionV1
-            description={databaseSchemaDetails.description}
-            entityType={EntityType.DATABASE_SCHEMA}
-            isDescriptionExpanded={isEmpty(tableData)}
-            showActions={false}
-          />
-        ) : (
-          <DescriptionV1
-            description={databaseSchemaDetails.description}
-            entityName={getEntityName(databaseSchemaDetails)}
-            entityType={EntityType.DATABASE_SCHEMA}
-            hasEditAccess={editDescriptionPermission}
-            isDescriptionExpanded={isEmpty(tableData)}
-            showActions={!databaseSchemaDetails.deleted}
-            onDescriptionUpdate={(value) =>
-              onUpdate({ ...databaseSchemaDetails, description: value })
-            }
-          />
-        )}
-      </Col>
       {!isVersionView && (
         <Col span={24}>
           <Row justify="end">
