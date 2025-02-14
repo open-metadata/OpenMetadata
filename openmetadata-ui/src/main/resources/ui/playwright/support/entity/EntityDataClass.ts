@@ -55,7 +55,7 @@ export class EntityDataClass {
   static readonly tierTag1 = new TagClass({ classification: 'Tier' });
   static readonly tierTag2 = new TagClass({ classification: 'Tier' });
   static readonly table1 = new TableClass();
-  static readonly table2 = new TableClass();
+  static readonly table2 = new TableClass(undefined, 'MaterializedView');
   static readonly topic1 = new TopicClass();
   static readonly topic2 = new TopicClass();
   static readonly dashboard1 = new DashboardClass();
@@ -105,6 +105,7 @@ export class EntityDataClass {
     await this.team2.create(apiContext);
     await this.tierTag1.create(apiContext);
     await this.tierTag2.create(apiContext);
+
 
     if (creationConfig?.all || creationConfig?.table) {
       await this.table1.create(apiContext);
@@ -180,6 +181,7 @@ export class EntityDataClass {
     if (creationConfig?.all || creationConfig?.storageService) {
       await this.storageService.create(apiContext);
     }
+
   }
 
   static async postRequisitesForTests(
@@ -199,6 +201,7 @@ export class EntityDataClass {
     await this.team2.delete(apiContext);
     await this.tierTag1.delete(apiContext);
     await this.tierTag2.delete(apiContext);
+
 
     if (creationConfig?.all || creationConfig?.table) {
       await this.table1.delete(apiContext);
@@ -274,5 +277,6 @@ export class EntityDataClass {
     if (creationConfig?.all || creationConfig?.storageService) {
       await this.storageService.delete(apiContext);
     }
+
   }
 }
