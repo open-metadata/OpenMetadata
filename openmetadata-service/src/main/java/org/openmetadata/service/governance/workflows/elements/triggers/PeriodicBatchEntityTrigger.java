@@ -121,12 +121,12 @@ public class PeriodicBatchEntityTrigger implements TriggerInterface {
             .build();
 
     IOParameter inputParameter = new IOParameter();
-    inputParameter.setSource(getNamespacedVariableName(GLOBAL_NAMESPACE, RELATED_ENTITY_VARIABLE));
+    inputParameter.setSource(RELATED_ENTITY_VARIABLE);
     inputParameter.setTarget(getNamespacedVariableName(GLOBAL_NAMESPACE, RELATED_ENTITY_VARIABLE));
 
     IOParameter outputParameter = new IOParameter();
     outputParameter.setSource(getNamespacedVariableName(GLOBAL_NAMESPACE, EXCEPTION_VARIABLE));
-    outputParameter.setTarget(getNamespacedVariableName(GLOBAL_NAMESPACE, EXCEPTION_VARIABLE));
+    outputParameter.setTarget(EXCEPTION_VARIABLE);
 
     workflowTrigger.setInParameters(List.of(inputParameter));
     workflowTrigger.setOutParameters(List.of(outputParameter));
