@@ -259,7 +259,7 @@ class PowerBiApiClient:
 
             if failed_indexes:
                 logger.info(
-                    f"Retrying one more time on failed indexes to get workspaces"
+                    "Retrying one more time on failed indexes to get workspaces"
                 )
                 for params_data in failed_indexes:
                     response = self.client.get(api_url, data=params_data)
