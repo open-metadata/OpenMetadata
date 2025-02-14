@@ -215,7 +215,7 @@ const TestSuiteDetailsPage = () => {
   const fetchTestSuiteByName = async () => {
     try {
       const response = await getTestSuiteByName(testSuiteFQN, {
-        fields: TabSpecificField.OWNERS,
+        fields: [TabSpecificField.OWNERS, TabSpecificField.DOMAIN],
         include: Include.All,
       });
       setSlashedBreadCrumb([
