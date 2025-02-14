@@ -377,12 +377,19 @@ public class SubscriptionUtil {
           // TODO: For Announcement, Immediate Consumer needs to be Notified (find information from
           // Lineage)
         case Announcement -> {
-          receiverUrls.addAll(buildReceivers(action, category, type, event, event.getEntityId()));
+          receiverUrls.addAll(
+              buildReceivers(
+                  action,
+                  category,
+                  type,
+                  thread.getEntityRef().getType(),
+                  thread.getEntityRef().getId()));
         }
       }
     } else {
       EntityInterface entityInterface = getEntity(event);
-      receiverUrls.addAll(buildReceivers(action, category, type, event, entityInterface.getId()));
+      receiverUrls.addAll(
+          buildReceivers(action, category, type, event.getEntityType(), entityInterface.getId()));
     }
 
     return receiverUrls;
@@ -392,12 +399,12 @@ public class SubscriptionUtil {
       SubscriptionAction action,
       SubscriptionDestination.SubscriptionCategory category,
       SubscriptionDestination.SubscriptionType type,
-      ChangeEvent event,
+      String entityType,
       UUID id) {
     Set<String> result = new HashSet<>();
     result.addAll(
         buildReceiversListFromActions(
-            action, category, type, Entity.getCollectionDAO(), id, event.getEntityType()));
+            action, category, type, Entity.getCollectionDAO(), id, entityType));
     return result;
   }
 

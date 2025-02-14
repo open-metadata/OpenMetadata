@@ -338,7 +338,7 @@ class LineageParser:
                     logger.debug(
                         f"Can't extract table names when parsing JOIN information from {comparison}"
                     )
-                    logger.debug(f"Query: {self.masked_query}")
+                    logger.debug(f"Query: {self.masked_query or self.query}")
                     continue
 
                 left_table_column = TableColumn(table=table_left, column=column_left)
@@ -463,7 +463,7 @@ class LineageParser:
 
         self.masked_query = mask_query(self._clean_query, parser=lr_sqlparser)
         logger.debug(
-            f"Using sqlparse for lineage parsing for query: {self.masked_query}"
+            f"Using sqlparse for lineage parsing for query: {self.masked_query or self.query}"
         )
         return lr_sqlparser
 
