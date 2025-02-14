@@ -29,4 +29,8 @@ export interface SchemaEditorProps {
   editorClass?: string;
   showCopyButton?: boolean;
   onChange?: (value: string) => void;
+  expandButtonProps?: {
+    onClick: () => void;
+    isExpanded: boolean;
+  };
 }
