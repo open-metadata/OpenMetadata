@@ -171,15 +171,11 @@ export const getStoredProcedureDetailsPageTabs = ({
                 children: (
                   <div data-testid="entity-right-panel">
                     <EntityRightPanel<EntityType.STORED_PROCEDURE>
-                      customProperties={storedProcedure}
-                      dataProducts={storedProcedure?.dataProducts ?? []}
-                      domain={storedProcedure?.domain}
                       editCustomAttributePermission={
                         editCustomAttributePermission
                       }
                       editGlossaryTermsPermission={editGlossaryTermsPermission}
                       editTagPermission={editTagsPermission}
-                      entityId={storedProcedure?.id ?? ''}
                       entityType={EntityType.STORED_PROCEDURE}
                       selectedTags={tags}
                       viewAllPermission={viewAllPermission}
@@ -243,7 +239,6 @@ export const getStoredProcedureDetailsPageTabs = ({
       key: EntityTabs.CUSTOM_PROPERTIES,
       children: storedProcedure && (
         <CustomPropertyTable<EntityType.STORED_PROCEDURE>
-          entityDetails={storedProcedure}
           entityType={EntityType.STORED_PROCEDURE}
           handleExtensionUpdate={onExtensionUpdate}
           hasEditAccess={editCustomAttributePermission}

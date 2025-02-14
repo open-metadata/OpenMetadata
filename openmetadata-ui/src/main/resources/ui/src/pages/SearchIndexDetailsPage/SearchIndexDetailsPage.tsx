@@ -380,9 +380,6 @@ function SearchIndexDetailsPage() {
                   children: (
                     <div data-testid="entity-right-panel">
                       <EntityRightPanel<EntityType.SEARCH_INDEX>
-                        customProperties={searchIndexDetails}
-                        dataProducts={searchIndexDetails?.dataProducts ?? []}
-                        domain={searchIndexDetails?.domain}
                         editCustomAttributePermission={
                           editCustomAttributePermission
                         }
@@ -390,7 +387,6 @@ function SearchIndexDetailsPage() {
                           editGlossaryTermsPermission
                         }
                         editTagPermission={editTagsPermission}
-                        entityId={searchIndexDetails?.id ?? ''}
                         entityType={EntityType.SEARCH_INDEX}
                         selectedTags={searchIndexTags}
                         viewAllPermission={viewAllPermission}
@@ -491,7 +487,6 @@ function SearchIndexDetailsPage() {
         children: searchIndexDetails && (
           <div className="m-sm">
             <CustomPropertyTable<EntityType.SEARCH_INDEX>
-              entityDetails={searchIndexDetails}
               entityType={EntityType.SEARCH_INDEX}
               handleExtensionUpdate={onExtensionUpdate}
               hasEditAccess={editCustomAttributePermission}

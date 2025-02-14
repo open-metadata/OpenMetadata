@@ -546,15 +546,11 @@ const APICollectionPage: FunctionComponent = () => {
                 children: (
                   <div data-testid="entity-right-panel">
                     <EntityRightPanel<EntityType.API_COLLECTION>
-                      customProperties={apiCollection}
-                      dataProducts={apiCollection?.dataProducts ?? []}
-                      domain={apiCollection?.domain}
                       editCustomAttributePermission={
                         editCustomAttributePermission
                       }
                       editGlossaryTermsPermission={editGlossaryTermsPermission}
                       editTagPermission={editTagsPermission}
-                      entityId={apiCollection?.id ?? ''}
                       entityType={EntityType.API_COLLECTION}
                       selectedTags={tags}
                       viewAllPermission={viewAllPermission}
@@ -607,7 +603,6 @@ const APICollectionPage: FunctionComponent = () => {
         <div className="m-sm">
           <CustomPropertyTable<EntityType.API_COLLECTION>
             className=""
-            entityDetails={apiCollection}
             entityType={EntityType.API_COLLECTION}
             handleExtensionUpdate={handleExtensionUpdate}
             hasEditAccess={editCustomAttributePermission}

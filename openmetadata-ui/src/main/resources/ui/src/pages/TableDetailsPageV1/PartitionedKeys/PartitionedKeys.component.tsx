@@ -57,7 +57,7 @@ export const PartitionedKeys = () => {
     return data;
   }, []);
 
-  if (!data.tablePartition) {
+  if (!data?.tablePartition) {
     return null;
   }
 

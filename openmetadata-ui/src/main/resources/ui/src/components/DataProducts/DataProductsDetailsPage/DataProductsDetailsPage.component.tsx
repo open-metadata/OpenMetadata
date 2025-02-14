@@ -485,7 +485,6 @@ const DataProductsDetailsPage = ({
         children: (
           <div className="p-md">
             <CustomPropertyTable<EntityType.DATA_PRODUCT>
-              entityDetails={dataProduct}
               entityType={EntityType.DATA_PRODUCT}
               handleExtensionUpdate={handelExtensionUpdate}
               hasEditAccess={

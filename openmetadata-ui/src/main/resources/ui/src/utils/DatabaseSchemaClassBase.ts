@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { EntityTags } from 'Models';
-import { PagingHandlerParams } from '../components/common/NextPrevious/NextPrevious.interface';
 import { TabProps } from '../components/common/TabsLabel/TabsLabel.interface';
 import {
   CUSTOM_PROPERTIES_WIDGET,
@@ -29,10 +28,8 @@ import {
   DatabaseServiceType,
   State,
 } from '../generated/entity/data/databaseSchema';
-import { Table } from '../generated/entity/data/table';
 import { Tab } from '../generated/system/ui/uiCustomization';
 import { LabelType, TagSource } from '../generated/type/tagLabel';
-import { UsePagingInterface } from '../hooks/paging/usePaging';
 import { FeedCounts } from '../interface/feed.interface';
 import { getTabLabelFromId } from './CustomizePage/CustomizePageUtils';
 import { getDataBaseSchemaPageBaseTabs } from './DatabaseSchemaDetailsUtils';
@@ -40,36 +37,21 @@ import i18n from './i18next/LocalUtil';
 
 export interface DatabaseSchemaPageTabProps {
   feedCount: FeedCounts;
-  tableData: Table[];
   activeTab: EntityTabs;
-  currentTablesPage: number;
-  databaseSchema: DatabaseSchema;
-  description: string;
-  editDescriptionPermission: boolean;
-  isEdit: boolean;
-  showDeletedTables: boolean;
-  tableDataLoading: boolean;
   editCustomAttributePermission: boolean;
   editTagsPermission: boolean;
   editGlossaryTermsPermission: boolean;
   tags: EntityTags[];
   viewAllPermission: boolean;
-  storedProcedureCount: number;
   databaseSchemaPermission: OperationPermission;
+  storedProcedureCount: number;
   handleExtensionUpdate: (schema: DatabaseSchema) => Promise<void>;
   handleTagSelection: (selectedTags: EntityTags[]) => Promise<void>;
-  tablePaginationHandler: ({
-    cursorType,
-    currentPage,
-  }: PagingHandlerParams) => void;
-  onEditCancel: () => void;
-  onDescriptionEdit: () => void;
-  onDescriptionUpdate: (updatedHTML: string) => Promise<void>;
-  handleShowDeletedTables: (value: boolean) => void;
   getEntityFeedCount: () => void;
   fetchDatabaseSchemaDetails: () => Promise<void>;
   handleFeedCount: (data: FeedCounts) => void;
-  pagingInfo: UsePagingInterface;
+  tableCount: number;
+  labelMap: Record<string, string>;
 }
 
 class DatabaseSchemaClassBase {
@@ -81,7 +63,8 @@ class DatabaseSchemaClassBase {
 
   public getDatabaseSchemaPageTabsIds(): Tab[] {
     return [
-      EntityTabs.SCHEMA,
+      EntityTabs.TABLE,
+      EntityTabs.STORED_PROCEDURE,
       EntityTabs.ACTIVITY_FEED,
       EntityTabs.CUSTOM_PROPERTIES,
     ].map((tab: EntityTabs) => ({
@@ -89,13 +72,13 @@ class DatabaseSchemaClassBase {
       name: tab,
       displayName: getTabLabelFromId(tab),
       layout: this.getDefaultLayout(tab),
-      editable: [EntityTabs.SCHEMA].includes(tab),
+      editable: [EntityTabs.TABLE].includes(tab),
     }));
   }
 
   public getDefaultLayout(tab: EntityTabs) {
     switch (tab) {
-      case EntityTabs.SCHEMA:
+      case EntityTabs.TABLE:
         return [
           {
             h: 2,
@@ -106,8 +89,8 @@ class DatabaseSchemaClassBase {
             static: false,
           },
           {
-            h: 11,
-            i: DetailPageWidgetKeys.DATABASE_SCHEMA,
+            h: 8,
+            i: DetailPageWidgetKeys.TABLES,
             w: 6,
             x: 0,
             y: 0,

@@ -28,19 +28,18 @@ import { useHistory, useParams } from 'react-router-dom';
 import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';
-import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
 import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import ProfilerSettings from '../../components/Database/Profiler/ProfilerSettings/ProfilerSettings';
 import { QueryVote } from '../../components/Database/TableQueries/TableQueries.interface';
 import { GenericProvider } from '../../components/GenericProvider/GenericProvider';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
+import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import {
   getEntityDetailsPath,
   getVersionPath,
   INITIAL_PAGING_VALUE,
   INITIAL_TABLE_FILTERS,
-  PAGE_SIZE,
   ROUTES,
 } from '../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
@@ -58,10 +57,10 @@ import {
 } from '../../enums/entity.enum';
 import { Tag } from '../../generated/entity/classification/tag';
 import { DatabaseSchema } from '../../generated/entity/data/databaseSchema';
-import { Table } from '../../generated/entity/data/table';
+import { Page, PageType } from '../../generated/system/ui/page';
 import { Include } from '../../generated/type/include';
 import { TagLabel } from '../../generated/type/tagLabel';
-import { usePaging } from '../../hooks/paging/usePaging';
+import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useFqn } from '../../hooks/useFqn';
 import { useTableFilters } from '../../hooks/useTableFilters';
 import { FeedCounts } from '../../interface/feed.interface';
@@ -71,12 +70,17 @@ import {
   restoreDatabaseSchema,
   updateDatabaseSchemaVotes,
 } from '../../rest/databaseAPI';
+import { getDocumentByFQN } from '../../rest/DocStoreAPI';
 import { getStoredProceduresList } from '../../rest/storedProceduresAPI';
-import { getTableList, TableListParams } from '../../rest/tableAPI';
+import { getTableList } from '../../rest/tableAPI';
 import { getEntityMissingError, getFeedCounts } from '../../utils/CommonUtils';
 import databaseSchemaClassBase from '../../utils/DatabaseSchemaClassBase';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../utils/EntityUtils';
+import {
+  getGlossaryTermDetailTabs,
+  getTabLabelMap,
+} from '../../utils/GlossaryTerm/GlossaryTermUtil';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
 import { createTagObject, updateTierTag } from '../../utils/TagsUtils';
@@ -85,20 +89,8 @@ import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 const DatabaseSchemaPage: FunctionComponent = () => {
   const { t } = useTranslation();
   const { getEntityPermissionByFqn } = usePermissionProvider();
-  const pagingInfo = usePaging(PAGE_SIZE);
 
-  const {
-    paging,
-    pageSize,
-    handlePagingChange,
-    currentPage,
-    handlePageChange,
-    pagingCursor,
-  } = pagingInfo;
-
-  const { filters: tableFilters, setFilters } = useTableFilters(
-    INITIAL_TABLE_FILTERS
-  );
+  const { setFilters } = useTableFilters(INITIAL_TABLE_FILTERS);
   const { tab: activeTab = EntityTabs.TABLE } =
     useParams<{ tab: EntityTabs }>();
   const { fqn: decodedDatabaseSchemaFQN } = useFqn();
@@ -108,19 +100,17 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   const [databaseSchema, setDatabaseSchema] = useState<DatabaseSchema>(
     {} as DatabaseSchema
   );
-  const [tableData, setTableData] = useState<Array<Table>>([]);
-  const [tableDataLoading, setTableDataLoading] = useState<boolean>(true);
   const [isSchemaDetailsLoading, setIsSchemaDetailsLoading] =
     useState<boolean>(true);
-  const [isEdit, setIsEdit] = useState(false);
-  const [description, setDescription] = useState('');
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA
   );
-
+  const [customizedPage, setCustomizedPage] = useState<Page | null>(null);
+  const { selectedPersona } = useApplicationStore();
   const [databaseSchemaPermission, setDatabaseSchemaPermission] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
   const [storedProcedureCount, setStoredProcedureCount] = useState(0);
+  const [tableCount, setTableCount] = useState(0);
 
   const [updateProfilerSetting, setUpdateProfilerSetting] =
     useState<boolean>(false);
@@ -135,12 +125,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     [databaseSchemaPermission, decodedDatabaseSchemaFQN]
   );
 
-  const handleShowDeletedTables = (value: boolean) => {
-    setFilters({ showDeletedTables: value });
-    handlePageChange(INITIAL_PAGING_VALUE);
-  };
-
-  const { version: currentVersion, deleted } = useMemo(
+  const { version: currentVersion } = useMemo(
     () => databaseSchema,
     [databaseSchema]
   );
@@ -202,9 +187,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
           include: Include.All,
         }
       );
-      const { description: schemaDescription = '' } = response;
       setDatabaseSchema(response);
-      setDescription(schemaDescription);
       if (response.deleted) {
         setFilters({
           showDeletedTables: response.deleted,
@@ -220,37 +203,6 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     }
   }, [decodedDatabaseSchemaFQN]);
 
-  const getSchemaTables = useCallback(
-    async (params?: TableListParams) => {
-      setTableDataLoading(true);
-      try {
-        const res = await getTableList({
-          ...params,
-          databaseSchema: decodedDatabaseSchemaFQN,
-          limit: pageSize,
-          include: tableFilters.showDeletedTables
-            ? Include.Deleted
-            : Include.NonDeleted,
-        });
-        setTableData(res.data);
-        handlePagingChange(res.paging);
-      } catch (err) {
-        showErrorToast(err as AxiosError);
-      } finally {
-        setTableDataLoading(false);
-      }
-    },
-    [decodedDatabaseSchemaFQN, tableFilters.showDeletedTables, pageSize]
-  );
-
-  const onDescriptionEdit = useCallback((): void => {
-    setIsEdit(true);
-  }, []);
-
-  const onEditCancel = useCallback(() => {
-    setIsEdit(false);
-  }, []);
-
   const saveUpdatedDatabaseSchemaData = useCallback(
     (updatedData: DatabaseSchema) => {
       let jsonPatch: Operation[] = [];
@@ -261,36 +213,6 @@ const DatabaseSchemaPage: FunctionComponent = () => {
       return patchDatabaseSchemaDetails(databaseSchemaId, jsonPatch);
     },
     [databaseSchemaId, databaseSchema]
-  );
-
-  const onDescriptionUpdate = useCallback(
-    async (updatedHTML: string) => {
-      if (description !== updatedHTML && databaseSchema) {
-        const updatedDatabaseSchemaDetails = {
-          ...databaseSchema,
-          description: updatedHTML,
-        };
-
-        try {
-          const response = await saveUpdatedDatabaseSchemaData(
-            updatedDatabaseSchemaDetails
-          );
-          if (response) {
-            setDatabaseSchema(response);
-            setDescription(updatedHTML);
-          } else {
-            throw t('server.unexpected-response');
-          }
-        } catch (error) {
-          showErrorToast(error as AxiosError);
-        } finally {
-          setIsEdit(false);
-        }
-      } else {
-        setIsEdit(false);
-      }
-    },
-    [description, databaseSchema]
   );
 
   const activeTabHandler = useCallback(
@@ -430,24 +352,6 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     }
   }, [databaseSchemaId]);
 
-  const tablePaginationHandler = useCallback(
-    ({ cursorType, currentPage }: PagingHandlerParams) => {
-      if (cursorType) {
-        getSchemaTables({ [cursorType]: paging[cursorType] });
-        handlePageChange(
-          currentPage,
-          {
-            cursorType: cursorType,
-            cursorValue: paging[cursorType]!,
-          },
-          pageSize
-        );
-      }
-      handlePageChange(currentPage);
-    },
-    [paging, getSchemaTables, handlePageChange]
-  );
-
   const versionHandler = useCallback(() => {
     currentVersion &&
       history.push(
@@ -488,6 +392,18 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     }
   }, [decodedDatabaseSchemaFQN]);
 
+  const fetchTableCount = useCallback(async () => {
+    try {
+      const { paging } = await getTableList({
+        databaseSchema: decodedDatabaseSchemaFQN,
+        limit: 0,
+      });
+      setTableCount(paging.total);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  }, [decodedDatabaseSchemaFQN]);
+
   useEffect(() => {
     fetchDatabaseSchemaPermission();
   }, [decodedDatabaseSchemaFQN]);
@@ -496,35 +412,14 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     if (viewDatabaseSchemaPermission) {
       fetchDatabaseSchemaDetails();
       fetchStoreProcedureCount();
+      fetchTableCount();
       getEntityFeedCount();
     }
   }, [viewDatabaseSchemaPermission]);
 
-  useEffect(() => {
-    if (viewDatabaseSchemaPermission && decodedDatabaseSchemaFQN) {
-      if (pagingCursor?.cursorData?.cursorType) {
-        // Fetch data if cursorType is present in state with cursor Value to handle browser back navigation
-        getSchemaTables({
-          [pagingCursor?.cursorData?.cursorType]:
-            pagingCursor?.cursorData?.cursorValue,
-        });
-      } else {
-        // Otherwise, just fetch the data without cursor value
-        getSchemaTables({ limit: pageSize });
-      }
-    }
-  }, [
-    tableFilters.showDeletedTables,
-    decodedDatabaseSchemaFQN,
-    viewDatabaseSchemaPermission,
-    deleted,
-    pageSize,
-  ]);
-
   const {
     editTagsPermission,
     editGlossaryTermsPermission,
-    editDescriptionPermission,
     editCustomAttributePermission,
     viewAllPermission,
   } = useMemo(
@@ -535,10 +430,6 @@ const DatabaseSchemaPage: FunctionComponent = () => {
         !databaseSchema.deleted,
       editGlossaryTermsPermission:
         (databaseSchemaPermission.EditGlossaryTerms ||
-          databaseSchemaPermission.EditAll) &&
-        !databaseSchema.deleted,
-      editDescriptionPermission:
-        (databaseSchemaPermission.EditDescription ||
           databaseSchemaPermission.EditAll) &&
         !databaseSchema.deleted,
       editCustomAttributePermission:
@@ -581,69 +472,51 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     }
   };
 
-  const tabs: TabsProps['items'] = useMemo(
-    () =>
-      databaseSchemaClassBase.getDatabaseSchemaPageTabs({
-        feedCount,
-        tableData,
-        activeTab,
-        currentTablesPage: currentPage,
-        databaseSchema,
-        description,
-        editDescriptionPermission,
-        isEdit,
-        showDeletedTables: tableFilters.showDeletedTables,
-        tableDataLoading,
-        editCustomAttributePermission,
-        editTagsPermission,
-        editGlossaryTermsPermission,
-        tags,
-        viewAllPermission,
-        databaseSchemaPermission,
-        storedProcedureCount,
-        onEditCancel,
-        handleExtensionUpdate,
-        handleTagSelection,
-        tablePaginationHandler,
-        onDescriptionEdit,
-        onDescriptionUpdate,
-        handleShowDeletedTables,
-        getEntityFeedCount,
-        fetchDatabaseSchemaDetails,
-        handleFeedCount,
-        pagingInfo,
-      }),
-    [
+  const tabs: TabsProps['items'] = useMemo(() => {
+    const tabLabelMap = getTabLabelMap(customizedPage?.tabs);
+
+    const tabs = databaseSchemaClassBase.getDatabaseSchemaPageTabs({
       feedCount,
-      tableData,
       activeTab,
-      currentPage,
-      databaseSchema,
-      description,
-      editDescriptionPermission,
-      isEdit,
-      tableFilters.showDeletedTables,
-      tableDataLoading,
       editCustomAttributePermission,
       editTagsPermission,
       editGlossaryTermsPermission,
       tags,
       viewAllPermission,
-      storedProcedureCount,
       databaseSchemaPermission,
+      storedProcedureCount,
       handleExtensionUpdate,
       handleTagSelection,
-      tablePaginationHandler,
-      onEditCancel,
-      onDescriptionEdit,
-      onDescriptionUpdate,
-      handleShowDeletedTables,
       getEntityFeedCount,
       fetchDatabaseSchemaDetails,
       handleFeedCount,
-      pagingInfo,
-    ]
-  );
+      tableCount,
+      labelMap: tabLabelMap,
+    });
+
+    return getGlossaryTermDetailTabs(
+      tabs,
+      customizedPage?.tabs,
+      EntityTabs.TABLE
+    );
+  }, [
+    feedCount,
+    activeTab,
+    databaseSchema,
+    editCustomAttributePermission,
+    editTagsPermission,
+    editGlossaryTermsPermission,
+    tags,
+    tableCount,
+    viewAllPermission,
+    storedProcedureCount,
+    databaseSchemaPermission,
+    handleExtensionUpdate,
+    handleTagSelection,
+    getEntityFeedCount,
+    fetchDatabaseSchemaDetails,
+    handleFeedCount,
+  ]);
 
   const updateVote = async (data: QueryVote, id: string) => {
     try {
@@ -665,6 +538,26 @@ const DatabaseSchemaPage: FunctionComponent = () => {
       showErrorToast(error as AxiosError);
     }
   };
+
+  const fetchDocument = useCallback(async () => {
+    const pageFQN = `${EntityType.PERSONA}${FQN_SEPARATOR_CHAR}${selectedPersona.fullyQualifiedName}`;
+    try {
+      const doc = await getDocumentByFQN(pageFQN);
+      setCustomizedPage(
+        doc.data?.pages?.find(
+          (p: Page) => p.pageType === PageType.DatabaseSchema
+        )
+      );
+    } catch (error) {
+      // fail silent
+    }
+  }, [selectedPersona.fullyQualifiedName]);
+
+  useEffect(() => {
+    if (selectedPersona?.fullyQualifiedName) {
+      fetchDocument();
+    }
+  }, [selectedPersona]);
 
   if (isPermissionsLoading) {
     return <Loader />;

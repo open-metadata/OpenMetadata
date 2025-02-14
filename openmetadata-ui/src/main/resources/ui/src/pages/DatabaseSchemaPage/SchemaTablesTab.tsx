@@ -22,54 +22,65 @@ import DisplayName from '../../components/common/DisplayName/DisplayName';
 import DescriptionV1 from '../../components/common/EntityDescription/DescriptionV1';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import NextPrevious from '../../components/common/NextPrevious/NextPrevious';
-import { NextPreviousProps } from '../../components/common/NextPrevious/NextPrevious.interface';
+import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
 import RichTextEditorPreviewerV1 from '../../components/common/RichTextEditor/RichTextEditorPreviewerV1';
 import TableAntd from '../../components/common/Table/Table';
+import { useGenericContext } from '../../components/GenericProvider/GenericProvider';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
+import {
+  INITIAL_PAGING_VALUE,
+  INITIAL_TABLE_FILTERS,
+  PAGE_SIZE,
+} from '../../constants/constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType } from '../../enums/entity.enum';
 import { DatabaseSchema } from '../../generated/entity/data/databaseSchema';
 import { Table } from '../../generated/entity/data/table';
-import { UsePagingInterface } from '../../hooks/paging/usePaging';
-import { patchTableDetails } from '../../rest/tableAPI';
+import { Include } from '../../generated/type/include';
+import { usePaging } from '../../hooks/paging/usePaging';
+import { useFqn } from '../../hooks/useFqn';
+import { useTableFilters } from '../../hooks/useTableFilters';
+import {
+  getTableList,
+  patchTableDetails,
+  TableListParams,
+} from '../../rest/tableAPI';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../utils/EntityUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 interface SchemaTablesTabProps {
-  databaseSchemaDetails: DatabaseSchema;
-  tableDataLoading: boolean;
-  description: string;
-  editDescriptionPermission?: boolean;
-  showDeletedTables?: boolean;
-  tableData: Table[];
-  currentTablesPage: number;
-  tablePaginationHandler: NextPreviousProps['pagingHandler'];
-  onDescriptionUpdate?: (updatedHTML: string) => Promise<void>;
-  onShowDeletedTablesChange?: (value: boolean) => void;
   isVersionView?: boolean;
-  pagingInfo: UsePagingInterface;
 }
 
 function SchemaTablesTab({
-  databaseSchemaDetails,
-  tableDataLoading,
-  description,
-  editDescriptionPermission = false,
-  tableData,
-  currentTablesPage,
-  tablePaginationHandler,
-  onDescriptionUpdate,
-  showDeletedTables = false,
-  onShowDeletedTablesChange,
   isVersionView = false,
-  pagingInfo,
 }: Readonly<SchemaTablesTabProps>) {
   const { t } = useTranslation();
-  const [localTableData, setLocalTableData] = useState<Table[]>([]);
-
+  const [tableData, setTableData] = useState<Array<Table>>([]);
+  const [tableDataLoading, setTableDataLoading] = useState<boolean>(true);
   const { permissions } = usePermissionProvider();
+  const { fqn: decodedDatabaseSchemaFQN } = useFqn();
+  const pagingInfo = usePaging(PAGE_SIZE);
+  const {
+    data: databaseSchemaDetails,
+    permissions: databaseSchemaPermission,
+    onUpdate,
+  } = useGenericContext<DatabaseSchema>();
+
+  const { filters: tableFilters, setFilters } = useTableFilters(
+    INITIAL_TABLE_FILTERS
+  );
+
+  const {
+    paging,
+    pageSize,
+    handlePagingChange,
+    currentPage,
+    handlePageChange,
+    pagingCursor,
+  } = pagingInfo;
 
   const allowEditDisplayNamePermission = useMemo(() => {
     return (
@@ -78,10 +89,21 @@ function SchemaTablesTab({
     );
   }, [permissions, isVersionView]);
 
+  const { viewDatabaseSchemaPermission, editDescriptionPermission } = useMemo(
+    () => ({
+      viewDatabaseSchemaPermission:
+        databaseSchemaPermission.ViewAll || databaseSchemaPermission.ViewBasic,
+      editDescriptionPermission:
+        databaseSchemaPermission.EditAll ||
+        databaseSchemaPermission.EditDescription,
+    }),
+    [databaseSchemaPermission?.ViewAll, databaseSchemaPermission?.ViewBasic]
+  );
+
   const handleDisplayNameUpdate = useCallback(
     async (data: EntityName, id?: string) => {
       try {
-        const tableDetails = localTableData.find((table) => table.id === id);
+        const tableDetails = tableData.find((table) => table.id === id);
         if (!tableDetails) {
           return;
         }
@@ -92,19 +114,61 @@ function SchemaTablesTab({
         const jsonPatch = compare(tableDetails, updatedData);
         const response = await patchTableDetails(tableDetails.id, jsonPatch);
 
-        setLocalTableData((prevData) =>
+        setTableData((prevData) =>
           prevData.map((table) => (table.id === id ? response : table))
         );
       } catch (error) {
         showErrorToast(error as AxiosError);
       }
     },
-    [localTableData]
+    [tableData]
   );
 
-  useEffect(() => {
-    setLocalTableData(tableData);
-  }, [tableData]);
+  const handleShowDeletedTables = (value: boolean) => {
+    setFilters({ showDeletedTables: value });
+    handlePageChange(INITIAL_PAGING_VALUE);
+  };
+
+  const getSchemaTables = useCallback(
+    async (params?: TableListParams) => {
+      setTableDataLoading(true);
+      try {
+        const res = await getTableList({
+          ...params,
+          databaseSchema: decodedDatabaseSchemaFQN,
+          limit: pageSize,
+          include: tableFilters.showDeletedTables
+            ? Include.Deleted
+            : Include.NonDeleted,
+        });
+        setTableData(res.data);
+        handlePagingChange(res.paging);
+      } catch (err) {
+        showErrorToast(err as AxiosError);
+      } finally {
+        setTableDataLoading(false);
+      }
+    },
+    [decodedDatabaseSchemaFQN, tableFilters.showDeletedTables, pageSize]
+  );
+
+  const tablePaginationHandler = useCallback(
+    ({ cursorType, currentPage }: PagingHandlerParams) => {
+      if (cursorType && paging[cursorType]) {
+        getSchemaTables({ [cursorType]: paging[cursorType] });
+        handlePageChange(
+          currentPage,
+          {
+            cursorType: cursorType,
+            cursorValue: paging[cursorType],
+          },
+          pageSize
+        );
+      }
+      handlePageChange(currentPage);
+    },
+    [paging, getSchemaTables, handlePageChange]
+  );
 
   const tableColumn: ColumnsType<Table> = useMemo(
     () => [
@@ -145,25 +209,52 @@ function SchemaTablesTab({
     [handleDisplayNameUpdate, allowEditDisplayNamePermission]
   );
 
+  useEffect(() => {
+    if (viewDatabaseSchemaPermission && decodedDatabaseSchemaFQN) {
+      if (pagingCursor?.cursorData?.cursorType) {
+        // Fetch data if cursorType is present in state with cursor Value to handle browser back navigation
+        getSchemaTables({
+          [pagingCursor?.cursorData?.cursorType]:
+            pagingCursor?.cursorData?.cursorValue,
+        });
+      } else {
+        // Otherwise, just fetch the data without cursor value
+        getSchemaTables({ limit: pageSize });
+      }
+    }
+  }, [
+    tableFilters.showDeletedTables,
+    decodedDatabaseSchemaFQN,
+    viewDatabaseSchemaPermission,
+
+    pageSize,
+  ]);
+
+  useEffect(() => {
+    setFilters({ showDeletedTables: databaseSchemaDetails.deleted ?? false });
+  }, [databaseSchemaDetails.deleted]);
+
   return (
     <Row gutter={[16, 16]}>
       <Col data-testid="description-container" span={24}>
         {isVersionView ? (
           <DescriptionV1
-            description={description}
+            description={databaseSchemaDetails.description}
             entityType={EntityType.DATABASE_SCHEMA}
             isDescriptionExpanded={isEmpty(tableData)}
             showActions={false}
           />
         ) : (
           <DescriptionV1
-            description={description}
+            description={databaseSchemaDetails.description}
             entityName={getEntityName(databaseSchemaDetails)}
             entityType={EntityType.DATABASE_SCHEMA}
             hasEditAccess={editDescriptionPermission}
             isDescriptionExpanded={isEmpty(tableData)}
             showActions={!databaseSchemaDetails.deleted}
-            onDescriptionUpdate={onDescriptionUpdate}
+            onDescriptionUpdate={(value) =>
+              onUpdate({ ...databaseSchemaDetails, description: value })
+            }
           />
         )}
       </Col>
@@ -172,9 +263,9 @@ function SchemaTablesTab({
           <Row justify="end">
             <Col>
               <Switch
-                checked={showDeletedTables}
+                checked={tableFilters.showDeletedTables}
                 data-testid="show-deleted"
-                onClick={onShowDeletedTablesChange}
+                onClick={handleShowDeletedTables}
               />
               <Typography.Text className="m-l-xs">
                 {t('label.deleted')}
@@ -189,7 +280,7 @@ function SchemaTablesTab({
           bordered
           columns={tableColumn}
           data-testid="databaseSchema-tables"
-          dataSource={localTableData}
+          dataSource={tableData}
           loading={tableDataLoading}
           locale={{
             emptyText: (
@@ -207,7 +298,7 @@ function SchemaTablesTab({
       {!isUndefined(pagingInfo) && pagingInfo.showPagination && (
         <Col span={24}>
           <NextPrevious
-            currentPage={currentTablesPage}
+            currentPage={currentPage}
             isLoading={tableDataLoading}
             pageSize={pagingInfo.pageSize}
             paging={pagingInfo.paging}

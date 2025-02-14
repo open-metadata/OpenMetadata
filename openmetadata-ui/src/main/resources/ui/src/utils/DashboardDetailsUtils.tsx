@@ -175,15 +175,11 @@ export const getDashboardDetailPageTabs = ({
                 children: (
                   <div data-testid="entity-right-panel">
                     <EntityRightPanel<EntityType.DASHBOARD>
-                      customProperties={dashboardDetails}
-                      dataProducts={dashboardDetails?.dataProducts ?? []}
-                      domain={dashboardDetails?.domain}
                       editCustomAttributePermission={
                         editCustomAttributePermission
                       }
                       editGlossaryTermsPermission={editGlossaryTermsPermission}
                       editTagPermission={editTagsPermission}
-                      entityId={dashboardDetails.id}
                       entityType={EntityType.DASHBOARD}
                       selectedTags={dashboardTags}
                       viewAllPermission={viewAllPermission}
@@ -244,10 +240,9 @@ export const getDashboardDetailPageTabs = ({
         />
       ),
       key: EntityTabs.CUSTOM_PROPERTIES,
-      children: dashboardDetails && (
+      children: (
         <div className="m-sm">
           <CustomPropertyTable<EntityType.DASHBOARD>
-            entityDetails={dashboardDetails}
             entityType={EntityType.DASHBOARD}
             handleExtensionUpdate={onExtensionUpdate}
             hasEditAccess={editCustomAttributePermission}

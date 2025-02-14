@@ -356,7 +356,6 @@ const DocumentationTab = ({
               <Col data-testid="custom-properties-right-panel" span="24">
                 <CustomPropertyTable<EntityType.DATA_PRODUCT>
                   isRenderedInRightPanel
-                  entityDetails={domain as DataProduct}
                   entityType={EntityType.DATA_PRODUCT}
                   handleExtensionUpdate={onExtensionUpdate}
                   hasEditAccess={Boolean(editCustomAttributePermission)}

@@ -250,16 +250,7 @@ function DatabaseSchemaVersionPage() {
         children: (
           <Row gutter={[0, 16]} wrap={false}>
             <Col className="p-t-sm m-x-lg" flex="auto">
-              <SchemaTablesTab
-                isVersionView
-                currentTablesPage={currentPage}
-                databaseSchemaDetails={currentVersionData}
-                description={description}
-                pagingInfo={pagingInfo}
-                tableData={tableData}
-                tableDataLoading={isTableDataLoading}
-                tablePaginationHandler={tablePaginationHandler}
-              />
+              <SchemaTablesTab isVersionView />
             </Col>
             <Col
               className="entity-tag-right-panel-container"
@@ -299,7 +290,6 @@ function DatabaseSchemaVersionPage() {
         children: (
           <CustomPropertyTable
             isVersionView
-            entityDetails={currentVersionData}
             entityType={EntityType.DATABASE_SCHEMA}
             hasEditAccess={false}
             hasPermission={viewVersionPermission}

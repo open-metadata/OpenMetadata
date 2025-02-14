@@ -209,7 +209,6 @@ const TableVersion: React.FC<TableVersionProp> = ({
         children: (
           <CustomPropertyTable
             isVersionView
-            entityDetails={currentVersionData}
             entityType={EntityType.TABLE}
             hasEditAccess={false}
             hasPermission={entityPermissions.ViewAll}

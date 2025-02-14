@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import React, { useMemo } from 'react';
-import ReactGridLayout from 'react-grid-layout';
+import RGL, { WidthProvider } from 'react-grid-layout';
 import { useParams } from 'react-router-dom';
 import { DetailPageWidgetKeys } from '../../../enums/CustomizeDetailPage.enum';
 import { EntityTabs } from '../../../enums/entity.enum';
@@ -23,6 +23,8 @@ import topicClassBase from '../../../utils/TopicClassBase';
 import { CommonWidgets } from '../../DataAssets/CommonWidgets/CommonWidgets';
 import TopicSchemaFields from '../TopicSchema/TopicSchema';
 
+const ReactGridLayout = WidthProvider(RGL);
+
 export const TopicSchemaTab = () => {
   const { currentPersonaDocStore } = useCustomizeStore();
   const { tab = EntityTabs.SCHEMA } = useParams<{ tab: EntityTabs }>();
@@ -33,7 +35,7 @@ export const TopicSchemaTab = () => {
     }
 
     const page = currentPersonaDocStore?.data?.pages?.find(
-      (p: Page) => p.pageType === PageType.Table
+      (p: Page) => p.pageType === PageType.Topic
     );
 
     if (page) {

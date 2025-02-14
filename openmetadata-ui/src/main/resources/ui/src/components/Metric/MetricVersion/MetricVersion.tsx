@@ -165,7 +165,6 @@ const MetricVersion: FC<MetricVersionProp> = ({
           <div className="p-md">
             <CustomPropertyTable
               isVersionView
-              entityDetails={currentVersionData}
               entityType={EntityType.METRIC}
               hasEditAccess={false}
               hasPermission={entityPermissions.ViewAll}

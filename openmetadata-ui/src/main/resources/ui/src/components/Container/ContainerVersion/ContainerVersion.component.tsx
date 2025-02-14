@@ -206,7 +206,6 @@ const ContainerVersion: React.FC<ContainerVersionProp> = ({
         children: (
           <CustomPropertyTable
             isVersionView
-            entityDetails={currentVersionData}
             entityType={EntityType.CONTAINER}
             hasEditAccess={false}
             hasPermission={entityPermissions.ViewAll}

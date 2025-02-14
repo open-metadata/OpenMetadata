@@ -298,9 +298,6 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
                             />
                           </div>
                         }
-                        customProperties={metricDetails}
-                        dataProducts={metricDetails?.dataProducts ?? []}
-                        domain={metricDetails?.domain}
                         editCustomAttributePermission={
                           editCustomAttributePermission
                         }
@@ -308,7 +305,6 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
                           editGlossaryTermsPermission
                         }
                         editTagPermission={editTagsPermission}
-                        entityId={metricDetails.id}
                         entityType={EntityType.METRIC}
                         selectedTags={metricTags}
                         viewAllPermission={viewAllPermission}
@@ -387,7 +383,6 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
         children: metricDetails && (
           <div className="m-sm">
             <CustomPropertyTable<EntityType.METRIC>
-              entityDetails={metricDetails}
               entityType={EntityType.METRIC}
               handleExtensionUpdate={onExtensionUpdate}
               hasEditAccess={editCustomAttributePermission}

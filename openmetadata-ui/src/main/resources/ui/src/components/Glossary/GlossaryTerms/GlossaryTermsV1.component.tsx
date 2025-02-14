@@ -287,7 +287,6 @@ const GlossaryTermsV1 = ({
               children: glossaryTerm && (
                 <div className="m-sm">
                   <CustomPropertyTable<EntityType.GLOSSARY_TERM>
-                    entityDetails={glossaryTerm}
                     entityType={EntityType.GLOSSARY_TERM}
                     handleExtensionUpdate={onExtensionUpdate}
                     hasEditAccess={

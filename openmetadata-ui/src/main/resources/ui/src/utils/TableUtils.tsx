@@ -936,10 +936,9 @@ export const getTableDetailPageBaseTabs = ({
         />
       ),
       key: EntityTabs.CUSTOM_PROPERTIES,
-      children: tableDetails && (
+      children: (
         <div className="m-sm">
           <CustomPropertyTable<EntityType.TABLE>
-            entityDetails={tableDetails}
             entityType={EntityType.TABLE}
             handleExtensionUpdate={onExtensionUpdate}
             hasEditAccess={editCustomAttributePermission}

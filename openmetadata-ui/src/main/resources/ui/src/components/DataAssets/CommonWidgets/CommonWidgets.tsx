@@ -57,7 +57,6 @@ export const CommonWidgets = ({ widgetConfig }: CommonWidgetsProps) => {
     deleted,
     owners,
     domain,
-    extension,
     dataProducts,
     description,
     entityName,
@@ -197,7 +196,6 @@ export const CommonWidgets = ({ widgetConfig }: CommonWidgetsProps) => {
       return (
         <CustomPropertyTable<EntityType.TABLE>
           isRenderedInRightPanel
-          entityDetails={extension}
           entityType={EntityType.TABLE}
           handleExtensionUpdate={handleExtensionUpdate}
           hasEditAccess={Boolean(editCustomAttributePermission)}

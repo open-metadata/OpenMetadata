@@ -194,7 +194,6 @@ const DataModelVersion: FC<DataModelVersionProp> = ({
           <div className="p-md">
             <CustomPropertyTable
               isVersionView
-              entityDetails={currentVersionData as DashboardDataModel}
               entityType={EntityType.DASHBOARD_DATA_MODEL}
               hasEditAccess={false}
               hasPermission={entityPermissions.ViewAll}

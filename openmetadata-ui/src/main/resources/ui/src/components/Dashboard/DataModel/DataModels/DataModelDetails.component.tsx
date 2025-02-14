@@ -232,9 +232,6 @@ const DataModelDetails = ({
               children: (
                 <div data-testid="entity-right-panel">
                   <EntityRightPanel<EntityType.DASHBOARD_DATA_MODEL>
-                    customProperties={dataModelData}
-                    dataProducts={dataModelData?.dataProducts ?? []}
-                    domain={dataModelData?.domain}
                     editCustomAttributePermission={
                       (dataModelPermissions.EditAll ||
                         dataModelPermissions.EditCustomFields) &&
@@ -242,7 +239,6 @@ const DataModelDetails = ({
                     }
                     editGlossaryTermsPermission={editGlossaryTermsPermission}
                     editTagPermission={editTagsPermission}
-                    entityId={dataModelData.id}
                     entityType={EntityType.DASHBOARD_DATA_MODEL}
                     selectedTags={tags}
                     viewAllPermission={dataModelPermissions.ViewAll}

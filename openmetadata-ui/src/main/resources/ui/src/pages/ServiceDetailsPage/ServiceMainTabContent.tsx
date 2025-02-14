@@ -32,7 +32,6 @@ import { COMMON_RESIZABLE_PANEL_CONFIG } from '../../constants/ResizablePanel.co
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../../enums/entity.enum';
-import { DatabaseService } from '../../generated/entity/services/databaseService';
 import { Paging } from '../../generated/type/paging';
 import { UsePagingInterface } from '../../hooks/paging/usePaging';
 import { ServicesType } from '../../interface/service.interface';
@@ -295,13 +294,8 @@ function ServiceMainTabContent({
             children: (
               <div data-testid="entity-right-panel">
                 <EntityRightPanel
-                  dataProducts={
-                    (serviceDetails as DatabaseService)?.dataProducts ?? []
-                  }
-                  domain={(serviceDetails as DatabaseService)?.domain}
                   editGlossaryTermsPermission={editGlossaryTermsPermission}
                   editTagPermission={editTagsPermission}
-                  entityId={serviceDetails.id}
                   entityType={entityType}
                   selectedTags={tags}
                   showDataProductContainer={

@@ -403,9 +403,6 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
                   children: (
                     <div data-testid="entity-right-panel">
                       <EntityRightPanel<EntityType.MLMODEL>
-                        customProperties={mlModelDetail}
-                        dataProducts={mlModelDetail?.dataProducts ?? []}
-                        domain={mlModelDetail?.domain}
                         editCustomAttributePermission={
                           editCustomAttributePermission
                         }
@@ -413,7 +410,6 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
                           editGlossaryTermsPermission
                         }
                         editTagPermission={editTagsPermission}
-                        entityId={mlModelDetail.id}
                         entityType={EntityType.MLMODEL}
                         selectedTags={mlModelTags}
                         viewAllPermission={viewAllPermission}
@@ -489,7 +485,6 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
         children: mlModelDetail && (
           <div className="m-sm">
             <CustomPropertyTable<EntityType.MLMODEL>
-              entityDetails={mlModelDetail}
               entityType={EntityType.MLMODEL}
               handleExtensionUpdate={onExtensionUpdate}
               hasEditAccess={editCustomAttributePermission}

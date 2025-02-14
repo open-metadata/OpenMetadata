@@ -32,14 +32,7 @@ export const defaultFields = `${TabSpecificField.TAGS},${TabSpecificField.OWNERS
 
 export const getDataBaseSchemaPageBaseTabs = ({
   feedCount,
-  tableData,
   activeTab,
-  currentTablesPage,
-  databaseSchema,
-  description,
-  editDescriptionPermission,
-  showDeletedTables,
-  tableDataLoading,
   editGlossaryTermsPermission,
   editCustomAttributePermission,
   editTagsPermission,
@@ -48,19 +41,16 @@ export const getDataBaseSchemaPageBaseTabs = ({
   storedProcedureCount,
   handleExtensionUpdate,
   handleTagSelection,
-  tablePaginationHandler,
-  onDescriptionUpdate,
-  handleShowDeletedTables,
   getEntityFeedCount,
   fetchDatabaseSchemaDetails,
   handleFeedCount,
-  pagingInfo,
+  tableCount,
 }: DatabaseSchemaPageTabProps): TabProps[] => {
   return [
     {
       label: (
         <TabsLabel
-          count={pagingInfo.paging.total}
+          count={tableCount}
           id={EntityTabs.TABLE}
           isActive={activeTab === EntityTabs.TABLE}
           name={t('label.table-plural')}
@@ -75,19 +65,7 @@ export const getDataBaseSchemaPageBaseTabs = ({
                 className: 'entity-resizable-panel-container',
                 children: (
                   <div className="p-t-sm m-x-lg">
-                    <SchemaTablesTab
-                      currentTablesPage={currentTablesPage}
-                      databaseSchemaDetails={databaseSchema}
-                      description={description}
-                      editDescriptionPermission={editDescriptionPermission}
-                      pagingInfo={pagingInfo}
-                      showDeletedTables={showDeletedTables}
-                      tableData={tableData}
-                      tableDataLoading={tableDataLoading}
-                      tablePaginationHandler={tablePaginationHandler}
-                      onDescriptionUpdate={onDescriptionUpdate}
-                      onShowDeletedTablesChange={handleShowDeletedTables}
-                    />
+                    <SchemaTablesTab />
                   </div>
                 ),
                 ...COMMON_RESIZABLE_PANEL_CONFIG.LEFT_PANEL,
@@ -96,15 +74,11 @@ export const getDataBaseSchemaPageBaseTabs = ({
                 children: (
                   <div data-testid="entity-right-panel">
                     <EntityRightPanel<EntityType.DATABASE_SCHEMA>
-                      customProperties={databaseSchema}
-                      dataProducts={databaseSchema?.dataProducts ?? []}
-                      domain={databaseSchema?.domain}
                       editCustomAttributePermission={
                         editCustomAttributePermission
                       }
                       editGlossaryTermsPermission={editGlossaryTermsPermission}
                       editTagPermission={editTagsPermission}
-                      entityId={databaseSchema?.id ?? ''}
                       entityType={EntityType.DATABASE_SCHEMA}
                       selectedTags={tags}
                       viewAllPermission={viewAllPermission}
@@ -165,11 +139,10 @@ export const getDataBaseSchemaPageBaseTabs = ({
         />
       ),
       key: EntityTabs.CUSTOM_PROPERTIES,
-      children: databaseSchema && (
+      children: (
         <div className="m-sm">
           <CustomPropertyTable<EntityType.DATABASE_SCHEMA>
             className=""
-            entityDetails={databaseSchema}
             entityType={EntityType.DATABASE_SCHEMA}
             handleExtensionUpdate={handleExtensionUpdate}
             hasEditAccess={editCustomAttributePermission}

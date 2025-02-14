@@ -43,6 +43,7 @@ export enum DetailPageWidgetKeys {
   OWNERS = 'KnowledgePanel.Owners',
   EXPERTS = 'KnowledgePanel.Experts',
   DOMAIN_TYPE = 'KnowledgePanel.DomainType',
+  TABLES = 'KnowledgePanel.Tables',
 }
 
 export enum GlossaryTermDetailPageWidgetKeys {

@@ -130,7 +130,6 @@ export const getDashboardDataModelDetailPageTabs = ({
       children: (
         <div className="p-md">
           <CustomPropertyTable<EntityType.DASHBOARD_DATA_MODEL>
-            entityDetails={dataModelData}
             entityType={EntityType.DASHBOARD_DATA_MODEL}
             handleExtensionUpdate={handelExtensionUpdate}
             hasEditAccess={

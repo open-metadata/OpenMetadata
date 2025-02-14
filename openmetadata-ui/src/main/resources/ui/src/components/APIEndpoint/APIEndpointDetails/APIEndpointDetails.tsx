@@ -306,9 +306,6 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
                   children: (
                     <div data-testid="entity-right-panel">
                       <EntityRightPanel<EntityType.API_ENDPOINT>
-                        customProperties={apiEndpointDetails}
-                        dataProducts={apiEndpointDetails?.dataProducts ?? []}
-                        domain={apiEndpointDetails?.domain}
                         editCustomAttributePermission={
                           editCustomAttributePermission
                         }
@@ -316,7 +313,6 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
                           editGlossaryTermsPermission
                         }
                         editTagPermission={editTagsPermission}
-                        entityId={apiEndpointDetails.id}
                         entityType={EntityType.API_ENDPOINT}
                         selectedTags={apiEndpointTags}
                         viewAllPermission={viewAllPermission}
@@ -381,7 +377,6 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
         children: apiEndpointDetails && (
           <div className="m-sm">
             <CustomPropertyTable<EntityType.API_ENDPOINT>
-              entityDetails={apiEndpointDetails}
               entityType={EntityType.API_ENDPOINT}
               handleExtensionUpdate={onExtensionUpdate}
               hasEditAccess={editCustomAttributePermission}

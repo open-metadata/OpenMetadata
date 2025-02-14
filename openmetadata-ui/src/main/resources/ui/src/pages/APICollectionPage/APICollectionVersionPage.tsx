@@ -334,7 +334,6 @@ const APICollectionVersionPage = () => {
           <div className="p-md">
             <CustomPropertyTable
               isVersionView
-              entityDetails={currentVersionData}
               entityType={EntityType.API_COLLECTION}
               hasEditAccess={false}
               hasPermission={viewVersionPermission}

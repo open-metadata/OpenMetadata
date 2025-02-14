@@ -144,15 +144,11 @@ export const getPipelineDetailPageTabs = ({
                 children: (
                   <div data-testid="entity-right-panel">
                     <EntityRightPanel<EntityType.PIPELINE>
-                      customProperties={pipelineDetails}
-                      dataProducts={pipelineDetails?.dataProducts ?? []}
-                      domain={pipelineDetails?.domain}
                       editCustomAttributePermission={
                         editCustomAttributePermission
                       }
                       editGlossaryTermsPermission={editGlossaryTermsPermission}
                       editTagPermission={editTagsPermission}
-                      entityId={pipelineDetails.id}
                       entityType={EntityType.PIPELINE}
                       selectedTags={tags}
                       viewAllPermission={viewAllPermission}
@@ -231,7 +227,6 @@ export const getPipelineDetailPageTabs = ({
       children: pipelineDetails && (
         <div className="m-sm">
           <CustomPropertyTable<EntityType.PIPELINE>
-            entityDetails={pipelineDetails}
             entityType={EntityType.PIPELINE}
             handleExtensionUpdate={onExtensionUpdate}
             hasEditAccess={editCustomAttributePermission}

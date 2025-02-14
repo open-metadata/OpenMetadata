@@ -251,7 +251,6 @@ function DatabaseVersionPage() {
         children: (
           <CustomPropertyTable
             isVersionView
-            entityDetails={currentVersionData}
             entityType={EntityType.DATABASE}
             hasEditAccess={false}
             hasPermission={viewVersionPermission}

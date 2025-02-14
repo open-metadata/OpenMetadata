@@ -188,7 +188,6 @@ const GlossaryOverviewTab = ({
     return (
       <CustomPropertyTable
         isRenderedInRightPanel
-        entityDetails={selectedData as GlossaryTerm}
         entityType={EntityType.GLOSSARY_TERM}
         handleExtensionUpdate={async (updatedTable) => {
           await onExtensionUpdate?.(updatedTable);

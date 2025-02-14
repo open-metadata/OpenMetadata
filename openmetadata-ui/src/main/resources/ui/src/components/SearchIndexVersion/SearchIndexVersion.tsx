@@ -187,7 +187,6 @@ const SearchIndexVersion: React.FC<SearchIndexVersionProps> = ({
         children: (
           <CustomPropertyTable
             isVersionView
-            entityDetails={currentVersionData}
             entityType={EntityType.SEARCH_INDEX}
             hasEditAccess={false}
             hasPermission={entityPermissions.ViewAll}

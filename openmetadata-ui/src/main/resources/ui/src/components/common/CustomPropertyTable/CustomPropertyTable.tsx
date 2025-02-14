@@ -43,6 +43,7 @@ import {
   getUpdatedExtensionDiffFields,
 } from '../../../utils/EntityVersionUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import { useGenericContext } from '../../GenericProvider/GenericProvider';
 import ErrorPlaceHolder from '../ErrorWithPlaceholder/ErrorPlaceHolder';
 import './custom-property-table.less';
 import {
@@ -60,12 +61,12 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
   className,
   isVersionView,
   hasPermission,
-  entityDetails,
   maxDataCap,
   isRenderedInRightPanel = false,
 }: CustomPropertyProps<T>) => {
   const { t } = useTranslation();
   const { getEntityPermissionByFqn } = usePermissionProvider();
+  const { data: entityDetails } = useGenericContext<ExtentionEntities[T]>();
 
   const [entityTypeDetail, setEntityTypeDetail] = useState<Type>({} as Type);
   const [entityTypeDetailLoading, setEntityTypeDetailLoading] =

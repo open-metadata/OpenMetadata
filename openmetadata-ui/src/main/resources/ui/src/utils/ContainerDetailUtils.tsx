@@ -197,9 +197,6 @@ export const getContainerDetailPageTabs = ({
                 children: (
                   <div data-testid="entity-right-panel">
                     <EntityRightPanel<EntityType.CONTAINER>
-                      customProperties={containerData}
-                      dataProducts={containerData?.dataProducts ?? []}
-                      domain={containerData?.domain}
                       editCustomAttributePermission={
                         editCustomAttributePermission
                       }
@@ -207,7 +204,6 @@ export const getContainerDetailPageTabs = ({
                       editTagPermission={
                         editTagsPermission && !containerData?.deleted
                       }
-                      entityId={containerData?.id ?? ''}
                       entityType={EntityType.CONTAINER}
                       selectedTags={tags}
                       viewAllPermission={viewAllPermission}
@@ -294,7 +290,6 @@ export const getContainerDetailPageTabs = ({
       children: containerData && (
         <div className="m-sm">
           <CustomPropertyTable<EntityType.CONTAINER>
-            entityDetails={containerData}
             entityType={EntityType.CONTAINER}
             handleExtensionUpdate={handleExtensionUpdate}
             hasEditAccess={editCustomAttributePermission}

@@ -15,7 +15,6 @@ import { EntityTags } from 'Models';
 import React from 'react';
 import { EntityType } from '../../../enums/entity.enum';
 import { Table } from '../../../generated/entity/data/table';
-import { EntityReference } from '../../../generated/entity/type';
 import entityRightPanelClassBase from '../../../utils/EntityRightPanelClassBase';
 import EntityRightPanel from './EntityRightPanel';
 
@@ -57,7 +56,6 @@ jest.mock(
 );
 
 describe('EntityRightPanel component test', () => {
-  const mockDataProducts: EntityReference[] = [];
   const mockSelectedTags: EntityTags[] = [];
   const mockOnTagSelectionChange = jest.fn();
   const mockCustomProperties = {
@@ -73,9 +71,7 @@ describe('EntityRightPanel component test', () => {
         editGlossaryTermsPermission
         editTagPermission
         customProperties={mockCustomProperties}
-        dataProducts={mockDataProducts}
         editCustomAttributePermission={editPermission}
-        entityId="testEntityId"
         entityType={EntityType.TABLE}
         selectedTags={mockSelectedTags}
         onExtensionUpdate={mockExtensionUpdate}
@@ -93,9 +89,7 @@ describe('EntityRightPanel component test', () => {
         editGlossaryTermsPermission
         editTagPermission
         customProperties={mockCustomProperties}
-        dataProducts={mockDataProducts}
         editCustomAttributePermission={editPermission}
-        entityId="testEntityId"
         entityType={EntityType.TABLE}
         selectedTags={mockSelectedTags}
         showDataProductContainer={false}
@@ -115,9 +109,7 @@ describe('EntityRightPanel component test', () => {
         afterSlot={<div>afterSlot</div>}
         beforeSlot={<div>beforeSlot</div>}
         customProperties={mockCustomProperties}
-        dataProducts={mockDataProducts}
         editCustomAttributePermission={editPermission}
-        entityId="testEntityId"
         entityType={EntityType.TABLE}
         selectedTags={mockSelectedTags}
         showDataProductContainer={false}
@@ -136,9 +128,7 @@ describe('EntityRightPanel component test', () => {
         editGlossaryTermsPermission
         editTagPermission
         customProperties={mockCustomProperties}
-        dataProducts={mockDataProducts}
         editCustomAttributePermission={editPermission}
-        entityId="testEntityId"
         entityType={EntityType.TABLE}
         selectedTags={mockSelectedTags}
         showDataProductContainer={false}
@@ -163,9 +153,7 @@ describe('EntityRightPanel component test', () => {
         editGlossaryTermsPermission
         editTagPermission
         customProperties={mockCustomProperties}
-        dataProducts={mockDataProducts}
         editCustomAttributePermission={editPermission}
-        entityId="testEntityId"
         entityType={EntityType.TABLE}
         selectedTags={mockSelectedTags}
         showDataProductContainer={false}
@@ -188,9 +176,7 @@ describe('EntityRightPanel component test', () => {
         editGlossaryTermsPermission
         editTagPermission
         customProperties={mockCustomProperties}
-        dataProducts={mockDataProducts}
         editCustomAttributePermission={editPermission}
-        entityId="testEntityId"
         entityType={EntityType.TABLE}
         selectedTags={mockSelectedTags}
         showDataProductContainer={false}
@@ -211,9 +197,7 @@ describe('EntityRightPanel component test', () => {
         editTagPermission
         viewAllPermission
         customProperties={mockCustomProperties}
-        dataProducts={mockDataProducts}
         editCustomAttributePermission={editPermission}
-        entityId="testEntityId"
         entityType={EntityType.TABLE}
         selectedTags={mockSelectedTags}
         showDataProductContainer={false}
@@ -235,9 +219,7 @@ describe('EntityRightPanel component test', () => {
         editTagPermission
         viewAllPermission
         customProperties={{} as Table}
-        dataProducts={mockDataProducts}
         editCustomAttributePermission={editPermission}
-        entityId="testEntityId"
         entityType={EntityType.TABLE}
         selectedTags={mockSelectedTags}
         showDataProductContainer={false}

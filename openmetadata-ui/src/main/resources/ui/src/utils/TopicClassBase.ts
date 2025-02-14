@@ -29,7 +29,6 @@ import { getTopicDetailsPageTabs } from './TopicDetailsUtils';
 
 export interface TopicDetailPageTabProps {
   schemaCount: number;
-  schemaTab: JSX.Element;
   activityFeedTab: JSX.Element;
   sampleDataTab: JSX.Element;
   queryViewerTab: JSX.Element;
@@ -50,7 +49,7 @@ class TopicClassBase {
     this.tabs = [];
   }
 
-  public getTableDetailPageTabs(
+  public getTopicDetailPageTabs(
     tableDetailsPageProps: TopicDetailPageTabProps
   ): TabProps[] {
     return getTopicDetailsPageTabs(tableDetailsPageProps);
@@ -69,11 +68,7 @@ class TopicClassBase {
       name: tab,
       displayName: getTabLabelFromId(tab),
       layout: this.getDefaultLayout(tab),
-      editable: [
-        EntityTabs.SCHEMA,
-        EntityTabs.OVERVIEW,
-        EntityTabs.TERMS,
-      ].includes(tab),
+      editable: tab === EntityTabs.SCHEMA,
     }));
   }
 
@@ -90,7 +85,7 @@ class TopicClassBase {
             static: false,
           },
           {
-            h: 11,
+            h: 8,
             i: DetailPageWidgetKeys.TOPIC_SCHEMA,
             w: 6,
             x: 0,

@@ -17,6 +17,7 @@ import { EntityTags } from 'Models';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
+import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { getEntityDetailsPath } from '../../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
 import LineageProvider from '../../../context/LineageProvider/LineageProvider';
@@ -25,36 +26,41 @@ import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { Tag } from '../../../generated/entity/classification/tag';
 import { Topic } from '../../../generated/entity/data/topic';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
+import { Page, PageType } from '../../../generated/system/ui/page';
 import { TagLabel } from '../../../generated/type/schema';
 import LimitWrapper from '../../../hoc/LimitWrapper';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useFqn } from '../../../hooks/useFqn';
 import { FeedCounts } from '../../../interface/feed.interface';
+import { getDocumentByFQN } from '../../../rest/DocStoreAPI';
 import { restoreTopic } from '../../../rest/topicsAPI';
 import { getFeedCounts } from '../../../utils/CommonUtils';
 import {
   getEntityName,
   getEntityReferenceFromEntity,
 } from '../../../utils/EntityUtils';
+import {
+  getGlossaryTermDetailTabs,
+  getTabLabelMap,
+} from '../../../utils/GlossaryTerm/GlossaryTermUtil';
 import { getTagsWithoutTier, getTierTags } from '../../../utils/TableUtils';
 import { createTagObject, updateTierTag } from '../../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
+import topicClassBase from '../../../utils/TopicClassBase';
 import { ActivityFeedTab } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import { withActivityFeed } from '../../AppRouter/withActivityFeed';
 import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import QueryViewer from '../../common/QueryViewer/QueryViewer.component';
-import TabsLabel from '../../common/TabsLabel/TabsLabel.component';
 import { DataAssetsHeader } from '../../DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import SampleDataWithMessages from '../../Database/SampleDataWithMessages/SampleDataWithMessages';
 import { GenericProvider } from '../../GenericProvider/GenericProvider';
 import Lineage from '../../Lineage/Lineage.component';
+
+import QueryViewer from '../../common/QueryViewer/QueryViewer.component';
 import { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../PageLayoutV1/PageLayoutV1';
 import { SourceType } from '../../SearchedData/SearchedData.interface';
-import { TopicSchemaTab } from '../TopicSchemaTab/TopicSchemaTab';
 import { TopicDetailsProps } from './TopicDetails.interface';
-
 const TopicDetails: React.FC<TopicDetailsProps> = ({
   updateTopicDetailsState,
   topicDetails,
@@ -68,11 +74,12 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
   onUpdateVote,
 }: TopicDetailsProps) => {
   const { t } = useTranslation();
-  const { currentUser } = useApplicationStore();
+  const { currentUser, selectedPersona } = useApplicationStore();
   const { tab: activeTab = EntityTabs.SCHEMA } =
     useParams<{ tab: EntityTabs }>();
   const { fqn: decodedTopicFQN } = useFqn();
   const history = useHistory();
+  const [customizedPage, setCustomizedPage] = useState<Page | null>(null);
 
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA
@@ -267,134 +274,114 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
     [topicPermissions, deleted]
   );
 
+  const fetchDocument = useCallback(async () => {
+    const pageFQN = `${EntityType.PERSONA}${FQN_SEPARATOR_CHAR}${selectedPersona.fullyQualifiedName}`;
+    try {
+      const doc = await getDocumentByFQN(pageFQN);
+      setCustomizedPage(
+        doc.data?.pages?.find((p: Page) => p.pageType === PageType.Topic)
+      );
+    } catch (error) {
+      // fail silent
+    }
+  }, [selectedPersona.fullyQualifiedName]);
+
+  useEffect(() => {
+    if (selectedPersona?.fullyQualifiedName) {
+      fetchDocument();
+    }
+  }, [selectedPersona]);
+
   useEffect(() => {
     getEntityFeedCount();
   }, [topicPermissions, decodedTopicFQN]);
 
-  const tabs = useMemo(
-    () => [
-      {
-        label: (
-          <TabsLabel
-            count={topicDetails.messageSchema?.schemaFields?.length ?? 0}
-            id={EntityTabs.SCHEMA}
-            isActive={activeTab === EntityTabs.SCHEMA}
-            name={t('label.schema')}
-          />
-        ),
-        key: EntityTabs.SCHEMA,
-        children: <TopicSchemaTab />,
-      },
-      {
-        label: (
-          <TabsLabel
-            count={feedCount.totalCount}
-            id={EntityTabs.ACTIVITY_FEED}
-            isActive={activeTab === EntityTabs.ACTIVITY_FEED}
-            name={t('label.activity-feed-and-task-plural')}
-          />
-        ),
-        key: EntityTabs.ACTIVITY_FEED,
-        children: (
-          <ActivityFeedTab
-            refetchFeed
-            entityFeedTotalCount={feedCount.totalCount}
+  const tabs = useMemo(() => {
+    const tabLabelMap = getTabLabelMap(customizedPage?.tabs);
+
+    const tabs = topicClassBase.getTopicDetailPageTabs({
+      schemaCount: topicDetails.messageSchema?.schemaFields?.length ?? 0,
+      activityFeedTab: (
+        <ActivityFeedTab
+          refetchFeed
+          entityFeedTotalCount={feedCount.totalCount}
+          entityType={EntityType.TOPIC}
+          onFeedUpdate={getEntityFeedCount}
+          onUpdateEntityDetails={fetchTopic}
+          onUpdateFeedCount={handleFeedCount}
+        />
+      ),
+      sampleDataTab: !viewSampleDataPermission ? (
+        <div className="m-t-xlg">
+          <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
+        </div>
+      ) : (
+        <SampleDataWithMessages
+          entityId={topicDetails.id}
+          entityType={EntityType.TOPIC}
+        />
+      ),
+      queryViewerTab: (
+        <QueryViewer
+          sqlQuery={JSON.stringify(topicDetails.topicConfig)}
+          title={t('label.config')}
+        />
+      ),
+      lineageTab: (
+        <LineageProvider>
+          <Lineage
+            deleted={topicDetails.deleted}
+            entity={topicDetails as SourceType}
             entityType={EntityType.TOPIC}
-            onFeedUpdate={getEntityFeedCount}
-            onUpdateEntityDetails={fetchTopic}
-            onUpdateFeedCount={handleFeedCount}
+            hasEditAccess={editLineagePermission}
           />
-        ),
-      },
-      {
-        label: (
-          <TabsLabel
-            id={EntityTabs.SAMPLE_DATA}
-            name={t('label.sample-data')}
-          />
-        ),
-        key: EntityTabs.SAMPLE_DATA,
-        children: !viewSampleDataPermission ? (
-          <div className="m-t-xlg">
-            <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
-          </div>
-        ) : (
-          <SampleDataWithMessages
-            entityId={topicDetails.id}
+        </LineageProvider>
+      ),
+      customPropertiesTab: topicDetails && (
+        <div className="m-sm">
+          <CustomPropertyTable<EntityType.TOPIC>
             entityType={EntityType.TOPIC}
+            handleExtensionUpdate={onExtensionUpdate}
+            hasEditAccess={editCustomAttributePermission}
+            hasPermission={viewAllPermission}
           />
-        ),
-      },
-      {
-        label: <TabsLabel id={EntityTabs.CONFIG} name={t('label.config')} />,
-        key: EntityTabs.CONFIG,
-        children: (
-          <QueryViewer
-            sqlQuery={JSON.stringify(topicDetails.topicConfig)}
-            title={t('label.config')}
-          />
-        ),
-      },
-      {
-        label: <TabsLabel id={EntityTabs.LINEAGE} name={t('label.lineage')} />,
-        key: EntityTabs.LINEAGE,
-        children: (
-          <LineageProvider>
-            <Lineage
-              deleted={topicDetails.deleted}
-              entity={topicDetails as SourceType}
-              entityType={EntityType.TOPIC}
-              hasEditAccess={editLineagePermission}
-            />
-          </LineageProvider>
-        ),
-      },
-      {
-        label: (
-          <TabsLabel
-            id={EntityTabs.CUSTOM_PROPERTIES}
-            name={t('label.custom-property-plural')}
-          />
-        ),
-        key: EntityTabs.CUSTOM_PROPERTIES,
-        children: topicDetails && (
-          <div className="m-sm">
-            <CustomPropertyTable<EntityType.TOPIC>
-              entityDetails={topicDetails}
-              entityType={EntityType.TOPIC}
-              handleExtensionUpdate={onExtensionUpdate}
-              hasEditAccess={editCustomAttributePermission}
-              hasPermission={viewAllPermission}
-            />
-          </div>
-        ),
-      },
-    ],
-    [
-      activeTab,
-      feedCount.totalCount,
-      topicTags,
-      entityName,
-      topicDetails,
-      decodedTopicFQN,
-      fetchTopic,
-      deleted,
-      handleFeedCount,
-      onExtensionUpdate,
-      handleTagSelection,
-      onDescriptionUpdate,
-      onDataProductsUpdate,
-      handleSchemaFieldsUpdate,
-      editTagsPermission,
-      editGlossaryTermsPermission,
-      editDescriptionPermission,
-      editCustomAttributePermission,
-      editLineagePermission,
-      editAllPermission,
+        </div>
+      ),
       viewSampleDataPermission,
-      viewAllPermission,
-    ]
-  );
+      activeTab,
+      feedCount,
+      labelMap: tabLabelMap,
+    });
+
+    return getGlossaryTermDetailTabs(
+      tabs,
+      customizedPage?.tabs,
+      EntityTabs.SCHEMA
+    );
+  }, [
+    activeTab,
+    feedCount.totalCount,
+    topicTags,
+    entityName,
+    topicDetails,
+    decodedTopicFQN,
+    fetchTopic,
+    deleted,
+    handleFeedCount,
+    onExtensionUpdate,
+    handleTagSelection,
+    onDescriptionUpdate,
+    onDataProductsUpdate,
+    handleSchemaFieldsUpdate,
+    editTagsPermission,
+    editGlossaryTermsPermission,
+    editDescriptionPermission,
+    editCustomAttributePermission,
+    editLineagePermission,
+    editAllPermission,
+    viewSampleDataPermission,
+    viewAllPermission,
+  ]);
 
   return (
     <PageLayoutV1

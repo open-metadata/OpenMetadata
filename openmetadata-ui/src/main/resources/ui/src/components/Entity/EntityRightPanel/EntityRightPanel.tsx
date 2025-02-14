@@ -25,21 +25,19 @@ import type {
   ExtentionEntitiesKeys,
 } from '../../common/CustomPropertyTable/CustomPropertyTable.interface';
 import DataProductsContainer from '../../DataProducts/DataProductsContainer/DataProductsContainer.component';
+import { useGenericContext } from '../../GenericProvider/GenericProvider';
 import TagsContainerV2 from '../../Tag/TagsContainerV2/TagsContainerV2';
 import { DisplayType } from '../../Tag/TagsViewer/TagsViewer.interface';
 
 interface EntityRightPanelProps<T extends ExtentionEntitiesKeys> {
-  dataProducts: EntityReference[];
   editTagPermission: boolean;
   editGlossaryTermsPermission: boolean;
   entityType: EntityType;
-  entityId: string;
   selectedTags: EntityTags[];
   beforeSlot?: React.ReactNode;
   showTaskHandler?: boolean;
   showDataProductContainer?: boolean;
   afterSlot?: React.ReactNode;
-  domain?: EntityReference;
   onTagSelectionChange?: (selectedTags: EntityTags[]) => Promise<void>;
   viewAllPermission?: boolean;
   customProperties?: ExtentionEntities[T];
@@ -48,8 +46,6 @@ interface EntityRightPanelProps<T extends ExtentionEntitiesKeys> {
 }
 
 const EntityRightPanel = <T extends ExtentionEntitiesKeys>({
-  domain,
-  dataProducts,
   entityType,
   selectedTags,
   editTagPermission,
@@ -57,7 +53,6 @@ const EntityRightPanel = <T extends ExtentionEntitiesKeys>({
   onTagSelectionChange,
   beforeSlot,
   afterSlot,
-  entityId,
   showTaskHandler = true,
   showDataProductContainer = true,
   viewAllPermission,
@@ -68,6 +63,13 @@ const EntityRightPanel = <T extends ExtentionEntitiesKeys>({
   const KnowledgeArticles =
     entityRightPanelClassBase.getKnowLedgeArticlesWidget();
   const { fqn: entityFQN } = useFqn();
+  const { data } = useGenericContext<{
+    domain: EntityReference;
+    dataProducts: EntityReference[];
+    id: string;
+  }>();
+
+  const { domain, dataProducts, id: entityId } = data ?? {};
 
   return (
     <>
@@ -108,7 +110,6 @@ const EntityRightPanel = <T extends ExtentionEntitiesKeys>({
         {customProperties && (
           <CustomPropertyTable<T>
             isRenderedInRightPanel
-            entityDetails={customProperties}
             entityType={entityType as T}
             handleExtensionUpdate={onExtensionUpdate}
             hasEditAccess={Boolean(editCustomAttributePermission)}

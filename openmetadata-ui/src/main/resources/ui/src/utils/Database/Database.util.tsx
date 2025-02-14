@@ -261,15 +261,11 @@ export const getDatabasePageBaseTabs = ({
                 children: (
                   <div data-testid="entity-right-panel">
                     <EntityRightPanel<EntityType.DATABASE>
-                      customProperties={database}
-                      dataProducts={database?.dataProducts ?? []}
-                      domain={database?.domain}
                       editCustomAttributePermission={
                         editCustomAttributePermission
                       }
                       editGlossaryTermsPermission={editGlossaryTermsPermission}
                       editTagPermission={editTagsPermission}
-                      entityId={database?.id ?? ''}
                       entityType={EntityType.DATABASE}
                       selectedTags={tags}
                       viewAllPermission={viewAllPermission}
@@ -320,7 +316,6 @@ export const getDatabasePageBaseTabs = ({
       children: database && (
         <div className="m-sm">
           <CustomPropertyTable<EntityType.DATABASE>
-            entityDetails={database}
             entityType={EntityType.DATABASE}
             handleExtensionUpdate={settingsUpdateHandler}
             hasEditAccess={editCustomAttributePermission}

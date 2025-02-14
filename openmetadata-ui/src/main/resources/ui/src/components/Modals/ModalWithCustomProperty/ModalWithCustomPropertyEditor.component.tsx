@@ -121,11 +121,6 @@ export const ModalWithCustomPropertyEditor = ({
           hasEditAccess
           hasPermission
           isRenderedInRightPanel
-          entityDetails={
-            {
-              extension: extensionObject,
-            } as ExtentionEntities[keyof ExtentionEntities]
-          }
           entityType={entityType as keyof ExtentionEntities}
           handleExtensionUpdate={onExtensionUpdate}
         />

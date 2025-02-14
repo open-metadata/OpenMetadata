@@ -167,7 +167,6 @@ const APIEndpointVersion: FC<APIEndpointVersionProp> = ({
           <div className="p-md">
             <CustomPropertyTable
               isVersionView
-              entityDetails={currentVersionData}
               entityType={EntityType.API_ENDPOINT}
               hasEditAccess={false}
               hasPermission={entityPermissions.ViewAll}
