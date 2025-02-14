@@ -114,20 +114,7 @@
     }
 
     .approve-btn {
-      background-color: @primary-color;
-      border-color: @primary-color;
-      color: @white;
-      border-radius: 8px;
-      font-size: 12px;
-      font-style: normal;
-      font-weight: 500;
-      line-height: 20px;
-      letter-spacing: 0.1px;
-      padding: 8px 16px 8px 8px;
-    }
-
-    .reject-btn {
-      border-color: @primary-color;
+      background-color: transparent;
       color: @primary-color;
       border-radius: 8px;
       font-size: 12px;
@@ -135,13 +122,26 @@
       font-weight: 500;
       line-height: 20px;
       letter-spacing: 0.1px;
+      padding: 8px;
+      border: none;
+    }
+
+    .reject-btn {
+      background-color: transparent;
+      color: #e31b54;
+      border-radius: 8px;
+      font-size: 12px;
+      font-style: normal;
+      font-weight: 500;
+      line-height: 20px;
+      letter-spacing: 0.1px;
       padding: 8px 16px 8px 8px;
+      border: none;
     }
 
     .approve-btn .anticon,
     .reject-btn .anticon {
       font-size: 14px;
-      margin-left: 8px;
     }
   }
 
@@ -150,19 +150,6 @@
     margin-right: 4px;
   }
 }
-// .task-feed-message-container-new {
-//   .task-feed-message-new {
-//     height: 100%;
-//     display: flex;
-//     align-items: flex-start;
-//     flex-wrap: wrap;
-//     &:hover {
-//       .ant-typography {
-//         color: @primary-color;
-//       }
-//     }
-//   }
-// }
 .text-wrap {
   word-wrap: break-word;
   white-space: normal;
@@ -177,11 +164,11 @@
 .task-feed-card-v1-new .task-feed-card-footer .approve-btn.ant-btn:hover,
 .task-feed-card-v1-new .task-feed-card-footer .approve-btn.ant-btn:focus,
 .task-feed-card-v1-new .task-feed-card-footer .reject-btn.ant-btn:focus {
-  background-color: @primary-color !important;
-  color: @white !important;
+  background-color: transparent !important;
+  color: @primary-color !important;
 }
 .task-feed-card-v1-new .task-feed-card-footer .reject-btn.ant-btn:hover,
 .task-feed-card-v1-new .task-feed-card-footer .reject-btn.ant-btn:focus {
-  background-color: @white !important;
-  color: @primary-color !important;
+  background-color: transparent !important;
+  color: #e31b54 !important;
 }
