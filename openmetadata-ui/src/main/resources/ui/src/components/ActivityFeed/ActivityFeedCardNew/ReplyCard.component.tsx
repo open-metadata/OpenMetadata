@@ -36,9 +36,10 @@ const { Text } = Typography;
 interface CommentCardInterface {
   feed: Thread;
   post: any;
+  isLastReply: boolean;
 }
 
-const CommentCard = ({ feed, post }: CommentCardInterface) => {
+const CommentCard = ({ feed, post, isLastReply }: CommentCardInterface) => {
   const [isHovered, setIsHovered] = useState(false);
   //   const { entityFQN, entityType } = useMemo(() => {
   //     const entityFQN = getEntityFQN(feed.about) ?? '';
@@ -83,29 +84,8 @@ const CommentCard = ({ feed, post }: CommentCardInterface) => {
       return (
         <ActivityFeedEditor
           focused
-          className="mb-8"
+          className="mb-8 reply-feed-editor"
           defaultValue={getDefaultValue(post.message)}
-          //   editAction={
-          //     <div className="d-flex justify-end gap-2 m-r-xss">
-          //       <Button
-          //         className="border border-primary text-primary rounded-4"
-          //         data-testid="cancel-button"
-          //         size="small"
-          //         // onClick={onEditCancel}
-          //       >
-          //         {t('label.cancel')}
-          //       </Button>
-          //       <Button
-          //         className="rounded-4"
-          //         data-testid="save-button"
-          //         disabled={!post.message.length}
-          //         size="small"
-          //         type="primary"
-          //         onClick={handleSave}>
-          //         {t('label.save')}
-          //       </Button>
-          //     </div>
-          //   }
           editorClass="is_edit_post"
           onSave={handleSave}
           onTextChange={(message) => setPostMessage(message)}
@@ -129,9 +109,8 @@ const CommentCard = ({ feed, post }: CommentCardInterface) => {
         display: 'flex',
         alignItems: 'flex-start',
         gap: '12px',
-        padding: '16px 0px 0px 0px',
-        // margin: '10px 0px',
-        borderBottom: '1.5px solid  #E4E4E4',
+        padding: '24px 0px 0px 0px',
+        borderBottom: isLastReply ? 'none' : '1.5px solid  #E4E4E4',
         position: 'relative',
       }}
       onMouseEnter={() => setIsHovered(true)}
@@ -145,12 +124,7 @@ const CommentCard = ({ feed, post }: CommentCardInterface) => {
         />
       </div>
       <div>
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-          }}>
+        <div className="d-flex items-center gap-2 flex-wrap">
           <Typography.Text
             className={` 
                               activity-feed-user-name reply-card-user-name'

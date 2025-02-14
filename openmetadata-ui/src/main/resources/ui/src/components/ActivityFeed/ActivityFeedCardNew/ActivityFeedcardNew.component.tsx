@@ -258,8 +258,13 @@ const ActivityFeedCardNew = ({
               {feed?.posts
                 ?.slice()
                 .sort((a, b) => (b.postTs as number) - (a.postTs as number))
-                .map((reply) => (
-                  <CommentCard feed={feed} key={reply.id} post={reply} />
+                .map((reply, index, arr) => (
+                  <CommentCard
+                    feed={feed}
+                    isLastReply={index === arr.length - 1}
+                    key={reply.id}
+                    post={reply}
+                  />
                 ))}
             </Col>
           )}
