@@ -56,7 +56,7 @@ const TeamsSelectable = ({
     try {
       setIsLoading(true);
       const { data } = await getTeamsHierarchy(filterJoinable);
-      const sortedData = data.sort((a, b) => {
+      const sortedData = data.toSorted((a, b) => {
         const nameA = a.fullyQualifiedName ?? '';
         const nameB = b.fullyQualifiedName ?? '';
 
