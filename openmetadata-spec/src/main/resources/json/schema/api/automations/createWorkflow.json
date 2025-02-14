@@ -32,7 +32,7 @@
           "$ref": "../../entity/automations/testServiceConnection.json"
         },
         {
-          "$ref": "../services/ingestionPipelines/createIngestionPipeline.json"
+          "$ref": "../../metadataIngestion/reverseIngestionPipeline.json"
         }
       ]
     },

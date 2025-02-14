@@ -23,8 +23,7 @@
         "dataInsight",
         "elasticSearchReindex",
         "dbt",
-        "application",
-        "reverseIngestion"
+        "application"
       ]
     },
     "pipelineStatus": {

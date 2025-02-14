@@ -67,7 +67,7 @@
           "$ref": "testServiceConnection.json"
         },
         {
-          "$ref": "../../api/services/ingestionPipelines/createIngestionPipeline.json"
+          "$ref": "../../metadataIngestion/reverseIngestionPipeline.json"
         }
       ]
     },

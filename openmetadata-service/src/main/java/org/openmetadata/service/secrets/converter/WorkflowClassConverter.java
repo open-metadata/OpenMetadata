@@ -14,9 +14,9 @@
 package org.openmetadata.service.secrets.converter;
 
 import java.util.List;
-import org.openmetadata.schema.api.services.ingestionPipelines.CreateIngestionPipeline;
 import org.openmetadata.schema.entity.automations.TestServiceConnectionRequest;
 import org.openmetadata.schema.entity.automations.Workflow;
+import org.openmetadata.schema.metadataIngestion.ReverseIngestionPipeline;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 import org.openmetadata.service.util.JsonUtils;
 
@@ -33,7 +33,7 @@ public class WorkflowClassConverter extends ClassConverter {
 
     tryToConvertOrFail(
             workflow.getRequest(),
-            List.of(TestServiceConnectionRequest.class, CreateIngestionPipeline.class))
+            List.of(TestServiceConnectionRequest.class, ReverseIngestionPipeline.class))
         .ifPresent(workflow::setRequest);
 
     if (workflow.getOpenMetadataServerConnection() != null) {

@@ -111,10 +111,6 @@ from metadata.generated.schema.metadataIngestion.pipelineServiceMetadataPipeline
     PipelineMetadataConfigType,
     PipelineServiceMetadataPipeline,
 )
-from metadata.generated.schema.metadataIngestion.reverseIngestionPipeline import (
-    ReverseIngestionPipeline,
-    ReverseIngestionType,
-)
 from metadata.generated.schema.metadataIngestion.searchServiceMetadataPipeline import (
     SearchMetadataConfigType,
     SearchServiceMetadataPipeline,
@@ -162,7 +158,6 @@ SOURCE_CONFIG_CLASS_MAP = {
     StorageMetadataConfigType.StorageMetadata.value: StorageServiceMetadataPipeline,
     SearchMetadataConfigType.SearchMetadata.value: SearchServiceMetadataPipeline,
     DbtConfigType.DBT.value: DbtPipeline,
-    ReverseIngestionType.ReverseIngestion.value: ReverseIngestionPipeline,
 }
 
 DBT_CONFIG_TYPE_MAP = {
