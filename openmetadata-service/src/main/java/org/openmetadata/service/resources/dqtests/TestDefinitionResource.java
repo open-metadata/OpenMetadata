@@ -63,6 +63,7 @@ import org.openmetadata.service.util.ResultList;
 @Collection(name = "TestDefinitions")
 public class TestDefinitionResource
     extends EntityResource<TestDefinition, TestDefinitionRepository> {
+  private final TestDefinitionMapper mapper = new TestDefinitionMapper();
   public static final String COLLECTION_PATH = "/v1/dataQuality/testDefinitions";
   static final String FIELDS = "owners";
 
@@ -314,7 +315,7 @@ public class TestDefinitionResource
       @Context SecurityContext securityContext,
       @Valid CreateTestDefinition create) {
     TestDefinition testDefinition =
-        getTestDefinition(create, securityContext.getUserPrincipal().getName());
+        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, testDefinition);
   }
 
@@ -367,7 +368,7 @@ public class TestDefinitionResource
       @Context SecurityContext securityContext,
       @Valid CreateTestDefinition create) {
     TestDefinition testDefinition =
-        getTestDefinition(create, securityContext.getUserPrincipal().getName());
+        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, testDefinition);
   }
 
@@ -451,17 +452,5 @@ public class TestDefinitionResource
       @Context SecurityContext securityContext,
       @Valid RestoreEntity restore) {
     return restoreEntity(uriInfo, securityContext, restore.getId());
-  }
-
-  private TestDefinition getTestDefinition(CreateTestDefinition create, String user) {
-    return repository
-        .copy(new TestDefinition(), create, user)
-        .withDescription(create.getDescription())
-        .withEntityType(create.getEntityType())
-        .withTestPlatforms(create.getTestPlatforms())
-        .withSupportedDataTypes(create.getSupportedDataTypes())
-        .withDisplayName(create.getDisplayName())
-        .withParameterDefinition(create.getParameterDefinition())
-        .withName(create.getName());
   }
 }

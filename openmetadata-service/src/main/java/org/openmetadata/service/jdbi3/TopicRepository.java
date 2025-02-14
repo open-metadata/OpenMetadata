@@ -379,7 +379,7 @@ public class TopicRepository extends EntityRepository<Topic> {
 
     @Transaction
     @Override
-    public void entitySpecificUpdate() {
+    public void entitySpecificUpdate(boolean consolidatingChanges) {
       recordChange(
           "maximumMessageSize", original.getMaximumMessageSize(), updated.getMaximumMessageSize());
       recordChange(

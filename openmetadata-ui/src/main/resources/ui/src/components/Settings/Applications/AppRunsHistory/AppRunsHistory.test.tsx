@@ -37,6 +37,18 @@ const mockGetApplicationRuns = jest.fn().mockReturnValue({
 const mockShowErrorToast = jest.fn();
 const mockPush = jest.fn();
 
+jest.mock('../../../../utils/EntityUtils', () => ({
+  getEntityName: jest.fn().mockReturnValue('username'),
+}));
+
+jest.mock('../../../common/FormBuilder/FormBuilder', () =>
+  jest
+    .fn()
+    .mockImplementation(({ onSubmit }) => (
+      <button onClick={onSubmit}>Configure Save</button>
+    ))
+);
+
 jest.mock('../../../../hooks/paging/usePaging', () => ({
   usePaging: jest.fn().mockReturnValue({
     currentPage: 8,
@@ -132,6 +144,7 @@ const mockProps1 = {
   appData: mockApplicationData,
   maxRecords: 10,
   showPagination: true,
+  jsonSchema: {},
 };
 
 const mockProps2 = {
@@ -139,6 +152,15 @@ const mockProps2 = {
   appData: {
     ...mockProps1.appData,
     appType: AppType.External,
+  },
+};
+
+const mockProps3 = {
+  ...mockProps1,
+  appData: {
+    ...mockProps1.appData,
+    supportsInterrupt: true,
+    status: Status.Running,
   },
 };
 
@@ -160,6 +182,11 @@ describe('AppRunsHistory component', () => {
     expect(screen.queryByText('--')).not.toBeInTheDocument();
 
     expect(screen.getByText('NextPrevious')).toBeInTheDocument();
+
+    // Verify Stop button is not present as initial status is success
+    const stopButton = screen.queryByTestId('stop-button');
+
+    expect(stopButton).not.toBeInTheDocument();
   });
 
   it('should show the error toast if fail in fetching app history', async () => {
@@ -242,9 +269,37 @@ describe('AppRunsHistory component', () => {
   });
 
   it('checking behaviour of component when no prop is passed', async () => {
-    render(<AppRunsHistory />);
+    render(<AppRunsHistory jsonSchema={{}} />);
     await waitForElementToBeRemoved(() => screen.getByText('TableLoader'));
 
     expect(screen.getByText('--')).toBeInTheDocument();
+  });
+
+  it('should render the stop button when conditions are met', async () => {
+    const mockRunRecordWithStopButton = {
+      ...mockApplicationData,
+      status: Status.Running, // Ensures Stop button condition is met
+      supportsInterrupt: true,
+    };
+    mockGetApplicationRuns.mockReturnValueOnce({
+      data: [mockRunRecordWithStopButton],
+      paging: {
+        offset: 0,
+        total: 1,
+      },
+    });
+
+    render(<AppRunsHistory {...mockProps3} />);
+    await waitForElementToBeRemoved(() => screen.getByText('TableLoader'));
+
+    const stopButton = screen.getByTestId('stop-button');
+
+    expect(stopButton).toBeInTheDocument();
+
+    act(() => {
+      userEvent.click(stopButton);
+    });
+
+    expect(screen.getByTestId('stop-modal')).toBeInTheDocument();
   });
 });

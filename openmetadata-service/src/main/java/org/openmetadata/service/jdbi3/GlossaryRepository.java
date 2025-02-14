@@ -386,7 +386,7 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
 
     @Transaction
     @Override
-    public void entitySpecificUpdate() {
+    public void entitySpecificUpdate(boolean consolidatingChanges) {
       updateName(original, updated);
       // Mutually exclusive cannot be updated
       updated.setMutuallyExclusive(original.getMutuallyExclusive());
@@ -440,7 +440,7 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
 
         List<GlossaryTerm> childTerms = getAllTerms(updated);
         for (GlossaryTerm term : childTerms) {
-          if (term.getStatus().equals(Status.DRAFT)) {
+          if (term.getStatus().equals(Status.IN_REVIEW)) {
             repository.updateTaskWithNewReviewers(term);
           }
         }

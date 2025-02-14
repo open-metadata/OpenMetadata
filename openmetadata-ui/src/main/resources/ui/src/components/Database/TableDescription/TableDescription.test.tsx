@@ -20,7 +20,7 @@ jest.mock('../../../pages/TasksPage/EntityTasks/EntityTasks.component', () => {
   return jest.fn().mockReturnValue(<p>EntityTasks</p>);
 });
 
-jest.mock('../../common/RichTextEditor/RichTextEditorPreviewer', () => {
+jest.mock('../../common/RichTextEditor/RichTextEditorPreviewerV1', () => {
   return jest.fn().mockReturnValue(<p>RichTextEditorPreviewer</p>);
 });
 

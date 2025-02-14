@@ -14,7 +14,6 @@ export const ERROR = 'error';
 export const ERROR_PLACEHOLDER = 'ErrorPlaceHolder';
 export const FETCH_ENTITY_PERMISSION_ERROR =
   'server.fetch-entity-permissions-error';
-export const ENTITY_MISSING_ERROR = 'entity missing error';
 export const CREATE_THREAD = 'Create Thread';
 export const UPDATE_DATA_MODEL = 'Update Data Model';
 export const FOLLOW_DATA_MODEL = 'Follow Data Model';

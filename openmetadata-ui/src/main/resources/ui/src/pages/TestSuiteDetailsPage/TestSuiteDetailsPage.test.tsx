@@ -73,11 +73,14 @@ jest.mock('../../hooks/useApplicationStore', () => {
       .mockImplementation(() => ({ isAuthDisabled: true })),
   };
 });
-
+const mockLocationPathname = '/mock-path';
 jest.mock('react-router-dom', () => {
   return {
     useHistory: jest.fn().mockImplementation(() => ({ push: jest.fn() })),
     useParams: jest.fn().mockImplementation(() => ({ fqn: 'testSuiteFQN' })),
+    useLocation: jest.fn().mockImplementation(() => ({
+      pathname: mockLocationPathname,
+    })),
   };
 });
 jest.mock('../../rest/testAPI', () => {
@@ -102,6 +105,21 @@ jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({
       .mockImplementation(() => Promise.resolve(mockEntityPermissions)),
   })),
 }));
+jest.mock(
+  '../../components/Entity/EntityHeaderTitle/EntityHeaderTitle.component',
+  () => {
+    return jest
+      .fn()
+      .mockImplementation(() => <div>EntityHeaderTitle.component</div>);
+  }
+);
+jest.mock('../../components/common/DomainLabel/DomainLabel.component', () => {
+  return {
+    DomainLabel: jest
+      .fn()
+      .mockImplementation(() => <div>DomainLabel.component</div>),
+  };
+});
 
 describe('TestSuiteDetailsPage component', () => {
   it('component should render', async () => {
@@ -109,6 +127,12 @@ describe('TestSuiteDetailsPage component', () => {
 
     expect(
       await screen.findByText('TitleBreadcrumb.component')
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByText('EntityHeaderTitle.component')
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByText('DomainLabel.component')
     ).toBeInTheDocument();
     expect(
       await screen.findByText('ManageButton.component')
@@ -129,7 +153,7 @@ describe('TestSuiteDetailsPage component', () => {
     });
 
     expect(mockGetTestSuiteByName).toHaveBeenCalledWith('testSuiteFQN', {
-      fields: 'owners',
+      fields: ['owners', 'domain'],
       include: 'all',
     });
   });

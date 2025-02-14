@@ -32,7 +32,7 @@ import {
   prepareConstraintIcon,
 } from '../../../utils/TableUtils';
 import FilterTablePlaceHolder from '../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
-import RichTextEditorPreviewer from '../../common/RichTextEditor/RichTextEditorPreviewer';
+import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import Searchbar from '../../common/SearchBarComponent/SearchBar.component';
 import TagsViewer from '../../Tag/TagsViewer/TagsViewer';
 import { VersionTableProps } from './VersionTable.interfaces';
@@ -119,10 +119,10 @@ function VersionTable<T extends Column | SearchIndexField>({
           <div className="d-inline-flex">
             {deletedConstraintIcon}
             {addedConstraintIcon}
-            <RichTextEditorPreviewer markdown={name} />
+            <RichTextEditorPreviewerV1 markdown={name} />
           </div>
           {!isEmpty(record.displayName) ? (
-            <RichTextEditorPreviewer markdown={record.displayName ?? ''} />
+            <RichTextEditorPreviewerV1 markdown={record.displayName ?? ''} />
           ) : null}
         </div>
       );
@@ -158,13 +158,13 @@ function VersionTable<T extends Column | SearchIndexField>({
           return dataTypeDisplay ? (
             <Tooltip
               title={
-                <RichTextEditorPreviewer
+                <RichTextEditorPreviewerV1
                   markdown={dataTypeDisplay?.toLowerCase() ?? ''}
                   textVariant="white"
                 />
               }>
               <div className="cursor-pointer">
-                <RichTextEditorPreviewer
+                <RichTextEditorPreviewerV1
                   markdown={dataTypeDisplay?.toLowerCase() ?? ''}
                 />
               </div>
@@ -183,7 +183,7 @@ function VersionTable<T extends Column | SearchIndexField>({
         render: (description: T['description']) =>
           description ? (
             <>
-              <RichTextEditorPreviewer markdown={description} />
+              <RichTextEditorPreviewerV1 markdown={description} />
               {getFrequentlyJoinedColumns(
                 columnName,
                 joins ?? [],

@@ -34,9 +34,11 @@ from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.storedProcedure import StoredProcedureCode
 from metadata.generated.schema.entity.data.table import (
+    ConstraintType,
     PartitionColumnDetails,
     PartitionIntervalTypes,
     Table,
+    TableConstraint,
     TablePartition,
     TableType,
 )
@@ -96,7 +98,9 @@ from metadata.ingestion.source.database.life_cycle_query_mixin import (
 from metadata.ingestion.source.database.multi_db_source import MultiDBSource
 from metadata.utils import fqn
 from metadata.utils.credentials import GOOGLE_CREDENTIALS
+from metadata.utils.execution_time_tracker import calculate_execution_time
 from metadata.utils.filters import filter_by_database, filter_by_schema
+from metadata.utils.helpers import retry_with_docker_host
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sqlalchemy_utils import (
     get_all_table_ddls,
@@ -162,9 +166,11 @@ def get_columns(bq_schema):
             "precision": field.precision,
             "scale": field.scale,
             "max_length": field.max_length,
-            "system_data_type": _array_sys_data_type_repr(col_type)
-            if str(col_type) == "ARRAY"
-            else str(col_type),
+            "system_data_type": (
+                _array_sys_data_type_repr(col_type)
+                if str(col_type) == "ARRAY"
+                else str(col_type)
+            ),
             "is_complex": is_complex_type(str(col_type)),
             "policy_tags": None,
         }
@@ -223,6 +229,7 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
     Database metadata from Bigquery Source
     """
 
+    @retry_with_docker_host()
     def __init__(self, config, metadata, incremental_configuration: IncrementalConfig):
         # Check if the engine is established before setting project IDs
         # This ensures that we don't try to set project IDs when there is no engine
@@ -657,6 +664,42 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
             )
         return None
 
+    @calculate_execution_time()
+    def update_table_constraints(
+        self,
+        table_name,
+        schema_name,
+        db_name,
+        table_constraints,
+        foreign_columns,
+        columns,
+    ) -> List[TableConstraint]:
+        """
+        From topology.
+        process the table constraints of all tables
+        """
+        table_constraints = super().update_table_constraints(
+            table_name,
+            schema_name,
+            db_name,
+            table_constraints,
+            foreign_columns,
+            columns,
+        )
+        try:
+            table = self.client.get_table(fqn._build(db_name, schema_name, table_name))
+            if hasattr(table, "clustering_fields") and table.clustering_fields:
+                table_constraints.append(
+                    TableConstraint(
+                        constraintType=ConstraintType.CLUSTER_KEY,
+                        columns=table.clustering_fields,
+                    )
+                )
+        except Exception as exc:
+            logger.warning(f"Error getting clustering fields for {table_name}: {exc}")
+            logger.debug(traceback.format_exc())
+        return table_constraints
+
     def get_table_partition_details(
         self, table_name: str, schema_name: str, inspector: Inspector
     ) -> Tuple[bool, Optional[TablePartition]]:
@@ -667,6 +710,33 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
             database = self.context.get().database
             table = self.client.get_table(fqn._build(database, schema_name, table_name))
             columns = inspector.get_columns(table_name, schema_name, db_name=database)
+            if (
+                hasattr(table, "external_data_configuration")
+                and hasattr(table.external_data_configuration, "hive_partitioning")
+                and table.external_data_configuration.hive_partitioning
+            ):
+                # Ingesting External Hive Partitioned Tables
+                from google.cloud.bigquery.external_config import (  # pylint: disable=import-outside-toplevel
+                    HivePartitioningOptions,
+                )
+
+                partition_details: HivePartitioningOptions = (
+                    table.external_data_configuration.hive_partitioning
+                )
+                return True, TablePartition(
+                    columns=[
+                        PartitionColumnDetails(
+                            columnName=self._get_partition_column_name(
+                                columns=columns,
+                                partition_field_name=field,
+                            ),
+                            interval=str(partition_details._properties.get("mode")),
+                            intervalType=PartitionIntervalTypes.OTHER,
+                        )
+                        for field in partition_details._properties.get("fields")
+                    ]
+                )
+
             if table.time_partitioning is not None:
                 if table.time_partitioning.field:
                     table_partition = TablePartition(
@@ -685,9 +755,11 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
                 return True, TablePartition(
                     columns=[
                         PartitionColumnDetails(
-                            columnName="_PARTITIONTIME"
-                            if table.time_partitioning.type_ == "HOUR"
-                            else "_PARTITIONDATE",
+                            columnName=(
+                                "_PARTITIONTIME"
+                                if table.time_partitioning.type_ == "HOUR"
+                                else "_PARTITIONDATE"
+                            ),
                             interval=str(table.time_partitioning.type_),
                             intervalType=PartitionIntervalTypes.INGESTION_TIME,
                         )
@@ -708,6 +780,30 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
                     table_partition.interval = table.range_partitioning.range_.interval
                 table_partition.columnName = table.range_partitioning.field
                 return True, TablePartition(columns=[table_partition])
+            if (
+                hasattr(table, "_properties")
+                and table._properties.get("partitionDefinition")
+                and table._properties.get("partitionDefinition").get(
+                    "partitionedColumn"
+                )
+            ):
+
+                return True, TablePartition(
+                    columns=[
+                        PartitionColumnDetails(
+                            columnName=self._get_partition_column_name(
+                                columns=columns,
+                                partition_field_name=field.get("field"),
+                            ),
+                            intervalType=PartitionIntervalTypes.OTHER,
+                        )
+                        for field in table._properties.get("partitionDefinition").get(
+                            "partitionedColumn"
+                        )
+                        if field and field.get("field")
+                    ]
+                )
+
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(

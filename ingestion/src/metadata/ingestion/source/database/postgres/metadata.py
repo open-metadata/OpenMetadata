@@ -15,9 +15,8 @@ import traceback
 from collections import namedtuple
 from typing import Iterable, Optional, Tuple
 
-from sqlalchemy import String as SqlAlchemyString
 from sqlalchemy import sql
-from sqlalchemy.dialects.postgresql.base import PGDialect, ischema_names
+from sqlalchemy.dialects.postgresql.base import PGDialect
 from sqlalchemy.engine import Inspector
 
 from metadata.generated.schema.api.data.createStoredProcedure import (
@@ -46,10 +45,14 @@ from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.database.column_type_parser import create_sqlalchemy_type
 from metadata.ingestion.source.database.common_db_source import (
     CommonDbSourceService,
     TableNameAndType,
+)
+from metadata.ingestion.source.database.common_pg_mappings import (
+    INTERVAL_TYPE_MAP,
+    RELKIND_MAP,
+    ischema_names,
 )
 from metadata.ingestion.source.database.mssql.models import STORED_PROC_LANGUAGE_MAP
 from metadata.ingestion.source.database.multi_db_source import MultiDBSource
@@ -67,7 +70,6 @@ from metadata.ingestion.source.database.postgres.utils import (
     get_columns,
     get_etable_owner,
     get_foreign_keys,
-    get_json_fields_and_type,
     get_table_comment,
     get_table_owner,
     get_view_definition,
@@ -96,43 +98,6 @@ TableKey = namedtuple("TableKey", ["schema", "table_name"])
 logger = ingestion_logger()
 
 
-INTERVAL_TYPE_MAP = {
-    "list": PartitionIntervalTypes.COLUMN_VALUE,
-    "hash": PartitionIntervalTypes.COLUMN_VALUE,
-    "range": PartitionIntervalTypes.TIME_UNIT,
-}
-
-RELKIND_MAP = {
-    "r": TableType.Regular,
-    "p": TableType.Partitioned,
-    "f": TableType.Foreign,
-}
-
-GEOMETRY = create_sqlalchemy_type("GEOMETRY")
-POINT = create_sqlalchemy_type("POINT")
-POLYGON = create_sqlalchemy_type("POLYGON")
-
-ischema_names.update(
-    {
-        "geometry": GEOMETRY,
-        "point": POINT,
-        "polygon": POLYGON,
-        "box": create_sqlalchemy_type("BOX"),
-        "bpchar": SqlAlchemyString,
-        "circle": create_sqlalchemy_type("CIRCLE"),
-        "line": create_sqlalchemy_type("LINE"),
-        "lseg": create_sqlalchemy_type("LSEG"),
-        "path": create_sqlalchemy_type("PATH"),
-        "pg_lsn": create_sqlalchemy_type("PG_LSN"),
-        "pg_snapshot": create_sqlalchemy_type("PG_SNAPSHOT"),
-        "tsquery": create_sqlalchemy_type("TSQUERY"),
-        "txid_snapshot": create_sqlalchemy_type("TXID_SNAPSHOT"),
-        "xid": SqlAlchemyString,
-        "xml": create_sqlalchemy_type("XML"),
-    }
-)
-
-
 PGDialect.get_all_table_comments = get_all_table_comments
 PGDialect.get_table_comment = get_table_comment
 PGDialect._get_column_info = get_column_info  # pylint: disable=protected-access
@@ -147,7 +112,6 @@ PGDialect.ischema_names = ischema_names
 Inspector.get_all_table_ddls = get_all_table_ddls
 Inspector.get_table_ddl = get_table_ddl
 Inspector.get_table_owner = get_etable_owner
-Inspector.get_json_fields_and_type = get_json_fields_and_type
 
 PGDialect.get_foreign_keys = get_foreign_keys
 

@@ -62,6 +62,7 @@ from metadata.utils.datalake.datalake_utils import (
     DataFrameColumnParser,
     fetch_dataframe,
 )
+from metadata.utils.helpers import retry_with_docker_host
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.storage_metadata_config import (
     StorageMetadataConfigException,
@@ -140,6 +141,7 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
 
     global_manifest: Optional[ManifestMetadataConfig]
 
+    @retry_with_docker_host()
     def __init__(
         self,
         config: WorkflowSource,

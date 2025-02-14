@@ -208,9 +208,23 @@ test.describe('Activity feed', () => {
 
     // Task 1 - Request to update tag to be resolved
 
+    const resolveSuggestion = page.waitForResponse(
+      '/api/v1/feed/tasks/*/resolve'
+    );
+    const openTasksResponse = page.waitForResponse(
+      '/api/v1/feed?entityLink=*&type=Task&taskStatus=Open'
+    );
+    const closedTasksResponse = page.waitForResponse(
+      '/api/v1/feed?entityLink=*&type=Task&taskStatus=Closed'
+    );
+
     await page.getByText('Accept Suggestion').click();
 
     await toastNotification(page, /Task resolved successfully/);
+
+    await resolveSuggestion;
+    await openTasksResponse;
+    await closedTasksResponse;
 
     await checkTaskCount(page, 0, 2);
   });
@@ -367,7 +381,9 @@ test.describe('Activity feed', () => {
 
     // Task 1 - Resolved the task
 
+    const resolveTask2 = page.waitForResponse('/api/v1/feed/tasks/*/resolve');
     await page.getByText('Accept Suggestion').click();
+    await resolveTask2;
 
     await toastNotification(page, /Task resolved successfully/);
 
@@ -576,6 +592,100 @@ test.describe('Activity feed', () => {
       }
     );
   });
+
+  test('Check Task Filter in Landing Page Widget', async ({ browser }) => {
+    const { page: page1, afterAction: afterActionUser1 } =
+      await performUserLogin(browser, user1);
+    const { page: page2, afterAction: afterActionUser2 } =
+      await performUserLogin(browser, user2);
+
+    await base.step('Create and Assign Task to User 2', async () => {
+      await redirectToHomePage(page1);
+      await entity.visitEntityPage(page1);
+
+      // Create task for the user 2
+      await page1.getByTestId('request-description').click();
+      await createDescriptionTask(page1, {
+        term: entity.entity.displayName,
+        assignee: user2.responseData.name,
+      });
+
+      await afterActionUser1();
+    });
+
+    await base.step('Create and Validate Task as per Filters', async () => {
+      await redirectToHomePage(page2);
+      await entity.visitEntityPage(page2);
+
+      // Create task for the user 1
+      await page2.getByTestId('request-entity-tags').click();
+      await createTagTask(page2, {
+        term: entity.entity.displayName,
+        tag: 'PII.None',
+        assignee: user1.responseData.name,
+      });
+
+      await redirectToHomePage(page2);
+      const taskResponse = page2.waitForResponse(
+        '/api/v1/feed?type=Task&filterType=OWNER&taskStatus=Open&userId=*'
+      );
+
+      await page2
+        .getByTestId('activity-feed-widget')
+        .getByText('Tasks')
+        .click();
+
+      await taskResponse;
+
+      await expect(
+        page2.locator(
+          '[data-testid="activity-feed-widget"] [data-testid="no-data-placeholder"]'
+        )
+      ).not.toBeVisible();
+
+      // Check the Task based on ALL task filter
+      await expect(page2.getByTestId('message-container')).toHaveCount(2);
+
+      // Check the Task based on Assigned task filter
+      await page2.getByTestId('filter-button').click();
+      await page2.waitForSelector('.ant-popover ', { state: 'visible' });
+
+      const taskAssignedResponse = page2.waitForResponse(
+        '/api/v1/feed?type=Task&filterType=ASSIGNED_TO&taskStatus=Open&userId=*'
+      );
+      await page2.getByText('Assigned').click();
+      await page2.getByTestId('selectable-list-update-btn').click();
+
+      await taskAssignedResponse;
+
+      await expect(page2.getByTestId('message-container')).toHaveCount(1);
+
+      await expect(page2.getByTestId('owner-link')).toContainText(
+        user2.responseData.displayName
+      );
+
+      // Check the Task based on Created by me task filter
+
+      await page2.getByTestId('filter-button').click();
+      await page2.waitForSelector('.ant-popover ', { state: 'visible' });
+
+      const taskCreatedByResponse = page2.waitForResponse(
+        '/api/v1/feed?type=Task&filterType=ASSIGNED_BY&taskStatus=Open&userId=*'
+      );
+      await page2.getByText('Created By').click();
+      await page2.getByTestId('selectable-list-update-btn').click();
+
+      await taskCreatedByResponse;
+
+      await expect(page2.getByTestId('message-container')).toHaveCount(1);
+
+      await expect(page2.getByTestId('owner-link')).toContainText(
+        user1.responseData.displayName
+      );
+
+      await afterActionUser2();
+    });
+  });
 });
 
 base.describe('Activity feed with Data Consumer User', () => {
@@ -666,19 +776,14 @@ base.describe('Activity feed with Data Consumer User', () => {
       page1.locator('[data-testid="close-button"]').click();
       await commentWithCloseTask;
 
-      // TODO: Ashish - Fix the toast notification once issue is resolved from Backend https://github.com/open-metadata/OpenMetadata/issues/17059
+      await toastNotification(page1, 'Task closed successfully.');
+      const openTask = await page1.getByTestId('open-task').textContent();
 
-      //   await toastNotification(page1, 'Task closed successfully.');
-      await toastNotification(
-        page1,
-        'An exception with message [Cannot invoke "java.util.List.stream()" because "owners" is null] was thrown while processing request.'
-      );
+      expect(openTask).toContain('1 Open');
 
-      // TODO: Ashish - Enable them once issue is resolved from Backend https://github.com/open-metadata/OpenMetadata/issues/17059
-      //   const openTask = await page1.getByTestId('open-task').textContent();
-      //   expect(openTask).toContain('1 Open');
-      //   const closedTask = await page1.getByTestId('closed-task').textContent();
-      //   expect(closedTask).toContain('1 Closed');
+      const closedTask = await page1.getByTestId('closed-task').textContent();
+
+      expect(closedTask).toContain('1 Closed');
 
       await afterActionUser1();
     });
@@ -708,21 +813,22 @@ base.describe('Activity feed with Data Consumer User', () => {
       const tagsTask = page2.getByTestId('redirect-task-button-link').first();
       const tagsTaskContent = await tagsTask.innerText();
 
-      expect(tagsTaskContent).toContain('Request tags for');
+      expect(tagsTaskContent).toContain('Request to update description for');
 
       await tagsTask.click();
       await entityPageTaskTab;
 
-      // TODO: Ashish - Enable them once issue is resolved from Backend https://github.com/open-metadata/OpenMetadata/issues/17059
       // Count for task should be 1 both open and closed
 
-      //   const openTaskBefore = await page2.getByTestId('open-task').textContent();
-      //   expect(openTaskBefore).toContain('1 Open');
+      const openTaskBefore = await page2.getByTestId('open-task').textContent();
 
-      //   const closedTaskBefore = await page2
-      //     .getByTestId('closed-task')
-      //     .textContent();
-      //   expect(closedTaskBefore).toContain('1 Closed');
+      expect(openTaskBefore).toContain('1 Open');
+
+      const closedTaskBefore = await page2
+        .getByTestId('closed-task')
+        .textContent();
+
+      expect(closedTaskBefore).toContain('1 Closed');
 
       // Should not see the close button
       expect(page2.locator('[data-testid="close-button"]')).not.toBeVisible();
@@ -741,13 +847,13 @@ base.describe('Activity feed with Data Consumer User', () => {
 
       await page2.waitForLoadState('networkidle');
 
-      // TODO: Ashish - Enable them once issue is resolved from Backend https://github.com/open-metadata/OpenMetadata/issues/17059
-      //   const openTask = await page2.getByTestId('open-task').textContent();
-      //   expect(openTask).toContain('0 Open');
+      const openTask = await page2.getByTestId('open-task').textContent();
+
+      expect(openTask).toContain('0 Open');
 
       const closedTask = await page2.getByTestId('closed-task').textContent();
 
-      expect(closedTask).toContain('1 Closed');
+      expect(closedTask).toContain('2 Closed');
 
       await afterActionUser2();
     });

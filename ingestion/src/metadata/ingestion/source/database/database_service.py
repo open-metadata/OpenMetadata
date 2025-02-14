@@ -13,7 +13,7 @@ Base class for ingesting database services
 """
 import traceback
 from abc import ABC, abstractmethod
-from typing import Any, Iterable, List, Optional, Set, Tuple, Union
+from typing import Any, Iterable, List, Optional, Set, Tuple
 
 from pydantic import BaseModel, Field
 from sqlalchemy.engine import Inspector
@@ -23,7 +23,6 @@ from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequ
 from metadata.generated.schema.api.data.createDatabaseSchema import (
     CreateDatabaseSchemaRequest,
 )
-from metadata.generated.schema.api.data.createQuery import CreateQueryRequest
 from metadata.generated.schema.api.data.createStoredProcedure import (
     CreateStoredProcedureRequest,
 )
@@ -112,11 +111,7 @@ class DatabaseServiceTopology(ServiceTopology):
             ),
         ],
         children=["database"],
-        # Note how we have `yield_view_lineage` and `yield_stored_procedure_lineage`
-        # as post_processed. This is because we cannot ensure proper lineage processing
-        # until we have finished ingesting all the metadata from the source.
         post_process=[
-            "yield_view_lineage",
             "yield_external_table_lineage",
             "yield_table_constraints",
         ],
@@ -345,13 +340,6 @@ class DatabaseServiceSource(
         if self.source_config.includeTags:
             yield from self.yield_database_tag(database_name) or []
 
-    @abstractmethod
-    def yield_view_lineage(self) -> Iterable[Either[AddLineageRequest]]:
-        """
-        From topology.
-        Parses view definition to get lineage information
-        """
-
     def update_table_constraints(
         self,
         table_name,
@@ -386,12 +374,6 @@ class DatabaseServiceSource(
         self, stored_procedure: Any
     ) -> Iterable[Either[CreateStoredProcedureRequest]]:
         """Process the stored procedure information"""
-
-    @abstractmethod
-    def yield_procedure_lineage_and_queries(
-        self,
-    ) -> Iterable[Either[Union[AddLineageRequest, CreateQueryRequest]]]:
-        """Extracts the lineage information from Stored Procedures"""
 
     def get_raw_database_schema_names(self) -> Iterable[str]:
         """

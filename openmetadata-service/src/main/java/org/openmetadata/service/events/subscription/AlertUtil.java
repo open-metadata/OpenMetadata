@@ -20,6 +20,7 @@ import static org.openmetadata.service.Entity.THREAD;
 import static org.openmetadata.service.apps.bundles.changeEvent.AbstractEventConsumer.OFFSET_EXTENSION;
 import static org.openmetadata.service.security.policyevaluator.CompiledRule.parseExpression;
 
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -38,7 +39,9 @@ import org.openmetadata.schema.entity.events.EventFilterRule;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.EventSubscriptionOffset;
 import org.openmetadata.schema.entity.events.FilteringRules;
+import org.openmetadata.schema.entity.events.StatusContext;
 import org.openmetadata.schema.entity.events.SubscriptionStatus;
+import org.openmetadata.schema.entity.events.TestDestinationStatus;
 import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.service.Entity;
@@ -174,6 +177,28 @@ public final class AlertUtil {
         .withLastFailedReason(reason)
         .withNextAttempt(nextAttempt)
         .withTimestamp(timeStamp);
+  }
+
+  public static TestDestinationStatus buildTestDestinationStatus(
+      TestDestinationStatus.Status status, Integer statusCode, Long timestamp) {
+    return new TestDestinationStatus()
+        .withStatus(status)
+        .withStatusCode(statusCode)
+        .withTimestamp(timestamp);
+  }
+
+  public static TestDestinationStatus buildTestDestinationStatus(
+      TestDestinationStatus.Status status, StatusContext statusContext) {
+    return new TestDestinationStatus()
+        .withStatus(status)
+        .withReason(statusContext.getStatusInfo())
+        .withStatusCode(statusContext.getStatusCode())
+        .withStatusInfo(statusContext.getStatusInfo())
+        .withHeaders(statusContext.getHeaders())
+        .withEntity(statusContext.getEntity())
+        .withMediaType(statusContext.getMediaType())
+        .withLocation(URI.create(statusContext.getLocation()))
+        .withTimestamp(statusContext.getTimestamp());
   }
 
   public static Map<ChangeEvent, Set<UUID>> getFilteredEvents(

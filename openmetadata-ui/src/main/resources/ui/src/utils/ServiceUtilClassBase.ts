@@ -24,7 +24,9 @@ import {
   AZURESQL,
   BIGQUERY,
   BIGTABLE,
+  CASSANDRA,
   CLICKHOUSE,
+  COCKROACH,
   COUCHBASE,
   CUSTOM_SEARCH_DEFAULT,
   CUSTOM_STORAGE_DEFAULT,
@@ -58,6 +60,7 @@ import {
   LOOKER,
   MARIADB,
   METABASE,
+  MICROSTRATEGY,
   MLFLOW,
   ML_MODEL_DEFAULT,
   MODE,
@@ -146,6 +149,8 @@ class ServiceUtilClassBase {
     MlModelServiceType.VertexAI,
     PipelineServiceType.Matillion,
     PipelineServiceType.DataFactory,
+    PipelineServiceType.Stitch,
+    DashboardServiceType.PowerBIReportServer,
   ];
 
   DatabaseServiceTypeSmallCase = this.convertEnumToLowerCase<
@@ -343,11 +348,17 @@ class ServiceUtilClassBase {
       case this.DatabaseServiceTypeSmallCase.MongoDB:
         return MONGODB;
 
+      case this.DatabaseServiceTypeSmallCase.Cassandra:
+        return CASSANDRA;
+
       case this.DatabaseServiceTypeSmallCase.SAS:
         return SAS;
 
       case this.DatabaseServiceTypeSmallCase.Couchbase:
         return COUCHBASE;
+
+      case this.DatabaseServiceTypeSmallCase.Cockroach:
+        return COCKROACH;
 
       case this.DatabaseServiceTypeSmallCase.Greenplum:
         return GREENPLUM;
@@ -375,6 +386,7 @@ class ServiceUtilClassBase {
 
       case this.DashboardServiceTypeSmallCase.CustomDashboard:
         return DASHBOARD_DEFAULT;
+
       case this.DashboardServiceTypeSmallCase.Superset:
         return SUPERSET;
 
@@ -467,6 +479,7 @@ class ServiceUtilClassBase {
 
       case this.MlModelServiceTypeSmallCase.Sklearn:
         return SCIKIT;
+
       case this.MlModelServiceTypeSmallCase.SageMaker:
         return SAGEMAKER;
 
@@ -502,6 +515,9 @@ class ServiceUtilClassBase {
 
       case this.ApiServiceTypeSmallCase.REST:
         return REST_SERVICE;
+
+      case this.DashboardServiceTypeSmallCase.MicroStrategy:
+        return MICROSTRATEGY;
 
       default: {
         let logo;
@@ -611,6 +627,8 @@ class ServiceUtilClassBase {
         return 'MariaDB';
       case this.DatabaseServiceTypeSmallCase.MongoDB:
         return 'MongoDB';
+      case this.DatabaseServiceTypeSmallCase.Cassandra:
+        return 'Cassandra';
       case this.DatabaseServiceTypeSmallCase.PinotDB:
         return 'pinotdb';
       case this.DatabaseServiceTypeSmallCase.SapHana:
@@ -661,6 +679,8 @@ class ServiceUtilClassBase {
         return 'ElasticSearch';
       case this.SearchServiceTypeSmallCase.CustomSearch:
         return 'Custom Search';
+      case this.DatabaseServiceTypeSmallCase.Cockroach:
+        return 'Cockroach';
 
       default:
         return capitalize(serviceType);

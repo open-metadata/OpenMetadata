@@ -1,0 +1,39 @@
+{
+  "$id": "https://open-metadata.org/schema/events/statusContext.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "FailedEvents",
+  "description": "Status Context",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.entity.events.StatusContext",
+  "properties": {
+    "statusCode": {
+      "description": "HTTP status code of the response",
+      "type": "integer"
+    },
+    "statusInfo": {
+      "description": "Reason phrase associated with the status code",
+      "type": "string"
+    },
+    "headers": {
+      "description": "Response headers as a map",
+      "existingJavaType": "java.util.Map<java.lang.String, java.util.List<java.lang.String>>"
+    },
+    "entity": {
+      "description": "Response entity, if available",
+      "type": "string"
+    },
+    "mediaType": {
+      "description": "Media type of the response",
+      "type": "string"
+    },
+    "location": {
+      "description": "Location URI from the response",
+      "type": "string"
+    },
+    "timestamp": {
+      "description": "Time in milliseconds since epoch",
+      "$ref": "../type/basic.json#/definitions/timestamp"
+    }
+  },
+  "additionalProperties": false
+}

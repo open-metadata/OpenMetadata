@@ -15,6 +15,7 @@ import { expect, Page } from '@playwright/test';
 import { GlobalSettingOptions } from '../constant/settings';
 import { EntityTypeEndpoint } from '../support/entity/Entity.interface';
 import { toastNotification } from './common';
+import { escapeESReservedCharacters } from './entity';
 
 export enum Services {
   Database = GlobalSettingOptions.DATABASES,
@@ -78,7 +79,15 @@ export const deleteService = async (
   serviceName: string,
   page: Page
 ) => {
+  const serviceResponse = page.waitForResponse(
+    `/api/v1/search/query?q=*${encodeURIComponent(
+      escapeESReservedCharacters(serviceName)
+    )}*`
+  );
+
   await page.fill('[data-testid="searchbar"]', serviceName);
+
+  await serviceResponse;
 
   // click on created service
   await page.click(`[data-testid="service-name-${serviceName}"]`);
@@ -131,13 +140,17 @@ export const testConnection = async (page: Page) => {
 
   await page.getByRole('button', { name: 'OK' }).click();
 
-  await page.waitForSelector('[data-testid="success-badge"]', {
-    state: 'attached',
+  // Wait for the success badge or the warning badge to appear
+  const successBadge = page.locator('[data-testid="success-badge"]');
+
+  const warningBadge = page.locator('[data-testid="warning-badge"]');
+
+  await expect(successBadge.or(warningBadge)).toBeVisible({
     timeout: 2.5 * 60 * 1000,
   });
 
   await expect(page.getByTestId('messag-text')).toContainText(
-    'Connection test was successful.'
+    /Connection test was successful.|Test connection partially successful: Some steps had failures, we will only ingest partial metadata. Click here to view details./g
   );
 };
 

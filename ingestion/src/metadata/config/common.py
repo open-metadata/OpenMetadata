@@ -19,7 +19,9 @@ from abc import ABC, abstractmethod
 from typing import IO, Any, Optional
 
 import yaml
-from pydantic import BaseModel, ConfigDict
+from pydantic import ConfigDict
+
+from metadata.ingestion.models.custom_pydantic import BaseModel
 
 
 class ConfigModel(BaseModel):

@@ -24,7 +24,12 @@ import {
 } from '../constant/delete';
 import { ES_RESERVED_CHARACTERS } from '../constant/entity';
 import { EntityTypeEndpoint } from '../support/entity/Entity.interface';
-import { clickOutside, redirectToHomePage } from './common';
+import {
+  clickOutside,
+  descriptionBox,
+  redirectToHomePage,
+  toastNotification,
+} from './common';
 
 export const visitEntityPage = async (data: {
   page: Page;
@@ -309,21 +314,37 @@ export const assignTier = async (
   await expect(page.getByTestId('Tier')).toContainText(tier);
 };
 
-export const removeTier = async (page: Page) => {
+export const removeTier = async (page: Page, endpoint: string) => {
   await page.getByTestId('edit-tier').click();
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+  const patchRequest = page.waitForResponse(
+    (response) =>
+      response.url().includes(`/api/v1/${endpoint}`) &&
+      response.request().method() === 'PATCH'
+  );
   await page.getByTestId('clear-tier').click();
+  await patchRequest;
   await clickOutside(page);
 
   await expect(page.getByTestId('Tier')).toContainText('No Tier');
 };
 
-export const updateDescription = async (page: Page, description: string) => {
+export const updateDescription = async (
+  page: Page,
+  description: string,
+  isModal = false
+) => {
   await page.getByTestId('edit-description').click();
-  await page.locator('.ProseMirror').first().click();
-  await page.locator('.ProseMirror').first().clear();
-  await page.locator('.ProseMirror').first().fill(description);
+  await page.locator(descriptionBox).first().click();
+  await page.locator(descriptionBox).first().clear();
+  await page.locator(descriptionBox).first().fill(description);
   await page.getByTestId('save').click();
+
+  if (isModal) {
+    await page.waitForSelector('[role="dialog"].description-markdown-editor', {
+      state: 'hidden',
+    });
+  }
 
   isEmpty(description)
     ? await expect(
@@ -688,6 +709,24 @@ export const removeGlossaryTermFromChildren = async ({
   }
 };
 
+export const dropdownVisibility = async (page: Page, tagType: string) => {
+  await page
+    .getByTestId('entity-right-panel')
+    .getByTestId(`${tagType}-container`)
+    .getByTestId('add-tag')
+    .click();
+  await page.waitForSelector(
+    '.ant-select-dropdown [data-testid="saveAssociatedTag"]',
+    { state: 'visible' }
+  );
+
+  await expect(page.getByTestId('saveAssociatedTag')).toBeVisible();
+
+  await page.getByTestId('activity_feed').click();
+
+  await expect(page.getByTestId('saveAssociatedTag')).not.toBeVisible();
+};
+
 export const upVote = async (page: Page, endPoint: string) => {
   const patchRequest = page.waitForResponse(`/api/v1/${endPoint}/*/vote`);
 
@@ -768,10 +807,7 @@ const announcementForm = async (
   await page.fill('#endTime', `${data.endDate}`);
   await page.press('#startTime', 'Enter');
 
-  await page.fill(
-    '.toastui-editor-md-container > .toastui-editor > .ProseMirror',
-    data.description
-  );
+  await page.locator(descriptionBox).fill(data.description);
 
   await page.locator('#announcement-submit').scrollIntoViewIfNeeded();
   const announcementSubmit = page.waitForResponse(
@@ -779,12 +815,12 @@ const announcementForm = async (
   );
   await page.click('#announcement-submit');
   await announcementSubmit;
-  await page.click('.Toastify__close-button');
+  await page.click('[data-testid="announcement-close"]');
+  await page.click('[data-testid="alert-icon-close"]');
 };
 
 export const createAnnouncement = async (
   page: Page,
-  entityFqn: string,
   data: { title: string; description: string }
 ) => {
   await page.getByTestId('manage-button').click();
@@ -1169,11 +1205,7 @@ export const restoreEntity = async (page: Page) => {
   await page.click('[data-testid="restore-button"]');
   await page.click('button:has-text("Restore")');
 
-  await expect(page.locator('.Toastify__toast-body')).toHaveText(
-    /restored successfully/
-  );
-
-  await page.click('.Toastify__close-button');
+  await toastNotification(page, /restored successfully/);
 
   const exists = await page
     .locator('[data-testid="deleted-badge"]')
@@ -1212,15 +1244,11 @@ export const softDeleteEntity = async (
 
   await deleteResponse;
 
-  await expect(page.locator('.Toastify__toast-body')).toHaveText(
-    /deleted successfully!/
-  );
-
-  await page.click('.Toastify__close-button');
+  await toastNotification(page, /deleted successfully!/);
 
   await page.reload();
 
-  const deletedBadge = await page.locator('[data-testid="deleted-badge"]');
+  const deletedBadge = page.locator('[data-testid="deleted-badge"]');
 
   await expect(deletedBadge).toHaveText('Deleted');
 
@@ -1235,11 +1263,11 @@ export const softDeleteEntity = async (
   if (endPoint === EntityTypeEndpoint.Table) {
     await page.click('[data-testid="breadcrumb-link"]:last-child');
     const deletedTableResponse = page.waitForResponse(
-      '/api/v1/tables?databaseSchema=*'
+      '/api/v1/tables?*databaseSchema=*'
     );
     await page.click('[data-testid="show-deleted"]');
     await deletedTableResponse;
-    const tableCount = await page.locator(
+    const tableCount = page.locator(
       '[data-testid="table"] [data-testid="count"]'
     );
 
@@ -1281,19 +1309,11 @@ export const hardDeleteEntity = async (
   await page.click('[data-testid="confirm-button"]');
   await deleteResponse;
 
-  await expect(page.locator('.Toastify__toast-body')).toHaveText(
-    /deleted successfully!/
-  );
-
-  await page.click('.Toastify__close-button');
+  await toastNotification(page, /deleted successfully!/);
 };
 
-export const checkDataAssetWidget = async (
-  page: Page,
-  type: string,
-  index: string,
-  serviceType: string
-) => {
+export const checkDataAssetWidget = async (page: Page, serviceType: string) => {
+  await clickOutside(page);
   const quickFilterResponse = page.waitForResponse(
     `/api/v1/search/query?q=&index=dataAsset*${serviceType}*`
   );
@@ -1345,4 +1365,26 @@ export const getEntityDisplayName = (entity?: {
   displayName?: string;
 }) => {
   return entity?.displayName || entity?.name || '';
+};
+
+/**
+ *
+ * @param description HTML string
+ * @returns Text from HTML string
+ */
+export const getTextFromHtmlString = (description?: string): string => {
+  if (!description) {
+    return '';
+  }
+
+  return description.replace(/<[^>]*>/g, '').trim();
+};
+
+export const getFirstRowColumnLink = (page: Page) => {
+  const table = page.locator('[data-testid="databaseSchema-tables"]');
+  const firstRowFirstColumn = table.locator(
+    'tbody tr:first-child td:first-child'
+  );
+
+  return firstRowFirstColumn.locator('[data-testid="column-name"] a');
 };

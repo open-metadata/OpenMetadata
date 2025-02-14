@@ -31,7 +31,7 @@ To integrate MicroStrategy, ensure you are using OpenMetadata version 1.2.x or h
 To run the MicroStrategy ingestion, you will need to install:
 
 ```bash
-pip3 install "openmetadata-ingestion[mstr]"
+pip3 install "openmetadata-ingestion[microstrategy]"
 ```
 
 ## Metadata Ingestion
@@ -59,27 +59,34 @@ This is a sample config for MicroStrategy:
 
 {% codeInfo srNumber=1 %}
 
-- **Username**: Username to connect to Mstr, e.g., user@organization.com. This user should have access to relevant dashboards and charts in Mstr to fetch the metadata.
+- **Username**: Username to connect to MicroStrategy, e.g., user@organization.com. This user should have access to relevant dashboards and charts in MicroStrategy to fetch the metadata.
 
 {% /codeInfo %}
 
 {% codeInfo srNumber=2 %}
 
-- **Password**: Password of the user account to connect with Mstr.
+- **Password**: Password of the user account to connect with MicroStrategy.
 
 {% /codeInfo %}
 
 {% codeInfo srNumber=3 %}
 
-- **Host Port**: This parameter specifies the host and port of the Mstr instance. This should be specified as a URI string in the format http://hostname:port or https://hostname:port.
+- **Host Port**: This parameter specifies the host of the MicroStrategy instance. This should be specified as a URI string in the format http://hostname or https://hostname.
 
-For example, you might set it to https://org.mstr.com:3000.
+For example, you might set it to https://demo.microstrategy.com.
 
 {% /codeInfo %}
 
 {% codeInfo srNumber=4 %}
 
-- **Project Name**: The name of the project within Mstr that OpenMetadata will connect to, linking to the relevant dashboards and reports for metadata retrieval.
+- **Project Name**: The name of the project within MicroStrategy that OpenMetadata will connect to, linking to the relevant dashboards and reports for metadata retrieval.
+
+{% /codeInfo %}
+
+{% codeInfo srNumber=5 %}
+
+- **Login Mode**: Login Mode for Microstrategy's REST API connection. You can authenticate with one of the following authentication modes: `Standard (1)`, `Anonymous (8)`. Default will be `Standard (1)`.
+If you're using demo account for Microstrategy, it will be needed to authenticate through loginMode `8`.
 
 {% /codeInfo %}
 
@@ -95,11 +102,11 @@ For example, you might set it to https://org.mstr.com:3000.
 
 ```yaml {% isCodeBlock=true %}
 source:
-  type: mstr
+  type: microstrategy
   serviceName: local_Mstr
   serviceConnection:
     config:
-      type: Mstr
+      type: MicroStrategy
 ```
 ```yaml {% srNumber=1 %}
       username: username
@@ -112,6 +119,9 @@ source:
 ```
 ```yaml {% srNumber=4 %}
       projectName: project
+```
+```yaml {% srNumber=5 %}
+      loginMode: "1"
 ```
 
 {% partial file="/v1.5/connectors/yaml/dashboard/source-config.md" /%}

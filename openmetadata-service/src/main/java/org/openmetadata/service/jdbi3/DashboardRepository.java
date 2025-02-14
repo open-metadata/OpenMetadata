@@ -209,7 +209,7 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
 
     @Transaction
     @Override
-    public void entitySpecificUpdate() {
+    public void entitySpecificUpdate(boolean consolidatingChanges) {
       update(
           Entity.CHART,
           "charts",

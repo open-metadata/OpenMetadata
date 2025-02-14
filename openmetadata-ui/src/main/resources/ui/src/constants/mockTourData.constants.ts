@@ -15,21 +15,6 @@ import { SearchIndex } from '../enums/search.enum';
 
 /* eslint-disable max-len */
 
-export const MOCK_ASSETS_COUNTS = {
-  tableCount: 43,
-  topicCount: 10,
-  dashboardCount: 14,
-  pipelineCount: 8,
-  mlmodelCount: 2,
-  servicesCount: 12,
-  userCount: 125,
-  teamCount: 16,
-  testSuiteCount: 1,
-  storageContainerCount: 7,
-  glossaryCount: 24,
-  glossaryTermCount: 24,
-};
-
 export const mockFeedData = [
   {
     id: '52d52eb1-b990-497f-bf80-47e52c106f85',
@@ -63,46 +48,6 @@ export const mockFeedData = [
     posts: [],
   },
 ];
-
-export const mockLineageData = {
-  entity: {
-    id: '46ac510f-0b5a-4458-be22-18bb45680f29',
-    type: 'table',
-    name: 'bigquery_gcp.shopify.dim_address',
-    description:
-      'This dimension table contains the billing and shipping addresses of customers. You can join this table with the sales table to generate lists of the billing and shipping addresses. Customers can enter their addresses more than once, so the same address can appear in more than one row in this table. This table contains one row per customer address.',
-    href: 'http://localhost:8585/api/v1/tables/46ac510f-0b5a-4458-be22-18bb45680f29',
-  },
-  nodes: [
-    {
-      id: '59a71417-5625-4e30-adf6-e662668ca15f',
-      type: 'pipeline',
-      name: 'sample_airflow.dim_address_etl',
-      description: 'dim_address ETL pipeline',
-      displayName: 'dim_address etl',
-      href: 'http://localhost:8585/api/v1/pipelines/59a71417-5625-4e30-adf6-e662668ca15f',
-    },
-    {
-      id: '0c57f9a7-04f4-48f6-9242-9de727285ece',
-      type: 'table',
-      name: 'bigquery_gcp.shopify.raw_customer',
-      description:
-        'This is a raw customers table as represented in our online DB. This contains personal, shipping and billing addresses and details of the customer store and customer profile. This table is used to build our dimensional and fact tables',
-      href: 'http://localhost:8585/api/v1/tables/0c57f9a7-04f4-48f6-9242-9de727285ece',
-    },
-  ],
-  upstreamEdges: [
-    {
-      fromEntity: '59a71417-5625-4e30-adf6-e662668ca15f',
-      toEntity: '46ac510f-0b5a-4458-be22-18bb45680f29',
-    },
-    {
-      fromEntity: '0c57f9a7-04f4-48f6-9242-9de727285ece',
-      toEntity: '59a71417-5625-4e30-adf6-e662668ca15f',
-    },
-  ],
-  downstreamEdges: [],
-};
 
 export const mockTablePermission = {
   Create: true,

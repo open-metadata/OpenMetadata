@@ -86,7 +86,7 @@ public class ChangeEventHandler implements EventHandler {
     return null;
   }
 
-  private static ChangeEvent copyChangeEvent(ChangeEvent changeEvent) {
+  public static ChangeEvent copyChangeEvent(ChangeEvent changeEvent) {
     return new ChangeEvent()
         .withId(changeEvent.getId())
         .withEventType(changeEvent.getEventType())

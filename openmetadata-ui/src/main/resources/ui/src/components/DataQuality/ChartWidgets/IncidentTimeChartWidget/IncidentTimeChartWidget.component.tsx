@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 import { Card, Typography } from 'antd';
-import { isNull } from 'lodash';
+import { isNull, isUndefined } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { fetchIncidentTimeMetrics } from '../../../../rest/dataQualityDashboardAPI';
 import { convertMillisecondsToHumanReadableFormat } from '../../../../utils/date-time/DateTimeUtils';
 import { CustomAreaChartData } from '../../../Visualisations/Chart/Chart.interface';
@@ -25,6 +26,7 @@ const IncidentTimeChartWidget = ({
   title,
   chartFilter,
   height,
+  redirectPath,
 }: IncidentTimeChartWidgetProps) => {
   const [chartData, setChartData] = useState<CustomAreaChartData[]>([]);
   const [isChartLoading, setIsChartLoading] = useState(true);
@@ -34,7 +36,17 @@ const IncidentTimeChartWidget = ({
       return acc + curr.count;
     }, 0);
 
-    return totalTime > 0 ? totalTime / chartData.length : 0;
+    const avgTime = totalTime > 0 ? totalTime / chartData.length : 0;
+
+    return (
+      <Typography.Paragraph
+        className="font-medium text-xl m-b-0"
+        data-testid="average-time">
+        {chartData.length > 0
+          ? convertMillisecondsToHumanReadableFormat(avgTime)
+          : '--'}
+      </Typography.Paragraph>
+    );
   }, [chartData]);
 
   const getRespondTimeMetrics = async () => {
@@ -77,13 +89,12 @@ const IncidentTimeChartWidget = ({
       <Typography.Paragraph className="text-xs text-grey-muted">
         {title}
       </Typography.Paragraph>
-      <Typography.Paragraph
-        className="font-medium text-xl m-b-0"
-        data-testid="average-time">
-        {chartData.length > 0
-          ? convertMillisecondsToHumanReadableFormat(avgTimeValue)
-          : '--'}
-      </Typography.Paragraph>
+
+      {isUndefined(redirectPath) ? (
+        avgTimeValue
+      ) : (
+        <Link to={redirectPath}>{avgTimeValue}</Link>
+      )}
 
       <CustomAreaChart
         data={chartData}

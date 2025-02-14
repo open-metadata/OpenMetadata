@@ -112,6 +112,7 @@ _type_map.update(
     }
 )
 
+
 # This method is from hive dialect originally but
 # is overridden to optimize DESCRIBE query execution
 def _get_table_columns(self, connection, table_name, schema, db_name):
@@ -125,7 +126,7 @@ def _get_table_columns(self, connection, table_name, schema, db_name):
         query = DATABRICKS_GET_TABLE_COMMENTS.format(
             database_name=db_name, schema_name=schema, table_name=table_name
         )
-        cursor = get_table_comment_result(
+        rows = get_table_comment_result(
             self,
             connection=connection,
             query=query,
@@ -133,8 +134,6 @@ def _get_table_columns(self, connection, table_name, schema, db_name):
             table_name=table_name,
             schema=schema,
         )
-
-        rows = cursor.fetchall()
 
     except exc.OperationalError as e:
         # Does the table exist?
@@ -207,11 +206,10 @@ def get_columns(self, connection, table_name, schema=None, **kw):
             "system_data_type": raw_col_type,
         }
         if col_type in {"array", "struct", "map"}:
-            col_name = f"`{col_name}`" if "." in col_name else col_name
             try:
                 rows = dict(
                     connection.execute(
-                        f"DESCRIBE TABLE {kw.get('db_name')}.{schema}.{table_name} {col_name}"
+                        f"DESCRIBE TABLE `{kw.get('db_name')}`.`{schema}`.`{table_name}` `{col_name}`"
                     ).fetchall()
                 )
                 col_info["system_data_type"] = rows["data_type"]
@@ -388,7 +386,7 @@ def get_table_type(self, connection, database, schema, table):
                 database_name=database, schema_name=schema, table_name=table
             )
         else:
-            query = f"DESCRIBE TABLE EXTENDED {schema}.{table}"
+            query = f"DESCRIBE TABLE EXTENDED `{schema}`.`{table}`"
         rows = get_table_comment_result(
             self,
             connection=connection,

@@ -76,11 +76,11 @@ class SingleStoreProfilerInterface(SQAProfilerInterface):
                 return dict(row)
         except ProgrammingError:
             logger.info(
-                f"Skipping window metrics for {runner.table.__tablename__}.{column.name} due to overflow"
+                f"Skipping window metrics for {runner.table_name}.{column.name} due to overflow"
             )
             return None
 
         except Exception as exc:
-            msg = f"Error trying to compute profile for {runner.table.__tablename__}.{column.name}: {exc}"
+            msg = f"Error trying to compute profile for {runner.table_name}.{column.name}: {exc}"
             handle_query_exception(msg, exc, session)
         return None

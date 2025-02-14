@@ -5,7 +5,7 @@ slug: /how-to-guides/admin-guide/persona-landing-page-customization
 
 # Persona and Landing Page Customization in OpenMetadata
 
-{%  youtube videoId="Nh2xLAwY2-A" start="2461" end="2728" width="560px" height="315px" /%}
+{%  youtube videoId="Nh2xLAwY2-A" start="2461" end="2728" width="800px" height="450px" /%}
 
 ## Overview
 OpenMetadata is designed as a platform for everyone in your organization, catering to the diverse needs of different users. To achieve this, OpenMetadata introduces **Persona and Landing Page Customization**, offering a personalized experience for each user. By defining personas, administrators can customize the application interface and functionality based on the specific requirements of various roles, such as **data engineers, data scientists, data stewards**, etc. This ensures that each user experiences the platform in a way that aligns with their responsibilities, enhancing productivity by providing relevant information and tools tailored to their daily activities.

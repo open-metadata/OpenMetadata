@@ -105,7 +105,7 @@ test.describe('Tour should work properly', () => {
 
     await expect(page.locator(`[data-tour-elem="badge"]`)).toHaveText('12');
 
-    await expect(page.getByText('Profiler & Data Quality')).toBeVisible();
+    await expect(page.getByText('Data Observability')).toBeVisible();
 
     // step 11
     await page.locator('[data-tour-elem="right-arrow"]').click();

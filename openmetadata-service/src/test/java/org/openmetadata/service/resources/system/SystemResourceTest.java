@@ -1,7 +1,6 @@
 package org.openmetadata.service.resources.system;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.TEST_AUTH_HEADERS;
 
@@ -47,7 +46,7 @@ import org.openmetadata.schema.api.tests.CreateTestSuite;
 import org.openmetadata.schema.auth.JWTAuthMechanism;
 import org.openmetadata.schema.auth.JWTTokenExpiry;
 import org.openmetadata.schema.configuration.AssetCertificationSettings;
-import org.openmetadata.schema.email.SmtpSettings;
+import org.openmetadata.schema.configuration.WorkflowSettings;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.profiler.MetricType;
@@ -57,10 +56,8 @@ import org.openmetadata.schema.system.ValidationResponse;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.util.EntitiesCount;
 import org.openmetadata.schema.util.ServicesCount;
-import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.OpenMetadataApplicationTest;
-import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.dashboards.DashboardResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
@@ -186,14 +183,6 @@ public class SystemResourceTest extends OpenMetadataApplicationTest {
   @Test
   @Order(2)
   void testSystemConfigs() throws HttpResponseException {
-    // Test Email Config
-    Settings emailSettings = getSystemConfig(SettingsType.EMAIL_CONFIGURATION);
-    SmtpSettings smtp = JsonUtils.convertValue(emailSettings.getConfigValue(), SmtpSettings.class);
-    // Password for Email is encrypted using fernet
-    SmtpSettings expected = config.getSmtpSettings();
-    expected.setPassword(smtp.getPassword());
-    assertEquals(config.getSmtpSettings(), smtp);
-
     // Test Custom Ui Theme Preference Config
     Settings uiThemeConfigWrapped = getSystemConfig(SettingsType.CUSTOM_UI_THEME_PREFERENCE);
     UiThemePreference uiThemePreference =
@@ -210,39 +199,7 @@ public class SystemResourceTest extends OpenMetadataApplicationTest {
   }
 
   @Test
-  @Order(1)
-  void testDefaultEmailSystemConfig() {
-    // Test Email Config
-    Settings stored =
-        Entity.getCollectionDAO()
-            .systemDAO()
-            .getConfigWithKey(SettingsType.EMAIL_CONFIGURATION.value());
-    SmtpSettings storedAndEncrypted =
-        JsonUtils.convertValue(stored.getConfigValue(), SmtpSettings.class);
-    assertTrue(Fernet.isTokenized(storedAndEncrypted.getPassword()));
-    assertEquals(
-        config.getSmtpSettings().getPassword(),
-        Fernet.getInstance().decryptIfApplies(storedAndEncrypted.getPassword()));
-  }
-
-  @Test
   void testSystemConfigsUpdate(TestInfo test) throws HttpResponseException {
-    // Test Email Config
-    SmtpSettings smtpSettings = config.getSmtpSettings();
-    // Update a few Email fields
-    smtpSettings.setUsername(test.getDisplayName());
-    smtpSettings.setEmailingEntity(test.getDisplayName());
-
-    updateSystemConfig(
-        new Settings()
-            .withConfigType(SettingsType.EMAIL_CONFIGURATION)
-            .withConfigValue(smtpSettings));
-    SmtpSettings updateEmailSettings =
-        JsonUtils.convertValue(
-            getSystemConfig(SettingsType.EMAIL_CONFIGURATION).getConfigValue(), SmtpSettings.class);
-    assertEquals(updateEmailSettings.getUsername(), test.getDisplayName());
-    assertEquals(updateEmailSettings.getEmailingEntity(), test.getDisplayName());
-
     // Test Custom Logo Update and theme preference
     UiThemePreference updateConfigReq =
         new UiThemePreference()
@@ -350,43 +307,11 @@ public class SystemResourceTest extends OpenMetadataApplicationTest {
   @Test
   void testDefaultSettingsInitialization() throws HttpResponseException {
     SettingsCache.initialize(config);
-    Settings emailSettings = getSystemConfig(SettingsType.EMAIL_CONFIGURATION);
     Settings uiThemeSettings = getSystemConfig(SettingsType.CUSTOM_UI_THEME_PREFERENCE);
-    SmtpSettings smtpSettings =
-        JsonUtils.convertValue(emailSettings.getConfigValue(), SmtpSettings.class);
-    assertEquals(config.getSmtpSettings().getUsername(), smtpSettings.getUsername());
-    assertEquals(config.getSmtpSettings().getEmailingEntity(), smtpSettings.getEmailingEntity());
     UiThemePreference uiThemePreference =
         JsonUtils.convertValue(uiThemeSettings.getConfigValue(), UiThemePreference.class);
     assertEquals("", uiThemePreference.getCustomTheme().getPrimaryColor());
     assertEquals("", uiThemePreference.getCustomLogoConfig().getCustomLogoUrlPath());
-  }
-
-  @Test
-  void testEmailConfigurationSettings() throws HttpResponseException {
-    Settings emailSettings = getSystemConfig(SettingsType.EMAIL_CONFIGURATION);
-    SmtpSettings smtpSettings =
-        JsonUtils.convertValue(emailSettings.getConfigValue(), SmtpSettings.class);
-    SmtpSettings expectedSmtpSettings = config.getSmtpSettings();
-    expectedSmtpSettings.setPassword(
-        smtpSettings.getPassword()); // Password is encrypted, so we use the stored one
-    assertEquals(expectedSmtpSettings, smtpSettings);
-    smtpSettings.setUsername("updatedUsername");
-    smtpSettings.setEmailingEntity("updatedEntity");
-
-    Settings updatedEmailSettings =
-        new Settings()
-            .withConfigType(SettingsType.EMAIL_CONFIGURATION)
-            .withConfigValue(smtpSettings);
-
-    updateSystemConfig(updatedEmailSettings);
-
-    Settings updatedSettings = getSystemConfig(SettingsType.EMAIL_CONFIGURATION);
-    SmtpSettings updatedSmtpSettings =
-        JsonUtils.convertValue(updatedSettings.getConfigValue(), SmtpSettings.class);
-
-    assertEquals("updatedUsername", updatedSmtpSettings.getUsername());
-    assertEquals("updatedEntity", updatedSmtpSettings.getEmailingEntity());
   }
 
   @Order(3)
@@ -435,7 +360,7 @@ public class SystemResourceTest extends OpenMetadataApplicationTest {
 
     // Assert default values
     assertEquals(3, loginConfig.getMaxLoginFailAttempts());
-    assertEquals(600, loginConfig.getAccessBlockTime());
+    assertEquals(30, loginConfig.getAccessBlockTime());
     assertEquals(3600, loginConfig.getJwtTokenExpiryTime());
 
     // Update login configuration
@@ -549,6 +474,48 @@ public class SystemResourceTest extends OpenMetadataApplicationTest {
     // Assert updated values
     assertEquals(3, updatedLineageConfig.getUpstreamDepth());
     assertEquals(4, updatedLineageConfig.getDownstreamDepth());
+  }
+
+  @Test
+  void testWorkflowSettings() throws HttpResponseException {
+    // Retrieve the default workflow settings
+    Settings setting = getSystemConfig(SettingsType.WORKFLOW_SETTINGS);
+    WorkflowSettings workflowSettings =
+        JsonUtils.convertValue(setting.getConfigValue(), WorkflowSettings.class);
+
+    // Assert default values
+    assertEquals(50, workflowSettings.getExecutorConfiguration().getCorePoolSize());
+    assertEquals(1000, workflowSettings.getExecutorConfiguration().getQueueSize());
+    assertEquals(100, workflowSettings.getExecutorConfiguration().getMaxPoolSize());
+    assertEquals(20, workflowSettings.getExecutorConfiguration().getTasksDuePerAcquisition());
+    assertEquals(7, workflowSettings.getHistoryCleanUpConfiguration().getCleanAfterNumberOfDays());
+
+    // Update workflow settings
+    workflowSettings.getExecutorConfiguration().setCorePoolSize(100);
+    workflowSettings.getExecutorConfiguration().setQueueSize(2000);
+    workflowSettings.getExecutorConfiguration().setMaxPoolSize(200);
+    workflowSettings.getExecutorConfiguration().setTasksDuePerAcquisition(40);
+    workflowSettings.getHistoryCleanUpConfiguration().setCleanAfterNumberOfDays(10);
+
+    Settings updatedSetting =
+        new Settings()
+            .withConfigType(SettingsType.WORKFLOW_SETTINGS)
+            .withConfigValue(workflowSettings);
+
+    updateSystemConfig(updatedSetting);
+
+    // Retrieve the updated settings
+    Settings updatedSettings = getSystemConfig(SettingsType.WORKFLOW_SETTINGS);
+    WorkflowSettings updateWorkflowSettings =
+        JsonUtils.convertValue(updatedSettings.getConfigValue(), WorkflowSettings.class);
+
+    // Assert updated values
+    assertEquals(100, updateWorkflowSettings.getExecutorConfiguration().getCorePoolSize());
+    assertEquals(2000, updateWorkflowSettings.getExecutorConfiguration().getQueueSize());
+    assertEquals(200, updateWorkflowSettings.getExecutorConfiguration().getMaxPoolSize());
+    assertEquals(40, updateWorkflowSettings.getExecutorConfiguration().getTasksDuePerAcquisition());
+    assertEquals(
+        10, updateWorkflowSettings.getHistoryCleanUpConfiguration().getCleanAfterNumberOfDays());
   }
 
   @Test

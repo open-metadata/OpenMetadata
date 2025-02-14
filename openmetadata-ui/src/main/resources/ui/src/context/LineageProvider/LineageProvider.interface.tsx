@@ -47,6 +47,7 @@ export type UpstreamDownstreamData = {
 
 export interface LineageContextType {
   reactFlowInstance?: ReactFlowInstance;
+  dataQualityLineage?: EntityLineageResponse;
   nodes: Node[];
   edges: Edge[];
   tracedNodes: string[];

@@ -11,6 +11,7 @@ import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.StoredProcedure;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.LineageDetails;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.databases.StoredProcedureResource;
@@ -67,6 +68,18 @@ public class StoredProcedureRepository extends EntityRepository<StoredProcedure>
         DATABASE_SCHEMA,
         STORED_PROCEDURE,
         Relationship.CONTAINS);
+  }
+
+  @Override
+  protected void cleanup(StoredProcedure storedProcedure) {
+    // When a pipeline is removed , the linege needs to be removed
+    daoCollection
+        .relationshipDAO()
+        .deleteLineageBySourcePipeline(
+            storedProcedure.getId(),
+            LineageDetails.Source.QUERY_LINEAGE.value(),
+            Relationship.UPSTREAM.ordinal());
+    super.cleanup(storedProcedure);
   }
 
   @Override
@@ -130,13 +143,19 @@ public class StoredProcedureRepository extends EntityRepository<StoredProcedure>
 
     @Transaction
     @Override
-    public void entitySpecificUpdate() {
+    public void entitySpecificUpdate(boolean consolidatingChanges) {
       // storedProcedureCode is a required field. Cannot be null.
       if (updated.getStoredProcedureCode() != null) {
         recordChange(
             "storedProcedureCode",
             original.getStoredProcedureCode(),
             updated.getStoredProcedureCode());
+      }
+      if (updated.getStoredProcedureType() != null) {
+        recordChange(
+            "storedProcedureType",
+            original.getStoredProcedureType(),
+            updated.getStoredProcedureType());
       }
       recordChange("sourceUrl", original.getSourceUrl(), updated.getSourceUrl());
       recordChange("sourceHash", original.getSourceHash(), updated.getSourceHash());

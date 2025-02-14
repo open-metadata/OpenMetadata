@@ -91,7 +91,7 @@ EXPECTED_CREATED_PIPELINES = [
                 taskSQL=None,
                 startDate=None,
                 endDate=None,
-                tags=None,
+                tags=[],
                 sourceUrl=SourceUrl(
                     "http://lolhost:3000/locations/project_fully_featured/jobs/story_recommender_job/s3__recommender__recommender_model"
                 ),
@@ -106,7 +106,7 @@ EXPECTED_CREATED_PIPELINES = [
                 taskSQL=None,
                 startDate=None,
                 endDate=None,
-                tags=None,
+                tags=[],
                 sourceUrl=SourceUrl(
                     "http://lolhost:3000/locations/project_fully_featured/jobs/story_recommender_job/s3__recommender__user_story_matrix"
                 ),
@@ -121,7 +121,7 @@ EXPECTED_CREATED_PIPELINES = [
                 taskSQL=None,
                 startDate=None,
                 endDate=None,
-                tags=None,
+                tags=[],
                 sourceUrl=SourceUrl(
                     "http://lolhost:3000/locations/project_fully_featured/jobs/story_recommender_job/snowflake__recommender__comment_stories"
                 ),
@@ -139,7 +139,7 @@ EXPECTED_CREATED_PIPELINES = [
                 taskSQL=None,
                 startDate=None,
                 endDate=None,
-                tags=None,
+                tags=[],
                 sourceUrl=SourceUrl(
                     "http://lolhost:3000/locations/project_fully_featured/jobs/story_recommender_job/snowflake__recommender__component_top_stories"
                 ),
@@ -157,7 +157,7 @@ EXPECTED_CREATED_PIPELINES = [
                 taskSQL=None,
                 startDate=None,
                 endDate=None,
-                tags=None,
+                tags=[],
                 sourceUrl=SourceUrl(
                     "http://lolhost:3000/locations/project_fully_featured/jobs/story_recommender_job/snowflake__recommender__user_top_recommended_stories"
                 ),

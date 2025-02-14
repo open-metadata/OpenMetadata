@@ -73,6 +73,7 @@ import org.openmetadata.service.util.ResultList;
 @Collection(name = "apiCollections")
 public class APICollectionResource extends EntityResource<APICollection, APICollectionRepository> {
   public static final String COLLECTION_PATH = "v1/apiCollections/";
+  private final APICollectionMapper mapper = new APICollectionMapper();
   static final String FIELDS = "owners,apiEndpoints,tags,extension,domain,sourceHash";
 
   @Override
@@ -310,7 +311,7 @@ public class APICollectionResource extends EntityResource<APICollection, APIColl
       @Context SecurityContext securityContext,
       @Valid CreateAPICollection create) {
     APICollection apiCollection =
-        getAPICollection(create, securityContext.getUserPrincipal().getName());
+        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, apiCollection);
   }
 
@@ -392,7 +393,7 @@ public class APICollectionResource extends EntityResource<APICollection, APIColl
       @Context SecurityContext securityContext,
       @Valid CreateAPICollection create) {
     APICollection apiCollection =
-        getAPICollection(create, securityContext.getUserPrincipal().getName());
+        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, apiCollection);
   }
 
@@ -509,14 +510,5 @@ public class APICollectionResource extends EntityResource<APICollection, APIColl
       @Context SecurityContext securityContext,
       @Valid RestoreEntity restore) {
     return restoreEntity(uriInfo, securityContext, restore.getId());
-  }
-
-  private APICollection getAPICollection(CreateAPICollection create, String user) {
-    return repository
-        .copy(new APICollection(), create, user)
-        .withService(getEntityReference(Entity.API_SERVICE, create.getService()))
-        .withEndpointURL(create.getEndpointURL())
-        .withApiEndpoints(getEntityReferences(Entity.API_ENDPOINT, create.getApiEndpoints()))
-        .withSourceHash(create.getSourceHash());
   }
 }

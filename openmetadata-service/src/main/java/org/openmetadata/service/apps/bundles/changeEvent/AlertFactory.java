@@ -9,6 +9,7 @@ import org.openmetadata.service.apps.bundles.changeEvent.gchat.GChatPublisher;
 import org.openmetadata.service.apps.bundles.changeEvent.generic.GenericPublisher;
 import org.openmetadata.service.apps.bundles.changeEvent.msteams.MSTeamsPublisher;
 import org.openmetadata.service.apps.bundles.changeEvent.slack.SlackEventPublisher;
+import org.openmetadata.service.governance.workflows.WorkflowEventConsumer;
 
 public class AlertFactory {
   public static Destination<ChangeEvent> getAlert(
@@ -20,6 +21,7 @@ public class AlertFactory {
       case WEBHOOK -> new GenericPublisher(subscription, config);
       case EMAIL -> new EmailPublisher(subscription, config);
       case ACTIVITY_FEED -> new ActivityFeedPublisher(subscription, config);
+      case GOVERNANCE_WORKFLOW_CHANGE_EVENT -> new WorkflowEventConsumer(subscription, config);
     };
   }
 }

@@ -33,7 +33,10 @@ import { UseAirflowStatusProps } from '../../../../../hooks/useAirflowStatus';
 import { useApplicationStore } from '../../../../../hooks/useApplicationStore';
 import { deleteIngestionPipelineById } from '../../../../../rest/ingestionPipelineAPI';
 import { Transi18next } from '../../../../../utils/CommonUtils';
-import { getEntityName } from '../../../../../utils/EntityUtils';
+import {
+  getEntityName,
+  highlightSearchText,
+} from '../../../../../utils/EntityUtils';
 import {
   renderNameField,
   renderScheduleField,
@@ -46,7 +49,7 @@ import {
   showSuccessToast,
 } from '../../../../../utils/ToastUtils';
 import NextPrevious from '../../../../common/NextPrevious/NextPrevious';
-import RichTextEditorPreviewer from '../../../../common/RichTextEditor/RichTextEditorPreviewer';
+import RichTextEditorPreviewerV1 from '../../../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import ButtonSkeleton from '../../../../common/Skeleton/CommonSkeletons/ControlElements/ControlElements.component';
 import Table from '../../../../common/Table/Table';
 import EntityDeleteModal from '../../../../Modals/EntityDeleteModal/EntityDeleteModal';
@@ -81,6 +84,7 @@ function IngestionListTable({
   triggerIngestion,
   customRenderNameField,
   tableClassName,
+  searchText,
 }: Readonly<IngestionListTableProps>) {
   const { t } = useTranslation();
   const { theme } = useApplicationStore();
@@ -157,7 +161,10 @@ function IngestionListTable({
   const fetchIngestionPipelinesPermission = useCallback(async () => {
     try {
       const promises = ingestionData.map((item) =>
-        getEntityPermissionByFqn(ResourceEntity.INGESTION_PIPELINE, item.name)
+        getEntityPermissionByFqn(
+          ResourceEntity.INGESTION_PIPELINE,
+          item.fullyQualifiedName ?? ''
+        )
       );
       const response = await Promise.allSettled(promises);
 
@@ -247,7 +254,7 @@ function IngestionListTable({
         title: t('label.name'),
         dataIndex: 'name',
         key: 'name',
-        render: customRenderNameField ?? renderNameField,
+        render: customRenderNameField ?? renderNameField(searchText),
       },
       ...(showDescriptionCol
         ? [
@@ -257,8 +264,8 @@ function IngestionListTable({
               key: 'description',
               render: (description: string) =>
                 !isUndefined(description) && description.trim() ? (
-                  <RichTextEditorPreviewer
-                    markdown={description}
+                  <RichTextEditorPreviewerV1
+                    markdown={highlightSearchText(description, searchText)}
                     maxLength={MAX_CHAR_LIMIT_ENTITY_SUMMARY}
                   />
                 ) : (
@@ -277,7 +284,7 @@ function IngestionListTable({
           dataIndex: 'pipelineType',
           key: 'pipelineType',
           width: 120,
-          render: renderTypeField,
+          render: renderTypeField(searchText),
         },
       ]),
       {

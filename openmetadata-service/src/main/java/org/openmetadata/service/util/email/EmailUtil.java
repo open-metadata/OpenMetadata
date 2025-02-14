@@ -30,6 +30,7 @@ import static org.openmetadata.service.util.email.TemplateConstants.EXPIRATION_T
 import static org.openmetadata.service.util.email.TemplateConstants.INVITE_RANDOM_PASSWORD_TEMPLATE;
 import static org.openmetadata.service.util.email.TemplateConstants.INVITE_SUBJECT;
 import static org.openmetadata.service.util.email.TemplateConstants.PASSWORD;
+import static org.openmetadata.service.util.email.TemplateConstants.PASSWORD_RESET_LINKKEY;
 import static org.openmetadata.service.util.email.TemplateConstants.PASSWORD_RESET_SUBJECT;
 import static org.openmetadata.service.util.email.TemplateConstants.REPORT_SUBJECT;
 import static org.openmetadata.service.util.email.TemplateConstants.SUPPORT_URL;
@@ -54,13 +55,16 @@ import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.openmetadata.common.utils.CommonUtil;
+import org.openmetadata.schema.api.configuration.OpenMetadataBaseUrlConfiguration;
 import org.openmetadata.schema.email.SmtpSettings;
 import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.service.apps.bundles.changeEvent.email.EmailMessage;
 import org.openmetadata.service.events.scheduled.template.DataInsightDescriptionAndOwnerTemplate;
 import org.openmetadata.service.events.scheduled.template.DataInsightTotalAssetTemplate;
+import org.openmetadata.service.jdbi3.SystemRepository;
 import org.openmetadata.service.resources.settings.SettingsCache;
 import org.simplejavamail.api.email.Email;
 import org.simplejavamail.api.email.EmailPopulatingBuilder;
@@ -179,7 +183,7 @@ public class EmailUtil {
               .add(ENTITY, getSmtpSettings().getEmailingEntity())
               .add(SUPPORT_URL, getSmtpSettings().getSupportUrl())
               .add(USERNAME, user.getName())
-              .add(EMAIL_VERIFICATION_LINKKEY, passwordResetLink)
+              .add(PASSWORD_RESET_LINKKEY, passwordResetLink)
               .add(EXPIRATION_TIME_KEY, DEFAULT_EXPIRATION_TIME)
               .build();
 
@@ -276,7 +280,7 @@ public class EmailUtil {
               .add(SUPPORT_URL, getSmtpSettings().getSupportUrl())
               .add(USERNAME, user.getName())
               .add(PASSWORD, password)
-              .add(APPLICATION_LOGIN_LINK, getSmtpSettings().getOpenMetadataUrl())
+              .add(APPLICATION_LOGIN_LINK, getOMBaseURL())
               .build();
 
       try {
@@ -350,10 +354,7 @@ public class EmailUtil {
               .add("descriptionObj", descriptionObj)
               .add("ownershipObj", ownerShipObj)
               .add("tierObj", tierObj)
-              .add(
-                  "viewReportUrl",
-                  String.format(
-                      "%s/data-insights/data-assets", getSmtpSettings().getOpenMetadataUrl()))
+              .add("viewReportUrl", String.format("%s/data-insights/data-assets", getOMBaseURL()))
               .build();
 
       sendMailToMultiple(subject, templatePopulator, emails, templateFilePath);
@@ -437,6 +438,15 @@ public class EmailUtil {
       return false;
     }
     return email.matches("^[\\w-\\.]+@([\\w-]+\\.)+[\\w-]{2,4}$");
+  }
+
+  public static String getOMBaseURL() {
+    Settings setting =
+        new SystemRepository()
+            .getConfigWithKey(SettingsType.OPEN_METADATA_BASE_URL_CONFIGURATION.value());
+    OpenMetadataBaseUrlConfiguration urlConfiguration =
+        (OpenMetadataBaseUrlConfiguration) setting.getConfigValue();
+    return urlConfiguration.getOpenMetadataUrl();
   }
 
   static class TemplatePopulatorBuilder {

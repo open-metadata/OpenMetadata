@@ -173,6 +173,7 @@ describe('Test Connection Component', () => {
     await act(async () => {
       render(<TestConnection {...mockProps} />);
     });
+    const controller = new AbortController();
 
     const testConnectionButton = screen.getByTestId('test-connection-btn');
 
@@ -180,13 +181,22 @@ describe('Test Connection Component', () => {
       userEvent.click(testConnectionButton);
     });
 
-    expect(addWorkflow).toHaveBeenCalledWith(CREATE_WORKFLOW_PAYLOAD);
+    expect(addWorkflow).toHaveBeenCalledWith(
+      CREATE_WORKFLOW_PAYLOAD,
+      controller.signal
+    );
 
-    expect(triggerWorkflowById).toHaveBeenCalledWith(WORKFLOW_DETAILS.id);
+    expect(triggerWorkflowById).toHaveBeenCalledWith(
+      WORKFLOW_DETAILS.id,
+      controller.signal
+    );
 
     jest.advanceTimersByTime(2000);
 
-    expect(getWorkflowById).toHaveBeenCalledWith(WORKFLOW_DETAILS.id);
+    expect(getWorkflowById).toHaveBeenCalledWith(
+      WORKFLOW_DETAILS.id,
+      controller.signal
+    );
   });
 
   it('Should show success message if test connection successful', async () => {
@@ -293,6 +303,13 @@ describe('Test Connection Component', () => {
   it('Should timeout message after two minutes', async () => {
     jest.useFakeTimers();
 
+    (addWorkflow as jest.Mock).mockImplementationOnce(() =>
+      Promise.resolve({
+        ...WORKFLOW_DETAILS,
+        status: WorkflowStatus.Pending,
+      })
+    );
+
     (getWorkflowById as jest.Mock).mockImplementationOnce(() =>
       Promise.resolve({
         ...WORKFLOW_DETAILS,
@@ -314,6 +331,10 @@ describe('Test Connection Component', () => {
     expect(
       screen.getByText('message.test-connection-taking-too-long')
     ).toBeInTheDocument();
+
+    // 59 since it will make this amount of call, and after timeout it should not make more api calls
+    expect(getWorkflowById).toHaveBeenCalledTimes(59);
+    expect(getWorkflowById).not.toHaveBeenCalledTimes(60);
   });
 
   it('Should not show the connection status modal if test connection definition API fails', async () => {
@@ -485,15 +506,23 @@ describe('Test Connection Component', () => {
       render(<TestConnection {...mockProps} />);
     });
 
+    const controller = new AbortController();
+
     const testConnectionButton = screen.getByTestId('test-connection-btn');
 
     await act(async () => {
       userEvent.click(testConnectionButton);
     });
 
-    expect(addWorkflow).toHaveBeenCalledWith(CREATE_WORKFLOW_PAYLOAD);
+    expect(addWorkflow).toHaveBeenCalledWith(
+      CREATE_WORKFLOW_PAYLOAD,
+      controller.signal
+    );
 
-    expect(triggerWorkflowById).toHaveBeenCalledWith(WORKFLOW_DETAILS.id);
+    expect(triggerWorkflowById).toHaveBeenCalledWith(
+      WORKFLOW_DETAILS.id,
+      controller.signal
+    );
 
     jest.advanceTimersByTime(2000);
 

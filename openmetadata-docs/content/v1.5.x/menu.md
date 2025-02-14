@@ -75,6 +75,8 @@ site_menu:
     url: /deployment/security/ldap/docker
   - category: Deployment / Enable Security / Ldap Authentication / Bare Metal
     url: /deployment/security/ldap/bare-metal
+  - category: Deployment / Enable Security / Ldap Authentication / Kubernetes
+    url: /deployment/security/ldap/kubernetes
   - category: Deployment / Enable Security / Auth0 SSO
     url: /deployment/security/auth0
   - category: Deployment / Enable Security / Auth0 SSO / Docker
@@ -332,6 +334,8 @@ site_menu:
     url: /connectors/database/mssql
   - category: Connectors / Database / MSSQL / Run Externally
     url: /connectors/database/mssql/yaml
+  - category: Connectors / Database / MSSQL / Troubleshooting
+    url: /connectors/database/mssql/troubleshooting
   - category: Connectors / Database / MySQL
     url: /connectors/database/mysql
   - category: Connectors / Database / MySQL / Run Externally
@@ -344,11 +348,11 @@ site_menu:
     url: /connectors/database/pinotdb
   - category: Connectors / Database / PinotDB / Run Externally
     url: /connectors/database/pinotdb/yaml
-  - category: Connectors / Database / Postgres
+  - category: Connectors / Database / PostgreSQL
     url: /connectors/database/postgres
-  - category: Connectors / Database / Postgres / Run Externally
+  - category: Connectors / Database / PostgreSQL / Run Externally
     url: /connectors/database/postgres/yaml
-  - category: Connectors / Database / Postgres / Troubleshooting
+  - category: Connectors / Database / PostgreSQL / Troubleshooting
     url: /connectors/database/postgres/troubleshooting
   - category: Connectors / Database / Presto
     url: /connectors/database/presto
@@ -364,9 +368,9 @@ site_menu:
     url: /connectors/database/salesforce
   - category: Connectors / Database / Salesforce / Run Externally
     url: /connectors/database/salesforce/yaml
-  - category: Connectors / Database / SAP Hana
+  - category: Connectors / Database / SAP HANA
     url: /connectors/database/sap-hana
-  - category: Connectors / Database / SAP Hana / Run Externally
+  - category: Connectors / Database / SAP HANA / Run Externally
     url: /connectors/database/sap-hana/yaml
   - category: Connectors / Database / SAP ERP
     url: /connectors/database/sap-erp
@@ -771,6 +775,8 @@ site_menu:
     url: /how-to-guides/data-discovery
   - category: How-to Guides / Data Discovery / How to Discover Assets of Interest
     url: /how-to-guides/data-discovery/discover
+  - category: How-to Guides / Data Discovery / Steps for Searching Using Hierarchy
+    url: /how-to-guides/data-discovery/hierarchy
   - category: How-to Guides / Data Discovery / Get a Quick Glance of the Data Assets
     url: /how-to-guides/data-discovery/preview
   - category: How-to Guides / Data Discovery / Detailed View of the Data Assets
@@ -802,8 +808,6 @@ site_menu:
     url: /how-to-guides/data-collaboration/announcements
   - category: How-to Guides / Data Collaboration / How to Create an Announcement
     url: /how-to-guides/data-collaboration/add-announcement
-  - category: How-to Guides / Data Collaboration / Overview of Knowledge Center
-    url: /how-to-guides/data-collaboration/knowledge-center
 
   - category: How-to Guides / Data Quality and Observability
     url: /how-to-guides/data-quality-observability
@@ -811,9 +815,6 @@ site_menu:
     url: /how-to-guides/data-quality-observability/quality
   - category: How-to Guides / Data Quality and Profiler / Data Quality / Data Quality Tab
     url: /how-to-guides/data-quality-observability/quality/tab
-  - category: How-to Guides / Data Quality and Profiler / Data Quality / Data Quality Overview Section
-    url: /how-to-guides/data-quality-observability/quality/overview
-    isCollateOnly: true
   - category: How-to Guides / Data Quality and Profiler / Data Quality / How to Write and Deploy No-Code Test Cases
     url: /how-to-guides/data-quality-observability/quality/test
   - category: How-to Guides / Data Quality and Observability / Data Quality / Configure Data Quality
@@ -854,9 +855,6 @@ site_menu:
     url: /how-to-guides/data-quality-observability/incident-manager
   - category: How-to Guides / Data Quality and Observability / Incident Manager / How to work with the Incident Manager
     url: /how-to-guides/data-quality-observability/incident-manager/workflow
-  - category: How-to Guides / Data Quality and Observability / Incident Manager / Root Cause Analysis
-    url: /how-to-guides/data-quality-observability/incident-manager/root-cause-analysis
-    isCollateOnly: true
 
   - category: How-to Guides / Data Lineage
     url: /how-to-guides/data-lineage
@@ -881,14 +879,10 @@ site_menu:
     url: /how-to-guides/data-insights/elasticsearch-reindex
   - category: How-to Guides / Data Insights / Data Insights Report
     url: /how-to-guides/data-insights/report
-  - category: How-to Guides / Data Insights / Cost Analysis
-    url: /how-to-guides/data-insights/cost-analysis
   - category: How-to Guides / Data Insights / Configure the Data Insights Report
     url: /how-to-guides/data-insights/email-report
   - category: How-to Guides / Data Insights / How to Transform the Data Culture of Your Company
     url: /how-to-guides/data-insights/data-culture
-  - category: How-to Guides / Data Insights / Custom Data Insight Dashboards
-    url: /how-to-guides/data-insights/custom-dashboard
 
   - category: How-to Guides / Data Governance
     url: /how-to-guides/data-governance
@@ -941,6 +935,20 @@ site_menu:
     url: /releases/supported
   - category: Releases / All Releases
     url: /releases/all-releases
+  - category: Releases / All Releases / 1.5.14 Release
+    url: /releases/all-releases/#1.5.14-release
+  - category: Releases / All Releases / 1.5.13 Release
+    url: /releases/all-releases/#1.5.13-release
+  - category: Releases / All Releases / 1.5.12 Release
+    url: /releases/all-releases/#1.5.12-release
+  - category: Releases / All Releases / 1.5.11 Release
+    url: /releases/all-releases/#1.5.11-release
+  - category: Releases / All Releases / 1.5.10 Release
+    url: /releases/all-releases/#1.5.10-release
+  - category: Releases / All Releases / 1.5.9 Release
+    url: /releases/all-releases/#1.5.9-release
+  - category: Releases / All Releases / 1.5.8 Release
+    url: /releases/all-releases/#1.5.8-release
   - category: Releases / All Releases / 1.5.7 Release
     url: /releases/all-releases/#1.5.7-release
   - category: Releases / All Releases / 1.5.6 Release

@@ -24,6 +24,7 @@ from metadata.utils.time_utils import (
     get_beginning_of_day_timestamp_mill,
     get_end_of_day_timestamp_mill,
 )
+from metadata.workflow.classification import AutoClassificationWorkflow
 from metadata.workflow.profiler import ProfilerWorkflow
 from metadata.workflow.workflow_output_handler import WorkflowResultStatus
 
@@ -110,9 +111,12 @@ class TestDatalakeProfilerTestE2E:
             nullable=False,
         )
 
-        profile = metadata.get_latest_table_profile(table.fullyQualifiedName).profile
+        profile = metadata.get_latest_table_profile(table.fullyQualifiedName)
+        table_profile = profile.profile
+        column_profile = profile.columns[0].profile
 
-        assert profile.rowCount == 1.0
+        assert table_profile.rowCount == 1.0
+        assert column_profile.valuesCount == 1.0
 
     def test_datetime_partitioned_datalake_profiler_workflow(
         self, ingestion_config, metadata
@@ -154,9 +158,12 @@ class TestDatalakeProfilerTestE2E:
             fields=["tableProfilerConfig"],
         )
 
-        profile = metadata.get_latest_table_profile(table.fullyQualifiedName).profile
+        profile = metadata.get_latest_table_profile(table.fullyQualifiedName)
+        table_profile = profile.profile
+        column_profile = profile.columns[0].profile
 
-        assert profile.rowCount == 2.0
+        assert table_profile.rowCount == 2.0
+        assert column_profile.valuesCount == 2.0
 
     def test_integer_range_partitioned_datalake_profiler_workflow(
         self, ingestion_config, metadata
@@ -199,9 +206,12 @@ class TestDatalakeProfilerTestE2E:
             fields=["tableProfilerConfig"],
         )
 
-        profile = metadata.get_latest_table_profile(table.fullyQualifiedName).profile
+        profile = metadata.get_latest_table_profile(table.fullyQualifiedName)
+        table_profile = profile.profile
+        column_profile = profile.columns[0].profile
 
-        assert profile.rowCount == 2.0
+        assert table_profile.rowCount == 2.0
+        assert column_profile.valuesCount == 2.0
 
     def test_datalake_profiler_workflow_with_custom_profiler_config(
         self, metadata, ingestion_config
@@ -304,6 +314,19 @@ class TestDatalakeProfilerTestE2E:
         assert not [
             p for p in first_name_profile if p.timestamp.root == latest_exc_timestamp
         ]
+
+        ingestion_config["source"]["sourceConfig"]["config"].update(
+            {
+                "type": "AutoClassification",
+            }
+        )
+
+        auto_workflow = AutoClassificationWorkflow.create(ingestion_config)
+        auto_workflow.execute()
+        status = auto_workflow.result_status()
+        auto_workflow.stop()
+
+        assert status == WorkflowResultStatus.SUCCESS
 
         sample_data = metadata.get_sample_data(table)
         assert sorted([c.root for c in sample_data.sampleData.columns]) == sorted(

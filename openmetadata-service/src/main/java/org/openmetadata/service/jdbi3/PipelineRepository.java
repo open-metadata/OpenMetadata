@@ -29,7 +29,6 @@ import static org.openmetadata.service.util.EntityUtil.taskMatch;
 import java.util.ArrayList;
 import java.util.List;
 import javax.ws.rs.core.Response;
-import javax.ws.rs.core.UriInfo;
 import org.apache.commons.lang3.tuple.Triple;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
@@ -42,6 +41,8 @@ import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.LineageDetails;
+import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.Status;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.Task;
@@ -171,8 +172,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
         PipelineStatus.class);
   }
 
-  public RestUtil.PutResponse<?> addPipelineStatus(
-      UriInfo uriInfo, String fqn, PipelineStatus pipelineStatus) {
+  public RestUtil.PutResponse<?> addPipelineStatus(String fqn, PipelineStatus pipelineStatus) {
     // Validate the request content
     Pipeline pipeline = daoCollection.pipelineDAO().findEntityByName(fqn);
     pipeline.setService(getContainer(pipeline.getId()));
@@ -297,6 +297,18 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   }
 
   @Override
+  protected void cleanup(Pipeline pipeline) {
+    // When a pipeline is removed , the linege needs to be removed
+    daoCollection
+        .relationshipDAO()
+        .deleteLineageBySourcePipeline(
+            pipeline.getId(),
+            LineageDetails.Source.PIPELINE_LINEAGE.value(),
+            Relationship.UPSTREAM.ordinal());
+    super.cleanup(pipeline);
+  }
+
+  @Override
   public void storeRelationships(Pipeline pipeline) {
     addServiceRelationship(pipeline, pipeline.getService());
 
@@ -349,7 +361,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
 
   private void getTaskTags(boolean setTags, List<Task> tasks) {
     for (Task t : listOrEmpty(tasks)) {
-      if (t.getTags() == null) {
+      if (t.getTags() == null || t.getTags().isEmpty()) {
         t.setTags(setTags ? getTags(t.getFullyQualifiedName()) : t.getTags());
       }
     }
@@ -469,7 +481,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
 
     @Transaction
     @Override
-    public void entitySpecificUpdate() {
+    public void entitySpecificUpdate(boolean consolidatingChanges) {
       updateTasks(original, updated);
       recordChange("sourceUrl", original.getSourceUrl(), updated.getSourceUrl());
       recordChange("concurrency", original.getConcurrency(), updated.getConcurrency());

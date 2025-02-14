@@ -73,6 +73,7 @@ import org.openmetadata.service.util.ResultList;
 @Collection(name = "metrics")
 public class MetricResource extends EntityResource<Metric, MetricRepository> {
   public static final String COLLECTION_PATH = "v1/metrics/";
+  private final MetricMapper mapper = new MetricMapper();
   static final String FIELDS = "owners,relatedMetrics,followers,tags,extension,domain,dataProducts";
 
   public MetricResource(Authorizer authorizer, Limits limits) {
@@ -279,7 +280,7 @@ public class MetricResource extends EntityResource<Metric, MetricRepository> {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateMetric create) {
-    Metric metric = getMetric(create, securityContext.getUserPrincipal().getName());
+    Metric metric = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, metric);
   }
 
@@ -302,7 +303,7 @@ public class MetricResource extends EntityResource<Metric, MetricRepository> {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateMetric create) {
-    Metric metric = getMetric(create, securityContext.getUserPrincipal().getName());
+    Metric metric = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, metric);
   }
 
@@ -518,15 +519,5 @@ public class MetricResource extends EntityResource<Metric, MetricRepository> {
       @Context SecurityContext securityContext,
       @Valid RestoreEntity restore) {
     return restoreEntity(uriInfo, securityContext, restore.getId());
-  }
-
-  private Metric getMetric(CreateMetric create, String user) {
-    return repository
-        .copy(new Metric(), create, user)
-        .withMetricExpression(create.getMetricExpression())
-        .withGranularity(create.getGranularity())
-        .withRelatedMetrics(getEntityReferences(Entity.METRIC, create.getRelatedMetrics()))
-        .withMetricType(create.getMetricType())
-        .withUnitOfMeasurement(create.getUnitOfMeasurement());
   }
 }

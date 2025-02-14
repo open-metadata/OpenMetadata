@@ -22,6 +22,7 @@ from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipel
 )
 from metadata.ingestion.api.parser import parse_ingestion_pipeline_config_gracefully
 from metadata.ingestion.ometa.client import REST
+from metadata.ingestion.ometa.utils import quote
 from metadata.utils.logger import ometa_logger
 
 logger = ometa_logger()
@@ -46,7 +47,7 @@ class OMetaIngestionPipelineMixin:
         :param pipeline_status: Pipeline Status data to add
         """
         resp = self.client.put(
-            f"{self.get_suffix(IngestionPipeline)}/{ingestion_pipeline_fqn}/pipelineStatus",
+            f"{self.get_suffix(IngestionPipeline)}/{quote(ingestion_pipeline_fqn)}/pipelineStatus",
             data=pipeline_status.model_dump_json(),
         )
         logger.debug(
@@ -64,7 +65,8 @@ class OMetaIngestionPipelineMixin:
         :param pipeline_status_run_id: Pipeline Status run id
         """
         resp = self.client.get(
-            f"{self.get_suffix(IngestionPipeline)}/{ingestion_pipeline_fqn}/pipelineStatus/{pipeline_status_run_id}"
+            f"{self.get_suffix(IngestionPipeline)}/"
+            f"{quote(ingestion_pipeline_fqn)}/pipelineStatus/{pipeline_status_run_id}"
         )
         if resp:
             return PipelineStatus(**resp)
@@ -99,7 +101,7 @@ class OMetaIngestionPipelineMixin:
         params = {"startTs": start_ts, "endTs": end_ts}
 
         resp = self.client.get(
-            f"{self.get_suffix(IngestionPipeline)}/{ingestion_pipeline_fqn}/pipelineStatus",
+            f"{self.get_suffix(IngestionPipeline)}/{quote(ingestion_pipeline_fqn)}/pipelineStatus",
             data=params,
         )
 

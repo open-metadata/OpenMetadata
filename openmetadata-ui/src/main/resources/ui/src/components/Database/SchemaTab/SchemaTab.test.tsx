@@ -32,6 +32,7 @@ describe('Test SchemaTab Component', () => {
     const { queryByTestId, container } = render(
       <SchemaTab
         hasDescriptionEditAccess
+        hasGlossaryTermEditAccess
         hasTagEditAccess
         isReadOnly={false}
         table={MOCK_TABLE}

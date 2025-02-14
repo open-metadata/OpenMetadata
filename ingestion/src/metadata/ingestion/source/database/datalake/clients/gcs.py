@@ -33,9 +33,11 @@ from metadata.utils.credentials import GOOGLE_CREDENTIALS, set_google_credential
 
 class DatalakeGcsClient(DatalakeBaseClient):
     def __init__(
-        self, client: storage.Client, temp_credentials_file_path_list: List[str]
+        self,
+        client: storage.Client,
+        temp_credentials_file_path_list: List[str],
     ):
-        self._client = client
+        super().__init__(client=client)
         self._temp_credentials_file_path_list = temp_credentials_file_path_list
 
     @property

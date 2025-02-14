@@ -37,6 +37,7 @@ import java.util.List;
 import java.util.Set;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.jwt.JWTTokenConfiguration;
 import org.openmetadata.schema.auth.JWTAuthMechanism;
 import org.openmetadata.schema.auth.JWTTokenExpiry;
@@ -56,6 +57,7 @@ public class JWTTokenGenerator {
   @Getter private RSAPublicKey publicKey;
   private String issuer;
   private String kid;
+  private AuthenticationConfiguration.TokenValidationAlgorithm tokenValidationAlgorithm;
 
   private JWTTokenGenerator() {
     /* Private constructor for singleton */
@@ -66,7 +68,9 @@ public class JWTTokenGenerator {
   }
 
   /** Expected to be initialized only once during application start */
-  public void init(JWTTokenConfiguration jwtTokenConfiguration) {
+  public void init(
+      AuthenticationConfiguration.TokenValidationAlgorithm algorithm,
+      JWTTokenConfiguration jwtTokenConfiguration) {
     try {
       if (jwtTokenConfiguration.getRsaprivateKeyFilePath() != null
           && !jwtTokenConfiguration.getRsaprivateKeyFilePath().isEmpty()
@@ -84,6 +88,7 @@ public class JWTTokenGenerator {
         publicKey = (RSAPublicKey) kf.generatePublic(spec);
         issuer = jwtTokenConfiguration.getJwtissuer();
         kid = jwtTokenConfiguration.getKeyId();
+        tokenValidationAlgorithm = algorithm;
       }
     } catch (Exception ex) {
       LOG.error("Failed to initialize JWTTokenGenerator ", ex);
@@ -141,7 +146,7 @@ public class JWTTokenGenerator {
         }
       }
       JWTAuthMechanism jwtAuthMechanism = new JWTAuthMechanism().withJWTTokenExpiry(expiry);
-      Algorithm algorithm = Algorithm.RSA256(null, privateKey);
+      Algorithm algorithm = getAlgorithm(tokenValidationAlgorithm, null, privateKey);
       String token =
           JWT.create()
               .withIssuer(issuer)
@@ -213,5 +218,16 @@ public class JWTTokenGenerator {
     }
 
     return jwt.getExpiresAt();
+  }
+
+  public static Algorithm getAlgorithm(
+      AuthenticationConfiguration.TokenValidationAlgorithm algorithm,
+      RSAPublicKey publicKey,
+      RSAPrivateKey privateKey) {
+    return switch (algorithm) {
+      case RS_256 -> Algorithm.RSA256(publicKey, privateKey);
+      case RS_384 -> Algorithm.RSA384(publicKey, privateKey);
+      case RS_512 -> Algorithm.RSA512(publicKey, privateKey);
+    };
   }
 }

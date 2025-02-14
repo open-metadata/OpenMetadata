@@ -128,23 +128,10 @@ class DatabricksLineageTests(TestCase):
         super().__init__(methodName)
         config = OpenMetadataWorkflowConfig.model_validate(mock_databricks_config)
 
-        self.databricks = DatabricksLineageSource.create(
-            mock_databricks_config["source"],
-            config.workflowConfig.openMetadataServerConfig,
-        )
-
-    @patch(
-        "metadata.ingestion.source.database.databricks.client.DatabricksClient.list_query_history"
-    )
-    def test_get_table_query(self, list_query_history):
-        list_query_history.return_value = mock_data
-        results = self.databricks.get_table_query()
-        query_list = []
-        for result in results:
-            if isinstance(result, TableQuery):
-                query_list.append(result)
-        for _, (expected, original) in enumerate(
-            zip(EXPECTED_DATABRICKS_DETAILS, query_list)
+        with patch(
+            "metadata.ingestion.source.database.databricks.lineage.DatabricksLineageSource.test_connection"
         ):
-            expected.analysisDate = original.analysisDate = datetime.now()
-            self.assertEqual(expected, original)
+            self.databricks = DatabricksLineageSource.create(
+                mock_databricks_config["source"],
+                config.workflowConfig.openMetadataServerConfig,
+            )

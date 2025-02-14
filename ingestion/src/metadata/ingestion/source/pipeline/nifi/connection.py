@@ -17,8 +17,10 @@ from typing import Optional
 from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
 )
+from metadata.generated.schema.entity.services.connections.pipeline.nifi.basicAuth import (
+    NifiBasicAuth,
+)
 from metadata.generated.schema.entity.services.connections.pipeline.nifiConnection import (
-    BasicAuthentication,
     NifiConnection,
 )
 from metadata.generated.schema.entity.services.connections.testConnectionResult import (
@@ -34,7 +36,7 @@ def get_connection(connection: NifiConnection) -> NifiClient:
     """
     Create connection
     """
-    if isinstance(connection.nifiConfig, BasicAuthentication):
+    if isinstance(connection.nifiConfig, NifiBasicAuth):
         return NifiClient(
             host_port=connection.hostPort,
             username=connection.nifiConfig.username,

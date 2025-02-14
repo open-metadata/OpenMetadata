@@ -99,7 +99,7 @@
       "items": {
         "$ref": "../../type/tagLabel.json"
       },
-      "default": null
+      "default": []
     },
     "service": {
       "description": "Link to service where this dashboard is hosted in.",

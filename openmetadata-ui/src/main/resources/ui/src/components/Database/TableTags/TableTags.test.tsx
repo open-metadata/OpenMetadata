@@ -85,6 +85,7 @@ const mockProp = {
   index: 0,
   isReadOnly: false,
   hasTagEditAccess: true,
+  hasGlossaryTermEditAccess: true,
   onThreadLinkSelect: jest.fn(),
   entityFieldThreads: [
     {

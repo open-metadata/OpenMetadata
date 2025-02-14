@@ -13,8 +13,9 @@
 
 import { AddIngestionButtonProps } from '../components/Settings/Services/Ingestion/AddIngestionButton.interface';
 import { IngestionListTableProps } from '../components/Settings/Services/Ingestion/IngestionListTable/IngestionListTable.interface';
+import { PipelineActionsProps } from '../components/Settings/Services/Ingestion/IngestionListTable/PipelineActions/PipelineActions.interface';
 import { PipelineActionsDropdownProps } from '../components/Settings/Services/Ingestion/IngestionListTable/PipelineActions/PipelineActionsDropdown.interface';
-import { PipelineActionsProps } from '../components/Settings/Services/Ingestion/PipelineActions.interface';
+import { CursorType } from '../enums/pagination.enum';
 import { ServiceCategory } from '../enums/service.enum';
 import { DatabaseServiceType } from '../generated/entity/data/database';
 import { ConfigType } from '../generated/entity/services/databaseService';
@@ -146,6 +147,14 @@ export const mockESIngestionData: IngestionPipeline = {
   deleted: false,
   provider: ProviderType.User,
 };
+const mockPagingCursor = {
+  cursorData: {
+    cursorType: CursorType.AFTER,
+    cursorValue: 'mockCursorValue',
+  },
+  currentPage: 1,
+  pageSize: 10,
+};
 const mockPagingInfoObj = {
   paging: { total: 10 },
   handlePagingChange: jest.fn(),
@@ -154,6 +163,7 @@ const mockPagingInfoObj = {
   pageSize: 10,
   handlePageSizeChange: jest.fn(),
   showPagination: true,
+  pagingCursor: mockPagingCursor,
 };
 
 export const mockIngestionListTableProps: IngestionListTableProps = {

@@ -104,10 +104,15 @@ describe('Ingestion Workflow tests', () => {
       WorkflowType.Usage,
       ServiceCategory.PIPELINE_SERVICES
     );
+    const autoClassificationSchema = getSchemaByWorkflowType(
+      WorkflowType.AutoClassification,
+      ServiceCategory.DATABASE_SERVICES
+    );
 
     expect(metadataSchema).toBeDefined();
     expect(profilerSchema).toBeDefined();
     expect(usageSchema).toBeDefined();
+    expect(autoClassificationSchema).toBeDefined();
   });
 
   it('should getSchemaByWorkflowType return a default object with for an unknown workflow type', () => {

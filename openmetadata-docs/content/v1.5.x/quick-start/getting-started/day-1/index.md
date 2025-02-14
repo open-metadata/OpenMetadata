@@ -7,10 +7,10 @@ slug: /quick-start/getting-started/day-1
 
 Get started with your OpenMetadata service in a few simple steps:
 
-1. Set up a Data Connector: Connect your data sources to begin collecting metadata.
-2. Ingest Metadata: Run the metadata ingestion process to gather and push data insights.
-3. Invite Users: Add team members to collaborate and manage metadata together.
-4. Explore the Features: Dive into OpenMetadata's extensive feature set to unlock the full potential of your data.
+1. **Set up a Data Connector**: Connect your data sources to begin collecting metadata.
+2. **Ingest Metadata**: Run the metadata ingestion process to gather and push data insights.
+3. **Invite Users**: Add team members to collaborate and manage metadata together.
+4. **Explore the Features**: Dive into OpenMetadata's extensive feature set to unlock the full potential of your data.
 
 **Ready to begin? Let's get started!**
 
@@ -20,7 +20,7 @@ You should receive your initial OpenMetadata credentials from OpenMetadata suppo
 
 ## Step 1: Set up a Data Connector
 
-Once you have logged into your OpenMetadata instance, set up a data connector to start ingesting metadata. OpenMetadata provides [80+ turnkey connectors](/connectors) for a wide range of services, including:
+Once you have logged into your OpenMetadata instance, set up a data connector to start ingesting metadata. OpenMetadata provides [90+ turnkey connectors](/connectors) for a wide range of services, including:
 
 - Databases
 - Dashboards

@@ -270,7 +270,7 @@ const GlossaryDetails = ({
         {getWidgetFromKeyInternal(widget)}
       </div>
     ));
-  }, [tagsWidget, layout]);
+  }, [tagsWidget, layout, permissions, termsLoading]);
 
   const detailsContent = useMemo(() => {
     return (

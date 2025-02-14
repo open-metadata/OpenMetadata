@@ -44,6 +44,7 @@
     "authType": {
       "title": "Auth Configuration Type",
       "description": "Choose Auth Config Type.",
+      "mask":  true,
       "oneOf": [
         {
           "$ref": "./common/basicAuth.json"
@@ -107,8 +108,11 @@
         "title": "Supports Data Diff Extraction.",
         "$ref": "../connectionBasicType.json#/definitions/supportsDataDiff"
     },
-    "supportsViewLineageExtraction": {
-      "$ref": "../connectionBasicType.json#/definitions/supportsViewLineageExtraction"
+    "supportsUsageExtraction": {
+      "$ref": "../connectionBasicType.json#/definitions/supportsUsageExtraction"
+    },
+    "supportsLineageExtraction": {
+      "$ref": "../connectionBasicType.json#/definitions/supportsLineageExtraction"
     }
   },
   "additionalProperties": false,

@@ -16,6 +16,7 @@ Usage via query logs tests
 
 from pathlib import Path
 from unittest import TestCase
+from unittest.mock import patch
 
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
@@ -150,10 +151,13 @@ class QueryLogSourceTest(TestCase):
     def __init__(self, methodName) -> None:
         super().__init__(methodName)
         self.config = OpenMetadataWorkflowConfig.model_validate(mock_query_log_config)
-        self.source = QueryLogUsageSource.create(
-            mock_query_log_config["source"],
-            self.config.workflowConfig.openMetadataServerConfig,
-        )
+        with patch(
+            "metadata.ingestion.source.database.query.usage.QueryLogUsageSource.test_connection"
+        ):
+            self.source = QueryLogUsageSource.create(
+                mock_query_log_config["source"],
+                self.config.workflowConfig.openMetadataServerConfig,
+            )
 
     def test_queries(self):
         queries = list(self.source.get_table_query())

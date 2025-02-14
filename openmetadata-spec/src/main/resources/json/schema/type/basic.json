@@ -173,6 +173,12 @@
         ".{1,}": { "type": "string" }
       }
     },
+    "map":  {
+      "description": "A generic map that can be deserialized later.",
+      "existingJavaType" : "java.util.Map<String,Object>",
+      "type" : "object",
+      "additionalProperties": true
+    },
     "status" : {
       "javaType": "org.openmetadata.schema.type.ApiStatus",
       "description": "State of an action over API.",

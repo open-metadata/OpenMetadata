@@ -2,8 +2,8 @@
   "name": "DomainOnlyAccessRole",
   "displayName": "Domain Only Access Role",
   "description": "Role Corresponding to Domain Access Restriction.",
-  "allowDelete": false,
-  "provider": "system",
+  "allowDelete": true,
+  "provider": "user",
   "policies" : [
     {
       "type" : "policy",

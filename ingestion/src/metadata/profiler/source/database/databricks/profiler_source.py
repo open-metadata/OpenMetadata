@@ -1,9 +1,8 @@
 """Extend the ProfilerSource class to add support for Databricks is_disconnect SQA method"""
-
 from metadata.generated.schema.configuration.profilerConfiguration import (
     ProfilerConfiguration,
 )
-from metadata.generated.schema.entity.services.databaseService import DatabaseService
+from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
@@ -25,7 +24,7 @@ class DataBricksProfilerSource(ProfilerSource):
     def __init__(
         self,
         config: OpenMetadataWorkflowConfig,
-        database: DatabaseService,
+        database: Database,
         ometa_client: OpenMetadata,
         global_profiler_config: ProfilerConfiguration,
     ):

@@ -3,4 +3,6 @@
     config:
       type: MlModelMetadata
       # markDeletedMlModels: true
+      # mlModelFilterPattern: []
+      # overrideMetadata: false
 ```

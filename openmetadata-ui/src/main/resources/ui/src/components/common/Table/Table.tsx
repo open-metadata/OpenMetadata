@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { SpinProps, Table as AntdTable, TableProps } from 'antd';
-import React, { useMemo } from 'react';
+import React, { forwardRef, Ref, useMemo } from 'react';
 import { useAntdColumnResize } from 'react-antd-column-resize';
 import { getTableExpandableConfig } from '../../../utils/TableUtils';
 import Loader from '../Loader/Loader';
@@ -21,10 +21,10 @@ interface TableComponentProps<T> extends TableProps<T> {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/ban-types
-const Table = <T extends object = any>({
-  loading,
-  ...rest
-}: TableComponentProps<T>) => {
+const Table = <T extends object = any>(
+  { loading, ...rest }: TableComponentProps<T>,
+  ref: Ref<HTMLDivElement> | null | undefined
+) => {
   const { resizableColumns, components, tableWidth } = useAntdColumnResize(
     () => ({ columns: rest.columns || [], minWidth: 150 }),
     [rest.columns]
@@ -72,7 +72,13 @@ const Table = <T extends object = any>({
   const resizingTableProps = rest.resizableColumns
     ? {
         columns: resizableColumns,
-        components,
+        components: {
+          ...rest.components,
+          header: {
+            row: rest.components?.header?.row,
+            cell: components.header.cell,
+          },
+        },
         scroll: { x: tableWidth },
       }
     : {};
@@ -89,9 +95,10 @@ const Table = <T extends object = any>({
         ...rest.locale,
         emptyText: isLoading ? null : rest.locale?.emptyText,
       }}
+      ref={ref}
       {...resizingTableProps}
     />
   );
 };
 
-export default Table;
+export default forwardRef<HTMLDivElement, TableComponentProps<any>>(Table);

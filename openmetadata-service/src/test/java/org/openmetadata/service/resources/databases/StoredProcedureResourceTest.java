@@ -163,8 +163,8 @@ public class StoredProcedureResourceTest
         storedProcedure.getDatabase(),
         storedProcedure.getDatabaseSchema(),
         storedProcedure.getStoredProcedureCode());
-    assertListNull(
-        storedProcedure.getOwners(), storedProcedure.getTags(), storedProcedure.getFollowers());
+    assertListNull(storedProcedure.getOwners(), storedProcedure.getFollowers());
+    assertTrue(storedProcedure.getTags().isEmpty());
 
     String fields = "owners,tags,followers";
     storedProcedure =

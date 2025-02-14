@@ -9,6 +9,10 @@ source:
       username: username
       password: password
       hostPort:  localhost:27017
+#      # SSL Configuration  
+#      sslMode": verify-ca
+#      sslConfig:
+#       caCertificate": "CA certificate content"
   sourceConfig:
     config:
       type: DatabaseMetadata

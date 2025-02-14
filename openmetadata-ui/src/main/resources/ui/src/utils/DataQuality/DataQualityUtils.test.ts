@@ -335,7 +335,7 @@ describe('DataQualityUtils', () => {
           path: 'tags',
           query: {
             bool: {
-              must: [
+              should: [
                 { match: { 'tags.tagFQN': 'tag1' } },
                 { match: { 'tags.tagFQN': 'tag2' } },
               ],
@@ -354,7 +354,7 @@ describe('DataQualityUtils', () => {
           path: 'testCase.tags',
           query: {
             bool: {
-              must: [
+              should: [
                 { match: { 'testCase.tags.tagFQN': 'tag1' } },
                 { match: { 'testCase.tags.tagFQN': 'tag2' } },
               ],
@@ -373,7 +373,7 @@ describe('DataQualityUtils', () => {
           path: 'tags',
           query: {
             bool: {
-              must: [],
+              should: [],
             },
           },
         },
@@ -389,7 +389,7 @@ describe('DataQualityUtils', () => {
           path: 'testCase.tags',
           query: {
             bool: {
-              must: [],
+              should: [],
             },
           },
         },

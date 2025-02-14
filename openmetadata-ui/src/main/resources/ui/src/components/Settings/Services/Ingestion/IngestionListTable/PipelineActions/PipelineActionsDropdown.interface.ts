@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { ButtonProps } from 'antd';
 import { IngestionServicePermission } from '../../../../../../context/PermissionProvider/PermissionProvider.interface';
 import { IngestionPipeline } from '../../../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { SelectedRowDetails } from '../../ingestion.interface';
@@ -23,7 +24,8 @@ export interface PipelineActionsDropdownProps {
   deployIngestion?: (id: string, displayName: string) => Promise<void>;
   handleEditClick: ((fqn: string) => void) | undefined;
   ingestionPipelinePermissions?: IngestionServicePermission;
-  handleDeleteSelection: (row: SelectedRowDetails) => void;
+  handleDeleteSelection?: (row: SelectedRowDetails) => void;
   handleIsConfirmationModalOpen: (value: boolean) => void;
   onIngestionWorkflowsUpdate?: () => void;
+  moreActionButtonProps?: ButtonProps;
 }

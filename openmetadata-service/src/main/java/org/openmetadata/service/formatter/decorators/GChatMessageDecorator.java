@@ -14,7 +14,6 @@
 package org.openmetadata.service.formatter.decorators;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
-import static org.openmetadata.service.util.email.EmailUtil.getSmtpSettings;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -36,6 +35,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.changeEvent.gchat.GChatMessage;
 import org.openmetadata.service.apps.bundles.changeEvent.gchat.GChatMessage.*;
 import org.openmetadata.service.exception.UnhandledServerException;
+import org.openmetadata.service.util.email.EmailUtil;
 
 public class GChatMessageDecorator implements MessageDecorator<GChatMessage> {
 
@@ -78,7 +78,7 @@ public class GChatMessageDecorator implements MessageDecorator<GChatMessage> {
   public String getEntityUrl(String prefix, String fqn, String additionalParams) {
     return String.format(
         "<%s/%s/%s%s|%s>",
-        getSmtpSettings().getOpenMetadataUrl(),
+        EmailUtil.getOMBaseURL(),
         prefix,
         fqn.trim().replace(" ", "%20"),
         nullOrEmpty(additionalParams) ? "" : String.format("/%s", additionalParams),
@@ -96,16 +96,12 @@ public class GChatMessageDecorator implements MessageDecorator<GChatMessage> {
   }
 
   @Override
-  public GChatMessage buildTestMessage(String publisherName) {
-    return getGChatTestMessage(publisherName);
+  public GChatMessage buildTestMessage() {
+    return getGChatTestMessage();
   }
 
-  private GChatMessage getGChatTestMessage(String publisherName) {
-    if (publisherName.isEmpty()) {
-      throw new UnhandledServerException("Publisher name not found.");
-    }
-
-    return createConnectionTestMessage(publisherName);
+  private GChatMessage getGChatTestMessage() {
+    return createConnectionTestMessage();
   }
 
   public GChatMessage createMessage(
@@ -205,19 +201,15 @@ public class GChatMessageDecorator implements MessageDecorator<GChatMessage> {
     return builder.build();
   }
 
-  public GChatMessage createConnectionTestMessage(String publisherName) {
+  public GChatMessage createConnectionTestMessage() {
     Header header = createConnectionSuccessfulHeader();
-
-    Widget publisherWidget = createWidget("Publisher:", publisherName);
 
     Widget descriptionWidget = new Widget(new TextParagraph(CONNECTION_TEST_DESCRIPTION));
 
-    Section publisherSection = new Section(List.of(publisherWidget));
     Section descriptionSection = new Section(List.of(descriptionWidget));
     Section footerSection = createFooterSection();
 
-    Card card =
-        new Card(header, Arrays.asList(publisherSection, descriptionSection, footerSection));
+    Card card = new Card(header, Arrays.asList(descriptionSection, footerSection));
 
     return new GChatMessage(List.of(card));
   }

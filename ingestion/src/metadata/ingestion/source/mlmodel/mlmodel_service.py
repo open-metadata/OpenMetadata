@@ -51,6 +51,7 @@ from metadata.ingestion.models.topology import (
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import get_connection, get_test_connection_fn
 from metadata.utils import fqn
+from metadata.utils.helpers import retry_with_docker_host
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -113,6 +114,7 @@ class MlModelServiceSource(TopologyRunnerMixin, Source, ABC):
     context = TopologyContextManager(topology)
     mlmodel_source_state: Set = set()
 
+    @retry_with_docker_host()
     def __init__(
         self,
         config: WorkflowSource,

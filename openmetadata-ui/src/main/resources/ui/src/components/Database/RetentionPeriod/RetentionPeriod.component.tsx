@@ -143,6 +143,7 @@ const RetentionPeriod = ({
       <Modal
         centered
         destroyOnClose
+        cancelText={t('label.cancel')}
         closable={false}
         confirmLoading={isLoading}
         data-testid="retention-period-modal"

@@ -106,7 +106,7 @@
       "items": {
         "$ref": "../../type/tagLabel.json"
       },
-      "default": null
+      "default": []
     },
     "queryUsedIn": {
       "description": "Entities that are using this query",

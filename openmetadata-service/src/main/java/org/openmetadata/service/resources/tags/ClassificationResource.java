@@ -77,6 +77,7 @@ import org.openmetadata.service.util.ResultList;
     order = 4) // Initialize before TagResource, Glossary, and GlossaryTerms
 public class ClassificationResource
     extends EntityResource<Classification, ClassificationRepository> {
+  private final ClassificationMapper mapper = new ClassificationMapper();
   public static final String TAG_COLLECTION_PATH = "/v1/classifications/";
   static final String FIELDS = "usageCount,termCount";
 
@@ -302,7 +303,8 @@ public class ClassificationResource
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateClassification create) {
-    Classification category = getClassification(create, securityContext);
+    Classification category =
+        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, category);
   }
 
@@ -315,7 +317,8 @@ public class ClassificationResource
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateClassification create) {
-    Classification category = getClassification(create, securityContext);
+    Classification category =
+        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, category);
   }
 
@@ -446,19 +449,5 @@ public class ClassificationResource
       @Context SecurityContext securityContext,
       @Valid RestoreEntity restore) {
     return restoreEntity(uriInfo, securityContext, restore.getId());
-  }
-
-  private Classification getClassification(
-      CreateClassification create, SecurityContext securityContext) {
-    return getClassification(repository, create, securityContext.getUserPrincipal().getName());
-  }
-
-  public static Classification getClassification(
-      ClassificationRepository repository, CreateClassification create, String updatedBy) {
-    return repository
-        .copy(new Classification(), create, updatedBy)
-        .withFullyQualifiedName(create.getName())
-        .withProvider(create.getProvider())
-        .withMutuallyExclusive(create.getMutuallyExclusive());
   }
 }

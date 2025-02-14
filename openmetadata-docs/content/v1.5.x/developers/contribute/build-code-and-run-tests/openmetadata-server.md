@@ -50,6 +50,10 @@ Extract the distribution tar.gz file created on the previous step and run the fo
 cd open-metadata-<version>
 sh bootstrap/openmetadata-ops.sh drop-create
 ```
+{%note%}
+Why Needed: The script simplifies the setup and execution of OpenMetadata by handling Java dependencies, configurations, and environment variables automatically.
+{%/note%}
+**Note** To understand more about openmetadata-ops.sh file click [here](/developers/contribute/build-code-and-run-tests/openmetadata-ops)
 
 ## Running the OpenMetadata server
 

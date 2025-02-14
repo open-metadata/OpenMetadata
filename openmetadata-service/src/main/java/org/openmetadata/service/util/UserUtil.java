@@ -19,6 +19,7 @@ import static org.openmetadata.schema.entity.teams.AuthenticationMechanism.AuthT
 import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.service.Entity.ADMIN_ROLE;
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
+import static org.openmetadata.service.jdbi3.UserRepository.AUTH_MECHANISM_FIELD;
 
 import at.favre.lib.crypto.bcrypt.BCrypt;
 import java.util.ArrayList;
@@ -62,8 +63,18 @@ public final class UserUtil {
   public static void addUsers(
       AuthProvider authProvider, Set<String> adminUsers, String domain, Boolean isAdmin) {
     try {
-      for (String username : adminUsers) {
-        createOrUpdateUser(authProvider, username, domain, isAdmin);
+      for (String keyValue : adminUsers) {
+        String userName = "";
+        String password = "";
+        if (keyValue.contains(":")) {
+          String[] keyValueArray = keyValue.split(":");
+          userName = keyValueArray[0];
+          password = keyValueArray[1];
+        } else {
+          userName = keyValue;
+          password = getPassword(userName);
+        }
+        createOrUpdateUser(authProvider, userName, password, domain, isAdmin);
       }
     } catch (Exception ex) {
       LOG.error("[BootstrapUser] Encountered Exception while bootstrapping admin user", ex);
@@ -71,27 +82,26 @@ public final class UserUtil {
   }
 
   private static void createOrUpdateUser(
-      AuthProvider authProvider, String username, String domain, Boolean isAdmin) {
+      AuthProvider authProvider, String username, String password, String domain, Boolean isAdmin) {
     UserRepository userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
     User updatedUser = null;
     try {
       // Create Required Fields List
       Set<String> fieldList = new HashSet<>(userRepository.getPatchFields().getFieldList());
-      fieldList.add("authenticationMechanism");
+      fieldList.add(AUTH_MECHANISM_FIELD);
 
       // Fetch Original User, is available
       User originalUser = userRepository.getByName(null, username, new Fields(fieldList));
       if (Boolean.FALSE.equals(originalUser.getIsBot())
-          && Boolean.FALSE.equals(originalUser.getIsAdmin())) {
+          && Boolean.TRUE.equals(originalUser.getIsAdmin())) {
         updatedUser = originalUser;
 
         // Update Auth Mechanism if not present, and send mail to the user
         if (authProvider.equals(AuthProvider.BASIC)) {
           if (originalUser.getAuthenticationMechanism() == null
               || originalUser.getAuthenticationMechanism().equals(new AuthenticationMechanism())) {
-            String randomPwd = getPassword(username);
-            updateUserWithHashedPwd(updatedUser, randomPwd);
-            EmailUtil.sendInviteMailToAdmin(updatedUser, randomPwd);
+            updateUserWithHashedPwd(updatedUser, password);
+            EmailUtil.sendInviteMailToAdmin(updatedUser, password);
           }
         } else {
           updatedUser.setAuthenticationMechanism(new AuthenticationMechanism());
@@ -114,9 +124,8 @@ public final class UserUtil {
       updatedUser = user(username, domain, username).withIsAdmin(isAdmin).withIsEmailVerified(true);
       // Update Auth Mechanism if not present, and send mail to the user
       if (authProvider.equals(AuthProvider.BASIC)) {
-        String randomPwd = getPassword(username);
-        updateUserWithHashedPwd(updatedUser, randomPwd);
-        EmailUtil.sendInviteMailToAdmin(updatedUser, randomPwd);
+        updateUserWithHashedPwd(updatedUser, password);
+        EmailUtil.sendInviteMailToAdmin(updatedUser, password);
       }
     }
 

@@ -34,7 +34,6 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
-import RichTextEditor from '../../components/common/RichTextEditor/RichTextEditor';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { ROUTES, VALIDATION_MESSAGES } from '../../constants/constants';
 import { KPI_DATE_PICKER_FORMAT } from '../../constants/DataInsight.constants';
@@ -44,11 +43,13 @@ import {
   KpiTargetType,
 } from '../../generated/api/dataInsight/kpi/createKpiRequest';
 import { Kpi } from '../../generated/dataInsight/kpi/kpi';
+import { FieldProp, FieldTypes } from '../../interface/FormUtils.interface';
 import { getListKPIs, postKPI } from '../../rest/KpiAPI';
 import {
   getDataInsightPathWithFqn,
   getDisabledDates,
 } from '../../utils/DataInsightUtils';
+import { getField } from '../../utils/formUtils';
 import {
   filterChartOptions,
   getDataInsightChartForKPI,
@@ -157,6 +158,33 @@ const AddKPIPage = () => {
       setIsCreatingKPI(false);
     }
   };
+
+  const descriptionField: FieldProp = useMemo(
+    () => ({
+      name: 'description',
+      required: true,
+      label: t('label.description'),
+      id: 'root/description',
+      type: FieldTypes.DESCRIPTION,
+      rules: [
+        {
+          required: true,
+          message: t('label.field-required', {
+            field: t('label.description-kpi'),
+          }),
+        },
+      ],
+      props: {
+        'data-testid': 'description',
+        initialValue: '',
+        style: {
+          margin: 0,
+        },
+        placeHolder: t('message.write-your-description'),
+      },
+    }),
+    []
+  );
 
   useEffect(() => {
     fetchKpiList();
@@ -346,25 +374,7 @@ const AddKPIPage = () => {
                 </Col>
               </Row>
 
-              <Form.Item
-                label={t('label.description')}
-                name="description"
-                rules={[
-                  {
-                    required: true,
-                    message: t('label.field-required', {
-                      field: t('label.description-kpi'),
-                    }),
-                  },
-                ]}
-                trigger="onTextChange"
-                valuePropName="initialValue">
-                <RichTextEditor
-                  height="200px"
-                  placeHolder={t('message.write-your-description')}
-                  style={{ margin: 0 }}
-                />
-              </Form.Item>
+              {getField(descriptionField)}
 
               <Space align="center" className="w-full justify-end">
                 <Button

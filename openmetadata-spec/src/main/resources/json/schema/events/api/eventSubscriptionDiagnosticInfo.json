@@ -23,15 +23,15 @@
       "type": "boolean"
     },
     "successfulEventsCount": {
-      "description": "Count of successful events.",
+      "description": "Count of successful events for specific alert.",
       "existingJavaType": "java.lang.Long"
     },
     "failedEventsCount": {
-      "description": "Count of failed events.",
+      "description": "Count of failed events for specific alert.",
       "existingJavaType": "java.lang.Long"
     },
     "relevantUnprocessedEventsCount": {
-      "description": "The number of relevant unprocessed events based on the alert's filtering rules.",
+      "description": "The number of relevant unprocessed events based on the alert's filtering rules for specific alert.",
       "existingJavaType": "java.lang.Long"
     },
     "totalUnprocessedEventsCount": {

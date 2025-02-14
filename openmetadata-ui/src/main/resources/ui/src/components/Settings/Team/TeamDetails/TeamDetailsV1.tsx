@@ -210,11 +210,8 @@ const TeamDetailsV1 = ({
   );
 
   const teamCount = useMemo(
-    () =>
-      isOrganization && currentTeam && currentTeam.childrenCount
-        ? currentTeam.childrenCount + 1
-        : childTeamList.length,
-    [childTeamList, isOrganization, currentTeam.childrenCount]
+    () => currentTeam.childrenCount ?? childTeamList.length,
+    [childTeamList, currentTeam.childrenCount]
   );
   const updateActiveTab = (key: string) => {
     history.push({ search: Qs.stringify({ activeTab: key }) });
@@ -710,6 +707,7 @@ const TeamDetailsV1 = ({
             currentTeam={currentTeam}
             data={childTeamList}
             isFetchingAllTeamAdvancedDetails={isFetchingAllTeamAdvancedDetails}
+            searchTerm={searchTerm}
             onTeamExpand={onTeamExpand}
           />
         </Col>
@@ -917,6 +915,7 @@ const TeamDetailsV1 = ({
     () =>
       !isOrganization &&
       !isUndefined(currentUser) &&
+      isGroupType &&
       (isAlreadyJoinedTeam ? (
         <Button
           ghost
@@ -937,7 +936,14 @@ const TeamDetailsV1 = ({
         )
       )),
 
-    [currentUser, isAlreadyJoinedTeam, isAdminUser, joinTeam, deleteUserHandler]
+    [
+      currentUser,
+      isAlreadyJoinedTeam,
+      isGroupType,
+      isAdminUser,
+      joinTeam,
+      deleteUserHandler,
+    ]
   );
 
   const teamsCollapseHeader = useMemo(
@@ -1074,7 +1080,13 @@ const TeamDetailsV1 = ({
 
   const tabs = useMemo(
     () =>
-      getTabs(currentTeam, isGroupType, teamCount, assetsCount).map((tab) => ({
+      getTabs(
+        currentTeam,
+        isGroupType,
+        isOrganization,
+        teamCount,
+        assetsCount
+      ).map((tab) => ({
         ...tab,
         label: (
           <TabsLabel
@@ -1089,6 +1101,7 @@ const TeamDetailsV1 = ({
     [
       currentTeam,
       searchTerm,
+      isOrganization,
       teamCount,
       currentTab,
       assetsCount,

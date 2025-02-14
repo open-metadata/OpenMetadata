@@ -42,7 +42,7 @@ import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomProp
 import DescriptionV1 from '../../common/EntityDescription/DescriptionV1';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../common/Loader/Loader';
-import RichTextEditorPreviewer from '../../common/RichTextEditor/RichTextEditorPreviewer';
+import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import TabsLabel from '../../common/TabsLabel/TabsLabel.component';
 import DataAssetsVersionHeader from '../../DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader';
 import DataProductsContainer from '../../DataProducts/DataProductsContainer/DataProductsContainer.component';
@@ -251,7 +251,7 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
                                   <Col flex="auto">
                                     <Space align="start">
                                       {feature.description ? (
-                                        <RichTextEditorPreviewer
+                                        <RichTextEditorPreviewerV1
                                           enableSeeMoreVariant={false}
                                           markdown={feature.description}
                                         />

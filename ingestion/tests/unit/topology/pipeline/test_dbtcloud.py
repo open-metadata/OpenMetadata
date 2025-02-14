@@ -386,7 +386,8 @@ mock_dbtcloud_config = {
                 "host": "https://abc12.us1.dbt.com",
                 "discoveryAPI": "https://metadata.cloud.getdbt.com/graphql",
                 "accountId": "70403103922125",
-                "jobId": "70403103922125",
+                "jobIds": ["70403103922125", "70403103922126"],
+                "projectIds": ["70403103922127", "70403103922128"],
                 "token": "dbt_token",
             }
         },
@@ -510,6 +511,10 @@ MOCK_PIPELINE = Pipeline(
     sourceHash=None,
 )
 
+EXPECTED_JOB_FILTERS = ["70403103922125", "70403103922126"]
+
+EXPECTED_PROJECT_FILTERS = ["70403103922127", "70403103922128"]
+
 EXPECTED_PIPELINE_NAME = str(MOCK_JOB_RESULT["data"][0]["name"])
 
 
@@ -546,6 +551,10 @@ class DBTCloudUnitTest(TestCase):
             self.dbtcloud.get_pipeline_name(EXPECTED_JOB_DETAILS)
             == EXPECTED_PIPELINE_NAME
         )
+
+    def test_filters_to_list(self):
+        assert self.dbtcloud.client.job_ids == EXPECTED_JOB_FILTERS
+        assert self.dbtcloud.client.project_ids == EXPECTED_PROJECT_FILTERS
 
     def test_pipelines(self):
         pipeline = list(self.dbtcloud.yield_pipeline(EXPECTED_JOB_DETAILS))[0].right

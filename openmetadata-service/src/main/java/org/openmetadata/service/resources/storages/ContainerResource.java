@@ -59,6 +59,7 @@ import org.openmetadata.service.util.ResultList;
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "containers")
 public class ContainerResource extends EntityResource<Container, ContainerRepository> {
+  private final ContainerMapper mapper = new ContainerMapper();
   public static final String COLLECTION_PATH = "v1/containers/";
   static final String FIELDS =
       "parent,children,dataModel,owners,tags,followers,extension,domain,sourceHash";
@@ -239,7 +240,8 @@ public class ContainerResource extends EntityResource<Container, ContainerReposi
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateContainer create) {
-    Container container = getContainer(create, securityContext.getUserPrincipal().getName());
+    Container container =
+        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, container);
   }
 
@@ -320,7 +322,8 @@ public class ContainerResource extends EntityResource<Container, ContainerReposi
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateContainer create) {
-    Container container = getContainer(create, securityContext.getUserPrincipal().getName());
+    Container container =
+        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, container);
   }
 
@@ -542,20 +545,5 @@ public class ContainerResource extends EntityResource<Container, ContainerReposi
       @Context SecurityContext securityContext,
       @Valid RestoreEntity restore) {
     return restoreEntity(uriInfo, securityContext, restore.getId());
-  }
-
-  private Container getContainer(CreateContainer create, String user) {
-    return repository
-        .copy(new Container(), create, user)
-        .withService(getEntityReference(Entity.STORAGE_SERVICE, create.getService()))
-        .withParent(create.getParent())
-        .withDataModel(create.getDataModel())
-        .withPrefix(create.getPrefix())
-        .withNumberOfObjects(create.getNumberOfObjects())
-        .withSize(create.getSize())
-        .withFullPath(create.getFullPath())
-        .withFileFormats(create.getFileFormats())
-        .withSourceUrl(create.getSourceUrl())
-        .withSourceHash(create.getSourceHash());
   }
 }

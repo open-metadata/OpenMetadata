@@ -24,13 +24,13 @@ import React, {
   useEffect,
   useImperativeHandle,
 } from 'react';
-import { toast } from 'react-toastify';
 import {
   msalLoginRequest,
   parseMSALResponse,
 } from '../../../utils/AuthProvider.util';
 import { getPopupSettingLink } from '../../../utils/BrowserUtils';
 import { Transi18next } from '../../../utils/CommonUtils';
+import { showErrorToast } from '../../../utils/ToastUtils';
 import Loader from '../../common/Loader/Loader';
 import {
   AuthenticatorRef,
@@ -96,7 +96,7 @@ const MsalAuthenticator = forwardRef<AuthenticatorRef, Props>(
               // eslint-disable-next-line no-console
               console.error(e);
               if (e?.message?.includes('popup_window_error')) {
-                toast.error(
+                showErrorToast(
                   <Transi18next
                     i18nKey="message.popup-block-message"
                     renderElement={
@@ -124,7 +124,7 @@ const MsalAuthenticator = forwardRef<AuthenticatorRef, Props>(
     };
 
     const renewIdToken = async () => {
-      const user = await fetchIdToken(true);
+      const user = await fetchIdToken();
 
       return user.id_token;
     };

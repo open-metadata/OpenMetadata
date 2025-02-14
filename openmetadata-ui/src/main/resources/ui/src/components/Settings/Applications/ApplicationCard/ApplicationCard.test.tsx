@@ -24,8 +24,20 @@ const props = {
 };
 
 describe('ApplicationCard', () => {
+  beforeEach(() => {
+    jest.useFakeTimers();
+  });
+
+  afterEach(() => {
+    jest.runOnlyPendingTimers();
+    jest.useRealTimers();
+  });
+
   it('renders the title correctly', () => {
     render(<ApplicationCard {...props} />);
+
+    // Fast-forward until all timers have been executed
+    jest.runAllTimers();
 
     expect(screen.getByText('Search Index')).toBeInTheDocument();
     expect(screen.getByText('Hello World')).toBeInTheDocument();

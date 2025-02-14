@@ -37,6 +37,7 @@ import { FormSubmitType } from '../../../enums/form.enum';
 import { ProfilerDashboardType } from '../../../enums/table.enum';
 import { OwnerType } from '../../../enums/user.enum';
 import { CreateTestCase } from '../../../generated/api/tests/createTestCase';
+import { CreateTestSuite } from '../../../generated/api/tests/createTestSuite';
 import { TestCase } from '../../../generated/tests/testCase';
 import { TestSuite } from '../../../generated/tests/testSuite';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
@@ -127,9 +128,9 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({
   };
 
   const createTestSuite = async () => {
-    const testSuite = {
+    const testSuite: CreateTestSuite = {
       name: `${table.fullyQualifiedName}.testSuite`,
-      executableEntityReference: table.fullyQualifiedName,
+      basicEntityReference: table.fullyQualifiedName,
       owners,
     };
     const response = await createExecutableTestSuite(testSuite);

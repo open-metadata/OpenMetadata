@@ -72,6 +72,7 @@ const mockEntityTableProp: SchemaTableProps = {
   hasDescriptionEditAccess: true,
   isReadOnly: false,
   hasTagEditAccess: true,
+  hasGlossaryTermEditAccess: true,
   onThreadLinkSelect,
   onUpdate,
   table: { ...MOCK_TABLE, columns, tableConstraints: mockTableConstraints },
@@ -125,7 +126,7 @@ jest.mock('../../../hooks/authHooks', () => {
   };
 });
 
-jest.mock('../../common/RichTextEditor/RichTextEditorPreviewer', () => {
+jest.mock('../../common/RichTextEditor/RichTextEditorPreviewerV1', () => {
   return jest.fn().mockReturnValue(<p>RichTextEditorPreviewer</p>);
 });
 
@@ -164,6 +165,16 @@ jest.mock('../../../constants/Table.constants', () => ({
   get TABLE_SCROLL_VALUE() {
     return mockTableScrollValue();
   },
+}));
+
+jest.mock('../../../utils/StringsUtils', () => ({
+  ...jest.requireActual('../../../utils/StringsUtils'),
+  stringToHTML: jest.fn((text) => text),
+}));
+
+jest.mock('../../../utils/EntityUtils', () => ({
+  ...jest.requireActual('../../../utils/EntityUtils'),
+  highlightSearchText: jest.fn((text) => text),
 }));
 
 describe('Test EntityTable Component', () => {

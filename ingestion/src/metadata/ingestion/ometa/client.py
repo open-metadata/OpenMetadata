@@ -14,7 +14,7 @@ Python API REST wrapper and helpers
 import time
 import traceback
 from datetime import datetime, timezone
-from typing import Callable, Dict, List, Optional, Union
+from typing import Any, Callable, Dict, List, Optional, Union
 
 import requests
 from requests.exceptions import HTTPError
@@ -115,6 +115,7 @@ class ClientConfig(ConfigModel):
     allow_redirects: Optional[bool] = False
     auth_token_mode: Optional[str] = "Bearer"
     verify: Optional[Union[bool, str]] = None
+    cookies: Optional[Any] = None
     ttl_cache: int = 60
 
 
@@ -138,10 +139,11 @@ class REST:
         self._auth_token = self.config.auth_token
         self._auth_token_mode = self.config.auth_token_mode
         self._verify = self.config.verify
+        self._cookies = self.config.cookies
 
         self._limits_reached = TTLCache(config.ttl_cache)
 
-    def _request(  # pylint: disable=too-many-arguments
+    def _request(  # pylint: disable=too-many-arguments,too-many-branches
         self,
         method,
         path,
@@ -160,10 +162,12 @@ class REST:
         base_url = base_url or self._base_url
         version = api_version if api_version else self._api_version
         url: URL = URL(base_url + "/" + version + path)
+        cookies = self._cookies
         if (
             self.config.expires_in
             and datetime.now(timezone.utc).timestamp() >= self.config.expires_in
             or not self.config.access_token
+            and self._auth_token
         ):
             self.config.access_token, expiry = self._auth_token()
             if not self.config.access_token == "no_token":
@@ -173,12 +177,12 @@ class REST:
                     self.config.expires_in = (
                         datetime.now(timezone.utc).timestamp() + expiry - 120
                     )
-
-        headers[self.config.auth_header] = (
-            f"{self._auth_token_mode} {self.config.access_token}"
-            if self._auth_token_mode
-            else self.config.access_token
-        )
+        if self.config.auth_header:
+            headers[self.config.auth_header] = (
+                f"{self._auth_token_mode} {self.config.access_token}"
+                if self._auth_token_mode
+                else self.config.access_token
+            )
 
         # Merge extra headers if provided.
         # If a header value is provided in modulo string format and matches an existing header,
@@ -198,6 +202,7 @@ class REST:
             # It's better to fail early if the URL isn't right.
             "allow_redirects": self.config.allow_redirects,
             "verify": self._verify,
+            "cookies": cookies,
         }
 
         method_key = "params" if method.upper() == "GET" else "data"

@@ -148,7 +148,8 @@ public class MigrationWorkflow {
       List<MigrationFile> availableMigrations) {
     LOG.debug("Filtering Server Migrations");
     executedMigrations = migrationDAO.getMigrationVersions();
-    currentMaxMigrationVersion = executedMigrations.stream().max(String::compareTo);
+    currentMaxMigrationVersion =
+        executedMigrations.stream().max(MigrationWorkflow::compareVersions);
     List<MigrationFile> applyMigrations;
     if (!nullOrEmpty(executedMigrations) && !forceMigrations) {
       applyMigrations = getMigrationsToApply(executedMigrations, availableMigrations);
@@ -182,6 +183,45 @@ public class MigrationWorkflow {
     return processes;
   }
 
+  private static int compareVersions(String version1, String version2) {
+    int[] v1Parts = parseVersion(version1);
+    int[] v2Parts = parseVersion(version2);
+
+    int length = Math.max(v1Parts.length, v2Parts.length);
+    for (int i = 0; i < length; i++) {
+      int part1 = i < v1Parts.length ? v1Parts[i] : 0;
+      int part2 = i < v2Parts.length ? v2Parts[i] : 0;
+      if (part1 != part2) {
+        return Integer.compare(part1, part2);
+      }
+    }
+    return 0; // Versions are equal
+  }
+
+  /*
+   * Parse a version string into an array of integers
+   * @param version The version string to parse
+   * Follows the format major.minor.patch, patch can contain -extension
+   */
+  private static int[] parseVersion(String version) {
+    String[] parts = version.split("\\.");
+    int[] numbers = new int[parts.length];
+    // Major
+    numbers[0] = Integer.parseInt(parts[0]);
+
+    // Minor
+    numbers[1] = Integer.parseInt(parts[1]);
+
+    // Patch can contain -extension
+    if (parts[2].contains("-")) {
+      String[] extensionParts = parts[2].split("-");
+      numbers[2] = Integer.parseInt(extensionParts[0]);
+    } else {
+      numbers[2] = Integer.parseInt(parts[2]);
+    }
+    return numbers;
+  }
+
   /**
    * We'll take the max from native migrations and double-check if there's any extension migration
    * pending to be applied
@@ -203,7 +243,8 @@ public class MigrationWorkflow {
       List<String> executedMigrations, List<MigrationFile> availableMigrations) {
     Stream<MigrationFile> availableNativeMigrations =
         availableMigrations.stream().filter(migration -> !migration.isExtension);
-    Optional<String> maxMigration = executedMigrations.stream().max(String::compareTo);
+    Optional<String> maxMigration =
+        executedMigrations.stream().max(MigrationWorkflow::compareVersions);
     if (maxMigration.isPresent()) {
       return availableNativeMigrations
           .filter(migration -> migration.biggerThan(maxMigration.get()))

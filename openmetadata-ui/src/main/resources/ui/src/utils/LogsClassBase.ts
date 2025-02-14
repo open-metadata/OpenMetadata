@@ -12,11 +12,8 @@
  */
 
 import { isUndefined, startCase } from 'lodash';
-import { TableProfilerTab } from '../components/Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
-import { getEntityDetailsPath } from '../constants/constants';
 import { GlobalSettingOptions } from '../constants/GlobalSettings.constants';
 import { OPEN_METADATA } from '../constants/service-guide.constant';
-import { EntityTabs, EntityType } from '../enums/entity.enum';
 import { Pipeline } from '../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { IngestionPipeline } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { DataQualityPageTabs } from '../pages/DataQuality/DataQualityPage.interface';
@@ -30,6 +27,7 @@ import {
   getLogEntityPath,
   getSettingPath,
 } from './RouterUtils';
+import { getTestSuiteDetailsPath } from './TestSuiteUtils';
 
 class LogsClassBase {
   /**
@@ -81,6 +79,11 @@ class LogsClassBase {
     }
 
     if (serviceType === 'testSuite') {
+      const isExecutableTestSuite = !isUndefined(
+        (ingestionDetails.sourceConfig.config as Pipeline)
+          ?.entityFullyQualifiedName
+      );
+
       return [
         {
           name: startCase(serviceType),
@@ -88,13 +91,14 @@ class LogsClassBase {
         },
         {
           name: ingestionDetails.name,
-          url:
-            getEntityDetailsPath(
-              EntityType.TABLE,
-              (ingestionDetails.sourceConfig.config as Pipeline)
-                ?.entityFullyQualifiedName ?? '',
-              EntityTabs.PROFILER
-            ) + `?activeTab=${TableProfilerTab.DATA_QUALITY}`,
+          url: getTestSuiteDetailsPath({
+            isExecutableTestSuite,
+            fullyQualifiedName:
+              (isExecutableTestSuite
+                ? (ingestionDetails.sourceConfig.config as Pipeline)
+                    ?.entityFullyQualifiedName
+                : ingestionDetails.service?.fullyQualifiedName) ?? '',
+          }),
         },
         {
           name: i18n.t('label.log-plural'),

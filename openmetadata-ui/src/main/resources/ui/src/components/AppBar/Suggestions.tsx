@@ -13,8 +13,15 @@
 
 import { Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { isEmpty } from 'lodash';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { isEmpty, isString } from 'lodash';
+import Qs from 'qs';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { PAGE_SIZE_BASE } from '../../constants/constants';
 import {
@@ -22,6 +29,8 @@ import {
   APIEndpointSource,
   ChartSource,
   DashboardSource,
+  DatabaseSchemaSource,
+  DatabaseSource,
   DataProductSource,
   GlossarySource,
   MetricSource,
@@ -41,7 +50,7 @@ import {
   DashboardDataModelSearchSource,
   StoredProcedureSearchSource,
 } from '../../interface/search.interface';
-import { searchData } from '../../rest/miscAPI';
+import { searchQuery } from '../../rest/searchAPI';
 import { Transi18next } from '../../utils/CommonUtils';
 import searchClassBase from '../../utils/SearchClassBase';
 import {
@@ -85,6 +94,12 @@ const Suggestions = ({
   >([]);
   const [glossaryTermSuggestions, setGlossaryTermSuggestions] = useState<
     GlossarySource[]
+  >([]);
+  const [databaseSuggestions, setDatabaseSuggestions] = useState<
+    DatabaseSource[]
+  >([]);
+  const [databaseSchemaSuggestions, setDatabaseSchemaSuggestions] = useState<
+    DatabaseSchemaSource[]
   >([]);
   const [searchIndexSuggestions, setSearchIndexSuggestions] = useState<
     SearchIndexSource[]
@@ -144,6 +159,10 @@ const Suggestions = ({
     setDataProductSuggestions(
       filterOptionsByIndex(options, SearchIndex.DATA_PRODUCT)
     );
+    setDatabaseSuggestions(filterOptionsByIndex(options, SearchIndex.DATABASE));
+    setDatabaseSchemaSuggestions(
+      filterOptionsByIndex(options, SearchIndex.DATABASE_SCHEMA)
+    );
 
     setChartSuggestions(filterOptionsByIndex(options, SearchIndex.CHART));
 
@@ -158,6 +177,18 @@ const Suggestions = ({
       filterOptionsByIndex(options, SearchIndex.METRIC_SEARCH_INDEX)
     );
   };
+
+  const quickFilter = useMemo(() => {
+    const parsedSearch = Qs.parse(
+      location.search.startsWith('?')
+        ? location.search.substring(1)
+        : location.search
+    );
+
+    return !isString(parsedSearch.quickFilter)
+      ? {}
+      : JSON.parse(parsedSearch.quickFilter);
+  }, [location.search]);
 
   const getSuggestionsForIndex = (
     suggestions: SearchSuggestions,
@@ -212,6 +243,14 @@ const Suggestions = ({
             suggestions: glossaryTermSuggestions,
             searchIndex: SearchIndex.GLOSSARY_TERM,
           },
+          {
+            suggestions: databaseSuggestions,
+            searchIndex: SearchIndex.DATABASE,
+          },
+          {
+            suggestions: databaseSchemaSuggestions,
+            searchIndex: SearchIndex.DATABASE_SCHEMA,
+          },
           { suggestions: tagSuggestions, searchIndex: SearchIndex.TAG },
           {
             suggestions: dataProductSuggestions,
@@ -244,23 +283,16 @@ const Suggestions = ({
   const fetchSearchData = useCallback(async () => {
     try {
       setIsLoading(true);
-      const res = await searchData(
-        searchText,
-        1,
-        PAGE_SIZE_BASE,
-        '',
-        '',
-        '',
-        searchCriteria ?? SearchIndex.DATA_ASSET,
-        false,
-        false,
-        false
-      );
 
-      if (res.data) {
-        setOptions(res.data.hits.hits as unknown as Option[]);
-        updateSuggestions(res.data.hits.hits as unknown as Option[]);
-      }
+      const res = await searchQuery({
+        query: searchText,
+        searchIndex: searchCriteria ?? SearchIndex.DATA_ASSET,
+        queryFilter: quickFilter,
+        pageSize: PAGE_SIZE_BASE,
+      });
+
+      setOptions(res.hits.hits as unknown as Option[]);
+      updateSuggestions(res.hits.hits as unknown as Option[]);
     } catch (err) {
       showErrorToast(
         err as AxiosError,

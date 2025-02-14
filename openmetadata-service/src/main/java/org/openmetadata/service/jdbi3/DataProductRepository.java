@@ -14,7 +14,9 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.DATA_PRODUCT;
+import static org.openmetadata.service.Entity.DOMAIN;
 import static org.openmetadata.service.Entity.FIELD_ASSETS;
 import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
 
@@ -26,6 +28,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.domains.DataProduct;
+import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
@@ -93,6 +96,22 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
     }
   }
 
+  public final EntityReference getDomain(Domain domain) {
+    return getFromEntityRef(domain.getId(), Relationship.CONTAINS, DOMAIN, false);
+  }
+
+  @Override
+  public void setInheritedFields(DataProduct dataProduct, Fields fields) {
+    // If dataProduct does not have owners and experts, inherit them from its domain
+    EntityReference parentRef =
+        dataProduct.getDomain() != null ? dataProduct.getDomain() : getDomain(dataProduct);
+    if (parentRef != null) {
+      Domain parent = Entity.getEntity(DOMAIN, parentRef.getId(), "owners,experts", ALL);
+      inheritOwners(dataProduct, fields, parent);
+      inheritExperts(dataProduct, fields, parent);
+    }
+  }
+
   @Override
   public EntityUpdater getUpdater(DataProduct original, DataProduct updated, Operation operation) {
     return new DataProductUpdater(original, updated, operation);
@@ -135,7 +154,7 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
 
     @Transaction
     @Override
-    public void entitySpecificUpdate() {
+    public void entitySpecificUpdate(boolean consolidatingChanges) {
       updateAssets();
     }
 

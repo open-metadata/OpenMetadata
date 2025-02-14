@@ -40,6 +40,7 @@ import { useHistory, useParams } from 'react-router-dom';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg';
 import { ReactComponent as DomainIcon } from '../../../assets/svg/ic-domain.svg';
+import { ReactComponent as SubDomainIcon } from '../../../assets/svg/ic-subdomain.svg';
 import { ReactComponent as VersionIcon } from '../../../assets/svg/ic-version.svg';
 import { ReactComponent as IconDropdown } from '../../../assets/svg/menu.svg';
 import { ReactComponent as StyleIcon } from '../../../assets/svg/style.svg';
@@ -73,15 +74,15 @@ import { Domain } from '../../../generated/entity/domains/domain';
 import { ChangeDescription } from '../../../generated/entity/type';
 import { Style } from '../../../generated/type/tagLabel';
 import { useFqn } from '../../../hooks/useFqn';
-import { QueryFilterInterface } from '../../../pages/ExplorePage/ExplorePage.interface';
 import { addDataProducts } from '../../../rest/dataProductAPI';
 import { addDomains } from '../../../rest/domainAPI';
 import { searchData } from '../../../rest/miscAPI';
+import { searchQuery } from '../../../rest/searchAPI';
 import { formatDomainsResponse } from '../../../utils/APIUtils';
 import { getIsErrorMatch } from '../../../utils/CommonUtils';
 import {
+  getQueryFilterForDomain,
   getQueryFilterToExcludeDomainTerms,
-  getQueryFilterToIncludeDomain,
 } from '../../../utils/DomainUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getEntityVersionByField } from '../../../utils/EntityVersionUtils';
@@ -121,7 +122,7 @@ const DomainDetailsPage = ({
 }: DomainDetailsPageProps) => {
   const { t } = useTranslation();
   const [form] = useForm();
-  const { getEntityPermission } = usePermissionProvider();
+  const { getEntityPermission, permissions } = usePermissionProvider();
   const history = useHistory();
   const { tab: activeTab, version } =
     useParams<{ tab: string; version: string }>();
@@ -201,21 +202,29 @@ const DomainDetailsPage = ({
   }, [domainPermission]);
 
   const addButtonContent = [
-    {
-      label: t('label.asset-plural'),
-      key: '1',
-      onClick: () => setAssetModalVisible(true),
-    },
-    {
-      label: t('label.sub-domain-plural'),
-      key: '2',
-      onClick: () => setShowAddSubDomainModal(true),
-    },
-    {
-      label: t('label.data-product-plural'),
-      key: '3',
-      onClick: () => setShowAddDataProductModal(true),
-    },
+    ...(domainPermission.Create
+      ? [
+          {
+            label: t('label.asset-plural'),
+            key: '1',
+            onClick: () => setAssetModalVisible(true),
+          },
+          {
+            label: t('label.sub-domain-plural'),
+            key: '2',
+            onClick: () => setShowAddSubDomainModal(true),
+          },
+        ]
+      : []),
+    ...(permissions.dataProduct.Create
+      ? [
+          {
+            label: t('label.data-product-plural'),
+            key: '3',
+            onClick: () => setShowAddDataProductModal(true),
+          },
+        ]
+      : []),
   ];
 
   const fetchSubDomains = useCallback(async () => {
@@ -338,17 +347,17 @@ const DomainDetailsPage = ({
   const fetchDomainAssets = async () => {
     if (domainFqn && !isVersionsView) {
       try {
-        const res = await searchData(
-          '',
-          1,
-          0,
-          `(domain.fullyQualifiedName:"${encodedFqn}") AND !(entityType:"dataProduct")`,
-          '',
-          '',
-          SearchIndex.ALL
-        );
+        const res = await searchQuery({
+          query: '',
+          pageNumber: 0,
+          pageSize: 0,
+          queryFilter,
+          searchIndex: SearchIndex.ALL,
+          filters: '',
+        });
 
-        setAssetCount(res.data.hits.total.value ?? 0);
+        const totalCount = res?.hits?.total.value ?? 0;
+        setAssetCount(totalCount);
       } catch (error) {
         setAssetCount(0);
       }
@@ -496,6 +505,10 @@ const DomainDetailsPage = ({
       : []),
   ];
 
+  const queryFilter = useMemo(() => {
+    return getQueryFilterForDomain(domainFqn);
+  }, [domainFqn]);
+
   const tabs = useMemo(() => {
     return [
       {
@@ -510,6 +523,7 @@ const DomainDetailsPage = ({
           <DocumentationTab
             domain={domain}
             isVersionsView={isVersionsView}
+            permissions={domainPermission}
             onUpdate={(data: Domain | DataProduct) => onUpdate(data as Domain)}
           />
         ),
@@ -575,6 +589,7 @@ const DomainDetailsPage = ({
                           entityFqn={domainFqn}
                           isSummaryPanelOpen={false}
                           permissions={domainPermission}
+                          queryFilter={queryFilter}
                           ref={assetTabRef}
                           type={AssetsOfEntity.DOMAIN}
                           onAddAsset={() => setAssetModalVisible(true)}
@@ -617,6 +632,7 @@ const DomainDetailsPage = ({
     activeTab,
     subDomains,
     isSubDomainsLoading,
+    queryFilter,
   ]);
 
   useEffect(() => {
@@ -629,6 +645,41 @@ const DomainDetailsPage = ({
     fetchSubDomains();
   }, [domainFqn]);
 
+  const iconData = useMemo(() => {
+    if (domain.style?.iconURL) {
+      return (
+        <img
+          alt="domain-icon"
+          className="align-middle"
+          data-testid="icon"
+          height={36}
+          src={domain.style.iconURL}
+          width={32}
+        />
+      );
+    } else if (isSubDomain) {
+      return (
+        <SubDomainIcon
+          className="align-middle"
+          color={DE_ACTIVE_COLOR}
+          height={36}
+          name="folder"
+          width={32}
+        />
+      );
+    }
+
+    return (
+      <DomainIcon
+        className="align-middle"
+        color={DE_ACTIVE_COLOR}
+        height={36}
+        name="folder"
+        width={32}
+      />
+    );
+  }, [domain, isSubDomain]);
+
   return (
     <>
       <Row
@@ -640,33 +691,14 @@ const DomainDetailsPage = ({
             breadcrumb={breadcrumbs}
             entityData={{ ...domain, displayName, name }}
             entityType={EntityType.DOMAIN}
-            icon={
-              domain.style?.iconURL ? (
-                <img
-                  alt="domain-icon"
-                  className="align-middle"
-                  data-testid="icon"
-                  height={36}
-                  src={domain.style.iconURL}
-                  width={32}
-                />
-              ) : (
-                <DomainIcon
-                  className="align-middle"
-                  color={DE_ACTIVE_COLOR}
-                  height={36}
-                  name="folder"
-                  width={32}
-                />
-              )
-            }
+            icon={iconData}
             serviceName=""
             titleColor={domain.style?.color}
           />
         </Col>
         <Col className="p-x-md" flex="320px">
           <div style={{ textAlign: 'right' }}>
-            {!isVersionsView && domainPermission.Create && (
+            {!isVersionsView && addButtonContent.length > 0 && (
               <Dropdown
                 className="m-l-xs"
                 data-testid="domain-details-add-button-menu"
@@ -797,14 +829,7 @@ const DomainDetailsPage = ({
         <AssetSelectionModal
           entityFqn={domainFqn}
           open={assetModalVisible}
-          queryFilter={
-            isSubDomain
-              ? (getQueryFilterToIncludeDomain(
-                  domain.parent?.fullyQualifiedName ?? '',
-                  domain.fullyQualifiedName ?? ''
-                ) as QueryFilterInterface)
-              : getQueryFilterToExcludeDomainTerms(domainFqn)
-          }
+          queryFilter={getQueryFilterToExcludeDomainTerms(domainFqn)}
           type={AssetsOfEntity.DOMAIN}
           onCancel={() => setAssetModalVisible(false)}
           onSave={handleAssetSave}

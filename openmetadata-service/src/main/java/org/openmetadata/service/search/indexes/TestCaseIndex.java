@@ -69,8 +69,10 @@ public record TestCaseIndex(TestCase testCase) implements SearchIndex {
       return;
     }
     TestSuite testSuite = Entity.getEntityOrNull(testSuiteEntityReference, "", Include.ALL);
-    EntityReference entityReference = testSuite.getExecutableEntityReference();
-    TestSuiteIndex.addTestSuiteParentEntityRelations(entityReference, doc);
+    EntityReference entityReference = testSuite.getBasicEntityReference();
+    if (entityReference != null) {
+      TestSuiteIndex.addTestSuiteParentEntityRelations(entityReference, doc);
+    }
   }
 
   public static Map<String, Float> getFields() {

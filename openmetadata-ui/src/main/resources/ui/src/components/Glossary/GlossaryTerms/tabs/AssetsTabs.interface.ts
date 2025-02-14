@@ -23,6 +23,7 @@ export enum AssetsOfEntity {
   FOLLOWING = 'FOLLOWING',
   ACCESS_TOKEN = 'ACCESS_TOKEN',
   LINEAGE = 'LINEAGE',
+  TAG = 'TAG',
 }
 
 export interface AssetsTabsProps {
@@ -35,7 +36,7 @@ export interface AssetsTabsProps {
   isSummaryPanelOpen: boolean;
   isEntityDeleted?: boolean;
   type?: AssetsOfEntity;
-  queryFilter?: string;
+  queryFilter?: string | Record<string, unknown>;
   noDataPlaceholder?: string | AssetNoDataPlaceholderProps;
 }
 

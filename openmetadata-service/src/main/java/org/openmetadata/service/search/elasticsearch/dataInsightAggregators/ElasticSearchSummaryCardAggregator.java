@@ -41,10 +41,10 @@ public class ElasticSearchSummaryCardAggregator
             .field(DataInsightSystemChartRepository.TIMESTAMP_FIELD)
             .calendarInterval(DateHistogramInterval.DAY);
     populateDateHistogram(
-        summaryCard.getFunction(),
-        summaryCard.getFormula(),
-        summaryCard.getField(),
-        summaryCard.getFilter(),
+        summaryCard.getMetrics().get(0).getFunction(),
+        summaryCard.getMetrics().get(0).getFormula(),
+        summaryCard.getMetrics().get(0).getField(),
+        summaryCard.getMetrics().get(0).getFilter(),
         dateHistogramAggregationBuilder,
         formulas);
 
@@ -73,7 +73,8 @@ public class ElasticSearchSummaryCardAggregator
             .orElse(new Aggregations(new ArrayList<>()))
             .asList();
     List<DataInsightCustomChartResult> results =
-        processAggregations(aggregationList, summaryCard.getFormula(), null, formulas, null);
+        processAggregations(
+            aggregationList, summaryCard.getMetrics().get(0).getFormula(), null, formulas, null);
 
     List<DataInsightCustomChartResult> finalResults = new ArrayList<>();
     for (int i = results.size() - 1; i >= 0; i--) {

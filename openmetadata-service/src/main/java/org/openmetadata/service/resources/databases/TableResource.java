@@ -90,6 +90,7 @@ import org.openmetadata.service.util.ResultList;
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "tables")
 public class TableResource extends EntityResource<Table, TableRepository> {
+  private final TableMapper mapper = new TableMapper();
   public static final String COLLECTION_PATH = "v1/tables/";
   static final String FIELDS =
       "tableConstraints,tablePartition,usageSummary,owners,customMetrics,columns,"
@@ -367,7 +368,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateTable create) {
-    Table table = getTable(create, securityContext.getUserPrincipal().getName());
+    Table table = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, table);
   }
 
@@ -391,7 +392,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateTable create) {
-    Table table = getTable(create, securityContext.getUserPrincipal().getName());
+    Table table = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, table);
   }
 
@@ -532,6 +533,38 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       String csv)
       throws IOException {
     return importCsvInternal(securityContext, name, csv, dryRun);
+  }
+
+  @PUT
+  @Path("/name/{name}/importAsync")
+  @Consumes(MediaType.TEXT_PLAIN)
+  @Valid
+  @Operation(
+      operationId = "importTableAsync",
+      summary = "Import columns from CSV to update table asynchronously (no creation allowed)",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Import result",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = CsvImportResult.class)))
+      })
+  public Response importCsvAsync(
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Name of the table", schema = @Schema(type = "string"))
+          @PathParam("name")
+          String name,
+      @Parameter(
+              description =
+                  "Dry-run when true is used for validating the CSV without really importing it. (default=true)",
+              schema = @Schema(type = "boolean"))
+          @DefaultValue("true")
+          @QueryParam("dryRun")
+          boolean dryRun,
+      String csv) {
+    return importCsvInternalAsync(securityContext, name, csv, dryRun);
   }
 
   @DELETE
@@ -1120,7 +1153,9 @@ public class TableResource extends EntityResource<Table, TableRepository> {
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.EDIT_DATA_PROFILE);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    CustomMetric customMetric = getCustomMetric(securityContext, createCustomMetric);
+    CustomMetric customMetric =
+        mapper.createCustomMetricToEntity(
+            createCustomMetric, securityContext.getUserPrincipal().getName());
     Table table = repository.addCustomMetric(id, customMetric);
     return addHref(uriInfo, table);
   }
@@ -1279,45 +1314,5 @@ public class TableResource extends EntityResource<Table, TableRepository> {
 
     return Entity.getSearchRepository()
         .searchEntityRelationship(fqn, upstreamDepth, downstreamDepth, queryFilter, deleted);
-  }
-
-  public static Table validateNewTable(Table table) {
-    table.setId(UUID.randomUUID());
-    DatabaseUtil.validateConstraints(table.getColumns(), table.getTableConstraints());
-    DatabaseUtil.validateTablePartition(table.getColumns(), table.getTablePartition());
-    DatabaseUtil.validateColumns(table.getColumns());
-    return table;
-  }
-
-  private Table getTable(CreateTable create, String user) {
-    return validateNewTable(
-            repository
-                .copy(new Table(), create, user)
-                .withColumns(create.getColumns())
-                .withSourceUrl(create.getSourceUrl())
-                .withLocationPath(create.getLocationPath())
-                .withTableConstraints(create.getTableConstraints())
-                .withTablePartition(create.getTablePartition())
-                .withTableType(create.getTableType())
-                .withFileFormat(create.getFileFormat())
-                .withSchemaDefinition(create.getSchemaDefinition())
-                .withTableProfilerConfig(create.getTableProfilerConfig())
-                .withDatabaseSchema(
-                    getEntityReference(Entity.DATABASE_SCHEMA, create.getDatabaseSchema())))
-        .withDatabaseSchema(getEntityReference(Entity.DATABASE_SCHEMA, create.getDatabaseSchema()))
-        .withRetentionPeriod(create.getRetentionPeriod())
-        .withSourceHash(create.getSourceHash());
-  }
-
-  private CustomMetric getCustomMetric(SecurityContext securityContext, CreateCustomMetric create) {
-    return new CustomMetric()
-        .withId(UUID.randomUUID())
-        .withDescription(create.getDescription())
-        .withName(create.getName())
-        .withColumnName(create.getColumnName())
-        .withOwners(create.getOwners())
-        .withExpression(create.getExpression())
-        .withUpdatedBy(securityContext.getUserPrincipal().getName())
-        .withUpdatedAt(System.currentTimeMillis());
   }
 }

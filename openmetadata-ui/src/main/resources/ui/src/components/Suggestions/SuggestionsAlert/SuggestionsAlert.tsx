@@ -14,10 +14,10 @@ import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
 import { Button, Card, Typography } from 'antd';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as StarIcon } from '../../../assets/svg/ic-suggestions.svg';
+import { ReactComponent as StarIcon } from '../../../assets/svg/ic-suggestions-coloured.svg';
 import UserPopOverCard from '../../common/PopOverCard/UserPopOverCard';
 import ProfilePicture from '../../common/ProfilePicture/ProfilePicture';
-import RichTextEditorPreviewer from '../../common/RichTextEditor/RichTextEditorPreviewer';
+import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import { useSuggestionsContext } from '../SuggestionsProvider/SuggestionsProvider';
 import { SuggestionAction } from '../SuggestionsProvider/SuggestionsProvider.interface';
 import './suggestions-alert.less';
@@ -40,7 +40,7 @@ const SuggestionsAlert = ({
   return (
     <Card className="suggested-description-card card-padding-0">
       <div className="suggested-alert-content">
-        <RichTextEditorPreviewer
+        <RichTextEditorPreviewerV1
           markdown={suggestion.description ?? ''}
           maxLength={maxLength}
         />

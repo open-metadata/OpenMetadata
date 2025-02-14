@@ -21,7 +21,7 @@ import { EntityType } from '../../../enums/entity.enum';
 import EntityTasks from '../../../pages/TasksPage/EntityTasks/EntityTasks.component';
 import EntityLink from '../../../utils/EntityLink';
 import { getEntityFeedLink } from '../../../utils/EntityUtils';
-import RichTextEditorPreviewer from '../../common/RichTextEditor/RichTextEditorPreviewer';
+import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import SuggestionsAlert from '../../Suggestions/SuggestionsAlert/SuggestionsAlert';
 import { useSuggestionsContext } from '../../Suggestions/SuggestionsProvider/SuggestionsProvider';
 import { TableDescriptionProps } from './TableDescription.interface';
@@ -73,7 +73,7 @@ const TableDescription = ({
     if (suggestionData) {
       return suggestionData;
     } else if (columnData.field) {
-      return <RichTextEditorPreviewer markdown={columnData.field} />;
+      return <RichTextEditorPreviewerV1 markdown={columnData.field} />;
     } else {
       return (
         <span className="text-grey-muted">

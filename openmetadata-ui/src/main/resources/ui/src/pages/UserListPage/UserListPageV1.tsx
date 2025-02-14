@@ -14,7 +14,7 @@
 import { Button, Col, Modal, Row, Space, Switch, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
-import { capitalize, isEmpty } from 'lodash';
+import { capitalize, debounce, isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
@@ -235,6 +235,7 @@ const UserListPageV1 = () => {
   const handleSearch = (value: string) => {
     setSearchValue(value);
     handlePageChange(INITIAL_PAGING_VALUE);
+
     const params = new URLSearchParams({ user: value });
     // This function is called onChange in the search input with debouncing
     // Hence using history.replace instead of history.push to avoid adding multiple routes in history
@@ -459,7 +460,8 @@ const UserListPageV1 = () => {
               type: t('label.user'),
             })}...`}
             searchValue={searchValue}
-            onSearch={handleSearch}
+            typingInterval={0}
+            onSearch={debounce(handleSearch, 400)}
           />
         </Col>
 

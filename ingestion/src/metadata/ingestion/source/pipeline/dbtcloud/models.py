@@ -35,7 +35,7 @@ class DBTJob(BaseModel):
 
 
 class DBTJobList(BaseModel):
-    Jobs: Optional[List[DBTJob]] = Field([], alias="data")
+    Jobs: List[DBTJob] = Field(alias="data")
 
 
 class DBTRun(BaseModel):

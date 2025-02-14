@@ -44,8 +44,8 @@ const TestConnectionModal: FC<TestConnectionModalProps> = ({
   isTestingConnection,
   testConnectionStep,
   testConnectionStepResult,
-  onCancel,
   onConfirm,
+  onCancel,
   isConnectionTimeout,
   onTestConnection,
 }) => {

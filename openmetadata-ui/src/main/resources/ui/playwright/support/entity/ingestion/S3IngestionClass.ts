@@ -20,7 +20,7 @@ import {
 import ServiceBaseClass from './ServiceBaseClass';
 
 class S3IngestionClass extends ServiceBaseClass {
-  name: string;
+  name = '';
   constructor() {
     super(
       Services.Storage,

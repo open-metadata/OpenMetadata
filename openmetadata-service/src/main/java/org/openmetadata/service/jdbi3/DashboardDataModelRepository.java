@@ -210,10 +210,11 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
 
     @Transaction
     @Override
-    public void entitySpecificUpdate() {
+    public void entitySpecificUpdate(boolean consolidatingChanges) {
       DatabaseUtil.validateColumns(original.getColumns());
       updateColumns("columns", original.getColumns(), updated.getColumns(), EntityUtil.columnMatch);
       recordChange("sourceHash", original.getSourceHash(), updated.getSourceHash());
+      recordChange("sql", original.getSql(), updated.getSql());
     }
   }
 }

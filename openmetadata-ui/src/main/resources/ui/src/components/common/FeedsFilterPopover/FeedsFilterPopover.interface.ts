@@ -11,8 +11,10 @@
  *  limitations under the License.
  */
 import { FeedFilter } from '../../../enums/mydata.enum';
+import { ActivityFeedTabs } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 
 export interface FeedsFilterPopoverProps {
+  feedTab: ActivityFeedTabs;
   defaultFilter: FeedFilter;
   onUpdate: (value: FeedFilter) => void;
 }

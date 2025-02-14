@@ -5,6 +5,7 @@ import static org.openmetadata.service.Entity.DATA_INSIGHT_CUSTOM_CHART;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
@@ -87,7 +88,13 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
       DataInsightCustomChart chart, long startTimestamp, long endTimestamp, String filter)
       throws IOException {
     if (chart.getChartDetails() != null && filter != null) {
-      ((LinkedHashMap<String, Object>) chart.getChartDetails()).put("filter", filter);
+      HashMap chartDetails = (LinkedHashMap<String, Object>) chart.getChartDetails();
+      if (chartDetails.get("metrics") != null) {
+        for (LinkedHashMap<String, Object> metrics :
+            (List<LinkedHashMap<String, Object>>) chartDetails.get("metrics")) {
+          metrics.put("filter", filter);
+        }
+      }
     }
     return getPreviewData(chart, startTimestamp, endTimestamp);
   }
@@ -110,7 +117,13 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
 
       if (chart != null) {
         if (chart.getChartDetails() != null && filter != null) {
-          ((LinkedHashMap<String, Object>) chart.getChartDetails()).put("filter", filter);
+          HashMap chartDetails = (LinkedHashMap<String, Object>) chart.getChartDetails();
+          if (chartDetails.get("metrics") != null) {
+            for (LinkedHashMap<String, Object> metrics :
+                (List<LinkedHashMap<String, Object>>) chartDetails.get("metrics")) {
+              metrics.put("filter", filter);
+            }
+          }
         }
         DataInsightCustomChartResultList data =
             searchClient.buildDIChart(chart, startTimestamp, endTimestamp);

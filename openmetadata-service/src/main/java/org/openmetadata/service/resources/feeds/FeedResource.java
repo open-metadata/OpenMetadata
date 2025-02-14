@@ -28,8 +28,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 import javax.json.JsonPatch;
@@ -52,7 +50,6 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
-import org.openmetadata.schema.api.CreateTaskDetails;
 import org.openmetadata.schema.api.feed.CloseTask;
 import org.openmetadata.schema.api.feed.CreatePost;
 import org.openmetadata.schema.api.feed.CreateThread;
@@ -62,7 +59,6 @@ import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.Post;
-import org.openmetadata.schema.type.TaskDetails;
 import org.openmetadata.schema.type.TaskStatus;
 import org.openmetadata.schema.type.ThreadType;
 import org.openmetadata.service.Entity;
@@ -90,6 +86,8 @@ import org.openmetadata.service.util.ResultList;
 @Collection(name = "feeds")
 public class FeedResource {
   public static final String COLLECTION_PATH = "/v1/feed/";
+  private final FeedMapper mapper = new FeedMapper();
+  private final PostMapper postMapper = new PostMapper();
   private final FeedRepository dao;
   private final Authorizer authorizer;
 
@@ -421,7 +419,7 @@ public class FeedResource {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateThread create) {
-    Thread thread = getThread(securityContext, create);
+    Thread thread = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     addHref(uriInfo, dao.create(thread));
     return Response.created(thread.getHref())
         .entity(thread)
@@ -452,7 +450,7 @@ public class FeedResource {
           @PathParam("id")
           UUID id,
       @Valid CreatePost createPost) {
-    Post post = getPost(createPost);
+    Post post = postMapper.createToEntity(createPost, securityContext.getUserPrincipal().getName());
     Thread thread =
         addHref(
             uriInfo, dao.addPostToThread(id, post, securityContext.getUserPrincipal().getName()));
@@ -587,55 +585,5 @@ public class FeedResource {
           @PathParam("id")
           UUID id) {
     return new ResultList<>(dao.listPosts(id));
-  }
-
-  private Thread getThread(SecurityContext securityContext, CreateThread create) {
-    UUID randomUUID = UUID.randomUUID();
-    return new Thread()
-        .withId(randomUUID)
-        .withThreadTs(System.currentTimeMillis())
-        .withMessage(create.getMessage())
-        .withCreatedBy(create.getFrom())
-        .withAbout(create.getAbout())
-        .withAddressedTo(create.getAddressedTo())
-        .withReactions(Collections.emptyList())
-        .withType(create.getType())
-        .withTask(getTaskDetails(create.getTaskDetails()))
-        .withAnnouncement(create.getAnnouncementDetails())
-        .withChatbot(create.getChatbotDetails())
-        .withUpdatedBy(securityContext.getUserPrincipal().getName())
-        .withUpdatedAt(System.currentTimeMillis())
-        .withEntityRef(new EntityReference().withId(randomUUID).withType(Entity.THREAD))
-        .withGeneratedBy(Thread.GeneratedBy.USER);
-  }
-
-  private Post getPost(CreatePost create) {
-    return new Post()
-        .withId(UUID.randomUUID())
-        .withMessage(create.getMessage())
-        .withFrom(create.getFrom())
-        .withReactions(Collections.emptyList())
-        .withPostTs(System.currentTimeMillis());
-  }
-
-  private TaskDetails getTaskDetails(CreateTaskDetails create) {
-    if (create != null) {
-      return new TaskDetails()
-          .withAssignees(formatAssignees(create.getAssignees()))
-          .withType(create.getType())
-          .withStatus(TaskStatus.Open)
-          .withOldValue(create.getOldValue())
-          .withSuggestion(create.getSuggestion());
-    }
-    return null;
-  }
-
-  public static List<EntityReference> formatAssignees(List<EntityReference> assignees) {
-    List<EntityReference> result = new ArrayList<>();
-    assignees.forEach(
-        assignee ->
-            result.add(
-                new EntityReference().withId(assignee.getId()).withType(assignee.getType())));
-    return result;
   }
 }

@@ -33,7 +33,7 @@ export class ClassificationClass {
     description: 'Classification for the Collate platform',
   };
 
-  responseData: ClassificationData;
+  responseData: ClassificationData = {} as ClassificationData;
 
   constructor(classification?: Partial<ClassificationData>) {
     this.data = {

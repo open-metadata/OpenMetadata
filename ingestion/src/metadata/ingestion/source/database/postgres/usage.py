@@ -15,6 +15,11 @@ import traceback
 from datetime import datetime
 from typing import Iterable
 
+from sqlalchemy.exc import OperationalError
+
+from metadata.generated.schema.entity.services.ingestionPipelines.status import (
+    StackTraceError,
+)
 from metadata.generated.schema.type.basic import DateTime
 from metadata.generated.schema.type.tableQuery import TableQueries, TableQuery
 from metadata.ingestion.source.connections import get_connection
@@ -67,6 +72,16 @@ class PostgresUsageSource(PostgresQueryParserSource, UsageSource):
                         logger.error(str(err))
             if queries:
                 yield TableQueries(queries=queries)
+
+        except OperationalError as err:
+            self.status.failed(
+                StackTraceError(
+                    name="Usage",
+                    error=f"Source Usage failed due to - {err}",
+                    stackTrace=traceback.format_exc(),
+                )
+            )
+
         except Exception as err:
             if query:
                 logger.debug(

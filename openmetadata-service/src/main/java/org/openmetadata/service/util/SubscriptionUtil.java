@@ -35,10 +35,13 @@ import javax.ws.rs.client.Invocation;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang.StringUtils;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.SubscriptionAction;
+import org.openmetadata.schema.entity.events.StatusContext;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
+import org.openmetadata.schema.entity.events.TestDestinationStatus;
 import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
@@ -335,7 +338,8 @@ public class SubscriptionUtil {
               .toList();
       receiverList.addAll(getEmailOrWebhookEndpointForTeams(teams, type));
     } else {
-      receiverList = action.getReceivers() == null ? receiverList : action.getReceivers();
+      receiverList =
+          action.getReceivers() == null ? receiverList : new HashSet<>(action.getReceivers());
     }
 
     // Send to Admins
@@ -373,12 +377,19 @@ public class SubscriptionUtil {
           // TODO: For Announcement, Immediate Consumer needs to be Notified (find information from
           // Lineage)
         case Announcement -> {
-          receiverUrls.addAll(buildReceivers(action, category, type, event, event.getEntityId()));
+          receiverUrls.addAll(
+              buildReceivers(
+                  action,
+                  category,
+                  type,
+                  thread.getEntityRef().getType(),
+                  thread.getEntityRef().getId()));
         }
       }
     } else {
       EntityInterface entityInterface = getEntity(event);
-      receiverUrls.addAll(buildReceivers(action, category, type, event, entityInterface.getId()));
+      receiverUrls.addAll(
+          buildReceivers(action, category, type, event.getEntityType(), entityInterface.getId()));
     }
 
     return receiverUrls;
@@ -388,12 +399,12 @@ public class SubscriptionUtil {
       SubscriptionAction action,
       SubscriptionDestination.SubscriptionCategory category,
       SubscriptionDestination.SubscriptionType type,
-      ChangeEvent event,
+      String entityType,
       UUID id) {
     Set<String> result = new HashSet<>();
     result.addAll(
         buildReceiversListFromActions(
-            action, category, type, Entity.getCollectionDAO(), id, event.getEntityType()));
+            action, category, type, Entity.getCollectionDAO(), id, entityType));
     return result;
   }
 
@@ -426,15 +437,11 @@ public class SubscriptionUtil {
       Object message,
       Webhook.HttpMethod httpMethod) {
     long attemptTime = System.currentTimeMillis();
-    Response response;
-
-    if (httpMethod == Webhook.HttpMethod.PUT) {
-      response =
-          target.put(javax.ws.rs.client.Entity.entity(message, MediaType.APPLICATION_JSON_TYPE));
-    } else {
-      response =
-          target.post(javax.ws.rs.client.Entity.entity(message, MediaType.APPLICATION_JSON_TYPE));
-    }
+    Response response =
+        (httpMethod == Webhook.HttpMethod.PUT)
+            ? target.put(javax.ws.rs.client.Entity.entity(message, MediaType.APPLICATION_JSON_TYPE))
+            : target.post(
+                javax.ws.rs.client.Entity.entity(message, MediaType.APPLICATION_JSON_TYPE));
 
     LOG.debug(
         "Subscription Destination HTTP Operation {}:{} received response {}",
@@ -442,17 +449,69 @@ public class SubscriptionUtil {
         destination.getSubscriptionDestination().getId(),
         response.getStatusInfo());
 
-    if (response.getStatus() >= 300 && response.getStatus() < 400) {
+    StatusContext statusContext = createStatusContext(response);
+    handleStatus(destination, attemptTime, statusContext);
+  }
+
+  public static void deliverTestWebhookMessage(
+      Destination<ChangeEvent> destination, Invocation.Builder target, Object message) {
+    deliverTestWebhookMessage(destination, target, message, Webhook.HttpMethod.POST);
+  }
+
+  public static void deliverTestWebhookMessage(
+      Destination<ChangeEvent> destination,
+      Invocation.Builder target,
+      Object message,
+      Webhook.HttpMethod httpMethod) {
+    Response response =
+        (httpMethod == Webhook.HttpMethod.PUT)
+            ? target.put(javax.ws.rs.client.Entity.entity(message, MediaType.APPLICATION_JSON_TYPE))
+            : target.post(
+                javax.ws.rs.client.Entity.entity(message, MediaType.APPLICATION_JSON_TYPE));
+
+    StatusContext statusContext = createStatusContext(response);
+    handleTestDestinationStatus(destination, statusContext);
+  }
+
+  private static void handleTestDestinationStatus(
+      Destination<ChangeEvent> destination, StatusContext statusContext) {
+    TestDestinationStatus.Status testStatus =
+        (statusContext.getStatusCode() == 200)
+            ? TestDestinationStatus.Status.SUCCESS
+            : TestDestinationStatus.Status.FAILED;
+
+    destination.setStatusForTestDestination(testStatus, statusContext);
+  }
+
+  private static void handleStatus(
+      Destination<ChangeEvent> destination, long attemptTime, StatusContext statusContext) {
+    int statusCode = statusContext.getStatusCode();
+    String statusInfo = statusContext.getStatusInfo();
+
+    if (statusCode >= 300 && statusCode < 400) {
       // 3xx response/redirection is not allowed for callback. Set the webhook state as in error
-      destination.setErrorStatus(
-          attemptTime, response.getStatus(), response.getStatusInfo().getReasonPhrase());
-    } else if (response.getStatus() >= 400 && response.getStatus() < 600) {
-      // 4xx, 5xx response retry delivering events after timeout
-      destination.setAwaitingRetry(
-          attemptTime, response.getStatus(), response.getStatusInfo().getReasonPhrase());
-    } else if (response.getStatus() == 200) {
+      destination.setErrorStatus(attemptTime, statusCode, statusInfo);
+    } else if (statusCode == 200) {
       destination.setSuccessStatus(System.currentTimeMillis());
+    } else {
+      // 4xx, 5xx response retry delivering events after timeout
+      destination.setAwaitingRetry(attemptTime, statusCode, statusInfo);
     }
+  }
+
+  private static StatusContext createStatusContext(Response response) {
+    return new StatusContext()
+        .withStatusCode(response.getStatus())
+        .withStatusInfo(response.getStatusInfo().getReasonPhrase())
+        .withHeaders(response.getStringHeaders())
+        .withEntity(response.hasEntity() ? response.readEntity(String.class) : StringUtils.EMPTY)
+        .withMediaType(
+            response.getMediaType() != null
+                ? response.getMediaType().toString()
+                : StringUtils.EMPTY)
+        .withLocation(
+            response.getLocation() != null ? response.getLocation().toString() : StringUtils.EMPTY)
+        .withTimestamp(System.currentTimeMillis());
   }
 
   public static Client getClient(int connectTimeout, int readTimeout) {

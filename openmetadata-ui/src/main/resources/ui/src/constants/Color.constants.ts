@@ -21,7 +21,6 @@ export const RED_3 = '#f24822';
 export const RED_3_OPACITY = '#FF7C501A';
 export const PURPLE_2 = '#7147e8';
 export const TEXT_COLOR = '#292929';
-export const GRAY_COLOR = '#CFD6DD';
 export const WHITE_SMOKE = '#F8F8F8';
 export const PRIMARY_COLOR = DEFAULT_THEME.primaryColor;
 export const BLUE_2 = '#3ca2f4';

@@ -18,6 +18,7 @@ from typing import Any, Dict, List, Optional, Union
 from pydantic import BaseModel, ConfigDict, Field, validator
 
 from metadata.generated.schema.entity.data.chart import ChartType
+from metadata.generated.schema.entity.data.table import Table
 
 
 class TableauBaseModel(BaseModel):
@@ -172,3 +173,12 @@ class TableauDashboard(TableauBaseModel):
     webpageUrl: Optional[str] = None
     charts: Optional[List[TableauChart]] = None
     dataModels: List[DataSource] = []
+
+
+class TableAndQuery(BaseModel):
+    """
+    Wrapper class for Table entity and associated Query for lineage
+    """
+
+    table: Table
+    query: Optional[str] = None

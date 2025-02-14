@@ -642,6 +642,7 @@ public class AuthenticationCodeFlowHandler {
 
   @SneakyThrows
   public static void getErrorMessage(HttpServletResponse resp, Exception e) {
+    resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
     resp.setContentType("text/html; charset=UTF-8");
     LOG.error("[Auth Callback Servlet] Failed in Auth Login : {}", e.getMessage());
     resp.getOutputStream()
@@ -916,7 +917,9 @@ public class AuthenticationCodeFlowHandler {
       OIDCTokenResponse tokenSuccessResponse, OidcCredentials credentials) {
     OIDCTokens oidcTokens = tokenSuccessResponse.getOIDCTokens();
     credentials.setAccessToken(oidcTokens.getAccessToken());
-    credentials.setRefreshToken(oidcTokens.getRefreshToken());
+    if (oidcTokens.getRefreshToken() != null) {
+      credentials.setRefreshToken(oidcTokens.getRefreshToken());
+    }
     if (oidcTokens.getIDToken() != null) {
       credentials.setIdToken(oidcTokens.getIDToken());
     }

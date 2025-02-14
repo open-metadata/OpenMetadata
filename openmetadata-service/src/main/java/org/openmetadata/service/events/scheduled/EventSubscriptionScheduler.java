@@ -17,6 +17,7 @@ import static org.openmetadata.service.apps.bundles.changeEvent.AbstractEventCon
 import static org.openmetadata.service.apps.bundles.changeEvent.AbstractEventConsumer.ALERT_OFFSET_KEY;
 import static org.openmetadata.service.events.subscription.AlertUtil.getStartingOffset;
 
+import java.lang.reflect.InvocationTargetException;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
@@ -29,6 +30,7 @@ import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.events.EventSubscriptionDiagnosticInfo;
+import org.openmetadata.schema.api.events.EventsRecord;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.EventSubscriptionOffset;
 import org.openmetadata.schema.entity.events.FailedEventResponse;
@@ -36,6 +38,7 @@ import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.entity.events.SubscriptionStatus;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.apps.bundles.changeEvent.AbstractEventConsumer;
 import org.openmetadata.service.apps.bundles.changeEvent.AlertPublisher;
 import org.openmetadata.service.events.subscription.AlertUtil;
 import org.openmetadata.service.jdbi3.EntityRepository;
@@ -60,7 +63,6 @@ public class EventSubscriptionScheduler {
   public static final String ALERT_TRIGGER_GROUP = "OMAlertJobGroup";
   private static EventSubscriptionScheduler instance;
   private static volatile boolean initialized = false;
-  public static volatile boolean cleanupJobInitialised = false;
 
   private final Scheduler alertsScheduler = new StdSchedulerFactory().getScheduler();
 
@@ -86,9 +88,23 @@ public class EventSubscriptionScheduler {
   }
 
   @Transaction
-  public void addSubscriptionPublisher(EventSubscription eventSubscription)
-      throws SchedulerException {
-    AlertPublisher alertPublisher = new AlertPublisher();
+  public void addSubscriptionPublisher(EventSubscription eventSubscription, boolean reinstall)
+      throws SchedulerException,
+          ClassNotFoundException,
+          NoSuchMethodException,
+          InvocationTargetException,
+          InstantiationException,
+          IllegalAccessException {
+    Class<? extends AbstractEventConsumer> defaultClass = AlertPublisher.class;
+    Class<? extends AbstractEventConsumer> clazz =
+        Class.forName(
+                Optional.ofNullable(eventSubscription.getClassName())
+                    .orElse(defaultClass.getCanonicalName()))
+            .asSubclass(AbstractEventConsumer.class);
+    AbstractEventConsumer publisher = clazz.getDeclaredConstructor().newInstance();
+    if (reinstall && isSubscriptionRegistered(eventSubscription)) {
+      deleteEventSubscriptionPublisher(eventSubscription);
+    }
     if (Boolean.FALSE.equals(
         eventSubscription.getEnabled())) { // Only add webhook that is enabled for publishing events
       eventSubscription
@@ -110,14 +126,13 @@ public class EventSubscriptionScheduler {
                       getSubscriptionStatusAtCurrentTime(SubscriptionStatus.Status.ACTIVE)));
       JobDetail jobDetail =
           jobBuilder(
-              alertPublisher,
+              publisher,
               eventSubscription,
               String.format("%s", eventSubscription.getId().toString()));
       Trigger trigger = trigger(eventSubscription);
 
       // Schedule the Job
       alertsScheduler.scheduleJob(jobDetail, trigger);
-      instance.scheduleCleanupJob();
 
       LOG.info(
           "Event Subscription started as {} : status {} for all Destinations",
@@ -126,8 +141,17 @@ public class EventSubscriptionScheduler {
     }
   }
 
+  public boolean isSubscriptionRegistered(EventSubscription eventSubscription) {
+    try {
+      return alertsScheduler.checkExists(getJobKey(eventSubscription));
+    } catch (SchedulerException e) {
+      LOG.error("Failed to check if subscription is registered: {}", eventSubscription.getId(), e);
+      return false;
+    }
+  }
+
   private JobDetail jobBuilder(
-      AlertPublisher publisher, EventSubscription eventSubscription, String jobIdentity) {
+      AbstractEventConsumer publisher, EventSubscription eventSubscription, String jobIdentity) {
     JobDataMap dataMap = new JobDataMap();
     dataMap.put(ALERT_INFO_KEY, eventSubscription);
     dataMap.put(ALERT_OFFSET_KEY, getStartingOffset(eventSubscription.getId()));
@@ -157,7 +181,7 @@ public class EventSubscriptionScheduler {
     // Remove Existing Subscription Publisher
     deleteEventSubscriptionPublisher(eventSubscription);
     if (Boolean.TRUE.equals(eventSubscription.getEnabled())) {
-      addSubscriptionPublisher(eventSubscription);
+      addSubscriptionPublisher(eventSubscription, true);
     }
   }
 
@@ -170,33 +194,6 @@ public class EventSubscriptionScheduler {
     LOG.info("Alert publisher deleted for {}", deletedEntity.getName());
   }
 
-  public void scheduleCleanupJob() {
-    if (!cleanupJobInitialised) {
-      try {
-        JobDetail cleanupJob =
-            JobBuilder.newJob(EventSubscriptionCleanupJob.class)
-                .withIdentity("CleanupJob", ALERT_JOB_GROUP)
-                .build();
-
-        Trigger cleanupTrigger =
-            TriggerBuilder.newTrigger()
-                .withIdentity("CleanupTrigger", ALERT_TRIGGER_GROUP)
-                .withSchedule(
-                    SimpleScheduleBuilder.simpleSchedule()
-                        .withIntervalInSeconds(10)
-                        .repeatForever())
-                .startNow()
-                .build();
-
-        alertsScheduler.scheduleJob(cleanupJob, cleanupTrigger);
-        cleanupJobInitialised = true;
-        LOG.info("Scheduled periodic cleanup job to run every 10 seconds.");
-      } catch (SchedulerException e) {
-        LOG.error("Failed to schedule cleanup job", e);
-      }
-    }
-  }
-
   @Transaction
   public void deleteSuccessfulAndFailedEventsRecordByAlert(UUID id) {
     Entity.getCollectionDAO()
@@ -206,6 +203,8 @@ public class EventSubscriptionScheduler {
     Entity.getCollectionDAO()
         .eventSubscriptionDAO()
         .deleteFailedRecordsBySubscriptionId(id.toString());
+
+    Entity.getCollectionDAO().eventSubscriptionDAO().deleteAlertMetrics(id.toString());
   }
 
   public SubscriptionStatus getStatusForEventSubscription(UUID subscriptionId, UUID destinationId) {
@@ -213,11 +212,12 @@ public class EventSubscriptionScheduler {
         getEventSubscriptionFromScheduledJob(subscriptionId);
 
     if (eventSubscriptionOpt.isPresent()) {
-      return eventSubscriptionOpt.get().getDestinations().stream()
-          .filter(destination -> destination.getId().equals(destinationId))
-          .map(SubscriptionDestination::getStatusDetails)
-          .findFirst()
-          .orElse(null);
+      return (SubscriptionStatus)
+          eventSubscriptionOpt.get().getDestinations().stream()
+              .filter(destination -> destination.getId().equals(destinationId))
+              .map(SubscriptionDestination::getStatusDetails)
+              .findFirst()
+              .orElse(null);
     }
 
     EntityRepository<? extends EntityInterface> subscriptionRepository =
@@ -262,6 +262,44 @@ public class EventSubscriptionScheduler {
     return eventSubscription.getDestinations();
   }
 
+  public EventsRecord getEventSubscriptionEventsRecord(UUID subscriptionId) {
+    long failedEventsCount =
+        Entity.getCollectionDAO().changeEventDAO().countFailedEvents(subscriptionId.toString());
+
+    long successfulEventsCount =
+        Entity.getCollectionDAO()
+            .eventSubscriptionDAO()
+            .getSuccessfulRecordCount(subscriptionId.toString());
+
+    long unprocessedEventsCount = getRelevantUnprocessedEvents(subscriptionId);
+    long totalEventsCount = failedEventsCount + successfulEventsCount + unprocessedEventsCount;
+
+    return new EventsRecord()
+        .withTotalEventsCount(totalEventsCount)
+        .withFailedEventsCount(failedEventsCount)
+        .withPendingEventsCount(unprocessedEventsCount)
+        .withSuccessfulEventsCount(successfulEventsCount);
+  }
+
+  public long getRelevantUnprocessedEvents(UUID subscriptionId) {
+    long offset =
+        getEventSubscriptionOffset(subscriptionId)
+            .map(EventSubscriptionOffset::getCurrentOffset)
+            .orElse(Entity.getCollectionDAO().changeEventDAO().getLatestOffset());
+
+    return Entity.getCollectionDAO().changeEventDAO().listUnprocessedEvents(offset).parallelStream()
+        .map(
+            eventJson -> {
+              ChangeEvent event = JsonUtils.readValue(eventJson, ChangeEvent.class);
+              return AlertUtil.checkIfChangeEventIsAllowed(
+                      event, getEventSubscription(subscriptionId).getFilteringRules())
+                  ? event
+                  : null;
+            })
+        .filter(Objects::nonNull) // Remove null entries (events that did not pass filtering)
+        .count();
+  }
+
   public EventSubscriptionDiagnosticInfo getEventSubscriptionDiagnosticInfo(
       UUID subscriptionId, int limit, int paginationOffset, boolean listCountOnly) {
     Optional<EventSubscriptionOffset> eventSubscriptionOffsetOptional =
@@ -284,6 +322,10 @@ public class EventSubscriptionScheduler {
 
     boolean hasProcessedAllEvents = checkIfPublisherPublishedAllEvents(subscriptionId);
 
+    List<ChangeEvent> unprocessedEvents =
+        Optional.ofNullable(getRelevantUnprocessedEvents(subscriptionId, limit, paginationOffset))
+            .orElse(Collections.emptyList());
+
     if (listCountOnly) {
       return new EventSubscriptionDiagnosticInfo()
           .withLatestOffset(latestOffset)
@@ -293,13 +335,10 @@ public class EventSubscriptionScheduler {
           .withSuccessfulEventsCount(successfulEventsCount)
           .withFailedEventsCount(failedEventsCount)
           .withTotalUnprocessedEventsCount(totalUnprocessedEventCount)
+          .withRelevantUnprocessedEventsCount((long) unprocessedEvents.size())
           .withRelevantUnprocessedEventsList(null)
           .withTotalUnprocessedEventsList(null);
     }
-
-    List<ChangeEvent> unprocessedEvents =
-        Optional.ofNullable(getRelevantUnprocessedEvents(subscriptionId, limit, paginationOffset))
-            .orElse(Collections.emptyList());
 
     List<ChangeEvent> allUnprocessedEvents =
         getAllUnprocessedEvents(subscriptionId, limit, paginationOffset);
@@ -471,8 +510,34 @@ public class EventSubscriptionScheduler {
     return Optional.empty();
   }
 
+  public int countTotalEvents(UUID id, TypedEvent.Status status) {
+    return switch (status) {
+      case FAILED -> Entity.getCollectionDAO()
+          .eventSubscriptionDAO()
+          .countFailedEventsById(id.toString());
+      case SUCCESSFUL -> Entity.getCollectionDAO()
+          .eventSubscriptionDAO()
+          .countSuccessfulEventsBySubscriptionId(id.toString());
+      default -> throw new IllegalArgumentException("Unknown event status: " + status);
+    };
+  }
+
+  public int countTotalEvents(UUID id) {
+    return Entity.getCollectionDAO()
+        .eventSubscriptionDAO()
+        .countAllEventsWithStatuses(id.toString());
+  }
+
   public boolean doesRecordExist(UUID id) {
     return Entity.getCollectionDAO().changeEventDAO().recordExists(id.toString()) > 0;
+  }
+
+  public static JobKey getJobKey(EventSubscription eventSubscription) {
+    return getJobKey(eventSubscription.getId());
+  }
+
+  private static JobKey getJobKey(UUID subscriptionId) {
+    return new JobKey(subscriptionId.toString(), ALERT_JOB_GROUP);
   }
 
   public static void shutDown() throws SchedulerException {

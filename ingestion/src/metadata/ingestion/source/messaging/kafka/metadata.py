@@ -22,21 +22,19 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.messaging.common_broker_source import CommonBrokerSource
-from metadata.utils.ssl_manager import SSLManager
+from metadata.utils.ssl_manager import SSLManager, check_ssl_and_init
 
 
 class KafkaSource(CommonBrokerSource):
     def __init__(self, config: WorkflowSource, metadata: OpenMetadata):
         self.ssl_manager = None
-        service_connection = cast(KafkaConnection, config.serviceConnection.root.config)
-        if service_connection.schemaRegistrySSL:
-            self.ssl_manager = SSLManager(
-                ca=service_connection.schemaRegistrySSL.root.caCertificate,
-                key=service_connection.schemaRegistrySSL.root.sslKey,
-                cert=service_connection.schemaRegistrySSL.root.sslCertificate,
-            )
-            service_connection = self.ssl_manager.setup_ssl(
-                config.serviceConnection.root.config
+        self.service_connection = cast(
+            KafkaConnection, config.serviceConnection.root.config
+        )
+        self.ssl_manager: SSLManager = check_ssl_and_init(self.service_connection)
+        if self.ssl_manager:
+            self.service_connection = self.ssl_manager.setup_ssl(
+                self.service_connection
             )
         super().__init__(config, metadata)
 

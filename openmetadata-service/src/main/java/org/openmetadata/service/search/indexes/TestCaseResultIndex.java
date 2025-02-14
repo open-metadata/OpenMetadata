@@ -42,7 +42,11 @@ public record TestCaseResultIndex(TestCaseResult testCaseResult) implements Sear
   @Override
   public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> esDoc) {
     TestCase testCase =
-        Entity.getEntityByName(Entity.TEST_CASE, testCaseResult.getTestCaseFQN(), "*", Include.ALL);
+        Entity.getEntityByName(
+            Entity.TEST_CASE,
+            testCaseResult.getTestCaseFQN(),
+            "owners,testSuites,testDefinition,domain,tags",
+            Include.ALL);
     TestDefinition testDefinition =
         Entity.getEntityByName(
             Entity.TEST_DEFINITION,
@@ -80,7 +84,12 @@ public record TestCaseResultIndex(TestCaseResult testCaseResult) implements Sear
 
   private void setTableEntityParentRelations(
       MessageParser.EntityLink entityLink, Map<String, Object> esDoc) {
-    Table table = Entity.getEntityByName(Entity.TABLE, entityLink.getEntityFQN(), "*", Include.ALL);
+    Table table =
+        Entity.getEntityByName(
+            Entity.TABLE,
+            entityLink.getEntityFQN(),
+            "owners,columns,tags,followers,schemaDefinition,dataModel,extension,domain,dataProducts",
+            Include.ALL);
     EntityReference databaseSchemaReference = table.getDatabaseSchema();
     EntityReference databaseReference = table.getDatabase();
     EntityReference serviceReference = table.getService();

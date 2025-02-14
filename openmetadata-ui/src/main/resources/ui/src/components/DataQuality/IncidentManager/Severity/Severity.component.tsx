@@ -32,17 +32,16 @@ import '../incident-manager.style.less';
 import { SeverityProps } from './Severity.interface';
 import SeverityModal from './SeverityModal.component';
 
-const Severity = ({ severity, onSubmit }: SeverityProps) => {
+const Severity = ({ severity, onSubmit, hasPermission }: SeverityProps) => {
   const { t } = useTranslation();
   const [isEditSeverity, setIsEditSeverity] = useState<boolean>(false);
   const { permissions } = usePermissionProvider();
   const hasEditPermission = useMemo(() => {
-    return checkPermission(
-      Operation.EditAll,
-      ResourceEntity.TEST_CASE,
-      permissions
+    return (
+      hasPermission ??
+      checkPermission(Operation.EditAll, ResourceEntity.TEST_CASE, permissions)
     );
-  }, [permissions]);
+  }, [permissions, hasPermission]);
 
   const onEditSeverity = useCallback(() => setIsEditSeverity(true), []);
   const onCancel = useCallback(() => setIsEditSeverity(false), []);

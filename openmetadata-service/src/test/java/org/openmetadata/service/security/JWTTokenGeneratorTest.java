@@ -15,6 +15,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
+import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.jwt.JWTTokenConfiguration;
 import org.openmetadata.schema.auth.JWTAuthMechanism;
 import org.openmetadata.schema.auth.JWTTokenExpiry;
@@ -38,7 +39,8 @@ class JWTTokenGeneratorTest {
     jwtTokenConfiguration.setRsaprivateKeyFilePath(rsaPrivateKeyPath);
     jwtTokenConfiguration.setRsapublicKeyFilePath(rsaPublicKeyPath);
     jwtTokenGenerator = JWTTokenGenerator.getInstance();
-    jwtTokenGenerator.init(jwtTokenConfiguration);
+    jwtTokenGenerator.init(
+        AuthenticationConfiguration.TokenValidationAlgorithm.RS_256, jwtTokenConfiguration);
   }
 
   @Test

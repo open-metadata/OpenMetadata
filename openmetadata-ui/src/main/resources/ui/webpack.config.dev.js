@@ -19,7 +19,8 @@ const process = require('process');
 
 const outputPath = path.join(__dirname, 'build');
 const subPath = process.env.APP_SUB_PATH ?? '';
-const devServerTarget = process.env.DEV_SERVER_TARGET ?? 'http://localhost:8585/';
+const devServerTarget =
+  process.env.DEV_SERVER_TARGET ?? 'http://localhost:8585/';
 
 module.exports = {
   // Development mode
@@ -116,6 +117,7 @@ module.exports = {
     },
     alias: {
       process: 'process/browser',
+      Quill: path.resolve(__dirname, 'node_modules/quill'), // Alias for the 'quill' library in node_modules
     },
   },
 
@@ -151,6 +153,18 @@ module.exports = {
         },
         {
           from: path.join(__dirname, 'public/logo192.png'),
+          to: outputPath,
+        },
+        {
+          from: path.join(__dirname, 'public/BronzeCertification.svg'),
+          to: outputPath,
+        },
+        {
+          from: path.join(__dirname, 'public/SilverCertification.svg'),
+          to: outputPath,
+        },
+        {
+          from: path.join(__dirname, 'public/GoldCertification.svg'),
           to: outputPath,
         },
         {

@@ -16,15 +16,12 @@ import React, { FC, useEffect } from 'react';
 import { HelmetProvider } from 'react-helmet-async';
 import { I18nextProvider } from 'react-i18next';
 import { Router } from 'react-router-dom';
-import { ToastContainer } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.min.css';
 import AppRouter from './components/AppRouter/AppRouter';
 import { AuthProvider } from './components/Auth/AuthProviders/AuthProvider';
 import ErrorBoundary from './components/common/ErrorBoundary/ErrorBoundary';
 import { EntityExportModalProvider } from './components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import ApplicationsProvider from './components/Settings/Applications/ApplicationsProvider/ApplicationsProvider';
 import WebAnalyticsProvider from './components/WebAnalytics/WebAnalyticsProvider';
-import { TOAST_OPTIONS } from './constants/Toasts.constants';
 import AntDConfigProvider from './context/AntDConfigProvider/AntDConfigProvider';
 import PermissionProvider from './context/PermissionProvider/PermissionProvider';
 import TourProvider from './context/TourProvider/TourProvider';
@@ -63,10 +60,12 @@ const App: FC = () => {
       ? '/favicon.png'
       : applicationConfig?.customLogoConfig?.customFaviconUrlPath ??
         '/favicon.png';
-    const link = document.querySelector('link[rel~="icon"]');
+    const link = document.querySelectorAll('link[rel~="icon"]');
 
-    if (link) {
-      link.setAttribute('href', faviconHref);
+    if (!isEmpty(link)) {
+      link.forEach((item) => {
+        item.setAttribute('href', faviconHref);
+      });
     }
   }, [applicationConfig]);
 
@@ -98,7 +97,6 @@ const App: FC = () => {
             </ErrorBoundary>
           </I18nextProvider>
         </Router>
-        <ToastContainer {...TOAST_OPTIONS} newestOnTop />
       </div>
     </div>
   );

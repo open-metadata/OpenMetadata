@@ -32,6 +32,7 @@ import { DisplayType } from '../../Tag/TagsViewer/TagsViewer.interface';
 interface EntityRightPanelProps<T extends ExtentionEntitiesKeys> {
   dataProducts: EntityReference[];
   editTagPermission: boolean;
+  editGlossaryTermsPermission: boolean;
   entityType: EntityType;
   entityFQN: string;
   entityId: string;
@@ -57,6 +58,7 @@ const EntityRightPanel = <T extends ExtentionEntitiesKeys>({
   entityType,
   selectedTags,
   editTagPermission,
+  editGlossaryTermsPermission,
   onTagSelectionChange,
   onThreadLinkSelect,
   beforeSlot,
@@ -101,7 +103,7 @@ const EntityRightPanel = <T extends ExtentionEntitiesKeys>({
           displayType={DisplayType.READ_MORE}
           entityFqn={entityFQN}
           entityType={entityType}
-          permission={editTagPermission}
+          permission={editGlossaryTermsPermission}
           selectedTags={selectedTags}
           showTaskHandler={showTaskHandler}
           tagType={TagSource.Glossary}

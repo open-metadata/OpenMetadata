@@ -29,9 +29,8 @@ import {
 } from '../../../constants/constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
-import { SearchIndex } from '../../../enums/search.enum';
 import { TestCase } from '../../../generated/tests/testCase';
-import { searchQuery } from '../../../rest/searchAPI';
+import { getListTestCaseBySearch } from '../../../rest/testAPI';
 import { getNameFromFQN } from '../../../utils/CommonUtils';
 import {
   getColumnNameFromEntityLink,
@@ -53,6 +52,7 @@ export const AddTestCaseList = ({
   selectedTest,
   onChange,
   showButton = true,
+  testCaseParams,
 }: AddTestCaseModalProps) => {
   const { t } = useTranslation();
   const [searchTerm, setSearchTerm] = useState<string>();
@@ -70,20 +70,20 @@ export const AddTestCaseList = ({
     async ({ searchText = WILD_CARD_CHAR, page = 1 }) => {
       try {
         setIsLoading(true);
-        const res = await searchQuery({
-          pageNumber: page,
-          pageSize: PAGE_SIZE_MEDIUM,
-          searchIndex: SearchIndex.TEST_CASE,
-          query: searchText,
-          filters,
+
+        const testCaseResponse = await getListTestCaseBySearch({
+          q: filters ? `${searchText} && ${filters}` : searchText,
+          limit: PAGE_SIZE_MEDIUM,
+          offset: (page - 1) * PAGE_SIZE_MEDIUM,
+          ...(testCaseParams ?? {}),
         });
-        const hits = res.hits.hits.map((hit) => hit._source as TestCase);
-        setTotalCount(res.hits.total.value ?? 0);
+
+        setTotalCount(testCaseResponse.paging.total ?? 0);
         if (selectedTest) {
           setSelectedItems((pre) => {
             const selectedItemsMap = new Map();
             pre?.forEach((item) => selectedItemsMap.set(item.id, item));
-            hits.forEach((hit) => {
+            testCaseResponse.data.forEach((hit) => {
               if (selectedTest.find((test) => hit.name === test)) {
                 selectedItemsMap.set(hit.id ?? '', hit);
               }
@@ -92,7 +92,11 @@ export const AddTestCaseList = ({
             return selectedItemsMap;
           });
         }
-        setItems(page === 1 ? hits : (prevItems) => [...prevItems, ...hits]);
+        setItems(
+          page === 1
+            ? testCaseResponse.data
+            : (prevItems) => [...prevItems, ...testCaseResponse.data]
+        );
         setPageNumber(page);
       } catch (_) {
         // Nothing here
@@ -106,7 +110,7 @@ export const AddTestCaseList = ({
   const handleSubmit = async () => {
     setIsLoading(true);
     const testCaseIds = [...(selectedItems?.values() ?? [])];
-    onSubmit?.(testCaseIds);
+    await onSubmit?.(testCaseIds);
     setIsLoading(false);
   };
 

@@ -11,23 +11,8 @@
  *  limitations under the License.
  */
 
-import { TopicConfigObjectInterface } from '../components/Topic/TopicDetails/TopicDetails.interface';
 import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 import { EntityTabs } from '../enums/entity.enum';
-import { Topic } from '../generated/entity/data/topic';
-
-export const getConfigObject = (
-  topicDetails: Topic
-): TopicConfigObjectInterface => {
-  return {
-    Partitions: topicDetails.partitions,
-    'Replication Factor': topicDetails.replicationFactor,
-    'Retention Size': topicDetails.retentionSize,
-    'CleanUp Policies': topicDetails.cleanupPolicies,
-    'Max Message Size': topicDetails.maximumMessageSize,
-    'Schema Type': topicDetails.messageSchema?.schemaType,
-  };
-};
 
 export const getTopicDetailsPageDefaultLayout = (tab: EntityTabs) => {
   switch (tab) {

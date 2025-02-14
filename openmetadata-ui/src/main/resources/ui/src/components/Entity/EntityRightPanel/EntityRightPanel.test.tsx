@@ -62,6 +62,7 @@ describe('EntityRightPanel component test', () => {
   it('Component should render', () => {
     render(
       <EntityRightPanel
+        editGlossaryTermsPermission
         editTagPermission
         customProperties={mockCustomProperties}
         dataProducts={mockDataProducts}
@@ -83,6 +84,7 @@ describe('EntityRightPanel component test', () => {
   it('Component should not render DataProductsContainer when showDataProductContainer is false', () => {
     render(
       <EntityRightPanel
+        editGlossaryTermsPermission
         editTagPermission
         customProperties={mockCustomProperties}
         dataProducts={mockDataProducts}
@@ -104,6 +106,7 @@ describe('EntityRightPanel component test', () => {
   it('Component should render before and after slot', () => {
     render(
       <EntityRightPanel
+        editGlossaryTermsPermission
         editTagPermission
         afterSlot={<div>afterSlot</div>}
         beforeSlot={<div>beforeSlot</div>}
@@ -128,6 +131,7 @@ describe('EntityRightPanel component test', () => {
   it('Component should not render before and after slot when not provided', () => {
     render(
       <EntityRightPanel
+        editGlossaryTermsPermission
         editTagPermission
         customProperties={mockCustomProperties}
         dataProducts={mockDataProducts}
@@ -156,6 +160,7 @@ describe('EntityRightPanel component test', () => {
       .mockImplementation(() => KnowledgeArticles);
     render(
       <EntityRightPanel
+        editGlossaryTermsPermission
         editTagPermission
         customProperties={mockCustomProperties}
         dataProducts={mockDataProducts}
@@ -182,6 +187,7 @@ describe('EntityRightPanel component test', () => {
       .mockImplementation(() => null);
     render(
       <EntityRightPanel
+        editGlossaryTermsPermission
         editTagPermission
         customProperties={mockCustomProperties}
         dataProducts={mockDataProducts}
@@ -205,6 +211,7 @@ describe('EntityRightPanel component test', () => {
   it('should render CustomPropertyTable when mockCustomProperties is not null', () => {
     render(
       <EntityRightPanel
+        editGlossaryTermsPermission
         editTagPermission
         viewAllPermission
         customProperties={mockCustomProperties}
@@ -230,6 +237,7 @@ describe('EntityRightPanel component test', () => {
   it('should not render CustomPropertyTable when no custom properties', () => {
     render(
       <EntityRightPanel
+        editGlossaryTermsPermission
         editTagPermission
         viewAllPermission
         customProperties={{} as Table}

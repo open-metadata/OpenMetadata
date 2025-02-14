@@ -12,7 +12,12 @@
  */
 import { expect, test } from '@playwright/test';
 import { GlobalSettingOptions } from '../../constant/settings';
-import { descriptionBox, redirectToHomePage, uuid } from '../../utils/common';
+import {
+  descriptionBox,
+  redirectToHomePage,
+  toastNotification,
+  uuid,
+} from '../../utils/common';
 import { settingClick } from '../../utils/sidebar';
 
 const apiServiceConfig = {
@@ -40,7 +45,7 @@ test.describe('API service', () => {
 
     // step 1
     await page.getByTestId('service-name').fill(apiServiceConfig.name);
-    await page.fill(descriptionBox, apiServiceConfig.description);
+    await page.locator(descriptionBox).fill(apiServiceConfig.description);
     await page.getByTestId('next-button').click();
 
     // step 2
@@ -89,10 +94,6 @@ test.describe('API service', () => {
 
     await deleteResponse;
 
-    await expect(page.locator('.Toastify__toast-body')).toHaveText(
-      /deleted successfully!/
-    );
-
-    await page.click('.Toastify__close-button');
+    await toastNotification(page, /deleted successfully!/);
   });
 });

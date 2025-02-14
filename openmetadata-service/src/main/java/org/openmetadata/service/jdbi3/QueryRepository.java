@@ -246,7 +246,7 @@ public class QueryRepository extends EntityRepository<Query> {
 
     @Transaction
     @Override
-    public void entitySpecificUpdate() {
+    public void entitySpecificUpdate(boolean consolidatingChanges) {
       updateFromRelationships(
           "users",
           USER,

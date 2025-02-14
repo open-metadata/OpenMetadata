@@ -37,7 +37,6 @@ import {
   noop,
   omitBy,
   toNumber,
-  toUpper,
 } from 'lodash';
 import moment, { Moment } from 'moment';
 import React, {
@@ -65,6 +64,7 @@ import { CSMode } from '../../../enums/codemirror.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { EntityReference } from '../../../generated/entity/type';
 import { Config } from '../../../generated/type/customProperty';
+import { getCustomPropertyMomentFormat } from '../../../utils/CustomProperty.utils';
 import { calculateInterval } from '../../../utils/date-time/DateTimeUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../../utils/EntityUtils';
@@ -76,7 +76,7 @@ import SchemaEditor from '../../Database/SchemaEditor/SchemaEditor';
 import { ModalWithMarkdownEditor } from '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import InlineEdit from '../InlineEdit/InlineEdit.component';
 import ProfilePicture from '../ProfilePicture/ProfilePicture';
-import RichTextEditorPreviewer from '../RichTextEditor/RichTextEditorPreviewer';
+import RichTextEditorPreviewerV1 from '../RichTextEditor/RichTextEditorPreviewerV1';
 import {
   PropertyValueProps,
   PropertyValueType,
@@ -187,7 +187,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
   const getPropertyInput = () => {
     const commonStyle: CSSProperties = {
       marginBottom: '0px',
-      minWidth: '250px',
+      width: '100%',
     };
     switch (propertyType.name) {
       case 'string':
@@ -241,6 +241,8 @@ export const PropertyValue: FC<PropertyValueProps> = ({
           enumValues: (isArray(value) ? value : [value]).filter(Boolean),
         };
 
+        const formId = `enum-form-${propertyName}`;
+
         return (
           <InlineEdit
             className="custom-property-inline-edit-container"
@@ -248,12 +250,12 @@ export const PropertyValue: FC<PropertyValueProps> = ({
             saveButtonProps={{
               disabled: isLoading,
               htmlType: 'submit',
-              form: 'enum-form',
+              form: formId,
             }}
             onCancel={onHideInput}
             onSave={noop}>
             <Form
-              id="enum-form"
+              id={formId}
               initialValues={initialValues}
               layout="vertical"
               onFinish={(values: { enumValues: string | string[] }) =>
@@ -276,14 +278,16 @@ export const PropertyValue: FC<PropertyValueProps> = ({
 
       case 'date-cp':
       case 'dateTime-cp': {
-        // Default format is 'yyyy-mm-dd'
-        const format = toUpper(
-          (property.customPropertyConfig?.config as string) ?? 'yyyy-mm-dd'
+        const format = getCustomPropertyMomentFormat(
+          propertyType.name,
+          property.customPropertyConfig?.config
         );
 
         const initialValues = {
           dateTimeValue: value ? moment(value, format) : undefined,
         };
+
+        const formId = `dateTime-form-${propertyName}`;
 
         return (
           <InlineEdit
@@ -292,12 +296,12 @@ export const PropertyValue: FC<PropertyValueProps> = ({
             saveButtonProps={{
               disabled: isLoading,
               htmlType: 'submit',
-              form: 'dateTime-form',
+              form: formId,
             }}
             onCancel={onHideInput}
             onSave={noop}>
             <Form
-              id="dateTime-form"
+              id={formId}
               initialValues={initialValues}
               layout="vertical"
               onFinish={(values: { dateTimeValue: Moment }) => {
@@ -310,11 +314,11 @@ export const PropertyValue: FC<PropertyValueProps> = ({
               <Form.Item name="dateTimeValue" style={commonStyle}>
                 <DatePicker
                   allowClear
+                  className="w-full"
                   data-testid="date-time-picker"
                   disabled={isLoading}
                   format={format}
                   showTime={propertyType.name === 'dateTime-cp'}
-                  style={{ width: '250px' }}
                 />
               </Form.Item>
             </Form>
@@ -323,11 +327,16 @@ export const PropertyValue: FC<PropertyValueProps> = ({
       }
 
       case 'time-cp': {
-        const format =
-          (property.customPropertyConfig?.config as string) ?? 'HH:mm:ss';
+        const format = getCustomPropertyMomentFormat(
+          propertyType.name,
+          property.customPropertyConfig?.config
+        );
+
         const initialValues = {
           time: value ? moment(value, format) : undefined,
         };
+
+        const formId = `time-form-${propertyName}`;
 
         return (
           <InlineEdit
@@ -336,12 +345,12 @@ export const PropertyValue: FC<PropertyValueProps> = ({
             saveButtonProps={{
               disabled: isLoading,
               htmlType: 'submit',
-              form: 'time-form',
+              form: formId,
             }}
             onCancel={onHideInput}
             onSave={noop}>
             <Form
-              id="time-form"
+              id={formId}
               initialValues={initialValues}
               layout="vertical"
               validateMessages={VALIDATION_MESSAGES}
@@ -353,10 +362,10 @@ export const PropertyValue: FC<PropertyValueProps> = ({
               <Form.Item name="time" style={commonStyle}>
                 <TimePicker
                   allowClear
+                  className="w-full"
                   data-testid="time-picker"
                   disabled={isLoading}
                   format={format}
-                  style={{ width: '250px' }}
                 />
               </Form.Item>
             </Form>
@@ -369,6 +378,8 @@ export const PropertyValue: FC<PropertyValueProps> = ({
           email: value,
         };
 
+        const formId = `email-form-${propertyName}`;
+
         return (
           <InlineEdit
             className="custom-property-inline-edit-container"
@@ -376,12 +387,12 @@ export const PropertyValue: FC<PropertyValueProps> = ({
             saveButtonProps={{
               disabled: isLoading,
               htmlType: 'submit',
-              form: 'email-form',
+              form: formId,
             }}
             onCancel={onHideInput}
             onSave={noop}>
             <Form
-              id="email-form"
+              id={formId}
               initialValues={initialValues}
               layout="vertical"
               validateMessages={VALIDATION_MESSAGES}
@@ -415,6 +426,8 @@ export const PropertyValue: FC<PropertyValueProps> = ({
           timestamp: value,
         };
 
+        const formId = `timestamp-form-${propertyName}`;
+
         return (
           <InlineEdit
             className="custom-property-inline-edit-container"
@@ -422,12 +435,12 @@ export const PropertyValue: FC<PropertyValueProps> = ({
             saveButtonProps={{
               disabled: isLoading,
               htmlType: 'submit',
-              form: 'timestamp-form',
+              form: formId,
             }}
             onCancel={onHideInput}
             onSave={noop}>
             <Form
-              id="timestamp-form"
+              id={formId}
               initialValues={initialValues}
               layout="vertical"
               onFinish={(values: { timestamp: string }) => {
@@ -466,6 +479,8 @@ export const PropertyValue: FC<PropertyValueProps> = ({
           end: value?.end ? value.end?.toString() : undefined,
         };
 
+        const formId = `timeInterval-form-${propertyName}`;
+
         return (
           <InlineEdit
             className="custom-property-inline-edit-container"
@@ -473,12 +488,12 @@ export const PropertyValue: FC<PropertyValueProps> = ({
             saveButtonProps={{
               disabled: isLoading,
               htmlType: 'submit',
-              form: 'timeInterval-form',
+              form: formId,
             }}
             onCancel={onHideInput}
             onSave={noop}>
             <Form
-              id="timeInterval-form"
+              id={formId}
               initialValues={initialValues}
               layout="vertical"
               onFinish={(values: { start: string; end: string }) => {
@@ -540,6 +555,8 @@ export const PropertyValue: FC<PropertyValueProps> = ({
           duration: value,
         };
 
+        const formId = `duration-form-${propertyName}`;
+
         return (
           <InlineEdit
             className="custom-property-inline-edit-container"
@@ -547,12 +564,12 @@ export const PropertyValue: FC<PropertyValueProps> = ({
             saveButtonProps={{
               disabled: isLoading,
               htmlType: 'submit',
-              form: 'duration-form',
+              form: formId,
             }}
             onCancel={onHideInput}
             onSave={noop}>
             <Form
-              id="duration-form"
+              id={formId}
               initialValues={initialValues}
               layout="vertical"
               validateMessages={VALIDATION_MESSAGES}
@@ -577,6 +594,8 @@ export const PropertyValue: FC<PropertyValueProps> = ({
           sqlQuery: value,
         };
 
+        const formId = `sqlQuery-form-${propertyName}`;
+
         return (
           <InlineEdit
             className="custom-property-inline-edit-container sql-query-custom-property"
@@ -584,12 +603,12 @@ export const PropertyValue: FC<PropertyValueProps> = ({
             saveButtonProps={{
               disabled: isLoading,
               htmlType: 'submit',
-              form: 'sqlQuery-form',
+              form: formId,
             }}
             onCancel={onHideInput}
             onSave={noop}>
             <Form
-              id="sqlQuery-form"
+              id={formId}
               initialValues={initialValues}
               layout="vertical"
               validateMessages={VALIDATION_MESSAGES}
@@ -650,6 +669,8 @@ export const PropertyValue: FC<PropertyValueProps> = ({
           entityReference: initialValue,
         };
 
+        const formId = `entity-reference-form-${propertyName}`;
+
         return (
           <InlineEdit
             className="custom-property-inline-edit-container"
@@ -657,12 +678,12 @@ export const PropertyValue: FC<PropertyValueProps> = ({
             saveButtonProps={{
               disabled: isLoading,
               htmlType: 'submit',
-              form: 'entity-reference-form',
+              form: formId,
             }}
             onCancel={onHideInput}
             onSave={noop}>
             <Form
-              id="entity-reference-form"
+              id={formId}
               initialValues={initialValues}
               layout="vertical"
               validateMessages={VALIDATION_MESSAGES}
@@ -737,7 +758,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
       const isKeyAdded = versionDataKeys?.includes(propertyName);
 
       return (
-        <RichTextEditorPreviewer
+        <RichTextEditorPreviewerV1
           className={isKeyAdded ? 'diff-added' : ''}
           markdown={String(value) || ''}
         />
@@ -745,7 +766,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
     }
     switch (propertyType.name) {
       case 'markdown':
-        return <RichTextEditorPreviewer markdown={value || ''} />;
+        return <RichTextEditorPreviewerV1 markdown={value || ''} />;
 
       case 'enum':
         return (
@@ -887,7 +908,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
 
         return (
           <div
-            className="d-flex justify-between"
+            className="d-flex justify-center flex-wrap gap-2 py-2"
             data-testid="time-interval-value">
             <div className="d-flex flex-column gap-2 items-center">
               <StartTimeIcon height={30} width={30} />
@@ -1016,7 +1037,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
           </Col>
           {!isRenderedInRightPanel && (
             <Col span={24}>
-              <RichTextEditorPreviewer
+              <RichTextEditorPreviewerV1
                 className="text-grey-muted property-description"
                 markdown={property.description || ''}
                 maxLength={70}

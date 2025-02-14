@@ -92,6 +92,11 @@ class PowerbiSource(DashboardServiceSource):
         self.datamodel_file_mappings = []
 
     def prepare(self):
+        """
+        - Since we get all the required info i.e. reports, dashboards, charts, datasets
+          with workflow scan approach, we are populating bulk data for workspace.
+        - Some individual APIs are not able to yield data with details.
+        """
         if self.service_connection.useAdminApis:
             groups = self.get_admin_workspace_data()
         else:
@@ -185,24 +190,41 @@ class PowerbiSource(DashboardServiceSource):
                 workspace_scan = self.client.api_client.initiate_workspace_scan(
                     workspace_ids_chunk
                 )
+                if not workspace_scan:
+                    logger.error(
+                        f"Error initiating workspace scan for ids:{str(workspace_ids_chunk)}\n moving to next set of workspaces"
+                    )
+                    count += 1
+                    continue
 
                 # Keep polling the scan status endpoint to check if scan is succeeded
                 workspace_scan_status = self.client.api_client.wait_for_scan_complete(
                     scan_id=workspace_scan.id
                 )
-                if workspace_scan_status:
-                    response = self.client.api_client.fetch_workspace_scan_result(
-                        scan_id=workspace_scan.id
+                if not workspace_scan_status:
+                    logger.error(
+                        f"Max poll hit to scan status for scan_id: {workspace_scan.id}, moving to next set of workspaces"
                     )
-                    groups.extend(
-                        [
-                            active_workspace
-                            for active_workspace in response.workspaces
-                            if active_workspace.state == "Active"
-                        ]
+                    count += 1
+                    continue
+
+                # Get scan result for successfull scan
+                response = self.client.api_client.fetch_workspace_scan_result(
+                    scan_id=workspace_scan.id
+                )
+                if not response:
+                    logger.error(
+                        f"Error getting workspace scan result for scan_id: {workspace_scan.id}"
                     )
-                else:
-                    logger.error("Error in fetching dashboards and charts")
+                    count += 1
+                    continue
+                groups.extend(
+                    [
+                        active_workspace
+                        for active_workspace in response.workspaces
+                        if active_workspace.state == "Active"
+                    ]
+                )
                 count += 1
         else:
             logger.error("Unable to fetch any PowerBI workspaces")
@@ -374,6 +396,7 @@ class PowerbiSource(DashboardServiceSource):
                     ),
                     "name": column.name,
                     "displayName": column.name,
+                    "description": column.description,
                 }
                 if column.dataType and column.dataType == DataType.ARRAY.value:
                     parsed_column["arrayDataType"] = DataType.UNKNOWN

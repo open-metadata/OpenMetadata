@@ -270,7 +270,7 @@ public class ContainerRepository extends EntityRepository<Container> {
 
     @Transaction
     @Override
-    public void entitySpecificUpdate() {
+    public void entitySpecificUpdate(boolean consolidatingChanges) {
       updateDataModel(original, updated);
       recordChange("prefix", original.getPrefix(), updated.getPrefix());
       List<ContainerFileFormat> addedItems = new ArrayList<>();

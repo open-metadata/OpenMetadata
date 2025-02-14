@@ -1,5 +1,6 @@
 package org.openmetadata.service.jdbi3;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.util.UserUtil.getUser;
 
@@ -14,6 +15,7 @@ import org.openmetadata.schema.entity.Bot;
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppExtension;
 import org.openmetadata.schema.entity.app.AppRunRecord;
+import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
@@ -141,11 +143,7 @@ public class AppRepository extends EntityRepository<App> {
   public void storeEntity(App entity, boolean update) {
     List<EntityReference> ownerRefs = entity.getOwners();
     entity.withOwners(null);
-
-    // Store
     store(entity, update);
-
-    // Restore entity fields
     entity.withOwners(ownerRefs);
   }
 
@@ -178,7 +176,6 @@ public class AppRepository extends EntityRepository<App> {
   }
 
   public final List<App> listAll() {
-    // forward scrolling, if after == null then first page is being asked
     List<String> jsons = dao.listAfterWithOffset(Integer.MAX_VALUE, 0);
     List<App> entities = new ArrayList<>();
     for (String json : jsons) {
@@ -214,7 +211,6 @@ public class AppRepository extends EntityRepository<App> {
             .listAppExtensionCountByName(app.getName(), extensionType.toString());
     List<T> entities = new ArrayList<>();
     if (limitParam > 0) {
-      // forward scrolling, if after == null then first page is being asked
       List<String> jsons =
           daoCollection
               .appExtensionTimeSeriesDao()
@@ -274,7 +270,6 @@ public class AppRepository extends EntityRepository<App> {
                 app.getName(), startTime, extensionType.toString());
     List<T> entities = new ArrayList<>();
     if (limitParam > 0) {
-      // forward scrolling, if after == null then first page is being asked
       List<String> jsons =
           daoCollection
               .appExtensionTimeSeriesDao()
@@ -287,7 +282,6 @@ public class AppRepository extends EntityRepository<App> {
 
       return new ResultList<>(entities, offset, total);
     } else {
-      // limit == 0 , return total count of entity.
       return new ResultList<>(entities, null, total);
     }
   }
@@ -388,17 +382,33 @@ public class AppRepository extends EntityRepository<App> {
     return new AppRepository.AppUpdater(original, updated, operation);
   }
 
+  public void addEventSubscription(App app, EventSubscription eventSubscription) {
+    addRelationship(
+        app.getId(),
+        eventSubscription.getId(),
+        Entity.APPLICATION,
+        Entity.EVENT_SUBSCRIPTION,
+        Relationship.CONTAINS);
+    List<EntityReference> newSubs = new ArrayList<>(listOrEmpty(app.getEventSubscriptions()));
+    newSubs.add(eventSubscription.getEntityReference());
+    App updated = JsonUtils.deepCopy(app, App.class).withEventSubscriptions(newSubs);
+    updated.setOpenMetadataServerConnection(null);
+    getUpdater(app, updated, EntityRepository.Operation.PATCH).update();
+  }
+
   public class AppUpdater extends EntityUpdater {
     public AppUpdater(App original, App updated, Operation operation) {
       super(original, updated, operation);
     }
 
     @Override
-    public void entitySpecificUpdate() {
+    public void entitySpecificUpdate(boolean consolidatingChanges) {
       recordChange(
           "appConfiguration", original.getAppConfiguration(), updated.getAppConfiguration());
       recordChange("appSchedule", original.getAppSchedule(), updated.getAppSchedule());
       recordChange("bot", original.getBot(), updated.getBot());
+      recordChange(
+          "eventSubscriptions", original.getEventSubscriptions(), updated.getEventSubscriptions());
     }
   }
 }

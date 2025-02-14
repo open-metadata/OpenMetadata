@@ -17,11 +17,9 @@ from abc import ABC, abstractmethod
 from typing import Iterable, Iterator, Optional, cast
 
 from metadata.generated.schema.entity.data.database import Database
+from metadata.generated.schema.entity.data.table import TableType
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
-)
-from metadata.generated.schema.metadataIngestion.databaseServiceProfilerPipeline import (
-    DatabaseServiceProfilerPipeline,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
@@ -31,6 +29,7 @@ from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.status import Status
 from metadata.ingestion.models.entity_interface import EntityInterfaceWithTags
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.profiler.source.fetcher.config import EntityFilterConfigInterface
 from metadata.profiler.source.fetcher.profiler_source_factory import (
     profiler_source_factory,
 )
@@ -116,14 +115,14 @@ class DatabaseFetcherStrategy(FetcherStrategy):
     ) -> None:
         super().__init__(config, metadata, global_profiler_config, status)
         self.source_config = cast(
-            DatabaseServiceProfilerPipeline, self.source_config
-        )  # Satisfy typchecker
+            EntityFilterConfigInterface, self.source_config
+        )  # Satisfy typechecker
 
     def _filter_databases(self, databases: Iterable[Database]) -> Iterable[Database]:
         """Filter databases based on the filter pattern
 
         Args:
-            database (Database): Database to filter
+            databases (Database): Database to filter
 
         Returns:
             bool
@@ -194,6 +193,21 @@ class DatabaseFetcherStrategy(FetcherStrategy):
 
         return False
 
+    def _filter_views(self, table: Table) -> bool:
+        """Filter the tables based on include views configuration"""
+        # If we include views, nothing to filter
+        if self.source_config.includeViews:
+            return False
+
+        # Otherwise, filter out views
+        if table.tableType == TableType.View:
+            self.status.filter(
+                table.name.root, f"We are not including views {table.name.root}"
+            )
+            return True
+
+        return False
+
     def _filter_column_metrics_computation(self):
         """Filter"""
 
@@ -244,6 +258,7 @@ class DatabaseFetcherStrategy(FetcherStrategy):
                 not self.source_config.classificationFilterPattern
                 or not self.filter_classifications(table)
             )
+            and not self._filter_views(table)
         ]
 
         return tables

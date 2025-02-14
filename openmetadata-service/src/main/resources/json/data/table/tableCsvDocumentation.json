@@ -2,7 +2,7 @@
   "summary": "Table CSV file is used for importing and exporting table metadata from and to an **existing** table.",
   "headers": [
     {
-      "name": "column.fullyQualifiedName",
+      "name": "column.name",
       "required": true,
       "description": "Fully qualified name of the column.",
       "examples": [

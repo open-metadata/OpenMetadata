@@ -153,7 +153,7 @@ class UsageSource(QueryParserSource, ABC):
                 if query:
                     logger.debug(
                         (
-                            f"###### USAGE QUERY #######\n{mask_query(query, self.dialect.value)}"
+                            f"###### USAGE QUERY #######\n{mask_query(query, self.dialect.value) or query}"
                             "\n##########################"
                         )
                     )

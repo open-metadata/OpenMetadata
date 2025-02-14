@@ -257,7 +257,7 @@ class OMetaTableMixin:
         profile_type_url = profile_type.__name__[0].lower() + profile_type.__name__[1:]
 
         resp = self.client.get(
-            f"{self.get_suffix(Table)}/{fqn}/{profile_type_url}?limit={limit}{url_after}",
+            f"{self.get_suffix(Table)}/{quote(fqn)}/{profile_type_url}?limit={limit}{url_after}",
             data={"startTs": start_ts, "endTs": end_ts},
         )
 

@@ -2,7 +2,6 @@ package org.openmetadata.service.resources.events;
 
 import static org.junit.Assert.assertEquals;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
-import static org.openmetadata.service.util.email.EmailUtil.getSmtpSettings;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -25,6 +24,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.awaitility.Awaitility;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.service.util.RestUtil;
+import org.openmetadata.service.util.email.EmailUtil;
 
 @Slf4j
 @Path("v1/test/slack")
@@ -128,7 +128,7 @@ public class SlackCallbackResource {
   public String getEntityUrl(String prefix, String fqn, String additionalParams) {
     return String.format(
         "<%s/%s/%s%s|%s>",
-        getSmtpSettings().getOpenMetadataUrl(),
+        EmailUtil.getOMBaseURL(),
         prefix,
         fqn.trim().replaceAll(" ", "%20"),
         nullOrEmpty(additionalParams) ? "" : String.format("/%s", additionalParams),

@@ -26,6 +26,29 @@
   }
 }
 
+.query-builder-form-field
+  .query-builder-card.jsonlogic
+  .query-builder-container {
+  .group-or-rule-container.group-container {
+    & > .group.group-or-rule {
+      & > .group--header {
+        order: 0;
+
+        .action.action--ADD-RULE {
+          position: absolute !important;
+          margin-top: 0;
+          right: 0;
+          top: -48px;
+        }
+      }
+    }
+  }
+}
+
+.query-filter-label {
+  text-transform: capitalize;
+}
+
 .query-builder-form-field {
   .hide--line.one--child {
     margin-top: 0;
@@ -63,7 +86,7 @@
       .rule.group-or-rule {
         .rule--header {
           .ant-btn-group {
-            margin: 0px;
+            margin: 0 !important;
             align-self: flex-start;
           }
         }
@@ -105,7 +128,7 @@
           }
 
           .action.action--ADD-RULE {
-            position: static;
+            position: static !important;
             margin-top: 8px;
           }
         }
@@ -177,6 +200,12 @@
     }
   }
 
+  .rule {
+    align-items: center;
+  }
+}
+
+.query-builder-card.elasticsearch {
   .rule-container:first-child .action--DELETE {
     display: none;
   }

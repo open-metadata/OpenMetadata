@@ -191,12 +191,17 @@ const DataModelDetails = ({
   const {
     editDescriptionPermission,
     editTagsPermission,
+    editGlossaryTermsPermission,
     editLineagePermission,
   } = useMemo(() => {
     return {
       editDescriptionPermission:
         (dataModelPermissions.EditAll ||
           dataModelPermissions.EditDescription) &&
+        !deleted,
+      editGlossaryTermsPermission:
+        (dataModelPermissions.EditGlossaryTerms ||
+          dataModelPermissions.EditAll) &&
         !deleted,
       editTagsPermission:
         (dataModelPermissions.EditAll || dataModelPermissions.EditTags) &&
@@ -253,6 +258,7 @@ const DataModelDetails = ({
                     data={dataModelData?.columns || []}
                     entityFqn={decodedDataModelFQN}
                     hasEditDescriptionPermission={editDescriptionPermission}
+                    hasEditGlossaryTermPermission={editGlossaryTermsPermission}
                     hasEditTagsPermission={editTagsPermission}
                     isReadOnly={Boolean(deleted)}
                     onThreadLinkSelect={onThreadLinkSelect}
@@ -274,6 +280,7 @@ const DataModelDetails = ({
                         dataModelPermissions.EditCustomFields) &&
                       !deleted
                     }
+                    editGlossaryTermsPermission={editGlossaryTermsPermission}
                     editTagPermission={editTagsPermission}
                     entityFQN={decodedDataModelFQN}
                     entityId={dataModelData.id}
@@ -300,6 +307,7 @@ const DataModelDetails = ({
     description,
     decodedDataModelFQN,
     editTagsPermission,
+    editGlossaryTermsPermission,
     deleted,
     editDescriptionPermission,
     isEditDescription,
@@ -439,6 +447,7 @@ const DataModelDetails = ({
       <Row gutter={[0, 12]}>
         <Col className="p-x-lg" span={24}>
           <DataAssetsHeader
+            isDqAlertSupported
             isRecursiveDelete
             afterDeleteAction={afterDeleteAction}
             afterDomainUpdateAction={updateDataModelDetailsState}

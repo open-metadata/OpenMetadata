@@ -29,6 +29,7 @@ import {
   MetricType,
   UnitOfMeasurement,
 } from '../../../generated/entity/data/metric';
+import { getSortedOptions } from '../../../utils/MetricEntityUtils/MetricUtils';
 import { ExtraInfoLabel } from '../../DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import './metric-header-info.less';
 
@@ -73,18 +74,8 @@ const MetricInfoItem: FC<MetricInfoItemProps> = ({
   const modiFiedLabel = label.toLowerCase().replace(/\s+/g, '-');
 
   const sortedOptions = useMemo(
-    () =>
-      options.sort((a, b) => {
-        if (a.value === value) {
-          return -1;
-        }
-        if (b.value === value) {
-          return 1;
-        }
-
-        return 0;
-      }),
-    [options, value]
+    () => getSortedOptions(options, value, valueKey),
+    [options, value, valueKey]
   );
 
   const handleUpdate = async (value: string | undefined) => {

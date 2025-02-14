@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { expect, Page } from '@playwright/test';
-import { settingClick } from './sidebar';
+import { settingClick, SettingOptionsType } from './sidebar';
 
 export const searchServiceFromSettingPage = async (
   page: Page,
@@ -29,7 +29,7 @@ export const visitServiceDetailsPage = async (
   verifyHeader = false
 ) => {
   const serviceResponse = page.waitForResponse('/api/v1/services/*');
-  await settingClick(page, service.type);
+  await settingClick(page, service.type as SettingOptionsType);
   await serviceResponse;
 
   await searchServiceFromSettingPage(page, service.name);

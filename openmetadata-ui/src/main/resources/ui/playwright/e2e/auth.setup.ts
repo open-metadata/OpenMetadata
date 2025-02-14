@@ -11,27 +11,15 @@
  *  limitations under the License.
  */
 import { test as setup } from '@playwright/test';
-import { JWT_EXPIRY_TIME_MAP } from '../constant/login';
 import { AdminClass } from '../support/user/AdminClass';
-import { getApiContext } from '../utils/common';
-import { updateJWTTokenExpiryTime } from '../utils/login';
-import { removeOrganizationPolicyAndRole } from '../utils/team';
+import { loginAsAdmin } from '../utils/initialSetup';
 const adminFile = 'playwright/.auth/admin.json';
 
 setup('authenticate as admin', async ({ page }) => {
   const admin = new AdminClass();
 
   // login with admin user
-  await admin.login(page);
-  await page.waitForURL('**/my-data');
-  const { apiContext, afterAction } = await getApiContext(page);
-  await updateJWTTokenExpiryTime(apiContext, JWT_EXPIRY_TIME_MAP['4 hours']);
-  await removeOrganizationPolicyAndRole(apiContext);
-  await afterAction();
-  await admin.logout(page);
-  await page.waitForURL('**/signin');
-  await admin.login(page);
-  await page.waitForURL('**/my-data');
+  await loginAsAdmin(page, admin);
 
   // End of authentication steps.
   await page.context().storageState({ path: adminFile });

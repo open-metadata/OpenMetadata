@@ -16,6 +16,7 @@ import traceback
 from datetime import datetime
 from functools import singledispatch
 from io import BytesIO
+from typing import Optional
 
 from metadata.clients.aws_client import AWSClient
 from metadata.generated.schema.entity.data.table import Table, TableData
@@ -24,7 +25,6 @@ from metadata.generated.schema.entity.services.connections.connectionBasicType i
 )
 from metadata.generated.schema.security.credentials.awsCredentials import AWSCredentials
 from metadata.ingestion.models.custom_pydantic import ignore_type_decoder
-from metadata.profiler.interface.profiler_interface import ProfilerInterface
 from metadata.utils.helpers import clean_uri
 from metadata.utils.logger import profiler_logger
 
@@ -72,14 +72,17 @@ def _get_object_key(
     return file_name
 
 
-def upload_sample_data(data: TableData, profiler_interface: ProfilerInterface) -> None:
+def upload_sample_data(
+    data: TableData,
+    entity: Table,
+    sample_storage_config: Optional[DataStorageConfig] = None,
+) -> None:
     """
     Upload Sample data to storage config
     """
     import pandas as pd  # pylint: disable=import-outside-toplevel
 
     try:
-        sample_storage_config: DataStorageConfig = profiler_interface.storage_config
         if not sample_storage_config:
             return
         # Ignore any decoding error for byte data
@@ -92,7 +95,7 @@ def upload_sample_data(data: TableData, profiler_interface: ProfilerInterface) -
         pq_buffer = BytesIO()
         df.to_parquet(pq_buffer)
         object_key = _get_object_key(
-            table=profiler_interface.table_entity,
+            table=entity,
             prefix=sample_storage_config.prefix,
             overwrite_data=sample_storage_config.overwriteData,
             file_path_format=sample_storage_config.filePathPattern,

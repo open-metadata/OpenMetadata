@@ -28,7 +28,9 @@ import AppearanceConfigSettingsPage from '../../pages/AppearanceConfigSettingsPa
 import ApplicationPage from '../../pages/Application/ApplicationPage';
 import BotsPageV1 from '../../pages/BotsPageV1/BotsPageV1.component';
 import EditLoginConfiguration from '../../pages/Configuration/EditLoginConfiguration/EditLoginConfigurationPage';
+import EditUrlConfigurationPage from '../../pages/Configuration/EditUrlConfiguration/EditUrlConfigurationPage';
 import LoginConfigurationPage from '../../pages/Configuration/LoginConfigurationDetails/LoginConfigurationPage';
+import UrlConfigurationPage from '../../pages/Configuration/UrlConfiguration/UrlConfigurationPage';
 import { CustomPageSettings } from '../../pages/CustomPageSettings/CustomPageSettings';
 import CustomPropertiesPageV1 from '../../pages/CustomPropertiesPageV1/CustomPropertiesPageV1';
 import EditEmailConfigPage from '../../pages/EditEmailConfigPage/EditEmailConfigPage.component';
@@ -62,6 +64,10 @@ import {
 } from '../../utils/RouterUtils';
 import AppDetails from '../Settings/Applications/AppDetails/AppDetails.component';
 import AdminProtectedRoute from './AdminProtectedRoute';
+
+const NotificationAlertDetailsPage = () => (
+  <AlertDetailsPage isNotificationAlert />
+);
 
 const SettingsRouter = () => {
   const { permissions } = usePermissionProvider();
@@ -101,6 +107,13 @@ const SettingsRouter = () => {
 
       <AdminProtectedRoute
         exact
+        component={EditUrlConfigurationPage}
+        hasPermission={false}
+        path={ROUTES.SETTINGS_OM_URL_CONFIG}
+      />
+
+      <AdminProtectedRoute
+        exact
         component={EditLoginConfiguration}
         hasPermission={false}
         path={ROUTES.SETTINGS_EDIT_CUSTOM_LOGIN_CONFIG}
@@ -111,19 +124,25 @@ const SettingsRouter = () => {
       <AdminProtectedRoute
         exact
         component={NotificationListPage}
-        hasPermission={false}
+        hasPermission={userPermissions.hasViewPermissions(
+          ResourceEntity.EVENT_SUBSCRIPTION,
+          permissions
+        )}
         path={getSettingPath(GlobalSettingsMenuCategory.NOTIFICATIONS)}
       />
 
       <AdminProtectedRoute
         exact
-        component={() => <AlertDetailsPage isNotificationAlert />}
-        path={ROUTES.NOTIFICATION_ALERT_DETAILS}
+        component={NotificationAlertDetailsPage}
+        hasPermission={userPermissions.hasViewPermissions(
+          ResourceEntity.EVENT_SUBSCRIPTION,
+          permissions
+        )}
+        path={ROUTES.NOTIFICATION_ALERT_DETAILS_WITH_TAB}
       />
-      <AdminProtectedRoute
+      <Route
         exact
         component={AddNotificationPage}
-        hasPermission={false}
         path={[
           getSettingPath(
             GlobalSettingsMenuCategory.NOTIFICATIONS,
@@ -256,6 +275,15 @@ const SettingsRouter = () => {
         path={getSettingPath(
           GlobalSettingsMenuCategory.PREFERENCES,
           GlobalSettingOptions.LINEAGE_CONFIG
+        )}
+      />
+
+      <AdminProtectedRoute
+        exact
+        component={UrlConfigurationPage}
+        path={getSettingPath(
+          GlobalSettingsMenuCategory.PREFERENCES,
+          GlobalSettingOptions.OM_URL_CONFIG
         )}
       />
 

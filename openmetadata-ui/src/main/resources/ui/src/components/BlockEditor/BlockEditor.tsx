@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Editor, EditorContent } from '@tiptap/react';
+import { EditorContent } from '@tiptap/react';
+import classNames from 'classnames';
 import { isNil } from 'lodash';
 import React, {
   forwardRef,
@@ -21,26 +22,33 @@ import React, {
 import { useTranslation } from 'react-i18next';
 import { EDITOR_OPTIONS } from '../../constants/BlockEditor.constants';
 import { formatContent, setEditorContent } from '../../utils/BlockEditorUtils';
+import BarMenu from './BarMenu/BarMenu';
 import './block-editor.less';
-import { EditorSlotsRef } from './BlockEditor.interface';
+import {
+  BlockEditorProps,
+  BlockEditorRef,
+  EditorSlotsRef,
+} from './BlockEditor.interface';
 import EditorSlots from './EditorSlots';
 import { extensions } from './Extensions';
 import { useCustomEditor } from './hooks/useCustomEditor';
 
-export interface BlockEditorRef {
-  editor: Editor | null;
-}
-export interface BlockEditorProps {
-  content?: string;
-  editable?: boolean;
-  onChange?: (htmlContent: string) => void;
-}
-
 const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
-  ({ content = '', editable = true, onChange }, ref) => {
+  (
+    {
+      content = '',
+      editable = true,
+      menuType = 'bubble',
+      autoFocus,
+      placeholder,
+      onChange,
+    },
+    ref
+  ) => {
     const { i18n } = useTranslation();
     const editorSlots = useRef<EditorSlotsRef>(null);
 
+    // this hook to initialize the editor
     const editor = useCustomEditor({
       ...EDITOR_OPTIONS,
       extensions,
@@ -54,14 +62,18 @@ const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
       editorProps: {
         attributes: {
           class: 'om-block-editor',
+          ...(autoFocus ? { autofocus: 'true' } : {}),
         },
       },
+      autofocus: autoFocus,
     });
 
+    // this hook to expose the editor instance
     useImperativeHandle(ref, () => ({
       editor,
     }));
 
+    // this effect to handle the content change
     useEffect(() => {
       if (isNil(editor) || editor.isDestroyed || content === undefined) {
         return;
@@ -77,6 +89,7 @@ const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
       });
     }, [content, editor]);
 
+    // this effect to handle the editable state
     useEffect(() => {
       if (
         isNil(editor) ||
@@ -91,6 +104,7 @@ const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
       setTimeout(() => editor.setEditable(editable));
     }, [editable, editor]);
 
+    // this effect to handle the RTL and LTR direction
     useEffect(() => {
       const editorWrapper = document.getElementById('block-editor-wrapper');
       if (!editorWrapper) {
@@ -106,12 +120,24 @@ const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
     }, [i18n]);
 
     return (
-      <div className="block-editor-wrapper" id="block-editor-wrapper">
+      <div
+        className={classNames('block-editor-wrapper', {
+          'block-editor-wrapper--bar-menu': menuType === 'bar',
+          'block-editor-wrapper--bubble-menu': menuType === 'bubble',
+        })}
+        id="block-editor-wrapper">
+        {menuType === 'bar' && !isNil(editor) && (
+          <BarMenu
+            editor={editor}
+            onLinkToggle={editorSlots.current?.onLinkToggle}
+          />
+        )}
         <EditorContent
           editor={editor}
+          placeholder={placeholder}
           onMouseDown={editorSlots.current?.onMouseDown}
         />
-        <EditorSlots editor={editor} ref={editorSlots} />
+        <EditorSlots editor={editor} menuType={menuType} ref={editorSlots} />
       </div>
     );
   }

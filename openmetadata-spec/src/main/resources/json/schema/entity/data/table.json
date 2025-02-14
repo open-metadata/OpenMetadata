@@ -193,7 +193,8 @@
             "PRIMARY_KEY",
             "FOREIGN_KEY",
             "SORT_KEY",
-            "DIST_KEY"
+            "DIST_KEY",
+            "CLUSTER_KEY"
           ]
         },
         "columns": {
@@ -328,7 +329,7 @@
           "items": {
             "$ref": "../../type/tagLabel.json"
           },
-          "default": null
+          "default": []
         },
         "constraint": {
           "description": "Column level constraint.",
@@ -921,7 +922,7 @@
           "items": {
             "$ref": "../../type/tagLabel.json"
           },
-          "default": null
+          "default": []
         },
         "columns": {
           "description": "Columns from the schema defined during modeling. In case of DBT, the metadata here comes from `schema.yaml`.",

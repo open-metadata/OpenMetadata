@@ -23,6 +23,7 @@ import static org.openmetadata.csv.CsvUtil.fieldToEntities;
 import static org.openmetadata.csv.CsvUtil.fieldToExtensionStrings;
 import static org.openmetadata.csv.CsvUtil.fieldToInternalArray;
 import static org.openmetadata.csv.CsvUtil.recordToString;
+import static org.openmetadata.service.events.ChangeEventHandler.copyChangeEvent;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.networknt.schema.JsonSchema;
@@ -60,7 +61,9 @@ import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.ApiStatus;
+import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TagLabel.TagSource;
@@ -72,7 +75,9 @@ import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.type.customProperties.TableConfig;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.TypeRegistry;
+import org.openmetadata.service.formatter.util.FormatterUtil;
 import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.util.AsyncService;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.RestUtil.PutResponse;
@@ -391,10 +396,15 @@ public abstract class EntityCsv<T extends EntityInterface> {
                 fieldValue.toString(),
                 customPropertyType,
                 propertyConfig);
-        case "enum" -> {
-          List<String> enumKeys = listOrEmpty(fieldToInternalArray(fieldValue.toString()));
-          fieldValue = enumKeys.isEmpty() ? null : enumKeys;
-        }
+        case "enum" -> fieldValue =
+            parseEnumType(
+                printer,
+                csvRecord,
+                fieldNumber,
+                fieldName,
+                customPropertyType,
+                fieldValue,
+                propertyConfig);
         case "timeInterval" -> fieldValue =
             parseTimeInterval(printer, csvRecord, fieldNumber, fieldName, fieldValue);
         case "number", "integer", "timestamp" -> fieldValue =
@@ -573,6 +583,27 @@ public abstract class EntityCsv<T extends EntityInterface> {
     return tableJson;
   }
 
+  private Object parseEnumType(
+      CSVPrinter printer,
+      CSVRecord csvRecord,
+      int fieldNumber,
+      String fieldName,
+      String customPropertyType,
+      Object fieldValue,
+      String propertyConfig)
+      throws IOException {
+    List<String> enumKeys = listOrEmpty(fieldToInternalArray(fieldValue.toString()));
+    try {
+      EntityRepository.validateEnumKeys(fieldName, JsonUtils.valueToTree(enumKeys), propertyConfig);
+    } catch (Exception e) {
+      importFailure(
+          printer,
+          invalidCustomPropertyValue(fieldNumber, fieldName, customPropertyType, e.getMessage()),
+          csvRecord);
+    }
+    return enumKeys.isEmpty() ? null : enumKeys;
+  }
+
   private void validateAndUpdateExtension(
       CSVPrinter printer,
       CSVRecord csvRecord,
@@ -695,6 +726,9 @@ public abstract class EntityCsv<T extends EntityInterface> {
         repository.prepareInternal(entity, false);
         PutResponse<T> response = repository.createOrUpdate(null, entity);
         responseStatus = response.getStatus();
+        AsyncService.getInstance()
+            .getExecutorService()
+            .submit(() -> createChangeEventAndUpdateInES(response, importedBy));
       } catch (Exception ex) {
         importFailure(resultsPrinter, ex.getMessage(), csvRecord);
         importResult.setStatus(ApiStatus.FAILURE);
@@ -715,6 +749,20 @@ public abstract class EntityCsv<T extends EntityInterface> {
       importSuccess(resultsPrinter, csvRecord, ENTITY_CREATED);
     } else {
       importSuccess(resultsPrinter, csvRecord, ENTITY_UPDATED);
+    }
+  }
+
+  private void createChangeEventAndUpdateInES(PutResponse<T> response, String importedBy) {
+    if (!response.getChangeType().equals(EventType.ENTITY_NO_CHANGE)) {
+      ChangeEvent changeEvent =
+          FormatterUtil.createChangeEventForEntity(
+              importedBy, response.getChangeType(), response.getEntity());
+      Object entity = changeEvent.getEntity();
+      changeEvent = copyChangeEvent(changeEvent);
+      changeEvent.setEntity(JsonUtils.pojoToMaskedJson(entity));
+      // Change Event and Update in Es
+      Entity.getCollectionDAO().changeEventDAO().insert(JsonUtils.pojoToJson(changeEvent));
+      Entity.getSearchRepository().updateEntity(response.getEntity().getEntityReference());
     }
   }
 

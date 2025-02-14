@@ -10,15 +10,13 @@
 #  limitations under the License.
 
 """
-Define Concat function
+Define MD5 hashing function
 """
-# Keep SQA docs style defining custom constructs
-
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.sql.functions import FunctionElement
 
 from metadata.profiler.metrics.core import CACHE
-from metadata.profiler.orm.registry import Dialects
+from metadata.profiler.orm.registry import PythonDialects
 from metadata.utils.logger import profiler_logger
 
 logger = profiler_logger()
@@ -33,7 +31,12 @@ def _(element, compiler, **kw):
     return f"MD5({compiler.process(element.clauses, **kw)})"
 
 
-@compiles(MD5, Dialects.MSSQL)
+@compiles(MD5, PythonDialects.MSSQL.value)
 def _(element, compiler, **kw):
     # TODO requires separate where clauses for each table
     return f"CONVERT(VARCHAR(8), HashBytes('MD5', {compiler.process(element.clauses, **kw)}), 2)"
+
+
+@compiles(MD5, PythonDialects.BigQuery.value)
+def _(element, compiler, **kw):
+    return f"TO_HEX(MD5(CAST({compiler.process(element.clauses, **kw)} AS STRING)))"

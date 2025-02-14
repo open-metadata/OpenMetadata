@@ -35,13 +35,15 @@ export const ModalWithMarkdownEditor: FunctionComponent<ModalWithMarkdownEditorP
     const { t } = useTranslation();
     const [isLoading, setIsLoading] = useState<boolean>(false);
 
-    const markdownRef = useRef<EditorContentRef>();
+    const markdownRef = useRef<EditorContentRef>({} as EditorContentRef);
 
     const handleSaveData = async () => {
       if (markdownRef.current) {
         setIsLoading(true);
         try {
-          await onSave?.(markdownRef.current?.getEditorContent().trim() ?? '');
+          const content =
+            markdownRef.current?.getEditorContent?.()?.trim() ?? '';
+          await onSave?.(content);
         } catch (error) {
           showErrorToast(error as AxiosError);
         } finally {

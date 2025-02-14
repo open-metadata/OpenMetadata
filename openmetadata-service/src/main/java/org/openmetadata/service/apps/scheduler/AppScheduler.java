@@ -12,6 +12,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
@@ -38,6 +41,7 @@ import org.quartz.Trigger;
 import org.quartz.TriggerBuilder;
 import org.quartz.TriggerKey;
 import org.quartz.impl.StdSchedulerFactory;
+import org.quartz.impl.matchers.GroupMatcher;
 
 @Slf4j
 public class AppScheduler {
@@ -93,8 +97,35 @@ public class AppScheduler {
         .getListenerManager()
         .addJobListener(new OmAppJobListener(dao), jobGroupEquals(APPS_JOB_GROUP));
 
+    ScheduledExecutorService threadScheduler = Executors.newScheduledThreadPool(1);
+    threadScheduler.scheduleAtFixedRate(this::resetErrorTriggers, 0, 24, TimeUnit.HOURS);
+
     // Start Scheduler
     this.scheduler.start();
+  }
+
+  /* Quartz triggers can go into an "ERROR" state in some cases. Most notably when the jobs
+  constructor throws an error. I do not know why this happens and the issues seem to be transient.
+  This method resets all triggers in the ERROR state to the normal state.
+   */
+  private void resetErrorTriggers() {
+    try {
+      scheduler
+          .getTriggerKeys(GroupMatcher.anyGroup())
+          .forEach(
+              triggerKey -> {
+                try {
+                  if (scheduler.getTriggerState(triggerKey) == Trigger.TriggerState.ERROR) {
+                    LOG.info("Resetting trigger {} from error state", triggerKey);
+                    scheduler.resetTriggerFromErrorState(triggerKey);
+                  }
+                } catch (SchedulerException e) {
+                  throw new RuntimeException(e);
+                }
+              });
+    } catch (SchedulerException ex) {
+      LOG.error("Failed to reset failed triggers", ex);
+    }
   }
 
   public static void initialize(
@@ -133,10 +164,13 @@ public class AppScheduler {
     throw new UnhandledServerException("App Scheduler is not Initialized");
   }
 
-  public void addApplicationSchedule(App application) {
+  public void scheduleApplication(App application) {
     try {
       if (scheduler.getJobDetail(new JobKey(application.getName(), APPS_JOB_GROUP)) != null) {
-        LOG.info("Job already exists for the application, skipping the scheduling");
+        LOG.info(
+            "Job already exists for the application {}, rescheduling it", application.getName());
+        scheduler.rescheduleJob(
+            new TriggerKey(application.getName(), APPS_TRIGGER_GROUP), trigger(application));
         return;
       }
       AppRuntime context = getAppRuntime(application);
@@ -263,30 +297,52 @@ public class AppScheduler {
   }
 
   public void stopApplicationRun(App application) {
-    if (application.getFullyQualifiedName() == null) {
-      throw new IllegalArgumentException("Application's fullyQualifiedName is null.");
-    }
     try {
-      // Interrupt any scheduled job
       JobDetail jobDetailScheduled =
           scheduler.getJobDetail(new JobKey(application.getName(), APPS_JOB_GROUP));
-      if (jobDetailScheduled != null) {
-        LOG.debug("Stopping Scheduled Execution for App : {}", application.getName());
-        scheduler.interrupt(jobDetailScheduled.getKey());
-      }
-
-      // Interrupt any on-demand job
       JobDetail jobDetailOnDemand =
           scheduler.getJobDetail(
               new JobKey(
                   String.format("%s-%s", application.getName(), ON_DEMAND_JOB), APPS_JOB_GROUP));
-
-      if (jobDetailOnDemand != null) {
-        LOG.debug("Stopping On Demand Execution for App : {}", application.getName());
-        scheduler.interrupt(jobDetailOnDemand.getKey());
+      boolean isJobRunning = false;
+      // Check if the job is already running
+      List<JobExecutionContext> currentJobs = scheduler.getCurrentlyExecutingJobs();
+      for (JobExecutionContext context : currentJobs) {
+        if ((jobDetailScheduled != null
+                && context.getJobDetail().getKey().equals(jobDetailScheduled.getKey()))
+            || (jobDetailOnDemand != null
+                && context.getJobDetail().getKey().equals(jobDetailOnDemand.getKey()))) {
+          isJobRunning = true;
+        }
       }
-    } catch (Exception ex) {
-      LOG.error("Failed to stop job execution.", ex);
+      if (!isJobRunning) {
+        throw new UnhandledServerException("There is no job running for the application.");
+      }
+      JobKey scheduledJobKey = new JobKey(application.getName(), APPS_JOB_GROUP);
+      if (jobDetailScheduled != null) {
+        LOG.debug("Stopping Scheduled Execution for App: {}", application.getName());
+        scheduler.interrupt(scheduledJobKey);
+        try {
+          scheduler.deleteJob(scheduledJobKey);
+        } catch (SchedulerException ex) {
+          LOG.error("Failed to delete scheduled job: {}", scheduledJobKey, ex);
+        }
+      } else {
+        JobKey onDemandJobKey =
+            new JobKey(
+                String.format("%s-%s", application.getName(), ON_DEMAND_JOB), APPS_JOB_GROUP);
+        if (jobDetailOnDemand != null) {
+          LOG.debug("Stopping On Demand Execution for App: {}", application.getName());
+          scheduler.interrupt(onDemandJobKey);
+          try {
+            scheduler.deleteJob(onDemandJobKey);
+          } catch (SchedulerException ex) {
+            LOG.error("Failed to delete on-demand job: {}", onDemandJobKey, ex);
+          }
+        }
+      }
+    } catch (SchedulerException ex) {
+      LOG.error("Failed to stop job execution for app: {}", application.getName(), ex);
     }
   }
 }

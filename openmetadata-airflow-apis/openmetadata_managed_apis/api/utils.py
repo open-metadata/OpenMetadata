@@ -22,6 +22,7 @@ from airflow.models import DagBag
 from airflow.version import version as airflow_version
 from flask import request
 from openmetadata_managed_apis.utils.logger import api_logger
+from packaging import version
 
 logger = api_logger()
 
@@ -110,7 +111,7 @@ def get_dagbag():
 
 class ScanDagsTask(Process):
     def run(self):
-        if airflow_version >= "2.6":
+        if version.parse(airflow_version) >= version.parse("2.6"):
             scheduler_job = self._run_new_scheduler_job()
         else:
             scheduler_job = self._run_old_scheduler_job()

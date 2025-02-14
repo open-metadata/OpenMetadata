@@ -1,9 +1,10 @@
 ---
 title: Cost Analysis
 slug: /how-to-guides/data-insights/cost-analysis
+collate: true
 ---
 
-# Cost Analysis (Collate Only)
+# Cost Analysis
 
 Gain valuable insights into your resource allocation and utilization with `Cost Analysis`. With a suite of interactive graphs, it empowers you to make data-driven decisions to optimize your data platform costs and improve your resource management. You'll be equipped to make informed decisions, and optimize your resources.
 

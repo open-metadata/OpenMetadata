@@ -60,7 +60,7 @@ export const getStatusFromPipelineState = (status: PipelineState) => {
 export const getEntityStatsData = (data: EntityStats): EntityStatsData[] => {
   const filteredRow = ['failedRecords', 'totalRecords', 'successRecords'];
 
-  return Object.keys(data).reduce((acc, key) => {
+  const result = Object.keys(data).reduce((acc, key) => {
     if (filteredRow.includes(key)) {
       return acc;
     }
@@ -73,4 +73,6 @@ export const getEntityStatsData = (data: EntityStats): EntityStatsData[] => {
       },
     ];
   }, [] as EntityStatsData[]);
+
+  return result.sort((a, b) => a.name.localeCompare(b.name));
 };

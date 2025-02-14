@@ -267,6 +267,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
 
   const {
     editTagsPermission,
+    editGlossaryTermsPermission,
     editDescriptionPermission,
     editCustomAttributePermission,
     editAllPermission,
@@ -277,6 +278,9 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
     () => ({
       editTagsPermission:
         (topicPermissions.EditTags || topicPermissions.EditAll) && !deleted,
+      editGlossaryTermsPermission:
+        (topicPermissions.EditGlossaryTerms || topicPermissions.EditAll) &&
+        !deleted,
       editDescriptionPermission:
         (topicPermissions.EditDescription || topicPermissions.EditAll) &&
         !deleted,
@@ -300,7 +304,14 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
   const tabs = useMemo(
     () => [
       {
-        label: <TabsLabel id={EntityTabs.SCHEMA} name={t('label.schema')} />,
+        label: (
+          <TabsLabel
+            count={topicDetails.messageSchema?.schemaFields?.length ?? 0}
+            id={EntityTabs.SCHEMA}
+            isActive={activeTab === EntityTabs.SCHEMA}
+            name={t('label.schema')}
+          />
+        ),
         key: EntityTabs.SCHEMA,
         children: (
           <Row gutter={[0, 16]} wrap={false}>
@@ -330,6 +341,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
                       <TopicSchemaFields
                         entityFqn={decodedTopicFQN}
                         hasDescriptionEditAccess={editDescriptionPermission}
+                        hasGlossaryTermEditAccess={editGlossaryTermsPermission}
                         hasTagEditAccess={editTagsPermission}
                         isReadOnly={Boolean(topicDetails.deleted)}
                         messageSchema={topicDetails.messageSchema}
@@ -349,6 +361,9 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
                         domain={topicDetails?.domain}
                         editCustomAttributePermission={
                           editCustomAttributePermission
+                        }
+                        editGlossaryTermsPermission={
+                          editGlossaryTermsPermission
                         }
                         editTagPermission={editTagsPermission}
                         entityFQN={decodedTopicFQN}
@@ -478,6 +493,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
       onDataProductsUpdate,
       handleSchemaFieldsUpdate,
       editTagsPermission,
+      editGlossaryTermsPermission,
       editDescriptionPermission,
       editCustomAttributePermission,
       editLineagePermission,
@@ -496,6 +512,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
       <Row gutter={[0, 12]}>
         <Col className="p-x-lg" span={24}>
           <DataAssetsHeader
+            isDqAlertSupported
             isRecursiveDelete
             afterDeleteAction={afterDeleteAction}
             afterDomainUpdateAction={updateTopicDetailsState}

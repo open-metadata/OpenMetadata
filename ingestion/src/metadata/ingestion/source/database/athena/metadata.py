@@ -157,6 +157,14 @@ class AthenaSource(ExternalTableLineageMixin, CommonDbSourceService):
             return True, partition_details
         return False, None
 
+    def get_location_path(self, table_name: str, schema_name: str) -> Optional[str]:
+        """
+        Method to fetch the location path of the table
+        """
+        return self.external_location_map.get(
+            (self.context.get().database, schema_name, table_name)
+        )
+
     def yield_tag(
         self, schema_name: str
     ) -> Iterable[Either[OMetaTagAndClassification]]:

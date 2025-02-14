@@ -16,19 +16,6 @@ import { HTMLAttributes, ReactNode } from 'react';
 export type editorRef = ReactNode | HTMLElement | string;
 export type TextVariant = 'white' | 'black';
 
-export enum Format {
-  JSON = 'json',
-  MARKDOWN = 'markdown',
-}
-export type EditorProp = {
-  format: 'json' | 'markdown';
-  initvalue?: string;
-  suggestionList?: { text: string; value: string; url: string }[];
-  mentionTrigger?: string;
-  readonly?: boolean;
-  customOptions?: ReactNode[];
-};
-
 export interface PreviewerProp {
   markdown: string;
   maxLength?: number;
@@ -47,19 +34,11 @@ export type EditorType = 'markdown' | 'wysiwyg';
 export interface RichTextEditorProp extends HTMLAttributes<HTMLDivElement> {
   autofocus?: boolean;
   initialValue?: string;
-  placeHolder?: string;
-  previewStyle?: PreviewStyle;
-  editorType?: EditorType;
-  previewHighlight?: boolean;
-  extendedAutolinks?: boolean;
-  hideModeSwitch?: boolean;
-  useCommandShortcut?: boolean;
   readonly?: boolean;
-  height?: string;
   onTextChange?: (value: string) => void;
+  placeHolder?: string;
 }
 
 export interface EditorContentRef {
   getEditorContent: () => string;
-  clearEditorContent: () => void;
 }

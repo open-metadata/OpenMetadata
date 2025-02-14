@@ -55,6 +55,14 @@ describe('SummaryPanel component', () => {
     expect(summaryCards).toHaveLength(4);
   });
 
+  it('Show additional summary card if showAdditionalSummary is true', async () => {
+    render(<SummaryPanel showAdditionalSummary testSummary={mockSummary} />);
+
+    const summaryCards = await screen.findAllByText('SummaryCard.component');
+
+    expect(summaryCards).toHaveLength(6);
+  });
+
   it('should not call getTestCaseExecutionSummary API, if testSummary data is provided', async () => {
     const mockGetTestCaseExecutionSummary =
       getTestCaseExecutionSummary as jest.Mock;

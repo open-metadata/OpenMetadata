@@ -418,9 +418,9 @@ class TopologyRunnerMixin(Generic[C]):
             if not entity:
                 # Safe access to Entity Request name
                 raise MissingExpectedEntityAckException(
-                    f"Missing ack back from [{stage.type_.__name__}: {entity_fqn}] - "
-                    "Possible causes are changes in the server Fernet key or mismatched JSON Schemas "
-                    "for the service connection."
+                    f"We are trying to create a [{stage.type_.__name__}] with FQN [{entity_fqn}],"
+                    " but we got no Entity back from the API. Checking for errors in the OpenMetadata Sink could help"
+                    " validate if the Entity was properly created or not."
                 )
 
         self.context.get().update_context_name(stage=stage, right=right)

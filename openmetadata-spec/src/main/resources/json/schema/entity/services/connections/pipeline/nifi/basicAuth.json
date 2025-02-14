@@ -1,0 +1,28 @@
+{
+    "$id": "https://open-metadata.org/schema/entity/services/connections/pipeline/nifi/basicAuth.json",
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "Nifi Basic Auth",
+    "description": "Configuration for connecting to Nifi Basic Auth.",
+    "javaType": "org.openmetadata.schema.services.connections.pipeline.nifi.BasicAuth",
+    "type": "object",
+    "properties": {
+        "username": {
+            "title": "Username",
+            "description": "Nifi user to authenticate to the API.",
+            "type": "string"
+        },
+        "password": {
+            "title": "Password",
+            "description": "Nifi password to authenticate to the API.",
+            "type": "string",
+            "format": "password"
+        },
+        "verifySSL": {
+            "title": "Verify SSL",
+            "description": "Boolean marking if we need to verify the SSL certs for Nifi. False by default.",
+            "type": "boolean",
+            "default": false
+        }
+    },
+    "additionalProperties": false
+}

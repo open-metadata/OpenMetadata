@@ -14,7 +14,6 @@
 package org.openmetadata.service.formatter.decorators;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
-import static org.openmetadata.service.util.email.EmailUtil.getSmtpSettings;
 
 import com.slack.api.model.block.Blocks;
 import com.slack.api.model.block.LayoutBlock;
@@ -39,6 +38,7 @@ import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.changeEvent.slack.SlackMessage;
 import org.openmetadata.service.exception.UnhandledServerException;
+import org.openmetadata.service.util.email.EmailUtil;
 
 public class SlackMessageDecorator implements MessageDecorator<SlackMessage> {
 
@@ -80,7 +80,7 @@ public class SlackMessageDecorator implements MessageDecorator<SlackMessage> {
   public String getEntityUrl(String prefix, String fqn, String additionalParams) {
     return String.format(
         "<%s/%s/%s%s|%s>",
-        getSmtpSettings().getOpenMetadataUrl(),
+        EmailUtil.getOMBaseURL(),
         prefix,
         fqn.trim().replaceAll(" ", "%20"),
         nullOrEmpty(additionalParams) ? "" : String.format("/%s", additionalParams),
@@ -98,8 +98,8 @@ public class SlackMessageDecorator implements MessageDecorator<SlackMessage> {
   }
 
   @Override
-  public SlackMessage buildTestMessage(String publisherName) {
-    return createConnectionTestMessage(publisherName);
+  public SlackMessage buildTestMessage() {
+    return createConnectionTestMessage();
   }
 
   private SlackMessage getSlackMessage(ChangeEvent event, OutgoingMessage outgoingMessage) {
@@ -131,11 +131,7 @@ public class SlackMessageDecorator implements MessageDecorator<SlackMessage> {
         : createGeneralChangeEventMessage(event, outgoingMessage);
   }
 
-  public SlackMessage createConnectionTestMessage(String publisherName) {
-    if (publisherName.isEmpty()) {
-      throw new UnhandledServerException("Publisher name not found.");
-    }
-
+  public SlackMessage createConnectionTestMessage() {
     List<LayoutBlock> blocks = new ArrayList<>();
 
     // Header Block
@@ -147,15 +143,7 @@ public class SlackMessageDecorator implements MessageDecorator<SlackMessage> {
                         .text("Connection Successful :white_check_mark: ")
                         .build())));
 
-    // Section Block 1 (Publisher Name)
-    blocks.add(
-        Blocks.section(
-            section ->
-                section.text(
-                    BlockCompositions.markdownText(
-                        applyBoldFormatWithSpace("Publisher :") + publisherName))));
-
-    // Section Block 2 (Test Message)
+    // Section Block 1 (Test Message)
     blocks.add(
         Blocks.section(
             section -> section.text(BlockCompositions.markdownText(CONNECTION_TEST_DESCRIPTION))));

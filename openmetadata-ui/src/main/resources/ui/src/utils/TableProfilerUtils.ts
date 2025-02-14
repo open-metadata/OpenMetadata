@@ -16,7 +16,10 @@ import { MetricChartType } from '../components/Database/Profiler/ProfilerDashboa
 import { SystemProfile } from '../generated/api/data/createTableProfile';
 import { Table, TableProfile } from '../generated/entity/data/table';
 import { CustomMetric } from '../generated/tests/customMetric';
-import { customFormatDateTime } from './date-time/DateTimeUtils';
+import {
+  customFormatDateTime,
+  DATE_TIME_12_HOUR_FORMAT,
+} from './date-time/DateTimeUtils';
 import { isHasKey } from './ObjectUtils';
 import {
   CalculateColumnProfilerMetricsInterface,
@@ -31,7 +34,10 @@ export const calculateRowCountMetrics = (
   const rowCountMetricData: MetricChartType['data'] = [];
 
   updateProfilerData.forEach((data) => {
-    const timestamp = customFormatDateTime(data.timestamp, 'MMM dd, hh:mm');
+    const timestamp = customFormatDateTime(
+      data.timestamp,
+      DATE_TIME_12_HOUR_FORMAT
+    );
 
     rowCountMetricData.push({
       name: timestamp,
@@ -58,7 +64,10 @@ export const calculateSystemMetrics = (
   const operationDateMetrics: MetricChartType['data'] = [];
 
   updateProfilerData.forEach((data) => {
-    const timestamp = customFormatDateTime(data.timestamp, 'MMM dd, hh:mm');
+    const timestamp = customFormatDateTime(
+      data.timestamp,
+      DATE_TIME_12_HOUR_FORMAT
+    );
 
     operationMetrics.push({
       name: timestamp,
@@ -94,7 +103,7 @@ export const calculateSystemMetrics = (
       ...item,
       stackId: stackId,
       latestValue: operation?.timestamp
-        ? customFormatDateTime(operation?.timestamp, 'MMM dd, hh:mm')
+        ? customFormatDateTime(operation?.timestamp, DATE_TIME_12_HOUR_FORMAT)
         : '--',
     };
   });
@@ -125,7 +134,10 @@ export const calculateCustomMetrics = (
     }, {} as Record<string, MetricChartType['data']>);
 
   updateProfilerData.forEach((data) => {
-    const timestamp = customFormatDateTime(data.timestamp, 'MMM dd, hh:mm');
+    const timestamp = customFormatDateTime(
+      data.timestamp,
+      DATE_TIME_12_HOUR_FORMAT
+    );
     data?.customMetrics?.forEach((metric) => {
       if (!isUndefined(metric.name)) {
         const updatedMetric = {
@@ -167,7 +179,7 @@ export const calculateColumnProfilerMetrics = ({
   const quartileMetricData: MetricChartType['data'] = [];
   updateProfilerData.forEach((col) => {
     const { timestamp, sum } = col;
-    const name = customFormatDateTime(timestamp, 'MMM dd, hh:mm');
+    const name = customFormatDateTime(timestamp, DATE_TIME_12_HOUR_FORMAT);
     const defaultData = { name, timestamp };
 
     if (

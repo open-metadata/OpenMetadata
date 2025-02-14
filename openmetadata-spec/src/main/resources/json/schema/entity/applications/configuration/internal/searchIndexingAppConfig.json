@@ -44,11 +44,17 @@
       "existingJavaType": "java.lang.Long",
       "default": 104857600
     },
-    "numberOfThreads": {
-      "title": "Number of Threads",
+    "producerThreads": {
+      "title": "Number of Producer Threads",
       "description": "Number of threads to use for reindexing",
       "type": "integer",
-      "default": 5
+      "default": 10
+    },
+    "consumerThreads": {
+      "title": "Number of Consumer Threads",
+      "description": "Number of threads to use for reindexing",
+      "type": "integer",
+      "default": 10
     },
     "maxConcurrentRequests": {
       "title": "Max Concurrent Requests",
@@ -73,6 +79,12 @@
       "description": "Maximum backoff time in milliseconds",
       "type": "integer",
       "default": 10000
+    },
+    "queueSize": {
+      "title": "Queue Size to use.",
+      "description": "Queue Size to user internally for reindexing.",
+      "type": "integer",
+      "default": 100
     },
     "searchIndexMappingLanguage": {
       "description": "Recreate Indexes with updated Language",

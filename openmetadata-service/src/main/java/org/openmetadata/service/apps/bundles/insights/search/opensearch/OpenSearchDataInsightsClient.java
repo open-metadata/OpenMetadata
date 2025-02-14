@@ -2,6 +2,7 @@ package org.openmetadata.service.apps.bundles.insights.search.opensearch;
 
 import java.io.IOException;
 import org.openmetadata.service.apps.bundles.insights.search.DataInsightsSearchInterface;
+import org.openmetadata.service.search.models.IndexMapping;
 import os.org.opensearch.client.Request;
 import os.org.opensearch.client.Response;
 import os.org.opensearch.client.ResponseException;
@@ -63,14 +64,20 @@ public class OpenSearchDataInsightsClient implements DataInsightsSearchInterface
   }
 
   @Override
-  public void createDataAssetsDataStream(String name) throws IOException {
+  public void createDataAssetsDataStream(
+      String name, String entityType, IndexMapping entityIndexMapping, String language)
+      throws IOException {
     String resourcePath = "/dataInsights/opensearch";
     createLifecyclePolicy(
         "di-data-assets-lifecycle",
         readResource(String.format("%s/indexLifecyclePolicy.json", resourcePath)));
     createComponentTemplate(
         "di-data-assets-mapping",
-        readResource(String.format("%s/indexMappingsTemplate.json", resourcePath)));
+        buildMapping(
+            entityType,
+            entityIndexMapping,
+            language,
+            readResource(String.format("%s/indexMappingsTemplate.json", resourcePath))));
     createIndexTemplate(
         "di-data-assets", readResource(String.format("%s/indexTemplate.json", resourcePath)));
     createDataStream(name);

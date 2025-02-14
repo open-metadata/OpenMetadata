@@ -13,6 +13,7 @@
 import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
+import { ScheduleType } from '../../generated/entity/applications/app';
 import { AppMarketPlaceDefinition } from '../../generated/entity/applications/marketplace/appMarketPlaceDefinition';
 import AppInstall from './AppInstall.component';
 
@@ -26,6 +27,11 @@ const mockGetMarketPlaceApplicationByFqn = jest
   .mockResolvedValue({} as AppMarketPlaceDefinition);
 const ERROR = 'ERROR';
 const MARKETPLACE_DATA = {
+  allowConfiguration: true,
+};
+
+const NO_SCHEDULE_DATA = {
+  scheduleType: ScheduleType.NoSchedule,
   allowConfiguration: true,
 };
 
@@ -234,6 +240,33 @@ describe('AppInstall component', () => {
     expect(screen.getByText('AppInstallVerifyCard')).toBeInTheDocument();
   });
 
+  it('actions check with schedule type noSchedule', async () => {
+    mockGetMarketPlaceApplicationByFqn.mockResolvedValueOnce(NO_SCHEDULE_DATA);
+
+    await act(async () => {
+      render(<AppInstall />);
+    });
+
+    // change ActiveServiceStep to 2
+    act(() => {
+      userEvent.click(
+        screen.getByRole('button', { name: 'Save AppInstallVerifyCard' })
+      );
+    });
+
+    expect(screen.getByText('FormBuilder')).toBeInTheDocument();
+    expect(screen.queryByText('AppInstallVerifyCard')).not.toBeInTheDocument();
+
+    // submit the form here
+    act(() => {
+      userEvent.click(
+        screen.getByRole('button', { name: 'Submit FormBuilder' })
+      );
+    });
+
+    expect(mockInstallApplication).toHaveBeenCalled();
+  });
+
   it('errors check in fetching application data', async () => {
     mockGetMarketPlaceApplicationByFqn.mockRejectedValueOnce(ERROR);
 
@@ -241,7 +274,9 @@ describe('AppInstall component', () => {
       render(<AppInstall />);
     });
 
-    expect(mockShowErrorToast).toHaveBeenCalledWith(ERROR);
+    expect(mockShowErrorToast).toHaveBeenCalledWith(
+      'message.no-application-schema-found'
+    );
     expect(screen.getByText('ErrorPlaceHolder')).toBeInTheDocument();
   });
 

@@ -13,29 +13,11 @@
 
 import { isArray, isObject, transform } from 'lodash';
 import { SearchIndex } from '../enums/search.enum';
-import { GlossaryTerm } from '../generated/entity/data/glossaryTerm';
 import { DataProduct } from '../generated/entity/domains/dataProduct';
 import { Domain } from '../generated/entity/domains/domain';
 import { Team } from '../generated/entity/teams/team';
 import { User } from '../generated/entity/teams/user';
 import { SearchResponse } from '../interface/search.interface';
-
-export type SearchEntityHits = SearchResponse<
-  | SearchIndex.DATA_PRODUCT
-  | SearchIndex.PIPELINE
-  | SearchIndex.DASHBOARD
-  | SearchIndex.TABLE
-  | SearchIndex.MLMODEL
-  | SearchIndex.DATABASE
-  | SearchIndex.DATABASE_SCHEMA
-  | SearchIndex.TOPIC
-  | SearchIndex.CONTAINER
-  | SearchIndex.STORED_PROCEDURE
-  | SearchIndex.DASHBOARD_DATA_MODEL
-  | SearchIndex.GLOSSARY_TERM
-  | SearchIndex.TAG
-  | SearchIndex.SEARCH_INDEX
->['hits']['hits'];
 
 export const formatUsersResponse = (
   hits: SearchResponse<SearchIndex.USER>['hits']['hits']
@@ -108,21 +90,6 @@ export const formatDataProductResponse = (
       owners: d._source.owners,
     };
   });
-};
-
-export const formatSearchGlossaryTermResponse = (
-  hits: SearchResponse<SearchIndex.GLOSSARY_TERM>['hits']['hits']
-): GlossaryTerm[] => {
-  return hits.map((d) => ({
-    name: d._source.name,
-    description: d._source.description,
-    id: d._source.id,
-    glossary: d._source.glossary,
-    displayName: d._source.displayName,
-    fqdn: d._source.fullyQualifiedName,
-    fullyQualifiedName: d._source.fullyQualifiedName,
-    type: d._source.entityType || 'glossaryTerm',
-  }));
 };
 
 export const omitDeep = <T>(

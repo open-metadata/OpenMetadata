@@ -279,69 +279,6 @@ export const TEST_CASE = {
   },
 };
 
-export const COLUMN_PROFILER_RESULT = [
-  {
-    name: 'shop_id',
-    timestamp: 1665985683,
-    valuesCount: 14567.0,
-    nullCount: 0.0,
-    nullProportion: 0.0,
-    uniqueCount: 14567.0,
-    uniqueProportion: 1.0,
-    distinctCount: 14509.0,
-    distinctProportion: 1.0,
-    min: 1.0,
-    max: 587.0,
-    mean: 45.0,
-    sum: 1367.0,
-    stddev: 35.0,
-    median: 7654.0,
-  },
-  {
-    name: 'shop_id',
-    timestamp: 1665899283,
-    valuesCount: 13256.0,
-    nullCount: 0.0,
-    nullProportion: 0.0,
-    uniqueCount: 13256.0,
-    uniqueProportion: 1.0,
-    distinctCount: 13256.0,
-    distinctProportion: 1.0,
-    min: 1.0,
-    max: 542.0,
-    mean: 45.0,
-    sum: 1367.0,
-    stddev: 35.0,
-    median: 7344.0,
-  },
-  {
-    name: 'shop_id',
-    timestamp: 1665812883,
-    valuesCount: 10256.0,
-    nullCount: 0.0,
-    nullProportion: 0.0,
-    uniqueCount: 10098.0,
-    uniqueProportion: 0.91,
-    distinctCount: 10256.0,
-    distinctProportion: 1.0,
-    min: 1.0,
-    max: 542.0,
-    mean: 45.0,
-    sum: 1367.0,
-    stddev: 35.0,
-    median: 7344.0,
-  },
-];
-
-export const MOCK_TABLE_QUERY = [
-  {
-    query:
-      'create table shopify.dim_address_clean as select address_id, shop_id, first_name, last_name, address1 as address, company, city, region, zip, country, phone from shopify.dim_address',
-    vote: 1,
-    checksum: 'cd59a9d0d0b8a245f7382264afac8bdc',
-  },
-];
-
 export const MOCK_TIER_DATA = {
   description:
     '**Team level datasets that are typically non-business and general internal system.',

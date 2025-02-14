@@ -36,7 +36,6 @@ import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import Loader from '../../components/common/Loader/Loader';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
-import RichTextEditor from '../../components/common/RichTextEditor/RichTextEditor';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { ROUTES, VALIDATION_MESSAGES } from '../../constants/constants';
 import { KPI_DATE_PICKER_FORMAT } from '../../constants/DataInsight.constants';
@@ -45,11 +44,13 @@ import { DataInsightChart } from '../../generated/api/dataInsight/kpi/createKpiR
 import { Kpi, KpiTargetType } from '../../generated/dataInsight/kpi/kpi';
 import { useAuth } from '../../hooks/authHooks';
 import { useFqn } from '../../hooks/useFqn';
+import { FieldProp, FieldTypes } from '../../interface/FormUtils.interface';
 import { getKPIByName, patchKPI } from '../../rest/KpiAPI';
 import {
   getDataInsightPathWithFqn,
   getDisabledDates,
 } from '../../utils/DataInsightUtils';
+import { getField } from '../../utils/formUtils';
 import {
   getKPIChartType,
   KPIChartOptions,
@@ -191,6 +192,25 @@ const EditKPIPage = () => {
       }
     }
   };
+
+  const descriptionField: FieldProp = useMemo(
+    () => ({
+      name: 'description',
+      required: false,
+      label: t('label.description'),
+      id: 'root/description',
+      type: FieldTypes.DESCRIPTION,
+      props: {
+        'data-testid': 'description',
+        initialValue: kpiData?.description,
+        style: {
+          margin: 0,
+        },
+        placeHolder: t('message.write-your-description'),
+      },
+    }),
+    [kpiData?.description]
+  );
 
   useEffect(() => {
     fetchKPI();
@@ -385,17 +405,7 @@ const EditKPIPage = () => {
                 </Col>
               </Row>
 
-              <Form.Item
-                label={t('label.description')}
-                name="description"
-                trigger="onTextChange"
-                valuePropName="initialValue">
-                <RichTextEditor
-                  height="200px"
-                  placeHolder={t('message.write-your-description')}
-                  style={{ margin: 0 }}
-                />
-              </Form.Item>
+              {getField(descriptionField)}
 
               <Space align="center" className="w-full justify-end">
                 <Button

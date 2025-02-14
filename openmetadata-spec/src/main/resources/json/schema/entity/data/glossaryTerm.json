@@ -25,7 +25,7 @@
     },
     "status": {
       "type": "string",
-      "enum": ["Draft", "Approved", "Deprecated", "Rejected"]
+      "enum": ["Draft", "In Review", "Approved", "Deprecated", "Rejected"]
     }
   },
   "properties": {
@@ -116,7 +116,7 @@
       "items": {
         "$ref": "../../type/tagLabel.json"
       },
-      "default": null
+      "default": []
     },
     "changeDescription": {
       "description": "Change that lead to this version of the entity.",

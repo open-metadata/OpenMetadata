@@ -27,12 +27,14 @@ export type PolicyRulesType = {
   resources: string[];
   operations: string[];
   effect: string;
+  description?: string;
+  condition?: string;
 };
 
 export class PolicyClass {
   id = uuid();
   data: ResponseDataType;
-  responseData: ResponseDataType;
+  responseData: ResponseDataType = {} as ResponseDataType;
 
   constructor(data?: ResponseDataType) {
     this.data = data ?? {

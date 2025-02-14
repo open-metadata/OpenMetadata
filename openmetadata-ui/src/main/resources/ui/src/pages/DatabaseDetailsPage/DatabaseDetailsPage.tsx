@@ -355,6 +355,8 @@ const DatabaseDetails: FunctionComponent = () => {
     if (databasePermission.ViewAll || databasePermission.ViewBasic) {
       getDetailsByFQN();
       fetchDatabaseSchemaCount();
+    } else {
+      setIsDatabaseDetailsLoading(false);
     }
   }, [databasePermission, decodedDatabaseFQN]);
 
@@ -472,6 +474,7 @@ const DatabaseDetails: FunctionComponent = () => {
 
   const {
     editTagsPermission,
+    editGlossaryTermsPermission,
     editDescriptionPermission,
     editCustomAttributePermission,
     viewAllPermission,
@@ -479,6 +482,9 @@ const DatabaseDetails: FunctionComponent = () => {
     () => ({
       editTagsPermission:
         (databasePermission.EditTags || databasePermission.EditAll) &&
+        !database.deleted,
+      editGlossaryTermsPermission:
+        (databasePermission.EditGlossaryTerms || databasePermission.EditAll) &&
         !database.deleted,
       editDescriptionPermission:
         (databasePermission.EditDescription || databasePermission.EditAll) &&
@@ -561,6 +567,9 @@ const DatabaseDetails: FunctionComponent = () => {
                         editCustomAttributePermission={
                           editCustomAttributePermission
                         }
+                        editGlossaryTermsPermission={
+                          editGlossaryTermsPermission
+                        }
                         editTagPermission={editTagsPermission}
                         entityFQN={decodedDatabaseFQN}
                         entityId={database?.id ?? ''}
@@ -639,6 +648,7 @@ const DatabaseDetails: FunctionComponent = () => {
       schemaInstanceCount,
       feedCount.totalCount,
       editTagsPermission,
+      editGlossaryTermsPermission,
       editDescriptionPermission,
       editCustomAttributePermission,
       viewAllPermission,

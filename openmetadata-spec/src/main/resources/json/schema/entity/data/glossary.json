@@ -65,7 +65,7 @@
       "items": {
         "$ref": "../../type/tagLabel.json"
       },
-      "default": null
+      "default": []
     },
     "termCount" : {
       "description": "Total number of terms in the glossary. This includes all the children in the hierarchy.",
