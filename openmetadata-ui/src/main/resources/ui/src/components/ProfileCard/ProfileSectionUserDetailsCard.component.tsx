@@ -44,18 +44,19 @@ interface ProfileSectionUserDetailsCardProps {
   userData: User;
   afterDeleteAction: (isSoftDelete?: boolean, version?: number) => void;
   updateUserDetails: (data: Partial<User>, key: keyof User) => Promise<void>;
+  handleRestoreUser: () => void;
 }
 
 const ProfileSectionUserDetailsCard = ({
   userData,
   afterDeleteAction,
   updateUserDetails,
+  handleRestoreUser,
 }: ProfileSectionUserDetailsCardProps) => {
   const { t } = useTranslation();
   const { fqn: username } = useFqn();
   const { isAdminUser } = useAuth();
   const { authConfig, currentUser } = useApplicationStore();
-  const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isChangePassword, setIsChangePassword] = useState<boolean>(false);
   const [displayName, setDisplayName] = useState(userData.displayName);
@@ -177,22 +178,25 @@ const ProfileSectionUserDetailsCard = ({
 
   const manageProfileOptions = (
     <div style={{ width: '180px' }}>
-      <div
-        className="profile-manage-item d-flex item-center"
-        onClick={() => {
-          setEditProfile(!editProfile);
-          setisPopoverVisible(!isPopoverVisible);
-        }}>
-        <EditProfileIcon
-          className="m-r-xss"
-          style={{ marginRight: '10px' }}
-          {...ICON_DIMENSION_USER_PAGE}
-        />
-        <Typography.Text className="profile-manage-label">
-          {t('label.edit-profile')}
-        </Typography.Text>
-      </div>
-      {showChangePasswordComponent && (
+      {isLoggedInUser && (
+        <div
+          className="profile-manage-item d-flex item-center"
+          onClick={() => {
+            handleRestoreUser();
+            setEditProfile(!editProfile);
+            setisPopoverVisible(!isPopoverVisible);
+          }}>
+          <EditProfileIcon
+            className="m-r-xss"
+            style={{ marginRight: '10px' }}
+            {...ICON_DIMENSION_USER_PAGE}
+          />
+          <Typography.Text className="profile-manage-label">
+            {t('label.edit-profile')}
+          </Typography.Text>
+        </div>
+      )}
+      {showChangePasswordComponent && isLoggedInUser && (
         <div
           className="profile-manage-item d-flex item-center"
           onClick={() => {
@@ -211,43 +215,41 @@ const ProfileSectionUserDetailsCard = ({
           </Typography.Text>
         </div>
       )}
-      <div
-        className="profile-manage-item d-flex item-center"
-        onClick={() => {
-          setIsDelete(true);
-          setisPopoverVisible(false);
-        }}>
-        <DeleteIcon
-          className="m-r-xss"
-          style={{ marginRight: '10px' }}
-          {...ICON_DIMENSION_USER_PAGE}
-        />
-        <Typography.Text className="profile-manage-label">
-          {t('label.delete-profile')}
-        </Typography.Text>
-      </div>
+      {userData?.deleted ? (
+        <div
+          className="profile-manage-item d-flex item-center"
+          onClick={() => {
+            handleRestoreUser();
+          }}>
+          <DeleteIcon
+            className="m-r-xss"
+            style={{ marginRight: '10px' }}
+            {...ICON_DIMENSION_USER_PAGE}
+          />
+          <Typography.Text className="profile-manage-label">
+            {t('label.restore')}
+          </Typography.Text>
+        </div>
+      ) : (
+        <div
+          className="profile-manage-item d-flex item-center"
+          onClick={() => {
+            setIsDelete(true);
+            setisPopoverVisible(false);
+          }}>
+          <DeleteIcon
+            className="m-r-xss"
+            style={{ marginRight: '10px' }}
+            {...ICON_DIMENSION_USER_PAGE}
+          />
+          <Typography.Text className="profile-manage-label">
+            {t('label.delete-profile')}
+          </Typography.Text>
+        </div>
+      )}
     </div>
   );
 
-  // const handleDescriptionChange = useCallback(
-  //   async (description: string) => {
-  //     await updateUserDetails({ description }, 'description');
-
-  //     setEditProfile(false);
-  //   },
-  //   [updateUserDetails, setEditProfile]
-  // );
-  // const handleProfileUpdate = useCallback(
-  //   async (displayName: string, description: string) => {
-  //     await updateUserDetails({
-  //       updatedDisplayName: displayName,
-  //       updatedDescription: description,
-  //     });
-
-  //     setEditProfile(false);
-  //   },
-  //   [updateUserDetails, setEditProfile]
-  // );
   const handleModalClose = async () => {
     setEditProfile(false);
   };
@@ -279,10 +281,6 @@ const ProfileSectionUserDetailsCard = ({
       <div>
         <p className="profile-details-title">{userData?.displayName}</p>
         {userEmailRender}
-        {/* <p className="profile-details-desc">
-          {userData?.description &&
-            getTextFromHtmlString(userData?.description)}
-        </p> */}
       </div>
       {showChangePasswordComponent && (
         <ChangePasswordForm
@@ -298,16 +296,9 @@ const ProfileSectionUserDetailsCard = ({
         <DeleteWidgetModal
           afterDeleteAction={afterDeleteAction}
           allowSoftDelete={!userData.deleted}
-          // deleteMessage={deleteMessage}
-          // deleteOptions={deleteOptions}
           entityId={userData.id}
           entityName={userData.fullyQualifiedName ?? userData.name}
           entityType={EntityType.USER}
-          // hardDeleteMessagePostFix={hardDeleteMessagePostFix}
-          // isRecursiveDelete={isRecursiveDelete}
-          // prepareType={p}
-          // softDeleteMessagePostFix={softDeleteMessagePostFix}
-          // successMessage={successMessage}
           visible={isDelete}
           onCancel={() => setIsDelete(false)}
         />

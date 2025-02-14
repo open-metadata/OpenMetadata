@@ -46,6 +46,9 @@ import UserProfileDetails from './UsersProfile/UserProfileDetails/UserProfileDet
 // import Title from 'antd/lib/skeleton/Title';
 // import ActivityFeedCardNew from '../../ActivityFeedCardNew/ActivityFeedcardNew.component';
 // import DetailsPanel from '../../ActivityFeedCardNew/DetailsPanel.component';
+import { AxiosError } from 'axios';
+import { restoreUser } from '../../../rest/userAPI';
+import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { ActivityFeedTabs } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import { DomainLabelNew } from '../../common/DomainLabel/DomainLabelNew';
 import ProfileSectionUserDetailsCard from '../../ProfileCard/ProfileSectionUserDetailsCard.component';
@@ -349,6 +352,21 @@ const Users = ({
       );
     }
   }, [activeTab]);
+  const handleRestoreUser = useCallback(async () => {
+    try {
+      await restoreUser(userData.id);
+      afterDeleteAction(true);
+
+      showSuccessToast(
+        t('message.entity-restored-success', { entity: t('label.user') })
+      );
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('server.entity-updating-error', { entity: t('label.user') })
+      );
+    }
+  }, [userData.id]);
 
   return (
     <div className="p-t-xs bg-grey p-x-box">
@@ -357,6 +375,7 @@ const Users = ({
           <div className="profile-section">
             <ProfileSectionUserDetailsCard
               afterDeleteAction={afterDeleteAction}
+              handleRestoreUser={handleRestoreUser}
               updateUserDetails={updateUserDetails}
               userData={userData}
             />
