@@ -55,6 +55,21 @@ jest.mock(
   })
 );
 
+jest.mock('../../../components/GenericProvider/GenericProvider', () => ({
+  useGenericContext: jest.fn().mockImplementation(() => ({
+    data: {
+      tableDetails: {
+        joins: [],
+      },
+      extension: {
+        test1: 'test',
+        test2: '',
+      },
+    },
+    onThreadLinkSelect: jest.fn(),
+  })),
+}));
+
 describe('EntityRightPanel component test', () => {
   const mockSelectedTags: EntityTags[] = [];
   const mockOnTagSelectionChange = jest.fn();
