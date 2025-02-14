@@ -112,6 +112,15 @@ export default function EntitySummaryPanel({
     () => searchClassBase.getEntityLink(entityDetails.details),
     [entityDetails, getEntityLinkFromType]
   );
+  const entityIcon = useMemo(() => {
+    return (
+      <span className="w-6 h-6 m-r-xs d-inline-flex text-xl align-middle entity-icon">
+        {searchClassBase.getEntityIcon(
+          get(entityDetails, 'details.entityType') ?? ''
+        )}
+      </span>
+    );
+  }, [entityDetails]);
 
   return (
     <Card
@@ -134,6 +143,7 @@ export default function EntitySummaryPanel({
             )}
             to={entityLink}>
             <Typography.Text className="m-b-0 d-block summary-panel-title">
+              {entityIcon}
               {stringToHTML(
                 searchClassBase.getEntityName(entityDetails.details)
               )}

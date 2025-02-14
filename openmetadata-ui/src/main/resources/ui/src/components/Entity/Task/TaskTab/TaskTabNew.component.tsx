@@ -933,11 +933,23 @@ export const TaskTabNew = ({
                 </Typography.Text>
               </Col>
               <Col className="flex items-center gap-2" span={12}>
-                <OwnerLabelNew
-                  avatarSize={24}
-                  className="p-t-05"
-                  owners={taskThread?.task?.assignees}
-                />
+                {taskThread?.task?.assignees?.length === 1 ? (
+                  <div className="d-flex items-center gap-2">
+                    <ProfilePicture
+                      name={taskThread?.task?.assignees[0].displayName ?? ''}
+                      width="24"
+                    />
+                    <Typography.Text className="text-md text-grey-body">
+                      {taskThread?.task?.assignees[0].displayName}
+                    </Typography.Text>
+                  </div>
+                ) : (
+                  <OwnerLabelNew
+                    avatarSize={24}
+                    className="p-t-05"
+                    owners={taskThread?.task?.assignees}
+                  />
+                )}
                 {(isCreator || hasEditAccess) &&
                 !isTaskClosed &&
                 owners.length === 0 ? (
@@ -1036,23 +1048,6 @@ export const TaskTabNew = ({
           />
         )}
         {taskThread.task?.status === ThreadTaskStatus.Open && ActionRequired()}
-        {/* <div className="m-l-lg">
-            {taskThread?.posts?.map((reply) => (
-              <ActivityFeedCardNew
-              isPost
-              componentsVisibility={{
-                showRepliesContainer: false,
-                showThreadIcon: false,
-              }}
-              feed={taskThread}
-              // isActive={isActive}
-              key={reply.id}
-              post={reply}
-              showActivityFeedEditor={false}
-            />
-             
-            ))}
-          </div> */}
 
         <Col span={24}>
           <div className="activity-feed-comments-container d-flex flex-col">
@@ -1090,9 +1085,10 @@ export const TaskTabNew = ({
                 {taskThread?.posts
                   ?.slice()
                   .sort((a, b) => (b.postTs as number) - (a.postTs as number))
-                  .map((reply) => (
+                  .map((reply, index, arr) => (
                     <CommentCard
                       feed={taskThread}
+                      isLastReply={index === arr.length - 1}
                       key={reply.id}
                       post={reply}
                     />

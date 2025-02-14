@@ -18,7 +18,6 @@ import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconUser } from '../../../assets/svg/user.svg';
 import { EntityReference } from '../../../generated/entity/data/table';
 import ProfilePicture from '../ProfilePicture/ProfilePicture';
-import { UserTeamSelectableList } from '../UserTeamSelectableList/UserTeamSelectableList.component';
 import './owner-label.less';
 
 export const OwnerLabelNew = ({
@@ -92,81 +91,6 @@ export const OwnerLabelNew = ({
                 </Avatar>
               )}
             </Avatar.Group>
-            {/* {visibleOwners.map((owner, index) => {
-              const displayName = getEntityName(owner);
-              const profilePicture =
-                owner.type === OwnerType.TEAM ? (
-                  <Icon
-                    component={IconTeamsGrey}
-                    data-testid="team-owner-icon"
-                    style={{ fontSize: '18px' }}
-                  />
-                ) : (
-                  <div key={owner.id} style={{ flexBasis: '18px' }}>
-                    <ProfilePicture
-                      displayName={displayName}
-                      key="profile-picture"
-                      name={owner.name ?? ''}
-                      type="circle"
-                      width="18"
-                    />
-                  </div>
-                );
-
-              const ownerLink = (
-                <Link
-                  className={classNames(
-                    'no-underline font-medium text-xs text-primary',
-                    className
-                  )}
-                  data-testid="owner-link"
-                  key={owner.id}
-                  to={
-                    owner.type === OwnerType.TEAM
-                      ? getTeamAndUserDetailsPath(
-                          owner.fullyQualifiedName ?? ''
-                        )
-                      : getUserPath(owner.name ?? '')
-                  }>
-                  {ownerDisplayName?.[index] ?? displayName}
-                </Link>
-              );
-
-              const inheritedIcon = owner?.inherited ? (
-                <Tooltip
-                  title={t('label.inherited-entity', {
-                    entity: t('label.owner-plural'),
-                  })}>
-                  <InheritIcon
-                    className="inherit-icon cursor-pointer"
-                    width={14}
-                  />
-                </Tooltip>
-              ) : null;
-
-              return (
-                <div
-                  className="d-inline-flex items-center gap-1"
-                key={owner.id}>
-                  <div className="owner-avatar-icon d-flex">
-                    {profilePicture}
-                  </div>
-                  {ownerLink}
-                  {inheritedIcon && (
-                    <div className="d-flex">{inheritedIcon}</div>
-                  )}
-                </div>
-              );
-            })} */}
-            {/* {remainingOwnersCount > 0 && (
-              <Button
-                className="more-owners-button text-xs h-auto"
-                size="small"
-                type="link"
-                onClick={() => setShowAllOwners(!showAllOwners)}>
-                {showAllOwners ? t('label.less') : remainingCountLabel}
-              </Button>
-            )} */}
           </div>
         ) : (
           <div className="d-inline-flex items-center gap-1">
@@ -184,17 +108,6 @@ export const OwnerLabelNew = ({
                 t('label.no-entity', { entity: t('label.owner-plural') })}
             </Typography.Text>
           </div>
-        )}
-        {onUpdate && (
-          <UserTeamSelectableList
-            hasPermission={Boolean(hasPermission)}
-            multiple={multiple}
-            owner={owners}
-            tooltipText={tooltipText}
-            onUpdate={(updatedUsers) => {
-              onUpdate(updatedUsers);
-            }}
-          />
         )}
       </div>
     );

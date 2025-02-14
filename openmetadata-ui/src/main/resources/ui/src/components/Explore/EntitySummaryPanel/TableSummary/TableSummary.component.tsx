@@ -103,7 +103,7 @@ function TableSummary({ entityDetails }: TableSummaryProps) {
 
     return isUndefined(tableDetails.profile) ? (
       <Typography.Text
-        className="text-grey-body"
+        className="text-grey-body text-sm"
         data-testid="no-profiler-enabled-message">
         {t('message.no-profiler-enabled-summary-message')}
       </Typography.Text>

@@ -82,7 +82,9 @@ function SummaryListItem({
                   maxLength={MAX_CHAR_LIMIT_ENTITY_SUMMARY}
                 />
               ) : (
-                t('label.no-entity', { entity: t('label.description') })
+                <Text className="text-sm text-grey-body">
+                  {t('label.no-entity', { entity: t('label.description') })}
+                </Text>
               )}
             </Paragraph>
           </Col>

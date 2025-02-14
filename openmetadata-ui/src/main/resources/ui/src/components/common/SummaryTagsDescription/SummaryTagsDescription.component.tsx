@@ -47,7 +47,7 @@ const SummaryTagsDescription = ({
           {tags.length > 0 ? (
             <TagsViewer sizeCap={-1} tags={tags} />
           ) : (
-            <Typography.Text className="text-grey-body">
+            <Typography.Text className="text-grey-body text-grey-muted text-sm">
               {t('label.no-tags-added')}
             </Typography.Text>
           )}
