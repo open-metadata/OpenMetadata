@@ -75,9 +75,9 @@ MSSQL_GET_SCHEMA_COMMENTS = textwrap.dedent(
     ep.value AS COMMENT
 FROM sys.schemas s
 LEFT JOIN sys.extended_properties ep 
-    ON ep.major_id = s.schema_id -- ID of the main object (table, schema, etc.).
+    ON ep.major_id = s.schema_id
     AND ep.minor_id = 0 
-    AND ep.class = 3  -- Class 3 represents Schema properties
+    AND ep.class = 3
     AND ep.name = 'MS_Description'
     """
 )

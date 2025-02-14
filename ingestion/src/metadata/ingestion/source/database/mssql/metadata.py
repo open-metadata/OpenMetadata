@@ -120,27 +120,6 @@ class MssqlSource(CommonDbSourceService, MultiDBSource):
             )
         return cls(config, metadata)
 
-    def get_stored_procedure_description(self, stored_procedure: str) -> Optional[str]:
-        """
-        Method to fetch the stored procedure description
-        """
-        description = self.stored_procedure_desc_map.get(
-            (
-                self.context.get().database,
-                self.context.get().database_schema,
-                stored_procedure,
-            )
-        )
-        return Markdown(description) if description else None
-
-    def set_stored_procedure_description_map(self) -> None:
-        self.stored_procedure_desc_map.clear()
-        results = self.engine.execute(MSSQL_GET_STORED_PROCEDURE_COMMENTS).all()
-        self.stored_procedure_desc_map = {
-            (row.DATABASE_NAME, row.SCHEMA_NAME, row.STORED_PROCEDURE): row.COMMENT
-            for row in results
-        }
-
     def get_configured_database(self) -> Optional[str]:
         if not self.service_connection.ingestAllDatabases:
             return self.service_connection.database
@@ -158,6 +137,14 @@ class MssqlSource(CommonDbSourceService, MultiDBSource):
         results = self.engine.execute(MSSQL_GET_DATABASE_COMMENTS).all()
         self.database_desc_map = {row.DATABASE_NAME: row.COMMENT for row in results}
 
+    def set_stored_procedure_description_map(self) -> None:
+        self.stored_procedure_desc_map.clear()
+        results = self.engine.execute(MSSQL_GET_STORED_PROCEDURE_COMMENTS).all()
+        self.stored_procedure_desc_map = {
+            (row.DATABASE_NAME, row.SCHEMA_NAME, row.STORED_PROCEDURE): row.COMMENT
+            for row in results
+        }
+
     def get_schema_description(self, schema_name: str) -> Optional[str]:
         """
         Method to fetch the schema description
@@ -169,6 +156,19 @@ class MssqlSource(CommonDbSourceService, MultiDBSource):
         Method to fetch the database description
         """
         return self.database_desc_map.get(database_name)
+
+    def get_stored_procedure_description(self, stored_procedure: str) -> Optional[str]:
+        """
+        Method to fetch the stored procedure description
+        """
+        description = self.stored_procedure_desc_map.get(
+            (
+                self.context.get().database,
+                self.context.get().database_schema,
+                stored_procedure,
+            )
+        )
+        return Markdown(description) if description else None
 
     def get_database_names_raw(self) -> Iterable[str]:
         yield from self._execute_database_query(MSSQL_GET_DATABASE)
@@ -202,6 +202,7 @@ class MssqlSource(CommonDbSourceService, MultiDBSource):
                 try:
                     self.set_schema_description_map()
                     self.set_database_description_map()
+                    self.set_stored_procedure_description_map()
                     self.set_inspector(database_name=new_database)
                     yield new_database
                 except Exception as exc:
