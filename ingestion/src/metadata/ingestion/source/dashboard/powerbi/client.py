@@ -43,9 +43,6 @@ from metadata.ingestion.source.dashboard.powerbi.models import (
     Workspaces,
     WorkSpaceScanResponse,
 )
-from metadata.ingestion.source.dashboard.powerbi.requests_client import (
-    PowerBIRequestsClient,
-)
 from metadata.utils.logger import utils_logger
 
 logger = utils_logger()
@@ -81,13 +78,6 @@ class PowerBiApiClient:
             retry_wait=30,
         )
         self.client = REST(client_config)
-        self.requests_client = PowerBIRequestsClient(
-            base_url="https://api.powerbi.com/v1.0",
-            auth_token=self.get_auth_token,
-            retry_codes=[429],
-            retry=100,
-            retry_wait=30,
-        )
 
     def get_auth_token(self) -> Tuple[str, str]:
         """
@@ -219,28 +209,21 @@ class PowerBiApiClient:
         try:
             admin = "admin/" if self.config.useAdminApis else ""
             api_url = f"/myorg/{admin}groups"
-            if self.config.useAdminApis:
-                # `GetGroupsAsAdmin` API's max groups per request limit is 5000 as defined here
-                # `https://learn.microsoft.com/en-us/rest/api/power-bi/admin/groups-get-groups-as-admin#uri-parameters`
-                entities_per_page = 500  # Taking 500 on safer side
-            else:
-                # Non-admin `GetGroups` limit is not defined on docs. Keeping it at max=100
-                entities_per_page = self.pagination_entity_per_page
+            entities_per_page = self.pagination_entity_per_page
             failed_indexes = []
-            params_data = {"$top": "1"}
-            response = self.requests_client.get(api_url, params=params_data)
+            params_data = {"$top": "1", "$skip": "0"}
+            response = self.client.get(api_url, data=params_data)
             if (
                 not response
-                or response.status_code in [504, 429]
-                or "message" in response.json()
-                or len(response.json()) != 3
+                or "message" in response
+                or len(response) != len(GroupsResponse.__annotations__)
             ):
                 failed_indexes.append(params_data)
-                logger.warning("Error fetching workspaces between results: 0-1")
+                logger.warning("Error fetching workspaces between results: (0, 1)")
                 count = 0
             else:
                 try:
-                    response = GroupsResponse(**response.json())
+                    response = GroupsResponse(**response)
                     count = response.odata_count
                 except Exception as exc:
                     logger.warning(f"Error processing GetGroups response: {exc}")
@@ -253,21 +236,23 @@ class PowerBiApiClient:
                     "$top": str(entities_per_page),
                     "$skip": str(index * entities_per_page),
                 }
-                response = self.requests_client.get(api_url, params=params_data)
+                response = self.client.get(api_url, data=params_data)
                 if (
                     not response
-                    or response.status_code in [504, 429]
-                    or "message" in response.json()
-                    or len(response.json()) != 3
+                    or "message" in response
+                    or len(response) != len(GroupsResponse.__annotations__)
                 ):
                     failed_indexes.append(params_data)
+                    index_range = (
+                        int(params_data.get("$skip")),
+                        int(params_data.get("$skip")) + int(params_data.get("$top")),
+                    )
                     logger.warning(
-                        "Error fetching workspaces between results: "
-                        f"{params_data.get('$top')}-{params_data.get('$skip')}"
+                        f"Error fetching workspaces between results: {str(index_range)}"
                     )
                     continue
                 try:
-                    response = GroupsResponse(**response.json())
+                    response = GroupsResponse(**response)
                     workspaces.extend(response.value)
                 except Exception as exc:
                     logger.warning(f"Error processing GetGroups response: {exc}")
@@ -277,21 +262,24 @@ class PowerBiApiClient:
                     f"Retrying one more time on failed indexes to get workspaces"
                 )
                 for params_data in failed_indexes:
-                    response = self.requests_client.get(api_url, data=params_data)
+                    response = self.client.get(api_url, data=params_data)
                     if (
                         not response
-                        or response.status_code in [504, 429]
-                        or "message" in response.json()
-                        or len(response.json()) != 3
+                        or "message" in response
+                        or len(response) != len(GroupsResponse.__annotations__)
                     ):
+                        index_range = (
+                            int(params_data.get("$skip")),
+                            int(params_data.get("$skip"))
+                            + int(params_data.get("$top")),
+                        )
                         logger.warning(
-                            "Workspaces between results"
-                            f"{params_data.get('$top')}-{params_data.get('$skip')}"
+                            f"Workspaces between results {str(index_range)} "
                             "could not be fetched on multiple attempts"
                         )
                         continue
                     try:
-                        response = GroupsResponse(**response.json())
+                        response = GroupsResponse(**response)
                         workspaces.extend(response.value)
                     except Exception as exc:
                         logger.warning(f"Error processing GetGroups response: {exc}")
