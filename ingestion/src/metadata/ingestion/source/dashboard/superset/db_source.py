@@ -212,6 +212,7 @@ class SupersetDBSource(SupersetSourceMixin):
         if sqa_str:
             sqa_url = make_url(sqa_str)
             default_db_name = sqa_url.database if sqa_url else None
+
         return get_database_name_for_lineage(db_service_entity, default_db_name)
 
     def _get_datasource_fqn(

@@ -10,6 +10,15 @@
       "type": "string",
       "enum": ["RemoveTagsAction"],
       "default": "RemoveTagsAction"
+    },
+    "labelType": {
+      "description" : "Remove tags by its label type",
+      "type": "string",
+      "enum": [
+        "Manual",
+        "Propagated",
+        "Automated"
+      ]
     }
   },
   "properties": {
@@ -26,16 +35,30 @@
         "$ref": "../../../../../type/tagLabel.json"
       }
     },
+    "labels": {
+      "description": "Remove tags by its label type",
+      "type": "array",
+      "items": {
+          "$ref": "#/definitions/labelType"
+      },
+      "default": null
+    },
     "applyToChildren": {
       "title": "Apply to Children",
-      "description": "Remove tags from all the children of the selected assets. E.g., columns, tasks, topic fields,...",
+      "description": "Remove tags from the children of the selected assets. E.g., columns, tasks, topic fields,...",
       "type": "array",
       "items": {
         "$ref": "../../../../../type/basic.json#/definitions/entityName"
       },
       "default": null
+    },
+    "applyToAll": {
+      "title": "Apply to All",
+      "description": "Remove tags from all the children and parent of the selected assets.",
+      "type": "boolean",
+      "default": null
     }
   },
-  "required": ["type", "tags"],
+  "required": ["type"],
   "additionalProperties": false
 }
