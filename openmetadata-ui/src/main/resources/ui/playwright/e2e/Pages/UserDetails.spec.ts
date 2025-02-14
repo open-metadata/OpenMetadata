@@ -14,16 +14,23 @@
 import { expect, Page, test as base } from '@playwright/test';
 import { GlobalSettingOptions } from '../../constant/settings';
 import { USER_DESCRIPTION } from '../../constant/user';
+import { TeamClass } from '../../support/team/TeamClass';
 import { AdminClass } from '../../support/user/AdminClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
-import { descriptionBox, redirectToHomePage } from '../../utils/common';
+import { descriptionBox, redirectToHomePage, uuid } from '../../utils/common';
 import { settingClick } from '../../utils/sidebar';
 import { redirectToUserPage } from '../../utils/userDetails';
 
 const user1 = new UserClass();
 const user2 = new UserClass();
 const admin = new AdminClass();
+const team = new TeamClass({
+  name: `a-new-team-${uuid()}`,
+  displayName: `A New Team ${uuid()}`,
+  description: 'playwright team description',
+  teamType: 'Group',
+});
 
 // Create 2 page and authenticate 1 with admin and another with normal user
 const test = base.extend<{
@@ -51,6 +58,8 @@ test.describe('User with different Roles', () => {
     await user1.create(apiContext);
     await user2.create(apiContext);
 
+    await team.create(apiContext);
+
     await afterAction();
   });
 
@@ -60,7 +69,51 @@ test.describe('User with different Roles', () => {
     await user1.delete(apiContext);
     await user2.delete(apiContext);
 
+    await team.delete(apiContext);
+
     await afterAction();
+  });
+
+  test('Admin user can get all the teams hierarchy which editing teams', async ({
+    adminPage,
+  }) => {
+    await redirectToUserPage(adminPage);
+
+    // Check if the avatar is visible
+    await expect(
+      adminPage
+        .getByTestId('user-profile-details')
+        .getByTestId('profile-avatar')
+    ).toBeVisible();
+
+    await adminPage
+      .locator('.user-profile-container [data-icon="right"]')
+      .click();
+
+    await expect(
+      adminPage.getByTestId('user-team-card-container')
+    ).toBeVisible();
+
+    const teamListResponse = adminPage.waitForResponse(
+      '/api/v1/teams/hierarchy?isJoinable=false'
+    );
+
+    await adminPage.getByTestId('edit-teams-button').click();
+
+    await teamListResponse;
+
+    await expect(adminPage.getByTestId('team-select')).toBeVisible();
+
+    await adminPage.getByTestId('team-select').click();
+
+    await adminPage.waitForSelector('.ant-tree-select-dropdown', {
+      state: 'visible',
+    });
+
+    // Check if newly added team is there or not
+    await expect(adminPage.locator('.ant-tree-select-dropdown')).toContainText(
+      team.responseData.displayName
+    );
   });
 
   test('Non admin user should be able to edit display name and description on own profile', async ({
