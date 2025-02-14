@@ -56,6 +56,23 @@ WHERE
 """
 )
 
+MSSQL_GET_STORED_PROCEDURE_COMMENTS = textwrap.dedent(
+    """
+SELECT 
+    DB_NAME() AS DATABASE_NAME,
+    s.name AS SCHEMA_NAME,
+    p.name AS STORED_PROCEDURE,
+    ep.value AS COMMENT
+FROM sys.procedures p
+JOIN sys.schemas s ON p.schema_id = s.schema_id
+LEFT JOIN sys.extended_properties ep 
+    ON ep.major_id = p.object_id 
+    AND ep.minor_id = 0 
+    AND ep.class = 1
+    AND ep.name = 'MS_Description';
+"""
+)
+
 MSSQL_ALL_VIEW_DEFINITIONS = textwrap.dedent(
     """
 SELECT

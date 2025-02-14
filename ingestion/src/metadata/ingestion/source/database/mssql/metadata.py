@@ -30,7 +30,7 @@ from metadata.generated.schema.entity.services.ingestionPipelines.status import 
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.generated.schema.type.basic import EntityName
+from metadata.generated.schema.type.basic import EntityName, Markdown
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -41,6 +41,7 @@ from metadata.ingestion.source.database.mssql.models import (
 )
 from metadata.ingestion.source.database.mssql.queries import (
     MSSQL_GET_DATABASE,
+    MSSQL_GET_STORED_PROCEDURE_COMMENTS,
     MSSQL_GET_STORED_PROCEDURES,
 )
 from metadata.ingestion.source.database.mssql.utils import (
@@ -94,6 +95,14 @@ class MssqlSource(CommonDbSourceService, MultiDBSource):
     Database metadata from MSSQL Source
     """
 
+    def __init__(
+        self,
+        config,
+        metadata,
+    ):
+        super().__init__(config, metadata)
+        self.stored_procedure_desc_map = {}
+
     @classmethod
     def create(
         cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
@@ -107,6 +116,27 @@ class MssqlSource(CommonDbSourceService, MultiDBSource):
             )
         return cls(config, metadata)
 
+    def get_stored_procedure_description(self, stored_procedure: str) -> Optional[str]:
+        """
+        Method to fetch the stored procedure description
+        """
+        description = self.stored_procedure_desc_map.get(
+            (
+                self.context.get().database,
+                self.context.get().database_schema,
+                stored_procedure,
+            )
+        )
+        return Markdown(description) if description else None
+
+    def set_stored_procedure_description_map(self) -> None:
+        self.stored_procedure_desc_map.clear()
+        results = self.engine.execute(MSSQL_GET_STORED_PROCEDURE_COMMENTS).all()
+        self.stored_procedure_desc_map = {
+            (row.DATABASE_NAME, row.SCHEMA_NAME, row.STORED_PROCEDURE): row.COMMENT
+            for row in results
+        }
+
     def get_configured_database(self) -> Optional[str]:
         if not self.service_connection.ingestAllDatabases:
             return self.service_connection.database
@@ -118,6 +148,7 @@ class MssqlSource(CommonDbSourceService, MultiDBSource):
     def get_database_names(self) -> Iterable[str]:
         if not self.config.serviceConnection.root.config.ingestAllDatabases:
             configured_db = self.config.serviceConnection.root.config.database
+            self.set_stored_procedure_description_map()
             self.set_inspector(database_name=configured_db)
             yield configured_db
         else:
@@ -178,7 +209,9 @@ class MssqlSource(CommonDbSourceService, MultiDBSource):
         try:
             stored_procedure_request = CreateStoredProcedureRequest(
                 name=EntityName(stored_procedure.name),
-                description=None,
+                description=self.get_stored_procedure_description(
+                    stored_procedure.name
+                ),
                 storedProcedureCode=StoredProcedureCode(
                     language=STORED_PROC_LANGUAGE_MAP.get(stored_procedure.language),
                     code=stored_procedure.definition,
