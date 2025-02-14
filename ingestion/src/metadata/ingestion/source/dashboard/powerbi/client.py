@@ -47,7 +47,8 @@ from metadata.utils.logger import utils_logger
 
 logger = utils_logger()
 
-
+GETGROUPS_DEFAULT_PARAMS = {"$top": "1", "$skip": "0"}
+API_RESPONSE_MESSAGE_KEY = "message"
 # Similar inner methods with mode client. That's fine.
 # pylint: disable=duplicate-code
 class PowerBiApiClient:
@@ -211,15 +212,20 @@ class PowerBiApiClient:
             api_url = f"/myorg/{admin}groups"
             entities_per_page = self.pagination_entity_per_page
             failed_indexes = []
-            params_data = {"$top": "1", "$skip": "0"}
+            params_data = GETGROUPS_DEFAULT_PARAMS
             response = self.client.get(api_url, data=params_data)
             if (
                 not response
-                or "message" in response
+                or API_RESPONSE_MESSAGE_KEY in response
                 or len(response) != len(GroupsResponse.__annotations__)
             ):
-                failed_indexes.append(params_data)
                 logger.warning("Error fetching workspaces between results: (0, 1)")
+                if response and response.get(API_RESPONSE_MESSAGE_KEY):
+                    logger.warning(
+                        "Error message from API response: "
+                        f"{str(response.get(API_RESPONSE_MESSAGE_KEY))}"
+                    )
+                failed_indexes.append(params_data)
                 count = 0
             else:
                 try:
@@ -229,7 +235,6 @@ class PowerBiApiClient:
                     logger.warning(f"Error processing GetGroups response: {exc}")
                     count = 0
             indexes = math.ceil(count / entities_per_page)
-
             workspaces = []
             for index in range(indexes):
                 params_data = {
@@ -239,10 +244,9 @@ class PowerBiApiClient:
                 response = self.client.get(api_url, data=params_data)
                 if (
                     not response
-                    or "message" in response
+                    or API_RESPONSE_MESSAGE_KEY in response
                     or len(response) != len(GroupsResponse.__annotations__)
                 ):
-                    failed_indexes.append(params_data)
                     index_range = (
                         int(params_data.get("$skip")),
                         int(params_data.get("$skip")) + int(params_data.get("$top")),
@@ -250,6 +254,12 @@ class PowerBiApiClient:
                     logger.warning(
                         f"Error fetching workspaces between results: {str(index_range)}"
                     )
+                    if response and response.get(API_RESPONSE_MESSAGE_KEY):
+                        logger.warning(
+                            "Error message from API response: "
+                            f"{str(response.get(API_RESPONSE_MESSAGE_KEY))}"
+                        )
+                    failed_indexes.append(params_data)
                     continue
                 try:
                     response = GroupsResponse(**response)
@@ -265,7 +275,7 @@ class PowerBiApiClient:
                     response = self.client.get(api_url, data=params_data)
                     if (
                         not response
-                        or "message" in response
+                        or API_RESPONSE_MESSAGE_KEY in response
                         or len(response) != len(GroupsResponse.__annotations__)
                     ):
                         index_range = (
@@ -277,6 +287,11 @@ class PowerBiApiClient:
                             f"Workspaces between results {str(index_range)} "
                             "could not be fetched on multiple attempts"
                         )
+                        if response and response.get(API_RESPONSE_MESSAGE_KEY):
+                            logger.warning(
+                                "Error message from API response: "
+                                f"{str(response.get(API_RESPONSE_MESSAGE_KEY))}"
+                            )
                         continue
                     try:
                         response = GroupsResponse(**response)
