@@ -863,67 +863,65 @@ export const TaskTabNew = ({
         'flex-column': isEditAssignee,
       })}>
       <div className="d-flex gap-2" data-testid="task-assignees">
-        {isEditAssignee ? (
-          <Form
-            className="w-full"
-            form={assigneesForm}
-            layout="vertical"
-            onFinish={handleAssigneeUpdate}>
-            <Form.Item
-              data-testid="assignees"
-              label={`${t('label.assignee-plural')}:`}
-              name="assignees"
-              rules={[
-                {
-                  required: true,
-                  message: t('message.field-text-is-required', {
-                    fieldText: t('label.assignee-plural'),
-                  }),
-                },
-              ]}>
-              <InlineEdit
-                className="assignees-edit-input"
-                direction="horizontal"
-                isLoading={isAssigneeLoading}
-                onCancel={() => {
-                  setIsEditAssignee(false);
-                  assigneesForm.setFieldValue('assignees', initialAssignees);
-                }}
-                onSave={() => assigneesForm.submit()}>
-                <Assignees
-                  disabled={owners.length > 0}
-                  options={options}
-                  value={updatedAssignees}
-                  onChange={(values) =>
-                    assigneesForm.setFieldValue('assignees', values)
-                  }
-                  onSearch={(query) =>
-                    fetchOptions({
-                      query,
-                      setOptions,
-                      currentUserId: currentUser?.id,
-                      initialOptions: assigneeOptions,
-                    })
-                  }
-                />
-              </InlineEdit>
-            </Form.Item>
-          </Form>
-        ) : (
-          <>
-            <Row className="m-l-0" gutter={[16, 16]}>
-              <Col
-                className="flex items-center gap-2 text-grey-muted"
-                span={12}>
-                <UserIcon height={16} />
-                <Typography.Text className="incident-manager-details-label @grey-8">
-                  {t('label.created-by')}:{' '}
-                </Typography.Text>
-              </Col>
-              <Col className="flex items-center gap-2" span={12}>
-                <ProfilePicture name={taskThread.createdBy ?? ''} width="24" />
-                <Typography.Text>{taskThread.createdBy}</Typography.Text>
-              </Col>
+        <Row className="m-l-0" gutter={[16, 16]}>
+          <Col className="flex items-center gap-2 text-grey-muted" span={12}>
+            <UserIcon height={16} />
+            <Typography.Text className="incident-manager-details-label @grey-8">
+              {t('label.created-by')}:{' '}
+            </Typography.Text>
+          </Col>
+          <Col className="flex items-center gap-2" span={12}>
+            <ProfilePicture name={taskThread.createdBy ?? ''} width="24" />
+            <Typography.Text>{taskThread.createdBy}</Typography.Text>
+          </Col>
+
+          {isEditAssignee ? (
+            <Form
+              className="w-full"
+              form={assigneesForm}
+              layout="vertical"
+              onFinish={handleAssigneeUpdate}>
+              <Form.Item
+                data-testid="assignees"
+                name="assignees"
+                rules={[
+                  {
+                    required: true,
+                    message: t('message.field-text-is-required', {
+                      fieldText: t('label.assignee-plural'),
+                    }),
+                  },
+                ]}>
+                <InlineEdit
+                  className="assignees-edit-input"
+                  direction="horizontal"
+                  isLoading={isAssigneeLoading}
+                  onCancel={() => {
+                    setIsEditAssignee(false);
+                    assigneesForm.setFieldValue('assignees', initialAssignees);
+                  }}
+                  onSave={() => assigneesForm.submit()}>
+                  <Assignees
+                    disabled={owners.length > 0}
+                    options={options}
+                    value={updatedAssignees}
+                    onChange={(values) =>
+                      assigneesForm.setFieldValue('assignees', values)
+                    }
+                    onSearch={(query) =>
+                      fetchOptions({
+                        query,
+                        setOptions,
+                        currentUserId: currentUser?.id,
+                        initialOptions: assigneeOptions,
+                      })
+                    }
+                  />
+                </InlineEdit>
+              </Form.Item>
+            </Form>
+          ) : (
+            <>
               <Col
                 className="flex items-center gap-2 text-grey-muted"
                 span={12}>
@@ -963,9 +961,9 @@ export const TaskTabNew = ({
                   />
                 ) : null}
               </Col>
-            </Row>
-          </>
-        )}
+            </>
+          )}
+        </Row>
       </div>
     </div>
   );
