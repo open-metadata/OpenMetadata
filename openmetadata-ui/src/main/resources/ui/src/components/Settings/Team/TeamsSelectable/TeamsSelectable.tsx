@@ -56,15 +56,7 @@ const TeamsSelectable = ({
     try {
       setIsLoading(true);
       const { data } = await getTeamsHierarchy(filterJoinable);
-      const compareNames = (a: TeamHierarchy, b: TeamHierarchy) => {
-        const nameA = a.fullyQualifiedName ?? '';
-        const nameB = b.fullyQualifiedName ?? '';
-
-        return nameA.localeCompare(nameB);
-      };
-
-      const sortedData = data.sort(compareNames);
-      setTeams(sortedData);
+      setTeams(data.sort((a, b) => a.name.localeCompare(b.name)));
       showTeamsAlert && setNoTeam(isEmpty(data));
     } catch (error) {
       showErrorToast(error as AxiosError);
