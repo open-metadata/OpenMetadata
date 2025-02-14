@@ -225,6 +225,7 @@ export const CommonWidgets = ({ widgetConfig }: CommonWidgetsProps) => {
   return (
     <div
       data-grid={widgetConfig}
+      data-testid="entity-right-panel"
       id={widgetConfig.i}
       key={widgetConfig.i}
       style={{ overflow: 'scroll' }}>
