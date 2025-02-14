@@ -202,7 +202,9 @@ class PowerBiApiClient:
 
         return None
 
-    def fetch_all_workspaces(self) -> Optional[List[Group]]:
+    def fetch_all_workspaces(
+        self,
+    ) -> Optional[List[Group]]:  # pylint: disable=too-many-branches,too-many-statements
         """Method to fetch all powerbi workspace details
         Returns:
             Group
