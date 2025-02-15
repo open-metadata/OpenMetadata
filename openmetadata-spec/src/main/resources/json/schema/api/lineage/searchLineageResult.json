@@ -35,14 +35,17 @@
           "type": "integer",
           "default": null
         },
-        "nextFrom": {
-          "description": "Next from to be used for further request.",
-          "type": "integer",
-          "default": null
-        },
         "total": {
           "description": "Total number of search results in layer.",
           "existingJavaType": "java.lang.Long"
+        },
+        "entityDownstreamCount": {
+          "description": "Count of entities downstream current layer entity.",
+          "existingJavaType": "java.util.Map<java.lang.String, java.lang.Integer>"
+        },
+        "entityUpstreamCount": {
+          "description": "Count of entities upstream current layer entity.",
+          "existingJavaType": "java.util.Map<java.lang.String, java.lang.Integer>"
         }
       },
       "additionalProperties": false

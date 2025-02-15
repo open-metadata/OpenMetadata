@@ -180,8 +180,7 @@ public class LineageRepository {
       EntityReference fromEntity, EntityReference toEntity, LineageDetails lineageDetails) {
     EsLineageData lineageData =
         new EsLineageData()
-            .withDocId(
-                fromEntity.getFullyQualifiedName() + "--->" + toEntity.getFullyQualifiedName())
+            .withDocId(getDocumentId(fromEntity, toEntity, lineageDetails))
             .withFromEntity(buildEntityRefLineage(fromEntity));
     if (lineageDetails != null) {
       // Add Pipeline Details
@@ -192,6 +191,22 @@ public class LineageRepository {
       lineageData.setSource(nullOrDefault(lineageDetails.getSource().value(), null));
     }
     return lineageData;
+  }
+
+  private static String getDocumentId(
+      EntityReference fromEntity, EntityReference toEntity, LineageDetails lineageDetails) {
+    if (lineageDetails != null && !nullOrEmpty(lineageDetails.getPipeline())) {
+      EntityReference ref = lineageDetails.getPipeline();
+      return String.format(
+          "%s--->%s:%s--->%s",
+          fromEntity.getFullyQualifiedName(),
+          ref.getType(),
+          ref.getId(),
+          toEntity.getFullyQualifiedName());
+    } else {
+      return String.format(
+          "%s--->%s", fromEntity.getFullyQualifiedName(), toEntity.getFullyQualifiedName());
+    }
   }
 
   public static void addPipelineDetails(EsLineageData lineageData, EntityReference pipelineRef) {

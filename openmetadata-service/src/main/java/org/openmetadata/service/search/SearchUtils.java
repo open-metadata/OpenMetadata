@@ -25,6 +25,7 @@ import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.SSLUtil;
 
 public final class SearchUtils {
+  public static final String LINEAGE_AGGREGATION = "matchesPerKey";
 
   private SearchUtils() {}
 
@@ -37,7 +38,7 @@ public final class SearchUtils {
         .withFqnHash(FullyQualifiedName.buildHash(entityMap.get("fullyQualifiedName").toString()));
   }
 
-  public static List<EsLineageData> getUpstreamLineageIfExist(Map<String, Object> esDoc) {
+  public static List<EsLineageData> getUpstreamLineageListIfExist(Map<String, Object> esDoc) {
     if (esDoc.containsKey(UPSTREAM_LINEAGE_FIELD)) {
       return JsonUtils.readOrConvertValues(esDoc.get(UPSTREAM_LINEAGE_FIELD), EsLineageData.class);
     }

@@ -40,13 +40,17 @@ export interface DirectionPagingObject {
  */
 export interface LayerPaging {
     /**
+     * Count of entities downstream current layer entity.
+     */
+    entityDownstreamCount?: any;
+    /**
+     * Count of entities upstream current layer entity.
+     */
+    entityUpstreamCount?: any;
+    /**
      * Layer Number in the lineage.
      */
     layerNumber?: number;
-    /**
-     * Next from to be used for further request.
-     */
-    nextFrom?: number;
     /**
      * Total number of search results in layer.
      */

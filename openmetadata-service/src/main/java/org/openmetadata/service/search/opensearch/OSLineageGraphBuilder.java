@@ -1,12 +1,16 @@
 package org.openmetadata.service.search.opensearch;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.search.SearchClient.FQN_FIELD;
 import static org.openmetadata.service.search.SearchClient.GLOBAL_SEARCH_ALIAS;
+import static org.openmetadata.service.search.SearchUtils.LINEAGE_AGGREGATION;
 import static org.openmetadata.service.search.SearchUtils.getRelationshipRef;
-import static org.openmetadata.service.search.SearchUtils.getUpstreamLineageIfExist;
+import static org.openmetadata.service.search.SearchUtils.getUpstreamLineageListIfExist;
 import static org.openmetadata.service.search.elasticsearch.ElasticSearchClient.SOURCE_FIELDS_TO_EXCLUDE;
 import static org.openmetadata.service.search.opensearch.OsUtils.getSearchRequest;
 
+import es.org.elasticsearch.search.aggregations.bucket.terms.ParsedStringTerms;
+import es.org.elasticsearch.search.aggregations.bucket.terms.Terms;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -54,11 +58,17 @@ public class OSLineageGraphBuilder {
       return;
     }
 
+    LayerPaging paging =
+        new LayerPaging()
+            .withLayerNumber(lineageRequest.getUpstreamDepth() - depth)
+            .withEntityUpstreamCount(new HashMap<>());
+
     Set<String> fqnSet = new HashSet<>();
     SearchRequest searchRequest =
         getSearchRequest(
             GLOBAL_SEARCH_ALIAS,
             lineageRequest.getQueryFilter(),
+            LINEAGE_AGGREGATION,
             lineageRequest.getDirectionValue(),
             fqns,
             lineageRequest.getLayerFrom(),
@@ -75,7 +85,7 @@ public class OSLineageGraphBuilder {
         result.getNodes().putIfAbsent(fqn, esDoc);
 
         RelationshipRef toEntity = getRelationshipRef(esDoc);
-        List<EsLineageData> upStreamEntities = getUpstreamLineageIfExist(esDoc);
+        List<EsLineageData> upStreamEntities = getUpstreamLineageListIfExist(esDoc);
         for (EsLineageData data : upStreamEntities) {
           result.getUpstreamEdges().putIfAbsent(data.getDocId(), data.withToEntity(toEntity));
           String fromFqn = data.getFromEntity().getFullyQualifiedName();
@@ -83,22 +93,16 @@ public class OSLineageGraphBuilder {
             fqnSet.add(fromFqn);
           }
         }
+
+        // Add Paging Details per entity
+        paging.getEntityUpstreamCount().put(fqn, upStreamEntities.size());
       }
     }
 
-    Integer nextFrom =
-        ((lineageRequest.getLayerFrom() + searchResponse.getHits().getHits().length)
-                == searchResponse.getHits().getTotalHits().value)
-            ? null
-            : (lineageRequest.getLayerFrom() + searchResponse.getHits().getHits().length);
     result
         .getPaging()
         .getUpstream()
-        .add(
-            new LayerPaging()
-                .withLayerNumber(lineageRequest.getUpstreamDepth() - depth)
-                .withNextFrom(nextFrom)
-                .withTotal(searchResponse.getHits().getTotalHits().value));
+        .add(paging.withTotal(searchResponse.getHits().getTotalHits().value));
 
     fetchUpstreamNodesRecursively(lineageRequest, result, fqnSet, depth - 1);
   }
@@ -131,7 +135,11 @@ public class OSLineageGraphBuilder {
     result
         .getPaging()
         .getDownstream()
-        .add(new LayerPaging().withLayerNumber(0).withNextFrom(null).withTotal(1L));
+        .add(
+            new LayerPaging()
+                .withLayerNumber(0)
+                .withTotal(1L)
+                .withEntityDownstreamCount(new HashMap<>()));
   }
 
   private void fetchDownstreamNodesRecursively(
@@ -141,11 +149,16 @@ public class OSLineageGraphBuilder {
       return;
     }
 
+    int layerNumber = lineageRequest.getDownstreamDepth() - depth;
+    LayerPaging paging =
+        new LayerPaging().withLayerNumber(layerNumber).withEntityDownstreamCount(new HashMap<>());
+
     Set<String> fqnSet = new HashSet<>();
     os.org.opensearch.action.search.SearchRequest searchRequest =
         getSearchRequest(
             GLOBAL_SEARCH_ALIAS,
             lineageRequest.getQueryFilter(),
+            LINEAGE_AGGREGATION,
             lineageRequest.getDirectionValue(),
             fqns,
             lineageRequest.getLayerFrom(),
@@ -158,37 +171,46 @@ public class OSLineageGraphBuilder {
     for (SearchHit hit : searchResponse.getHits().getHits()) {
       Map<String, Object> entityMap = hit.getSourceAsMap();
       if (!entityMap.isEmpty()) {
-        RelationshipRef toEntity = getRelationshipRef(entityMap);
         String fqn = entityMap.get(FQN_FIELD).toString();
+
+        // Add Paging Details per entity
+        ParsedStringTerms valueCountAgg = searchResponse.getAggregations().get(LINEAGE_AGGREGATION);
+        for (Terms.Bucket bucket : valueCountAgg.getBuckets()) {
+          if (!nullOrEmpty(bucket.getKeyAsString())
+              && result.getNodes().containsKey(bucket.getKeyAsString())) {
+            result
+                .getPaging()
+                .getDownstream()
+                .get(layerNumber - 1)
+                .getEntityDownstreamCount()
+                .put(bucket.getKeyAsString(), (int) bucket.getDocCount());
+          }
+        }
+
+        RelationshipRef toEntity = getRelationshipRef(entityMap);
         if (!result.getNodes().containsKey(fqn)) {
           fqnSet.add(fqn);
           result.getNodes().put(fqn, entityMap);
         }
 
-        List<EsLineageData> upstreamEntities = getUpstreamLineageIfExist(entityMap);
-        for (EsLineageData esLineageData : upstreamEntities) {
+        List<EsLineageData> upStreamEntities = getUpstreamLineageListIfExist(entityMap);
+        for (EsLineageData esLineageData : upStreamEntities) {
           if (fqns.contains(esLineageData.getFromEntity().getFullyQualifiedName())) {
             result
                 .getDownstreamEdges()
                 .putIfAbsent(esLineageData.getDocId(), esLineageData.withToEntity(toEntity));
           }
         }
+
+        // Add Paging Details per entity
+        paging.getEntityDownstreamCount().put(fqn, upStreamEntities.size());
       }
     }
 
-    Integer nextFrom =
-        ((lineageRequest.getLayerFrom() + searchResponse.getHits().getHits().length)
-                == searchResponse.getHits().getTotalHits().value)
-            ? null
-            : (lineageRequest.getLayerFrom() + searchResponse.getHits().getHits().length);
     result
         .getPaging()
         .getDownstream()
-        .add(
-            new LayerPaging()
-                .withLayerNumber(lineageRequest.getDownstreamDepth() - depth + 1)
-                .withNextFrom(nextFrom)
-                .withTotal(searchResponse.getHits().getTotalHits().value));
+        .add(paging.withTotal(searchResponse.getHits().getTotalHits().value));
 
     fetchDownstreamNodesRecursively(lineageRequest, result, fqnSet, depth - 1);
   }

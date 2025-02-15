@@ -14,6 +14,7 @@ import es.org.elasticsearch.index.query.QueryBuilder;
 import es.org.elasticsearch.index.query.QueryBuilders;
 import es.org.elasticsearch.search.SearchHit;
 import es.org.elasticsearch.search.SearchModule;
+import es.org.elasticsearch.search.aggregations.AggregationBuilders;
 import es.org.elasticsearch.search.builder.SearchSourceBuilder;
 import es.org.elasticsearch.xcontent.NamedXContentRegistry;
 import es.org.elasticsearch.xcontent.XContentParser;
@@ -65,7 +66,7 @@ public class EsUtils {
     Map<String, Object> result = new HashMap<>();
     es.org.elasticsearch.action.search.SearchRequest searchRequest =
         getSearchRequest(
-            indexAlias, null, keyName, keyValues, from, size, null, null, fieldsToRemove);
+            indexAlias, null, null, keyName, keyValues, from, size, null, null, fieldsToRemove);
     SearchResponse searchResponse = client.search(searchRequest, RequestOptions.DEFAULT);
     for (SearchHit hit : searchResponse.getHits().getHits()) {
       Map<String, Object> esDoc = hit.getSourceAsMap();
@@ -77,6 +78,7 @@ public class EsUtils {
   public static es.org.elasticsearch.action.search.SearchRequest getSearchRequest(
       String indexAlias,
       String queryFilter,
+      String aggName,
       String key,
       Set<String> value,
       int from,
@@ -100,6 +102,11 @@ public class EsUtils {
     }
     searchSourceBuilder.from(from);
     searchSourceBuilder.size(size);
+
+    // This assumes here that the key has a keyword field
+    if (!nullOrEmpty(aggName)) {
+      searchSourceBuilder.aggregation(AggregationBuilders.terms(aggName).field(key + ".keyword"));
+    }
 
     buildSearchSourceFilter(queryFilter, searchSourceBuilder);
     searchRequest.source(searchSourceBuilder);

@@ -26,6 +26,7 @@ import os.org.opensearch.index.query.QueryBuilder;
 import os.org.opensearch.index.query.QueryBuilders;
 import os.org.opensearch.search.SearchHit;
 import os.org.opensearch.search.SearchModule;
+import os.org.opensearch.search.aggregations.AggregationBuilders;
 import os.org.opensearch.search.builder.SearchSourceBuilder;
 
 @Slf4j
@@ -65,7 +66,7 @@ public class OsUtils {
     Map<String, Object> result = new HashMap<>();
     os.org.opensearch.action.search.SearchRequest searchRequest =
         getSearchRequest(
-            indexAlias, null, keyName, keyValues, from, size, null, null, fieldsToRemove);
+            indexAlias, null, null, keyName, keyValues, from, size, null, null, fieldsToRemove);
     SearchResponse searchResponse = client.search(searchRequest, RequestOptions.DEFAULT);
     for (SearchHit hit : searchResponse.getHits().getHits()) {
       Map<String, Object> esDoc = hit.getSourceAsMap();
@@ -77,6 +78,7 @@ public class OsUtils {
   public static os.org.opensearch.action.search.SearchRequest getSearchRequest(
       String indexAlias,
       String queryFilter,
+      String aggName,
       String key,
       Set<String> value,
       int from,
@@ -100,6 +102,11 @@ public class OsUtils {
     }
     searchSourceBuilder.from(from);
     searchSourceBuilder.size(size);
+
+    // This assumes here that the key has a keyword field
+    if (!nullOrEmpty(aggName)) {
+      searchSourceBuilder.aggregation(AggregationBuilders.terms(aggName).field(key + ".keyword"));
+    }
 
     buildSearchSourceFilter(queryFilter, searchSourceBuilder);
     searchRequest.source(searchSourceBuilder);
