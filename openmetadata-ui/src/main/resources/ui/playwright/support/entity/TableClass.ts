@@ -56,28 +56,28 @@ export class TableClass extends EntityClass {
   };
   children = [
     {
-      name: 'user_id',
+      name: `user_id${uuid()}`,
       dataType: 'NUMERIC',
       dataTypeDisplay: 'numeric',
       description:
         'Unique identifier for the user of your Shopify POS or your Shopify admin.',
     },
     {
-      name: 'shop_id',
+      name: `shop_id${uuid()}`,
       dataType: 'NUMERIC',
       dataTypeDisplay: 'numeric',
       description:
         'The ID of the store. This column is a foreign key reference to the shop_id column in the dim.shop table.',
     },
     {
-      name: 'name',
+      name: `name${uuid()}`,
       dataType: 'VARCHAR',
       dataLength: 100,
       dataTypeDisplay: 'varchar',
       description: 'Name of the staff member.',
       children: [
         {
-          name: 'first_name',
+          name: `first_name${uuid()}`,
           dataType: 'STRUCT',
           dataLength: 100,
           dataTypeDisplay:
@@ -85,7 +85,7 @@ export class TableClass extends EntityClass {
           description: 'First name of the staff member.',
         },
         {
-          name: 'last_name',
+          name: `last_name${uuid()}`,
           dataType: 'ARRAY',
           dataLength: 100,
           dataTypeDisplay: 'array<struct<type:string,provider:array<int>>>',
@@ -93,7 +93,7 @@ export class TableClass extends EntityClass {
       ],
     },
     {
-      name: 'email',
+      name: `email${uuid()}`,
       dataType: 'VARCHAR',
       dataLength: 100,
       dataTypeDisplay: 'varchar',
@@ -106,6 +106,7 @@ export class TableClass extends EntityClass {
     displayName: `pw table ${uuid()}`,
     description: 'description',
     columns: this.children,
+    tableType: 'SecureView',
     databaseSchema: `${this.service.name}.${this.database.name}.${this.schema.name}`,
   };
 
@@ -122,13 +123,14 @@ export class TableClass extends EntityClass {
   queryResponseData: ResponseDataType[] = [];
   additionalEntityTableResponseData: ResponseDataType[] = [];
 
-  constructor(name?: string) {
+  constructor(name?: string, tableType?: string) {
     super(EntityTypeEndpoint.Table);
     this.service.name = name ?? this.service.name;
     this.serviceCategory = SERVICE_TYPE.Database;
     this.serviceType = ServiceTypes.DATABASE_SERVICES;
     this.type = 'Table';
     this.childrenTabId = 'schema';
+    this.entity.tableType = tableType ?? this.entity.tableType;
     this.childrenSelectorId = `${this.entity.databaseSchema}.${this.entity.name}.${this.children[0].name}`;
   }
 

@@ -46,6 +46,38 @@ export class ContainerClass extends EntityClass {
     name: this.containerName,
     displayName: this.containerName,
     service: this.service.name,
+    dataModel: {
+      isPartitioned: true,
+      columns: [
+        {
+          name: `merchant${uuid()}`,
+          dataType: 'VARCHAR',
+          dataLength: 100,
+          dataTypeDisplay: 'varchar',
+          description: 'The merchant for this transaction.',
+          tags: [],
+          ordinalPosition: 2,
+        },
+        {
+          name: `columbia${uuid()}`,
+          dataType: 'NUMERIC',
+          dataTypeDisplay: 'numeric',
+          description:
+            'The ID of the executed transaction. This column is the primary key for this table.',
+          tags: [],
+          constraint: 'PRIMARY_KEY',
+          ordinalPosition: 1,
+        },
+        {
+          name: `delivery${uuid()}`,
+          dataType: 'TIMESTAMP',
+          dataTypeDisplay: 'timestamp',
+          description: 'The time the transaction took place.',
+          tags: [],
+          ordinalPosition: 3,
+        },
+      ],
+    },
   };
   childContainer = {
     name: this.childContainerName,
