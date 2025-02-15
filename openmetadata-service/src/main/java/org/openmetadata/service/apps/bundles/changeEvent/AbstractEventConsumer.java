@@ -32,11 +32,12 @@ import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.EventSubscriptionOffset;
 import org.openmetadata.schema.entity.events.FailedEvent;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
+import org.openmetadata.schema.system.EntityError;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.errors.EventPublisherException;
-import org.openmetadata.service.exception.EventSubscriptionJobException;
 import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.service.util.ResultList;
 import org.quartz.DisallowConcurrentExecution;
 import org.quartz.Job;
 import org.quartz.JobDetail;
@@ -242,20 +243,20 @@ public abstract class AbstractEventConsumer
   }
 
   @Override
-  public List<ChangeEvent> pollEvents(long offset, long batchSize) {
-    // Read from Change Event Table
-    try {
-      List<String> eventJson = Entity.getCollectionDAO().changeEventDAO().list(batchSize, offset);
-
-      List<ChangeEvent> changeEvents = new ArrayList<>();
-      for (String json : eventJson) {
+  public ResultList<ChangeEvent> pollEvents(long offset, long batchSize) {
+    List<String> eventJson = Entity.getCollectionDAO().changeEventDAO().list(batchSize, offset);
+    List<ChangeEvent> changeEvents = new ArrayList<>();
+    List<EntityError> errorEvents = new ArrayList<>();
+    for (String json : eventJson) {
+      try {
         ChangeEvent event = JsonUtils.readValue(json, ChangeEvent.class);
         changeEvents.add(event);
+      } catch (Exception ex) {
+        errorEvents.add(new EntityError().withMessage(ex.getMessage()).withEntity(json));
+        LOG.error("Error in Parsing Change Event : {} , Message: {} ", json, ex.getMessage(), ex);
       }
-      return changeEvents;
-    } catch (Exception ex) {
-      throw new EventSubscriptionJobException("Error in Polling Events", ex);
     }
+    return new ResultList<>(changeEvents, errorEvents, null, null, eventJson.size());
   }
 
   @Override
@@ -266,26 +267,18 @@ public abstract class AbstractEventConsumer
     Map<ChangeEvent, Set<UUID>> eventsWithReceivers = new HashMap<>();
     try {
       // Poll Events from Change Event Table
-      List<ChangeEvent> batch = pollEvents(offset, eventSubscription.getBatchSize());
-      batchSize = batch.size();
-      eventsWithReceivers.putAll(createEventsWithReceivers(batch));
+      ResultList<ChangeEvent> batch = pollEvents(offset, eventSubscription.getBatchSize());
+      batchSize = batch.getPaging().getTotal();
+      eventsWithReceivers.putAll(createEventsWithReceivers(batch.getData()));
       // Publish Events
       if (!eventsWithReceivers.isEmpty()) {
         alertMetrics.withTotalEvents(alertMetrics.getTotalEvents() + eventsWithReceivers.size());
         publishEvents(eventsWithReceivers);
       }
     } catch (Exception e) {
-      long currentLatest = Entity.getCollectionDAO().changeEventDAO().getLatestOffset();
-      long remainingEvents = currentLatest - offset;
-      if (remainingEvents <= eventSubscription.getBatchSize()) {
-        batchSize = remainingEvents;
-      } else {
-        batchSize = eventSubscription.getBatchSize();
-      }
       LOG.error(
-          "Error in polling events for alert : {} , Total Events : {} , Offset : {} , Batch Size : {} ",
+          "Error in polling events for alert : {} , Offset : {} , Batch Size : {} ",
           e.getMessage(),
-          currentLatest,
           offset,
           batchSize,
           e);
