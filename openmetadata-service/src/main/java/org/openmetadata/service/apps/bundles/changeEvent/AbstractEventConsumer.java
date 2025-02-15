@@ -35,6 +35,7 @@ import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.errors.EventPublisherException;
+import org.openmetadata.service.exception.EventSubscriptionJobException;
 import org.openmetadata.service.util.JsonUtils;
 import org.quartz.DisallowConcurrentExecution;
 import org.quartz.Job;
@@ -70,8 +71,9 @@ public abstract class AbstractEventConsumer
         (EventSubscription) context.getJobDetail().getJobDataMap().get(ALERT_INFO_KEY);
     this.jobDetail = context.getJobDetail();
     this.eventSubscription = sub;
-    this.offset = loadInitialOffset(context).getCurrentOffset();
-    this.startingOffset = loadInitialOffset(context).getStartingOffset();
+    EventSubscriptionOffset eventSubscriptionOffset = loadInitialOffset(context);
+    this.offset = eventSubscriptionOffset.getCurrentOffset();
+    this.startingOffset = eventSubscriptionOffset.getStartingOffset();
     this.alertMetrics = loadInitialMetrics();
     this.destinationMap = loadDestinationsMap(context);
     this.doInit(context);
@@ -242,14 +244,18 @@ public abstract class AbstractEventConsumer
   @Override
   public List<ChangeEvent> pollEvents(long offset, long batchSize) {
     // Read from Change Event Table
-    List<String> eventJson = Entity.getCollectionDAO().changeEventDAO().list(batchSize, offset);
+    try {
+      List<String> eventJson = Entity.getCollectionDAO().changeEventDAO().list(batchSize, offset);
 
-    List<ChangeEvent> changeEvents = new ArrayList<>();
-    for (String json : eventJson) {
-      ChangeEvent event = JsonUtils.readValue(json, ChangeEvent.class);
-      changeEvents.add(event);
+      List<ChangeEvent> changeEvents = new ArrayList<>();
+      for (String json : eventJson) {
+        ChangeEvent event = JsonUtils.readValue(json, ChangeEvent.class);
+        changeEvents.add(event);
+      }
+      return changeEvents;
+    } catch (Exception ex) {
+      throw new EventSubscriptionJobException("Error in Polling Events", ex);
     }
-    return changeEvents;
   }
 
   @Override
