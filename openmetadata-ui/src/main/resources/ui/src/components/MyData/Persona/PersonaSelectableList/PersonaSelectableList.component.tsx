@@ -139,7 +139,7 @@ export const PersonaSelectableList = ({
 
   useEffect(() => {
     loadOptions();
-  }, []);
+  }, [personaList]);
 
   const handlePersonaUpdate = () => {
     setIsSaving(true);

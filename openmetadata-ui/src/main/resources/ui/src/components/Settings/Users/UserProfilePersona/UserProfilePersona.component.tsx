@@ -43,7 +43,7 @@ const UserProfilePersonas = ({
 
       return personas;
     },
-    []
+    [updateUserDetails]
   );
   const isLoggedInUser = useMemo(
     () => username === currentUser?.name,
