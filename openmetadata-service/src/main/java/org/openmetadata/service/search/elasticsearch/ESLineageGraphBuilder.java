@@ -22,12 +22,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.schema.api.lineage.DirectionPaging;
 import org.openmetadata.schema.api.lineage.EsLineageData;
 import org.openmetadata.schema.api.lineage.RelationshipRef;
 import org.openmetadata.schema.api.lineage.SearchLineageRequest;
 import org.openmetadata.schema.api.lineage.SearchLineageResult;
 import org.openmetadata.schema.type.LayerPaging;
+import org.openmetadata.schema.type.lineage.NodeInformation;
 
 @Slf4j
 public class ESLineageGraphBuilder {
@@ -42,8 +42,7 @@ public class ESLineageGraphBuilder {
         new SearchLineageResult()
             .withNodes(new HashMap<>())
             .withUpstreamEdges(new HashMap<>())
-            .withDownstreamEdges(new HashMap<>())
-            .withPaging(new DirectionPaging());
+            .withDownstreamEdges(new HashMap<>());
 
     fetchUpstreamNodesRecursively(
         request, result, Set.of(request.getFqn()), request.getUpstreamDepth());
@@ -56,11 +55,6 @@ public class ESLineageGraphBuilder {
     if (depth < 0 || fqns.isEmpty()) {
       return;
     }
-
-    LayerPaging paging =
-        new LayerPaging()
-            .withLayerNumber(lineageRequest.getUpstreamDepth() - depth)
-            .withEntityUpstreamCount(new HashMap<>());
 
     Set<String> fqnSet = new HashSet<>();
     es.org.elasticsearch.action.search.SearchRequest searchRequest =
@@ -81,10 +75,16 @@ public class ESLineageGraphBuilder {
       Map<String, Object> esDoc = hit.getSourceAsMap();
       if (!esDoc.isEmpty()) {
         String fqn = esDoc.get(FQN_FIELD).toString();
-        result.getNodes().putIfAbsent(fqn, esDoc);
-
         RelationshipRef toEntity = getRelationshipRef(esDoc);
         List<EsLineageData> upStreamEntities = getUpstreamLineageListIfExist(esDoc);
+        result
+            .getNodes()
+            .putIfAbsent(
+                fqn,
+                new NodeInformation()
+                    .withEntity(esDoc)
+                    .withPaging(
+                        new LayerPaging().withEntityUpstreamCount(upStreamEntities.size())));
         for (EsLineageData data : upStreamEntities) {
           result.getUpstreamEdges().putIfAbsent(data.getDocId(), data.withToEntity(toEntity));
           String fromFqn = data.getFromEntity().getFullyQualifiedName();
@@ -92,16 +92,8 @@ public class ESLineageGraphBuilder {
             fqnSet.add(fromFqn);
           }
         }
-
-        // Add Paging Details per entity
-        paging.getEntityUpstreamCount().put(fqn, upStreamEntities.size());
       }
     }
-
-    result
-        .getPaging()
-        .getUpstream()
-        .add(paging.withTotal(searchResponse.getHits().getTotalHits().value));
 
     fetchUpstreamNodesRecursively(lineageRequest, result, fqnSet, depth - 1);
   }
@@ -112,8 +104,7 @@ public class ESLineageGraphBuilder {
         new SearchLineageResult()
             .withNodes(new HashMap<>())
             .withUpstreamEdges(new HashMap<>())
-            .withDownstreamEdges(new HashMap<>())
-            .withPaging(new DirectionPaging());
+            .withDownstreamEdges(new HashMap<>());
 
     // Add First and call recursively
     addFirstDownstreamEntity(lineageRequest, result);
@@ -130,15 +121,13 @@ public class ESLineageGraphBuilder {
     Map<String, Object> entityMap =
         EsUtils.searchEntityByKey(
             GLOBAL_SEARCH_ALIAS, FQN_FIELD, lineageRequest.getFqn(), SOURCE_FIELDS_TO_EXCLUDE);
-    result.getNodes().putIfAbsent(entityMap.get(FQN_FIELD).toString(), entityMap);
     result
-        .getPaging()
-        .getDownstream()
-        .add(
-            new LayerPaging()
-                .withLayerNumber(0)
-                .withTotal(1L)
-                .withEntityDownstreamCount(new HashMap<>()));
+        .getNodes()
+        .putIfAbsent(
+            entityMap.get(FQN_FIELD).toString(),
+            new NodeInformation()
+                .withEntity(entityMap)
+                .withPaging(new LayerPaging().withEntityDownstreamCount(0)));
   }
 
   private void fetchDownstreamNodesRecursively(
@@ -147,10 +136,6 @@ public class ESLineageGraphBuilder {
     if (depth <= 0 || fqns.isEmpty()) {
       return;
     }
-
-    int layerNumber = lineageRequest.getDownstreamDepth() - depth;
-    LayerPaging paging =
-        new LayerPaging().withLayerNumber(layerNumber).withEntityDownstreamCount(new HashMap<>());
 
     Set<String> fqnSet = new HashSet<>();
     es.org.elasticsearch.action.search.SearchRequest searchRequest =
@@ -177,19 +162,23 @@ public class ESLineageGraphBuilder {
         for (Terms.Bucket bucket : valueCountAgg.getBuckets()) {
           if (!nullOrEmpty(bucket.getKeyAsString())
               && result.getNodes().containsKey(bucket.getKeyAsString())) {
-            result
-                .getPaging()
-                .getDownstream()
-                .get(layerNumber - 1)
-                .getEntityDownstreamCount()
-                .put(bucket.getKeyAsString(), (int) bucket.getDocCount());
+            NodeInformation nodeInformation = result.getNodes().get(bucket.getKeyAsString());
+            nodeInformation.setPaging(
+                new LayerPaging().withEntityDownstreamCount((int) bucket.getDocCount()));
+            result.getNodes().put(bucket.getKeyAsString(), nodeInformation);
           }
         }
 
         RelationshipRef toEntity = getRelationshipRef(entityMap);
         if (!result.getNodes().containsKey(fqn)) {
           fqnSet.add(fqn);
-          result.getNodes().put(fqn, entityMap);
+          result
+              .getNodes()
+              .put(
+                  fqn,
+                  new NodeInformation()
+                      .withEntity(entityMap)
+                      .withPaging(new LayerPaging().withEntityDownstreamCount(0)));
         }
 
         List<EsLineageData> upstreamEntities = getUpstreamLineageListIfExist(entityMap);
@@ -202,11 +191,6 @@ public class ESLineageGraphBuilder {
         }
       }
     }
-
-    result
-        .getPaging()
-        .getDownstream()
-        .add(paging.withTotal(searchResponse.getHits().getTotalHits().value));
 
     fetchDownstreamNodesRecursively(lineageRequest, result, fqnSet, depth - 1);
   }

@@ -6,9 +6,6 @@
   "javaType": "org.openmetadata.schema.api.lineage.SearchLineageResult",
   "type": "object",
   "definitions": {
-    "entity" : {
-      "description": "A general object to hold any object."
-    },
     "directionPaging": {
       "properties": {
         "upstream": {
@@ -30,22 +27,13 @@
       "type": "object",
       "javaType": "org.openmetadata.schema.type.LayerPaging",
       "properties": {
-        "layerNumber": {
-          "description": "Layer Number in the lineage.",
-          "type": "integer",
-          "default": null
-        },
-        "total": {
-          "description": "Total number of search results in layer.",
-          "existingJavaType": "java.lang.Long"
-        },
         "entityDownstreamCount": {
           "description": "Count of entities downstream current layer entity.",
-          "existingJavaType": "java.util.Map<java.lang.String, java.lang.Integer>"
+          "type": "integer"
         },
         "entityUpstreamCount": {
           "description": "Count of entities upstream current layer entity.",
-          "existingJavaType": "java.util.Map<java.lang.String, java.lang.Integer>"
+          "type": "integer"
         }
       },
       "additionalProperties": false
@@ -53,12 +41,9 @@
     
   },
   "properties": {
-    "paging": {
-      "$ref": "#/definitions/directionPaging"
-    },
     "nodes" : {
       "description": "Nodes in the lineage response.",
-      "existingJavaType": "java.util.Map<java.lang.String, java.lang.Object>"
+      "existingJavaType": "java.util.Map<java.lang.String, org.openmetadata.schema.type.lineage.NodeInformation>"
     },
     "upstreamEdges": {
       "description": "Upstream Edges for the entity.",

@@ -166,6 +166,8 @@ import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearch
 import org.openmetadata.schema.tests.DataQualityReport;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.LayerPaging;
+import org.openmetadata.schema.type.lineage.NodeInformation;
 import org.openmetadata.sdk.exception.SearchException;
 import org.openmetadata.sdk.exception.SearchIndexNotFoundException;
 import org.openmetadata.service.Entity;
@@ -870,9 +872,15 @@ public class ElasticSearchClient implements SearchClient {
                         lineageRequest.getDirection(), lineageRequest.getEntityType())));
 
     // Add All nodes and edges from upstream lineage to result
-    result.getNodes().putAll(upstreamLineage.getNodes());
+    for (var node : upstreamLineage.getNodes().entrySet()) {
+      if (result.getNodes().containsKey(node.getKey())) {
+        NodeInformation existingNode = result.getNodes().get(node.getKey());
+        LayerPaging existingDownstreamLayerPaging = existingNode.getPaging();
+        existingDownstreamLayerPaging.setEntityUpstreamCount(
+            node.getValue().getPaging().getEntityUpstreamCount());
+      }
+    }
     result.getUpstreamEdges().putAll(upstreamLineage.getUpstreamEdges());
-    result.getPaging().getUpstream().addAll(upstreamLineage.getPaging().getUpstream());
     return result;
   }
 

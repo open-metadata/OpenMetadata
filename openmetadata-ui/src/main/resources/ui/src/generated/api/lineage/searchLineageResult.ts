@@ -21,38 +21,9 @@ export interface SearchLineageResult {
     /**
      * Nodes in the lineage response.
      */
-    nodes?:  any;
-    paging?: any[] | boolean | number | number | null | DirectionPagingObject | string;
+    nodes?: any;
     /**
      * Upstream Edges for the entity.
      */
     upstreamEdges?: any;
-}
-
-export interface DirectionPagingObject {
-    downstream?: LayerPaging[];
-    upstream?:   LayerPaging[];
-    [property: string]: any;
-}
-
-/**
- * Type used for cursor based pagination information in GET list responses.
- */
-export interface LayerPaging {
-    /**
-     * Count of entities downstream current layer entity.
-     */
-    entityDownstreamCount?: any;
-    /**
-     * Count of entities upstream current layer entity.
-     */
-    entityUpstreamCount?: any;
-    /**
-     * Layer Number in the lineage.
-     */
-    layerNumber?: number;
-    /**
-     * Total number of search results in layer.
-     */
-    total?: any;
 }
