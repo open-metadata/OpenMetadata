@@ -1316,6 +1316,39 @@ public class EventSubscriptionResource
     return EventSubscriptionScheduler.getInstance().listAlertDestinations(sub.getId());
   }
 
+  @PUT
+  @Path("name/{eventSubscriptionName}/syncOffset")
+  @Valid
+  @Operation(
+      operationId = "syncOffsetForEventSubscriptionByName",
+      summary = "Sync Offset for a specific Event Subscription by its name",
+      description = "Sync Offset for a specific Event Subscription by its name",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Returns the destinations for the Event Subscription",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = SubscriptionDestination.class))),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Event Subscription with the name {fqn} is not found")
+      })
+  public Response syncOffsetForEventSubscription(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Name of the Event Subscription", schema = @Schema(type = "string"))
+          @PathParam("eventSubscriptionName")
+          String name) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.EDIT_ALL);
+    authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
+    return Response.status(Response.Status.OK)
+        .entity(repository.syncEventSubscriptionOffset(name))
+        .build();
+  }
+
   @POST
   @Path("/testDestination")
   @Operation(
