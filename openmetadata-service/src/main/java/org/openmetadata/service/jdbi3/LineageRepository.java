@@ -308,7 +308,8 @@ public class LineageRepository {
       Map<String, JsonNode> entityMap = new HashMap<>();
       JsonNode nodes = rootNode.path("nodes");
       for (JsonNode node : nodes) {
-        String id = node.path("id").asText();
+        JsonNode entityNode = node.path("entity");
+        String id = entityNode.path("id").asText();
         entityMap.put(id, node);
       }
 
