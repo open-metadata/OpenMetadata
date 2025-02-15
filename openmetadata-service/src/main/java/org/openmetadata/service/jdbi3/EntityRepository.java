@@ -1435,6 +1435,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
             .withCurrentVersion(entity.getVersion())
             .withPreviousVersion(change.getPreviousVersion());
 
+    entity.setChangeDescription(change);
+    postUpdate(entity, entity);
     return new PutResponse<>(Status.OK, changeEvent, ENTITY_FIELDS_CHANGED);
   }
 

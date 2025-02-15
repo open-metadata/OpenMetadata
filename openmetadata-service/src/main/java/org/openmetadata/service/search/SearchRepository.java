@@ -550,7 +550,7 @@ public class SearchRepository {
               JsonUtils.readValue(field.getOldValue().toString(), EntityReference.class);
           // Propagate FQN updates to all subchildren
           String originalFqn =
-              FullyQualifiedName.build(
+              FullyQualifiedName.add(
                   entityReferenceBeforeUpdate.getFullyQualifiedName(), entity.getName());
           String updatedFqn = entity.getFullyQualifiedName();
           searchClient.updateByFqnPrefix(
@@ -564,7 +564,7 @@ public class SearchRepository {
               JsonUtils.readValue(field.getOldValue().toString(), EntityReference.class);
           // Propagate FQN updates to all subchildren
           String originalFqn =
-              FullyQualifiedName.build(
+              FullyQualifiedName.add(
                   entityReferenceBeforeUpdate.getFullyQualifiedName(), entity.getName());
           searchClient.updateByFqnPrefix(indexName, originalFqn, "", FIELD_FULLY_QUALIFIED_NAME);
         }
