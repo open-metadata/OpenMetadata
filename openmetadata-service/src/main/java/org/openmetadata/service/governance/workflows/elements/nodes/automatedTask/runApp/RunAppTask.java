@@ -1,5 +1,7 @@
 package org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.runApp;
 
+import static org.openmetadata.service.governance.workflows.Workflow.getFlowableElementId;
+
 import org.flowable.bpmn.model.BoundaryEvent;
 import org.flowable.bpmn.model.BpmnModel;
 import org.flowable.bpmn.model.EndEvent;
@@ -18,101 +20,99 @@ import org.openmetadata.service.governance.workflows.flowable.builders.StartEven
 import org.openmetadata.service.governance.workflows.flowable.builders.SubProcessBuilder;
 import org.openmetadata.service.util.JsonUtils;
 
-import static org.openmetadata.service.governance.workflows.Workflow.getFlowableElementId;
-
 public class RunAppTask implements NodeInterface {
-    private final SubProcess subProcess;
-    private final BoundaryEvent runtimeExceptionBoundaryEvent;
+  private final SubProcess subProcess;
+  private final BoundaryEvent runtimeExceptionBoundaryEvent;
 
-    public RunAppTask(RunAppTaskDefinition nodeDefinition) {
-        String subProcessId = nodeDefinition.getName();
+  public RunAppTask(RunAppTaskDefinition nodeDefinition) {
+    String subProcessId = nodeDefinition.getName();
 
-        SubProcess subProcess = new SubProcessBuilder().id(subProcessId).build();
+    SubProcess subProcess = new SubProcessBuilder().id(subProcessId).build();
 
-        StartEvent startEvent =
-                new StartEventBuilder().id(getFlowableElementId(subProcessId, "startEvent")).build();
+    StartEvent startEvent =
+        new StartEventBuilder().id(getFlowableElementId(subProcessId, "startEvent")).build();
 
-        ServiceTask runApp =
-                getRunAppServiceTask(
-                        subProcessId,
-                        JsonUtils.pojoToJson(nodeDefinition.getConfig()),
-//                        nodeDefinition.getConfig().getAppName(),
-//                        nodeDefinition.getConfig().getWaitForCompletion(),
-//                        nodeDefinition.getConfig().getTimeoutSeconds(),
-                        JsonUtils.pojoToJson(nodeDefinition.getInputNamespaceMap()));
+    ServiceTask runApp =
+        getRunAppServiceTask(
+            subProcessId,
+            JsonUtils.pojoToJson(nodeDefinition.getConfig()),
+            //                        nodeDefinition.getConfig().getAppName(),
+            //                        nodeDefinition.getConfig().getWaitForCompletion(),
+            //                        nodeDefinition.getConfig().getTimeoutSeconds(),
+            JsonUtils.pojoToJson(nodeDefinition.getInputNamespaceMap()));
 
-        EndEvent endEvent =
-                new EndEventBuilder().id(getFlowableElementId(subProcessId, "endEvent")).build();
+    EndEvent endEvent =
+        new EndEventBuilder().id(getFlowableElementId(subProcessId, "endEvent")).build();
 
-        subProcess.addFlowElement(startEvent);
-        subProcess.addFlowElement(runApp);
-        subProcess.addFlowElement(endEvent);
+    subProcess.addFlowElement(startEvent);
+    subProcess.addFlowElement(runApp);
+    subProcess.addFlowElement(endEvent);
 
-        subProcess.addFlowElement(new SequenceFlow(startEvent.getId(), runApp.getId()));
-        subProcess.addFlowElement(new SequenceFlow(runApp.getId(), endEvent.getId()));
+    subProcess.addFlowElement(new SequenceFlow(startEvent.getId(), runApp.getId()));
+    subProcess.addFlowElement(new SequenceFlow(runApp.getId(), endEvent.getId()));
 
-        this.runtimeExceptionBoundaryEvent = getRuntimeExceptionBoundaryEvent(subProcess);
-        this.subProcess = subProcess;
-    }
-    @Override
-    public BoundaryEvent getRuntimeExceptionBoundaryEvent() {
-        return runtimeExceptionBoundaryEvent;
-    }
-    private ServiceTask getRunAppServiceTask(
-            String subProcessId,
-            String configMap,
-//            String appName,
-//            boolean waitForCompletion,
-//            long timeoutSeconds,
-            String inputNamespaceMap) {
-//        FieldExtension appNameExpr =
-//                new FieldExtensionBuilder()
-//                        .fieldName("appNameExpr")
-//                        .fieldValue(appName)
-//                        .build();
-//
-//        FieldExtension waitExpr =
-//                new FieldExtensionBuilder()
-//                        .fieldName("waitForCompletionExpr")
-//                        .fieldValue(String.valueOf(waitForCompletion))
-//                        .build();
-//        FieldExtension timeoutSecondsExpr =
-//                new FieldExtensionBuilder()
-//                        .fieldName("timeoutSecondsExpr")
-//                        .fieldValue(String.valueOf(timeoutSeconds))
-//                        .build();
-        FieldExtension configMapExpr =
-                new FieldExtensionBuilder()
-                        .fieldName("configMapExpr")
-                        .fieldValue(configMap)
-                        .build();
+    this.runtimeExceptionBoundaryEvent = getRuntimeExceptionBoundaryEvent(subProcess);
+    this.subProcess = subProcess;
+  }
 
-        FieldExtension inputNamespaceMapExpr =
-                new FieldExtensionBuilder()
-                        .fieldName("inputNamespaceMapExpr")
-                        .fieldValue(inputNamespaceMap)
-                        .build();
+  @Override
+  public BoundaryEvent getRuntimeExceptionBoundaryEvent() {
+    return runtimeExceptionBoundaryEvent;
+  }
 
-        FieldExtension pipelineServiceClientExpr =
-                new FieldExtensionBuilder()
-                        .fieldName("pipelineServiceClientExpr")
-                        .expression("${PipelineServiceClient}")
-                        .build();
+  private ServiceTask getRunAppServiceTask(
+      String subProcessId,
+      String configMap,
+      //            String appName,
+      //            boolean waitForCompletion,
+      //            long timeoutSeconds,
+      String inputNamespaceMap) {
+    //        FieldExtension appNameExpr =
+    //                new FieldExtensionBuilder()
+    //                        .fieldName("appNameExpr")
+    //                        .fieldValue(appName)
+    //                        .build();
+    //
+    //        FieldExtension waitExpr =
+    //                new FieldExtensionBuilder()
+    //                        .fieldName("waitForCompletionExpr")
+    //                        .fieldValue(String.valueOf(waitForCompletion))
+    //                        .build();
+    //        FieldExtension timeoutSecondsExpr =
+    //                new FieldExtensionBuilder()
+    //                        .fieldName("timeoutSecondsExpr")
+    //                        .fieldValue(String.valueOf(timeoutSeconds))
+    //                        .build();
+    FieldExtension configMapExpr =
+        new FieldExtensionBuilder().fieldName("configMapExpr").fieldValue(configMap).build();
 
-        return new ServiceTaskBuilder()
-                .id(getFlowableElementId(subProcessId, "triggerIngestionWorkflow"))
-                .implementation(RunAppDelegate.class.getName())
-//                .addFieldExtension(appNameExpr)
-//                .addFieldExtension(waitExpr)
-//                .addFieldExtension(timeoutSecondsExpr)
-                .addFieldExtension(configMapExpr)
-                .addFieldExtension(inputNamespaceMapExpr)
-                .addFieldExtension(pipelineServiceClientExpr)
-                .setAsync(true)
-                .build();
-    }
-    public void addToWorkflow(BpmnModel model, Process process) {
-        process.addFlowElement(subProcess);
-        process.addFlowElement(runtimeExceptionBoundaryEvent);
-    }
+    FieldExtension inputNamespaceMapExpr =
+        new FieldExtensionBuilder()
+            .fieldName("inputNamespaceMapExpr")
+            .fieldValue(inputNamespaceMap)
+            .build();
+
+    FieldExtension pipelineServiceClientExpr =
+        new FieldExtensionBuilder()
+            .fieldName("pipelineServiceClientExpr")
+            .expression("${PipelineServiceClient}")
+            .build();
+
+    return new ServiceTaskBuilder()
+        .id(getFlowableElementId(subProcessId, "triggerIngestionWorkflow"))
+        .implementation(RunAppDelegate.class.getName())
+        //                .addFieldExtension(appNameExpr)
+        //                .addFieldExtension(waitExpr)
+        //                .addFieldExtension(timeoutSecondsExpr)
+        .addFieldExtension(configMapExpr)
+        .addFieldExtension(inputNamespaceMapExpr)
+        .addFieldExtension(pipelineServiceClientExpr)
+        .setAsync(true)
+        .build();
+  }
+
+  public void addToWorkflow(BpmnModel model, Process process) {
+    process.addFlowElement(subProcess);
+    process.addFlowElement(runtimeExceptionBoundaryEvent);
+  }
 }

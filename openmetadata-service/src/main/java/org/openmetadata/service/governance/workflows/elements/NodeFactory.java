@@ -14,10 +14,10 @@ import org.openmetadata.schema.governance.workflows.elements.nodes.startEvent.St
 import org.openmetadata.schema.governance.workflows.elements.nodes.userTask.UserApprovalTaskDefinition;
 import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.CheckEntityAttributesTask;
 import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.CreateIngestionPipelineTask;
-import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.runApp.RunAppTask;
 import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.RunIngestionPipelineTask;
 import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.SetEntityCertificationTask;
 import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.SetGlossaryTermStatusTask;
+import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.runApp.RunAppTask;
 import org.openmetadata.service.governance.workflows.elements.nodes.endEvent.EndEvent;
 import org.openmetadata.service.governance.workflows.elements.nodes.gateway.ParallelGateway;
 import org.openmetadata.service.governance.workflows.elements.nodes.startEvent.StartEvent;
@@ -38,9 +38,8 @@ public class NodeFactory {
       case CREATE_INGESTION_PIPELINE_TASK -> new CreateIngestionPipelineTask(
           (CreateIngestionPipelineTaskDefinition) nodeDefinition);
       case RUN_INGESTION_PIPELINE_TASK -> new RunIngestionPipelineTask(
-              (RunIngestionPipelineTaskDefinition) nodeDefinition);
-      case RUN_APP_TASK -> new RunAppTask(
-              (RunAppTaskDefinition) nodeDefinition);
+          (RunIngestionPipelineTaskDefinition) nodeDefinition);
+      case RUN_APP_TASK -> new RunAppTask((RunAppTaskDefinition) nodeDefinition);
       case PARALLEL_GATEWAY -> new ParallelGateway((ParallelGatewayDefinition) nodeDefinition);
     };
   }
