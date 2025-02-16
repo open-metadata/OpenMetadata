@@ -50,6 +50,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Function;
 import javax.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVFormat;
@@ -193,7 +194,11 @@ public abstract class EntityCsv<T extends EntityInterface> {
   }
 
   /** Owner field is in entityType:entityName format */
-  public List<EntityReference> getOwners(CSVPrinter printer, CSVRecord csvRecord, int fieldNumber)
+  public List<EntityReference> getOwners(
+      CSVPrinter printer,
+      CSVRecord csvRecord,
+      int fieldNumber,
+      Function<Integer, String> invalidMessageCreator)
       throws IOException {
     if (!processRecord) {
       return null;
@@ -207,7 +212,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
     for (String owner : owners) {
       List<String> ownerTypes = listOrEmpty(CsvUtil.fieldToEntities(owner));
       if (ownerTypes.size() != 2) {
-        importFailure(printer, invalidOwner(fieldNumber), csvRecord);
+        importFailure(printer, invalidMessageCreator.apply(fieldNumber), csvRecord);
         return Collections.emptyList();
       }
       EntityReference ownerRef =
@@ -217,6 +222,16 @@ public abstract class EntityCsv<T extends EntityInterface> {
       }
     }
     return refs.isEmpty() ? null : refs;
+  }
+
+  public List<EntityReference> getOwners(CSVPrinter printer, CSVRecord csvRecord, int fieldNumber)
+      throws IOException {
+    return getOwners(printer, csvRecord, fieldNumber, EntityCsv::invalidOwner);
+  }
+
+  public List<EntityReference> getReviewers(
+      CSVPrinter printer, CSVRecord csvRecord, int fieldNumber) throws IOException {
+    return getOwners(printer, csvRecord, fieldNumber, EntityCsv::invalidReviewer);
   }
 
   /** Owner field is in entityName format */
@@ -865,6 +880,11 @@ public abstract class EntityCsv<T extends EntityInterface> {
 
   public static String invalidOwner(int field) {
     String error = "Owner should be of format user:userName or team:teamName";
+    return String.format(FIELD_ERROR_MSG, CsvErrorType.INVALID_FIELD, field + 1, error);
+  }
+
+  public static String invalidReviewer(int field) {
+    String error = "Reviewer should be of format user:userName or team:teamName";
     return String.format(FIELD_ERROR_MSG, CsvErrorType.INVALID_FIELD, field + 1, error);
   }
 
