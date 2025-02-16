@@ -1453,7 +1453,6 @@ export const getColumnFunctionValue = (
   return column?.function;
 };
 
-
 export const parseLineageData: (
   data: any,
   entityFqn: string
@@ -1483,6 +1482,8 @@ export const parseLineageData: (
     nodes: nodesArray,
     edges: [...downstreamEdgesArray, ...upstreamEdgesArray],
     entity,
+  };
+};
 
 interface EdgeAlignmentPathDataProps {
   sourceX: number;
