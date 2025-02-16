@@ -732,7 +732,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     List<String> jsons = dao.listAfter(filter, Integer.MAX_VALUE, "", "");
     List<T> entities = new ArrayList<>();
     for (String json : jsons) {
-      T entity = setFieldsInternal(JsonUtils.readValue(json, entityClass), fields);
+      T entity = JsonUtils.readValue(json, entityClass);
       entities.add(entity);
     }
     setFieldsInBulk(fields, entities);
