@@ -48,5 +48,6 @@ class MssqlSampler(SQASampler):
         rnd = self._base_sample_query(column).cte(
             f"{self.raw_dataset.__tablename__}_rnd"
         )
-        query = self.client.query(rnd)
+        with self.context_client() as client:
+            query = client.query(rnd)
         return query.cte(f"{self.raw_dataset.__tablename__}_sample")
