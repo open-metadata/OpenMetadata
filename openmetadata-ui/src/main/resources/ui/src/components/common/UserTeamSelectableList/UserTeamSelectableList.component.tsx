@@ -26,7 +26,6 @@ import { EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { EntityReference } from '../../../generated/entity/data/table';
 import { searchData } from '../../../rest/miscAPI';
-import { getUsers } from '../../../rest/userAPI';
 import {
   formatTeamsResponse,
   formatUsersResponse,
@@ -91,46 +90,33 @@ export const UserTeamSelectableList = ({
   }, [selectedUsers]);
 
   const fetchUserOptions = async (searchText: string, after?: string) => {
-    if (searchText) {
-      try {
-        const res = await searchData(
-          searchText,
-          1,
-          PAGE_SIZE_MEDIUM,
-          'isBot:false',
-          '',
-          '',
-          SearchIndex.USER
-        );
+    const afterPage = isNaN(Number(after)) ? 1 : Number(after);
+    try {
+      const res = await searchData(
+        searchText,
+        afterPage,
+        PAGE_SIZE_MEDIUM,
+        'isBot:false',
+        'displayName.keyword',
+        'asc',
+        SearchIndex.USER
+      );
 
-        const data = getEntityReferenceListFromEntities(
-          formatUsersResponse(res.data.hits.hits),
-          EntityType.USER
-        );
-        setCount((pre) => ({ ...pre, user: res.data.hits.total.value }));
+      const data = getEntityReferenceListFromEntities(
+        formatUsersResponse(res.data.hits.hits),
+        EntityType.USER
+      );
+      setCount((pre) => ({ ...pre, user: res.data.hits.total.value }));
 
-        return { data, paging: { total: res.data.hits.total.value } };
-      } catch (error) {
-        return { data: [], paging: { total: 0 } };
-      }
-    } else {
-      try {
-        const { data, paging } = await getUsers({
-          limit: PAGE_SIZE_MEDIUM,
-          after: after ?? undefined,
-          isBot: false,
-        });
-        const filterData = getEntityReferenceListFromEntities(
-          data,
-          EntityType.USER
-        );
-
-        setCount((pre) => ({ ...pre, user: paging.total }));
-
-        return { data: filterData, paging };
-      } catch (error) {
-        return { data: [], paging: { total: 0 } };
-      }
+      return {
+        data,
+        paging: {
+          total: res.data.hits.total.value,
+          after: toString(afterPage + 1),
+        },
+      };
+    } catch (error) {
+      return { data: [], paging: { total: 0 } };
     }
   };
 
