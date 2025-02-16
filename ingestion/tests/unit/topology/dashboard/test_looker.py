@@ -125,6 +125,13 @@ MOCK_DASHBOARD_SERVICE = DashboardService(
     serviceType=DashboardServiceType.Looker,
 )
 
+EXPECTED_PARSED_VIEWS = {
+    "v1": "table1",
+    "v2": "select * from v2",
+    "v3": "select * from (select * from v2)",
+    "v4": "select * from (select * from (select * from v2)) inner join (table1)",
+}
+
 
 class LookerUnitTest(TestCase):
     """
@@ -560,3 +567,33 @@ class LookerUnitTest(TestCase):
             self.assertIsNotNone(
                 list(self.looker.yield_dashboard_usage(MOCK_LOOKER_DASHBOARD))[0].left
             )
+
+    def test_derived_view_references(self):
+        """
+        Validate if we can find derived references in a SQL query
+        and replace them with their actual values
+        """
+        # pylint: disable=protected-access
+        self.looker._parsed_views.update(
+            {
+                "v1": "table1",
+                "v2": "select * from v2",
+            }
+        )
+        self.looker._unparsed_views.update(
+            {
+                "v3": "select * from ${v2.SQL_TABLE_NAME}",
+                "v4": "select * from ${v3.SQL_TABLE_NAME} inner join ${v1.SQL_TABLE_NAME}",
+            }
+        )
+        self.looker._derived_dependencies.add_edges_from(
+            [
+                ("v3", "v2"),
+                ("v4", "v3"),
+                ("v4", "v1"),
+            ]
+        )
+        list(self.looker.build_lineage_for_unparsed_views())
+
+        self.assertEqual(self.looker._parsed_views, EXPECTED_PARSED_VIEWS)
+        self.assertEqual(self.looker._unparsed_views, {})

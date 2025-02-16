@@ -10,7 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { HttpStatusCode } from 'axios';
 import axiosClient from '.';
+import { useApplicationStore } from '../hooks/useApplicationStore';
 
 const BASE_URL = '/auth';
 
@@ -23,12 +25,11 @@ interface RenewTokenResponse {
 }
 
 export const renewToken = async () => {
-  const data = await axiosClient.get<RenewTokenResponse>(
-    `${BASE_URL}/refresh`,
-    // Need to invalidate other status codes
-    // which help is user to force logout
-    { validateStatus: (status) => status === 200 }
-  );
+  const data = await axiosClient.get<RenewTokenResponse>(`${BASE_URL}/refresh`);
+
+  if (data.status === HttpStatusCode.Found) {
+    useApplicationStore.getState().onLoginHandler();
+  }
 
   return data.data;
 };
