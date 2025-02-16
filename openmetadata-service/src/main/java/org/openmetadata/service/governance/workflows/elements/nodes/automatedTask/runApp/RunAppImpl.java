@@ -65,7 +65,7 @@ public class RunAppImpl {
     if (app.getName().equals("CollateAIApplication")) {
       //            ((CollateAIAppConfig)
       // updatedConfig).withFilter(String.format("{\"query\":{\"bool\":{\"must\":[{\"bool\":{\"must\":[{\"term\":{\"tier.tagFQN\":\"Tier.Tier1\"}}]}},{\"bool\":{\"must\":[{\"term\":{\"entityType\":\"table\"}}]}},{\"bool\":{\"must\":[{\"term\":{\"service.name.keyword\":\"%s\"}}]}}]}}}", service.getName().toLowerCase()));
-      ((CollateAIAppConfig) updatedConfig)
+      (JsonUtils.convertValue(updatedConfig, CollateAIAppConfig.class))
           .withFilter(
               String.format(
                   "{\"query\":{\"bool\":{\"must\":[{\"bool\":{\"must\":[{\"term\":{\"name.keyword\":\"table_entity\"}}]}},{\"bool\":{\"must\":[{\"term\":{\"entityType\":\"table\"}}]}},{\"bool\":{\"must\":[{\"term\":{\"service.name.keyword\":\"%s\"}}]}}]}}}",
