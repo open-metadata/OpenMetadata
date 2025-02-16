@@ -284,7 +284,7 @@ test('Classification Page', async ({ page }) => {
       tagDisplayName: displayName,
       tableId: table.entityResponseData?.['id'],
       columnNumber: 0,
-      rowName: 'user_id numeric',
+      rowName: `${table.entity?.columns[0].name} numeric`,
     });
   });
 
