@@ -183,7 +183,7 @@ const DomainSelectablTreeNew: FC<DomainSelectableTreeProps> = ({
           showLine
           autoExpandParent={Boolean(searchTerm)}
           checkable={isMultiple}
-          className="domain-selectable-tree"
+          className="domain-selectable-tree-new"
           defaultCheckedKeys={isMultiple ? value : []}
           defaultExpandedKeys={value}
           defaultSelectedKeys={isMultiple ? [] : value}
@@ -209,6 +209,16 @@ const DomainSelectablTreeNew: FC<DomainSelectableTreeProps> = ({
     );
     setSelectedDomains(selectedData);
   };
+  useEffect(() => {
+    if (initialDomains) {
+      setSelectedDomains(initialDomains as unknown as Domain[]);
+    } else if (value) {
+      const selectedData = (value as string[]).map(
+        (fqn) => findItemByFqn(domains, fqn, false) as Domain
+      );
+      setSelectedDomains(selectedData);
+    }
+  }, [initialDomains, value, domains]);
 
   return (
     <div data-testid="domain-selectable-tree" style={{ width: '339px' }}>
@@ -233,7 +243,7 @@ const DomainSelectablTreeNew: FC<DomainSelectableTreeProps> = ({
           style={{}}
           value={
             selectedDomains
-              .map((domain) => domain.fullyQualifiedName)
+              ?.map((domain) => domain.fullyQualifiedName)
               .filter(Boolean) as string[]
           }
           onChange={handleSelectChange}
