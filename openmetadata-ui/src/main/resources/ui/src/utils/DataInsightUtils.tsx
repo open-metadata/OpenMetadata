@@ -150,6 +150,7 @@ export const CustomTooltip = (props: DataInsightChartTooltipProps) => {
     isPercentage,
     timeStampKey = 'timestampValue',
     transformLabel = true,
+    customValueKey,
   } = props;
 
   if (active && payload && payload.length) {
@@ -165,25 +166,35 @@ export const CustomTooltip = (props: DataInsightChartTooltipProps) => {
         className="custom-data-insight-tooltip"
         title={<Typography.Title level={5}>{timestamp}</Typography.Title>}>
         <ul className="custom-data-insight-tooltip-container">
-          {payloadValue.map((entry, index) => (
-            <li
-              className="d-flex items-center justify-between gap-6 p-b-xss text-sm"
-              key={`item-${index}`}>
-              <span className="flex items-center text-grey-muted">
-                <Surface className="mr-2" height={12} version="1.1" width={12}>
-                  <rect fill={entry.color} height="14" rx="2" width="14" />
-                </Surface>
-                {transformLabel
-                  ? startCase(entry.name ?? (entry.dataKey as string))
-                  : entry.name ?? (entry.dataKey as string)}
-              </span>
-              <span className="font-medium">
-                {valueFormatter
-                  ? valueFormatter(entry.value, entry.name ?? entry.dataKey)
-                  : getEntryFormattedValue(entry.value, isPercentage)}
-              </span>
-            </li>
-          ))}
+          {payloadValue.map((entry, index) => {
+            const value = customValueKey
+              ? entry.payload[customValueKey]
+              : entry.value;
+
+            return (
+              <li
+                className="d-flex items-center justify-between gap-6 p-b-xss text-sm"
+                key={`item-${index}`}>
+                <span className="flex items-center text-grey-muted">
+                  <Surface
+                    className="mr-2"
+                    height={12}
+                    version="1.1"
+                    width={12}>
+                    <rect fill={entry.color} height="14" rx="2" width="14" />
+                  </Surface>
+                  {transformLabel
+                    ? startCase(entry.name ?? (entry.dataKey as string))
+                    : entry.name ?? (entry.dataKey as string)}
+                </span>
+                <span className="font-medium">
+                  {valueFormatter
+                    ? valueFormatter(value, entry.name ?? entry.dataKey)
+                    : getEntryFormattedValue(value, isPercentage)}
+                </span>
+              </li>
+            );
+          })}
         </ul>
       </Card>
     );

@@ -1093,7 +1093,9 @@ class DbtSource(DbtServiceSource):
 
                 # Create the test case result object
                 test_case_result = TestCaseResult(
-                    timestamp=Timestamp(datetime_to_timestamp(dbt_timestamp)),
+                    timestamp=Timestamp(
+                        datetime_to_timestamp(dbt_timestamp, milliseconds=True)
+                    ),
                     testCaseStatus=test_case_status,
                     testResultValue=[
                         TestResultValue(

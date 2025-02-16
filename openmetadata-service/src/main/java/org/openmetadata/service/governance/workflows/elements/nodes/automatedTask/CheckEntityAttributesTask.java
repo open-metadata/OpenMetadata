@@ -68,15 +68,12 @@ public class CheckEntityAttributesTask implements NodeInterface {
             .fieldValue(inputNamespaceMap)
             .build();
 
-    ServiceTask serviceTask =
-        new ServiceTaskBuilder()
-            .id(getFlowableElementId(subProcessId, "checkEntityAttributes"))
-            .implementation(CheckEntityAttributesImpl.class.getName())
-            .build();
-    serviceTask.getFieldExtensions().add(rulesExpr);
-    serviceTask.getFieldExtensions().add(inputNamespaceMapExpr);
-
-    return serviceTask;
+    return new ServiceTaskBuilder()
+        .id(getFlowableElementId(subProcessId, "checkEntityAttributes"))
+        .implementation(CheckEntityAttributesImpl.class.getName())
+        .addFieldExtension(rulesExpr)
+        .addFieldExtension(inputNamespaceMapExpr)
+        .build();
   }
 
   public void addToWorkflow(BpmnModel model, Process process) {
