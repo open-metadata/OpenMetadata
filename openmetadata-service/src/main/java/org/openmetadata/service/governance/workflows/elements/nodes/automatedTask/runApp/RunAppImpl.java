@@ -63,15 +63,12 @@ public class RunAppImpl {
     Object updatedConfig = JsonUtils.deepCopy(app.getAppConfiguration(), Object.class);
 
     if (app.getName().equals("CollateAIApplication")) {
-      //            ((CollateAIAppConfig)
-      // updatedConfig).withFilter(String.format("{\"query\":{\"bool\":{\"must\":[{\"bool\":{\"must\":[{\"term\":{\"tier.tagFQN\":\"Tier.Tier1\"}}]}},{\"bool\":{\"must\":[{\"term\":{\"entityType\":\"table\"}}]}},{\"bool\":{\"must\":[{\"term\":{\"service.name.keyword\":\"%s\"}}]}}]}}}", service.getName().toLowerCase()));
       (JsonUtils.convertValue(updatedConfig, CollateAIAppConfig.class))
           .withFilter(
               String.format(
                   "{\"query\":{\"bool\":{\"must\":[{\"bool\":{\"must\":[{\"term\":{\"name.keyword\":\"table_entity\"}}]}},{\"bool\":{\"must\":[{\"term\":{\"entityType\":\"table\"}}]}},{\"bool\":{\"must\":[{\"term\":{\"service.name.keyword\":\"%s\"}}]}}]}}}",
                   service.getName().toLowerCase()));
     }
-
     updatedApp.withAppConfiguration(updatedConfig);
     return updatedApp;
   }
@@ -175,7 +172,13 @@ public class RunAppImpl {
       }
 
       PipelineStatus status = statuses.get(statuses.size() - 1);
-      return !status.getPipelineState().equals(PipelineStatusType.FAILED);
+
+      if (status.getPipelineState().equals(PipelineStatusType.FAILED)) {
+        return false;
+      } else if (status.getPipelineState().equals(PipelineStatusType.SUCCESS)
+          || status.getPipelineState().equals(PipelineStatusType.PARTIAL_SUCCESS)) {
+        return true;
+      }
     }
   }
 }
