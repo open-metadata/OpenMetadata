@@ -35,10 +35,9 @@ public class RunAppTask implements NodeInterface {
     ServiceTask runApp =
         getRunAppServiceTask(
             subProcessId,
-            JsonUtils.pojoToJson(nodeDefinition.getConfig()),
-            //                        nodeDefinition.getConfig().getAppName(),
-            //                        nodeDefinition.getConfig().getWaitForCompletion(),
-            //                        nodeDefinition.getConfig().getTimeoutSeconds(),
+            nodeDefinition.getConfig().getAppName(),
+            nodeDefinition.getConfig().getWaitForCompletion(),
+            nodeDefinition.getConfig().getTimeoutSeconds(),
             JsonUtils.pojoToJson(nodeDefinition.getInputNamespaceMap()));
 
     EndEvent endEvent =
@@ -62,29 +61,23 @@ public class RunAppTask implements NodeInterface {
 
   private ServiceTask getRunAppServiceTask(
       String subProcessId,
-      String configMap,
-      //            String appName,
-      //            boolean waitForCompletion,
-      //            long timeoutSeconds,
+      String appName,
+      boolean waitForCompletion,
+      long timeoutSeconds,
       String inputNamespaceMap) {
-    //        FieldExtension appNameExpr =
-    //                new FieldExtensionBuilder()
-    //                        .fieldName("appNameExpr")
-    //                        .fieldValue(appName)
-    //                        .build();
-    //
-    //        FieldExtension waitExpr =
-    //                new FieldExtensionBuilder()
-    //                        .fieldName("waitForCompletionExpr")
-    //                        .fieldValue(String.valueOf(waitForCompletion))
-    //                        .build();
-    //        FieldExtension timeoutSecondsExpr =
-    //                new FieldExtensionBuilder()
-    //                        .fieldName("timeoutSecondsExpr")
-    //                        .fieldValue(String.valueOf(timeoutSeconds))
-    //                        .build();
-    FieldExtension configMapExpr =
-        new FieldExtensionBuilder().fieldName("configMapExpr").fieldValue(configMap).build();
+    FieldExtension appNameExpr =
+        new FieldExtensionBuilder().fieldName("appNameExpr").fieldValue(appName).build();
+
+    FieldExtension waitExpr =
+        new FieldExtensionBuilder()
+            .fieldName("waitForCompletionExpr")
+            .fieldValue(String.valueOf(waitForCompletion))
+            .build();
+    FieldExtension timeoutSecondsExpr =
+        new FieldExtensionBuilder()
+            .fieldName("timeoutSecondsExpr")
+            .fieldValue(String.valueOf(timeoutSeconds))
+            .build();
 
     FieldExtension inputNamespaceMapExpr =
         new FieldExtensionBuilder()
@@ -101,10 +94,9 @@ public class RunAppTask implements NodeInterface {
     return new ServiceTaskBuilder()
         .id(getFlowableElementId(subProcessId, "triggerIngestionWorkflow"))
         .implementation(RunAppDelegate.class.getName())
-        //                .addFieldExtension(appNameExpr)
-        //                .addFieldExtension(waitExpr)
-        //                .addFieldExtension(timeoutSecondsExpr)
-        .addFieldExtension(configMapExpr)
+        .addFieldExtension(appNameExpr)
+        .addFieldExtension(waitExpr)
+        .addFieldExtension(timeoutSecondsExpr)
         .addFieldExtension(inputNamespaceMapExpr)
         .addFieldExtension(pipelineServiceClientExpr)
         .setAsync(true)
