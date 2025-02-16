@@ -1067,7 +1067,7 @@ public interface CollectionDAO {
         @Bind("relation") int relation, @Bind("after") int after, @Bind("limit") int limit);
 
     @SqlQuery(
-        "SELECT fromId, toId, fromEntity, toEntity, relation, json, jsonSchema"
+        "SELECT fromId, toId, fromEntity, toEntity, relation, json, jsonSchema "
             + "FROM entity_relationship "
             + "WHERE toId IN (<toIds>) "
             + "AND relation = :relation "

@@ -1,11 +1,6 @@
 package org.openmetadata.service.migration.utils.v170;
 
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
-
-import lombok.extern.slf4j.Slf4j;
-import org.jdbi.v3.core.Handle;
-import org.openmetadata.schema.type.LineageDetails;
-import org.openmetadata.service.resources.databases.DatasourceConfig;
 import static org.openmetadata.service.governance.workflows.Workflow.UPDATED_BY_VARIABLE;
 
 import java.lang.reflect.Field;
@@ -13,12 +8,15 @@ import java.util.List;
 import java.util.Map;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
+import org.jdbi.v3.core.Handle;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.governance.workflows.elements.WorkflowNodeDefinitionInterface;
+import org.openmetadata.schema.type.LineageDetails;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.governance.workflows.flowable.MainWorkflow;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.WorkflowDefinitionRepository;
+import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
 
@@ -76,6 +74,8 @@ public class MigrationUtil {
       LOG.error(
           "Error while updating non null json rows with createdAt, createdBy, updatedAt and updatedBy for lineage.",
           ex);
+    }
+  }
 
   @SneakyThrows
   private static void setDefaultInputNamespaceMap(WorkflowNodeDefinitionInterface nodeDefinition) {
