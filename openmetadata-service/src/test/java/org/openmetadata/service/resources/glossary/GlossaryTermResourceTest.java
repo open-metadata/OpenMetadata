@@ -1380,6 +1380,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     // List children glossary terms with  term1 as the parent and getting immediate children only
     Map<String, String> queryParams = new HashMap<>();
     queryParams.put("directChildrenOf", term1.getFullyQualifiedName());
+    queryParams.put("fields", "childrenCount,children");
     List<GlossaryTerm> children = listEntities(queryParams, ADMIN_AUTH_HEADERS).getData();
 
     assertEquals(term1.getChildren().size(), children.size());
@@ -1387,10 +1388,21 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     for (GlossaryTerm responseChild : children) {
       assertTrue(
           responseChild.getFullyQualifiedName().startsWith(responseChild.getFullyQualifiedName()));
+      if (responseChild.getChildren() == null) {
+        assertNull(responseChild.getChildrenCount());
+      } else {
+        assertEquals(responseChild.getChildren().size(), responseChild.getChildrenCount());
+      }
     }
 
     GlossaryTerm response = getEntity(term1.getId(), "childrenCount", ADMIN_AUTH_HEADERS);
     assertEquals(term1.getChildren().size(), response.getChildrenCount());
+
+    queryParams = new HashMap<>();
+    queryParams.put("directChildrenOf", glossary1.getFullyQualifiedName());
+    queryParams.put("fields", "childrenCount");
+    children = listEntities(queryParams, ADMIN_AUTH_HEADERS).getData();
+    assertEquals(term1.getChildren().size(), children.get(0).getChildrenCount());
   }
 
   public Glossary createGlossary(

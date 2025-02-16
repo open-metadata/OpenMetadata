@@ -122,8 +122,10 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
         UPDATE_FIELDS);
     supportsSearch = true;
     renameAllowed = true;
-    fieldFetchers.put("relatedTerms", this::fetchAndSetRelatedTerms);
     fieldFetchers.put("parent", this::fetchAndSetParentOrGlossary);
+    fieldFetchers.put("relatedTerms", this::fetchAndSetRelatedTerms);
+    fieldFetchers.put("usageCount", this::fetchAndSetUsageCount);
+    fieldFetchers.put("childrenCount", this::fetchAndSetChildrenCount);
   }
 
   @Override
@@ -910,7 +912,8 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       return;
     }
 
-    List<String> entityIds = terms.stream().map(GlossaryTerm::getId).map(UUID::toString).toList();
+    List<String> entityIds =
+        terms.stream().map(GlossaryTerm::getId).map(UUID::toString).distinct().toList();
 
     List<CollectionDAO.EntityRelationshipObject> parentRecords =
         daoCollection
@@ -981,6 +984,39 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       if (glossaryRef != null) {
         term.setGlossary(glossaryRef);
       }
+    }
+  }
+
+  private void fetchAndSetUsageCount(List<GlossaryTerm> entities, Fields fields) {
+    if (!fields.contains("usageCount") || entities.isEmpty()) {
+      return;
+    }
+    // TODO: modify to use a single db query
+    for (GlossaryTerm entity : entities) {
+      entity.withUsageCount(getUsageCount(entity));
+    }
+  }
+
+  private void fetchAndSetChildrenCount(List<GlossaryTerm> entities, Fields fields) {
+    if (!fields.contains("childrenCount") || entities.isEmpty()) {
+      return;
+    }
+    List<String> termIds =
+        entities.stream().map(GlossaryTerm::getId).map(UUID::toString).distinct().toList();
+
+    Map<UUID, Integer> termIdCountMap =
+        daoCollection
+            .relationshipDAO()
+            .findToCount(termIds, GLOSSARY_TERM, Relationship.CONTAINS.ordinal(), GLOSSARY_TERM)
+            .stream()
+            .collect(
+                Collectors.toMap(
+                    CollectionDAO.EntityRelationshipCount::getId,
+                    CollectionDAO.EntityRelationshipCount::getCount));
+
+    for (GlossaryTerm entity : entities) {
+      entity.setChildrenCount(
+          termIdCountMap.getOrDefault(entity.getId(), entity.getChildrenCount()));
     }
   }
 

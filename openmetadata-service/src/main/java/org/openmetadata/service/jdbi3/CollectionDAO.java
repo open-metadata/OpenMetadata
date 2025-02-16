@@ -878,6 +878,13 @@ public interface CollectionDAO {
 
   @Getter
   @Builder
+  class EntityRelationshipCount {
+    private UUID id;
+    private Integer count;
+  }
+
+  @Getter
+  @Builder
   class EntityRelationshipObject {
     private String fromId;
     private String toId;
@@ -1028,6 +1035,17 @@ public interface CollectionDAO {
     @RegisterRowMapper(ToRelationshipMapper.class)
     List<EntityRelationshipRecord> findTo(
         @BindUUID("fromId") UUID fromId,
+        @Bind("fromEntity") String fromEntity,
+        @Bind("relation") int relation,
+        @Bind("toEntity") String toEntity);
+
+    @SqlQuery(
+        "SELECT fromId, count(1) FROM entity_relationship "
+            + "WHERE fromId IN (<fromIds>) AND fromEntity = :fromEntity AND relation = :relation AND toEntity = :toEntity "
+            + "GROUP BY fromId")
+    @RegisterRowMapper(ToRelationshipCountMapper.class)
+    List<EntityRelationshipCount> findToCount(
+        @BindList("fromIds") List<String> fromIds,
         @Bind("fromEntity") String fromEntity,
         @Bind("relation") int relation,
         @Bind("toEntity") String toEntity);
@@ -1289,6 +1307,16 @@ public interface CollectionDAO {
             .id(UUID.fromString(rs.getString("toId")))
             .type(rs.getString("toEntity"))
             .json(rs.getString("json"))
+            .build();
+      }
+    }
+
+    class ToRelationshipCountMapper implements RowMapper<EntityRelationshipCount> {
+      @Override
+      public EntityRelationshipCount map(ResultSet rs, StatementContext ctx) throws SQLException {
+        return EntityRelationshipCount.builder()
+            .id(UUID.fromString(rs.getString(1)))
+            .count(rs.getInt(2))
             .build();
       }
     }
