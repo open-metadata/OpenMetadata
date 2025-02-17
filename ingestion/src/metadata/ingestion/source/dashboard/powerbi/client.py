@@ -49,6 +49,8 @@ logger = utils_logger()
 
 GETGROUPS_DEFAULT_PARAMS = {"$top": "1", "$skip": "0"}
 API_RESPONSE_MESSAGE_KEY = "message"
+AUTH_TOKEN_MAX_RETRIES = 5
+AUTH_TOKEN_RETRY_WAIT = 120
 # Similar inner methods with mode client. That's fine.
 # pylint: disable=duplicate-code
 class PowerBiApiClient:
@@ -86,15 +88,11 @@ class PowerBiApiClient:
         """
         logger.info("Generating PowerBi access token")
 
-        response_data = self.msal_client.acquire_token_silent(
-            scopes=self.config.scope, account=None
-        )
-
+        response_data = self.get_auth_token_from_cache()
         if not response_data:
             logger.info("Token does not exist in the cache. Getting a new token.")
-            response_data = self.msal_client.acquire_token_for_client(
-                scopes=self.config.scope
-            )
+            response_data = self.generate_new_auth_token()
+        response_data = response_data or {}
         auth_response = PowerBiToken(**response_data)
         if not auth_response.access_token:
             raise InvalidSourceException(
@@ -103,6 +101,59 @@ class PowerBiApiClient:
 
         logger.info("PowerBi Access Token generated successfully")
         return auth_response.access_token, auth_response.expires_in
+
+    def generate_new_auth_token(self):
+        """"""
+        retry = AUTH_TOKEN_MAX_RETRIES
+        while True:
+            try:
+                response_data = self.msal_client.acquire_token_for_client(
+                    scopes=self.config.scope
+                )
+                return response_data
+            except Exception as exc:
+                logger.debug(traceback.format_exc())
+                logger.warning(f"Error generating new auth token: {exc}")
+                # wait for time and retry
+                retry -= 1
+                if retry:
+                    logger.warning(
+                        f"Error generating new token: {exc}, "
+                        f"sleep {AUTH_TOKEN_RETRY_WAIT} seconds retrying {retry} more times.."
+                    )
+                    sleep(AUTH_TOKEN_RETRY_WAIT)
+                else:
+                    logger.warning(
+                        "Could not generate new token after maximum retries, "
+                        "Please check provided configs"
+                    )
+                    return None
+
+    def get_auth_token_from_cache(self):
+        """"""
+        retry = AUTH_TOKEN_MAX_RETRIES
+        while True:
+            try:
+                response_data = self.msal_client.acquire_token_silent(
+                    scopes=self.config.scope, account=None
+                )
+                return response_data
+            except Exception as exc:
+                logger.debug(traceback.format_exc())
+                logger.warning(f"Error getting token from cache: {exc}")
+                retry -= 1
+                if retry:
+                    logger.warning(
+                        f"Error getting token from cache: {exc}, "
+                        f"sleep {AUTH_TOKEN_RETRY_WAIT} seconds retrying {retry} more times.."
+                    )
+                    sleep(AUTH_TOKEN_RETRY_WAIT)
+                else:
+                    logger.warning(
+                        "Could not get token from cache after maximum retries, "
+                        "Please check provided configs"
+                    )
+                    return None
 
     def fetch_dashboards(self) -> Optional[List[PowerBIDashboard]]:
         """Get dashboards method
