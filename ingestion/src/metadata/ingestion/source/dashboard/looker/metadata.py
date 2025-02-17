@@ -814,7 +814,7 @@ class LookerSource(DashboardServiceSource):
             # Dashboards are created from the UI directly. They are not linked to a project
             # like LookML assets, but rather just organised in folders.
             project=self.get_project_name(dashboard_details),
-            source_url=SourceUrl(
+            sourceUrl=SourceUrl(
                 f"{clean_uri(self.service_connection.hostPort)}/dashboards/{dashboard_details.id}"
             ),
             service=self.context.get().dashboard_service,
