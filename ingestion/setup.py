@@ -152,8 +152,8 @@ base_requirements = {
     "collate-data-diff",
     # TODO: Remove one once we have updated datadiff version
     "snowflake-connector-python>=3.13.1,<4.0.0",
-    "mysql-connector-python>=8.0.29;python_versions<'3.9'",
-    "mysql-connector-python>=9.1;python_versions>='3.9'",
+    "mysql-connector-python>=8.0.29;python_version<'3.9'",
+    "mysql-connector-python>=9.1;python_version>='3.9'",
 }
 
 plugins: Dict[str, Set[str]] = {
