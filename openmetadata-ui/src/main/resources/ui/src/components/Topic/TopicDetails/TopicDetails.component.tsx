@@ -51,9 +51,9 @@ import { ActivityFeedTab } from '../../ActivityFeed/ActivityFeedTab/ActivityFeed
 import { withActivityFeed } from '../../AppRouter/withActivityFeed';
 import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
 import { DataAssetsHeader } from '../../DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import SampleDataWithMessages from '../../Database/SampleDataWithMessages/SampleDataWithMessages';
-import { GenericProvider } from '../../GenericProvider/GenericProvider';
 import Lineage from '../../Lineage/Lineage.component';
 
 import QueryViewer from '../../common/QueryViewer/QueryViewer.component';

@@ -44,6 +44,7 @@ import { CustomPropertyTable } from '../../../common/CustomPropertyTable/CustomP
 import FormItemLabel from '../../../common/Form/FormItemLabel';
 import ResizablePanels from '../../../common/ResizablePanels/ResizablePanels';
 import TagButton from '../../../common/TagButton/TagButton.component';
+import { useGenericContext } from '../../../Customization/GenericProvider/GenericProvider';
 import '../../domain.less';
 import {
   DocumentationEntity,
@@ -51,12 +52,8 @@ import {
 } from './DocumentationTab.interface';
 
 const DocumentationTab = ({
-  domain,
-  onUpdate,
-  onExtensionUpdate,
   isVersionsView = false,
   type = DocumentationEntity.DOMAIN,
-  permissions,
 }: DocumentationTabProps) => {
   const { t } = useTranslation();
   const [editDomainType, setEditDomainType] = useState(false);
@@ -64,6 +61,11 @@ const DocumentationTab = ({
     type === DocumentationEntity.DOMAIN
       ? ResourceEntity.DOMAIN
       : ResourceEntity.DATA_PRODUCT;
+  const {
+    data: domain,
+    onUpdate,
+    permissions,
+  } = useGenericContext<Domain | DataProduct>();
 
   const {
     editDescriptionPermission,
@@ -357,7 +359,7 @@ const DocumentationTab = ({
                 <CustomPropertyTable<EntityType.DATA_PRODUCT>
                   isRenderedInRightPanel
                   entityType={EntityType.DATA_PRODUCT}
-                  handleExtensionUpdate={onExtensionUpdate}
+                  handleExtensionUpdate={onUpdate}
                   hasEditAccess={Boolean(editCustomAttributePermission)}
                   hasPermission={Boolean(viewAllPermission)}
                   maxDataCap={5}

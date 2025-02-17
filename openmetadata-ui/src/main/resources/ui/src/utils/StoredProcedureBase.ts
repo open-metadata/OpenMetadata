@@ -25,9 +25,13 @@ import { StoredProcedure } from '../generated/entity/data/storedProcedure';
 import { EntityReference } from '../generated/entity/type';
 import { Tab } from '../generated/system/ui/uiCustomization';
 import { FeedCounts } from '../interface/feed.interface';
+import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
 import { getTabLabelFromId } from './CustomizePage/CustomizePageUtils';
 import i18n from './i18next/LocalUtil';
-import { getStoredProcedureDetailsPageTabs } from './StoredProceduresUtils';
+import {
+  getStoredProcedureDetailsPageTabs,
+  getStoredProcedureWidgetsFromKey,
+} from './StoredProceduresUtils';
 
 export interface StoredProcedureDetailPageTabProps {
   activeTab: EntityTabs;
@@ -92,7 +96,7 @@ class StoredProcedureClassBase {
           },
           {
             h: 7,
-            i: DetailPageWidgetKeys.TOPIC_SCHEMA,
+            i: DetailPageWidgetKeys.STORED_PROCEDURE_CODE,
             w: 6,
             x: 0,
             y: 0,
@@ -279,6 +283,10 @@ class StoredProcedureClassBase {
       GLOSSARY_TERMS_WIDGET,
       CUSTOM_PROPERTIES_WIDGET,
     ];
+  }
+
+  public getWidgetsFromKey(widgetConfig: WidgetConfig) {
+    return getStoredProcedureWidgetsFromKey(widgetConfig);
   }
 }
 

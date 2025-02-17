@@ -17,18 +17,21 @@ import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as PlusIcon } from '../../../assets/svg/plus-primary.svg';
 import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import { TabSpecificField } from '../../../enums/entity.enum';
-import { Glossary } from '../../../generated/entity/data/glossary';
-import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
 import { EntityReference } from '../../../generated/entity/type';
+import { ChangeDescription } from '../../../generated/type/changeEvent';
 import { getOwnerVersionLabel } from '../../../utils/EntityVersionUtils';
 import TagButton from '../../common/TagButton/TagButton.component';
 import { UserTeamSelectableList } from '../../common/UserTeamSelectableList/UserTeamSelectableList.component';
-import { useGenericContext } from '../../GenericProvider/GenericProvider';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 
-export const ReviewerLabelV2 = () => {
-  const { data, onUpdate, permissions, isVersionView } = useGenericContext<
-    GlossaryTerm | Glossary
-  >();
+export const ReviewerLabelV2 = <
+  T extends {
+    reviewers?: EntityReference[];
+    id: string;
+    changeDescription?: ChangeDescription;
+  }
+>() => {
+  const { data, onUpdate, permissions, isVersionView } = useGenericContext<T>();
 
   const hasEditReviewerAccess = useMemo(() => {
     return permissions.EditAll || permissions.EditReviewers;
@@ -95,7 +98,7 @@ export const ReviewerLabelV2 = () => {
       <div>
         <div data-testid="glossary-reviewer-name">
           {getOwnerVersionLabel(
-            data,
+            data as T,
             isVersionView ?? false,
             TabSpecificField.REVIEWERS,
             hasEditReviewerAccess

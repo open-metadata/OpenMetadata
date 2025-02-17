@@ -23,6 +23,7 @@ import { CustomPropertyTable } from '../components/common/CustomPropertyTable/Cu
 import DescriptionV1 from '../components/common/EntityDescription/DescriptionV1';
 import ResizablePanels from '../components/common/ResizablePanels/ResizablePanels';
 import TabsLabel from '../components/common/TabsLabel/TabsLabel.component';
+import { CommonWidgets } from '../components/DataAssets/CommonWidgets/CommonWidgets';
 import EntityRightPanel from '../components/Entity/EntityRightPanel/EntityRightPanel';
 import Lineage from '../components/Lineage/Lineage.component';
 import ExecutionsTab from '../components/Pipeline/Execution/Execution.component';
@@ -32,6 +33,7 @@ import { COMMON_RESIZABLE_PANEL_CONFIG } from '../constants/ResizablePanel.const
 import LineageProvider from '../context/LineageProvider/LineageProvider';
 import { EntityTabs, EntityType, TabSpecificField } from '../enums/entity.enum';
 import { StatusType, TaskStatus } from '../generated/entity/data/pipeline';
+import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
 import { PipelineDetailPageTabProps } from './PipelineClassBase';
 
 // eslint-disable-next-line max-len
@@ -236,4 +238,8 @@ export const getPipelineDetailPageTabs = ({
       ),
     },
   ];
+};
+
+export const getPipelineWidgetsFromKey = (widgetConfig: WidgetConfig) => {
+  return <CommonWidgets widgetConfig={widgetConfig} />;
 };

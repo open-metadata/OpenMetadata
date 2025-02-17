@@ -36,9 +36,13 @@ import { EntityReference } from '../generated/entity/type';
 import { Tab } from '../generated/system/ui/uiCustomization';
 import { LabelType, TagLabel, TagSource } from '../generated/type/tagLabel';
 import { FeedCounts } from '../interface/feed.interface';
+import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
 import { getTabLabelFromId } from './CustomizePage/CustomizePageUtils';
 import i18n from './i18next/LocalUtil';
-import { getPipelineDetailPageTabs } from './PipelineDetailsUtils';
+import {
+  getPipelineDetailPageTabs,
+  getPipelineWidgetsFromKey,
+} from './PipelineDetailsUtils';
 
 export interface PipelineDetailPageTabProps {
   description: string;
@@ -313,6 +317,10 @@ class PipelineClassBase {
       GLOSSARY_TERMS_WIDGET,
       CUSTOM_PROPERTIES_WIDGET,
     ];
+  }
+
+  public getWidgetsFromKey(widgetConfig: WidgetConfig) {
+    return getPipelineWidgetsFromKey(widgetConfig);
   }
 }
 

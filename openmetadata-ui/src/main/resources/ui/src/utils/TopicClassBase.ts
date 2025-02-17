@@ -23,9 +23,13 @@ import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 import { EntityTabs } from '../enums/entity.enum';
 import { Topic } from '../generated/entity/data/topic';
 import { Tab } from '../generated/system/ui/uiCustomization';
+import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
 import { getTabLabelFromId } from './CustomizePage/CustomizePageUtils';
 import i18n from './i18next/LocalUtil';
-import { getTopicDetailsPageTabs } from './TopicDetailsUtils';
+import {
+  getTopicDetailsPageTabs,
+  getTopicWidgetsFromKey,
+} from './TopicDetailsUtils';
 
 export interface TopicDetailPageTabProps {
   schemaCount: number;
@@ -301,6 +305,10 @@ class TopicClassBase {
       GLOSSARY_TERMS_WIDGET,
       CUSTOM_PROPERTIES_WIDGET,
     ];
+  }
+
+  public getWidgetsFromKey(widgetConfig: WidgetConfig) {
+    return getTopicWidgetsFromKey(widgetConfig);
   }
 }
 

@@ -34,9 +34,13 @@ import {
 import { Tab } from '../generated/system/ui/uiCustomization';
 import { TestSummary } from '../generated/tests/testCase';
 import { FeedCounts } from '../interface/feed.interface';
+import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
 import { getTabLabelFromId } from './CustomizePage/CustomizePageUtils';
 import i18n from './i18next/LocalUtil';
-import { getTableDetailPageBaseTabs } from './TableUtils';
+import {
+  getTableDetailPageBaseTabs,
+  getTableWidgetFromKey,
+} from './TableUtils';
 
 export interface TableDetailPageTabProps {
   queryCount: number;
@@ -330,6 +334,10 @@ class TableClassBase {
       },
       CUSTOM_PROPERTIES_WIDGET,
     ];
+  }
+
+  public getWidgetsFromKey(widgetConfig: WidgetConfig) {
+    return getTableWidgetFromKey(widgetConfig);
   }
 }
 

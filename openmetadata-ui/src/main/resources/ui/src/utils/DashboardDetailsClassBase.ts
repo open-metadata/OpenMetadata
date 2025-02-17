@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { EntityTags } from 'Models';
 import { TabProps } from '../components/common/TabsLabel/TabsLabel.interface';
 import {
   CUSTOM_PROPERTIES_WIDGET,
@@ -22,32 +21,26 @@ import {
 } from '../constants/CustomizeWidgets.constants';
 import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 import { EntityTabs } from '../enums/entity.enum';
-import { Tag } from '../generated/entity/classification/tag';
 import {
   Dashboard,
   DashboardServiceType,
 } from '../generated/entity/data/dashboard';
-import { EntityReference } from '../generated/entity/type';
 import { Tab } from '../generated/system/ui/page';
 import { FeedCounts } from '../interface/feed.interface';
+import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
 import { getTabLabelFromId } from './CustomizePage/CustomizePageUtils';
-import { getDashboardDetailPageTabs } from './DashboardDetailsUtils';
+import {
+  getDashboardDetailPageTabs,
+  getDashboardWidgetsFromKey,
+} from './DashboardDetailsUtils';
 import i18n from './i18next/LocalUtil';
 
 export interface DashboardDetailsTabsProps {
   dashboardDetails: Dashboard;
-  charts: EntityReference[];
-  entityName: string;
-  editDescriptionPermission: boolean;
-  editTagsPermission: boolean;
-  editGlossaryTermsPermission: boolean;
   editLineagePermission: boolean;
   editCustomAttributePermission: boolean;
   viewAllPermission: boolean;
-  dashboardTags: Tag[];
   handleFeedCount: (data: FeedCounts) => void;
-  onDescriptionUpdate: (value: string) => Promise<void>;
-  handleTagSelection: (selectedTags: EntityTags[]) => Promise<void>;
   onExtensionUpdate: (data: Dashboard) => Promise<void>;
   feedCount: FeedCounts;
   activeTab: EntityTabs;
@@ -82,9 +75,10 @@ class DashboardDetailsClassBase {
   public getDefaultLayout(tab: EntityTabs) {
     switch (tab) {
       case EntityTabs.DETAILS:
+      default:
         return [
           {
-            h: 2,
+            h: 1,
             i: DetailPageWidgetKeys.DESCRIPTION,
             w: 6,
             x: 0,
@@ -108,7 +102,7 @@ class DashboardDetailsClassBase {
             static: false,
           },
           {
-            h: 2,
+            h: 1,
             i: DetailPageWidgetKeys.TAGS,
             w: 2,
             x: 6,
@@ -116,7 +110,7 @@ class DashboardDetailsClassBase {
             static: false,
           },
           {
-            h: 2,
+            h: 1,
             i: DetailPageWidgetKeys.GLOSSARY_TERMS,
             w: 2,
             x: 6,
@@ -132,9 +126,6 @@ class DashboardDetailsClassBase {
             static: false,
           },
         ];
-
-      default:
-        return [];
     }
   }
 
@@ -226,6 +217,10 @@ class DashboardDetailsClassBase {
       GLOSSARY_TERMS_WIDGET,
       CUSTOM_PROPERTIES_WIDGET,
     ];
+  }
+
+  public getWidgetsFromKey(widgetConfig: WidgetConfig) {
+    return getDashboardWidgetsFromKey(widgetConfig);
   }
 }
 

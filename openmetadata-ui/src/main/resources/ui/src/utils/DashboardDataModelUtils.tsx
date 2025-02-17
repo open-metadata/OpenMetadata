@@ -17,12 +17,14 @@ import { ActivityFeedTab } from '../components/ActivityFeed/ActivityFeedTab/Acti
 import { CustomPropertyTable } from '../components/common/CustomPropertyTable/CustomPropertyTable';
 import TabsLabel from '../components/common/TabsLabel/TabsLabel.component';
 import { TabProps } from '../components/common/TabsLabel/TabsLabel.interface';
+import { CommonWidgets } from '../components/DataAssets/CommonWidgets/CommonWidgets';
 import SchemaEditor from '../components/Database/SchemaEditor/SchemaEditor';
 import Lineage from '../components/Lineage/Lineage.component';
 import { SourceType } from '../components/SearchedData/SearchedData.interface';
 import LineageProvider from '../context/LineageProvider/LineageProvider';
 import { CSMode } from '../enums/codemirror.enum';
 import { EntityTabs, EntityType } from '../enums/entity.enum';
+import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
 import { DashboardDataModelDetailPageTabProps } from './DashboardDataModelBase';
 import i18n from './i18next/LocalUtil';
 
@@ -143,4 +145,10 @@ export const getDashboardDataModelDetailPageTabs = ({
       ),
     },
   ];
+};
+
+export const getDashboardDataModelWidgetsFromKey = (
+  widgetConfig: WidgetConfig
+) => {
+  return <CommonWidgets widgetConfig={widgetConfig} />;
 };

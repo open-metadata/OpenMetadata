@@ -11,26 +11,24 @@
  *  limitations under the License.
  */
 
-import { Col, Row } from 'antd';
 import { AxiosError } from 'axios';
 import { t } from 'i18next';
-import { isEmpty } from 'lodash';
 import React from 'react';
 import { ActivityFeedTab } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import { CustomPropertyTable } from '../components/common/CustomPropertyTable/CustomPropertyTable';
-import DescriptionV1 from '../components/common/EntityDescription/DescriptionV1';
-import ResizablePanels from '../components/common/ResizablePanels/ResizablePanels';
 import TabsLabel from '../components/common/TabsLabel/TabsLabel.component';
 import { TabProps } from '../components/common/TabsLabel/TabsLabel.interface';
+import { GenericTab } from '../components/Customization/GenericTab/GenericTab';
 import { DashboardChartTable } from '../components/Dashboard/DashboardChartTable/DashboardChartTable';
-import EntityRightPanel from '../components/Entity/EntityRightPanel/EntityRightPanel';
+import { CommonWidgets } from '../components/DataAssets/CommonWidgets/CommonWidgets';
 import Lineage from '../components/Lineage/Lineage.component';
 import { SourceType } from '../components/SearchedData/SearchedData.interface';
-import { COMMON_RESIZABLE_PANEL_CONFIG } from '../constants/ResizablePanel.constants';
 import LineageProvider from '../context/LineageProvider/LineageProvider';
 import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 import { EntityTabs, EntityType, TabSpecificField } from '../enums/entity.enum';
 import { Dashboard } from '../generated/entity/data/dashboard';
+import { PageType } from '../generated/system/ui/page';
+import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
 import { ChartType } from '../pages/DashboardDetailsPage/DashboardDetailsPage.component';
 import { getChartById } from '../rest/chartAPI';
 import { DashboardDetailsTabsProps } from './DashboardDetailsClassBase';
@@ -61,79 +59,12 @@ export const fetchCharts = async (charts: Dashboard['charts']) => {
   return chartsData;
 };
 
-export const getDashboardDetailsPageDefaultLayout = (tab: EntityTabs) => {
-  switch (tab) {
-    case EntityTabs.DETAILS:
-      return [
-        {
-          h: 2,
-          i: DetailPageWidgetKeys.DESCRIPTION,
-          w: 6,
-          x: 0,
-          y: 0,
-          static: false,
-        },
-        {
-          h: 1,
-          i: DetailPageWidgetKeys.FREQUENTLY_JOINED_TABLES,
-          w: 2,
-          x: 6,
-          y: 0,
-          static: false,
-        },
-        {
-          h: 1,
-          i: DetailPageWidgetKeys.DATA_PRODUCTS,
-          w: 2,
-          x: 6,
-          y: 1,
-          static: false,
-        },
-        {
-          h: 1,
-          i: DetailPageWidgetKeys.TAGS,
-          w: 2,
-          x: 6,
-          y: 2,
-          static: false,
-        },
-        {
-          h: 1,
-          i: DetailPageWidgetKeys.GLOSSARY_TERMS,
-          w: 2,
-          x: 6,
-          y: 3,
-          static: false,
-        },
-        {
-          h: 3,
-          i: DetailPageWidgetKeys.CUSTOM_PROPERTIES,
-          w: 2,
-          x: 6,
-          y: 4,
-          static: false,
-        },
-      ];
-
-    default:
-      return [];
-  }
-};
-
 export const getDashboardDetailPageTabs = ({
   dashboardDetails,
-  charts,
-  entityName,
-  editDescriptionPermission,
-  editTagsPermission,
-  editGlossaryTermsPermission,
   editLineagePermission,
   editCustomAttributePermission,
   viewAllPermission,
-  dashboardTags,
   handleFeedCount,
-  onDescriptionUpdate,
-  handleTagSelection,
   onExtensionUpdate,
   feedCount,
   activeTab,
@@ -147,55 +78,7 @@ export const getDashboardDetailPageTabs = ({
         <TabsLabel id={EntityTabs.DETAILS} name={t('label.detail-plural')} />
       ),
       key: EntityTabs.DETAILS,
-      children: (
-        <Row gutter={[0, 16]} wrap={false}>
-          <Col className="tab-content-height-with-resizable-panel" span={24}>
-            <ResizablePanels
-              firstPanel={{
-                className: 'entity-resizable-panel-container',
-                children: (
-                  <div className="d-flex flex-col gap-4 p-t-sm m-x-lg">
-                    <DescriptionV1
-                      description={dashboardDetails.description}
-                      entityName={entityName}
-                      entityType={EntityType.DASHBOARD}
-                      hasEditAccess={editDescriptionPermission}
-                      isDescriptionExpanded={isEmpty(charts)}
-                      owner={dashboardDetails.owners}
-                      showActions={!deleted}
-                      onDescriptionUpdate={onDescriptionUpdate}
-                    />
-
-                    <DashboardChartTable />
-                  </div>
-                ),
-                ...COMMON_RESIZABLE_PANEL_CONFIG.LEFT_PANEL,
-              }}
-              secondPanel={{
-                children: (
-                  <div data-testid="entity-right-panel">
-                    <EntityRightPanel<EntityType.DASHBOARD>
-                      editCustomAttributePermission={
-                        editCustomAttributePermission
-                      }
-                      editGlossaryTermsPermission={editGlossaryTermsPermission}
-                      editTagPermission={editTagsPermission}
-                      entityType={EntityType.DASHBOARD}
-                      selectedTags={dashboardTags}
-                      viewAllPermission={viewAllPermission}
-                      onExtensionUpdate={onExtensionUpdate}
-                      onTagSelectionChange={handleTagSelection}
-                    />
-                  </div>
-                ),
-                ...COMMON_RESIZABLE_PANEL_CONFIG.RIGHT_PANEL,
-                className:
-                  'entity-resizable-right-panel-container entity-resizable-panel-container',
-              }}
-            />
-          </Col>
-        </Row>
-      ),
+      children: <GenericTab type={PageType.Dashboard} />,
     },
     {
       label: (
@@ -252,4 +135,12 @@ export const getDashboardDetailPageTabs = ({
       ),
     },
   ];
+};
+
+export const getDashboardWidgetsFromKey = (widgetConfig: WidgetConfig) => {
+  if (widgetConfig.i.startsWith(DetailPageWidgetKeys.CHARTS_TABLE)) {
+    return <DashboardChartTable />;
+  }
+
+  return <CommonWidgets widgetConfig={widgetConfig} />;
 };

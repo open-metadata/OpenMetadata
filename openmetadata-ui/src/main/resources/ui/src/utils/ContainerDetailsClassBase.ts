@@ -34,6 +34,8 @@ import { getContainerDetailPageTabs } from './ContainerDetailUtils';
 
 import { EntityReference } from '../generated/entity/type';
 import { FeedCounts } from '../interface/feed.interface';
+import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
+import { getContainerWidgetsFromKey } from './ContainerDetailUtils';
 import { getTabLabelFromId } from './CustomizePage/CustomizePageUtils';
 import i18n from './i18next/LocalUtil';
 
@@ -224,6 +226,10 @@ class ContainerDetailsClassBase {
       GLOSSARY_TERMS_WIDGET,
       CUSTOM_PROPERTIES_WIDGET,
     ];
+  }
+
+  public getWidgetsFromKey(widgetConfig: WidgetConfig) {
+    return getContainerWidgetsFromKey(widgetConfig);
   }
 }
 

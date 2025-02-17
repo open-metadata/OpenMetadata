@@ -30,8 +30,12 @@ import {
 import { Tab } from '../generated/system/ui/uiCustomization';
 import { LabelType, TagSource } from '../generated/type/tagLabel';
 import { FeedCounts } from '../interface/feed.interface';
+import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
 import { getTabLabelFromId } from './CustomizePage/CustomizePageUtils';
-import { getDataBaseSchemaPageBaseTabs } from './DatabaseSchemaDetailsUtils';
+import {
+  getDataBaseSchemaPageBaseTabs,
+  getDatabaseSchemaWidgetsFromKey,
+} from './DatabaseSchemaDetailsUtils';
 import i18n from './i18next/LocalUtil';
 
 export interface DatabaseSchemaPageTabProps {
@@ -76,7 +80,7 @@ class DatabaseSchemaClassBase {
       case EntityTabs.TABLE:
         return [
           {
-            h: 2,
+            h: 1,
             i: DetailPageWidgetKeys.DESCRIPTION,
             w: 6,
             x: 0,
@@ -100,7 +104,7 @@ class DatabaseSchemaClassBase {
             static: false,
           },
           {
-            h: 2,
+            h: 1,
             i: DetailPageWidgetKeys.TAGS,
             w: 2,
             x: 6,
@@ -108,7 +112,7 @@ class DatabaseSchemaClassBase {
             static: false,
           },
           {
-            h: 2,
+            h: 1,
             i: DetailPageWidgetKeys.GLOSSARY_TERMS,
             w: 2,
             x: 6,
@@ -116,7 +120,7 @@ class DatabaseSchemaClassBase {
             static: false,
           },
           {
-            h: 4,
+            h: 3,
             i: DetailPageWidgetKeys.CUSTOM_PROPERTIES,
             w: 2,
             x: 6,
@@ -337,6 +341,10 @@ class DatabaseSchemaClassBase {
         ],
       },
     };
+  }
+
+  public getWidgetsFromKey(widgetConfig: WidgetConfig) {
+    return getDatabaseSchemaWidgetsFromKey(widgetConfig);
   }
 }
 

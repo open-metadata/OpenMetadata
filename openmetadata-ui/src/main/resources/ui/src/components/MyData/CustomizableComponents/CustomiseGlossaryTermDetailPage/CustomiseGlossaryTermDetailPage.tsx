@@ -19,7 +19,7 @@ import { useGridLayoutDirection } from '../../../../hooks/useGridLayoutDirection
 import { useCustomizeStore } from '../../../../pages/CustomizablePage/CustomizeStore';
 import '../../../../pages/MyDataPage/my-data.less';
 import { getEntityName } from '../../../../utils/EntityUtils';
-import { CustomizeTabWidget } from '../../../Glossary/CustomiseWidgets/CustomizeTabWidget/CustomizeTabWidget';
+import { CustomizeTabWidget } from '../../../Customization/CustomizeTabWidget/CustomizeTabWidget';
 import { GlossaryHeaderWidget } from '../../../Glossary/GlossaryHeader/GlossaryHeaderWidget';
 import PageLayoutV1 from '../../../PageLayoutV1/PageLayoutV1';
 import { CustomizablePageHeader } from '../CustomizablePageHeader/CustomizablePageHeader';

@@ -17,40 +17,46 @@ import React, { useMemo } from 'react';
 import {
   DetailPageWidgetKeys,
   GlossaryTermDetailPageWidgetKeys,
-} from '../../../../enums/CustomizeDetailPage.enum';
-import { EntityType } from '../../../../enums/entity.enum';
-import { Container } from '../../../../generated/entity/data/container';
-import { DashboardDataModel } from '../../../../generated/entity/data/dashboardDataModel';
-import { DataType, Table } from '../../../../generated/entity/data/table';
-import { Topic } from '../../../../generated/entity/data/topic';
-import { EntityReference } from '../../../../generated/tests/testCase';
-import { TagSource } from '../../../../generated/type/tagLabel';
-import { WidgetCommonProps } from '../../../../pages/CustomizablePage/CustomizablePage.interface';
-import { FrequentlyJoinedTables } from '../../../../pages/TableDetailsPageV1/FrequentlyJoinedTables/FrequentlyJoinedTables.component';
-import TableConstraints from '../../../../pages/TableDetailsPageV1/TableConstraints/TableConstraints';
-import containerDetailsClassBase from '../../../../utils/ContainerDetailsClassBase';
-import dashboardDataModelClassBase from '../../../../utils/DashboardDataModelBase';
-import domainClassBase from '../../../../utils/Domain/DomainClassBase';
-import { renderReferenceElement } from '../../../../utils/GlossaryUtils';
-import { DEFAULT_ENTITY_PERMISSION } from '../../../../utils/PermissionsUtils';
-import tableClassBase from '../../../../utils/TableClassBase';
-import topicClassBase from '../../../../utils/TopicClassBase';
-import { ExtensionTable } from '../../../common/CustomPropertyTable/ExtensionTable';
-import { DomainLabel } from '../../../common/DomainLabel/DomainLabel.component';
-import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
-import RichTextEditorPreviewerV1 from '../../../common/RichTextEditor/RichTextEditorPreviewerV1';
-import TagButton from '../../../common/TagButton/TagButton.component';
-import ContainerChildren from '../../../Container/ContainerChildren/ContainerChildren';
-import { DashboardChartTable } from '../../../Dashboard/DashboardChartTable/DashboardChartTable';
-import ModelTab from '../../../Dashboard/DataModel/DataModels/ModelTab/ModelTab.component';
-import SchemaTable from '../../../Database/SchemaTable/SchemaTable.component';
-import DataProductsContainer from '../../../DataProducts/DataProductsContainer/DataProductsContainer.component';
-import { GenericProvider } from '../../../GenericProvider/GenericProvider';
-import TagsViewer from '../../../Tag/TagsViewer/TagsViewer';
-import { DisplayType } from '../../../Tag/TagsViewer/TagsViewer.interface';
-import TopicSchemaFields from '../../../Topic/TopicSchema/TopicSchema';
-import GlossaryTermTab from '../../GlossaryTermTab/GlossaryTermTab.component';
-import { ModifiedGlossary, useGlossaryStore } from '../../useGlossary.store';
+} from '../../../enums/CustomizeDetailPage.enum';
+import { EntityType } from '../../../enums/entity.enum';
+import {
+  Container,
+  DataType,
+  EntityReference,
+  TagSource,
+} from '../../../generated/entity/data/container';
+import { DashboardDataModel } from '../../../generated/entity/data/dashboardDataModel';
+import { Table } from '../../../generated/entity/data/table';
+import { Topic } from '../../../generated/entity/data/topic';
+import { WidgetCommonProps } from '../../../pages/CustomizablePage/CustomizablePage.interface';
+import { FrequentlyJoinedTables } from '../../../pages/TableDetailsPageV1/FrequentlyJoinedTables/FrequentlyJoinedTables.component';
+import TableConstraints from '../../../pages/TableDetailsPageV1/TableConstraints/TableConstraints';
+import containerDetailsClassBase from '../../../utils/ContainerDetailsClassBase';
+import dashboardDataModelClassBase from '../../../utils/DashboardDataModelBase';
+import domainClassBase from '../../../utils/Domain/DomainClassBase';
+import { renderReferenceElement } from '../../../utils/GlossaryUtils';
+import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
+import tableClassBase from '../../../utils/TableClassBase';
+import topicClassBase from '../../../utils/TopicClassBase';
+import { ExtensionTable } from '../../common/CustomPropertyTable/ExtensionTable';
+import { DomainLabel } from '../../common/DomainLabel/DomainLabel.component';
+import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
+import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
+import TagButton from '../../common/TagButton/TagButton.component';
+import ContainerChildren from '../../Container/ContainerChildren/ContainerChildren';
+import { DashboardChartTable } from '../../Dashboard/DashboardChartTable/DashboardChartTable';
+import ModelTab from '../../Dashboard/DataModel/DataModels/ModelTab/ModelTab.component';
+import SchemaTable from '../../Database/SchemaTable/SchemaTable.component';
+import DataProductsContainer from '../../DataProducts/DataProductsContainer/DataProductsContainer.component';
+import GlossaryTermTab from '../../Glossary/GlossaryTermTab/GlossaryTermTab.component';
+import {
+  ModifiedGlossary,
+  useGlossaryStore,
+} from '../../Glossary/useGlossary.store';
+import TagsViewer from '../../Tag/TagsViewer/TagsViewer';
+import { DisplayType } from '../../Tag/TagsViewer/TagsViewer.interface';
+import TopicSchemaFields from '../../Topic/TopicSchema/TopicSchema';
+import { GenericProvider } from '../GenericProvider/GenericProvider';
 
 export const GenericWidget = (props: WidgetCommonProps) => {
   const handleRemoveClick = () => {

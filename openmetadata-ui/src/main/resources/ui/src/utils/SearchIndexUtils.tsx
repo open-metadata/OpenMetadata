@@ -12,9 +12,12 @@
  */
 
 import { uniqueId } from 'lodash';
+import React from 'react';
+import { CommonWidgets } from '../components/DataAssets/CommonWidgets/CommonWidgets';
 import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 import { EntityTabs, TabSpecificField } from '../enums/entity.enum';
 import { SearchIndexField } from '../generated/entity/data/searchIndex';
+import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
 
 // eslint-disable-next-line max-len
 export const defaultFields = `${TabSpecificField.FIELDS},${TabSpecificField.FOLLOWERS},${TabSpecificField.TAGS},${TabSpecificField.OWNERS},${TabSpecificField.DOMAIN},${TabSpecificField.VOTES},${TabSpecificField.DATA_PRODUCTS},${TabSpecificField.EXTENSION}`;
@@ -94,4 +97,8 @@ export const getSearchIndexDetailsPageDefaultLayout = (tab: EntityTabs) => {
     default:
       return [];
   }
+};
+
+export const getSearchIndexWidgetsFromKey = (widgetConfig: WidgetConfig) => {
+  return <CommonWidgets widgetConfig={widgetConfig} />;
 };

@@ -43,7 +43,7 @@ import {
   getUpdatedExtensionDiffFields,
 } from '../../../utils/EntityVersionUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import { useGenericContext } from '../../GenericProvider/GenericProvider';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 import ErrorPlaceHolder from '../ErrorWithPlaceholder/ErrorPlaceHolder';
 import './custom-property-table.less';
 import {

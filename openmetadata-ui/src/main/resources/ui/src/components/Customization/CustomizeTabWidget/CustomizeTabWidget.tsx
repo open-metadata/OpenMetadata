@@ -16,35 +16,35 @@ import { isEmpty, isNil, toString, uniqueId } from 'lodash';
 import React, { useCallback, useMemo, useState } from 'react';
 import RGL, { Layout, WidthProvider } from 'react-grid-layout';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
-import { CommonWidgetType } from '../../../../constants/CustomizeWidgets.constants';
-import { EntityTabs } from '../../../../enums/entity.enum';
-import { Document } from '../../../../generated/entity/docStore/document';
-import { Page, Tab } from '../../../../generated/system/ui/page';
-import { PageType } from '../../../../generated/system/ui/uiCustomization';
-import { useGridLayoutDirection } from '../../../../hooks/useGridLayoutDirection';
+import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
+import { CommonWidgetType } from '../../../constants/CustomizeWidgets.constants';
+import { EntityTabs } from '../../../enums/entity.enum';
+import { Document } from '../../../generated/entity/docStore/document';
+import { Page, Tab } from '../../../generated/system/ui/page';
+import { PageType } from '../../../generated/system/ui/uiCustomization';
+import { useGridLayoutDirection } from '../../../hooks/useGridLayoutDirection';
 import {
   WidgetCommonProps,
   WidgetConfig,
-} from '../../../../pages/CustomizablePage/CustomizablePage.interface';
-import { useCustomizeStore } from '../../../../pages/CustomizablePage/CustomizeStore';
+} from '../../../pages/CustomizablePage/CustomizablePage.interface';
+import { useCustomizeStore } from '../../../pages/CustomizablePage/CustomizeStore';
 import {
   getAddWidgetHandler,
   getLayoutUpdateHandler,
   getLayoutWithEmptyWidgetPlaceholder,
   getRemoveWidgetHandler,
   getUniqueFilteredLayout,
-} from '../../../../utils/CustomizableLandingPageUtils';
+} from '../../../utils/CustomizableLandingPageUtils';
 
 import {
   getCustomizableWidgetByPage,
   getDefaultTabs,
   getDefaultWidgetForTab,
-} from '../../../../utils/CustomizePage/CustomizePageUtils';
-import { getEntityName } from '../../../../utils/EntityUtils';
-import { getWidgetFromKey } from '../../../../utils/GlossaryTerm/GlossaryTermUtil';
-import { DraggableTabs } from '../../../common/DraggableTabs/DraggableTabs';
-import AddDetailsPageWidgetModal from '../../../MyData/CustomizableComponents/AddDetailsPageWidgetModal/AddDetailsPageWidgetModal';
+} from '../../../utils/CustomizePage/CustomizePageUtils';
+import { getEntityName } from '../../../utils/EntityUtils';
+import { getWidgetFromKey } from '../../../utils/GlossaryTerm/GlossaryTermUtil';
+import { DraggableTabs } from '../../common/DraggableTabs/DraggableTabs';
+import AddDetailsPageWidgetModal from '../../MyData/CustomizableComponents/AddDetailsPageWidgetModal/AddDetailsPageWidgetModal';
 
 const ReactGridLayout = WidthProvider(RGL);
 

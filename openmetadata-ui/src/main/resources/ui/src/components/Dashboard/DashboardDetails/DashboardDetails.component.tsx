@@ -13,7 +13,6 @@
 
 import { Col, Row, Tabs } from 'antd';
 import { AxiosError } from 'axios';
-import { EntityTags } from 'Models';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
@@ -27,7 +26,6 @@ import { Tag } from '../../../generated/entity/classification/tag';
 import { Dashboard } from '../../../generated/entity/data/dashboard';
 import { Page } from '../../../generated/system/ui/page';
 import { PageType } from '../../../generated/system/ui/uiCustomization';
-import { TagLabel } from '../../../generated/type/tagLabel';
 import LimitWrapper from '../../../hoc/LimitWrapper';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useFqn } from '../../../hooks/useFqn';
@@ -36,25 +34,22 @@ import { restoreDashboard } from '../../../rest/dashboardAPI';
 import { getDocumentByFQN } from '../../../rest/DocStoreAPI';
 import { getFeedCounts } from '../../../utils/CommonUtils';
 import dashboardDetailsClassBase from '../../../utils/DashboardDetailsClassBase';
-import { getEntityName } from '../../../utils/EntityUtils';
 import {
   getGlossaryTermDetailTabs,
   getTabLabelMap,
 } from '../../../utils/GlossaryTerm/GlossaryTermUtil';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
-import { getTagsWithoutTier, getTierTags } from '../../../utils/TableUtils';
-import { createTagObject, updateTierTag } from '../../../utils/TagsUtils';
+import { updateTierTag } from '../../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { withActivityFeed } from '../../AppRouter/withActivityFeed';
+import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
 import { DataAssetsHeader } from '../../DataAssets/DataAssetsHeader/DataAssetsHeader.component';
-import { GenericProvider } from '../../GenericProvider/GenericProvider';
 import { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../PageLayoutV1/PageLayoutV1';
 import { DashboardDetailsProps } from './DashboardDetails.interface';
 
 const DashboardDetails = ({
   updateDashboardDetailsState,
-  charts,
   dashboardDetails,
   fetchDashboard,
   followDashboardHandler,
@@ -71,9 +66,6 @@ const DashboardDetails = ({
     useParams<{ tab: EntityTabs }>();
   const [customizedPage, setCustomizedPage] = useState<Page | null>(null);
   const { fqn: decodedDashboardFQN } = useFqn();
-
-  const [isEdit, setIsEdit] = useState(false);
-
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA
   );
@@ -84,22 +76,15 @@ const DashboardDetails = ({
 
   const {
     owners,
-    description,
-    entityName,
     followers = [],
     deleted,
-    dashboardTags,
-    tier,
   } = useMemo(() => {
-    const { tags = [] } = dashboardDetails;
-
-    return {
-      ...dashboardDetails,
-      tier: getTierTags(tags),
-      dashboardTags: getTagsWithoutTier(tags),
-      entityName: getEntityName(dashboardDetails),
-    };
-  }, [dashboardDetails]);
+    return dashboardDetails;
+  }, [
+    dashboardDetails.owners,
+    dashboardDetails.followers,
+    dashboardDetails.deleted,
+  ]);
 
   const { isFollowing } = useMemo(() => {
     return {
@@ -151,31 +136,6 @@ const DashboardDetails = ({
           activeKey
         )
       );
-    }
-  };
-
-  const onDescriptionEdit = (): void => {
-    setIsEdit(true);
-  };
-  const onCancel = () => {
-    setIsEdit(false);
-  };
-
-  const onDescriptionUpdate = async (updatedHTML: string) => {
-    if (description !== updatedHTML) {
-      const updatedDashboard = {
-        ...dashboardDetails,
-        description: updatedHTML,
-      };
-      try {
-        await onDashboardUpdate(updatedDashboard);
-      } catch (error) {
-        showErrorToast(error as AxiosError);
-      } finally {
-        setIsEdit(false);
-      }
-    } else {
-      setIsEdit(false);
     }
   };
 
@@ -241,16 +201,6 @@ const DashboardDetails = ({
       : await followDashboardHandler();
   };
 
-  const handleTagSelection = async (selectedTags: EntityTags[]) => {
-    const updatedTags: TagLabel[] | undefined = createTagObject(selectedTags);
-
-    if (updatedTags && dashboardDetails) {
-      const updatedTags = [...(tier ? [tier] : []), ...selectedTags];
-      const updatedDashboard = { ...dashboardDetails, tags: updatedTags };
-      await onDashboardUpdate(updatedDashboard);
-    }
-  };
-
   const afterDeleteAction = useCallback(
     (isSoftDelete?: boolean, version?: number) =>
       isSoftDelete ? handleToggleDelete(version) : history.push('/'),
@@ -258,26 +208,12 @@ const DashboardDetails = ({
   );
 
   const {
-    editTagsPermission,
-    editGlossaryTermsPermission,
-    editDescriptionPermission,
     editCustomAttributePermission,
     editAllPermission,
     editLineagePermission,
     viewAllPermission,
   } = useMemo(
     () => ({
-      editTagsPermission:
-        (dashboardPermissions.EditTags || dashboardPermissions.EditAll) &&
-        !deleted,
-      editGlossaryTermsPermission:
-        (dashboardPermissions.EditGlossaryTerms ||
-          dashboardPermissions.EditAll) &&
-        !deleted,
-      editDescriptionPermission:
-        (dashboardPermissions.EditDescription ||
-          dashboardPermissions.EditAll) &&
-        !deleted,
       editCustomAttributePermission:
         (dashboardPermissions.EditAll ||
           dashboardPermissions.EditCustomFields) &&
@@ -295,20 +231,12 @@ const DashboardDetails = ({
     const tabLabelMap = getTabLabelMap(customizedPage?.tabs);
 
     const tabs = dashboardDetailsClassBase.getDashboardDetailPageTabs({
-      entityName,
-      editDescriptionPermission,
-      editTagsPermission,
-      editGlossaryTermsPermission,
       editLineagePermission,
       editCustomAttributePermission,
       viewAllPermission,
       dashboardDetails,
-      charts: charts ?? [],
       deleted: deleted ?? false,
-      dashboardTags,
       handleFeedCount,
-      handleTagSelection,
-      onDescriptionUpdate,
       onExtensionUpdate,
       feedCount,
       activeTab,
@@ -325,21 +253,10 @@ const DashboardDetails = ({
   }, [
     feedCount.totalCount,
     activeTab,
-    isEdit,
     dashboardDetails,
-    charts,
     deleted,
-    entityName,
-    dashboardTags,
-    onCancel,
     handleFeedCount,
-    onDescriptionEdit,
-    onDescriptionUpdate,
-    handleTagSelection,
-    editTagsPermission,
-    editGlossaryTermsPermission,
     editLineagePermission,
-    editDescriptionPermission,
     editCustomAttributePermission,
     editAllPermission,
     viewAllPermission,

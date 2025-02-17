@@ -12,7 +12,7 @@
  */
 
 import { FC } from 'react';
-import { GenericWidget } from '../../components/Glossary/CustomiseWidgets/SynonymsWidget/GenericWidget';
+import { GenericWidget } from '../../components/Customization/GenericWidget/GenericWidget';
 import {
   CUSTOM_PROPERTIES_WIDGET,
   DESCRIPTION_WIDGET,

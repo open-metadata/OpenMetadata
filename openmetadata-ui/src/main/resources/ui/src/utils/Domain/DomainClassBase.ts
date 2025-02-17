@@ -25,8 +25,9 @@ import { EntityTabs } from '../../enums/entity.enum';
 import { CreateDomain } from '../../generated/api/domains/createDomain';
 import { Domain } from '../../generated/entity/domains/domain';
 import { Tab } from '../../generated/system/ui/uiCustomization';
+import { WidgetConfig } from '../../pages/CustomizablePage/CustomizablePage.interface';
 import { getTabLabelFromId } from '../CustomizePage/CustomizePageUtils';
-import { getDomainDetailTabs } from '../DomainUtils';
+import { getDomainDetailTabs, getDomainWidgetsFromKey } from '../DomainUtils';
 import i18n from '../i18next/LocalUtil';
 
 export interface DomainDetailPageTabProps {
@@ -37,7 +38,6 @@ export interface DomainDetailPageTabProps {
   dataProductsCount: number;
   assetCount: number;
   activeTab: EntityTabs;
-  onUpdate: (domain: Domain) => Promise<void>;
   onAddDataProduct: () => void;
   onAddSubDomain: (subDomain: CreateDomain) => Promise<void>;
   isSubDomainsLoading: boolean;
@@ -200,6 +200,10 @@ class DomainClassBase {
         },
       },
     ];
+  }
+
+  public getWidgetsFromKey(widgetConfig: WidgetConfig) {
+    return getDomainWidgetsFromKey(widgetConfig);
   }
 }
 

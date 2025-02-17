@@ -38,8 +38,8 @@ import {
   getUpdateTagsPath,
 } from '../../../utils/TasksUtils';
 import { SelectOption } from '../../common/AsyncSelectList/AsyncSelectList.interface';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 import { TableTagsProps } from '../../Database/TableTags/TableTags.interface';
-import { useGenericContext } from '../../GenericProvider/GenericProvider';
 import TagSelectForm from '../TagsSelectForm/TagsSelectForm.component';
 import TagsV1 from '../TagsV1/TagsV1.component';
 import TagsViewer from '../TagsViewer/TagsViewer';

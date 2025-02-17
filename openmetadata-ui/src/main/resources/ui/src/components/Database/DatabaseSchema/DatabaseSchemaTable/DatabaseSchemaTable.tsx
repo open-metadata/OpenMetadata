@@ -56,7 +56,7 @@ import { PagingHandlerParams } from '../../../common/NextPrevious/NextPrevious.i
 import RichTextEditorPreviewerV1 from '../../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import Searchbar from '../../../common/SearchBarComponent/SearchBar.component';
 import Table from '../../../common/Table/Table';
-import { useGenericContext } from '../../../GenericProvider/GenericProvider';
+import { useGenericContext } from '../../../Customization/GenericProvider/GenericProvider';
 import { EntityName } from '../../../Modals/EntityNameModal/EntityNameModal.interface';
 import { DatabaseSchemaTableProps } from './DatabaseSchemaTable.interface';
 

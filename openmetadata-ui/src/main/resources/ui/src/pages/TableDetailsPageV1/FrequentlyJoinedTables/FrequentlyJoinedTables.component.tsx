@@ -15,7 +15,7 @@ import { isEmpty } from 'lodash';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { useGenericContext } from '../../../components/GenericProvider/GenericProvider';
+import { useGenericContext } from '../../../components/Customization/GenericProvider/GenericProvider';
 import { getEntityDetailsPath } from '../../../constants/constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { JoinedWith, Table } from '../../../generated/entity/data/table';

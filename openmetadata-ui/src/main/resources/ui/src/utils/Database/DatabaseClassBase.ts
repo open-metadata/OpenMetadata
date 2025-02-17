@@ -29,9 +29,13 @@ import {
 import { Tab } from '../../generated/system/ui/uiCustomization';
 import { LabelType, TagSource } from '../../generated/type/tagLabel';
 import { FeedCounts } from '../../interface/feed.interface';
+import { WidgetConfig } from '../../pages/CustomizablePage/CustomizablePage.interface';
 import { getTabLabelFromId } from '../CustomizePage/CustomizePageUtils';
 import i18n from '../i18next/LocalUtil';
-import { getDatabasePageBaseTabs } from './Database.util';
+import {
+  getDatabasePageBaseTabs,
+  getDatabaseWidgetsFromKey,
+} from './Database.util';
 
 export interface DatabaseDetailPageTabProps {
   activeTab: EntityTabs;
@@ -252,6 +256,10 @@ class DatabaseClassBase {
       GLOSSARY_TERMS_WIDGET,
       CUSTOM_PROPERTIES_WIDGET,
     ];
+  }
+
+  public getWidgetsFromKey(widgetConfig: WidgetConfig) {
+    return getDatabaseWidgetsFromKey(widgetConfig);
   }
 }
 

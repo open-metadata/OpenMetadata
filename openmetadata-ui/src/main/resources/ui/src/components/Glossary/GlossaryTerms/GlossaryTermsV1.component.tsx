@@ -58,8 +58,8 @@ import {
 import { ActivityFeedTab } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
 import TabsLabel from '../../common/TabsLabel/TabsLabel.component';
+import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
 import { AssetSelectionModal } from '../../DataAssets/AssetsSelectionModal/AssetSelectionModal';
-import { GenericProvider } from '../../GenericProvider/GenericProvider';
 import GlossaryHeader from '../GlossaryHeader/GlossaryHeader.component';
 import GlossaryTermTab from '../GlossaryTermTab/GlossaryTermTab.component';
 import { useGlossaryStore } from '../useGlossary.store';

@@ -157,9 +157,20 @@ import { ReactComponent as IconUnknown } from '../assets/svg/data-type-icon/unkn
 import { ReactComponent as IconVarchar } from '../assets/svg/data-type-icon/varchar.svg';
 import { ReactComponent as IconVariant } from '../assets/svg/data-type-icon/variant.svg';
 import { ReactComponent as IconXML } from '../assets/svg/data-type-icon/xml.svg';
-import { TableGenericTab } from '../components/Database/TableGenericTab/TableGenericTab';
-import { Joined } from '../pages/TableDetailsPageV1/FrequentlyJoinedTables/FrequentlyJoinedTables.component';
+import { GenericTab } from '../components/Customization/GenericTab/GenericTab';
+import { CommonWidgets } from '../components/DataAssets/CommonWidgets/CommonWidgets';
+import SchemaTable from '../components/Database/SchemaTable/SchemaTable.component';
+import { StoredProcedureCodeCard } from '../components/Database/StoredProcedureCodeCard/StoredProcedureCodeCard';
+import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
+import { PageType } from '../generated/system/ui/uiCustomization';
+import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
+import {
+  FrequentlyJoinedTables,
+  Joined,
+} from '../pages/TableDetailsPageV1/FrequentlyJoinedTables/FrequentlyJoinedTables.component';
+import { PartitionedKeys } from '../pages/TableDetailsPageV1/PartitionedKeys/PartitionedKeys.component';
 import ConstraintIcon from '../pages/TableDetailsPageV1/TableConstraints/ConstraintIcon';
+import TableConstraints from '../pages/TableDetailsPageV1/TableConstraints/TableConstraints';
 
 export const getUsagePercentile = (pctRank: number, isLiteral = false) => {
   const percentile = Math.round(pctRank * 10) / 10;
@@ -760,7 +771,7 @@ export const getTableDetailPageBaseTabs = ({
         />
       ),
       key: EntityTabs.SCHEMA,
-      children: <TableGenericTab />,
+      children: <GenericTab type={PageType.Table} />,
     },
     {
       label: (
@@ -1054,4 +1065,28 @@ export const getColumnOptionsFromTableColumn = (columns: Column[]) => {
   });
 
   return options;
+};
+
+export const getTableWidgetFromKey = (
+  widgetConfig: WidgetConfig
+): JSX.Element | null => {
+  if (widgetConfig.i.startsWith(DetailPageWidgetKeys.TABLE_SCHEMA)) {
+    return <SchemaTable />;
+  } else if (
+    widgetConfig.i.startsWith(DetailPageWidgetKeys.TABLE_CONSTRAINTS)
+  ) {
+    return <TableConstraints />;
+  } else if (
+    widgetConfig.i.startsWith(DetailPageWidgetKeys.FREQUENTLY_JOINED_TABLES)
+  ) {
+    return <FrequentlyJoinedTables />;
+  } else if (widgetConfig.i.startsWith(DetailPageWidgetKeys.PARTITIONED_KEYS)) {
+    return <PartitionedKeys />;
+  } else if (
+    widgetConfig.i.startsWith(DetailPageWidgetKeys.STORED_PROCEDURE_CODE)
+  ) {
+    return <StoredProcedureCodeCard />;
+  } else {
+    return <CommonWidgets widgetConfig={widgetConfig} />;
+  }
 };

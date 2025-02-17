@@ -22,7 +22,7 @@ import EntityTasks from '../../../pages/TasksPage/EntityTasks/EntityTasks.compon
 import EntityLink from '../../../utils/EntityLink';
 import { getEntityFeedLink } from '../../../utils/EntityUtils';
 import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
-import { useGenericContext } from '../../GenericProvider/GenericProvider';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 import SuggestionsAlert from '../../Suggestions/SuggestionsAlert/SuggestionsAlert';
 import { useSuggestionsContext } from '../../Suggestions/SuggestionsProvider/SuggestionsProvider';
 import { TableDescriptionProps } from './TableDescription.interface';

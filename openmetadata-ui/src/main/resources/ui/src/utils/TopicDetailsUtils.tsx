@@ -14,9 +14,14 @@
 import React from 'react';
 import ErrorPlaceHolder from '../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import TabsLabel from '../components/common/TabsLabel/TabsLabel.component';
-import { TopicSchemaTab } from '../components/Topic/TopicSchemaTab/TopicSchemaTab';
+import { GenericTab } from '../components/Customization/GenericTab/GenericTab';
+import { CommonWidgets } from '../components/DataAssets/CommonWidgets/CommonWidgets';
+import TopicSchemaFields from '../components/Topic/TopicSchema/TopicSchema';
 import { ERROR_PLACEHOLDER_TYPE } from '../enums/common.enum';
+import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 import { EntityTabs } from '../enums/entity.enum';
+import { PageType } from '../generated/system/ui/page';
+import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
 import i18n from './i18next/LocalUtil';
 import { TopicDetailPageTabProps } from './TopicClassBase';
 
@@ -42,7 +47,7 @@ export const getTopicDetailsPageTabs = ({
         />
       ),
       key: EntityTabs.SCHEMA,
-      children: <TopicSchemaTab />,
+      children: <GenericTab type={PageType.Topic} />,
     },
     {
       label: (
@@ -95,4 +100,12 @@ export const getTopicDetailsPageTabs = ({
       children: customPropertiesTab,
     },
   ];
+};
+
+export const getTopicWidgetsFromKey = (widgetConfig: WidgetConfig) => {
+  if (widgetConfig.i.startsWith(DetailPageWidgetKeys.TOPIC_SCHEMA)) {
+    return <TopicSchemaFields />;
+  } else {
+    return <CommonWidgets widgetConfig={widgetConfig} />;
+  }
 };

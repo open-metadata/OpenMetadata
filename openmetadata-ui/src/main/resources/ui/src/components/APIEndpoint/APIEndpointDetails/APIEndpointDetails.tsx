@@ -45,9 +45,9 @@ import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomProp
 import DescriptionV1 from '../../common/EntityDescription/DescriptionV1';
 import ResizablePanels from '../../common/ResizablePanels/ResizablePanels';
 import TabsLabel from '../../common/TabsLabel/TabsLabel.component';
+import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
 import { DataAssetsHeader } from '../../DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import EntityRightPanel from '../../Entity/EntityRightPanel/EntityRightPanel';
-import { GenericProvider } from '../../GenericProvider/GenericProvider';
 import Lineage from '../../Lineage/Lineage.component';
 import { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../PageLayoutV1/PageLayoutV1';

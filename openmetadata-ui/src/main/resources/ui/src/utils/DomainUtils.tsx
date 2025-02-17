@@ -22,8 +22,11 @@ import { TreeListItem } from '../components/common/DomainSelectableTree/DomainSe
 import { OwnerLabel } from '../components/common/OwnerLabel/OwnerLabel.component';
 import ResizablePanels from '../components/common/ResizablePanels/ResizablePanels';
 import TabsLabel from '../components/common/TabsLabel/TabsLabel.component';
+import { GenericTab } from '../components/Customization/GenericTab/GenericTab';
+import { CommonWidgets } from '../components/DataAssets/CommonWidgets/CommonWidgets';
 import DataProductsTab from '../components/Domain/DomainTabs/DataProductsTab/DataProductsTab.component';
 import DocumentationTab from '../components/Domain/DomainTabs/DocumentationTab/DocumentationTab.component';
+import { DocumentationEntity } from '../components/Domain/DomainTabs/DocumentationTab/DocumentationTab.interface';
 import SubDomainsTable from '../components/Domain/SubDomainsTable/SubDomainsTable.component';
 import EntitySummaryPanel from '../components/Explore/EntitySummaryPanel/EntitySummaryPanel.component';
 import AssetsTabs from '../components/Glossary/GlossaryTerms/tabs/AssetsTabs.component';
@@ -34,10 +37,12 @@ import {
   NO_DATA_PLACEHOLDER,
 } from '../constants/constants';
 import { DOMAIN_TYPE_DATA } from '../constants/Domain.constants';
+import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 import { EntityTabs, EntityType } from '../enums/entity.enum';
-import { DataProduct } from '../generated/entity/domains/dataProduct';
 import { Domain } from '../generated/entity/domains/domain';
 import { EntityReference } from '../generated/entity/type';
+import { PageType } from '../generated/system/ui/page';
+import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
 import {
   QueryFieldInterface,
   QueryFilterInterface,
@@ -326,7 +331,6 @@ export const getDomainDetailTabs = ({
   dataProductsCount,
   assetCount,
   activeTab,
-  onUpdate,
   onAddDataProduct,
   isSubDomainsLoading,
   queryFilter,
@@ -348,14 +352,14 @@ export const getDomainDetailTabs = ({
         />
       ),
       key: EntityTabs.DOCUMENTATION,
-      children: (
-        <DocumentationTab
-          domain={domain}
-          isVersionsView={isVersionsView}
-          permissions={domainPermission}
-          onUpdate={(data: Domain | DataProduct) => onUpdate(data as Domain)}
-        />
-      ),
+      children: <GenericTab type={PageType.Domain} />,
+      // <DocumentationTab
+      //   domain={domain}
+      //   isVersionsView={isVersionsView}
+      //   permissions={domainPermission}
+      //   onUpdate={(data: Domain | DataProduct) => onUpdate(data as Domain)}
+      // />
+      //   ),
     },
     ...(!isVersionsView
       ? [
@@ -450,4 +454,12 @@ export const getDomainDetailTabs = ({
         ]
       : []),
   ];
+};
+
+export const getDomainWidgetsFromKey = (widgetConfig: WidgetConfig) => {
+  if (widgetConfig.i.startsWith(DetailPageWidgetKeys.DOCUMENTATION)) {
+    return <DocumentationTab type={DocumentationEntity.DOMAIN} />;
+  }
+
+  return <CommonWidgets widgetConfig={widgetConfig} />;
 };

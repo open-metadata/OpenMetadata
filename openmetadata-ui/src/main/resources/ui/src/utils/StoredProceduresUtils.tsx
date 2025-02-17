@@ -15,83 +15,20 @@ import React from 'react';
 import { ActivityFeedTab } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import { CustomPropertyTable } from '../components/common/CustomPropertyTable/CustomPropertyTable';
 import TabsLabel from '../components/common/TabsLabel/TabsLabel.component';
-import { StoredProcedureGenericTab } from '../components/Database/StoredProcedureGenericTab/StoredProcedureGenericTab';
+import { GenericTab } from '../components/Customization/GenericTab/GenericTab';
+import { CommonWidgets } from '../components/DataAssets/CommonWidgets/CommonWidgets';
+import { StoredProcedureCodeCard } from '../components/Database/StoredProcedureCodeCard/StoredProcedureCodeCard';
 import Lineage from '../components/Lineage/Lineage.component';
 import { SourceType } from '../components/SearchedData/SearchedData.interface';
 import LineageProvider from '../context/LineageProvider/LineageProvider';
 import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 import { EntityTabs, EntityType, TabSpecificField } from '../enums/entity.enum';
+import { PageType } from '../generated/system/ui/page';
+import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
 import { StoredProcedureDetailPageTabProps } from './StoredProcedureBase';
 
 // eslint-disable-next-line max-len
 export const STORED_PROCEDURE_DEFAULT_FIELDS = `${TabSpecificField.OWNERS}, ${TabSpecificField.FOLLOWERS},${TabSpecificField.TAGS}, ${TabSpecificField.DOMAIN},${TabSpecificField.DATA_PRODUCTS}, ${TabSpecificField.VOTES},${TabSpecificField.EXTENSION}`;
-
-export const getStoredProceduresPageDefaultLayout = (tab: EntityTabs) => {
-  switch (tab) {
-    case EntityTabs.SCHEMA:
-      return [
-        {
-          h: 2,
-          i: DetailPageWidgetKeys.DESCRIPTION,
-          w: 6,
-          x: 0,
-          y: 0,
-          static: false,
-        },
-        {
-          h: 8,
-          i: DetailPageWidgetKeys.TABLE_SCHEMA,
-          w: 6,
-          x: 0,
-          y: 0,
-          static: false,
-        },
-        {
-          h: 1,
-          i: DetailPageWidgetKeys.FREQUENTLY_JOINED_TABLES,
-          w: 2,
-          x: 6,
-          y: 0,
-          static: false,
-        },
-        {
-          h: 1,
-          i: DetailPageWidgetKeys.DATA_PRODUCTS,
-          w: 2,
-          x: 6,
-          y: 1,
-          static: false,
-        },
-        {
-          h: 1,
-          i: DetailPageWidgetKeys.TAGS,
-          w: 2,
-          x: 6,
-          y: 2,
-          static: false,
-        },
-        {
-          h: 1,
-          i: DetailPageWidgetKeys.GLOSSARY_TERMS,
-          w: 2,
-          x: 6,
-          y: 3,
-          static: false,
-        },
-        {
-          h: 3,
-          i: DetailPageWidgetKeys.CUSTOM_PROPERTIES,
-          w: 2,
-          x: 6,
-          y: 4,
-          static: false,
-        },
-      ];
-
-    default:
-      return [];
-  }
-};
 
 export const getStoredProcedureDetailsPageTabs = ({
   activeTab,
@@ -116,7 +53,7 @@ export const getStoredProcedureDetailsPageTabs = ({
         />
       ),
       key: EntityTabs.CODE,
-      children: <StoredProcedureGenericTab />,
+      children: <GenericTab type={PageType.StoredProcedure} />,
     },
     {
       label: (
@@ -172,4 +109,14 @@ export const getStoredProcedureDetailsPageTabs = ({
       ),
     },
   ];
+};
+
+export const getStoredProcedureWidgetsFromKey = (
+  widgetConfig: WidgetConfig
+): JSX.Element | null => {
+  if (widgetConfig.i.startsWith(DetailPageWidgetKeys.STORED_PROCEDURE_CODE)) {
+    return <StoredProcedureCodeCard />;
+  } else {
+    return <CommonWidgets widgetConfig={widgetConfig} />;
+  }
 };

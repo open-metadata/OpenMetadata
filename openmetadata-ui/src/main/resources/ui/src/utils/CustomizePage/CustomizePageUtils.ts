@@ -14,6 +14,7 @@ import { TabsProps } from 'antd';
 import { CommonWidgetType } from '../../constants/CustomizeWidgets.constants';
 import { EntityTabs } from '../../enums/entity.enum';
 import { PageType, Tab } from '../../generated/system/ui/page';
+import { WidgetConfig } from '../../pages/CustomizablePage/CustomizablePage.interface';
 import containerDetailsClassBase from '../ContainerDetailsClassBase';
 import customizeGlossaryPageClassBase from '../CustomizeGlossaryPage/CustomizeGlossaryPage';
 import customizeGlossaryTermPageClassBase from '../CustomizeGlossaryTerm/CustomizeGlossaryTermBaseClass';
@@ -268,6 +269,8 @@ export const getDefaultWidgetForTab = (pageType: PageType, tab: EntityTabs) => {
       return containerDetailsClassBase.getDefaultLayout(tab);
     case PageType.Domain:
       return domainClassBase.getDefaultLayout(tab);
+    case PageType.Dashboard:
+      return dashboardDetailsClassBase.getDefaultLayout(tab);
     default:
       return [];
   }
@@ -357,5 +360,43 @@ export const getDummyDataByPage = (pageType: PageType) => {
     case PageType.LandingPage:
     default:
       return {};
+  }
+};
+
+export const getWidgetsFromKey = (
+  pageType: PageType,
+  widgetConfig: WidgetConfig
+): JSX.Element | null => {
+  switch (pageType) {
+    case PageType.Table:
+      return tableClassBase.getWidgetsFromKey(widgetConfig);
+    case PageType.Topic:
+      return topicClassBase.getWidgetsFromKey(widgetConfig);
+    case PageType.StoredProcedure:
+      return storedProcedureClassBase.getWidgetsFromKey(widgetConfig);
+    // case PageType.GlossaryTerm:
+    //   return customizeGlossaryTermPageClassBase.getWidgetsFromKey(widgetConfig);
+    // case PageType.Glossary:
+    //   return customizeGlossaryPageClassBase.getWidgetsFromKey(widgetConfig);
+    // case PageType.LandingPage:
+    //   return customizeMyDataPageClassBase.getWidgetsFromKey(widgetConfig);
+    case PageType.DashboardDataModel:
+      return dashboardDataModelClassBase.getWidgetsFromKey(widgetConfig);
+    case PageType.Container:
+      return containerDetailsClassBase.getWidgetsFromKey(widgetConfig);
+    case PageType.Database:
+      return databaseClassBase.getWidgetsFromKey(widgetConfig);
+    case PageType.DatabaseSchema:
+      return databaseSchemaClassBase.getWidgetsFromKey(widgetConfig);
+    case PageType.Pipeline:
+      return pipelineClassBase.getWidgetsFromKey(widgetConfig);
+    case PageType.SearchIndex:
+      return searchIndexClassBase.getWidgetsFromKey(widgetConfig);
+    case PageType.Dashboard:
+      return dashboardDetailsClassBase.getWidgetsFromKey(widgetConfig);
+    case PageType.Domain:
+      return domainClassBase.getWidgetsFromKey(widgetConfig);
+    default:
+      return null;
   }
 };

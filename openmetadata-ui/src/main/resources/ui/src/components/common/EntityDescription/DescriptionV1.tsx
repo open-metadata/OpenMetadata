@@ -31,7 +31,7 @@ import {
   getUpdateDescriptionPath,
   TASK_ENTITIES,
 } from '../../../utils/TasksUtils';
-import { useGenericContext } from '../../GenericProvider/GenericProvider';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 import { ModalWithMarkdownEditor } from '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import SuggestionsAlert from '../../Suggestions/SuggestionsAlert/SuggestionsAlert';
 import { useSuggestionsContext } from '../../Suggestions/SuggestionsProvider/SuggestionsProvider';

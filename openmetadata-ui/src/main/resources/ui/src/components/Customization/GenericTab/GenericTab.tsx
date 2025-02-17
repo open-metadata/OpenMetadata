@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2024 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -13,59 +13,57 @@
 import React, { useMemo } from 'react';
 import RGL, { WidthProvider } from 'react-grid-layout';
 import { useParams } from 'react-router-dom';
-import { DetailPageWidgetKeys } from '../../../enums/CustomizeDetailPage.enum';
 import { EntityTabs } from '../../../enums/entity.enum';
 import { Page, PageType, Tab } from '../../../generated/system/ui/page';
 import { useGridLayoutDirection } from '../../../hooks/useGridLayoutDirection';
 import { WidgetConfig } from '../../../pages/CustomizablePage/CustomizablePage.interface';
 import { useCustomizeStore } from '../../../pages/CustomizablePage/CustomizeStore';
-import topicClassBase from '../../../utils/TopicClassBase';
-import { CommonWidgets } from '../../DataAssets/CommonWidgets/CommonWidgets';
-import TopicSchemaFields from '../TopicSchema/TopicSchema';
+import {
+  getDefaultWidgetForTab,
+  getWidgetsFromKey,
+} from '../../../utils/CustomizePage/CustomizePageUtils';
 
 const ReactGridLayout = WidthProvider(RGL);
 
-export const TopicSchemaTab = () => {
+interface GenericTabProps {
+  type: PageType;
+}
+
+export const GenericTab = ({ type }: GenericTabProps) => {
   const { currentPersonaDocStore } = useCustomizeStore();
-  const { tab = EntityTabs.SCHEMA } = useParams<{ tab: EntityTabs }>();
+  const { tab = EntityTabs.CODE } = useParams<{ tab: EntityTabs }>();
 
   const layout = useMemo(() => {
     if (!currentPersonaDocStore) {
-      return topicClassBase.getDefaultLayout(tab);
+      return getDefaultWidgetForTab(type, tab);
     }
 
     const page = currentPersonaDocStore?.data?.pages?.find(
-      (p: Page) => p.pageType === PageType.Topic
+      (p: Page) => p.pageType === type
     );
 
     if (page) {
       return page.tabs.find((t: Tab) => t.id === tab)?.layout;
     } else {
-      return topicClassBase.getDefaultLayout(tab);
+      return getDefaultWidgetForTab(type, tab);
     }
-  }, [currentPersonaDocStore, tab]);
+  }, [currentPersonaDocStore, tab, type]);
 
   const widgets = useMemo(() => {
-    const getWidgetFromKeyInternal = (
-      widgetConfig: WidgetConfig
-    ): JSX.Element | null => {
-      if (widgetConfig.i.startsWith(DetailPageWidgetKeys.TOPIC_SCHEMA)) {
-        return <TopicSchemaFields />;
-      } else {
-        return <CommonWidgets widgetConfig={widgetConfig} />;
-      }
-    };
+    return layout.map((widget: WidgetConfig) => {
+      const renderedWidget = getWidgetsFromKey(type, widget);
 
-    return layout.map((widget: WidgetConfig) => (
-      <div
-        data-grid={widget}
-        id={widget.i}
-        key={widget.i}
-        style={{ overflow: 'scroll' }}>
-        {getWidgetFromKeyInternal(widget)}
-      </div>
-    ));
-  }, [layout]);
+      return renderedWidget ? (
+        <div
+          data-grid={widget}
+          id={widget.i}
+          key={widget.i}
+          style={{ overflow: 'scroll' }}>
+          {renderedWidget}
+        </div>
+      ) : null;
+    });
+  }, [layout, type]);
 
   // call the hook to set the direction of the grid layout
   useGridLayoutDirection();

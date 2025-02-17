@@ -54,11 +54,11 @@ import {
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import ToggleExpandButton from '../../common/ToggleExpandButton/ToggleExpandButton';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 import { ColumnFilter } from '../../Database/ColumnFilter/ColumnFilter.component';
 import SchemaEditor from '../../Database/SchemaEditor/SchemaEditor';
 import TableDescription from '../../Database/TableDescription/TableDescription.component';
 import TableTags from '../../Database/TableTags/TableTags.component';
-import { useGenericContext } from '../../GenericProvider/GenericProvider';
 import { ModalWithMarkdownEditor } from '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import {
   SchemaViewType,

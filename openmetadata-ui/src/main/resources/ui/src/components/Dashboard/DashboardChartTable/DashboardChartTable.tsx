@@ -40,10 +40,10 @@ import { createTagObject } from '../../../utils/TagsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Table from '../../common/Table/Table';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 import { ColumnFilter } from '../../Database/ColumnFilter/ColumnFilter.component';
 import TableDescription from '../../Database/TableDescription/TableDescription.component';
 import TableTags from '../../Database/TableTags/TableTags.component';
-import { useGenericContext } from '../../GenericProvider/GenericProvider';
 import { ModalWithMarkdownEditor } from '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import { ChartsPermissions } from '../DashboardDetails/DashboardDetails.interface';
 

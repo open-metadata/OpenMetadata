@@ -17,7 +17,7 @@ import {
   StoredProcedure,
   StoredProcedureCodeObject,
 } from '../../../generated/entity/data/storedProcedure';
-import { useGenericContext } from '../../GenericProvider/GenericProvider';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 import SchemaEditor from '../SchemaEditor/SchemaEditor';
 
 export const StoredProcedureCodeCard = () => {

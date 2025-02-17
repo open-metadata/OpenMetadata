@@ -22,7 +22,9 @@ import { OwnerLabel } from '../../components/common/OwnerLabel/OwnerLabel.compon
 import RichTextEditorPreviewerV1 from '../../components/common/RichTextEditor/RichTextEditorPreviewerV1';
 import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
 import { TabProps } from '../../components/common/TabsLabel/TabsLabel.interface';
-import { DatabaseSchemaTab } from '../../components/Database/DatabaseSchemaTab/DatabaseSchemaTab';
+import { GenericTab } from '../../components/Customization/GenericTab/GenericTab';
+import { CommonWidgets } from '../../components/DataAssets/CommonWidgets/CommonWidgets';
+import { DatabaseSchemaTable } from '../../components/Database/DatabaseSchema/DatabaseSchemaTable/DatabaseSchemaTable';
 import {
   getEntityDetailsPath,
   NO_DATA_PLACEHOLDER,
@@ -35,7 +37,9 @@ import {
 } from '../../enums/entity.enum';
 import { DatabaseSchema } from '../../generated/entity/data/databaseSchema';
 import { EntityReference } from '../../generated/entity/type';
+import { PageType } from '../../generated/system/ui/page';
 import { UsageDetails } from '../../generated/type/entityUsage';
+import { WidgetConfig } from '../../pages/CustomizablePage/CustomizablePage.interface';
 import { getEntityName } from '../EntityUtils';
 import { getUsagePercentile } from '../TableUtils';
 import { DatabaseDetailPageTabProps } from './DatabaseClassBase';
@@ -127,73 +131,6 @@ export const schemaTableColumns: ColumnsType<DatabaseSchema> = [
   },
 ];
 
-export const getDatabaseDetailsPageDefaultLayout = (tab: EntityTabs) => {
-  switch (tab) {
-    case EntityTabs.SCHEMA:
-      return [
-        {
-          h: 2,
-          i: DetailPageWidgetKeys.DESCRIPTION,
-          w: 6,
-          x: 0,
-          y: 0,
-          static: false,
-        },
-        {
-          h: 8,
-          i: DetailPageWidgetKeys.TABLE_SCHEMA,
-          w: 6,
-          x: 0,
-          y: 0,
-          static: false,
-        },
-        {
-          h: 1,
-          i: DetailPageWidgetKeys.FREQUENTLY_JOINED_TABLES,
-          w: 2,
-          x: 6,
-          y: 0,
-          static: false,
-        },
-        {
-          h: 1,
-          i: DetailPageWidgetKeys.DATA_PRODUCTS,
-          w: 2,
-          x: 6,
-          y: 1,
-          static: false,
-        },
-        {
-          h: 1,
-          i: DetailPageWidgetKeys.TAGS,
-          w: 2,
-          x: 6,
-          y: 2,
-          static: false,
-        },
-        {
-          h: 1,
-          i: DetailPageWidgetKeys.GLOSSARY_TERMS,
-          w: 2,
-          x: 6,
-          y: 3,
-          static: false,
-        },
-        {
-          h: 3,
-          i: DetailPageWidgetKeys.CUSTOM_PROPERTIES,
-          w: 2,
-          x: 6,
-          y: 4,
-          static: false,
-        },
-      ];
-
-    default:
-      return [];
-  }
-};
-
 export const getDatabasePageBaseTabs = ({
   activeTab,
   database,
@@ -217,7 +154,7 @@ export const getDatabasePageBaseTabs = ({
         />
       ),
       key: EntityTabs.SCHEMA,
-      children: <DatabaseSchemaTab />,
+      children: <GenericTab type={PageType.Database} />,
     },
     {
       label: (
@@ -262,4 +199,12 @@ export const getDatabasePageBaseTabs = ({
       ),
     },
   ];
+};
+
+export const getDatabaseWidgetsFromKey = (widgetConfig: WidgetConfig) => {
+  if (widgetConfig.i.startsWith(DetailPageWidgetKeys.DATABASE_SCHEMA)) {
+    return <DatabaseSchemaTable />;
+  }
+
+  return <CommonWidgets widgetConfig={widgetConfig} />;
 };

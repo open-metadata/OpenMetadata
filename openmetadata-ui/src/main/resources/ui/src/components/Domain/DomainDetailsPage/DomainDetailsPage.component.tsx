@@ -103,6 +103,7 @@ import {
 } from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import DeleteWidgetModal from '../../common/DeleteWidget/DeleteWidgetModal';
+import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
 import { AssetSelectionModal } from '../../DataAssets/AssetsSelectionModal/AssetSelectionModal';
 import { EntityDetailsObjectInterface } from '../../Explore/ExplorePage.interface';
 import StyleModal from '../../Modals/StyleModal/StyleModal.component';
@@ -521,7 +522,6 @@ const DomainDetailsPage = ({
       dataProductsCount,
       assetCount,
       activeTab: activeTab as EntityTabs,
-      onUpdate,
       onAddDataProduct,
       isSubDomainsLoading,
       queryFilter,
@@ -716,16 +716,22 @@ const DomainDetailsPage = ({
           </div>
         </Col>
 
-        <Col span={24}>
-          <Tabs
-            destroyInactiveTabPane
-            activeKey={activeTab ?? DomainTabs.DOCUMENTATION}
-            className="domain-details-page-tabs"
-            data-testid="tabs"
-            items={tabs}
-            onChange={handleTabChange}
-          />
-        </Col>
+        <GenericProvider<Domain>
+          data={domain}
+          permissions={domainPermission}
+          type={EntityType.DOMAIN}
+          onUpdate={onUpdate}>
+          <Col span={24}>
+            <Tabs
+              destroyInactiveTabPane
+              activeKey={activeTab ?? DomainTabs.DOCUMENTATION}
+              className="domain-details-page-tabs"
+              data-testid="tabs"
+              items={tabs}
+              onChange={handleTabChange}
+            />
+          </Col>
+        </GenericProvider>
       </Row>
 
       {showAddDataProductModal && (

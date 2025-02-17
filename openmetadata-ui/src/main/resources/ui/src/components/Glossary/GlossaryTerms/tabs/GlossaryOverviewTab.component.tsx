@@ -34,10 +34,10 @@ import {
 import { getWidgetFromKey } from '../../../../utils/GlossaryTerm/GlossaryTermUtil';
 import { CustomPropertyTable } from '../../../common/CustomPropertyTable/CustomPropertyTable';
 import DescriptionV1 from '../../../common/EntityDescription/DescriptionV1';
+import { useGenericContext } from '../../../Customization/GenericProvider/GenericProvider';
 import { DomainLabelV2 } from '../../../DataAssets/DomainLabelV2/DomainLabelV2';
 import { OwnerLabelV2 } from '../../../DataAssets/OwnerLabelV2/OwnerLabelV2';
 import { ReviewerLabelV2 } from '../../../DataAssets/ReviewerLabelV2/ReviewerLabelV2';
-import { useGenericContext } from '../../../GenericProvider/GenericProvider';
 import TagsContainerV2 from '../../../Tag/TagsContainerV2/TagsContainerV2';
 import { DisplayType } from '../../../Tag/TagsViewer/TagsViewer.interface';
 import { GlossaryUpdateConfirmationModal } from '../../GlossaryUpdateConfirmationModal/GlossaryUpdateConfirmationModal';

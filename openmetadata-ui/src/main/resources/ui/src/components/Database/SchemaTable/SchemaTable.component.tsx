@@ -75,7 +75,7 @@ import FilterTablePlaceHolder from '../../common/ErrorWithPlaceholder/FilterTabl
 import Searchbar from '../../common/SearchBarComponent/SearchBar.component';
 import Table from '../../common/Table/Table';
 import TestCaseStatusSummaryIndicator from '../../common/TestCaseStatusSummaryIndicator/TestCaseStatusSummaryIndicator.component';
-import { useGenericContext } from '../../GenericProvider/GenericProvider';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 import EntityNameModal from '../../Modals/EntityNameModal/EntityNameModal.component';
 import {
   EntityName,

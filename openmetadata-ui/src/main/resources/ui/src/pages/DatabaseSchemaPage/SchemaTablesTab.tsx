@@ -24,7 +24,7 @@ import NextPrevious from '../../components/common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
 import RichTextEditorPreviewerV1 from '../../components/common/RichTextEditor/RichTextEditorPreviewerV1';
 import TableAntd from '../../components/common/Table/Table';
-import { useGenericContext } from '../../components/GenericProvider/GenericProvider';
+import { useGenericContext } from '../../components/Customization/GenericProvider/GenericProvider';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import {
   INITIAL_PAGING_VALUE,

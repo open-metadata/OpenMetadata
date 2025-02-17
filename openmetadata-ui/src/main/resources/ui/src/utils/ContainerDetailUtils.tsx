@@ -22,6 +22,7 @@ import ResizablePanels from '../components/common/ResizablePanels/ResizablePanel
 import TabsLabel from '../components/common/TabsLabel/TabsLabel.component';
 import ContainerChildren from '../components/Container/ContainerChildren/ContainerChildren';
 import ContainerDataModel from '../components/Container/ContainerDataModel/ContainerDataModel';
+import { CommonWidgets } from '../components/DataAssets/CommonWidgets/CommonWidgets';
 import EntityRightPanel from '../components/Entity/EntityRightPanel/EntityRightPanel';
 import Lineage from '../components/Lineage/Lineage.component';
 import { SourceType } from '../components/SearchedData/SearchedData.interface';
@@ -33,6 +34,7 @@ import {
   ContainerDataModel as ContainerDataModelType,
 } from '../generated/entity/data/container';
 import { LabelType, State, TagLabel } from '../generated/type/tagLabel';
+import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
 import { ContainerDetailPageTabProps } from './ContainerDetailsClassBase';
 
 const getUpdatedContainerColumnTags = (
@@ -299,4 +301,8 @@ export const getContainerDetailPageTabs = ({
       ),
     },
   ];
+};
+
+export const getContainerWidgetsFromKey = (widgetConfig: WidgetConfig) => {
+  return <CommonWidgets widgetConfig={widgetConfig} />;
 };

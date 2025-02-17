@@ -34,6 +34,7 @@ import Loader from '../../components/common/Loader/Loader';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
 import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
+import { GenericProvider } from '../../components/Customization/GenericProvider/GenericProvider';
 import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import { QueryVote } from '../../components/Database/TableQueries/TableQueries.interface';
 import EntityRightPanel from '../../components/Entity/EntityRightPanel/EntityRightPanel';
@@ -506,6 +507,14 @@ const APICollectionPage: FunctionComponent = () => {
     });
   };
 
+  const handleAPICollectionUpdate = async (updatedData: APICollection) => {
+    const response = await saveUpdatedAPICollectionData({
+      ...apiCollection,
+      ...updatedData,
+    });
+    setAPICollection(response);
+  };
+
   const tabs: TabsProps['items'] = [
     {
       label: (
@@ -678,15 +687,22 @@ const APICollectionPage: FunctionComponent = () => {
               />
             )}
           </Col>
-          <Col span={24}>
-            <Tabs
-              activeKey={activeTab}
-              className="entity-details-page-tabs"
-              data-testid="tabs"
-              items={tabs}
-              onChange={activeTabHandler}
-            />
-          </Col>
+          <GenericProvider<APICollection>
+            data={apiCollection}
+            isVersionView={false}
+            permissions={apiCollectionPermission}
+            type={EntityType.API_COLLECTION}
+            onUpdate={handleAPICollectionUpdate}>
+            <Col span={24}>
+              <Tabs
+                activeKey={activeTab}
+                className="entity-details-page-tabs"
+                data-testid="tabs"
+                items={tabs}
+                onChange={activeTabHandler}
+              />
+            </Col>
+          </GenericProvider>
         </Row>
       )}
     </PageLayoutV1>

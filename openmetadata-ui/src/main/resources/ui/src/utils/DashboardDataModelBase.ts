@@ -25,8 +25,12 @@ import { EntityTabs } from '../enums/entity.enum';
 import { DashboardDataModel } from '../generated/entity/data/dashboardDataModel';
 import { Tab } from '../generated/system/ui/page';
 import { FeedCounts } from '../interface/feed.interface';
+import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
 import { getTabLabelFromId } from './CustomizePage/CustomizePageUtils';
-import { getDashboardDataModelDetailPageTabs } from './DashboardDataModelUtils';
+import {
+  getDashboardDataModelDetailPageTabs,
+  getDashboardDataModelWidgetsFromKey,
+} from './DashboardDataModelUtils';
 import i18n from './i18next/LocalUtil';
 
 export interface DashboardDataModelDetailPageTabProps {
@@ -65,7 +69,7 @@ class DashboardDataModelBase {
       name: tab,
       displayName: getTabLabelFromId(tab),
       layout: this.getDefaultLayout(tab),
-      editable: [EntityTabs.MODEL].includes(tab),
+      editable: tab === EntityTabs.MODEL,
     }));
   }
 
@@ -240,6 +244,10 @@ class DashboardDataModelBase {
       GLOSSARY_TERMS_WIDGET,
       CUSTOM_PROPERTIES_WIDGET,
     ];
+  }
+
+  public getWidgetsFromKey(widgetConfig: WidgetConfig) {
+    return getDashboardDataModelWidgetsFromKey(widgetConfig);
   }
 }
 

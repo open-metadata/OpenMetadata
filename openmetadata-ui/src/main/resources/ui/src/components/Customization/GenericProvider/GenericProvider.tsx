@@ -14,15 +14,15 @@ import { AxiosError } from 'axios';
 import { once } from 'lodash';
 import React, { useContext, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
-import { EntityType } from '../../enums/entity.enum';
-import { CreateThread } from '../../generated/api/feed/createThread';
-import { ThreadType } from '../../generated/entity/feed/thread';
-import { EntityReference } from '../../generated/entity/type';
-import { postThread } from '../../rest/feedsAPI';
-import { showErrorToast } from '../../utils/ToastUtils';
-import { useActivityFeedProvider } from '../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
-import ActivityThreadPanel from '../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
+import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { EntityType } from '../../../enums/entity.enum';
+import { CreateThread } from '../../../generated/api/feed/createThread';
+import { ThreadType } from '../../../generated/entity/feed/thread';
+import { EntityReference } from '../../../generated/entity/type';
+import { postThread } from '../../../rest/feedsAPI';
+import { showErrorToast } from '../../../utils/ToastUtils';
+import { useActivityFeedProvider } from '../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
+import ActivityThreadPanel from '../../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 
 interface GenericProviderProps<T extends Omit<EntityReference, 'type'>> {
   children?: React.ReactNode;

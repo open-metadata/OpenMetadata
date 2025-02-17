@@ -33,7 +33,7 @@ import { getEntityName } from '../../../utils/EntityUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { DomainLabelProps } from '../../common/DomainLabel/DomainLabel.interface';
 import DomainSelectableList from '../../common/DomainSelectableList/DomainSelectableList.component';
-import { useGenericContext } from '../../GenericProvider/GenericProvider';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 import { AssetsUnion } from '../AssetsSelectionModal/AssetSelectionModal.interface';
 import { DataAssetWithDomains } from '../DataAssetsHeader/DataAssetsHeader.interface';
 

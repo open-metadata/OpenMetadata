@@ -15,7 +15,7 @@ import { ColumnsType } from 'antd/lib/table';
 import { t } from 'i18next';
 import React, { useMemo } from 'react';
 import Table from '../../../components/common/Table/Table';
-import { useGenericContext } from '../../../components/GenericProvider/GenericProvider';
+import { useGenericContext } from '../../../components/Customization/GenericProvider/GenericProvider';
 import {
   PartitionColumnDetails,
   Table as TableType,

@@ -34,10 +34,10 @@ import {
 } from '../../../../../utils/TableTags/TableTags.utils';
 import { updateFieldTags } from '../../../../../utils/TableUtils';
 import Table from '../../../../common/Table/Table';
+import { useGenericContext } from '../../../../Customization/GenericProvider/GenericProvider';
 import { ColumnFilter } from '../../../../Database/ColumnFilter/ColumnFilter.component';
 import TableDescription from '../../../../Database/TableDescription/TableDescription.component';
 import TableTags from '../../../../Database/TableTags/TableTags.component';
-import { useGenericContext } from '../../../../GenericProvider/GenericProvider';
 import { ModalWithMarkdownEditor } from '../../../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 
 const ModelTab = () => {

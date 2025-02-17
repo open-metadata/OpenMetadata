@@ -13,8 +13,13 @@
 import { isEmpty, noop } from 'lodash';
 import { EntityTags } from 'Models';
 import React, { useMemo } from 'react';
-import { DetailPageWidgetKeys } from '../../../enums/CustomizeDetailPage.enum';
+import {
+  DetailPageWidgetKeys,
+  GlossaryTermDetailPageWidgetKeys,
+} from '../../../enums/CustomizeDetailPage.enum';
 import { EntityType } from '../../../enums/entity.enum';
+import { Chart } from '../../../generated/entity/data/chart';
+import { Column } from '../../../generated/entity/data/container';
 import { Table } from '../../../generated/entity/data/table';
 import { EntityReference } from '../../../generated/entity/type';
 import { TagLabel, TagSource } from '../../../generated/type/tagLabel';
@@ -25,10 +30,12 @@ import { getTagsWithoutTier, getTierTags } from '../../../utils/TableUtils';
 import { createTagObject } from '../../../utils/TagsUtils';
 import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
 import DescriptionV1 from '../../common/EntityDescription/DescriptionV1';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 import DataProductsContainer from '../../DataProducts/DataProductsContainer/DataProductsContainer.component';
-import { useGenericContext } from '../../GenericProvider/GenericProvider';
 import TagsContainerV2 from '../../Tag/TagsContainerV2/TagsContainerV2';
 import { DisplayType } from '../../Tag/TagsViewer/TagsViewer.interface';
+import { OwnerLabelV2 } from '../OwnerLabelV2/OwnerLabelV2';
+import { ReviewerLabelV2 } from '../ReviewerLabelV2/ReviewerLabelV2';
 
 interface GenericEntity
   extends Exclude<EntityReference, 'type'>,
@@ -71,7 +78,10 @@ export const CommonWidgets = ({ widgetConfig }: CommonWidgetsProps) => {
     };
   }, [data, data?.tags]);
 
-  const { columns } = data as unknown as Table;
+  const { columns = [], charts = [] } = data as unknown as {
+    columns: Array<Column>;
+    charts: Array<Chart>;
+  };
 
   const {
     editTagsPermission,
@@ -158,7 +168,7 @@ export const CommonWidgets = ({ widgetConfig }: CommonWidgetsProps) => {
         entityName={entityName}
         entityType={type}
         hasEditAccess={editDescriptionPermission}
-        isDescriptionExpanded={isEmpty(columns)}
+        isDescriptionExpanded={isEmpty(columns) && isEmpty(charts)}
         owner={owners}
         removeBlur={widgetConfig.h > 1}
         showActions={!deleted}
@@ -177,6 +187,7 @@ export const CommonWidgets = ({ widgetConfig }: CommonWidgetsProps) => {
     deleted,
     columns,
     owners,
+    widgetConfig.h,
   ]);
 
   const handleExtensionUpdate = async (updatedTable: Table) => {
@@ -211,6 +222,14 @@ export const CommonWidgets = ({ widgetConfig }: CommonWidgetsProps) => {
           maxDataCap={5}
         />
       );
+    } else if (widgetConfig.i.startsWith(DetailPageWidgetKeys.OWNERS)) {
+      return <OwnerLabelV2<GenericEntity> />;
+    } else if (
+      widgetConfig.i.startsWith(GlossaryTermDetailPageWidgetKeys.REVIEWER)
+    ) {
+      return <ReviewerLabelV2<GenericEntity> />;
+    } else if (widgetConfig.i.startsWith(DetailPageWidgetKeys.EXPERTS)) {
+      return <OwnerLabelV2<GenericEntity> />;
     }
 
     return getWidgetFromKey({

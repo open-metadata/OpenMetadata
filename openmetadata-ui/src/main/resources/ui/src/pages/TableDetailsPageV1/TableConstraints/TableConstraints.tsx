@@ -18,7 +18,7 @@ import { Link } from 'react-router-dom';
 import { ReactComponent as IconEdit } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as PlusIcon } from '../../../assets/svg/plus-primary.svg';
 import TagButton from '../../../components/common/TagButton/TagButton.component';
-import { useGenericContext } from '../../../components/GenericProvider/GenericProvider';
+import { useGenericContext } from '../../../components/Customization/GenericProvider/GenericProvider';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { DE_ACTIVE_COLOR, ICON_DIMENSION } from '../../../constants/constants';
 import { EntityType, FqnPart } from '../../../enums/entity.enum';

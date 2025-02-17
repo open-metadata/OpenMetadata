@@ -50,10 +50,10 @@ import {
 import { ActivityFeedTab } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import DescriptionV1 from '../../common/EntityDescription/DescriptionV1';
 import TabsLabel from '../../common/TabsLabel/TabsLabel.component';
+import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
 import { DomainLabelV2 } from '../../DataAssets/DomainLabelV2/DomainLabelV2';
 import { OwnerLabelV2 } from '../../DataAssets/OwnerLabelV2/OwnerLabelV2';
 import { ReviewerLabelV2 } from '../../DataAssets/ReviewerLabelV2/ReviewerLabelV2';
-import { GenericProvider } from '../../GenericProvider/GenericProvider';
 import TagsContainerV2 from '../../Tag/TagsContainerV2/TagsContainerV2';
 import { DisplayType } from '../../Tag/TagsViewer/TagsViewer.interface';
 import GlossaryHeader from '../GlossaryHeader/GlossaryHeader.component';

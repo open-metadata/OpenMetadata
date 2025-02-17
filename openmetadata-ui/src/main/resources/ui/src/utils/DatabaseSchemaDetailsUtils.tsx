@@ -18,8 +18,13 @@ import { ActivityFeedTab } from '../components/ActivityFeed/ActivityFeedTab/Acti
 import { CustomPropertyTable } from '../components/common/CustomPropertyTable/CustomPropertyTable';
 import TabsLabel from '../components/common/TabsLabel/TabsLabel.component';
 import { TabProps } from '../components/common/TabsLabel/TabsLabel.interface';
-import { DatabaseSchemaTableTab } from '../components/Database/DatabaseSchema/DatabaseSchemaTableTab/DatabaseSchemaTableTab';
+import { GenericTab } from '../components/Customization/GenericTab/GenericTab';
+import { CommonWidgets } from '../components/DataAssets/CommonWidgets/CommonWidgets';
+import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 import { EntityTabs, EntityType, TabSpecificField } from '../enums/entity.enum';
+import { PageType } from '../generated/system/ui/page';
+import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
+import SchemaTablesTab from '../pages/DatabaseSchemaPage/SchemaTablesTab';
 import StoredProcedureTab from '../pages/StoredProcedure/StoredProcedureTab';
 import { DatabaseSchemaPageTabProps } from './DatabaseSchemaClassBase';
 
@@ -49,7 +54,7 @@ export const getDataBaseSchemaPageBaseTabs = ({
         />
       ),
       key: EntityTabs.TABLE,
-      children: <DatabaseSchemaTableTab />,
+      children: <GenericTab type={PageType.DatabaseSchema} />,
     },
     {
       label: (
@@ -108,4 +113,12 @@ export const getDataBaseSchemaPageBaseTabs = ({
       ),
     },
   ];
+};
+
+export const getDatabaseSchemaWidgetsFromKey = (widgetConfig: WidgetConfig) => {
+  if (widgetConfig.i.startsWith(DetailPageWidgetKeys.TABLES)) {
+    return <SchemaTablesTab />;
+  }
+
+  return <CommonWidgets widgetConfig={widgetConfig} />;
 };
