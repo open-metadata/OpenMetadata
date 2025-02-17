@@ -1046,10 +1046,10 @@ class LookerSource(DashboardServiceSource):
                         displayName=chart.title or chart.id,
                         description=Markdown(description) if description else None,
                         chartType=get_standard_chart_type(chart.type).value,
-                        sourceUrl=SourceUrl(chart.query.share_url)
-                        if chart.query is not None
-                        else SourceUrl(
-                            f"{clean_uri(self.service_connection.hostPort)}/merge?mid={chart.merge_result_id}"
+                        sourceUrl=SourceUrl(
+                            chart.query.share_url if chart.query is not None
+                            else chart.result_maker.query.share_url if chart.result_maker.query is not None
+                            else f"{clean_uri(self.service_connection.hostPort)}/merge?mid={chart.merge_result_id}"
                         ),
                         service=self.context.get().dashboard_service,
                     )
