@@ -125,7 +125,8 @@ const DomainVersion = () => {
   }, [domain, version]);
 
   return (
-    <PageLayoutV1 pageTitle={t('label.domain-version')}>
+    <PageLayoutV1
+      pageTitle={t('label.entity-version', { entity: t('label.domain') })}>
       <div className="version-data page-container p-0">{domainPageRender}</div>
       <EntityVersionTimeLine
         currentVersion={toString(version)}
