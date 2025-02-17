@@ -156,7 +156,7 @@ database:
   evictionInterval: ${DB_CONNECTION_EVICTION_INTERVAL:-5 minutes}
   minIdleTime: ${DB_CONNECTION_MIN_IDLE_TIME:-1 minute}
 
-assetUploader:
+objectStorage:
   enabled: false
   provider: NOOP
 

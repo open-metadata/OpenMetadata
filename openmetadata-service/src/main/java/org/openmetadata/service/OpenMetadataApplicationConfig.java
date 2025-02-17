@@ -34,6 +34,7 @@ import org.openmetadata.schema.configuration.LimitsConfiguration;
 import org.openmetadata.schema.security.secrets.SecretsManagerConfiguration;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.service.config.OMWebConfiguration;
+import org.openmetadata.service.config.ObjectStorageConfiguration;
 import org.openmetadata.service.migration.MigrationConfiguration;
 import org.openmetadata.service.monitoring.EventMonitorConfiguration;
 
@@ -111,6 +112,10 @@ public class OpenMetadataApplicationConfig extends Configuration {
 
   @JsonProperty("limits")
   private LimitsConfiguration limitsConfiguration;
+
+  @JsonProperty("objectStorage")
+  @Valid
+  private ObjectStorageConfiguration assetUploader;
 
   @Override
   public String toString() {

@@ -1,21 +1,25 @@
 package org.openmetadata.service.config;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import javax.validation.constraints.AssertTrue;
+import javax.validation.constraints.NotBlank;
 import lombok.Getter;
 import lombok.Setter;
+import org.apache.commons.lang3.StringUtils;
 
 @Getter
 @Setter
 public class AzureConfiguration {
 
   @JsonProperty("containerName")
+  @NotBlank(message = "Container name must be provided")
   private String containerName;
 
   @JsonProperty("connectionString")
   private String connectionString;
 
   @JsonProperty("useManagedIdentity")
-  private boolean useManagedIdentity;
+  private boolean useManagedIdentity = false;
 
   @JsonProperty("clientId")
   private String clientId;
@@ -25,4 +29,20 @@ public class AzureConfiguration {
 
   @JsonProperty("clientSecret")
   private String clientSecret;
+
+  @AssertTrue(
+      message =
+          "Either useManagedIdentity must be true, or a connectionString must be provided, "
+              + "or all service principal details (clientId, tenantId, clientSecret) must be provided")
+  public boolean isValidAzureCredentials() {
+    if (useManagedIdentity) {
+      return true;
+    } else if (StringUtils.isNotBlank(connectionString)) {
+      return true;
+    } else {
+      return StringUtils.isNotBlank(clientId)
+          && StringUtils.isNotBlank(tenantId)
+          && StringUtils.isNotBlank(clientSecret);
+    }
+  }
 }

@@ -8,7 +8,10 @@ import lombok.Setter;
 
 @Getter
 @Setter
-public class AssetUploaderConfiguration {
+public class ObjectStorageConfiguration {
+
+  @JsonProperty("enabled")
+  private boolean enabled = false;
 
   /**
    * Provider can be "s3", "azure", or "dummy" (for local testing).
@@ -25,4 +28,3 @@ public class AssetUploaderConfiguration {
   @Valid
   private AzureConfiguration azureConfiguration;
 }
-
