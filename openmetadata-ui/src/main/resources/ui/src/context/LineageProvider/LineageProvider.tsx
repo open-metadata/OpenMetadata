@@ -61,6 +61,7 @@ import NodeSuggestions from '../../components/Entity/EntityLineage/NodeSuggestio
 import {
   EdgeDetails,
   EntityLineageResponse,
+  LineageData,
 } from '../../components/Lineage/Lineage.interface';
 import { SourceType } from '../../components/SearchedData/SearchedData.interface';
 import {
@@ -148,6 +149,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     edges: [],
     entity: {} as EntityReference,
   });
+  const [lineageData, setLineageData] = useState<LineageData>();
 
   const [dataQualityLineage, setDataQualityLineage] =
     useState<EntityLineageResponse>();
@@ -234,6 +236,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
           config,
           queryFilter,
         });
+        setLineageData(res);
 
         const { nodes, edges, entity } = parseLineageData(res, fqn);
         setEntityLineage({
@@ -605,17 +608,43 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
         from,
       });
 
+      const concatenatedLineageData = {
+        nodes: {
+          ...lineageData?.nodes,
+          ...res.nodes,
+        },
+        downstreamEdges: {
+          ...lineageData?.downstreamEdges,
+          ...res.downstreamEdges,
+        },
+        upstreamEdges: {
+          ...lineageData?.upstreamEdges,
+          ...res.upstreamEdges,
+        },
+      };
+
       const { nodes: newNodes, edges: newEdges } = parseLineageData(
-        res,
+        concatenatedLineageData,
         parentNode.data.node.fullyQualifiedName
       );
 
-      // Merge new nodes and edges with existing ones
-      setEntityLineage((prev) => ({
-        ...prev,
-        nodes: uniqWith([...(prev.nodes ?? []), ...newNodes], isEqual),
-        edges: uniqWith([...(prev.edges ?? []), ...newEdges], isEqual),
-      }));
+      setEntityLineage((prev) => {
+        // Filter out the load more node
+        const filteredNodes = (prev.nodes ?? []).filter(
+          (n) => n.id !== node.id
+        );
+
+        // Filter out the edge connected to load more node
+        const filteredEdges = (prev.edges ?? []).filter(
+          (e) => e.fromEntity.id !== node.id && e.toEntity.id !== node.id
+        );
+
+        return {
+          ...prev,
+          nodes: uniqWith([...filteredNodes, ...newNodes], isEqual),
+          edges: uniqWith([...filteredEdges, ...newEdges], isEqual),
+        };
+      });
     } catch (error) {
       showErrorToast(
         error as AxiosError,
