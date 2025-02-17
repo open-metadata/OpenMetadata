@@ -40,6 +40,11 @@ public class RunAppImpl {
     AppRepository appRepository = (AppRepository) Entity.getEntityRepository(Entity.APPLICATION);
     App app =
         appRepository.getByName(null, appName, new EntityUtil.Fields(Set.of("bot", "pipelines")));
+
+    if (!validateAppShouldRun(app, service)) {
+      return true;
+    }
+
     App updatedApp = getUpdatedApp(app, service);
 
     updateApp(appRepository, app, updatedApp);
@@ -58,6 +63,16 @@ public class RunAppImpl {
     return success;
   }
 
+  private boolean validateAppShouldRun(App app, ServiceEntityInterface service) {
+    // We only want to run the CollateAIApplication for Databases
+    if (Entity.getEntityTypeFromObject(service).equals(Entity.DATABASE_SERVICE)
+        && app.getName().equals("CollateAIApplication")) {
+      return true;
+    } else {
+      return false;
+    }
+  }
+
   private App getUpdatedApp(App app, ServiceEntityInterface service) {
     App updatedApp = JsonUtils.deepCopy(app, App.class);
     Object updatedConfig = JsonUtils.deepCopy(app.getAppConfiguration(), Object.class);
@@ -66,7 +81,7 @@ public class RunAppImpl {
       (JsonUtils.convertValue(updatedConfig, CollateAIAppConfig.class))
           .withFilter(
               String.format(
-                  "{\"query\":{\"bool\":{\"must\":[{\"bool\":{\"must\":[{\"term\":{\"name.keyword\":\"table_entity\"}}]}},{\"bool\":{\"must\":[{\"term\":{\"entityType\":\"table\"}}]}},{\"bool\":{\"must\":[{\"term\":{\"service.name.keyword\":\"%s\"}}]}}]}}}",
+                  "{\"query\":{\"bool\":{\"must\":[{\"bool\":{\"must\":[{\"term\":{\"Tier.TagFQN\":\"Tier.Tier1\"}}]}},{\"bool\":{\"must\":[{\"term\":{\"entityType\":\"table\"}}]}},{\"bool\":{\"must\":[{\"term\":{\"service.name.keyword\":\"%s\"}}]}}]}}}",
                   service.getName().toLowerCase()));
     }
     updatedApp.withAppConfiguration(updatedConfig);
