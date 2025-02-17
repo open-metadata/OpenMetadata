@@ -63,7 +63,7 @@ export const fillOwnerDetails = async (page: Page, owners: string[]) => {
     .press('Enter', { delay: 100 });
 
   const userListResponse = page.waitForResponse(
-    '/api/v1/users?limit=*&isBot=false*'
+    '/api/v1/search/query?q=*isBot:false*index=user_search_index*'
   );
   await page.getByRole('tab', { name: 'Users' }).click();
   await userListResponse;
