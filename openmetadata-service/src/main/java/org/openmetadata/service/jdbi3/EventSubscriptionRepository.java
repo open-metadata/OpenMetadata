@@ -15,6 +15,7 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.service.apps.bundles.changeEvent.AbstractEventConsumer.OFFSET_EXTENSION;
 import static org.openmetadata.service.events.subscription.AlertUtil.validateAndBuildFilteringConditions;
 import static org.openmetadata.service.fernet.Fernet.encryptWebhookSecretKey;
 import static org.openmetadata.service.util.EntityUtil.objectMatch;
@@ -28,12 +29,14 @@ import org.openmetadata.schema.entity.events.Argument;
 import org.openmetadata.schema.entity.events.ArgumentsInput;
 import org.openmetadata.schema.entity.events.EventFilterRule;
 import org.openmetadata.schema.entity.events.EventSubscription;
+import org.openmetadata.schema.entity.events.EventSubscriptionOffset;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.scheduled.EventSubscriptionScheduler;
 import org.openmetadata.service.events.subscription.AlertUtil;
 import org.openmetadata.service.resources.events.subscription.EventSubscriptionResource;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
 public class EventSubscriptionRepository extends EntityRepository<EventSubscription> {
@@ -109,6 +112,28 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
       }
       rules.sort(Comparator.comparing(EventFilterRule::getName));
     }
+  }
+
+  public EventSubscriptionOffset syncEventSubscriptionOffset(String eventSubscriptionName) {
+    EventSubscription eventSubscription = getByName(null, eventSubscriptionName, getFields("id"));
+    long latestOffset = daoCollection.changeEventDAO().getLatestOffset();
+    long currentTime = System.currentTimeMillis();
+    // Upsert Offset
+    EventSubscriptionOffset eventSubscriptionOffset =
+        new EventSubscriptionOffset()
+            .withCurrentOffset(latestOffset)
+            .withStartingOffset(latestOffset)
+            .withTimestamp(currentTime);
+
+    Entity.getCollectionDAO()
+        .eventSubscriptionDAO()
+        .upsertSubscriberExtension(
+            eventSubscription.getId().toString(),
+            OFFSET_EXTENSION,
+            "eventSubscriptionOffset",
+            JsonUtils.pojoToJson(eventSubscriptionOffset));
+
+    return eventSubscriptionOffset;
   }
 
   @Override

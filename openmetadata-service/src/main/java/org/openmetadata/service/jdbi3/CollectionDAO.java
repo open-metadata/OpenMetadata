@@ -4395,6 +4395,9 @@ public interface CollectionDAO {
         value = "SELECT MAX(\"offset\") FROM change_event",
         connectionType = POSTGRES)
     long getLatestOffset();
+
+    @SqlQuery("SELECT count(*) FROM change_event")
+    long listCount();
   }
 
   class FailedEventResponseMapper implements RowMapper<FailedEventResponse> {
