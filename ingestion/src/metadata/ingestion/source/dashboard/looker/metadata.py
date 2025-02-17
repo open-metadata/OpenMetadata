@@ -1040,20 +1040,19 @@ class LookerSource(DashboardServiceSource):
                     continue
 
                 description = self.build_chart_description(chart)
-                source_url = SourceUrl(
-                    chart.query.share_url
-                    if chart.query is not None
-                    else chart.result_maker.query.share_url
-                    if chart.result_maker.query is not None
-                    else f"{clean_uri(self.service_connection.hostPort)}/merge?mid={chart.merge_result_id}"
-                )
+                if chart.query is not None:
+                    source_url = chart.query.share_url
+                elif chart.result_maker.query is not None:
+                    source_url = chart.result_maker.query.share_url
+                else:
+                    source_url = f"{clean_uri(self.service_connection.hostPort)}/merge?mid={chart.merge_result_id}"
                 yield Either(
                     right=CreateChartRequest(
                         name=EntityName(chart.id),
                         displayName=chart.title or chart.id,
                         description=Markdown(description) if description else None,
                         chartType=get_standard_chart_type(chart.type).value,
-                        sourceUrl=source_url,
+                        sourceUrl=SourceUrl(source_url),
                         service=self.context.get().dashboard_service,
                     )
                 )
