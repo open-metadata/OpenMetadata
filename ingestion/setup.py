@@ -19,7 +19,7 @@ from setuptools import setup
 
 # Add here versions required for multiple plugins
 VERSIONS = {
-    "airflow": "apache-airflow==2.9.1",
+    "airflow": "apache-airflow>=2.8",  # Keep the package unbound and manage airflow version from the docker image
     "adlfs": "adlfs>=2023.1.0",
     "avro": "avro>=1.11.3,<1.12",
     "boto3": "boto3>=1.20,<2.0",  # No need to add botocore separately. It's a dep from boto3
@@ -149,6 +149,10 @@ base_requirements = {
     "packaging",  # For version parsing
     "shapely",
     "collate-data-diff",
+    # TODO: Remove one once we have updated datadiff version
+    "snowflake-connector-python>=3.13.1,<4.0.0",
+    "mysql-connector-python>=8.0.29;python_versions<'3.9'",
+    "mysql-connector-python>=9.1;python_versions>='3.9'",
 }
 
 plugins: Dict[str, Set[str]] = {
