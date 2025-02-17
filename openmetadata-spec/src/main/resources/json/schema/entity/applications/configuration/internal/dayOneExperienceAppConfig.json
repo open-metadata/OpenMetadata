@@ -1,7 +1,7 @@
 {
-  "$id": "https://open-metadata.org/schema/entity/applications/configuration/external/dayOneExperienceAppConfig.json",
+  "$id": "https://open-metadata.org/schema/entity/applications/configuration/internal/dayOneExperienceAppConfig.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "DayOneExperienceAppConfig.json",
+  "title": "DayOneExperienceAppConfig",
   "description": "Configuration for the Day One Experience Flow.",
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.app.internal.DayOneExperienceAppConfig",
@@ -9,8 +9,8 @@
     "dayOneExperienceAppType": {
       "description": "Application type.",
       "type": "string",
-      "enum": ["DayOneExperience"],
-      "default": "DayOneExperience"
+      "enum": ["DayOneExperienceWorkflow"],
+      "default": "DayOneExperienceWorkflow"
     }
   },
   "properties": {
@@ -18,7 +18,7 @@
       "title": "Application Type",
       "description": "Application Type",
       "$ref": "#/definitions/dayOneExperienceAppType",
-      "default": "DayOneExperience"
+      "default": "DayOneExperienceWorkflow"
     },
     "active": {
       "title": "Active",
