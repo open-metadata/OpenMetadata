@@ -74,6 +74,7 @@ import org.openmetadata.service.jdbi3.AppMarketPlaceRepository;
 import org.openmetadata.service.jdbi3.AppRepository;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.jdbi3.EventSubscriptionRepository;
 import org.openmetadata.service.jdbi3.IngestionPipelineRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.MigrationDAO;
@@ -595,6 +596,26 @@ public class OpenMetadataOperations implements Callable<Integer> {
           retries);
     } catch (Exception e) {
       LOG.error("Failed to reindex due to ", e);
+      return 1;
+    }
+  }
+
+  @Command(name = "syncAlertOffset", description = "Sync the Alert Offset.")
+  public Integer reIndex(
+      @Option(
+              names = {"-n", "--name"},
+              description = "Name of the alerts.",
+              required = true)
+          String alertName) {
+    try {
+      parseConfig();
+      CollectionRegistry.initialize();
+      EventSubscriptionRepository repository =
+          (EventSubscriptionRepository) Entity.getEntityRepository(Entity.EVENT_SUBSCRIPTION);
+      repository.syncEventSubscriptionOffset(alertName);
+      return 0;
+    } catch (Exception e) {
+      LOG.error("Failed to sync alert offset due to ", e);
       return 1;
     }
   }
