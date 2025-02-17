@@ -103,7 +103,7 @@ class PowerBiApiClient:
         return auth_response.access_token, auth_response.expires_in
 
     def generate_new_auth_token(self):
-        """"""
+        """generate new auth token"""
         retry = AUTH_TOKEN_MAX_RETRIES
         while True:
             try:
@@ -130,7 +130,7 @@ class PowerBiApiClient:
                     return None
 
     def get_auth_token_from_cache(self):
-        """"""
+        """fetch auth token from cache"""
         retry = AUTH_TOKEN_MAX_RETRIES
         while True:
             try:
