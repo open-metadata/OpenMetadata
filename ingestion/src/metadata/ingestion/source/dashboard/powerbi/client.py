@@ -102,10 +102,10 @@ class PowerBiApiClient:
         logger.info("PowerBi Access Token generated successfully")
         return auth_response.access_token, auth_response.expires_in
 
-    def generate_new_auth_token(self):
+    def generate_new_auth_token(self) -> Optional[dict]:
         """generate new auth token"""
         retry = AUTH_TOKEN_MAX_RETRIES
-        while True:
+        while retry:
             try:
                 response_data = self.msal_client.acquire_token_for_client(
                     scopes=self.config.scope
@@ -127,12 +127,12 @@ class PowerBiApiClient:
                         "Could not generate new token after maximum retries, "
                         "Please check provided configs"
                     )
-                    return None
+        return None
 
-    def get_auth_token_from_cache(self):
+    def get_auth_token_from_cache(self) -> Optional[dict]:
         """fetch auth token from cache"""
         retry = AUTH_TOKEN_MAX_RETRIES
-        while True:
+        while retry:
             try:
                 response_data = self.msal_client.acquire_token_silent(
                     scopes=self.config.scope, account=None
@@ -153,7 +153,7 @@ class PowerBiApiClient:
                         "Could not get token from cache after maximum retries, "
                         "Please check provided configs"
                     )
-                    return None
+        return None
 
     def fetch_dashboards(self) -> Optional[List[PowerBIDashboard]]:
         """Get dashboards method
