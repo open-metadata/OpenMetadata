@@ -115,7 +115,7 @@ public class OpenMetadataApplicationConfig extends Configuration {
 
   @JsonProperty("objectStorage")
   @Valid
-  private ObjectStorageConfiguration assetUploader;
+  private ObjectStorageConfiguration objectStorage;
 
   @Override
   public String toString() {
