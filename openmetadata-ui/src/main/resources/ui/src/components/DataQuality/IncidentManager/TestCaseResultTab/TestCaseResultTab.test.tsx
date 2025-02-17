@@ -136,6 +136,15 @@ describe('TestCaseResultTab', () => {
     expect(await screen.findByText('EditTestCaseModal')).toBeInTheDocument();
   });
 
+  it("EditTestCaseModal should be rendered when 'Edit SQL expression' button is clicked", async () => {
+    render(<TestCaseResultTab />);
+
+    const editButton = await screen.findByTestId('edit-sql-param-icon');
+    fireEvent.click(editButton);
+
+    expect(await screen.findByText('EditTestCaseModal')).toBeInTheDocument();
+  });
+
   it('EditTestCaseModal should be removed on cancel click', async () => {
     const { container } = render(<TestCaseResultTab />);
 
