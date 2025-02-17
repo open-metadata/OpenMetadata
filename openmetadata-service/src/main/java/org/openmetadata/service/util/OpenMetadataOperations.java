@@ -83,6 +83,7 @@ import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.migration.api.MigrationWorkflow;
 import org.openmetadata.service.resources.CollectionRegistry;
 import org.openmetadata.service.resources.apps.AppMapper;
+import org.openmetadata.service.resources.apps.AppMarketPlaceMapper;
 import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.secrets.SecretsManager;
@@ -328,43 +329,106 @@ public class OpenMetadataOperations implements Callable<Integer> {
   public Integer installApp(
       @Option(
               names = {"-n", "--name"},
-              description = "Number of records to process in each batch.",
+              description = "The name of the application to install.",
+              required = true)
+          String appName,
+      @Option(
+              names = {"--force"},
+              description = "Forces migrations to be run again, even if they have ran previously",
+              defaultValue = "false")
+          boolean force) {
+    try {
+      parseConfig();
+      AppRepository appRepository = (AppRepository) Entity.getEntityRepository(Entity.APPLICATION);
+
+      if (!force && isAppInstalled(appRepository, appName)) {
+        LOG.info("App already installed.");
+        return 0;
+      }
+
+      if (force && deleteApplication(appRepository, appName)) {
+        LOG.info("App deleted.");
+      }
+
+      LOG.info("App not installed. Installing...");
+      installApplication(appName, appRepository);
+      LOG.info("App Installed.");
+      return 0;
+    } catch (Exception e) {
+      LOG.error("Install Application Failed", e);
+      return 1;
+    }
+  }
+
+  @Command(name = "delete-app", description = "Delete the installed application.")
+  public Integer deleteApp(
+      @Option(
+              names = {"-n", "--name"},
+              description = "The name of the application to install.",
               required = true)
           String appName) {
     try {
       parseConfig();
-      CollectionRegistry.initialize();
-      ApplicationHandler.initialize(config);
-      CollectionRegistry.getInstance().loadSeedData(jdbi, config, null, null, null, true);
-      ApplicationHandler.initialize(config);
-      AppScheduler.initialize(config, collectionDAO, searchRepository);
-      // Instantiate JWT Token Generator
-      JWTTokenGenerator.getInstance()
-          .init(
-              config.getAuthenticationConfiguration().getTokenValidationAlgorithm(),
-              config.getJwtTokenConfiguration());
-      AppMarketPlaceRepository marketPlaceRepository =
-          (AppMarketPlaceRepository) Entity.getEntityRepository(Entity.APP_MARKET_PLACE_DEF);
-      AppMarketPlaceDefinition definition =
-          marketPlaceRepository.getByName(null, appName, marketPlaceRepository.getFields("id"));
       AppRepository appRepository = (AppRepository) Entity.getEntityRepository(Entity.APPLICATION);
-      CreateApp createApp =
-          new CreateApp()
-              .withName(definition.getName())
-              .withDescription(definition.getDescription())
-              .withDisplayName(definition.getDisplayName())
-              .withAppSchedule(new AppSchedule().withScheduleTimeline(ScheduleTimeline.NONE))
-              .withAppConfiguration(new AppConfiguration());
-      AppMapper appMapper = new AppMapper();
-      App entity = appMapper.createToEntity(createApp, ADMIN_USER_NAME);
-      appRepository.prepareInternal(entity, true);
-      appRepository.createOrUpdate(null, entity);
-      LOG.info("App Installed.");
+      if (deleteApplication(appRepository, appName)) {
+        LOG.info("App deleted.");
+      }
       return 0;
     } catch (Exception e) {
-      LOG.error("Install Application Failed ", e);
+      LOG.error("Delete Application Failed", e);
       return 1;
     }
+  }
+
+  private boolean isAppInstalled(AppRepository appRepository, String appName) {
+    try {
+      appRepository.findByName(appName, Include.NON_DELETED);
+      return true;
+    } catch (EntityNotFoundException e) {
+      return false;
+    }
+  }
+
+  private boolean deleteApplication(AppRepository appRepository, String appName) {
+    try {
+      appRepository.deleteByName(ADMIN_USER_NAME, appName, true, true);
+      return true;
+    } catch (EntityNotFoundException e) {
+      return false;
+    }
+  }
+
+  private void installApplication(String appName, AppRepository appRepository) throws Exception {
+    PipelineServiceClientInterface pipelineServiceClient =
+        PipelineServiceClientFactory.createPipelineServiceClient(
+            config.getPipelineServiceClientConfiguration());
+
+    JWTTokenGenerator.getInstance()
+        .init(
+            config.getAuthenticationConfiguration().getTokenValidationAlgorithm(),
+            config.getJwtTokenConfiguration());
+
+    AppMarketPlaceMapper mapper = new AppMarketPlaceMapper(pipelineServiceClient);
+    AppMarketPlaceRepository appMarketRepository =
+        (AppMarketPlaceRepository) Entity.getEntityRepository(Entity.APP_MARKET_PLACE_DEF);
+
+    AppMarketPlaceUtil.createAppMarketPlaceDefinitions(appMarketRepository, mapper);
+
+    AppMarketPlaceDefinition definition =
+        appMarketRepository.getByName(null, appName, appMarketRepository.getFields("id"));
+
+    CreateApp createApp =
+        new CreateApp()
+            .withName(definition.getName())
+            .withDescription(definition.getDescription())
+            .withDisplayName(definition.getDisplayName())
+            .withAppSchedule(new AppSchedule().withScheduleTimeline(ScheduleTimeline.NONE))
+            .withAppConfiguration(new AppConfiguration());
+
+    AppMapper appMapper = new AppMapper();
+    App entity = appMapper.createToEntity(createApp, ADMIN_USER_NAME);
+    appRepository.prepareInternal(entity, true);
+    appRepository.createOrUpdate(null, entity);
   }
 
   @Command(
@@ -689,9 +753,8 @@ public class OpenMetadataOperations implements Callable<Integer> {
       CollectionRegistry.getInstance().loadSeedData(jdbi, config, null, null, null, true);
       ApplicationHandler.initialize(config);
       AppScheduler.initialize(config, collectionDAO, searchRepository);
-      String appName = "DataInsightsApplication";
       return executeDataInsightsReindexApp(
-          appName, batchSize, recreateIndexes, getBackfillConfiguration(startDate, endDate));
+          batchSize, recreateIndexes, getBackfillConfiguration(startDate, endDate));
     } catch (Exception e) {
       LOG.error("Failed to reindex due to ", e);
       return 1;
@@ -713,13 +776,10 @@ public class OpenMetadataOperations implements Callable<Integer> {
   }
 
   private int executeDataInsightsReindexApp(
-      String appName,
-      int batchSize,
-      boolean recreateIndexes,
-      BackfillConfiguration backfillConfiguration) {
+      int batchSize, boolean recreateIndexes, BackfillConfiguration backfillConfiguration) {
     AppRepository appRepository = (AppRepository) Entity.getEntityRepository(Entity.APPLICATION);
     App originalDataInsightsApp =
-        appRepository.getByName(null, appName, appRepository.getFields("id"));
+        appRepository.getByName(null, "DataInsightsApplication", appRepository.getFields("id"));
 
     DataInsightsAppConfig storedConfig =
         JsonUtils.convertValue(
