@@ -1040,7 +1040,7 @@ class LookerSource(DashboardServiceSource):
                     continue
 
                 description = self.build_chart_description(chart)
-                source_url = SourceUrl(
+                sourceUrl = SourceUrl(
                     chart.query.share_url
                     if chart.query is not None
                     else chart.result_maker.query.share_url
@@ -1053,7 +1053,7 @@ class LookerSource(DashboardServiceSource):
                         displayName=chart.title or chart.id,
                         description=Markdown(description) if description else None,
                         chartType=get_standard_chart_type(chart.type).value,
-                        sourceUrl=source_url,
+                        sourceUrl=sourceUrl,
                         service=self.context.get().dashboard_service,
                     )
                 )
