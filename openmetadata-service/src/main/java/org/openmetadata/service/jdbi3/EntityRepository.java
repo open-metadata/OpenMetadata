@@ -757,9 +757,14 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   /**
-   * The default behavior is to execute one by one. For batch execution, override this method in the subclass.
-   *
-   * @see GlossaryTermRepository#setFieldsInBulk(Fields, List) for an example implementation
+   * Executes {@link #setFields}  on a list of entities. By default, this method processes
+   * each entity individually. To enable batch processing, override this method in a subclass.
+   * <p>
+   * For efficient bulk processing, ensure all fields used in {@link #setFields}
+   * have corresponding batch processing methods, such as {@code fetchAndSetXXX}. For instance,
+   * if handling a domain field, implement {@link #fetchAndSetDomain}.
+   * <p>
+   * Example implementation can be found in {@link GlossaryTermRepository#setFieldsInBulk}.
    */
   public void setFieldsInBulk(Fields fields, List<T> entities) {
     for (T entity : entities) {
