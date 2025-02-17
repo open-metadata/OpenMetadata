@@ -2802,8 +2802,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     return getFollowersCollection(id).path("/" + userId);
   }
 
-  protected final T getEntity(UUID id, Map<String, String> authHeaders)
-      throws HttpResponseException {
+  public final T getEntity(UUID id, Map<String, String> authHeaders) throws HttpResponseException {
     WebTarget target = getResource(id);
     target = target.queryParam("fields", allFields);
     return TestUtils.get(target, entityClass, authHeaders);
