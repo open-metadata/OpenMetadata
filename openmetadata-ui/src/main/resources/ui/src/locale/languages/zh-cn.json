@@ -468,6 +468,7 @@
     "entity-reference-types": "实体参考类型",
     "entity-service": "{{entity}}服务",
     "entity-type-plural": "{{entity}}类型",
+    "entity-version": "{{entity}}版本",
     "entity-version-detail-plural": "{{entity}}版本详情",
     "enum-value-plural": "枚举值",
     "equation": "Equation",
