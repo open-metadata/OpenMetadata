@@ -191,7 +191,7 @@ For a simple, local installation using our docker containers, this looks like:
 
 ```yaml {% srNumber=40 %}
 source:
-  type: mssql-lineage
+  type: mysql-lineage
   serviceName: local_mssql
   sourceConfig:
     config:
@@ -243,12 +243,6 @@ source:
       #     - table4
 ```
 
-```yaml {% srNumber=49 %}
-sink:
-  type: metadata-rest
-  config: {}
-```
-
 ```yaml {% srNumber=51 %}
       overrideViewLineage: false
 ```
@@ -267,6 +261,12 @@ sink:
 
 ```yaml {% srNumber=55 %}
       threads: 1
+```
+
+```yaml {% srNumber=49 %}
+sink:
+  type: metadata-rest
+  config: {}
 ```
 
 {% partial file="/v1.6/connectors/yaml/workflow-config.md" /%}
