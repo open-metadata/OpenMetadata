@@ -147,7 +147,7 @@ base_requirements = {
     "tabulate==0.9.0",
     "typing-inspect",
     "packaging",  # For version parsing
-    "setuptools~=70",
+    "setuptools~=70.0",
     "shapely",
     "collate-data-diff",
     # TODO: Remove one once we have updated datadiff version
