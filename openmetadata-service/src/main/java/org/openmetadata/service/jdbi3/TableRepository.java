@@ -29,6 +29,8 @@ import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.Entity.TABLE;
 import static org.openmetadata.service.Entity.TEST_SUITE;
 import static org.openmetadata.service.Entity.populateEntityFieldTags;
+import static org.openmetadata.service.search.SearchClient.GLOBAL_SEARCH_ALIAS;
+import static org.openmetadata.service.search.SearchClient.REMOVE_ENTITY_RELATIONSHIP;
 import static org.openmetadata.service.util.EntityUtil.getLocalColumnName;
 import static org.openmetadata.service.util.FullyQualifiedName.getColumnName;
 import static org.openmetadata.service.util.LambdaExceptionUtil.ignoringComparator;
@@ -53,6 +55,7 @@ import javax.json.JsonPatch;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.csv.CSVRecord;
+import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.commons.lang3.tuple.Triple;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
@@ -101,6 +104,7 @@ import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
 import org.openmetadata.service.resources.databases.DatabaseUtil;
 import org.openmetadata.service.resources.databases.TableResource;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
+import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.security.mask.PIIMasker;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -133,6 +137,8 @@ public class TableRepository extends EntityRepository<Table> {
 
   public static final String COLUMN_FIELD = "columns";
   public static final String CUSTOM_METRICS = "customMetrics";
+
+  private static final SearchClient searchClient = Entity.getSearchRepository().getSearchClient();
 
   public TableRepository() {
     super(
@@ -1256,6 +1262,7 @@ public class TableRepository extends EntityRepository<Table> {
               EntityReference toTable = Entity.getEntityReferenceByName(TABLE, toParent, ALL);
               deleteRelationship(
                   table.getId(), TABLE, toTable.getId(), TABLE, Relationship.RELATED_TO);
+              deleteRelationshipFromSearch(table.getId(), toTable.getId());
             } catch (EntityNotFoundException e) {
               throw EntityNotFoundException.byName(
                   String.format(
@@ -1265,6 +1272,14 @@ public class TableRepository extends EntityRepository<Table> {
         }
       }
     }
+  }
+
+  private void deleteRelationshipFromSearch(UUID fromTableId, UUID toTableId) {
+    String relationDocId = fromTableId.toString() + "-" + toTableId.toString();
+    searchClient.updateChildren(
+        GLOBAL_SEARCH_ALIAS,
+        new ImmutablePair<>("entityRelationship.doc_id.keyword", relationDocId),
+        new ImmutablePair<>(String.format(REMOVE_ENTITY_RELATIONSHIP, relationDocId), null));
   }
 
   public static class TableCsv extends EntityCsv<Table> {
