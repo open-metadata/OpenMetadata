@@ -866,15 +866,17 @@ public class OpenSearchClient implements SearchClient {
                     getLineageDirection(
                         lineageRequest.getDirection(), lineageRequest.getEntityType())));
 
-    // Add All nodes and edges from upstream lineage to result
-    for (var node : upstreamLineage.getNodes().entrySet()) {
-      if (result.getNodes().containsKey(node.getKey())) {
-        NodeInformation existingNode = result.getNodes().get(node.getKey());
-        LayerPaging existingDownstreamLayerPaging = existingNode.getPaging();
-        existingDownstreamLayerPaging.setEntityUpstreamCount(
-            node.getValue().getPaging().getEntityUpstreamCount());
+    // Here we are merging everything from downstream paging into upstream paging
+    for (var nodeFromDownstream : result.getNodes().entrySet()) {
+      if (upstreamLineage.getNodes().containsKey(nodeFromDownstream.getKey())) {
+        NodeInformation existingNode = upstreamLineage.getNodes().get(nodeFromDownstream.getKey());
+        LayerPaging existingPaging = existingNode.getPaging();
+        existingPaging.setEntityDownstreamCount(
+            nodeFromDownstream.getValue().getPaging().getEntityDownstreamCount());
       }
     }
+    // since paging from downstream is merged into upstream, we can just put the upstream result
+    result.getNodes().putAll(upstreamLineage.getNodes());
     result.getUpstreamEdges().putAll(upstreamLineage.getUpstreamEdges());
     return result;
   }
