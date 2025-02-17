@@ -61,7 +61,9 @@ import { EntityChildren } from '../components/Entity/EntityLineage/NodeChildren/
 import {
   EdgeDetails,
   EntityLineageResponse,
+  LineageData,
   LineageSourceType,
+  NodeData,
 } from '../components/Lineage/Lineage.interface';
 import { SourceType } from '../components/SearchedData/SearchedData.interface';
 import {
@@ -1453,34 +1455,135 @@ export const getColumnFunctionValue = (
   return column?.function;
 };
 
+const createLoadMoreNode = (
+  parentNode: EntityReference,
+  currentCount: number,
+  totalCount: number,
+  edgeType: EdgeTypeEnum
+): EntityReference => {
+  const newNodeId = `loadmore_${uniqueId('node_')}_${
+    parentNode.id
+  }_${currentCount}`;
+
+  return {
+    id: newNodeId,
+    type: EntityLineageNodeType.LOAD_MORE,
+    name: `load_more_${parentNode.id}`,
+    displayName: 'Load More',
+    fullyQualifiedName: `load_more_${parentNode.id}`,
+    pagination_data: {
+      index: currentCount,
+      parentId: parentNode.id,
+      childrenLength: totalCount - currentCount,
+    },
+    edgeType,
+  };
+};
+
+const createLoadMoreEdge = (
+  parentNode: EntityReference,
+  loadMoreNode: EntityReference,
+  isDownstream: boolean
+): EdgeDetails => {
+  const [source, target] = isDownstream
+    ? [parentNode, loadMoreNode]
+    : [loadMoreNode, parentNode];
+
+  return {
+    fromEntity: {
+      id: source.id,
+      type: source.type,
+      fqn: source.fullyQualifiedName ?? '',
+    },
+    toEntity: {
+      id: target.id,
+      type: target.type,
+      fqn: target.fullyQualifiedName ?? '',
+    },
+  };
+};
+
+const handleNodePagination = (
+  node: EntityReference,
+  edges: Record<string, EdgeDetails>,
+  isDownstream: boolean
+): { newNode?: EntityReference; newEdge?: EdgeDetails } => {
+  const { paging } = node;
+  const totalCount = isDownstream
+    ? paging?.entityDownstreamCount
+    : paging?.entityUpstreamCount;
+
+  if (!totalCount || totalCount <= 0) {
+    return {};
+  }
+
+  const currentCount = Object.values(edges).filter((edge) =>
+    isDownstream ? edge.fromEntity.id === node.id : edge.toEntity.id === node.id
+  ).length;
+
+  if (currentCount >= totalCount) {
+    return {};
+  }
+
+  const loadMoreNode = createLoadMoreNode(
+    node,
+    currentCount,
+    totalCount,
+    isDownstream ? EdgeTypeEnum.DOWN_STREAM : EdgeTypeEnum.UP_STREAM
+  );
+
+  const loadMoreEdge = createLoadMoreEdge(node, loadMoreNode, isDownstream);
+
+  return { newNode: loadMoreNode, newEdge: loadMoreEdge };
+};
+
 export const parseLineageData: (
-  data: any,
+  data: LineageData,
   entityFqn: string
 ) => {
   nodes: EntityReference[];
   edges: EdgeDetails[];
   entity: EntityReference;
-} = (data: any, entityFqn: string) => {
+} = (data: LineageData, entityFqn: string) => {
   const { nodes, downstreamEdges, upstreamEdges } = data;
 
-  const nodesArray: EntityReference[] = Object.values(
-    nodes
-  ) as EntityReference[];
+  const nodesArray = Object.values(nodes)
+    .map((node: NodeData) => ({
+      ...node.entity,
+      paging: node.paging,
+    }))
+    .flat();
 
-  const entity: EntityReference = nodesArray.find(
+  const processedNodes = [...nodesArray];
+  const processedEdges = [
+    ...Object.values(downstreamEdges),
+    ...Object.values(upstreamEdges),
+  ];
+
+  // Process pagination for each node
+  nodesArray.forEach((node) => {
+    // Handle downstream pagination
+    const downstream = handleNodePagination(node, downstreamEdges, true);
+    if (downstream.newNode && downstream.newEdge) {
+      processedNodes.push(downstream.newNode);
+      processedEdges.push(downstream.newEdge);
+    }
+
+    // Handle upstream pagination
+    const upstream = handleNodePagination(node, upstreamEdges, false);
+    if (upstream.newNode && upstream.newEdge) {
+      processedNodes.push(upstream.newNode);
+      processedEdges.push(upstream.newEdge);
+    }
+  });
+
+  const entity = nodesArray.find(
     (node) => node.fullyQualifiedName === entityFqn
   ) as EntityReference;
 
-  const downstreamEdgesArray: EdgeDetails[] = Object.values(
-    downstreamEdges
-  ) as EdgeDetails[];
-  const upstreamEdgesArray: EdgeDetails[] = Object.values(
-    upstreamEdges
-  ) as EdgeDetails[];
-
   return {
-    nodes: nodesArray,
-    edges: [...downstreamEdgesArray, ...upstreamEdgesArray],
+    nodes: processedNodes,
+    edges: processedEdges,
     entity,
   };
 };

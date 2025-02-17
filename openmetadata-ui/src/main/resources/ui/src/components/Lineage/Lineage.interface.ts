@@ -53,3 +53,17 @@ export type LineageSourceType = Omit<SourceType, 'service'> & {
   direction: string;
   depth: number;
 };
+
+export type NodeData = {
+  entity: EntityReference[];
+  paging: {
+    entityDownstreamCount?: number;
+    entityUpstreamCount?: number;
+  };
+};
+
+export type LineageData = {
+  nodes: NodeData[];
+  downstreamEdges: Record<string, EdgeDetails>;
+  upstreamEdges: Record<string, EdgeDetails>;
+};

@@ -13,7 +13,11 @@
 
 import { CSVExportResponse } from '../components/Entity/EntityExportModalProvider/EntityExportModalProvider.interface';
 import { LineageConfig } from '../components/Entity/EntityLineage/EntityLineage.interface';
-import { EntityLineageResponse } from '../components/Lineage/Lineage.interface';
+import {
+  EntityLineageResponse,
+  LineageData,
+} from '../components/Lineage/Lineage.interface';
+
 import { AddLineage } from '../generated/api/lineage/addLineage';
 import APIClient from './index';
 
@@ -47,26 +51,32 @@ export const exportLineageAsync = async (
   return response.data;
 };
 
-export const getLineageDataByFQN = async (
-  fqn: string,
-  entityType: string,
-  config?: LineageConfig,
-  queryFilter?: string
-) => {
+export const getLineageDataByFQN = async ({
+  fqn,
+  entityType,
+  config,
+  queryFilter,
+  from,
+}: {
+  fqn: string;
+  entityType: string;
+  config?: LineageConfig;
+  queryFilter?: string;
+  from?: number;
+}) => {
   const { upstreamDepth = 1, downstreamDepth = 1 } = config ?? {};
-  const response = await APIClient.get<EntityLineageResponse>(
-    `lineage/getLineage`,
-    {
-      params: {
-        fqn,
-        type: entityType,
-        upstreamDepth,
-        downstreamDepth,
-        query_filter: queryFilter,
-        includeDeleted: false,
-      },
-    }
-  );
+  const response = await APIClient.get<LineageData>(`lineage/getLineage`, {
+    params: {
+      fqn,
+      type: entityType,
+      upstreamDepth,
+      downstreamDepth,
+      query_filter: queryFilter,
+      includeDeleted: false,
+      size: config?.nodesPerLayer,
+      from,
+    },
+  });
 
   return response.data;
 };
