@@ -1,15 +1,14 @@
 name: Trivy Scan For OpenMetadata Ingestion Docker Image
 
 on:
-  pull_request:
-    # pull_request_target:
-    #     types: [labeled, opened, synchronize, reopened]
-    #     paths:
-    #       - "ingestion/**"
-    #       - "openmetadata-service/**"
-    #       - "openmetadata-spec/src/main/resources/json/schema/**"
-    #       - "pom.xml"
-    #       - "Makefile"
+    pull_request_target:
+        types: [labeled, opened, synchronize, reopened]
+        paths:
+          - "ingestion/**"
+          - "openmetadata-service/**"
+          - "openmetadata-spec/src/main/resources/json/schema/**"
+          - "pom.xml"
+          - "Makefile"
     
 concurrency: 
   group: trivy-ingestion-scan-${{ github.head_ref || github.run_id }}
