@@ -1,5 +1,6 @@
 package org.openmetadata.service.search;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.search.SearchClient.UPSTREAM_LINEAGE_FIELD;
 
 import java.security.KeyStoreException;
@@ -108,5 +109,24 @@ public final class SearchUtils {
             elasticSearchConfiguration.getTruststorePassword(),
             "ElasticSearch")
         : null;
+  }
+
+  public static List<EsLineageData> paginateUpstreamEntities(
+      List<EsLineageData> upstreamEntities, int from, int size) {
+    if (nullOrEmpty(upstreamEntities)) {
+      return Collections.emptyList();
+    }
+
+    int totalLength = upstreamEntities.size();
+
+    if (from >= totalLength) {
+      return Collections.emptyList();
+    }
+
+    // Calculate the end index
+    int to = Math.min(from + size, totalLength);
+
+    // Return the sublist
+    return upstreamEntities.subList(from, to);
   }
 }

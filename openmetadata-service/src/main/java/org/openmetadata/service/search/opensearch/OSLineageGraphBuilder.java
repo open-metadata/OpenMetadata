@@ -6,6 +6,7 @@ import static org.openmetadata.service.search.SearchClient.GLOBAL_SEARCH_ALIAS;
 import static org.openmetadata.service.search.SearchUtils.LINEAGE_AGGREGATION;
 import static org.openmetadata.service.search.SearchUtils.getRelationshipRef;
 import static org.openmetadata.service.search.SearchUtils.getUpstreamLineageListIfExist;
+import static org.openmetadata.service.search.SearchUtils.paginateUpstreamEntities;
 import static org.openmetadata.service.search.elasticsearch.ElasticSearchClient.SOURCE_FIELDS_TO_EXCLUDE;
 import static org.openmetadata.service.search.opensearch.OsUtils.getSearchRequest;
 
@@ -56,6 +57,11 @@ public class OSLineageGraphBuilder {
       return;
     }
 
+    if (lineageRequest.getLayerFrom() < 0 || lineageRequest.getLayerSize() < 0) {
+      throw new IllegalArgumentException(
+          "LayerFrom and LayerSize should be greater than or equal to 0");
+    }
+
     Set<String> fqnSet = new HashSet<>();
     os.org.opensearch.action.search.SearchRequest searchRequest =
         getSearchRequest(
@@ -64,8 +70,8 @@ public class OSLineageGraphBuilder {
             LINEAGE_AGGREGATION,
             lineageRequest.getDirectionValue(),
             fqns,
-            lineageRequest.getLayerFrom(),
-            lineageRequest.getLayerSize(),
+            0,
+            Integer.MAX_VALUE,
             lineageRequest.getIncludeDeleted(),
             null,
             SOURCE_FIELDS_TO_EXCLUDE);
@@ -85,7 +91,10 @@ public class OSLineageGraphBuilder {
                     .withEntity(esDoc)
                     .withPaging(
                         new LayerPaging().withEntityUpstreamCount(upStreamEntities.size())));
-        for (EsLineageData data : upStreamEntities) {
+        List<EsLineageData> paginatedUpstreamEntities =
+            paginateUpstreamEntities(
+                upStreamEntities, lineageRequest.getLayerFrom(), lineageRequest.getLayerSize());
+        for (EsLineageData data : paginatedUpstreamEntities) {
           result.getUpstreamEdges().putIfAbsent(data.getDocId(), data.withToEntity(toEntity));
           String fromFqn = data.getFromEntity().getFullyQualifiedName();
           if (!result.getNodes().containsKey(fromFqn)) {
