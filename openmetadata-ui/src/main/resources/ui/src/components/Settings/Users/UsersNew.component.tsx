@@ -369,8 +369,8 @@ const Users = ({
   }, [userData.id]);
 
   return (
-    <div className="p-t-xs bg-grey p-x-box">
-      <Row gutter={[20, 0]} wrap={false}>
+    <div className="p-t-xs bg-grey p-l-box">
+      <Row wrap={false}>
         <Col flex="312px">
           <div className="profile-section">
             <ProfileSectionUserDetailsCard
@@ -407,7 +407,7 @@ const Users = ({
             />
           </div>
         </Col>
-        <Col flex="auto">
+        <Col>
           <Row className="mb-sm w-full">
             <div className="tabs-container d-flex justify-center">
               <Tabs
@@ -426,11 +426,7 @@ const Users = ({
                 onChange={activeTabHandler}
               />
             </div>
-          </Row>
-          <Row gutter={[16, 16]}>
-            <Col span={24}>
-              {tabs.find((tab) => tab.key === activeTab)?.children}
-            </Col>
+            {tabs.find((tab) => tab.key === activeTab)?.children}
           </Row>
         </Col>
       </Row>

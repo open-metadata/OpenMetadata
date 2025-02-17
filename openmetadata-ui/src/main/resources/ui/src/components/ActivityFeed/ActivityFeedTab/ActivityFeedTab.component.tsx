@@ -10,10 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Menu, Skeleton, Space, Typography } from 'antd';
+import { Dropdown, Segmented, Skeleton } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { noop } from 'lodash';
 import {
   default as React,
   ReactNode,
@@ -26,16 +25,15 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory, useParams } from 'react-router-dom';
-import { ReactComponent as AllActivityIcon } from '../../../assets/svg/all-activity-v2.svg';
-import { ReactComponent as CheckIcon } from '../../../assets/svg/ic-check.svg';
-import { ReactComponent as MentionIcon } from '../../../assets/svg/ic-mentions.svg';
+import { ReactComponent as TaskCloseIcon } from '../../../assets/svg/check-circle.svg';
+import { ReactComponent as TaskCloseIconBlue } from '../../../assets/svg/ic-close-task.svg';
+import { ReactComponent as TaskOpenIcon } from '../../../assets/svg/ic-open-task.svg';
 import { ReactComponent as TaskIcon } from '../../../assets/svg/ic-task.svg';
-import { ReactComponent as TaskListIcon } from '../../../assets/svg/task-ic.svg';
-import {
-  COMMON_ICON_STYLES,
-  ICON_DIMENSION,
-  ROUTES,
-} from '../../../constants/constants';
+import { ReactComponent as MentionIcon } from '../../../assets/svg/mention.svg';
+import { ReactComponent as TaskFilterIcon } from '../../../assets/svg/task-filter-button.svg';
+import { ReactComponent as MyTaskIcon } from '../../../assets/svg/task.svg';
+
+import { ICON_DIMENSION_USER_PAGE, ROUTES } from '../../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
 import { observerOptions } from '../../../constants/Mydata.constants';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
@@ -50,11 +48,7 @@ import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useElementInView } from '../../../hooks/useElementInView';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { getFeedCount } from '../../../rest/feedsAPI';
-import {
-  getCountBadge,
-  getFeedCounts,
-  Transi18next,
-} from '../../../utils/CommonUtils';
+import { getFeedCounts, Transi18next } from '../../../utils/CommonUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import {
   ENTITY_LINK_SEPARATOR,
@@ -62,12 +56,10 @@ import {
 } from '../../../utils/EntityUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import Loader from '../../common/Loader/Loader';
-import { TaskTab } from '../../Entity/Task/TaskTab/TaskTab.component';
+import { TaskTabNew } from '../../Entity/Task/TaskTab/TaskTabNew.component';
 import '../../MyData/Widgets/FeedsWidget/feeds-widget.less';
-import ActivityFeedEditor from '../ActivityFeedEditor/ActivityFeedEditor';
-import ActivityFeedListV1 from '../ActivityFeedList/ActivityFeedListV1.component';
-import FeedPanelBodyV1 from '../ActivityFeedPanel/FeedPanelBodyV1';
-import FeedPanelHeader from '../ActivityFeedPanel/FeedPanelHeader';
+import ActivityFeedListV1New from '../ActivityFeedList/ActivityFeedListV1New.component';
+import FeedPanelBodyV1New from '../ActivityFeedPanel/FeedPanelBodyV1New';
 import { useActivityFeedProvider } from '../ActivityFeedProvider/ActivityFeedProvider';
 import './activity-feed-tab.less';
 import {
@@ -91,6 +83,7 @@ export const ActivityFeedTab = ({
   isForFeedTab = true,
   onUpdateFeedCount,
   onUpdateEntityDetails,
+  subTab,
 }: ActivityFeedTabProps) => {
   const history = useHistory();
   const { t } = useTranslation();
@@ -102,13 +95,12 @@ export const ActivityFeedTab = ({
     root: document.querySelector('#center-container'),
     rootMargin: '0px 0px 2px 0px',
   });
-  const {
-    tab = EntityTabs.ACTIVITY_FEED,
-    subTab: activeTab = ActivityFeedTabs.ALL,
-  } = useParams<{ tab: EntityTabs; subTab: ActivityFeedTabs }>();
+  const { tab = EntityTabs.ACTIVITY_FEED, subTab: activeTab = subTab } =
+    useParams<{ tab: EntityTabs; subTab: ActivityFeedTabs }>();
   const [taskFilter, setTaskFilter] = useState<ThreadTaskStatus>(
     ThreadTaskStatus.Open
   );
+  const [isFullWidth, setIsFullWidth] = useState<boolean>(false);
   const [countData, setCountData] = useState<{
     loading: boolean;
     data: FeedCounts;
@@ -143,6 +135,13 @@ export const ActivityFeedTab = ({
 
   const isTaskActiveTab = useMemo(
     () => activeTab === ActivityFeedTabs.TASKS,
+    [activeTab]
+  );
+  useEffect(() => {
+    setIsFullWidth(false);
+  }, [isTaskActiveTab]);
+  const isMentionTabSelected = useMemo(
+    () => activeTab === ActivityFeedTabs.MENTIONS,
     [activeTab]
   );
 
@@ -343,127 +342,139 @@ export const ActivityFeedTab = ({
     handleFeedFetchFromFeedList();
     handleUpdateTaskFilter(ThreadTaskStatus.Closed);
   };
+  const taskFilterOptions = [
+    {
+      key: ThreadTaskStatus.Open,
+      label: (
+        <div
+          className={classNames(
+            'flex items-center justify-between px-4 py-2 gap-2',
+            { active: taskFilter === ThreadTaskStatus.Open }
+          )}>
+          <div className="flex items-center space-x-2">
+            {taskFilter === ThreadTaskStatus.Open ? (
+              <TaskOpenIcon className="m-r-xs" {...ICON_DIMENSION_USER_PAGE} />
+            ) : (
+              <TaskIcon className="m-r-xs" {...ICON_DIMENSION_USER_PAGE} />
+            )}
+            <span
+              className={classNames('task-tab-filter-item', {
+                selected: taskFilter === ThreadTaskStatus.Open,
+              })}>
+              {t('label.open')}
+            </span>
+          </div>
+          <span
+            className={classNames('task-count-container d-flex flex-center', {
+              active: taskFilter === ThreadTaskStatus.Open,
+            })}>
+            <span className="task-count-text">
+              {countData.data.openTaskCount}
+            </span>
+          </span>
+        </div>
+      ),
+      onClick: () => {
+        handleUpdateTaskFilter(ThreadTaskStatus.Open);
+        setActiveThread();
+      },
+    },
+    {
+      key: ThreadTaskStatus.Closed,
+      label: (
+        <div
+          className={classNames(
+            'flex items-center justify-between px-4 py-2 gap-2',
+            { active: taskFilter === ThreadTaskStatus.Closed }
+          )}>
+          <div className="flex items-center space-x-2">
+            {taskFilter === ThreadTaskStatus.Closed ? (
+              <TaskCloseIconBlue
+                className="m-r-xs"
+                {...ICON_DIMENSION_USER_PAGE}
+              />
+            ) : (
+              <TaskCloseIcon className="m-r-xs" {...ICON_DIMENSION_USER_PAGE} />
+            )}
+
+            <span
+              className={classNames('task-tab-filter-item', {
+                selected: taskFilter === ThreadTaskStatus.Closed,
+              })}>
+              {t('label.closed')}
+            </span>
+          </div>
+          <span
+            className={classNames('task-count-container d-flex flex-center', {
+              active: taskFilter === ThreadTaskStatus.Closed,
+            })}>
+            <span className="task-count-text">
+              {countData.data.closedTaskCount}
+            </span>
+          </span>
+        </div>
+      ),
+      onClick: () => {
+        handleUpdateTaskFilter(ThreadTaskStatus.Closed);
+        setActiveThread();
+      },
+    },
+  ];
+  const TaskToggle = () => {
+    return (
+      <Segmented
+        className="task-toggle"
+        defaultValue={ActivityFeedTabs.TASKS}
+        options={[
+          {
+            label: (
+              <span className="toggle-item">
+                <MyTaskIcon {...ICON_DIMENSION_USER_PAGE} />
+                {t('label.my-task-plural')}
+              </span>
+            ),
+            value: ActivityFeedTabs.TASKS,
+          },
+          {
+            label: (
+              <span className="toggle-item">
+                <MentionIcon {...ICON_DIMENSION_USER_PAGE} />
+                {t('label.mention-plural')}
+              </span>
+            ),
+            value: ActivityFeedTabs.MENTIONS,
+          },
+        ]}
+        onChange={(value) => handleTabChange(value as ActivityFeedTabs)}
+      />
+    );
+  };
+  const handlePanelResize = () => {
+    setIsFullWidth(true);
+  };
 
   return (
     <div className="activity-feed-tab">
-      <Menu
-        className="custom-menu p-t-sm"
-        data-testid="global-setting-left-panel"
-        items={[
-          {
-            label: (
-              <div className="d-flex justify-between">
-                <Space align="center" size="small">
-                  <AllActivityIcon
-                    style={COMMON_ICON_STYLES}
-                    {...ICON_DIMENSION}
-                  />
-                  <span>{t('label.all')}</span>
-                </Space>
-
-                <span>
-                  {!isUserEntity &&
-                    getCountBadge(
-                      countData.data.conversationCount,
-                      '',
-                      activeTab === ActivityFeedTabs.ALL
-                    )}
-                </span>
-              </div>
-            ),
-            key: 'all',
-          },
-          ...(isUserEntity
-            ? [
-                {
-                  label: (
-                    <div className="d-flex justify-between">
-                      <Space align="center" size="small">
-                        <MentionIcon
-                          style={COMMON_ICON_STYLES}
-                          {...ICON_DIMENSION}
-                        />
-                        <span>{t('label.mention-plural')}</span>
-                      </Space>
-
-                      <span>
-                        {getCountBadge(
-                          countData.data.mentionCount,
-                          '',
-                          activeTab === ActivityFeedTabs.MENTIONS
-                        )}
-                      </span>
-                    </div>
-                  ),
-                  key: 'mentions',
-                },
-              ]
-            : []),
-          {
-            label: (
-              <div className="d-flex justify-between">
-                <Space align="center" size="small">
-                  <TaskListIcon
-                    style={COMMON_ICON_STYLES}
-                    {...ICON_DIMENSION}
-                  />
-                  <span>{t('label.task-plural')}</span>
-                </Space>
-                <span>
-                  {getCountBadge(
-                    countData.data.openTaskCount,
-                    '',
-                    isTaskActiveTab
-                  )}
-                </span>
-              </div>
-            ),
-            key: 'tasks',
-          },
-        ]}
-        mode="inline"
-        rootClassName="left-container"
-        selectedKeys={[activeTab]}
-        onClick={(info) => handleTabChange(info.key)}
-      />
-
-      <div className="center-container" id="center-container">
-        {isTaskActiveTab && (
-          <div className="d-flex gap-4 p-sm p-x-lg activity-feed-task">
-            {getElementWithCountLoader(
-              <Typography.Text
-                className={classNames(
-                  'cursor-pointer p-l-xss d-flex items-center',
-                  {
-                    'font-medium': taskFilter === ThreadTaskStatus.Open,
-                  }
-                )}
-                data-testid="open-task"
-                onClick={() => {
-                  handleUpdateTaskFilter(ThreadTaskStatus.Open);
-                  setActiveThread();
-                }}>
-                <TaskIcon className="m-r-xss" width={14} />{' '}
-                {countData.data.openTaskCount} {t('label.open')}
-              </Typography.Text>
-            )}
-            {getElementWithCountLoader(
-              <Typography.Text
-                className={classNames('cursor-pointer d-flex items-center', {
-                  'font-medium': taskFilter === ThreadTaskStatus.Closed,
-                })}
-                data-testid="closed-task"
-                onClick={() => {
-                  handleUpdateTaskFilter(ThreadTaskStatus.Closed);
-                  setActiveThread();
-                }}>
-                <CheckIcon className="m-r-xss" width={14} />{' '}
-                {countData.data.closedTaskCount} {t('label.closed')}
-              </Typography.Text>
-            )}
+      <div
+        className={`center-container ${isFullWidth ? 'full-width' : ''}`}
+        id="center-container">
+        {(isTaskActiveTab || isMentionTabSelected) && (
+          <div
+            className="d-flex gap-4  p-b-xs justify-between items-center"
+            style={{ marginTop: '6px' }}>
+            <Dropdown
+              menu={{
+                items: taskFilterOptions,
+                selectedKeys: [...taskFilter],
+              }}
+              overlayClassName="task-tab-custom-dropdown"
+              trigger={['click']}>
+              <TaskFilterIcon className="cursor-pointer task-filter-icon" />
+            </Dropdown>
+            {TaskToggle()}
           </div>
         )}
-        <ActivityFeedListV1
+        <ActivityFeedListV1New
           hidePopover
           activeFeedId={selectedThread?.id}
           componentsVisibility={componentsVisibility}
@@ -473,6 +484,7 @@ export const ActivityFeedTab = ({
           isLoading={false}
           selectedThread={selectedThread}
           showThread={false}
+          onAfterClose={handleAfterTaskClose}
           onFeedClick={handleFeedClick}
         />
         {loader}
@@ -491,41 +503,35 @@ export const ActivityFeedTab = ({
           !loading &&
           (activeTab !== ActivityFeedTabs.TASKS ? (
             <div id="feed-panel">
-              <div className="feed-explore-heading">
-                <FeedPanelHeader
-                  hideCloseIcon
-                  className="p-x-md"
-                  entityLink={selectedThread.about}
-                  feed={selectedThread}
-                  threadType={selectedThread?.type ?? ThreadType.Conversation}
-                  onCancel={noop}
-                />
-              </div>
-
-              <div className="m-md">
-                <FeedPanelBodyV1
+              <div>
+                <FeedPanelBodyV1New
                   isOpenInDrawer
+                  showActivityFeedEditor
                   showThread
                   componentsVisibility={{
-                    showThreadIcon: false,
-                    showRepliesContainer: false,
+                    showThreadIcon: true,
+                    showRepliesContainer: true,
                   }}
                   feed={selectedThread}
+                  handlePanelResize={handlePanelResize}
                   hidePopover={false}
                   isForFeedTab={isForFeedTab}
+                  onAfterClose={handleAfterTaskClose}
+                  onUpdateEntityDetails={onUpdateEntityDetails}
                 />
-                <ActivityFeedEditor
+                {/* <ActivityFeedEditor
                   className="m-t-md feed-editor"
                   onSave={onSave}
-                />
+                /> */}
               </div>
             </div>
           ) : (
             <div id="task-panel">
               {entityType === EntityType.TABLE ? (
-                <TaskTab
+                <TaskTabNew
                   columns={columns}
                   entityType={EntityType.TABLE}
+                  handlePanelResize={handlePanelResize}
                   isForFeedTab={isForFeedTab}
                   owners={owners}
                   taskThread={selectedThread}
@@ -533,8 +539,9 @@ export const ActivityFeedTab = ({
                   onUpdateEntityDetails={onUpdateEntityDetails}
                 />
               ) : (
-                <TaskTab
+                <TaskTabNew
                   entityType={isUserEntity ? entityTypeTask : entityType}
+                  handlePanelResize={handlePanelResize}
                   hasGlossaryReviewer={hasGlossaryReviewer}
                   isForFeedTab={isForFeedTab}
                   owners={owners}
