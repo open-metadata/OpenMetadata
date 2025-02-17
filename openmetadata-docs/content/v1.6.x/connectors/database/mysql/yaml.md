@@ -192,7 +192,7 @@ For a simple, local installation using our docker containers, this looks like:
 ```yaml {% srNumber=40 %}
 source:
   type: mysql-lineage
-  serviceName: local_mssql
+  serviceName: local_mysql
   sourceConfig:
     config:
       type: DatabaseLineage
