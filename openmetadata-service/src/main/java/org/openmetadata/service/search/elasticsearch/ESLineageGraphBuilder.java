@@ -71,7 +71,7 @@ public class ESLineageGraphBuilder {
             lineageRequest.getDirectionValue(),
             fqns,
             0,
-            Integer.MAX_VALUE,
+            10000,
             lineageRequest.getIncludeDeleted(),
             null,
             SOURCE_FIELDS_TO_EXCLUDE);
