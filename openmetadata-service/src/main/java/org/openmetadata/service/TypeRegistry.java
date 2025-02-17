@@ -74,7 +74,7 @@ public class TypeRegistry {
                 type.setCustomProperties(storedType.getCustomProperties());
               }
             } catch (Exception e) {
-              LOG.debug("Creating entity that does not exist ", e);
+              LOG.error("Creating entity that does not exist ", e);
             }
             repository.addToRegistry(type);
           } catch (Exception e) {
