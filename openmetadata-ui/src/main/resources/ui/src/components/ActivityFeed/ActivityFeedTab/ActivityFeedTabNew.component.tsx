@@ -137,6 +137,9 @@ export const ActivityFeedTabNew = ({
     () => activeTab === ActivityFeedTabs.TASKS,
     [activeTab]
   );
+  useEffect(() => {
+    setIsFullWidth(false);
+  }, [isTaskActiveTab]);
   const isMentionTabSelected = useMemo(
     () => activeTab === ActivityFeedTabs.MENTIONS,
     [activeTab]
@@ -163,7 +166,6 @@ export const ActivityFeedTabNew = ({
       )
     );
     setActiveThread();
-    setIsFullWidth(false);
   };
 
   const placeholderText = useMemo(() => {

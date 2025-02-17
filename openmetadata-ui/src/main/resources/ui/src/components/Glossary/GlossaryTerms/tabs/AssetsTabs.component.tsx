@@ -12,7 +12,7 @@
  *  limitations under the License.
  */
 
-import Icon, { PlusOutlined } from '@ant-design/icons';
+import { PlusOutlined } from '@ant-design/icons';
 import {
   Button,
   Checkbox,
@@ -42,8 +42,8 @@ import React, {
 } from 'react';
 import { ReactComponent as AddPlaceHolderIcon } from '../../../../assets/svg/add-placeholder.svg';
 import { ReactComponent as DeleteIcon } from '../../../../assets/svg/ic-delete.svg';
-import { ReactComponent as FilterIcon } from '../../../../assets/svg/ic-feeds-filter.svg';
 import { ReactComponent as IconDropdown } from '../../../../assets/svg/menu.svg';
+import { ReactComponent as TaskFilterIcon } from '../../../../assets/svg/task-filter-button.svg';
 import { ASSET_MENU_KEYS } from '../../../../constants/Assets.constants';
 import { ES_UPDATE_DELAY } from '../../../../constants/constants';
 import { GLOSSARIES_DOCS } from '../../../../constants/docs.constants';
@@ -799,11 +799,7 @@ const AssetsTabs = forwardRef(
                       selectedKeys: selectedFilter,
                     }}
                     trigger={['click']}>
-                    <Button
-                      className="text-secondary-new border-secondary-new font-medium"
-                      icon={<Icon component={FilterIcon} height={16} />}>
-                      {t('label.filter')}
-                    </Button>
+                    <TaskFilterIcon className="cursor-pointer" />
                   </Dropdown>
                   <div className="flex-1">
                     <Searchbar
