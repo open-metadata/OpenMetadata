@@ -468,6 +468,7 @@
     "entity-reference-types": "انواع مرجع نهاد",
     "entity-service": "سرویس {{entity}}",
     "entity-type-plural": "انواع {{entity}}",
+    "entity-version": "{{entity}} version",
     "entity-version-detail-plural": "جزئیات نسخه {{entity}}",
     "enum-value-plural": "مقادیر Enum",
     "equation": "معادله",

@@ -468,6 +468,7 @@
     "entity-reference-types": "ประเภทการอ้างอิงเอนทิตี",
     "entity-service": "บริการ {{entity}}",
     "entity-type-plural": "ประเภทของ {{entity}}",
+    "entity-version": "{{entity}} version",
     "entity-version-detail-plural": "รายละเอียดเวอร์ชัน {{entity}}",
     "enum-value-plural": "ค่าที่เป็น enum",
     "equation": "สมการ",

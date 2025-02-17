@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { AxiosError } from 'axios';
+import { t } from 'i18next';
 import { toString } from 'lodash';
 import React, { useEffect, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
@@ -103,7 +104,8 @@ const GlossaryVersion = ({ isGlossary = false }: GlossaryVersionProps) => {
   }, [id, version]);
 
   return (
-    <PageLayoutV1 pageTitle="Glossary version">
+    <PageLayoutV1
+      pageTitle={t('label.entity-version', { entity: t('label.glossary') })}>
       <div className="version-data">
         {/* TODO: Need to implement version component for Glossary */}
         {isVersionLoading ? (
