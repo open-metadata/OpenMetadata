@@ -468,6 +468,7 @@
     "entity-reference-types": "Entity Reference Types",
     "entity-service": "שירות {{entity}}",
     "entity-type-plural": "סוגי {{entity}}",
+    "entity-version": "{{entity}} version",
     "entity-version-detail-plural": "גרסאות פרטי {{entity}}",
     "enum-value-plural": "Enum Values",
     "equation": "Equation",
