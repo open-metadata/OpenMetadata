@@ -133,7 +133,14 @@ jest.mock('../../hoc/LimitWrapper', () => {
   return jest.fn().mockImplementation(({ children }) => <p>{children}</p>);
 });
 
-jest.useFakeTimers();
+jest.mock(
+  '../../components/Database/StoredProcedureGenericTab/StoredProcedureGenericTab',
+  () => ({
+    StoredProcedureGenericTab: jest
+      .fn()
+      .mockImplementation(() => <p>testStoredProcedureGenericTab</p>),
+  })
+);
 
 describe('StoredProcedure component', () => {
   it('StoredProcedurePage should fetch permissions', () => {
@@ -244,6 +251,8 @@ describe('StoredProcedure component', () => {
       include: 'all',
     });
 
-    expect(await screen.findByText('testSchemaEditor')).toBeInTheDocument();
+    expect(
+      await screen.findByText('testStoredProcedureGenericTab')
+    ).toBeInTheDocument();
   });
 });

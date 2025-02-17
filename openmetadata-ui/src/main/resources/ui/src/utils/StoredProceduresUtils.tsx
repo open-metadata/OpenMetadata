@@ -15,7 +15,7 @@ import React from 'react';
 import { ActivityFeedTab } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import { CustomPropertyTable } from '../components/common/CustomPropertyTable/CustomPropertyTable';
 import TabsLabel from '../components/common/TabsLabel/TabsLabel.component';
-import { TableGenericTab } from '../components/Database/TableGenericTab/TableGenericTab';
+import { StoredProcedureGenericTab } from '../components/Database/StoredProcedureGenericTab/StoredProcedureGenericTab';
 import Lineage from '../components/Lineage/Lineage.component';
 import { SourceType } from '../components/SearchedData/SearchedData.interface';
 import LineageProvider from '../context/LineageProvider/LineageProvider';
@@ -116,7 +116,7 @@ export const getStoredProcedureDetailsPageTabs = ({
         />
       ),
       key: EntityTabs.CODE,
-      children: <TableGenericTab />,
+      children: <StoredProcedureGenericTab />,
     },
     {
       label: (
