@@ -65,6 +65,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.TypeRegistry;
 import org.openmetadata.service.apps.ApplicationHandler;
 import org.openmetadata.service.apps.scheduler.AppScheduler;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
@@ -79,6 +80,7 @@ import org.openmetadata.service.jdbi3.IngestionPipelineRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.MigrationDAO;
 import org.openmetadata.service.jdbi3.SystemRepository;
+import org.openmetadata.service.jdbi3.TypeRepository;
 import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.migration.api.MigrationWorkflow;
@@ -641,6 +643,8 @@ public class OpenMetadataOperations implements Callable<Integer> {
       ApplicationHandler.initialize(config);
       CollectionRegistry.getInstance().loadSeedData(jdbi, config, null, null, null, true);
       ApplicationHandler.initialize(config);
+      TypeRepository typeRepository = (TypeRepository) Entity.getEntityRepository(Entity.TYPE);
+      TypeRegistry.instance().initialize(typeRepository);
       AppScheduler.initialize(config, collectionDAO, searchRepository);
       String appName = "SearchIndexingApplication";
       Set<String> entities =
