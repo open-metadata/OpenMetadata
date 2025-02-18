@@ -37,7 +37,7 @@ class MysqlIngestionClass extends ServiceBaseClass {
   name = '';
   tableFilter: string[];
   profilerTable = 'alert_entity';
-  excludeSchemaFilter: string[];
+  includeSchemaFilter: string[];
   constructor(tableFilter?: string[]) {
     const serviceName = `pw-mysql-with-%-${uuid()}`;
     super(Services.Database, serviceName, 'Mysql', 'bot_entity');
@@ -47,7 +47,9 @@ class MysqlIngestionClass extends ServiceBaseClass {
       'alert_entity',
       'chart_entity',
     ];
-    this.excludeSchemaFilter = ['information_schema'];
+    this.includeSchemaFilter = [
+      env.PLAYWRIGHT_MYSQL_DATABASE_SCHEMA ?? 'cypress_integrations_test_db',
+    ];
   }
 
   async createService(page: Page) {
@@ -79,10 +81,10 @@ class MysqlIngestionClass extends ServiceBaseClass {
         .press('Enter');
     }
 
-    for (const filter of this.excludeSchemaFilter) {
-      await page.fill('#root\\/schemaFilterPattern\\/excludes', filter);
+    for (const filter of this.includeSchemaFilter) {
+      await page.fill('#root\\/schemaFilterPattern\\/includes', filter);
       await page
-        .locator('#root\\/schemaFilterPattern\\/excludes')
+        .locator('#root\\/schemaFilterPattern\\/includes')
         .press('Enter');
     }
   }
@@ -182,7 +184,7 @@ class MysqlIngestionClass extends ServiceBaseClass {
     await page.waitForSelector('.ant-select-selection-item-content');
 
     await expect(page.locator('.ant-select-selection-item-content')).toHaveText(
-      [...this.excludeSchemaFilter, ...this.tableFilter]
+      [...this.includeSchemaFilter, ...this.tableFilter]
     );
   }
 }
