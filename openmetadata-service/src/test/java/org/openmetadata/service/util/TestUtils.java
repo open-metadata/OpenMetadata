@@ -278,6 +278,13 @@ public final class TestUtils {
     assertEquals(expectedReason, exception.getReasonPhrase());
   }
 
+  public static void assertResponse(
+      Executable executable, Response.Status expectedStatus, List<String> expectedReasons) {
+    HttpResponseException exception = assertThrows(HttpResponseException.class, executable);
+    assertEquals(expectedStatus.getStatusCode(), exception.getStatusCode());
+    assertTrue(expectedReasons.contains(exception.getReasonPhrase()));
+  }
+
   public static void assertResponseContains(
       Executable executable, Response.Status expectedStatus, String expectedReason) {
     HttpResponseException exception = assertThrows(HttpResponseException.class, executable);

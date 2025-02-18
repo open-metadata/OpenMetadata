@@ -31,8 +31,6 @@ import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.csv.EntityCsvTest.assertSummary;
-import static org.openmetadata.schema.type.MetadataOperation.EDIT_ALL;
-import static org.openmetadata.schema.type.MetadataOperation.EDIT_TESTS;
 import static org.openmetadata.schema.type.TaskType.RequestDescription;
 import static org.openmetadata.service.Entity.*;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.ENTITY_ALREADY_EXISTS;
@@ -1373,7 +1371,9 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     assertResponse(
         () -> createEntity(createRequest(test), TEST_AUTH_HEADERS),
         FORBIDDEN,
-        permissionNotAllowed(TEST_USER_NAME, List.of(MetadataOperation.CREATE)));
+        List.of(
+            permissionNotAllowed(TEST_USER_NAME, List.of(MetadataOperation.CREATE)),
+            "User does not have ANY of the required permissions."));
   }
 
   @Test
@@ -1674,12 +1674,13 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     // Update description and remove owner as non-owner
     // Expect to throw an exception since only owner or admin can update resource
     K updateRequest = createRequest(entity.getName(), "newDescription", "displayName", null);
-    MetadataOperation operation = entityType.equals(Entity.TEST_CASE) ? EDIT_TESTS : EDIT_ALL;
 
     assertResponse(
         () -> updateEntity(updateRequest, OK, TEST_AUTH_HEADERS),
         FORBIDDEN,
-        permissionNotAllowed(TEST_USER_NAME, List.of(operation)));
+        List.of(
+            permissionNotAllowed(TEST_USER_NAME, List.of(MetadataOperation.EDIT_ALL)),
+            "User does not have ANY of the required permissions."));
   }
 
   @Test
@@ -2801,8 +2802,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     return getFollowersCollection(id).path("/" + userId);
   }
 
-  protected final T getEntity(UUID id, Map<String, String> authHeaders)
-      throws HttpResponseException {
+  public final T getEntity(UUID id, Map<String, String> authHeaders) throws HttpResponseException {
     WebTarget target = getResource(id);
     target = target.queryParam("fields", allFields);
     return TestUtils.get(target, entityClass, authHeaders);
@@ -3217,7 +3217,9 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       assertResponse(
           () -> patchEntity(entity.getId(), originalJson, entity, authHeaders),
           FORBIDDEN,
-          permissionNotAllowed(userName, List.of(disallowedOperation)));
+          List.of(
+              "User does not have ANY of the required permissions.",
+              permissionNotAllowed(userName, List.of(disallowedOperation))));
       return entity;
     }
 
