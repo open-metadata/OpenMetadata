@@ -16,15 +16,7 @@ import { graphlib, layout } from '@dagrejs/dagre';
 import { AxiosError } from 'axios';
 import ELK, { ElkExtendedEdge, ElkNode } from 'elkjs/lib/elk.bundled.js';
 import { t } from 'i18next';
-import {
-  cloneDeep,
-  isEmpty,
-  isEqual,
-  isNil,
-  isUndefined,
-  uniqueId,
-  uniqWith,
-} from 'lodash';
+import { isEmpty, isNil, isUndefined, uniqueId } from 'lodash';
 import { EntityTags, LoadingState } from 'Models';
 import React, { MouseEvent as ReactMouseEvent } from 'react';
 import {
@@ -1258,10 +1250,6 @@ export const getLineageChildParents = (
   }, []);
 };
 
-export const removeDuplicates = (arr: EdgeDetails[] = []) => {
-  return uniqWith(arr, isEqual);
-};
-
 export const getExportEntity = (entity: LineageSourceType) => {
   const {
     name,
@@ -1310,49 +1298,6 @@ export const getExportData = (
   );
 
   return jsonToCSV(exportResultData, LINEAGE_EXPORT_HEADERS);
-};
-
-export const getChildMap = (obj: EntityLineageResponse, decodedFqn: string) => {
-  const nodeSet = new Set<string>();
-  nodeSet.add(obj.entity.id);
-  const parsedNodes: LineageSourceType[] = [];
-
-  const data = getUpstreamDownstreamNodesEdges(
-    obj.edges ?? [],
-    obj.nodes ?? [],
-    decodedFqn
-  );
-
-  const newData = cloneDeep(obj);
-  newData.downstreamEdges = removeDuplicates(data.downstreamEdges);
-  newData.upstreamEdges = removeDuplicates(data.upstreamEdges);
-
-  const childMap: EntityReferenceChild[] = getLineageChildParents(
-    newData,
-    nodeSet,
-    parsedNodes,
-    obj.entity.id,
-    false
-  );
-
-  const parentsMap: EntityReferenceChild[] = getLineageChildParents(
-    newData,
-    nodeSet,
-    parsedNodes,
-    obj.entity.id,
-    true
-  );
-
-  const map: EntityReferenceChild = {
-    ...obj.entity,
-    children: childMap,
-    parents: parentsMap,
-  };
-
-  return {
-    map,
-    exportResult: getExportData(parsedNodes) ?? '',
-  };
 };
 
 export const flattenObj = (
@@ -1418,29 +1363,6 @@ export const flattenObj = (
     };
     edges.push(newEdge);
   }
-};
-
-export const getPaginatedChildMap = (
-  obj: EntityLineageResponse,
-  map: EntityReferenceChild | undefined,
-  pagination_data: Record<string, NodeIndexMap>,
-  maxLineageLength: number
-) => {
-  const nodes = [];
-  const edges: EdgeDetails[] = [];
-  nodes.push(obj.entity);
-  if (map) {
-    flattenObj(obj, map, obj.entity.id, nodes, edges, pagination_data, {
-      downwards: true,
-      maxLineageLength,
-    });
-    flattenObj(obj, map, obj.entity.id, nodes, edges, pagination_data, {
-      downwards: false,
-      maxLineageLength,
-    });
-  }
-
-  return { nodes, edges };
 };
 
 export const getColumnFunctionValue = (

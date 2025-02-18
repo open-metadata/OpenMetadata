@@ -17,18 +17,12 @@ import { EdgeDetails } from '../components/Lineage/Lineage.interface';
 import { SourceType } from '../components/SearchedData/SearchedData.interface';
 import { EntityType } from '../enums/entity.enum';
 import { AddLineage, ColumnLineage } from '../generated/api/lineage/addLineage';
-import {
-  MOCK_CHILD_MAP,
-  MOCK_LINEAGE_DATA_NEW,
-  MOCK_NODES_AND_EDGES,
-  MOCK_PAGINATED_CHILD_MAP,
-} from '../mocks/Lineage.mock';
+import { MOCK_NODES_AND_EDGES } from '../mocks/Lineage.mock';
 import { addLineage } from '../rest/miscAPI';
 import {
   addLineageHandler,
   createNewEdge,
   getAllTracedEdges,
-  getChildMap,
   getColumnFunctionValue,
   getColumnLineageData,
   getColumnSourceTargetHandles,
@@ -37,7 +31,6 @@ import {
   getLineageDetailsObject,
   getLineageEdge,
   getLineageEdgeForAPI,
-  getPaginatedChildMap,
   getUpdatedColumnsFromEdge,
   getUpstreamDownstreamNodesEdges,
 } from './EntityLineageUtils';
@@ -353,25 +346,6 @@ describe('Test EntityLineageUtils utility', () => {
         toColumn: 'shopId',
       },
     ]);
-  });
-
-  it('getChildMap should return valid map object', () => {
-    const { map, exportResult } = getChildMap(
-      MOCK_LINEAGE_DATA_NEW,
-      's3_storage_sample.departments.media.movies'
-    );
-
-    expect(map).toEqual(MOCK_CHILD_MAP);
-    expect(exportResult).toEqual(
-      `Name,Display Name,Fully Qualified Name,Entity Type,Direction,Owner,Domain,Tags,Tier,Glossary Terms,Level
-"engineering","Engineering department","s3_storage_sample.departments.engineering","container","downstream","","","","","","1"`
-    );
-  });
-
-  it('getPaginatedChildMap should return valid map object', () => {
-    expect(
-      getPaginatedChildMap(MOCK_LINEAGE_DATA_NEW, MOCK_CHILD_MAP, {}, 50)
-    ).toEqual(MOCK_PAGINATED_CHILD_MAP);
   });
 
   // generate test for getColumnSourceTargetHandles
