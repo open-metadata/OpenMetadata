@@ -75,7 +75,7 @@ export const fillOwnerDetails = async (page: Page, owners: string[]) => {
     await page.locator('[data-testid="owner-select-users-search-bar"]').clear();
     await page.keyboard.type(owner);
     await page.waitForResponse(
-      `/api/v1/search/query?q=*${owner}*%20AND%20isBot:false&from=0&size=25&index=user_search_index`
+      `/api/v1/search/query?q=*${owner}*%20AND%20isBot:false*index=user_search_index*`
     );
 
     await page.getByRole('listitem', { name: owner }).click();
