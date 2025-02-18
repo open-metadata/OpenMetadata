@@ -106,7 +106,9 @@ test('Query Entity', async ({ page }) => {
   });
 
   await test.step('Update owner, description and tag', async () => {
-    const ownerListResponse = page.waitForResponse('/api/v1/users?*');
+    const ownerListResponse = page.waitForResponse(
+      '/api/v1/search/query?q=*isBot:false*index=user_search_index*'
+    );
     await page
       .getByTestId(
         'entity-summary-resizable-right-panel-container entity-resizable-panel-container'
