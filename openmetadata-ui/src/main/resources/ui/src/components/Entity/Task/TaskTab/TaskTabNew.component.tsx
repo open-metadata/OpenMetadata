@@ -82,6 +82,7 @@ import {
 } from '../../../../interface/FormUtils.interface';
 import Assignees from '../../../../pages/TasksPage/shared/Assignees';
 import DescriptionTask from '../../../../pages/TasksPage/shared/DescriptionTask';
+import DescriptionTaskNew from '../../../../pages/TasksPage/shared/DescriptionTaskNew';
 import TagsTask from '../../../../pages/TasksPage/shared/TagsTask';
 import {
   Option,
@@ -108,18 +109,16 @@ import {
   TASK_ACTION_LIST,
 } from '../../../../utils/TasksUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
+import CommentCard from '../../../ActivityFeed/ActivityFeedCardNew/CommentCard.component';
 import { EditorContentRef } from '../../../ActivityFeed/ActivityFeedEditor/ActivityFeedEditor';
+import ActivityFeedEditorNew from '../../../ActivityFeed/ActivityFeedEditor/ActivityFeedEditorNew';
 import { useActivityFeedProvider } from '../../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import InlineEdit from '../../../common/InlineEdit/InlineEdit.component';
-import EntityPopOverCard from '../../../common/PopOverCard/EntityPopOverCard';
-import './task-tab-new.less';
-// import '../../../ActivityFeed/ActivityFeedTab/activity-feed-tab-new.less';
-import DescriptionTaskNew from '../../../../pages/TasksPage/shared/DescriptionTaskNew';
-import CommentCard from '../../../ActivityFeed/ActivityFeedCardNew/CommentCard.component';
-import ActivityFeedEditorNew from '../../../ActivityFeed/ActivityFeedEditor/ActivityFeedEditorNew';
 import { OwnerLabelNew } from '../../../common/OwnerLabel/OwnerLabelNew.component';
+import EntityPopOverCard from '../../../common/PopOverCard/EntityPopOverCard';
 import ProfilePicture from '../../../common/ProfilePicture/ProfilePicture';
 import TaskTabIncidentManagerHeaderNew from '../TaskTabIncidentManagerHeader/TasktabIncidentManagerHeaderNew';
+import './task-tab-new.less';
 import { TaskTabProps } from './TaskTab.interface';
 
 export const TaskTabNew = ({
@@ -288,7 +287,7 @@ export const TaskTabNew = ({
   const getFormattedMenuOptions = (options: TaskAction[]) => {
     return options.map((item) => ({
       ...item,
-      icon: <Icon component={item.icon} style={{ fontSize: '16px' }} />,
+      icon: <Icon component={item.icon} height={16} />,
     }));
   };
 
@@ -305,50 +304,23 @@ export const TaskTabNew = ({
           <Button
             className="p-0 task-feed-message font-medium text-md"
             data-testid="task-title"
-            style={{ marginTop: '-8px', width: '90%' }}
             type="link"
             onClick={handleTaskLinkClick}>
-            <Typography.Text
-              className="p-0"
-              style={{
-                fontSize: '14px',
-                fontWeight: 600,
-                color: '#0950C5',
-                lineHeight: '20px',
-              }}>{`#${taskDetails.id} `}</Typography.Text>
+            <Typography.Text className="p-0 task-id text-sm">{`#${taskDetails.id} `}</Typography.Text>
 
-            <Typography.Text
-              className="p-xss"
-              style={{
-                fontSize: '14px',
-                color: '#535862',
-                lineHeight: '20px',
-              }}>
+            <Typography.Text className="p-xss task-details">
               {TASK_TYPES[taskDetails.type]}
             </Typography.Text>
 
             {taskColumnName}
 
             <Typography.Text
-              className="break-all"
-              data-testid="entity-link"
-              style={{
-                fontSize: '14px',
-                fontWeight: 600,
-                lineHeight: '20px',
-                color: '#0950C5',
-              }}>
+              className="break-all text-sm entity-link"
+              data-testid="entity-link">
               {getNameFromFQN(entityFQN)}
             </Typography.Text>
 
-            <Typography.Text
-              className="p-l-xss"
-              style={{
-                fontSize: '14px',
-                fontWeight: 600,
-                lineHeight: '20px',
-                color: '#0950C5',
-              }}>{`(${entityType})`}</Typography.Text>
+            <Typography.Text className="p-l-xss entity-type">{`(${entityType})`}</Typography.Text>
           </Button>
         </EntityPopOverCard>
       ) : null,
@@ -675,8 +647,6 @@ export const TaskTabNew = ({
             {taskAction.label}
           </Dropdown.Button>
         </Tooltip>
-
-        {/* {renderCommentButton} */}
       </Space>
     );
   }, [
@@ -715,7 +685,6 @@ export const TaskTabNew = ({
           onClick={onTestCaseTaskDropdownClick}>
           {taskAction.label}
         </Dropdown.Button>
-        {/* {renderCommentButton} */}
       </div>
     );
   }, [
@@ -786,7 +755,6 @@ export const TaskTabNew = ({
             )}
           </>
         )}
-        {/* {renderCommentButton} */}
       </Space>
     );
   }, [
@@ -1008,9 +976,9 @@ export const TaskTabNew = ({
 
   return (
     <Row
+      className="relative task-details-panel"
       data-testid="task-tab"
-      gutter={[0, 20]}
-      style={{ padding: '20px', position: 'relative' }}>
+      gutter={[0, 20]}>
       <Col className="d-flex items-start task-feed-message-container" span={24}>
         <Icon
           className="m-r-xs"
@@ -1061,7 +1029,7 @@ export const TaskTabNew = ({
               />
             ) : (
               <div className="d-flex gap-2">
-                <div style={{ width: '40px', height: '40px' }}>
+                <div className="profile-picture">
                   <ProfilePicture
                     avatarType="outlined"
                     key={taskThread.id}

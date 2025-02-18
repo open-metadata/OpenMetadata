@@ -162,3 +162,88 @@
   background-color: #b1271c;
   border-color: #b1271c;
 }
+.profile-picture {
+  width: 32px;
+  height: 32px;
+}
+.task-feed-message {
+  margin-top: -8px;
+  width: 90%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.task-details-panel {
+  padding: @padding-lg;
+}
+.task-id,
+.entity-type {
+  font-size: 14px;
+  font-weight: 600;
+  color: #0950c5;
+  line-height: 20px;
+}
+.entity-link {
+  font-weight: 600;
+  line-height: 20px;
+  color: #0950c5;
+}
+.task-details {
+  font-size: 14px;
+  color: #535862;
+  line-height: 20px;
+}
+.action-required-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-radius: 12px;
+  border: 0.8px solid #dfdfdf;
+  padding: 16px;
+  background: linear-gradient(
+    90deg,
+    rgba(85, 155, 238, 0.25) 0%,
+    rgba(96, 167, 251, 0.25) 19%,
+    rgba(245, 245, 245, 0.25) 100%
+  );
+  box-shadow: none;
+
+  .action-required-text {
+    font-size: 16px;
+    font-weight: 400;
+    color: #333;
+    line-height: 24px;
+  }
+
+  .action-buttons {
+    display: flex;
+    gap: 8px;
+    margin-left: 200px;
+  }
+
+  .approve-button {
+    background-color: #2f74eb;
+    border-color: #2f74eb;
+    border-radius: 8px;
+    font-weight: 500;
+  }
+
+  .approve-button:hover {
+    background-color: #1f67e9;
+    border-color: #1f67e9;
+  }
+
+  .reject-button {
+    background-color: #d93025;
+    border-color: #d93025;
+    color: white;
+    border-radius: 8px;
+    font-weight: 500;
+  }
+
+  .reject-button:hover {
+    background-color: #b1271c;
+    border-color: #b1271c;
+  }
+}

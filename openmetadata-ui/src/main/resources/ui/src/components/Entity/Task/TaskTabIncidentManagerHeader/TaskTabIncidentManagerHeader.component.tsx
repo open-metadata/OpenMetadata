@@ -10,23 +10,18 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Col, Row, Space, Steps, Tag, Typography } from 'antd';
-import { last, toLower } from 'lodash';
+import { Col, Row, Space, Steps, Typography } from 'antd';
+import { isEmpty, isUndefined, last, toLower } from 'lodash';
 import React, { ReactNode, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as Clock } from '../../../../assets/svg/clock.svg';
-import { ReactComponent as Status } from '../../../../assets/svg/status.svg';
-import { ReactComponent as User } from '../../../../assets/svg/user.svg';
-import {
-  ICON_DIMENSION_USER_PAGE,
-  NO_DATA_PLACEHOLDER,
-} from '../../../../constants/constants';
+import { NO_DATA_PLACEHOLDER } from '../../../../constants/constants';
 import { TEST_CASE_STATUS } from '../../../../constants/TestSuite.constant';
 import { Thread } from '../../../../generated/entity/feed/thread';
 import { TestCaseResolutionStatusTypes } from '../../../../generated/tests/testCaseResolutionStatus';
 import { formatDateTime } from '../../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import { useActivityFeedProvider } from '../../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
+import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
 import RichTextEditorPreviewerV1 from '../../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import Severity from '../../../DataQuality/IncidentManager/Severity/Severity.component';
 import './task-tab-incident-manager-header.style.less';
@@ -130,38 +125,29 @@ const TaskTabIncidentManagerHeader = ({ thread }: { thread: Thread }) => {
           />
         </div>
       </Col>
-
-      <Row className="m-l-0" gutter={[16, 16]}>
-        {/* Created Time */}
-        <Col className="flex items-center gap-2 text-grey-muted" span={12}>
-          <Clock {...ICON_DIMENSION_USER_PAGE} />
-          <Typography.Text>{t('label.created-date')}</Typography.Text>
-        </Col>
-        <Col span={12}>
-          <Typography.Text>{/* Dec 4, 2024 10:45 AM */}</Typography.Text>
-        </Col>
-
-        {/* Created By */}
-        <Col className="flex items-center gap-2 text-grey-muted" span={12}>
-          <User {...ICON_DIMENSION_USER_PAGE} />
-          <Typography.Text>{t('label.created-by')}</Typography.Text>
-        </Col>
-        <Col className="flex items-center gap-2" span={12}>
-          {/* <Avatar src={thread.createdByAvatar} size="small" /> */}
-
-          <Typography.Text>{thread.createdBy}</Typography.Text>
-        </Col>
-
-        {/* Status */}
-        <Col className="flex items-center gap-2 text-grey-muted" span={12}>
-          <Status {...ICON_DIMENSION_USER_PAGE} />
-          <Typography.Text>{t('label.status')}</Typography.Text>
-        </Col>
-        <Col span={12}>
-          <Tag color="purple">{/* In Review */}</Tag>
-        </Col>
-      </Row>
-
+      <Col span={24}>
+        <Space className="justify-between w-full">
+          <div className="gap-2 flex-center">
+            <Typography.Text className="text-grey-muted">
+              {`${t('label.assignee')}: `}
+            </Typography.Text>
+            {isUndefined(thread.task?.assignees) ||
+            isEmpty(thread.task?.assignees) ? (
+              NO_DATA_PLACEHOLDER
+            ) : (
+              <OwnerLabel owners={thread.task?.assignees} />
+            )}
+          </div>
+          <div className="gap-2 flex-center">
+            <Typography.Text className="text-grey-muted">
+              {`${t('label.created-by')}: `}
+            </Typography.Text>
+            <OwnerLabel
+              owners={[{ name: thread.createdBy, type: 'user', id: '' }]}
+            />
+          </div>
+        </Space>
+      </Col>
       <Col span={24}>
         <Space className="justify-between w-full">
           <div className="gap-2 flex-center">

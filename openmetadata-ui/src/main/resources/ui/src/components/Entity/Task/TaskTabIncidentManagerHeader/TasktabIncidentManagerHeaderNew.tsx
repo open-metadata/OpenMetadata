@@ -119,19 +119,6 @@ const TaskTabIncidentManagerHeaderNew = ({ thread }: { thread: Thread }) => {
 
   return (
     <Row data-testid="incident-manager-task-header-container" gutter={[8, 16]}>
-      {/* <Col span={24}>
-        <div className="task-resolution-steps-container">
-          <Steps
-            className="task-resolution-steps w-full"
-            current={testCaseResolutionStatus.length}
-            data-testid="task-resolution-steps"
-            items={testCaseResolutionStepper}
-            labelPlacement="vertical"
-            size="small"
-          />
-        </div>
-      </Col> */}
-
       <Row className="m-l-0" gutter={[16, 16]}>
         <Col className="flex items-center gap-2 text-grey-muted" span={12}>
           <UserIcon height={16} />
@@ -146,7 +133,7 @@ const TaskTabIncidentManagerHeaderNew = ({ thread }: { thread: Thread }) => {
             name="admin"
             size={24}
           />{' '}
-          <Typography.Text style={{ fontSize: '14px', color: '#292929' }}>
+          <Typography.Text className="text-sm incident-manager-header">
             {thread.createdBy}
           </Typography.Text>
         </Col>
@@ -181,7 +168,7 @@ const TaskTabIncidentManagerHeaderNew = ({ thread }: { thread: Thread }) => {
         )}
         {isResolved && (
           <Col className="flex items-center gap-2" span={12}>
-            <Typography.Text style={{ fontSize: '14px', color: '#292929' }}>
+            <Typography.Text className="text-sm incident-manager-text">
               {latestTestCaseResolutionStatus?.testCaseResolutionStatusDetails
                 ?.testCaseFailureReason ?? NO_DATA_PLACEHOLDER}
             </Typography.Text>
@@ -207,9 +194,7 @@ const TaskTabIncidentManagerHeaderNew = ({ thread }: { thread: Thread }) => {
           </Col>
         )}
         <Col span={24}>
-          <div
-            className="task-resolution-steps-container"
-            style={{ marginBottom: '-20px' }}>
+          <div className="task-resolution-steps-container-new">
             <Steps
               className="task-resolution-steps w-full"
               current={testCaseResolutionStatus.length}
