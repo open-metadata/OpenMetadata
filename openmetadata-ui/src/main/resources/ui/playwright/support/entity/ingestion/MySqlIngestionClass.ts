@@ -47,9 +47,7 @@ class MysqlIngestionClass extends ServiceBaseClass {
       'alert_entity',
       'chart_entity',
     ];
-    this.includeSchemaFilter = [
-      env.PLAYWRIGHT_MYSQL_DATABASE_SCHEMA ?? 'cypress_integrations_test_db',
-    ];
+    this.includeSchemaFilter = ['openmetadata'];
   }
 
   async createService(page: Page) {
