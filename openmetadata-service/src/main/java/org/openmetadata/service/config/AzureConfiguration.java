@@ -30,6 +30,9 @@ public class AzureConfiguration {
   @JsonProperty("clientSecret")
   private String clientSecret;
 
+  @JsonProperty("cdnUrl")
+  private String cdnUrl;
+
   @AssertTrue(
       message =
           "Either useManagedIdentity must be true, or a connectionString must be provided, "

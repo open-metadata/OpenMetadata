@@ -14,7 +14,7 @@ public class ObjectStorageConfiguration {
   private boolean enabled = false;
 
   /**
-   * Provider can be "s3", "azure", or "dummy" (for local testing).
+   * Provider can be "s3", "azure", or "noop" (for local testing).
    */
   @JsonProperty("provider")
   @NotNull
