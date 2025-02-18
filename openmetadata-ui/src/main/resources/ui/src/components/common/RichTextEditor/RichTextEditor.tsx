@@ -56,10 +56,7 @@ const RichTextEditor = forwardRef<EditorContentRef, RichTextEditorProp>(
     }));
 
     return (
-      <div
-        className={classNames(className)}
-        style={{ ...style, height: '127px' }}
-        data-testid="editor">
+      <div className={classNames(className)} style={style} data-testid="editor">
         <BlockEditor
           placeholder={placeholder}
           ref={editorRef}

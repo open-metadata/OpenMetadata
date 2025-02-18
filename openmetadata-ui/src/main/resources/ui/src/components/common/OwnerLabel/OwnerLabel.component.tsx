@@ -94,17 +94,19 @@ export const OwnerLabel = ({
                       key="profile-picture"
                       name={owner.name ?? ''}
                       type="circle"
-                      width="24"
+                      width="18"
                     />
                   </div>
                 );
 
               const ownerLink = (
                 <Link
-                  className={classNames('no-underline', className)}
+                  className={classNames(
+                    'no-underline font-medium text-xs text-primary',
+                    className
+                  )}
                   data-testid="owner-link"
                   key={owner.id}
-                  style={{ fontSize: '14px', color: '#292929' }}
                   to={
                     owner.type === OwnerType.TEAM
                       ? getTeamAndUserDetailsPath(

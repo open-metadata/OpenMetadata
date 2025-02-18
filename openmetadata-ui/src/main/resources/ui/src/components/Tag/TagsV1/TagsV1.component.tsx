@@ -151,11 +151,8 @@ const TagsV1 = ({
         data-testid="tags"
         style={
           color
-            ? {
-                backgroundColor: reduceColorOpacity(color, 0.05),
-                borderLeft: '3px solid #81C562',
-              }
-            : { borderLeft: '3px solid #81C562' }
+            ? { backgroundColor: reduceColorOpacity(color, 0.05) }
+            : undefined
         }
         {...tagProps}>
         {/* Wrap only content to avoid redirect on closeable icons  */}

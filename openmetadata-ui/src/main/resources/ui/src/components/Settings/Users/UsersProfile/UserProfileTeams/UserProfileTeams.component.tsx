@@ -44,7 +44,8 @@ const UserProfileTeams = ({
   const [isTeamsEdit, setIsTeamsEdit] = useState(false);
   const [selectedTeams, setSelectedTeams] = useState<EntityReference[]>([]);
   const [isDropdownOpen, setIsDropdownOpen] = useState<boolean>(false);
-  const [isSelectOpen, setIsSelectOpen] = useState<boolean>(false);
+  const [popoverHeight, setPopoverHeight] = useState<number>(156);
+  const teamsSelectableRef = useRef<HTMLDivElement | null>(null);
 
   const handleTeamsSave = async () => {
     setIsLoading(true);
@@ -84,12 +85,8 @@ const UserProfileTeams = ({
   }, [setUserTeams]);
 
   const handleDropdownChange = (visible: boolean) => {
-    setIsSelectOpen(visible);
     setIsDropdownOpen(visible);
   };
-  const [popoverHeight, setPopoverHeight] = useState<number>(156);
-  const dropdownRef = useRef<HTMLDivElement | null>(null);
-  const teamsSelectableRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     const observer = new MutationObserver(() => {
@@ -147,8 +144,6 @@ const UserProfileTeams = ({
                   className="border p-2 bg-gray-100 rounded-md"
                   style={{
                     borderRadius: '5px',
-                    // overflowY: 'auto',
-                    // height: isSelectOpen ? '300px' : 'auto',
                   }}>
                   <TeamsSelectableNew
                     filterJoinable

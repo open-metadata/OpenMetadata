@@ -50,7 +50,6 @@ export const PersonaSelectableList = ({
   onUpdate,
   children,
   popoverProps,
-  multiSelect = false,
   personaList,
   isDefaultPersona,
 }: PersonaSelectableListProps) => {
@@ -59,7 +58,6 @@ export const PersonaSelectableList = ({
   const [allPersona, setAllPersona] = useState<EntityReference[]>(
     personaList ?? []
   );
-  const [isSelectOpen, setIsSelectOpen] = useState<boolean>(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState<boolean>(false);
   const [currentlySelectedPersonas, setCurrentlySelectedPersonas] =
@@ -152,16 +150,13 @@ export const PersonaSelectableList = ({
       )
     ).finally(() => {
       setIsSaving(false);
-      setPopupVisible(false); // Close popover after saving
+      setPopupVisible(false);
     });
   };
 
   if (!hasPermission) {
     return null;
   }
-  const handleDropdownChange = (visible: boolean) => {
-    setIsSelectOpen(visible);
-  };
   const handleCloseEditTeam = () => {
     setPopupVisible(false);
   };
@@ -256,7 +251,7 @@ export const PersonaSelectableList = ({
                 bottom: '0px',
               }}
               type="primary"
-              onClick={handlePersonaUpdate as any}
+              onClick={handlePersonaUpdate}
             />
           </div>
         </div>

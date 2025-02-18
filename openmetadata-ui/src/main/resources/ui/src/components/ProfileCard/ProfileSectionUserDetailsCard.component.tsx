@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Popover, Typography } from 'antd';
-import React, { useCallback, useMemo, useState } from 'react';
+import { Popover, Typography } from 'antd';
+import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as ChangePassword } from '../../assets/svg/change-pw.svg';
 import { ReactComponent as MenuDots } from '../../assets/svg/dot (1).svg';
@@ -22,7 +22,6 @@ import { isMaskedEmail } from '../../utils/Users.util';
 import ProfilePicture from '../common/ProfilePicture/ProfilePicture';
 
 import { AxiosError } from 'axios';
-import { isEmpty } from 'lodash';
 import { ICON_DIMENSION_USER_PAGE } from '../../constants/constants';
 import { EntityType } from '../../enums/entity.enum';
 import {
@@ -59,8 +58,6 @@ const ProfileSectionUserDetailsCard = ({
   const { authConfig, currentUser } = useApplicationStore();
   const [isLoading, setIsLoading] = useState(false);
   const [isChangePassword, setIsChangePassword] = useState<boolean>(false);
-  const [displayName, setDisplayName] = useState(userData.displayName);
-  const [isDisplayNameEdit, setIsDisplayNameEdit] = useState(false);
   const [isDelete, setIsDelete] = useState<boolean>(false);
   const [editProfile, setEditProfile] = useState<boolean>(false);
   const [isPopoverVisible, setisPopoverVisible] = useState<boolean>(false);
@@ -86,55 +83,6 @@ const ProfileSectionUserDetailsCard = ({
     [isAuthProviderBasic, hasEditPermission]
   );
 
-  const defaultPersona = useMemo(
-    () =>
-      userData.personas?.find(
-        (persona) => persona.id === userData.defaultPersona?.id
-      ),
-    [userData]
-  );
-
-  const onDisplayNameChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => setDisplayName(e.target.value),
-    []
-  );
-
-  const handleDisplayNameSave = useCallback(async () => {
-    if (displayName !== userData.displayName) {
-      setIsLoading(true);
-      await updateUserDetails(
-        { displayName: isEmpty(displayName) ? undefined : displayName },
-        'displayName'
-      );
-      setIsLoading(false);
-    }
-    setIsDisplayNameEdit(false);
-  }, [userData.displayName, displayName, updateUserDetails]);
-
-  const handleCloseEditDisplayName = useCallback(() => {
-    setDisplayName(userData.displayName);
-    setIsDisplayNameEdit(false);
-  }, [userData.displayName]);
-
-  const changePasswordRenderComponent = useMemo(
-    () =>
-      showChangePasswordComponent && (
-        <Button
-          className="w-full text-xs"
-          data-testid="change-password-button"
-          type="primary"
-          onClick={(e) => {
-            // Used to stop click propagation event to parent User.component collapsible panel
-            e.stopPropagation();
-            setIsChangePassword(true);
-          }}>
-          {t('label.change-entity', {
-            entity: t('label.password-lowercase'),
-          })}
-        </Button>
-      ),
-    [showChangePasswordComponent]
-  );
   const handleChangePassword = async (data: ChangePasswordRequest) => {
     try {
       setIsLoading(true);
@@ -273,7 +221,6 @@ const ProfileSectionUserDetailsCard = ({
         <ProfilePicture
           avatarType="outlined"
           data-testid="replied-user"
-          // key={i}
           name="admin"
           width="80"
         />

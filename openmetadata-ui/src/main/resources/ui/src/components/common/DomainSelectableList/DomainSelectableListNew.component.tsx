@@ -52,21 +52,15 @@ export const DomainListItemRenderer = (props: EntityReference) => {
 };
 
 const DomainSelectableListNew = ({
-  children,
   hasPermission,
   multiple = false,
   onUpdate,
   selectedDomain,
-  onCancel,
 }: DomainSelectableListProps) => {
   const { t } = useTranslation();
   const [popupVisible, setPopupVisible] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [isSelectOpen, setIsSelectOpen] = useState<boolean>(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState<boolean>(false);
-  const [currentlySelectedDomains, setCurrentlySelectedDomains] = useState<
-    EntityReference[]
-  >([]);
 
   const selectedDomainsList = useMemo(() => {
     if (selectedDomain) {
@@ -101,9 +95,6 @@ const DomainSelectableListNew = ({
     }
   };
 
-  const handleClosePopup = () => {
-    setPopupVisible(false);
-  };
   const [popoverHeight, setPopoverHeight] = useState<number>(136);
   const dropdownRef = useRef<HTMLDivElement | null>(null);
 
@@ -134,8 +125,6 @@ const DomainSelectableListNew = ({
   };
 
   return (
-    // Used Button to stop click propagation event anywhere in the component to parent
-    // TeamDetailV1 collapsible panel
     <Button
       className="remove-button-default-styling"
       onClick={(e) => e.stopPropagation()}>
