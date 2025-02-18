@@ -1119,7 +1119,7 @@ public class OpenSearchClient implements SearchClient {
     searchSourceBuilder.query(
         QueryBuilders.boolQuery()
             .must(QueryBuilders.termQuery(direction, FullyQualifiedName.buildHash(fqn))));
-    if (CommonUtil.nullOrEmpty(deleted)) {
+    if (!CommonUtil.nullOrEmpty(deleted)) {
       searchSourceBuilder.query(
           QueryBuilders.boolQuery()
               .must(QueryBuilders.termQuery(direction, FullyQualifiedName.buildHash(fqn)))
@@ -1320,7 +1320,7 @@ public class OpenSearchClient implements SearchClient {
       if (searchAfter != null) {
         searchSourceBuilder.searchAfter(searchAfter);
       }
-      if (CommonUtil.nullOrEmpty(deleted)) {
+      if (!CommonUtil.nullOrEmpty(deleted)) {
         searchSourceBuilder.query(
             QueryBuilders.boolQuery()
                 .must(boolQueryBuilder)
