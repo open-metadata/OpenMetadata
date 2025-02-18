@@ -162,7 +162,6 @@
     "@types/codemirror": "^0.0.104",
     "@types/dagre": "^0.7.47",
     "@types/diff": "^5.0.2",
-    "@types/dompurify": "^3.0.5",
     "@types/jest": "^26.0.23",
     "@types/katex": "^0.16.7",
     "@types/lodash": "^4.14.167",
@@ -251,6 +250,7 @@
     "cookie": "0.7.0",
     "jsonpath-plus": "10.2.0",
     "cross-spawn": "7.0.5",
-    "serialize-javascript": "6.0.2"
+    "serialize-javascript": "6.0.2",
+    "dompurify": "3.2.4"
   }
 }
