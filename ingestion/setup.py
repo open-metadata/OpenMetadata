@@ -19,7 +19,7 @@ from setuptools import setup
 
 # Add here versions required for multiple plugins
 VERSIONS = {
-    "airflow": "apache-airflow==2.9.1",
+    "airflow": "apache-airflow==2.9.3",
     "adlfs": "adlfs>=2023.1.0",
     "avro": "avro>=1.11.3,<1.12",
     "boto3": "boto3>=1.20,<2.0",  # No need to add botocore separately. It's a dep from boto3
@@ -56,8 +56,13 @@ VERSIONS = {
     "elasticsearch8": "elasticsearch8~=8.9.0",
     "giturlparse": "giturlparse",
     "validators": "validators~=0.22.0",
-    "teradata": "teradatasqlalchemy>=20.0.0.0",
-    "collate-data-diff": "collate-data-diff<=0.11.3",
+    "teradata": "teradatasqlalchemy==20.0.0.2",
+    "cockroach": "sqlalchemy-cockroachdb~=2.0",
+    "cassandra": "cassandra-driver>=3.28.0",
+    "pydoris": "pydoris==1.0.2",
+    "pyiceberg": "pyiceberg==0.5.1",
+    "google-cloud-bigtable": "google-cloud-bigtable>=2.0.0",
+    "pyathena": "pyathena~=3.0",
 }
 
 COMMONS = {
@@ -95,9 +100,9 @@ COMMONS = {
 }
 
 DATA_DIFF = {
-    driver: f"collate-data-diff[{driver}]<=0.11.3"
+    driver: f"collate-data-diff[{driver}]"
     # data-diff uses different drivers out-of-the-box than OpenMetadata
-    # the exrtas are described here:
+    # the extras are described here:
     # https://github.com/open-metadata/collate-data-diff/blob/main/pyproject.toml#L68
     # install all data diffs with "pip install collate-data-diff[all-dbs]"
     for driver in [
@@ -142,8 +147,13 @@ base_requirements = {
     "tabulate==0.9.0",
     "typing-inspect",
     "packaging",  # For version parsing
+    "setuptools~=70.0",
     "shapely",
-    VERSIONS["collate-data-diff"],
+    "collate-data-diff",
+    # TODO: Remove one once we have updated datadiff version
+    "snowflake-connector-python>=3.13.1,<4.0.0",
+    "mysql-connector-python>=8.0.29;python_version<'3.9'",
+    "mysql-connector-python>=9.1;python_version>='3.9'",
 }
 
 plugins: Dict[str, Set[str]] = {
@@ -307,7 +317,7 @@ plugins: Dict[str, Set[str]] = {
         VERSIONS["geoalchemy2"],
     },
     "sagemaker": {VERSIONS["boto3"]},
-    "salesforce": {"simple_salesforce~=1.11"},
+    "salesforce": {"simple_salesforce~=1.11", "authlib>=1.3.1"},
     "sample-data": {VERSIONS["avro"], VERSIONS["grpc-tools"]},
     "sap-hana": {"hdbcli", "sqlalchemy-hana"},
     "sas": {},
