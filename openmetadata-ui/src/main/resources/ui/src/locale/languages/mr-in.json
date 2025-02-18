@@ -468,6 +468,7 @@
     "entity-reference-types": "घटक संदर्भ प्रकार",
     "entity-service": "{{entity}} सेवा",
     "entity-type-plural": "{{entity}} प्रकार",
+    "entity-version": "{{entity}} version",
     "entity-version-detail-plural": "{{entity}} आवृत्ती तपशील",
     "enum-value-plural": "एनम मूल्ये",
     "equation": "समीकरण",

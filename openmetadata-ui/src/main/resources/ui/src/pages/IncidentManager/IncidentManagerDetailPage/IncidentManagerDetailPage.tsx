@@ -39,6 +39,7 @@ import { useFqn } from '../../../hooks/useFqn';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { getTestCaseByFqn, updateTestCaseById } from '../../../rest/testAPI';
 import { getFeedCounts } from '../../../utils/CommonUtils';
+import { getEntityName } from '../../../utils/EntityUtils';
 import { getIncidentManagerDetailPagePath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { IncidentManagerTabs } from '../IncidentManager.interface';
@@ -242,7 +243,10 @@ const IncidentManagerDetailPage = () => {
   }
 
   return (
-    <PageLayoutV1 pageTitle="Incident Manager Detail Page">
+    <PageLayoutV1
+      pageTitle={t('label.entity-detail-plural', {
+        entity: getEntityName(testCase) || t('label.test-case'),
+      })}>
       <ActivityFeedProvider>
         <Row
           data-testid="incident-manager-details-page-container"
