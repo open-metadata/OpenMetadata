@@ -17,8 +17,7 @@ import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as CloseTabIcon } from '../../../assets/svg/close-tab.svg';
-import { Thread } from '../../../generated/entity/feed/thread';
-import { useUserProfile } from '../../../hooks/user-profile/useUserProfile';
+import { Post, Thread } from '../../../generated/entity/feed/thread';
 import {
   formatDateTime,
   getRelativeTime,
@@ -37,15 +36,13 @@ import FeedCardFooterNew from '../ActivityFeedCardV2/FeedCardFooter/FeedCardFoot
 import ActivityFeedEditorNew from '../ActivityFeedEditor/ActivityFeedEditorNew';
 import { useActivityFeedProvider } from '../ActivityFeedProvider/ActivityFeedProvider';
 import '../ActivityFeedTab/activity-feed-tab-new.less';
-import CommentCard from './ReplyCard.component';
-const { Text } = Typography;
+import CommentCard from './CommentCard.component';
 
 interface ActivityFeedCardNewProps {
-  componentsVisibility: any;
   feed: Thread;
   isPost?: boolean;
   isActive?: boolean;
-  post?: any;
+  post: Post;
   showActivityFeedEditor?: boolean;
   showThread?: boolean;
   handlePanelResize?: () => void;
@@ -66,17 +63,11 @@ const ActivityFeedCardNew = ({
 
     return { entityFQN, entityType };
   }, [feed.about]);
-  const [, , user] = useUserProfile({
-    permission: true,
-    name: post.from ?? '',
-  });
   const { t } = useTranslation();
   const { selectedThread, postFeed } = useActivityFeedProvider();
   const [showFeedEditor, setShowFeedEditor] = useState<boolean>(false);
   const [isEditPost, setIsEditPost] = useState<boolean>(false);
-  const [postMessage, setPostMessage] = useState<string>('');
   const { updateFeed } = useActivityFeedProvider();
-  // const [isHovered, setIsHovered] = useState(false);
 
   const onSave = (message: string) => {
     postFeed(message, selectedThread?.id ?? '').catch(() => {
@@ -88,7 +79,7 @@ const ActivityFeedCardNew = ({
   const onUpdate = (message: string) => {
     const updatedPost = { ...feed, message };
     const patch = compare(feed, updatedPost);
-    updateFeed(feed.id, post.id, !isPost, patch);
+    updateFeed(feed.id, post?.id, !isPost, patch);
     setIsEditPost(!isEditPost);
   };
 
@@ -107,13 +98,12 @@ const ActivityFeedCardNew = ({
             }
           : {}
       }>
-      <Space align="start" style={{ width: 'inherit' }}>
+      <Space align="start" className="w-full">
         <Space className="d-flex" direction="vertical">
           <Space
             className={classNames('d-inline-flex justify-start items-start', {
               'items-center': showThread,
-            })}
-            style={showThread ? { marginBottom: '-8px' } : {}}>
+            })}>
             <ProfilePicture
               avatarType="outlined"
               key={feed.id}
@@ -122,18 +112,18 @@ const ActivityFeedCardNew = ({
             />
             <Space className="d-flex flex-col align-start gap-2" size={0}>
               <Space
-                className="d-flex align-center gap-2"
-                size={0}
-                style={
-                  showThread ? { marginTop: '-4px' } : { marginTop: '-6px' }
-                }>
+                className={classNames('d-flex align-center gap-2', {
+                  'header-container-card': !showThread,
+                  'header-container-right-panel': showThread,
+                })}
+                size={0}>
                 <Typography.Text
                   className={`mr-2 ${
                     !isPost ? 'activity-feed-user-name' : 'reply-card-user-name'
                   }`}>
                   {feed.updatedBy}
                 </Typography.Text>
-                {post.postTs && (
+                {post?.postTs && (
                   <Tooltip
                     color="white"
                     overlayClassName="timestamp-tooltip"
@@ -148,15 +138,11 @@ const ActivityFeedCardNew = ({
               </Space>
               {!isPost && (
                 <Space
-                  className="d-flex align-center gap-1"
-                  style={
-                    !showThread
-                      ? { marginTop: '-6px' }
-                      : { marginTop: '-6px', alignItems: 'flex-start' }
-                  }>
-                  <Typography.Text
-                    className="card-style-feed-header"
-                    style={{ fontSize: '14px' }}>
+                  className={classNames('d-flex align-center gap-1', {
+                    'header-container-card': !showThread,
+                    'header-container-card align-start': showThread,
+                  })}>
+                  <Typography.Text className="card-style-feed-header text-sm">
                     {getFeedHeaderTextFromCardStyle(
                       feed.fieldOperation,
                       feed.cardStyle,
@@ -166,16 +152,16 @@ const ActivityFeedCardNew = ({
                   </Typography.Text>
 
                   <Link
-                    className="break-all"
+                    className="break-word header-link"
                     data-testid="entity-link"
-                    style={{ wordWrap: 'break-word', whiteSpace: 'normal' }}
                     to={entityUtilClassBase.getEntityLink(
                       entityType,
                       entityFQN
                     )}>
                     <span
-                      className={!showThread ? `max-one-line` : ''}
-                      style={{ fontSize: '14px' }}>
+                      className={classNames('text-sm', {
+                        'max-one-line': !showThread,
+                      })}>
                       {feed?.entityRef
                         ? getEntityName(feed.entityRef)
                         : entityDisplayName(entityType, entityFQN)}
@@ -200,7 +186,7 @@ const ActivityFeedCardNew = ({
             message={
               !isPost
                 ? feed.feedInfo?.entitySpecificInfo?.entity?.description
-                : post.message
+                : post?.message
             }
             showThread={showThread}
             onEditCancel={() => setIsEditPost(false)}
@@ -210,16 +196,6 @@ const ActivityFeedCardNew = ({
           {(isPost || (!showThread && !isPost)) && (
             <FeedCardFooterNew feed={feed} isPost={isPost} post={post} />
           )}
-
-          {/* {(feed.generatedBy !== GeneratedBy.System ||
-            (isPost && isHovered)) && ( */}
-          {/* <ActivityFeedActions
-            feed={feed}
-            isPost={isPost}
-            post={post}
-            onEditPost={onEditPost}
-          /> */}
-          {/* )} */}
         </Space>
       </Space>
       {showThread && (
@@ -236,7 +212,7 @@ const ActivityFeedCardNew = ({
             />
           ) : (
             <div className="d-flex gap-2">
-              <div style={{ width: '32px', height: '32px' }}>
+              <div>
                 <ProfilePicture
                   avatarType="outlined"
                   key={feed.id}
@@ -254,7 +230,7 @@ const ActivityFeedCardNew = ({
           )}
 
           {showThread && feed?.posts && feed?.posts?.length > 0 && (
-            <Col className="p-l-0 p-r-0" data-testid="feed-replies">
+            <Col className="p-l-0 p-r-0">
               {feed?.posts
                 ?.slice()
                 .sort((a, b) => (b.postTs as number) - (a.postTs as number))

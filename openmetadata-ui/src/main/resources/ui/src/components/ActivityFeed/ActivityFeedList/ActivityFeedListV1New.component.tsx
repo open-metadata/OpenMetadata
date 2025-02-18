@@ -76,7 +76,6 @@ const ActivityFeedListV1New = ({
     () =>
       entityThread.map((feed) => (
         <FeedPanelBodyV1New
-          componentsVisibility={componentsVisibility}
           feed={feed}
           hidePopover={hidePopover}
           isActive={activeFeedId === feed.id}

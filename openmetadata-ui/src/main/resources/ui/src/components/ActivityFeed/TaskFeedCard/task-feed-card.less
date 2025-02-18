@@ -29,51 +29,13 @@
   }
 }
 
-// .task-feed-message-container-new{
-//   .task-feed-message{
-//     &:hover {
-//       .ant-typography {
-//         color: @primary-color;
-//       }
-//     }
-//   }
-
-// }
-// .task-feed-card-new{
-//   border-radius: 8px;
-//   margin: 10px 0px;
-//   background: #f5f5f5;
-
-//   width: 100%;
-//   border: none;
-//   padding: 20px;
-
-//  &.active {
-//     border-left: 4px solid @info-color;
-//     background-color: #E6F1FE;
-//   }
-//   .task-feed-card-header{
-//     background-color: red;
-//     display: flex;
-//     width: 100%;
-//     .task-feed-card-title{
-//       background-color: green;
-//       width: 100%;
-
-//     }
-//   }
-
-// }
-// .text-wrap {
-//   word-break: break-word;
-//   white-space: normal;
-//   overflow-wrap: break-word;
-//   text-align: left;
-// }
-// .task-feed-message{
-// color: @primary-color;
-// }
-
+.task-feed-header {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  width: 98%;
+  word-wrap: break-word;
+  white-space: nowrap;
+}
 .task-feed-card-v1-new {
   padding: 20px;
   background: #f4f4f5;
@@ -98,7 +60,10 @@
     font-weight: 400;
     line-height: 16px;
   }
-
+  .tags-card-container {
+    border-radius: 12px;
+    border: none;
+  }
   .task-feed-card-footer {
     margin-top: 2px;
     .posts-length {

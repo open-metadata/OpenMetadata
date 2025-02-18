@@ -33,10 +33,7 @@ const FeedCardBodyNew = ({
   isPost = false,
   feed,
   isEditPost,
-  className,
-  showSchedule = true,
   message,
-  announcement,
   onUpdate,
   onEditCancel,
   showThread,
@@ -82,39 +79,6 @@ const FeedCardBodyNew = ({
             {message}
           </Typography.Text>
         </Card>;
-        // const entityInfo = feed.feedInfo?.entitySpecificInfo?.entity;
-        // const isExecutableTestSuite =
-        //   entityType === EntityType.TEST_SUITE && entityInfo.basic;
-        // const isObservabilityAlert =
-        //   entityType === EntityType.EVENT_SUBSCRIPTION &&
-        //   (entityInfo as EventSubscription).alertType ===
-        //     AlertType.Observability;
-
-        // const entityCard = (
-        //   <ExploreSearchCard
-        //     className="asset-info-card"
-        //     id={`tabledatacard${entityInfo.id}`}
-        //     showTags={false}
-        //     source={{ ...entityInfo, entityType }}
-        //   />
-        // );
-
-        // return cardStyle === CardStyle.EntityDeleted ? (
-        //   <div className="deleted-entity">{entityCard}</div>
-        // ) : (
-        //   <Link
-        //     className="no-underline text-body text-hover-body"
-        //     to={entityUtilClassBase.getEntityLink(
-        //       entityType,
-        //       entityFQN,
-        //       '',
-        //       '',
-        //       isExecutableTestSuite,
-        //       isObservabilityAlert
-        //     )}>
-        //     {entityCard}
-        //   </Link>
-        // );
       }
     }
 
@@ -163,38 +127,6 @@ const FeedCardBodyNew = ({
     return feedBodyStyleCardsRender;
   }, [isEditPost, message, feedBodyStyleCardsRender]);
 
-  function stripHtml(html: any) {
-    const tempDiv = document.createElement('div');
-    tempDiv.innerHTML = html;
-
-    return tempDiv.innerText || tempDiv.textContent;
-  }
-
-  // return !isPost ? (
-  //   feed.feedInfo?.entitySpecificInfo?.entity?.description ? (
-  //     <Card
-  //       bordered
-  //       className={`activity-feed-card-message ${
-  //         showThread && 'activity-feed-card-message-right-panel'
-  //       }`}>
-  //       <Typography.Text
-  //         style={{ wordWrap: 'break-word', whiteSpace: 'normal' }}>
-  //         {/* {feed.feedInfo.entitySpecificInfo.entity.description} */}
-  //         {stripHtml(feed.feedInfo.entitySpecificInfo.entity.description)}
-  //       </Typography.Text>
-  //     </Card>
-  //   ) : null
-  // ) : isEditPost ? (
-  //   feedBodyRender
-  // ) : (
-  //   <Card bordered className="activity-feed-reply-card-message">
-  //     <Typography.Text
-  //       className="activity-feed-comment-text"
-  //       style={{ wordWrap: 'break-word', whiteSpace: 'normal' }}>
-  //       {message}
-  //     </Typography.Text>
-  //   </Card>
-  // );
   return (
     <div
       style={

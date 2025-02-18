@@ -13,13 +13,11 @@
 
 import { Avatar, Button, Col, Row, Space } from 'antd';
 import { min, noop, sortBy } from 'lodash';
-import React, { useCallback, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
+import React, { useCallback, useMemo } from 'react';
 import { ReactComponent as ThreadIcon } from '../../../../assets/svg/reply-2.svg';
 import { ReactionOperation } from '../../../../enums/reactions.enum';
 import { ReactionType } from '../../../../generated/type/reaction';
 import ProfilePicture from '../../../common/ProfilePicture/ProfilePicture';
-import ActivityFeedEditor from '../../ActivityFeedEditor/ActivityFeedEditor';
 import { useActivityFeedProvider } from '../../ActivityFeedProvider/ActivityFeedProvider';
 import Reactions from '../../Reactions/Reactions';
 import { FeedCardFooterProps } from './FeedCardFooter.interface';
@@ -28,21 +26,15 @@ function FeedCardFooterNew({
   feed,
   post,
   isPost = false,
-  componentsVisibility = {
-    showThreadIcon: true,
-    showRepliesContainer: true,
-  },
 }: Readonly<FeedCardFooterProps>) {
-  const { t } = useTranslation();
   const { showDrawer, updateReactions, fetchUpdatedThread } =
     useActivityFeedProvider();
-  const [showReplyEditor, setShowReplyEditor] = useState<boolean>(false);
 
   // The number of posts in the thread
   const postLength = useMemo(() => feed?.postsCount ?? 0, [feed?.postsCount]);
 
   // The latest reply timestamp and the list of unique users who replied
-  const { latestReplyTimeStamp, repliedUniqueUsersList } = useMemo(() => {
+  const { repliedUniqueUsersList } = useMemo(() => {
     const posts = sortBy(feed?.posts, 'postTs').reverse();
     const latestReplyTimeStamp = posts[0]?.postTs;
 
@@ -68,19 +60,11 @@ function FeedCardFooterNew({
     showDrawer?.(feed);
   }, [showDrawer, feed]);
 
-  // const onSave = () => {
-  //   console.log('save');
-  // };
-
   return (
     <Row align="top">
-      <Col span={24} style={{ height: '24px' }}>
+      <Col className="footer-container" span={24}>
         <Space>
-          <div
-            className="flex items-center gap-2  w-full rounded-8"
-            // type="text"
-            // onClick={componentsVisibility.showThreadIcon ? showReplies : noop}
-          >
+          <div className="flex items-center gap-2  w-full rounded-8">
             {postLength > 0 && !isPost && (
               <Avatar.Group>
                 {repliedUniqueUsersList.slice(0, 2).map((user) => (
@@ -91,11 +75,6 @@ function FeedCardFooterNew({
                     size={20}
                   />
                 ))}
-                {/* {repliedUniqueUsersList.length > 2 && (
-                  <div className="extra-count">
-                    +{repliedUniqueUsersList.length - 2}
-                  </div>
-                )} */}
               </Avatar.Group>
             )}
 
@@ -116,22 +95,7 @@ function FeedCardFooterNew({
               reactions={post.reactions ?? []}
               onReactionSelect={onReactionUpdate ?? noop}
             />
-
-            {/* {isPost && (
-              <Button
-                className="activity-feed-reply-button"
-                onClick={() => setShowReplyEditor(true)}>
-                Reply
-              </Button>
-            )} */}
           </div>
-
-          {isPost && showReplyEditor && (
-            <ActivityFeedEditor
-              className="m-t-md feed-editor"
-              // onSave={onSave}
-            />
-          )}
         </Space>
       </Col>
       <Col span={24} />

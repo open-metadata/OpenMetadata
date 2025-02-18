@@ -14,8 +14,8 @@ import Icon, { CheckCircleFilled, CloseCircleFilled } from '@ant-design/icons';
 import { Button, Card, Col, Row, Tooltip, Typography } from 'antd';
 
 import classNames from 'classnames';
-import { isEmpty, isEqual, isUndefined, lowerCase } from 'lodash';
-import React, { useCallback, useMemo, useState } from 'react';
+import { isEmpty, isUndefined, lowerCase } from 'lodash';
+import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import { ReactComponent as AssigneesIcon } from '../../../assets/svg/assignees.svg';
@@ -44,7 +44,6 @@ import { TaskOperation } from '../../../constants/Feeds.constants';
 import { TASK_TYPES } from '../../../constants/Task.constant';
 import { TaskType } from '../../../generated/api/feed/createThread';
 import { ResolveTask } from '../../../generated/api/feed/resolveTask';
-import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import DescriptionTaskNew from '../../../pages/TasksPage/shared/DescriptionTaskNew';
 import TagsTask from '../../../pages/TasksPage/shared/TagsTask';
 import { updateTask } from '../../../rest/feedsAPI';
@@ -73,28 +72,18 @@ interface TaskFeedCardProps {
 }
 
 const TaskFeedCard = ({
-  post,
   feed,
   className = '',
-  showThread = true,
   isActive,
-  hidePopover = false,
   onAfterClose,
   onUpdateEntityDetails,
 }: TaskFeedCardProps) => {
   const history = useHistory();
   const { t } = useTranslation();
-  const { showDrawer, setActiveThread } = useActivityFeedProvider();
-  const [showActions, setShowActions] = useState(false);
-  const {
-    threadTs: timeStamp,
-    task: taskDetails,
-    postsCount: postLength = 0,
-  } = feed;
+  const { setActiveThread } = useActivityFeedProvider();
 
-  const [isEditPost, setIsEditPost] = useState(false);
-  const repliedUsers = [...new Set((feed?.posts ?? []).map((f) => f.from))];
-  const repliedUniqueUsersList = repliedUsers.slice(0, postLength >= 3 ? 2 : 1);
+  const { threadTs: timeStamp, task: taskDetails } = feed;
+
   const isTaskTags = isTagsTask(taskDetails?.type as TaskType);
   const isTaskDescription = isDescriptionTask(taskDetails?.type as TaskType);
 
@@ -125,14 +114,6 @@ const TaskFeedCard = ({
     return null;
   }, [feed]);
 
-  const showReplies = () => {
-    showDrawer?.(feed);
-  };
-
-  const onEditPost = () => {
-    setIsEditPost(!isEditPost);
-  };
-
   const handleTaskLinkClick = () => {
     history.push({
       pathname: getTaskDetailPath(feed),
@@ -145,15 +126,8 @@ const TaskFeedCard = ({
       isEntityDetailsAvailable && !isUndefined(taskDetails) ? (
         <EntityPopOverCard entityFQN={entityFQN} entityType={entityType}>
           <Button
-            className="p-0 task-feed-message-new"
+            className="p-0 task-feed-header"
             data-testid="redirect-task-button-link"
-            style={{
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              width: '98%',
-              wordWrap: 'break-word',
-              whiteSpace: 'nowrap',
-            }}
             type="link"
             onClick={handleTaskLinkClick}>
             <Typography.Text className="m-r-xss task-details-id">{`#${taskDetails.id} `}</Typography.Text>
@@ -165,46 +139,21 @@ const TaskFeedCard = ({
             {taskColumnName}
 
             <Typography.Text
-              className="break-all text-primary"
-              data-testid="entity-link"
-              style={{ fontSize: '14px' }}>
+              className="break-all text-primary text-sm"
+              data-testid="entity-link">
               {getNameFromFQN(entityFQN)}
             </Typography.Text>
 
-            <Typography.Text
-              className="p-l-xss"
-              style={{ fontSize: '14px' }}>{`(${entityType})`}</Typography.Text>
+            <Typography.Text className="p-l-xss text-sm">{`(${entityType})`}</Typography.Text>
           </Button>
         </EntityPopOverCard>
       ) : null,
     [isEntityDetailsAvailable, entityFQN, entityType, taskDetails]
   );
 
-  const handleMouseEnter = () => {
-    setShowActions(true);
-  };
-
-  const handleMouseLeave = () => {
-    setShowActions(false);
-  };
-  const { currentUser } = useApplicationStore();
   const isTaskTestCaseResult =
     taskDetails?.type === TaskType.RequestTestCaseFailureResolution;
   const isTaskGlossaryApproval = taskDetails?.type === TaskType.RequestApproval;
-
-  const isAssignee = taskDetails?.assignees?.some((assignee) =>
-    isEqual(assignee.id, currentUser?.id)
-  );
-  const isPartOfAssigneeTeam = taskDetails?.assignees?.some((assignee) =>
-    assignee.type === 'team' ? checkIfUserPartOfTeam(assignee.id) : false
-  );
-
-  const checkIfUserPartOfTeam = useCallback(
-    (teamId: string): boolean => {
-      return Boolean(currentUser?.teams?.find((team) => teamId === team.id));
-    },
-    [currentUser]
-  );
 
   const updateTaskData = (data: TaskDetails | ResolveTask) => {
     if (!taskDetails?.id) {
@@ -247,13 +196,6 @@ const TaskFeedCard = ({
     }
   };
   const onTaskReject = () => {
-    // if (!isTaskGlossaryApproval && isEmpty(comment)) {
-    //   showErrorToast(t('server.task-closed-without-comment'));
-
-    //   return;
-    // }
-
-    // const updatedComment = isTaskGlossaryApproval ? 'Rejected' : comment;
     const updatedComment = isTaskGlossaryApproval ? 'Rejected' : 'Rejected';
     if (isTaskGlossaryApproval) {
       const data = { newValue: 'rejected' };
@@ -273,12 +215,7 @@ const TaskFeedCard = ({
   };
 
   return (
-    <Button
-      block
-      className="remove-button-default-styling"
-      type="text"
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}>
+    <Button block className="remove-button-default-styling" type="text">
       <div
         className={classNames(className, 'task-feed-card-v1-new', {
           active: isActive,
@@ -288,7 +225,7 @@ const TaskFeedCard = ({
           <Col className="d-flex flex-col align-start">
             <Col>
               <Icon
-                className="m-r-xss m-t-xss"
+                className="m-r-xss m-t-xss text-md"
                 component={
                   taskDetails?.status === ThreadTaskStatus.Open
                     ? TaskOpenIcon
@@ -297,7 +234,6 @@ const TaskFeedCard = ({
                 data-testid={`task-status-icon-${lowerCase(
                   taskDetails?.status
                 )}`}
-                style={{ fontSize: '16px' }}
               />
               {taskLinkTitleElement}
             </Col>
@@ -331,8 +267,7 @@ const TaskFeedCard = ({
             {isTaskTags && (
               <Card
                 bordered
-                className="activity-feed-card-message"
-                style={{ borderRadius: '12px', border: 'none' }}>
+                className="activity-feed-card-message tags-card-container">
                 <TagsTask
                   hasEditAccess={false}
                   isTaskActionEdit={false}
@@ -343,7 +278,6 @@ const TaskFeedCard = ({
           </Col>
           {isTaskDescription && (
             <DescriptionTaskNew
-              // customClassName="task-feed-desc-diff"
               hasEditAccess={false}
               isTaskActionEdit={false}
               taskThread={feed}
@@ -373,7 +307,6 @@ const TaskFeedCard = ({
                     ? 'task-card-assignee'
                     : ''
                 }`}>
-                {/* <User {...ICON_DIMENSION_USER_PAGE} /> */}
                 <AssigneesIcon {...ICON_DIMENSION_USER_PAGE} />
                 <OwnerLabelNew
                   avatarSize={16}

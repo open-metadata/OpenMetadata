@@ -115,7 +115,7 @@ import EntityPopOverCard from '../../../common/PopOverCard/EntityPopOverCard';
 import './task-tab-new.less';
 // import '../../../ActivityFeed/ActivityFeedTab/activity-feed-tab-new.less';
 import DescriptionTaskNew from '../../../../pages/TasksPage/shared/DescriptionTaskNew';
-import CommentCard from '../../../ActivityFeed/ActivityFeedCardNew/ReplyCard.component';
+import CommentCard from '../../../ActivityFeed/ActivityFeedCardNew/CommentCard.component';
 import ActivityFeedEditorNew from '../../../ActivityFeed/ActivityFeedEditor/ActivityFeedEditorNew';
 import { OwnerLabelNew } from '../../../common/OwnerLabel/OwnerLabelNew.component';
 import ProfilePicture from '../../../common/ProfilePicture/ProfilePicture';

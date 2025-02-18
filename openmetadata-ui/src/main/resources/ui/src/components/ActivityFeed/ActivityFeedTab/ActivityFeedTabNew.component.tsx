@@ -10,12 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Dropdown, Segmented, Skeleton } from 'antd';
+import { Dropdown, Segmented } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import {
   default as React,
-  ReactNode,
   RefObject,
   useCallback,
   useEffect,
@@ -143,17 +142,6 @@ export const ActivityFeedTabNew = ({
   const isMentionTabSelected = useMemo(
     () => activeTab === ActivityFeedTabs.MENTIONS,
     [activeTab]
-  );
-
-  const getElementWithCountLoader = useCallback(
-    (element: ReactNode) => {
-      if (countData.loading) {
-        return <Skeleton.Button active className="count-loader" size="small" />;
-      }
-
-      return element;
-    },
-    [countData.loading]
   );
 
   const handleTabChange = (subTab: string) => {
@@ -326,13 +314,6 @@ export const ActivityFeedTabNew = ({
 
   const loader = useMemo(() => (loading ? <Loader /> : null), [loading]);
 
-  const onSave = (message: string) => {
-    postFeed(message, selectedThread?.id ?? '').catch(() => {
-      // ignore since error is displayed in toast in the parent promise.
-      // Added block for sonar code smell
-    });
-  };
-
   const handleUpdateTaskFilter = (filter: ThreadTaskStatus) => {
     setTaskFilter(filter);
     getFeedData(feedFilter, undefined, threadType, entityType, fqn, filter);
@@ -342,85 +323,94 @@ export const ActivityFeedTabNew = ({
     handleFeedFetchFromFeedList();
     handleUpdateTaskFilter(ThreadTaskStatus.Closed);
   };
-  const taskFilterOptions = [
-    {
-      key: ThreadTaskStatus.Open,
-      label: (
-        <div
-          className={classNames(
-            'flex items-center justify-between px-4 py-2 gap-2',
-            { active: taskFilter === ThreadTaskStatus.Open }
-          )}>
-          <div className="flex items-center space-x-2">
-            {taskFilter === ThreadTaskStatus.Open ? (
-              <TaskOpenIcon className="m-r-xs" {...ICON_DIMENSION_USER_PAGE} />
-            ) : (
-              <TaskIcon className="m-r-xs" {...ICON_DIMENSION_USER_PAGE} />
-            )}
+  const taskFilterOptions = useMemo(
+    () => [
+      {
+        key: ThreadTaskStatus.Open,
+        label: (
+          <div
+            className={classNames(
+              'flex items-center justify-between px-4 py-2 gap-2',
+              { active: taskFilter === ThreadTaskStatus.Open }
+            )}>
+            <div className="flex items-center space-x-2">
+              {taskFilter === ThreadTaskStatus.Open ? (
+                <TaskOpenIcon
+                  className="m-r-xs"
+                  {...ICON_DIMENSION_USER_PAGE}
+                />
+              ) : (
+                <TaskIcon className="m-r-xs" {...ICON_DIMENSION_USER_PAGE} />
+              )}
+              <span
+                className={classNames('task-tab-filter-item', {
+                  selected: taskFilter === ThreadTaskStatus.Open,
+                })}>
+                {t('label.open')}
+              </span>
+            </div>
             <span
-              className={classNames('task-tab-filter-item', {
-                selected: taskFilter === ThreadTaskStatus.Open,
+              className={classNames('task-count-container d-flex flex-center', {
+                active: taskFilter === ThreadTaskStatus.Open,
               })}>
-              {t('label.open')}
+              <span className="task-count-text">
+                {countData.data.openTaskCount}
+              </span>
             </span>
           </div>
-          <span
-            className={classNames('task-count-container d-flex flex-center', {
-              active: taskFilter === ThreadTaskStatus.Open,
-            })}>
-            <span className="task-count-text">
-              {countData.data.openTaskCount}
-            </span>
-          </span>
-        </div>
-      ),
-      onClick: () => {
-        handleUpdateTaskFilter(ThreadTaskStatus.Open);
-        setActiveThread();
+        ),
+        onClick: () => {
+          handleUpdateTaskFilter(ThreadTaskStatus.Open);
+          setActiveThread();
+        },
       },
-    },
-    {
-      key: ThreadTaskStatus.Closed,
-      label: (
-        <div
-          className={classNames(
-            'flex items-center justify-between px-4 py-2 gap-2',
-            { active: taskFilter === ThreadTaskStatus.Closed }
-          )}>
-          <div className="flex items-center space-x-2">
-            {taskFilter === ThreadTaskStatus.Closed ? (
-              <TaskCloseIconBlue
-                className="m-r-xs"
-                {...ICON_DIMENSION_USER_PAGE}
-              />
-            ) : (
-              <TaskCloseIcon className="m-r-xs" {...ICON_DIMENSION_USER_PAGE} />
-            )}
+      {
+        key: ThreadTaskStatus.Closed,
+        label: (
+          <div
+            className={classNames(
+              'flex items-center justify-between px-4 py-2 gap-2',
+              { active: taskFilter === ThreadTaskStatus.Closed }
+            )}>
+            <div className="flex items-center space-x-2">
+              {taskFilter === ThreadTaskStatus.Closed ? (
+                <TaskCloseIconBlue
+                  className="m-r-xs"
+                  {...ICON_DIMENSION_USER_PAGE}
+                />
+              ) : (
+                <TaskCloseIcon
+                  className="m-r-xs"
+                  {...ICON_DIMENSION_USER_PAGE}
+                />
+              )}
+              <span
+                className={classNames('task-tab-filter-item', {
+                  selected: taskFilter === ThreadTaskStatus.Closed,
+                })}>
+                {t('label.closed')}
+              </span>
+            </div>
+            <span
+              className={classNames('task-count-container d-flex flex-center', {
+                active: taskFilter === ThreadTaskStatus.Closed,
+              })}>
+              <span className="task-count-text">
+                {countData.data.closedTaskCount}
+              </span>
+            </span>
+          </div>
+        ),
+        onClick: () => {
+          handleUpdateTaskFilter(ThreadTaskStatus.Closed);
+          setActiveThread();
+        },
+      },
+    ],
+    [taskFilter, countData.data, handleUpdateTaskFilter, setActiveThread, t]
+  );
 
-            <span
-              className={classNames('task-tab-filter-item', {
-                selected: taskFilter === ThreadTaskStatus.Closed,
-              })}>
-              {t('label.closed')}
-            </span>
-          </div>
-          <span
-            className={classNames('task-count-container d-flex flex-center', {
-              active: taskFilter === ThreadTaskStatus.Closed,
-            })}>
-            <span className="task-count-text">
-              {countData.data.closedTaskCount}
-            </span>
-          </span>
-        </div>
-      ),
-      onClick: () => {
-        handleUpdateTaskFilter(ThreadTaskStatus.Closed);
-        setActiveThread();
-      },
-    },
-  ];
-  const TaskToggle = () => {
+  const TaskToggle = useCallback(() => {
     return (
       <Segmented
         className="task-toggle"
@@ -448,7 +438,8 @@ export const ActivityFeedTabNew = ({
         onChange={(value) => handleTabChange(value as ActivityFeedTabs)}
       />
     );
-  };
+  }, [t, handleTabChange]);
+
   const handlePanelResize = () => {
     setIsFullWidth(true);
   };
@@ -519,10 +510,6 @@ export const ActivityFeedTabNew = ({
                   onAfterClose={handleAfterTaskClose}
                   onUpdateEntityDetails={onUpdateEntityDetails}
                 />
-                {/* <ActivityFeedEditor
-                  className="m-t-md feed-editor"
-                  onSave={onSave}
-                /> */}
               </div>
             </div>
           ) : (

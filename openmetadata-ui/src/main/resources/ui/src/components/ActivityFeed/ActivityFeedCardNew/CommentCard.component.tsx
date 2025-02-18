@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 import { Tooltip, Typography } from 'antd';
+import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
 import React, { useCallback, useMemo, useState } from 'react';
 import { Thread } from '../../../generated/entity/feed/thread';
-import { useUserProfile } from '../../../hooks/user-profile/useUserProfile';
 import {
   formatDateTime,
   getRelativeTime,
@@ -25,11 +25,9 @@ import {
 } from '../../../utils/FeedUtils';
 import ProfilePicture from '../../common/ProfilePicture/ProfilePicture';
 import FeedCardFooterNew from '../ActivityFeedCardV2/FeedCardFooter/FeedCardFooterNew';
+import ActivityFeedEditor from '../ActivityFeedEditor/ActivityFeedEditorNew';
 import { useActivityFeedProvider } from '../ActivityFeedProvider/ActivityFeedProvider';
 import ActivityFeedActions from '../Shared/ActivityFeedActions';
-// import ActivityFeedEditor from '../ActivityFeedEditor/ActivityFeedEditor';
-import { useTranslation } from 'react-i18next';
-import ActivityFeedEditor from '../ActivityFeedEditor/ActivityFeedEditorNew';
 
 const { Text } = Typography;
 
@@ -40,45 +38,31 @@ interface CommentCardInterface {
 }
 
 const CommentCard = ({ feed, post, isLastReply }: CommentCardInterface) => {
+  const { updateFeed } = useActivityFeedProvider();
   const [isHovered, setIsHovered] = useState(false);
-  //   const { entityFQN, entityType } = useMemo(() => {
-  //     const entityFQN = getEntityFQN(feed.about) ?? '';
-  //     const entityType = getEntityType(feed.about) ?? '';
-
-  //     return { entityFQN, entityType };
-  //   }, [feed.about]);
-  const [, , user] = useUserProfile({
-    permission: true,
-    name: post.from ?? '',
-  });
-  const { t } = useTranslation();
-  const { selectedThread, postFeed } = useActivityFeedProvider();
-  const [showFeedEditor, setShowFeedEditor] = useState<boolean>(false);
   const [isEditPost, setIsEditPost] = useState<boolean>(false);
   const [postMessage, setPostMessage] = useState<string>('');
-  const { updateFeed } = useActivityFeedProvider();
-  const onSave = (message: string) => {
-    postFeed(message, selectedThread?.id ?? '').catch(() => {
-      // ignore since error is displayed in toast in the parent promise.
-      // Added block for sonar code smell
-    });
-    setShowFeedEditor(false);
-  };
+  const seperator = '.';
+
   const onEditPost = () => {
     setIsEditPost(!isEditPost);
   };
+
   const onUpdate = (message: string) => {
     const updatedPost = { ...feed, message };
     const patch = compare(feed, updatedPost);
     updateFeed(feed.id, post.id, false, patch);
     setIsEditPost(!isEditPost);
   };
+
   const handleSave = useCallback(() => {
     onUpdate?.(postMessage ?? '');
   }, [onUpdate, postMessage]);
+
   const getDefaultValue = (defaultMessage: string) => {
     return MarkdownToHTMLConverter.makeHtml(getFrontEndFormat(defaultMessage));
   };
+
   const feedBodyRender = useMemo(() => {
     if (isEditPost) {
       return (
@@ -105,20 +89,15 @@ const CommentCard = ({ feed, post, isLastReply }: CommentCardInterface) => {
 
   return (
     <div
-      style={{
-        display: 'flex',
-        alignItems: 'flex-start',
-        gap: '12px',
-        padding: '24px 0px 0px 0px',
-        borderBottom: isLastReply ? 'none' : '1.5px solid  #E4E4E4',
-        position: 'relative',
-      }}
+      className={classNames('d-flex justify-start relative reply-card', {
+        'reply-card-border-bottom': isLastReply,
+      })}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}>
-      <div style={{ width: '32px' }}>
+      <div className="profile-picture">
         <ProfilePicture
           avatarType="outlined"
-          // key={feed.id}
+          key={feed.id}
           name={feed.updatedBy!}
           size={32}
         />
@@ -131,17 +110,7 @@ const CommentCard = ({ feed, post, isLastReply }: CommentCardInterface) => {
                             `}>
             {feed.updatedBy}
           </Typography.Text>
-          <Typography.Text
-            style={{
-              verticalAlign: 'middle',
-              fontSize: '18px',
-              fontWeight: 800,
-              margin: 'auto 0px',
-              color: '#A1A1AA',
-              marginBottom: '8px',
-            }}>
-            {t('label.dot')}
-          </Typography.Text>
+          <Typography.Text className="seperator">{seperator}</Typography.Text>
           <Typography.Text>
             <Tooltip
               color="white"
@@ -158,17 +127,7 @@ const CommentCard = ({ feed, post, isLastReply }: CommentCardInterface) => {
         {isEditPost ? (
           feedBodyRender
         ) : (
-          <Text
-            style={{
-              color: '#4A4A4A',
-              whiteSpace: 'normal',
-              wordBreak: 'break-word',
-              display: 'block',
-              fontSize: '12px',
-              fontWeight: 400,
-            }}>
-            {stripHtml(post.message)}
-          </Text>
+          <Text className="reply-message">{stripHtml(post.message)}</Text>
         )}
 
         <div className="m-y-md">

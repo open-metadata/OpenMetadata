@@ -113,18 +113,16 @@ const Emoji: FC<EmojiProps> = ({
       zIndex={9999}
       onOpenChange={setVisible}>
       <Button
-        className={classNames('ant-btn-reaction m-r-xss flex-center', {
-          'ant-btn-isReacted': isReacted,
-        })}
+        className={classNames(
+          'ant-btn-reaction m-r-xss flex-center transparent',
+          {
+            'ant-btn-isReacted': isReacted,
+          }
+        )}
         data-testid="emoji-button"
         key={reaction}
         shape="round"
         size="small"
-        style={{
-          background: 'transparent',
-          border: '1px solid #75757533',
-          padding: '4px 6px',
-        }}
         onClick={handleEmojiOnClick}
         onMouseOver={() => setVisible(true)}>
         {element}
