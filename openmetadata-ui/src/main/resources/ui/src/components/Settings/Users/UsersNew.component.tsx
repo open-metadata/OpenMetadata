@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Space, Tabs, Tooltip, Typography } from 'antd';
-import { isEmpty, noop } from 'lodash';
+import { Col, Row, Tabs, Tooltip } from 'antd';
+import { AxiosError } from 'axios';
+import { noop } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
@@ -20,17 +21,18 @@ import { getUserPath, ROUTES } from '../../../constants/constants';
 import { useLimitStore } from '../../../context/LimitsProvider/useLimitsStore';
 import { EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
-import { EntityReference } from '../../../generated/entity/type';
 import { useAuth } from '../../../hooks/authHooks';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../../hooks/useFqn';
 import { searchData } from '../../../rest/miscAPI';
-import { getEntityName } from '../../../utils/EntityUtils';
+import { restoreUser } from '../../../rest/userAPI';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
+import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import ActivityFeedProvider from '../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
+import { ActivityFeedTabs } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import { ActivityFeedTabNew } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTabNew.component';
-import DescriptionV1 from '../../common/EntityDescription/DescriptionV1';
+import { DomainLabelNew } from '../../common/DomainLabel/DomainLabelNew';
 import TabsLabel from '../../common/TabsLabel/TabsLabel.component';
 import EntitySummaryPanel from '../../Explore/EntitySummaryPanel/EntitySummaryPanel.component';
 import { EntityDetailsObjectInterface } from '../../Explore/ExplorePage.interface';
@@ -39,20 +41,11 @@ import {
   AssetNoDataPlaceholderProps,
   AssetsOfEntity,
 } from '../../Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
+import ProfileSectionUserDetailsCard from '../../ProfileCard/ProfileSectionUserDetailsCard.component';
 import AccessTokenCard from './AccessTokenCard/AccessTokenCard.component';
+import UserProfilePersonas from './UserProfilePersona/UserProfilePersona.component';
 import { Props, UserPageTabs } from './Users.interface';
 import './users.less';
-import UserProfileDetails from './UsersProfile/UserProfileDetails/UserProfileDetails.component';
-// import Title from 'antd/lib/skeleton/Title';
-// import ActivityFeedCardNew from '../../ActivityFeedCardNew/ActivityFeedcardNew.component';
-// import DetailsPanel from '../../ActivityFeedCardNew/DetailsPanel.component';
-import { AxiosError } from 'axios';
-import { restoreUser } from '../../../rest/userAPI';
-import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
-import { ActivityFeedTabs } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
-import { DomainLabelNew } from '../../common/DomainLabel/DomainLabelNew';
-import ProfileSectionUserDetailsCard from '../../ProfileCard/ProfileSectionUserDetailsCard.component';
-import UserProfilePersonas from './UserProfilePersona/UserProfilePersona.component';
 import UserProfileRoles from './UsersProfile/UserProfileRoles/UserProfileRoles.component';
 import UserProfileTeams from './UsersProfile/UserProfileTeams/UserProfileTeams.component';
 
@@ -74,7 +67,6 @@ const Users = ({
   const [previewAsset, setPreviewAsset] =
     useState<EntityDetailsObjectInterface>();
 
-  const [isDescriptionEdit, setIsDescriptionEdit] = useState(false);
   const { t } = useTranslation();
   const { getResourceLimit } = useLimitStore();
 
@@ -129,13 +121,6 @@ const Users = ({
     handleTabRedirection();
     initLimits();
   }, []);
-
-  const handlePersonaUpdate = useCallback(
-    async (personas: EntityReference[]) => {
-      await updateUserDetails({ personas }, 'personas');
-    },
-    [updateUserDetails]
-  );
 
   const tabDataRender = useCallback(
     (props: {
@@ -283,64 +268,6 @@ const Users = ({
       tabDataRender,
       disableFields,
     ]
-  );
-
-  const handleDescriptionChange = useCallback(
-    async (description: string) => {
-      await updateUserDetails({ description }, 'description');
-
-      setIsDescriptionEdit(false);
-    },
-    [updateUserDetails, setIsDescriptionEdit]
-  );
-
-  const descriptionRenderComponent = useMemo(
-    () =>
-      isLoggedInUser ? (
-        <DescriptionV1
-          description={userData.description ?? ''}
-          entityName={getEntityName(userData as unknown as EntityReference)}
-          entityType={EntityType.USER}
-          hasEditAccess={isLoggedInUser}
-          isEdit={isDescriptionEdit}
-          showCommentsIcon={false}
-          onCancel={() => setIsDescriptionEdit(false)}
-          onDescriptionEdit={() => setIsDescriptionEdit(true)}
-          onDescriptionUpdate={handleDescriptionChange}
-        />
-      ) : (
-        <Space direction="vertical" size="middle">
-          <Typography.Text className="right-panel-label">
-            {t('label.description')}
-          </Typography.Text>
-          <Typography.Paragraph className="m-b-0">
-            {isEmpty(userData.description)
-              ? t('label.no-entity', {
-                  entity: t('label.description'),
-                })
-              : userData.description}
-          </Typography.Paragraph>
-        </Space>
-      ),
-    [
-      userData,
-      isAdminUser,
-      isDescriptionEdit,
-      isLoggedInUser,
-      getEntityName,
-      handleDescriptionChange,
-    ]
-  );
-
-  const userProfileCollapseHeader = useMemo(
-    () => (
-      <UserProfileDetails
-        afterDeleteAction={afterDeleteAction}
-        updateUserDetails={updateUserDetails}
-        userData={userData}
-      />
-    ),
-    [userData, afterDeleteAction, updateUserDetails]
   );
 
   useEffect(() => {

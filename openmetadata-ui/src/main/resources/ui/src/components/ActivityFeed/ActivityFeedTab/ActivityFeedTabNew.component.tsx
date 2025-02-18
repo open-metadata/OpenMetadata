@@ -109,7 +109,6 @@ export const ActivityFeedTabNew = ({
   });
 
   const {
-    postFeed,
     selectedThread,
     setActiveThread,
     entityThread,

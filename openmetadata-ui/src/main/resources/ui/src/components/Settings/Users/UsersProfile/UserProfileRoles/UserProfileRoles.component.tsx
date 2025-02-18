@@ -53,11 +53,9 @@ const UserProfileRoles = ({
   const { isAdminUser } = useAuth();
 
   const [isRolesEdit, setIsRolesEdit] = useState(false);
-  const [isRolesLoading, setIsRolesLoading] = useState(false);
   const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
   const [roles, setRoles] = useState<Role[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [isSelectOpen, setIsSelectOpen] = useState<boolean>(false);
 
   const useRolesOption = useMemo(() => {
     const options = roles?.map((role) => ({
@@ -76,7 +74,6 @@ const UserProfileRoles = ({
   }, [roles, isUserAdmin, getEntityName]);
 
   const fetchRoles = async () => {
-    setIsRolesLoading(true);
     try {
       const response = await getRoles(
         '',
@@ -93,8 +90,6 @@ const UserProfileRoles = ({
           entity: t('label.role-plural'),
         })
       );
-    } finally {
-      setIsRolesLoading(false);
     }
   };
 
@@ -223,8 +218,6 @@ const UserProfileRoles = ({
                   className="border p-2 bg-gray-100 rounded-md"
                   style={{
                     borderRadius: '5px',
-                    // overflowY: 'auto',
-                    // height: isSelectOpen ? '300px' : 'auto',
                   }}>
                   <Select
                     allowClear

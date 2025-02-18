@@ -13,15 +13,12 @@
 
 import { Button, Input, Modal, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import React, { FunctionComponent, useCallback, useRef, useState } from 'react';
+import React, { FunctionComponent, useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 // import { showErrorToast } from '../../../utils/ToastUtils';
 // import RichTextEditor from '../../common/RichTextEditor/RichTextEditor';
-import { isEmpty } from 'lodash';
 import { User } from '../../../generated/entity/teams/user';
-import { getBackendFormat, HTMLToMarkdown } from '../../../utils/FeedUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import { EditorContentRef } from '../ModalWithMarkdownEditor/ModalWithMarkdownEditor.interface';
 import './profile-edit-modal.less';
 // import {
 //   EditorContentRef,
@@ -41,9 +38,6 @@ interface ProfileEditModalProps {
 
 export const ProfileEditModal: FunctionComponent<ProfileEditModalProps> = ({
   userData,
-  header,
-  placeholder,
-  value,
   onSave,
   onCancel,
   visible,
@@ -52,34 +46,11 @@ export const ProfileEditModal: FunctionComponent<ProfileEditModalProps> = ({
   const { t } = useTranslation();
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [displayName, setDisplayName] = useState(userData.displayName);
-  const markdownRef = useRef<EditorContentRef>({} as EditorContentRef);
   const [editorValue, setEditorValue] = useState<string>('');
-  const handleDisplayNameSave = useCallback(async () => {
-    if (userData.displayName !== displayName) {
-      // Compare correctly
-      setIsLoading(true);
-      try {
-        await updateUserDetails(
-          { displayName: isEmpty(displayName) ? undefined : displayName },
-          'displayName'
-        );
-      } catch (error) {
-        showErrorToast(error as AxiosError);
-      } finally {
-        setIsLoading(false);
-      }
-    }
-  }, [displayName, updateUserDetails, userData.displayName]);
-  const handleDescriptionChange = useCallback(
-    async (description: string) => {
-      await updateUserDetails({ description }, 'description');
-    },
-    [updateUserDetails]
-  );
+
   const handleSaveData = async () => {
     setIsLoading(true);
     try {
-      const content = markdownRef.current?.getEditorContent?.()?.trim() ?? '';
       await updateUserDetails({ displayName }, 'displayName');
       onSave?.(editorValue, displayName);
     } catch (error) {
@@ -93,11 +64,6 @@ export const ProfileEditModal: FunctionComponent<ProfileEditModalProps> = ({
     (e: React.ChangeEvent<HTMLInputElement>) => setDisplayName(e.target.value),
     []
   );
-  const onChangeHandler = (value: string) => {
-    const markdown = HTMLToMarkdown.turndown(value);
-    const backendFormat = getBackendFormat(markdown);
-    setEditorValue(markdown);
-  };
 
   return (
     <Modal
@@ -147,16 +113,6 @@ export const ProfileEditModal: FunctionComponent<ProfileEditModalProps> = ({
         value={displayName}
         onChange={onDisplayNameChange}
       />
-      {/* <Typography.Text className="modal-label m-b-xs">
-        {t('label.description')}
-      </Typography.Text>
-      <FeedEditor
-        defaultValue={userData.description}
-        placeHolder={userData.description}
-        ref={markdownRef}
-        onChangeHandler={onChangeHandler}
-        onSave={handleSaveData}
-      /> */}
     </Modal>
   );
 };

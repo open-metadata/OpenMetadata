@@ -222,7 +222,7 @@ const DomainSelectablTreeNew: FC<DomainSelectableTreeProps> = ({
 
   return (
     <div data-testid="domain-selectable-tree" style={{ width: '339px' }}>
-      <div className="border" style={{ borderRadius: '5px', width: '100px' }}>
+      <div style={{ borderRadius: '5px', width: '100px' }}>
         <Select
           className="custom-domain-edit-select"
           dropdownRender={() => treeContent}

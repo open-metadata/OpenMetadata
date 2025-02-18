@@ -59,7 +59,6 @@ const DomainSelectableListNew = ({
 }: DomainSelectableListProps) => {
   const { t } = useTranslation();
   const [popupVisible, setPopupVisible] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState<boolean>(false);
 
   const selectedDomainsList = useMemo(() => {
@@ -81,8 +80,6 @@ const DomainSelectableListNew = ({
   }, [selectedDomain]);
 
   const handleUpdate = async (domains: EntityReference[]) => {
-    setIsSaving(true);
-
     try {
       if (multiple) {
         await onUpdate(domains);
@@ -90,7 +87,6 @@ const DomainSelectableListNew = ({
         await onUpdate(domains[0]);
       }
     } finally {
-      setIsSaving(false);
       setPopupVisible(false);
     }
   };
