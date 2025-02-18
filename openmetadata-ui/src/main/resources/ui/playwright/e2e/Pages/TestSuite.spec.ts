@@ -201,7 +201,9 @@ test('Logical TestSuite', async ({ page }) => {
     await page.waitForSelector("[data-testid='select-owner-tabs']", {
       state: 'visible',
     });
-    const getOwnerList = page.waitForResponse('/api/v1/users?*isBot=false*');
+    const getOwnerList = page.waitForResponse(
+      '/api/v1/search/query?q=*isBot:false*index=user_search_index*'
+    );
     await page.click('.ant-tabs [id*=tab-users]');
     await getOwnerList;
     await page.waitForSelector(`[data-testid="loader"]`, {

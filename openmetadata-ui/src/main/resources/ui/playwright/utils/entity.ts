@@ -59,7 +59,7 @@ export const addOwner = async ({
   await page.getByTestId(initiatorId).click();
   if (type === 'Users') {
     const userListResponse = page.waitForResponse(
-      '/api/v1/users?limit=*&isBot=false*'
+      '/api/v1/search/query?q=*isBot:false*index=user_search_index*'
     );
     await page.getByRole('tab', { name: type }).click();
     await userListResponse;
