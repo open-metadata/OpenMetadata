@@ -12,7 +12,6 @@
  */
 
 import { Typography } from 'antd';
-import classNames from 'classnames';
 import { isEqual } from 'lodash';
 import React, { FC, Fragment } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -31,7 +30,6 @@ interface DescriptionTaskProps {
   isTaskActionEdit: boolean;
   hasEditAccess: boolean;
   onChange: (value: string) => void;
-  customClassName?: string;
 }
 
 const DescriptionTask: FC<DescriptionTaskProps> = ({
@@ -39,7 +37,6 @@ const DescriptionTask: FC<DescriptionTaskProps> = ({
   isTaskActionEdit,
   hasEditAccess,
   onChange,
-  customClassName,
 }) => {
   const { task } = taskThread;
   const { t } = useTranslation();
@@ -94,9 +91,7 @@ const DescriptionTask: FC<DescriptionTaskProps> = ({
   };
 
   return (
-    <div
-      className={classNames(customClassName)}
-      data-testid="task-description-tabs">
+    <div data-testid="task-description-tabs">
       <Fragment>
         {isTaskClosed ? (
           getDiffView()

@@ -23,7 +23,6 @@ import {
 
 export const DiffViewNew = ({
   diffArr,
-  className,
   showDescTitle = false,
   task,
 }: {
@@ -35,15 +34,10 @@ export const DiffViewNew = ({
   const { t } = useTranslation();
   const [expanded, setExpanded] = useState(false);
 
-  // function stripHtml(html: string) {
-  //   // Remove all HTML tags except <strong>
-  //   return html.replace(/<(?!\/?strong\b)[^>]+>/g, '').trim();
-  // }
   function stripHtml(html: string) {
-    // Preserve <strong> tags and their content, removing all other HTML tags
     return html
-      .replace(/<(?!\/?strong\b)[^>]+>/g, '') // Keep <strong> tags, remove others
-      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') // Convert **bold** to <strong>bold</strong>
+      .replace(/<(?!\/?strong\b)[^>]+>/g, '')
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
       .trim();
   }
 
@@ -85,29 +79,12 @@ export const DiffViewNew = ({
       className={classNames(
         'w-full h-max-56 overflow-y-auto p-md border-radius-xs'
       )}
-      // style={
-      //   showDescTitle
-      //     ? {
-      //         background: 'rgba(239, 244, 250, 0.25',
-      //         borderRadius: '8px !important',
-      //         border: '0.8px solid #DFDFDF',
-      //       }
-      //     : {
-      //         padding: '16px !important',
-      //         borderRadius: '8px !important',
-      //         background: 'white',
-
-      //         margin: '16px 0px',
-      //       }
-
-      // }
       style={{
         ...(showDescTitle
           ? {
               background: 'rgba(239, 244, 250, 0.25)',
               borderRadius: '8px',
               border: '0.8px solid #DFDFDF',
-              // margin: '16px 0px',
             }
           : {
               padding: '20px',
