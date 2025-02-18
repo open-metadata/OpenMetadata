@@ -1616,6 +1616,26 @@ public interface CollectionDAO {
 
     @ConnectionAwareSqlQuery(
         value =
+            "SELECT COUNT(te.id) AS count "
+                + "FROM thread_entity te "
+                + "WHERE te.type = 'Announcement' "
+                + "  AND te.entityLink = :entityLink "
+                + "  AND CAST(JSON_EXTRACT(te.json, '$.announcement.startTime') AS UNSIGNED) <= UNIX_TIMESTAMP()*1000 "
+                + "  AND CAST(JSON_EXTRACT(te.json, '$.announcement.endTime') AS UNSIGNED) >= UNIX_TIMESTAMP()*1000",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT COUNT(te.id) AS count "
+                + "FROM thread_entity te "
+                + "WHERE te.type = 'Announcement' "
+                + "  AND te.entityLink = :entityLink "
+                + "  AND (te.json->'announcement'->>'startTime')::numeric <= EXTRACT(EPOCH FROM NOW()) * 1000 "
+                + "  AND (te.json->'announcement'->>'endTime')::numeric >= EXTRACT(EPOCH FROM NOW()) * 1000",
+        connectionType = POSTGRES)
+    int countActiveAnnouncement(@Bind("entityLink") String entityLink);
+
+    @ConnectionAwareSqlQuery(
+        value =
             "SELECT combined.type, combined.taskStatus, COUNT(combined.id) AS count "
                 + "FROM ( "
                 + "    SELECT te.type, te.taskStatus, te.id  "

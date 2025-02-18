@@ -15,9 +15,9 @@
  */
 export interface ThreadCount {
     /**
-     * Total count of all the announcements associated with an entity.
+     * Total count of all the active announcements associated with the entity.
      */
-    announcementCount?: number;
+    activeAnnouncementCount?: number;
     /**
      * Total count of all the tasks.
      */
@@ -28,6 +28,10 @@ export interface ThreadCount {
     conversationCount?: number;
     entityLink?:        string;
     /**
+     * Total count of all the inactive announcements associated with the entity.
+     */
+    inactiveAnnouncementCount?: number;
+    /**
      * Total count of all the mentions of a user.
      */
     mentionCount?: number;
@@ -35,6 +39,10 @@ export interface ThreadCount {
      * Total count of all the open tasks.
      */
     openTaskCount?: number;
+    /**
+     * Total count of all the announcements associated with the entity.
+     */
+    totalAnnouncementCount?: number;
     /**
      * Total count of all the tasks.
      */
