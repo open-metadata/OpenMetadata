@@ -18,12 +18,6 @@
 
 .activity-feed-tab {
   display: flex;
-  gap: 20px;
-  width: 100%;
-  width: 100%;
-  overflow-x: hidden;
-  padding: 20px;
-  background-color: #f5f5f5;
 
   .custom-menu.ant-menu-root.ant-menu-inline {
     .ant-menu-item {
@@ -32,133 +26,25 @@
   }
 
   .center-container {
-    flex: 1;
-    min-width: 0;
-    height: @user-profile-page-panel-height;
+    flex: 0 0 calc(50% - @left-side-panel-width / 2);
+    height: @entity-details-tab-height;
     overflow-y: scroll;
-    border-radius: 12px;
-    background-color: @white;
-    padding: 14px 20px 20px 20px;
-    .full-width {
-      flex: 10;
-    }
   }
   .right-container {
-    flex: 1;
-    min-width: 0;
-    border: none;
-    height: @user-profile-page-panel-height;
+    flex: 0 0 calc(50% - @left-side-panel-width / 2);
+    border-left: @global-border;
+    height: @entity-details-tab-height;
     overflow-y: scroll;
-    background-color: @white;
-    border-radius: 12px;
-    .full-width {
-      flex: 0;
-    }
-    .activity-feed-card-container {
-      margin: 0px;
-    }
-    .activity-feed-comments-container {
-      border-radius: 12px;
-      padding: 16px;
-      margin: 20px 0px;
-      border: 0.8px solid #dfdfdf;
-      background: rgba(239, 244, 250, 0.25);
-    }
 
-    .activity-feed-reply-button {
-      border-radius: 24px;
-      border: 1px solid #d4d4d8;
-      color: #52525b;
-      font-size: 12px;
-    }
-    .comments-input-field {
-      background-color: #f4f5f7;
-      border-radius: 20px;
-      border: 1px solid #d4d4d8;
-      height: 36px;
-      font-size: 12px;
-      line-height: 14.52px;
+    .activity-feed-card-container.ant-btn:hover {
+      color: inherit;
+      background-color: @white;
     }
   }
 
   .left-container {
     flex: 0 0 @left-side-panel-width;
     border-right: @global-border !important;
-  }
-  .activity-feed-card-new {
-    border-radius: 8px;
-    margin: 10px 0px;
-    background: #f5f5f5;
-    display: flex;
-    flex-direction: column;
-    flex-wrap: wrap;
-    width: inherit;
-    border: none;
-
-    .ant-card-body {
-      width: inherit;
-      padding: 20px;
-      .ant-space-item {
-        width: inherit;
-      }
-    }
-
-    .activity-feed-card-message {
-      padding: 12px;
-      background-color: @white;
-      width: inherit;
-      margin-top: 2px;
-      .ant-card-body {
-        padding: 0px;
-        border: none;
-        border-radius: 12px;
-      }
-    }
-    .activity-feed-card-message-right-panel {
-      background: rgba(239, 244, 250, 0.25);
-      margin-top: 10px;
-    }
-  }
-  .activity-feed-reply-card {
-    border-radius: 8px;
-
-    display: flex;
-    flex-direction: column;
-    flex-wrap: wrap;
-    width: inherit;
-
-    .ant-card-body {
-      width: inherit;
-      padding: 0px;
-      padding-top: 20px;
-      border-bottom: 1.5px solid #d4d4d8;
-      background: rgba(239, 244, 250, 0.25);
-
-      padding-bottom: 16px;
-      .ant-space-item {
-        width: inherit;
-      }
-    }
-    .activity-feed-reply-card-message {
-      padding-left: 50px;
-      border: none;
-      background: rgba(239, 244, 250, 0.25);
-      .ant-card-body {
-        margin: 0px;
-        margin-top: -8px;
-        margin-bottom: -6px;
-        border: none;
-        padding: 0px;
-        background: rgba(239, 244, 250, 0.25);
-      }
-      .activity-feed-comment-text {
-        color: #52525b;
-      }
-    }
-  }
-  .activity-feed-card-new-right-panel {
-    background-color: @white;
-    border: none;
   }
 }
 
@@ -168,194 +54,4 @@
 
 .count-loader.ant-skeleton-element .ant-skeleton-button-sm {
   width: 72px;
-}
-
-.activity-feed-editor-container-new {
-  background-color: #f5f5f5;
-  border: none;
-  border-radius: 10px;
-  .ql-container {
-    background-color: #f5f5f5;
-    border: none;
-  }
-  .ql-toolbar {
-    background-color: #f5f5f5;
-    border: none;
-    border-bottom: 1px solid #d9d9d9;
-  }
-  .ql-toolbar button {
-    color: #292929;
-  }
-}
-
-.activity-feed-editor-send-btn {
-  color: @white;
-  .ant-btn.send-button {
-    position: absolute;
-    bottom: 8px;
-    right: 8px;
-    width: 34px;
-    height: 34px;
-    padding: 0;
-    border-radius: 50%;
-  }
-}
-.activity-feed-user-name {
-  font-size: 14px;
-  font-weight: 600;
-  line-height: 20px;
-  letter-spacing: 0.03em;
-  color: #181d27;
-}
-.reply-card-user-name {
-  font-size: 14px;
-  font-weight: 500;
-  line-height: 24px;
-  color: #373e44;
-}
-.activity-feed-reply-card-footer {
-  margin-left: 45px;
-}
-.active-card {
-  background-color: #e6f1fe;
-}
-.task-tab-custom-dropdown {
-  border-radius: 6px;
-  .task-tab-filter-item {
-    color: #535862;
-    font-size: 14px;
-    font-weight: 400;
-    line-height: 20px;
-    &.selected {
-      color: #2e90fa;
-    }
-  }
-
-  .task-filter-icon:hover path {
-    stroke: #2e90fa;
-    stroke-width: 2;
-  }
-  .task-count-container {
-    background: #e9eaeb;
-    border-radius: 16px;
-    width: 30px;
-    height: 22px;
-    display: flex;
-    padding: 2px 8px;
-    justify-content: center;
-    align-items: center;
-    &.active {
-      background-color: #2e90fa !important;
-    }
-
-    .task-count-text {
-      color: #414651;
-      text-align: center;
-      font-family: Inter;
-      font-size: 12px;
-      font-weight: 500;
-      line-height: 18px;
-    }
-
-    &.active .task-count-text {
-      color: @white;
-    }
-  }
-  .ant-dropdown-menu .ant-dropdown-menu-item {
-    box-shadow: 0px 1px 2px 0px rgba(10, 13, 18, 0.05);
-    padding: 0px;
-    margin: 8px;
-    .active {
-      box-shadow: 0px 1px 2px 0px rgba(10, 13, 18, 0.05);
-      background-color: #f4f4f5;
-      border-radius: 8px;
-      svg path {
-        fill: #2e90fa;
-      }
-    }
-  }
-}
-
-.task-toggle {
-  background: white;
-  border-radius: 8px;
-  padding: 4px;
-  border: 1px solid #dce3ec;
-
-  .ant-segmented-item {
-    color: #71717a;
-    transition: all 0.3s ease;
-
-    &-selected {
-      background: #e6f1fe;
-      color: #005bc4;
-      text-align: center;
-
-      .ant-segmented-item-label {
-        color: #005bc4;
-      }
-      svg path {
-        fill: #005bc4;
-      }
-    }
-  }
-  &:hover {
-    background: none !important;
-  }
-
-  &:focus {
-    background: none !important;
-  }
-
-  .ant-segmented:not(.ant-segmented-disabled):hover,
-  .ant-segmented:not(.ant-segmented-disabled):focus {
-    background: none !important;
-  }
-}
-
-.toggle-item {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 5px;
-  font-size: 14px;
-  height: 40px;
-  width: 100px;
-
-  .ant-segmented-item-label {
-    color: #71717a;
-    font-size: 12px;
-    font-style: normal;
-    font-weight: 400;
-    line-height: 20px;
-  }
-}
-
-.ant-btn:hover,
-.ant-btn:focus {
-  background-color: inherit !important;
-  color: inherit !important;
-}
-.card-style-feed-header {
-  color: #535862;
-  font-size: 14px;
-  font-style: normal;
-  font-weight: 400;
-  line-height: 20px;
-}
-.feed-card-header-v2-timestamp {
-  color: #717680;
-}
-.close-tab-icon {
-  position: absolute;
-  top: 20px;
-  right: 20px;
-}
-.full-width {
-  flex: auto !important;
-}
-.reply-feed-editor {
-  .editor-container {
-    margin: 0px;
-  }
 }
