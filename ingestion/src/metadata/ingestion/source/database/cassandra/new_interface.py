@@ -1,15 +1,25 @@
 import json
 from cassandra.cluster import Cluster
 from cassandra.auth import PlainTextAuthProvider
+from metadata.generated.schema.entity.data.table import Column, Table
+from metadata.generated.schema.entity.data.database import Database
+from metadata.generated.schema.entity.data.schema import Schema
+from metadata.generated.schema.entity.data.materializedView import MaterializedView
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.generated.schema.metadataIngestion.workflow import Source as WorkflowSource
+from metadata.utils.logger import ingestion_logger
+
+logger = ingestion_logger()
 
 class CassandraConnector:
-    def __init__(self, host='127.0.0.1', port=9042, username=None, password=None):
+    def __init__(self, host='127.0.0.1', port=9042, username=None, password=None, metadata_client=None):
         self.host = host
         self.port = port
         self.username = username
         self.password = password
         self.cluster = None
         self.session = None
+        self.metadata_client = metadata_client or OpenMetadata
 
     def connect(self):
         """
@@ -68,57 +78,68 @@ class CassandraConnector:
 
         return schema
 
-    def get_metadata(self):
-        """
-        Retrieves metadata for all keyspaces and tables,
-         then formats it for OpenMetadata.
-        """
-        if not self.session:
-            print("No active Cassandra session")
-            return {}
+    def push_keyspace(self, keyspace_name):
+        try:
+            keyspace_entity = Database(
+                name=keyspace_name,
+                description=f"Keyspace {keyspace_name}",
+                service=self.metadata_client.config.serviceConnection.root.config,  # Reference the Cassandra service
+            )
+            self.metadata_client.create_or_update(keyspace_entity)
+            logger.info(f"Keyspace {keyspace_name} pushed to OpenMetadata")
+        except Exception as e:
+            logger.error(f"Error pushing keyspace {keyspace_name} to OpenMetadata: {e}")
 
-        metadata = {
-            "databaseService": "cassandra",
-            "databases": []
-        }
+    def push_table(self, schema_name, table_name):
+        try:
+            schema_entity = Schema(name=schema_name)
+            table_entity = Table(
+                name=table_name,
+                description=f"Table {table_name} in schema {schema_name}",
+                database=schema_entity,  # Link table to schema
+            )
+            self.metadata_client.create_or_update(table_entity)
+            logger.info(f"Table {table_name} pushed to OpenMetadata under schema {schema_name}")
+        except Exception as e:
+            logger.error(f"Error pushing table {table_name} to OpenMetadata: {e}")
 
-        # Get keyspaces (each keyspace is a database)
+    def push_column(self, schema_name, table_name, column_name, column_type):
+        try:
+            schema_entity = Schema(name=schema_name)
+            table_entity = Table(name=table_name)
+            column_entity = Column(
+                name=column_name,
+                dataType=column_type,
+                description=f"Column {column_name} in table {table_name}",
+                table=table_entity,  # Link column to table
+            )
+            self.metadata_client.create_or_update(column_entity)
+            logger.info(f"Column {column_name} pushed to OpenMetadata in table {table_name}")
+        except Exception as e:
+            logger.error(f"Error pushing column {column_name} to OpenMetadata in table {table_name}: {e}")
+
+    def push_metadata(self):
+        """
+        Push all metadata to OpenMetadata.
+        """
+        # Get keyspaces
         keyspaces = self.get_keyspaces()
 
         for keyspace_name in keyspaces:
-            keyspace_metadata = {
-                "name": keyspace_name,
-                "tables": []
-            }
+            # Push keyspace to OpenMetadata
+            self.push_keyspace(keyspace_name)
 
             # Get tables in the keyspace
             tables = self.get_tables(keyspace_name)
-
             for table_name in tables:
-                table_metadata = {
-                    "name": table_name,
-                    "columns": []
-                }
+                # Push table to OpenMetadata
+                self.push_table(keyspace_name, table_name)
 
-                # Get columns and their types
-                columns = self.session.execute(f"""
-                    SELECT column_name, type 
-                    FROM system_schema.columns 
-                    WHERE keyspace_name = '{keyspace_name}' AND table_name = '{table_name}';
-                """)
-
-                for column in columns:
-                    column_metadata = {
-                        "name": column.column_name,
-                        "dataType": column.type
-                    }
-                    table_metadata["columns"].append(column_metadata)
-
-                keyspace_metadata["tables"].append(table_metadata)
-
-            metadata["databases"].append(keyspace_metadata)
-
-        return metadata
+                # Get columns for the table
+                columns = self.get_table_schema(keyspace_name, table_name)
+                for column_name, column_type in columns.items():
+                    # Push columns to OpenMetadata
+                    self.push_column(keyspace_name, table_name, column_name, column_type)
 
     def disconnect(self):
         """
@@ -128,20 +149,11 @@ class CassandraConnector:
             self.cluster.shutdown()
             print("Disconnected from Cassandra")
 
-    def fetch_and_format_metadata(self):
+    def fetch_and_push_metadata(self):
         """
-        Connect, fetch metadata, format it, and disconnect.
+        Connect to Cassandra, fetch and push metadata to OpenMetadata, then disconnect.
         """
         self.connect()
-        formatted_metadata = self.get_metadata()
+        self.push_metadata()
         self.disconnect()
-        return json.dumps(formatted_metadata, indent=4)
 
-
-"""
-if __name__ == "__main__":
-    connector = CassandraConnector(host='127.0.0.1', port=9042)
-    metadata = connector.fetch_and_format_metadata()
-    print(metadata)
-    
-"""
