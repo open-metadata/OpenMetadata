@@ -79,8 +79,6 @@ public final class ClassConverterFactory {
             Map.entry(NifiConnection.class, new NifiConnectionClassConverter()),
             Map.entry(MatillionConnection.class, new MatillionConnectionClassConverter()),
             Map.entry(VertexAIConnection.class, new VertexAIConnectionClassConverter()));
-    Map.entry(Workflow.class, new WorkflowClassConverter());
-    Map.entry(CassandraConnection.class, new CassandraConnectionClassConverter());
   }
 
   public static ClassConverter getConverter(Class<?> clazz) {
