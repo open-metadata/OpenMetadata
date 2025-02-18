@@ -130,7 +130,6 @@ const ProfileSectionUserDetailsCard = ({
         <div
           className="profile-manage-item d-flex item-center"
           onClick={() => {
-            handleRestoreUser();
             setEditProfile(!editProfile);
             setisPopoverVisible(!isPopoverVisible);
           }}>
