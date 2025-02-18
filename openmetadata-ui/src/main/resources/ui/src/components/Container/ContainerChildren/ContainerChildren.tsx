@@ -12,33 +12,29 @@
  */
 import { Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
-import React, { FC, useEffect, useMemo } from 'react';
+import { AxiosError } from 'axios';
+import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { getEntityDetailsPath } from '../../../constants/constants';
-import { EntityType } from '../../../enums/entity.enum';
-import { Container } from '../../../generated/entity/data/container';
+import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
 import { EntityReference } from '../../../generated/type/entityReference';
+import { useFqn } from '../../../hooks/useFqn';
+import { getContainerByName } from '../../../rest/storageAPI';
 import { getColumnSorter, getEntityName } from '../../../utils/EntityUtils';
+import { showErrorToast } from '../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import Table from '../../common/Table/Table';
-import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 
-interface ContainerChildrenProps {
-  isLoading?: boolean;
-  fetchChildren: () => void;
-}
-
-const ContainerChildren: FC<ContainerChildrenProps> = ({
-  isLoading,
-  fetchChildren,
-}) => {
+const ContainerChildren: FC = () => {
   const { t } = useTranslation();
-  const { data } = useGenericContext<Container>();
-  const { children: childrenList } = useMemo(() => {
-    return data ?? {};
-  }, [data?.children]);
+
+  const { fqn: decodedContainerName } = useFqn();
+  const [isChildrenLoading, setIsChildrenLoading] = useState(false);
+  const [containerChildrenData, setContainerChildrenData] = useState<
+    EntityReference[]
+  >([]);
 
   const columns: ColumnsType<EntityReference> = useMemo(
     () => [
@@ -84,6 +80,20 @@ const ContainerChildren: FC<ContainerChildrenProps> = ({
     []
   );
 
+  const fetchChildren = async () => {
+    setIsChildrenLoading(true);
+    try {
+      const { children } = await getContainerByName(decodedContainerName, {
+        fields: TabSpecificField.CHILDREN,
+      });
+      setContainerChildrenData(children ?? []);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setIsChildrenLoading(false);
+    }
+  };
+
   useEffect(() => {
     fetchChildren();
   }, []);
@@ -93,8 +103,8 @@ const ContainerChildren: FC<ContainerChildrenProps> = ({
       bordered
       columns={columns}
       data-testid="container-list-table"
-      dataSource={childrenList}
-      loading={isLoading}
+      dataSource={containerChildrenData}
+      loading={isChildrenLoading}
       locale={{
         emptyText: <ErrorPlaceHolder className="p-y-md" />,
       }}

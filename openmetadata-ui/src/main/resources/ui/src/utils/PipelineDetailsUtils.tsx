@@ -11,28 +11,25 @@
  *  limitations under the License.
  */
 
-import { Col, Radio, Row, Table } from 'antd';
 import { t } from 'i18next';
-import { isEmpty } from 'lodash';
 import React from 'react';
 import { ReactComponent as IconFailBadge } from '../assets/svg/fail-badge.svg';
 import { ReactComponent as IconSkippedBadge } from '../assets/svg/skipped-badge.svg';
 import { ReactComponent as IconSuccessBadge } from '../assets/svg/success-badge.svg';
 import { ActivityFeedTab } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import { CustomPropertyTable } from '../components/common/CustomPropertyTable/CustomPropertyTable';
-import DescriptionV1 from '../components/common/EntityDescription/DescriptionV1';
-import ResizablePanels from '../components/common/ResizablePanels/ResizablePanels';
 import TabsLabel from '../components/common/TabsLabel/TabsLabel.component';
+import { GenericTab } from '../components/Customization/GenericTab/GenericTab';
 import { CommonWidgets } from '../components/DataAssets/CommonWidgets/CommonWidgets';
-import EntityRightPanel from '../components/Entity/EntityRightPanel/EntityRightPanel';
 import Lineage from '../components/Lineage/Lineage.component';
 import ExecutionsTab from '../components/Pipeline/Execution/Execution.component';
+import { PipelineTaskTab } from '../components/Pipeline/PipelineTaskTab/PipelineTaskTab';
 import { SourceType } from '../components/SearchedData/SearchedData.interface';
-import { PIPELINE_TASK_TABS } from '../constants/pipeline.constants';
-import { COMMON_RESIZABLE_PANEL_CONFIG } from '../constants/ResizablePanel.constants';
 import LineageProvider from '../context/LineageProvider/LineageProvider';
+import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 import { EntityTabs, EntityType, TabSpecificField } from '../enums/entity.enum';
 import { StatusType, TaskStatus } from '../generated/entity/data/pipeline';
+import { PageType } from '../generated/system/ui/page';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
 import { PipelineDetailPageTabProps } from './PipelineClassBase';
 
@@ -57,30 +54,16 @@ export const getStatusBadgeIcon = (status?: StatusType) => {
 };
 
 export const getPipelineDetailPageTabs = ({
-  description,
-  editDescriptionPermission,
-  editGlossaryTermsPermission,
-  editTagsPermission,
-  entityName,
   feedCount,
   getEntityFeedCount,
   handleFeedCount,
-  handleTagSelection,
-  onDescriptionUpdate,
   onExtensionUpdate,
   pipelineDetails,
   pipelineFQN,
-  tasksInternal,
-  tasksDAGView,
-  tags,
   viewAllPermission,
   editLineagePermission,
   editCustomAttributePermission,
   deleted,
-  activeTab,
-  setActiveTab,
-  taskColumns,
-  owners,
   fetchPipeline,
   tab,
 }: PipelineDetailPageTabProps) => {
@@ -88,85 +71,7 @@ export const getPipelineDetailPageTabs = ({
     {
       label: <TabsLabel id={EntityTabs.TASKS} name={t('label.task-plural')} />,
       key: EntityTabs.TASKS,
-      children: (
-        <Row gutter={[0, 16]} wrap={false}>
-          <Col className="tab-content-height-with-resizable-panel" span={24}>
-            <ResizablePanels
-              firstPanel={{
-                className: 'entity-resizable-panel-container',
-                children: (
-                  <div className="p-t-sm m-x-lg">
-                    <Row gutter={[0, 16]}>
-                      <Col span={24}>
-                        <DescriptionV1
-                          description={description}
-                          entityName={entityName}
-                          entityType={EntityType.PIPELINE}
-                          hasEditAccess={editDescriptionPermission}
-                          isDescriptionExpanded={isEmpty(tasksInternal)}
-                          owner={owners}
-                          showActions={!deleted}
-                          onDescriptionUpdate={onDescriptionUpdate}
-                        />
-                      </Col>
-                      <Col span={24}>
-                        <Radio.Group
-                          buttonStyle="solid"
-                          className="radio-switch"
-                          data-testid="pipeline-task-switch"
-                          optionType="button"
-                          options={Object.values(PIPELINE_TASK_TABS)}
-                          value={activeTab}
-                          onChange={(e) => setActiveTab(e.target.value)}
-                        />
-                      </Col>
-                      <Col span={24}>
-                        {activeTab === PIPELINE_TASK_TABS.LIST_VIEW ? (
-                          <Table
-                            bordered
-                            className="align-table-filter-left"
-                            columns={taskColumns}
-                            data-testid="task-table"
-                            dataSource={tasksInternal}
-                            pagination={false}
-                            rowKey="name"
-                            scroll={{ x: 1200 }}
-                            size="small"
-                          />
-                        ) : (
-                          tasksDAGView
-                        )}
-                      </Col>
-                    </Row>
-                  </div>
-                ),
-                ...COMMON_RESIZABLE_PANEL_CONFIG.LEFT_PANEL,
-              }}
-              secondPanel={{
-                children: (
-                  <div data-testid="entity-right-panel">
-                    <EntityRightPanel<EntityType.PIPELINE>
-                      editCustomAttributePermission={
-                        editCustomAttributePermission
-                      }
-                      editGlossaryTermsPermission={editGlossaryTermsPermission}
-                      editTagPermission={editTagsPermission}
-                      entityType={EntityType.PIPELINE}
-                      selectedTags={tags}
-                      viewAllPermission={viewAllPermission}
-                      onExtensionUpdate={onExtensionUpdate}
-                      onTagSelectionChange={handleTagSelection}
-                    />
-                  </div>
-                ),
-                ...COMMON_RESIZABLE_PANEL_CONFIG.RIGHT_PANEL,
-                className:
-                  'entity-resizable-right-panel-container entity-resizable-panel-container',
-              }}
-            />
-          </Col>
-        </Row>
-      ),
+      children: <GenericTab type={PageType.Pipeline} />,
     },
     {
       label: (
@@ -241,5 +146,14 @@ export const getPipelineDetailPageTabs = ({
 };
 
 export const getPipelineWidgetsFromKey = (widgetConfig: WidgetConfig) => {
-  return <CommonWidgets widgetConfig={widgetConfig} />;
+  if (widgetConfig.i.startsWith(DetailPageWidgetKeys.PIPELINE_TASKS)) {
+    return <PipelineTaskTab />;
+  }
+
+  return (
+    <CommonWidgets
+      entityType={EntityType.PIPELINE}
+      widgetConfig={widgetConfig}
+    />
+  );
 };

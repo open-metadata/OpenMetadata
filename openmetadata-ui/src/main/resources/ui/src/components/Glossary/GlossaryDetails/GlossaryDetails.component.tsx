@@ -37,16 +37,16 @@ import { useCustomizeStore } from '../../../pages/CustomizablePage/CustomizeStor
 import { getDocumentByFQN } from '../../../rest/DocStoreAPI';
 import { getFeedCounts } from '../../../utils/CommonUtils';
 import customizeGlossaryPageClassBase from '../../../utils/CustomizeGlossaryPage/CustomizeGlossaryPage';
+import {
+  getDetailsTabWithNewLabel,
+  getTabLabelMapFromTabs,
+} from '../../../utils/CustomizePage/CustomizePageUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import {
   getEntityVersionByField,
   getEntityVersionTags,
 } from '../../../utils/EntityVersionUtils';
-import {
-  getGlossaryTermDetailTabs,
-  getTabLabelMap,
-  getWidgetFromKey,
-} from '../../../utils/GlossaryTerm/GlossaryTermUtil';
+import { getWidgetFromKey } from '../../../utils/GlossaryTerm/GlossaryTermUtil';
 import { ActivityFeedTab } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import DescriptionV1 from '../../common/EntityDescription/DescriptionV1';
 import TabsLabel from '../../common/TabsLabel/TabsLabel.component';
@@ -278,7 +278,7 @@ const GlossaryDetails = ({
   }, [permissions, glossary, termsLoading, widgets]);
 
   const tabs = useMemo(() => {
-    const tabLabelMap = getTabLabelMap(customizedPage?.tabs);
+    const tabLabelMap = getTabLabelMapFromTabs(customizedPage?.tabs);
 
     const items = [
       {
@@ -323,7 +323,7 @@ const GlossaryDetails = ({
         : []),
     ];
 
-    return getGlossaryTermDetailTabs(
+    return getDetailsTabWithNewLabel(
       items,
       customizedPage?.tabs,
       EntityTabs.TERMS

@@ -80,14 +80,14 @@ import {
   getFeedCounts,
   getPartialNameFromTableFQN,
 } from '../../utils/CommonUtils';
+import {
+  getDetailsTabWithNewLabel,
+  getTabLabelMapFromTabs,
+} from '../../utils/CustomizePage/CustomizePageUtils';
 import { defaultFields } from '../../utils/DatasetDetailsUtils';
 import EntityLink from '../../utils/EntityLink';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../utils/EntityUtils';
-import {
-  getGlossaryTermDetailTabs,
-  getTabLabelMap,
-} from '../../utils/GlossaryTerm/GlossaryTermUtil';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import tableClassBase from '../../utils/TableClassBase';
 import {
@@ -486,7 +486,7 @@ const TableDetailsPageV1: React.FC = () => {
   );
 
   const tabs = useMemo(() => {
-    const tabLabelMap = getTabLabelMap(customizedPage?.tabs);
+    const tabLabelMap = getTabLabelMapFromTabs(customizedPage?.tabs);
 
     const tabs = tableClassBase.getTableDetailPageTabs({
       queryCount,
@@ -511,7 +511,7 @@ const TableDetailsPageV1: React.FC = () => {
       labelMap: tabLabelMap,
     });
 
-    const updatedTabs = getGlossaryTermDetailTabs(
+    const updatedTabs = getDetailsTabWithNewLabel(
       tabs,
       customizedPage?.tabs,
       EntityTabs.SCHEMA

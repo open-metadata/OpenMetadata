@@ -31,99 +31,112 @@ import {
 } from '../generated/entity/data/searchIndex';
 import { Tab } from '../generated/system/ui/uiCustomization';
 import { LabelType, TagSource } from '../generated/type/tagLabel';
+import { FeedCounts } from '../interface/feed.interface';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
 import { getTabLabelFromId } from './CustomizePage/CustomizePageUtils';
 import i18n from './i18next/LocalUtil';
-import { getSearchIndexWidgetsFromKey } from './SearchIndexUtils';
+import {
+  getSearchIndexDetailsTabs,
+  getSearchIndexWidgetsFromKey,
+} from './SearchIndexUtils';
 
 export interface SearchIndexDetailPageTabProps {
+  searchIndexDetails: SearchIndex;
+  viewAllPermission: boolean;
+  feedCount: {
+    totalCount: number;
+  };
+  activeTab: EntityTabs;
+  getEntityFeedCount: () => Promise<void>;
+  fetchSearchIndexDetails: () => Promise<void>;
+  handleFeedCount: (feedCount: FeedCounts) => void;
+  viewSampleDataPermission: boolean;
+  deleted: boolean;
+  editLineagePermission: boolean;
+  editCustomAttributePermission: boolean;
+  onExtensionUpdate: (extension: SearchIndex['extension']) => Promise<void>;
   labelMap?: Record<EntityTabs, string>;
 }
 
 class SearchIndexClassBase {
   public getSearchIndexDetailPageTabs(
-    _tabProps: SearchIndexDetailPageTabProps
+    tabProps: SearchIndexDetailPageTabProps
   ): TabProps[] {
-    return [];
+    return getSearchIndexDetailsTabs(tabProps);
   }
 
   public getSearchIndexDetailPageTabsIds(): Tab[] {
     return [
-      EntityTabs.SCHEMA,
+      EntityTabs.FIELDS,
       EntityTabs.ACTIVITY_FEED,
       EntityTabs.SAMPLE_DATA,
-      EntityTabs.TABLE_QUERIES,
-      EntityTabs.PROFILER,
-      EntityTabs.INCIDENTS,
       EntityTabs.LINEAGE,
-      EntityTabs.VIEW_DEFINITION,
+      EntityTabs.SEARCH_INDEX_SETTINGS,
       EntityTabs.CUSTOM_PROPERTIES,
     ].map((tab: EntityTabs) => ({
       id: tab,
       name: tab,
       displayName: getTabLabelFromId(tab),
       layout: this.getDefaultLayout(tab),
-      editable: [EntityTabs.SCHEMA].includes(tab),
+      editable: tab === EntityTabs.FIELDS,
     }));
   }
 
-  public getDefaultLayout(tab: EntityTabs) {
-    switch (tab) {
-      case EntityTabs.SCHEMA:
-        return [
-          {
-            h: 2,
-            i: DetailPageWidgetKeys.DESCRIPTION,
-            w: 6,
-            x: 0,
-            y: 0,
-            static: false,
-          },
-          {
-            h: 11,
-            i: DetailPageWidgetKeys.DATABASE_SCHEMA,
-            w: 6,
-            x: 0,
-            y: 0,
-            static: false,
-          },
-          {
-            h: 1,
-            i: DetailPageWidgetKeys.DATA_PRODUCTS,
-            w: 2,
-            x: 6,
-            y: 1,
-            static: false,
-          },
-          {
-            h: 2,
-            i: DetailPageWidgetKeys.TAGS,
-            w: 2,
-            x: 6,
-            y: 2,
-            static: false,
-          },
-          {
-            h: 2,
-            i: DetailPageWidgetKeys.GLOSSARY_TERMS,
-            w: 2,
-            x: 6,
-            y: 3,
-            static: false,
-          },
-          {
-            h: 4,
-            i: DetailPageWidgetKeys.CUSTOM_PROPERTIES,
-            w: 2,
-            x: 6,
-            y: 6,
-            static: false,
-          },
-        ];
-
-      default:
-        return [];
+  public getDefaultLayout(tab?: EntityTabs) {
+    if (tab && tab !== EntityTabs.FIELDS) {
+      return [];
     }
+
+    return [
+      {
+        h: 2,
+        i: DetailPageWidgetKeys.DESCRIPTION,
+        w: 6,
+        x: 0,
+        y: 0,
+        static: false,
+      },
+      {
+        h: 11,
+        i: DetailPageWidgetKeys.SEARCH_INDEX_FIELDS,
+        w: 6,
+        x: 0,
+        y: 0,
+        static: false,
+      },
+      {
+        h: 1,
+        i: DetailPageWidgetKeys.DATA_PRODUCTS,
+        w: 2,
+        x: 6,
+        y: 1,
+        static: false,
+      },
+      {
+        h: 2,
+        i: DetailPageWidgetKeys.TAGS,
+        w: 2,
+        x: 6,
+        y: 2,
+        static: false,
+      },
+      {
+        h: 2,
+        i: DetailPageWidgetKeys.GLOSSARY_TERMS,
+        w: 2,
+        x: 6,
+        y: 3,
+        static: false,
+      },
+      {
+        h: 4,
+        i: DetailPageWidgetKeys.CUSTOM_PROPERTIES,
+        w: 2,
+        x: 6,
+        y: 6,
+        static: false,
+      },
+    ];
   }
 
   public getDummyData(): SearchIndex {

@@ -160,7 +160,6 @@ import { ReactComponent as IconXML } from '../assets/svg/data-type-icon/xml.svg'
 import { GenericTab } from '../components/Customization/GenericTab/GenericTab';
 import { CommonWidgets } from '../components/DataAssets/CommonWidgets/CommonWidgets';
 import SchemaTable from '../components/Database/SchemaTable/SchemaTable.component';
-import { StoredProcedureCodeCard } from '../components/Database/StoredProcedureCodeCard/StoredProcedureCodeCard';
 import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 import { PageType } from '../generated/system/ui/uiCustomization';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
@@ -1082,11 +1081,12 @@ export const getTableWidgetFromKey = (
     return <FrequentlyJoinedTables />;
   } else if (widgetConfig.i.startsWith(DetailPageWidgetKeys.PARTITIONED_KEYS)) {
     return <PartitionedKeys />;
-  } else if (
-    widgetConfig.i.startsWith(DetailPageWidgetKeys.STORED_PROCEDURE_CODE)
-  ) {
-    return <StoredProcedureCodeCard />;
   } else {
-    return <CommonWidgets widgetConfig={widgetConfig} />;
+    return (
+      <CommonWidgets
+        entityType={EntityType.TABLE}
+        widgetConfig={widgetConfig}
+      />
+    );
   }
 };

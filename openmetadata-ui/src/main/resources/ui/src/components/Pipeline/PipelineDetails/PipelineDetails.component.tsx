@@ -11,70 +11,43 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons/lib/components/Icon';
-import { Card, Col, Row, Tabs, Typography } from 'antd';
-import { ColumnsType } from 'antd/lib/table';
+import { Col, Row, Tabs } from 'antd';
 import { AxiosError } from 'axios';
-import { compare } from 'fast-json-patch';
-import { groupBy, isEmpty, isUndefined, uniqBy } from 'lodash';
-import { EntityTags, TagFilterOptions } from 'Models';
+import { EntityTags } from 'Models';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useHistory, useParams } from 'react-router-dom';
-import { ReactComponent as ExternalLinkIcon } from '../../../assets/svg/external-links.svg';
+import { useHistory, useParams } from 'react-router-dom';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
-import {
-  DATA_ASSET_ICON_DIMENSION,
-  getEntityDetailsPath,
-  NO_DATA_PLACEHOLDER,
-} from '../../../constants/constants';
+import { getEntityDetailsPath } from '../../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
-import { PIPELINE_TASK_TABS } from '../../../constants/pipeline.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { Tag } from '../../../generated/entity/classification/tag';
-import {
-  Pipeline,
-  PipelineStatus,
-  TagLabel,
-  Task,
-} from '../../../generated/entity/data/pipeline';
+import { Pipeline, TagLabel } from '../../../generated/entity/data/pipeline';
 import { Page } from '../../../generated/system/ui/page';
 import { PageType } from '../../../generated/system/ui/uiCustomization';
-import { TagSource } from '../../../generated/type/schema';
 import LimitWrapper from '../../../hoc/LimitWrapper';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { getDocumentByFQN } from '../../../rest/DocStoreAPI';
 import { restorePipeline } from '../../../rest/pipelineAPI';
 import { getFeedCounts } from '../../../utils/CommonUtils';
-import { getColumnSorter, getEntityName } from '../../../utils/EntityUtils';
 import {
-  getGlossaryTermDetailTabs,
-  getTabLabelMap,
-} from '../../../utils/GlossaryTerm/GlossaryTermUtil';
+  getDetailsTabWithNewLabel,
+  getTabLabelMapFromTabs,
+} from '../../../utils/CustomizePage/CustomizePageUtils';
+import { getEntityName } from '../../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import pipelineClassBase from '../../../utils/PipelineClassBase';
-import { columnFilterIcon } from '../../../utils/TableColumn.util';
-import {
-  getAllTags,
-  searchTagInData,
-} from '../../../utils/TableTags/TableTags.utils';
 import { getTagsWithoutTier, getTierTags } from '../../../utils/TableUtils';
 import { createTagObject, updateTierTag } from '../../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { withActivityFeed } from '../../AppRouter/withActivityFeed';
-import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
 import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
 import { DataAssetsHeader } from '../../DataAssets/DataAssetsHeader/DataAssetsHeader.component';
-import { ColumnFilter } from '../../Database/ColumnFilter/ColumnFilter.component';
-import TableDescription from '../../Database/TableDescription/TableDescription.component';
-import TableTags from '../../Database/TableTags/TableTags.component';
 import { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.interface';
-import { ModalWithMarkdownEditor } from '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import PageLayoutV1 from '../../PageLayoutV1/PageLayoutV1';
-import TasksDAGView from '../TasksDAGView/TasksDAGView';
 import './pipeline-details.style.less';
 import { PipeLineDetailsProp } from './PipelineDetails.interface';
 
@@ -86,7 +59,6 @@ const PipelineDetails = ({
   followPipelineHandler,
   unFollowPipelineHandler,
   settingsUpdateHandler,
-  taskUpdateHandler,
   versionHandler,
   pipelineFQN,
   onUpdateVote,
@@ -98,60 +70,34 @@ const PipelineDetails = ({
   const { t } = useTranslation();
   const { currentUser, selectedPersona } = useApplicationStore();
   const userID = currentUser?.id ?? '';
-  const {
-    deleted,
-    owners,
-    description,
-    pipelineStatus,
-    entityName,
-    tier,
-    tags,
-    followers,
-  } = useMemo(() => {
-    return {
-      deleted: pipelineDetails.deleted,
-      owners: pipelineDetails.owners,
-      serviceType: pipelineDetails.serviceType,
-      description: pipelineDetails.description,
-      version: pipelineDetails.version,
-      pipelineStatus: pipelineDetails.pipelineStatus,
-      tier: getTierTags(pipelineDetails.tags ?? []),
-      tags: getTagsWithoutTier(pipelineDetails.tags ?? []),
-      entityName: getEntityName(pipelineDetails),
-      followers: pipelineDetails.followers ?? [],
-    };
-  }, [pipelineDetails]);
+  const { deleted, owners, description, entityName, tier, followers } =
+    useMemo(() => {
+      return {
+        deleted: pipelineDetails.deleted,
+        owners: pipelineDetails.owners,
+        serviceType: pipelineDetails.serviceType,
+        description: pipelineDetails.description,
+        version: pipelineDetails.version,
+        pipelineStatus: pipelineDetails.pipelineStatus,
+        tier: getTierTags(pipelineDetails.tags ?? []),
+        tags: getTagsWithoutTier(pipelineDetails.tags ?? []),
+        entityName: getEntityName(pipelineDetails),
+        followers: pipelineDetails.followers ?? [],
+      };
+    }, [pipelineDetails]);
 
   // local state variables
   const [customizedPage, setCustomizedPage] = useState<Page | null>(null);
-  const [editTask, setEditTask] = useState<{
-    task: Task;
-    index: number;
-  }>();
 
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA
-  );
-
-  const [selectedExecution] = useState<PipelineStatus | undefined>(
-    pipelineStatus
   );
 
   const [pipelinePermissions, setPipelinePermissions] = useState(
     DEFAULT_ENTITY_PERMISSION
   );
 
-  const [activeTab, setActiveTab] = useState(PIPELINE_TASK_TABS.LIST_VIEW);
-
   const { getEntityPermission } = usePermissionProvider();
-
-  const tasksInternal = useMemo(
-    () =>
-      pipelineDetails.tasks
-        ? pipelineDetails.tasks.map((t) => ({ ...t, tags: t.tags ?? [] }))
-        : [],
-    [pipelineDetails.tasks]
-  );
 
   const handleFeedCount = useCallback((data: FeedCounts) => {
     setFeedCount(data);
@@ -186,29 +132,6 @@ const PipelineDetails = ({
     () => followers.some(({ id }: { id: string }) => id === userID),
     [followers, userID]
   );
-
-  const onTaskUpdate = async (taskDescription: string) => {
-    if (editTask) {
-      const updatedTasks = [...(pipelineDetails.tasks ?? [])];
-
-      const updatedTask = {
-        ...editTask.task,
-        description: taskDescription,
-      };
-      updatedTasks[editTask.index] = updatedTask;
-
-      const updatedPipeline = { ...pipelineDetails, tasks: updatedTasks };
-      const jsonPatch = compare(pipelineDetails, updatedPipeline);
-      await taskUpdateHandler(jsonPatch);
-      setEditTask(undefined);
-    } else {
-      setEditTask(undefined);
-    }
-  };
-
-  const closeEditTaskModal = (): void => {
-    setEditTask(undefined);
-  };
 
   const onOwnerUpdate = useCallback(
     async (newOwners?: Pipeline['owners']) => {
@@ -276,45 +199,6 @@ const PipelineDetails = ({
     }
   }, [isFollowing, followPipelineHandler, unFollowPipelineHandler]);
 
-  const handleTableTagSelection = async (
-    selectedTags: EntityTags[],
-    editColumnTag: Task
-  ) => {
-    const prevTags = editColumnTag.tags?.filter((tag) =>
-      selectedTags.some((selectedTag) => selectedTag.tagFQN === tag.tagFQN)
-    );
-
-    const newTags = createTagObject(
-      selectedTags.filter(
-        (selectedTag) =>
-          !editColumnTag.tags?.some((tag) => tag.tagFQN === selectedTag.tagFQN)
-      )
-    );
-
-    const updatedTask = {
-      ...editColumnTag,
-      tags: [...(prevTags as TagLabel[]), ...newTags],
-    } as Task;
-
-    const updatedTasks: Task[] = [...(pipelineDetails.tasks ?? [])].map(
-      (task) => (task.name === editColumnTag.name ? updatedTask : task)
-    );
-
-    const updatedPipeline = { ...pipelineDetails, tasks: updatedTasks };
-    const jsonPatch = compare(pipelineDetails, updatedPipeline);
-
-    await taskUpdateHandler(jsonPatch);
-  };
-
-  const tagFilter = useMemo(() => {
-    const tags = getAllTags(tasksInternal);
-
-    return groupBy(uniqBy(tags, 'value'), (tag) => tag.source) as Record<
-      TagSource,
-      TagFilterOptions[]
-    >;
-  }, [tasksInternal]);
-
   const {
     editTagsPermission,
     editGlossaryTermsPermission,
@@ -345,133 +229,6 @@ const PipelineDetails = ({
     [pipelinePermissions, deleted]
   );
 
-  const taskColumns: ColumnsType<Task> = useMemo(
-    () => [
-      {
-        key: t('label.name'),
-        dataIndex: 'name',
-        title: t('label.name'),
-        width: 220,
-        fixed: 'left',
-        sorter: getColumnSorter<Task, 'name'>('name'),
-        render: (_, record) =>
-          isEmpty(record.sourceUrl) ? (
-            <span>{getEntityName(record)}</span>
-          ) : (
-            <Link
-              className="flex items-center gap-2"
-              target="_blank"
-              to={{ pathname: record.sourceUrl }}>
-              <div className="d-flex items-center">
-                <span className="break-all">{getEntityName(record)}</span>
-
-                <Icon
-                  className="m-l-xs flex-none"
-                  component={ExternalLinkIcon}
-                  style={DATA_ASSET_ICON_DIMENSION}
-                />
-              </div>
-            </Link>
-          ),
-      },
-      {
-        key: t('label.type'),
-        dataIndex: 'taskType',
-        width: 180,
-        title: t('label.type'),
-        render: (text) => (
-          <Typography.Text>{text || NO_DATA_PLACEHOLDER}</Typography.Text>
-        ),
-      },
-      {
-        key: t('label.description'),
-        dataIndex: 'description',
-        width: 350,
-        title: t('label.description'),
-        render: (_, record, index) => (
-          <TableDescription
-            columnData={{
-              fqn: record.fullyQualifiedName ?? '',
-              field: record.description,
-            }}
-            entityFqn={pipelineFQN}
-            entityType={EntityType.PIPELINE}
-            hasEditPermission={editDescriptionPermission}
-            index={index}
-            isReadOnly={deleted}
-            onClick={() => setEditTask({ task: record, index })}
-          />
-        ),
-      },
-      {
-        title: t('label.owner-plural'),
-        dataIndex: 'owners',
-        key: 'owners',
-        width: 120,
-        accessor: 'owner',
-        filterIcon: columnFilterIcon,
-        render: (owner) => <OwnerLabel hasPermission={false} owners={owner} />,
-      },
-      {
-        title: t('label.tag-plural'),
-        dataIndex: 'tags',
-        key: 'tags',
-        accessor: 'tags',
-        width: 300,
-        filterIcon: columnFilterIcon,
-        render: (tags, record, index) => (
-          <TableTags<Task>
-            entityFqn={pipelineFQN}
-            entityType={EntityType.PIPELINE}
-            handleTagSelection={handleTableTagSelection}
-            hasTagEditAccess={editTagsPermission}
-            index={index}
-            isReadOnly={deleted}
-            record={record}
-            tags={tags}
-            type={TagSource.Classification}
-          />
-        ),
-        filters: tagFilter.Classification,
-        filterDropdown: ColumnFilter,
-        onFilter: searchTagInData,
-      },
-      {
-        title: t('label.glossary-term-plural'),
-        dataIndex: 'tags',
-        key: 'glossary',
-        accessor: 'tags',
-        width: 300,
-        filterIcon: columnFilterIcon,
-        filters: tagFilter.Glossary,
-        filterDropdown: ColumnFilter,
-        onFilter: searchTagInData,
-        render: (tags, record, index) => (
-          <TableTags<Task>
-            entityFqn={pipelineFQN}
-            entityType={EntityType.PIPELINE}
-            handleTagSelection={handleTableTagSelection}
-            hasTagEditAccess={editGlossaryTermsPermission}
-            index={index}
-            isReadOnly={deleted}
-            record={record}
-            tags={tags}
-            type={TagSource.Glossary}
-          />
-        ),
-      },
-    ],
-    [
-      deleted,
-      editTask,
-      editTagsPermission,
-      editGlossaryTermsPermission,
-      getEntityName,
-      handleTableTagSelection,
-      editDescriptionPermission,
-    ]
-  );
-
   const handleTabChange = (tabValue: string) => {
     if (tabValue !== tab) {
       history.push({
@@ -500,77 +257,40 @@ const PipelineDetails = ({
     []
   );
 
-  const tasksDAGView = useMemo(
-    () =>
-      !isEmpty(pipelineDetails.tasks) && !isUndefined(pipelineDetails.tasks) ? (
-        <Card className="task-dag-view-card" title={t('label.dag-view')}>
-          <div className="h-100">
-            <TasksDAGView
-              selectedExec={selectedExecution}
-              tasks={pipelineDetails.tasks}
-            />
-          </div>
-        </Card>
-      ) : (
-        <Card className="text-center" data-testid="no-tasks-data">
-          <span>{t('server.no-task-available')}</span>
-        </Card>
-      ),
-    [pipelineDetails, selectedExecution]
-  );
-
   const tabs = useMemo(() => {
-    const tabLabelMap = getTabLabelMap(customizedPage?.tabs);
+    const tabLabelMap = getTabLabelMapFromTabs(customizedPage?.tabs);
 
     const tabs = pipelineClassBase.getPipelineDetailPageTabs({
-      description: description ?? '',
-      activeTab,
       feedCount: {
         totalCount: feedCount.totalCount,
       },
-      deleted: deleted ?? false,
-      owners: owners ?? [],
-      entityName: entityName ?? '',
-      pipelineFQN: pipelineFQN ?? '',
-      pipelineDetails: pipelineDetails ?? {},
-      tasksDAGView,
-      taskColumns: taskColumns ?? [],
-      tasksInternal: tasksInternal ?? [],
-      handleFeedCount,
-      handleTagSelection,
-      onExtensionUpdate,
-      onDescriptionUpdate,
-      editDescriptionPermission: editDescriptionPermission ?? false,
-      editTagsPermission: editTagsPermission ?? false,
-      editGlossaryTermsPermission: editGlossaryTermsPermission ?? false,
-      editLineagePermission: editLineagePermission ?? false,
-      editCustomAttributePermission: editCustomAttributePermission ?? false,
-      viewAllPermission: viewAllPermission ?? false,
-      tab: tab ?? EntityTabs.TASKS,
       getEntityFeedCount,
-      tags,
-      setActiveTab,
+      handleFeedCount,
+      onExtensionUpdate,
+      pipelineDetails,
+      pipelineFQN,
+      viewAllPermission,
+      editLineagePermission,
+      editCustomAttributePermission,
+      deleted: Boolean(pipelineDetails.deleted),
       fetchPipeline,
+      tab,
       labelMap: tabLabelMap,
     });
 
-    return getGlossaryTermDetailTabs(
+    return getDetailsTabWithNewLabel(
       tabs,
       customizedPage?.tabs,
       EntityTabs.TASKS
     );
   }, [
     description,
-    activeTab,
     feedCount.totalCount,
     deleted,
     owners,
     entityName,
     pipelineFQN,
     pipelineDetails,
-    tasksDAGView,
-    taskColumns,
-    tasksInternal,
     handleFeedCount,
     handleTagSelection,
     onExtensionUpdate,
@@ -647,21 +367,6 @@ const PipelineDetails = ({
           </Col>
         </GenericProvider>
       </Row>
-
-      {editTask && (
-        <ModalWithMarkdownEditor
-          header={`${t('label.edit-entity', {
-            entity: t('label.task'),
-          })}: "${getEntityName(editTask.task)}"`}
-          placeholder={t('label.enter-field-description', {
-            field: t('label.task-lowercase'),
-          })}
-          value={editTask.task.description ?? ''}
-          visible={Boolean(editTask)}
-          onCancel={closeEditTaskModal}
-          onSave={onTaskUpdate}
-        />
-      )}
 
       <LimitWrapper resource="pipeline">
         <></>

@@ -17,19 +17,22 @@ import { ActivityFeedTab } from '../components/ActivityFeed/ActivityFeedTab/Acti
 import { CustomPropertyTable } from '../components/common/CustomPropertyTable/CustomPropertyTable';
 import TabsLabel from '../components/common/TabsLabel/TabsLabel.component';
 import { TabProps } from '../components/common/TabsLabel/TabsLabel.interface';
+import { GenericTab } from '../components/Customization/GenericTab/GenericTab';
+import ModelTab from '../components/Dashboard/DataModel/DataModels/ModelTab/ModelTab.component';
 import { CommonWidgets } from '../components/DataAssets/CommonWidgets/CommonWidgets';
 import SchemaEditor from '../components/Database/SchemaEditor/SchemaEditor';
 import Lineage from '../components/Lineage/Lineage.component';
 import { SourceType } from '../components/SearchedData/SearchedData.interface';
 import LineageProvider from '../context/LineageProvider/LineageProvider';
 import { CSMode } from '../enums/codemirror.enum';
+import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 import { EntityTabs, EntityType } from '../enums/entity.enum';
+import { PageType } from '../generated/system/ui/page';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
 import { DashboardDataModelDetailPageTabProps } from './DashboardDataModelBase';
 import i18n from './i18next/LocalUtil';
 
 export const getDashboardDataModelDetailPageTabs = ({
-  modelComponent,
   feedCount,
   activeTab,
   handleFeedCount,
@@ -40,6 +43,7 @@ export const getDashboardDataModelDetailPageTabs = ({
   handelExtensionUpdate,
   getEntityFeedCount,
   fetchDataModel,
+  labelMap,
 }: DashboardDataModelDetailPageTabProps): TabProps[] => {
   return [
     {
@@ -47,11 +51,11 @@ export const getDashboardDataModelDetailPageTabs = ({
         <TabsLabel
           data-testid={EntityTabs.MODEL}
           id={EntityTabs.MODEL}
-          name={i18n.t('label.model')}
+          name={labelMap?.[EntityTabs.MODEL] ?? i18n.t('label.model')}
         />
       ),
       key: EntityTabs.MODEL,
-      children: modelComponent,
+      children: <GenericTab type={PageType.DashboardDataModel} />,
     },
     {
       label: (
@@ -59,7 +63,10 @@ export const getDashboardDataModelDetailPageTabs = ({
           count={feedCount.totalCount}
           id={EntityTabs.ACTIVITY_FEED}
           isActive={activeTab === EntityTabs.ACTIVITY_FEED}
-          name={i18n.t('label.activity-feed-and-task-plural')}
+          name={
+            labelMap?.[EntityTabs.ACTIVITY_FEED] ??
+            i18n.t('label.activity-feed-and-task-plural')
+          }
         />
       ),
       key: EntityTabs.ACTIVITY_FEED,
@@ -81,7 +88,9 @@ export const getDashboardDataModelDetailPageTabs = ({
               <TabsLabel
                 data-testid={EntityTabs.SQL}
                 id={EntityTabs.SQL}
-                name={i18n.t('label.sql-uppercase')}
+                name={
+                  labelMap?.[EntityTabs.SQL] ?? i18n.t('label.sql-uppercase')
+                }
               />
             ),
             key: EntityTabs.SQL,
@@ -106,7 +115,7 @@ export const getDashboardDataModelDetailPageTabs = ({
         <TabsLabel
           data-testid={EntityTabs.LINEAGE}
           id={EntityTabs.LINEAGE}
-          name={i18n.t('label.lineage')}
+          name={labelMap?.[EntityTabs.LINEAGE] ?? i18n.t('label.lineage')}
         />
       ),
       key: EntityTabs.LINEAGE,
@@ -125,7 +134,10 @@ export const getDashboardDataModelDetailPageTabs = ({
       label: (
         <TabsLabel
           id={EntityTabs.CUSTOM_PROPERTIES}
-          name={i18n.t('label.custom-property-plural')}
+          name={
+            labelMap?.[EntityTabs.CUSTOM_PROPERTIES] ??
+            i18n.t('label.custom-property-plural')
+          }
         />
       ),
       key: EntityTabs.CUSTOM_PROPERTIES,
@@ -150,5 +162,14 @@ export const getDashboardDataModelDetailPageTabs = ({
 export const getDashboardDataModelWidgetsFromKey = (
   widgetConfig: WidgetConfig
 ) => {
-  return <CommonWidgets widgetConfig={widgetConfig} />;
+  if (widgetConfig.i.startsWith(DetailPageWidgetKeys.DATA_MODEL)) {
+    return <ModelTab />;
+  }
+
+  return (
+    <CommonWidgets
+      entityType={EntityType.DASHBOARD_DATA_MODEL}
+      widgetConfig={widgetConfig}
+    />
+  );
 };

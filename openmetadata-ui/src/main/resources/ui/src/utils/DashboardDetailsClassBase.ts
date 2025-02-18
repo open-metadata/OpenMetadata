@@ -72,61 +72,61 @@ class DashboardDetailsClassBase {
     }));
   }
 
-  public getDefaultLayout(tab: EntityTabs) {
-    switch (tab) {
-      case EntityTabs.DETAILS:
-      default:
-        return [
-          {
-            h: 1,
-            i: DetailPageWidgetKeys.DESCRIPTION,
-            w: 6,
-            x: 0,
-            y: 0,
-            static: false,
-          },
-          {
-            h: 6,
-            i: DetailPageWidgetKeys.CHARTS_TABLE,
-            w: 6,
-            x: 0,
-            y: 2,
-            static: false,
-          },
-          {
-            h: 1,
-            i: DetailPageWidgetKeys.DATA_PRODUCTS,
-            w: 2,
-            x: 6,
-            y: 1,
-            static: false,
-          },
-          {
-            h: 1,
-            i: DetailPageWidgetKeys.TAGS,
-            w: 2,
-            x: 6,
-            y: 2,
-            static: false,
-          },
-          {
-            h: 1,
-            i: DetailPageWidgetKeys.GLOSSARY_TERMS,
-            w: 2,
-            x: 6,
-            y: 3,
-            static: false,
-          },
-          {
-            h: 4,
-            i: DetailPageWidgetKeys.CUSTOM_PROPERTIES,
-            w: 2,
-            x: 6,
-            y: 6,
-            static: false,
-          },
-        ];
+  public getDefaultLayout(tab?: EntityTabs) {
+    if (tab && tab !== EntityTabs.DETAILS) {
+      return [];
     }
+
+    return [
+      {
+        h: 1,
+        i: DetailPageWidgetKeys.DESCRIPTION,
+        w: 6,
+        x: 0,
+        y: 0,
+        static: false,
+      },
+      {
+        h: 6,
+        i: DetailPageWidgetKeys.CHARTS_TABLE,
+        w: 6,
+        x: 0,
+        y: 2,
+        static: false,
+      },
+      {
+        h: 1,
+        i: DetailPageWidgetKeys.DATA_PRODUCTS,
+        w: 2,
+        x: 6,
+        y: 1,
+        static: false,
+      },
+      {
+        h: 1,
+        i: DetailPageWidgetKeys.TAGS,
+        w: 2,
+        x: 6,
+        y: 2,
+        static: false,
+      },
+      {
+        h: 1,
+        i: DetailPageWidgetKeys.GLOSSARY_TERMS,
+        w: 2,
+        x: 6,
+        y: 3,
+        static: false,
+      },
+      {
+        h: 4,
+        i: DetailPageWidgetKeys.CUSTOM_PROPERTIES,
+        w: 2,
+        x: 6,
+        y: 6,
+        static: false,
+      },
+    ];
   }
 
   public getDummyData(): Dashboard {

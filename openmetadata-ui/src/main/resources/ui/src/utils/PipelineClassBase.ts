@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { ColumnType } from 'antd/lib/table';
 import { TabProps } from '../components/common/TabsLabel/TabsLabel.interface';
 import {
   CUSTOM_PROPERTIES_WIDGET,
@@ -21,20 +20,16 @@ import {
   GridSizes,
   TAGS_WIDGET,
 } from '../constants/CustomizeWidgets.constants';
-import { PIPELINE_TASK_TABS } from '../constants/pipeline.constants';
 import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 import { EntityTabs } from '../enums/entity.enum';
-import { Tag } from '../generated/entity/classification/tag';
 import {
   Pipeline,
   PipelineServiceType,
   State,
   StatusType,
-  Task,
 } from '../generated/entity/data/pipeline';
-import { EntityReference } from '../generated/entity/type';
 import { Tab } from '../generated/system/ui/uiCustomization';
-import { LabelType, TagLabel, TagSource } from '../generated/type/tagLabel';
+import { LabelType, TagSource } from '../generated/type/tagLabel';
 import { FeedCounts } from '../interface/feed.interface';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
 import { getTabLabelFromId } from './CustomizePage/CustomizePageUtils';
@@ -45,33 +40,19 @@ import {
 } from './PipelineDetailsUtils';
 
 export interface PipelineDetailPageTabProps {
-  description: string;
-  entityName: string;
   feedCount: {
     totalCount: number;
   };
-  editDescriptionPermission: boolean;
-  editGlossaryTermsPermission: boolean;
-  editTagsPermission: boolean;
   getEntityFeedCount: () => Promise<void>;
   handleFeedCount: (data: FeedCounts) => void;
-  handleTagSelection: (selectedTags: TagLabel[]) => Promise<void>;
-  onDescriptionUpdate: (value: string) => Promise<void>;
   onExtensionUpdate: (updatedPipeline: Pipeline) => Promise<void>;
   pipelineDetails: Pipeline;
   pipelineFQN: string;
-  tasksInternal: Task[];
-  tasksDAGView: JSX.Element;
-  tags: Tag[];
   viewAllPermission: boolean;
   editLineagePermission: boolean;
   editCustomAttributePermission: boolean;
   deleted: boolean;
-  activeTab: PIPELINE_TASK_TABS;
   tab: EntityTabs;
-  setActiveTab: (tab: PIPELINE_TASK_TABS) => void;
-  taskColumns: ColumnType<Task>[];
-  owners: EntityReference[];
   fetchPipeline: () => void;
   labelMap?: Record<EntityTabs, string>;
 }
@@ -85,85 +66,75 @@ class PipelineClassBase {
 
   public getPipelineDetailPageTabsIds(): Tab[] {
     return [
-      EntityTabs.SCHEMA,
+      EntityTabs.TASKS,
       EntityTabs.ACTIVITY_FEED,
-      EntityTabs.SAMPLE_DATA,
-      EntityTabs.TABLE_QUERIES,
-      EntityTabs.PROFILER,
-      EntityTabs.INCIDENTS,
+      EntityTabs.EXECUTIONS,
       EntityTabs.LINEAGE,
-      EntityTabs.VIEW_DEFINITION,
       EntityTabs.CUSTOM_PROPERTIES,
     ].map((tab: EntityTabs) => ({
       id: tab,
       name: tab,
       displayName: getTabLabelFromId(tab),
       layout: this.getDefaultLayout(tab),
-      editable: [
-        EntityTabs.SCHEMA,
-        EntityTabs.OVERVIEW,
-        EntityTabs.TERMS,
-      ].includes(tab),
+      editable: tab === EntityTabs.TASKS,
     }));
   }
 
-  public getDefaultLayout(tab: EntityTabs) {
-    switch (tab) {
-      case EntityTabs.TASKS:
-        return [
-          {
-            h: 2,
-            i: DetailPageWidgetKeys.DESCRIPTION,
-            w: 6,
-            x: 0,
-            y: 0,
-            static: false,
-          },
-          {
-            h: 11,
-            i: DetailPageWidgetKeys.PIPELINE_TASKS,
-            w: 6,
-            x: 0,
-            y: 0,
-            static: false,
-          },
-          {
-            h: 1,
-            i: DetailPageWidgetKeys.DATA_PRODUCTS,
-            w: 2,
-            x: 6,
-            y: 1,
-            static: false,
-          },
-          {
-            h: 2,
-            i: DetailPageWidgetKeys.TAGS,
-            w: 2,
-            x: 6,
-            y: 2,
-            static: false,
-          },
-          {
-            h: 2,
-            i: DetailPageWidgetKeys.GLOSSARY_TERMS,
-            w: 2,
-            x: 6,
-            y: 3,
-            static: false,
-          },
-          {
-            h: 4,
-            i: DetailPageWidgetKeys.CUSTOM_PROPERTIES,
-            w: 2,
-            x: 6,
-            y: 6,
-            static: false,
-          },
-        ];
-
-      default:
-        return [];
+  public getDefaultLayout(tab?: EntityTabs) {
+    if (tab && tab !== EntityTabs.TASKS) {
+      return [];
     }
+
+    return [
+      {
+        h: 2,
+        i: DetailPageWidgetKeys.DESCRIPTION,
+        w: 6,
+        x: 0,
+        y: 0,
+        static: false,
+      },
+      {
+        h: 11,
+        i: DetailPageWidgetKeys.PIPELINE_TASKS,
+        w: 6,
+        x: 0,
+        y: 0,
+        static: false,
+      },
+      {
+        h: 1,
+        i: DetailPageWidgetKeys.DATA_PRODUCTS,
+        w: 2,
+        x: 6,
+        y: 1,
+        static: false,
+      },
+      {
+        h: 2,
+        i: DetailPageWidgetKeys.TAGS,
+        w: 2,
+        x: 6,
+        y: 2,
+        static: false,
+      },
+      {
+        h: 2,
+        i: DetailPageWidgetKeys.GLOSSARY_TERMS,
+        w: 2,
+        x: 6,
+        y: 3,
+        static: false,
+      },
+      {
+        h: 4,
+        i: DetailPageWidgetKeys.CUSTOM_PROPERTIES,
+        w: 2,
+        x: 6,
+        y: 6,
+        static: false,
+      },
+    ];
   }
 
   public getDummyData(): Pipeline {

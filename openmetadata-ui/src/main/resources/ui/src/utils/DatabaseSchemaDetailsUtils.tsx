@@ -120,5 +120,10 @@ export const getDatabaseSchemaWidgetsFromKey = (widgetConfig: WidgetConfig) => {
     return <SchemaTablesTab />;
   }
 
-  return <CommonWidgets widgetConfig={widgetConfig} />;
+  return (
+    <CommonWidgets
+      entityType={EntityType.DATABASE_SCHEMA}
+      widgetConfig={widgetConfig}
+    />
+  );
 };

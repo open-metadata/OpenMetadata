@@ -19,7 +19,7 @@ import { CommonWidgets } from '../components/DataAssets/CommonWidgets/CommonWidg
 import TopicSchemaFields from '../components/Topic/TopicSchema/TopicSchema';
 import { ERROR_PLACEHOLDER_TYPE } from '../enums/common.enum';
 import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
-import { EntityTabs } from '../enums/entity.enum';
+import { EntityTabs, EntityType } from '../enums/entity.enum';
 import { PageType } from '../generated/system/ui/page';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
 import i18n from './i18next/LocalUtil';
@@ -106,6 +106,11 @@ export const getTopicWidgetsFromKey = (widgetConfig: WidgetConfig) => {
   if (widgetConfig.i.startsWith(DetailPageWidgetKeys.TOPIC_SCHEMA)) {
     return <TopicSchemaFields />;
   } else {
-    return <CommonWidgets widgetConfig={widgetConfig} />;
+    return (
+      <CommonWidgets
+        entityType={EntityType.TOPIC}
+        widgetConfig={widgetConfig}
+      />
+    );
   }
 };

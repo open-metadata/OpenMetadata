@@ -23,6 +23,7 @@ import dashboardDetailsClassBase from '../DashboardDetailsClassBase';
 import databaseClassBase from '../Database/DatabaseClassBase';
 import databaseSchemaClassBase from '../DatabaseSchemaClassBase';
 import domainClassBase from '../Domain/DomainClassBase';
+import { getEntityName } from '../EntityUtils';
 import i18n from '../i18next/LocalUtil';
 import pipelineClassBase from '../PipelineClassBase';
 import searchIndexClassBase from '../SearchIndexDetailsClassBase';
@@ -399,4 +400,49 @@ export const getWidgetsFromKey = (
     default:
       return null;
   }
+};
+
+export const getDetailsTabWithNewLabel = (
+  defaultTabs: Array<
+    NonNullable<TabsProps['items']>[number] & { isHidden?: boolean }
+  >,
+  customizedTabs?: Tab[],
+  defaultTabId: EntityTabs = EntityTabs.OVERVIEW
+) => {
+  if (!customizedTabs) {
+    return defaultTabs.filter((data) => !data.isHidden);
+  }
+  const overviewTab = defaultTabs?.find((t) => t.key === defaultTabId);
+
+  const newTabs =
+    customizedTabs?.map((t) => {
+      const tabItemDetails = defaultTabs?.find((i) => i.key === t.id);
+
+      return (
+        tabItemDetails ?? {
+          label: getEntityName(t),
+          key: t.id,
+          children: overviewTab?.children,
+        }
+      );
+    }) ?? defaultTabs;
+
+  return newTabs.filter((data) => !data.isHidden);
+};
+
+export const getTabLabelMapFromTabs = (
+  tabs?: Tab[]
+): Record<EntityTabs, string> => {
+  const labelMap = {} as Record<EntityTabs, string>;
+
+  return (
+    tabs?.reduce((acc: Record<EntityTabs, string>, item) => {
+      if (item.id && item.displayName) {
+        const tab = item.id as EntityTabs;
+        acc[tab] = item.displayName;
+      }
+
+      return acc;
+    }, labelMap) ?? labelMap
+  );
 };

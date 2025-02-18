@@ -34,7 +34,6 @@ import {
 import i18n from './i18next/LocalUtil';
 
 export interface DashboardDataModelDetailPageTabProps {
-  modelComponent: JSX.Element;
   feedCount: {
     totalCount: number;
   };
@@ -49,6 +48,7 @@ export interface DashboardDataModelDetailPageTabProps {
   ) => Promise<void>;
   getEntityFeedCount: () => void;
   fetchDataModel: () => void;
+  labelMap?: Record<EntityTabs, string>;
 }
 
 class DashboardDataModelBase {
@@ -73,63 +73,61 @@ class DashboardDataModelBase {
     }));
   }
 
-  public getDefaultLayout(tab: EntityTabs) {
-    switch (tab) {
-      case EntityTabs.MODEL:
-        return [
-          {
-            h: 2,
-            i: DetailPageWidgetKeys.DESCRIPTION,
-            w: 6,
-            x: 0,
-            y: 0,
-            static: false,
-          },
-          {
-            h: 6,
-            i: DetailPageWidgetKeys.DATA_MODEL,
-            w: 6,
-            x: 0,
-            y: 2,
-            static: false,
-          },
-          {
-            h: 1,
-            i: DetailPageWidgetKeys.DATA_PRODUCTS,
-            w: 2,
-            x: 6,
-            y: 1,
-            static: false,
-          },
-          {
-            h: 2,
-            i: DetailPageWidgetKeys.TAGS,
-            w: 2,
-            x: 6,
-            y: 2,
-            static: false,
-          },
-          {
-            h: 2,
-            i: DetailPageWidgetKeys.GLOSSARY_TERMS,
-            w: 2,
-            x: 6,
-            y: 3,
-            static: false,
-          },
-          {
-            h: 4,
-            i: DetailPageWidgetKeys.CUSTOM_PROPERTIES,
-            w: 2,
-            x: 6,
-            y: 6,
-            static: false,
-          },
-        ];
-
-      default:
-        return [];
+  public getDefaultLayout(tab?: EntityTabs) {
+    if (tab && tab !== EntityTabs.MODEL) {
+      return [];
     }
+
+    return [
+      {
+        h: 2,
+        i: DetailPageWidgetKeys.DESCRIPTION,
+        w: 6,
+        x: 0,
+        y: 0,
+        static: false,
+      },
+      {
+        h: 6,
+        i: DetailPageWidgetKeys.DATA_MODEL,
+        w: 6,
+        x: 0,
+        y: 2,
+        static: false,
+      },
+      {
+        h: 1,
+        i: DetailPageWidgetKeys.DATA_PRODUCTS,
+        w: 2,
+        x: 6,
+        y: 1,
+        static: false,
+      },
+      {
+        h: 2,
+        i: DetailPageWidgetKeys.TAGS,
+        w: 2,
+        x: 6,
+        y: 2,
+        static: false,
+      },
+      {
+        h: 2,
+        i: DetailPageWidgetKeys.GLOSSARY_TERMS,
+        w: 2,
+        x: 6,
+        y: 3,
+        static: false,
+      },
+      {
+        h: 4,
+        i: DetailPageWidgetKeys.CUSTOM_PROPERTIES,
+        w: 2,
+        x: 6,
+        y: 6,
+        static: false,
+      },
+    ];
   }
 
   public getDummyData(): DashboardDataModel {

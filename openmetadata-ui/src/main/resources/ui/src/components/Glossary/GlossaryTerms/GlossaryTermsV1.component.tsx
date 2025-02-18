@@ -44,11 +44,11 @@ import { MOCK_GLOSSARY_NO_PERMISSIONS } from '../../../mocks/Glossary.mock';
 import { getDocumentByFQN } from '../../../rest/DocStoreAPI';
 import { searchData } from '../../../rest/miscAPI';
 import { getCountBadge, getFeedCounts } from '../../../utils/CommonUtils';
-import { getEntityVersionByField } from '../../../utils/EntityVersionUtils';
 import {
-  getGlossaryTermDetailTabs,
-  getTabLabelMap,
-} from '../../../utils/GlossaryTerm/GlossaryTermUtil';
+  getDetailsTabWithNewLabel,
+  getTabLabelMapFromTabs,
+} from '../../../utils/CustomizePage/CustomizePageUtils';
+import { getEntityVersionByField } from '../../../utils/EntityVersionUtils';
 import { getQueryFilterToExcludeTerm } from '../../../utils/GlossaryUtils';
 import { getGlossaryTermsVersionsPath } from '../../../utils/RouterUtils';
 import {
@@ -178,7 +178,7 @@ const GlossaryTermsV1 = ({
   };
 
   const tabItems = useMemo(() => {
-    const tabLabelMap = getTabLabelMap(customizedPage?.tabs);
+    const tabLabelMap = getTabLabelMapFromTabs(customizedPage?.tabs);
 
     const items = [
       {
@@ -303,7 +303,11 @@ const GlossaryTermsV1 = ({
         : []),
     ];
 
-    return getGlossaryTermDetailTabs(items, customizedPage?.tabs);
+    return getDetailsTabWithNewLabel(
+      items,
+      customizedPage?.tabs,
+      EntityTabs.TERMS
+    );
   }, [
     customizedPage?.tabs,
     glossaryTerm,

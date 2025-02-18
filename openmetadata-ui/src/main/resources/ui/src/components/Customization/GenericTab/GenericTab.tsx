@@ -31,7 +31,7 @@ interface GenericTabProps {
 
 export const GenericTab = ({ type }: GenericTabProps) => {
   const { currentPersonaDocStore } = useCustomizeStore();
-  const { tab = EntityTabs.CODE } = useParams<{ tab: EntityTabs }>();
+  const { tab } = useParams<{ tab: EntityTabs }>();
 
   const layout = useMemo(() => {
     if (!currentPersonaDocStore) {

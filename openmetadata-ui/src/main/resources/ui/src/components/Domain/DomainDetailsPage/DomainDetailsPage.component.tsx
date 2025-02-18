@@ -79,6 +79,10 @@ import { searchData } from '../../../rest/miscAPI';
 import { searchQuery } from '../../../rest/searchAPI';
 import { formatDomainsResponse } from '../../../utils/APIUtils';
 import { getIsErrorMatch } from '../../../utils/CommonUtils';
+import {
+  getDetailsTabWithNewLabel,
+  getTabLabelMapFromTabs,
+} from '../../../utils/CustomizePage/CustomizePageUtils';
 import domainClassBase from '../../../utils/Domain/DomainClassBase';
 import {
   getQueryFilterForDomain,
@@ -87,10 +91,6 @@ import {
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getEntityVersionByField } from '../../../utils/EntityVersionUtils';
 import Fqn from '../../../utils/Fqn';
-import {
-  getGlossaryTermDetailTabs,
-  getTabLabelMap,
-} from '../../../utils/GlossaryTerm/GlossaryTermUtil';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import {
   getDomainDetailsPath,
@@ -512,7 +512,7 @@ const DomainDetailsPage = ({
   }, [domainFqn]);
 
   const tabs = useMemo(() => {
-    const tabLabelMap = getTabLabelMap(customizedPage?.tabs);
+    const tabLabelMap = getTabLabelMapFromTabs(customizedPage?.tabs);
 
     const tabs = domainClassBase.getDomainDetailPageTabs({
       domain,
@@ -538,7 +538,7 @@ const DomainDetailsPage = ({
       labelMap: tabLabelMap,
     });
 
-    return getGlossaryTermDetailTabs(
+    return getDetailsTabWithNewLabel(
       tabs,
       customizedPage?.tabs,
       EntityTabs.DOCUMENTATION

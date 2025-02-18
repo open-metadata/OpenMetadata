@@ -33,11 +33,11 @@ import { FeedCounts } from '../../../interface/feed.interface';
 import { restoreDashboard } from '../../../rest/dashboardAPI';
 import { getDocumentByFQN } from '../../../rest/DocStoreAPI';
 import { getFeedCounts } from '../../../utils/CommonUtils';
-import dashboardDetailsClassBase from '../../../utils/DashboardDetailsClassBase';
 import {
-  getGlossaryTermDetailTabs,
-  getTabLabelMap,
-} from '../../../utils/GlossaryTerm/GlossaryTermUtil';
+  getDetailsTabWithNewLabel,
+  getTabLabelMapFromTabs,
+} from '../../../utils/CustomizePage/CustomizePageUtils';
+import dashboardDetailsClassBase from '../../../utils/DashboardDetailsClassBase';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { updateTierTag } from '../../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
@@ -228,7 +228,7 @@ const DashboardDetails = ({
   );
 
   const tabs = useMemo(() => {
-    const tabLabelMap = getTabLabelMap(customizedPage?.tabs);
+    const tabLabelMap = getTabLabelMapFromTabs(customizedPage?.tabs);
 
     const tabs = dashboardDetailsClassBase.getDashboardDetailPageTabs({
       editLineagePermission,
@@ -245,7 +245,7 @@ const DashboardDetails = ({
       labelMap: tabLabelMap,
     });
 
-    return getGlossaryTermDetailTabs(
+    return getDetailsTabWithNewLabel(
       tabs,
       customizedPage?.tabs,
       EntityTabs.DETAILS

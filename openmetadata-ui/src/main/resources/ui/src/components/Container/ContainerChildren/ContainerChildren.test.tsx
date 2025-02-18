@@ -33,11 +33,6 @@ const mockChildrenList = [
   },
 ];
 
-const mockDataProps = {
-  childrenList: mockChildrenList,
-  fetchChildren: mockFetchChildren,
-};
-
 jest.mock('../../GenericProvider/GenericProvider', () => ({
   useGenericContext: jest.fn().mockImplementation(() => ({
     data: { children: mockChildrenList },
@@ -57,7 +52,7 @@ describe('ContainerChildren', () => {
   it('Should call fetch container function on load', () => {
     render(
       <BrowserRouter>
-        <ContainerChildren {...mockDataProps} />
+        <ContainerChildren />
       </BrowserRouter>
     );
 
@@ -67,7 +62,7 @@ describe('ContainerChildren', () => {
   it('Should render table with correct columns', () => {
     render(
       <BrowserRouter>
-        <ContainerChildren {...mockDataProps} />
+        <ContainerChildren />
       </BrowserRouter>
     );
 
@@ -79,7 +74,7 @@ describe('ContainerChildren', () => {
   it('Should render container names as links', () => {
     render(
       <BrowserRouter>
-        <ContainerChildren {...mockDataProps} />
+        <ContainerChildren />
       </BrowserRouter>
     );
 
@@ -99,7 +94,7 @@ describe('ContainerChildren', () => {
   it('Should render container descriptions as rich text', () => {
     render(
       <BrowserRouter>
-        <ContainerChildren {...mockDataProps} />
+        <ContainerChildren />
       </BrowserRouter>
     );
 

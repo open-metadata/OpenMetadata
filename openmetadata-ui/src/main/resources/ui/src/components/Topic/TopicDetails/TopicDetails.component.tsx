@@ -36,13 +36,13 @@ import { getDocumentByFQN } from '../../../rest/DocStoreAPI';
 import { restoreTopic } from '../../../rest/topicsAPI';
 import { getFeedCounts } from '../../../utils/CommonUtils';
 import {
+  getDetailsTabWithNewLabel,
+  getTabLabelMapFromTabs,
+} from '../../../utils/CustomizePage/CustomizePageUtils';
+import {
   getEntityName,
   getEntityReferenceFromEntity,
 } from '../../../utils/EntityUtils';
-import {
-  getGlossaryTermDetailTabs,
-  getTabLabelMap,
-} from '../../../utils/GlossaryTerm/GlossaryTermUtil';
 import { getTagsWithoutTier, getTierTags } from '../../../utils/TableUtils';
 import { createTagObject, updateTierTag } from '../../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
@@ -297,7 +297,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
   }, [topicPermissions, decodedTopicFQN]);
 
   const tabs = useMemo(() => {
-    const tabLabelMap = getTabLabelMap(customizedPage?.tabs);
+    const tabLabelMap = getTabLabelMapFromTabs(customizedPage?.tabs);
 
     const tabs = topicClassBase.getTopicDetailPageTabs({
       schemaCount: topicDetails.messageSchema?.schemaFields?.length ?? 0,
@@ -353,7 +353,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
       labelMap: tabLabelMap,
     });
 
-    return getGlossaryTermDetailTabs(
+    return getDetailsTabWithNewLabel(
       tabs,
       customizedPage?.tabs,
       EntityTabs.SCHEMA

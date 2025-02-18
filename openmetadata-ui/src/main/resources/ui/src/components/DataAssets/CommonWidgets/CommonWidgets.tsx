@@ -52,9 +52,13 @@ interface GenericEntity
 
 interface CommonWidgetsProps {
   widgetConfig: WidgetConfig;
+  entityType: EntityType;
 }
 
-export const CommonWidgets = ({ widgetConfig }: CommonWidgetsProps) => {
+export const CommonWidgets = ({
+  widgetConfig,
+  entityType,
+}: CommonWidgetsProps) => {
   const { data, type, onUpdate, permissions } =
     useGenericContext<GenericEntity>();
 
@@ -215,7 +219,7 @@ export const CommonWidgets = ({ widgetConfig }: CommonWidgetsProps) => {
       return (
         <CustomPropertyTable<EntityType.TABLE>
           isRenderedInRightPanel
-          entityType={EntityType.TABLE}
+          entityType={entityType as EntityType.TABLE}
           handleExtensionUpdate={handleExtensionUpdate}
           hasEditAccess={Boolean(editCustomAttributePermission)}
           hasPermission={Boolean(viewAllPermission)}

@@ -14,7 +14,6 @@ import { Col, Row, Tabs } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined, omitBy, toString } from 'lodash';
-import { EntityTags } from 'Models';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
@@ -50,7 +49,6 @@ import { Container } from '../../generated/entity/data/container';
 import { Page } from '../../generated/system/ui/page';
 import { PageType } from '../../generated/system/ui/uiCustomization';
 import { Include } from '../../generated/type/include';
-import { TagLabel } from '../../generated/type/tagLabel';
 import LimitWrapper from '../../hoc/LimitWrapper';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useFqn } from '../../hooks/useFqn';
@@ -70,14 +68,13 @@ import {
   getFeedCounts,
 } from '../../utils/CommonUtils';
 import containerDetailsClassBase from '../../utils/ContainerDetailsClassBase';
-import { getEntityName } from '../../utils/EntityUtils';
 import {
-  getGlossaryTermDetailTabs,
-  getTabLabelMap,
-} from '../../utils/GlossaryTerm/GlossaryTermUtil';
+  getDetailsTabWithNewLabel,
+  getTabLabelMapFromTabs,
+} from '../../utils/CustomizePage/CustomizePageUtils';
+import { getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
-import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
-import { createTagObject, updateTierTag } from '../../utils/TagsUtils';
+import { updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 
 const ContainerPage = () => {
@@ -91,14 +88,9 @@ const ContainerPage = () => {
 
   // Local states
   const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [isChildrenLoading, setIsChildrenLoading] = useState<boolean>(false);
   const [hasError, setHasError] = useState<boolean>(false);
-  const [isEditDescription, setIsEditDescription] = useState<boolean>(false);
   const [customizedPage, setCustomizedPage] = useState<Page | null>(null);
   const [containerData, setContainerData] = useState<Container>();
-  const [containerChildrenData, setContainerChildrenData] = useState<
-    Container['children']
-  >([]);
   const [containerPermissions, setContainerPermissions] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
 
@@ -143,20 +135,6 @@ const ContainerPage = () => {
     }
   };
 
-  const fetchContainerChildren = async () => {
-    setIsChildrenLoading(true);
-    try {
-      const { children } = await getContainerByName(decodedContainerName, {
-        fields: TabSpecificField.CHILDREN,
-      });
-      setContainerChildrenData(children);
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    } finally {
-      setIsChildrenLoading(false);
-    }
-  };
-
   const handleFeedCount = useCallback(
     (data: FeedCounts) => setFeedCount(data),
     []
@@ -191,40 +169,17 @@ const ContainerPage = () => {
     }
   };
 
-  const {
-    deleted,
-    owners,
-    description,
-    version,
-    entityName,
-    isUserFollowing,
-    tags,
-    tier,
-  } = useMemo(() => {
+  const { deleted, version, isUserFollowing } = useMemo(() => {
     return {
       deleted: containerData?.deleted,
-      owners: containerData?.owners,
-      description: containerData?.description,
       version: containerData?.version,
-      tier: getTierTags(containerData?.tags ?? []),
-      tags: getTagsWithoutTier(containerData?.tags ?? []),
-      entityId: containerData?.id,
-      entityName: getEntityName(containerData),
       isUserFollowing: containerData?.followers?.some(
         ({ id }: { id: string }) => id === currentUser?.id
       ),
-      followers: containerData?.followers ?? [],
-      size: containerData?.size ?? 0,
-      numberOfObjects: containerData?.numberOfObjects ?? 0,
-      partitioned: containerData?.dataModel?.isPartitioned,
-      entityFqn: containerData?.fullyQualifiedName ?? '',
     };
-  }, [containerData, currentUser]);
+  }, [containerData]);
 
   const {
-    editTagsPermission,
-    editGlossaryTermsPermission,
-    editDescriptionPermission,
     editCustomAttributePermission,
     editLineagePermission,
     viewBasicPermission,
@@ -285,25 +240,6 @@ const ContainerPage = () => {
     [containerData]
   );
 
-  const handleUpdateDescription = async (updatedDescription: string) => {
-    try {
-      const { description: newDescription, version } =
-        await handleUpdateContainerData({
-          ...(containerData as Container),
-          description: updatedDescription,
-        });
-
-      setContainerData((prev) => ({
-        ...(prev as Container),
-        description: newDescription,
-        version,
-      }));
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    } finally {
-      setIsEditDescription(false);
-    }
-  };
   const handleUpdateDisplayName = async (data: EntityName) => {
     if (isUndefined(containerData)) {
       return;
@@ -447,25 +383,6 @@ const ContainerPage = () => {
     }
   };
 
-  const handleTagUpdate = useCallback(
-    async (updatedContainer: Container) => {
-      if (isUndefined(containerData)) {
-        return;
-      }
-
-      try {
-        const response = await handleUpdateContainerData({
-          ...containerData,
-          tags: updatedContainer.tags,
-        });
-        setContainerData(response);
-      } catch (error) {
-        showErrorToast(error as AxiosError);
-      }
-    },
-    [containerData, handleUpdateContainerData, setContainerData]
-  );
-
   const handleExtensionUpdate = useCallback(
     async (updatedContainer: Container) => {
       if (isUndefined(containerData)) {
@@ -485,26 +402,6 @@ const ContainerPage = () => {
     [containerData, handleUpdateContainerData, setContainerData]
   );
 
-  const handleUpdateDataModel = async (
-    updatedDataModel: Container['dataModel']
-  ) => {
-    try {
-      const { dataModel: newDataModel, version } =
-        await handleUpdateContainerData({
-          ...(containerData as Container),
-          dataModel: updatedDataModel,
-        });
-
-      setContainerData((prev) => ({
-        ...(prev as Container),
-        dataModel: newDataModel,
-        version,
-      }));
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    }
-  };
-
   const versionHandler = () =>
     history.push(
       getVersionPath(
@@ -514,23 +411,23 @@ const ContainerPage = () => {
       )
     );
 
-  const handleTagSelection = async (selectedTags: EntityTags[]) => {
-    const updatedTags: TagLabel[] | undefined = createTagObject(selectedTags);
+  const handleContainerUpdate = async (updatedData: Container) => {
+    try {
+      const updatedContainer = await handleUpdateContainerData(updatedData);
+      setContainerData((prev) => {
+        if (!prev) {
+          return prev;
+        }
 
-    if (updatedTags && containerData) {
-      const updatedTags = [...(tier ? [tier] : []), ...selectedTags];
-      const updatedContainer = { ...containerData, tags: updatedTags };
-      await handleTagUpdate(updatedContainer);
+        return { ...prev, ...updatedContainer };
+      });
+    } catch (error) {
+      showErrorToast(error as AxiosError);
     }
   };
 
-  const handleContainerUpdate = async (updatedData: Container) => {
-    const updatedContainer = await handleUpdateContainerData(updatedData);
-    setContainerData(updatedContainer);
-  };
-
   const tabs = useMemo(() => {
-    const tabLabelMap = getTabLabelMap(customizedPage?.tabs);
+    const tabLabelMap = getTabLabelMapFromTabs(customizedPage?.tabs);
 
     if (!containerData) {
       return [];
@@ -538,35 +435,22 @@ const ContainerPage = () => {
 
     const tabs = containerDetailsClassBase.getContainerDetailPageTabs({
       isDataModelEmpty,
-      description: description ?? '',
       decodedContainerName,
-      entityName,
-      editDescriptionPermission,
-      editTagsPermission,
-      editGlossaryTermsPermission,
       editLineagePermission,
       editCustomAttributePermission,
       viewAllPermission,
-      containerChildrenData: containerChildrenData ?? [],
-      fetchContainerChildren,
-      isChildrenLoading: isChildrenLoading ?? false,
       feedCount: feedCount ?? { totalCount: 0 },
       getEntityFeedCount,
       handleFeedCount,
       tab,
       deleted: deleted ?? false,
-      owners: owners ?? [],
       containerData,
-      tags: tags ?? [],
       fetchContainerDetail,
       labelMap: tabLabelMap,
-      handleUpdateDescription,
-      handleUpdateDataModel,
-      handleTagSelection,
       handleExtensionUpdate,
     });
 
-    return getGlossaryTermDetailTabs(
+    return getDetailsTabWithNewLabel(
       tabs,
       customizedPage?.tabs,
       EntityTabs.CHILDREN
@@ -574,27 +458,13 @@ const ContainerPage = () => {
   }, [
     isDataModelEmpty,
     containerData,
-    description,
     decodedContainerName,
-    decodedContainerName,
-    entityName,
-    editDescriptionPermission,
-    editTagsPermission,
-    editGlossaryTermsPermission,
-    isEditDescription,
     editLineagePermission,
     editCustomAttributePermission,
     viewAllPermission,
     deleted,
-    owners,
-    isChildrenLoading,
-    tags,
     feedCount.totalCount,
-    containerChildrenData,
     handleFeedCount,
-    handleUpdateDataModel,
-    handleUpdateDescription,
-    handleTagSelection,
     handleExtensionUpdate,
     customizedPage?.tabs,
   ]);
@@ -692,7 +562,7 @@ const ContainerPage = () => {
           />
         </Col>
         <GenericProvider<Container>
-          data={{ ...containerData, children: containerChildrenData }}
+          data={containerData}
           permissions={containerPermissions}
           type={EntityType.CONTAINER}
           onUpdate={handleContainerUpdate}>

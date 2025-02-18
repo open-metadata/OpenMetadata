@@ -461,5 +461,7 @@ export const getDomainWidgetsFromKey = (widgetConfig: WidgetConfig) => {
     return <DocumentationTab type={DocumentationEntity.DOMAIN} />;
   }
 
-  return <CommonWidgets widgetConfig={widgetConfig} />;
+  return (
+    <CommonWidgets entityType={EntityType.DOMAIN} widgetConfig={widgetConfig} />
+  );
 };

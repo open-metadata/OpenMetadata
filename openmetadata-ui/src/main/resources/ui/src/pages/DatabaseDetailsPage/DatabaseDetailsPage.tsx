@@ -72,14 +72,14 @@ import {
 } from '../../rest/databaseAPI';
 import { getDocumentByFQN } from '../../rest/DocStoreAPI';
 import { getEntityMissingError, getFeedCounts } from '../../utils/CommonUtils';
+import {
+  getDetailsTabWithNewLabel,
+  getTabLabelMapFromTabs,
+} from '../../utils/CustomizePage/CustomizePageUtils';
 import { getQueryFilterForDatabase } from '../../utils/Database/Database.util';
 import databaseClassBase from '../../utils/Database/DatabaseClassBase';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../utils/EntityUtils';
-import {
-  getGlossaryTermDetailTabs,
-  getTabLabelMap,
-} from '../../utils/GlossaryTerm/GlossaryTermUtil';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getTierTags } from '../../utils/TableUtils';
 import { updateTierTag } from '../../utils/TagsUtils';
@@ -388,7 +388,7 @@ const DatabaseDetails: FunctionComponent = () => {
   }, []);
 
   const tabs = useMemo(() => {
-    const tabLabelMap = getTabLabelMap(customizedPage?.tabs);
+    const tabLabelMap = getTabLabelMapFromTabs(customizedPage?.tabs);
 
     const tabs = databaseClassBase.getDatabaseDetailPageTabs({
       activeTab,
@@ -405,7 +405,7 @@ const DatabaseDetails: FunctionComponent = () => {
       labelMap: tabLabelMap,
     });
 
-    return getGlossaryTermDetailTabs(
+    return getDetailsTabWithNewLabel(
       tabs,
       customizedPage?.tabs,
       EntityTabs.CHILDREN

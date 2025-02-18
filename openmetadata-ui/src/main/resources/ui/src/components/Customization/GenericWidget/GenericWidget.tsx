@@ -618,7 +618,7 @@ export const GenericWidget = (props: WidgetCommonProps) => {
           permissions={DEFAULT_ENTITY_PERMISSION}
           type={EntityType.CONTAINER}
           onUpdate={async () => noop()}>
-          <ContainerChildren fetchChildren={noop} isLoading={false} />
+          <ContainerChildren />
         </GenericProvider>
       );
     } else if (props.widgetKey.startsWith(DetailPageWidgetKeys.CHARTS_TABLE)) {

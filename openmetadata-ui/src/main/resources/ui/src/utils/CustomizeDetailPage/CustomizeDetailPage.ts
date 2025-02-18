@@ -42,7 +42,7 @@ class CustomizeDetailPageClassBase {
     dataProduct: 3,
     tags: 3,
     glossaryTerms: 3,
-    customProperty: 3,
+    customProperty: 4,
     tabs: 1,
     announcements: 3,
   };

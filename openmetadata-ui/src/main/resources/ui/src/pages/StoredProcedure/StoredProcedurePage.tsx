@@ -60,11 +60,11 @@ import {
   updateStoredProcedureVotes,
 } from '../../rest/storedProceduresAPI';
 import { addToRecentViewed, getFeedCounts } from '../../utils/CommonUtils';
-import { getEntityName } from '../../utils/EntityUtils';
 import {
-  getGlossaryTermDetailTabs,
-  getTabLabelMap,
-} from '../../utils/GlossaryTerm/GlossaryTermUtil';
+  getDetailsTabWithNewLabel,
+  getTabLabelMapFromTabs,
+} from '../../utils/CustomizePage/CustomizePageUtils';
+import { getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import {
   getStoredProcedureDetailsPageTabs,
@@ -441,7 +441,7 @@ const StoredProcedurePage = () => {
   );
 
   const tabs = useMemo(() => {
-    const tabLabelMap = getTabLabelMap(customizedPage?.tabs);
+    const tabLabelMap = getTabLabelMapFromTabs(customizedPage?.tabs);
 
     const tabs = getStoredProcedureDetailsPageTabs({
       activeTab: activeTab as EntityTabs,
@@ -462,7 +462,7 @@ const StoredProcedurePage = () => {
       labelMap: tabLabelMap,
     });
 
-    const updatedTabs = getGlossaryTermDetailTabs(
+    const updatedTabs = getDetailsTabWithNewLabel(
       tabs,
       customizedPage?.tabs,
       EntityTabs.CODE

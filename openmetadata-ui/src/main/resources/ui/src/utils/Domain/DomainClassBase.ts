@@ -82,48 +82,46 @@ class DomainClassBase {
     }));
   }
 
-  public getDefaultLayout(tab: EntityTabs) {
-    switch (tab) {
-      case EntityTabs.DOCUMENTATION:
-        return [
-          {
-            h: 2,
-            i: DetailPageWidgetKeys.DESCRIPTION,
-            w: 6,
-            x: 0,
-            y: 0,
-            static: false,
-          },
-
-          {
-            h: 1,
-            i: DetailPageWidgetKeys.OWNERS,
-            w: 2,
-            x: 6,
-            y: 1,
-            static: false,
-          },
-          {
-            h: 2,
-            i: DetailPageWidgetKeys.EXPERTS,
-            w: 2,
-            x: 6,
-            y: 2,
-            static: false,
-          },
-          {
-            h: 2,
-            i: DetailPageWidgetKeys.DOMAIN_TYPE,
-            w: 2,
-            x: 6,
-            y: 3,
-            static: false,
-          },
-        ];
-
-      default:
-        return [];
+  public getDefaultLayout(tab?: EntityTabs) {
+    if (tab && tab !== EntityTabs.DOCUMENTATION) {
+      return [];
     }
+
+    return [
+      {
+        h: 2,
+        i: DetailPageWidgetKeys.DESCRIPTION,
+        w: 6,
+        x: 0,
+        y: 0,
+        static: false,
+      },
+
+      {
+        h: 1,
+        i: DetailPageWidgetKeys.OWNERS,
+        w: 2,
+        x: 6,
+        y: 1,
+        static: false,
+      },
+      {
+        h: 2,
+        i: DetailPageWidgetKeys.EXPERTS,
+        w: 2,
+        x: 6,
+        y: 2,
+        static: false,
+      },
+      {
+        h: 2,
+        i: DetailPageWidgetKeys.DOMAIN_TYPE,
+        w: 2,
+        x: 6,
+        y: 3,
+        static: false,
+      },
+    ];
   }
 
   public getDummyData(): Domain {

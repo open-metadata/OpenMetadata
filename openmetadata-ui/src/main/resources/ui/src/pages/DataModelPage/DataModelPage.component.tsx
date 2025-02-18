@@ -14,7 +14,6 @@
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isUndefined, omitBy } from 'lodash';
-import { EntityTags } from 'Models';
 import {
   default as React,
   useCallback,
@@ -83,7 +82,7 @@ const DataModelsPage = () => {
     };
   }, [dataModelPermissions]);
 
-  const { tier, isUserFollowing } = useMemo(() => {
+  const { isUserFollowing } = useMemo(() => {
     return {
       tier: getTierTags(dataModelData?.tags ?? []),
       isUserFollowing: dataModelData?.followers?.some(
@@ -146,24 +145,6 @@ const DataModelsPage = () => {
     return patchDataModelDetails(dataModelData?.id ?? '', jsonPatch);
   };
 
-  const handleUpdateDescription = async (updatedDescription: string) => {
-    try {
-      const { description: newDescription, version } =
-        await handleUpdateDataModelData({
-          ...(dataModelData as DashboardDataModel),
-          description: updatedDescription,
-        });
-
-      setDataModelData((prev) => ({
-        ...(prev as DashboardDataModel),
-        description: newDescription,
-        version,
-      }));
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    }
-  };
-
   const handleFollowDataModel = async () => {
     const followerId = currentUser?.id ?? '';
     const dataModelId = dataModelData?.id ?? '';
@@ -187,23 +168,6 @@ const DataModelsPage = () => {
           followers: [...(dataModelData?.followers ?? []), ...newValue],
         }));
       }
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    }
-  };
-
-  const handleUpdateTags = async (selectedTags: Array<EntityTags> = []) => {
-    try {
-      const { tags: newTags, version } = await handleUpdateDataModelData({
-        ...(dataModelData as DashboardDataModel),
-        tags: [...(tier ? [tier] : []), ...selectedTags],
-      });
-
-      setDataModelData((prev) => ({
-        ...(prev as DashboardDataModel),
-        tags: newTags,
-        version,
-      }));
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
@@ -240,25 +204,6 @@ const DataModelsPage = () => {
       setDataModelData((prev) => ({
         ...(prev as DashboardDataModel),
         tags: newTags,
-        version,
-      }));
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    }
-  };
-
-  const handleColumnUpdateDataModel = async (
-    updatedDataModel: DashboardDataModel['columns']
-  ) => {
-    try {
-      const { columns: newColumns, version } = await handleUpdateDataModelData({
-        ...(dataModelData as DashboardDataModel),
-        columns: updatedDataModel,
-      });
-
-      setDataModelData((prev) => ({
-        ...(prev as DashboardDataModel),
-        columns: newColumns,
         version,
       }));
     } catch (error) {
@@ -362,12 +307,9 @@ const DataModelsPage = () => {
       dataModelData={dataModelData}
       dataModelPermissions={dataModelPermissions}
       fetchDataModel={() => fetchDataModelDetails(dashboardDataModelFQN)}
-      handleColumnUpdateDataModel={handleColumnUpdateDataModel}
       handleFollowDataModel={handleFollowDataModel}
       handleToggleDelete={handleToggleDelete}
-      handleUpdateDescription={handleUpdateDescription}
       handleUpdateOwner={handleUpdateOwner}
-      handleUpdateTags={handleUpdateTags}
       handleUpdateTier={handleUpdateTier}
       updateDataModelDetailsState={updateDataModelDetailsState}
       onUpdateDataModel={handleUpdateDataModel}

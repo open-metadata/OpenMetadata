@@ -142,5 +142,10 @@ export const getDashboardWidgetsFromKey = (widgetConfig: WidgetConfig) => {
     return <DashboardChartTable />;
   }
 
-  return <CommonWidgets widgetConfig={widgetConfig} />;
+  return (
+    <CommonWidgets
+      entityType={EntityType.DASHBOARD}
+      widgetConfig={widgetConfig}
+    />
+  );
 };

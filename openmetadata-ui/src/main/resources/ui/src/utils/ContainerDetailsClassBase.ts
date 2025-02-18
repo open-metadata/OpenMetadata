@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { EntityTags } from 'Models';
 import { TabProps } from '../components/common/TabsLabel/TabsLabel.interface';
 import {
   CUSTOM_PROPERTIES_WIDGET,
@@ -25,14 +24,12 @@ import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 import { EntityTabs } from '../enums/entity.enum';
 import {
   Container,
-  ContainerDataModel,
   FileFormat,
   StorageServiceType,
 } from '../generated/entity/data/container';
 import { Tab } from '../generated/system/ui/uiCustomization';
 import { getContainerDetailPageTabs } from './ContainerDetailUtils';
 
-import { EntityReference } from '../generated/entity/type';
 import { FeedCounts } from '../interface/feed.interface';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
 import { getContainerWidgetsFromKey } from './ContainerDetailUtils';
@@ -41,30 +38,17 @@ import i18n from './i18next/LocalUtil';
 
 export interface ContainerDetailPageTabProps {
   isDataModelEmpty: boolean;
-  description: string;
   decodedContainerName: string;
-  entityName: string;
-  editDescriptionPermission: boolean;
-  editGlossaryTermsPermission: boolean;
-  editTagsPermission: boolean;
   editLineagePermission: boolean;
   editCustomAttributePermission: boolean;
   viewAllPermission: boolean;
-  containerChildrenData: EntityReference[];
-  fetchContainerChildren: () => Promise<void>;
-  isChildrenLoading: boolean;
-  handleUpdateDescription: (description: string) => Promise<void>;
-  handleUpdateDataModel: (dataModel?: ContainerDataModel) => Promise<void>;
-  handleTagSelection: (tags: EntityTags[]) => Promise<void>;
   handleExtensionUpdate: (updatedContainer: Container) => Promise<void>;
   feedCount: { totalCount: number };
   getEntityFeedCount: () => Promise<void>;
   handleFeedCount: (data: FeedCounts) => void;
   tab: EntityTabs;
-  owners: EntityReference[];
   deleted: boolean;
   containerData: Container;
-  tags: EntityTags[];
   fetchContainerDetail: (containerFQN: string) => Promise<void>;
   labelMap?: Record<EntityTabs, string>;
 }
@@ -91,63 +75,61 @@ class ContainerDetailsClassBase {
     }));
   }
 
-  public getDefaultLayout(tab: EntityTabs) {
-    switch (tab) {
-      case EntityTabs.CHILDREN:
-        return [
-          {
-            h: 2,
-            i: DetailPageWidgetKeys.DESCRIPTION,
-            w: 6,
-            x: 0,
-            y: 0,
-            static: false,
-          },
-          {
-            h: 3,
-            i: DetailPageWidgetKeys.CONTAINER_CHILDREN,
-            w: 6,
-            x: 0,
-            y: 0,
-            static: false,
-          },
-          {
-            h: 1,
-            i: DetailPageWidgetKeys.DATA_PRODUCTS,
-            w: 2,
-            x: 6,
-            y: 1,
-            static: false,
-          },
-          {
-            h: 2,
-            i: DetailPageWidgetKeys.TAGS,
-            w: 2,
-            x: 6,
-            y: 2,
-            static: false,
-          },
-          {
-            h: 2,
-            i: DetailPageWidgetKeys.GLOSSARY_TERMS,
-            w: 2,
-            x: 6,
-            y: 3,
-            static: false,
-          },
-          {
-            h: 4,
-            i: DetailPageWidgetKeys.CUSTOM_PROPERTIES,
-            w: 2,
-            x: 6,
-            y: 6,
-            static: false,
-          },
-        ];
-
-      default:
-        return [];
+  public getDefaultLayout(tab?: EntityTabs) {
+    if (tab && ![EntityTabs.CHILDREN, EntityTabs.SCHEMA].includes(tab)) {
+      return [];
     }
+
+    return [
+      {
+        h: 2,
+        i: DetailPageWidgetKeys.DESCRIPTION,
+        w: 6,
+        x: 0,
+        y: 0,
+        static: false,
+      },
+      {
+        h: 3,
+        i: DetailPageWidgetKeys.CONTAINER_CHILDREN,
+        w: 6,
+        x: 0,
+        y: 0,
+        static: false,
+      },
+      {
+        h: 1,
+        i: DetailPageWidgetKeys.DATA_PRODUCTS,
+        w: 2,
+        x: 6,
+        y: 1,
+        static: false,
+      },
+      {
+        h: 2,
+        i: DetailPageWidgetKeys.TAGS,
+        w: 2,
+        x: 6,
+        y: 2,
+        static: false,
+      },
+      {
+        h: 2,
+        i: DetailPageWidgetKeys.GLOSSARY_TERMS,
+        w: 2,
+        x: 6,
+        y: 3,
+        static: false,
+      },
+      {
+        h: 4,
+        i: DetailPageWidgetKeys.CUSTOM_PROPERTIES,
+        w: 2,
+        x: 6,
+        y: 6,
+        static: false,
+      },
+    ];
   }
 
   public getDummyData(): Container {

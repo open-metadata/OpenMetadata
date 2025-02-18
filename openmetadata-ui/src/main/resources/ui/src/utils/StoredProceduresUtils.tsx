@@ -117,6 +117,11 @@ export const getStoredProcedureWidgetsFromKey = (
   if (widgetConfig.i.startsWith(DetailPageWidgetKeys.STORED_PROCEDURE_CODE)) {
     return <StoredProcedureCodeCard />;
   } else {
-    return <CommonWidgets widgetConfig={widgetConfig} />;
+    return (
+      <CommonWidgets
+        entityType={EntityType.STORED_PROCEDURE}
+        widgetConfig={widgetConfig}
+      />
+    );
   }
 };

@@ -13,39 +13,37 @@
 
 import { Col, Row, Tabs } from 'antd';
 import { AxiosError } from 'axios';
-import { isEmpty, isUndefined, toString } from 'lodash';
-import { EntityTags } from 'Models';
+import { isUndefined, toString } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
+import { FQN_SEPARATOR_CHAR } from '../../../../constants/char.constants';
 import {
   getEntityDetailsPath,
   getVersionPath,
 } from '../../../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../../../constants/entity.constants';
-import { COMMON_RESIZABLE_PANEL_CONFIG } from '../../../../constants/ResizablePanel.constants';
 import { EntityTabs, EntityType } from '../../../../enums/entity.enum';
 import { DashboardDataModel } from '../../../../generated/entity/data/dashboardDataModel';
-import { TagLabel } from '../../../../generated/type/tagLabel';
+import { Page, PageType } from '../../../../generated/system/ui/page';
+import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { useFqn } from '../../../../hooks/useFqn';
 import { FeedCounts } from '../../../../interface/feed.interface';
 import { restoreDataModel } from '../../../../rest/dataModelsAPI';
+import { getDocumentByFQN } from '../../../../rest/DocStoreAPI';
 import { getFeedCounts } from '../../../../utils/CommonUtils';
+import {
+  getDetailsTabWithNewLabel,
+  getTabLabelMapFromTabs,
+} from '../../../../utils/CustomizePage/CustomizePageUtils';
 import { getDashboardDataModelDetailPageTabs } from '../../../../utils/DashboardDataModelUtils';
-import { getEntityName } from '../../../../utils/EntityUtils';
-import { getTagsWithoutTier } from '../../../../utils/TableUtils';
-import { createTagObject } from '../../../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import { withActivityFeed } from '../../../AppRouter/withActivityFeed';
-import DescriptionV1 from '../../../common/EntityDescription/DescriptionV1';
-import ResizablePanels from '../../../common/ResizablePanels/ResizablePanels';
 import { GenericProvider } from '../../../Customization/GenericProvider/GenericProvider';
 import { DataAssetsHeader } from '../../../DataAssets/DataAssetsHeader/DataAssetsHeader.component';
-import EntityRightPanel from '../../../Entity/EntityRightPanel/EntityRightPanel';
 import { EntityName } from '../../../Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../../PageLayoutV1/PageLayoutV1';
 import { DataModelDetailsProps } from './DataModelDetails.interface';
-import ModelTab from './ModelTab/ModelTab.component';
 
 const DataModelDetails = ({
   updateDataModelDetailsState,
@@ -53,11 +51,8 @@ const DataModelDetails = ({
   dataModelPermissions,
   fetchDataModel,
   handleFollowDataModel,
-  handleUpdateTags,
   handleUpdateOwner,
   handleUpdateTier,
-  handleUpdateDescription,
-  handleColumnUpdateDataModel,
   onUpdateDataModel,
   handleToggleDelete,
   onUpdateVote,
@@ -66,22 +61,19 @@ const DataModelDetails = ({
   const history = useHistory();
   const { tab: activeTab } = useParams<{ tab: EntityTabs }>();
   const { fqn: decodedDataModelFQN } = useFqn();
+  const [customizedPage, setCustomizedPage] = useState<Page | null>(null);
+  const { selectedPersona } = useApplicationStore();
 
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA
   );
 
-  const { deleted, owners, description, version, entityName, tags } =
-    useMemo(() => {
-      return {
-        deleted: dataModelData?.deleted,
-        owners: dataModelData?.owners,
-        description: dataModelData?.description,
-        version: dataModelData?.version,
-        entityName: getEntityName(dataModelData),
-        tags: getTagsWithoutTier(dataModelData.tags ?? []),
-      };
-    }, [dataModelData]);
+  const { deleted, version } = useMemo(() => {
+    return {
+      deleted: dataModelData?.deleted,
+      version: dataModelData?.version,
+    };
+  }, [dataModelData]);
 
   const handleFeedCount = useCallback((data: FeedCounts) => {
     setFeedCount(data);
@@ -134,11 +126,6 @@ const DataModelDetails = ({
     }
   };
 
-  const handleTagSelection = async (selectedTags: EntityTags[]) => {
-    const updatedTags: TagLabel[] | undefined = createTagObject(selectedTags);
-    await handleUpdateTags(updatedTags);
-  };
-
   const handleRestoreDataModel = async () => {
     try {
       const { version: newVersion } = await restoreDataModel(
@@ -167,24 +154,8 @@ const DataModelDetails = ({
     []
   );
 
-  const {
-    editDescriptionPermission,
-    editTagsPermission,
-    editGlossaryTermsPermission,
-    editLineagePermission,
-  } = useMemo(() => {
+  const { editLineagePermission } = useMemo(() => {
     return {
-      editDescriptionPermission:
-        (dataModelPermissions.EditAll ||
-          dataModelPermissions.EditDescription) &&
-        !deleted,
-      editGlossaryTermsPermission:
-        (dataModelPermissions.EditGlossaryTerms ||
-          dataModelPermissions.EditAll) &&
-        !deleted,
-      editTagsPermission:
-        (dataModelPermissions.EditAll || dataModelPermissions.EditTags) &&
-        !deleted,
       editLineagePermission:
         (dataModelPermissions.EditAll || dataModelPermissions.EditLineage) &&
         !deleted,
@@ -204,75 +175,9 @@ const DataModelDetails = ({
     [onUpdateDataModel, dataModelData]
   );
 
-  const modelComponent = useMemo(() => {
-    return (
-      <Row gutter={[0, 16]} wrap={false}>
-        <Col className="tab-content-height-with-resizable-panel" span={24}>
-          <ResizablePanels
-            firstPanel={{
-              className: 'entity-resizable-panel-container',
-              children: (
-                <div className="d-flex flex-col gap-4 p-t-sm m-x-lg">
-                  <DescriptionV1
-                    description={description}
-                    entityName={entityName}
-                    entityType={EntityType.DASHBOARD_DATA_MODEL}
-                    hasEditAccess={editDescriptionPermission}
-                    isDescriptionExpanded={isEmpty(dataModelData.columns)}
-                    owner={owners}
-                    showActions={!deleted}
-                    onDescriptionUpdate={handleUpdateDescription}
-                  />
-                  <ModelTab />
-                </div>
-              ),
-              ...COMMON_RESIZABLE_PANEL_CONFIG.LEFT_PANEL,
-            }}
-            secondPanel={{
-              children: (
-                <div data-testid="entity-right-panel">
-                  <EntityRightPanel<EntityType.DASHBOARD_DATA_MODEL>
-                    editCustomAttributePermission={
-                      (dataModelPermissions.EditAll ||
-                        dataModelPermissions.EditCustomFields) &&
-                      !deleted
-                    }
-                    editGlossaryTermsPermission={editGlossaryTermsPermission}
-                    editTagPermission={editTagsPermission}
-                    entityType={EntityType.DASHBOARD_DATA_MODEL}
-                    selectedTags={tags}
-                    viewAllPermission={dataModelPermissions.ViewAll}
-                    onExtensionUpdate={handelExtensionUpdate}
-                    onTagSelectionChange={handleTagSelection}
-                  />
-                </div>
-              ),
-              ...COMMON_RESIZABLE_PANEL_CONFIG.RIGHT_PANEL,
-              className:
-                'entity-resizable-right-panel-container entity-resizable-panel-container',
-            }}
-          />
-        </Col>
-      </Row>
-    );
-  }, [
-    decodedDataModelFQN,
-    dataModelData,
-    description,
-    decodedDataModelFQN,
-    editTagsPermission,
-    editGlossaryTermsPermission,
-    deleted,
-    editDescriptionPermission,
-    entityName,
-    handleTagSelection,
-    handleColumnUpdateDataModel,
-    handleUpdateDescription,
-  ]);
-
   const tabs = useMemo(() => {
+    const tabLabelMap = getTabLabelMapFromTabs(customizedPage?.tabs);
     const allTabs = getDashboardDataModelDetailPageTabs({
-      modelComponent,
       feedCount,
       activeTab,
       handleFeedCount,
@@ -283,18 +188,42 @@ const DataModelDetails = ({
       handelExtensionUpdate,
       getEntityFeedCount,
       fetchDataModel,
+      labelMap: tabLabelMap,
     });
 
-    return allTabs;
+    return getDetailsTabWithNewLabel(
+      allTabs,
+      customizedPage?.tabs,
+      EntityTabs.TASKS
+    );
   }, [
     feedCount.conversationCount,
     feedCount.totalTasksCount,
     dataModelData?.sql,
-    modelComponent,
     deleted,
     handleFeedCount,
     editLineagePermission,
   ]);
+
+  const fetchDocument = useCallback(async () => {
+    const pageFQN = `${EntityType.PERSONA}${FQN_SEPARATOR_CHAR}${selectedPersona.fullyQualifiedName}`;
+    try {
+      const doc = await getDocumentByFQN(pageFQN);
+      setCustomizedPage(
+        doc.data?.pages?.find(
+          (p: Page) => p.pageType === PageType.DashboardDataModel
+        )
+      );
+    } catch (error) {
+      // fail silent
+    }
+  }, [selectedPersona.fullyQualifiedName]);
+
+  useEffect(() => {
+    if (selectedPersona?.fullyQualifiedName) {
+      fetchDocument();
+    }
+  }, [selectedPersona]);
 
   return (
     <PageLayoutV1

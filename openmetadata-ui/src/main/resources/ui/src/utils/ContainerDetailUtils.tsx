@@ -17,22 +17,21 @@ import { EntityTags } from 'Models';
 import React from 'react';
 import { ActivityFeedTab } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import { CustomPropertyTable } from '../components/common/CustomPropertyTable/CustomPropertyTable';
-import DescriptionV1 from '../components/common/EntityDescription/DescriptionV1';
-import ResizablePanels from '../components/common/ResizablePanels/ResizablePanels';
 import TabsLabel from '../components/common/TabsLabel/TabsLabel.component';
 import ContainerChildren from '../components/Container/ContainerChildren/ContainerChildren';
-import ContainerDataModel from '../components/Container/ContainerDataModel/ContainerDataModel';
+import { ContainerWidget } from '../components/Container/ContainerWidget/ContainerWidget';
+import { GenericTab } from '../components/Customization/GenericTab/GenericTab';
 import { CommonWidgets } from '../components/DataAssets/CommonWidgets/CommonWidgets';
-import EntityRightPanel from '../components/Entity/EntityRightPanel/EntityRightPanel';
 import Lineage from '../components/Lineage/Lineage.component';
 import { SourceType } from '../components/SearchedData/SearchedData.interface';
-import { COMMON_RESIZABLE_PANEL_CONFIG } from '../constants/ResizablePanel.constants';
 import LineageProvider from '../context/LineageProvider/LineageProvider';
+import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 import { EntityTabs, EntityType, TabSpecificField } from '../enums/entity.enum';
 import {
   Column,
   ContainerDataModel as ContainerDataModelType,
 } from '../generated/entity/data/container';
+import { PageType } from '../generated/system/ui/uiCustomization';
 import { LabelType, State, TagLabel } from '../generated/type/tagLabel';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
 import { ContainerDetailPageTabProps } from './ContainerDetailsClassBase';
@@ -121,111 +120,45 @@ export const ContainerFields = `${TabSpecificField.TAGS}, ${TabSpecificField.OWN
 
 export const getContainerDetailPageTabs = ({
   isDataModelEmpty,
-  description,
   decodedContainerName,
-  entityName,
-  editDescriptionPermission,
-  editGlossaryTermsPermission,
-  editTagsPermission,
   editLineagePermission,
   editCustomAttributePermission,
   viewAllPermission,
-  containerChildrenData,
-  fetchContainerChildren,
-  isChildrenLoading,
-  handleUpdateDescription,
-  handleUpdateDataModel,
-  handleTagSelection,
   handleExtensionUpdate,
   feedCount,
   getEntityFeedCount,
   handleFeedCount,
   tab,
   deleted,
-  owners,
   containerData,
   fetchContainerDetail,
-  tags,
+  labelMap,
 }: ContainerDetailPageTabProps) => {
   return [
-    {
-      label: (
-        <TabsLabel
-          id={isDataModelEmpty ? EntityTabs.CHILDREN : EntityTabs.SCHEMA}
-          name={t(isDataModelEmpty ? 'label.children' : 'label.schema')}
-        />
-      ),
-      key: isDataModelEmpty ? EntityTabs.CHILDREN : EntityTabs.SCHEMA,
-      children: (
-        <Row gutter={[0, 16]} wrap={false}>
-          <Col className="tab-content-height-with-resizable-panel" span={24}>
-            <ResizablePanels
-              firstPanel={{
-                className: 'entity-resizable-panel-container',
-                children: (
-                  <div className="d-flex flex-col gap-4 p-t-sm m-x-lg">
-                    <DescriptionV1
-                      description={description}
-                      entityName={entityName}
-                      entityType={EntityType.CONTAINER}
-                      hasEditAccess={editDescriptionPermission}
-                      isDescriptionExpanded={isEmpty(containerChildrenData)}
-                      owner={owners}
-                      showActions={!deleted}
-                      onDescriptionUpdate={handleUpdateDescription}
-                    />
-
-                    {isDataModelEmpty ? (
-                      <ContainerChildren
-                        fetchChildren={fetchContainerChildren}
-                        isLoading={isChildrenLoading}
-                      />
-                    ) : (
-                      <ContainerDataModel
-                        dataModel={containerData?.dataModel}
-                        entityFqn={decodedContainerName}
-                        hasDescriptionEditAccess={editDescriptionPermission}
-                        hasGlossaryTermEditAccess={editGlossaryTermsPermission}
-                        hasTagEditAccess={editTagsPermission}
-                        isReadOnly={Boolean(deleted)}
-                        onUpdate={handleUpdateDataModel}
-                      />
-                    )}
-                  </div>
-                ),
-                ...COMMON_RESIZABLE_PANEL_CONFIG.LEFT_PANEL,
-              }}
-              secondPanel={{
-                children: (
-                  <div data-testid="entity-right-panel">
-                    <EntityRightPanel<EntityType.CONTAINER>
-                      editCustomAttributePermission={
-                        editCustomAttributePermission
-                      }
-                      editGlossaryTermsPermission={editGlossaryTermsPermission}
-                      editTagPermission={
-                        editTagsPermission && !containerData?.deleted
-                      }
-                      entityType={EntityType.CONTAINER}
-                      selectedTags={tags}
-                      viewAllPermission={viewAllPermission}
-                      onExtensionUpdate={handleExtensionUpdate}
-                      onTagSelectionChange={handleTagSelection}
-                    />
-                  </div>
-                ),
-                ...COMMON_RESIZABLE_PANEL_CONFIG.RIGHT_PANEL,
-                className:
-                  'entity-resizable-right-panel-container entity-resizable-panel-container',
-              }}
-            />
-          </Col>
-        </Row>
-      ),
-    },
     ...(isDataModelEmpty
-      ? []
+      ? [
+          {
+            label: (
+              <TabsLabel
+                id={EntityTabs.CHILDREN}
+                name={labelMap?.[EntityTabs.CHILDREN] ?? t('label.children')}
+              />
+            ),
+            key: EntityTabs.CHILDREN,
+            children: <GenericTab type={PageType.Container} />,
+          },
+        ]
       : [
+          {
+            label: (
+              <TabsLabel
+                id={EntityTabs.SCHEMA}
+                name={labelMap?.[EntityTabs.SCHEMA] ?? t('label.schema')}
+              />
+            ),
+            key: EntityTabs.SCHEMA,
+            children: <GenericTab type={PageType.Container} />,
+          },
           {
             label: (
               <TabsLabel id={EntityTabs.CHILDREN} name={t('label.children')} />
@@ -234,10 +167,7 @@ export const getContainerDetailPageTabs = ({
             children: (
               <Row className="p-md" gutter={[0, 16]}>
                 <Col span={24}>
-                  <ContainerChildren
-                    fetchChildren={fetchContainerChildren}
-                    isLoading={isChildrenLoading}
-                  />
+                  <ContainerChildren />
                 </Col>
               </Row>
             ),
@@ -304,5 +234,14 @@ export const getContainerDetailPageTabs = ({
 };
 
 export const getContainerWidgetsFromKey = (widgetConfig: WidgetConfig) => {
-  return <CommonWidgets widgetConfig={widgetConfig} />;
+  if (widgetConfig.i.startsWith(DetailPageWidgetKeys.CONTAINER_CHILDREN)) {
+    return <ContainerWidget />;
+  }
+
+  return (
+    <CommonWidgets
+      entityType={EntityType.CONTAINER}
+      widgetConfig={widgetConfig}
+    />
+  );
 };

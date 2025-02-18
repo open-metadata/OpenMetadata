@@ -72,13 +72,13 @@ import { getDocumentByFQN } from '../../rest/DocStoreAPI';
 import { getStoredProceduresList } from '../../rest/storedProceduresAPI';
 import { getTableList } from '../../rest/tableAPI';
 import { getEntityMissingError, getFeedCounts } from '../../utils/CommonUtils';
+import {
+  getDetailsTabWithNewLabel,
+  getTabLabelMapFromTabs,
+} from '../../utils/CustomizePage/CustomizePageUtils';
 import databaseSchemaClassBase from '../../utils/DatabaseSchemaClassBase';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../utils/EntityUtils';
-import {
-  getGlossaryTermDetailTabs,
-  getTabLabelMap,
-} from '../../utils/GlossaryTerm/GlossaryTermUtil';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
@@ -424,7 +424,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   };
 
   const tabs: TabsProps['items'] = useMemo(() => {
-    const tabLabelMap = getTabLabelMap(customizedPage?.tabs);
+    const tabLabelMap = getTabLabelMapFromTabs(customizedPage?.tabs);
 
     const tabs = databaseSchemaClassBase.getDatabaseSchemaPageTabs({
       feedCount,
@@ -441,7 +441,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
       labelMap: tabLabelMap,
     });
 
-    return getGlossaryTermDetailTabs(
+    return getDetailsTabWithNewLabel(
       tabs,
       customizedPage?.tabs,
       EntityTabs.TABLE

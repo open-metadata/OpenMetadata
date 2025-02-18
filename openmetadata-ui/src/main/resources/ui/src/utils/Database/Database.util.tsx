@@ -206,5 +206,10 @@ export const getDatabaseWidgetsFromKey = (widgetConfig: WidgetConfig) => {
     return <DatabaseSchemaTable />;
   }
 
-  return <CommonWidgets widgetConfig={widgetConfig} />;
+  return (
+    <CommonWidgets
+      entityType={EntityType.DATABASE}
+      widgetConfig={widgetConfig}
+    />
+  );
 };
