@@ -310,8 +310,13 @@ public class FeedRepository {
     for (Triple<String, String, String> task : tasks) {
       if (task.getMiddle().equals(Entity.THREAD)) {
         UUID threadId = UUID.fromString(task.getLeft());
-        Thread thread =
-            EntityUtil.validate(threadId, dao.feedDAO().findById(threadId), Thread.class);
+        Thread thread;
+        try {
+          thread = EntityUtil.validate(threadId, dao.feedDAO().findById(threadId), Thread.class);
+        } catch (EntityNotFoundException exc) {
+          LOG.debug(String.format("Thread '%s' not found.", threadId));
+          continue;
+        }
         if (Optional.ofNullable(taskStatus).isPresent()) {
           if (thread.getTask() != null
               && thread.getTask().getType() == taskType
@@ -892,6 +897,8 @@ public class FeedRepository {
         && (owners.stream().anyMatch(owner -> owner.getName().equals(userName))
             || closeTask && thread.getCreatedBy().equals(userName))) {
       return;
+    } else if (closeTask && thread.getCreatedBy().equals(userName)) {
+      return;
     }
 
     // Allow if user is an assignee of the task and if the assignee has permissions to update the
@@ -917,8 +924,10 @@ public class FeedRepository {
     List<EntityReference> teams = user.getTeams();
     List<String> teamNames = teams.stream().map(EntityReference::getName).toList();
     if (assignees.stream().anyMatch(assignee -> teamNames.contains(assignee.getName()))
-        || teamNames.stream()
-            .anyMatch(team -> owners.stream().anyMatch(owner -> team.equals(owner.getName())))) {
+        || (!nullOrEmpty(owners)
+            && teamNames.stream()
+                .anyMatch(
+                    team -> owners.stream().anyMatch(owner -> team.equals(owner.getName()))))) {
       return;
     }
 

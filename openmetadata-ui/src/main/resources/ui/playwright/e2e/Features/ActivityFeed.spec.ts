@@ -381,7 +381,9 @@ test.describe('Activity feed', () => {
 
     // Task 1 - Resolved the task
 
+    const resolveTask2 = page.waitForResponse('/api/v1/feed/tasks/*/resolve');
     await page.getByText('Accept Suggestion').click();
+    await resolveTask2;
 
     await toastNotification(page, /Task resolved successfully/);
 
@@ -774,19 +776,14 @@ base.describe('Activity feed with Data Consumer User', () => {
       page1.locator('[data-testid="close-button"]').click();
       await commentWithCloseTask;
 
-      // TODO: Ashish - Fix the toast notification once issue is resolved from Backend https://github.com/open-metadata/OpenMetadata/issues/17059
+      await toastNotification(page1, 'Task closed successfully.');
+      const openTask = await page1.getByTestId('open-task').textContent();
 
-      //   await toastNotification(page1, 'Task closed successfully.');
-      await toastNotification(
-        page1,
-        'An exception with message [Cannot invoke "java.util.List.stream()" because "owners" is null] was thrown while processing request.'
-      );
+      expect(openTask).toContain('1 Open');
 
-      // TODO: Ashish - Enable them once issue is resolved from Backend https://github.com/open-metadata/OpenMetadata/issues/17059
-      //   const openTask = await page1.getByTestId('open-task').textContent();
-      //   expect(openTask).toContain('1 Open');
-      //   const closedTask = await page1.getByTestId('closed-task').textContent();
-      //   expect(closedTask).toContain('1 Closed');
+      const closedTask = await page1.getByTestId('closed-task').textContent();
+
+      expect(closedTask).toContain('1 Closed');
 
       await afterActionUser1();
     });
@@ -816,21 +813,22 @@ base.describe('Activity feed with Data Consumer User', () => {
       const tagsTask = page2.getByTestId('redirect-task-button-link').first();
       const tagsTaskContent = await tagsTask.innerText();
 
-      expect(tagsTaskContent).toContain('Request tags for');
+      expect(tagsTaskContent).toContain('Request to update description for');
 
       await tagsTask.click();
       await entityPageTaskTab;
 
-      // TODO: Ashish - Enable them once issue is resolved from Backend https://github.com/open-metadata/OpenMetadata/issues/17059
       // Count for task should be 1 both open and closed
 
-      //   const openTaskBefore = await page2.getByTestId('open-task').textContent();
-      //   expect(openTaskBefore).toContain('1 Open');
+      const openTaskBefore = await page2.getByTestId('open-task').textContent();
 
-      //   const closedTaskBefore = await page2
-      //     .getByTestId('closed-task')
-      //     .textContent();
-      //   expect(closedTaskBefore).toContain('1 Closed');
+      expect(openTaskBefore).toContain('1 Open');
+
+      const closedTaskBefore = await page2
+        .getByTestId('closed-task')
+        .textContent();
+
+      expect(closedTaskBefore).toContain('1 Closed');
 
       // Should not see the close button
       expect(page2.locator('[data-testid="close-button"]')).not.toBeVisible();
@@ -849,13 +847,13 @@ base.describe('Activity feed with Data Consumer User', () => {
 
       await page2.waitForLoadState('networkidle');
 
-      // TODO: Ashish - Enable them once issue is resolved from Backend https://github.com/open-metadata/OpenMetadata/issues/17059
-      //   const openTask = await page2.getByTestId('open-task').textContent();
-      //   expect(openTask).toContain('0 Open');
+      const openTask = await page2.getByTestId('open-task').textContent();
+
+      expect(openTask).toContain('0 Open');
 
       const closedTask = await page2.getByTestId('closed-task').textContent();
 
-      expect(closedTask).toContain('1 Closed');
+      expect(closedTask).toContain('2 Closed');
 
       await afterActionUser2();
     });

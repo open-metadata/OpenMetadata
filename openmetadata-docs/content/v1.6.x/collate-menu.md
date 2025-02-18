@@ -216,6 +216,10 @@ site_menu:
     url: /connectors/database/s3-datalake/yaml
   - category: Connectors / Database / S3 Datalake / Troubleshooting
     url: /connectors/database/s3-datalake/troubleshooting
+  - category: Connectors / Database / Teradata
+    url: /connectors/database/teradata
+  - category: Connectors / Database / Teradata / Run Externally
+    url: /connectors/database/teradata/yaml
   - category: Connectors / Database / Trino
     url: /connectors/database/trino
   - category: Connectors / Database / Trino / Run Externally
@@ -626,6 +630,8 @@ site_menu:
     url: /how-to-guides/data-discovery/details
   - category: How-to Guides / Data Discovery / Add Complex Queries using Advanced Search
     url: /how-to-guides/data-discovery/advanced
+  - category: How-to Guides / Data Discovery / Troubleshooting
+    url: /how-to-guides/data-discovery/troubleshooting
   - category: How-to Guides / Data Discovery / Bulk Upload Data Assets
     url: /how-to-guides/data-discovery/bulk-upload
   - category: How-to Guides / Data Discovery / How to Bulk Import Data Asset
@@ -858,6 +864,8 @@ site_menu:
     url: /releases/supported
   - category: Releases / All Releases
     url: /releases/all-releases
+  - category: Releases / All Releases / 1.6.2 Release
+    url: /releases/all-releases/#1.6.2-release
   - category: Releases / All Releases / 1.6.1 Release
     url: /releases/all-releases/#1.6.1-release
   - category: Releases / All Releases / 1.5.15 Release

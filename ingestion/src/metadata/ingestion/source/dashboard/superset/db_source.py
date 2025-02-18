@@ -95,17 +95,15 @@ class SupersetDBSource(SupersetSourceMixin):
             logger.debug(traceback.format_exc())
             logger.warning(f"Failed to fetch chart list due to - {err}]")
 
-    def get_column_list(self, table_name: str) -> Iterable[FetchChart]:
+    def get_column_list(self, table_id: Optional[int]) -> Iterable[FetchChart]:
         try:
-            if table_name:
-                col_list = self.engine.execute(
-                    FETCH_COLUMN, table_name=table_name.lower()
-                )
+            if table_id:
+                col_list = self.engine.execute(FETCH_COLUMN, table_id=table_id)
                 return [FetchColumn(**col) for col in col_list]
         except Exception as err:
             logger.debug(traceback.format_exc())
             logger.warning(
-                f"Failed to fetch column name list for table: [{table_name} due to - {err}]"
+                f"Failed to fetch column name list for table: [{table_id} due to - {err}]"
             )
         return []
 
@@ -214,6 +212,7 @@ class SupersetDBSource(SupersetSourceMixin):
         if sqa_str:
             sqa_url = make_url(sqa_str)
             default_db_name = sqa_url.database if sqa_url else None
+
         return get_database_name_for_lineage(db_service_entity, default_db_name)
 
     def _get_datasource_fqn(
@@ -255,7 +254,7 @@ class SupersetDBSource(SupersetSourceMixin):
                     self.status.filter(
                         chart_json.table_name, "Data model filtered out."
                     )
-                col_names = self.get_column_list(chart_json.table_name)
+                col_names = self.get_column_list(chart_json.table_id)
                 try:
                     data_model_request = CreateDashboardDataModelRequest(
                         name=EntityName(str(chart_json.datasource_id)),
@@ -285,5 +284,5 @@ class SupersetDBSource(SupersetSourceMixin):
         Returns:
             List of columns as str to generate column lineage
         """
-        col_list = self.get_column_list(chart_json.table_name)
+        col_list = self.get_column_list(chart_json.table_id)
         return [col.column_name for col in col_list]
