@@ -38,6 +38,7 @@ from metadata.generated.schema.entity.services.connections.testConnectionResult 
 from metadata.ingestion.connections.builders import (
     create_generic_db_connection,
     get_connection_args_common,
+    init_empty_connection_options,
     init_empty_connection_arguments,
 )
 from metadata.ingestion.connections.secrets import connection_with_options_secrets
