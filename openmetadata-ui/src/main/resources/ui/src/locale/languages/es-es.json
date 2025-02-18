@@ -468,6 +468,7 @@
     "entity-reference-types": "Entity Reference Types",
     "entity-service": "Servicio de {{entity}}",
     "entity-type-plural": "Tipo de {{entity}}",
+    "entity-version": "{{entity}} version",
     "entity-version-detail-plural": "Detalles de versión de {{entity}}",
     "enum-value-plural": "Valores de enumeración",
     "equation": "Equation",
