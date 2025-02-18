@@ -19,6 +19,7 @@ import {
 } from '../components/Lineage/Lineage.interface';
 
 import { AddLineage } from '../generated/api/lineage/addLineage';
+import { LineageDirection } from '../generated/api/lineage/searchLineageRequest';
 import APIClient from './index';
 
 export const updateLineageEdge = async (edge: AddLineage) => {
@@ -57,15 +58,20 @@ export const getLineageDataByFQN = async ({
   config,
   queryFilter,
   from,
+  direction,
 }: {
   fqn: string;
   entityType: string;
   config?: LineageConfig;
   queryFilter?: string;
   from?: number;
+  direction?: LineageDirection;
 }) => {
   const { upstreamDepth = 1, downstreamDepth = 1 } = config ?? {};
-  const response = await APIClient.get<LineageData>(`lineage/getLineage`, {
+  const API_PATH = direction
+    ? `lineage/getLineage/${direction}`
+    : 'lineage/getLineage';
+  const response = await APIClient.get<LineageData>(API_PATH, {
     params: {
       fqn,
       type: entityType,

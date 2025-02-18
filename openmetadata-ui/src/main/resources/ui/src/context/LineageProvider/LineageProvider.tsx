@@ -294,25 +294,31 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
           queryFilter,
         });
 
-        const activeNode = nodes.find((n) => n.id === node.id);
-        if (activeNode) {
-          setActiveNode(activeNode);
-        }
+        const concatenatedLineageData = {
+          nodes: {
+            ...lineageData?.nodes,
+            ...res.nodes,
+          },
+          downstreamEdges: {
+            ...lineageData?.downstreamEdges,
+            ...res.downstreamEdges,
+          },
+          upstreamEdges: {
+            ...lineageData?.upstreamEdges,
+            ...res.upstreamEdges,
+          },
+        };
 
-        const allNodes = uniqWith(
-          [...(entityLineage?.nodes ?? []), ...(res.nodes ?? []), res.entity],
-          isEqual
-        );
-        const allEdges = uniqWith(
-          [...(entityLineage?.edges ?? []), ...(res.edges ?? [])],
-          isEqual
+        const { nodes: newNodes, edges: newEdges } = parseLineageData(
+          concatenatedLineageData,
+          node.fullyQualifiedName ?? ''
         );
 
         setEntityLineage((prev) => {
           return {
             ...prev,
-            nodes: allNodes,
-            edges: allEdges,
+            nodes: uniqWith([...(prev.nodes ?? []), ...newNodes], isEqual),
+            edges: uniqWith([...(prev.edges ?? []), ...newEdges], isEqual),
           };
         });
       } catch (err) {
