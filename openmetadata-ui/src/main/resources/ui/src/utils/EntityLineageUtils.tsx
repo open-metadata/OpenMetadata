@@ -1383,16 +1383,15 @@ const createLoadMoreNode = (
   totalCount: number,
   edgeType: EdgeTypeEnum
 ): EntityReference => {
-  const newNodeId = `loadmore_${uniqueId('node_')}_${
-    parentNode.id
-  }_${currentCount}`;
+  const uniqueNodeId = uniqueId('node');
+  const newNodeId = `loadmore_${uniqueNodeId}`;
 
   return {
     id: newNodeId,
     type: EntityLineageNodeType.LOAD_MORE,
-    name: `load_more_${parentNode.id}`,
+    name: `load_more_${uniqueNodeId}_${parentNode.id}`,
     displayName: 'Load More',
-    fullyQualifiedName: `load_more_${parentNode.id}`,
+    fullyQualifiedName: `load_more_${uniqueNodeId}_${parentNode.id}`,
     pagination_data: {
       index: currentCount,
       parentId: parentNode.id,
