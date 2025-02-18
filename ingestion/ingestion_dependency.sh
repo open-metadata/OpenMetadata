@@ -15,7 +15,7 @@ DB_PORT=${DB_PORT:-3306}
 
 AIRFLOW_DB=${AIRFLOW_DB:-airflow_db}
 DB_USER=${DB_USER:-airflow_user}
-DB_SCHEME=${DB_SCHEME:-mysql+pymysql}
+DB_SCHEME=${DB_SCHEME:-mysql+mysqldb}
 DB_PASSWORD=${DB_PASSWORD:-airflow_pass}
 DB_PROPERTIES=${DB_PROPERTIES:-""}
 
