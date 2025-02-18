@@ -14,7 +14,7 @@
  * Sets the Entity Certification to the configured value.
  */
 export interface SetEntityCertificationTask {
-    config?: CertificationConfiguration;
+    config?: NodeConfiguration;
     /**
      * Description of the Node.
      */
@@ -34,10 +34,16 @@ export interface SetEntityCertificationTask {
     [property: string]: any;
 }
 
-export interface CertificationConfiguration {
+export interface NodeConfiguration {
+    /**
+     * Choose which Certification to apply to the Data Asset
+     */
     certification: CertificationEnum;
 }
 
+/**
+ * Choose which Certification to apply to the Data Asset
+ */
 export enum CertificationEnum {
     CertificationBronze = "Certification.Bronze",
     CertificationGold = "Certification.Gold",

@@ -10,6 +10,7 @@
   "type": "object",
   "definitions": {
     "config": {
+      "title": "Trigger Configuration",
       "description": "Entity Event Trigger Configuration.",
       "type": "object",
       "properties": {
@@ -18,14 +19,17 @@
           "description": "Defines the schedule of the Periodic Trigger."
         },
         "entityType": {
+          "title": "Entity Type",
           "description": "Entity Type for which it should be triggered.",
           "type": "string"
         },
         "filters": {
-          "description": "Search Filters to filter down the entities fetched.",
+          "title": "Filters",
+          "description": "Select the Search Filters to filter down the entities fetched.",
           "type": "string"
         },
         "batchSize": {
+          "title": "Batch Size",
           "description": "Number of Entities to process at once.",
           "type": "integer",
           "default": 500

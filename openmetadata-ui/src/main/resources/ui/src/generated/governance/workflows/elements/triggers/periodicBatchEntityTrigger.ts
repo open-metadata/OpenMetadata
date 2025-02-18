@@ -14,7 +14,7 @@
  * Periodic Batch Entity Trigger.
  */
 export interface PeriodicBatchEntityTrigger {
-    config?: Config;
+    config?: TriggerConfiguration;
     output?: string[];
     type?:   string;
 }
@@ -22,7 +22,7 @@ export interface PeriodicBatchEntityTrigger {
 /**
  * Entity Event Trigger Configuration.
  */
-export interface Config {
+export interface TriggerConfiguration {
     /**
      * Number of Entities to process at once.
      */
@@ -32,7 +32,7 @@ export interface Config {
      */
     entityType: string;
     /**
-     * Search Filters to filter down the entities fetched.
+     * Select the Search Filters to filter down the entities fetched.
      */
     filters: string;
     /**

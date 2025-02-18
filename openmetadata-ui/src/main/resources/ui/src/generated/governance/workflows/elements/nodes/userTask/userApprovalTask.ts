@@ -15,7 +15,7 @@
  */
 export interface UserApprovalTask {
     branches?: string[];
-    config?:   Config;
+    config?:   NodeConfiguration;
     /**
      * Description of the Node.
      */
@@ -36,7 +36,7 @@ export interface UserApprovalTask {
     [property: string]: any;
 }
 
-export interface Config {
+export interface NodeConfiguration {
     /**
      * People/Teams assigned to the Task.
      */
