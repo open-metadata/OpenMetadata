@@ -86,7 +86,7 @@ const ActivityFeedCardNew = ({
   return (
     <Card
       bordered={showThread ? false : true}
-      className={`realtive activity-feed-card-new ${
+      className={`relative activity-feed-card-new ${
         showThread || isPost
           ? 'activity-feed-card-new-right-panel m-0 gap-0'
           : ''
