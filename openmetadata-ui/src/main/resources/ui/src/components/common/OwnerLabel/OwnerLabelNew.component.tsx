@@ -13,7 +13,8 @@
 import Icon from '@ant-design/icons';
 import { Avatar, Typography } from 'antd';
 import classNames from 'classnames';
-import React, { ReactNode, useMemo, useState } from 'react';
+import { isEmpty } from 'lodash';
+import React, { ReactNode, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconUser } from '../../../assets/svg/user.svg';
 import { EntityReference } from '../../../generated/entity/data/table';
@@ -27,12 +28,7 @@ export const OwnerLabelNew = ({
   hasPermission,
   ownerDisplayName,
   placeHolder,
-  maxVisibleOwners = 3, // Default to 3 if not provided
-  multiple = {
-    user: true,
-    team: false,
-  },
-  tooltipText,
+  maxVisibleOwners = 3,
   avatarSize = 24,
 }: {
   owners?: EntityReference[];
@@ -50,49 +46,44 @@ export const OwnerLabelNew = ({
   avatarSize?: number;
 }) => {
   const { t } = useTranslation();
-  const [showAllOwners, setShowAllOwners] = useState(false);
 
   const ownerElements = useMemo(() => {
-    const hasOwners = owners && owners.length > 0;
-    const visibleOwners = showAllOwners
-      ? owners
-      : owners.slice(0, maxVisibleOwners);
+    const visibleOwners = owners.slice(0, maxVisibleOwners);
     const remainingOwnersCount = owners.length - maxVisibleOwners;
-    const remainingCountLabel = `+ ${remainingOwnersCount}`;
 
     return (
       <div className="d-flex items-center gap-1" data-testid="owner-label">
-        {hasOwners ? (
-          <div
-            className={classNames(
-              'd-inline-flex items-center flex-wrap gap-2',
-              { inherited: Boolean(owners.some((owner) => owner?.inherited)) },
-              className
-            )}>
-            <Avatar.Group>
-              {visibleOwners.map((owner) => (
-                <ProfilePicture
-                  avatarType="outlined"
-                  key={owner.id}
-                  name={owner.name ?? ''}
-                  size={avatarSize}
-                />
-              ))}
-              {remainingOwnersCount > 0 && (
-                <Avatar
-                  size={avatarSize}
-                  style={{
-                    background: '#f9f5ff',
-                    color: '#7f56d9',
-                    border: '1px solid #7f56d9',
-                  }}>
-                  {t('label.plus-symbol')}
-                  {remainingOwnersCount}
-                </Avatar>
-              )}
-            </Avatar.Group>
-          </div>
-        ) : (
+        <div
+          className={classNames(
+            'd-inline-flex items-center flex-wrap gap-2',
+            { inherited: Boolean(owners.some((owner) => owner?.inherited)) },
+            className
+          )}>
+          <Avatar.Group>
+            {visibleOwners.map((owner) => (
+              <ProfilePicture
+                avatarType="outlined"
+                key={owner.id}
+                name={owner.name ?? ''}
+                size={avatarSize}
+              />
+            ))}
+            {remainingOwnersCount > 0 && (
+              <Avatar
+                size={avatarSize}
+                style={{
+                  background: '#f9f5ff',
+                  color: '#7f56d9',
+                  border: '1px solid #7f56d9',
+                }}>
+                {t('label.plus-symbol')}
+                {remainingOwnersCount}
+              </Avatar>
+            )}
+          </Avatar.Group>
+        </div>
+
+        {isEmpty(owners) && (
           <div className="d-inline-flex items-center gap-1">
             <div className="owner-avatar-icon d-flex">
               <Icon
@@ -116,7 +107,6 @@ export const OwnerLabelNew = ({
     className,
     onUpdate,
     hasPermission,
-    showAllOwners,
     maxVisibleOwners,
     placeHolder,
     t,

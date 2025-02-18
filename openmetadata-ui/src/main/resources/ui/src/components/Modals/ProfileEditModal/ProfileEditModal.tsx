@@ -30,7 +30,7 @@ interface ProfileEditModalProps {
   header: string;
   value: string;
   placeholder: string;
-  onSave?: (editorValue: any, displayName: any) => void;
+  onSave?: () => void;
   onCancel?: () => void;
   visible: boolean;
   updateUserDetails: (data: Partial<User>, key: keyof User) => Promise<void>;
@@ -46,13 +46,12 @@ export const ProfileEditModal: FunctionComponent<ProfileEditModalProps> = ({
   const { t } = useTranslation();
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [displayName, setDisplayName] = useState(userData.displayName);
-  const [editorValue, setEditorValue] = useState<string>('');
 
   const handleSaveData = async () => {
     setIsLoading(true);
     try {
       await updateUserDetails({ displayName }, 'displayName');
-      onSave?.(editorValue, displayName);
+      onSave?.();
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
