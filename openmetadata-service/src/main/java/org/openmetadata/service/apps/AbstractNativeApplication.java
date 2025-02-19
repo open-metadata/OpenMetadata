@@ -1,7 +1,7 @@
 package org.openmetadata.service.apps;
 
-import static org.openmetadata.service.apps.scheduler.AbstractOmAppJobListener.JOB_LISTENER_NAME;
 import static org.openmetadata.service.apps.scheduler.AppScheduler.APP_NAME;
+import static org.openmetadata.service.apps.scheduler.OmAppJobListener.JOB_LISTENER_NAME;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.NO_MANUAL_TRIGGER_ERR;
 import static org.openmetadata.service.resources.apps.AppResource.SCHEDULED_TYPES;
 

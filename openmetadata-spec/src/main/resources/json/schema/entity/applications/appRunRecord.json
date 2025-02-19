@@ -68,6 +68,10 @@
     "config": {
       "descripton": "The configuration used for this application run. It's type will be based on the application type. Old runs might not be compatible with schema of app configuration.",
       "$ref": "../../type/basic.json#/definitions/map"
+    },
+    "properties": {
+      "description": "Arbitrary metadata that will be attached to the report.",
+      "$ref": "../../type/basic.json#/definitions/map"
     }
   },
   "additionalProperties": false

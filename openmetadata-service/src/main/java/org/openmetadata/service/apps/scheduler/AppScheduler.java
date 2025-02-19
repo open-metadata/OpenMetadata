@@ -95,7 +95,7 @@ public class AppScheduler {
     // Add OMJob Listener
     this.scheduler
         .getListenerManager()
-        .addJobListener(new OmAppJobListener(dao), jobGroupEquals(APPS_JOB_GROUP));
+        .addJobListener(new OmAppJobListener(), jobGroupEquals(APPS_JOB_GROUP));
 
     ScheduledExecutorService threadScheduler = Executors.newScheduledThreadPool(1);
     threadScheduler.scheduleAtFixedRate(this::resetErrorTriggers, 0, 24, TimeUnit.HOURS);

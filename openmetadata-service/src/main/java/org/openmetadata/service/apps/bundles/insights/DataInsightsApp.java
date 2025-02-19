@@ -1,8 +1,8 @@
 package org.openmetadata.service.apps.bundles.insights;
 
-import static org.openmetadata.service.apps.scheduler.AbstractOmAppJobListener.APP_RUN_STATS;
-import static org.openmetadata.service.apps.scheduler.AbstractOmAppJobListener.WEBSOCKET_STATUS_CHANNEL;
 import static org.openmetadata.service.apps.scheduler.AppScheduler.ON_DEMAND_JOB;
+import static org.openmetadata.service.apps.scheduler.OmAppJobListener.APP_RUN_STATS;
+import static org.openmetadata.service.apps.scheduler.OmAppJobListener.WEBSOCKET_STATUS_CHANNEL;
 import static org.openmetadata.service.socket.WebSocketManager.DATA_INSIGHTS_JOB_BROADCAST_CHANNEL;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getInitialStatsForEntities;
 

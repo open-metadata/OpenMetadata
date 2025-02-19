@@ -85,7 +85,7 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
   static final String FIELDS = "owners";
   private WorkflowMapper mapper;
   private PipelineServiceClientInterface pipelineServiceClient;
-  private OpenMetadataApplicationConfig openMetadataApplicationConfig;
+  private OpenMetadataConnectionBuilder openMetadataConnectionBuilder;
 
   public WorkflowResource(Authorizer authorizer, Limits limits) {
     super(Entity.WORKFLOW, authorizer, limits);
@@ -93,11 +93,11 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
 
   @Override
   public void initialize(OpenMetadataApplicationConfig config) {
-    this.openMetadataApplicationConfig = config;
-    this.mapper = new WorkflowMapper(config);
+    this.mapper = new WorkflowMapper();
     this.pipelineServiceClient =
         PipelineServiceClientFactory.createPipelineServiceClient(
             config.getPipelineServiceClientConfiguration());
+    openMetadataConnectionBuilder = new OpenMetadataConnectionBuilder(config);
   }
 
   public static class WorkflowList extends ResultList<Workflow> {
@@ -359,8 +359,7 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
       @Context SecurityContext securityContext) {
     EntityUtil.Fields fields = getFields(FIELD_OWNERS);
     Workflow workflow = repository.get(uriInfo, id, fields);
-    workflow.setOpenMetadataServerConnection(
-        new OpenMetadataConnectionBuilder(openMetadataApplicationConfig).build());
+    workflow.setOpenMetadataServerConnection(openMetadataConnectionBuilder.build());
     /*
      We will send the encrypted Workflow to the Pipeline Service Client
      It will be fetched from the API from there, since we are
@@ -571,8 +570,7 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
       return workflowConverted;
     }
     Workflow workflowDecrypted = secretsManager.decryptWorkflow(workflow);
-    OpenMetadataConnection openMetadataServerConnection =
-        new OpenMetadataConnectionBuilder(openMetadataApplicationConfig).build();
+    OpenMetadataConnection openMetadataServerConnection = openMetadataConnectionBuilder.build();
     workflowDecrypted.setOpenMetadataServerConnection(
         secretsManager.encryptOpenMetadataConnection(openMetadataServerConnection, false));
     if (authorizer.shouldMaskPasswords(securityContext)) {
