@@ -96,7 +96,6 @@ class DomainClassBase {
         y: 0,
         static: false,
       },
-
       {
         h: 1,
         i: DetailPageWidgetKeys.OWNERS,

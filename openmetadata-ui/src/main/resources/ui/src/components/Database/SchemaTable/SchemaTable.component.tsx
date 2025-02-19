@@ -599,7 +599,7 @@ const SchemaTable = () => {
           onSearch={handleSearchAction}
         />
       </Col>
-      <Col span={24}>
+      <Col id="schemaDetails" span={24}>
         <Table
           bordered
           className="m-b-sm align-table-filter-left"

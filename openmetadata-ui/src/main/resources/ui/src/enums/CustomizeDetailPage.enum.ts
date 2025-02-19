@@ -39,7 +39,6 @@ export enum DetailPageWidgetKeys {
   CONTAINER_CHILDREN = 'KnowledgePanel.ContainerChildren',
   PIPELINE_TASKS = 'KnowledgePanel.PipelineTasks',
   SEARCH_INDEX_FIELDS = 'KnowledgePanel.SearchIndexFields',
-  DOCUMENTATION = 'KnowledgePanel.Documentation',
   OWNERS = 'KnowledgePanel.Owners',
   EXPERTS = 'KnowledgePanel.Experts',
   DOMAIN_TYPE = 'KnowledgePanel.DomainType',

@@ -107,7 +107,7 @@ class TableClassBase {
         static: false,
       },
       {
-        h: 11,
+        h: 8,
         i: DetailPageWidgetKeys.TABLE_SCHEMA,
         w: 6,
         x: 0,

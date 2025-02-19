@@ -87,7 +87,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   const { t } = useTranslation();
   const { getEntityPermissionByFqn } = usePermissionProvider();
 
-  const { setFilters } = useTableFilters(INITIAL_TABLE_FILTERS);
+  const { setFilters, filters } = useTableFilters(INITIAL_TABLE_FILTERS);
   const { tab: activeTab = EntityTabs.TABLE } =
     useParams<{ tab: EntityTabs }>();
   const { fqn: decodedDatabaseSchemaFQN } = useFqn();
@@ -360,12 +360,15 @@ const DatabaseSchemaPage: FunctionComponent = () => {
       const { paging } = await getTableList({
         databaseSchema: decodedDatabaseSchemaFQN,
         limit: 0,
+        include: filters.showDeletedTables
+          ? Include.Deleted
+          : Include.NonDeleted,
       });
       setTableCount(paging.total);
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
-  }, [decodedDatabaseSchemaFQN]);
+  }, [decodedDatabaseSchemaFQN, filters.showDeletedTables]);
 
   useEffect(() => {
     fetchDatabaseSchemaPermission();
@@ -375,10 +378,14 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     if (viewDatabaseSchemaPermission) {
       fetchDatabaseSchemaDetails();
       fetchStoreProcedureCount();
-      fetchTableCount();
+
       getEntityFeedCount();
     }
   }, [viewDatabaseSchemaPermission]);
+
+  useEffect(() => {
+    fetchTableCount();
+  }, [filters.showDeletedTables]);
 
   const { editCustomAttributePermission, viewAllPermission } = useMemo(
     () => ({

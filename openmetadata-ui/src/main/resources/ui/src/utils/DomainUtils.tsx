@@ -24,9 +24,9 @@ import ResizablePanels from '../components/common/ResizablePanels/ResizablePanel
 import TabsLabel from '../components/common/TabsLabel/TabsLabel.component';
 import { GenericTab } from '../components/Customization/GenericTab/GenericTab';
 import { CommonWidgets } from '../components/DataAssets/CommonWidgets/CommonWidgets';
+import { DomainExpertWidget } from '../components/Domain/DomainExpertsWidget/DomainExpertWidget';
 import DataProductsTab from '../components/Domain/DomainTabs/DataProductsTab/DataProductsTab.component';
-import DocumentationTab from '../components/Domain/DomainTabs/DocumentationTab/DocumentationTab.component';
-import { DocumentationEntity } from '../components/Domain/DomainTabs/DocumentationTab/DocumentationTab.interface';
+import { DomainTypeWidget } from '../components/Domain/DomainTypeWidget/DomainTypeWidget';
 import SubDomainsTable from '../components/Domain/SubDomainsTable/SubDomainsTable.component';
 import EntitySummaryPanel from '../components/Explore/EntitySummaryPanel/EntitySummaryPanel.component';
 import AssetsTabs from '../components/Glossary/GlossaryTerms/tabs/AssetsTabs.component';
@@ -457,8 +457,10 @@ export const getDomainDetailTabs = ({
 };
 
 export const getDomainWidgetsFromKey = (widgetConfig: WidgetConfig) => {
-  if (widgetConfig.i.startsWith(DetailPageWidgetKeys.DOCUMENTATION)) {
-    return <DocumentationTab type={DocumentationEntity.DOMAIN} />;
+  if (widgetConfig.i.startsWith(DetailPageWidgetKeys.EXPERTS)) {
+    return <DomainExpertWidget />;
+  } else if (widgetConfig.i.startsWith(DetailPageWidgetKeys.DOMAIN_TYPE)) {
+    return <DomainTypeWidget />;
   }
 
   return (

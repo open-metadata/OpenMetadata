@@ -446,7 +446,7 @@ export const assignTagToChildren = async ({
 export const removeTag = async (page: Page, tags: string[]) => {
   for (const tag of tags) {
     await page
-      .getByTestId('entity-right-panel')
+      .getByTestId('KnowledgePanel.Tags')
       .getByTestId('tags-container')
       .getByTestId('edit-button')
       .click();
@@ -473,7 +473,7 @@ export const removeTag = async (page: Page, tags: string[]) => {
 
     expect(
       page
-        .getByTestId('entity-right-panel')
+        .getByTestId('KnowledgePanel.Tags')
         .getByTestId('tags-container')
         .getByTestId(`tag-${tag}`)
     ).not.toBeVisible();
@@ -540,7 +540,7 @@ export const assignGlossaryTerm = async (
   action: 'Add' | 'Edit' = 'Add'
 ) => {
   await page
-    .getByTestId('entity-right-panel')
+    .getByTestId('KnowledgePanel.GlossaryTerms')
     .getByTestId('glossary-container')
     .getByTestId(action === 'Add' ? 'add-tag' : 'edit-button')
     .click();
@@ -564,7 +564,7 @@ export const assignGlossaryTerm = async (
 
   await expect(
     page
-      .getByTestId('entity-right-panel')
+      .getByTestId('KnowledgePanel.GlossaryTerms')
       .getByTestId('glossary-container')
       .getByTestId(`tag-${glossaryTerm.fullyQualifiedName}`)
   ).toBeVisible();
@@ -625,7 +625,7 @@ export const removeGlossaryTerm = async (
 ) => {
   for (const tag of glossaryTerms) {
     await page
-      .getByTestId('entity-right-panel')
+      .getByTestId('KnowledgePanel.GlossaryTerms')
       .getByTestId('glossary-container')
       .getByTestId('edit-button')
       .click();
@@ -653,7 +653,7 @@ export const removeGlossaryTerm = async (
 
     expect(
       page
-        .getByTestId('entity-right-panel')
+        .getByTestId('KnowledgePanel.GlossaryTerms')
         .getByTestId('glossary-container')
         .getByTestId(`tag-${tag.fullyQualifiedName}`)
     ).not.toBeVisible();

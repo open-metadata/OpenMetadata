@@ -61,71 +61,78 @@ export class EntityDataClass {
   static readonly container2 = new ContainerClass();
 
   static async preRequisitesForTests(apiContext: APIRequestContext) {
+    const promises = [
+      this.domain1.create(apiContext),
+      this.domain2.create(apiContext),
+      this.glossary1.create(apiContext),
+      this.glossary2.create(apiContext),
+      this.glossaryTerm1.create(apiContext),
+      this.glossaryTerm2.create(apiContext),
+      this.user1.create(apiContext),
+      this.user2.create(apiContext),
+      this.user3.create(apiContext),
+      this.team1.create(apiContext),
+      this.team2.create(apiContext),
+      this.tierTag1.create(apiContext),
+      this.tierTag2.create(apiContext),
+      this.table1.create(apiContext),
+      this.table2.create(apiContext),
+      this.topic1.create(apiContext),
+      this.topic2.create(apiContext),
+      this.dashboard1.create(apiContext),
+      this.dashboard2.create(apiContext),
+      this.mlModel1.create(apiContext),
+      this.mlModel2.create(apiContext),
+      this.pipeline1.create(apiContext),
+      this.pipeline2.create(apiContext),
+      this.dashboardDataModel1.create(apiContext),
+      this.dashboardDataModel2.create(apiContext),
+      this.apiCollection1.create(apiContext),
+      this.apiCollection2.create(apiContext),
+      this.searchIndex1.create(apiContext),
+      this.searchIndex2.create(apiContext),
+      this.container1.create(apiContext),
+      this.container2.create(apiContext),
+    ];
+
     // Add pre-requisites for tests
-    await this.domain1.create(apiContext);
-    await this.domain2.create(apiContext);
-    await this.glossary1.create(apiContext);
-    await this.glossary2.create(apiContext);
-    await this.glossaryTerm1.create(apiContext);
-    await this.glossaryTerm2.create(apiContext);
-    await this.user1.create(apiContext);
-    await this.user2.create(apiContext);
-    await this.user3.create(apiContext);
-    await this.team1.create(apiContext);
-    await this.team2.create(apiContext);
-    await this.tierTag1.create(apiContext);
-    await this.tierTag2.create(apiContext);
-    await this.table1.create(apiContext);
-    await this.table2.create(apiContext);
-    await this.topic1.create(apiContext);
-    await this.topic2.create(apiContext);
-    await this.dashboard1.create(apiContext);
-    await this.dashboard2.create(apiContext);
-    await this.mlModel1.create(apiContext);
-    await this.mlModel2.create(apiContext);
-    await this.pipeline1.create(apiContext);
-    await this.pipeline2.create(apiContext);
-    await this.dashboardDataModel1.create(apiContext);
-    await this.dashboardDataModel2.create(apiContext);
-    await this.apiCollection1.create(apiContext);
-    await this.apiCollection2.create(apiContext);
-    await this.searchIndex1.create(apiContext);
-    await this.searchIndex2.create(apiContext);
-    await this.container1.create(apiContext);
-    await this.container2.create(apiContext);
+    await Promise.allSettled(promises);
   }
 
   static async postRequisitesForTests(apiContext: APIRequestContext) {
-    // Add post-requisites for tests
-    await this.domain1.delete(apiContext);
-    await this.domain2.delete(apiContext);
-    // deleting glossary will also delete the glossary terms
-    await this.glossary1.delete(apiContext);
-    await this.glossary2.delete(apiContext);
-    await this.user1.delete(apiContext);
-    await this.user2.delete(apiContext);
-    await this.user3.delete(apiContext);
-    await this.team1.delete(apiContext);
-    await this.team2.delete(apiContext);
-    await this.tierTag1.delete(apiContext);
-    await this.tierTag2.delete(apiContext);
-    await this.table1.delete(apiContext);
-    await this.table2.delete(apiContext);
-    await this.topic1.delete(apiContext);
-    await this.topic2.delete(apiContext);
-    await this.dashboard1.delete(apiContext);
-    await this.dashboard2.delete(apiContext);
-    await this.mlModel1.delete(apiContext);
-    await this.mlModel2.delete(apiContext);
-    await this.pipeline1.delete(apiContext);
-    await this.pipeline2.delete(apiContext);
-    await this.dashboardDataModel1.delete(apiContext);
-    await this.dashboardDataModel2.delete(apiContext);
-    await this.apiCollection1.delete(apiContext);
-    await this.apiCollection2.delete(apiContext);
-    await this.searchIndex1.delete(apiContext);
-    await this.searchIndex2.delete(apiContext);
-    await this.container1.delete(apiContext);
-    await this.container2.delete(apiContext);
+    const promises = [
+      this.domain1.delete(apiContext),
+      this.domain2.delete(apiContext),
+      // deleting glossary will also delete the glossary terms
+      this.glossary1.delete(apiContext),
+      this.glossary2.delete(apiContext),
+      this.user1.delete(apiContext),
+      this.user2.delete(apiContext),
+      this.user3.delete(apiContext),
+      this.team1.delete(apiContext),
+      this.team2.delete(apiContext),
+      this.tierTag1.delete(apiContext),
+      this.tierTag2.delete(apiContext),
+      this.table1.delete(apiContext),
+      this.table2.delete(apiContext),
+      this.topic1.delete(apiContext),
+      this.topic2.delete(apiContext),
+      this.dashboard1.delete(apiContext),
+      this.dashboard2.delete(apiContext),
+      this.mlModel1.delete(apiContext),
+      this.mlModel2.delete(apiContext),
+      this.pipeline1.delete(apiContext),
+      this.pipeline2.delete(apiContext),
+      this.dashboardDataModel1.delete(apiContext),
+      this.dashboardDataModel2.delete(apiContext),
+      this.apiCollection1.delete(apiContext),
+      this.apiCollection2.delete(apiContext),
+      this.searchIndex1.delete(apiContext),
+      this.searchIndex2.delete(apiContext),
+      this.container1.delete(apiContext),
+      this.container2.delete(apiContext),
+    ];
+
+    await Promise.allSettled(promises);
   }
 }

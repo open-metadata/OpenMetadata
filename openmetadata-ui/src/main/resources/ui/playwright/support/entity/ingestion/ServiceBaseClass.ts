@@ -514,8 +514,6 @@ class ServiceBaseClass {
 
     await page.getByTestId('data-assets-header').waitFor({ state: 'visible' });
 
-    await expect(page.getByTestId('entity-right-panel')).toBeVisible();
-
     await expect(page.getByTestId('markdown-parser').first()).toHaveText(
       description
     );

@@ -71,6 +71,7 @@ export const CommonWidgets = ({
     dataProducts,
     description,
     entityName,
+    fullyQualifiedName,
   } = useMemo(() => {
     const { tags } = data;
 
@@ -141,6 +142,7 @@ export const CommonWidgets = ({
       <TagsContainerV2
         showTaskHandler
         displayType={DisplayType.READ_MORE}
+        entityFqn={fullyQualifiedName}
         entityType={type}
         permission={editTagsPermission}
         selectedTags={tags}
@@ -148,13 +150,14 @@ export const CommonWidgets = ({
         onSelectionChange={handleTagSelection}
       />
     );
-  }, [editTagsPermission, tags, type]);
+  }, [editTagsPermission, tags, type, fullyQualifiedName]);
 
   const glossaryWidget = useMemo(() => {
     return (
       <TagsContainerV2
         showTaskHandler
         displayType={DisplayType.READ_MORE}
+        entityFqn={fullyQualifiedName}
         entityType={type}
         permission={editGlossaryTermsPermission}
         selectedTags={tags}
@@ -162,7 +165,7 @@ export const CommonWidgets = ({
         onSelectionChange={handleTagSelection}
       />
     );
-  }, [editGlossaryTermsPermission, tags, type]);
+  }, [editGlossaryTermsPermission, tags, type, fullyQualifiedName]);
 
   const descriptionWidget = useMemo(() => {
     return (
@@ -248,7 +251,7 @@ export const CommonWidgets = ({
   return (
     <div
       data-grid={widgetConfig}
-      data-testid="entity-right-panel"
+      data-testid={widgetConfig.i}
       id={widgetConfig.i}
       key={widgetConfig.i}
       style={{ overflow: 'scroll' }}>
