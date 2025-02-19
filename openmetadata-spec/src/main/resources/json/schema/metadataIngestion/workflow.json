@@ -62,9 +62,6 @@
             },
             {
               "$ref": "apiServiceMetadataPipeline.json"
-            },
-            {
-              "$ref": "reverseIngestionPipeline.json"
             }
           ]
         }
@@ -92,10 +89,7 @@
         }
       },
       "additionalProperties": false,
-      "required": [
-        "type",
-        "sourceConfig"
-      ]
+      "required": ["type", "sourceConfig"]
     },
     "processor": {
       "description": "Configuration for Processor Component in the OpenMetadata Ingestion Framework.",
@@ -110,9 +104,7 @@
         }
       },
       "additionalProperties": false,
-      "required": [
-        "type"
-      ]
+      "required": ["type"]
     },
     "stage": {
       "description": "Configuration for Stage Component in the OpenMetadata Ingestion Framework.",
@@ -127,9 +119,7 @@
         }
       },
       "additionalProperties": false,
-      "required": [
-        "type"
-      ]
+      "required": ["type"]
     },
     "sink": {
       "description": "Configuration for Sink Component in the OpenMetadata Ingestion Framework.",
@@ -144,9 +134,7 @@
         }
       },
       "additionalProperties": false,
-      "required": [
-        "type"
-      ]
+      "required": ["type"]
     },
     "bulkSink": {
       "description": "Configuration for BulkSink Component in the OpenMetadata Ingestion Framework.",
@@ -161,20 +149,13 @@
         }
       },
       "additionalProperties": false,
-      "required": [
-        "type"
-      ]
+      "required": ["type"]
     },
     "logLevels": {
       "description": "Supported logging levels",
       "javaType": "org.openmetadata.schema.metadataIngestion.LogLevels",
       "type": "string",
-      "enum": [
-        "DEBUG",
-        "INFO",
-        "WARN",
-        "ERROR"
-      ],
+      "enum": ["DEBUG", "INFO", "WARN", "ERROR"],
       "default": "INFO"
     },
     "workflowConfig": {
@@ -201,9 +182,7 @@
         }
       },
       "additionalProperties": false,
-      "required": [
-        "openMetadataServerConfig"
-      ]
+      "required": ["openMetadataServerConfig"]
     }
   },
   "properties": {
@@ -246,29 +225,16 @@
           "$ref": "../type/basic.json#/definitions/uuid"
         }
       },
-      "required": [
-        "source",
-        "workflowConfig"
-      ],
+      "required": ["source", "workflowConfig"],
       "additionalProperties": false
     }
   },
   "oneOf": [
     {
-      "required": [
-        "name",
-        "openMetadataWorkflowConfig",
-        "source",
-        "sink"
-      ]
+      "required": ["name", "openMetadataWorkflowConfig", "source", "sink"]
     },
     {
-      "required": [
-        "name",
-        "openMetadataWorkflowConfig",
-        "source",
-        "bulkSink"
-      ]
+      "required": ["name", "openMetadataWorkflowConfig", "source", "bulkSink"]
     }
   ],
   "additionalProperties": false
