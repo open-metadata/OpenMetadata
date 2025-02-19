@@ -79,6 +79,9 @@
     "domain" : {
       "description": "Fully qualified name of the domain the Table belongs to.",
       "type": "string"
+    },
+    "config": {
+      "$ref": "../../type/basic.json#/definitions/map"
     }
   },
   "required": ["name", "alertType"],
