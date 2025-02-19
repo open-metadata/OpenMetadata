@@ -1,4 +1,4 @@
-FROM python:3.10-bullseye
+FROM python:3.10-bookworm
 
 RUN curl -sS https://packages.microsoft.com/keys/microsoft.asc | apt-key add -
 RUN curl -sS https://packages.microsoft.com/config/debian/11/prod.list > /etc/apt/sources.list.d/mssql-release.list
@@ -31,8 +31,8 @@ RUN dpkg --configure -a \
     postgresql \
     postgresql-contrib \
     tdsodbc \
-    unixodbc \
-    unixodbc-dev \
+    unixodbc=2.3.11-2+deb12u1 \
+    unixodbc-dev=2.3.11-2+deb12u1 \
     unzip \
     git \
     wget --no-install-recommends \
