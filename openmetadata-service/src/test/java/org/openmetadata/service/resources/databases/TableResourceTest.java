@@ -1990,6 +1990,40 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   }
 
   @Test
+  void patch_withChangeContext(TestInfo test) throws IOException {
+    Column c1 = getColumn(C1, INT, null);
+    CreateTable create = createRequest(test).withColumns(List.of(c1));
+    Table table = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+
+    String json = JsonUtils.pojoToJson(table);
+    Table updated = JsonUtils.deepCopy(table, Table.class);
+    updated.setDescription("manual description");
+    updated =
+        patchEntity(
+            table.getId(),
+            json,
+            updated,
+            ADMIN_AUTH_HEADERS,
+            ChangeDescription.ChangeContext.MANUAL);
+    assertEquals(
+        ChangeDescription.ChangeContext.MANUAL, updated.getChangeDescription().getChangeContext());
+
+    Table automatedUpdate = JsonUtils.deepCopy(table, Table.class);
+
+    automatedUpdate.setDescription("automated description");
+    automatedUpdate =
+        patchEntity(
+            table.getId(),
+            json,
+            automatedUpdate,
+            ADMIN_AUTH_HEADERS,
+            ChangeDescription.ChangeContext.AUTOMATED);
+    assertEquals(
+        ChangeDescription.ChangeContext.AUTOMATED,
+        automatedUpdate.getChangeDescription().getChangeContext());
+  }
+
+  @Test
   void patch_usingFqn_tableAttributes_200_ok(TestInfo test) throws IOException {
     // Create table without tableType, and tableConstraints
     Table table = createEntity(createRequest(test).withTableConstraints(null), ADMIN_AUTH_HEADERS);

@@ -56,6 +56,7 @@ import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.tests.CreateCustomMetric;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.tests.CustomMetric;
+import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.ColumnProfile;
 import org.openmetadata.schema.type.DataModel;
@@ -420,8 +421,13 @@ public class TableResource extends EntityResource<Table, TableRepository> {
                       examples = {
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
-          JsonPatch patch) {
-    return patchInternal(uriInfo, securityContext, id, patch);
+          JsonPatch patch,
+      @Parameter(
+              description = "Context of the change",
+              schema = @Schema(implementation = ChangeDescription.ChangeContext.class))
+          @QueryParam("changeContext")
+          ChangeDescription.ChangeContext changeContext) {
+    return patchInternal(uriInfo, securityContext, id, patch, changeContext);
   }
 
   @PATCH
@@ -449,8 +455,13 @@ public class TableResource extends EntityResource<Table, TableRepository> {
                       examples = {
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
-          JsonPatch patch) {
-    return patchInternal(uriInfo, securityContext, fqn, patch);
+          JsonPatch patch,
+      @Parameter(
+              description = "Context of the change",
+              schema = @Schema(implementation = ChangeDescription.ChangeContext.class))
+          @QueryParam("changeContext")
+          ChangeDescription.ChangeContext changeContext) {
+    return patchInternal(uriInfo, securityContext, fqn, patch, changeContext);
   }
 
   @GET

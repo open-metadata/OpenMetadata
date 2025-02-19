@@ -1054,8 +1054,20 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return new PutResponse<>(Status.OK, withHref(uriInfo, updated), change);
   }
 
+  /** Use method with ChangeContext */
+  @Deprecated
   @Transaction
   public final PatchResponse<T> patch(UriInfo uriInfo, UUID id, String user, JsonPatch patch) {
+    return patch(uriInfo, id, user, patch, null);
+  }
+
+  @Transaction
+  public final PatchResponse<T> patch(
+      UriInfo uriInfo,
+      UUID id,
+      String user,
+      JsonPatch patch,
+      ChangeDescription.ChangeContext changeContext) {
     // Get all the fields in the original entity that can be updated during PATCH operation
     T original = setFieldsInternal(find(id, NON_DELETED, false), patchFields);
     setInheritedFields(original, patchFields);
@@ -1073,7 +1085,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
     restorePatchAttributes(original, updated);
 
     // Update the attributes and relationships of an entity
-    EntityUpdater entityUpdater = getUpdater(original, updated, Operation.PATCH);
+    EntityUpdater entityUpdater =
+        new EntityUpdater(original, updated, Operation.PATCH, changeContext);
     entityUpdater.update();
 
     entityRelationshipReindex(original, updated);
@@ -1091,6 +1104,15 @@ public abstract class EntityRepository<T extends EntityInterface> {
    */
   @Transaction
   public final PatchResponse<T> patch(UriInfo uriInfo, String fqn, String user, JsonPatch patch) {
+    return patch(uriInfo, fqn, user, patch, null);
+  }
+
+  public final PatchResponse<T> patch(
+      UriInfo uriInfo,
+      String fqn,
+      String user,
+      JsonPatch patch,
+      ChangeDescription.ChangeContext changeContext) {
     // Get all the fields in the original entity that can be updated during PATCH operation
     T original = setFieldsInternal(findByName(fqn, NON_DELETED, false), patchFields);
     setInheritedFields(original, patchFields);
@@ -1107,7 +1129,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
     restorePatchAttributes(original, updated);
 
     // Update the attributes and relationships of an entity
-    EntityUpdater entityUpdater = getUpdater(original, updated, Operation.PATCH);
+    EntityUpdater entityUpdater =
+        new EntityUpdater(original, updated, Operation.PATCH, changeContext);
     entityUpdater.update();
     EventType change = ENTITY_NO_CHANGE;
     if (entityUpdater.fieldsChanged()) {
@@ -2807,6 +2830,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
     protected boolean majorVersionChange = false;
     protected final User updatingUser;
     private boolean entityChanged = false;
+    private ChangeDescription.ChangeContext changeContext;
+
+    public EntityUpdater(
+        T original, T updated, Operation operation, ChangeDescription.ChangeContext changeContext) {
+      this(original, updated, operation);
+      this.changeContext = changeContext;
+    }
 
     public EntityUpdater(T original, T updated, Operation operation) {
       this.original = original;
@@ -2815,7 +2845,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       this.updatingUser =
           updated.getUpdatedBy().equalsIgnoreCase(ADMIN_USER_NAME)
               ? new User().withName(ADMIN_USER_NAME).withIsAdmin(true)
-              : getEntityByName(Entity.USER, updated.getUpdatedBy(), "", NON_DELETED);
+              : getEntityByName(USER, updated.getUpdatedBy(), "", NON_DELETED);
     }
 
     /** Compare original and updated entities and perform updates. Update the entity version and track changes. */
@@ -2829,6 +2859,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       }
       // Now updated from previous/original to updated one
       changeDescription = new ChangeDescription();
+      changeDescription.setChangeContext(changeContext);
       updateInternal();
 
       // Store the updated entity
