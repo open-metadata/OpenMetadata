@@ -118,7 +118,7 @@ class BaseModel(PydanticBaseModel):
         *,
         mask_secrets: bool = False,
         **kwargs,
-    ) -> dict[str, Any]:
+    ) -> Dict[str, Any]:
         if mask_secrets:
             context = kwargs.pop("context", None) or {}
             context["mask_secrets"] = True
