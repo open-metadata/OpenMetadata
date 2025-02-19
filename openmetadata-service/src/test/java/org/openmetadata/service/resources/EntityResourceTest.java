@@ -118,6 +118,7 @@ import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.csv.CsvUtilTest;
 import org.openmetadata.csv.EntityCsvTest;
 import org.openmetadata.schema.CreateEntity;
@@ -213,6 +214,7 @@ import org.openmetadata.service.resources.services.StorageServiceResourceTest;
 import org.openmetadata.service.resources.tags.TagResourceTest;
 import org.openmetadata.service.resources.teams.*;
 import org.openmetadata.service.search.models.IndexMapping;
+import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.util.CSVExportMessage;
 import org.openmetadata.service.util.CSVExportResponse;
 import org.openmetadata.service.util.CSVImportMessage;
@@ -221,6 +223,7 @@ import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
+import org.openmetadata.service.util.TestUtils;
 import org.testcontainers.shaded.com.google.common.collect.Lists;
 
 @Slf4j
@@ -450,7 +453,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     this.collectionName = collectionName;
     this.allFields = fields;
     ENTITY_RESOURCE_TEST_MAP.put(entityType, this);
-    Set<String> allowedFields = getEntityFields(entityClass);
+    Set<String> allowedFields = Entity.getEntityFields(entityClass);
     this.supportsEmptyDescription = !EntityUtil.isDescriptionRequired(entityClass);
     this.supportsFollowers = allowedFields.contains(FIELD_FOLLOWERS);
     this.supportsVotes = allowedFields.contains(FIELD_VOTES);
@@ -697,7 +700,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     assertResponse(
         () -> patchEntityAndCheck(entity, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change),
         NOT_FOUND,
-        format("domain instance for %s not found", domainReference.getId()));
+        String.format("domain instance for %s not found", domainReference.getId()));
   }
 
   @Test
@@ -715,7 +718,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     assertResponse(
         () -> patchEntityAndCheck(entity, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change),
         NOT_FOUND,
-        format("dataProduct instance for %s not found", dataProductReference.getId()));
+        String.format("dataProduct instance for %s not found", dataProductReference.getId()));
   }
 
   @Test
@@ -957,10 +960,10 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
         // Find container name by removing parentContainer fqn from container fqn. Example: remove
         // "service" from "service.database" to get "database" container name for table
         String parentOfContainer = containerTest.getContainer().getName();
-        containerName = container.getName().replace(parentOfContainer + SEPARATOR, "");
+        containerName = container.getName().replace(parentOfContainer + Entity.SEPARATOR, "");
       }
       CreateEntity request = containerTest.createRequest(containerName, "", "", null);
-      containerTest.updateEntity(request, OK, ADMIN_AUTH_HEADERS);
+      containerTest.updateEntity(request, Status.OK, ADMIN_AUTH_HEADERS);
 
       ResultList<T> listAfterRestore = listEntities(null, 1000, null, null, ADMIN_AUTH_HEADERS);
       assertEquals(listBeforeDeletion.getData().size(), listAfterRestore.getData().size());
@@ -1124,13 +1127,14 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
     // Try to search entity with INCOMPLETE description
     RestClient searchClient = getSearchClient();
-    IndexMapping index = getSearchRepository().getIndexMapping(entityType);
+    IndexMapping index = Entity.getSearchRepository().getIndexMapping(entityType);
     Response response;
     // Direct request to es needs to have es clusterAlias appended with indexName
     Request request =
         new Request(
             "GET",
-            format("%s/_search", index.getIndexName(getSearchRepository().getClusterAlias())));
+            String.format(
+                "%s/_search", index.getIndexName(Entity.getSearchRepository().getClusterAlias())));
     String query =
         "{\"size\": 100,\"query\":{\"bool\":{\"must\":[{\"term\":{\"descriptionStatus\":\"INCOMPLETE\"}}]}}}";
     request.setJsonEntity(query);
@@ -1172,13 +1176,14 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
     // Search for entities without description
     RestClient searchClient = getSearchClient();
-    IndexMapping index = getSearchRepository().getIndexMapping(entityType);
+    IndexMapping index = Entity.getSearchRepository().getIndexMapping(entityType);
     Response response;
     // Direct request to es needs to have es clusterAlias appended with indexName
     Request request =
         new Request(
             "GET",
-            format("%s/_search", index.getIndexName(getSearchRepository().getClusterAlias())));
+            String.format(
+                "%s/_search", index.getIndexName(Entity.getSearchRepository().getClusterAlias())));
     String query =
         "{\"size\": 100,\"query\":{\"bool\":{\"must\":[{\"term\":{\"descriptionStatus\":\"INCOMPLETE\"}}]}}}";
     request.setJsonEntity(query);
@@ -1224,14 +1229,14 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     assertResponseContains(
         () -> createEntity(request1, ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
-        getEntityNameLengthError(entityClass));
+        TestUtils.getEntityNameLengthError(entityClass));
 
     // Create an entity with mandatory name field too long
     final K request2 = createRequest(LONG_ENTITY_NAME, "description", "displayName", null);
     assertResponse(
         () -> createEntity(request2, ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
-        getEntityNameLengthError(entityClass));
+        TestUtils.getEntityNameLengthError(entityClass));
 
     // Any entity name that has EntityLink separator must fail
     final K request3 = createRequest("invalid::Name", "description", "displayName", null);
@@ -1291,7 +1296,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     assertResponse(
         () -> createEntity(create, ADMIN_AUTH_HEADERS),
         NOT_FOUND,
-        entityNotFound(USER, NON_EXISTENT_ENTITY));
+        entityNotFound(Entity.USER, NON_EXISTENT_ENTITY));
   }
 
   @Test
@@ -1348,7 +1353,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   @Execution(ExecutionMode.CONCURRENT)
   protected void post_delete_entity_as_bot(TestInfo test) throws IOException {
     // Ingestion bot can create and delete all the entities except websocket and bot
-    if (List.of(EVENT_SUBSCRIPTION, BOT).contains(entityType)) {
+    if (List.of(Entity.EVENT_SUBSCRIPTION, Entity.BOT).contains(entityType)) {
       return;
     }
     // Delete by ID
@@ -1497,12 +1502,12 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     assertResponse(
         () -> createEntity(create, ADMIN_AUTH_HEADERS),
         NOT_FOUND,
-        entityNotFound(TAG, "invalidTag"));
+        CatalogExceptionMessage.entityNotFound(TAG, "invalidTag"));
 
     assertResponse(
         () -> updateEntity(create, Status.CREATED, ADMIN_AUTH_HEADERS),
         NOT_FOUND,
-        entityNotFound(TAG, "invalidTag"));
+        CatalogExceptionMessage.entityNotFound(TAG, "invalidTag"));
 
     // Create an entity and update it with PUT and PATCH with an invalid flag
     create.setTags(null);
@@ -1513,13 +1518,13 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     assertResponse(
         () -> updateEntity(create, Status.CREATED, ADMIN_AUTH_HEADERS),
         NOT_FOUND,
-        entityNotFound(TAG, "invalidTag"));
+        CatalogExceptionMessage.entityNotFound(TAG, "invalidTag"));
 
     entity.setTags(listOf(invalidTag));
     assertResponse(
         () -> patchEntity(entity.getId(), json, entity, ADMIN_AUTH_HEADERS),
         NOT_FOUND,
-        entityNotFound(TAG, "invalidTag"));
+        CatalogExceptionMessage.entityNotFound(TAG, "invalidTag"));
 
     // No lingering relationships should cause error in listing the entity
     listEntities(null, ADMIN_AUTH_HEADERS);
@@ -1795,7 +1800,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       Map<String, String> queryParams = new HashMap<>();
       queryParams.put("include", "deleted");
       entity = getEntity(entityId, queryParams, FIELD_FOLLOWERS, ADMIN_AUTH_HEADERS);
-      existsInEntityReferenceList(entity.getFollowers(), user1.getId(), true);
+      TestUtils.existsInEntityReferenceList(entity.getFollowers(), user1.getId(), true);
     }
   }
 
@@ -1813,13 +1818,13 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     assertResponse(
         () -> addAndCheckFollower(entityId, NON_EXISTENT_ENTITY, OK, 1, ADMIN_AUTH_HEADERS),
         NOT_FOUND,
-        entityNotFound(USER, NON_EXISTENT_ENTITY));
+        entityNotFound(Entity.USER, NON_EXISTENT_ENTITY));
 
     // Delete non-existent user as follower to the entity
     assertResponse(
         () -> deleteAndCheckFollower(entityId, NON_EXISTENT_ENTITY, 1, ADMIN_AUTH_HEADERS),
         NOT_FOUND,
-        entityNotFound(USER, NON_EXISTENT_ENTITY));
+        entityNotFound(Entity.USER, NON_EXISTENT_ENTITY));
   }
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1875,7 +1880,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     // Create entity without description, owner
     T entity = createEntity(createRequest(getEntityName(test), "", null, null), ADMIN_AUTH_HEADERS);
     // user will always have the same user assigned as the owner
-    if (!getEntityTypeFromObject(entity).equals(USER)
+    if (!Entity.getEntityTypeFromObject(entity).equals(Entity.USER)
         && entity.getOwners() != null
         && entity.getOwners().stream().noneMatch(EntityReference::getInherited)) {
       assertEquals(emptyList(), entity.getOwners());
@@ -2107,7 +2112,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     ChangeDescription change =
         getChangeDescription(entityType, CHANGE_CONSOLIDATED); // Patch operation update is
     // consolidated in a session
-    fieldAdded(change, "customProperties", listOf(fieldA, fieldB));
+    fieldAdded(change, "customProperties", CommonUtil.listOf(fieldA, fieldB));
     entityType.getCustomProperties().add(fieldB);
     entityType =
         typeResourceTest.patchEntityAndCheck(
@@ -2128,7 +2133,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     assertResponse(
         () -> typeResourceTest.addCustomProperty(id, fieldInvalid, OK, ADMIN_AUTH_HEADERS),
         NOT_FOUND,
-        entityNotFound(TYPE, invalidType.getId()));
+        CatalogExceptionMessage.entityNotFound(Entity.TYPE, invalidType.getId()));
 
     // PATCH invalid custom fields to the entity - custom field has invalid type
     String json1 = JsonUtils.pojoToJson(entityType);
@@ -2137,7 +2142,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     assertResponse(
         () -> typeResourceTest.patchEntity(id, json1, finalEntity, ADMIN_AUTH_HEADERS),
         NOT_FOUND,
-        entityNotFound(TYPE, invalidType.getName()));
+        CatalogExceptionMessage.entityNotFound(Entity.TYPE, invalidType.getName()));
 
     // Now POST an entity with extension that includes custom field intA
     ObjectMapper mapper = new ObjectMapper();
@@ -2156,7 +2161,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
         EntityUtil.getExtensionField("intA"),
         mapper.convertValue(1, JsonNode.class),
         intAValue);
-    entity = updateAndCheckEntity(create, OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+    entity = updateAndCheckEntity(create, Status.OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
     // PATCH and update the entity with extension field stringB
     json = JsonUtils.pojoToJson(entity);
@@ -2183,7 +2188,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     JsonNode oldNode = JsonUtils.valueToTree(entity.getExtension());
     jsonNode.remove("intA");
     create = createRequest(test).withExtension(jsonNode).withName(entity.getName());
-    entity = updateEntity(create, OK, INGESTION_BOT_AUTH_HEADERS);
+    entity = updateEntity(create, Status.OK, INGESTION_BOT_AUTH_HEADERS);
     assertNotEquals(
         JsonUtils.valueToTree(create.getExtension()), JsonUtils.valueToTree(entity.getExtension()));
     assertEquals(oldNode, JsonUtils.valueToTree(entity.getExtension())); // Extension remains as is
@@ -2193,7 +2198,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
         getChangeDescription(
             entity, MINOR_UPDATE); // PUT operation update is not consolidated in a session
     fieldDeleted(change, "extension", List.of(JsonUtils.getObjectNode("intA", intAValue)));
-    entity = updateAndCheckEntity(create, OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+    entity = updateAndCheckEntity(create, Status.OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
     assertEquals(
         JsonUtils.valueToTree(create.getExtension()), JsonUtils.valueToTree(entity.getExtension()));
 
@@ -2375,7 +2380,8 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     // create entity
     T entity = createEntity(createRequest(test), ADMIN_AUTH_HEADERS);
     EntityReference entityReference = getEntityReference(entity);
-    IndexMapping indexMapping = getSearchRepository().getIndexMapping(entityReference.getType());
+    IndexMapping indexMapping =
+        Entity.getSearchRepository().getIndexMapping(entityReference.getType());
     // search api method internally appends clusterAlias name
     SearchResponse response = getResponseFormSearch(indexMapping.getIndexName(null));
     List<String> entityIds = new ArrayList<>();
@@ -2394,7 +2400,8 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     // create entity
     T entity = createEntity(createRequest(test), ADMIN_AUTH_HEADERS);
     EntityReference entityReference = getEntityReference(entity);
-    IndexMapping indexMapping = getSearchRepository().getIndexMapping(entityReference.getType());
+    IndexMapping indexMapping =
+        Entity.getSearchRepository().getIndexMapping(entityReference.getType());
     // search api method internally appends clusterAlias name
     SearchResponse response = getResponseFormSearch(indexMapping.getIndexName(null));
     List<String> entityIds = new ArrayList<>();
@@ -2408,7 +2415,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     entityIds.clear();
     // delete entity
     WebTarget target = getResource(entity.getId());
-    delete(target, entityClass, ADMIN_AUTH_HEADERS);
+    TestUtils.delete(target, entityClass, ADMIN_AUTH_HEADERS);
     // search again in search after deleting
 
     // search api method internally appends clusterAlias name
@@ -2447,7 +2454,8 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     // create an entity
     T entity = createEntity(createRequest(test), ADMIN_AUTH_HEADERS);
     EntityReference entityReference = getEntityReference(entity);
-    IndexMapping indexMapping = getSearchRepository().getIndexMapping(entityReference.getType());
+    IndexMapping indexMapping =
+        Entity.getSearchRepository().getIndexMapping(entityReference.getType());
     String origJson = JsonUtils.pojoToJson(entity);
     TagResourceTest tagResourceTest = new TagResourceTest();
     Tag tag = tagResourceTest.createEntity(tagResourceTest.createRequest(test), ADMIN_AUTH_HEADERS);
@@ -2499,12 +2507,13 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
   public static Map<String, Object> getEntityDocumentFromSearch(UUID entityId, String entityType)
       throws HttpResponseException {
-    IndexMapping indexMapping = getSearchRepository().getIndexMapping(entityType);
+    IndexMapping indexMapping = Entity.getSearchRepository().getIndexMapping(entityType);
     // SearchResource.java-searchEntityInEsIndexWithId method internally appends clusterAlias name
     WebTarget target =
         getResource(
-            format("search/get/%s/doc/%s", indexMapping.getIndexName(null), entityId.toString()));
-    String result = get(target, String.class, ADMIN_AUTH_HEADERS);
+            String.format(
+                "search/get/%s/doc/%s", indexMapping.getIndexName(null), entityId.toString()));
+    String result = TestUtils.get(target, String.class, ADMIN_AUTH_HEADERS);
     GetResponse response = null;
     try {
       NamedXContentRegistry registry = new NamedXContentRegistry(getDefaultNamedXContents());
@@ -2594,7 +2603,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
             .withAllowedClassification(classification)
             .withValidityPeriod("P30D");
 
-    SystemRepository systemRepository = getSystemRepository();
+    SystemRepository systemRepository = Entity.getSystemRepository();
     systemRepository.updateSetting(
         new Settings()
             .withConfigType(SettingsType.ASSET_CERTIFICATION_SETTINGS)
@@ -2678,8 +2687,9 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   private static SearchResponse getResponseFormSearch(String indexName)
       throws HttpResponseException {
     WebTarget target =
-        getResource(format("search/query?q=&index=%s&from=0&deleted=false&size=50", indexName));
-    String result = get(target, String.class, ADMIN_AUTH_HEADERS);
+        getResource(
+            String.format("search/query?q=&index=%s&from=0&deleted=false&size=50", indexName));
+    String result = TestUtils.get(target, String.class, ADMIN_AUTH_HEADERS);
     SearchResponse response = null;
     try {
       NamedXContentRegistry registry = new NamedXContentRegistry(getDefaultNamedXContents());
@@ -2695,8 +2705,9 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
   private static GetResponse getEntityFromSearchWithId(String indexName, UUID entityId)
       throws HttpResponseException {
-    WebTarget target = getResource(format("search/get/%s/doc/%s", indexName, entityId.toString()));
-    String result = get(target, String.class, ADMIN_AUTH_HEADERS);
+    WebTarget target =
+        getResource(String.format("search/get/%s/doc/%s", indexName, entityId.toString()));
+    String result = TestUtils.get(target, String.class, ADMIN_AUTH_HEADERS);
     GetResponse response = null;
     try {
       NamedXContentRegistry registry = new NamedXContentRegistry(getDefaultNamedXContents());
@@ -2714,16 +2725,16 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       throws HttpResponseException {
     WebTarget target =
         getResource(
-            format(
+            String.format(
                 "search/query?q=%s&index=%s&from=0&deleted=false&size=100&getHierarchy=true",
                 query, indexName));
-    return get(target, String.class, ADMIN_AUTH_HEADERS);
+    return TestUtils.get(target, String.class, ADMIN_AUTH_HEADERS);
   }
 
   @Test
   @Execution(ExecutionMode.CONCURRENT)
   void test_cleanupConversations(TestInfo test) throws HttpResponseException {
-    if (!supportsFeed(entityType)) {
+    if (!Entity.supportsFeed(entityType)) {
       return;
     }
     K request = createRequest(getEntityName(test), "", "", null);
@@ -2731,7 +2742,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
     // Add a conversation thread for the entity
     FeedResourceTest feedTest = new FeedResourceTest();
-    String about = format("<#E::%s::%s>", entityType, entity.getFullyQualifiedName());
+    String about = String.format("<#E::%s::%s>", entityType, entity.getFullyQualifiedName());
     CreateThread createThread =
         new CreateThread().withFrom(USER1.getName()).withMessage("message").withAbout(about);
     Thread thread = feedTest.createAndCheck(createThread, ADMIN_AUTH_HEADERS);
@@ -2760,7 +2771,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       assertResponseContains(
           () -> feedTest.getThread(id, ADMIN_AUTH_HEADERS),
           NOT_FOUND,
-          entityNotFound("Thread", id));
+          CatalogExceptionMessage.entityNotFound("Thread", id));
     }
   }
 
@@ -2802,14 +2813,14 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   public final T getEntity(UUID id, Map<String, String> authHeaders) throws HttpResponseException {
     WebTarget target = getResource(id);
     target = target.queryParam("fields", allFields);
-    return get(target, entityClass, authHeaders);
+    return TestUtils.get(target, entityClass, authHeaders);
   }
 
   public final T getEntity(UUID id, String fields, Map<String, String> authHeaders)
       throws HttpResponseException {
     WebTarget target = getResource(id);
     target = target.queryParam("fields", fields);
-    return get(target, entityClass, authHeaders);
+    return TestUtils.get(target, entityClass, authHeaders);
   }
 
   public final T getEntity(
@@ -2821,7 +2832,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
         Optional.ofNullable(queryParams).orElse(Collections.emptyMap()).entrySet()) {
       target = target.queryParam(entry.getKey(), entry.getValue());
     }
-    return get(target, entityClass, authHeaders);
+    return TestUtils.get(target, entityClass, authHeaders);
   }
 
   public final T getEntityByName(String name, Map<String, String> authHeaders)
@@ -2843,18 +2854,18 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
         Optional.ofNullable(queryParams).orElse(Collections.emptyMap()).entrySet()) {
       target = target.queryParam(entry.getKey(), entry.getValue());
     }
-    return get(target, entityClass, authHeaders);
+    return TestUtils.get(target, entityClass, authHeaders);
   }
 
   public final T createEntity(CreateEntity createRequest, Map<String, String> authHeaders)
       throws HttpResponseException {
-    return post(getCollection(), createRequest, entityClass, authHeaders);
+    return TestUtils.post(getCollection(), createRequest, entityClass, authHeaders);
   }
 
   public final T updateEntity(
       CreateEntity updateRequest, Status status, Map<String, String> authHeaders)
       throws HttpResponseException {
-    return put(getCollection(), updateRequest, entityClass, status, authHeaders);
+    return TestUtils.put(getCollection(), updateRequest, entityClass, status, authHeaders);
   }
 
   public final T patchEntity(
@@ -2918,7 +2929,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
   public final T patchEntityUsingFqn(String fqn, JsonNode patch, Map<String, String> authHeaders)
       throws HttpResponseException {
-    return patch(getResourceByName(fqn), patch, entityClass, authHeaders);
+    return TestUtils.patch(getResourceByName(fqn), patch, entityClass, authHeaders);
   }
 
   public final T deleteAndCheckEntity(T entity, Map<String, String> authHeaders)
@@ -2947,7 +2958,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     WebTarget target = getResource(id);
     target = recursive ? target.queryParam("recursive", true) : target;
     target = hardDelete ? target.queryParam("hardDelete", true) : target;
-    T entity = delete(target, entityClass, authHeaders);
+    T entity = TestUtils.delete(target, entityClass, authHeaders);
     assertEntityDeleted(id, hardDelete);
     return entity;
   }
@@ -3001,7 +3012,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     WebTarget target = getResourceByName(name);
     target = recursive ? target.queryParam("recursive", true) : target;
     target = hardDelete ? target.queryParam("hardDelete", true) : target;
-    T entity = delete(target, entityClass, authHeaders);
+    T entity = TestUtils.delete(target, entityClass, authHeaders);
     assertEntityDeleted(entity.getId(), hardDelete);
     return entity;
   }
@@ -3010,7 +3021,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       RestoreEntity restore, Status status, Map<String, String> authHeaders)
       throws HttpResponseException {
     WebTarget target = getRestoreResource();
-    return put(target, restore, entityClass, status, authHeaders);
+    return TestUtils.put(target, restore, entityClass, status, authHeaders);
   }
 
   /**
@@ -3018,7 +3029,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
    */
   public T createAndCheckEntity(K create, Map<String, String> authHeaders) throws IOException {
     // Validate an entity that is created has all the information set in create request
-    String updatedBy = getPrincipalName(authHeaders);
+    String updatedBy = SecurityUtil.getPrincipalName(authHeaders);
     T entity = createEntity(create, authHeaders);
 
     assertEquals(updatedBy, entity.getUpdatedBy());
@@ -3074,7 +3085,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   protected final void restoreAndCheckEntity(
       T entity, Map<String, String> authHeaders, ChangeDescription changeDescription)
       throws IOException {
-    T updated = restoreEntity(new RestoreEntity().withId(entity.getId()), OK, authHeaders);
+    T updated = restoreEntity(new RestoreEntity().withId(entity.getId()), Status.OK, authHeaders);
     validateLatestVersion(updated, MINOR_UPDATE, changeDescription, authHeaders);
     // GET the newly updated entity and validate
     T getEntity = getEntity(updated.getId(), authHeaders);
@@ -3142,12 +3153,6 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
   /**
    * Helper function to generate JSON PATCH, submit PATCH API request and validate response.
-   *
-   * @param updated
-   * @param originalJson
-   * @param authHeaders
-   * @param updateType
-   * @param expectedChange
    */
   public final T patchEntityAndCheck(
       T updated,
@@ -3446,7 +3451,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     assertEquals(entityType, changeEvent.getEntityType());
     assertEquals(entity.getId(), changeEvent.getEntityId());
     assertEquals(entity.getVersion(), changeEvent.getCurrentVersion());
-    assertEquals(getPrincipalName(authHeaders), changeEvent.getUserName());
+    assertEquals(SecurityUtil.getPrincipalName(authHeaders), changeEvent.getUserName());
 
     //
     // previous, entity, changeDescription
@@ -3474,7 +3479,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     if (!EVENT_SUBSCRIPTION_TEST_CONTROL_FLAG) {
       return;
     }
-    String updatedBy = getPrincipalName(authHeaders);
+    String updatedBy = SecurityUtil.getPrincipalName(authHeaders);
     EventHolder eventHolder = new EventHolder();
 
     Awaitility.await("Wait for expected deleted event at timestamp " + timestamp)
@@ -3498,7 +3503,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   protected EntityHistory getVersionList(UUID id, Map<String, String> authHeaders)
       throws HttpResponseException {
     WebTarget target = getResource(id).path("/versions");
-    return get(target, EntityHistory.class, authHeaders);
+    return TestUtils.get(target, EntityHistory.class, authHeaders);
   }
 
   protected ResultList<ChangeEvent> getChangeEvents(
@@ -3513,7 +3518,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     target = entityUpdated == null ? target : target.queryParam("entityUpdated", entityUpdated);
     target = entityUpdated == null ? target : target.queryParam("entityRestored", entityRestored);
     target = entityDeleted == null ? target : target.queryParam("entityDeleted", entityDeleted);
-    return get(target, EventList.class, authHeaders);
+    return TestUtils.get(target, EventList.class, authHeaders);
   }
 
   protected ResultList<ChangeEvent> getChangeEvents(
@@ -3530,13 +3535,13 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     target = entityUpdated == null ? target : target.queryParam("entityRestored", entityRestored);
     target = entityDeleted == null ? target : target.queryParam("entityDeleted", entityDeleted);
     target = target.queryParam("timestamp", timestamp);
-    return get(target, EventList.class, authHeaders);
+    return TestUtils.get(target, EventList.class, authHeaders);
   }
 
   protected T getVersion(UUID id, Double version, Map<String, String> authHeaders)
       throws HttpResponseException {
     WebTarget target = getResource(id).path("/versions/" + version.toString());
-    return get(target, entityClass, authHeaders);
+    return TestUtils.get(target, entityClass, authHeaders);
   }
 
   protected void assertFieldLists(List<FieldChange> expectedList, List<FieldChange> actualList)
@@ -3638,7 +3643,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   protected static void assertReference(String expected, EntityReference actual) {
     if (expected != null) {
       assertNotNull(actual);
-      validateEntityReference(actual);
+      TestUtils.validateEntityReference(actual);
       assertEquals(expected, actual.getFullyQualifiedName());
     } else {
       assertNull(actual);
@@ -3667,7 +3672,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     }
     if (expected != null) {
       assertNotNull(actual);
-      validateEntityReference(actual);
+      TestUtils.validateEntityReference(actual);
       assertEquals(expected.getId(), actual.getId());
       assertEquals(expected.getType(), actual.getType());
     } else {
@@ -3678,14 +3683,16 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   protected void assertEntityReferenceFromSearch(T entity, EntityReference actual, String keyword)
       throws IOException {
     RestClient searchClient = getSearchClient();
-    IndexMapping index = getSearchRepository().getIndexMapping(entityType);
+    IndexMapping index = Entity.getSearchRepository().getIndexMapping(entityType);
     // Direct request to es needs to have es clusterAlias appended with indexName
     Request request =
         new Request(
             "GET",
-            format("%s/_search", index.getIndexName(getSearchRepository().getClusterAlias())));
+            String.format(
+                "%s/_search", index.getIndexName(Entity.getSearchRepository().getClusterAlias())));
     String query =
-        format("{\"query\":{\"bool\":{\"filter\":[{\"term\":{\"_id\":\"%s\"}}]}}}", entity.getId());
+        String.format(
+            "{\"query\":{\"bool\":{\"filter\":[{\"term\":{\"_id\":\"%s\"}}]}}}", entity.getId());
     request.setJsonEntity(query);
     try {
       assertEventually(
@@ -3731,17 +3738,17 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     if (owner != null) {
       UUID ownerId = owner.getId();
       List<EntityReference> ownsList;
-      if (owner.getType().equals(USER)) {
+      if (owner.getType().equals(Entity.USER)) {
         User user = new UserResourceTest().getEntity(ownerId, "owns", ADMIN_AUTH_HEADERS);
         ownsList = user.getOwns();
-      } else if (owner.getType().equals(TEAM)) {
+      } else if (owner.getType().equals(Entity.TEAM)) {
         Team team = new TeamResourceTest().getEntity(ownerId, "owns", ADMIN_AUTH_HEADERS);
         ownsList = team.getOwns();
       } else {
         throw new IllegalArgumentException("Invalid owner type " + owner.getType());
       }
 
-      existsInEntityReferenceList(ownsList, entityId, expectedOwning);
+      TestUtils.existsInEntityReferenceList(ownsList, entityId, expectedOwning);
     }
   }
 
@@ -3760,7 +3767,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
     assertEquals(totalFollowerCount, followers.size());
     validateEntityReferences(followers);
-    existsInEntityReferenceList(followers, userId, true);
+    TestUtils.existsInEntityReferenceList(followers, userId, true);
 
     // GET .../users/{userId} shows user as following the entity
     checkUserFollowing(userId, entityId, true, authHeaders);
@@ -3778,7 +3785,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       UUID entityId, UUID userId, Status status, Map<String, String> authHeaders)
       throws HttpResponseException {
     WebTarget target = getFollowersCollection(entityId);
-    return put(target, userId, ChangeEvent.class, status, authHeaders);
+    return TestUtils.put(target, userId, ChangeEvent.class, status, authHeaders);
   }
 
   protected void deleteAndCheckFollower(
@@ -3786,7 +3793,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       throws IOException {
     // Delete the follower
     WebTarget target = getFollowerResource(entityId, userId);
-    ChangeEvent change = delete(target, ChangeEvent.class, authHeaders);
+    ChangeEvent change = TestUtils.delete(target, ChangeEvent.class, authHeaders);
 
     // Get the entity and ensure the deleted follower is not in the followers list
     T getEntity = checkFollowerDeleted(entityId, userId, authHeaders);
@@ -3807,7 +3814,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     T getEntity = getEntity(entityId, authHeaders);
     List<EntityReference> followers = getEntity.getFollowers();
     validateEntityReferences(followers);
-    existsInEntityReferenceList(followers, userId, false);
+    TestUtils.existsInEntityReferenceList(followers, userId, false);
     return getEntity;
   }
 
@@ -3833,7 +3840,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     target = limit != null ? target.queryParam("limit", limit) : target;
     target = before != null ? target.queryParam("before", before) : target;
     target = after != null ? target.queryParam("after", after) : target;
-    return get(target, entityListClass, authHeaders);
+    return TestUtils.get(target, entityListClass, authHeaders);
   }
 
   public ResultList<T> listEntitiesFromSearch(
@@ -3843,12 +3850,12 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       Map<String, String> authHeader)
       throws HttpResponseException {
     WebTarget target = getCollection().path("/search/list");
-    for (Entry<String, String> entry : queryParams.entrySet()) {
+    for (Map.Entry<String, String> entry : queryParams.entrySet()) {
       target = target.queryParam(entry.getKey(), entry.getValue());
     }
     target = limit != null ? target.queryParam("limit", limit) : target;
     target = offset != null ? target.queryParam("offset", offset) : target;
-    return get(target, entityListClass, authHeader);
+    return TestUtils.get(target, entityListClass, authHeader);
   }
 
   private void printEntities(ResultList<T> list) {
@@ -4024,24 +4031,24 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   }
 
   public String getAllowedFields() {
-    return String.join(",", getEntityFields(entityClass));
+    return String.join(",", Entity.getEntityFields(entityClass));
   }
 
   public CsvImportResult importCsv(String entityName, String csv, boolean dryRun)
       throws HttpResponseException {
     WebTarget target = getResourceByName(entityName + "/import");
     target = !dryRun ? target.queryParam("dryRun", false) : target;
-    return putCsv(target, csv, CsvImportResult.class, OK, ADMIN_AUTH_HEADERS);
+    return TestUtils.putCsv(target, csv, CsvImportResult.class, Status.OK, ADMIN_AUTH_HEADERS);
   }
 
   protected String exportCsv(String entityName) throws HttpResponseException {
     WebTarget target = getResourceByName(entityName + "/export");
-    return get(target, String.class, ADMIN_AUTH_HEADERS);
+    return TestUtils.get(target, String.class, ADMIN_AUTH_HEADERS);
   }
 
   private String receiveCsvViaSocketIO(String entityName) throws Exception {
     UUID userId = getAdminUserId();
-    String uri = format("http://localhost:%d", APP.getLocalPort());
+    String uri = String.format("http://localhost:%d", APP.getLocalPort());
 
     IO.Options options = new IO.Options();
     options.path = "/api/v1/push/feed";
