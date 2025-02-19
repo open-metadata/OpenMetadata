@@ -62,6 +62,16 @@
         "previousVersion": {
           "description": "When a change did not result in change, this could be same as the current version.",
           "$ref": "#/definitions/entityVersion"
+        },
+        "changeContext": {
+          "description": "Context of the change. For example, if the change was made by a user, then the context could be user name.",
+          "type": "string",
+          "enum": [
+            "MANUAL",
+            "INGESTED",
+            "AUTOMATED",
+            "SUGGESTED"
+          ]
         }
       },
       "additionalProperties": false

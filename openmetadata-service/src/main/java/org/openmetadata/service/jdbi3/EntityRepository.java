@@ -162,7 +162,6 @@ import org.openmetadata.schema.type.api.BulkResponse;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.type.customProperties.EnumConfig;
 import org.openmetadata.schema.type.customProperties.TableConfig;
-import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.TypeRegistry;
@@ -176,6 +175,7 @@ import org.openmetadata.service.jdbi3.FeedRepository.TaskWorkflow;
 import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
 import org.openmetadata.service.jobs.JobDAO;
 import org.openmetadata.service.resources.tags.TagLabelUtil;
+import org.openmetadata.service.resources.teams.RoleResource;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchListFilter;
 import org.openmetadata.service.search.SearchRepository;
@@ -208,12 +208,12 @@ import software.amazon.awssdk.utils.Either;
  * Entities are stored as JSON documents in the database. Each entity is stored in a separate table and is accessed
  * through a <i>Data Access Object</i> or <i>DAO</i> that corresponds to each of the entity. For example,
  * <i>table_entity</i> is the database table used to store JSON docs corresponding to <i>table</i> entity and {@link
- * org.openmetadata.service.jdbi3.CollectionDAO.TableDAO} is used as the DAO object to access the table_entity table.
+ * CollectionDAO.TableDAO} is used as the DAO object to access the table_entity table.
  * All DAO objects for an entity are available in {@code daoCollection}. <br>
  * <br>
  * Relationships between entity is stored in a separate table that captures the edge - fromEntity, toEntity, and the
  * relationship name <i>entity_relationship</i> table and are supported by {@link
- * org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipDAO} DAO object.
+ * CollectionDAO.EntityRelationshipDAO} DAO object.
  *
  * <p>JSON document of an entity stores only <i>required</i> attributes of an entity. Some attributes such as
  * <i>href</i> are not stored and are created on the fly. <br>
@@ -363,7 +363,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     fieldSupportMap.put(FIELD_REVIEWERS, Pair.of(supportsReviewers, this::fetchAndSetReviewers));
     fieldSupportMap.put(FIELD_EXTENSION, Pair.of(supportsExtension, this::fetchAndSetExtension));
 
-    for (Map.Entry<String, Pair<Boolean, BiConsumer<List<T>, Fields>>> entry :
+    for (Entry<String, Pair<Boolean, BiConsumer<List<T>, Fields>>> entry :
         fieldSupportMap.entrySet()) {
       String fieldName = entry.getKey();
       boolean supportsField = entry.getValue().getLeft();
@@ -498,7 +498,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
    * openmetadata-service/src/main/resources/json/data/{entityType}
    *
    * <p>This method needs to be explicitly called, typically from initialize method. See {@link
-   * org.openmetadata.service.resources.teams.RoleResource#initialize(OpenMetadataApplicationConfig)}
+   * RoleResource#initialize(OpenMetadataApplicationConfig)}
    */
   public final void initSeedDataFromResources() throws IOException {
     List<T> entities = getEntitiesFromSeedData();
@@ -562,7 +562,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     entity.setOwners(owners);
     entity.setDomain(domain);
     entity.setTags(request.getTags());
-    entity.setDataProducts(getEntityReferences(Entity.DATA_PRODUCT, request.getDataProducts()));
+    entity.setDataProducts(getEntityReferences(DATA_PRODUCT, request.getDataProducts()));
     entity.setLifeCycle(request.getLifeCycle());
     entity.setExtension(request.getExtension());
     entity.setUpdatedBy(updatedBy);
@@ -635,7 +635,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   public final T getByName(
       UriInfo uriInfo, String fqn, Fields fields, Include include, boolean fromCache) {
-    fqn = quoteFqn ? EntityInterfaceUtil.quoteName(fqn) : fqn;
+    fqn = quoteFqn ? quoteName(fqn) : fqn;
     if (!fromCache) {
       // Clear the cache and always get the entity from the database to ensure read-after-write
       // consistency
@@ -655,7 +655,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   public final EntityReference getReferenceByName(String fqn, Include include) {
-    fqn = quoteFqn ? EntityInterfaceUtil.quoteName(fqn) : fqn;
+    fqn = quoteFqn ? quoteName(fqn) : fqn;
     return findByName(fqn, include).getEntityReference();
   }
 
@@ -675,7 +675,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   public final T findByName(String fqn, Include include, boolean fromCache) {
-    fqn = quoteFqn ? EntityInterfaceUtil.quoteName(fqn) : fqn;
+    fqn = quoteFqn ? quoteName(fqn) : fqn;
     try {
       if (!fromCache) {
         CACHE_WITH_NAME.invalidate(new ImmutablePair<>(entityType, fqn));
@@ -706,7 +706,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   public final List<T> listAllForCSV(Fields fields, String parentFqn) {
-    ListFilter filter = new ListFilter(Include.NON_DELETED);
+    ListFilter filter = new ListFilter(NON_DELETED);
     List<String> jsons = listAllByParentFqn(parentFqn, filter);
     List<T> entities = new ArrayList<>();
     setFieldsInBulk(jsons, fields, entities);
@@ -1049,13 +1049,25 @@ public abstract class EntityRepository<T extends EntityInterface> {
     // Update the attributes and relationships of an entity
     EntityUpdater entityUpdater = getUpdater(original, updated, Operation.PUT);
     entityUpdater.update();
-    EventType change = entityUpdater.fieldsChanged() ? EventType.ENTITY_UPDATED : ENTITY_NO_CHANGE;
+    EventType change = entityUpdater.fieldsChanged() ? ENTITY_UPDATED : ENTITY_NO_CHANGE;
     setInheritedFields(updated, new Fields(allowedFields));
     return new PutResponse<>(Status.OK, withHref(uriInfo, updated), change);
   }
 
+  /** Use method with ChangeContext */
+  @Deprecated
   @Transaction
   public final PatchResponse<T> patch(UriInfo uriInfo, UUID id, String user, JsonPatch patch) {
+    return patch(uriInfo, id, user, patch, null);
+  }
+
+  @Transaction
+  public final PatchResponse<T> patch(
+      UriInfo uriInfo,
+      UUID id,
+      String user,
+      JsonPatch patch,
+      ChangeDescription.ChangeContext changeContext) {
     // Get all the fields in the original entity that can be updated during PATCH operation
     T original = setFieldsInternal(find(id, NON_DELETED, false), patchFields);
     setInheritedFields(original, patchFields);
@@ -1073,14 +1085,15 @@ public abstract class EntityRepository<T extends EntityInterface> {
     restorePatchAttributes(original, updated);
 
     // Update the attributes and relationships of an entity
-    EntityUpdater entityUpdater = getUpdater(original, updated, Operation.PATCH);
+    EntityUpdater entityUpdater =
+        new EntityUpdater(original, updated, Operation.PATCH, changeContext);
     entityUpdater.update();
 
     entityRelationshipReindex(original, updated);
 
     EventType change = ENTITY_NO_CHANGE;
     if (entityUpdater.fieldsChanged()) {
-      change = EventType.ENTITY_UPDATED;
+      change = ENTITY_UPDATED;
       setInheritedFields(updated, patchFields); // Restore inherited fields after a change
     }
     return new PatchResponse<>(Status.OK, withHref(uriInfo, updated), change);
@@ -1091,6 +1104,15 @@ public abstract class EntityRepository<T extends EntityInterface> {
    */
   @Transaction
   public final PatchResponse<T> patch(UriInfo uriInfo, String fqn, String user, JsonPatch patch) {
+    return patch(uriInfo, fqn, user, patch, null);
+  }
+
+  public final PatchResponse<T> patch(
+      UriInfo uriInfo,
+      String fqn,
+      String user,
+      JsonPatch patch,
+      ChangeDescription.ChangeContext changeContext) {
     // Get all the fields in the original entity that can be updated during PATCH operation
     T original = setFieldsInternal(findByName(fqn, NON_DELETED, false), patchFields);
     setInheritedFields(original, patchFields);
@@ -1107,11 +1129,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
     restorePatchAttributes(original, updated);
 
     // Update the attributes and relationships of an entity
-    EntityUpdater entityUpdater = getUpdater(original, updated, Operation.PATCH);
+    EntityUpdater entityUpdater =
+        new EntityUpdater(original, updated, Operation.PATCH, changeContext);
     entityUpdater.update();
     EventType change = ENTITY_NO_CHANGE;
     if (entityUpdater.fieldsChanged()) {
-      change = EventType.ENTITY_UPDATED;
+      change = ENTITY_UPDATED;
       setInheritedFields(updated, patchFields); // Restore inherited fields after a change
     }
     return new PatchResponse<>(Status.OK, withHref(uriInfo, updated), change);
@@ -1128,7 +1151,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
 
     // Add relationship
-    addRelationship(userId, entityId, Entity.USER, entityType, Relationship.FOLLOWS);
+    addRelationship(userId, entityId, USER, entityType, Relationship.FOLLOWS);
 
     ChangeDescription change = new ChangeDescription().withPreviousVersion(entity.getVersion());
     fieldAdded(change, FIELD_FOLLOWERS, List.of(user.getEntityReference()));
@@ -1138,7 +1161,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
             .withId(UUID.randomUUID())
             .withEntity(entity)
             .withChangeDescription(change)
-            .withEventType(EventType.ENTITY_UPDATED)
+            .withEventType(ENTITY_UPDATED)
             .withEntityType(entityType)
             .withEntityId(entityId)
             .withEntityFullyQualifiedName(entity.getFullyQualifiedName())
@@ -1168,12 +1191,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     // Add or Delete relationship
     if (request.getUpdatedVoteType() == VoteType.UN_VOTED) {
-      deleteRelationship(userId, Entity.USER, entityId, entityType, Relationship.VOTED);
+      deleteRelationship(userId, USER, entityId, entityType, Relationship.VOTED);
     } else {
       addRelationship(
           userId,
           entityId,
-          Entity.USER,
+          USER,
           entityType,
           Relationship.VOTED,
           JsonUtils.pojoToJson(request.getUpdatedVoteType()),
@@ -1186,7 +1209,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
             .withId(UUID.randomUUID())
             .withEntity(originalEntity)
             .withChangeDescription(change)
-            .withEventType(EventType.ENTITY_UPDATED)
+            .withEventType(ENTITY_UPDATED)
             .withEntityType(entityType)
             .withEntityId(entityId)
             .withEntityFullyQualifiedName(originalEntity.getFullyQualifiedName())
@@ -1426,10 +1449,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
     T entity = find(entityId, NON_DELETED);
 
     // Validate follower
-    EntityReference user = Entity.getEntityReferenceById(Entity.USER, userId, NON_DELETED);
+    EntityReference user = Entity.getEntityReferenceById(USER, userId, NON_DELETED);
 
     // Remove follower
-    deleteRelationship(userId, Entity.USER, entityId, entityType, Relationship.FOLLOWS);
+    deleteRelationship(userId, USER, entityId, entityType, Relationship.FOLLOWS);
 
     ChangeDescription change = new ChangeDescription().withPreviousVersion(entity.getVersion());
     fieldDeleted(change, FIELD_FOLLOWERS, List.of(user));
@@ -1439,7 +1462,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
             .withId(UUID.randomUUID())
             .withEntity(entity)
             .withChangeDescription(change)
-            .withEventType(EventType.ENTITY_UPDATED)
+            .withEventType(ENTITY_UPDATED)
             .withEntityFullyQualifiedName(entity.getFullyQualifiedName())
             .withEntityType(entityType)
             .withEntityId(entityId)
@@ -1593,7 +1616,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   @Transaction
   public ResultList<T> getEntitiesWithTestSuite(
-      ListFilter filter, Integer limit, String offset, EntityUtil.Fields fields) {
+      ListFilter filter, Integer limit, String offset, Fields fields) {
     CollectionDAO.TestSuiteDAO testSuiteDAO = daoCollection.testSuiteDAO();
     return listWithOffset(
         (filterParam, limitParam, offsetParam) ->
@@ -1932,7 +1955,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   protected List<EntityReference> getFollowers(T entity) {
     return !supportsFollower || entity == null
         ? Collections.emptyList()
-        : findFrom(entity.getId(), entityType, Relationship.FOLLOWS, Entity.USER);
+        : findFrom(entity.getId(), entityType, Relationship.FOLLOWS, USER);
   }
 
   protected Votes getVotes(T entity) {
@@ -1942,7 +1965,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     List<EntityRelationshipRecord> upVoterRecords = new ArrayList<>();
     List<EntityRelationshipRecord> downVoterRecords = new ArrayList<>();
     List<EntityRelationshipRecord> records =
-        findFromRecords(entity.getId(), entityType, Relationship.VOTED, Entity.USER);
+        findFromRecords(entity.getId(), entityType, Relationship.VOTED, USER);
     for (EntityRelationshipRecord entityRelationshipRecord : records) {
       VoteType type = JsonUtils.readValue(entityRelationshipRecord.getJson(), VoteType.class);
       if (type == VoteType.VOTED_UP) {
@@ -2331,9 +2354,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   protected List<EntityReference> getExperts(T entity) {
-    return supportsExperts
-        ? findTo(entity.getId(), entityType, Relationship.EXPERT, Entity.USER)
-        : null;
+    return supportsExperts ? findTo(entity.getId(), entityType, Relationship.EXPERT, USER) : null;
   }
 
   public final void inheritDomain(T entity, Fields fields, EntityInterface parent) {
@@ -2402,7 +2423,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
           domain.getFullyQualifiedName(),
           entityType,
           entity.getId());
-      addRelationship(domain.getId(), entity.getId(), Entity.DOMAIN, entityType, Relationship.HAS);
+      addRelationship(domain.getId(), entity.getId(), DOMAIN, entityType, Relationship.HAS);
     }
   }
 
@@ -2428,7 +2449,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
             entityType,
             entity.getId());
         addRelationship(
-            dataProduct.getId(), entity.getId(), Entity.DATA_PRODUCT, entityType, Relationship.HAS);
+            dataProduct.getId(), entity.getId(), DATA_PRODUCT, entityType, Relationship.HAS);
       }
     }
   }
@@ -2598,7 +2619,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       return null;
     }
 
-    long teamCount = owners.stream().filter(owner -> owner.getType().equals(Entity.TEAM)).count();
+    long teamCount = owners.stream().filter(owner -> owner.getType().equals(TEAM)).count();
     long userCount = owners.size() - teamCount;
 
     if (teamCount > 1 || (teamCount > 0 && userCount > 0)) {
@@ -2611,13 +2632,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return owners.stream()
         .map(
             owner -> {
-              if (owner.getType().equals(Entity.TEAM)) {
-                Team team = Entity.getEntity(Entity.TEAM, owner.getId(), "", ALL);
+              if (owner.getType().equals(TEAM)) {
+                Team team = Entity.getEntity(TEAM, owner.getId(), "", ALL);
                 if (!team.getTeamType().equals(CreateTeam.TeamType.GROUP)) {
                   throw new IllegalArgumentException(
                       CatalogExceptionMessage.invalidTeamOwner(team.getTeamType()));
                 }
-              } else if (!owner.getType().equals(Entity.USER)) {
+              } else if (!owner.getType().equals(USER)) {
                 throw new IllegalArgumentException(
                     CatalogExceptionMessage.invalidOwnerType(owner.getType()));
               }
@@ -2646,14 +2667,14 @@ public abstract class EntityRepository<T extends EntityInterface> {
     if (!supportsDomain || domainFqn == null) {
       return null;
     }
-    return Entity.getEntityReferenceByName(Entity.DOMAIN, domainFqn, NON_DELETED);
+    return Entity.getEntityReferenceByName(DOMAIN, domainFqn, NON_DELETED);
   }
 
   public final void validateDomain(EntityReference domain) {
     if (!supportsDomain) {
       throw new IllegalArgumentException(CatalogExceptionMessage.invalidField(FIELD_DOMAIN));
     }
-    Entity.getEntityReferenceById(Entity.DOMAIN, domain.getId(), NON_DELETED);
+    Entity.getEntityReferenceById(DOMAIN, domain.getId(), NON_DELETED);
   }
 
   public final void validateDataProducts(List<EntityReference> dataProducts) {
@@ -2663,7 +2684,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     if (!nullOrEmpty(dataProducts)) {
       for (EntityReference dataProduct : dataProducts) {
-        Entity.getEntityReferenceById(Entity.DATA_PRODUCT, dataProduct.getId(), NON_DELETED);
+        Entity.getEntityReferenceById(DATA_PRODUCT, dataProduct.getId(), NON_DELETED);
       }
     }
   }
@@ -2807,6 +2828,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
     protected boolean majorVersionChange = false;
     protected final User updatingUser;
     private boolean entityChanged = false;
+    private ChangeDescription.ChangeContext changeContext;
+
+    public EntityUpdater(
+        T original, T updated, Operation operation, ChangeDescription.ChangeContext changeContext) {
+      this(original, updated, operation);
+      this.changeContext = changeContext;
+    }
 
     public EntityUpdater(T original, T updated, Operation operation) {
       this.original = original;
@@ -2815,7 +2843,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       this.updatingUser =
           updated.getUpdatedBy().equalsIgnoreCase(ADMIN_USER_NAME)
               ? new User().withName(ADMIN_USER_NAME).withIsAdmin(true)
-              : getEntityByName(Entity.USER, updated.getUpdatedBy(), "", NON_DELETED);
+              : getEntityByName(USER, updated.getUpdatedBy(), "", NON_DELETED);
     }
 
     /** Compare original and updated entities and perform updates. Update the entity version and track changes. */
@@ -2829,6 +2857,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       }
       // Now updated from previous/original to updated one
       changeDescription = new ChangeDescription();
+      changeDescription.setChangeContext(changeContext);
       updateInternal();
 
       // Store the updated entity
@@ -3067,7 +3096,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
               origDomain.getFullyQualifiedName(),
               original.getFullyQualifiedName());
           deleteRelationship(
-              origDomain.getId(), Entity.DOMAIN, original.getId(), entityType, Relationship.HAS);
+              origDomain.getId(), DOMAIN, original.getId(), entityType, Relationship.HAS);
         }
         if (updatedDomain != null) {
           validateDomain(updatedDomain);
@@ -3077,7 +3106,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
               updatedDomain.getFullyQualifiedName(),
               original.getFullyQualifiedName());
           addRelationship(
-              updatedDomain.getId(), original.getId(), Entity.DOMAIN, entityType, Relationship.HAS);
+              updatedDomain.getId(), original.getId(), DOMAIN, entityType, Relationship.HAS);
         }
         updated.setDomain(updatedDomain);
       } else {
@@ -3114,7 +3143,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
           entityType,
           original.getId(),
           Relationship.EXPERT,
-          Entity.USER,
+          USER,
           origExperts,
           updatedExperts,
           false);
@@ -3894,8 +3923,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     List<CollectionDAO.EntityRelationshipObject> records =
         daoCollection
             .relationshipDAO()
-            .findFromBatch(
-                entityListToStrings(entities), Relationship.HAS.ordinal(), Entity.DOMAIN);
+            .findFromBatch(entityListToStrings(entities), Relationship.HAS.ordinal(), DOMAIN);
 
     for (CollectionDAO.EntityRelationshipObject rec : records) {
       UUID toId = UUID.fromString(rec.getToId());
@@ -3952,8 +3980,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     Map<UUID, Object> result = new HashMap<>();
 
-    for (Map.Entry<UUID, List<CollectionDAO.ExtensionRecordWithId>> entry :
-        extensionsMap.entrySet()) {
+    for (Entry<UUID, List<CollectionDAO.ExtensionRecordWithId>> entry : extensionsMap.entrySet()) {
       UUID entityId = entry.getKey();
       List<CollectionDAO.ExtensionRecordWithId> extensionRecords = entry.getValue();
 

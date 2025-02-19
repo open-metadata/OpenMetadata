@@ -40,6 +40,7 @@ import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.BulkAssetsRequestInterface;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
@@ -233,8 +234,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
   }
 
   public T getVersionInternal(SecurityContext securityContext, UUID id, String version) {
-    OperationContext operationContext =
-        new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
+    OperationContext operationContext = new OperationContext(entityType, VIEW_BASIC);
     return getVersionInternal(
         securityContext, id, version, operationContext, getResourceContextById(id));
   }
@@ -250,8 +250,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
   }
 
   protected EntityHistory listVersionsInternal(SecurityContext securityContext, UUID id) {
-    OperationContext operationContext =
-        new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
+    OperationContext operationContext = new OperationContext(entityType, VIEW_BASIC);
     return listVersionsInternal(securityContext, id, operationContext, getResourceContextById(id));
   }
 
@@ -367,15 +366,32 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     return response.toResponse();
   }
 
+  /** Deprecated: use method with changeContext
+   * Example:
+   * ```
+   * patchInternal(uriInfo, securityContext, id, patch, changeContext);
+   * ```
+   * */
+  @Deprecated
   public Response patchInternal(
       UriInfo uriInfo, SecurityContext securityContext, UUID id, JsonPatch patch) {
+    return patchInternal(uriInfo, securityContext, id, patch, null);
+  }
+
+  public Response patchInternal(
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      UUID id,
+      JsonPatch patch,
+      ChangeDescription.ChangeContext changeContext) {
     OperationContext operationContext = new OperationContext(entityType, patch);
     authorizer.authorize(
         securityContext,
         operationContext,
         getResourceContextById(id, ResourceContextInterface.Operation.PATCH));
     PatchResponse<T> response =
-        repository.patch(uriInfo, id, securityContext.getUserPrincipal().getName(), patch);
+        repository.patch(
+            uriInfo, id, securityContext.getUserPrincipal().getName(), patch, changeContext);
     addHref(uriInfo, response.entity());
     return response.toResponse();
   }
@@ -396,13 +412,23 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
 
   public Response patchInternal(
       UriInfo uriInfo, SecurityContext securityContext, String fqn, JsonPatch patch) {
+    return patchInternal(uriInfo, securityContext, fqn, patch, null);
+  }
+
+  public Response patchInternal(
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      String fqn,
+      JsonPatch patch,
+      ChangeDescription.ChangeContext changeContext) {
     OperationContext operationContext = new OperationContext(entityType, patch);
     authorizer.authorize(
         securityContext,
         operationContext,
         getResourceContextByName(fqn, ResourceContextInterface.Operation.PATCH));
     PatchResponse<T> response =
-        repository.patch(uriInfo, fqn, securityContext.getUserPrincipal().getName(), patch);
+        repository.patch(
+            uriInfo, fqn, securityContext.getUserPrincipal().getName(), patch, changeContext);
     addHref(uriInfo, response.entity());
     return response.toResponse();
   }
@@ -640,7 +666,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
   }
 
   protected static final MetadataOperation[] VIEW_ALL_OPERATIONS = {MetadataOperation.VIEW_ALL};
-  protected static final MetadataOperation[] VIEW_BASIC_OPERATIONS = {MetadataOperation.VIEW_BASIC};
+  protected static final MetadataOperation[] VIEW_BASIC_OPERATIONS = {VIEW_BASIC};
 
   private MetadataOperation[] getViewOperations(Fields fields) {
     if (fields.getFieldList().isEmpty()) {

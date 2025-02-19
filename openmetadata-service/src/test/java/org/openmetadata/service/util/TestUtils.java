@@ -271,21 +271,21 @@ public final class TestUtils {
   }
 
   public static void assertResponse(
-      Executable executable, Response.Status expectedStatus, String expectedReason) {
+      Executable executable, Status expectedStatus, String expectedReason) {
     HttpResponseException exception = assertThrows(HttpResponseException.class, executable);
     assertEquals(expectedStatus.getStatusCode(), exception.getStatusCode());
     assertEquals(expectedReason, exception.getReasonPhrase());
   }
 
   public static void assertResponse(
-      Executable executable, Response.Status expectedStatus, List<String> expectedReasons) {
+      Executable executable, Status expectedStatus, List<String> expectedReasons) {
     HttpResponseException exception = assertThrows(HttpResponseException.class, executable);
     assertEquals(expectedStatus.getStatusCode(), exception.getStatusCode());
     assertTrue(expectedReasons.contains(exception.getReasonPhrase()));
   }
 
   public static void assertResponseContains(
-      Executable executable, Response.Status expectedStatus, String expectedReason) {
+      Executable executable, Status expectedStatus, String expectedReason) {
     HttpResponseException exception = assertThrows(HttpResponseException.class, executable);
     assertEquals(expectedStatus.getStatusCode(), exception.getStatusCode());
 
@@ -621,7 +621,7 @@ public final class TestUtils {
   public static void assertListNotNull(Object... values) {
     int index = 0;
     for (Object value : values) {
-      Assertions.assertNotNull(value, "Object at index " + index + " is null");
+      assertNotNull(value, "Object at index " + index + " is null");
       index++;
     }
   }
@@ -629,7 +629,7 @@ public final class TestUtils {
   public static void assertListNotEmpty(List<?>... values) {
     int index = 0;
     for (List<?> value : values) {
-      Assertions.assertFalse(value.isEmpty(), "List at index " + index + " is empty");
+      assertFalse(value.isEmpty(), "List at index " + index + " is empty");
       index++;
     }
   }
