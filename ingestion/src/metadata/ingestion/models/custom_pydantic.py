@@ -73,7 +73,7 @@ class BaseModel(PydanticBaseModel):
     def model_dump_json(  # pylint: disable=too-many-arguments
         self,
         *,
-        mask_secrets: bool = False,
+        mask_secrets: bool = True,
         indent: Optional[int] = None,
         include: IncEx = None,
         exclude: IncEx = None,
@@ -120,7 +120,7 @@ class BaseModel(PydanticBaseModel):
         **kwargs,
     ) -> dict[str, Any]:
         if mask_secrets:
-            context = kwargs.pop("context", {})
+            context = kwargs.pop("context", None) or {}
             context["mask_secrets"] = True
             kwargs["context"] = context
         return super().model_dump(**kwargs)
@@ -173,11 +173,12 @@ def handle_secret(value: Any, handler, info: SerializationInfo) -> str:
     """
     Handle the secret value in the model.
     """
-    return (
-        handler(value.get_secret_value())
-        if not (info.context is not None and info.context.get("mask_secrets", False))
-        else "*******"
-    )
+    if not (info.context is not None and info.context.get("mask_secrets", False)):
+        if info.mode == "json":
+            # short circuit the json serialization and return the actual value
+            return value.get_secret_value()
+        return handler(value.get_secret_value())
+    return str(value)  # use pydantic's logic to mask the secret
 
 
 CustomSecretStr = Annotated[_CustomSecretStr, WrapSerializer(handle_secret)]
