@@ -11,11 +11,11 @@
  *  limitations under the License.
  */
 /**
- * Defines a Task for a given User to approve.
+ * Runs an App based on its name.
  */
-export interface UserApprovalTask {
+export interface RunAppTask {
     branches?: string[];
-    config?:   NodeConfiguration;
+    config?:   Config;
     /**
      * Description of the Node.
      */
@@ -30,28 +30,24 @@ export interface UserApprovalTask {
      * Name that identifies this Node.
      */
     name?:    string;
-    output?:  string[];
     subType?: string;
     type?:    string;
     [property: string]: any;
 }
 
-export interface NodeConfiguration {
+export interface Config {
     /**
-     * People/Teams assigned to the Task.
+     * Set which App should Run
      */
-    assignees: Assignees;
-}
-
-/**
- * People/Teams assigned to the Task.
- */
-export interface Assignees {
+    appName: string;
     /**
-     * Add the Reviewers to the assignees List.
+     * Set the amount of seconds to wait before defining the App has timed out.
      */
-    addReviewers?: boolean;
-    [property: string]: any;
+    timeoutSeconds: number;
+    /**
+     * Set if this step should wait until the App finishes running
+     */
+    waitForCompletion: boolean;
 }
 
 export interface InputNamespaceMap {
