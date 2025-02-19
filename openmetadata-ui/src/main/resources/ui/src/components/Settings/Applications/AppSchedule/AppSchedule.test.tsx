@@ -76,6 +76,7 @@ const mockProps1 = {
     isRunLoading: false,
     isDeployLoading: false,
   },
+  jsonSchema: {},
   onSave: mockOnSave,
   onDemandTrigger: mockOnDemandTrigger,
   onDeployTrigger: mockOnDeployTrigger,

@@ -127,7 +127,7 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
 
   @Override
   public void setInheritedFields(TestSuite testSuite, EntityUtil.Fields fields) {
-    if (Boolean.TRUE.equals(testSuite.getBasic())) {
+    if (Boolean.TRUE.equals(testSuite.getBasic()) && testSuite.getBasicEntityReference() != null) {
       Table table =
           Entity.getEntity(
               TABLE, testSuite.getBasicEntityReference().getId(), "owners,domain", ALL);
@@ -152,6 +152,14 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
     } else {
       testSuite.setFullyQualifiedName(quoteName(testSuite.getName()));
     }
+  }
+
+  @Override
+  public EntityInterface getParentEntity(TestSuite entity, String fields) {
+    if (entity.getBasic() && entity.getBasicEntityReference() != null) {
+      return Entity.getEntity(entity.getBasicEntityReference(), fields, ALL);
+    }
+    return null;
   }
 
   private TestSummary getTestCasesExecutionSummary(JsonObject aggregation) {
@@ -432,6 +440,7 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
     String updatedBy = securityContext.getUserPrincipal().getName();
     preDelete(original, updatedBy);
     setFieldsInternal(original, putFields);
+    deleteChildIngestionPipelines(original.getId(), hardDelete, updatedBy);
 
     EventType changeType;
     TestSuite updated = JsonUtils.readValue(JsonUtils.pojoToJson(original), TestSuite.class);
@@ -450,6 +459,24 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
     }
     LOG.info("{} deleted {}", hardDelete ? "Hard" : "Soft", updated.getFullyQualifiedName());
     return new RestUtil.DeleteResponse<>(updated, changeType);
+  }
+
+  /**
+   * Always delete as if it was marked recursive. Deleting a Logical Suite should
+   * just go ahead and clean the Ingestion Pipelines
+   */
+  private void deleteChildIngestionPipelines(UUID id, boolean hardDelete, String updatedBy) {
+    List<CollectionDAO.EntityRelationshipRecord> childrenRecords =
+        daoCollection
+            .relationshipDAO()
+            .findTo(id, entityType, Relationship.CONTAINS.ordinal(), Entity.INGESTION_PIPELINE);
+
+    if (childrenRecords.isEmpty()) {
+      LOG.debug("No children to delete");
+      return;
+    }
+    // Delete all the contained entities
+    deleteChildren(childrenRecords, hardDelete, updatedBy);
   }
 
   private void updateTestSummaryFromBucket(JsonObject bucket, TestSummary testSummary) {

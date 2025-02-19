@@ -344,14 +344,26 @@ export const addAssetsToDomain = async (
   }
 
   const assetsAddRes = page.waitForResponse(`/api/v1/domains/*/assets/add`);
+  const searchRes = page.waitForResponse((response) => {
+    const url = new URL(response.url());
+    const queryParams = new URLSearchParams(url.search);
+    const queryFilter = queryParams.get('query_filter');
+
+    return (
+      response
+        .url()
+        .includes('/api/v1/search/query?q=**&index=all&from=0&size=15') &&
+      queryFilter !== null &&
+      queryFilter !== ''
+    );
+  });
   await page.getByTestId('save-btn').click();
   await assetsAddRes;
 
-  const countRes = page.waitForResponse(
-    '/api/v1/search/query?q=*&index=all&from=0&size=15'
-  );
+  await searchRes;
+
   await page.reload();
-  await countRes;
+  await page.waitForLoadState('networkidle');
 
   await checkAssetsCount(page, assets.length);
 };
