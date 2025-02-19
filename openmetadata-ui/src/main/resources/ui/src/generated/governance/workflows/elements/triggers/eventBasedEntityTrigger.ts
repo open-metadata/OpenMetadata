@@ -14,7 +14,7 @@
  * Event Based Entity Trigger.
  */
 export interface EventBasedEntityTrigger {
-    config?: Config;
+    config?: TriggerConfiguration;
     output?: string[];
     type?:   string;
 }
@@ -22,14 +22,14 @@ export interface EventBasedEntityTrigger {
 /**
  * Entity Event Trigger Configuration.
  */
-export interface Config {
+export interface TriggerConfiguration {
     /**
      * Entity Type for which it should be triggered.
      */
     entityType: string;
     events:     Event[];
     /**
-     * Exclude events that only modify given attributes.
+     * Select fields that should not trigger the workflow if only them are modified.
      */
     exclude?: string[];
 }

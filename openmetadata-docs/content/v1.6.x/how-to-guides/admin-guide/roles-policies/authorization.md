@@ -34,6 +34,7 @@ Here are some examples of conditions.
 | **matchAllTags(tagFqn, [tagFqn…])** | Returns true if the resource has all the tags from the tag list. |
 | **matchAnyTag(tagFqn, [tagFqn…])** | Returns true if the resource has any of the tags from the tag list. |
 | **matchTeam()** | Returns true if the user belongs to the team that owns the resource. |
+| **hasDomain()** | Returns true if the logged in user is the has domain access of the entity being accessed |
 
 Conditions are used to assess DataAsset like Tables/Topics/Dashboards etc.. for specific attributes.
 

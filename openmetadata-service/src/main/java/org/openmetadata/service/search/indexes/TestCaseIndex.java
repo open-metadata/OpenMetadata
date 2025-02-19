@@ -70,7 +70,9 @@ public record TestCaseIndex(TestCase testCase) implements SearchIndex {
     }
     TestSuite testSuite = Entity.getEntityOrNull(testSuiteEntityReference, "", Include.ALL);
     EntityReference entityReference = testSuite.getBasicEntityReference();
-    TestSuiteIndex.addTestSuiteParentEntityRelations(entityReference, doc);
+    if (entityReference != null) {
+      TestSuiteIndex.addTestSuiteParentEntityRelations(entityReference, doc);
+    }
   }
 
   public static Map<String, Float> getFields() {
