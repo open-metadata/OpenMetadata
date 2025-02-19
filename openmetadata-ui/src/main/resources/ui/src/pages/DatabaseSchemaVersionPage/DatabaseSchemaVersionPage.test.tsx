@@ -162,6 +162,18 @@ jest.mock('react-router-dom', () => ({
   })),
 }));
 
+jest.mock(
+  '../../components/Customization/GenericProvider/GenericProvider',
+  () => ({
+    GenericProvider: jest
+      .fn()
+      .mockImplementation(({ children }) => <div>{children}</div>),
+    useGenericContext: jest.fn().mockImplementation(() => ({
+      data: {},
+    })),
+  })
+);
+
 describe('DatabaseSchemaVersionPage', () => {
   it('should render all necessary components', async () => {
     await act(async () => {
