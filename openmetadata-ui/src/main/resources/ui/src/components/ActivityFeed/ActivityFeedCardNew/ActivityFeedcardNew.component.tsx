@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Card, Col, Input, Tooltip, Typography } from 'antd';
+import { Card, Col, Input, Space, Tooltip, Typography } from 'antd';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
 import React, { useMemo, useState } from 'react';
@@ -94,10 +94,10 @@ const ActivityFeedCardNew = ({
         { 'activity-feed-reply-card': isPost },
         { 'active-card is-active': isActive }
       )}>
-      <div className="w-full flex items-start">
-        <div className="flex flex-col">
-          <div
-            className={classNames('inline-flex justify-start items-start', {
+      <Space align="start" className="w-full">
+        <Space className="d-flex" direction="vertical">
+          <Space
+            className={classNames('d-inline-flex justify-start items-start', {
               'items-center': showThread,
             })}>
             <ProfilePicture
@@ -106,12 +106,13 @@ const ActivityFeedCardNew = ({
               name={feed.updatedBy!}
               size={showThread ? 40 : 32}
             />
-            <div className="flex flex-col items-start gap-2">
-              <div
-                className={classNames('flex items-center gap-2', {
+            <Space className="d-flex flex-col align-start gap-2" size={0}>
+              <Space
+                className={classNames('d-flex align-center gap-2', {
                   'header-container-card': !showThread,
                   'header-container-right-panel': showThread,
-                })}>
+                })}
+                size={0}>
                 <Typography.Text
                   className={classNames('mr-2', {
                     'activity-feed-user-name': !isPost,
@@ -131,12 +132,12 @@ const ActivityFeedCardNew = ({
                     </Typography.Text>
                   </Tooltip>
                 )}
-              </div>
+              </Space>
               {!isPost && (
-                <div
-                  className={classNames('d-flex items-center gap-1', {
+                <Space
+                  className={classNames('d-flex align-center gap-1', {
                     'header-container-card': !showThread,
-                    'header-container-card items-start': showThread,
+                    'header-container-card align-start': showThread,
                   })}>
                   <Typography.Text className="card-style-feed-header text-sm">
                     {getFeedHeaderTextFromCardStyle(
@@ -170,10 +171,10 @@ const ActivityFeedCardNew = ({
                       onClick={handlePanelResize}
                     />
                   )}
-                </div>
+                </Space>
               )}
-            </div>
-          </div>
+            </Space>
+          </Space>
 
           <FeedCardBodyNew
             feed={feed}
@@ -192,9 +193,8 @@ const ActivityFeedCardNew = ({
           {(isPost || (!showThread && !isPost)) && (
             <FeedCardFooterNew feed={feed} isPost={isPost} post={post} />
           )}
-        </div>
-      </div>
-
+        </Space>
+      </Space>
       {showThread && (
         <div className="activity-feed-comments-container d-flex flex-col">
           {showActivityFeedEditor && (
