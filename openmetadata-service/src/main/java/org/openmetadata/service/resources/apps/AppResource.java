@@ -302,7 +302,10 @@ public class AppResource extends EntityResource<App, AppRepository> {
         .withAppId(app.getId())
         .withAppName(app.getName())
         .withStartTime(pipelineStatus.getStartDate())
-        .withExecutionTime(pipelineStatus.getStartDate())
+        .withExecutionTime(
+            pipelineStatus.getEndDate() == null
+                ? System.currentTimeMillis() - pipelineStatus.getStartDate()
+                : pipelineStatus.getEndDate() - pipelineStatus.getStartDate())
         .withEndTime(pipelineStatus.getEndDate())
         .withStatus(
             switch (pipelineStatus.getPipelineState()) {
