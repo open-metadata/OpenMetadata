@@ -716,7 +716,8 @@ public class OpenSearchClient implements SearchClient {
       throws IOException {
     SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
     if (!nullOrEmpty(q)) {
-      searchSourceBuilder = getSearchSourceBuilder(index, q, offset, limit);
+      XContentParser queryParser = createXContentParser(q);
+      searchSourceBuilder = SearchSourceBuilder.fromXContent(queryParser);
     }
 
     List<Map<String, Object>> results = new ArrayList<>();

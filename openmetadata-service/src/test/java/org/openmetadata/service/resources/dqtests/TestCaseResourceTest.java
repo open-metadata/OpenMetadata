@@ -3653,6 +3653,17 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
               TestCase tc = Entity.getEntity(TEST_CASE, testCase.getId(), "", Include.ALL);
               assertTrue(tc.getEntityLink().contains("columns"));
             });
+
+    String id = testCaseResultResultList.getData().get(0).getId().toString();
+    queryParams.put("q", "%7B%22query%22%3A%20%7B%22term%22%3A%20%7B%22id.keyword%22%3A%20%22" + id + "%22%7D%7D%7D");
+    testCaseResultResultList =
+            listTestCaseResultsFromSearch(
+                    queryParams, 10, 0, "/testCaseResults/search/list", ADMIN_AUTH_HEADERS);
+    testCaseResultResultList
+            .getData()
+            .forEach(
+                    testCaseResult -> assertEquals(testCaseResult.getId().toString(), id)
+            );
   }
 
   @Test
