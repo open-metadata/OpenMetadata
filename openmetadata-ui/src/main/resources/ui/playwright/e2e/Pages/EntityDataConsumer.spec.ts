@@ -164,6 +164,9 @@ entities.forEach((EntityClass) => {
     });
 
     test.afterAll('Cleanup', async ({ browser }) => {
+      // By default playwright test timeout is 60 seconds, increasing it to 90 seconds
+      test.setTimeout(90000);
+
       const { apiContext, afterAction } = await performAdminLogin(browser);
       await user.delete(apiContext);
       await entity.delete(apiContext);
