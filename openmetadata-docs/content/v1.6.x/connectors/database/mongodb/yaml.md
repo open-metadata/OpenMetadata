@@ -351,7 +351,7 @@ Here we are also importing all the basic requirements to parse YAMLs, handle dat
 import yaml
 from datetime import timedelta
 from airflow import DAG
-from metadata.profiler.api.workflow import ProfilerWorkflow
+from metadata.workflow.profiler import ProfilerWorkflow
 
 try:
    from airflow.operators.python import PythonOperator
