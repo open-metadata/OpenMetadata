@@ -617,7 +617,9 @@ const DataProductsDetailsPage = ({
         </Col>
 
         <GenericProvider<DataProduct>
+          currentVersionData={dataProduct}
           data={dataProduct}
+          isVersionView={isVersionsView}
           permissions={dataProductPermission}
           type={EntityType.DATA_PRODUCT}
           onUpdate={onUpdate}>

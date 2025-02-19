@@ -22,6 +22,7 @@ import DescriptionV1 from '../../components/common/EntityDescription/Description
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';
 import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
+import { GenericProvider } from '../../components/Customization/GenericProvider/GenericProvider';
 import DataAssetsVersionHeader from '../../components/DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader';
 import { DatabaseSchemaTable } from '../../components/Database/DatabaseSchema/DatabaseSchemaTable/DatabaseSchemaTable';
 import DataProductsContainer from '../../components/DataProducts/DataProductsContainer/DataProductsContainer.component';
@@ -292,15 +293,23 @@ function DatabaseVersionPage() {
                   onVersionClick={backHandler}
                 />
               </Col>
-              <Col span={24}>
-                <Tabs
-                  className="entity-details-page-tabs"
-                  data-testid="tabs"
-                  defaultActiveKey={tab ?? EntityTabs.SCHEMA}
-                  items={tabs}
-                  onChange={handleTabChange}
-                />
-              </Col>
+              <GenericProvider
+                isVersionView
+                currentVersionData={currentVersionData}
+                data={currentVersionData}
+                permissions={servicePermissions}
+                type={EntityType.DATABASE}
+                onUpdate={() => Promise.resolve()}>
+                <Col span={24}>
+                  <Tabs
+                    className="entity-details-page-tabs"
+                    data-testid="tabs"
+                    defaultActiveKey={tab ?? EntityTabs.SCHEMA}
+                    items={tabs}
+                    onChange={handleTabChange}
+                  />
+                </Col>
+              </GenericProvider>
             </Row>
           </div>
         )}
