@@ -12,11 +12,11 @@
  */
 
 import { Edge } from 'reactflow';
-import { EdgeTypeEnum } from '../components/Entity/EntityLineage/EntityLineage.interface';
 import { EdgeDetails } from '../components/Lineage/Lineage.interface';
 import { SourceType } from '../components/SearchedData/SearchedData.interface';
 import { EntityType } from '../enums/entity.enum';
 import { AddLineage, ColumnLineage } from '../generated/api/lineage/addLineage';
+import { LineageDirection } from '../generated/api/lineage/lineageDirection';
 import { MOCK_NODES_AND_EDGES } from '../mocks/Lineage.mock';
 import { addLineage } from '../rest/miscAPI';
 import {
@@ -34,7 +34,6 @@ import {
   getUpdatedColumnsFromEdge,
   getUpstreamDownstreamNodesEdges,
 } from './EntityLineageUtils';
-
 jest.mock('../rest/miscAPI', () => ({
   addLineage: jest.fn(),
 }));
@@ -219,7 +218,7 @@ describe('Test EntityLineageUtils utility', () => {
       { id: '2', source: '1', target: '3' },
       { id: '3', source: '2', target: '3' },
     ];
-    const direction = EdgeTypeEnum.DOWN_STREAM;
+    const direction = LineageDirection.Downstream;
 
     const result = getConnectedNodesEdges(
       selectedNode,
@@ -267,7 +266,7 @@ describe('Test EntityLineageUtils utility', () => {
       { id: '2', source: '1', target: '3' },
       { id: '3', source: '2', target: '3' },
     ];
-    const direction = EdgeTypeEnum.UP_STREAM;
+    const direction = LineageDirection.Upstream;
 
     const result = getConnectedNodesEdges(
       selectedNode,

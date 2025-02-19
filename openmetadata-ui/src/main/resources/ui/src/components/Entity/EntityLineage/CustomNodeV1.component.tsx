@@ -25,11 +25,11 @@ import {
 import { ReactComponent as IconTimesCircle } from '../../../assets/svg/ic-times-circle.svg';
 import { useLineageProvider } from '../../../context/LineageProvider/LineageProvider';
 import { EntityLineageNodeType } from '../../../enums/entity.enum';
+import { LineageDirection } from '../../../generated/api/lineage/lineageDirection';
 import { LineageLayer } from '../../../generated/configuration/lineageSettings';
 import './custom-node.less';
 import { getCollapseHandle, getExpandHandle } from './CustomNode.utils';
 import './entity-lineage.style.less';
-import { EdgeTypeEnum } from './EntityLineage.interface';
 import LineageNodeLabelV1 from './LineageNodeLabelV1';
 import NodeChildren from './NodeChildren/NodeChildren.component';
 
@@ -50,17 +50,11 @@ const CustomNodeV1 = (props: NodeProps) => {
     dataQualityLineage,
   } = useLineageProvider();
 
-  const {
-    label,
-    isNewNode,
-    node = {},
-    isRootNode,
-    expandPerformed = false,
-  } = data;
+  const { label, isNewNode, node = {}, isRootNode } = data;
 
   const nodeType = isEditMode ? EntityLineageNodeType.DEFAULT : type;
   const isSelected = selectedNode === node;
-  const { id, fullyQualifiedName } = node;
+  const { id, fullyQualifiedName, expandPerformed = false } = node;
   const [isTraced, setIsTraced] = useState<boolean>(false);
 
   const getActiveNode = useCallback(
@@ -107,14 +101,14 @@ const CustomNodeV1 = (props: NodeProps) => {
   }, [fullyQualifiedName, upstreamDownstreamData]);
 
   const onExpand = useCallback(
-    (direction: EdgeTypeEnum) => {
+    (direction: LineageDirection) => {
       loadChildNodesHandler(node, direction);
     },
     [loadChildNodesHandler, node]
   );
 
   const onCollapse = useCallback(
-    (direction = EdgeTypeEnum.DOWN_STREAM) => {
+    (direction = LineageDirection.Downstream) => {
       const node = getActiveNode(id);
       if (node) {
         onNodeCollapse(node, direction);
@@ -160,21 +154,21 @@ const CustomNodeV1 = (props: NodeProps) => {
       <>
         {hasOutgoers &&
           (isDownstreamNode || isRootNode) &&
-          getCollapseHandle(EdgeTypeEnum.DOWN_STREAM, onCollapse)}
+          getCollapseHandle(LineageDirection.Downstream, onCollapse)}
         {!hasOutgoers &&
           !expandPerformed &&
-          getExpandHandle(EdgeTypeEnum.DOWN_STREAM, () =>
-            onExpand(EdgeTypeEnum.DOWN_STREAM)
+          getExpandHandle(LineageDirection.Downstream, () =>
+            onExpand(LineageDirection.Downstream)
           )}
         {hasIncomers &&
           (isUpstreamNode || isRootNode) &&
-          getCollapseHandle(EdgeTypeEnum.UP_STREAM, () =>
-            onCollapse(EdgeTypeEnum.UP_STREAM)
+          getCollapseHandle(LineageDirection.Upstream, () =>
+            onCollapse(LineageDirection.Upstream)
           )}
         {!hasIncomers &&
           !expandPerformed &&
-          getExpandHandle(EdgeTypeEnum.UP_STREAM, () =>
-            onExpand(EdgeTypeEnum.UP_STREAM)
+          getExpandHandle(LineageDirection.Upstream, () =>
+            onExpand(LineageDirection.Upstream)
           )}
       </>
     );

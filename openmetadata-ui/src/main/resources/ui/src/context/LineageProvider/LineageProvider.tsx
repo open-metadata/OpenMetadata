@@ -52,7 +52,6 @@ import EntityInfoDrawer from '../../components/Entity/EntityInfoDrawer/EntityInf
 import AddPipeLineModal from '../../components/Entity/EntityLineage/AppPipelineModel/AddPipeLineModal';
 import {
   EdgeData,
-  EdgeTypeEnum,
   ElementLoadingState,
   LineageConfig,
 } from '../../components/Entity/EntityLineage/EntityLineage.interface';
@@ -62,6 +61,7 @@ import {
   EdgeDetails,
   EntityLineageResponse,
   LineageData,
+  LineageEntityReference,
 } from '../../components/Lineage/Lineage.interface';
 import { SourceType } from '../../components/SearchedData/SearchedData.interface';
 import {
@@ -71,6 +71,7 @@ import {
 import { mockDatasetData } from '../../constants/mockTourData.constants';
 import { EntityLineageNodeType, EntityType } from '../../enums/entity.enum';
 import { AddLineage } from '../../generated/api/lineage/addLineage';
+import { LineageDirection } from '../../generated/api/lineage/lineageDirection';
 import { LineageSettings } from '../../generated/configuration/lineageSettings';
 import { LineageLayer } from '../../generated/settings/settings';
 import {
@@ -281,17 +282,18 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
   }, [entityType, decodedFqn, lineageConfig, queryFilter]);
 
   const loadChildNodesHandler = useCallback(
-    async (node: SourceType, direction: EdgeTypeEnum) => {
+    async (node: SourceType, direction: LineageDirection) => {
       try {
         const res = await getLineageDataByFQN({
           fqn: node.fullyQualifiedName ?? '',
           entityType: node.entityType ?? '',
           config: {
-            upstreamDepth: direction === EdgeTypeEnum.UP_STREAM ? 1 : 0,
-            downstreamDepth: direction === EdgeTypeEnum.DOWN_STREAM ? 1 : 0,
+            upstreamDepth: direction === LineageDirection.Upstream ? 1 : 0,
+            downstreamDepth: direction === LineageDirection.Downstream ? 1 : 0,
             nodesPerLayer: lineageConfig.nodesPerLayer,
           }, // load only one level of child nodes
           queryFilter,
+          direction,
         });
 
         const concatenatedLineageData = {
@@ -590,7 +592,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
   }, []);
 
   const selectLoadMoreNode = async (node: Node) => {
-    const { pagination_data, edgeType } = node.data.node;
+    const { pagination_data, direction } = node.data.node;
     const { parentId, index: from } = pagination_data;
 
     // Find parent node to get its details
@@ -602,8 +604,8 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     try {
       const config: LineageConfig = {
         ...lineageConfig,
-        upstreamDepth: edgeType === EdgeTypeEnum.UP_STREAM ? 1 : 0,
-        downstreamDepth: edgeType === EdgeTypeEnum.DOWN_STREAM ? 1 : 0,
+        upstreamDepth: direction === LineageDirection.Upstream ? 1 : 0,
+        downstreamDepth: direction === LineageDirection.Downstream ? 1 : 0,
       };
 
       const res = await getLineageDataByFQN({
@@ -612,6 +614,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
         config,
         queryFilter,
         from,
+        direction,
       });
 
       const concatenatedLineageData = {
@@ -1025,7 +1028,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
   }, []);
 
   const onNodeCollapse = useCallback(
-    (node: Node | NodeProps, direction: EdgeTypeEnum) => {
+    (node: Node | NodeProps, direction: LineageDirection) => {
       const { nodeFqn, edges: connectedEdges } = getConnectedNodesEdges(
         node as Node,
         nodes,
@@ -1108,7 +1111,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
 
   const redrawLineage = useCallback(
     async (lineageData: EntityLineageResponse) => {
-      const allNodes = uniqWith(
+      const allNodes: LineageEntityReference[] = uniqWith(
         [
           ...(lineageData.nodes ?? []),
           ...(lineageData.entity ? [lineageData.entity] : []),
