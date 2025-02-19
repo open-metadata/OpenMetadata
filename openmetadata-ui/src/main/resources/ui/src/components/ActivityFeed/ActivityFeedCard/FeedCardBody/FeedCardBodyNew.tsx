@@ -129,35 +129,15 @@ const FeedCardBodyNew = ({
 
   return (
     <div
-      style={
-        showThread
-          ? {
-              background: 'rgba(239, 244, 250, 0.25)',
-              padding:
-                feed.cardStyle === 'description'
-                  ? '20px 20px 20px 6px'
-                  : '20px',
-              borderRadius: '8px',
-              border: '0.8px solid #dfdfdf',
-              marginTop: '20px',
-              fontSize: '14px',
-              color: '#535862',
-              lineHeight: '20px',
-            }
-          : {
-              background: 'white',
-              padding:
-                feed.cardStyle === 'description' &&
-                feed.fieldOperation === 'updated'
-                  ? '20px 6px 20px 6px'
-                  : '20px',
-              borderRadius: '8px',
-              marginTop: '2px',
-              fontSize: '14px',
-              color: '#535862',
-              lineHeight: '20px',
-            }
-      }>
+      className={`common-style ${showThread ? 'show-thread' : 'hide-thread'} ${
+        feed.cardStyle === 'description' ? 'description' : ''
+      } ${
+        !showThread &&
+        feed.cardStyle === 'description' &&
+        feed.fieldOperation === 'updated'
+          ? 'updated'
+          : ''
+      }`}>
       {feedBodyRender}
     </div>
   );

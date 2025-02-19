@@ -90,14 +90,9 @@ const ActivityFeedCardNew = ({
         showThread || isPost
           ? 'activity-feed-card-new-right-panel m-0 gap-0'
           : ''
-      } ${isPost && 'activity-feed-reply-card'} ${isActive && 'active-card'}`}
-      style={
-        isActive
-          ? {
-              background: '#E6F1FE',
-            }
-          : {}
-      }>
+      } ${isPost && 'activity-feed-reply-card'} ${
+        isActive && 'active-card is-active'
+      }`}>
       <Space align="start" className="w-full">
         <Space className="d-flex" direction="vertical">
           <Space

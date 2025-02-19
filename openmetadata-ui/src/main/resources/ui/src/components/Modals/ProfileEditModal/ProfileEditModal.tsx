@@ -15,15 +15,9 @@ import { Button, Input, Modal, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import React, { FunctionComponent, useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-// import { showErrorToast } from '../../../utils/ToastUtils';
-// import RichTextEditor from '../../common/RichTextEditor/RichTextEditor';
 import { User } from '../../../generated/entity/teams/user';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import './profile-edit-modal.less';
-// import {
-//   EditorContentRef,
-//   ModalWithMarkdownEditorProps,
-// } from './ModalWithMarkdownEditor.interface';
 
 interface ProfileEditModalProps {
   userData: User;

@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Avatar, Button, Col, Row, Space } from 'antd';
+import { Avatar, Button, Col, Row } from 'antd';
+import classNames from 'classnames';
 import { min, noop, sortBy } from 'lodash';
 import React, { useCallback, useMemo } from 'react';
 import { ReactComponent as ThreadIcon } from '../../../../assets/svg/reply-2.svg';
@@ -61,9 +62,9 @@ function FeedCardFooterNew({
   }, [showDrawer, feed]);
 
   return (
-    <Row align="top">
+    <Row align="top" className={classNames({ 'm-y-md': isPost })}>
       <Col className="footer-container" span={24}>
-        <Space>
+        <div>
           <div className="flex items-center gap-2  w-full rounded-8">
             {postLength > 0 && !isPost && (
               <Avatar.Group>
@@ -96,9 +97,8 @@ function FeedCardFooterNew({
               onReactionSelect={onReactionUpdate ?? noop}
             />
           </div>
-        </Space>
+        </div>
       </Col>
-      <Col span={24} />
     </Row>
   );
 }

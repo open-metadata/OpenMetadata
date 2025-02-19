@@ -48,13 +48,15 @@ const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
     const { i18n } = useTranslation();
     const editorSlots = useRef<EditorSlotsRef>(null);
 
-    // Custom editor hook to initialize and update editor
+    // this hook to initialize the editor
     const editor = useCustomEditor({
       ...EDITOR_OPTIONS,
       extensions,
       onUpdate({ editor }) {
         const htmlContent = editor.getHTML();
+
         const backendFormat = formatContent(htmlContent, 'server');
+
         onChange?.(backendFormat);
       },
       editorProps: {
@@ -66,17 +68,19 @@ const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
       autofocus: autoFocus,
     });
 
-    // Expose the editor instance using useImperativeHandle
+    // this hook to expose the editor instance
     useImperativeHandle(ref, () => ({
       editor,
     }));
 
-    // Set content whenever it changes
+    // this effect to handle the content change
     useEffect(() => {
       if (isNil(editor) || editor.isDestroyed || content === undefined) {
         return;
       }
 
+      // We use setTimeout to avoid any flushSync console errors as
+      // mentioned here https://github.com/ueberdosis/tiptap/issues/3764#issuecomment-1546854730
       setTimeout(() => {
         if (content !== undefined) {
           const htmlContent = formatContent(content, 'client');
@@ -85,7 +89,7 @@ const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
       });
     }, [content, editor]);
 
-    // Handle editable state change
+    // this effect to handle the editable state
     useEffect(() => {
       if (
         isNil(editor) ||
@@ -95,10 +99,12 @@ const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
         return;
       }
 
+      // We use setTimeout to avoid any flushSync console errors as
+      // mentioned here https://github.com/ueberdosis/tiptap/issues/3764#issuecomment-1546854730
       setTimeout(() => editor.setEditable(editable));
     }, [editable, editor]);
 
-    // Handle RTL/LTR direction changes
+    // this effect to handle the RTL and LTR direction
     useEffect(() => {
       const editorWrapper = document.getElementById('block-editor-wrapper');
       if (!editorWrapper) {

@@ -48,7 +48,7 @@ const CommentCard = ({ feed, post, isLastReply }: CommentCardInterface) => {
     setIsEditPost(!isEditPost);
   };
 
-  const onUpdate = (message: string) => {
+  const onUpdate = async (message: string) => {
     const updatedPost = { ...feed, message };
     const patch = compare(feed, updatedPost);
     updateFeed(feed.id, post.id, false, patch);
@@ -59,9 +59,10 @@ const CommentCard = ({ feed, post, isLastReply }: CommentCardInterface) => {
     onUpdate?.(postMessage ?? '');
   }, [onUpdate, postMessage]);
 
-  const getDefaultValue = (defaultMessage: string) => {
-    return MarkdownToHTMLConverter.makeHtml(getFrontEndFormat(defaultMessage));
-  };
+  const defaultValue = useMemo(
+    () => MarkdownToHTMLConverter.makeHtml(getFrontEndFormat(post.message)),
+    [post.message]
+  );
 
   const feedBodyRender = useMemo(() => {
     if (isEditPost) {
@@ -69,7 +70,7 @@ const CommentCard = ({ feed, post, isLastReply }: CommentCardInterface) => {
         <ActivityFeedEditor
           focused
           className="mb-8 reply-feed-editor"
-          defaultValue={getDefaultValue(post.message)}
+          defaultValue={defaultValue}
           editorClass="is_edit_post"
           onSave={handleSave}
           onTextChange={(message) => setPostMessage(message)}
@@ -77,7 +78,7 @@ const CommentCard = ({ feed, post, isLastReply }: CommentCardInterface) => {
       );
     }
 
-    return null;
+    return <Text className="reply-message">{stripHtml(post.message)}</Text>;
   }, [isEditPost, postMessage, handleSave]);
 
   function stripHtml(html: any) {
@@ -124,15 +125,9 @@ const CommentCard = ({ feed, post, isLastReply }: CommentCardInterface) => {
             </Tooltip>
           </Typography.Text>
         </div>
-        {isEditPost ? (
-          feedBodyRender
-        ) : (
-          <Text className="reply-message">{stripHtml(post.message)}</Text>
-        )}
+        {feedBodyRender}
 
-        <div className="m-y-md">
-          <FeedCardFooterNew isPost feed={feed} post={post} />
-        </div>
+        <FeedCardFooterNew isPost feed={feed} post={post} />
       </div>
 
       {isHovered && (
