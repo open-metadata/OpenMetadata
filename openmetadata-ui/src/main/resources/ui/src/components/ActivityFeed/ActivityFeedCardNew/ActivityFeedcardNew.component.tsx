@@ -86,13 +86,14 @@ const ActivityFeedCardNew = ({
   return (
     <Card
       bordered={showThread ? false : true}
-      className={`relative activity-feed-card-new ${
-        showThread || isPost
-          ? 'activity-feed-card-new-right-panel m-0 gap-0'
-          : ''
-      } ${isPost && 'activity-feed-reply-card'} ${
-        isActive && 'active-card is-active'
-      }`}>
+      className={classNames(
+        'relative activity-feed-card-new',
+        {
+          'activity-feed-card-new-right-panel m-0 gap-0': showThread || isPost,
+        },
+        { 'activity-feed-reply-card': isPost },
+        { 'active-card is-active': isActive }
+      )}>
       <Space align="start" className="w-full">
         <Space className="d-flex" direction="vertical">
           <Space
@@ -113,9 +114,10 @@ const ActivityFeedCardNew = ({
                 })}
                 size={0}>
                 <Typography.Text
-                  className={`mr-2 ${
-                    !isPost ? 'activity-feed-user-name' : 'reply-card-user-name'
-                  }`}>
+                  className={classNames('mr-2', {
+                    'activity-feed-user-name': !isPost,
+                    'reply-card-user-name': isPost,
+                  })}>
                   {feed.updatedBy}
                 </Typography.Text>
                 {post?.postTs && (

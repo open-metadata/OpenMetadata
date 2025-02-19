@@ -218,38 +218,23 @@ export const PersonaSelectableList = ({
 
           <div className="flex justify-end gap-2">
             <Button
-              className="profile-edit-save"
+              className="persona-profile-edit-save"
               data-testid="user-profile-persona-edit-save"
               icon={
                 <ClosePopoverIcon height={24} style={{ marginTop: '2px' }} />
               }
               size="small"
-              style={{
-                width: '30px',
-                height: '30px',
-                background: '#0950C5',
-                position: 'absolute',
-                bottom: '0px',
-                right: '38px',
-              }}
               type="primary"
               onClick={handleCloseEditTeam}
             />
             <Button
-              className="profile-edit-cancel"
+              className="persona-profile-edit-cancel"
               data-testid="user-profile-persona-edit-cancel"
               icon={
                 <SavePopoverIcon height={24} style={{ marginTop: '2px' }} />
               }
               loading={isSaving}
               size="small"
-              style={{
-                width: '30px',
-                height: '30px',
-                background: '#0950C5',
-                position: 'absolute',
-                bottom: '0px',
-              }}
               type="primary"
               onClick={handlePersonaUpdate}
             />

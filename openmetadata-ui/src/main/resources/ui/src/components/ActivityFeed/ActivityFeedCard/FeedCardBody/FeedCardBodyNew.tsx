@@ -69,13 +69,7 @@ const FeedCardBodyNew = ({
 
       if (ASSET_CARD_STYLES.includes(cardStyle as CardStyle)) {
         <Card bordered className="activity-feed-reply-card-message">
-          <Typography.Text
-            className="activity-feed-comment-text"
-            style={{
-              wordWrap: 'break-word',
-              whiteSpace: 'normal',
-              color: '#535862 !important',
-            }}>
+          <Typography.Text className="activity-feed-comment-text">
             {message}
           </Typography.Text>
         </Card>;

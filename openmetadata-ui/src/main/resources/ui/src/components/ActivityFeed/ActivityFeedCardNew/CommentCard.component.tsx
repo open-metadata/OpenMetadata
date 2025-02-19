@@ -105,10 +105,7 @@ const CommentCard = ({ feed, post, isLastReply }: CommentCardInterface) => {
       </div>
       <div>
         <div className="d-flex items-center gap-2 flex-wrap">
-          <Typography.Text
-            className={` 
-                              activity-feed-user-name reply-card-user-name'
-                            `}>
+          <Typography.Text className="activity-feed-user-name reply-card-user-name">
             {feed.updatedBy}
           </Typography.Text>
           <Typography.Text className="seperator">{seperator}</Typography.Text>
@@ -117,11 +114,11 @@ const CommentCard = ({ feed, post, isLastReply }: CommentCardInterface) => {
               color="white"
               overlayClassName="timestamp-tooltip"
               title={formatDateTime(post.postTs)}>
-              <span
+              <Typography.Text
                 className="feed-card-header-v2-timestamp mr-2"
                 data-testid="timestamp">
                 {getRelativeTime(post.postTs)}
-              </span>
+              </Typography.Text>
             </Tooltip>
           </Typography.Text>
         </div>
