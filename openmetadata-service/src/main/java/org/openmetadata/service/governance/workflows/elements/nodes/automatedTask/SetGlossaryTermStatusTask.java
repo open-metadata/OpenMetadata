@@ -68,14 +68,12 @@ public class SetGlossaryTermStatusTask implements NodeInterface {
             .fieldValue(inputNamespaceMap)
             .build();
 
-    ServiceTask serviceTask =
-        new ServiceTaskBuilder()
-            .id(getFlowableElementId(subProcessId, "setGlossaryTermStatus"))
-            .implementation(SetGlossaryTermStatusImpl.class.getName())
-            .build();
-    serviceTask.getFieldExtensions().add(statusExpr);
-    serviceTask.getFieldExtensions().add(inputNamespaceMapExpr);
-    return serviceTask;
+    return new ServiceTaskBuilder()
+        .id(getFlowableElementId(subProcessId, "setGlossaryTermStatus"))
+        .implementation(SetGlossaryTermStatusImpl.class.getName())
+        .addFieldExtension(statusExpr)
+        .addFieldExtension(inputNamespaceMapExpr)
+        .build();
   }
 
   public void addToWorkflow(BpmnModel model, Process process) {

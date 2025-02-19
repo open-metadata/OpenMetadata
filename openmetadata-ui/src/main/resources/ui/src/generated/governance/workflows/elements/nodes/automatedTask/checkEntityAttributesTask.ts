@@ -15,7 +15,7 @@
  */
 export interface CheckEntityAttributesTask {
     branches?: string[];
-    config?:   Config;
+    config?:   NodeConfiguration;
     /**
      * Description of the Node.
      */
@@ -35,7 +35,12 @@ export interface CheckEntityAttributesTask {
     [property: string]: any;
 }
 
-export interface Config {
+export interface NodeConfiguration {
+    /**
+     * Define certain set of rules that you would like to check. If all the rules apply, this
+     * will be set as 'True' and will continue through the positive flow. Otherwise it will be
+     * set to 'False' and continue through the negative flow.
+     */
     rules?: string;
 }
 

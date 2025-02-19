@@ -64,7 +64,7 @@ export const addOwner = async ({
   await page.getByTestId(initiatorId).click();
   if (type === 'Users') {
     const userListResponse = page.waitForResponse(
-      '/api/v1/users?limit=*&isBot=false*'
+      '/api/v1/search/query?q=*isBot:false*index=user_search_index*'
     );
     await page.getByRole('tab', { name: type }).click();
     await userListResponse;
@@ -707,24 +707,6 @@ export const removeGlossaryTermFromChildren = async ({
         .getByTestId(`tag-${tag.fullyQualifiedName}`)
     ).not.toBeVisible();
   }
-};
-
-export const dropdownVisibility = async (page: Page, tagType: string) => {
-  await page
-    .getByTestId('entity-right-panel')
-    .getByTestId(`${tagType}-container`)
-    .getByTestId('add-tag')
-    .click();
-  await page.waitForSelector(
-    '.ant-select-dropdown [data-testid="saveAssociatedTag"]',
-    { state: 'visible' }
-  );
-
-  await expect(page.getByTestId('saveAssociatedTag')).toBeVisible();
-
-  await page.getByTestId('activity_feed').click();
-
-  await expect(page.getByTestId('saveAssociatedTag')).not.toBeVisible();
 };
 
 export const upVote = async (page: Page, endPoint: string) => {
