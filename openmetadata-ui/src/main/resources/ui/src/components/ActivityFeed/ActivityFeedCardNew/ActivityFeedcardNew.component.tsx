@@ -220,7 +220,7 @@ const ActivityFeedCardNew = ({
 
               <Input
                 className="comments-input-field"
-                placeholder="Use @mention to tag and comment..."
+                placeholder={t('label.input-placeholder')}
                 onClick={() => setShowFeedEditor(true)}
               />
             </div>

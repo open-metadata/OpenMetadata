@@ -120,7 +120,7 @@ const ActivityFeedListV1New = ({
     );
   }
 
-  return feeds;
+  return <>{feeds}</>;
 };
 
 export default ActivityFeedListV1New;

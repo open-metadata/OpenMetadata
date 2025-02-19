@@ -1665,6 +1665,7 @@
     "ingestion-bot-cant-be-deleted": "You cannot delete the ingestion bot.",
     "ingestion-pipeline-name-message": "Name that identifies this pipeline instance uniquely.",
     "ingestion-pipeline-name-successfully-deployed-entity": "You are all set! The <Ingestion Pipeline Name> has been successfully deployed. The {{entity}} will run at a regular interval as per the schedule.",
+    "input-placeholder": "Use @mention to tag and comment...",
     "instance-identifier": "A Name that uniquely identifies this configuration instance.",
     "integration-description": "Configure applications and bots to amplify productivity.",
     "invalid-object-key": "Invalid object key. Must start with a letter, underscore, or dollar sign, followed by letters, underscores, dollar signs, or digits.",
