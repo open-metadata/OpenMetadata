@@ -1125,6 +1125,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
             .withId(UUID.randomUUID())
             .withEntity(entity)
             .withChangeDescription(change)
+            .withIncrementalChangeDescription(change)
             .withEventType(EventType.ENTITY_UPDATED)
             .withEntityType(entityType)
             .withEntityId(entityId)
@@ -1133,6 +1134,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
             .withTimestamp(System.currentTimeMillis())
             .withCurrentVersion(entity.getVersion())
             .withPreviousVersion(change.getPreviousVersion());
+
+    entity.setIncrementalChangeDescription(change);
     entity.setChangeDescription(change);
     postUpdate(entity, entity);
     return new PutResponse<>(Status.OK, changeEvent, ENTITY_FIELDS_CHANGED);
@@ -1173,6 +1176,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
             .withId(UUID.randomUUID())
             .withEntity(originalEntity)
             .withChangeDescription(change)
+            .withIncrementalChangeDescription(change)
             .withEventType(EventType.ENTITY_UPDATED)
             .withEntityType(entityType)
             .withEntityId(entityId)
@@ -1426,6 +1430,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
             .withId(UUID.randomUUID())
             .withEntity(entity)
             .withChangeDescription(change)
+            .withIncrementalChangeDescription(change)
             .withEventType(EventType.ENTITY_UPDATED)
             .withEntityFullyQualifiedName(entity.getFullyQualifiedName())
             .withEntityType(entityType)
@@ -1436,6 +1441,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
             .withPreviousVersion(change.getPreviousVersion());
 
     entity.setChangeDescription(change);
+    entity.setIncrementalChangeDescription(change);
     postUpdate(entity, entity);
     return new PutResponse<>(Status.OK, changeEvent, ENTITY_FIELDS_CHANGED);
   }
