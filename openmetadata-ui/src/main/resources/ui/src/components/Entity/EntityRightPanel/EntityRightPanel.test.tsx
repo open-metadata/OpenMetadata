@@ -55,7 +55,7 @@ jest.mock(
   })
 );
 
-jest.mock('../../../components/GenericProvider/GenericProvider', () => ({
+jest.mock('../../Customization/GenericProvider/GenericProvider', () => ({
   useGenericContext: jest.fn().mockImplementation(() => ({
     data: {
       tableDetails: {

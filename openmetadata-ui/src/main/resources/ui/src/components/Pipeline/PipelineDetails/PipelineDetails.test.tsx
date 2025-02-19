@@ -26,7 +26,9 @@ import { MemoryRouter, useParams } from 'react-router-dom';
 import { EntityTabs } from '../../../enums/entity.enum';
 import { Pipeline } from '../../../generated/entity/data/pipeline';
 import { Paging } from '../../../generated/type/paging';
+import { mockPipelineDetails } from '../../../utils/mocks/PipelineDetailsUtils.mock';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 import PipelineDetails from './PipelineDetails.component';
 import { PipeLineDetailsProp } from './PipelineDetails.interface';
 
@@ -168,6 +170,7 @@ jest.mock('../../PageLayoutV1/PageLayoutV1', () => {
 jest.mock('../../../utils/TableTags/TableTags.utils', () => ({
   getAllTags: jest.fn().mockReturnValue([]),
   searchTagInData: jest.fn().mockReturnValue([]),
+  getFilterTags: jest.fn().mockReturnValue([]),
 }));
 
 jest.mock('../../../utils/EntityUtils', () => ({
@@ -190,6 +193,7 @@ jest.mock('../../../utils/CommonUtils', () => ({
 jest.mock('../../../utils/TagsUtils', () => ({
   createTagObject: jest.fn().mockReturnValue([]),
   updateTierTag: jest.fn().mockReturnValue([]),
+  getTagPlaceholder: jest.fn().mockReturnValue(''),
 }));
 
 jest.mock('../../../utils/ToastUtils', () => ({
@@ -241,6 +245,20 @@ jest.mock('../../../hoc/LimitWrapper', () => {
   return jest.fn().mockImplementation(({ children }) => <div>{children}</div>);
 });
 
+// jest.mock('../../../utils/PipelineDetailsUtils', () => ({
+//   getPipelineDetailPageTabs: jest.fn().mockReturnValue([]),
+// }));
+
+jest.mock('../../Customization/GenericProvider/GenericProvider', () => ({
+  GenericProvider: jest
+    .fn()
+    .mockImplementation(({ children }) => <div>{children}</div>),
+  useGenericContext: jest.fn().mockReturnValue({
+    data: mockPipelineDetails,
+    permissions: DEFAULT_ENTITY_PERMISSION,
+  }),
+}));
+
 describe('Test PipelineDetails component', () => {
   it('Checks if the PipelineDetails component has all the proper components rendered', async () => {
     const { container } = render(
@@ -284,15 +302,13 @@ describe('Test PipelineDetails component', () => {
   });
 
   it('Should render no tasks data placeholder is tasks list is empty', async () => {
-    render(
-      <PipelineDetails
-        {...PipelineDetailsProps}
-        pipelineDetails={{} as Pipeline}
-      />,
-      {
-        wrapper: MemoryRouter,
-      }
-    );
+    (useGenericContext as jest.Mock).mockReturnValue({
+      data: { tasks: [] } as unknown as Pipeline,
+      permissions: DEFAULT_ENTITY_PERMISSION,
+    });
+    render(<PipelineDetails {...PipelineDetailsProps} />, {
+      wrapper: MemoryRouter,
+    });
 
     const switchContainer = screen.getByTestId('pipeline-task-switch');
 

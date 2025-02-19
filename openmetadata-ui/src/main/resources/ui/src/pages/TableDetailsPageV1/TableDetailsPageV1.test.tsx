@@ -12,6 +12,7 @@
  */
 import { act, render, screen } from '@testing-library/react';
 import React from 'react';
+import { GenericTab } from '../../components/Customization/GenericTab/GenericTab';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { TableType } from '../../generated/entity/data/table';
 import { getTableDetailsByFQN } from '../../rest/tableAPI';
@@ -205,8 +206,8 @@ jest.mock('../../hoc/LimitWrapper', () => {
     .mockImplementation(({ children }) => <>LimitWrapper{children}</>);
 });
 
-jest.mock('../../components/Database/TableGenericTab/TableGenericTab', () => ({
-  TableGenericTab: jest.fn().mockImplementation(() => <>TableGenericTab</>),
+jest.mock('../../components/Customization/GenericTab/GenericTab', () => ({
+  GenericTab: jest.fn().mockImplementation(() => <>GenericTab</>),
 }));
 
 describe('TestDetailsPageV1 component', () => {
@@ -426,6 +427,7 @@ describe('TestDetailsPageV1 component', () => {
       fields: COMMON_API_FIELDS,
     });
 
-    expect(await screen.findByText('TableGenericTab')).toBeInTheDocument();
+    expect(await screen.findByText('GenericTab')).toBeInTheDocument();
+    expect(GenericTab).toHaveBeenCalledWith({ type: 'Table' }, {});
   });
 });

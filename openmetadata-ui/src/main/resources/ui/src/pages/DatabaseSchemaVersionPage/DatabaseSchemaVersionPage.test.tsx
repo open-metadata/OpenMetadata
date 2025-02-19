@@ -103,16 +103,19 @@ jest.mock('../../pages/DatabaseSchemaPage/SchemaTablesTab', () =>
   ))
 );
 
-jest.mock('../../components/GenericProvider/GenericProvider', () => ({
-  useGenericContext: jest.fn().mockImplementation(() => ({
-    data: {
-      tableDetails: {
-        joins: [],
+jest.mock(
+  '../../components/Customization/GenericProvider/GenericProvider',
+  () => ({
+    useGenericContext: jest.fn().mockImplementation(() => ({
+      data: {
+        tableDetails: {
+          joins: [],
+        },
       },
-    },
-    onThreadLinkSelect: jest.fn(),
-  })),
-}));
+      onThreadLinkSelect: jest.fn(),
+    })),
+  })
+);
 
 const mockGetDatabaseSchemaDetailsByFQN = jest
   .fn()

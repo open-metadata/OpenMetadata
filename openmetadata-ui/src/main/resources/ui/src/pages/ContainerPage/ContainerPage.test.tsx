@@ -21,13 +21,14 @@ import {
   getContainerByName,
 } from '../../rest/storageAPI';
 import ContainerPage from './ContainerPage';
-import { CONTAINER_DATA, CONTAINER_DATA_1 } from './ContainerPage.mock';
+import {
+  MOCK_CONTAINER_DATA,
+  MOCK_CONTAINER_DATA_1,
+} from './ContainerPage.mock';
 
 const mockGetEntityPermissionByFqn = jest.fn().mockResolvedValue({
   ViewBasic: true,
 });
-
-const mockGetContainerByName = jest.fn().mockResolvedValue(CONTAINER_DATA);
 
 jest.mock(
   '../../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider',
@@ -102,7 +103,7 @@ jest.mock(
   '../../components/Container/ContainerChildren/ContainerChildren',
   () =>
     jest.fn().mockImplementation(({ isLoading }) => {
-      getContainerByName(CONTAINER_DATA_1.fullyQualifiedName, {
+      getContainerByName(MOCK_CONTAINER_DATA_1.fullyQualifiedName, {
         fields: 'children',
       });
 
@@ -173,17 +174,7 @@ jest.mock('../../rest/feedsAPI', () => ({
   postThread: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
 
-jest.mock('../../rest/storageAPI', () => ({
-  addContainerFollower: jest.fn(),
-  getContainerByName: jest
-    .fn()
-    .mockImplementation((...params) => mockGetContainerByName(params)),
-  patchContainerDetails: jest.fn().mockImplementation(() => Promise.resolve()),
-  removeContainerFollower: jest
-    .fn()
-    .mockImplementation(() => Promise.resolve()),
-  restoreContainer: jest.fn().mockImplementation(() => Promise.resolve()),
-}));
+jest.mock('../../rest/storageAPI');
 
 jest.mock('../../utils/CommonUtils', () => ({
   addToRecentViewed: jest.fn(),
@@ -214,6 +205,7 @@ jest.mock('../../utils/TableUtils', () => ({
 jest.mock('../../utils/TagsUtils', () => ({
   createTagObject: jest.fn().mockImplementation((tagObject) => tagObject),
   updateTierTag: jest.fn().mockImplementation((tagObject) => tagObject),
+  getTagPlaceholder: jest.fn().mockReturnValue(''),
 }));
 
 jest.mock('../../utils/ToastUtils', () => ({
@@ -222,7 +214,7 @@ jest.mock('../../utils/ToastUtils', () => ({
 }));
 
 const mockUseParams = jest.fn().mockReturnValue({
-  fqn: CONTAINER_DATA.fullyQualifiedName,
+  fqn: MOCK_CONTAINER_DATA.fullyQualifiedName,
   tab: 'schema',
 });
 
@@ -269,7 +261,7 @@ describe('Container Page Component', () => {
 
     expect(mockGetEntityPermissionByFqn).toHaveBeenCalled();
     expect(getContainerByName).toHaveBeenCalledWith(
-      CONTAINER_DATA.fullyQualifiedName,
+      MOCK_CONTAINER_DATA.fullyQualifiedName,
       {
         fields: [
           'parent',
@@ -305,6 +297,9 @@ describe('Container Page Component', () => {
   });
 
   it('should render the page container data, with the schema tab selected', async () => {
+    (getContainerByName as jest.Mock).mockResolvedValueOnce(
+      MOCK_CONTAINER_DATA
+    );
     await act(async () => {
       render(<ContainerPage />);
 
@@ -312,7 +307,23 @@ describe('Container Page Component', () => {
     });
 
     expect(mockGetEntityPermissionByFqn).toHaveBeenCalled();
-    expect(getContainerByName).toHaveBeenCalled();
+    expect(getContainerByName).toHaveBeenCalledWith(
+      's3_storage_sample.transactions',
+      {
+        fields: [
+          'parent',
+          'dataModel',
+          'owners',
+          'tags',
+          'followers',
+          'extension',
+          'domain',
+          'dataProducts',
+          'votes',
+        ],
+        include: 'all',
+      }
+    );
 
     expect(screen.getByTestId('data-asset-header')).toBeInTheDocument();
 
@@ -322,10 +333,16 @@ describe('Container Page Component', () => {
     expect(tabs[0]).toHaveAttribute('aria-selected', 'true');
     expect(screen.getByText('DescriptionV1')).toBeVisible();
     expect(screen.getByText('ContainerDataModel')).toBeVisible();
-    expect(screen.getByText('EntityRightPanel')).toBeVisible();
+    expect(screen.getByText('CustomPropertyTable')).toBeVisible();
+    expect(screen.getByText('label.glossary-term')).toBeVisible();
+    expect(screen.getByText('label.tag-plural')).toBeVisible();
+    expect(screen.getByText('label.data-product-plural')).toBeVisible();
   });
 
   it('onClick of follow container should call addContainerFollower', async () => {
+    (getContainerByName as jest.Mock).mockResolvedValueOnce(
+      MOCK_CONTAINER_DATA
+    );
     await act(async () => {
       render(<ContainerPage />);
 
@@ -342,6 +359,9 @@ describe('Container Page Component', () => {
   });
 
   it('tab switch should work', async () => {
+    (getContainerByName as jest.Mock).mockResolvedValueOnce(
+      MOCK_CONTAINER_DATA
+    );
     await act(async () => {
       render(<ContainerPage />);
 
@@ -358,8 +378,11 @@ describe('Container Page Component', () => {
   });
 
   it('children should render on children tab', async () => {
+    (getContainerByName as jest.Mock).mockResolvedValueOnce(
+      MOCK_CONTAINER_DATA_1
+    );
     mockUseParams.mockReturnValue({
-      fqn: CONTAINER_DATA_1.fullyQualifiedName,
+      fqn: MOCK_CONTAINER_DATA_1.fullyQualifiedName,
       tab: EntityTabs.CHILDREN,
     });
 
@@ -376,7 +399,7 @@ describe('Container Page Component', () => {
     expect(screen.getByText('ContainerChildren')).toBeVisible();
 
     expect(getContainerByName).toHaveBeenCalledWith(
-      CONTAINER_DATA_1.fullyQualifiedName,
+      MOCK_CONTAINER_DATA_1.fullyQualifiedName,
       {
         fields: 'children',
       }

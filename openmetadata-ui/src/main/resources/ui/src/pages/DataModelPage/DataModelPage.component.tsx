@@ -22,7 +22,6 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-
 import { useHistory } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';

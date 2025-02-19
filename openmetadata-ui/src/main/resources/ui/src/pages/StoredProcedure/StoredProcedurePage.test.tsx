@@ -13,6 +13,7 @@
 
 import { act, render, screen } from '@testing-library/react';
 import React from 'react';
+import { GenericTab } from '../../components/Customization/GenericTab/GenericTab';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { getStoredProceduresByFqn } from '../../rest/storedProceduresAPI';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
@@ -133,14 +134,9 @@ jest.mock('../../hoc/LimitWrapper', () => {
   return jest.fn().mockImplementation(({ children }) => <p>{children}</p>);
 });
 
-jest.mock(
-  '../../components/Database/StoredProcedureGenericTab/StoredProcedureGenericTab',
-  () => ({
-    StoredProcedureGenericTab: jest
-      .fn()
-      .mockImplementation(() => <p>testStoredProcedureGenericTab</p>),
-  })
-);
+jest.mock('../../components/Customization/GenericTab/GenericTab', () => ({
+  GenericTab: jest.fn().mockImplementation(() => <p>GenericTab</p>),
+}));
 
 describe('StoredProcedure component', () => {
   it('StoredProcedurePage should fetch permissions', () => {
@@ -251,8 +247,7 @@ describe('StoredProcedure component', () => {
       include: 'all',
     });
 
-    expect(
-      await screen.findByText('testStoredProcedureGenericTab')
-    ).toBeInTheDocument();
+    expect(await screen.findByText('GenericTab')).toBeInTheDocument();
+    expect(GenericTab).toHaveBeenCalledWith({ type: 'StoredProcedure' }, {});
   });
 });

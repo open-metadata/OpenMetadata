@@ -82,8 +82,8 @@ const TagsContainerV2 = ({
     () => ({
       isGlossaryType: tagType === TagSource.Glossary,
       showAddTagButton: permission && isEmpty(tags?.[tagType]),
-      selectedTagsInternal: tags?.[tagType].map(({ tagFQN }) => tagFQN),
-      initialOptions: tags?.[tagType].map((data) => ({
+      selectedTagsInternal: tags?.[tagType]?.map(({ tagFQN }) => tagFQN),
+      initialOptions: tags?.[tagType]?.map((data) => ({
         label: data.tagFQN,
         value: data.tagFQN,
         data,

@@ -12,10 +12,11 @@
  */
 import { render, screen } from '@testing-library/react';
 import React from 'react';
-import { BrowserRouter } from 'react-router-dom';
+import { MemoryRouter } from 'react-router-dom';
+import { TabSpecificField } from '../../../enums/entity.enum';
+import { getContainerByName } from '../../../rest/storageAPI';
 import ContainerChildren from './ContainerChildren';
 
-const mockFetchChildren = jest.fn();
 const mockChildrenList = [
   {
     id: '1',
@@ -33,52 +34,48 @@ const mockChildrenList = [
   },
 ];
 
-jest.mock('../../GenericProvider/GenericProvider', () => ({
+jest.mock('../../Customization/GenericTab/GenericTab', () => ({
   useGenericContext: jest.fn().mockImplementation(() => ({
     data: { children: mockChildrenList },
   })),
 }));
 
+jest.mock('../../../rest/storageAPI');
+
 describe('ContainerChildren', () => {
-  beforeEach(() => {
-    jest.useFakeTimers();
-  });
-
-  afterEach(() => {
-    jest.runOnlyPendingTimers();
-    jest.useRealTimers();
-  });
-
   it('Should call fetch container function on load', () => {
-    render(
-      <BrowserRouter>
-        <ContainerChildren />
-      </BrowserRouter>
-    );
+    render(<ContainerChildren />, { wrapper: MemoryRouter });
 
-    expect(mockFetchChildren).toHaveBeenCalled();
+    expect(getContainerByName).toHaveBeenCalledWith(
+      '',
+      expect.objectContaining({
+        fields: TabSpecificField.CHILDREN,
+      })
+    );
   });
 
   it('Should render table with correct columns', () => {
-    render(
-      <BrowserRouter>
-        <ContainerChildren />
-      </BrowserRouter>
-    );
+    render(<ContainerChildren />, { wrapper: MemoryRouter });
 
     expect(screen.getByTestId('container-list-table')).toBeInTheDocument();
     expect(screen.getByText('label.name')).toBeInTheDocument();
     expect(screen.getByText('label.description')).toBeInTheDocument();
   });
 
-  it('Should render container names as links', () => {
-    render(
-      <BrowserRouter>
-        <ContainerChildren />
-      </BrowserRouter>
+  it('Should render container names as links', async () => {
+    (getContainerByName as jest.Mock).mockResolvedValue({
+      children: mockChildrenList,
+    });
+    render(<ContainerChildren />, { wrapper: MemoryRouter });
+
+    expect(getContainerByName).toHaveBeenCalledWith(
+      '',
+      expect.objectContaining({
+        fields: TabSpecificField.CHILDREN,
+      })
     );
 
-    const containerNameLinks = screen.getAllByTestId('container-name');
+    const containerNameLinks = await screen.findAllByTestId('container-name');
 
     expect(containerNameLinks).toHaveLength(2);
 
@@ -91,17 +88,10 @@ describe('ContainerChildren', () => {
     });
   });
 
-  it('Should render container descriptions as rich text', () => {
-    render(
-      <BrowserRouter>
-        <ContainerChildren />
-      </BrowserRouter>
-    );
+  it('Should render container descriptions as rich text', async () => {
+    render(<ContainerChildren />, { wrapper: MemoryRouter });
 
-    // Fast-forward until all timers have been executed
-    jest.runAllTimers();
-
-    const richTextPreviewers = screen.getAllByTestId('viewer-container');
+    const richTextPreviewers = await screen.findAllByTestId('viewer-container');
 
     expect(richTextPreviewers).toHaveLength(2);
 
