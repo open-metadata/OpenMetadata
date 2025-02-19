@@ -315,7 +315,6 @@ const AsyncSelectList: FC<AsyncSelectListProps & SelectProps> = ({
       style={{ width: '100%' }}
       tagRender={customTagRender}
       onChange={handleChange}
-      onDropdownVisibleChange={(open) => !open && onCancel?.()}
       onInputKeyDown={(event) => {
         if (event.key === 'Backspace') {
           return event.stopPropagation();
