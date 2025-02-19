@@ -895,12 +895,18 @@ public class ElasticSearchClient implements SearchClient {
       return lineageGraphBuilder.getUpstreamLineage(
           lineageRequest
               .withUpstreamDepth(upstreamDepth + 1)
-              .withDownstreamDepth(downstreamDepth + 1));
+              .withDownstreamDepth(downstreamDepth + 1)
+              .withDirectionValue(
+                  getLineageDirection(
+                      lineageRequest.getDirection(), lineageRequest.getEntityType())));
     } else {
       return lineageGraphBuilder.getDownstreamLineage(
           lineageRequest
               .withUpstreamDepth(upstreamDepth + 1)
-              .withDownstreamDepth(downstreamDepth + 1));
+              .withDownstreamDepth(downstreamDepth + 1)
+              .withDirectionValue(
+                  getLineageDirection(
+                      lineageRequest.getDirection(), lineageRequest.getEntityType())));
     }
   }
 
