@@ -359,7 +359,7 @@ export const assignTag = async (
   page: Page,
   tag: string,
   action: 'Add' | 'Edit' = 'Add',
-  parentId = 'entity-right-panel'
+  parentId = 'KnowledgePanel.Tags'
 ) => {
   await page
     .getByTestId(parentId)
