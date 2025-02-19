@@ -61,10 +61,6 @@ export interface Workflow {
      */
     owners?: EntityReference[];
     /**
-     * Python class to be executed for this workflow (for custom workflows)
-     */
-    pythonClass?: string;
-    /**
      * Request body for a specific workflow type
      */
     request: TestServiceConnectionRequest;
@@ -452,8 +448,6 @@ export enum VerifySSL {
  * Request body for a specific workflow type
  *
  * Test Service Connection to test user provided configuration is valid or not.
- *
- * A generic map that can be deserialized later.
  */
 export interface TestServiceConnectionRequest {
     /**
@@ -476,7 +470,6 @@ export interface TestServiceConnectionRequest {
      * Type of service such as Database, Dashboard, Messaging, etc.
      */
     serviceType?: ServiceType;
-    [property: string]: any;
 }
 
 /**
@@ -1203,6 +1196,10 @@ export interface ConfigClass {
      */
     httpPath?: string;
     /**
+     * Table name to fetch the query history.
+     */
+    queryHistoryTable?: string;
+    /**
      * License to connect to DB2.
      */
     license?: string;
@@ -1318,6 +1315,10 @@ export interface ConfigClass {
      */
     account?: string;
     /**
+     * Full name of the schema where the account usage data is stored.
+     */
+    accountUsageSchema?: string;
+    /**
      * Optional configuration for ingestion to keep the client session active in case the
      * ingestion process runs for longer durations.
      */
@@ -1411,7 +1412,7 @@ export interface ConfigClass {
      *
      * Choose between mysql and postgres connection for alation database
      */
-    connection?: ConnectionObject;
+    connection?: ConfigConnection;
     /**
      * Couchbase connection Bucket options.
      */
@@ -2814,11 +2815,11 @@ export interface GCPImpersonateServiceAccountValues {
  *
  * Matillion Auth Configuration
  *
- * Matillion ETL Auth Config
+ * Matillion ETL Auth Config.
  *
  * Choose between mysql and postgres connection for alation database
  */
-export interface ConnectionObject {
+export interface ConfigConnection {
     /**
      * Database of the data source.
      *
@@ -2935,7 +2936,6 @@ export interface ConnectionObject {
      */
     databaseMode?:                  string;
     supportsViewLineageExtraction?: boolean;
-    [property: string]: any;
 }
 
 /**
@@ -3339,9 +3339,9 @@ export enum HiveMetastoreConnectionDetailsType {
 /**
  * We support username/password or client certificate authentication
  *
- * username/password auth
+ * Configuration for connecting to Nifi Basic Auth.
  *
- * client certificate auth
+ * Configuration for connecting to Nifi Client Certificate Auth.
  */
 export interface NifiCredentialsConfiguration {
     /**
@@ -3808,8 +3808,6 @@ export enum ServiceType {
  *
  * TestConnectionResult is the definition that will encapsulate result of running the test
  * connection steps.
- *
- * A generic map that can be deserialized later.
  */
 export interface TestConnectionResult {
     /**
@@ -3823,8 +3821,7 @@ export interface TestConnectionResult {
     /**
      * Steps to test the connection. Order matters.
      */
-    steps?: TestConnectionStepResult[];
-    [property: string]: any;
+    steps: TestConnectionStepResult[];
 }
 
 /**
@@ -3884,6 +3881,5 @@ export enum WorkflowStatus {
  * This enum defines the type for which this workflow applies to.
  */
 export enum WorkflowType {
-    Custom = "CUSTOM",
     TestConnection = "TEST_CONNECTION",
 }

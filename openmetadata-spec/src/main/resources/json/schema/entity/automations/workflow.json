@@ -12,8 +12,7 @@
       "description": "This enum defines the type for which this workflow applies to.",
       "type": "string",
       "enum": [
-        "TEST_CONNECTION",
-        "CUSTOM"
+        "TEST_CONNECTION"
       ]
     },
     "workflowStatus": {
@@ -48,10 +47,6 @@
       "description": "Type of the workflow.",
       "$ref": "#/definitions/workflowType"
     },
-    "pythonClass": {
-      "description": "Python class to be executed for this workflow (for custom workflows)",
-      "type": "string"
-    },
     "status": {
       "description": "Workflow computation status.",
       "$ref": "#/definitions/workflowStatus",
@@ -62,9 +57,6 @@
       "oneOf": [
         {
           "$ref": "testServiceConnection.json"
-        },
-        {
-          "$ref": "../../type/basic.json#/definitions/map"
         }
       ]
     },
@@ -73,9 +65,6 @@
       "oneOf": [
         {
           "$ref": "../services/connections/testConnectionResult.json"
-        },
-        {
-          "$ref": "../../type/basic.json#/definitions/map"
         }
       ]
     },
