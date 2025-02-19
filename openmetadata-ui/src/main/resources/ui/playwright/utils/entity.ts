@@ -24,7 +24,12 @@ import {
 } from '../constant/delete';
 import { ES_RESERVED_CHARACTERS } from '../constant/entity';
 import { EntityTypeEndpoint } from '../support/entity/Entity.interface';
-import { clickOutside, descriptionBox, redirectToHomePage } from './common';
+import {
+  clickOutside,
+  descriptionBox,
+  redirectToHomePage,
+  toastNotification,
+} from './common';
 
 export const visitEntityPage = async (data: {
   page: Page;
@@ -59,7 +64,7 @@ export const addOwner = async ({
   await page.getByTestId(initiatorId).click();
   if (type === 'Users') {
     const userListResponse = page.waitForResponse(
-      '/api/v1/users?limit=*&isBot=false*'
+      '/api/v1/search/query?q=*isBot:false*index=user_search_index*'
     );
     await page.getByRole('tab', { name: type }).click();
     await userListResponse;
@@ -792,7 +797,8 @@ const announcementForm = async (
   );
   await page.click('#announcement-submit');
   await announcementSubmit;
-  await page.click('.Toastify__close-button');
+  await page.click('[data-testid="announcement-close"]');
+  await page.click('[data-testid="alert-icon-close"]');
 };
 
 export const createAnnouncement = async (
@@ -1181,11 +1187,7 @@ export const restoreEntity = async (page: Page) => {
   await page.click('[data-testid="restore-button"]');
   await page.click('button:has-text("Restore")');
 
-  await expect(page.locator('.Toastify__toast-body')).toHaveText(
-    /restored successfully/
-  );
-
-  await page.click('.Toastify__close-button');
+  await toastNotification(page, /restored successfully/);
 
   const exists = await page
     .locator('[data-testid="deleted-badge"]')
@@ -1224,11 +1226,7 @@ export const softDeleteEntity = async (
 
   await deleteResponse;
 
-  await expect(page.locator('.Toastify__toast-body')).toHaveText(
-    /deleted successfully!/
-  );
-
-  await page.click('.Toastify__close-button');
+  await toastNotification(page, /deleted successfully!/);
 
   await page.reload();
 
@@ -1293,14 +1291,11 @@ export const hardDeleteEntity = async (
   await page.click('[data-testid="confirm-button"]');
   await deleteResponse;
 
-  await expect(page.locator('.Toastify__toast-body')).toHaveText(
-    /deleted successfully!/
-  );
-
-  await page.click('.Toastify__close-button');
+  await toastNotification(page, /deleted successfully!/);
 };
 
 export const checkDataAssetWidget = async (page: Page, serviceType: string) => {
+  await clickOutside(page);
   const quickFilterResponse = page.waitForResponse(
     `/api/v1/search/query?q=&index=dataAsset*${serviceType}*`
   );
@@ -1365,4 +1360,13 @@ export const getTextFromHtmlString = (description?: string): string => {
   }
 
   return description.replace(/<[^>]*>/g, '').trim();
+};
+
+export const getFirstRowColumnLink = (page: Page) => {
+  const table = page.locator('[data-testid="databaseSchema-tables"]');
+  const firstRowFirstColumn = table.locator(
+    'tbody tr:first-child td:first-child'
+  );
+
+  return firstRowFirstColumn.locator('[data-testid="column-name"] a');
 };

@@ -8,7 +8,7 @@ slug: /releases/all-releases
 {% note %}
 
 The OpenMetadata community is on a monthly release cadence. At every 4-5 weeks we will be releasing a new
-version. To see what's coming in next releases, please check our [Roadmap](/releases/roadmap) section.
+version. To see what's coming in next releases, please check our {% collateContent %}[Roadmap](https://www.getcollate.io/roadmap){% /collateContent %}{% ossContent %}[Roadmap](/roadmap){% /ossContent %} section.
 
 {% /note %}
 
@@ -542,7 +542,7 @@ To continue pursuing this objective, the application was completely refactored t
 
 ## Ingestion Connectors
 
-80+ connectors to help teams to centralize metadata. We continue to push the boundaries of this mission, in
+90+ connectors to help teams to centralize metadata. We continue to push the boundaries of this mission, in
 
 - **Apache Flink** as a Pipeline Connector
 - **SAP ERP**, after a long and successful collaboration with our community and SAP experts
@@ -1356,7 +1356,7 @@ You can find the GitHub release [here](https://github.com/open-metadata/OpenMeta
 ## Connectors
 
 - New [Spline](https://absaoss.github.io/spline/) Connector to extract metadata and lineage from Spark jobs. Regardless of where the Spark execution happens, if you have configured the Spline Agent, we can send Spark metadata to OpenMetadata.
-- New [SAP Hana](https://www.sap.com/products/technology-platform/hana/what-is-sap-hana.html) Connector, our first integration to the SAP ecosystem.
+- New [SAP HANA](https://www.sap.com/products/technology-platform/hana/what-is-sap-hana.html) Connector, our first integration to the SAP ecosystem.
 - New [MongoDB](https://www.mongodb.com/) Connector, extracting Collections as Tables.
 - Added support for [Databricks Unity Catalog](https://www.databricks.com/product/unity-catalog) for metadata and lineage extraction. If your Databricks instance supports the Unity Catalog, you can enable it in the Connection Details section to use this metadata extraction method instead of getting metadata out of the metastore and history APIs.
 

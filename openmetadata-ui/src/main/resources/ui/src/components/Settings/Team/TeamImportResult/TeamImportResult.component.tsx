@@ -19,6 +19,7 @@ import { ReactComponent as FailBadgeIcon } from '../../../../assets/svg/fail-bad
 import { ReactComponent as SuccessBadgeIcon } from '../../../../assets/svg/success-badge.svg';
 import { Status } from '../../../../generated/type/csvImportResult';
 import { parseCSV } from '../../../../utils/EntityImport/EntityImportUtils';
+import RichTextEditorPreviewerV1 from '../../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import Table from '../../../common/Table/Table';
 import {
   TeamCSVRecord,
@@ -102,14 +103,12 @@ export const TeamImportResult = ({
         width: 300,
         render: (description: TeamCSVRecord['description']) => {
           return (
-            <Typography.Paragraph
-              ellipsis={{
-                rows: 2,
-              }}
-              style={{ width: 300 }}
-              title={description}>
-              {description || '--'}
-            </Typography.Paragraph>
+            <RichTextEditorPreviewerV1
+              className="w-80"
+              enableSeeMoreVariant={false}
+              markdown={description}
+              reducePreviewLineClass="max-one-line"
+            />
           );
         },
       },

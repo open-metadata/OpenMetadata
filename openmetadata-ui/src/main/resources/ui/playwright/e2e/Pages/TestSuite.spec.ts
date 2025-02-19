@@ -12,14 +12,18 @@
  */
 import { expect, test } from '@playwright/test';
 import { SidebarItem } from '../../constant/sidebar';
+import { Domain } from '../../support/domain/Domain';
 import { EntityTypeEndpoint } from '../../support/entity/Entity.interface';
 import { TableClass } from '../../support/entity/TableClass';
 import { UserClass } from '../../support/user/UserClass';
 import {
+  assignDomain,
   createNewPage,
   descriptionBox,
   redirectToHomePage,
+  removeDomain,
   toastNotification,
+  updateDomain,
   uuid,
 } from '../../utils/common';
 import { addMultiOwner, removeOwnersFromList } from '../../utils/entity';
@@ -31,6 +35,8 @@ test.use({ storageState: 'playwright/.auth/admin.json' });
 const table = new TableClass();
 const user1 = new UserClass();
 const user2 = new UserClass();
+const domain1 = new Domain();
+const domain2 = new Domain();
 
 test.beforeAll(async ({ browser }) => {
   const { apiContext, afterAction } = await createNewPage(browser);
@@ -39,6 +45,8 @@ test.beforeAll(async ({ browser }) => {
   await user2.create(apiContext);
   await table.createTestCase(apiContext);
   await table.createTestCase(apiContext);
+  await domain1.create(apiContext);
+  await domain2.create(apiContext);
   await afterAction();
 });
 
@@ -47,6 +55,8 @@ test.afterAll(async ({ browser }) => {
   await table.delete(apiContext);
   await user1.delete(apiContext);
   await user2.delete(apiContext);
+  await domain1.delete(apiContext);
+  await domain2.delete(apiContext);
   await afterAction();
 });
 
@@ -98,6 +108,12 @@ test('Logical TestSuite', async ({ page }) => {
     );
     await page.click(`[data-testid="view-service-button"]`);
     await testSuiteResponse;
+  });
+
+  await test.step('Domain Add, Update and Remove', async () => {
+    await assignDomain(page, domain1.responseData);
+    await updateDomain(page, domain2.responseData);
+    await removeDomain(page, domain2.responseData);
   });
 
   await test.step(
@@ -201,7 +217,9 @@ test('Logical TestSuite', async ({ page }) => {
     await page.waitForSelector("[data-testid='select-owner-tabs']", {
       state: 'visible',
     });
-    const getOwnerList = page.waitForResponse('/api/v1/users?*isBot=false*');
+    const getOwnerList = page.waitForResponse(
+      '/api/v1/search/query?q=*isBot:false*index=user_search_index*'
+    );
     await page.click('.ant-tabs [id*=tab-users]');
     await getOwnerList;
     await page.waitForSelector(`[data-testid="loader"]`, {

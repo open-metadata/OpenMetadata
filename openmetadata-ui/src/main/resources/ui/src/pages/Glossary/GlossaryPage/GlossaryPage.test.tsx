@@ -24,7 +24,7 @@ import GlossaryPage from './GlossaryPage.component';
 jest.mock('../../../hooks/useFqn', () => ({
   useFqn: jest.fn().mockReturnValue({ fqn: 'Business Glossary' }),
 }));
-
+const mockLocationPathname = '/mock-path';
 jest.mock('react-router-dom', () => ({
   useHistory: () => ({
     push: jest.fn(),
@@ -33,6 +33,9 @@ jest.mock('react-router-dom', () => ({
   useParams: jest.fn().mockReturnValue({
     glossaryName: 'GlossaryName',
   }),
+  useLocation: jest.fn().mockImplementation(() => ({
+    pathname: mockLocationPathname,
+  })),
 }));
 
 jest.mock('../../../components/MyData/LeftSidebar/LeftSidebar.component', () =>
@@ -49,6 +52,19 @@ jest.mock('../../../context/PermissionProvider/PermissionProvider', () => {
     })),
   };
 });
+
+jest.mock('../../../hoc/withPageLayout', () => ({
+  withPageLayout: jest.fn().mockImplementation(
+    () =>
+      (Component: React.FC) =>
+      (
+        props: JSX.IntrinsicAttributes & {
+          children?: React.ReactNode | undefined;
+        }
+      ) =>
+        <Component {...props} />
+  ),
+}));
 
 jest.mock('../../../components/Glossary/GlossaryV1.component', () => {
   return jest.fn().mockImplementation((props) => (

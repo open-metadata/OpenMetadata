@@ -4,6 +4,7 @@ import static org.flywaydb.core.internal.info.MigrationInfoDumper.dumpToAsciiTab
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 import static org.openmetadata.service.Entity.FIELD_OWNERS;
+import static org.openmetadata.service.apps.bundles.insights.utils.TimestampUtils.timestampToString;
 import static org.openmetadata.service.formatter.decorators.MessageDecorator.getDateStringEpochMilli;
 import static org.openmetadata.service.jdbi3.UserRepository.AUTH_MECHANISM_FIELD;
 import static org.openmetadata.service.util.AsciiTable.printOpenMetadataText;
@@ -30,6 +31,7 @@ import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Scanner;
 import java.util.Set;
 import java.util.concurrent.Callable;
@@ -42,6 +44,8 @@ import org.flywaydb.core.api.MigrationVersion;
 import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.ServiceEntityInterface;
+import org.openmetadata.schema.api.configuration.OpenMetadataBaseUrlConfiguration;
+import org.openmetadata.schema.email.SmtpSettings;
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppConfiguration;
 import org.openmetadata.schema.entity.app.AppMarketPlaceDefinition;
@@ -49,6 +53,8 @@ import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.schema.entity.app.AppSchedule;
 import org.openmetadata.schema.entity.app.CreateApp;
 import org.openmetadata.schema.entity.app.ScheduleTimeline;
+import org.openmetadata.schema.entity.applications.configuration.internal.BackfillConfiguration;
+import org.openmetadata.schema.entity.applications.configuration.internal.DataInsightsAppConfig;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
@@ -59,6 +65,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.TypeRegistry;
 import org.openmetadata.service.apps.ApplicationHandler;
 import org.openmetadata.service.apps.scheduler.AppScheduler;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
@@ -68,15 +75,18 @@ import org.openmetadata.service.jdbi3.AppMarketPlaceRepository;
 import org.openmetadata.service.jdbi3.AppRepository;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.jdbi3.EventSubscriptionRepository;
 import org.openmetadata.service.jdbi3.IngestionPipelineRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.MigrationDAO;
 import org.openmetadata.service.jdbi3.SystemRepository;
+import org.openmetadata.service.jdbi3.TypeRepository;
 import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.migration.api.MigrationWorkflow;
 import org.openmetadata.service.resources.CollectionRegistry;
 import org.openmetadata.service.resources.apps.AppMapper;
+import org.openmetadata.service.resources.apps.AppMarketPlaceMapper;
 import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.secrets.SecretsManager;
@@ -176,20 +186,144 @@ public class OpenMetadataOperations implements Callable<Integer> {
   }
 
   @Command(
-      name = "syncEmailFromEnv",
-      description = "Sync the email configuration from environment variables")
-  public Integer syncEmailFromEnv() {
+      name = "setOpenMetadataUrl",
+      description = "Set or update the OpenMetadata URL in the system repository")
+  public Integer setOpenMetadataUrl(
+      @Option(
+              names = {"-u", "--url"},
+              description = "OpenMetadata URL to store in the system repository",
+              required = true)
+          String openMetadataUrl) {
     try {
       parseConfig();
       Settings updatedSettings =
           new Settings()
-              .withConfigType(SettingsType.EMAIL_CONFIGURATION)
-              .withConfigValue(config.getSmtpSettings());
+              .withConfigType(SettingsType.OPEN_METADATA_BASE_URL_CONFIGURATION)
+              .withConfigValue(
+                  new OpenMetadataBaseUrlConfiguration().withOpenMetadataUrl(openMetadataUrl));
+
       Entity.getSystemRepository().createOrUpdate(updatedSettings);
-      LOG.info("Synced Email Configuration from Environment.");
+      LOG.info("Updated OpenMetadata URL to: {}", openMetadataUrl);
       return 0;
     } catch (Exception e) {
-      LOG.error("Email Sync failed due to ", e);
+      LOG.error("Failed to set OpenMetadata URL due to: ", e);
+      return 1;
+    }
+  }
+
+  @Command(
+      name = "configureEmailSettings",
+      description =
+          "Set or update the SMTP/Email configuration in the OpenMetadata system repository")
+  public Integer configureEmailSettings(
+      @Option(
+              names = {"--emailingEntity"},
+              description = "Identifier or entity name used for sending emails (e.g. OpenMetadata)",
+              required = true)
+          String emailingEntity,
+      @Option(
+              names = {"--supportUrl"},
+              description =
+                  "Support URL for help or documentation (e.g. https://slack.open-metadata.org)",
+              required = true)
+          String supportUrl,
+      @Option(
+              names = {"--enableSmtpServer"},
+              description = "Flag indicating whether SMTP server is enabled (true/false)",
+              required = true,
+              arity = "1")
+          boolean enableSmtpServer,
+      @Option(
+              names = {"--senderMail"},
+              description = "Sender email address used for outgoing messages",
+              required = true)
+          String senderMail,
+      @Option(
+              names = {"--serverEndpoint"},
+              description = "SMTP server endpoint (host)",
+              required = true)
+          String serverEndpoint,
+      @Option(
+              names = {"--serverPort"},
+              description = "SMTP server port",
+              required = true)
+          String serverPort,
+      @Option(
+              names = {"--username"},
+              description = "SMTP server username",
+              required = true)
+          String username,
+      @Option(
+              names = {"--password"},
+              description = "SMTP server password (may be masked)",
+              interactive = true,
+              arity = "0..1",
+              required = true)
+          char[] password,
+      @Option(
+              names = {"--transportationStrategy"},
+              description = "SMTP connection strategy (one of: SMTP, SMTPS, SMTP_TLS)",
+              required = true)
+          String transportationStrategy,
+      @Option(
+              names = {"--templatePath"},
+              description = "Custom path to email templates (if needed)")
+          String templatePath,
+      @Option(
+              names = {"--templates"},
+              description = "Email templates (e.g. openmetadata, collate)",
+              required = true)
+          String templates) {
+    try {
+      parseConfig();
+
+      SmtpSettings smtpSettings = new SmtpSettings();
+      smtpSettings.setEmailingEntity(emailingEntity);
+      smtpSettings.setSupportUrl(supportUrl);
+      smtpSettings.setEnableSmtpServer(enableSmtpServer);
+      smtpSettings.setSenderMail(senderMail);
+      smtpSettings.setServerEndpoint(serverEndpoint);
+
+      smtpSettings.setServerPort(Integer.parseInt(serverPort));
+
+      smtpSettings.setUsername(username);
+      smtpSettings.setPassword(password != null ? new String(password) : "");
+
+      try {
+        smtpSettings.setTransportationStrategy(
+            SmtpSettings.TransportationStrategy.valueOf(transportationStrategy.toUpperCase()));
+      } catch (IllegalArgumentException e) {
+        LOG.warn(
+            "Invalid transportation strategy '{}'. Falling back to SMTP_TLS.",
+            transportationStrategy);
+        smtpSettings.setTransportationStrategy(SmtpSettings.TransportationStrategy.SMTP_TLS);
+      }
+
+      smtpSettings.setTemplatePath(templatePath);
+
+      try {
+        smtpSettings.setTemplates(SmtpSettings.Templates.valueOf(templates.toUpperCase()));
+      } catch (IllegalArgumentException e) {
+        LOG.warn("Invalid template value '{}'. Falling back to OPENMETADATA.", templates);
+        smtpSettings.setTemplates(SmtpSettings.Templates.OPENMETADATA);
+      }
+
+      Settings emailSettings =
+          new Settings()
+              .withConfigType(SettingsType.EMAIL_CONFIGURATION)
+              .withConfigValue(smtpSettings);
+
+      Entity.getSystemRepository().createOrUpdate(emailSettings);
+
+      LOG.info(
+          "Email settings updated. (Email Entity: {}, SMTP Enabled: {}, SMTP Host: {})",
+          emailingEntity,
+          enableSmtpServer,
+          serverEndpoint);
+      return 0;
+
+    } catch (Exception e) {
+      LOG.error("Failed to configure email settings due to: ", e);
       return 1;
     }
   }
@@ -198,43 +332,106 @@ public class OpenMetadataOperations implements Callable<Integer> {
   public Integer installApp(
       @Option(
               names = {"-n", "--name"},
-              description = "Number of records to process in each batch.",
+              description = "The name of the application to install.",
+              required = true)
+          String appName,
+      @Option(
+              names = {"--force"},
+              description = "Forces migrations to be run again, even if they have ran previously",
+              defaultValue = "false")
+          boolean force) {
+    try {
+      parseConfig();
+      AppRepository appRepository = (AppRepository) Entity.getEntityRepository(Entity.APPLICATION);
+
+      if (!force && isAppInstalled(appRepository, appName)) {
+        LOG.info("App already installed.");
+        return 0;
+      }
+
+      if (force && deleteApplication(appRepository, appName)) {
+        LOG.info("App deleted.");
+      }
+
+      LOG.info("App not installed. Installing...");
+      installApplication(appName, appRepository);
+      LOG.info("App Installed.");
+      return 0;
+    } catch (Exception e) {
+      LOG.error("Install Application Failed", e);
+      return 1;
+    }
+  }
+
+  @Command(name = "delete-app", description = "Delete the installed application.")
+  public Integer deleteApp(
+      @Option(
+              names = {"-n", "--name"},
+              description = "The name of the application to install.",
               required = true)
           String appName) {
     try {
       parseConfig();
-      CollectionRegistry.initialize();
-      ApplicationHandler.initialize(config);
-      CollectionRegistry.getInstance().loadSeedData(jdbi, config, null, null, null, true);
-      ApplicationHandler.initialize(config);
-      AppScheduler.initialize(config, collectionDAO, searchRepository);
-      // Instantiate JWT Token Generator
-      JWTTokenGenerator.getInstance()
-          .init(
-              config.getAuthenticationConfiguration().getTokenValidationAlgorithm(),
-              config.getJwtTokenConfiguration());
-      AppMarketPlaceRepository marketPlaceRepository =
-          (AppMarketPlaceRepository) Entity.getEntityRepository(Entity.APP_MARKET_PLACE_DEF);
-      AppMarketPlaceDefinition definition =
-          marketPlaceRepository.getByName(null, appName, marketPlaceRepository.getFields("id"));
       AppRepository appRepository = (AppRepository) Entity.getEntityRepository(Entity.APPLICATION);
-      CreateApp createApp =
-          new CreateApp()
-              .withName(definition.getName())
-              .withDescription(definition.getDescription())
-              .withDisplayName(definition.getDisplayName())
-              .withAppSchedule(new AppSchedule().withScheduleTimeline(ScheduleTimeline.NONE))
-              .withAppConfiguration(new AppConfiguration());
-      AppMapper appMapper = new AppMapper();
-      App entity = appMapper.createToEntity(createApp, ADMIN_USER_NAME);
-      appRepository.prepareInternal(entity, true);
-      appRepository.createOrUpdate(null, entity);
-      LOG.info("App Installed.");
+      if (deleteApplication(appRepository, appName)) {
+        LOG.info("App deleted.");
+      }
       return 0;
     } catch (Exception e) {
-      LOG.error("Install Application Failed ", e);
+      LOG.error("Delete Application Failed", e);
       return 1;
     }
+  }
+
+  private boolean isAppInstalled(AppRepository appRepository, String appName) {
+    try {
+      appRepository.findByName(appName, Include.NON_DELETED);
+      return true;
+    } catch (EntityNotFoundException e) {
+      return false;
+    }
+  }
+
+  private boolean deleteApplication(AppRepository appRepository, String appName) {
+    try {
+      appRepository.deleteByName(ADMIN_USER_NAME, appName, true, true);
+      return true;
+    } catch (EntityNotFoundException e) {
+      return false;
+    }
+  }
+
+  private void installApplication(String appName, AppRepository appRepository) throws Exception {
+    PipelineServiceClientInterface pipelineServiceClient =
+        PipelineServiceClientFactory.createPipelineServiceClient(
+            config.getPipelineServiceClientConfiguration());
+
+    JWTTokenGenerator.getInstance()
+        .init(
+            config.getAuthenticationConfiguration().getTokenValidationAlgorithm(),
+            config.getJwtTokenConfiguration());
+
+    AppMarketPlaceMapper mapper = new AppMarketPlaceMapper(pipelineServiceClient);
+    AppMarketPlaceRepository appMarketRepository =
+        (AppMarketPlaceRepository) Entity.getEntityRepository(Entity.APP_MARKET_PLACE_DEF);
+
+    AppMarketPlaceUtil.createAppMarketPlaceDefinitions(appMarketRepository, mapper);
+
+    AppMarketPlaceDefinition definition =
+        appMarketRepository.getByName(null, appName, appMarketRepository.getFields("id"));
+
+    CreateApp createApp =
+        new CreateApp()
+            .withName(definition.getName())
+            .withDescription(definition.getDescription())
+            .withDisplayName(definition.getDisplayName())
+            .withAppSchedule(new AppSchedule().withScheduleTimeline(ScheduleTimeline.NONE))
+            .withAppConfiguration(new AppConfiguration());
+
+    AppMapper appMapper = new AppMapper();
+    App entity = appMapper.createToEntity(createApp, ADMIN_USER_NAME);
+    appRepository.prepareInternal(entity, true);
+    appRepository.createOrUpdate(null, entity);
   }
 
   @Command(
@@ -420,10 +617,17 @@ public class OpenMetadataOperations implements Callable<Integer> {
               names = {"--retries"},
               defaultValue = "3",
               description = "Maximum number of retries for failed search requests.")
-          int retries) {
+          int retries,
+      @Option(
+              names = {"--entities"},
+              defaultValue = "'all'",
+              description =
+                  "Entities to reindex. Passing --entities='table,dashboard' will reindex table and dashboard entities. Passing nothing will reindex everything.")
+          String entityStr) {
     try {
       LOG.info(
-          "Running Reindexing with Batch Size: {}, Payload Size: {}, Recreate-Index: {}, Producer threads: {}, Consumer threads: {}, Queue Size: {}, Back-off: {}, Max Back-off: {}, Max Requests: {}, Retries: {}",
+          "Running Reindexing with Entities:{} , Batch Size: {}, Payload Size: {}, Recreate-Index: {}, Producer threads: {}, Consumer threads: {}, Queue Size: {}, Back-off: {}, Max Back-off: {}, Max Requests: {}, Retries: {}",
+          entityStr,
           batchSize,
           payloadSize,
           recreateIndexes,
@@ -439,10 +643,15 @@ public class OpenMetadataOperations implements Callable<Integer> {
       ApplicationHandler.initialize(config);
       CollectionRegistry.getInstance().loadSeedData(jdbi, config, null, null, null, true);
       ApplicationHandler.initialize(config);
+      TypeRepository typeRepository = (TypeRepository) Entity.getEntityRepository(Entity.TYPE);
+      TypeRegistry.instance().initialize(typeRepository);
       AppScheduler.initialize(config, collectionDAO, searchRepository);
       String appName = "SearchIndexingApplication";
+      Set<String> entities =
+          new HashSet<>(Arrays.asList(entityStr.substring(1, entityStr.length() - 1).split(",")));
       return executeSearchReindexApp(
           appName,
+          entities,
           batchSize,
           payloadSize,
           recreateIndexes,
@@ -459,8 +668,29 @@ public class OpenMetadataOperations implements Callable<Integer> {
     }
   }
 
+  @Command(name = "syncAlertOffset", description = "Sync the Alert Offset.")
+  public Integer reIndex(
+      @Option(
+              names = {"-n", "--name"},
+              description = "Name of the alerts.",
+              required = true)
+          String alertName) {
+    try {
+      parseConfig();
+      CollectionRegistry.initialize();
+      EventSubscriptionRepository repository =
+          (EventSubscriptionRepository) Entity.getEntityRepository(Entity.EVENT_SUBSCRIPTION);
+      repository.syncEventSubscriptionOffset(alertName);
+      return 0;
+    } catch (Exception e) {
+      LOG.error("Failed to sync alert offset due to ", e);
+      return 1;
+    }
+  }
+
   private int executeSearchReindexApp(
       String appName,
+      Set<String> entities,
       int batchSize,
       long payloadSize,
       boolean recreateIndexes,
@@ -481,6 +711,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
 
     EventPublisherJob updatedJob = JsonUtils.deepCopy(storedJob, EventPublisherJob.class);
     updatedJob
+        .withEntities(entities)
         .withBatchSize(batchSize)
         .withPayLoadSize(payloadSize)
         .withRecreateIndex(recreateIndexes)
@@ -490,8 +721,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
         .withInitialBackoff(backOff)
         .withMaxBackoff(maxBackOff)
         .withMaxConcurrentRequests(maxRequests)
-        .withMaxRetries(retries)
-        .withEntities(Set.of("all"));
+        .withMaxRetries(retries);
 
     // Update the search index app with the new configurations
     App updatedSearchIndexApp = JsonUtils.deepCopy(originalSearchIndexApp, App.class);
@@ -509,6 +739,100 @@ public class OpenMetadataOperations implements Callable<Integer> {
     // Re-patch with original configuration
     JsonPatch repatch = JsonUtils.getJsonPatch(updatedSearchIndexApp, originalSearchIndexApp);
     appRepository.patch(null, originalSearchIndexApp.getId(), "admin", repatch);
+
+    return result;
+  }
+
+  @Command(
+      name = "reindexdi",
+      description = "Re Indexes data insights into search engine from command line.")
+  public Integer reIndexDI(
+      @Option(
+              names = {"-b", "--batch-size"},
+              defaultValue = "100",
+              description = "Number of records to process in each batch.")
+          int batchSize,
+      @Option(
+              names = {"--recreate-indexes"},
+              defaultValue = "true",
+              description = "Flag to determine if indexes should be recreated.")
+          boolean recreateIndexes,
+      @Option(
+              names = {"--start-date"},
+              description = "Start Date to backfill from.")
+          String startDate,
+      @Option(
+              names = {"--end-date"},
+              description = "End Date to backfill to.")
+          String endDate) {
+    try {
+      LOG.info(
+          "Running Reindexing with Batch Size: {}, Recreate-Index: {}, Start Date: {}, End Date: {}.",
+          batchSize,
+          recreateIndexes,
+          startDate,
+          endDate);
+      parseConfig();
+      CollectionRegistry.initialize();
+      ApplicationHandler.initialize(config);
+      CollectionRegistry.getInstance().loadSeedData(jdbi, config, null, null, null, true);
+      ApplicationHandler.initialize(config);
+      AppScheduler.initialize(config, collectionDAO, searchRepository);
+      return executeDataInsightsReindexApp(
+          batchSize, recreateIndexes, getBackfillConfiguration(startDate, endDate));
+    } catch (Exception e) {
+      LOG.error("Failed to reindex due to ", e);
+      return 1;
+    }
+  }
+
+  private BackfillConfiguration getBackfillConfiguration(String startDate, String endDate) {
+    BackfillConfiguration backfillConfiguration = new BackfillConfiguration();
+    backfillConfiguration.withEnabled(false);
+
+    if (startDate != null) {
+      backfillConfiguration.withEnabled(true);
+      backfillConfiguration.withStartDate(startDate);
+      backfillConfiguration.withEndDate(
+          Objects.requireNonNullElseGet(
+              endDate, () -> timestampToString(System.currentTimeMillis(), "yyyy-MM-dd")));
+    }
+    return backfillConfiguration;
+  }
+
+  private int executeDataInsightsReindexApp(
+      int batchSize, boolean recreateIndexes, BackfillConfiguration backfillConfiguration) {
+    AppRepository appRepository = (AppRepository) Entity.getEntityRepository(Entity.APPLICATION);
+    App originalDataInsightsApp =
+        appRepository.getByName(null, "DataInsightsApplication", appRepository.getFields("id"));
+
+    DataInsightsAppConfig storedConfig =
+        JsonUtils.convertValue(
+            originalDataInsightsApp.getAppConfiguration(), DataInsightsAppConfig.class);
+
+    DataInsightsAppConfig updatedConfig =
+        JsonUtils.deepCopy(storedConfig, DataInsightsAppConfig.class);
+    updatedConfig
+        .withBatchSize(batchSize)
+        .withRecreateDataAssetsIndex(recreateIndexes)
+        .withBackfillConfiguration(backfillConfiguration);
+
+    // Update the data insights app with the new configurations
+    App updatedDataInsightsApp = JsonUtils.deepCopy(originalDataInsightsApp, App.class);
+    updatedDataInsightsApp.withAppConfiguration(updatedConfig);
+    JsonPatch patch = JsonUtils.getJsonPatch(originalDataInsightsApp, updatedDataInsightsApp);
+
+    appRepository.patch(null, originalDataInsightsApp.getId(), "admin", patch);
+
+    // Trigger Application
+    long currentTime = System.currentTimeMillis();
+    AppScheduler.getInstance().triggerOnDemandApplication(updatedDataInsightsApp);
+
+    int result = waitAndReturnReindexingAppStatus(updatedDataInsightsApp, currentTime);
+
+    // Re-patch with original configuration
+    JsonPatch repatch = JsonUtils.getJsonPatch(updatedDataInsightsApp, originalDataInsightsApp);
+    appRepository.patch(null, originalDataInsightsApp.getId(), "admin", repatch);
 
     return result;
   }

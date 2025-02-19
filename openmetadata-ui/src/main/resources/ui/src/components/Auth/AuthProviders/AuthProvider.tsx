@@ -184,6 +184,9 @@ export const AuthProvider = ({
 
     setApplicationLoading(false);
 
+    // Clear the refresh flag (used after refresh is complete)
+    tokenService.current.clearRefreshInProgress();
+
     // Upon logout, redirect to the login page
     history.push(ROUTES.SIGNIN);
   }, [timeoutId]);
@@ -517,7 +520,9 @@ export const AuthProvider = ({
         if (error.response) {
           const { status } = error.response;
           if (status === ClientErrors.UNAUTHORIZED) {
-            if (error.config.url === '/users/refresh') {
+            // For login or refresh we don't want to fire another refresh req
+            // Hence rejecting it
+            if (['/users/refresh', '/users/login'].includes(error.config.url)) {
               return Promise.reject(error as Error);
             }
             handleStoreProtectedRedirectPath();
@@ -541,13 +546,17 @@ export const AuthProvider = ({
                     pendingRequests.forEach(({ resolve, reject, config }) => {
                       axiosClient(config).then(resolve).catch(reject);
                     });
+
+                    // Clear the queue after retrying
+                    pendingRequests = [];
                   } else {
                     resetUserDetails(true);
                   }
                 });
+              }).catch((err) => {
+                resetUserDetails(true);
 
-                // Clear the queue after retrying
-                pendingRequests = [];
+                return Promise.reject(err);
               });
             } else {
               // If refresh is in progress, queue the request

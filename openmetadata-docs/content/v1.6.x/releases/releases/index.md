@@ -8,11 +8,59 @@ slug: /releases/all-releases
 {% note %}
 
 The OpenMetadata community is on a monthly release cadence. At every 4-5 weeks we will be releasing a new
-version. To see what's coming in next releases, please check our [Roadmap](/releases/roadmap) section.
+version. To see what's coming in next releases, please check our {% collateContent %}[Roadmap](https://www.getcollate.io/roadmap){% /collateContent %}{% ossContent %}[Roadmap](/roadmap){% /ossContent %} section.
 
 {% /note %}
 
 {% partial file="/v1.6/releases/latest.md" /%}
+
+# 1.6.2 Release 🎉
+
+{% note noteType="Tip" %}
+**Jan 13th, 2025**
+{% /note %}
+
+You can find the GitHub release [here](https://github.com/open-metadata/OpenMetadata/releases/tag/1.6.2-release).
+
+# What's Changed
+
+- Fix: Test case getting removed from logical test suite after editing the test case.
+- Fix: Edit Lineage Operation not working with isOwner() condition
+- Fix: EditLineage permission not allowing users to edit the lineage.
+- Fix: ViewAll permission not working with matchAnyTag() and isOwner() conditions
+- Fix: Vulnerability security on 1.5.6 version package com.google.protobuf_protobuf-java.
+- Fix: DBT Data ingestion not working.
+- Fix: Table owners not shown properly after a dbt ingestion and re-indexing.
+- Fix: Glossary Listing Limits to 50 without scrolling to next page.
+- Fix: Mask encrypted password for email.
+- Fix: Profiler failing on ingesting data type for postgres.
+- Fix: Column lineage ingestion failed to parse column due to subquery raw_name AttributeError.
+- Fix: Data Insight Tier Filter does not work.
+- Fix: Add depth support for storage connector.
+- Fix: Replace the description editor with a new block editor.
+- Fix: Redshift Metadata ingestion failing for Stored Procedure.
+- Fix: Lineage view not showing all the nodes in case of circular lineage.
+- Fix: Deleting Data Product should delete the data asset relationships.
+- Fix: styling (color, icon) is lost if a glossaryTerm is updated via the bulk upload.
+- Fix: Unable to see complete column type info for long column type.
+- Fix: ApiEndpoint reindexing failure.
+- Fix: Auto Classification Ingestion - AttributeError: 'DataType' object has no attribute 'dialect_impl'.
+- Fix: Adding the profiler for doris failing to execute.
+- Fix: Unable to remove existing values from custom property (enum data type).
+- Fix: Custom DI description getting added with HTML p tag. (Collate)
+- Fix: Knowledge Page hierarchy state doesn't persist on refresh. (Collate)
+- Fix: Reindex Page Entitiy is Missing on Collate. (Collate)
+- Fix: Avoid pluralizing for custom charts. (Collate)
+- Improvement: Ability to sort the DI charts based on date or term.
+- Improvement: Support test connection api cancellation on click of cancel.
+- Improvement: Highlight the search term for schema table on table details page.
+- Improvement: Add Algorithm option for authentication token validation in yaml.
+- Improvement: Make all Test Suites executable.
+- Improvement: Activity feed pagination.
+- Improvement: Add the missing filters for different assets in the Automator(Ex. Database filter for Database Schema asset).  (Collate)
+- Improvement: Add Glossary Term and Metric as assets for Automation. (Collate)
+
+**Full Changelog**: https://github.com/open-metadata/OpenMetadata/compare/1.6.1-release...1.6.2-release
 
 # 1.6.1 Release 🎉
 
@@ -120,7 +168,7 @@ ER diagrams help you better understand and manage your data architecture by show
 
 Organizations often struggle with data governance due to rigid, pre-defined manual workflows. OpenMetadata 1.6 introduces a new, automated data governance framework designed to be customized to each organization's needs.
 
-In Collate 1.6, the Glossary Approval Workflow has been migrated to this new framework. Now, you can create custom approval processes with specific conditions and rules and easily visualize them through intuitive workflow diagrams. You can also create smart approval processes for glossary terms with real-time state changes and task creation to save time and streamline work. 
+In Collate 1.6, the Glossary Approval Workflow has been migrated to this new framework. Now, you can create custom approval processes with specific conditions and rules and easily visualize them through intuitive workflow diagrams. You can also create smart approval processes for glossary terms with real-time state changes and task creation to save time and streamline work. 
 
 ## Data Certification Workflows for Automated Bronze, Silver, & Gold Data Standardization! (Collate)
 
@@ -154,7 +202,7 @@ OpenMetadata 1.6 extends Role-Based Access Control (RBAC) to search functionalit
 
 ## Expanded Connector Ecosystem and Diversity
 
-OpenMetadata's ingestion framework contains 80+ native connectors. These connectors are the foundation of the platform and bring in all the metadata your team needs: technical metadata, lineage, usage, profiling, etc.
+OpenMetadata's ingestion framework contains 90+ native connectors. These connectors are the foundation of the platform and bring in all the metadata your team needs: technical metadata, lineage, usage, profiling, etc.
 
 We bring new connectors in each release, continuously expanding our coverage. This time, release 1.6 comes with seven new connectors:
 
@@ -722,7 +770,7 @@ To continue pursuing this objective, the application was completely refactored t
 
 ## Ingestion Connectors
 
-80+ connectors to help teams to centralize metadata. We continue to push the boundaries of this mission, in
+90+ connectors to help teams to centralize metadata. We continue to push the boundaries of this mission, in
 
 - **Apache Flink** as a Pipeline Connector
 - **SAP ERP**, after a long and successful collaboration with our community and SAP experts
@@ -1536,7 +1584,7 @@ You can find the GitHub release [here](https://github.com/open-metadata/OpenMeta
 ## Connectors
 
 - New [Spline](https://absaoss.github.io/spline/) Connector to extract metadata and lineage from Spark jobs. Regardless of where the Spark execution happens, if you have configured the Spline Agent, we can send Spark metadata to OpenMetadata.
-- New [SAP Hana](https://www.sap.com/products/technology-platform/hana/what-is-sap-hana.html) Connector, our first integration to the SAP ecosystem.
+- New [SAP HANA](https://www.sap.com/products/technology-platform/hana/what-is-sap-hana.html) Connector, our first integration to the SAP ecosystem.
 - New [MongoDB](https://www.mongodb.com/) Connector, extracting Collections as Tables.
 - Added support for [Databricks Unity Catalog](https://www.databricks.com/product/unity-catalog) for metadata and lineage extraction. If your Databricks instance supports the Unity Catalog, you can enable it in the Connection Details section to use this metadata extraction method instead of getting metadata out of the metastore and history APIs.
 

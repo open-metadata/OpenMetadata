@@ -43,10 +43,7 @@ import { ReactComponent as AddPlaceHolderIcon } from '../../../../assets/svg/add
 import { ReactComponent as DeleteIcon } from '../../../../assets/svg/ic-delete.svg';
 import { ReactComponent as FilterIcon } from '../../../../assets/svg/ic-feeds-filter.svg';
 import { ReactComponent as IconDropdown } from '../../../../assets/svg/menu.svg';
-import {
-  AssetsFilterOptions,
-  ASSET_MENU_KEYS,
-} from '../../../../constants/Assets.constants';
+import { ASSET_MENU_KEYS } from '../../../../constants/Assets.constants';
 import { ES_UPDATE_DELAY } from '../../../../constants/constants';
 import { GLOSSARIES_DOCS } from '../../../../constants/docs.constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
@@ -60,6 +57,7 @@ import { usePaging } from '../../../../hooks/paging/usePaging';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { useFqn } from '../../../../hooks/useFqn';
 import { Aggregations } from '../../../../interface/search.interface';
+import { QueryFilterInterface } from '../../../../pages/ExplorePage/ExplorePage.interface';
 import {
   getDataProductByName,
   removeAssetsFromDataProduct,
@@ -81,6 +79,7 @@ import {
   getEntityName,
   getEntityReferenceFromEntity,
 } from '../../../../utils/EntityUtils';
+import { getCombinedQueryFilterObject } from '../../../../utils/ExplorePage/ExplorePageUtils';
 import {
   getAggregations,
   getQuickFilterQuery,
@@ -130,17 +129,14 @@ const AssetsTabs = forwardRef(
     ref
   ) => {
     const { theme } = useApplicationStore();
-    const [itemCount, setItemCount] = useState<Record<EntityType, number>>(
-      {} as Record<EntityType, number>
-    );
     const [assetRemoving, setAssetRemoving] = useState(false);
-
     const [activeFilter, _] = useState<SearchIndex[]>([]);
     const { fqn } = useFqn();
     const [isLoading, setIsLoading] = useState(true);
     const [data, setData] = useState<SearchedDataProps['data']>([]);
     const [quickFilterQuery, setQuickFilterQuery] =
-      useState<Record<string, unknown>>();
+      useState<QueryFilterInterface>();
+
     const {
       currentPage,
       pageSize,
@@ -165,7 +161,6 @@ const AssetsTabs = forwardRef(
     const [selectedCard, setSelectedCard] = useState<SourceType>();
     const [visible, setVisible] = useState<boolean>(false);
     const [openKeys, setOpenKeys] = useState<EntityType[]>([]);
-    const [isCountLoading, setIsCountLoading] = useState<boolean>(true);
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [assetToDelete, setAssetToDelete] = useState<SourceType>();
     const [activeEntity, setActiveEntity] = useState<
@@ -201,8 +196,7 @@ const AssetsTabs = forwardRef(
       const encodedFqn = getEncodedFqn(escapeESReservedCharacters(entityFqn));
       switch (type) {
         case AssetsOfEntity.DOMAIN:
-          return `(domain.fullyQualifiedName:"${encodedFqn}") AND !(entityType:"dataProduct")`;
-
+          return '';
         case AssetsOfEntity.DATA_PRODUCT:
           return `(dataProducts.fullyQualifiedName:"${encodedFqn}")`;
 
@@ -224,9 +218,11 @@ const AssetsTabs = forwardRef(
       async ({
         index = activeFilter,
         page = currentPage,
+        queryFilter,
       }: {
         index?: SearchIndex[];
         page?: number;
+        queryFilter?: Record<string, unknown>;
       }) => {
         try {
           setIsLoading(true);
@@ -235,23 +231,10 @@ const AssetsTabs = forwardRef(
             pageSize: pageSize,
             searchIndex: index,
             query: `*${searchValue}*`,
-            filters: queryParam,
-            queryFilter: quickFilterQuery,
+            filters: queryParam as string,
+            queryFilter: queryFilter,
           });
           const hits = res.hits.hits as SearchedDataProps['data'];
-          const totalCount = res?.hits?.total.value ?? 0;
-
-          // Find EntityType for selected searchIndex
-          const entityType = AssetsFilterOptions.find((f) =>
-            activeFilter.includes(f.value)
-          )?.label;
-
-          entityType &&
-            setItemCount((prevCount) => ({
-              ...prevCount,
-              [entityType]: totalCount,
-            }));
-
           handlePagingChange({ total: res.hits.total.value ?? 0 });
           setData(hits);
           setAggregations(getAggregations(res?.aggregations));
@@ -262,14 +245,7 @@ const AssetsTabs = forwardRef(
           setIsLoading(false);
         }
       },
-      [
-        activeFilter,
-        currentPage,
-        pageSize,
-        searchValue,
-        queryParam,
-        quickFilterQuery,
-      ]
+      [activeFilter, currentPage, pageSize, searchValue, queryParam]
     );
 
     const hideNotification = () => {
@@ -362,34 +338,6 @@ const AssetsTabs = forwardRef(
       });
     };
 
-    const fetchCountsByEntity = async () => {
-      try {
-        setIsCountLoading(true);
-
-        const res = await searchQuery({
-          query: `*${searchValue}*`,
-          pageNumber: 0,
-          pageSize: 0,
-          queryFilter: quickFilterQuery,
-          searchIndex: SearchIndex.ALL,
-          filters: queryParam,
-        });
-
-        const buckets = res.aggregations[`index_count`].buckets;
-        const counts: Record<string, number> = {};
-        buckets.forEach((item) => {
-          if (item) {
-            counts[item.key ?? ''] = item.doc_count;
-          }
-        });
-        setItemCount(counts as Record<EntityType, number>);
-      } catch (err) {
-        showErrorToast(err as AxiosError);
-      } finally {
-        setIsCountLoading(false);
-      }
-    };
-
     const onAssetRemove = useCallback(
       async (assetsData: SourceType[]) => {
         if (!activeEntity) {
@@ -465,8 +413,6 @@ const AssetsTabs = forwardRef(
     }, [selectedItems]);
 
     useEffect(() => {
-      fetchCountsByEntity();
-
       return () => {
         onAssetClick?.(undefined);
         hideNotification();
@@ -630,6 +576,7 @@ const AssetsTabs = forwardRef(
                 handleSummaryPanelDisplay={setSelectedCard}
                 id={_id}
                 key={'assets_' + _id}
+                searchValue={searchValue}
                 showCheckboxes={Boolean(activeEntity) && permissions.Create}
                 showTags={false}
                 source={_source}
@@ -715,7 +662,6 @@ const AssetsTabs = forwardRef(
       openKeys,
       visible,
       currentPage,
-      itemCount,
       onOpenChange,
       handleAssetButtonVisibleChange,
       onSelectAll,
@@ -748,11 +694,24 @@ const AssetsTabs = forwardRef(
     ]);
 
     useEffect(() => {
+      const newFilter = getCombinedQueryFilterObject(
+        queryFilter as unknown as QueryFilterInterface,
+        quickFilterQuery as QueryFilterInterface
+      );
+
       fetchAssets({
         index: isEmpty(activeFilter) ? [SearchIndex.ALL] : activeFilter,
         page: currentPage,
+        queryFilter: newFilter,
       });
-    }, [activeFilter, currentPage, pageSize, searchValue, quickFilterQuery]);
+    }, [
+      activeFilter,
+      currentPage,
+      pageSize,
+      searchValue,
+      queryFilter,
+      quickFilterQuery,
+    ]);
 
     useEffect(() => {
       const dropdownItems = getAssetsPageQuickFilters(type);
@@ -794,14 +753,20 @@ const AssetsTabs = forwardRef(
       refreshAssets() {
         // Reset page to one and trigger fetchAssets
         handlePageChange(1);
+
+        const newFilter = getCombinedQueryFilterObject(
+          queryFilter as unknown as QueryFilterInterface,
+          quickFilterQuery as QueryFilterInterface
+        );
+
         // If current page is already 1 it won't trigger fetchAset from useEffect
         // Hence need to manually trigger it for this case
         currentPage === 1 &&
           fetchAssets({
             index: isEmpty(activeFilter) ? [SearchIndex.ALL] : activeFilter,
             page: 1,
+            queryFilter: newFilter,
           });
-        fetchCountsByEntity();
       },
       closeSummaryPanel() {
         setSelectedCard(undefined);
@@ -877,7 +842,7 @@ const AssetsTabs = forwardRef(
             </Row>
           )}
 
-          {isLoading || isCountLoading ? (
+          {isLoading ? (
             <Row className="p-lg" gutter={[0, 16]}>
               <Col span={24}>
                 <Skeleton />
@@ -908,7 +873,7 @@ const AssetsTabs = forwardRef(
             }
           />
         </div>
-        {!(isLoading || isCountLoading) && (
+        {!isLoading && (
           <div
             className={classNames('asset-tab-delete-notification', {
               visible: selectedItems.size > 0,

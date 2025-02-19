@@ -189,6 +189,10 @@ test.describe('User with Admin Roles', () => {
   }) => {
     await redirectToHomePage(adminPage);
     await settingClick(adminPage, GlobalSettingOptions.USERS);
+    await adminPage.waitForLoadState('networkidle');
+    await adminPage.waitForSelector('.user-list-table [data-testid="loader"]', {
+      state: 'detached',
+    });
     await softDeleteUserProfilePage(
       adminPage,
       user.responseData.name,

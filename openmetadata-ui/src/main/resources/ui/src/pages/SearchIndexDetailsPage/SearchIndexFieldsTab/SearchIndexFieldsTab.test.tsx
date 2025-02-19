@@ -78,6 +78,16 @@ jest.mock('../SearchIndexFieldsTable/SearchIndexFieldsTable', () =>
     )
 );
 
+jest.mock('../../../utils/StringsUtils', () => ({
+  ...jest.requireActual('../../../utils/StringsUtils'),
+  stringToHTML: jest.fn((text) => text),
+}));
+
+jest.mock('../../../utils/EntityUtils', () => ({
+  ...jest.requireActual('../../../utils/EntityUtils'),
+  highlightSearchText: jest.fn((text) => text),
+}));
+
 describe('SearchIndexFieldsTab component', () => {
   it('SearchIndexFieldsTab should pass all the fields to SearchIndexFieldsTable when not searched anything', () => {
     render(<SearchIndexFieldsTab {...mockProps} />);

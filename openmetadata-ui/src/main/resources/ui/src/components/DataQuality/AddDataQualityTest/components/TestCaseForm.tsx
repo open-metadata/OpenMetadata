@@ -30,10 +30,6 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import { PAGE_SIZE_LARGE } from '../../../../constants/constants';
 import { ENTITY_NAME_REGEX } from '../../../../constants/regex.constants';
-import {
-  SUPPORTED_SERVICES_FOR_TABLE_DIFF,
-  TABLE_DIFF,
-} from '../../../../constants/TestSuite.constant';
 import { ProfilerDashboardType } from '../../../../enums/table.enum';
 import { CreateTestCase } from '../../../../generated/api/tests/createTestCase';
 import { TestCase } from '../../../../generated/tests/testCase';
@@ -124,17 +120,8 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
         testPlatform: TestPlatform.OpenMetadata,
         supportedDataType: columnType,
       });
-      const updatedData = data.filter((definition) => {
-        if (definition.fullyQualifiedName === TABLE_DIFF) {
-          return (
-            table.serviceType &&
-            SUPPORTED_SERVICES_FOR_TABLE_DIFF.includes(table.serviceType)
-          );
-        }
 
-        return true;
-      });
-      setTestDefinitions(updatedData);
+      setTestDefinitions(data);
     } catch (error) {
       showErrorToast(error as AxiosError);
     }

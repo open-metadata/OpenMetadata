@@ -13,6 +13,8 @@ import static org.openmetadata.service.Entity.GLOSSARY_TERM;
 import static org.openmetadata.service.Entity.QUERY;
 import static org.openmetadata.service.Entity.RAW_COST_ANALYSIS_REPORT_DATA;
 import static org.openmetadata.service.Entity.TABLE;
+import static org.openmetadata.service.events.scheduled.ServicesStatusJobHandler.HEALTHY_STATUS;
+import static org.openmetadata.service.events.scheduled.ServicesStatusJobHandler.UNHEALTHY_STATUS;
 import static org.openmetadata.service.exception.CatalogGenericExceptionMapper.getResponse;
 import static org.openmetadata.service.search.EntityBuilderConstant.API_RESPONSE_SCHEMA_FIELD;
 import static org.openmetadata.service.search.EntityBuilderConstant.API_RESPONSE_SCHEMA_FIELD_KEYWORD;
@@ -39,6 +41,8 @@ import static org.openmetadata.service.util.FullyQualifiedName.getParentFQN;
 import com.fasterxml.jackson.databind.JsonNode;
 import es.org.elasticsearch.ElasticsearchStatusException;
 import es.org.elasticsearch.action.ActionListener;
+import es.org.elasticsearch.action.admin.cluster.health.ClusterHealthRequest;
+import es.org.elasticsearch.action.admin.cluster.health.ClusterHealthResponse;
 import es.org.elasticsearch.action.admin.indices.alias.IndicesAliasesRequest;
 import es.org.elasticsearch.action.admin.indices.delete.DeleteIndexRequest;
 import es.org.elasticsearch.action.bulk.BulkRequest;
@@ -62,6 +66,7 @@ import es.org.elasticsearch.client.indices.GetIndexRequest;
 import es.org.elasticsearch.client.indices.GetMappingsRequest;
 import es.org.elasticsearch.client.indices.GetMappingsResponse;
 import es.org.elasticsearch.client.indices.PutMappingRequest;
+import es.org.elasticsearch.cluster.health.ClusterHealthStatus;
 import es.org.elasticsearch.cluster.metadata.MappingMetadata;
 import es.org.elasticsearch.common.lucene.search.function.CombineFunction;
 import es.org.elasticsearch.common.lucene.search.function.FieldValueFactorFunction;
@@ -129,6 +134,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import javax.json.JsonObject;
 import javax.net.ssl.SSLContext;
@@ -167,6 +173,7 @@ import org.openmetadata.service.jdbi3.TableRepository;
 import org.openmetadata.service.jdbi3.TestCaseResultRepository;
 import org.openmetadata.service.search.SearchAggregation;
 import org.openmetadata.service.search.SearchClient;
+import org.openmetadata.service.search.SearchHealthStatus;
 import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.SearchRequest;
 import org.openmetadata.service.search.SearchSortFilter;
@@ -470,49 +477,9 @@ public class ElasticSearchClient implements SearchClient {
                 .getIndexMapping(GLOSSARY_TERM)
                 .getIndexName(clusterAlias))) {
       searchSourceBuilder.query(QueryBuilders.boolQuery().must(searchSourceBuilder.query()));
-
-      if (request.isGetHierarchy()) {
-        QueryBuilder baseQuery =
-            QueryBuilders.boolQuery()
-                .should(searchSourceBuilder.query())
-                .should(QueryBuilders.matchPhraseQuery("fullyQualifiedName", request.getQuery()))
-                .should(QueryBuilders.matchPhraseQuery("name", request.getQuery()))
-                .should(QueryBuilders.matchPhraseQuery("displayName", request.getQuery()))
-                .should(
-                    QueryBuilders.matchPhraseQuery(
-                        "glossary.fullyQualifiedName", request.getQuery()))
-                .should(QueryBuilders.matchPhraseQuery("glossary.displayName", request.getQuery()))
-                .must(QueryBuilders.matchQuery("status", "Approved"))
-                .minimumShouldMatch(1);
-        searchSourceBuilder.query(baseQuery);
-
-        SearchResponse searchResponse =
-            client.search(
-                new es.org.elasticsearch.action.search.SearchRequest(request.getIndex())
-                    .source(searchSourceBuilder),
-                RequestOptions.DEFAULT);
-
-        // Extract parent terms from aggregation
-        BoolQueryBuilder parentTermQueryBuilder = QueryBuilders.boolQuery();
-        Terms parentTerms = searchResponse.getAggregations().get("fqnParts_agg");
-
-        // Build  es query to get parent terms for the user input query , to build correct hierarchy
-        if (!parentTerms.getBuckets().isEmpty() && !request.getQuery().equals("*")) {
-          parentTerms.getBuckets().stream()
-              .map(Terms.Bucket::getKeyAsString)
-              .forEach(
-                  parentTerm ->
-                      parentTermQueryBuilder.should(
-                          QueryBuilders.matchQuery("fullyQualifiedName", parentTerm)));
-
-          searchSourceBuilder.query(
-              parentTermQueryBuilder
-                  .minimumShouldMatch(1)
-                  .must(QueryBuilders.matchQuery("status", "Approved")));
-        }
-        searchSourceBuilder.sort(SortBuilders.fieldSort("fullyQualifiedName").order(SortOrder.ASC));
-      }
     }
+
+    buildHierarchyQuery(request, searchSourceBuilder, client);
 
     /* for performance reasons ElasticSearch doesn't provide accurate hits
     if we enable trackTotalHits parameter it will try to match every result, count and return hits
@@ -581,15 +548,89 @@ public class ElasticSearchClient implements SearchClient {
     return getResponse(NOT_FOUND, "Document not found.");
   }
 
+  private void buildHierarchyQuery(
+      SearchRequest request, SearchSourceBuilder searchSourceBuilder, RestHighLevelClient client)
+      throws IOException {
+
+    if (!request.isGetHierarchy()) {
+      return;
+    }
+
+    String indexName = request.getIndex();
+    String glossaryTermIndex =
+        Entity.getSearchRepository().getIndexMapping(GLOSSARY_TERM).getIndexName(clusterAlias);
+    String domainIndex =
+        Entity.getSearchRepository().getIndexMapping(DOMAIN).getIndexName(clusterAlias);
+
+    BoolQueryBuilder baseQuery =
+        QueryBuilders.boolQuery()
+            .should(searchSourceBuilder.query())
+            .should(QueryBuilders.matchPhraseQuery("fullyQualifiedName", request.getQuery()))
+            .should(QueryBuilders.matchPhraseQuery("name", request.getQuery()))
+            .should(QueryBuilders.matchPhraseQuery("displayName", request.getQuery()));
+
+    if (indexName.equalsIgnoreCase(glossaryTermIndex)) {
+      baseQuery
+          .should(QueryBuilders.matchPhraseQuery("glossary.fullyQualifiedName", request.getQuery()))
+          .should(QueryBuilders.matchPhraseQuery("glossary.displayName", request.getQuery()))
+          .must(QueryBuilders.matchQuery("status", "Approved"));
+    } else if (indexName.equalsIgnoreCase(domainIndex)) {
+      baseQuery
+          .should(QueryBuilders.matchPhraseQuery("parent.fullyQualifiedName", request.getQuery()))
+          .should(QueryBuilders.matchPhraseQuery("parent.displayName", request.getQuery()));
+    }
+
+    baseQuery.minimumShouldMatch(1);
+    searchSourceBuilder.query(baseQuery);
+
+    SearchResponse searchResponse =
+        client.search(
+            new es.org.elasticsearch.action.search.SearchRequest(request.getIndex())
+                .source(searchSourceBuilder),
+            RequestOptions.DEFAULT);
+
+    Terms parentTerms = searchResponse.getAggregations().get("fqnParts_agg");
+
+    // Build  es query to get parent terms for the user input query , to build correct hierarchy
+    // In case of default search , no need to get parent terms they are already present in the
+    // response
+    if (parentTerms != null
+        && !parentTerms.getBuckets().isEmpty()
+        && !request.getQuery().equals("*")) {
+      BoolQueryBuilder parentTermQueryBuilder = QueryBuilders.boolQuery();
+
+      parentTerms.getBuckets().stream()
+          .map(Terms.Bucket::getKeyAsString)
+          .forEach(
+              parentTerm ->
+                  parentTermQueryBuilder.should(
+                      QueryBuilders.matchQuery("fullyQualifiedName", parentTerm)));
+      if (indexName.equalsIgnoreCase(glossaryTermIndex)) {
+        parentTermQueryBuilder
+            .minimumShouldMatch(1)
+            .must(QueryBuilders.matchQuery("status", "Approved"));
+      } else {
+        parentTermQueryBuilder.minimumShouldMatch(1);
+      }
+      searchSourceBuilder.query(parentTermQueryBuilder);
+    }
+
+    searchSourceBuilder.sort(SortBuilders.fieldSort("fullyQualifiedName").order(SortOrder.ASC));
+  }
+
   public List<?> buildSearchHierarchy(SearchRequest request, SearchResponse searchResponse) {
     List<?> response = new ArrayList<>();
-    if (request
-        .getIndex()
-        .equalsIgnoreCase(
-            Entity.getSearchRepository()
-                .getIndexMapping(GLOSSARY_TERM)
-                .getIndexName(clusterAlias))) {
+
+    String indexName = request.getIndex();
+    String glossaryTermIndex =
+        Entity.getSearchRepository().getIndexMapping(GLOSSARY_TERM).getIndexName(clusterAlias);
+    String domainIndex =
+        Entity.getSearchRepository().getIndexMapping(DOMAIN).getIndexName(clusterAlias);
+
+    if (indexName.equalsIgnoreCase(glossaryTermIndex)) {
       response = buildGlossaryTermSearchHierarchy(searchResponse);
+    } else if (indexName.equalsIgnoreCase(domainIndex)) {
+      response = buildDomainSearchHierarchy(searchResponse);
     }
     return response;
   }
@@ -643,6 +684,38 @@ public class ElasticSearchClient implements SearchClient {
             });
 
     return new ArrayList<>(rootTerms.values());
+  }
+
+  public List<EntityHierarchy> buildDomainSearchHierarchy(SearchResponse searchResponse) {
+    Map<String, EntityHierarchy> entityHierarchyMap =
+        Arrays.stream(searchResponse.getHits().getHits())
+            .map(hit -> JsonUtils.readValue(hit.getSourceAsString(), EntityHierarchy.class))
+            .collect(
+                Collectors.toMap(
+                    EntityHierarchy::getFullyQualifiedName,
+                    entity -> {
+                      entity.setChildren(new ArrayList<>());
+                      return entity;
+                    },
+                    (existing, replacement) -> existing,
+                    LinkedHashMap::new));
+
+    List<EntityHierarchy> rootDomains = new ArrayList<>();
+
+    entityHierarchyMap
+        .values()
+        .forEach(
+            entity -> {
+              String parentFqn = getParentFQN(entity.getFullyQualifiedName());
+              EntityHierarchy parentEntity = entityHierarchyMap.get(parentFqn);
+              if (parentEntity != null) {
+                parentEntity.getChildren().add(entity);
+              } else {
+                rootDomains.add(entity);
+              }
+            });
+
+    return rootDomains;
   }
 
   @Override
@@ -1052,7 +1125,7 @@ public class ElasticSearchClient implements SearchClient {
     searchSourceBuilder.query(
         QueryBuilders.boolQuery()
             .must(QueryBuilders.termQuery(direction, FullyQualifiedName.buildHash(fqn))));
-    if (CommonUtil.nullOrEmpty(deleted)) {
+    if (!CommonUtil.nullOrEmpty(deleted)) {
       searchSourceBuilder.query(
           QueryBuilders.boolQuery()
               .must(QueryBuilders.termQuery(direction, FullyQualifiedName.buildHash(fqn)))
@@ -1236,6 +1309,7 @@ public class ElasticSearchClient implements SearchClient {
     Object[] searchAfter = null;
     long processedRecords = 0;
     long totalRecords = -1;
+    // Process pipeline as edge
     while (totalRecords != processedRecords) {
       es.org.elasticsearch.action.search.SearchRequest searchRequest =
           new es.org.elasticsearch.action.search.SearchRequest(
@@ -1247,13 +1321,14 @@ public class ElasticSearchClient implements SearchClient {
               .must(QueryBuilders.termQuery("lineage.pipeline.fullyQualifiedName.keyword", fqn)));
       SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
       searchSourceBuilder.fetchSource(null, SOURCE_FIELDS_TO_EXCLUDE.toArray(String[]::new));
+      searchSourceBuilder.size(1000);
       FieldSortBuilder sortBuilder = SortBuilders.fieldSort("fullyQualifiedName");
       searchSourceBuilder.sort(sortBuilder);
       searchSourceBuilder.query(boolQueryBuilder);
       if (searchAfter != null) {
         searchSourceBuilder.searchAfter(searchAfter);
       }
-      if (CommonUtil.nullOrEmpty(deleted)) {
+      if (!CommonUtil.nullOrEmpty(deleted)) {
         searchSourceBuilder.query(
             QueryBuilders.boolQuery()
                 .must(boolQueryBuilder)
@@ -1269,27 +1344,9 @@ public class ElasticSearchClient implements SearchClient {
         HashMap<String, Object> tempMap = new HashMap<>(JsonUtils.getMap(hit.getSourceAsMap()));
         nodes.add(tempMap);
         for (Map<String, Object> lin : lineage) {
-          HashMap<String, String> fromEntity = (HashMap<String, String>) lin.get("fromEntity");
-          HashMap<String, String> toEntity = (HashMap<String, String>) lin.get("toEntity");
           HashMap<String, String> pipeline = (HashMap<String, String>) lin.get("pipeline");
           if (pipeline != null && pipeline.get("fullyQualifiedName").equalsIgnoreCase(fqn)) {
             edges.add(lin);
-            getLineage(
-                fromEntity.get("fqn"),
-                upstreamDepth,
-                edges,
-                nodes,
-                queryFilter,
-                "lineage.toEntity.fqn.keyword",
-                deleted);
-            getLineage(
-                toEntity.get("fqn"),
-                downstreamDepth,
-                edges,
-                nodes,
-                queryFilter,
-                "lineage.fromEntity.fqn.keyword",
-                deleted);
           }
         }
       }
@@ -1299,13 +1356,22 @@ public class ElasticSearchClient implements SearchClient {
       if (currentHits > 0) {
         searchAfter = searchResponse.getHits().getHits()[currentHits - 1].getSortValues();
       } else {
-        searchAfter = null;
+        // when current records are 0 break the loop
+        break;
       }
     }
+
+    // Process pipeline as node
     getLineage(
-        fqn, downstreamDepth, edges, nodes, queryFilter, "lineage.fromEntity.fqn.keyword", deleted);
+        fqn,
+        downstreamDepth,
+        edges,
+        nodes,
+        queryFilter,
+        "lineage.fromEntity.fqnHash.keyword",
+        deleted);
     getLineage(
-        fqn, upstreamDepth, edges, nodes, queryFilter, "lineage.toEntity.fqn.keyword", deleted);
+        fqn, upstreamDepth, edges, nodes, queryFilter, "lineage.toEntity.fqnHash.keyword", deleted);
 
     // TODO: Fix this , this is hack
     if (edges.isEmpty()) {
@@ -1819,7 +1885,10 @@ public class ElasticSearchClient implements SearchClient {
         buildSearchQueryBuilder(query, DomainIndex.getFields());
     FunctionScoreQueryBuilder queryBuilder = boostScore(queryStringBuilder);
     HighlightBuilder hb = buildHighlights(new ArrayList<>());
-    return searchBuilder(queryBuilder, hb, from, size);
+    SearchSourceBuilder searchSourceBuilder = searchBuilder(queryBuilder, hb, from, size);
+    searchSourceBuilder.aggregation(
+        AggregationBuilders.terms("fqnParts_agg").field("fqnParts").size(1000));
+    return addAggregation(searchSourceBuilder);
   }
 
   private static SearchSourceBuilder buildCostAnalysisReportDataSearch(
@@ -2806,6 +2875,18 @@ public class ElasticSearchClient implements SearchClient {
 
   public Object getLowLevelClient() {
     return client.getLowLevelClient();
+  }
+
+  @Override
+  public SearchHealthStatus getSearchHealthStatus() throws IOException {
+    ClusterHealthRequest request = new ClusterHealthRequest();
+    ClusterHealthResponse response = client.cluster().health(request, RequestOptions.DEFAULT);
+    if (response.getStatus().equals(ClusterHealthStatus.GREEN)
+        || response.getStatus().equals(ClusterHealthStatus.YELLOW)) {
+      return new SearchHealthStatus(HEALTHY_STATUS);
+    } else {
+      return new SearchHealthStatus(UNHEALTHY_STATUS);
+    }
   }
 
   private void buildSearchRBACQuery(

@@ -25,6 +25,11 @@
       "type": "boolean",
       "default": true
     },
+    "supportsIncrementalMetadataExtraction": {
+      "description": "Supports Incremental Metadata Extraction.",
+      "type": "boolean",
+      "default": true
+    },
     "supportsUsageExtraction": {
       "description": "Supports Usage Extraction.",
       "type": "boolean",

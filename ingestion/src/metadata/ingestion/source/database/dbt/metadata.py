@@ -1093,7 +1093,9 @@ class DbtSource(DbtServiceSource):
 
                 # Create the test case result object
                 test_case_result = TestCaseResult(
-                    timestamp=Timestamp(datetime_to_timestamp(dbt_timestamp)),
+                    timestamp=Timestamp(
+                        datetime_to_timestamp(dbt_timestamp, milliseconds=True)
+                    ),
                     testCaseStatus=test_case_status,
                     testResultValue=[
                         TestResultValue(
@@ -1133,7 +1135,7 @@ class DbtSource(DbtServiceSource):
 
         except Exception as err:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
-            logger.error(
+            logger.debug(
                 f"Failed to capture tests results for node: {manifest_node.name} {err}"
             )
 

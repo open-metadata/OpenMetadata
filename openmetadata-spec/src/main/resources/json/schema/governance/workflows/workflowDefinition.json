@@ -9,9 +9,10 @@
   "definitions": {
     "type": {
       "type": "string",
+      "javaType": "org.openmetadata.schema.governance.workflows.TriggerType",
       "enum": [
-        "eventBasedEntityWorkflow",
-        "periodicBatchEntityWorkflow"
+        "eventBasedEntity",
+        "periodicBatchEntity"
       ]
     }
   },
@@ -66,14 +67,26 @@
       "type": "boolean",
       "default": false
     },
-    "type": {
-      "$ref": "#/definitions/type"
+    "deployed": {
+      "description": "When `true` indicates the workflow is deployed.",
+      "type": "boolean"
     },
     "trigger": {
-      "description": "Workflow Trigger."
+      "description": "Workflow Trigger.",
+      "existingJavaType": "org.openmetadata.schema.governance.workflows.elements.WorkflowTriggerInterface",
+      "properties": {
+        "type": {
+          "$ref": "#/definitions/type"
+        }
+      }
     },
     "nodes": {
-      "description": "List of nodes used on the workflow."
+      "description": "List of nodes used on the workflow.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "existingJavaType": "org.openmetadata.schema.governance.workflows.elements.WorkflowNodeDefinitionInterface"
+      }
     },
     "edges": {
       "description": "List of edges that connect the workflow elements and guide its flow.",

@@ -118,13 +118,44 @@ export const formatContent = (
   return modifiedHtmlString;
 };
 
+export const formatValueBasedOnContent = (value: string) =>
+  value === '<p></p>' ? '' : value;
+
 export const isHTMLString = (content: string) => {
+  // Quick check for common HTML tags
+  const commonHtmlTags =
+    /<(p|div|span|a|ul|ol|li|h[1-6]|br|strong|em|code|pre)[>\s]/i;
+
+  // If content doesn't have any HTML-like structure, return false early
+  if (!commonHtmlTags.test(content)) {
+    return false;
+  }
+
   try {
     const parser = new DOMParser();
     const parsedDocument = parser.parseFromString(content, 'text/html');
 
-    // since text can be also counted as child node so we will check if length is greater than 1
-    return parsedDocument.body.childNodes.length > 1;
+    // Check if there are any actual HTML elements (not just text nodes)
+    const hasHtmlElements = Array.from(parsedDocument.body.childNodes).some(
+      (node) => node.nodeType === Node.ELEMENT_NODE
+    );
+
+    // Check if the content has markdown-specific patterns
+    const markdownPatterns = [
+      /^#{1,6}\s/, // Headers
+      /^\s*[-*+]\s/, // Lists
+      /^\s*\d+\.\s/, // Numbered lists
+      /^\s*>{1,}\s/, // Blockquotes
+      /^---|\*\*\*|___/, // Horizontal rules
+      /`{1,3}[^`]+`{1,3}/, // Code blocks
+    ];
+
+    const hasMarkdownSyntax = markdownPatterns.some((pattern) =>
+      pattern.test(content)
+    );
+
+    // If it has markdown syntax but also parsed as HTML, prefer markdown interpretation
+    return hasHtmlElements && !hasMarkdownSyntax;
   } catch (e) {
     return false;
   }
@@ -139,6 +170,12 @@ const _convertMarkdownStringToHtmlString = new Showdown.Converter({
   ellipsis: false,
 });
 
+export const getHtmlStringFromMarkdownString = (content: string) => {
+  return isHTMLString(content)
+    ? content
+    : _convertMarkdownStringToHtmlString.makeHtml(content);
+};
+
 /**
  * Set the content of the editor
  * @param editor The editor instance
@@ -146,7 +183,7 @@ const _convertMarkdownStringToHtmlString = new Showdown.Converter({
  */
 export const setEditorContent = (editor: Editor, newContent: string) => {
   // Convert the markdown string to an HTML string
-  const htmlString = _convertMarkdownStringToHtmlString.makeHtml(newContent);
+  const htmlString = getHtmlStringFromMarkdownString(newContent);
 
   editor.commands.setContent(htmlString);
 
