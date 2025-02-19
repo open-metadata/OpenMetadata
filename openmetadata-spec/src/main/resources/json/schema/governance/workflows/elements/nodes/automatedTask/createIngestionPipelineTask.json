@@ -18,14 +18,17 @@
       "default": "createIngestionPipelineTask"
     },
     "name": {
+      "title": "Name",
       "description": "Name that identifies this Node.",
       "$ref": "../../../../../type/basic.json#/definitions/entityName"
     },
     "displayName": {
+      "title": "Display Name",
       "description": "Display Name that identifies this Node.",
       "type": "string"
     },
     "description": {
+      "title": "Description",
       "description": "Description of the Node.",
       "$ref": "../../../../../type/basic.json#/definitions/markdown"
     },
@@ -33,9 +36,13 @@
       "type": "object",
       "properties": {
         "pipelineType": {
+          "title": "Pipeline Type",
+          "description": "Define which ingestion pipeline type should be created",
           "$ref": "../../../../../entity/services/ingestionPipelines/ingestionPipeline.json#/definitions/pipelineType"
         },
         "deploy": {
+          "title": "Deploy",
+          "description": "Set if the created pipeline should also be deployed",
           "type": "boolean",
           "default": true
         }

@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 /**
- * Creates an Ingestion Pipeline
+ * Runs an App based on its name.
  */
-export interface CreateIngestionPipelineTask {
+export interface RunAppTask {
     branches?: string[];
     config?:   Config;
     /**
@@ -30,7 +30,6 @@ export interface CreateIngestionPipelineTask {
      * Name that identifies this Node.
      */
     name?:    string;
-    output?:  string[];
     subType?: string;
     type?:    string;
     [property: string]: any;
@@ -38,31 +37,17 @@ export interface CreateIngestionPipelineTask {
 
 export interface Config {
     /**
-     * Set if the created pipeline should also be deployed
+     * Set which App should Run
      */
-    deploy: boolean;
+    appName: string;
     /**
-     * Define which ingestion pipeline type should be created
+     * Set the amount of seconds to wait before defining the App has timed out.
      */
-    pipelineType: PipelineType;
-}
-
-/**
- * Define which ingestion pipeline type should be created
- *
- * Type of Pipeline - metadata, usage
- */
-export enum PipelineType {
-    Application = "application",
-    AutoClassification = "autoClassification",
-    DataInsight = "dataInsight",
-    Dbt = "dbt",
-    ElasticSearchReindex = "elasticSearchReindex",
-    Lineage = "lineage",
-    Metadata = "metadata",
-    Profiler = "profiler",
-    TestSuite = "TestSuite",
-    Usage = "usage",
+    timeoutSeconds: number;
+    /**
+     * Set if this step should wait until the App finishes running
+     */
+    waitForCompletion: boolean;
 }
 
 export interface InputNamespaceMap {

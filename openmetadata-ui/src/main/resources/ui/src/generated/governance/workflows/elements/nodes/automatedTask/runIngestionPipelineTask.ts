@@ -36,7 +36,13 @@ export interface RunIngestionPipelineTask {
 }
 
 export interface Config {
-    timeoutSeconds:    number;
+    /**
+     * Set the amount of seconds to wait before defining the Ingestion Pipeline has timed out.
+     */
+    timeoutSeconds: number;
+    /**
+     * Set if this step should wait until the Ingestion Pipeline finishes running
+     */
     waitForCompletion: boolean;
 }
 
