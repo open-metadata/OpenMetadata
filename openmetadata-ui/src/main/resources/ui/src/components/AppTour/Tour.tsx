@@ -67,7 +67,7 @@ const Tour = ({ steps }: { steps: TourSteps[] }) => {
           }
           maskColor="#302E36"
           playTour={isTourOpen}
-          stepWaitTimer={300}
+          stepWaitTimer={900}
           steps={steps}
           onRequestClose={handleRequestClose}
           onRequestSkip={handleModalSubmit}
