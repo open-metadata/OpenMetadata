@@ -37,14 +37,20 @@ import org.openmetadata.schema.entity.events.FailedEventResponse;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.entity.events.SubscriptionStatus;
 import org.openmetadata.schema.type.ChangeEvent;
+import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.apps.bundles.changeEvent.AbstractEventConsumer;
 import org.openmetadata.service.apps.bundles.changeEvent.AlertPublisher;
+import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
 import org.openmetadata.service.events.subscription.AlertUtil;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.EventSubscriptionRepository;
 import org.openmetadata.service.resources.events.subscription.TypedEvent;
+import org.openmetadata.service.util.DIContainer;
 import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
+import org.quartz.Job;
 import org.quartz.JobBuilder;
 import org.quartz.JobDataMap;
 import org.quartz.JobDetail;
@@ -56,6 +62,8 @@ import org.quartz.Trigger;
 import org.quartz.TriggerBuilder;
 import org.quartz.TriggerKey;
 import org.quartz.impl.StdSchedulerFactory;
+import org.quartz.spi.JobFactory;
+import org.quartz.spi.TriggerFiredBundle;
 
 @Slf4j
 public class EventSubscriptionScheduler {
@@ -63,24 +71,53 @@ public class EventSubscriptionScheduler {
   public static final String ALERT_TRIGGER_GROUP = "OMAlertJobGroup";
   private static EventSubscriptionScheduler instance;
   private static volatile boolean initialized = false;
-
   private final Scheduler alertsScheduler = new StdSchedulerFactory().getScheduler();
 
-  private EventSubscriptionScheduler() throws SchedulerException {
+  private record CustomJobFactory(DIContainer di) implements JobFactory {
+
+    @Override
+    public Job newJob(TriggerFiredBundle bundle, Scheduler scheduler) throws SchedulerException {
+      try {
+        JobDetail jobDetail = bundle.getJobDetail();
+        Class<? extends Job> jobClass = jobDetail.getJobClass();
+        Job job = jobClass.getDeclaredConstructor(DIContainer.class).newInstance(di);
+        return job;
+      } catch (Exception e) {
+        throw new SchedulerException("Failed to create job instance", e);
+      }
+    }
+  }
+
+  private EventSubscriptionScheduler(
+      PipelineServiceClientInterface pipelineServiceClient,
+      OpenMetadataConnectionBuilder openMetadataConnectionBuilder)
+      throws SchedulerException {
+    DIContainer di = new DIContainer();
+    di.registerResource(PipelineServiceClientInterface.class, pipelineServiceClient);
+    di.registerResource(OpenMetadataConnectionBuilder.class, openMetadataConnectionBuilder);
+    this.alertsScheduler.setJobFactory(new CustomJobFactory(di));
     this.alertsScheduler.start();
   }
 
   @SneakyThrows
   public static EventSubscriptionScheduler getInstance() {
     if (!initialized) {
-      initialize();
+      throw new RuntimeException("Event Subscription Scheduler is not initialized");
     }
     return instance;
   }
 
-  private static void initialize() throws SchedulerException {
+  public static void initialize(OpenMetadataApplicationConfig openMetadataApplicationConfig) {
     if (!initialized) {
-      instance = new EventSubscriptionScheduler();
+      try {
+        instance =
+            new EventSubscriptionScheduler(
+                PipelineServiceClientFactory.createPipelineServiceClient(
+                    openMetadataApplicationConfig.getPipelineServiceClientConfiguration()),
+                new OpenMetadataConnectionBuilder(openMetadataApplicationConfig));
+      } catch (SchedulerException e) {
+        throw new RuntimeException("Failed to initialize Event Subscription Scheduler", e);
+      }
       initialized = true;
     } else {
       LOG.info("Event Subscription Scheduler is already initialized");
@@ -101,7 +138,10 @@ public class EventSubscriptionScheduler {
                 Optional.ofNullable(eventSubscription.getClassName())
                     .orElse(defaultClass.getCanonicalName()))
             .asSubclass(AbstractEventConsumer.class);
-    AbstractEventConsumer publisher = clazz.getDeclaredConstructor().newInstance();
+    // we can use an empty dependency container here because when initializing
+    // the consumer because it does need to access any state
+    AbstractEventConsumer publisher =
+        clazz.getDeclaredConstructor(DIContainer.class).newInstance(new DIContainer());
     if (reinstall && isSubscriptionRegistered(eventSubscription)) {
       deleteEventSubscriptionPublisher(eventSubscription);
     }
