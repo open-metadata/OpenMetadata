@@ -82,6 +82,27 @@ const ActivityFeedCardNew = ({
     updateFeed(feed.id, post?.id, !isPost, patch);
     setIsEditPost(!isEditPost);
   };
+  const entityName = feed?.entityRef
+    ? getEntityName(feed.entityRef)
+    : entityDisplayName(entityType, entityFQN);
+  const feedHeaderText = getFeedHeaderTextFromCardStyle(
+    feed.fieldOperation,
+    feed.cardStyle,
+    feed.feedInfo?.fieldName,
+    entityType
+  );
+  const timestamp = post?.postTs ? (
+    <Tooltip
+      color="white"
+      overlayClassName="timestamp-tooltip"
+      title={formatDateTime(post.postTs)}>
+      <Typography.Text
+        className="feed-card-header-v2-timestamp"
+        data-testid="timestamp">
+        {getRelativeTime(post.postTs)}
+      </Typography.Text>
+    </Tooltip>
+  ) : null;
 
   return (
     <Card
@@ -120,18 +141,7 @@ const ActivityFeedCardNew = ({
                   })}>
                   {feed.updatedBy}
                 </Typography.Text>
-                {post?.postTs && (
-                  <Tooltip
-                    color="white"
-                    overlayClassName="timestamp-tooltip"
-                    title={formatDateTime(post.postTs)}>
-                    <Typography.Text
-                      className="feed-card-header-v2-timestamp"
-                      data-testid="timestamp">
-                      {getRelativeTime(post.postTs)}
-                    </Typography.Text>
-                  </Tooltip>
-                )}
+                {timestamp}
               </Space>
               {!isPost && (
                 <Space
@@ -140,12 +150,7 @@ const ActivityFeedCardNew = ({
                     'header-container-card align-start': showThread,
                   })}>
                   <Typography.Text className="card-style-feed-header text-sm">
-                    {getFeedHeaderTextFromCardStyle(
-                      feed.fieldOperation,
-                      feed.cardStyle,
-                      feed.feedInfo?.fieldName,
-                      entityType
-                    )}
+                    {feedHeaderText}
                   </Typography.Text>
 
                   <Link
@@ -159,9 +164,7 @@ const ActivityFeedCardNew = ({
                       className={classNames('text-sm', {
                         'max-one-line': !showThread,
                       })}>
-                      {feed?.entityRef
-                        ? getEntityName(feed.entityRef)
-                        : entityDisplayName(entityType, entityFQN)}
+                      {entityName}
                     </span>
                   </Link>
                   {showThread && (
