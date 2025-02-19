@@ -6,6 +6,20 @@
     "recreateDataAssetsIndex": false,
     "backfillConfiguration": {
         "enabled": false
+    },
+    "moduleConfiguration": {
+      "dataAssets": {
+        "enabled": true
+      },
+      "appAnalytics": {
+        "enabled": true
+      },
+      "dataQuality": {
+        "enabled": true
+      },
+      "costAnalysis": {
+        "enabled": true
+      }
     }
   },
   "appSchedule": {

@@ -2366,7 +2366,24 @@ public class ElasticSearchClient implements SearchClient {
     XContentParser parser = createXContentParser(query);
     parser.nextToken();
     deleteRequest.setQuery(RangeQueryBuilder.fromXContent(parser));
-    client.deleteByQuery(deleteRequest, RequestOptions.DEFAULT);
+    deleteEntityFromElasticSearchByQuery(deleteRequest);
+  }
+
+  @SneakyThrows
+  public void deleteByRangeAndTerm(
+      String index, String rangeQueryStr, String termKey, String termValue) {
+    DeleteByQueryRequest deleteRequest = new DeleteByQueryRequest(index);
+    // Hack: Due to an issue on how the RangeQueryBuilder.fromXContent works, we're removing the
+    // first token from the Parser
+    XContentParser rangeParser = createXContentParser(rangeQueryStr);
+    rangeParser.nextToken();
+    RangeQueryBuilder rangeQuery = RangeQueryBuilder.fromXContent(rangeParser);
+
+    TermQueryBuilder termQuery = QueryBuilders.termQuery(termKey, termValue);
+
+    BoolQueryBuilder query = QueryBuilders.boolQuery().must(rangeQuery).must(termQuery);
+    deleteRequest.setQuery(query);
+    deleteEntityFromElasticSearchByQuery(deleteRequest);
   }
 
   @SneakyThrows

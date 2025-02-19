@@ -19,8 +19,12 @@ import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.schema.entity.app.FailureContext;
 import org.openmetadata.schema.entity.app.SuccessContext;
+import org.openmetadata.schema.entity.applications.configuration.internal.AppAnalyticsConfig;
 import org.openmetadata.schema.entity.applications.configuration.internal.BackfillConfiguration;
+import org.openmetadata.schema.entity.applications.configuration.internal.CostAnalysisConfig;
+import org.openmetadata.schema.entity.applications.configuration.internal.DataAssetsConfig;
 import org.openmetadata.schema.entity.applications.configuration.internal.DataInsightsAppConfig;
+import org.openmetadata.schema.entity.applications.configuration.internal.DataQualityConfig;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.system.EventPublisherJob;
 import org.openmetadata.schema.system.IndexingError;
@@ -53,6 +57,11 @@ public class DataInsightsApp extends AbstractNativeApplication {
   @Getter private int batchSize;
 
   public record Backfill(String startDate, String endDate) {}
+
+  private CostAnalysisConfig costAnalysisConfig;
+  private DataAssetsConfig dataAssetsConfig;
+  private DataQualityConfig dataQualityConfig;
+  private AppAnalyticsConfig webAnalyticsConfig;
 
   private Optional<Boolean> recreateDataAssetsIndex;
 
@@ -189,6 +198,12 @@ public class DataInsightsApp extends AbstractNativeApplication {
     DataInsightsAppConfig config =
         JsonUtils.convertValue(app.getAppConfiguration(), DataInsightsAppConfig.class);
 
+    // Get the configuration for the different modules
+    costAnalysisConfig = config.getModuleConfiguration().getCostAnalysis();
+    dataAssetsConfig = parseDataAssetsConfig(config.getModuleConfiguration().getDataAssets());
+    dataQualityConfig = config.getModuleConfiguration().getDataQuality();
+    webAnalyticsConfig = config.getModuleConfiguration().getAppAnalytics();
+
     // Configure batchSize
     batchSize = config.getBatchSize();
 
@@ -208,6 +223,15 @@ public class DataInsightsApp extends AbstractNativeApplication {
     }
 
     jobData = new EventPublisherJob().withStats(new Stats());
+  }
+
+  private DataAssetsConfig parseDataAssetsConfig(DataAssetsConfig config) {
+    if (config.getServiceFilter() != null
+        && (config.getServiceFilter().getServiceName() == null
+            || config.getServiceFilter().getServiceType() == null)) {
+      return config.withServiceFilter(null);
+    }
+    return config;
   }
 
   @Override
@@ -290,7 +314,8 @@ public class DataInsightsApp extends AbstractNativeApplication {
   }
 
   private WorkflowStats processWebAnalytics() {
-    WebAnalyticsWorkflow workflow = new WebAnalyticsWorkflow(timestamp, batchSize, backfill);
+    WebAnalyticsWorkflow workflow =
+        new WebAnalyticsWorkflow(webAnalyticsConfig, timestamp, batchSize, backfill);
     WorkflowStats workflowStats = workflow.getWorkflowStats();
 
     try {
@@ -304,7 +329,8 @@ public class DataInsightsApp extends AbstractNativeApplication {
   }
 
   private WorkflowStats processCostAnalysis() {
-    CostAnalysisWorkflow workflow = new CostAnalysisWorkflow(timestamp, batchSize, backfill);
+    CostAnalysisWorkflow workflow =
+        new CostAnalysisWorkflow(costAnalysisConfig, timestamp, batchSize, backfill);
     WorkflowStats workflowStats = workflow.getWorkflowStats();
 
     try {
@@ -320,6 +346,7 @@ public class DataInsightsApp extends AbstractNativeApplication {
   private WorkflowStats processDataAssets() {
     DataAssetsWorkflow workflow =
         new DataAssetsWorkflow(
+            dataAssetsConfig,
             timestamp,
             batchSize,
             backfill,
@@ -343,7 +370,13 @@ public class DataInsightsApp extends AbstractNativeApplication {
     for (String entityType : dataQualityEntities) {
       DataQualityWorkflow workflow =
           new DataQualityWorkflow(
-              timestamp, batchSize, backfill, entityType, collectionDAO, searchRepository);
+              dataQualityConfig,
+              timestamp,
+              batchSize,
+              backfill,
+              entityType,
+              collectionDAO,
+              searchRepository);
 
       try {
         workflow.process();
