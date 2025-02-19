@@ -28,7 +28,8 @@ RUN dpkg --configure -a \
     libkrb5-dev \
     default-jdk \
     openssl \
-    odbcinst # To ensure compatibility with unixodbc package \
+    # To ensure compatibility with unixodbc package 
+    odbcinst=2.3.11-2+deb12u1 \
     postgresql \
     postgresql-contrib \
     tdsodbc \
