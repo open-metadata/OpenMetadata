@@ -90,11 +90,11 @@ const CommentCard = ({ feed, post, isLastReply }: CommentCardInterface) => {
   return (
     <div
       className={classNames('d-flex justify-start relative reply-card', {
-        'reply-card-border-bottom': isLastReply,
+        'reply-card-border-bottom': !isLastReply,
       })}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}>
-      <div className="profile-picture">
+      <div className="profile-picture m-r-xs">
         <ProfilePicture
           avatarType="outlined"
           key={feed.id}
