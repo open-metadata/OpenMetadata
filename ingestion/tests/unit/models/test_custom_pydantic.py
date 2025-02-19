@@ -1,4 +1,5 @@
 import uuid
+from typing import List
 from unittest import TestCase
 
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
@@ -152,7 +153,7 @@ class NestedModel(BaseModel):
 class RootModel(BaseModel):
     root_secret: CustomSecretStr
     nested: NestedModel
-    items: list[NestedModel]
+    items: List[NestedModel]
 
 
 data = {
