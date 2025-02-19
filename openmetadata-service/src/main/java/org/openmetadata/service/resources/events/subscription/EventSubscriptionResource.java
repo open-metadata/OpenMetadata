@@ -132,6 +132,7 @@ public class EventSubscriptionResource
   @Override
   public void initialize(OpenMetadataApplicationConfig config) {
     try {
+      EventSubscriptionScheduler.initialize(config);
       EventsSubscriptionRegistry.initialize(
           listOrEmpty(EventSubscriptionResource.getNotificationsFilterDescriptors()),
           listOrEmpty(EventSubscriptionResource.getObservabilityFilterDescriptors()));
