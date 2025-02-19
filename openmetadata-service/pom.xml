@@ -11,7 +11,7 @@
   <artifactId>openmetadata-service</artifactId>
 
   <properties>
-    <dropwizard.swagger.version>2.0.12-1</dropwizard.swagger.version>
+    <dropwizard.swagger.version>4.0.5-1</dropwizard.swagger.version>
     <sonar.junit.reportPaths>${project.basedir}/target/surefire-reports</sonar.junit.reportPaths>
     <sonar.coverage.jacoco.xmlReportPaths>${project.basedir}/target/site/jacoco-aggregate/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
     <sonar.tests>${project.basedir}/src/test/java</sonar.tests>
@@ -264,7 +264,7 @@
       <artifactId>jackson-annotations</artifactId>
     </dependency>
     <dependency>
-      <groupId>io.dropwizard.modules</groupId>
+      <groupId>io.dropwizard</groupId>
       <artifactId>dropwizard-health</artifactId>
     </dependency>
     <dependency>
@@ -500,11 +500,11 @@
       </exclusions>
       <scope>test</scope>
     </dependency>
-    <!-- JSON-P: Java API for JSON Processing (JSR 374) -->
     <dependency>
-      <groupId>javax.json</groupId>
-      <artifactId>javax.json-api</artifactId>
+      <groupId>jakarta.json</groupId>
+      <artifactId>jakarta.json-api</artifactId>
     </dependency>
+
 
     <!-- Apache Johnzon: Implementation of the Java API for JSON Processing (JSR 374) -->
     <dependency>
