@@ -1120,7 +1120,7 @@ public class OpenSearchClient implements SearchClient {
     searchSourceBuilder.query(
         QueryBuilders.boolQuery()
             .must(QueryBuilders.termQuery(direction, FullyQualifiedName.buildHash(fqn))));
-    if (CommonUtil.nullOrEmpty(deleted)) {
+    if (!CommonUtil.nullOrEmpty(deleted)) {
       searchSourceBuilder.query(
           QueryBuilders.boolQuery()
               .must(QueryBuilders.termQuery(direction, FullyQualifiedName.buildHash(fqn)))
@@ -1303,6 +1303,7 @@ public class OpenSearchClient implements SearchClient {
     Object[] searchAfter = null;
     long processedRecords = 0;
     long totalRecords = -1;
+    // Process pipeline as edge
     while (totalRecords != processedRecords) {
       os.org.opensearch.action.search.SearchRequest searchRequest =
           new os.org.opensearch.action.search.SearchRequest(
@@ -1315,11 +1316,12 @@ public class OpenSearchClient implements SearchClient {
       searchSourceBuilder.fetchSource(null, SOURCE_FIELDS_TO_EXCLUDE.toArray(String[]::new));
       FieldSortBuilder sortBuilder = SortBuilders.fieldSort("fullyQualifiedName");
       searchSourceBuilder.sort(sortBuilder);
+      searchSourceBuilder.size(1000);
       searchSourceBuilder.query(boolQueryBuilder);
       if (searchAfter != null) {
         searchSourceBuilder.searchAfter(searchAfter);
       }
-      if (CommonUtil.nullOrEmpty(deleted)) {
+      if (!CommonUtil.nullOrEmpty(deleted)) {
         searchSourceBuilder.query(
             QueryBuilders.boolQuery()
                 .must(boolQueryBuilder)
@@ -1335,27 +1337,9 @@ public class OpenSearchClient implements SearchClient {
         HashMap<String, Object> tempMap = new HashMap<>(JsonUtils.getMap(hit.getSourceAsMap()));
         nodes.add(tempMap);
         for (Map<String, Object> lin : lineage) {
-          HashMap<String, String> fromEntity = (HashMap<String, String>) lin.get("fromEntity");
-          HashMap<String, String> toEntity = (HashMap<String, String>) lin.get("toEntity");
           HashMap<String, String> pipeline = (HashMap<String, String>) lin.get("pipeline");
           if (pipeline != null && pipeline.get("fullyQualifiedName").equalsIgnoreCase(fqn)) {
             edges.add(lin);
-            getLineage(
-                fromEntity.get("fqn"),
-                upstreamDepth,
-                edges,
-                nodes,
-                queryFilter,
-                "lineage.toEntity.fqn.keyword",
-                deleted);
-            getLineage(
-                toEntity.get("fqn"),
-                downstreamDepth,
-                edges,
-                nodes,
-                queryFilter,
-                "lineage.fromEntity.fqn.keyword",
-                deleted);
           }
         }
       }
@@ -1365,13 +1349,22 @@ public class OpenSearchClient implements SearchClient {
       if (currentHits > 0) {
         searchAfter = searchResponse.getHits().getHits()[currentHits - 1].getSortValues();
       } else {
-        searchAfter = null;
+        // when current records are 0 break the loop
+        break;
       }
     }
+
+    // Process pipeline as node
     getLineage(
-        fqn, downstreamDepth, edges, nodes, queryFilter, "lineage.fromEntity.fqn.keyword", deleted);
+        fqn,
+        downstreamDepth,
+        edges,
+        nodes,
+        queryFilter,
+        "lineage.fromEntity.fqnHash.keyword",
+        deleted);
     getLineage(
-        fqn, upstreamDepth, edges, nodes, queryFilter, "lineage.toEntity.fqn.keyword", deleted);
+        fqn, upstreamDepth, edges, nodes, queryFilter, "lineage.toEntity.fqnHash.keyword", deleted);
 
     if (edges.isEmpty()) {
       os.org.opensearch.action.search.SearchRequest searchRequestForEntity =
@@ -2234,12 +2227,12 @@ public class OpenSearchClient implements SearchClient {
   }
 
   @Override
-  public void updateByFqnPrefix(String indexName, String oldParentFQN, String newParentFQN) {
+  public void updateByFqnPrefix(
+      String indexName, String oldParentFQN, String newParentFQN, String prefixFieldCondition) {
     // Match all children documents whose fullyQualifiedName starts with the old parent's FQN
-    PrefixQueryBuilder prefixQuery =
-        new PrefixQueryBuilder("fullyQualifiedName", oldParentFQN + ".");
-
-    UpdateByQueryRequest updateByQueryRequest = new UpdateByQueryRequest(indexName);
+    PrefixQueryBuilder prefixQuery = new PrefixQueryBuilder(prefixFieldCondition, oldParentFQN);
+    UpdateByQueryRequest updateByQueryRequest =
+        new UpdateByQueryRequest(Entity.getSearchRepository().getIndexOrAliasName(indexName));
     updateByQueryRequest.setQuery(prefixQuery);
 
     Map<String, Object> params = new HashMap<>();
@@ -2254,6 +2247,14 @@ public class OpenSearchClient implements SearchClient {
             + "    if (ctx._source.parent.containsKey('fullyQualifiedName')) { "
             + "        String parentFQN = ctx._source.parent.fullyQualifiedName; "
             + "        ctx._source.parent.fullyQualifiedName = parentFQN.replace(params.oldParentFQN, params.newParentFQN); "
+            + "    } "
+            + "} "
+            + "if (ctx._source.containsKey('tags')) { "
+            + "    for (int i = 0; i < ctx._source.tags.size(); i++) { "
+            + "        if (ctx._source.tags[i].containsKey('tagFQN')) { "
+            + "            String tagFQN = ctx._source.tags[i].tagFQN; "
+            + "            ctx._source.tags[i].tagFQN = tagFQN.replace(params.oldParentFQN, params.newParentFQN); "
+            + "        } "
             + "    } "
             + "}";
     Script inlineScript =

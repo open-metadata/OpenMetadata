@@ -62,6 +62,10 @@ export interface IngestionPipeline {
      */
     id?: string;
     /**
+     * Change that lead to this version of the entity.
+     */
+    incrementalChangeDescription?: ChangeDescription;
+    /**
      * The ingestion agent responsible for executing the ingestion pipeline.
      */
     ingestionAgent?: EntityReference;
@@ -171,6 +175,8 @@ export interface AirflowConfig {
  * Change that led to this version of the entity.
  *
  * Description of the change.
+ *
+ * Change that lead to this version of the entity.
  */
 export interface ChangeDescription {
     /**
