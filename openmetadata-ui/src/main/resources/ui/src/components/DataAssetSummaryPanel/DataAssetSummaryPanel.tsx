@@ -69,7 +69,7 @@ export const DataAssetSummaryPanel = ({
     return getEntityChildDetails(
       entityType,
       entityType === EntityType.DASHBOARD
-        ? ({ ...dataAsset, charts } as Dashboard)
+        ? ({ ...dataAsset, charts } as any)
         : dataAsset,
       highlights
     );
