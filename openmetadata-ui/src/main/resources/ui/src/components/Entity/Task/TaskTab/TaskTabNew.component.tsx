@@ -1017,7 +1017,12 @@ export const TaskTabNew = ({
 
         <Col span={24}>
           <div className="activity-feed-comments-container d-flex flex-col">
-            <Typography.Text className="activity-feed-comments-title m-b-md">
+            <Typography.Text
+              className={`activity-feed-comments-title ${
+                taskThread?.task?.status === ThreadTaskStatus.Open
+                  ? 'm-b-md'
+                  : ''
+              }`}>
               {t('label.comment')}
             </Typography.Text>
 
@@ -1028,22 +1033,24 @@ export const TaskTabNew = ({
                 onTextChange={setComment}
               />
             ) : (
-              <div className="d-flex gap-2">
-                <div className="profile-picture">
-                  <ProfilePicture
-                    avatarType="outlined"
-                    key={taskThread.id}
-                    name="admin"
-                    size={32}
+              taskThread?.task?.status === ThreadTaskStatus.Open && (
+                <div className="d-flex gap-2">
+                  <div className="profile-picture">
+                    <ProfilePicture
+                      avatarType="outlined"
+                      key={taskThread.id}
+                      name="admin"
+                      size={32}
+                    />
+                  </div>
+
+                  <Input
+                    className="comments-input-field"
+                    placeholder={t('message.input-placeholder')}
+                    onClick={() => setShowFeedEditor(true)}
                   />
                 </div>
-
-                <Input
-                  className="comments-input-field"
-                  placeholder={t('message.input-placeholder')}
-                  onClick={() => setShowFeedEditor(true)}
-                />
-              </div>
+              )
             )}
 
             {taskThread?.posts && taskThread?.posts?.length > 0 && (
