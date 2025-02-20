@@ -24,7 +24,9 @@
         "SearchIndex",
         "Glossary",
         "GlossaryTerm",
-        "Domain"
+        "Domain",
+        "APICollection",
+        "APIEndpoint"
       ]
     }
   },
