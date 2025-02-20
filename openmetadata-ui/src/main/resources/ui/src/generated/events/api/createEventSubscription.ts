@@ -26,6 +26,7 @@ export interface CreateEventSubscription {
      * Consumer Class for the Event Subscription. Will use 'AlertPublisher' if not provided.
      */
     className?: string;
+    config?:    { [key: string]: any };
     /**
      * A short description of the Alert, comprehensible to regular users.
      */
