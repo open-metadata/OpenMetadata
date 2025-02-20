@@ -46,16 +46,18 @@ const RichTextEditorPreviewerV1: FC<PreviewerProp> = ({
     setReadMore(Boolean(isDescriptionExpanded));
   }, [isDescriptionExpanded]);
 
-  // Ensure we correctly check if content overflows
   useEffect(() => {
     const checkOverflow = () => {
       if (contentRef.current) {
         const el = contentRef.current;
-        setIsOverflowing(el.scrollHeight > el.clientHeight + 1);
+        const { scrollHeight, clientHeight } = el;
+        setIsOverflowing(scrollHeight > clientHeight + 1);
       }
     };
 
     checkOverflow();
+    setTimeout(checkOverflow, 100);
+
     window.addEventListener('resize', checkOverflow);
 
     return () => window.removeEventListener('resize', checkOverflow);
@@ -77,7 +79,14 @@ const RichTextEditorPreviewerV1: FC<PreviewerProp> = ({
           'text-clamp-2': !readMore,
         })}
         data-testid="markdown-parser"
-        ref={contentRef}>
+        ref={contentRef}
+        style={{
+          display: '-webkit-box',
+          WebkitBoxOrient: 'vertical',
+          WebkitLineClamp: readMore ? 'unset' : 2,
+          overflow: 'hidden',
+          transition: 'max-height 0.3s ease',
+        }}>
         <BlockEditor autoFocus={false} content={content} editable={false} />
       </div>
       {isOverflowing && showReadMoreBtn && enableSeeMoreVariant && (
