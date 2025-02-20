@@ -15,6 +15,8 @@ import { CommonWidgetType } from '../../constants/CustomizeWidgets.constants';
 import { EntityTabs } from '../../enums/entity.enum';
 import { PageType, Tab } from '../../generated/system/ui/page';
 import { WidgetConfig } from '../../pages/CustomizablePage/CustomizablePage.interface';
+import apiCollectionClassBase from '../APICollection/APICollectionClassBase';
+import apiEndpointClassBase from '../APIEndpoints/APIEndpointClassBase';
 import containerDetailsClassBase from '../ContainerDetailsClassBase';
 import customizeGlossaryPageClassBase from '../CustomizeGlossaryPage/CustomizeGlossaryPage';
 import customizeGlossaryTermPageClassBase from '../CustomizeGlossaryTerm/CustomizeGlossaryTermBaseClass';
@@ -203,6 +205,14 @@ export const getDomainDefaultTabs = () => {
   return domainClassBase.getDomainDetailPageTabsIds();
 };
 
+export const getAPICollectionDefaultTabs = () => {
+  return apiCollectionClassBase.getAPICollectionDetailPageTabsIds();
+};
+
+export const getAPIEndpointDefaultTabs = () => {
+  return apiEndpointClassBase.getEndpointDetailPageTabsIds();
+};
+
 export const getDefaultTabs = (pageType?: string): Tab[] => {
   switch (pageType) {
     case PageType.GlossaryTerm:
@@ -231,6 +241,10 @@ export const getDefaultTabs = (pageType?: string): Tab[] => {
       return getDashboardDefaultTabs();
     case PageType.Domain:
       return getDomainDefaultTabs();
+    case PageType.APICollection:
+      return getAPICollectionDefaultTabs();
+    case PageType.APIEndpoint:
+      return getAPIEndpointDefaultTabs();
     default:
       return [
         {
@@ -272,6 +286,10 @@ export const getDefaultWidgetForTab = (pageType: PageType, tab: EntityTabs) => {
       return domainClassBase.getDefaultLayout(tab);
     case PageType.Dashboard:
       return dashboardDetailsClassBase.getDefaultLayout(tab);
+    case PageType.APICollection:
+      return apiCollectionClassBase.getDefaultLayout(tab);
+    case PageType.APIEndpoint:
+      return apiEndpointClassBase.getDefaultLayout(tab);
     default:
       return [];
   }
@@ -327,6 +345,10 @@ export const getCustomizableWidgetByPage = (
       return searchIndexClassBase.getCommonWidgetList();
     case PageType.Domain:
       return domainClassBase.getCommonWidgetList();
+    case PageType.APICollection:
+      return apiCollectionClassBase.getCommonWidgetList();
+    case PageType.APIEndpoint:
+      return apiEndpointClassBase.getCommonWidgetList();
     case PageType.LandingPage:
     default:
       return [];
@@ -357,6 +379,10 @@ export const getDummyDataByPage = (pageType: PageType) => {
       return dashboardDetailsClassBase.getDummyData();
     case PageType.Domain:
       return domainClassBase.getDummyData();
+    case PageType.APICollection:
+      return apiCollectionClassBase.getDummyData();
+    case PageType.APIEndpoint:
+      return apiEndpointClassBase.getDummyData();
 
     case PageType.LandingPage:
     default:
@@ -397,6 +423,10 @@ export const getWidgetsFromKey = (
       return dashboardDetailsClassBase.getWidgetsFromKey(widgetConfig);
     case PageType.Domain:
       return domainClassBase.getWidgetsFromKey(widgetConfig);
+    case PageType.APICollection:
+      return apiCollectionClassBase.getWidgetsFromKey(widgetConfig);
+    case PageType.APIEndpoint:
+      return apiEndpointClassBase.getWidgetsFromKey(widgetConfig);
     default:
       return null;
   }
