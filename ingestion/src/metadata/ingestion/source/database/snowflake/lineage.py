@@ -87,6 +87,7 @@ class SnowflakeLineageSource(
             # further process of `yield_query_lineage`
             for row in rows:
                 query_dict = dict(row)
+                query_dict.update({k.lower(): v for k, v in query_dict.items()})
                 try:
                     yield TableQuery(
                         dialect=self.dialect.value,

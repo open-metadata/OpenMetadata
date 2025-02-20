@@ -185,6 +185,7 @@ class LineageSource(QueryParserSource, ABC):
                 for row in rows:
                     query_dict = dict(row)
                     try:
+                        query_dict.update({k.lower(): v for k, v in query_dict.items()})
                         yield TableQuery(
                             dialect=self.dialect.value,
                             query=query_dict["query_text"],
