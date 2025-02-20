@@ -112,7 +112,9 @@ const UserProfileTeams = ({
   }, [isDropdownOpen]);
 
   return (
-    <div className="d-flex flex-col w-full h-full p-[20px] user-profile-card">
+    <div
+      className="d-flex flex-col w-full h-full p-[20px] user-profile-card"
+      data-testid="user-profile-teams">
       <div className="user-profile-card-header d-flex items-center justify-start gap-2 w-full">
         <div>
           <IconTeamsGrey height={16} />
@@ -127,6 +129,7 @@ const UserProfileTeams = ({
             content={
               <div
                 className="user-profile-edit-popover-card relative"
+                data-testid="profile-teams-edit-popover"
                 style={{
                   height: `${popoverHeight}px`,
                 }}>
@@ -158,7 +161,7 @@ const UserProfileTeams = ({
                 <div className="flex justify-end gap-2 mt-4">
                   <Button
                     className="profile-edit-save"
-                    data-testid="inline-cancel-btn"
+                    data-testid="teams-edit-close-btn"
                     icon={
                       <ClosePopoverIcon
                         height={24}
@@ -179,7 +182,7 @@ const UserProfileTeams = ({
                   />
                   <Button
                     className="profile-edit-cancel"
-                    data-testid="inline-save-btn"
+                    data-testid="teams-edit-save-btn"
                     icon={
                       <SavePopoverIcon
                         height={24}
