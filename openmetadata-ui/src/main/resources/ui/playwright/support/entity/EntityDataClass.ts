@@ -106,7 +106,6 @@ export class EntityDataClass {
     await this.tierTag1.create(apiContext);
     await this.tierTag2.create(apiContext);
 
-
     if (creationConfig?.all || creationConfig?.table) {
       await this.table1.create(apiContext);
       await this.table2.create(apiContext);
@@ -181,7 +180,6 @@ export class EntityDataClass {
     if (creationConfig?.all || creationConfig?.storageService) {
       await this.storageService.create(apiContext);
     }
-
   }
 
   static async postRequisitesForTests(
@@ -201,7 +199,6 @@ export class EntityDataClass {
     await this.team2.delete(apiContext);
     await this.tierTag1.delete(apiContext);
     await this.tierTag2.delete(apiContext);
-
 
     if (creationConfig?.all || creationConfig?.table) {
       await this.table1.delete(apiContext);
@@ -277,6 +274,5 @@ export class EntityDataClass {
     if (creationConfig?.all || creationConfig?.storageService) {
       await this.storageService.delete(apiContext);
     }
-
   }
 }
