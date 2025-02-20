@@ -223,7 +223,7 @@ const ActivityFeedCardNew = ({
 
               <Input
                 className="comments-input-field"
-                placeholder={t('label.input-placeholder')}
+                placeholder={t('message.input-placeholder')}
                 onClick={() => setShowFeedEditor(true)}
               />
             </div>

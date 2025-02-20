@@ -26,7 +26,7 @@ import { TestCaseResolutionStatusTypes } from '../../../../generated/tests/testC
 import { formatDateTime } from '../../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import { useActivityFeedProvider } from '../../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
-import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
+import { OwnerLabelNew } from '../../../common/OwnerLabel/OwnerLabelNew.component';
 import ProfilePicture from '../../../common/ProfilePicture/ProfilePicture';
 import RichTextEditorPreviewerV1 from '../../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import Severity from '../../../DataQuality/IncidentManager/Severity/Severity.component';
@@ -127,15 +127,8 @@ const TaskTabIncidentManagerHeaderNew = ({ thread }: { thread: Thread }) => {
           </Typography.Text>
         </Col>
         <Col className="flex items-center gap-2" span={12}>
-          <ProfilePicture
-            avatarType="outlined"
-            key={thread.id}
-            name="admin"
-            size={24}
-          />{' '}
-          <Typography.Text className="text-sm incident-manager-header">
-            {thread.createdBy}
-          </Typography.Text>
+          <ProfilePicture name={thread.createdBy ?? ''} width="24" />
+          <Typography.Text>{thread.createdBy}</Typography.Text>
         </Col>
         <Col className="flex items-center gap-2 text-grey-muted" span={12}>
           <AssigneesIcon height={16} />
@@ -144,7 +137,23 @@ const TaskTabIncidentManagerHeaderNew = ({ thread }: { thread: Thread }) => {
           </Typography.Text>
         </Col>
         <Col className="flex items-center gap-2" span={12}>
-          <OwnerLabel className="p-t-05" owners={thread?.task?.assignees} />
+          {thread?.task?.assignees?.length === 1 ? (
+            <div className="d-flex items-center gap-2">
+              <ProfilePicture
+                name={thread?.task?.assignees[0].displayName ?? ''}
+                width="24"
+              />
+              <Typography.Text className="text-md text-grey-body">
+                {thread?.task?.assignees[0].displayName}
+              </Typography.Text>
+            </div>
+          ) : (
+            <OwnerLabelNew
+              avatarSize={24}
+              className="p-t-05"
+              owners={thread?.task?.assignees}
+            />
+          )}
         </Col>
 
         <Col className="flex items-center gap-2 text-grey-muted" span={12}>
