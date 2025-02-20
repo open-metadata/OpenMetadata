@@ -48,13 +48,13 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
-import { ReactComponent as AssigneesIcon } from '../../../../assets/svg/assignees.svg';
-import { ReactComponent as CloseTabIcon } from '../../../../assets/svg/close-tab.svg';
 import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
+import { ReactComponent as AssigneesIcon } from '../../../../assets/svg/ic-assignees.svg';
+import { ReactComponent as CloseTabIcon } from '../../../../assets/svg/ic-close-tab.svg';
 import { ReactComponent as TaskCloseIcon } from '../../../../assets/svg/ic-close-task.svg';
 import { ReactComponent as TaskOpenIcon } from '../../../../assets/svg/ic-open-task.svg';
+import { ReactComponent as UserIcon } from '../../../../assets/svg/ic-user-profile.svg';
 import { ReactComponent as AddColored } from '../../../../assets/svg/plus-colored.svg';
-import { ReactComponent as UserIcon } from '../../../../assets/svg/user-profile.svg';
 
 import { DE_ACTIVE_COLOR } from '../../../../constants/constants';
 import { TaskOperation } from '../../../../constants/Feeds.constants';

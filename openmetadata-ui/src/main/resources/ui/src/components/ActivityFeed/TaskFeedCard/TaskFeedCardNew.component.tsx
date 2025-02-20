@@ -18,10 +18,10 @@ import { isEmpty, isUndefined, lowerCase } from 'lodash';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
-import { ReactComponent as AssigneesIcon } from '../../../assets/svg/assignees.svg';
+import { ReactComponent as AssigneesIcon } from '../../../assets/svg/ic-assignees.svg';
 import { ReactComponent as TaskCloseIcon } from '../../../assets/svg/ic-close-task.svg';
 import { ReactComponent as TaskOpenIcon } from '../../../assets/svg/ic-open-task.svg';
-import { ReactComponent as ReplyIcon } from '../../../assets/svg/reply-2.svg';
+import { ReactComponent as ReplyIcon } from '../../../assets/svg/ic-reply-2.svg';
 import EntityPopOverCard from '../../../components/common/PopOverCard/EntityPopOverCard';
 import UserPopOverCard from '../../../components/common/PopOverCard/UserPopOverCard';
 import {

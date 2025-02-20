@@ -42,8 +42,8 @@ import React, {
 } from 'react';
 import { ReactComponent as AddPlaceHolderIcon } from '../../../../assets/svg/add-placeholder.svg';
 import { ReactComponent as DeleteIcon } from '../../../../assets/svg/ic-delete.svg';
+import { ReactComponent as TaskFilterIcon } from '../../../../assets/svg/ic-task-filter-button.svg';
 import { ReactComponent as IconDropdown } from '../../../../assets/svg/menu.svg';
-import { ReactComponent as TaskFilterIcon } from '../../../../assets/svg/task-filter-button.svg';
 import { ASSET_MENU_KEYS } from '../../../../constants/Assets.constants';
 import { ES_UPDATE_DELAY } from '../../../../constants/constants';
 import { GLOSSARIES_DOCS } from '../../../../constants/docs.constants';

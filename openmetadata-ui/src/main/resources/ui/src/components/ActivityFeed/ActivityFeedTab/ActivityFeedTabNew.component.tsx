@@ -24,12 +24,12 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory, useParams } from 'react-router-dom';
-import { ReactComponent as TaskCloseIcon } from '../../../assets/svg/check-circle.svg';
+import { ReactComponent as TaskCloseIcon } from '../../../assets/svg/ic-check-circle-new.svg';
 import { ReactComponent as TaskCloseIconBlue } from '../../../assets/svg/ic-close-task.svg';
+import { ReactComponent as MentionIcon } from '../../../assets/svg/ic-mention.svg';
 import { ReactComponent as TaskOpenIcon } from '../../../assets/svg/ic-open-task.svg';
-import { ReactComponent as TaskIcon } from '../../../assets/svg/ic-task.svg';
-import { ReactComponent as MentionIcon } from '../../../assets/svg/mention.svg';
-import { ReactComponent as TaskFilterIcon } from '../../../assets/svg/task-filter-button.svg';
+import { ReactComponent as TaskFilterIcon } from '../../../assets/svg/ic-task-filter-button.svg';
+import { ReactComponent as TaskIcon } from '../../../assets/svg/ic-task-new.svg';
 import { ReactComponent as MyTaskIcon } from '../../../assets/svg/task.svg';
 
 import { ICON_DIMENSION_USER_PAGE, ROUTES } from '../../../constants/constants';

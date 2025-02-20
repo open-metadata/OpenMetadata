@@ -14,7 +14,7 @@
 import { Divider, Typography } from 'antd';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as InheritedRolesIcon } from '../../../../../assets/svg/InheritedRoles.svg';
+import { ReactComponent as InheritedRolesIcon } from '../../../../../assets/svg/ic-inherited-roles.svg';
 import { EntityType } from '../../../../../enums/entity.enum';
 import Chip from '../../../../common/Chip/Chip.component';
 import { UserProfileInheritedRolesProps } from './UserProfileInheritedRoles.interface';

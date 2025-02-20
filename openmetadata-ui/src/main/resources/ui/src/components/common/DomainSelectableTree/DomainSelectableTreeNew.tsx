@@ -23,8 +23,8 @@ import React, {
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconDown } from '../../../assets/svg/ic-arrow-down.svg';
 import { ReactComponent as IconRight } from '../../../assets/svg/ic-arrow-right.svg';
-import { ReactComponent as ClosePopoverIcon } from '../../../assets/svg/popover-close.svg';
-import { ReactComponent as SavePopoverIcon } from '../../../assets/svg/popover-save.svg';
+import { ReactComponent as ClosePopoverIcon } from '../../../assets/svg/ic-popover-close.svg';
+import { ReactComponent as SavePopoverIcon } from '../../../assets/svg/ic-popover-save.svg';
 import { EntityType } from '../../../enums/entity.enum';
 import { Domain } from '../../../generated/entity/domains/domain';
 import { EntityReference } from '../../../generated/tests/testCase';

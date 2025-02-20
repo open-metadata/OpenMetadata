@@ -16,7 +16,7 @@ import { compare } from 'fast-json-patch';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { ReactComponent as CloseTabIcon } from '../../../assets/svg/close-tab.svg';
+import { ReactComponent as CloseTabIcon } from '../../../assets/svg/ic-close-tab.svg';
 import { Post, Thread } from '../../../generated/entity/feed/thread';
 import {
   formatDateTime,

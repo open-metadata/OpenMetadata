@@ -22,10 +22,10 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as ClosePopoverIcon } from '../../../../../assets/svg/popover-close.svg';
-import { ReactComponent as SavePopoverIcon } from '../../../../../assets/svg/popover-save.svg';
-import { ReactComponent as RoleIcon } from '../../../../../assets/svg/roles.svg';
-import { ReactComponent as EditIcon } from '../../../../../assets/svg/user-profile-edit.svg';
+import { ReactComponent as ClosePopoverIcon } from '../../../../../assets/svg/ic-popover-close.svg';
+import { ReactComponent as SavePopoverIcon } from '../../../../../assets/svg/ic-popover-save.svg';
+import { ReactComponent as RoleIcon } from '../../../../../assets/svg/ic-roles.svg';
+import { ReactComponent as EditIcon } from '../../../../../assets/svg/ic-user-profile-edit.svg';
 
 import {
   PAGE_SIZE_LARGE,
