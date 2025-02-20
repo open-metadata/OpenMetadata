@@ -58,7 +58,7 @@ export const DomainTypeWidget = () => {
           />
         </Typography.Text>
 
-        {editAllPermission && (domain as Domain).domainType && (
+        {editAllPermission && domain.domainType && (
           <Tooltip
             title={t('label.edit-entity', {
               entity: t('label.domain-type'),
@@ -82,7 +82,7 @@ export const DomainTypeWidget = () => {
 
       {editDomainType && (
         <DomainTypeSelectForm
-          defaultValue={(domain as Domain).domainType}
+          defaultValue={domain.domainType}
           onCancel={() => setEditDomainType(false)}
           onSubmit={handleDomainTypeUpdate}
         />

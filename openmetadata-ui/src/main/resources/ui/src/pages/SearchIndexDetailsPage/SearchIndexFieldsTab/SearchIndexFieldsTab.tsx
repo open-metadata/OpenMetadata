@@ -123,41 +123,39 @@ function SearchIndexFieldsTab() {
   }, [searchText, sortByOrdinalPosition]);
 
   return (
-    <>
-      <Row align="middle" gutter={16} justify="space-between">
-        <Col span={12}>
-          <Searchbar
-            removeMargin
-            placeholder={`${t('message.find-in-table')}`}
-            searchValue={searchText}
-            typingInterval={500}
-            onSearch={handleSearchAction}
-          />
-        </Col>
+    <Row align="middle" gutter={16} justify="space-between">
+      <Col span={12}>
+        <Searchbar
+          removeMargin
+          placeholder={`${t('message.find-in-table')}`}
+          searchValue={searchText}
+          typingInterval={500}
+          onSearch={handleSearchAction}
+        />
+      </Col>
 
-        <Col>
-          <ToggleExpandButton
-            allRowKeys={fieldAllRowKeys}
-            expandedRowKeys={expandedRowKeys}
-            toggleExpandAll={toggleExpandAll}
-          />
-        </Col>
-        <Col span={24}>
-          <SearchIndexFieldsTable
-            entityFqn={entityFqn}
-            expandableConfig={expandableConfig}
-            hasDescriptionEditAccess={hasDescriptionEditAccess}
-            hasGlossaryTermEditAccess={hasGlossaryTermEditAccess}
-            hasTagEditAccess={hasTagEditAccess}
-            isReadOnly={Boolean(deleted)}
-            searchIndexFields={fields}
-            searchText={searchText}
-            searchedFields={searchedFields}
-            onUpdate={handleSearchIndexFieldsUpdate}
-          />
-        </Col>
-      </Row>
-    </>
+      <Col>
+        <ToggleExpandButton
+          allRowKeys={fieldAllRowKeys}
+          expandedRowKeys={expandedRowKeys}
+          toggleExpandAll={toggleExpandAll}
+        />
+      </Col>
+      <Col span={24}>
+        <SearchIndexFieldsTable
+          entityFqn={entityFqn}
+          expandableConfig={expandableConfig}
+          hasDescriptionEditAccess={hasDescriptionEditAccess}
+          hasGlossaryTermEditAccess={hasGlossaryTermEditAccess}
+          hasTagEditAccess={hasTagEditAccess}
+          isReadOnly={Boolean(deleted)}
+          searchIndexFields={fields}
+          searchText={searchText}
+          searchedFields={searchedFields}
+          onUpdate={handleSearchIndexFieldsUpdate}
+        />
+      </Col>
+    </Row>
   );
 }
 

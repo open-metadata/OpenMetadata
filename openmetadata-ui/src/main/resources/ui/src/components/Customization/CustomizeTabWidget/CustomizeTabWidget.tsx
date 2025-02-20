@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Input, Modal, Tooltip } from 'antd';
+import { Button, Input, Modal, Tooltip } from 'antd';
 import { isEmpty, isNil, toString, uniqueId } from 'lodash';
 import React, { useCallback, useMemo, useState } from 'react';
 import RGL, { Layout, WidthProvider } from 'react-grid-layout';
@@ -273,7 +273,8 @@ export const CustomizeTabWidget = () => {
         items={items.map((item) => ({
           key: item.id,
           label: (
-            <span
+            <Button
+              type="text"
               onClick={(event) => {
                 event.stopPropagation();
                 item.editable && onChange(item.id);
@@ -292,7 +293,7 @@ export const CustomizeTabWidget = () => {
                   }}
                 />
               </Tooltip>
-            </span>
+            </Button>
           ),
           closable: true,
         }))}

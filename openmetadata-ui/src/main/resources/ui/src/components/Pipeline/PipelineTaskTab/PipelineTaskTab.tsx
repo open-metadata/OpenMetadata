@@ -10,12 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { groupBy, isUndefined, uniqBy } from 'lodash';
-
-import Icon from '@ant-design/icons/lib/components/Icon';
+import Icon from '@ant-design/icons';
 import { Card, Col, Radio, Row, Table, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
-import { isEmpty } from 'lodash';
+import { groupBy, isEmpty, isUndefined, uniqBy } from 'lodash';
 import { EntityTags, TagFilterOptions } from 'Models';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';

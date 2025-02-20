@@ -28,9 +28,6 @@ jest.mock('../../common/NextPrevious/NextPrevious', () => {
   ));
 });
 
-const mockHandleChildrenPageChange = jest.fn();
-const mockHandlePageSizeChange = jest.fn();
-
 const mockChildrenList = [
   {
     id: '1',
@@ -55,7 +52,13 @@ jest.mock('../../Customization/GenericTab/GenericTab', () => ({
 }));
 
 jest.mock('../../../rest/storageAPI');
-jest.mock('../../../hooks/paging/usePaging');
+jest.mock('../../../hooks/paging/usePaging', () => ({
+  usePaging: jest.fn().mockImplementation(() => ({
+    paging: {
+      total: 2,
+    },
+  })),
+}));
 
 describe('ContainerChildren', () => {
   it('Should call fetch container function on load', () => {

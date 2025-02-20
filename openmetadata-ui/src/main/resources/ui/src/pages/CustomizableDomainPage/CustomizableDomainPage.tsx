@@ -94,7 +94,7 @@ const CustomizableDomainPage = ({
       <div className="m-md">
         <EntityHeader
           breadcrumb={breadcrumbs}
-          entityData={entityDummyData as Domain}
+          entityData={entityDummyData}
           entityType={EntityType.DOMAIN}
           icon={
             <DomainIcon

@@ -17,7 +17,6 @@ import { isUndefined, omitBy, toString } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
-
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';
 import DashboardDetails from '../../components/Dashboard/DashboardDetails/DashboardDetails.component';
@@ -148,23 +147,9 @@ const DashboardDetailsPage = () => {
     }
   };
 
-  const handleDashboardUpdate = async (updatedDashboard: Dashboard) => {
-    try {
-      const response = await saveUpdatedDashboardData(updatedDashboard);
-      setDashboardDetails((previous) => {
-        return {
-          ...previous,
-          ...response,
-        };
-      });
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    }
-  };
-
-  /* const onDashboardUpdate = async (
+  const onDashboardUpdate = async (
     updatedDashboard: Dashboard,
-    key: keyof Dashboard
+    key?: keyof Dashboard
   ) => {
     try {
       const response = await saveUpdatedDashboardData(updatedDashboard);
@@ -172,16 +157,13 @@ const DashboardDetailsPage = () => {
         return {
           ...previous,
           version: response.version,
-          [key]:
-            key === 'tags'
-              ? sortTagsCaseInsensitive(response[key] ?? [])
-              : response[key],
+          ...(key ? { [key]: response[key] } : response),
         };
       });
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
-  }; */
+  };
 
   const followDashboard = async () => {
     try {
@@ -299,7 +281,7 @@ const DashboardDetailsPage = () => {
       unFollowDashboardHandler={unFollowDashboard}
       updateDashboardDetailsState={updateDashboardDetailsState}
       versionHandler={versionHandler}
-      onDashboardUpdate={handleDashboardUpdate}
+      onDashboardUpdate={onDashboardUpdate}
       onUpdateVote={updateVote}
     />
   );

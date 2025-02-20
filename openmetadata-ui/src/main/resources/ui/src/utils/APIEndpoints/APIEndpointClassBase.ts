@@ -46,7 +46,7 @@ export interface APIEndpointDetailPageTabProps {
   };
   apiEndpoint: APIEndpoint;
   fetchAPIEndpointDetails: () => void;
-  getEntityFeedCount: () => void;
+  getEntityFeedCount: () => Promise<void>;
   handleFeedCount: (data: FeedCounts) => void;
   editCustomAttributePermission: boolean;
   viewAllPermission: boolean;

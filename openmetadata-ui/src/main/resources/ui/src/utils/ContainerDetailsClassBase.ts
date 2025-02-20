@@ -28,11 +28,12 @@ import {
   StorageServiceType,
 } from '../generated/entity/data/container';
 import { Tab } from '../generated/system/ui/uiCustomization';
-import { getContainerDetailPageTabs } from './ContainerDetailUtils';
-
 import { FeedCounts } from '../interface/feed.interface';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
-import { getContainerWidgetsFromKey } from './ContainerDetailUtils';
+import {
+  getContainerDetailPageTabs,
+  getContainerWidgetsFromKey,
+} from './ContainerDetailUtils';
 import { getTabLabelFromId } from './CustomizePage/CustomizePageUtils';
 import i18n from './i18next/LocalUtil';
 

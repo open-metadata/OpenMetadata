@@ -65,15 +65,11 @@ const DescriptionV1 = ({
   const { onThreadLinkSelect } = useGenericContext();
 
   const handleRequestDescription = useCallback(() => {
-    history.push(
-      getRequestDescriptionPath(entityType as string, entityFqn as string)
-    );
+    history.push(getRequestDescriptionPath(entityType, entityFqn));
   }, [entityType, entityFqn]);
 
   const handleUpdateDescription = useCallback(() => {
-    history.push(
-      getUpdateDescriptionPath(entityType as string, entityFqn as string)
-    );
+    history.push(getUpdateDescriptionPath(entityType, entityFqn));
   }, [entityType, entityFqn]);
 
   // Callback to handle the edit button from description

@@ -98,7 +98,7 @@ export const ReviewerLabelV2 = <
       <div>
         <div data-testid="glossary-reviewer-name">
           {getOwnerVersionLabel(
-            data as T,
+            data,
             isVersionView ?? false,
             TabSpecificField.REVIEWERS,
             hasEditReviewerAccess

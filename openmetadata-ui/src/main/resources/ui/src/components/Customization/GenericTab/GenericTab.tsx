@@ -69,16 +69,14 @@ export const GenericTab = ({ type }: GenericTabProps) => {
   useGridLayoutDirection();
 
   return (
-    <>
-      <ReactGridLayout
-        className="grid-container"
-        cols={8}
-        isDraggable={false}
-        isResizable={false}
-        margin={[16, 16]}
-        rowHeight={100}>
-        {widgets}
-      </ReactGridLayout>
-    </>
+    <ReactGridLayout
+      className="grid-container"
+      cols={8}
+      isDraggable={false}
+      isResizable={false}
+      margin={[16, 16]}
+      rowHeight={100}>
+      {widgets}
+    </ReactGridLayout>
   );
 };
