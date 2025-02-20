@@ -131,7 +131,7 @@ const ProfileSectionUserDetailsCard = ({
           className="profile-manage-item d-flex item-center"
           onClick={() => {
             setEditProfile(!editProfile);
-            setisPopoverVisible(!isPopoverVisible);
+            setisPopoverVisible(false);
           }}>
           <EditProfileIcon
             className="m-r-xss"
@@ -209,10 +209,11 @@ const ProfileSectionUserDetailsCard = ({
         open={isPopoverVisible}
         overlayClassName="profile-management-popover"
         placement="bottomLeft"
-        trigger="click">
+        trigger="click"
+        onOpenChange={(visible) => setisPopoverVisible(visible)}>
         <MenuDots
           className="cursor-pointer user-details-menu-icon"
-          onClick={() => setisPopoverVisible(!isPopoverVisible)}
+          onClick={() => setisPopoverVisible((prev) => !prev)}
         />
       </Popover>
 
