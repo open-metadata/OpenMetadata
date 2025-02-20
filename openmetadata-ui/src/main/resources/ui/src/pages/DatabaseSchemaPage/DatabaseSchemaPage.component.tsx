@@ -440,7 +440,6 @@ const DatabaseSchemaPage: FunctionComponent = () => {
       viewAllPermission,
       databaseSchemaPermission,
       storedProcedureCount,
-      handleExtensionUpdate,
       getEntityFeedCount,
       fetchDatabaseSchemaDetails,
       handleFeedCount,

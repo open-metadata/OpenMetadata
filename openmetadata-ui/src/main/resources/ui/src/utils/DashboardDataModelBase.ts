@@ -43,9 +43,6 @@ export interface DashboardDataModelDetailPageTabProps {
   dataModelData: DashboardDataModel;
   dataModelPermissions: OperationPermission;
   deleted: boolean;
-  handelExtensionUpdate: (
-    dashboardDataModel: DashboardDataModel
-  ) => Promise<void>;
   getEntityFeedCount: () => void;
   fetchDataModel: () => void;
   labelMap?: Record<EntityTabs, string>;

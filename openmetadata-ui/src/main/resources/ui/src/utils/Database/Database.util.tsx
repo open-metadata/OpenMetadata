@@ -139,7 +139,6 @@ export const getDatabasePageBaseTabs = ({
   feedCount,
   handleFeedCount,
   getEntityFeedCount,
-  settingsUpdateHandler,
   editCustomAttributePermission,
   getDetailsByFQN,
 }: DatabaseDetailPageTabProps): TabProps[] => {
@@ -190,7 +189,6 @@ export const getDatabasePageBaseTabs = ({
         <div className="m-sm">
           <CustomPropertyTable<EntityType.DATABASE>
             entityType={EntityType.DATABASE}
-            handleExtensionUpdate={settingsUpdateHandler}
             hasEditAccess={editCustomAttributePermission}
             hasPermission={viewAllPermission}
             isVersionView={false}

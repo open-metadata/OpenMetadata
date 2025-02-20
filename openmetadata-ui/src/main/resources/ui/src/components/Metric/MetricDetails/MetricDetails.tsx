@@ -384,7 +384,6 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
           <div className="m-sm">
             <CustomPropertyTable<EntityType.METRIC>
               entityType={EntityType.METRIC}
-              handleExtensionUpdate={onExtensionUpdate}
               hasEditAccess={editCustomAttributePermission}
               hasPermission={viewAllPermission}
             />

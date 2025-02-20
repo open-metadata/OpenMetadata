@@ -341,7 +341,6 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
         <div className="m-sm">
           <CustomPropertyTable<EntityType.TOPIC>
             entityType={EntityType.TOPIC}
-            handleExtensionUpdate={onExtensionUpdate}
             hasEditAccess={editCustomAttributePermission}
             hasPermission={viewAllPermission}
           />

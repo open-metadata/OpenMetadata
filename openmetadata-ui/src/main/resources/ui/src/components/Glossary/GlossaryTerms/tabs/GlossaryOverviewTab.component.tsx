@@ -49,13 +49,9 @@ const ReactGridLayout = WidthProvider(RGL);
 
 type Props = {
   editCustomAttributePermission: boolean;
-  onExtensionUpdate: (updatedTable: GlossaryTerm) => Promise<void>;
 };
 
-const GlossaryOverviewTab = ({
-  editCustomAttributePermission,
-  onExtensionUpdate,
-}: Props) => {
+const GlossaryOverviewTab = ({ editCustomAttributePermission }: Props) => {
   const [tagsUpdating, setTagsUpdating] = useState<TagLabel[]>();
   const { currentPersonaDocStore } = useCustomizeStore();
   // Since we are rendering this component for all customized tabs we need tab ID to get layout form store
@@ -189,9 +185,6 @@ const GlossaryOverviewTab = ({
       <CustomPropertyTable
         isRenderedInRightPanel
         entityType={EntityType.GLOSSARY_TERM}
-        handleExtensionUpdate={async (updatedTable) => {
-          await onExtensionUpdate?.(updatedTable);
-        }}
         hasEditAccess={Boolean(editCustomAttributePermission)}
         hasPermission={hasViewAllPermission}
         maxDataCap={5}

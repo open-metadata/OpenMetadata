@@ -745,7 +745,6 @@ export const getTableDetailPageBaseTabs = ({
   deleted,
   tableDetails,
   totalFeedCount,
-  onExtensionUpdate,
   getEntityFeedCount,
   handleFeedCount,
   viewAllPermission,
@@ -950,7 +949,6 @@ export const getTableDetailPageBaseTabs = ({
         <div className="m-sm">
           <CustomPropertyTable<EntityType.TABLE>
             entityType={EntityType.TABLE}
-            handleExtensionUpdate={onExtensionUpdate}
             hasEditAccess={editCustomAttributePermission}
             hasPermission={viewAllPermission}
           />

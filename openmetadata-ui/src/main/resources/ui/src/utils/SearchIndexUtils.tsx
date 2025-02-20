@@ -60,7 +60,6 @@ export const getSearchIndexDetailsTabs = ({
   deleted,
   editLineagePermission,
   editCustomAttributePermission,
-  onExtensionUpdate,
   labelMap,
 }: SearchIndexDetailPageTabProps) => {
   return [
@@ -172,7 +171,6 @@ export const getSearchIndexDetailsTabs = ({
         <div className="m-sm">
           <CustomPropertyTable<EntityType.SEARCH_INDEX>
             entityType={EntityType.SEARCH_INDEX}
-            handleExtensionUpdate={onExtensionUpdate}
             hasEditAccess={editCustomAttributePermission}
             hasPermission={viewAllPermission}
           />

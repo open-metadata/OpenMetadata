@@ -40,7 +40,6 @@ export const getDashboardDataModelDetailPageTabs = ({
   dataModelData,
   dataModelPermissions,
   deleted,
-  handelExtensionUpdate,
   getEntityFeedCount,
   fetchDataModel,
   labelMap,
@@ -145,7 +144,6 @@ export const getDashboardDataModelDetailPageTabs = ({
         <div className="p-md">
           <CustomPropertyTable<EntityType.DASHBOARD_DATA_MODEL>
             entityType={EntityType.DASHBOARD_DATA_MODEL}
-            handleExtensionUpdate={handelExtensionUpdate}
             hasEditAccess={
               dataModelPermissions.EditAll ||
               dataModelPermissions.EditCustomFields

@@ -496,7 +496,6 @@ const TableDetailsPageV1: React.FC = () => {
       deleted,
       tableDetails,
       totalFeedCount: feedCount.totalCount,
-      onExtensionUpdate,
       getEntityFeedCount,
       handleFeedCount,
       viewAllPermission,

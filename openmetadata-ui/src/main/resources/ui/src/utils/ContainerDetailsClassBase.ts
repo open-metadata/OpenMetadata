@@ -42,7 +42,6 @@ export interface ContainerDetailPageTabProps {
   editLineagePermission: boolean;
   editCustomAttributePermission: boolean;
   viewAllPermission: boolean;
-  handleExtensionUpdate: (updatedContainer: Container) => Promise<void>;
   feedCount: { totalCount: number };
   getEntityFeedCount: () => Promise<void>;
   handleFeedCount: (data: FeedCounts) => void;

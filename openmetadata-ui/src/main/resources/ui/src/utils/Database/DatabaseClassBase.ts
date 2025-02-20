@@ -45,10 +45,6 @@ export interface DatabaseDetailPageTabProps {
   feedCount: FeedCounts;
   handleFeedCount: (data: FeedCounts) => void;
   getEntityFeedCount: () => void;
-  settingsUpdateHandler: (
-    data: Database,
-    key?: keyof Database
-  ) => Promise<void>;
   deleted: boolean;
   editCustomAttributePermission: boolean;
   getDetailsByFQN: () => void;

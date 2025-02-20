@@ -58,7 +58,6 @@ const EntityRightPanel = <T extends ExtentionEntitiesKeys>({
   viewAllPermission,
   customProperties,
   editCustomAttributePermission,
-  onExtensionUpdate,
 }: EntityRightPanelProps<T>) => {
   const KnowledgeArticles =
     entityRightPanelClassBase.getKnowLedgeArticlesWidget();
@@ -111,7 +110,6 @@ const EntityRightPanel = <T extends ExtentionEntitiesKeys>({
           <CustomPropertyTable<T>
             isRenderedInRightPanel
             entityType={entityType as T}
-            handleExtensionUpdate={onExtensionUpdate}
             hasEditAccess={Boolean(editCustomAttributePermission)}
             hasPermission={Boolean(viewAllPermission)}
             maxDataCap={5}

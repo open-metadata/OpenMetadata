@@ -37,7 +37,6 @@ export const getDataBaseSchemaPageBaseTabs = ({
   editCustomAttributePermission,
   viewAllPermission,
   storedProcedureCount,
-  handleExtensionUpdate,
   getEntityFeedCount,
   fetchDatabaseSchemaDetails,
   handleFeedCount,
@@ -104,7 +103,6 @@ export const getDataBaseSchemaPageBaseTabs = ({
           <CustomPropertyTable<EntityType.DATABASE_SCHEMA>
             className=""
             entityType={EntityType.DATABASE_SCHEMA}
-            handleExtensionUpdate={handleExtensionUpdate}
             hasEditAccess={editCustomAttributePermission}
             hasPermission={viewAllPermission}
             isVersionView={false}

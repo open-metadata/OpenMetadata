@@ -212,7 +212,6 @@ const DocumentationTab = ({
                 <CustomPropertyTable<EntityType.DATA_PRODUCT>
                   isRenderedInRightPanel
                   entityType={EntityType.DATA_PRODUCT}
-                  handleExtensionUpdate={onUpdate}
                   hasEditAccess={Boolean(editCustomAttributePermission)}
                   hasPermission={Boolean(viewAllPermission)}
                   maxDataCap={5}

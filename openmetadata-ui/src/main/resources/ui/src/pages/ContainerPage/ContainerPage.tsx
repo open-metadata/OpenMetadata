@@ -447,7 +447,6 @@ const ContainerPage = () => {
       containerData,
       fetchContainerDetail,
       labelMap: tabLabelMap,
-      handleExtensionUpdate,
     });
 
     return getDetailsTabWithNewLabel(

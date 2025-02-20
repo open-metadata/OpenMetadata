@@ -194,7 +194,6 @@ const GlossaryTermsV1 = ({
               !isVersionView &&
               (permissions.EditAll || permissions.EditCustomFields)
             }
-            onExtensionUpdate={onExtensionUpdate}
           />
         ),
       },
@@ -288,7 +287,6 @@ const GlossaryTermsV1 = ({
                 <div className="m-sm">
                   <CustomPropertyTable<EntityType.GLOSSARY_TERM>
                     entityType={EntityType.GLOSSARY_TERM}
-                    handleExtensionUpdate={onExtensionUpdate}
                     hasEditAccess={
                       !isVersionView &&
                       (permissions.EditAll || permissions.EditCustomFields)

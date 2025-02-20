@@ -55,7 +55,6 @@ import { ExtensionTable } from './ExtensionTable';
 import { PropertyValue } from './PropertyValue';
 
 export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
-  handleExtensionUpdate,
   entityType,
   hasEditAccess,
   className,
@@ -66,7 +65,8 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
 }: CustomPropertyProps<T>) => {
   const { t } = useTranslation();
   const { getEntityPermissionByFqn } = usePermissionProvider();
-  const { data: entityDetails } = useGenericContext<ExtentionEntities[T]>();
+  const { data: entityDetails, onUpdate } =
+    useGenericContext<ExtentionEntities[T]>();
 
   const [entityTypeDetail, setEntityTypeDetail] = useState<Type>({} as Type);
   const [entityTypeDetailLoading, setEntityTypeDetailLoading] =
@@ -109,15 +109,15 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
 
   const onExtensionUpdate = useCallback(
     async (updatedExtension: ExtentionEntities[T]) => {
-      if (!isUndefined(handleExtensionUpdate) && entityDetails) {
+      if (!isUndefined(onUpdate) && entityDetails) {
         const updatedData = {
           ...entityDetails,
           extension: updatedExtension,
         };
-        await handleExtensionUpdate(updatedData);
+        await onUpdate(updatedData);
       }
     },
-    [entityDetails, handleExtensionUpdate]
+    [entityDetails, onUpdate]
   );
 
   const extensionObject: {

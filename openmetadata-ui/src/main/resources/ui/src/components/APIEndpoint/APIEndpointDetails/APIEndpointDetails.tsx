@@ -378,7 +378,6 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
           <div className="m-sm">
             <CustomPropertyTable<EntityType.API_ENDPOINT>
               entityType={EntityType.API_ENDPOINT}
-              handleExtensionUpdate={onExtensionUpdate}
               hasEditAccess={editCustomAttributePermission}
               hasPermission={viewAllPermission}
             />

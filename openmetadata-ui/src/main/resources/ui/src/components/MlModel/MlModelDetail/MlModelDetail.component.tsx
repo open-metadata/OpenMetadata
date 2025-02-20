@@ -486,7 +486,6 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
           <div className="m-sm">
             <CustomPropertyTable<EntityType.MLMODEL>
               entityType={EntityType.MLMODEL}
-              handleExtensionUpdate={onExtensionUpdate}
               hasEditAccess={editCustomAttributePermission}
               hasPermission={viewAllPermission}
             />

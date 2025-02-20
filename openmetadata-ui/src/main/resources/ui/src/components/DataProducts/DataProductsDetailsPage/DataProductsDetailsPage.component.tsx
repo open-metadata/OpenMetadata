@@ -480,7 +480,6 @@ const DataProductsDetailsPage = ({
           <div className="p-md">
             <CustomPropertyTable<EntityType.DATA_PRODUCT>
               entityType={EntityType.DATA_PRODUCT}
-              handleExtensionUpdate={handelExtensionUpdate}
               hasEditAccess={
                 (dataProductPermission.EditAll ||
                   dataProductPermission.EditCustomFields) &&

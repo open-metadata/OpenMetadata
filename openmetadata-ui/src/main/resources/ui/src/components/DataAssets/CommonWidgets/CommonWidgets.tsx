@@ -197,10 +197,6 @@ export const CommonWidgets = ({
     widgetConfig.h,
   ]);
 
-  const handleExtensionUpdate = async (updatedTable: Table) => {
-    await onUpdate(updatedTable as unknown as GenericEntity);
-  };
-
   const widget = useMemo(() => {
     if (widgetConfig.i.startsWith(DetailPageWidgetKeys.DESCRIPTION)) {
       return descriptionWidget;
@@ -223,7 +219,6 @@ export const CommonWidgets = ({
         <CustomPropertyTable<EntityType.TABLE>
           isRenderedInRightPanel
           entityType={entityType as EntityType.TABLE}
-          handleExtensionUpdate={handleExtensionUpdate}
           hasEditAccess={Boolean(editCustomAttributePermission)}
           hasPermission={Boolean(viewAllPermission)}
           maxDataCap={5}

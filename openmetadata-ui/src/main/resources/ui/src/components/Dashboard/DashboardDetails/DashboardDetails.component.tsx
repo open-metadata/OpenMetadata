@@ -237,7 +237,6 @@ const DashboardDetails = ({
       dashboardDetails,
       deleted: deleted ?? false,
       handleFeedCount,
-      onExtensionUpdate,
       feedCount,
       activeTab,
       getEntityFeedCount,

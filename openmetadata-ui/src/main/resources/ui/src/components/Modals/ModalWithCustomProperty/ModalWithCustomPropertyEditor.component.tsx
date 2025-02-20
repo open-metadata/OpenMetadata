@@ -74,12 +74,6 @@ export const ModalWithCustomPropertyEditor = ({
     setIsSaveLoading(false);
   };
 
-  const onExtensionUpdate = async (
-    data: ExtentionEntities[keyof ExtentionEntities]
-  ) => {
-    setExtensionObject(data.extension);
-  };
-
   useEffect(() => {
     fetchTypeDetail();
   }, []);
@@ -122,7 +116,6 @@ export const ModalWithCustomPropertyEditor = ({
           hasPermission
           isRenderedInRightPanel
           entityType={entityType as keyof ExtentionEntities}
-          handleExtensionUpdate={onExtensionUpdate}
         />
       )}
     </Modal>

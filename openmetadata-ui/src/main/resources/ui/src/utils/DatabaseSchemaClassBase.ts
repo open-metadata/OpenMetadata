@@ -45,7 +45,6 @@ export interface DatabaseSchemaPageTabProps {
   viewAllPermission: boolean;
   databaseSchemaPermission: OperationPermission;
   storedProcedureCount: number;
-  handleExtensionUpdate: (schema: DatabaseSchema) => Promise<void>;
   getEntityFeedCount: () => void;
   fetchDatabaseSchemaDetails: () => Promise<void>;
   handleFeedCount: (data: FeedCounts) => void;

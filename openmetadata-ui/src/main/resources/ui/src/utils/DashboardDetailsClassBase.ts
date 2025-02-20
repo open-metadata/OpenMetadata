@@ -41,7 +41,6 @@ export interface DashboardDetailsTabsProps {
   editCustomAttributePermission: boolean;
   viewAllPermission: boolean;
   handleFeedCount: (data: FeedCounts) => void;
-  onExtensionUpdate: (data: Dashboard) => Promise<void>;
   feedCount: FeedCounts;
   activeTab: EntityTabs;
   deleted: boolean;

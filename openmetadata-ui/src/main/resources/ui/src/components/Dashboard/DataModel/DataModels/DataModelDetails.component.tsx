@@ -162,19 +162,6 @@ const DataModelDetails = ({
     };
   }, [dataModelPermissions, deleted]);
 
-  const handelExtensionUpdate = useCallback(
-    async (updatedDataModel: DashboardDataModel) => {
-      await onUpdateDataModel(
-        {
-          ...dataModelData,
-          extension: updatedDataModel.extension,
-        },
-        'extension'
-      );
-    },
-    [onUpdateDataModel, dataModelData]
-  );
-
   const tabs = useMemo(() => {
     const tabLabelMap = getTabLabelMapFromTabs(customizedPage?.tabs);
     const allTabs = getDashboardDataModelDetailPageTabs({
@@ -185,7 +172,6 @@ const DataModelDetails = ({
       dataModelData,
       dataModelPermissions,
       deleted: deleted ?? false,
-      handelExtensionUpdate,
       getEntityFeedCount,
       fetchDataModel,
       labelMap: tabLabelMap,

@@ -398,7 +398,6 @@ const DatabaseDetails: FunctionComponent = () => {
       feedCount,
       handleFeedCount,
       getEntityFeedCount,
-      settingsUpdateHandler,
       deleted: database.deleted ?? false,
       editCustomAttributePermission,
       getDetailsByFQN,

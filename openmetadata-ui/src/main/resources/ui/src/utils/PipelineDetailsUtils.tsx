@@ -57,7 +57,6 @@ export const getPipelineDetailPageTabs = ({
   feedCount,
   getEntityFeedCount,
   handleFeedCount,
-  onExtensionUpdate,
   pipelineDetails,
   pipelineFQN,
   viewAllPermission,
@@ -135,7 +134,6 @@ export const getPipelineDetailPageTabs = ({
         <div className="m-sm">
           <CustomPropertyTable<EntityType.PIPELINE>
             entityType={EntityType.PIPELINE}
-            handleExtensionUpdate={onExtensionUpdate}
             hasEditAccess={editCustomAttributePermission}
             hasPermission={viewAllPermission}
           />
