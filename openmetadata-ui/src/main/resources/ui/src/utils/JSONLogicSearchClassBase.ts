@@ -240,6 +240,19 @@ class JSONLogicSearchClassBase {
     tierOptions?: Promise<AsyncFetchListValues>;
   }) => {
     return {
+      [EntityReferenceFields.SERVICE]: {
+        label: t('label.service'),
+        type: 'select',
+        mainWidgetProps: this.mainWidgetProps,
+        operators: this.defaultSelectOperators,
+        fieldSettings: {
+          asyncFetch: advancedSearchClassBase.autocomplete({
+            searchIndex: SearchIndex.ALL,
+            entityField: EntityFields.SERVICE,
+          }),
+          useAsyncSearch: true,
+        },
+      },
       [EntityReferenceFields.OWNERS]: {
         label: t('label.owner-plural'),
         type: 'select',

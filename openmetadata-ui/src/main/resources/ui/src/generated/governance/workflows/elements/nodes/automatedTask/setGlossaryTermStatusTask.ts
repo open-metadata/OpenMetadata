@@ -14,7 +14,7 @@
  * Sets the GlossaryTerm Status to the configured value.
  */
 export interface SetGlossaryTermStatusTask {
-    config?: Config;
+    config?: NodeConfiguration;
     /**
      * Description of the Node.
      */
@@ -34,10 +34,16 @@ export interface SetGlossaryTermStatusTask {
     [property: string]: any;
 }
 
-export interface Config {
-    glossaryTermStatus?: Status;
+export interface NodeConfiguration {
+    /**
+     * Choose which Status to apply to the Glossary Term
+     */
+    glossaryTermStatus: Status;
 }
 
+/**
+ * Choose which Status to apply to the Glossary Term
+ */
 export enum Status {
     Approved = "Approved",
     Deprecated = "Deprecated",
