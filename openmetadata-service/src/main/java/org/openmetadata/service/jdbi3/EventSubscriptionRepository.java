@@ -115,7 +115,7 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
   }
 
   public EventSubscriptionOffset syncEventSubscriptionOffset(String eventSubscriptionName) {
-    EventSubscription eventSubscription = getByName(null, eventSubscriptionName, getFields("id"));
+    EventSubscription eventSubscription = getByName(null, eventSubscriptionName, getFields("*"));
     long latestOffset = daoCollection.changeEventDAO().getLatestOffset();
     long currentTime = System.currentTimeMillis();
     // Upsert Offset
@@ -133,6 +133,7 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
             "eventSubscriptionOffset",
             JsonUtils.pojoToJson(eventSubscriptionOffset));
 
+    EventSubscriptionScheduler.getInstance().updateEventSubscription(eventSubscription);
     return eventSubscriptionOffset;
   }
 
@@ -174,6 +175,7 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
             objectMatch,
             false);
         recordChange("trigger", original.getTrigger(), updated.getTrigger(), true);
+        recordChange("config", original.getConfig(), updated.getConfig(), true);
       }
     }
   }

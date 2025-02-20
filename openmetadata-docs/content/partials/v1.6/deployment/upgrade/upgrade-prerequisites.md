@@ -109,11 +109,24 @@ After the migration is finished, you can revert this changes.
 
 We are upgrading the Ingestion Airflow version to 2.10.5.
 
-The upgrade from the existing 2.9.1 -> 2.10.5 should happen transparently. The only thing to note is that there's
+The upgrade from the existing 2.9.1 (or 2.9.3) -> 2.10.5 should happen transparently. The only thing to note is that there's
 an ongoing issue with Airflow migrations and the `pymysql` driver, which we used before. If you are specifying
 on your end the `DB_SCHEME` environment variable in the ingestion image, make sure it now is set to `mysql+mysqldb`.
 
 We have updated the default values accordingly.
+
+## 1.6.4
+
+### Airflow 2.9.3
+
+We are upgrading the Ingestion Airflow version to 2.9.3.
+
+The upgrade from the existing 2.9.1 -> 2.9.3 should happen transparently. The only thing to note is that there's
+an ongoing issue with Airflow migrations and the `pymysql` driver, which we used before. If you are specifying
+on your end the `DB_SCHEME` environment variable in the ingestion image, make sure it now is set to `mysql+mysqldb`.
+
+We have updated the default values accordingly.
+
 
 ## 1.6.2
 

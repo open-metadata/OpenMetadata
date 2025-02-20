@@ -102,7 +102,7 @@ COMMONS = {
 DATA_DIFF = {
     driver: f"collate-data-diff[{driver}]"
     # data-diff uses different drivers out-of-the-box than OpenMetadata
-    # the exrtas are described here:
+    # the extras are described here:
     # https://github.com/open-metadata/collate-data-diff/blob/main/pyproject.toml#L68
     # install all data diffs with "pip install collate-data-diff[all-dbs]"
     for driver in [
