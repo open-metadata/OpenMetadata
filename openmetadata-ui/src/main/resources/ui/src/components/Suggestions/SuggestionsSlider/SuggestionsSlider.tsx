@@ -42,6 +42,7 @@ const SuggestionsSlider = () => {
       {suggestions.length !== 0 && suggestions.length !== suggestionLimit && (
         <Button
           className="suggestion-pending-btn"
+          data-testid="more-suggestion-button"
           loading={loading}
           onClick={fetchSuggestions}>
           {t('label.suggestion-plural-pending', {
