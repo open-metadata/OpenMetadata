@@ -189,7 +189,9 @@ const UserProfileRoles = ({
   }, [isDropdownOpen]);
 
   return (
-    <div className="d-flex flex-col m-b-0 w-full h-full p-[20px] user-profile-card">
+    <div
+      className="d-flex flex-col m-b-0 w-full h-full p-[20px] user-profile-card"
+      data-testid="user-profile-roles">
       <div className="user-profile-card-header d-flex items-center justify-start gap-2 w-full">
         <div className="d-flex flex-center user-page-icon">
           <RoleIcon height={16} />
@@ -202,6 +204,7 @@ const UserProfileRoles = ({
             content={
               <div
                 className="user-profile-edit-popover-card relative"
+                data-testid="user-profile-edit-popover"
                 style={{
                   height: `${popoverHeight}px`,
                 }}>
@@ -224,6 +227,7 @@ const UserProfileRoles = ({
                     showSearch
                     aria-label="Roles"
                     className="w-full"
+                    data-testid="persona-edit-roles"
                     dropdownMatchSelectWidth={false}
                     filterOption={handleSearchFilterOption}
                     loading={isLoading}
@@ -251,7 +255,7 @@ const UserProfileRoles = ({
                 <div className="flex justify-end gap-2 mt-4">
                   <Button
                     className="profile-edit-save"
-                    data-testid="inline-cancel-btn"
+                    data-testid="user-profile-edit-roles-cancel-button"
                     icon={
                       <ClosePopoverIcon
                         height={24}
@@ -272,7 +276,7 @@ const UserProfileRoles = ({
                   />
                   <Button
                     className="profile-edit-cancel"
-                    data-testid="inline-save-btn"
+                    data-testid="user-profile-edit-roles-save-button"
                     icon={
                       <SavePopoverIcon
                         height={24}
