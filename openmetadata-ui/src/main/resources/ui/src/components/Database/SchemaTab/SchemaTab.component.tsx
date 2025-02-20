@@ -11,12 +11,10 @@
  *  limitations under the License.
  */
 
-import { Button } from 'antd';
 import { t } from 'i18next';
 import { lowerCase } from 'lodash';
 import React, { Fragment, FunctionComponent, useState } from 'react';
 import Searchbar from '../../common/SearchBarComponent/SearchBar.component';
-import { useSuggestionsContext } from '../../Suggestions/SuggestionsProvider/SuggestionsProvider';
 import SchemaTable from '../SchemaTable/SchemaTable.component';
 import { Props } from './SchemaTab.interfaces';
 
@@ -31,8 +29,6 @@ const SchemaTab: FunctionComponent<Props> = ({
   testCaseSummary,
 }: Props) => {
   const [searchText, setSearchText] = useState('');
-  const { suggestions, suggestionLimit, loading, fetchSuggestions } =
-    useSuggestionsContext();
 
   const handleSearchAction = (searchValue: string) => {
     setSearchText(searchValue);
@@ -50,16 +46,6 @@ const SchemaTab: FunctionComponent<Props> = ({
             onSearch={handleSearchAction}
           />
         </div>
-        {suggestions.length !== 0 && suggestions.length !== suggestionLimit && (
-          <Button
-            className="suggestion-pending-btn"
-            loading={loading}
-            onClick={fetchSuggestions}>
-            {t('label.suggestion-plural-pending', {
-              count: suggestionLimit - 10, // 10 is the default limit, and only show count of pending suggestions
-            })}
-          </Button>
-        )}
       </div>
       <SchemaTable
         hasDescriptionEditAccess={hasDescriptionEditAccess}

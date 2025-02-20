@@ -67,7 +67,7 @@ describe('SuggestionsProvider', () => {
 
     expect(getSuggestionsList).toHaveBeenCalledWith({
       entityFQN: 'mockFQN',
-      limit: 500,
+      limit: 10,
     });
   });
 
