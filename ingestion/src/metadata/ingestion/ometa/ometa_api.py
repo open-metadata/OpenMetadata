@@ -17,7 +17,6 @@ working with OpenMetadata entities.
 import traceback
 from typing import Dict, Generic, Iterable, List, Optional, Type, TypeVar, Union
 
-from pydantic import BaseModel
 
 from metadata.generated.schema.api.createBot import CreateBot
 from metadata.generated.schema.api.services.ingestionPipelines.createIngestionPipeline import (
@@ -30,6 +29,7 @@ from metadata.generated.schema.type import basic
 from metadata.generated.schema.type.basic import FullyQualifiedEntityName
 from metadata.generated.schema.type.entityHistory import EntityVersionHistory
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.ingestion.models.custom_pydantic import BaseModel
 from metadata.ingestion.ometa.auth_provider import OpenMetadataAuthenticationProvider
 from metadata.ingestion.ometa.client import REST, APIError, ClientConfig
 from metadata.ingestion.ometa.mixins.custom_property_mixin import (
@@ -268,7 +268,7 @@ class OpenMetadata(
             )
 
         fn = getattr(self.client, method)
-        resp = fn(self.get_suffix(entity), data=data.model_dump_json())
+        resp = fn(self.get_suffix(entity), data=data.model_dump_json(mask_secrets=False))
         if not resp:
             raise EmptyPayloadException(
                 f"Got an empty response when trying to PUT to {self.get_suffix(entity)}, {data.model_dump_json()}"
