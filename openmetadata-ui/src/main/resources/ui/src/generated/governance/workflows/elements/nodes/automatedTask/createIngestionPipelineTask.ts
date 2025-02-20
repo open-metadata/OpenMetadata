@@ -37,11 +37,19 @@ export interface CreateIngestionPipelineTask {
 }
 
 export interface Config {
-    deploy:       boolean;
+    /**
+     * Set if the created pipeline should also be deployed
+     */
+    deploy: boolean;
+    /**
+     * Define which ingestion pipeline type should be created
+     */
     pipelineType: PipelineType;
 }
 
 /**
+ * Define which ingestion pipeline type should be created
+ *
  * Type of Pipeline - metadata, usage
  */
 export enum PipelineType {
