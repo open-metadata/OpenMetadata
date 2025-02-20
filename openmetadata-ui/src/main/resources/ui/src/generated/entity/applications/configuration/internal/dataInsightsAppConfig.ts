@@ -105,7 +105,12 @@ export interface DataAssetsConfig {
     /**
      * List of Entities to Reindex
      */
-    entities?:      string[];
+    entities?: string[];
+    /**
+     * Defines the number of days the Data Assets Insights information will be kept. After it
+     * they will be deleted.
+     */
+    retention?:     number;
     serviceFilter?: ServiceFilter;
 }
 

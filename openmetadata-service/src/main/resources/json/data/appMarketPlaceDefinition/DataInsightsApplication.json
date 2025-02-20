@@ -26,7 +26,8 @@
         "enabled": true,
         "entities": [
           "all"
-        ]
+        ],
+        "retention": 7
       },
       "appAnalytics": {
         "enabled": true

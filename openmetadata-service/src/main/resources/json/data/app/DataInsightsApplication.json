@@ -9,7 +9,11 @@
     },
     "moduleConfiguration": {
       "dataAssets": {
-        "enabled": true
+        "enabled": true,
+        "entities": [
+          "all"
+        ],
+        "retention": 7
       },
       "appAnalytics": {
         "enabled": true

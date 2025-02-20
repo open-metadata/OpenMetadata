@@ -152,7 +152,7 @@ public class DataInsightsApp extends AbstractNativeApplication {
     deleteIndexInternal(Entity.TEST_CASE_RESOLUTION_STATUS);
   }
 
-  private void createDataAssetsDataStream() {
+  private void createOrUpdateDataAssetsDataStream() {
     DataInsightsSearchInterface searchInterface = getSearchInterface();
 
     ElasticSearchConfiguration config = searchRepository.getElasticSearchConfiguration();
@@ -167,7 +167,13 @@ public class DataInsightsApp extends AbstractNativeApplication {
         String dataStreamName = getDataStreamName(dataAssetType);
         if (!searchInterface.dataAssetDataStreamExists(dataStreamName)) {
           searchInterface.createDataAssetsDataStream(
-              dataStreamName, dataAssetType, dataAssetIndex, language);
+              dataStreamName,
+              dataAssetType,
+              dataAssetIndex,
+              language,
+              dataAssetsConfig.getRetention());
+        } else {
+          searchInterface.updateLifecyclePolicy(dataAssetsConfig.getRetention());
         }
       }
     } catch (IOException ex) {
@@ -193,8 +199,6 @@ public class DataInsightsApp extends AbstractNativeApplication {
   @Override
   public void init(App app) {
     super.init(app);
-    createDataAssetsDataStream();
-    createDataQualityDataIndex();
     DataInsightsAppConfig config =
         JsonUtils.convertValue(app.getAppConfiguration(), DataInsightsAppConfig.class);
 
@@ -221,6 +225,9 @@ public class DataInsightsApp extends AbstractNativeApplication {
           Optional.of(
               new Backfill(backfillConfig.get().getStartDate(), backfillConfig.get().getEndDate()));
     }
+
+    createOrUpdateDataAssetsDataStream();
+    createDataQualityDataIndex();
 
     jobData = new EventPublisherJob().withStats(new Stats());
   }
@@ -252,7 +259,7 @@ public class DataInsightsApp extends AbstractNativeApplication {
 
       if (recreateDataAssetsIndex.isPresent() && recreateDataAssetsIndex.get().equals(true)) {
         deleteDataAssetsDataStream();
-        createDataAssetsDataStream();
+        createOrUpdateDataAssetsDataStream();
         deleteDataQualityDataIndex();
         createDataQualityDataIndex();
       }

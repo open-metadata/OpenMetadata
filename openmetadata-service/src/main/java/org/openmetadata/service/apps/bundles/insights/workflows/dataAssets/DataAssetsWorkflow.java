@@ -190,6 +190,7 @@ public class DataAssetsWorkflow {
     contextData.put(END_TIMESTAMP_KEY, endTimestamp);
 
     for (PaginatedEntitiesSource source : sources) {
+      deleteBasedOnDataRetentionPolicy(getDataStreamName(source.getEntityType()));
       deleteDataBeforeInserting(getDataStreamName(source.getEntityType()));
       contextData.put(DATA_STREAM_KEY, getDataStreamName(source.getEntityType()));
       contextData.put(ENTITY_TYPE_KEY, source.getEntityType());
@@ -237,6 +238,18 @@ public class DataAssetsWorkflow {
                 .withFailedEntities(resultList.getErrors()));
       }
       paginatedSource.updateStats(resultList.getData().size(), 0);
+    }
+  }
+
+  private void deleteBasedOnDataRetentionPolicy(String dataStreamName) throws SearchIndexException {
+    long retentionLimitTimestamp =
+        TimestampUtils.subtractDays(System.currentTimeMillis(), dataAssetsConfig.getRetention());
+    String rangeTermQuery =
+        String.format("{ \"@timestamp\": { \"lte\": %s } }", retentionLimitTimestamp);
+    try {
+      searchRepository.getSearchClient().deleteByQuery(dataStreamName, rangeTermQuery);
+    } catch (Exception rx) {
+      throw new SearchIndexException(new IndexingError().withMessage(rx.getMessage()));
     }
   }
 

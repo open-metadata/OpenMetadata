@@ -52,6 +52,12 @@
           "default": ["all"],
           "uniqueItems": true
         },
+        "retention": {
+          "title": "Data Retention (Days)",
+          "description": "Defines the number of days the Data Assets Insights information will be kept. After it they will be deleted.",
+          "type": "integer",
+          "default": 7
+        },
         "serviceFilter": {
           "type": "object",
           "properties": {
