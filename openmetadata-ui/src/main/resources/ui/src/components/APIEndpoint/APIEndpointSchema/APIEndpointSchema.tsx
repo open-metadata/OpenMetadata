@@ -25,7 +25,6 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { TABLE_SCROLL_VALUE } from '../../../constants/Table.constants';
-import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../../../enums/entity.enum';
 import {
   APIEndpoint,
@@ -52,16 +51,13 @@ import {
 } from '../../../utils/TableUtils';
 import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import ToggleExpandButton from '../../common/ToggleExpandButton/ToggleExpandButton';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 import { ColumnFilter } from '../../Database/ColumnFilter/ColumnFilter.component';
 import TableDescription from '../../Database/TableDescription/TableDescription.component';
 import TableTags from '../../Database/TableTags/TableTags.component';
 import { ModalWithMarkdownEditor } from '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
-import { APIEndpointDetailsProps } from '../APIEndpointDetails/APIEndpointDetails.interface';
 
 interface APIEndpointSchemaProps {
-  apiEndpointDetails: APIEndpoint;
-  permissions: OperationPermission;
-  onApiEndpointUpdate?: APIEndpointDetailsProps['onApiEndpointUpdate'];
   isVersionView?: boolean;
 }
 
@@ -71,9 +67,6 @@ export enum SchemaViewType {
 }
 
 const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
-  apiEndpointDetails,
-  permissions,
-  onApiEndpointUpdate,
   isVersionView = false,
 }) => {
   const { theme } = useApplicationStore();
@@ -83,6 +76,11 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
   const [viewType, setViewType] = useState<SchemaViewType>(
     SchemaViewType.REQUEST_SCHEMA
   );
+  const {
+    data: apiEndpointDetails,
+    permissions,
+    onUpdate: onApiEndpointUpdate,
+  } = useGenericContext<APIEndpoint>();
 
   const {
     requestSchemaAllRowKeys,

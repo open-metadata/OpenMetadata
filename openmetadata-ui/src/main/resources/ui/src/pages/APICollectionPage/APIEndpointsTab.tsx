@@ -13,54 +13,86 @@
 
 import { Col, Row, Switch, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
-import { isEmpty, isUndefined } from 'lodash';
-import React, { useMemo } from 'react';
+import { AxiosError } from 'axios';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import DescriptionV1 from '../../components/common/EntityDescription/DescriptionV1';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import NextPrevious from '../../components/common/NextPrevious/NextPrevious';
-import { NextPreviousProps } from '../../components/common/NextPrevious/NextPrevious.interface';
+import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
 import RichTextEditorPreviewerV1 from '../../components/common/RichTextEditor/RichTextEditorPreviewerV1';
 import TableAntd from '../../components/common/Table/Table';
-import { NO_DATA } from '../../constants/constants';
+import { useGenericContext } from '../../components/Customization/GenericProvider/GenericProvider';
+import { NO_DATA, PAGE_SIZE } from '../../constants/constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
-import { EntityType } from '../../enums/entity.enum';
+import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { APICollection } from '../../generated/entity/data/apiCollection';
 import { APIEndpoint } from '../../generated/entity/data/apiEndpoint';
-import { UsePagingInterface } from '../../hooks/paging/usePaging';
+import { Include } from '../../generated/type/include';
+import { usePaging } from '../../hooks/paging/usePaging';
+import { useFqn } from '../../hooks/useFqn';
+import { useTableFilters } from '../../hooks/useTableFilters';
+import {
+  getApiEndPoints,
+  GetApiEndPointsType,
+} from '../../rest/apiEndpointsAPI';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../utils/EntityUtils';
+import { showErrorToast } from '../../utils/ToastUtils';
+
 interface APIEndpointsTabProps {
-  apiCollectionDetails: APICollection;
-  apiEndpointsLoading: boolean;
-  description: string;
-  editDescriptionPermission?: boolean;
-  showDeletedEndpoints?: boolean;
-  apiEndpoints: APIEndpoint[];
-  currentEndpointsPage: number;
-  endpointPaginationHandler: NextPreviousProps['pagingHandler'];
-  onDescriptionUpdate?: (updatedHTML: string) => Promise<void>;
-  onShowDeletedEndpointsChange?: (value: boolean) => void;
   isVersionView?: boolean;
-  pagingInfo: UsePagingInterface;
 }
 
 function APIEndpointsTab({
-  apiCollectionDetails,
-  apiEndpointsLoading,
-  description,
-  editDescriptionPermission = false,
-  apiEndpoints,
-  currentEndpointsPage,
-  endpointPaginationHandler,
-  onDescriptionUpdate,
-  showDeletedEndpoints = false,
-  onShowDeletedEndpointsChange,
   isVersionView = false,
-  pagingInfo,
 }: Readonly<APIEndpointsTabProps>) {
   const { t } = useTranslation();
+  const { fqn: decodedAPICollectionFQN } = useFqn();
+  const { data: apiCollection } = useGenericContext<APICollection>();
+  const [apiEndpoints, setAPIEndpoints] = useState<APIEndpoint[]>([]);
+  const [apiEndpointsLoading, setAPIEndpointsLoading] =
+    useState<boolean>(false);
+  const {
+    paging,
+    handlePageChange,
+    currentPage,
+    showPagination,
+    pageSize,
+    handlePagingChange,
+    handlePageSizeChange,
+  } = usePaging(PAGE_SIZE);
+  const { filters, setFilters } = useTableFilters({
+    showDeletedEndpoints: false,
+  });
+
+  const getAPICollectionEndpoints = useCallback(
+    async (params?: Pick<GetApiEndPointsType, 'paging'>) => {
+      if (!apiCollection) {
+        return;
+      }
+
+      setAPIEndpointsLoading(true);
+      try {
+        const res = await getApiEndPoints({
+          ...params,
+          fields: TabSpecificField.OWNERS,
+          apiCollection: decodedAPICollectionFQN,
+          service: apiCollection?.service?.fullyQualifiedName ?? '',
+          include: filters.showDeletedEndpoints
+            ? Include.Deleted
+            : Include.NonDeleted,
+        });
+        setAPIEndpoints(res.data);
+        handlePagingChange(res.paging);
+      } catch (err) {
+        showErrorToast(err as AxiosError);
+      } finally {
+        setAPIEndpointsLoading(false);
+      }
+    },
+    [decodedAPICollectionFQN, filters.showDeletedEndpoints, apiCollection]
+  );
 
   const tableColumn: ColumnsType<APIEndpoint> = useMemo(
     () => [
@@ -109,36 +141,39 @@ function APIEndpointsTab({
     []
   );
 
+  const handleEndpointsPagination = useCallback(
+    ({ cursorType, currentPage }: PagingHandlerParams) => {
+      if (cursorType) {
+        getAPICollectionEndpoints({
+          paging: {
+            [cursorType]: paging[cursorType],
+          },
+        });
+      }
+      handlePageChange(currentPage);
+    },
+    [paging, getAPICollectionEndpoints]
+  );
+
+  useEffect(() => {
+    getAPICollectionEndpoints();
+  }, []);
+
   return (
     <Row gutter={[16, 16]}>
-      <Col data-testid="description-container" span={24}>
-        {isVersionView ? (
-          <DescriptionV1
-            description={description}
-            entityType={EntityType.API_COLLECTION}
-            isDescriptionExpanded={isEmpty(apiEndpoints)}
-            showActions={false}
-          />
-        ) : (
-          <DescriptionV1
-            description={description}
-            entityName={getEntityName(apiCollectionDetails)}
-            entityType={EntityType.API_COLLECTION}
-            hasEditAccess={editDescriptionPermission}
-            isDescriptionExpanded={isEmpty(apiEndpoints)}
-            showActions={!apiCollectionDetails.deleted}
-            onDescriptionUpdate={onDescriptionUpdate}
-          />
-        )}
-      </Col>
       {!isVersionView && (
         <Col span={24}>
           <Row justify="end">
             <Col>
               <Switch
-                checked={showDeletedEndpoints}
+                checked={filters.showDeletedEndpoints}
                 data-testid="show-deleted"
-                onClick={onShowDeletedEndpointsChange}
+                onClick={() =>
+                  setFilters({
+                    ...filters,
+                    showDeletedEndpoints: !filters.showDeletedEndpoints,
+                  })
+                }
               />
               <Typography.Text className="m-l-xs">
                 {t('label.deleted')}
@@ -168,15 +203,15 @@ function APIEndpointsTab({
           size="small"
         />
       </Col>
-      {!isUndefined(pagingInfo) && pagingInfo.showPagination && (
+      {showPagination && (
         <Col span={24}>
           <NextPrevious
-            currentPage={currentEndpointsPage}
+            currentPage={currentPage}
             isLoading={apiEndpointsLoading}
-            pageSize={pagingInfo.pageSize}
-            paging={pagingInfo.paging}
-            pagingHandler={endpointPaginationHandler}
-            onShowSizeChange={pagingInfo.handlePageSizeChange}
+            pageSize={pageSize}
+            paging={paging}
+            pagingHandler={handleEndpointsPagination}
+            onShowSizeChange={handlePageSizeChange}
           />
         </Col>
       )}

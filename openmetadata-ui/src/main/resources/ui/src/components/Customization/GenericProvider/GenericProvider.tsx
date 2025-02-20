@@ -28,7 +28,7 @@ interface GenericProviderProps<T extends Omit<EntityReference, 'type'>> {
   children?: React.ReactNode;
   data: T;
   type: EntityType;
-  onUpdate: (updatedData: T) => Promise<void>;
+  onUpdate: (updatedData: T, key?: keyof T) => Promise<void>;
   isVersionView?: boolean;
   permissions: OperationPermission;
   currentVersionData?: T;
@@ -37,7 +37,7 @@ interface GenericProviderProps<T extends Omit<EntityReference, 'type'>> {
 interface GenericContextType<T extends Omit<EntityReference, 'type'>> {
   data: T;
   type: EntityType;
-  onUpdate: (updatedData: T) => Promise<void>;
+  onUpdate: (updatedData: T, key?: keyof T) => Promise<void>;
   isVersionView?: boolean;
   permissions: OperationPermission;
   currentVersionData?: T;

@@ -13,52 +13,42 @@
 
 import { Col, Row, Tabs } from 'antd';
 import { AxiosError } from 'axios';
-import { EntityTags } from 'Models';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
+import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { getEntityDetailsPath } from '../../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
-import { COMMON_RESIZABLE_PANEL_CONFIG } from '../../../constants/ResizablePanel.constants';
-import LineageProvider from '../../../context/LineageProvider/LineageProvider';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { Tag } from '../../../generated/entity/classification/tag';
 import { APIEndpoint } from '../../../generated/entity/data/apiEndpoint';
-import { DataProduct } from '../../../generated/entity/domains/dataProduct';
-import { TagLabel } from '../../../generated/type/schema';
+import { Page, PageType } from '../../../generated/system/ui/page';
 import LimitWrapper from '../../../hoc/LimitWrapper';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useFqn } from '../../../hooks/useFqn';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { restoreApiEndPoint } from '../../../rest/apiEndpointsAPI';
+import { getDocumentByFQN } from '../../../rest/DocStoreAPI';
+import apiEndpointClassBase from '../../../utils/APIEndpoints/APIEndpointClassBase';
 import { getFeedCounts } from '../../../utils/CommonUtils';
 import {
-  getEntityName,
-  getEntityReferenceFromEntity,
-} from '../../../utils/EntityUtils';
+  getDetailsTabWithNewLabel,
+  getTabLabelMapFromTabs,
+} from '../../../utils/CustomizePage/CustomizePageUtils';
+import { getEntityName } from '../../../utils/EntityUtils';
 import { getTagsWithoutTier, getTierTags } from '../../../utils/TableUtils';
-import { createTagObject, updateTierTag } from '../../../utils/TagsUtils';
+import { updateTierTag } from '../../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
-import { ActivityFeedTab } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import { withActivityFeed } from '../../AppRouter/withActivityFeed';
-import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
-import DescriptionV1 from '../../common/EntityDescription/DescriptionV1';
-import ResizablePanels from '../../common/ResizablePanels/ResizablePanels';
-import TabsLabel from '../../common/TabsLabel/TabsLabel.component';
 import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
 import { DataAssetsHeader } from '../../DataAssets/DataAssetsHeader/DataAssetsHeader.component';
-import EntityRightPanel from '../../Entity/EntityRightPanel/EntityRightPanel';
-import Lineage from '../../Lineage/Lineage.component';
 import { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../PageLayoutV1/PageLayoutV1';
-import { SourceType } from '../../SearchedData/SearchedData.interface';
-import APIEndpointSchema from '../APIEndpointSchema/APIEndpointSchema';
 import { APIEndpointDetailsProps } from './APIEndpointDetails.interface';
 
 const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
   apiEndpointDetails,
   apiEndpointPermissions,
-
   fetchAPIEndpointDetails,
   onFollowApiEndPoint,
   onApiEndpointUpdate,
@@ -69,7 +59,7 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
   onUpdateVote,
 }: APIEndpointDetailsProps) => {
   const { t } = useTranslation();
-  const { currentUser } = useApplicationStore();
+  const { currentUser, selectedPersona } = useApplicationStore();
   const { tab: activeTab = EntityTabs.SCHEMA } =
     useParams<{ tab: EntityTabs }>();
   const { fqn: decodedApiEndpointFqn } = useFqn();
@@ -77,15 +67,12 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA
   );
+  const [customizedPage, setCustomizedPage] = useState<Page | null>(null);
 
   const {
     owners,
     deleted,
-    description,
     followers = [],
-    entityName,
-    apiEndpointTags,
-    tier,
   } = useMemo(
     () => ({
       ...apiEndpointDetails,
@@ -113,12 +100,6 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
       displayName: data.displayName,
     };
     await onApiEndpointUpdate(updatedData, 'displayName');
-  };
-  const onExtensionUpdate = async (updatedData: APIEndpoint) => {
-    await onApiEndpointUpdate(
-      { ...apiEndpointDetails, extension: updatedData.extension },
-      'extension'
-    );
   };
 
   const handleRestoreApiEndpoint = async () => {
@@ -155,19 +136,6 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
     }
   };
 
-  const onDescriptionUpdate = async (updatedHTML: string) => {
-    if (description !== updatedHTML) {
-      const updatedApiEndpointDetails = {
-        ...apiEndpointDetails,
-        description: updatedHTML,
-      };
-      try {
-        await onApiEndpointUpdate(updatedApiEndpointDetails, 'description');
-      } catch (error) {
-        showErrorToast(error as AxiosError);
-      }
-    }
-  };
   const onOwnerUpdate = useCallback(
     async (newOwners?: APIEndpoint['owners']) => {
       const updatedApiEndpointDetails = {
@@ -189,29 +157,6 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
     return onApiEndpointUpdate(updatedApiEndpointDetails, 'tags');
   };
 
-  const handleTagSelection = async (selectedTags: EntityTags[]) => {
-    const updatedTags: TagLabel[] | undefined = createTagObject(selectedTags);
-
-    if (updatedTags && apiEndpointDetails) {
-      const updatedTags = [...(tier ? [tier] : []), ...selectedTags];
-      const updatedApiEndpoint = { ...apiEndpointDetails, tags: updatedTags };
-      await onApiEndpointUpdate(updatedApiEndpoint, 'tags');
-    }
-  };
-
-  const onDataProductsUpdate = async (updatedData: DataProduct[]) => {
-    const dataProductsEntity = updatedData?.map((item) => {
-      return getEntityReferenceFromEntity(item, EntityType.DATA_PRODUCT);
-    });
-
-    const updatedApiEndpointDetails = {
-      ...apiEndpointDetails,
-      dataProducts: dataProductsEntity,
-    };
-
-    await onApiEndpointUpdate(updatedApiEndpointDetails, 'dataProducts');
-  };
-
   const handleFeedCount = useCallback((data: FeedCounts) => {
     setFeedCount(data);
   }, []);
@@ -230,38 +175,19 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
   );
 
   const {
-    editTagsPermission,
-    editGlossaryTermsPermission,
-    editDescriptionPermission,
     editCustomAttributePermission,
-    editAllPermission,
     editLineagePermission,
-    viewSampleDataPermission,
     viewAllPermission,
   } = useMemo(
     () => ({
-      editTagsPermission:
-        (apiEndpointPermissions.EditTags || apiEndpointPermissions.EditAll) &&
-        !deleted,
-      editGlossaryTermsPermission:
-        (apiEndpointPermissions.EditGlossaryTerms ||
-          apiEndpointPermissions.EditAll) &&
-        !deleted,
-      editDescriptionPermission:
-        (apiEndpointPermissions.EditDescription ||
-          apiEndpointPermissions.EditAll) &&
-        !deleted,
       editCustomAttributePermission:
         (apiEndpointPermissions.EditAll ||
           apiEndpointPermissions.EditCustomFields) &&
         !deleted,
-      editAllPermission: apiEndpointPermissions.EditAll && !deleted,
       editLineagePermission:
         (apiEndpointPermissions.EditAll ||
           apiEndpointPermissions.EditLineage) &&
         !deleted,
-      viewSampleDataPermission:
-        apiEndpointPermissions.ViewAll || apiEndpointPermissions.ViewSampleData,
       viewAllPermission: apiEndpointPermissions.ViewAll,
     }),
     [apiEndpointPermissions, deleted]
@@ -271,145 +197,55 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
     getEntityFeedCount();
   }, [apiEndpointPermissions, decodedApiEndpointFqn]);
 
-  const tabs = useMemo(
-    () => [
-      {
-        label: <TabsLabel id={EntityTabs.SCHEMA} name={t('label.schema')} />,
-        key: EntityTabs.SCHEMA,
-        children: (
-          <Row gutter={[0, 16]} wrap={false}>
-            <Col className="tab-content-height-with-resizable-panel" span={24}>
-              <ResizablePanels
-                firstPanel={{
-                  className: 'entity-resizable-panel-container',
-                  children: (
-                    <div className="d-flex flex-col gap-4 p-t-sm m-x-lg">
-                      <DescriptionV1
-                        description={apiEndpointDetails.description}
-                        entityName={entityName}
-                        entityType={EntityType.API_ENDPOINT}
-                        hasEditAccess={editDescriptionPermission}
-                        owner={apiEndpointDetails.owners}
-                        showActions={!deleted}
-                        onDescriptionUpdate={onDescriptionUpdate}
-                      />
-                      <APIEndpointSchema
-                        apiEndpointDetails={apiEndpointDetails}
-                        permissions={apiEndpointPermissions}
-                        onApiEndpointUpdate={onApiEndpointUpdate}
-                      />
-                    </div>
-                  ),
-                  ...COMMON_RESIZABLE_PANEL_CONFIG.LEFT_PANEL,
-                }}
-                secondPanel={{
-                  children: (
-                    <div data-testid="entity-right-panel">
-                      <EntityRightPanel<EntityType.API_ENDPOINT>
-                        editCustomAttributePermission={
-                          editCustomAttributePermission
-                        }
-                        editGlossaryTermsPermission={
-                          editGlossaryTermsPermission
-                        }
-                        editTagPermission={editTagsPermission}
-                        entityType={EntityType.API_ENDPOINT}
-                        selectedTags={apiEndpointTags}
-                        viewAllPermission={viewAllPermission}
-                        onExtensionUpdate={onExtensionUpdate}
-                        onTagSelectionChange={handleTagSelection}
-                      />
-                    </div>
-                  ),
-                  ...COMMON_RESIZABLE_PANEL_CONFIG.RIGHT_PANEL,
-                  className:
-                    'entity-resizable-right-panel-container entity-resizable-panel-container',
-                }}
-              />
-            </Col>
-          </Row>
-        ),
-      },
-      {
-        label: (
-          <TabsLabel
-            count={feedCount.totalCount}
-            id={EntityTabs.ACTIVITY_FEED}
-            isActive={activeTab === EntityTabs.ACTIVITY_FEED}
-            name={t('label.activity-feed-and-task-plural')}
-          />
-        ),
-        key: EntityTabs.ACTIVITY_FEED,
-        children: (
-          <ActivityFeedTab
-            refetchFeed
-            entityFeedTotalCount={feedCount.totalCount}
-            entityType={EntityType.API_ENDPOINT}
-            onFeedUpdate={getEntityFeedCount}
-            onUpdateEntityDetails={fetchAPIEndpointDetails}
-            onUpdateFeedCount={handleFeedCount}
-          />
-        ),
-      },
-
-      {
-        label: <TabsLabel id={EntityTabs.LINEAGE} name={t('label.lineage')} />,
-        key: EntityTabs.LINEAGE,
-        children: (
-          <LineageProvider>
-            <Lineage
-              deleted={apiEndpointDetails.deleted}
-              entity={apiEndpointDetails as SourceType}
-              entityType={EntityType.API_ENDPOINT}
-              hasEditAccess={editLineagePermission}
-            />
-          </LineageProvider>
-        ),
-      },
-      {
-        label: (
-          <TabsLabel
-            id={EntityTabs.CUSTOM_PROPERTIES}
-            name={t('label.custom-property-plural')}
-          />
-        ),
-        key: EntityTabs.CUSTOM_PROPERTIES,
-        children: apiEndpointDetails && (
-          <div className="m-sm">
-            <CustomPropertyTable<EntityType.API_ENDPOINT>
-              entityType={EntityType.API_ENDPOINT}
-              hasEditAccess={editCustomAttributePermission}
-              hasPermission={viewAllPermission}
-            />
-          </div>
-        ),
-      },
-    ],
-
-    [
+  const tabs = useMemo(() => {
+    const tabLabelMap = getTabLabelMapFromTabs(customizedPage?.tabs);
+    const tabs = apiEndpointClassBase.getAPIEndpointDetailPageTabs({
       activeTab,
-      feedCount.totalCount,
-      apiEndpointTags,
-      entityName,
-      apiEndpointDetails,
-      decodedApiEndpointFqn,
+      feedCount,
+      apiEndpoint: apiEndpointDetails,
       fetchAPIEndpointDetails,
-      deleted,
+      getEntityFeedCount,
+      labelMap: tabLabelMap,
       handleFeedCount,
-      onExtensionUpdate,
-      handleTagSelection,
-      onDescriptionUpdate,
-      onDataProductsUpdate,
-      editTagsPermission,
-      editGlossaryTermsPermission,
-      editDescriptionPermission,
       editCustomAttributePermission,
-      editLineagePermission,
-      editAllPermission,
-      viewSampleDataPermission,
       viewAllPermission,
-    ]
-  );
+      editLineagePermission,
+    });
+
+    return getDetailsTabWithNewLabel(
+      tabs,
+      customizedPage?.tabs,
+      EntityTabs.SCHEMA
+    );
+  }, [
+    activeTab,
+    feedCount,
+    apiEndpointDetails,
+    fetchAPIEndpointDetails,
+    getEntityFeedCount,
+    handleFeedCount,
+    editCustomAttributePermission,
+    viewAllPermission,
+    editLineagePermission,
+  ]);
+
+  const fetchDocument = useCallback(async () => {
+    const pageFQN = `${EntityType.PERSONA}${FQN_SEPARATOR_CHAR}${selectedPersona.fullyQualifiedName}`;
+    try {
+      const doc = await getDocumentByFQN(pageFQN);
+      setCustomizedPage(
+        doc.data?.pages?.find((p: Page) => p.pageType === PageType.APIEndpoint)
+      );
+    } catch (error) {
+      // fail silent
+    }
+  }, [selectedPersona.fullyQualifiedName]);
+
+  useEffect(() => {
+    if (selectedPersona?.fullyQualifiedName) {
+      fetchDocument();
+    }
+  }, [selectedPersona]);
 
   return (
     <PageLayoutV1

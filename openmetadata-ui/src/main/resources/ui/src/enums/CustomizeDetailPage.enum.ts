@@ -43,6 +43,8 @@ export enum DetailPageWidgetKeys {
   EXPERTS = 'KnowledgePanel.Experts',
   DOMAIN_TYPE = 'KnowledgePanel.DomainType',
   TABLES = 'KnowledgePanel.Tables',
+  API_ENDPOINTS = 'KnowledgePanel.APIEndpoints',
+  API_SCHEMA = 'KnowledgePanel.APISchema',
 }
 
 export enum GlossaryTermDetailPageWidgetKeys {

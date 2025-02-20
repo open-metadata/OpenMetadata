@@ -284,16 +284,7 @@ const APICollectionVersionPage = () => {
         children: (
           <Row gutter={[0, 16]} wrap={false}>
             <Col className="p-t-sm m-x-lg" flex="auto">
-              <APIEndpointsTab
-                isVersionView
-                apiCollectionDetails={currentVersionData}
-                apiEndpoints={apiEndpoints}
-                apiEndpointsLoading={apiEndpointsLoading}
-                currentEndpointsPage={currentPage}
-                description={description}
-                endpointPaginationHandler={endpointPaginationHandler}
-                pagingInfo={pagingInfo}
-              />
+              <APIEndpointsTab isVersionView />
             </Col>
             <Col
               className="entity-tag-right-panel-container"

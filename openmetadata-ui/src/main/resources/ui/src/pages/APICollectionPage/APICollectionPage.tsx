@@ -15,7 +15,6 @@ import { Col, Row, Skeleton, Tabs, TabsProps } from 'antd';
 import { AxiosError } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
 import { isEmpty, isUndefined } from 'lodash';
-import { EntityTags } from 'Models';
 import React, {
   FunctionComponent,
   useCallback,
@@ -25,30 +24,21 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import ActivityFeedProvider from '../../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
-import { ActivityFeedTab } from '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
-import { CustomPropertyTable } from '../../components/common/CustomPropertyTable/CustomPropertyTable';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';
-import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
-import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
-import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
 import { GenericProvider } from '../../components/Customization/GenericProvider/GenericProvider';
 import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import { QueryVote } from '../../components/Database/TableQueries/TableQueries.interface';
-import EntityRightPanel from '../../components/Entity/EntityRightPanel/EntityRightPanel';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
+import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import {
   getEntityDetailsPath,
   getVersionPath,
-  INITIAL_PAGING_VALUE,
-  PAGE_SIZE,
   ROUTES,
 } from '../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
-import { COMMON_RESIZABLE_PANEL_CONFIG } from '../../constants/ResizablePanel.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
@@ -63,11 +53,11 @@ import {
 } from '../../enums/entity.enum';
 import { Tag } from '../../generated/entity/classification/tag';
 import { APICollection } from '../../generated/entity/data/apiCollection';
-import { APIEndpoint } from '../../generated/entity/data/apiEndpoint';
+import { Page, PageType } from '../../generated/system/ui/page';
 import { Include } from '../../generated/type/include';
-import { TagLabel } from '../../generated/type/tagLabel';
-import { usePaging } from '../../hooks/paging/usePaging';
+import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useFqn } from '../../hooks/useFqn';
+import { useTableFilters } from '../../hooks/useTableFilters';
 import { FeedCounts } from '../../interface/feed.interface';
 import {
   getApiCollectionByFQN,
@@ -75,32 +65,25 @@ import {
   restoreApiCollection,
   updateApiCollectionVote,
 } from '../../rest/apiCollectionsAPI';
-import {
-  getApiEndPoints,
-  GetApiEndPointsType,
-} from '../../rest/apiEndpointsAPI';
+import { getApiEndPoints } from '../../rest/apiEndpointsAPI';
+import { getDocumentByFQN } from '../../rest/DocStoreAPI';
+import apiCollectionClassBase from '../../utils/APICollection/APICollectionClassBase';
 import { getEntityMissingError, getFeedCounts } from '../../utils/CommonUtils';
+import {
+  getDetailsTabWithNewLabel,
+  getTabLabelMapFromTabs,
+} from '../../utils/CustomizePage/CustomizePageUtils';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
-import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
-import { createTagObject, updateTierTag } from '../../utils/TagsUtils';
+import { updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
-import APIEndpointsTab from './APIEndpointsTab';
 
 const APICollectionPage: FunctionComponent = () => {
   const { t } = useTranslation();
   const { getEntityPermissionByFqn } = usePermissionProvider();
-  const pagingInfo = usePaging(PAGE_SIZE);
-
-  const {
-    paging,
-    pageSize,
-    handlePagingChange,
-    handlePageChange,
-    currentPage,
-  } = pagingInfo;
-
+  const [customizedPage, setCustomizedPage] = useState<Page | null>(null);
+  const { selectedPersona } = useApplicationStore();
   const { tab: activeTab = EntityTabs.API_ENDPOINT } =
     useParams<{ tab: EntityTabs }>();
   const { fqn: decodedAPICollectionFQN } = useFqn();
@@ -110,19 +93,19 @@ const APICollectionPage: FunctionComponent = () => {
   const [apiCollection, setAPICollection] = useState<APICollection>(
     {} as APICollection
   );
-  const [apiEndpoints, setAPIEndpoints] = useState<Array<APIEndpoint>>([]);
-  const [apiEndpointsLoading, setAPIEndpointsLoading] = useState<boolean>(true);
   const [isAPICollectionLoading, setIsAPICollectionLoading] =
     useState<boolean>(true);
 
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA
   );
+  const [apiEndpointCount, setApiEndpointCount] = useState<number>(0);
 
   const [apiCollectionPermission, setAPICollectionPermission] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
-  const [showDeletedEndpoints, setShowDeletedEndpoints] =
-    useState<boolean>(false);
+  const { filters, setFilters } = useTableFilters({
+    showDeletedEndpoints: false,
+  });
 
   const extraDropdownContent = useMemo(
     () =>
@@ -134,16 +117,9 @@ const APICollectionPage: FunctionComponent = () => {
     [apiCollectionPermission, decodedAPICollectionFQN]
   );
 
-  const handleShowDeletedEndPoints = (value: boolean) => {
-    setShowDeletedEndpoints(value);
-    handlePageChange(INITIAL_PAGING_VALUE);
-  };
-
-  const { currentVersion, tags, tier, apiCollectionId } = useMemo(
+  const { currentVersion, apiCollectionId } = useMemo(
     () => ({
       currentVersion: apiCollection?.version,
-      tier: getTierTags(apiCollection.tags ?? []),
-      tags: getTagsWithoutTier(apiCollection.tags ?? []),
       apiCollectionId: apiCollection?.id ?? '',
     }),
     [apiCollection]
@@ -190,7 +166,9 @@ const APICollectionPage: FunctionComponent = () => {
         include: Include.All,
       });
       setAPICollection(response);
-      setShowDeletedEndpoints(response.deleted ?? false);
+      setFilters({
+        showDeletedEndpoints: response.deleted ?? false,
+      });
     } catch (err) {
       // Error
       if ((err as AxiosError)?.response?.status === ClientErrors.FORBIDDEN) {
@@ -201,31 +179,22 @@ const APICollectionPage: FunctionComponent = () => {
     }
   }, [decodedAPICollectionFQN]);
 
-  const getAPICollectionEndpoints = useCallback(
-    async (params?: Pick<GetApiEndPointsType, 'paging'>) => {
-      if (!apiCollection) {
-        return;
-      }
-
-      setAPIEndpointsLoading(true);
-      try {
-        const res = await getApiEndPoints({
-          ...params,
-          fields: TabSpecificField.OWNERS,
-          apiCollection: decodedAPICollectionFQN,
-          service: apiCollection?.service?.fullyQualifiedName ?? '',
-          include: showDeletedEndpoints ? Include.Deleted : Include.NonDeleted,
-        });
-        setAPIEndpoints(res.data);
-        handlePagingChange(res.paging);
-      } catch (err) {
-        showErrorToast(err as AxiosError);
-      } finally {
-        setAPIEndpointsLoading(false);
-      }
-    },
-    [decodedAPICollectionFQN, showDeletedEndpoints, apiCollection]
-  );
+  const getApiEndpointCount = useCallback(async () => {
+    const res = await getApiEndPoints({
+      apiCollection: decodedAPICollectionFQN,
+      service: apiCollection?.service?.fullyQualifiedName ?? '',
+      paging: { limit: 0 },
+      include: filters.showDeletedEndpoints
+        ? Include.Deleted
+        : Include.NonDeleted,
+    });
+    setApiEndpointCount(res.paging.total);
+  }, [
+    decodedAPICollectionFQN,
+    filters.showDeletedEndpoints,
+    apiCollection,
+    apiCollection?.service?.fullyQualifiedName,
+  ]);
 
   const saveUpdatedAPICollectionData = useCallback(
     (updatedData: APICollection) => {
@@ -237,31 +206,6 @@ const APICollectionPage: FunctionComponent = () => {
       return patchApiCollection(apiCollectionId, jsonPatch);
     },
     [apiCollectionId, apiCollection]
-  );
-
-  const onDescriptionUpdate = useCallback(
-    async (updatedHTML: string) => {
-      if (apiCollection?.description !== updatedHTML && apiCollection) {
-        const updatedAPICollectionDetails = {
-          ...apiCollection,
-          description: updatedHTML,
-        };
-
-        try {
-          const response = await saveUpdatedAPICollectionData(
-            updatedAPICollectionDetails
-          );
-          if (response) {
-            setAPICollection(response);
-          } else {
-            throw t('server.unexpected-response');
-          }
-        } catch (error) {
-          showErrorToast(error as AxiosError);
-        }
-      }
-    },
-    [apiCollection]
   );
 
   const activeTabHandler = useCallback(
@@ -304,27 +248,6 @@ const APICollectionPage: FunctionComponent = () => {
     [apiCollection, apiCollection?.owners]
   );
 
-  const handleTagsUpdate = async (selectedTags?: Array<EntityTags>) => {
-    if (selectedTags) {
-      const updatedTags = [...(tier ? [tier] : []), ...selectedTags];
-      const updatedData = { ...apiCollection, tags: updatedTags };
-
-      try {
-        const res = await saveUpdatedAPICollectionData(
-          updatedData as APICollection
-        );
-        setAPICollection(res);
-      } catch (error) {
-        showErrorToast(error as AxiosError, t('server.api-error'));
-      }
-    }
-  };
-
-  const handleTagSelection = async (selectedTags: EntityTags[]) => {
-    const updatedTags: TagLabel[] | undefined = createTagObject(selectedTags);
-    await handleTagsUpdate(updatedTags);
-  };
-
   const handleUpdateTier = useCallback(
     async (newTier?: Tag) => {
       const tierTag = updateTierTag(apiCollection?.tags ?? [], newTier);
@@ -364,14 +287,16 @@ const APICollectionPage: FunctionComponent = () => {
         return prev;
       }
 
+      setFilters({
+        showDeletedEndpoints: !prev.deleted,
+      });
+
       return {
         ...prev,
         deleted: !prev?.deleted,
         ...(version ? { version } : {}),
       };
     });
-
-    setShowDeletedEndpoints((prev) => !prev);
   };
 
   const handleRestoreAPICollection = useCallback(async () => {
@@ -395,20 +320,6 @@ const APICollectionPage: FunctionComponent = () => {
       );
     }
   }, [apiCollectionId]);
-
-  const endpointPaginationHandler = useCallback(
-    ({ cursorType, currentPage }: PagingHandlerParams) => {
-      if (cursorType) {
-        getAPICollectionEndpoints({
-          paging: {
-            [cursorType]: paging[cursorType],
-          },
-        });
-      }
-      handlePageChange(currentPage);
-    },
-    [paging, getAPICollectionEndpoints]
-  );
 
   const versionHandler = useCallback(() => {
     currentVersion &&
@@ -450,25 +361,16 @@ const APICollectionPage: FunctionComponent = () => {
 
   useEffect(() => {
     if (viewAPICollectionPermission && decodedAPICollectionFQN) {
-      getAPICollectionEndpoints({
-        paging: { limit: pageSize },
-      });
+      getApiEndpointCount();
     }
   }, [
-    showDeletedEndpoints,
+    filters.showDeletedEndpoints,
     decodedAPICollectionFQN,
     viewAPICollectionPermission,
     apiCollection,
-    pageSize,
   ]);
 
-  const {
-    editTagsPermission,
-    editGlossaryTermsPermission,
-    editDescriptionPermission,
-    editCustomAttributePermission,
-    viewAllPermission,
-  } = useMemo(
+  const { editCustomAttributePermission, viewAllPermission } = useMemo(
     () => ({
       editTagsPermission:
         (apiCollectionPermission.EditTags || apiCollectionPermission.EditAll) &&
@@ -490,23 +392,6 @@ const APICollectionPage: FunctionComponent = () => {
     [apiCollectionPermission, apiCollection]
   );
 
-  const handleExtensionUpdate = async (apiCollectionData: APICollection) => {
-    const response = await saveUpdatedAPICollectionData({
-      ...apiCollection,
-      extension: apiCollectionData.extension,
-    });
-    setAPICollection((prev) => {
-      if (!prev) {
-        return prev;
-      }
-
-      return {
-        ...prev,
-        extension: response.extension,
-      };
-    });
-  };
-
   const handleAPICollectionUpdate = async (updatedData: APICollection) => {
     const response = await saveUpdatedAPICollectionData({
       ...apiCollection,
@@ -515,113 +400,28 @@ const APICollectionPage: FunctionComponent = () => {
     setAPICollection(response);
   };
 
-  const tabs: TabsProps['items'] = [
-    {
-      label: (
-        <TabsLabel
-          count={paging.total}
-          id={EntityTabs.API_ENDPOINT}
-          isActive={activeTab === EntityTabs.API_ENDPOINT}
-          name={t('label.endpoint-plural')}
-        />
-      ),
-      key: EntityTabs.API_ENDPOINT,
-      children: (
-        <Row gutter={[0, 16]} wrap={false}>
-          <Col className="tab-content-height-with-resizable-panel" span={24}>
-            <ResizablePanels
-              firstPanel={{
-                className: 'entity-resizable-panel-container',
-                children: (
-                  <div className="p-t-sm m-x-lg">
-                    <APIEndpointsTab
-                      apiCollectionDetails={apiCollection}
-                      apiEndpoints={apiEndpoints}
-                      apiEndpointsLoading={apiEndpointsLoading}
-                      currentEndpointsPage={currentPage}
-                      description={apiCollection?.description ?? ''}
-                      editDescriptionPermission={editDescriptionPermission}
-                      endpointPaginationHandler={endpointPaginationHandler}
-                      pagingInfo={pagingInfo}
-                      showDeletedEndpoints={showDeletedEndpoints}
-                      onDescriptionUpdate={onDescriptionUpdate}
-                      onShowDeletedEndpointsChange={handleShowDeletedEndPoints}
-                    />
-                  </div>
-                ),
-                ...COMMON_RESIZABLE_PANEL_CONFIG.LEFT_PANEL,
-              }}
-              secondPanel={{
-                children: (
-                  <div data-testid="entity-right-panel">
-                    <EntityRightPanel<EntityType.API_COLLECTION>
-                      editCustomAttributePermission={
-                        editCustomAttributePermission
-                      }
-                      editGlossaryTermsPermission={editGlossaryTermsPermission}
-                      editTagPermission={editTagsPermission}
-                      entityType={EntityType.API_COLLECTION}
-                      selectedTags={tags}
-                      viewAllPermission={viewAllPermission}
-                      onExtensionUpdate={handleExtensionUpdate}
-                      onTagSelectionChange={handleTagSelection}
-                    />
-                  </div>
-                ),
-                ...COMMON_RESIZABLE_PANEL_CONFIG.RIGHT_PANEL,
-                className:
-                  'entity-resizable-right-panel-container entity-resizable-panel-container',
-              }}
-            />
-          </Col>
-        </Row>
-      ),
-    },
-    {
-      label: (
-        <TabsLabel
-          count={feedCount.totalCount}
-          id={EntityTabs.ACTIVITY_FEED}
-          isActive={activeTab === EntityTabs.ACTIVITY_FEED}
-          name={t('label.activity-feed-and-task-plural')}
-        />
-      ),
-      key: EntityTabs.ACTIVITY_FEED,
-      children: (
-        <ActivityFeedProvider>
-          <ActivityFeedTab
-            refetchFeed
-            entityFeedTotalCount={feedCount.totalCount}
-            entityType={EntityType.API_COLLECTION}
-            onFeedUpdate={getEntityFeedCount}
-            onUpdateEntityDetails={fetchAPICollectionDetails}
-            onUpdateFeedCount={handleFeedCount}
-          />
-        </ActivityFeedProvider>
-      ),
-    },
-    {
-      label: (
-        <TabsLabel
-          id={EntityTabs.CUSTOM_PROPERTIES}
-          name={t('label.custom-property-plural')}
-        />
-      ),
-      key: EntityTabs.CUSTOM_PROPERTIES,
-      children: apiCollection && (
-        <div className="m-sm">
-          <CustomPropertyTable<EntityType.API_COLLECTION>
-            className=""
-            entityType={EntityType.API_COLLECTION}
-            handleExtensionUpdate={handleExtensionUpdate}
-            hasEditAccess={editCustomAttributePermission}
-            hasPermission={viewAllPermission}
-            isVersionView={false}
-          />
-        </div>
-      ),
-    },
-  ];
+  const tabs: TabsProps['items'] = useMemo(() => {
+    const tabLabelMap = getTabLabelMapFromTabs(customizedPage?.tabs);
+
+    const tabs = apiCollectionClassBase.getAPICollectionDetailPageTabs({
+      activeTab,
+      feedCount,
+      apiCollection,
+      fetchAPICollectionDetails,
+      getEntityFeedCount,
+      handleFeedCount,
+      editCustomAttributePermission,
+      viewAllPermission,
+      apiEndpointCount,
+      labelMap: tabLabelMap,
+    });
+
+    return getDetailsTabWithNewLabel(
+      tabs,
+      customizedPage?.tabs,
+      EntityTabs.API_ENDPOINT
+    );
+  }, [activeTab]);
 
   const updateVote = async (data: QueryVote, id: string) => {
     try {
@@ -635,6 +435,26 @@ const APICollectionPage: FunctionComponent = () => {
       showErrorToast(error as AxiosError);
     }
   };
+
+  const fetchDocument = useCallback(async () => {
+    const pageFQN = `${EntityType.PERSONA}${FQN_SEPARATOR_CHAR}${selectedPersona.fullyQualifiedName}`;
+    try {
+      const doc = await getDocumentByFQN(pageFQN);
+      setCustomizedPage(
+        doc.data?.pages?.find(
+          (p: Page) => p.pageType === PageType.APICollection
+        )
+      );
+    } catch (error) {
+      // fail silent
+    }
+  }, [selectedPersona.fullyQualifiedName]);
+
+  useEffect(() => {
+    if (selectedPersona?.fullyQualifiedName) {
+      fetchDocument();
+    }
+  }, [selectedPersona]);
 
   if (isPermissionsLoading) {
     return <Loader />;

@@ -124,11 +124,7 @@ const APIEndpointVersion: FC<APIEndpointVersionProp> = ({
                   />
                 </Col>
                 <Col span={24}>
-                  <APIEndpointSchema
-                    isVersionView
-                    apiEndpointDetails={currentVersionData}
-                    permissions={entityPermissions}
-                  />
+                  <APIEndpointSchema isVersionView />
                 </Col>
               </Row>
             </Col>
