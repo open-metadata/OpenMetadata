@@ -97,7 +97,7 @@ const UserProfilePersonas = ({
               {defaultPersona?.displayName}
             </Typography.Text>
           ) : (
-            <Typography.Paragraph className="text-grey-muted m-b-0 text-sm m-l-lg">
+            <Typography.Paragraph className="text-grey-muted m-b-0 text-sm  no-default-persona-text">
               {t('message.no-default-persona')}
             </Typography.Paragraph>
           )}

@@ -231,7 +231,7 @@ const UserProfileTeams = ({
             type="vertical"
           />
         </div>
-        {isAdminUser && teamsRenderElement}
+        {teamsRenderElement}
       </div>
     </div>
   );

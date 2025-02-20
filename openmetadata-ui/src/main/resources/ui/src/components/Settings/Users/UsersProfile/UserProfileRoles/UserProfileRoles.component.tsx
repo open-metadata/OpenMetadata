@@ -325,7 +325,7 @@ const UserProfileRoles = ({
             type="vertical"
           />
         </div>
-        <div className="m-b-md">{rolesRenderElement}</div>
+        <div>{rolesRenderElement}</div>
       </div>
       <UserProfileInheritedRoles inheritedRoles={userData?.inheritedRoles} />
     </div>

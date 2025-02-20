@@ -61,7 +61,7 @@ const Chip = ({
 
   if (isEmpty(data) && showNoDataPlaceholder) {
     return (
-      <Typography.Paragraph className="text-grey-muted m-b-0 text-sm">
+      <Typography.Paragraph className="text-grey-muted m-t-xs text-sm">
         {noDataPlaceholder ?? NO_DATA_PLACEHOLDER}
       </Typography.Paragraph>
     );
@@ -70,7 +70,7 @@ const Chip = ({
   return (
     <Row
       wrap
-      className="align-middle d-flex flex-col "
+      className="align-middle d-flex flex-col flex-center"
       data-testid="chip-container"
       gutter={[20, 6]}>
       {data.slice(0, USER_DATA_SIZE).map(getChipElement)}

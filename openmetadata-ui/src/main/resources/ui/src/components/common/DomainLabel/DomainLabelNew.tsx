@@ -135,7 +135,7 @@ export const DomainLabelNew = ({
         <Typography.Text
           className={classNames(
             'domain-link',
-            { 'font-medium text-xs': !showDomainHeading },
+            { 'text-xs': !showDomainHeading },
             textClassName
           )}
           data-testid="no-domain-text">
@@ -161,7 +161,7 @@ export const DomainLabelNew = ({
   const label = useMemo(() => {
     return (
       <div
-        className="d-flex flex-col items-start gap-1 flex-wrap"
+        className="d-flex flex-col items-start gap-1 flex-wrap flex-center"
         data-testid="header-domain-container">
         {domainLink}
       </div>
