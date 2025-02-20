@@ -6,31 +6,22 @@
   "type": "object",
   "javaType": "io.collate.schema.entity.app.Limits",
   "definitions": {
-    "action": {
+    "actions": {
+      "title": "Actions",
+      "javaType": "io.collate.schema.entity.app.LimitActions",
+      "description": "The action and its limit.",
       "type": "object",
-      "javaType": "io.collate.schema.entity.app.LimitAction",
-      "properties": {
-        "name": {
-          "title": "Action Name",
-          "description": "The action that is being performed and limited",
-          "type": "string"
-        },
-        "count": {
-          "title": "Action Limits",
-          "description": "Limit for the action in the cycle on an annual basis.",
-          "type": "integer"
-        }
+      "additionalProperties": {
+        "type": "integer",
+        "description": "Limit for the named action."
       }
     }
   },
   "properties": {
-    "limits": {
-      "title": "Limits",
+    "actions": {
+      "title": "Actions",
       "description": "The records of the limits.",
-      "type": "array",
-      "items": {
-        "$ref": "#/definitions/action"
-      }
+      "$ref": "#/definitions/actions"
     },
     "billingCycleStart": {
       "title": "Cycle Start",
