@@ -107,7 +107,6 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
         UPDATE_FIELDS);
     quoteFqn = false;
     supportsSearch = true;
-    parent = true;
   }
 
   @Override

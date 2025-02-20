@@ -40,10 +40,7 @@ import static org.openmetadata.service.util.EntityUtil.getFqn;
 import static org.openmetadata.service.util.EntityUtil.getId;
 import static org.openmetadata.service.util.EntityUtil.toTagLabels;
 import static org.openmetadata.service.util.TestUtils.*;
-import static org.openmetadata.service.util.TestUtils.UpdateType.CHANGE_CONSOLIDATED;
 import static org.openmetadata.service.util.TestUtils.UpdateType.MINOR_UPDATE;
-import static org.openmetadata.service.util.TestUtils.UpdateType.NO_CHANGE;
-import static org.openmetadata.service.util.TestUtils.UpdateType.REVERT;
 
 import java.io.IOException;
 import java.net.URI;
@@ -303,11 +300,11 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     term.withReviewers(List.of(USER1_REF, USER2_REF))
         .withSynonyms(List.of("synonym1", "synonym2"))
         .withReferences(List.of(reference1, reference2));
-    change = getChangeDescription(term, CHANGE_CONSOLIDATED);
-    fieldAdded(change, "reviewers", List.of(USER1_REF, USER2_REF));
-    fieldAdded(change, "synonyms", List.of("synonym1", "synonym2"));
-    fieldAdded(change, "references", List.of(reference1, reference2));
-    term = patchEntityAndCheck(term, origJson, ADMIN_AUTH_HEADERS, CHANGE_CONSOLIDATED, change);
+    change = getChangeDescription(term, MINOR_UPDATE);
+    fieldAdded(change, "reviewers", List.of(USER2_REF));
+    fieldAdded(change, "synonyms", List.of("synonym2"));
+    fieldAdded(change, "references", List.of(reference2));
+    term = patchEntityAndCheck(term, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
     // Remove a reviewer USER1, synonym1, reference1 in PATCH request
     // Changes from this PATCH is consolidated with the previous changes resulting in no change
@@ -315,11 +312,11 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     term.withReviewers(List.of(USER2_REF))
         .withSynonyms(List.of("synonym2"))
         .withReferences(List.of(reference2));
-    change = getChangeDescription(term, CHANGE_CONSOLIDATED);
-    fieldAdded(change, "reviewers", List.of(USER2_REF));
-    fieldAdded(change, "synonyms", List.of("synonym2"));
-    fieldAdded(change, "references", List.of(reference2));
-    patchEntityAndCheck(term, origJson, ADMIN_AUTH_HEADERS, CHANGE_CONSOLIDATED, change);
+    change = getChangeDescription(term, MINOR_UPDATE);
+    fieldDeleted(change, "reviewers", List.of(USER1_REF));
+    fieldDeleted(change, "synonyms", List.of("synonym1"));
+    fieldDeleted(change, "references", List.of(reference1));
+    patchEntityAndCheck(term, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
     // Note: We are re-enabling the GlossaryTermApprovalWorkflow.
     WorkflowHandler.getInstance().resumeWorkflow("GlossaryTermApprovalWorkflow");
@@ -343,8 +340,9 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     // Remove reference in PATCH request
     origJson = JsonUtils.pojoToJson(term);
     term.withReferences(null);
-    change = getChangeDescription(term, REVERT);
-    patchEntityAndCheck(term, origJson, ADMIN_AUTH_HEADERS, REVERT, change);
+    change = getChangeDescription(term, MINOR_UPDATE);
+    fieldDeleted(change, "references", List.of(reference1));
+    patchEntityAndCheck(term, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
   }
 
   @Test
@@ -498,7 +496,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
 
     // Due to the Glossary Workflow changing the Status from 'DRAFT' to 'IN_REVIEW' as a
     // GovernanceBot, two changes are created.
-    assertEquals(g2t5.getVersion(), previousVersion + 0.2, 0.0001);
+    assertEquals(g2t5.getVersion(), previousVersion + 0.1);
     assertTrue(
         g2t5.getReviewers().containsAll(newReviewers)
             && newReviewers.containsAll(g2t5.getReviewers()));
@@ -541,13 +539,11 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     term.withReviewers(List.of(USER1_REF, USER2_REF))
         .withSynonyms(List.of("synonym1", "synonym2"))
         .withReferences(List.of(reference1, reference2));
-    change = getChangeDescription(term, CHANGE_CONSOLIDATED);
-    fieldAdded(change, "reviewers", List.of(USER1_REF, USER2_REF));
-    fieldAdded(change, "synonyms", List.of("synonym1", "synonym2"));
-    fieldAdded(change, "references", List.of(reference1, reference2));
-    term =
-        patchEntityUsingFqnAndCheck(
-            term, origJson, ADMIN_AUTH_HEADERS, CHANGE_CONSOLIDATED, change);
+    change = getChangeDescription(term, MINOR_UPDATE);
+    fieldAdded(change, "reviewers", List.of(USER2_REF));
+    fieldAdded(change, "synonyms", List.of("synonym2"));
+    fieldAdded(change, "references", List.of(reference2));
+    term = patchEntityUsingFqnAndCheck(term, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
     // Remove a reviewer USER1, synonym1, reference1 in PATCH request
     // Changes from this PATCH is consolidated with the previous changes resulting in no change
@@ -555,11 +551,11 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     term.withReviewers(List.of(USER2_REF))
         .withSynonyms(List.of("synonym2"))
         .withReferences(List.of(reference2));
-    change = getChangeDescription(term, CHANGE_CONSOLIDATED);
-    fieldAdded(change, "reviewers", List.of(USER2_REF));
-    fieldAdded(change, "synonyms", List.of("synonym2"));
-    fieldAdded(change, "references", List.of(reference2));
-    patchEntityUsingFqnAndCheck(term, origJson, ADMIN_AUTH_HEADERS, CHANGE_CONSOLIDATED, change);
+    change = getChangeDescription(term, MINOR_UPDATE);
+    fieldDeleted(change, "reviewers", List.of(USER1_REF));
+    fieldDeleted(change, "synonyms", List.of("synonym1"));
+    fieldDeleted(change, "references", List.of(reference1));
+    patchEntityUsingFqnAndCheck(term, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
   }
 
   @Test
@@ -580,8 +576,9 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     // Remove reference in PATCH request
     origJson = JsonUtils.pojoToJson(term);
     term.withReferences(null);
-    change = getChangeDescription(term, REVERT);
-    patchEntityUsingFqnAndCheck(term, origJson, ADMIN_AUTH_HEADERS, REVERT, change);
+    change = getChangeDescription(term, MINOR_UPDATE);
+    fieldDeleted(change, "references", List.of(reference1));
+    patchEntityUsingFqnAndCheck(term, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
   }
 
   @Test
@@ -747,8 +744,9 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     // Changes from this PATCH is consolidated with the previous changes resulting in no change
     json = JsonUtils.pojoToJson(term1);
     term1.setStyle(null);
-    change = getChangeDescription(term1, REVERT);
-    patchEntityAndCheck(term1, json, ADMIN_AUTH_HEADERS, REVERT, change);
+    change = getChangeDescription(term1, MINOR_UPDATE);
+    fieldDeleted(change, "style", style);
+    patchEntityAndCheck(term1, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
     term1 = getEntity(term1.getId(), ADMIN_AUTH_HEADERS);
     assertNull(term1.getStyle());
   }
@@ -1300,7 +1298,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
       change = change == null ? getChangeDescription(term, update) : change;
       fieldUpdated(change, "parent", oldParent, newParent);
     } else {
-      update = update != null ? update : NO_CHANGE;
+      update = update != null ? update : MINOR_UPDATE;
       change = change == null ? getChangeDescription(term, update) : change;
     }
 

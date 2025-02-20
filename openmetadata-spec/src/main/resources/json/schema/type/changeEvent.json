@@ -49,6 +49,10 @@
       "description": "For `eventType` `entityUpdated` this field captures details about what fields were added/updated/deleted. For `eventType` `entityCreated` or `entityDeleted` this field is null.",
       "$ref": "entityHistory.json#/definitions/changeDescription"
     },
+    "incrementalChangeDescription": {
+      "description": "Change that lead to this version of the entity.",
+      "$ref": "../type/entityHistory.json#/definitions/changeDescription"
+    },
     "entity": {
       "description": "For `eventType` `entityCreated`, this field captures JSON coded string of the entity using the schema corresponding to `entityType`."
     }

@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -71,6 +71,10 @@ export interface Database {
      * Unique identifier that identifies this database instance.
      */
     id: string;
+    /**
+     * Change that lead to this version of the entity.
+     */
+    incrementalChangeDescription?: ChangeDescription;
     /**
      * Life Cycle properties of the entity
      */

@@ -247,6 +247,7 @@ public class APIEndpointResourceTest extends EntityResourceTest<APIEndpoint, Cre
     endpoint = getAPIEndpoint(apiEndpoint.getId(), "tags", ADMIN_AUTH_HEADERS);
     List<Field> requestFields = endpoint.getRequestSchema().getSchemaFields();
     assertFields(api_response_fields, requestFields);
+    endpointJson = JsonUtils.pojoToJson(endpoint);
     requestFields.get(0).getTags().add(PII_SENSITIVE_TAG_LABEL);
     requestFields.get(0).getTags().add(USER_ADDRESS_TAG_LABEL);
     patchEntity(endpoint.getId(), endpointJson, endpoint, ADMIN_AUTH_HEADERS);

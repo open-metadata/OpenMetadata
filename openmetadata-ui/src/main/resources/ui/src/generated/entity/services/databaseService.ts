@@ -54,6 +54,10 @@ export interface DatabaseService {
      */
     id: string;
     /**
+     * Change that lead to this version of the entity.
+     */
+    incrementalChangeDescription?: ChangeDescription;
+    /**
      * Name that identifies this database service.
      */
     name: string;
@@ -307,10 +311,11 @@ export interface ConfigClass {
      *
      * Couchbase driver scheme options.
      */
-    scheme?:                ConfigScheme;
-    supportsDatabase?:      boolean;
-    supportsDataDiff?:      boolean;
-    supportsDBTExtraction?: boolean;
+    scheme?:                                ConfigScheme;
+    supportsDatabase?:                      boolean;
+    supportsDataDiff?:                      boolean;
+    supportsDBTExtraction?:                 boolean;
+    supportsIncrementalMetadataExtraction?: boolean;
     /**
      * Supports Lineage Extraction.
      */
@@ -710,6 +715,10 @@ export interface ConfigClass {
      * usage monitoring.
      */
     account?: string;
+    /**
+     * Full name of the schema where the account usage data is stored.
+     */
+    accountUsageSchema?: string;
     /**
      * Optional configuration for ingestion to keep the client session active in case the
      * ingestion process runs for longer durations.

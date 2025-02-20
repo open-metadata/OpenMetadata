@@ -89,7 +89,7 @@ test('Glossary', async ({ page }) => {
 
     await page.reload();
     const versionPageResponse = page.waitForResponse(
-      `/api/v1/glossaries/${glossary.responseData.id}/versions/0.3`
+      `/api/v1/glossaries/${glossary.responseData.id}/versions/0.2`
     );
     await page.click('[data-testid="version-button"]');
     await versionPageResponse;
@@ -199,10 +199,14 @@ test('GlossaryTerm', async ({ page }) => {
       )
     ).toBeVisible();
 
+    await page.waitForLoadState('networkidle');
+
     const glossaryTermsRes = page.waitForResponse(
       '/api/v1/glossaryTerms/name/**'
     );
     await page.click('[data-testid="version-button"]');
+
+    await page.waitForLoadState('networkidle');
     await glossaryTermsRes;
 
     await addMultiOwner({

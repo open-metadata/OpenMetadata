@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * A `Tag` entity is used for classification or categorization. It is a term defined under
  * `Classification` entity. Tags are used to label the entities and entity fields, such as
  * Tables, and Columns.
@@ -71,6 +69,10 @@ export interface Tag {
      * Unique identifier of this entity instance.
      */
     id?: string;
+    /**
+     * Change that lead to this version of the entity.
+     */
+    incrementalChangeDescription?: ChangeDescription;
     /**
      * Children tags under this group are mutually exclusive. When mutually exclusive is `true`
      * the tags from this group are used to **classify** an entity. An entity can only be in one

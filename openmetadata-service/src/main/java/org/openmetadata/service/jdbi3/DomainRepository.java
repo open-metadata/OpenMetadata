@@ -54,7 +54,6 @@ public class DomainRepository extends EntityRepository<Domain> {
         UPDATE_FIELDS,
         UPDATE_FIELDS);
     supportsSearch = true;
-    parent = true;
   }
 
   @Override

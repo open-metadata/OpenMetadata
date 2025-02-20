@@ -51,6 +51,10 @@ export interface WorkflowDefinition {
      */
     id?: string;
     /**
+     * Change that lead to this version of the entity.
+     */
+    incrementalChangeDescription?: ChangeDescription;
+    /**
      * Name that identifies this workflow definition.
      */
     name: string;

@@ -11,7 +11,7 @@ import lombok.extern.jackson.Jacksonized;
 @Getter
 @Builder
 public class IndexMapping {
-  String indexName;
+  @Getter String indexName;
   String indexMappingFile;
   String alias;
   List<String> parentAliases;
@@ -40,10 +40,6 @@ public class IndexMapping {
     return clusterAlias != null && !clusterAlias.isEmpty()
         ? childAliases.stream().map(alias -> clusterAlias + indexNameSeparator + alias).toList()
         : childAliases;
-  }
-
-  private String getIndexName() {
-    return indexName;
   }
 
   private String getAlias() {

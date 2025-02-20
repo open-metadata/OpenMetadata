@@ -42,7 +42,11 @@ import org.openmetadata.service.util.JsonUtils;
 
 public interface SearchIndex {
   Set<String> DEFAULT_EXCLUDED_FIELDS =
-      Set.of("changeDescription", "lineage.pipeline.changeDescription", "connection");
+      Set.of(
+          "changeDescription",
+          "incrementalChangeDescription",
+          "lineage.pipeline.changeDescription",
+          "connection");
   public static final SearchClient searchClient = Entity.getSearchRepository().getSearchClient();
 
   default Map<String, Object> buildSearchIndexDoc() {

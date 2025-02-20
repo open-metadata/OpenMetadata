@@ -71,6 +71,10 @@ export interface TestSuite {
      */
     id?: string;
     /**
+     * Change that lead to this version of the entity.
+     */
+    incrementalChangeDescription?: ChangeDescription;
+    /**
      * Indicates if the test suite is inherited from a parent entity.
      */
     inherited?: boolean;
