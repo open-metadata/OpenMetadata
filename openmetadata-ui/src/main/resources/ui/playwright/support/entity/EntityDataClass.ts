@@ -97,8 +97,7 @@ export class EntityDataClass {
       this.domain2.create(apiContext),
       this.glossary1.create(apiContext),
       this.glossary2.create(apiContext),
-      this.glossaryTerm1.create(apiContext),
-      this.glossaryTerm2.create(apiContext),
+
       this.user1.create(apiContext),
       this.user2.create(apiContext),
       this.user3.create(apiContext),
@@ -184,6 +183,10 @@ export class EntityDataClass {
     }
 
     await Promise.allSettled(promises);
+    await Promise.allSettled([
+      this.glossaryTerm1.create(apiContext),
+      this.glossaryTerm2.create(apiContext),
+    ]);
   }
 
   static async postRequisitesForTests(
@@ -280,6 +283,6 @@ export class EntityDataClass {
       promises.push(this.storageService.delete(apiContext));
     }
 
-    await Promise.allSettled(promises);
+    return await Promise.allSettled(promises);
   }
 }

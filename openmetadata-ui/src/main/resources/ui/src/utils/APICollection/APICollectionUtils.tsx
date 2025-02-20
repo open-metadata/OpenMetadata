@@ -51,7 +51,7 @@ export const getApiCollectionDetailsPageTabs = ({
         />
       ),
       key: EntityTabs.API_ENDPOINT,
-      children: <GenericTab type={PageType.APIEndpoint} />,
+      children: <GenericTab type={PageType.APICollection} />,
     },
     {
       label: (

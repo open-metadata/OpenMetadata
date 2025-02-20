@@ -157,7 +157,7 @@ function APIEndpointsTab({
 
   useEffect(() => {
     getAPICollectionEndpoints();
-  }, []);
+  }, [apiCollection]);
 
   return (
     <Row gutter={[16, 16]}>
