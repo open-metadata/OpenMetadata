@@ -186,6 +186,8 @@ entities.forEach((EntityClass) => {
     });
 
     test.afterAll('Cleanup', async ({ browser }) => {
+      test.slow();
+
       const { apiContext, afterAction } = await performAdminLogin(browser);
       await user.delete(apiContext);
       await entity.delete(apiContext);
