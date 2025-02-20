@@ -22,7 +22,7 @@ import {
   getFrontEndFormat,
   MarkdownToHTMLConverter,
 } from '../../../../utils/FeedUtils';
-import RichTextEditorPreviewerV1 from '../../../common/RichTextEditor/RichTextEditorPreviewerV1';
+import RichTextEditorPreviewerNew from '../../../common/RichTextEditor/RichTextEditorPreviewNew';
 import DescriptionFeed from '../../ActivityFeedCardV2/FeedCardBody/DescriptionFeed/DescriptionFeed';
 import TagsFeed from '../../ActivityFeedCardV2/FeedCardBody/TagsFeed/TagsFeed';
 import ActivityFeedEditor from '../../ActivityFeedEditor/ActivityFeedEditor';
@@ -77,9 +77,9 @@ const FeedCardBodyNew = ({
     }
 
     return (
-      <RichTextEditorPreviewerV1
+      <RichTextEditorPreviewerNew
         className="text-wrap"
-        markdown={getFrontEndFormat(message)}
+        markdown={getFrontEndFormat(feed.message)}
       />
     );
   }, [isPost, message, postMessage, cardStyle, feed, entityType, entityFQN]);
@@ -123,7 +123,7 @@ const FeedCardBodyNew = ({
 
   return (
     <div
-      className={`common-style ${showThread ? 'show-thread' : 'hide-thread'} ${
+      className={`${showThread ? 'show-thread' : 'hide-thread'} ${
         feed.cardStyle === 'description' ? 'description' : ''
       } ${
         !showThread &&
