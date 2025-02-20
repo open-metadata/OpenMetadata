@@ -71,6 +71,10 @@ export interface EventSubscription {
      */
     id: string;
     /**
+     * Change that lead to this version of the entity.
+     */
+    incrementalChangeDescription?: ChangeDescription;
+    /**
      * Input for the Filters.
      */
     input?: AlertFilteringInput;
@@ -127,6 +131,8 @@ export enum AlertType {
  * Change that led to this version of the Event Subscription.
  *
  * Description of the change.
+ *
+ * Change that lead to this version of the entity.
  */
 export interface ChangeDescription {
     /**
