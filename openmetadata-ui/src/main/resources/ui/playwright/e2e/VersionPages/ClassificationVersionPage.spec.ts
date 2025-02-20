@@ -80,12 +80,12 @@ test('Classification version page', async ({ page }) => {
   await patchClassificationResponse;
 
   // Verify disabled state
-  await page.click('[data-testid="version-button"]:has-text("0.3")');
+  await page.click('[data-testid="version-button"]:has-text("0.2")');
 
   await expect(page.locator('[data-testid="disabled"]')).toBeVisible();
 
   // Toggle back to enabled
-  await page.click('[data-testid="version-button"]:has-text("0.3")');
+  await page.click('[data-testid="version-button"]:has-text("0.2")');
   await page.click('[data-testid="manage-button"]');
   const patchClassificationResponse2 = page.waitForResponse(
     `/api/v1/classifications/${classification.responseData?.id}`
@@ -94,7 +94,7 @@ test('Classification version page', async ({ page }) => {
   await patchClassificationResponse2;
 
   // Verify enabled state
-  await page.click('[data-testid="version-button"]:has-text("0.4")');
+  await page.click('[data-testid="version-button"]:has-text("0.2")');
 
   await expect(
     page.locator(`[data-testid="classification-${classification.data.name}"]`)

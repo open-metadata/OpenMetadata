@@ -11,17 +11,9 @@
  *  limitations under the License.
  */
 import test, { expect } from '@playwright/test';
-import { ApiEndpointClass } from '../../support/entity/ApiEndpointClass';
-import { ContainerClass } from '../../support/entity/ContainerClass';
-import { DashboardClass } from '../../support/entity/DashboardClass';
-import { DashboardDataModelClass } from '../../support/entity/DashboardDataModelClass';
 import { EntityDataClass } from '../../support/entity/EntityDataClass';
-import { MlModelClass } from '../../support/entity/MlModelClass';
-import { PipelineClass } from '../../support/entity/PipelineClass';
-import { SearchIndexClass } from '../../support/entity/SearchIndexClass';
-import { StoredProcedureClass } from '../../support/entity/StoredProcedureClass';
+import { EntityDataClassCreationConfig } from '../../support/entity/EntityDataClass.interface';
 import { TableClass } from '../../support/entity/TableClass';
-import { TopicClass } from '../../support/entity/TopicClass';
 import {
   createNewPage,
   descriptionBoxReadOnly,
@@ -29,32 +21,48 @@ import {
 } from '../../utils/common';
 import { addMultiOwner, assignTier } from '../../utils/entity';
 
+const entityCreationConfig: EntityDataClassCreationConfig = {
+  apiEndpoint: true,
+  table: true,
+  storedProcedure: true,
+  dashboard: true,
+  pipeline: true,
+  topic: true,
+  mlModel: true,
+  container: true,
+  searchIndex: true,
+  dashboardDataModel: true,
+};
+
 const entities = [
-  ApiEndpointClass,
-  TableClass,
-  StoredProcedureClass,
-  DashboardClass,
-  PipelineClass,
-  TopicClass,
-  MlModelClass,
-  ContainerClass,
-  SearchIndexClass,
-  DashboardDataModelClass,
-] as const;
+  EntityDataClass.apiEndpoint1,
+  EntityDataClass.table1,
+  EntityDataClass.storedProcedure1,
+  EntityDataClass.dashboard1,
+  EntityDataClass.pipeline1,
+  EntityDataClass.topic1,
+  EntityDataClass.mlModel1,
+  EntityDataClass.container1,
+  EntityDataClass.searchIndex1,
+  EntityDataClass.dashboardDataModel1,
+];
 
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
-entities.forEach((EntityClass) => {
-  const entity = new EntityClass();
+test.describe('Entity Version pages', () => {
+  test.beforeAll('Setup pre-requests', async ({ browser }) => {
+    test.slow();
 
-  test.describe(entity.getType(), () => {
-    test.beforeAll('Setup pre-requests', async ({ browser }) => {
-      const { apiContext, afterAction } = await createNewPage(browser);
+    const { apiContext, afterAction } = await createNewPage(browser);
 
-      await EntityDataClass.preRequisitesForTests(apiContext);
-      await entity.create(apiContext);
-      const domain = EntityDataClass.domain1.responseData;
+    await EntityDataClass.preRequisitesForTests(
+      apiContext,
+      entityCreationConfig
+    );
+    const domain = EntityDataClass.domain1.responseData;
+
+    for (const entity of entities) {
       await entity.patch({
         apiContext,
         patchData: [
@@ -95,23 +103,29 @@ entities.forEach((EntityClass) => {
           },
         ],
       });
+    }
 
-      await afterAction();
-    });
+    await afterAction();
+  });
 
-    test.beforeEach('Visit entity details page', async ({ page }) => {
-      await redirectToHomePage(page);
+  test.beforeEach('Visit entity details page', async ({ page }) => {
+    await redirectToHomePage(page);
+  });
+
+  test.afterAll('Cleanup', async ({ browser }) => {
+    test.slow();
+
+    const { apiContext, afterAction } = await createNewPage(browser);
+    await EntityDataClass.postRequisitesForTests(
+      apiContext,
+      entityCreationConfig
+    );
+    await afterAction();
+  });
+
+  entities.forEach((entity) => {
+    test(`${entity.getType()}`, async ({ page }) => {
       await entity.visitEntityPage(page);
-    });
-
-    test.afterAll('Cleanup', async ({ browser }) => {
-      const { apiContext, afterAction } = await createNewPage(browser);
-      await entity.delete(apiContext);
-      await EntityDataClass.postRequisitesForTests(apiContext);
-      await afterAction();
-    });
-
-    test('Version page', async ({ page }) => {
       const versionDetailResponse = page.waitForResponse(`**/versions/0.2`);
       await page.locator('[data-testid="version-button"]').click();
       await versionDetailResponse;
@@ -177,7 +191,9 @@ entities.forEach((EntityClass) => {
 
             await page
               .locator(
-                `[data-row-key$="${entity.entityResponseData?.['columns'][0].name}"] [data-testid="edit-displayName-button"]`
+                `[data-row-key$="${
+                  (entity as TableClass).entity.columns[0].name
+                }"] [data-testid="edit-displayName-button"]`
               )
               .click();
 
@@ -196,7 +212,9 @@ entities.forEach((EntityClass) => {
 
             await expect(
               page.locator(
-                `[data-row-key$="${entity.entityResponseData?.['columns'][0].name}"] [data-testid="diff-added"]`
+                `[data-row-key$="${
+                  (entity as TableClass).entity.columns[0].name
+                }"] [data-testid="diff-added"]`
               )
             ).toBeVisible();
           }

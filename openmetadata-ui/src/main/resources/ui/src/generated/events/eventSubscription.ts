@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * This schema defines the EventSubscription entity. An Event Subscription has trigger,
  * filters and Subscription
  */
@@ -67,6 +65,10 @@ export interface EventSubscription {
      * Unique identifier that identifies this Event Subscription.
      */
     id: string;
+    /**
+     * Change that lead to this version of the entity.
+     */
+    incrementalChangeDescription?: ChangeDescription;
     /**
      * Input for the Filters.
      */
@@ -123,6 +125,8 @@ export enum AlertType {
  * Change that led to this version of the Event Subscription.
  *
  * Description of the change.
+ *
+ * Change that lead to this version of the entity.
  */
 export interface ChangeDescription {
     /**

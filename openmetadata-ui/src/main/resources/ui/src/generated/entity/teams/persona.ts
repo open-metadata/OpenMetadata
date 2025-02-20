@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -42,13 +42,13 @@ export interface Persona {
     href?: string;
     id:    string;
     /**
+     * Change that lead to this version of the entity.
+     */
+    incrementalChangeDescription?: ChangeDescription;
+    /**
      * A unique name of Persona. Example 'data engineer'
      */
     name: string;
-    /**
-     * Reference to the UI customization configuration.
-     */
-    uiCustomization?: EntityReference;
     /**
      * Last update time corresponding to the new version of the entity in Unix epoch time
      * milliseconds.
@@ -117,8 +117,6 @@ export interface FieldChange {
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
- *
- * Reference to the UI customization configuration.
  *
  * Users that are assigned a persona.
  *

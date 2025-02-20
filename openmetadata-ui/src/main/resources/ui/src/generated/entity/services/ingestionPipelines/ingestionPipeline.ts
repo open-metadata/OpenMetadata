@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * Ingestion Pipeline Config is used to set up a DAG and deploy. This entity is used to
  * setup metadata/quality pipelines on Apache Airflow.
  */
@@ -63,6 +61,10 @@ export interface IngestionPipeline {
      * Unique identifier that identifies this pipeline.
      */
     id?: string;
+    /**
+     * Change that lead to this version of the entity.
+     */
+    incrementalChangeDescription?: ChangeDescription;
     /**
      * Set the logging level for the workflow.
      */
@@ -169,6 +171,8 @@ export interface AirflowConfig {
  * Change that led to this version of the entity.
  *
  * Description of the change.
+ *
+ * Change that lead to this version of the entity.
  */
 export interface ChangeDescription {
     /**
@@ -386,7 +390,7 @@ export interface OpenMetadataConnection {
     /**
      * SSL Configuration for OpenMetadata Server
      */
-    sslConfig?: SchemaRegistrySSLClass;
+    sslConfig?: ConsumerConfigSSLClass;
     /**
      * If set to true, when creating a service during the ingestion we will store its Service
      * Connection. Otherwise, the ingestion will create a bare service without connection
@@ -490,12 +494,15 @@ export interface OpenMetadataJWTClientConfig {
  *
  * SSL Configuration details.
  *
+ * Consumer Config SSL Config. Configuration for enabling SSL for the Consumer Config
+ * connection.
+ *
  * Schema Registry SSL Config. Configuration for enabling SSL for the Schema Registry
  * connection.
  *
  * OpenMetadata Client configured to validate SSL certificates.
  */
-export interface SchemaRegistrySSLClass {
+export interface ConsumerConfigSSLClass {
     /**
      * The CA certificate used for SSL validation.
      */
@@ -536,6 +543,10 @@ export enum VerifySSL {
  * This defines runtime status of Pipeline.
  */
 export interface PipelineStatus {
+    /**
+     * Pipeline configuration for this particular execution.
+     */
+    config?: { [key: string]: any };
     /**
      * endDate of the pipeline run for this particular execution.
      */
@@ -813,9 +824,9 @@ export interface Pipeline {
      */
     stageFileLocation?: string;
     /**
-     * Set 'Cross Database Service Names' to process lineage with the database.
+     * Handle Lineage for Snowflake Temporary and Transient Tables.
      */
-    crossDatabaseServiceNames?: string[];
+    enableTempTableLineage?: boolean;
     /**
      * Set the 'Override View Lineage' toggle to control whether to override the existing view
      * lineage.
@@ -825,11 +836,6 @@ export interface Pipeline {
      * Configuration to set the timeout for parsing the query in seconds.
      */
     parsingTimeoutLimit?: number;
-    /**
-     * Set the 'Process Cross Database Lineage' toggle to control whether to process table
-     * lineage across different databases.
-     */
-    processCrossDatabaseLineage?: boolean;
     /**
      * Set the 'Process Query Lineage' toggle to control whether to process query lineage.
      */
@@ -1168,14 +1174,12 @@ export interface FilterPattern {
  *
  * Configuration for the Automator External Application.
  *
- * This schema defines the Slack App Token Configuration
- *
  * No configuration needed to instantiate the Data Insights Pipeline. The logic is handled
  * in the backend.
  *
  * Search Indexing App.
  *
- * Configuration for the Collate AI Quality Agent.
+ * This schema defines the Slack App Token Configuration
  */
 export interface CollateAIAppConfig {
     /**
@@ -1200,15 +1204,7 @@ export interface CollateAIAppConfig {
     /**
      * Entities selected to run the automation.
      */
-    resources?: Resource;
-    /**
-     * Bot Token
-     */
-    botToken?: string;
-    /**
-     * User Token
-     */
-    userToken?:             string;
+    resources?:             Resource;
     backfillConfiguration?: BackfillConfiguration;
     /**
      * Maximum number of events processed at a time (Default 100).
@@ -1269,9 +1265,13 @@ export interface CollateAIAppConfig {
      */
     searchIndexMappingLanguage?: SearchIndexMappingLanguage;
     /**
-     * Whether the suggested tests should be active or not upon suggestion
+     * Bot Token
      */
-    active?: boolean;
+    botToken?: string;
+    /**
+     * User Token
+     */
+    userToken?: string;
     /**
      * Enter the retention period for change event records in days (e.g., 7 for one week, 30 for
      * one month).
@@ -1306,13 +1306,13 @@ export interface Action {
      * Apply tags to the children of the selected assets that match the criteria. E.g., columns,
      * tasks, topic fields,...
      *
-     * Remove tags from all the children of the selected assets. E.g., columns, tasks, topic
+     * Remove tags from the children of the selected assets. E.g., columns, tasks, topic
      * fields,...
      *
      * Apply the description to the children of the selected assets that match the criteria.
      * E.g., columns, tasks, topic fields,...
      *
-     * Remove descriptions from all children of the selected assets. E.g., columns, tasks, topic
+     * Remove descriptions from the children of the selected assets. E.g., columns, tasks, topic
      * fields,...
      */
     applyToChildren?: string[];
@@ -1350,6 +1350,16 @@ export interface Action {
      * Application Type
      */
     type: ActionType;
+    /**
+     * Remove tags from all the children and parent of the selected assets.
+     *
+     * Remove descriptions from all the children and parent of the selected assets.
+     */
+    applyToAll?: boolean;
+    /**
+     * Remove tags by its label type
+     */
+    labels?: LabelElement[];
     /**
      * Domain to apply
      */
@@ -1403,6 +1413,15 @@ export interface Action {
 }
 
 /**
+ * Remove tags by its label type
+ */
+export enum LabelElement {
+    Automated = "Automated",
+    Manual = "Manual",
+    Propagated = "Propagated",
+}
+
+/**
  * This schema defines the type for labeling an entity with a Tag.
  *
  * tier to apply
@@ -1427,7 +1446,7 @@ export interface TagLabel {
      * label was propagated from upstream based on lineage. 'Automated' is used when a tool was
      * used to determine the tag label.
      */
-    labelType: LabelType;
+    labelType: LabelTypeEnum;
     /**
      * Name of the tag or glossary term.
      */
@@ -1452,7 +1471,7 @@ export interface TagLabel {
  * label was propagated from upstream based on lineage. 'Automated' is used when a tool was
  * used to determine the tag label.
  */
-export enum LabelType {
+export enum LabelTypeEnum {
     Automated = "Automated",
     Derived = "Derived",
     Manual = "Manual",
@@ -1592,7 +1611,6 @@ export enum SearchIndexMappingLanguage {
 export enum CollateAIAppConfigType {
     Automator = "Automator",
     CollateAI = "CollateAI",
-    CollateAIQualityAgent = "CollateAIQualityAgent",
     DataInsights = "DataInsights",
     DataInsightsReport = "DataInsightsReport",
     SearchIndexing = "SearchIndexing",
@@ -2128,8 +2146,6 @@ export interface ServiceConnection {
  *
  * MongoDB Connection Config
  *
- * Cassandra Connection Config
- *
  * Couchbase Connection Config
  *
  * Greenplum Database Connection Config
@@ -2149,8 +2165,6 @@ export interface ServiceConnection {
  * Synapse Database Connection Config
  *
  * Exasol Database Connection Config
- *
- * Cockroach Database Connection Config
  *
  * Kafka Connection Config
  *
@@ -2373,9 +2387,6 @@ export interface ConfigClass {
      * Host and port of the MongoDB service when using the `mongodb` connection scheme. Only
      * host when using the `mongodb+srv` scheme.
      *
-     * Host and port of the Cassandra service when using the `cassandra` connection scheme. Only
-     * host when using the `cassandra+srv` scheme.
-     *
      * Host and port of the Doris service.
      *
      * Host and port of the Teradata service.
@@ -2383,8 +2394,6 @@ export interface ConfigClass {
      * Host and Port of the SAP ERP instance.
      *
      * Host and port of the Azure Synapse service.
-     *
-     * Host and port of the Cockrooach service.
      *
      * Host and port of the Amundsen Neo4j Connection. This expect a URI format like:
      * bolt://localhost:7687.
@@ -2546,9 +2555,6 @@ export interface ConfigClass {
      * Username to connect to MongoDB. This user should have privileges to read all the metadata
      * in MongoDB.
      *
-     * Username to connect to Cassandra. This user should have privileges to read all the
-     * metadata in Cassandra.
-     *
      * Username to connect to Couchbase. This user should have privileges to read all the
      * metadata in Couchbase.
      *
@@ -2568,9 +2574,6 @@ export interface ConfigClass {
      *
      * Username to connect to Exasol. This user should have privileges to read all the metadata
      * in Exasol.
-     *
-     * Username to connect to Cockroach. This user should have privileges to read all the
-     * metadata in Cockroach.
      *
      * username to connect to the Amundsen Neo4j Connection.
      *
@@ -2637,7 +2640,7 @@ export interface ConfigClass {
      *
      * Matillion Auth Configuration
      */
-    connection?: ConnectionObject;
+    connection?: ConfigConnection;
     /**
      * Tableau API version.
      *
@@ -2867,9 +2870,6 @@ export interface ConfigClass {
      *
      * Initial Redshift database to connect to. If you want to ingest all databases, set
      * ingestAllDatabases to true.
-     *
-     * Optional name to give to the database in OpenMetadata. If left blank, we will use default
-     * as the database name.
      */
     database?: string;
     /**
@@ -2947,6 +2947,10 @@ export interface ConfigClass {
      * Databricks compute resources URL.
      */
     httpPath?: string;
+    /**
+     * Table name to fetch the query history.
+     */
+    queryHistoryTable?: string;
     /**
      * License to connect to DB2.
      */
@@ -3048,6 +3052,10 @@ export interface ConfigClass {
      * usage monitoring.
      */
     account?: string;
+    /**
+     * Full name of the schema where the account usage data is stored.
+     */
+    accountUsageSchema?: string;
     /**
      * Optional configuration for ingestion to keep the client session active in case the
      * ingestion process runs for longer durations.
@@ -3173,6 +3181,11 @@ export interface ConfigClass {
      */
     consumerConfig?: { [key: string]: any };
     /**
+     * Consumer Config SSL Config. Configuration for enabling SSL for the Consumer Config
+     * connection.
+     */
+    consumerConfigSSL?: ConsumerConfigSSLClass;
+    /**
      * sasl.mechanism Consumer Config property
      */
     saslMechanism?: SaslMechanismType;
@@ -3195,7 +3208,7 @@ export interface ConfigClass {
      * Schema Registry SSL Config. Configuration for enabling SSL for the Schema Registry
      * connection.
      */
-    schemaRegistrySSL?: SchemaRegistrySSLClass;
+    schemaRegistrySSL?: ConsumerConfigSSLClass;
     /**
      * Schema Registry Topic Suffix Name. The suffix to be appended to the topic name to get
      * topic schema from registry.
@@ -3580,8 +3593,6 @@ export enum AuthMechanismEnum {
  *
  * Azure Database Connection Config
  *
- * Configuration for connecting to DataStax Astra DB in the cloud.
- *
  * Types of methods used to authenticate to the alation instance
  *
  * API Access Token Auth Credentials
@@ -3619,10 +3630,6 @@ export interface AuthenticationTypeForTableau {
      * JWT to connect to source.
      */
     jwt?: string;
-    /**
-     * Configuration for connecting to DataStax Astra DB in the cloud.
-     */
-    cloudConfig?: DataStaxAstraDBConfiguration;
     /**
      * Access Token for the API
      */
@@ -3719,30 +3726,6 @@ export interface AzureCredentials {
      * Key Vault Name
      */
     vaultName?: string;
-}
-
-/**
- * Configuration for connecting to DataStax Astra DB in the cloud.
- */
-export interface DataStaxAstraDBConfiguration {
-    /**
-     * Timeout in seconds for establishing new connections to Cassandra.
-     */
-    connectTimeout?: number;
-    /**
-     * Timeout in seconds for individual Cassandra requests.
-     */
-    requestTimeout?: number;
-    /**
-     * File path to the Secure Connect Bundle (.zip) used for a secure connection to DataStax
-     * Astra DB.
-     */
-    secureConnectBundle?: string;
-    /**
-     * The Astra DB application token used for authentication.
-     */
-    token?: string;
-    [property: string]: any;
 }
 
 /**
@@ -3992,7 +3975,7 @@ export interface SSLCertificatesByPath {
  * Qlik Authentication Certificate File Path
  */
 export interface QlikCertificatesBy {
-    sslConfig?: SchemaRegistrySSLClass;
+    sslConfig?: ConsumerConfigSSLClass;
     /**
      * Client Certificate
      */
@@ -4041,7 +4024,7 @@ export interface DeltaLakeConfigurationSource {
      *
      * Available sources to fetch files.
      */
-    connection?: ConnectionClass;
+    connection?: ConfigSourceConnection;
     /**
      * Bucket Name of the data source.
      */
@@ -4084,7 +4067,7 @@ export interface DeltaLakeConfigurationSource {
  *
  * DataLake S3 bucket will ingest metadata of files in bucket
  */
-export interface ConnectionClass {
+export interface ConfigSourceConnection {
     /**
      * Thrift connection to the metastore service. E.g., localhost:9083
      */
@@ -4148,9 +4131,9 @@ export interface ConnectionClass {
  *
  * Matillion Auth Configuration
  *
- * Matillion ETL Auth Config
+ * Matillion ETL Auth Config.
  */
-export interface ConnectionObject {
+export interface ConfigConnection {
     /**
      * Password for Superset.
      *
@@ -4267,7 +4250,6 @@ export interface ConnectionObject {
      */
     databaseMode?:                  string;
     supportsViewLineageExtraction?: boolean;
-    [property: string]: any;
 }
 
 /**
@@ -4394,6 +4376,9 @@ export enum ConnectionScheme {
  * SSL Configuration for OpenMetadata Server
  *
  * SSL Configuration details.
+ *
+ * Consumer Config SSL Config. Configuration for enabling SSL for the Consumer Config
+ * connection.
  *
  * Schema Registry SSL Config. Configuration for enabling SSL for the Schema Registry
  * connection.
@@ -4611,7 +4596,7 @@ export interface HiveMetastoreConnectionDetails {
     /**
      * SSL Configuration details.
      */
-    sslConfig?:                  SchemaRegistrySSLClass;
+    sslConfig?:                  ConsumerConfigSSLClass;
     sslMode?:                    SSLMode;
     supportsDatabase?:           boolean;
     supportsDataDiff?:           boolean;
@@ -4668,9 +4653,9 @@ export enum HiveMetastoreConnectionDetailsType {
 /**
  * We support username/password or client certificate authentication
  *
- * username/password auth
+ * Configuration for connecting to Nifi Basic Auth.
  *
- * client certificate auth
+ * Configuration for connecting to Nifi Client Certificate Auth.
  */
 export interface NifiCredentialsConfiguration {
     /**
@@ -4836,6 +4821,9 @@ export enum KafkaSecurityProtocol {
  * Client SSL configuration
  *
  * SSL Configuration details.
+ *
+ * Consumer Config SSL Config. Configuration for enabling SSL for the Consumer Config
+ * connection.
  *
  * Schema Registry SSL Config. Configuration for enabling SSL for the Schema Registry
  * connection.
@@ -5009,9 +4997,7 @@ export enum RESTType {
     AzureSQL = "AzureSQL",
     BigQuery = "BigQuery",
     BigTable = "BigTable",
-    Cassandra = "Cassandra",
     Clickhouse = "Clickhouse",
-    Cockroach = "Cockroach",
     Couchbase = "Couchbase",
     CustomDashboard = "CustomDashboard",
     CustomDatabase = "CustomDatabase",

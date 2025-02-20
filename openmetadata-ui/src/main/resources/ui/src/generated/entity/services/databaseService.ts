@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * This schema defines the `Database Service` is a service such as MySQL, BigQuery,
  * Redshift, Postgres, or Snowflake. Alternative terms such as Database Cluster, Database
  * Server instance are also used for database service.
@@ -55,6 +53,10 @@ export interface DatabaseService {
      * Unique identifier of this database service instance.
      */
     id: string;
+    /**
+     * Change that lead to this version of the entity.
+     */
+    incrementalChangeDescription?: ChangeDescription;
     /**
      * Name that identifies this database service.
      */
@@ -584,9 +586,21 @@ export interface ConfigClass {
      */
     httpPath?: string;
     /**
+     * Table name to fetch the query history.
+     */
+    queryHistoryTable?: string;
+    /**
      * Generated Token to connect to Databricks.
      */
-    token?:                         string;
+    token?: string;
+    /**
+     * License to connect to DB2.
+     */
+    license?: string;
+    /**
+     * License file name to connect to DB2.
+     */
+    licenseFileName?:               string;
     supportsViewLineageExtraction?: boolean;
     /**
      * Available sources to fetch the metadata.
@@ -686,6 +700,10 @@ export interface ConfigClass {
      * usage monitoring.
      */
     account?: string;
+    /**
+     * Full name of the schema where the account usage data is stored.
+     */
+    accountUsageSchema?: string;
     /**
      * Optional configuration for ingestion to keep the client session active in case the
      * ingestion process runs for longer durations.

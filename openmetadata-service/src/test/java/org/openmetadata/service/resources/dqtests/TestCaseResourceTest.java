@@ -41,7 +41,6 @@ import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.TEST_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.TEST_USER_NAME;
-import static org.openmetadata.service.util.TestUtils.UpdateType.CHANGE_CONSOLIDATED;
 import static org.openmetadata.service.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.service.util.TestUtils.assertEntityPagination;
 import static org.openmetadata.service.util.TestUtils.assertListNotEmpty;
@@ -1000,11 +999,12 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     // Update description with PATCH
     // Changes from this PATCH is consolidated with the previous changes
     newDescription = "description2";
-    change = getChangeDescription(testCase, CHANGE_CONSOLIDATED);
-    fieldUpdated(change, "description", oldDescription, newDescription);
+    change = getChangeDescription(testCase, MINOR_UPDATE);
+    change.setPreviousVersion(testCase.getVersion());
+    fieldUpdated(change, "description", "description1", newDescription);
     String json = JsonUtils.pojoToJson(testCase);
     testCase.setDescription(newDescription);
-    testCase = patchEntityAndCheck(testCase, json, ownerAuthHeaders, CHANGE_CONSOLIDATED, change);
+    testCase = patchEntityAndCheck(testCase, json, ownerAuthHeaders, MINOR_UPDATE, change);
 
     // Delete the testcase
     deleteAndCheckEntity(testCase, ownerAuthHeaders);

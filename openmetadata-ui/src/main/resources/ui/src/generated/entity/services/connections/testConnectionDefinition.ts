@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * TestConnection is the definition that will encapsulate the steps required to test a
  * connection to a specific service.
  */
@@ -50,6 +48,10 @@ export interface TestConnectionDefinition {
      * Unique identifier of this test case definition instance.
      */
     id?: string;
+    /**
+     * Change that lead to this version of the entity.
+     */
+    incrementalChangeDescription?: ChangeDescription;
     /**
      * Name of the Test Connection Definition. It should be the `type` of the service being
      * tested, e.g., Mysql, or Snowflake.
