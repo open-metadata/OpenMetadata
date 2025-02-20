@@ -18,14 +18,17 @@
       "default": "runIngestionPipelineTask"
     },
     "name": {
+      "title": "Name",
       "description": "Name that identifies this Node.",
       "$ref": "../../../../../type/basic.json#/definitions/entityName"
     },
     "displayName": {
+      "title": "Display Name",
       "description": "Display Name that identifies this Node.",
       "type": "string"
     },
     "description": {
+      "title": "Description",
       "description": "Description of the Node.",
       "$ref": "../../../../../type/basic.json#/definitions/markdown"
     },
@@ -33,10 +36,14 @@
       "type": "object",
       "properties": {
         "waitForCompletion": {
+          "title": "Wait for Completion",
+          "description": "Set if this step should wait until the Ingestion Pipeline finishes running",
           "type": "boolean",
           "default": true
         },
         "timeoutSeconds": {
+          "title": "Timeout Seconds",
+          "description": "Set the amount of seconds to wait before defining the Ingestion Pipeline has timed out.",
           "type": "integer",
           "default": 3600
         }
