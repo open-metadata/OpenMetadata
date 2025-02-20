@@ -634,21 +634,28 @@ public class LineageRepository {
   @Transaction
   public boolean deleteLineageByFQN(
       String fromEntity, String fromFQN, String toEntity, String toFQN) {
-    EntityReference from =
-        Entity.getEntityReferenceByName(fromEntity, fromFQN, Include.NON_DELETED);
-    EntityReference to = Entity.getEntityReferenceByName(toEntity, toFQN, Include.NON_DELETED);
+    EntityReference from = Entity.getEntityReferenceByName(fromEntity, fromFQN, Include.ALL);
+    EntityReference to = Entity.getEntityReferenceByName(toEntity, toFQN, Include.ALL);
+    CollectionDAO.EntityRelationshipObject relationshipObject =
+        dao.relationshipDAO().getRecord(from.getId(), to.getId(), Relationship.UPSTREAM.ordinal());
     // Finally, delete lineage relationship
-    boolean result =
-        dao.relationshipDAO()
-                .delete(
-                    from.getId(),
-                    from.getType(),
-                    to.getId(),
-                    to.getType(),
-                    Relationship.UPSTREAM.ordinal())
-            > 0;
-    deleteLineageFromSearch(from, to);
-    return result;
+    if (!nullOrEmpty(relationshipObject)) {
+      // Finally, delete lineage relationship
+      boolean result =
+          dao.relationshipDAO()
+                  .delete(
+                      from.getId(),
+                      from.getType(),
+                      to.getId(),
+                      to.getType(),
+                      Relationship.UPSTREAM.ordinal())
+              > 0;
+      LineageDetails lineageDetails =
+          JsonUtils.readValue(relationshipObject.getJson(), LineageDetails.class);
+      deleteLineageFromSearch(from, to, lineageDetails);
+      return result;
+    }
+    return false;
   }
 
   @Transaction
@@ -676,44 +683,53 @@ public class LineageRepository {
   public boolean deleteLineage(String fromEntity, String fromId, String toEntity, String toId) {
     // Validate from entity
     EntityReference from =
-        Entity.getEntityReferenceById(fromEntity, UUID.fromString(fromId), Include.NON_DELETED);
+        Entity.getEntityReferenceById(fromEntity, UUID.fromString(fromId), Include.ALL);
 
     // Validate to entity
     EntityReference to =
-        Entity.getEntityReferenceById(toEntity, UUID.fromString(toId), Include.NON_DELETED);
+        Entity.getEntityReferenceById(toEntity, UUID.fromString(toId), Include.ALL);
 
-    // Finally, delete lineage relationship
-    boolean result =
-        dao.relationshipDAO()
-                .delete(
-                    from.getId(),
-                    from.getType(),
-                    to.getId(),
-                    to.getType(),
-                    Relationship.UPSTREAM.ordinal())
-            > 0;
-    deleteLineageFromSearch(from, to);
-    return result;
+    CollectionDAO.EntityRelationshipObject relationshipObject =
+        dao.relationshipDAO().getRecord(from.getId(), to.getId(), Relationship.UPSTREAM.ordinal());
+
+    if (!nullOrEmpty(relationshipObject)) {
+      // Finally, delete lineage relationship
+      boolean result =
+          dao.relationshipDAO()
+                  .delete(
+                      from.getId(),
+                      from.getType(),
+                      to.getId(),
+                      to.getType(),
+                      Relationship.UPSTREAM.ordinal())
+              > 0;
+      LineageDetails lineageDetails =
+          JsonUtils.readValue(relationshipObject.getJson(), LineageDetails.class);
+      deleteLineageFromSearch(from, to, lineageDetails);
+      return result;
+    }
+    return false;
   }
 
   private void deleteLineageFromSearch(List<CollectionDAO.EntityRelationshipObject> relations) {
     for (CollectionDAO.EntityRelationshipObject obj : relations) {
+      LineageDetails lineageDetails = JsonUtils.readValue(obj.getJson(), LineageDetails.class);
       deleteLineageFromSearch(
           new EntityReference().withId(UUID.fromString(obj.getFromId())),
-          new EntityReference().withId(UUID.fromString(obj.getToId())));
+          new EntityReference().withId(UUID.fromString(obj.getToId())),
+          lineageDetails);
     }
   }
 
-  private void deleteLineageFromSearch(EntityReference fromEntity, EntityReference toEntity) {
+  private void deleteLineageFromSearch(
+      EntityReference fromEntity, EntityReference toEntity, LineageDetails lineageDetails) {
     searchClient.updateChildren(
         GLOBAL_SEARCH_ALIAS,
         new ImmutablePair<>(
-            "lineage.doc_id.keyword",
-            fromEntity.getId().toString() + "-" + toEntity.getId().toString()),
+            "upstreamLineage.doc_id.keyword", getDocumentId(fromEntity, toEntity, lineageDetails)),
         new ImmutablePair<>(
             String.format(
-                REMOVE_LINEAGE_SCRIPT,
-                fromEntity.getId().toString() + "-" + toEntity.getId().toString()),
+                REMOVE_LINEAGE_SCRIPT, getDocumentId(fromEntity, toEntity, lineageDetails)),
             null));
   }
 
