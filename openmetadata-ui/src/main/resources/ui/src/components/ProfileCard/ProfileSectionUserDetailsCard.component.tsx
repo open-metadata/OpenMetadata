@@ -143,7 +143,7 @@ const ProfileSectionUserDetailsCard = ({
           </Typography.Text>
         </div>
       )}
-      {showChangePasswordComponent && isLoggedInUser && (
+      {showChangePasswordComponent && (isLoggedInUser || isAdminUser) && (
         <div
           className="profile-manage-item d-flex item-center"
           onClick={() => {
@@ -178,21 +178,23 @@ const ProfileSectionUserDetailsCard = ({
           </Typography.Text>
         </div>
       ) : (
-        <div
-          className="profile-manage-item d-flex item-center"
-          onClick={() => {
-            setIsDelete(true);
-            setisPopoverVisible(false);
-          }}>
-          <DeleteIcon
-            className="m-r-xss"
-            style={{ marginRight: '10px' }}
-            {...ICON_DIMENSION_USER_PAGE}
-          />
-          <Typography.Text className="profile-manage-label">
-            {t('label.delete-profile')}
-          </Typography.Text>
-        </div>
+        isAdminUser && (
+          <div
+            className="profile-manage-item d-flex item-center"
+            onClick={() => {
+              setIsDelete(true);
+              setisPopoverVisible(false);
+            }}>
+            <DeleteIcon
+              className="m-r-xss"
+              style={{ marginRight: '10px' }}
+              {...ICON_DIMENSION_USER_PAGE}
+            />
+            <Typography.Text className="profile-manage-label">
+              {t('label.delete-profile')}
+            </Typography.Text>
+          </div>
+        )
       )}
     </div>
   );
@@ -211,10 +213,12 @@ const ProfileSectionUserDetailsCard = ({
         placement="bottomLeft"
         trigger="click"
         onOpenChange={(visible) => setisPopoverVisible(visible)}>
-        <MenuDots
-          className="cursor-pointer user-details-menu-icon"
-          onClick={() => setisPopoverVisible((prev) => !prev)}
-        />
+        {(isAdminUser || isLoggedInUser) && (
+          <MenuDots
+            className="cursor-pointer user-details-menu-icon"
+            onClick={() => setisPopoverVisible((prev) => !prev)}
+          />
+        )}
       </Popover>
 
       <div className="m-t-sm">
