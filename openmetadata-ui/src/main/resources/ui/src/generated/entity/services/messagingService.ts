@@ -53,6 +53,10 @@ export interface MessagingService {
      */
     id: string;
     /**
+     * Change that lead to this version of the entity.
+     */
+    incrementalChangeDescription?: ChangeDescription;
+    /**
      * Name that identifies this messaging service.
      */
     name: string;

@@ -52,6 +52,10 @@ export interface StorageService {
      */
     id: string;
     /**
+     * Change that lead to this version of the entity.
+     */
+    incrementalChangeDescription?: ChangeDescription;
+    /**
      * Name that identifies this storage service.
      */
     name: string;

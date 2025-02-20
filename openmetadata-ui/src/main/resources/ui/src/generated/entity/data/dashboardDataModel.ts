@@ -68,6 +68,10 @@ export interface DashboardDataModel {
      */
     id: string;
     /**
+     * Change that lead to this version of the entity.
+     */
+    incrementalChangeDescription?: ChangeDescription;
+    /**
      * Life Cycle properties of the entity
      */
     lifeCycle?: LifeCycle;

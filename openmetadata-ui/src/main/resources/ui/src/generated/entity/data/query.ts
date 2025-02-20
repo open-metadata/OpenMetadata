@@ -60,6 +60,10 @@ export interface Query {
      */
     id: string;
     /**
+     * Change that lead to this version of the entity.
+     */
+    incrementalChangeDescription?: ChangeDescription;
+    /**
      * Name of an entity to which the query belongs to
      */
     name: string;

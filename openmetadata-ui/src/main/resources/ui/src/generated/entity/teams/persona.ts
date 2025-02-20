@@ -42,6 +42,10 @@ export interface Persona {
     href?: string;
     id:    string;
     /**
+     * Change that lead to this version of the entity.
+     */
+    incrementalChangeDescription?: ChangeDescription;
+    /**
      * A unique name of Persona. Example 'data engineer'
      */
     name: string;

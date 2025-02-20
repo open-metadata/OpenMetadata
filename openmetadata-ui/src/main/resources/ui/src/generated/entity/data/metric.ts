@@ -67,6 +67,10 @@ export interface Metric {
      */
     id: string;
     /**
+     * Change that lead to this version of the entity.
+     */
+    incrementalChangeDescription?: ChangeDescription;
+    /**
      * Expression used to compute the metric.
      */
     metricExpression?: MetricExpression;

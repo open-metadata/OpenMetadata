@@ -14,8 +14,22 @@ import { render, screen } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { TabSpecificField } from '../../../enums/entity.enum';
+import { usePaging } from '../../../hooks/paging/usePaging';
 import { getContainerByName } from '../../../rest/storageAPI';
 import ContainerChildren from './ContainerChildren';
+
+jest.mock('../../common/NextPrevious/NextPrevious', () => {
+  return jest.fn().mockImplementation(({ pagingHandler, onShowSizeChange }) => (
+    <div>
+      <p>NextPreviousComponent</p>
+      <button onClick={pagingHandler}>childrenPageChangeButton</button>
+      <button onClick={onShowSizeChange}>pageSizeChangeButton</button>
+    </div>
+  ));
+});
+
+const mockHandleChildrenPageChange = jest.fn();
+const mockHandlePageSizeChange = jest.fn();
 
 const mockChildrenList = [
   {
@@ -41,6 +55,7 @@ jest.mock('../../Customization/GenericTab/GenericTab', () => ({
 }));
 
 jest.mock('../../../rest/storageAPI');
+jest.mock('../../../hooks/paging/usePaging');
 
 describe('ContainerChildren', () => {
   it('Should call fetch container function on load', () => {
@@ -62,18 +77,17 @@ describe('ContainerChildren', () => {
     expect(screen.getByText('label.description')).toBeInTheDocument();
   });
 
+  it('Should not render pagination component when not visible', () => {
+    render(<ContainerChildren />, { wrapper: MemoryRouter });
+
+    expect(screen.queryByText('NextPreviousComponent')).not.toBeInTheDocument();
+  });
+
   it('Should render container names as links', async () => {
     (getContainerByName as jest.Mock).mockResolvedValue({
       children: mockChildrenList,
     });
     render(<ContainerChildren />, { wrapper: MemoryRouter });
-
-    expect(getContainerByName).toHaveBeenCalledWith(
-      '',
-      expect.objectContaining({
-        fields: TabSpecificField.CHILDREN,
-      })
-    );
 
     const containerNameLinks = await screen.findAllByTestId('container-name');
 
@@ -88,15 +102,12 @@ describe('ContainerChildren', () => {
     });
   });
 
-  it('Should render container descriptions as rich text', async () => {
+  it('Should render pagination component when showPagination props is true', () => {
+    (usePaging as jest.Mock).mockImplementation(() => ({
+      showPagination: true,
+    }));
     render(<ContainerChildren />, { wrapper: MemoryRouter });
 
-    const richTextPreviewers = await screen.findAllByTestId('viewer-container');
-
-    expect(richTextPreviewers).toHaveLength(2);
-
-    richTextPreviewers.forEach((previewer, index) => {
-      expect(previewer).toHaveTextContent(mockChildrenList[index].description);
-    });
+    expect(screen.getByText('NextPreviousComponent')).toBeInTheDocument();
   });
 });

@@ -183,6 +183,17 @@ jest.mock('../../utils/CommonUtils', () => ({
   sortTagsCaseInsensitive: jest.fn().mockImplementation((tags) => tags),
 }));
 
+jest.mock('../../hooks/paging/usePaging', () => ({
+  usePaging: jest.fn().mockReturnValue({
+    currentPage: 1,
+    showPagination: true,
+    pageSize: 10,
+    handlePageChange: jest.fn(),
+    handlePagingChange: jest.fn(),
+    handlePageSizeChange: jest.fn(),
+  }),
+}));
+
 jest.mock('../../utils/EntityUtils', () => ({
   getEntityName: jest
     .fn()

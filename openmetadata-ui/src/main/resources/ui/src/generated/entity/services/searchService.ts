@@ -52,6 +52,10 @@ export interface SearchService {
      */
     id: string;
     /**
+     * Change that lead to this version of the entity.
+     */
+    incrementalChangeDescription?: ChangeDescription;
+    /**
      * Name that identifies this search service.
      */
     name: string;

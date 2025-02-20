@@ -60,6 +60,10 @@ export interface Glossary {
      */
     id: string;
     /**
+     * Change that lead to this version of the entity.
+     */
+    incrementalChangeDescription?: ChangeDescription;
+    /**
      * Glossary terms that are direct children in this glossary are mutually exclusive. When
      * mutually exclusive is `true` only one term can be used to label an entity. When mutually
      * exclusive is `false`, multiple terms from this group can be used to label an entity.

@@ -67,6 +67,10 @@ export interface SearchIndex {
      */
     id: string;
     /**
+     * Change that lead to this version of the entity.
+     */
+    incrementalChangeDescription?: ChangeDescription;
+    /**
      * Whether the entity is index or index template.
      */
     indexType?: IndexType;

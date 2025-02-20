@@ -18,12 +18,25 @@ import { TagClass } from '../tag/TagClass';
 import { TeamClass } from '../team/TeamClass';
 import { UserClass } from '../user/UserClass';
 import { ApiCollectionClass } from './ApiCollectionClass';
+import { ApiEndpointClass } from './ApiEndpointClass';
 import { ContainerClass } from './ContainerClass';
 import { DashboardClass } from './DashboardClass';
 import { DashboardDataModelClass } from './DashboardDataModelClass';
+import { DatabaseClass } from './DatabaseClass';
+import { DatabaseSchemaClass } from './DatabaseSchemaClass';
+import { EntityDataClassCreationConfig } from './EntityDataClass.interface';
 import { MlModelClass } from './MlModelClass';
 import { PipelineClass } from './PipelineClass';
 import { SearchIndexClass } from './SearchIndexClass';
+import { ApiServiceClass } from './service/ApiServiceClass';
+import { DashboardServiceClass } from './service/DashboardServiceClass';
+import { DatabaseServiceClass } from './service/DatabaseServiceClass';
+import { MessagingServiceClass } from './service/MessagingServiceClass';
+import { MlmodelServiceClass } from './service/MlmodelServiceClass';
+import { PipelineServiceClass } from './service/PipelineServiceClass';
+import { SearchIndexServiceClass } from './service/SearchIndexServiceClass';
+import { StorageServiceClass } from './service/StorageServiceClass';
+import { StoredProcedureClass } from './StoredProcedureClass';
 import { TableClass } from './TableClass';
 import { TopicClass } from './TopicClass';
 
@@ -55,12 +68,30 @@ export class EntityDataClass {
   static readonly dashboardDataModel2 = new DashboardDataModelClass();
   static readonly apiCollection1 = new ApiCollectionClass();
   static readonly apiCollection2 = new ApiCollectionClass();
+  static readonly apiEndpoint1 = new ApiEndpointClass();
+  static readonly apiEndpoint2 = new ApiEndpointClass();
+  static readonly storedProcedure1 = new StoredProcedureClass();
+  static readonly storedProcedure2 = new StoredProcedureClass();
   static readonly searchIndex1 = new SearchIndexClass();
   static readonly searchIndex2 = new SearchIndexClass();
   static readonly container1 = new ContainerClass();
   static readonly container2 = new ContainerClass();
+  static readonly databaseService = new DatabaseServiceClass();
+  static readonly database = new DatabaseClass();
+  static readonly databaseSchema = new DatabaseSchemaClass();
+  static readonly apiService = new ApiServiceClass();
+  static readonly dashboardService = new DashboardServiceClass();
+  static readonly messagingService = new MessagingServiceClass();
+  static readonly mlmodelService = new MlmodelServiceClass();
+  static readonly pipelineService = new PipelineServiceClass();
+  static readonly searchIndexService = new SearchIndexServiceClass();
+  static readonly storageService = new StorageServiceClass();
 
-  static async preRequisitesForTests(apiContext: APIRequestContext) {
+  static async preRequisitesForTests(
+    apiContext: APIRequestContext,
+    creationConfig?: EntityDataClassCreationConfig
+  ) {
+    // Add pre-requisites for tests
     const promises = [
       this.domain1.create(apiContext),
       this.domain2.create(apiContext),
@@ -75,31 +106,90 @@ export class EntityDataClass {
       this.team2.create(apiContext),
       this.tierTag1.create(apiContext),
       this.tierTag2.create(apiContext),
-      this.table1.create(apiContext),
-      this.table2.create(apiContext),
-      this.topic1.create(apiContext),
-      this.topic2.create(apiContext),
-      this.dashboard1.create(apiContext),
-      this.dashboard2.create(apiContext),
-      this.mlModel1.create(apiContext),
-      this.mlModel2.create(apiContext),
-      this.pipeline1.create(apiContext),
-      this.pipeline2.create(apiContext),
-      this.dashboardDataModel1.create(apiContext),
-      this.dashboardDataModel2.create(apiContext),
-      this.apiCollection1.create(apiContext),
-      this.apiCollection2.create(apiContext),
-      this.searchIndex1.create(apiContext),
-      this.searchIndex2.create(apiContext),
-      this.container1.create(apiContext),
-      this.container2.create(apiContext),
     ];
 
-    // Add pre-requisites for tests
+    if (creationConfig?.all || creationConfig?.table) {
+      promises.push(this.table1.create(apiContext));
+      promises.push(this.table2.create(apiContext));
+    }
+    if (creationConfig?.all || creationConfig?.topic) {
+      promises.push(this.topic1.create(apiContext));
+      promises.push(this.topic2.create(apiContext));
+    }
+    if (creationConfig?.all || creationConfig?.dashboard) {
+      promises.push(this.dashboard1.create(apiContext));
+      promises.push(this.dashboard2.create(apiContext));
+    }
+    if (creationConfig?.all || creationConfig?.mlModel) {
+      promises.push(this.mlModel1.create(apiContext));
+      promises.push(this.mlModel2.create(apiContext));
+    }
+    if (creationConfig?.all || creationConfig?.pipeline) {
+      promises.push(this.pipeline1.create(apiContext));
+      promises.push(this.pipeline2.create(apiContext));
+    }
+    if (creationConfig?.all || creationConfig?.dashboardDataModel) {
+      promises.push(this.dashboardDataModel1.create(apiContext));
+      promises.push(this.dashboardDataModel2.create(apiContext));
+    }
+    if (creationConfig?.all || creationConfig?.apiCollection) {
+      promises.push(this.apiCollection1.create(apiContext));
+      promises.push(this.apiCollection2.create(apiContext));
+    }
+    if (creationConfig?.all || creationConfig?.apiEndpoint) {
+      promises.push(this.apiEndpoint1.create(apiContext));
+      promises.push(this.apiEndpoint2.create(apiContext));
+    }
+    if (creationConfig?.all || creationConfig?.storedProcedure) {
+      promises.push(this.storedProcedure1.create(apiContext));
+      promises.push(this.storedProcedure2.create(apiContext));
+    }
+    if (creationConfig?.all || creationConfig?.searchIndex) {
+      promises.push(this.searchIndex1.create(apiContext));
+      promises.push(this.searchIndex2.create(apiContext));
+    }
+    if (creationConfig?.all || creationConfig?.container) {
+      promises.push(this.container1.create(apiContext));
+      promises.push(this.container2.create(apiContext));
+    }
+    if (creationConfig?.all || creationConfig?.databaseService) {
+      promises.push(this.databaseService.create(apiContext));
+    }
+    if (creationConfig?.all || creationConfig?.database) {
+      promises.push(this.database.create(apiContext));
+    }
+    if (creationConfig?.all || creationConfig?.databaseSchema) {
+      promises.push(this.databaseSchema.create(apiContext));
+    }
+    if (creationConfig?.all || creationConfig?.apiService) {
+      promises.push(this.apiService.create(apiContext));
+    }
+    if (creationConfig?.all || creationConfig?.dashboardService) {
+      promises.push(this.dashboardService.create(apiContext));
+    }
+    if (creationConfig?.all || creationConfig?.messagingService) {
+      promises.push(this.messagingService.create(apiContext));
+    }
+    if (creationConfig?.all || creationConfig?.mlmodelService) {
+      promises.push(this.mlmodelService.create(apiContext));
+    }
+    if (creationConfig?.all || creationConfig?.pipelineService) {
+      promises.push(this.pipelineService.create(apiContext));
+    }
+    if (creationConfig?.all || creationConfig?.searchIndexService) {
+      promises.push(this.searchIndexService.create(apiContext));
+    }
+    if (creationConfig?.all || creationConfig?.storageService) {
+      promises.push(this.storageService.create(apiContext));
+    }
+
     await Promise.allSettled(promises);
   }
 
-  static async postRequisitesForTests(apiContext: APIRequestContext) {
+  static async postRequisitesForTests(
+    apiContext: APIRequestContext,
+    creationConfig?: EntityDataClassCreationConfig
+  ) {
     const promises = [
       this.domain1.delete(apiContext),
       this.domain2.delete(apiContext),
@@ -113,25 +203,82 @@ export class EntityDataClass {
       this.team2.delete(apiContext),
       this.tierTag1.delete(apiContext),
       this.tierTag2.delete(apiContext),
-      this.table1.delete(apiContext),
-      this.table2.delete(apiContext),
-      this.topic1.delete(apiContext),
-      this.topic2.delete(apiContext),
-      this.dashboard1.delete(apiContext),
-      this.dashboard2.delete(apiContext),
-      this.mlModel1.delete(apiContext),
-      this.mlModel2.delete(apiContext),
-      this.pipeline1.delete(apiContext),
-      this.pipeline2.delete(apiContext),
-      this.dashboardDataModel1.delete(apiContext),
-      this.dashboardDataModel2.delete(apiContext),
-      this.apiCollection1.delete(apiContext),
-      this.apiCollection2.delete(apiContext),
-      this.searchIndex1.delete(apiContext),
-      this.searchIndex2.delete(apiContext),
-      this.container1.delete(apiContext),
-      this.container2.delete(apiContext),
     ];
+
+    if (creationConfig?.all || creationConfig?.table) {
+      promises.push(this.table1.delete(apiContext));
+      promises.push(this.table2.delete(apiContext));
+    }
+    if (creationConfig?.all || creationConfig?.topic) {
+      promises.push(this.topic1.delete(apiContext));
+      promises.push(this.topic2.delete(apiContext));
+    }
+    if (creationConfig?.all || creationConfig?.dashboard) {
+      promises.push(this.dashboard1.delete(apiContext));
+      promises.push(this.dashboard2.delete(apiContext));
+    }
+    if (creationConfig?.all || creationConfig?.mlModel) {
+      promises.push(this.mlModel1.delete(apiContext));
+      promises.push(this.mlModel2.delete(apiContext));
+    }
+    if (creationConfig?.all || creationConfig?.pipeline) {
+      promises.push(this.pipeline1.delete(apiContext));
+      promises.push(this.pipeline2.delete(apiContext));
+    }
+    if (creationConfig?.all || creationConfig?.dashboardDataModel) {
+      promises.push(this.dashboardDataModel1.delete(apiContext));
+      promises.push(this.dashboardDataModel2.delete(apiContext));
+    }
+    if (creationConfig?.all || creationConfig?.apiCollection) {
+      promises.push(this.apiCollection1.delete(apiContext));
+      promises.push(this.apiCollection2.delete(apiContext));
+    }
+    if (creationConfig?.all || creationConfig?.apiEndpoint) {
+      promises.push(this.apiEndpoint1.delete(apiContext));
+      promises.push(this.apiEndpoint2.delete(apiContext));
+    }
+    if (creationConfig?.all || creationConfig?.storedProcedure) {
+      promises.push(this.storedProcedure1.delete(apiContext));
+      promises.push(this.storedProcedure2.delete(apiContext));
+    }
+    if (creationConfig?.all || creationConfig?.searchIndex) {
+      promises.push(this.searchIndex1.delete(apiContext));
+      promises.push(this.searchIndex2.delete(apiContext));
+    }
+    if (creationConfig?.all || creationConfig?.container) {
+      promises.push(this.container1.delete(apiContext));
+      promises.push(this.container2.delete(apiContext));
+    }
+    if (creationConfig?.all || creationConfig?.databaseService) {
+      promises.push(this.databaseService.delete(apiContext));
+    }
+    if (creationConfig?.all || creationConfig?.database) {
+      promises.push(this.database.delete(apiContext));
+    }
+    if (creationConfig?.all || creationConfig?.databaseSchema) {
+      promises.push(this.databaseSchema.delete(apiContext));
+    }
+    if (creationConfig?.all || creationConfig?.apiService) {
+      promises.push(this.apiService.delete(apiContext));
+    }
+    if (creationConfig?.all || creationConfig?.dashboardService) {
+      promises.push(this.dashboardService.delete(apiContext));
+    }
+    if (creationConfig?.all || creationConfig?.messagingService) {
+      promises.push(this.messagingService.delete(apiContext));
+    }
+    if (creationConfig?.all || creationConfig?.mlmodelService) {
+      promises.push(this.mlmodelService.delete(apiContext));
+    }
+    if (creationConfig?.all || creationConfig?.pipelineService) {
+      promises.push(this.pipelineService.delete(apiContext));
+    }
+    if (creationConfig?.all || creationConfig?.searchIndexService) {
+      promises.push(this.searchIndexService.delete(apiContext));
+    }
+    if (creationConfig?.all || creationConfig?.storageService) {
+      promises.push(this.storageService.delete(apiContext));
+    }
 
     await Promise.allSettled(promises);
   }
