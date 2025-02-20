@@ -40,6 +40,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 import lombok.extern.slf4j.Slf4j;
@@ -394,6 +395,7 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
             .withOwners(List.of(DATA_CONSUMER.getEntityReference()))
             .withSize(0.0);
     Container rootContainer = createAndCheckEntity(createRootContainer, ADMIN_AUTH_HEADERS);
+    String rootContainerFQN = rootContainer.getFullyQualifiedName();
 
     CreateContainer createChildOneContainer =
         new CreateContainer()
@@ -485,6 +487,19 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
     ResultList<Container> rootContainerList = listEntities(queryParams, ADMIN_AUTH_HEADERS);
     assertEquals(1, rootContainerList.getData().size());
     assertEquals("s3.0_root", rootContainerList.getData().get(0).getFullyQualifiedName());
+
+    // Test paginated child container list
+    ResultList<Container> children = getContainerChildren(rootContainerFQN, null, null);
+    assertEquals(2, children.getData().size());
+
+    ResultList<Container> childrenWithLimit = getContainerChildren(rootContainerFQN, 5, 0);
+    assertEquals(2, childrenWithLimit.getData().size());
+
+    ResultList<Container> childrenWithOffset = getContainerChildren(rootContainerFQN, 1, 1);
+    assertEquals(1, childrenWithOffset.getData().size());
+
+    ResultList<Container> childrenWithLargeOffset = getContainerChildren(rootContainerFQN, 1, 3);
+    assertTrue(childrenWithLargeOffset.getData().isEmpty());
   }
 
   @Test
@@ -694,6 +709,14 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
             : FullyQualifiedName.add(
                 createdEntity.getService().getFullyQualifiedName(), createdEntity.getName()),
         createdEntity.getFullyQualifiedName());
+  }
+
+  private ResultList<Container> getContainerChildren(String fqn, Integer limit, Integer offset)
+      throws HttpResponseException {
+    WebTarget target = getResource(String.format("containers/name/%s/children", fqn));
+    target = limit != null ? target.queryParam("limit", limit) : target;
+    target = offset != null ? target.queryParam("offset", offset) : target;
+    return TestUtils.get(target, ContainerList.class, ADMIN_AUTH_HEADERS);
   }
 
   @Test

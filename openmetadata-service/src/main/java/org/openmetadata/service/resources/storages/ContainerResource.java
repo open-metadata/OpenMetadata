@@ -546,4 +546,39 @@ public class ContainerResource extends EntityResource<Container, ContainerReposi
       @Valid RestoreEntity restore) {
     return restoreEntity(uriInfo, securityContext, restore.getId());
   }
+
+  @GET
+  @Path("/name/{fqn}/children")
+  @Operation(
+      operationId = "listContainerChildren",
+      summary = "List children containers",
+      description = "Get a list of children containers with pagination.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "List of children containers",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ContainerList.class)))
+      })
+  public ResultList<Container> listChildren(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Fully qualified name of the container") @PathParam("fqn")
+          String fqn,
+      @Parameter(
+              description = "Limit the number of children returned. (1 to 1000000, default = 10)")
+          @DefaultValue("10")
+          @Min(0)
+          @Max(1000000)
+          @QueryParam("limit")
+          Integer limit,
+      @Parameter(description = "Returns list of children after the given offset")
+          @DefaultValue("0")
+          @QueryParam("offset")
+          @Min(0)
+          Integer offset) {
+    return repository.listChildren(fqn, limit, offset);
+  }
 }
