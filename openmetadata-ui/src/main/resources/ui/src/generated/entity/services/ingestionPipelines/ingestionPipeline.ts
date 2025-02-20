@@ -62,6 +62,10 @@ export interface IngestionPipeline {
      */
     id?: string;
     /**
+     * Change that lead to this version of the entity.
+     */
+    incrementalChangeDescription?: ChangeDescription;
+    /**
      * The ingestion agent responsible for executing the ingestion pipeline.
      */
     ingestionAgent?: EntityReference;
@@ -171,6 +175,8 @@ export interface AirflowConfig {
  * Change that led to this version of the entity.
  *
  * Description of the change.
+ *
+ * Change that lead to this version of the entity.
  */
 export interface ChangeDescription {
     /**
@@ -3064,6 +3070,10 @@ export interface ConfigClass {
      * usage monitoring.
      */
     account?: string;
+    /**
+     * Full name of the schema where the account usage data is stored.
+     */
+    accountUsageSchema?: string;
     /**
      * Optional configuration for ingestion to keep the client session active in case the
      * ingestion process runs for longer durations.
