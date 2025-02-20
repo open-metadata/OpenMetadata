@@ -17,9 +17,9 @@
     <sonar.tests>${project.basedir}/src/test/java</sonar.tests>
     <org.testcontainers.version>1.20.3</org.testcontainers.version>
     <awssdk.version>2.29.15</awssdk.version>
-    <azure-identity.version>1.14.2</azure-identity.version>
-    <azure-kv.version>4.9.2</azure-kv.version>
-    <azure-identity-extensions.version>1.1.22</azure-identity-extensions.version>
+    <azure-identity.version>1.14.0</azure-identity.version>
+    <azure-kv.version>4.9.0</azure-kv.version>
+    <azure-identity-extensions.version>1.0.0</azure-identity-extensions.version>
     <expiring.map.version>0.5.11</expiring.map.version>
     <java.saml>2.9.0</java.saml>
     <xmlsec.version>2.3.4</xmlsec.version>
