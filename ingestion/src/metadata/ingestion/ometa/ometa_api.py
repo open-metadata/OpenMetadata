@@ -17,7 +17,6 @@ working with OpenMetadata entities.
 import traceback
 from typing import Dict, Generic, Iterable, List, Optional, Type, TypeVar, Union
 
-
 from metadata.generated.schema.api.createBot import CreateBot
 from metadata.generated.schema.api.services.ingestionPipelines.createIngestionPipeline import (
     CreateIngestionPipelineRequest,
@@ -268,7 +267,9 @@ class OpenMetadata(
             )
 
         fn = getattr(self.client, method)
-        resp = fn(self.get_suffix(entity), data=data.model_dump_json(mask_secrets=False))
+        resp = fn(
+            self.get_suffix(entity), data=data.model_dump_json(mask_secrets=False)
+        )
         if not resp:
             raise EmptyPayloadException(
                 f"Got an empty response when trying to PUT to {self.get_suffix(entity)}, {data.model_dump_json()}"
