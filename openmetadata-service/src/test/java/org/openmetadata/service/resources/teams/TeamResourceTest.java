@@ -53,7 +53,6 @@ import static org.openmetadata.service.util.TestUtils.TEST_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.TEST_USER_NAME;
 import static org.openmetadata.service.util.TestUtils.USER_WITH_CREATE_HEADERS;
 import static org.openmetadata.service.util.TestUtils.UpdateType.MINOR_UPDATE;
-import static org.openmetadata.service.util.TestUtils.UpdateType.NO_CHANGE;
 import static org.openmetadata.service.util.TestUtils.assertListNotNull;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
 import static org.openmetadata.service.util.TestUtils.validateEntityReferences;
@@ -793,8 +792,8 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     // Remove email from the team - changes from this PATCH and the previous are consolidated to no
     // change
     json = JsonUtils.pojoToJson(team);
-    change = getChangeDescription(team, NO_CHANGE);
-    patchEntityAndCheck(team, json, ADMIN_AUTH_HEADERS, NO_CHANGE, change);
+    change = getChangeDescription(team, MINOR_UPDATE);
+    patchEntityAndCheck(team, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
   }
 
   @Test

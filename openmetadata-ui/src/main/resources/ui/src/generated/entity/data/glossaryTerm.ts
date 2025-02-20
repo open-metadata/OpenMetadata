@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * This schema defines te Glossary term entities.
  */
 export interface GlossaryTerm {
@@ -74,6 +72,10 @@ export interface GlossaryTerm {
      * Unique identifier of a glossary term instance.
      */
     id: string;
+    /**
+     * Change that lead to this version of the entity.
+     */
+    incrementalChangeDescription?: ChangeDescription;
     /**
      * Glossary terms that are children of this term are mutually exclusive. When mutually
      * exclusive is `true` only one term can be used to label an entity from this group. When

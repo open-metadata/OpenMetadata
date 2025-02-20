@@ -185,7 +185,7 @@ export class ApiCollectionClass extends EntityClass {
 
   async patch(apiContext: APIRequestContext, payload: Operation[]) {
     const apiCollectionResponse = await apiContext.patch(
-      `/api/v1/apiCollections/${this.entityResponseData?.['id']}`,
+      `/api/v1/apiCollections/name/${this.entityResponseData?.['fullyQualifiedName']}`,
       {
         data: payload,
         headers: {

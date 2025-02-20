@@ -255,6 +255,7 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
     // Changes from this PATCH is consolidated with the previous changes
     originalJson = JsonUtils.pojoToJson(container);
     change = getChangeDescription(container, CHANGE_CONSOLIDATED);
+    change.setPreviousVersion(container.getVersion());
     ContainerDataModel newModel =
         new ContainerDataModel()
             .withIsPartitioned(false)
@@ -263,22 +264,19 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
         List.of(ContainerFileFormat.Gz, ContainerFileFormat.Csv);
     container.withPrefix("prefix2").withDataModel(newModel).withFileFormats(newFileFormats);
 
-    fieldAdded(change, "dataModel", newModel);
-    fieldAdded(change, "prefix", "prefix2");
+    fieldUpdated(change, "prefix", "prefix1", "prefix2");
+    fieldUpdated(change, "dataModel.partition", true, false);
+    fieldDeleted(change, "fileFormats", FILE_FORMATS);
     fieldAdded(change, "fileFormats", newFileFormats);
-    patchEntityAndCheck(container, originalJson, ADMIN_AUTH_HEADERS, CHANGE_CONSOLIDATED, change);
+    patchEntityAndCheck(container, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
     // Update the container size and number of objects
     // Changes from this PATCH is consolidated with the previous changes
     originalJson = JsonUtils.pojoToJson(container);
-    change = getChangeDescription(container, CHANGE_CONSOLIDATED);
-    fieldAdded(change, "dataModel", newModel);
-    fieldAdded(change, "prefix", "prefix2");
-    fieldAdded(change, "fileFormats", newFileFormats);
+    change = getChangeDescription(container, MINOR_UPDATE);
     container.withSize(2.0).withNumberOfObjects(3.0);
     container =
-        patchEntityAndCheck(
-            container, originalJson, ADMIN_AUTH_HEADERS, CHANGE_CONSOLIDATED, change);
+        patchEntityAndCheck(container, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
     assertEquals(2.0, container.getSize());
     assertEquals(3.0, container.getNumberOfObjects());
   }
@@ -345,7 +343,7 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
     // Update description, chartType and chart url and verify patch
     // Changes from this PATCH is consolidated with the previous changes
     originalJson = JsonUtils.pojoToJson(container);
-    change = getChangeDescription(container, CHANGE_CONSOLIDATED);
+    change = getChangeDescription(container, MINOR_UPDATE);
     ContainerDataModel newModel =
         new ContainerDataModel()
             .withIsPartitioned(false)
@@ -354,23 +352,20 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
         List.of(ContainerFileFormat.Gz, ContainerFileFormat.Csv);
     container.withPrefix("prefix2").withDataModel(newModel).withFileFormats(newFileFormats);
 
-    fieldAdded(change, "dataModel", newModel);
-    fieldAdded(change, "prefix", "prefix2");
+    fieldUpdated(change, "prefix", "prefix1", "prefix2");
+    fieldUpdated(change, "dataModel.partition", true, false);
+    fieldDeleted(change, "fileFormats", FILE_FORMATS);
     fieldAdded(change, "fileFormats", newFileFormats);
-    patchEntityUsingFqnAndCheck(
-        container, originalJson, ADMIN_AUTH_HEADERS, CHANGE_CONSOLIDATED, change);
+    patchEntityUsingFqnAndCheck(container, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
     // Update the container size and number of objects
     // Changes from this PATCH is consolidated with the previous changes
     originalJson = JsonUtils.pojoToJson(container);
-    change = getChangeDescription(container, CHANGE_CONSOLIDATED);
-    fieldAdded(change, "dataModel", newModel);
-    fieldAdded(change, "prefix", "prefix2");
-    fieldAdded(change, "fileFormats", newFileFormats);
+    change = getChangeDescription(container, MINOR_UPDATE);
     container.withSize(2.0).withNumberOfObjects(3.0);
     container =
         patchEntityUsingFqnAndCheck(
-            container, originalJson, ADMIN_AUTH_HEADERS, CHANGE_CONSOLIDATED, change);
+            container, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
     assertEquals(2.0, container.getSize());
     assertEquals(3.0, container.getNumberOfObjects());
   }
