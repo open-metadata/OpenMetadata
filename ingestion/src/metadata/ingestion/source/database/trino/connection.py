@@ -39,6 +39,7 @@ from metadata.ingestion.connections.builders import (
     create_generic_db_connection,
     get_connection_args_common,
     init_empty_connection_arguments,
+    init_empty_connection_options,
 )
 from metadata.ingestion.connections.secrets import connection_with_options_secrets
 from metadata.ingestion.connections.test_connections import (

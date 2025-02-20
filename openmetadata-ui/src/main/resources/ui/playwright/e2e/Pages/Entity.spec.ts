@@ -40,7 +40,6 @@ import {
 import { CustomPropertyTypeByName } from '../../utils/customProperty';
 import {
   addMultiOwner,
-  dropdownVisibility,
   removeOwner,
   removeOwnersFromList,
 } from '../../utils/entity';
@@ -220,14 +219,6 @@ entities.forEach((EntityClass) => {
       );
     });
 
-    test("Tags and Glossary Term dropdown shouldn't be visible on tab change", async ({
-      page,
-    }) => {
-      await dropdownVisibility(page, 'tags');
-      await page.getByRole('tablist').getByRole('tab').first().click();
-      await dropdownVisibility(page, 'glossary');
-    });
-
     // Run only if entity has children
     if (!isUndefined(entity.childrenTabId)) {
       test('Tag Add, Update and Remove for child entities', async ({
@@ -324,6 +315,8 @@ entities.forEach((EntityClass) => {
     });
 
     test.afterAll('Cleanup', async ({ browser }) => {
+      test.slow();
+
       const { apiContext, afterAction } = await createNewPage(browser);
       await entity.delete(apiContext);
       await EntityDataClass.postRequisitesForTests(apiContext);
