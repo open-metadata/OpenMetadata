@@ -44,7 +44,7 @@ export const updateSuggestionStatus = (
   return APIClient.put(url, {});
 };
 
-export const aproveRejectAllSuggestions = (
+export const approveRejectAllSuggestions = (
   userId: string,
   entityFQN: string,
   suggestionType: SuggestionType,

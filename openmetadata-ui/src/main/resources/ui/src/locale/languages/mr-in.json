@@ -1215,6 +1215,7 @@
     "suggestion": "सूचना",
     "suggestion-lowercase-plural": "सूचना",
     "suggestion-pending": "प्रलंबित सूचना",
+    "suggestion-plural-pending": "{{count}} सुचवण्या प्रलंबित आहेत",
     "suite": "संच",
     "sum": "बेरीज",
     "summary": "सारांश",
