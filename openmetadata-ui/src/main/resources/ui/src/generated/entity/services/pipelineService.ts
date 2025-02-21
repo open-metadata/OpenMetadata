@@ -10,7 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-/**
+
+
+ /**
  * This schema defines the Pipeline Service entity, such as Airflow and Prefect.
  */
 export interface PipelineService {

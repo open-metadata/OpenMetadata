@@ -10,7 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-/**
+
+
+ /**
  * This schema defines the Settings. A Settings represents a generic Setting.
  */
 export interface Settings {
@@ -595,6 +597,10 @@ export interface ExecutorConfiguration {
      * Default worker Pool Size. The Workflow Executor by default has this amount of workers.
      */
     corePoolSize?: number;
+    /**
+     * The amount of time a Job gets locked before being retried.
+     */
+    jobLockTimeInMillis?: number;
     /**
      * Maximum worker Pool Size. The Workflow Executor could grow up to this number of workers.
      */

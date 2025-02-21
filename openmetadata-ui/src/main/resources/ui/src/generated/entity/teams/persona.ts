@@ -10,7 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-/**
+
+
+ /**
  * This schema defines the Persona entity. A `Persona` is a job function associated with a
  * user. An Example, Data Engineer or Data Consumer is a Persona of a user in Metadata world.
  */

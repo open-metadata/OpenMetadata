@@ -10,7 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-/**
+
+
+ /**
  * A `Role` is a collection of `Policies` that provides access control. A user or a team can
  * be assigned one or multiple roles that provide privileges to a user and members of a team
  * to perform the job function.

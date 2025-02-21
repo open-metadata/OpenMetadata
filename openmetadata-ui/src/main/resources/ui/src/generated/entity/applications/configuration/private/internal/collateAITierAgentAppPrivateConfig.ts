@@ -10,7 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-/**
+
+
+ /**
  * Private Configuration for the CollateAITierAgent Internal Application.
  */
 export interface CollateAITierAgentAppPrivateConfig {
@@ -29,21 +31,9 @@ export interface AppLimitsConfig {
     /**
      * The records of the limits.
      */
-    actions: Action[];
+    actions: { [key: string]: number };
     /**
      * The start of this limit cycle.
      */
     billingCycleStart: Date;
-}
-
-export interface Action {
-    /**
-     * Limit for the action in the cycle on an annual basis.
-     */
-    limit?: number;
-    /**
-     * The action that is being performed and limited
-     */
-    name?: string;
-    [property: string]: any;
 }

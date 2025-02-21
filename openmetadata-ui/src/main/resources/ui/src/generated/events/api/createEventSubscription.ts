@@ -10,7 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-/**
+
+
+ /**
  * This defines schema for sending alerts for OpenMetadata
  */
 export interface CreateEventSubscription {

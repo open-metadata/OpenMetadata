@@ -10,7 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-/**
+
+
+ /**
  * This schema defines a type as an entity. Types includes property types and entity types.
  * Custom types can also be defined by the users to extend the metadata system.
  */

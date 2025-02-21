@@ -10,7 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-/**
+
+
+ /**
  * Add a Custom Property to the selected assets.
  */
 export interface AddCustomProperties {

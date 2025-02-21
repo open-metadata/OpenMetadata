@@ -10,7 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-/**
+
+
+ /**
  * This schema defines the Dashboard entity. Dashboards are computed from data and visually
  * present data, metrics, and KPIs. They are typically updated in real-time and allow
  * interactive data exploration.

@@ -10,7 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-/**
+
+
+ /**
  * This schema defines the Messaging Service entity, such as Kafka and Pulsar.
  */
 export interface MessagingService {

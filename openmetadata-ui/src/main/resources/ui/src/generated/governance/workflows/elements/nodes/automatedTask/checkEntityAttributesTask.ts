@@ -10,7 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-/**
+
+
+ /**
  * Checks if an Entity attributes fit given rules.
  */
 export interface CheckEntityAttributesTask {

@@ -10,7 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-/**
+
+
+ /**
  * A `User` represents a user of OpenMetadata. A user can be part of 0 or more teams. A
  * special type of user called Bot is used for automation. A user can be an owner of zero or
  * more data assets. A user can also follow zero or more data assets.

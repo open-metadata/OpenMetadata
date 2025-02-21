@@ -10,7 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-/**
+
+
+ /**
  * This schema defines the Storage Service entity, such as S3, GCS or AZURE.
  */
 export interface StorageService {

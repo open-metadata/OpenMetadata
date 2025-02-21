@@ -10,7 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-/**
+
+
+ /**
  * Cockroach Database Connection Config
  */
 export interface CockroachConnection {

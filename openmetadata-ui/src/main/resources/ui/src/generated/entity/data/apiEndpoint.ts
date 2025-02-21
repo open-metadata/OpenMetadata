@@ -10,7 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-/**
+
+
+ /**
  * This schema defines the APIEndpoint entity. An APIEndpoint is a specific endpoint of an
  * API that is part of an API Collection.
  */
