@@ -16,7 +16,7 @@ import { graphlib, layout } from '@dagrejs/dagre';
 import { AxiosError } from 'axios';
 import ELK, { ElkExtendedEdge, ElkNode } from 'elkjs/lib/elk.bundled.js';
 import { t } from 'i18next';
-import { isEmpty, isNil, isUndefined, uniqueId } from 'lodash';
+import { get, isEmpty, isNil, isUndefined, uniqueId } from 'lodash';
 import { EntityTags, LoadingState } from 'Models';
 import React, { MouseEvent as ReactMouseEvent } from 'react';
 import {
@@ -74,6 +74,7 @@ import { APIEndpoint } from '../generated/entity/data/apiEndpoint';
 import { Container } from '../generated/entity/data/container';
 import { Dashboard } from '../generated/entity/data/dashboard';
 import { Mlmodel } from '../generated/entity/data/mlmodel';
+import { Pipeline } from '../generated/entity/data/pipeline';
 import { SearchIndex as SearchIndexEntity } from '../generated/entity/data/searchIndex';
 import { Column, Table } from '../generated/entity/data/table';
 import { Topic } from '../generated/entity/data/topic';
@@ -1339,17 +1340,11 @@ const handleNodePagination = (
   return { newNode: loadMoreNode, newEdge: loadMoreEdge };
 };
 
-export const parseLineageData: (
-  data: LineageData,
+const processNodeArray = (
+  nodes: Record<string, NodeData>,
   entityFqn: string
-) => {
-  nodes: LineageEntityReference[];
-  edges: EdgeDetails[];
-  entity: LineageEntityReference;
-} = (data: LineageData, entityFqn: string) => {
-  const { nodes, downstreamEdges, upstreamEdges } = data;
-
-  const nodesArray = Object.values(nodes)
+): LineageEntityReference[] => {
+  return Object.values(nodes)
     .map((node: NodeData) => ({
       ...node.entity,
       paging: node.paging,
@@ -1358,37 +1353,140 @@ export const parseLineageData: (
         node.entity.fullyQualifiedName === entityFqn,
     }))
     .flat();
+};
 
-  const processedNodes: LineageEntityReference[] = [...nodesArray];
-  const processedEdges = [
-    ...Object.values(downstreamEdges),
-    ...Object.values(upstreamEdges),
-  ];
+const processPipelineEdge = (
+  edge: EdgeDetails,
+  pipelineNode: Pipeline
+): EdgeDetails[] => {
+  const pipelineEntityType = get(pipelineNode, 'entityType');
 
-  // Process pagination for each node
-  nodesArray.forEach((node) => {
+  // Create two edges: fromEntity -> pipeline and pipeline -> toEntity
+  const edgeFromToPipeline: EdgeDetails = {
+    fromEntity: edge.fromEntity,
+    toEntity: {
+      id: pipelineNode.id,
+      type: pipelineEntityType,
+      fqn: pipelineNode.fullyQualifiedName ?? '',
+    },
+  };
+
+  const edgePipelineToTo: EdgeDetails = {
+    fromEntity: {
+      id: pipelineNode.id,
+      type: pipelineEntityType,
+      fqn: pipelineNode.fullyQualifiedName ?? '',
+    },
+    toEntity: edge.toEntity,
+  };
+
+  return [edgeFromToPipeline, edgePipelineToTo];
+};
+
+const processEdges = (
+  edges: EdgeDetails[],
+  nodesArray: LineageEntityReference[]
+): EdgeDetails[] => {
+  return edges.reduce((acc: EdgeDetails[], edge: EdgeDetails) => {
+    if (!edge.pipeline) {
+      return [...acc, edge];
+    }
+
+    // Find if pipeline node exists
+    const pipelineNode = nodesArray.find(
+      (node) => node.fullyQualifiedName === edge.pipeline?.fullyQualifiedName
+    );
+
+    if (!pipelineNode) {
+      return [...acc, edge];
+    }
+
+    const pipelineEdges = processPipelineEdge(
+      edge,
+      pipelineNode as unknown as Pipeline
+    );
+
+    return [...acc, ...pipelineEdges];
+  }, []);
+};
+
+const processPagination = (
+  nodesArray: LineageEntityReference[],
+  downstreamEdges: Record<string, EdgeDetails>,
+  upstreamEdges: Record<string, EdgeDetails>
+): {
+  newNodes: LineageEntityReference[];
+  newEdges: EdgeDetails[];
+} => {
+  const newNodes: LineageEntityReference[] = [];
+  const newEdges: EdgeDetails[] = [];
+
+  const eligibleNodes = nodesArray.filter(
+    (node) =>
+      ![EntityType.PIPELINE, EntityType.STORED_PROCEDURE].includes(
+        get(node, 'entityType')
+      )
+  );
+
+  eligibleNodes.forEach((node) => {
     // Handle downstream pagination
     const downstream = handleNodePagination(node, downstreamEdges, true);
     if (downstream.newNode && downstream.newEdge) {
-      processedNodes.push(downstream.newNode);
-      processedEdges.push(downstream.newEdge);
+      newNodes.push(downstream.newNode);
+      newEdges.push(downstream.newEdge);
     }
 
     // Handle upstream pagination
     const upstream = handleNodePagination(node, upstreamEdges, false);
     if (upstream.newNode && upstream.newEdge) {
-      processedNodes.push(upstream.newNode);
-      processedEdges.push(upstream.newEdge);
+      newNodes.push(upstream.newNode);
+      newEdges.push(upstream.newEdge);
     }
   });
 
+  return { newNodes, newEdges };
+};
+
+export const parseLineageData = (
+  data: LineageData,
+  entityFqn: string
+): {
+  nodes: LineageEntityReference[];
+  edges: EdgeDetails[];
+  entity: LineageEntityReference;
+} => {
+  const { nodes, downstreamEdges, upstreamEdges } = data;
+
+  // Process nodes
+  const nodesArray = processNodeArray(nodes, entityFqn);
+  const processedNodes: LineageEntityReference[] = [...nodesArray];
+
+  // Process edges
+  const allEdges = [
+    ...Object.values(downstreamEdges),
+    ...Object.values(upstreamEdges),
+  ];
+  const processedEdges = processEdges(allEdges, nodesArray);
+
+  // Handle pagination
+  const { newNodes, newEdges } = processPagination(
+    nodesArray,
+    downstreamEdges,
+    upstreamEdges
+  );
+
+  // Combine all nodes and edges
+  const finalNodes = [...processedNodes, ...newNodes];
+  const finalEdges = [...processedEdges, ...newEdges];
+
+  // Find the main entity
   const entity = nodesArray.find(
     (node) => node.fullyQualifiedName === entityFqn
   ) as EntityReference;
 
   return {
-    nodes: processedNodes,
-    edges: processedEdges,
+    nodes: finalNodes,
+    edges: finalEdges,
     entity,
   };
 };
@@ -1499,5 +1597,16 @@ export const getEdgePathData = (
     edgeCenterY,
     invisibleEdgePath,
     invisibleEdgePath1,
+  };
+};
+
+export const getEdgeDataFromEdge = (edge: Edge): EdgeData => {
+  const { data } = edge;
+
+  return {
+    fromEntity: data.edge.fromEntity.type,
+    fromId: data.edge.fromEntity.id,
+    toEntity: data.edge.toEntity.type,
+    toId: data.edge.toEntity.id,
   };
 };

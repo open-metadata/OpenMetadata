@@ -51,7 +51,6 @@ import EdgeInfoDrawer from '../../components/Entity/EntityInfoDrawer/EdgeInfoDra
 import EntityInfoDrawer from '../../components/Entity/EntityInfoDrawer/EntityInfoDrawer.component';
 import AddPipeLineModal from '../../components/Entity/EntityLineage/AppPipelineModel/AddPipeLineModal';
 import {
-  EdgeData,
   ElementLoadingState,
   LineageConfig,
 } from '../../components/Entity/EntityLineage/EntityLineage.interface';
@@ -99,6 +98,7 @@ import {
   getAllTracedNodes,
   getClassifiedEdge,
   getConnectedNodesEdges,
+  getEdgeDataFromEdge,
   getELKLayoutedElements,
   getLineageEdge,
   getLineageEdgeForAPI,
@@ -257,7 +257,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
         setLoading(false);
       }
     },
-    [queryFilter]
+    [queryFilter, decodedFqn]
   );
 
   const exportLineageData = useCallback(
@@ -394,15 +394,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
       return;
     }
 
-    const { data } = edge;
-
-    const edgeData: EdgeData = {
-      fromEntity: data.edge.fromEntity.type,
-      fromId: data.edge.fromEntity.id,
-      toEntity: data.edge.toEntity.type,
-      toId: data.edge.toEntity.id,
-    };
-
+    const edgeData = getEdgeDataFromEdge(edge);
     await removeLineageHandler(edgeData);
 
     const filteredEdges = (entityLineage.edges ?? []).filter(
@@ -482,14 +474,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
 
       await Promise.all(
         edgesToRemove.map(async (edge) => {
-          const { data } = edge;
-          const edgeData: EdgeData = {
-            fromEntity: data.edge.fromEntity.type,
-            fromId: data.edge.fromEntity.id,
-            toEntity: data.edge.toEntity.type,
-            toId: data.edge.toEntity.id,
-          };
-
+          const edgeData = getEdgeDataFromEdge(edge);
           await removeLineageHandler(edgeData);
 
           filteredEdges.push(
