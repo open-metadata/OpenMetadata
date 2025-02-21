@@ -51,6 +51,10 @@ export interface WorkflowDefinition {
      */
     id?: string;
     /**
+     * Change that lead to this version of the entity.
+     */
+    incrementalChangeDescription?: ChangeDescription;
+    /**
      * Name that identifies this workflow definition.
      */
     name: string;
@@ -129,7 +133,7 @@ export interface EdgeDefinition {
     /**
      * Defines if the edge will follow a path depending on the source node result.
      */
-    condition?: boolean;
+    condition?: string;
     /**
      * Element from which the edge will start.
      */
@@ -202,7 +206,6 @@ export interface TriggerObject {
 }
 
 export enum Type {
-    CustomSignal = "customSignal",
     EventBasedEntity = "eventBasedEntity",
     PeriodicBatchEntity = "periodicBatchEntity",
 }

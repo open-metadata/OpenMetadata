@@ -44,7 +44,6 @@ export class ApiCollectionClass extends EntityClass {
   };
 
   private apiEndpointName = `pw-api-endpoint-${uuid()}`;
-  private fqn = `${this.service.name}.${this.entity.name}.${this.apiEndpointName}`;
 
   apiEndpoint = {
     name: this.apiEndpointName,
@@ -54,50 +53,43 @@ export class ApiCollectionClass extends EntityClass {
       schemaType: 'JSON',
       schemaFields: [
         {
-          name: 'default',
+          name: `default${uuid()}`,
           dataType: 'RECORD',
-          fullyQualifiedName: `${this.fqn}.default`,
           tags: [],
           children: [
             {
-              name: 'name',
+              name: `name${uuid()}`,
               dataType: 'RECORD',
-              fullyQualifiedName: `${this.fqn}.default.name`,
               tags: [],
               children: [
                 {
-                  name: 'first_name',
+                  name: `first_name${uuid()}`,
                   dataType: 'STRING',
                   description: 'Description for schema field first_name',
-                  fullyQualifiedName: `${this.fqn}.default.name.first_name`,
                   tags: [],
                 },
                 {
-                  name: 'last_name',
+                  name: `last_name${uuid()}`,
                   dataType: 'STRING',
-                  fullyQualifiedName: `${this.fqn}.default.name.last_name`,
                   tags: [],
                 },
               ],
             },
             {
-              name: 'age',
+              name: `age${uuid()}`,
               dataType: 'INT',
-              fullyQualifiedName: `${this.fqn}.default.age`,
               tags: [],
             },
             {
-              name: 'club_name',
+              name: `club_name${uuid()}`,
               dataType: 'STRING',
-              fullyQualifiedName: `${this.fqn}.default.club_name`,
               tags: [],
             },
           ],
         },
         {
-          name: 'secondary',
+          name: `secondary${uuid()}`,
           dataType: 'RECORD',
-          fullyQualifiedName: `${this.fqn}.secondary`,
           tags: [],
         },
       ],
@@ -106,49 +98,42 @@ export class ApiCollectionClass extends EntityClass {
       schemaType: 'JSON',
       schemaFields: [
         {
-          name: 'default',
+          name: `default${uuid()}`,
           dataType: 'RECORD',
-          fullyQualifiedName: `${this.fqn}.default`,
           tags: [],
           children: [
             {
-              name: 'name',
+              name: `name${uuid()}`,
               dataType: 'RECORD',
-              fullyQualifiedName: `${this.fqn}.default.name`,
               tags: [],
               children: [
                 {
-                  name: 'first_name',
+                  name: `first_name${uuid()}`,
                   dataType: 'STRING',
-                  fullyQualifiedName: `${this.fqn}.default.name.first_name`,
                   tags: [],
                 },
                 {
-                  name: 'last_name',
+                  name: `last_name${uuid()}`,
                   dataType: 'STRING',
-                  fullyQualifiedName: `${this.fqn}.default.name.last_name`,
                   tags: [],
                 },
               ],
             },
             {
-              name: 'age',
+              name: `age${uuid()}`,
               dataType: 'INT',
-              fullyQualifiedName: `${this.fqn}.default.age`,
               tags: [],
             },
             {
-              name: 'club_name',
+              name: `club_name${uuid()}`,
               dataType: 'STRING',
-              fullyQualifiedName: `${this.fqn}.default.club_name`,
               tags: [],
             },
           ],
         },
         {
-          name: 'secondary',
+          name: `secondary${uuid()}`,
           dataType: 'RECORD',
-          fullyQualifiedName: `${this.fqn}.secondary`,
           tags: [],
         },
       ],
@@ -200,7 +185,7 @@ export class ApiCollectionClass extends EntityClass {
 
   async patch(apiContext: APIRequestContext, payload: Operation[]) {
     const apiCollectionResponse = await apiContext.patch(
-      `/api/v1/apiCollections/${this.entityResponseData?.['id']}`,
+      `/api/v1/apiCollections/name/${this.entityResponseData?.['fullyQualifiedName']}`,
       {
         data: payload,
         headers: {

@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * A `User` represents a user of OpenMetadata. A user can be part of 0 or more teams. A
  * special type of user called Bot is used for automation. A user can be an owner of zero or
  * more data assets. A user can also follow zero or more data assets.
@@ -63,6 +61,10 @@ export interface User {
      * Unique identifier that identifies a user entity instance.
      */
     id: string;
+    /**
+     * Change that lead to this version of the entity.
+     */
+    incrementalChangeDescription?: ChangeDescription;
     /**
      * Roles that a user is inheriting through membership in teams that have set team default
      * roles.

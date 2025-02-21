@@ -19,15 +19,12 @@ import {
 import { Domain } from '../generated/entity/domains/domain';
 import { EntityReference } from '../generated/entity/type';
 import { DomainStore } from '../interface/store.interface';
-import {
-  getDomainOptions,
-  initializeDomainEntityRef,
-} from '../utils/DomainUtils';
+import { getDomainOptions } from '../utils/DomainUtils';
 import { useApplicationStore } from './useApplicationStore';
 
 export const useDomainStore = create<DomainStore>()(
   persist(
-    (set, get) => ({
+    (set) => ({
       domains: [],
       userDomains: [],
       domainLoading: false,
@@ -55,19 +52,10 @@ export const useDomainStore = create<DomainStore>()(
           ),
         });
       },
-      updateActiveDomain: (activeDomainKey: string) => {
-        const currentUser = useApplicationStore.getState().currentUser;
-        const { isAdmin = false, domains = [] } = currentUser ?? {};
-        const userDomainsObj = isAdmin ? [] : domains;
-        const allDomains = isAdmin ? get().domains : userDomainsObj;
-
-        const activeDomainEntityRef = initializeDomainEntityRef(
-          allDomains as EntityReference[],
-          activeDomainKey
-        );
+      updateActiveDomain: (domain?: EntityReference) => {
         set({
-          activeDomain: activeDomainKey,
-          activeDomainEntityRef,
+          activeDomain: domain?.fullyQualifiedName ?? DEFAULT_DOMAIN_VALUE,
+          activeDomainEntityRef: domain,
         });
       },
       updateDomainLoading: (loading: boolean) => {
@@ -88,19 +76,9 @@ export const useDomainStore = create<DomainStore>()(
     {
       name: DOMAIN_STORAGE_KEY,
       partialize: (state) => {
-        const currentUser = useApplicationStore.getState().currentUser;
-        const { isAdmin = false, domains = [] } = currentUser ?? {};
-        const userDomainsObj = isAdmin ? [] : domains;
-        const allDomains = isAdmin ? state.domains : userDomainsObj;
-
-        const activeDomainEntityRef = initializeDomainEntityRef(
-          allDomains as EntityReference[],
-          state.activeDomain
-        );
-
         return {
           activeDomain: state.activeDomain,
-          activeDomainEntityRef,
+          activeDomainEntityRef: state.activeDomainEntityRef,
         };
       },
     }

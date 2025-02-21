@@ -12,7 +12,6 @@
       "javaType": "org.openmetadata.schema.governance.workflows.TriggerType",
       "enum": [
         "eventBasedEntity",
-        "customSignal",
         "periodicBatchEntity"
       ]
     }
@@ -60,6 +59,10 @@
       "$ref": "../../type/basic.json#/definitions/href"
     },
     "changeDescription": {
+      "description": "Change that lead to this version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "incrementalChangeDescription": {
       "description": "Change that lead to this version of the entity.",
       "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
     },

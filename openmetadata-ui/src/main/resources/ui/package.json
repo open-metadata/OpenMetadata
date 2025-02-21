@@ -82,7 +82,7 @@
     "cronstrue": "^2.53.0",
     "crypto-random-string-with-promisify-polyfill": "^5.0.0",
     "diff": "^5.0.0",
-    "dompurify": "^3.1.5",
+    "dompurify": "^3.2.4",
     "elkjs": "^0.9.3",
     "eventemitter3": "^5.0.1",
     "fast-json-patch": "^3.1.1",
@@ -162,7 +162,6 @@
     "@types/codemirror": "^0.0.104",
     "@types/dagre": "^0.7.47",
     "@types/diff": "^5.0.2",
-    "@types/dompurify": "^3.0.5",
     "@types/jest": "^26.0.23",
     "@types/katex": "^0.16.7",
     "@types/lodash": "^4.14.167",
@@ -249,7 +248,9 @@
     "path-to-regexp": "1.9.0",
     "terser-webpack-plugin": "5.1.1",
     "cookie": "0.7.0",
-    "jsonpath-plus": "10.2.0",
-    "cross-spawn": "7.0.5"
+    "jsonpath-plus": "10.3.0",
+    "cross-spawn": "7.0.5",
+    "serialize-javascript": "6.0.2",
+    "dompurify": "3.2.4"
   }
 }
