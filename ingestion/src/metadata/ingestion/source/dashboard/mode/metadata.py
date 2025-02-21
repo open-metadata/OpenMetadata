@@ -135,8 +135,6 @@ class ModeSource(DashboardServiceSource):
         db_service_name: Optional[str] = None,
     ) -> Iterable[Either[AddLineageRequest]]:
         """Get lineage method"""
-        if not db_service_name:
-            return
         try:
             response_queries = self.client.get_all_queries(
                 workspace_name=self.workspace_name,
@@ -155,13 +153,21 @@ class ModeSource(DashboardServiceSource):
                     database_schema_name = self.check_database_schema_name(
                         database_schema_name
                     )
-                    from_entities = search_table_entities(
-                        metadata=self.metadata,
-                        database=data_source.get(client.DATABASE),
-                        service_name=db_service_name,
-                        database_schema=database_schema_name,
-                        table=table,
-                    )
+                    if not db_service_name:
+                        table_entity = self.get_table_entity_from_es(
+                            table_name=table,
+                            schema_name=database_schema_name,
+                            database_name=data_source.get(client.DATABASE),
+                        )
+                        from_entities = [table_entity] if table_entity else []
+                    else:
+                        from_entities = search_table_entities(
+                            metadata=self.metadata,
+                            database=data_source.get(client.DATABASE),
+                            service_name=db_service_name,
+                            database_schema=database_schema_name,
+                            table=table,
+                        )
                     for from_entity in from_entities:
                         to_entity = self.metadata.get_by_name(
                             entity=Lineage_Dashboard,
