@@ -16,15 +16,12 @@ import { AxiosError } from 'axios';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { getEntityDetailsPath, PAGE_SIZE } from '../../../constants/constants';
-import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
+import { getEntityDetailsPath } from '../../../constants/constants';
+import { EntityType } from '../../../enums/entity.enum';
 import { EntityReference } from '../../../generated/type/entityReference';
 import { usePaging } from '../../../hooks/paging/usePaging';
 import { useFqn } from '../../../hooks/useFqn';
-import {
-  getContainerByName,
-  getContainerChildrenByName,
-} from '../../../rest/storageAPI';
+import { getContainerChildrenByName } from '../../../rest/storageAPI';
 import { getColumnSorter, getEntityName } from '../../../utils/EntityUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -43,7 +40,7 @@ const ContainerChildren: FC = () => {
     handlePageChange,
     handlePageSizeChange,
     handlePagingChange,
-  } = usePaging(PAGE_SIZE);
+  } = usePaging();
 
   const { fqn: decodedContainerName } = useFqn();
   const [isChildrenLoading, setIsChildrenLoading] = useState(false);
@@ -95,20 +92,6 @@ const ContainerChildren: FC = () => {
     []
   );
 
-  const fetchChildren = async () => {
-    setIsChildrenLoading(true);
-    try {
-      const { children } = await getContainerByName(decodedContainerName, {
-        fields: TabSpecificField.CHILDREN,
-      });
-      setContainerChildrenData(children ?? []);
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    } finally {
-      setIsChildrenLoading(false);
-    }
-  };
-
   const fetchContainerChildren = async (pagingOffset?: number) => {
     setIsChildrenLoading(true);
     try {
@@ -134,7 +117,7 @@ const ContainerChildren: FC = () => {
   };
 
   useEffect(() => {
-    fetchChildren();
+    fetchContainerChildren();
   }, [pageSize]);
 
   return (

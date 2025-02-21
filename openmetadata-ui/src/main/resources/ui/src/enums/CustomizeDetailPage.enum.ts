@@ -45,6 +45,7 @@ export enum DetailPageWidgetKeys {
   TABLES = 'KnowledgePanel.Tables',
   API_ENDPOINTS = 'KnowledgePanel.APIEndpoints',
   API_SCHEMA = 'KnowledgePanel.APISchema',
+  RELATED_METRICS = 'KnowledgePanel.RelatedMetrics',
 }
 
 export enum GlossaryTermDetailPageWidgetKeys {

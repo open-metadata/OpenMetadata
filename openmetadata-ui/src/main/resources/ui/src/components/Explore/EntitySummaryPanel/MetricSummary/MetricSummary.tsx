@@ -12,9 +12,10 @@
  */
 
 import { Col, Divider, Row } from 'antd';
-import { get, isEmpty } from 'lodash';
+import { get, isEmpty, noop } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { TabSpecificField } from '../../../../enums/entity.enum';
+import { OperationPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
+import { EntityType, TabSpecificField } from '../../../../enums/entity.enum';
 import { ExplorePageTabs } from '../../../../enums/Explore.enum';
 import { Metric } from '../../../../generated/entity/data/metric';
 import { getMetricByFqn } from '../../../../rest/metricsAPI';
@@ -26,6 +27,7 @@ import {
 import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
 import SummaryPanelSkeleton from '../../../common/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
 import SummaryTagsDescription from '../../../common/SummaryTagsDescription/SummaryTagsDescription.component';
+import { GenericProvider } from '../../../Customization/GenericProvider/GenericProvider';
 import MetricExpression from '../../../Metric/MetricExpression/MetricExpression';
 import RelatedMetrics from '../../../Metric/RelatedMetrics/RelatedMetrics';
 import { SearchedDataProps } from '../../../SearchedData/SearchedData.interface';
@@ -103,19 +105,27 @@ const MetricSummary = ({
         />
         <Divider className="m-y-xs" />
 
-        <Row className="m-md" gutter={[0, 8]}>
-          <Col span={24}>
-            <MetricExpression metricDetails={entityDetails} />
-          </Col>
-          <Divider className="m-y-xs" />
-          <Col span={24}>
-            <RelatedMetrics
-              isInSummaryPanel
-              hasEditPermission={false}
-              metricDetails={entityDetails}
-            />
-          </Col>
-        </Row>
+        <GenericProvider<Metric>
+          data={entityDetails}
+          permissions={{} as OperationPermission}
+          type={EntityType.METRIC}
+          onUpdate={async () => {
+            noop();
+          }}>
+          <Row className="m-md" gutter={[0, 8]}>
+            <Col span={24}>
+              <MetricExpression />
+            </Col>
+            <Divider className="m-y-xs" />
+            <Col span={24}>
+              <RelatedMetrics
+                isInSummaryPanel
+                hasEditPermission={false}
+                metricDetails={entityDetails}
+              />
+            </Col>
+          </Row>
+        </GenericProvider>
       </>
     </SummaryPanelSkeleton>
   );

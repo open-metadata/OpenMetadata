@@ -82,27 +82,31 @@ const EntityRightPanel = <T extends ExtentionEntitiesKeys>({
           />
         )}
 
-        <TagsContainerV2
-          displayType={DisplayType.READ_MORE}
-          entityFqn={entityFQN}
-          entityType={entityType}
-          permission={editTagPermission}
-          selectedTags={selectedTags}
-          showTaskHandler={showTaskHandler}
-          tagType={TagSource.Classification}
-          onSelectionChange={onTagSelectionChange}
-        />
+        <div data-testid="KnowledgePanel.Tags">
+          <TagsContainerV2
+            displayType={DisplayType.READ_MORE}
+            entityFqn={entityFQN}
+            entityType={entityType}
+            permission={editTagPermission}
+            selectedTags={selectedTags}
+            showTaskHandler={showTaskHandler}
+            tagType={TagSource.Classification}
+            onSelectionChange={onTagSelectionChange}
+          />
+        </div>
 
-        <TagsContainerV2
-          displayType={DisplayType.READ_MORE}
-          entityFqn={entityFQN}
-          entityType={entityType}
-          permission={editGlossaryTermsPermission}
-          selectedTags={selectedTags}
-          showTaskHandler={showTaskHandler}
-          tagType={TagSource.Glossary}
-          onSelectionChange={onTagSelectionChange}
-        />
+        <div data-testid="KnowledgePanel.GlossaryTerms">
+          <TagsContainerV2
+            displayType={DisplayType.READ_MORE}
+            entityFqn={entityFQN}
+            entityType={entityType}
+            permission={editGlossaryTermsPermission}
+            selectedTags={selectedTags}
+            showTaskHandler={showTaskHandler}
+            tagType={TagSource.Glossary}
+            onSelectionChange={onTagSelectionChange}
+          />
+        </div>
         {KnowledgeArticles && (
           <KnowledgeArticles entityId={entityId} entityType={entityType} />
         )}
