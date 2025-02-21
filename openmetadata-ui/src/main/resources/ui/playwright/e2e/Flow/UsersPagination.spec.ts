@@ -16,7 +16,6 @@ import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import { redirectToHomePage } from '../../utils/common';
 import { settingClick } from '../../utils/sidebar';
-import { visitUserListPage } from '../../utils/user';
 
 const adminUser = new UserClass();
 const users: UserClass[] = [];
@@ -50,8 +49,6 @@ test.describe('Soft Delete User Pagination', () => {
 
   test.beforeEach('Redirecting to user list', async ({ adminPage }) => {
     await redirectToHomePage(adminPage);
-    await visitUserListPage(adminPage);
-
     const userResponsePromise = adminPage.waitForResponse(
       '/api/v1/users?*include=non-deleted'
     );
@@ -82,7 +79,17 @@ test.describe('Soft Delete User Pagination', () => {
     expect(response.ok()).toBeTruthy();
 
     const nextButton = adminPage.locator('[data-testid="next"]');
+    const expectedUrlPattern =
+      /\/api\/v1\/users\?isBot=false&fields=profile%2Cteams%2Croles&limit=25&isAdmin=false&after=.*?&include=deleted/;
 
+    const paginatedResponsePromise = adminPage.waitForResponse((response) => {
+      const url = response.url();
+
+      return expectedUrlPattern.test(url);
+    });
     await nextButton.click();
+    const paginatedResponse = await paginatedResponsePromise;
+
+    expect(paginatedResponse.ok()).toBeTruthy();
   });
 });
