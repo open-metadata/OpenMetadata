@@ -252,7 +252,7 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
 
     @abstractmethod
     def yield_dashboard_lineage_details(
-        self, dashboard_details: Any, db_service_name: str
+        self, dashboard_details: Any, db_service_name: str, all_db_search: Optional[bool]=False
     ) -> Iterable[Either[AddLineageRequest]]:
         """
         Get lineage between dashboard and data sources
@@ -372,9 +372,14 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
                 yield lineage
 
         db_service_names = self.get_db_service_names()
-        for db_service_name in db_service_names or []:
+        if db_service_names:
+            for db_service_name in db_service_names or []:
+                yield from self.yield_dashboard_lineage_details(
+                    dashboard_details, db_service_name
+                ) or []
+        else:    
             yield from self.yield_dashboard_lineage_details(
-                dashboard_details, db_service_name
+                dashboard_details, db_service_name="", all_db_search=True
             ) or []
 
     def yield_bulk_tags(
