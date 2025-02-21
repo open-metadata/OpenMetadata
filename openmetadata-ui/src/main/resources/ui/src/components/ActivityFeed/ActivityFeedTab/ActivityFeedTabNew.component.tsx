@@ -222,10 +222,8 @@ export const ActivityFeedTabNew = ({
   );
 
   useEffect(() => {
-    if (fqn && isActivityFeedTab) {
-      fetchFeedsCount();
-    }
-  }, [fqn, isActivityFeedTab]);
+    fetchFeedsCount();
+  }, []);
 
   const { feedFilter, threadType } = useMemo(() => {
     const currentFilter =
@@ -321,6 +319,7 @@ export const ActivityFeedTabNew = ({
   const handleAfterTaskClose = () => {
     handleFeedFetchFromFeedList();
     handleUpdateTaskFilter(ThreadTaskStatus.Closed);
+    fetchFeedsCount();
   };
   const taskFilterOptions = useMemo(
     () => [
