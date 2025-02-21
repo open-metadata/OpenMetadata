@@ -14,7 +14,7 @@ import Icon, { CheckCircleFilled, CloseCircleFilled } from '@ant-design/icons';
 import { Button, Card, Col, Row, Tooltip, Typography } from 'antd';
 
 import classNames from 'classnames';
-import { isEmpty, isUndefined, lowerCase } from 'lodash';
+import { isEmpty, isEqual, isUndefined, lowerCase } from 'lodash';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
@@ -44,6 +44,7 @@ import { TaskOperation } from '../../../constants/Feeds.constants';
 import { TASK_TYPES } from '../../../constants/Task.constant';
 import { TaskType } from '../../../generated/api/feed/createThread';
 import { ResolveTask } from '../../../generated/api/feed/resolveTask';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import DescriptionTaskNew from '../../../pages/TasksPage/shared/DescriptionTaskNew';
 import TagsTask from '../../../pages/TasksPage/shared/TagsTask';
 import { updateTask } from '../../../rest/feedsAPI';
@@ -81,6 +82,7 @@ const TaskFeedCard = ({
   const history = useHistory();
   const { t } = useTranslation();
   const { setActiveThread } = useActivityFeedProvider();
+  const { currentUser } = useApplicationStore();
 
   const { threadTs: timeStamp, task: taskDetails } = feed;
 
@@ -214,6 +216,10 @@ const TaskFeedCard = ({
       .catch((err: AxiosError) => showErrorToast(err));
   };
 
+  const isAssignee = taskDetails?.assignees?.some((assignee) =>
+    isEqual(assignee.id, currentUser?.id)
+  );
+
   return (
     <Button block className="remove-button-default-styling" type="text">
       <div
@@ -316,7 +322,7 @@ const TaskFeedCard = ({
               </Col>
             </Col>
 
-            {!isTaskTestCaseResult && (
+            {!isTaskTestCaseResult && isAssignee && (
               <Col className="d-flex gap-2">
                 {feed.task?.status === ThreadTaskStatus.Open && (
                   <Button
