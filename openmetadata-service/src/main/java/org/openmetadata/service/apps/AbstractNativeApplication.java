@@ -88,6 +88,11 @@ public class AbstractNativeApplication implements NativeApplication {
   }
 
   @Override
+  public void uninstall() {
+    /* Not needed by default */
+  }
+
+  @Override
   public void triggerOnDemand() {
     // Validate Native Application
     if (app.getScheduleType().equals(ScheduleType.ScheduledOrManual)) {

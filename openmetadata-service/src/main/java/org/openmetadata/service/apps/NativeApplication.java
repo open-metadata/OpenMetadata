@@ -9,6 +9,8 @@ public interface NativeApplication extends InterruptableJob {
 
   void install();
 
+  void uninstall();
+
   void triggerOnDemand();
 
   void configure();
