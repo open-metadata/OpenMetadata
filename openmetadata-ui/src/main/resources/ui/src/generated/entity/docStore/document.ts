@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * This schema defines Document. A Generic entity to capture any kind of Json Payload.
  */
 export interface Document {

@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * This schema defines the Team entity. A `Team` is a group of zero or more users and/or
  * other teams. Teams can own zero or more data assets. Hierarchical teams are supported
  * `Organization` -> `BusinessUnit` -> `Division` -> `Department`.

@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * Defines a navigation item in the UI navigation menu.
  */
 export interface NavigationItem {

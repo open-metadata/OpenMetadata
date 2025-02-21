@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * This schema defines the Database Schema entity. A `Database Schema` is collection of
  * tables, views, stored procedures, and other database objects.
  */

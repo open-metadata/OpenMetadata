@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * DatabaseService AutoClassification & Auto Classification Pipeline Configuration.
  */
 export interface DatabaseServiceAutoClassificationPipeline {

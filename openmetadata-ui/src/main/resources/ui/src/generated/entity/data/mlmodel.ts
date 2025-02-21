@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * This schema defines the Model entity. `Machine Learning Models` are algorithms trained on
  * data to find patterns or make predictions.
  */

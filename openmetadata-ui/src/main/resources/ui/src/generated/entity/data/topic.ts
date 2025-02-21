@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * A `Topic` is a feed or an event stream in a `Messaging Service` into which publishers
  * publish messages and consumed by consumers.
  */

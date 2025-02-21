@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * A `Data Product` or `Data as a Product` is a logical unit that contains all components to
  * process and store data for analytical or data-intensive use cases made available to data
  * consumers.

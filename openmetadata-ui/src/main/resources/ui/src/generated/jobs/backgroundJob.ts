@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * Defines a background job that is triggered on insertion of new record in background_jobs
  * table.
  */

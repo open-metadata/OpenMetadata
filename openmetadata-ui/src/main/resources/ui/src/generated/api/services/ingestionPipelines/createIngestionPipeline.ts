@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * Ingestion Pipeline Config is used to set up an Airflow DAG.
  */
 export interface CreateIngestionPipeline {

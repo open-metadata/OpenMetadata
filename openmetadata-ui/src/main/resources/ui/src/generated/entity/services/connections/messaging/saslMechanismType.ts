@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * SASL Mechanism consumer config property
  */
 export enum SaslMechanismType {

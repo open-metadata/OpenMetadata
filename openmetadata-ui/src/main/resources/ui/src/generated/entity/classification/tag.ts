@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * A `Tag` entity is used for classification or categorization. It is a term defined under
  * `Classification` entity. Tags are used to label the entities and entity fields, such as
  * Tables, and Columns.

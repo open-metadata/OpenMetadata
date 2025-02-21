@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * Schema defining the response for event subscription events record, including total,
  * pending, successful, and failed event counts for a specific alert.
  */

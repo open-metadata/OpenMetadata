@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * This schema defines the KnowledgePanel entity. A Knowledge panel is an information box
  * used for UX customization in OpenMetadata.
  */

@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * Test Service Connection to test user provided configuration is valid or not.
  */
 export interface TestServiceConnection {

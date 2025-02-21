@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * ML Tagging action configuration for external automator.
  */
 export interface MlTaggingAction {

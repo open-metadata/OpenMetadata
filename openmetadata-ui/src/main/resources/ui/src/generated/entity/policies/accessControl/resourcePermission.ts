@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * A set of permissions for a user that shows what operation is denied, allowed, or not
  * allowed for all the resources.
  */

@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * Represents result of importing a CSV file. Detailed error is provided on if the CSV file
  * is conformant and failure to load any of the records in the CSV file.
  */

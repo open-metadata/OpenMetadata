@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * This schema defines the Team entity with Hierarchy. Hierarchical teams are supported
  * `Organization` -> `BusinessUnit` -> `Division` -> `Department` -> `Group`.
  */

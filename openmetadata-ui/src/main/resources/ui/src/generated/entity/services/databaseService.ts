@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * This schema defines the `Database Service` is a service such as MySQL, BigQuery,
  * Redshift, Postgres, or Snowflake. Alternative terms such as Database Cluster, Database
  * Server instance are also used for database service.

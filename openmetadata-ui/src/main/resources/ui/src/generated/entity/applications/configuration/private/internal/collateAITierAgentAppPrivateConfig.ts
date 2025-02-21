@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * Private Configuration for the CollateAITierAgent Internal Application.
  */
 export interface CollateAITierAgentAppPrivateConfig {

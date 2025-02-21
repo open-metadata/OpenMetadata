@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * Describes an Access Control Rule for OpenMetadata Metadata Operations. All non-null user
  * (subject) and entity (object) attributes are evaluated with logical AND.
  */

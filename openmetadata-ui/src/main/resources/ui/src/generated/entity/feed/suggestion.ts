@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * This schema defines the Suggestion entity. A suggestion can be applied to an asset to
  * give the owner context about possible changes or improvements to descriptions, tags,...
  */

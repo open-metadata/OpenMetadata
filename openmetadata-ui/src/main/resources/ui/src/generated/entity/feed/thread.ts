@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * This schema defines the Thread entity. A Thread is a collection of posts made by the
  * users. The first post that starts a thread is **about** a data asset **from** a user.
  * Other users can respond to this post by creating new posts in the thread. Note that bot

@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * OpenMetadata Secrets Manager Client Loader. Lets the client know how the Secrets Manager
  * Credentials should be loaded from the environment.
  */

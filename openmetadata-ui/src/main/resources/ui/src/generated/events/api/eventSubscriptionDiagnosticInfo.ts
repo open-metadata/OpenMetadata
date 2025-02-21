@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * Schema defining the response for event subscription diagnostics, including details about
  * processed and unprocessed events.
  */

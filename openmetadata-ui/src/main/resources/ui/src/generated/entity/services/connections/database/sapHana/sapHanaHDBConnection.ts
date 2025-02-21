@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * Sap Hana Database HDB User Store Connection Config
  */
 export interface SapHanaHDBConnection {

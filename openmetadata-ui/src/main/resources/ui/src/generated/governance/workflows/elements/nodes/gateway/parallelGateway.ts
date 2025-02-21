@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * Parallel Gateway. It should be used when we want to Parallelize or sync back Parallelized
  * tasks.
  */

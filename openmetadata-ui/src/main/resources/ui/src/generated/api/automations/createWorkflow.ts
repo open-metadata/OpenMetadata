@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * A unit of work that will be triggered as an API call to the OpenMetadata server.
  */
 export interface CreateWorkflow {

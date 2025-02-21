@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * Azure SSO Client security config to connect to OpenMetadata.
  */
 export interface AzureSSOClientConfig {

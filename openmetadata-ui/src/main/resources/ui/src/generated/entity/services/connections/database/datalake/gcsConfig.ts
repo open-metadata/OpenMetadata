@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * DataLake GCS storage will ingest metadata of files
  */
 export interface GcsConfig {

@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * Functions used for writing SpEL expression based conditions
  */
 export interface Function {

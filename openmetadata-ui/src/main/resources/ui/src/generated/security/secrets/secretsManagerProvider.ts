@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * OpenMetadata Secrets Manager Provider. Make sure to configure the same secrets manager
  * providers as the ones configured on the OpenMetadata server.
  */

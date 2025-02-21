@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * Different Type of OpenMetadata Service tokens
  */
 export enum ServiceTokenEnum {

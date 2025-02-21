@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * Detailed status of the destination during a test operation, including HTTP response
  * information.
  */

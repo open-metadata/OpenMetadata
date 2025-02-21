@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * This schema defines the Metrics entity. `Metrics` are measurements computed from data
  * such as `Monthly Active Users`. Some of the metrics that measures used to determine
  * performance against an objective are called KPIs or Key Performance Indicators, such as

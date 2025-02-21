@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * Current status of the subscription, including details on the last successful and failed
  * attempts, and retry information.
  */

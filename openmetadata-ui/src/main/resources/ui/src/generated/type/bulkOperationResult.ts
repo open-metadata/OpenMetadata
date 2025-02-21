@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * Represents result of bulk Operation performed on entities.
  */
 export interface BulkOperationResult {

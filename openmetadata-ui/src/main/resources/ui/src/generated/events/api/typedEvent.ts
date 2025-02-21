@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * Schema defining a Typed Event with its status, data, and timestamp.
  */
 export interface TypedEvent {

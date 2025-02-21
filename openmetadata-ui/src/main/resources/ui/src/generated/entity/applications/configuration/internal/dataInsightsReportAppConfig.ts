@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- export interface DataInsightsReportAppConfigClass {
+export interface DataInsightsReportAppConfigClass {
     sendToAdmins?: boolean;
     sendToTeams?:  boolean;
     /**

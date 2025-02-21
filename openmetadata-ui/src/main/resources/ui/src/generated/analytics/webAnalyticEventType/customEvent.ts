@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * Event tracker (e.g. clicks, etc.)
  */
 export interface CustomEvent {

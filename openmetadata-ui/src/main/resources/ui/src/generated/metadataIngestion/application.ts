@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * OpenMetadata Ingestion Framework definition for Applications, i.e., the YAML shape we
  * require.
  */

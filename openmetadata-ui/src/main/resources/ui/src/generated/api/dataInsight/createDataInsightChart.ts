@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * Payload to create a data insight chart
  */
 export interface CreateDataInsightChart {

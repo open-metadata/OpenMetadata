@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * A `Domain` is a bounded context that is aligned with a Business Unit or a function within
  * an organization.
  */

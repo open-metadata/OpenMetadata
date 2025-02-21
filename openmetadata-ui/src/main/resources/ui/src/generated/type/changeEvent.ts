@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * This schema defines the change event type to capture the changes to entities. Entities
  * change due to user activity, such as updating description of a dataset, changing
  * ownership, or adding new tags. Entity also changes due to activities at the metadata

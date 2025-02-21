@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * The `Lineage` for a given data asset, has information of the input datasets used and the
  * ETL pipeline that created it.
  */

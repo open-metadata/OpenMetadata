@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * This schema defines the profiler configuration. It is used to configure globally the
  * metrics to compute for specific data types.
  */

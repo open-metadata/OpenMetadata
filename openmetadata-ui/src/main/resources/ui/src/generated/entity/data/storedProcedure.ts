@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * A `StoredProcedure` entity that contains the set of code statements with an assigned
  * name  and is defined in a `Database Schema`."
  */

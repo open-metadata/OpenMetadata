@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * Pass the raw credential values provided by GCP
  */
 export interface GcpValues {

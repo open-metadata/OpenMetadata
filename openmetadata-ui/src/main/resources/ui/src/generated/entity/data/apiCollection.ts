@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * This schema defines the APICollection entity. API Collection allows user to group
  * multiple APIs together. In OpenAPI specification its marked as a Tag.
  */

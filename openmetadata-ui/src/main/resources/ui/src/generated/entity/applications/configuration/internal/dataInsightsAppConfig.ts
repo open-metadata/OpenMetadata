@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * No configuration needed to instantiate the Data Insights Pipeline. The logic is handled
  * in the backend.
  */

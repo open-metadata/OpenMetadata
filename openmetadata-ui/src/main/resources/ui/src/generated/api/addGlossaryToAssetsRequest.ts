@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * Create Request for adding a glossary to assets
  */
 export interface AddGlossaryToAssetsRequest {

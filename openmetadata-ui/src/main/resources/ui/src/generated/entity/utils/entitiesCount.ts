@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * This schema defines Entities Count. This contains aggregated entities count.
  */
 export interface EntitiesCount {
