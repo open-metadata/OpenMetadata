@@ -130,9 +130,13 @@ class ModeSource(DashboardServiceSource):
         self.register_record(dashboard_request=dashboard_request)
 
     def yield_dashboard_lineage_details(
-        self, dashboard_details: dict, db_service_name: str
+        self,
+        dashboard_details: dict,
+        db_service_name: Optional[str] = None,
     ) -> Iterable[Either[AddLineageRequest]]:
         """Get lineage method"""
+        if not db_service_name:
+            return
         try:
             response_queries = self.client.get_all_queries(
                 workspace_name=self.workspace_name,

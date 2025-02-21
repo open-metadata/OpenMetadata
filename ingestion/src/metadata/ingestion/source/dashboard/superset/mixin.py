@@ -308,11 +308,13 @@ class SupersetSourceMixin(DashboardServiceSource):
     def yield_dashboard_lineage_details(
         self,
         dashboard_details: Union[FetchDashboard, DashboardResult],
-        db_service_name: DatabaseService,
+        db_service_name: Optional[str] = None,
     ) -> Iterable[Either[AddLineageRequest]]:
         """
         Get lineage between datamodel and table
         """
+        if not db_service_name:
+            return
         db_service_entity = self.metadata.get_by_name(
             entity=DatabaseService, fqn=db_service_name
         )

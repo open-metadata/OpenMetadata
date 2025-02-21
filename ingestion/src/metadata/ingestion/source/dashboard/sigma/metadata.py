@@ -222,7 +222,9 @@ class SigmaSource(DashboardServiceSource):
         return None
 
     def yield_dashboard_lineage_details(
-        self, dashboard_details: WorkbookDetails, db_service_name: Optional[str]
+        self,
+        dashboard_details: WorkbookDetails,
+        db_service_name: Optional[str] = None,
     ):
         """
         yield dashboard lineage

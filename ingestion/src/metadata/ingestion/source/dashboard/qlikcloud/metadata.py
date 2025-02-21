@@ -188,9 +188,11 @@ class QlikcloudSource(QliksenseSource):
     def yield_dashboard_lineage_details(
         self,
         dashboard_details: QlikApp,
-        db_service_name: Optional[str],
+        db_service_name: Optional[str] = None,
     ) -> Iterable[Either[AddLineageRequest]]:
         """Get lineage method"""
+        if not db_service_name:
+            return
         db_service_entity = self.metadata.get_by_name(
             entity=DatabaseService, fqn=db_service_name
         )

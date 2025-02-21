@@ -440,11 +440,15 @@ class QuicksightSource(DashboardServiceSource):
         return None
 
     def yield_dashboard_lineage_details(  # pylint: disable=too-many-locals
-        self, dashboard_details: DashboardDetail, db_service_name: str
+        self,
+        dashboard_details: DashboardDetail,
+        db_service_name: Optional[str] = None,
     ) -> Iterable[Either[AddLineageRequest]]:
         """
         Get lineage between dashboard and data sources
         """
+        if not db_service_name:
+            return
         db_service_entity = self.metadata.get_by_name(
             entity=DatabaseService, fqn=db_service_name
         )
