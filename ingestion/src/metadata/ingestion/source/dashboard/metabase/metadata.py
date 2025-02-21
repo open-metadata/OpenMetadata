@@ -292,8 +292,6 @@ class MetabaseSource(DashboardServiceSource):
         Args:
             dashboard_details
         """
-        if not db_service_name:
-            return
         chart_ids, dashboard_name = (
             dashboard_details.card_ids,
             str(dashboard_details.id),
@@ -333,11 +331,16 @@ class MetabaseSource(DashboardServiceSource):
                     )
                 )
 
-    def _get_database_service(self, db_service_name: str):
+    def _get_database_service(self, db_service_name: Optional[str]):
+        if not db_service_name:
+            return None
         return self.metadata.get_by_name(DatabaseService, db_service_name)
 
     def _yield_lineage_from_query(
-        self, chart_details: MetabaseChart, db_service_name: str, dashboard_name: str
+        self,
+        chart_details: MetabaseChart,
+        db_service_name: Optional[str],
+        dashboard_name: str,
     ) -> Iterable[Either[AddLineageRequest]]:
         database = self.client.get_database(chart_details.database_id)
 
@@ -366,13 +369,22 @@ class MetabaseSource(DashboardServiceSource):
         for table in lineage_parser.source_tables:
             database_schema_name, table = fqn.split(str(table))[-2:]
             database_schema_name = self.check_database_schema_name(database_schema_name)
-            from_entities = search_table_entities(
-                metadata=self.metadata,
-                database=database_name,
-                service_name=db_service_name,
-                database_schema=database_schema_name,
-                table=table,
-            )
+            if not db_service_name:
+                from_entities = [
+                    self.get_table_entity_from_es(
+                        table_name=table,
+                        schema_name=database_schema_name,
+                        database_name=database_name,
+                    )
+                ]
+            else:
+                from_entities = search_table_entities(
+                    metadata=self.metadata,
+                    database=database_name,
+                    service_name=db_service_name,
+                    database_schema=database_schema_name,
+                    table=table,
+                )
 
             to_fqn = fqn.build(
                 self.metadata,
@@ -391,7 +403,10 @@ class MetabaseSource(DashboardServiceSource):
                 )
 
     def _yield_lineage_from_api(
-        self, chart_details: MetabaseChart, db_service_name: str, dashboard_name: str
+        self,
+        chart_details: MetabaseChart,
+        db_service_name: Optional[str],
+        dashboard_name: str,
     ) -> Iterable[Either[AddLineageRequest]]:
         table = self.client.get_table(chart_details.table_id)
         table_name = table.name or table.display_name
@@ -400,13 +415,22 @@ class MetabaseSource(DashboardServiceSource):
             return
 
         database_name = table.db.details.db if table.db and table.db.details else None
-        from_entities = search_table_entities(
-            metadata=self.metadata,
-            database=database_name,
-            service_name=db_service_name,
-            database_schema=table.table_schema,
-            table=table_name,
-        )
+        if not db_service_name:
+            from_entities = [
+                self.get_table_entity_from_es(
+                    table_name=table_name,
+                    schema_name=table.table_schema,
+                    database_name=database_name,
+                )
+            ]
+        else:
+            from_entities = search_table_entities(
+                metadata=self.metadata,
+                database=database_name,
+                service_name=db_service_name,
+                database_schema=table.table_schema,
+                table=table_name,
+            )
 
         to_fqn = fqn.build(
             self.metadata,

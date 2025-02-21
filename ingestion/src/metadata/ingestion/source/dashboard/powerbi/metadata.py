@@ -61,14 +61,12 @@ from metadata.ingestion.source.dashboard.powerbi.models import (
 )
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
 from metadata.utils import fqn
-from metadata.utils.elasticsearch import get_entity_from_es_result
 from metadata.utils.filters import (
     filter_by_chart,
     filter_by_dashboard,
     filter_by_datamodel,
     filter_by_project,
 )
-from metadata.utils.fqn import build_es_fqn_search_string
 from metadata.utils.helpers import clean_uri
 from metadata.utils.logger import ingestion_logger
 
@@ -627,19 +625,7 @@ class PowerbiSource(DashboardServiceSource):
         try:
             if not db_service_name:
                 # search from all database services
-                fqn_search_string = build_es_fqn_search_string(
-                    database_name=None,
-                    schema_name=None,
-                    service_name=None,
-                    table_name=table.name,
-                )
-                table_entity = get_entity_from_es_result(
-                    entity_list=self.metadata.es_search_from_fqn(
-                        entity_type=Table,
-                        fqn_search_string=fqn_search_string,
-                    ),
-                    fetch_multiple_entities=False,
-                )
+                table_entity = self.get_table_entity_from_es(table_name=table.name)
             else:
                 table_fqn = fqn.build(
                     self.metadata,
