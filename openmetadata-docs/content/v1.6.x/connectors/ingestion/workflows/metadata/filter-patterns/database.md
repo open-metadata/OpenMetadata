@@ -417,3 +417,42 @@ sourceConfig:
       includes:
         - .*\.PUBLIC\.CUSTOMER$
 ```
+
+
+
+#### Example 3
+
+In this example, we aim to ingest a table named `_delta_log/file.json` within the `session` schema of any database. To achieve this, we need to configure the following filter patterns:
+- Include Table Filter Pattern: `.*_delta_log/file\.json$`
+- Schema Filter Pattern: `session`
+
+{% note %}
+
+The backslash (\) is used as an escape character for the dot (.) in the pattern
+
+{% /note %}
+
+### Configuring Filters via UI for Example 3
+
+{% image
+  src="/images/v1.6/features/ingestion/workflows/metadata/filter-patterns/table-filter-example-3.webp"
+  alt="Table Filter Pattern Example 3"
+  caption="Table Filter Pattern Example 3"
+ /%}
+
+
+
+### Configuring Filters via CLI for Example 3
+
+```yaml
+sourceConfig:
+  config:
+    ...
+    useFqnForFiltering: true
+    tableFilterPattern:
+      includes:
+        - session
+            tableFilterPattern:
+      includes:
+        - "*_delta_log/file\.json$"
+```
