@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * Schema defining the response for event subscription diagnostics, including details about
  * processed and unprocessed events.
  */
@@ -108,6 +106,10 @@ export interface ChangeEvent {
      */
     id: string;
     /**
+     * Change that lead to this version of the entity.
+     */
+    incrementalChangeDescription?: ChangeDescription;
+    /**
      * Version of the entity before this change. Note that not all changes result in entity
      * version change. When entity version is not changed, `previousVersion` is same as
      * `currentVersion`.
@@ -129,6 +131,8 @@ export interface ChangeEvent {
  * null.
  *
  * Description of the change.
+ *
+ * Change that lead to this version of the entity.
  */
 export interface ChangeDescription {
     /**
