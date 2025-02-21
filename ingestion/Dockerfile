@@ -29,6 +29,8 @@ RUN apt-get -qq update \
     libkrb5-dev \
     default-jdk \
     openssl \
+    # To ensure compatibility with unixodbc package
+    odbcinst=2.3.11-2+deb12u1 \
     postgresql \
     postgresql-contrib \
     tdsodbc \
@@ -42,7 +44,7 @@ RUN apt-get -qq update \
     && rm -rf /var/lib/apt/lists/*
 COPY --from=mysql /usr/bin/mysqldump /usr/bin/mysqldump
 
-RUN if [ $(uname -m) = "arm64" || $(uname -m) = "aarch64" ]; \
+RUN if [ $(uname -m) = "arm64" ] | [ $(uname -m) = "aarch64" ]; \
  then \
  wget -q https://download.oracle.com/otn_software/linux/instantclient/191000/instantclient-basic-linux.arm64-19.10.0.0.0dbru.zip -O /oracle-instantclient.zip && \
  unzip -qq -d /instantclient -j /oracle-instantclient.zip && rm -f /oracle-instantclient.zip; \
