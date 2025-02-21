@@ -24,12 +24,11 @@ import {
   MarkdownToHTMLConverter,
 } from '../../../utils/FeedUtils';
 import ProfilePicture from '../../common/ProfilePicture/ProfilePicture';
+import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import FeedCardFooterNew from '../ActivityFeedCardV2/FeedCardFooter/FeedCardFooterNew';
 import ActivityFeedEditor from '../ActivityFeedEditor/ActivityFeedEditorNew';
 import { useActivityFeedProvider } from '../ActivityFeedProvider/ActivityFeedProvider';
 import ActivityFeedActions from '../Shared/ActivityFeedActions';
-
-const { Text } = Typography;
 
 interface CommentCardInterface {
   feed: Thread;
@@ -78,15 +77,13 @@ const CommentCard = ({ feed, post, isLastReply }: CommentCardInterface) => {
       );
     }
 
-    return <Text className="reply-message">{stripHtml(post.message)}</Text>;
+    return (
+      <RichTextEditorPreviewerV1
+        className="text-wrap"
+        markdown={getFrontEndFormat(post.message)}
+      />
+    );
   }, [isEditPost, postMessage, handleSave]);
-
-  function stripHtml(html: any) {
-    const tempDiv = document.createElement('div');
-    tempDiv.innerHTML = html;
-
-    return tempDiv.innerText || tempDiv.textContent;
-  }
 
   return (
     <div
