@@ -597,7 +597,9 @@ class TableauSource(DashboardServiceSource):
                 )
 
     def yield_dashboard_lineage_details(
-        self, dashboard_details: TableauDashboard, db_service_name: str
+        self,
+        dashboard_details: TableauDashboard,
+        db_service_name: Optional[str] = None,
     ) -> Iterable[Either[AddLineageRequest]]:
         """
         This method creates the lineage between tables and datamodels
@@ -609,6 +611,8 @@ class TableauSource(DashboardServiceSource):
         Returns:
             Lineage request between Data Models and Database tables
         """
+        if not db_service_name:
+            return
         db_service_entity = self.metadata.get_by_name(
             entity=DatabaseService, fqn=db_service_name
         )
