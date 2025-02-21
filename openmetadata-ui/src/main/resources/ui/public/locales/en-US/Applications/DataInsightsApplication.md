@@ -27,3 +27,8 @@ $$section
 ### backfillConfiguration $(id="backfillConfiguration")
 
 $$
+
+$$section
+### moduleConfiguration $(id="moduleConfiguration")
+
+$$
