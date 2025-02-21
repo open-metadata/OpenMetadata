@@ -14,6 +14,8 @@
 package org.openmetadata.service.resources.teams;
 
 import static org.openmetadata.common.utils.CommonUtil.listOf;
+import static org.openmetadata.service.exception.CatalogExceptionMessage.CREATE_GROUP;
+import static org.openmetadata.service.exception.CatalogExceptionMessage.CREATE_ORGANIZATION;
 
 import io.dropwizard.jersey.PATCH;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
@@ -50,6 +52,7 @@ import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.teams.CreateTeam;
+import org.openmetadata.schema.api.teams.CreateTeam.TeamType;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.TeamHierarchy;
 import org.openmetadata.schema.entity.teams.User;
@@ -77,6 +80,7 @@ import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.mask.PIIMasker;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.util.CSVExportResponse;
+import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 
@@ -756,7 +760,6 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
       String csv) {
     return importCsvInternalAsync(securityContext, name, csv, dryRun);
   }
-
 
   @GET
   @Path("/name/{name}/users")
