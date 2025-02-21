@@ -257,13 +257,13 @@ export interface Action {
      * Apply tags to the children of the selected assets that match the criteria. E.g., columns,
      * tasks, topic fields,...
      *
-     * Remove tags from all the children of the selected assets. E.g., columns, tasks, topic
+     * Remove tags from the children of the selected assets. E.g., columns, tasks, topic
      * fields,...
      *
      * Apply the description to the children of the selected assets that match the criteria.
      * E.g., columns, tasks, topic fields,...
      *
-     * Remove descriptions from all children of the selected assets. E.g., columns, tasks, topic
+     * Remove descriptions from the children of the selected assets. E.g., columns, tasks, topic
      * fields,...
      */
     applyToChildren?: string[];
@@ -301,6 +301,16 @@ export interface Action {
      * Application Type
      */
     type: ActionType;
+    /**
+     * Remove tags from all the children and parent of the selected assets.
+     *
+     * Remove descriptions from all the children and parent of the selected assets.
+     */
+    applyToAll?: boolean;
+    /**
+     * Remove tags by its label type
+     */
+    labels?: LabelElement[];
     /**
      * Domain to apply
      */
@@ -412,6 +422,15 @@ export interface EntityReference {
 }
 
 /**
+ * Remove tags by its label type
+ */
+export enum LabelElement {
+    Automated = "Automated",
+    Manual = "Manual",
+    Propagated = "Propagated",
+}
+
+/**
  * This schema defines the type for labeling an entity with a Tag.
  *
  * tier to apply
@@ -436,7 +455,7 @@ export interface TagLabel {
      * label was propagated from upstream based on lineage. 'Automated' is used when a tool was
      * used to determine the tag label.
      */
-    labelType: LabelType;
+    labelType: LabelTypeEnum;
     /**
      * Name of the tag or glossary term.
      */
@@ -461,7 +480,7 @@ export interface TagLabel {
  * label was propagated from upstream based on lineage. 'Automated' is used when a tool was
  * used to determine the tag label.
  */
-export enum LabelType {
+export enum LabelTypeEnum {
     Automated = "Automated",
     Derived = "Derived",
     Manual = "Manual",
@@ -631,6 +650,7 @@ export interface CreateEventSubscription {
      * Consumer Class for the Event Subscription. Will use 'AlertPublisher' if not provided.
      */
     className?: string;
+    config?:    { [key: string]: any };
     /**
      * A short description of the Alert, comprehensible to regular users.
      */
@@ -686,6 +706,7 @@ export interface CreateEventSubscription {
  */
 export enum AlertType {
     ActivityFeed = "ActivityFeed",
+    Custom = "Custom",
     GovernanceWorkflowChangeEvent = "GovernanceWorkflowChangeEvent",
     Notification = "Notification",
     Observability = "Observability",
