@@ -71,10 +71,6 @@ export interface QueryUsedByOtherTableProps {
   onChange: (value: DefaultOptionType[]) => void;
 }
 
-export interface QueryFiltersProps {
-  onFilterChange: (value: SearchDropdownOption[]) => void;
-}
-
 export type QuerySearchParams = {
   queryFrom?: number;
   after?: string;
@@ -93,12 +89,5 @@ export type QuerySearchMustFilterType = {
   };
   bool?: {
     should: QuerySearchShouldFilterType[];
-  };
-};
-export type QuerySearchFilterType = {
-  query: {
-    bool: {
-      must: QuerySearchMustFilterType[];
-    };
   };
 };

@@ -9,6 +9,7 @@ from _openmetadata_testutils.pydantic.test_utils import assert_equal_pydantic_ob
 from metadata.data_quality.api.models import TestCaseDefinition
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.metadataIngestion.testSuitePipeline import (
+    ServiceConnections,
     TestSuiteConfigType,
     TestSuitePipeline,
 )
@@ -55,9 +56,14 @@ def run_data_quality_workflow(
                 config=TestSuitePipeline(
                     type=TestSuiteConfigType.TestSuite,
                     entityFullyQualifiedName=f"{db_service.fullyQualifiedName.root}.dvdrental.public.customer",
+                    serviceConnections=[
+                        ServiceConnections(
+                            serviceName=db_service.name.root,
+                            serviceConnection=db_service.connection,
+                        )
+                    ],
                 )
             ),
-            serviceConnection=db_service.connection,
         ),
         processor=Processor(
             type="orm-test-runner",

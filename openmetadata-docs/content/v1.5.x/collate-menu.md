@@ -136,6 +136,8 @@ site_menu:
     url: /connectors/database/mssql
   - category: Connectors / Database / MSSQL / Run Externally
     url: /connectors/database/mssql/yaml
+  - category: Connectors / Database / MSSQL / Troubleshooting
+    url: /connectors/database/mssql/troubleshooting
   - category: Connectors / Database / MySQL
     url: /connectors/database/mysql
   - category: Connectors / Database / MySQL / Run Externally
@@ -148,11 +150,11 @@ site_menu:
     url: /connectors/database/pinotdb
   - category: Connectors / Database / PinotDB / Run Externally
     url: /connectors/database/pinotdb/yaml
-  - category: Connectors / Database / Postgres
+  - category: Connectors / Database / PostgreSQL
     url: /connectors/database/postgres
-  - category: Connectors / Database / Postgres / Run Externally
+  - category: Connectors / Database / PostgreSQL / Run Externally
     url: /connectors/database/postgres/yaml
-  - category: Connectors / Database / Postgres / Troubleshooting
+  - category: Connectors / Database / PostgreSQL / Troubleshooting
     url: /connectors/database/postgres/troubleshooting
   - category: Connectors / Database / Presto
     url: /connectors/database/presto
@@ -168,9 +170,9 @@ site_menu:
     url: /connectors/database/salesforce
   - category: Connectors / Database / Salesforce / Run Externally
     url: /connectors/database/salesforce/yaml
-  - category: Connectors / Database / SAP Hana
+  - category: Connectors / Database / SAP HANA
     url: /connectors/database/sap-hana
-  - category: Connectors / Database / SAP Hana / Run Externally
+  - category: Connectors / Database / SAP HANA / Run Externally
     url: /connectors/database/sap-hana/yaml
   - category: Connectors / Database / SAP ERP
     url: /connectors/database/sap-erp
@@ -796,6 +798,12 @@ site_menu:
     url: /releases/supported
   - category: Releases / All Releases
     url: /releases/all-releases
+  - category: Releases / All Releases / 1.5.14 Release
+    url: /releases/all-releases/#1.5.14-release
+  - category: Releases / All Releases / 1.5.13 Release
+    url: /releases/all-releases/#1.5.13-release
+  - category: Releases / All Releases / 1.5.12 Release
+    url: /releases/all-releases/#1.5.12-release
   - category: Releases / All Releases / 1.5.11 Release
     url: /releases/all-releases/#1.5.11-release
   - category: Releases / All Releases / 1.5.10 Release

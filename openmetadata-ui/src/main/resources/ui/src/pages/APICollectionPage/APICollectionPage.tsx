@@ -103,7 +103,13 @@ const APICollectionPage: FunctionComponent = () => {
   const { getEntityPermissionByFqn } = usePermissionProvider();
   const pagingInfo = usePaging(PAGE_SIZE);
 
-  const { paging, pageSize, handlePagingChange } = pagingInfo;
+  const {
+    paging,
+    pageSize,
+    handlePagingChange,
+    handlePageChange,
+    currentPage,
+  } = pagingInfo;
 
   const { tab: activeTab = EntityTabs.API_ENDPOINT } =
     useParams<{ tab: EntityTabs }>();
@@ -130,8 +136,6 @@ const APICollectionPage: FunctionComponent = () => {
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
   const [showDeletedEndpoints, setShowDeletedEndpoints] =
     useState<boolean>(false);
-  const [currentEndpointsPage, setCurrentEndpointsPage] =
-    useState<number>(INITIAL_PAGING_VALUE);
 
   const extraDropdownContent = useMemo(
     () =>
@@ -145,7 +149,7 @@ const APICollectionPage: FunctionComponent = () => {
 
   const handleShowDeletedEndPoints = (value: boolean) => {
     setShowDeletedEndpoints(value);
-    setCurrentEndpointsPage(INITIAL_PAGING_VALUE);
+    handlePageChange(INITIAL_PAGING_VALUE);
   };
 
   const { currentVersion, tags, tier, apiCollectionId } = useMemo(
@@ -459,7 +463,7 @@ const APICollectionPage: FunctionComponent = () => {
           },
         });
       }
-      setCurrentEndpointsPage(currentPage);
+      handlePageChange(currentPage);
     },
     [paging, getAPICollectionEndpoints]
   );
@@ -584,7 +588,7 @@ const APICollectionPage: FunctionComponent = () => {
                       apiCollectionDetails={apiCollection}
                       apiEndpoints={apiEndpoints}
                       apiEndpointsLoading={apiEndpointsLoading}
-                      currentEndpointsPage={currentEndpointsPage}
+                      currentEndpointsPage={currentPage}
                       description={apiCollection?.description ?? ''}
                       editDescriptionPermission={editDescriptionPermission}
                       endpointPaginationHandler={endpointPaginationHandler}

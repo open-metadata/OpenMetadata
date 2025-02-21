@@ -7,8 +7,8 @@ slug: /connectors/database/doris
 name="Doris"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=["Metadata", "Data Profiler", "Data Quality"]
-unavailableFeatures=["Query Usage", "Lineage", "Column-level Lineage", "Owners", "Tags", "Stored Procedures", "dbt"]
+availableFeatures=["Metadata", "Data Profiler", "Data Quality", "dbt"]
+unavailableFeatures=["Query Usage", "Lineage", "Column-level Lineage", "Owners", "Tags", "Stored Procedures"]
 / %}
 
 In this section, we provide guides and references to use the Doris connector.

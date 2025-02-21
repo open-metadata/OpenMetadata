@@ -198,6 +198,9 @@ class DashboardServiceTopology(ServiceTopology):
     )
 
 
+from metadata.utils.helpers import retry_with_docker_host
+
+
 # pylint: disable=too-many-public-methods
 class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
     """
@@ -216,6 +219,7 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
     dashboard_source_state: Set = set()
     datamodel_source_state: Set = set()
 
+    @retry_with_docker_host()
     def __init__(
         self,
         config: WorkflowSource,
@@ -479,6 +483,7 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
         to_entity: Union[Dashboard, DashboardDataModel],
         from_entity: Union[Table, DashboardDataModel, Dashboard],
         column_lineage: List[ColumnLineage] = None,
+        sql: Optional[str] = None,
     ) -> Optional[Either[AddLineageRequest]]:
         if from_entity and to_entity:
             return Either(
@@ -494,6 +499,7 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
                         ),
                         lineageDetails=LineageDetails(
                             source=LineageSource.DashboardLineage,
+                            sqlQuery=sql,
                             columnsLineage=column_lineage,
                         ),
                     )

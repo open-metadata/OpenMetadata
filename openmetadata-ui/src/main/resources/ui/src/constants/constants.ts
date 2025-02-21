@@ -37,8 +37,6 @@ export const SUCCESS_COLOR = '#008376';
 export const DE_ACTIVE_COLOR = '#6B7280';
 export const GRAPH_BACKGROUND_COLOR = '#f5f5f5';
 export const GRAYED_OUT_COLOR = '#959595';
-export const GREEN_COLOR = '#28A745';
-export const GREEN_COLOR_OPACITY_30 = '#28A74530';
 export const BORDER_COLOR = '#0000001a';
 export const BLACK_COLOR = '#000000';
 export const WHITE_COLOR = '#ffffff';
@@ -69,15 +67,11 @@ export const INGESTION_PROGRESS_END_VAL = 80;
 export const DEPLOYED_PROGRESS_VAL = 100;
 export const DESCRIPTION_MAX_PREVIEW_CHARACTERS = 350;
 export const MAX_CHAR_LIMIT_ENTITY_SUMMARY = 130;
-export const SMALL_TABLE_LOADER_SIZE = 3;
 export const TEST_CASE_FEED_GRAPH_HEIGHT = 250;
 export const ONE_MINUTE_IN_MILLISECOND = 60000;
 export const TWO_MINUTE_IN_MILLISECOND = 120000;
 export const LOCALSTORAGE_RECENTLY_VIEWED = `recentlyViewedData_${COOKIE_VERSION}`;
 export const LOCALSTORAGE_RECENTLY_SEARCHED = `recentlySearchedData_${COOKIE_VERSION}`;
-export const LOCALSTORAGE_USER_PROFILES = 'userProfiles';
-export const oidcTokenKey = 'oidcIdToken';
-export const refreshTokenKey = 'refreshToken';
 export const REDIRECT_PATHNAME = 'redirectUrlPath';
 export const TERM_ADMIN = 'Admin';
 export const TERM_USER = 'User';
@@ -122,8 +116,6 @@ export const LOG_ENTITY_NAME = ':logEntityName';
 export const PLACEHOLDER_ACTION = ':action';
 
 export const pagingObject = { after: '', before: '', total: 0 };
-
-export const ONLY_NUMBER_REGEX = /^[0-9\b]+$/;
 
 export const ES_UPDATE_DELAY = 500;
 
@@ -270,6 +262,7 @@ export const ROUTES = {
   EDIT_KPI: `/data-insights/kpi/edit-kpi/${PLACEHOLDER_ROUTE_FQN}`,
 
   SETTINGS_EDIT_CUSTOM_LOGIN_CONFIG: `/settings/OpenMetadata/loginConfiguration/edit-custom-login-configuration`,
+  SETTINGS_OM_URL_CONFIG: `/settings/OpenMetadata/openMetadataBaseUrlConfiguration/edit-open-metadata-url-configuration`,
 
   CUSTOMIZE_PAGE: `/customize-page/${PLACEHOLDER_ROUTE_FQN}/:pageFqn`,
 
@@ -302,6 +295,7 @@ export const SOCKET_EVENTS = {
   DATA_INSIGHTS_JOB_BROADCAST_CHANNEL: 'dataInsightsJobStatus',
   BULK_ASSETS_CHANNEL: 'bulkAssetsChannel',
   CSV_IMPORT_CHANNEL: 'csvImportChannel',
+  BACKGROUND_JOB_CHANNEL: 'backgroundJobStatus',
 };
 
 export const IN_PAGE_SEARCH_ROUTES: Record<string, Array<string>> = {
@@ -617,4 +611,8 @@ export const STATUS_LABEL = {
   [Status.Started]: 'Started',
   [Status.Stopped]: 'Stopped',
   [Status.Success]: 'Success',
+};
+
+export const INITIAL_TABLE_FILTERS = {
+  showDeletedTables: false,
 };

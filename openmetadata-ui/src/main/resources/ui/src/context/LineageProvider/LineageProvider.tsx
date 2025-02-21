@@ -14,7 +14,14 @@ import Icon from '@ant-design/icons/lib/components/Icon';
 import { Button, Modal } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { isEqual, isUndefined, uniq, uniqueId, uniqWith } from 'lodash';
+import {
+  isEmpty,
+  isEqual,
+  isUndefined,
+  uniq,
+  uniqueId,
+  uniqWith,
+} from 'lodash';
 import { LoadingState } from 'Models';
 import QueryString from 'qs';
 import React, {
@@ -63,11 +70,7 @@ import {
   ZOOM_VALUE,
 } from '../../constants/Lineage.constants';
 import { mockDatasetData } from '../../constants/mockTourData.constants';
-import {
-  EntityLineageDirection,
-  EntityLineageNodeType,
-  EntityType,
-} from '../../enums/entity.enum';
+import { EntityLineageNodeType, EntityType } from '../../enums/entity.enum';
 import { AddLineage } from '../../generated/api/lineage/addLineage';
 import { LineageSettings } from '../../generated/configuration/lineageSettings';
 import { LineageLayer } from '../../generated/settings/settings';
@@ -97,7 +100,7 @@ import {
   getChildMap,
   getClassifiedEdge,
   getConnectedNodesEdges,
-  getLayoutedElements,
+  getELKLayoutedElements,
   getLineageEdge,
   getLineageEdgeForAPI,
   getLoadingStatusValue,
@@ -107,6 +110,7 @@ import {
   getUpdatedColumnsFromEdge,
   getUpstreamDownstreamNodesEdges,
   onLoad,
+  positionNodesUsingElk,
   removeLineageHandler,
 } from '../../utils/EntityLineageUtils';
 import { getEntityReferenceFromEntity } from '../../utils/EntityUtils';
@@ -430,6 +434,8 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
 
       setTracedColumns(connectedColumnEdges);
       setTracedNodes([]);
+      setSelectedEdge(undefined);
+      setIsDrawerOpen(false);
     },
     [nodes, edges]
   );
@@ -706,6 +712,8 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     setActiveNode(undefined);
     setSelectedNode({} as SourceType);
     setIsDrawerOpen(true);
+    setTracedNodes([]);
+    setTracedColumns([]);
   }, []);
 
   const onLineageEditClick = useCallback(() => {
@@ -839,6 +847,8 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
               currentEdge.columns = updatedColumns; // update current edge with new columns
             }
 
+            setNewAddedNode({} as Node);
+
             setEntityLineage((pre) => {
               const newData = {
                 ...pre,
@@ -851,8 +861,6 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
 
               return newData;
             });
-
-            setNewAddedNode({} as Node);
           })
           .catch((err) => {
             showErrorToast(err);
@@ -1067,27 +1075,29 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
   );
 
   const selectNode = (node: Node) => {
-    centerNodePosition(node, reactFlowInstance);
+    centerNodePosition(node, reactFlowInstance, zoomValue);
   };
 
   const repositionLayout = useCallback(
-    (activateNode = false) => {
+    async (activateNode = false) => {
+      if (nodes.length === 0 || !reactFlowInstance) {
+        return;
+      }
+
       const isColView = activeLayer.includes(LineageLayer.ColumnLevelLineage);
-      const { node, edge } = getLayoutedElements(
-        {
-          node: nodes,
-          edge: edges,
-        },
-        EntityLineageDirection.LEFT_RIGHT,
-        isColView,
-        isEditMode || expandAllColumns,
-        columnsHavingLineage
-      );
+      const { nodes: layoutedNodes, edges: layoutedEdges } =
+        await getELKLayoutedElements(
+          nodes,
+          edges,
+          isColView,
+          isEditMode || expandAllColumns,
+          columnsHavingLineage
+        );
 
-      setNodes(node);
-      setEdges(edge);
+      setNodes(layoutedNodes);
+      setEdges(layoutedEdges);
 
-      const rootNode = node.find((n) => n.data.isRootNode);
+      const rootNode = layoutedNodes.find((n) => n.data.isRootNode);
       if (!rootNode) {
         if (activateNode && reactFlowInstance) {
           onLoad(reactFlowInstance); // Call fitview in case of pipeline
@@ -1097,12 +1107,13 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
       }
 
       // Center the root node in the view
-      centerNodePosition(rootNode, reactFlowInstance);
+      centerNodePosition(rootNode, reactFlowInstance, zoomValue);
       if (activateNode) {
         onNodeClick(rootNode);
       }
     },
     [
+      zoomValue,
       reactFlowInstance,
       activeLayer,
       nodes,
@@ -1115,7 +1126,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
   );
 
   const redrawLineage = useCallback(
-    (lineageData: EntityLineageResponse) => {
+    async (lineageData: EntityLineageResponse) => {
       const allNodes = uniqWith(
         [
           ...(lineageData.nodes ?? []),
@@ -1135,8 +1146,28 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
         lineageData.edges ?? [],
         decodedFqn
       );
-      setNodes(updatedNodes);
-      setEdges(updatedEdges);
+
+      if (reactFlowInstance && reactFlowInstance.viewportInitialized) {
+        const positionedNodesEdges = await positionNodesUsingElk(
+          updatedNodes,
+          updatedEdges,
+          activeLayer.includes(LineageLayer.ColumnLevelLineage),
+          isEditMode || expandAllColumns,
+          columnsHavingLineage
+        );
+        setNodes(positionedNodesEdges.nodes);
+        setEdges(positionedNodesEdges.edges);
+        const rootNode = positionedNodesEdges.nodes.find(
+          (n) => n.data.isRootNode
+        );
+        if (rootNode) {
+          centerNodePosition(rootNode, reactFlowInstance, zoomValue);
+        }
+      } else {
+        setNodes(updatedNodes);
+        setEdges(updatedEdges);
+      }
+
       setColumnsHavingLineage(columnsHavingLineage);
 
       // Get upstream downstream nodes and edges data
@@ -1151,7 +1182,14 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
         selectNode(activeNode);
       }
     },
-    [decodedFqn, activeNode, activeLayer, isEditMode]
+    [
+      decodedFqn,
+      activeNode,
+      activeLayer,
+      isEditMode,
+      reactFlowInstance,
+      zoomValue,
+    ]
   );
 
   useEffect(() => {
@@ -1184,7 +1222,9 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
 
   useEffect(() => {
     if (!loading) {
-      redrawLineage(entityLineage);
+      if (isEmpty(newAddedNode)) {
+        redrawLineage(entityLineage);
+      }
     }
   }, [entityLineage, loading]);
 

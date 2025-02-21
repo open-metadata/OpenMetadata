@@ -1,0 +1,37 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/applications/configuration/external/collateAIQualityAgentAppConfig.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CollateAIQualityAgentAppConfig.json",
+  "description": "Configuration for the Collate AI Quality Agent.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.entity.app.internal.CollateAIQualityAgentAppConfig",
+  "definitions": {
+    "collateAIQualityAgentAppType": {
+      "description": "Application type.",
+      "type": "string",
+      "enum": ["CollateAIQualityAgent"],
+      "default": "CollateAIQualityAgent"
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Application Type",
+      "description": "Application Type",
+      "$ref": "#/definitions/collateAIQualityAgentAppType",
+      "default": "CollateAIQualityAgent"
+    },
+    "filter": {
+      "title": "Filter",
+      "description": "Query filter to be passed to ES. E.g., `{\"query\":{\"bool\":{\"must\":[{\"bool\":{\"should\":[{\"term\":{\"domain.displayName.keyword\":\"DG Anim\"}}]}}]}}}`. This is the same payload as in the Explore page.",
+      "type": "string"
+    },
+    "active": {
+      "title": "Active",
+      "description": "Whether the suggested tests should be active or not upon suggestion",
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "additionalProperties": false,
+  "required": ["filter"]
+}

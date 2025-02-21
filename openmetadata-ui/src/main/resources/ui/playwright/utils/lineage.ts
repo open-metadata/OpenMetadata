@@ -16,6 +16,7 @@ import { parseCSV } from '../../src/utils/EntityImport/EntityImportUtils';
 import { ApiEndpointClass } from '../support/entity/ApiEndpointClass';
 import { ContainerClass } from '../support/entity/ContainerClass';
 import { DashboardClass } from '../support/entity/DashboardClass';
+import { ResponseDataType } from '../support/entity/Entity.interface';
 import { EntityClass } from '../support/entity/EntityClass';
 import { MetricClass } from '../support/entity/MetricClass';
 import { MlModelClass } from '../support/entity/MlModelClass';
@@ -132,8 +133,9 @@ export const dragAndDropNode = async (
   await page.hover(originSelector);
   await page.mouse.down();
   const box = (await destinationElement.boundingBox())!;
-  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
-  await destinationElement.hover();
+  const x = box.x + 250;
+  const y = box.y + box.height / 2;
+  await page.mouse.move(x, y, { steps: 20 });
   await page.mouse.up();
 };
 
@@ -275,7 +277,7 @@ export const editPipelineEdgeDescription = async (
   page: Page,
   fromNode: EntityClass,
   toNode: EntityClass,
-  pipelineData,
+  pipelineData: ResponseDataType,
   description: string
 ) => {
   const fromNodeFqn = get(fromNode, 'entityResponseData.fullyQualifiedName');
@@ -348,7 +350,8 @@ export const applyPipelineFromModal = async (
 
   await page
     .locator(`[data-testid="edge-${fromNodeFqn}-${toNodeFqn}"]`)
-    .dispatchEvent('click');
+    .click({ force: true });
+
   await page.locator('[data-testid="add-pipeline"]').dispatchEvent('click');
 
   const waitForSearchResponse = page.waitForResponse(
@@ -366,6 +369,10 @@ export const applyPipelineFromModal = async (
   const saveRes = page.waitForResponse('/api/v1/lineage');
   await page.click('[data-testid="save-button"]');
   await saveRes;
+
+  await page.waitForSelector('[data-testid="add-edge-modal"]', {
+    state: 'detached',
+  });
 };
 
 export const deleteNode = async (page: Page, node: EntityClass) => {
@@ -507,20 +514,33 @@ export const verifyColumnLayerActive = async (page: Page) => {
   await page.click('[data-testid="lineage-layer-btn"]'); // Close Layer popover
 };
 
-export const verifyCSVHeaders = async (page: Page, headers: string[]) => {
+export const verifyCSVHeaders = async (headers: string[]) => {
   LINEAGE_CSV_HEADERS.forEach((expectedHeader) => {
     expect(headers).toContain(expectedHeader);
   });
 };
 
 export const getLineageCSVData = async (page: Page) => {
+  await page.waitForSelector('[data-testid="lineage-export"]', {
+    state: 'visible',
+  });
+
+  await expect(page.getByTestId('lineage-export')).toBeEnabled();
+
   await page.getByTestId('lineage-export').click();
 
-  await expect(page.getByRole('dialog', { name: 'Export' })).toBeVisible();
+  await page.waitForSelector(
+    '[data-testid="export-entity-modal"] #submit-button',
+    {
+      state: 'visible',
+    }
+  );
 
   const [download] = await Promise.all([
     page.waitForEvent('download'),
-    page.click('button#submit-button'),
+    page.click(
+      '[data-testid="export-entity-modal"] button#submit-button:visible'
+    ),
   ]);
 
   const filePath = await download.path();
@@ -539,7 +559,7 @@ export const getLineageCSVData = async (page: Page) => {
     .map((row) => row.split(',').map((cell) => cell.replace(/"/g, '').trim()));
 
   const headers = csvRows[0];
-  await verifyCSVHeaders(page, headers);
+  await verifyCSVHeaders(headers);
 
   return parseCSV(csvRows);
 };

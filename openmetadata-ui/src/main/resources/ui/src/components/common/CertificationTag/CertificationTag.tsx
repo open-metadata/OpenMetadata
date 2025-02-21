@@ -14,7 +14,7 @@ import { Tag, Tooltip } from 'antd';
 import React from 'react';
 import { AssetCertification } from '../../../generated/entity/data/table';
 import { getEntityName } from '../../../utils/EntityUtils';
-import { getTagTooltip } from '../../../utils/TagsUtils';
+import { getTagImageSrc, getTagTooltip } from '../../../utils/TagsUtils';
 import './certification-tag.less';
 
 const CertificationTag = ({
@@ -24,6 +24,7 @@ const CertificationTag = ({
 }) => {
   if (certification.tagLabel.style?.iconURL) {
     const name = getEntityName(certification.tagLabel);
+    const tagSrc = getTagImageSrc(certification.tagLabel.style.iconURL);
 
     return (
       <Tooltip
@@ -32,8 +33,9 @@ const CertificationTag = ({
         trigger="hover">
         <div data-testid={`certification-${certification.tagLabel.tagFQN}`}>
           <img
-            alt="certification"
-            src={certification.tagLabel.style?.iconURL}
+            alt={`certification: ${name}`}
+            className="certification-img"
+            src={tagSrc}
           />
         </div>
       </Tooltip>

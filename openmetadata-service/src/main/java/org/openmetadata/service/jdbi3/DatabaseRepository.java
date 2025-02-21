@@ -69,7 +69,6 @@ public class DatabaseRepository extends EntityRepository<Database> {
         "",
         "");
     supportsSearch = true;
-    parent = true;
     fieldFetchers.put("name", this::fetchAndSetService);
   }
 
@@ -246,7 +245,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
 
     @Transaction
     @Override
-    public void entitySpecificUpdate() {
+    public void entitySpecificUpdate(boolean consolidatingChanges) {
       recordChange("retentionPeriod", original.getRetentionPeriod(), updated.getRetentionPeriod());
       recordChange("sourceUrl", original.getSourceUrl(), updated.getSourceUrl());
       recordChange("sourceHash", original.getSourceHash(), updated.getSourceHash());

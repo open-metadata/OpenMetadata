@@ -69,6 +69,20 @@ $$section
 Database name of the DB2 database to establish the connection.
 $$
 
+
+$$section
+### License File Name $(id="licenseFileName")
+
+License file name in case the license is required for connection.
+$$
+
+
+$$section
+### License $(id="license")
+
+Contents of your license file if applicable, make sure to replace new lines with `\n` before pasting it here.
+$$
+
 $$section
 ### Connection Options $(id="connectionOptions")
 

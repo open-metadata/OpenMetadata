@@ -18,6 +18,7 @@ import {
   TestType,
 } from '@playwright/test';
 import { env } from 'process';
+import { resetTokenFromBotPage } from '../../../utils/bot';
 import {
   getApiContext,
   redirectToHomePage,
@@ -84,6 +85,13 @@ class MysqlIngestionClass extends ServiceBaseClass {
     await test.step('Add Profiler ingestion', async () => {
       const { apiContext } = await getApiContext(page);
       await redirectToHomePage(page);
+
+      // Todo: Remove this patch once the issue is fixed #19140
+      await resetTokenFromBotPage(page, {
+        name: 'profiler',
+        testId: 'bot-link-ProfilerBot',
+      });
+
       await visitServiceDetailsPage(
         page,
         {

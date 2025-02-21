@@ -30,10 +30,6 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import { PAGE_SIZE_LARGE } from '../../../../constants/constants';
 import { ENTITY_NAME_REGEX } from '../../../../constants/regex.constants';
-import {
-  SUPPORTED_SERVICES_FOR_TABLE_DIFF,
-  TABLE_DIFF,
-} from '../../../../constants/TestSuite.constant';
 import { ProfilerDashboardType } from '../../../../enums/table.enum';
 import { CreateTestCase } from '../../../../generated/api/tests/createTestCase';
 import { TestCase } from '../../../../generated/tests/testCase';
@@ -63,7 +59,6 @@ import { getEntityName } from '../../../../utils/EntityUtils';
 import { generateFormFields } from '../../../../utils/formUtils';
 import { generateEntityLink } from '../../../../utils/TableUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
-import RichTextEditor from '../../../common/RichTextEditor/RichTextEditor';
 import {
   TestCaseFormProps,
   TestCaseFormType,
@@ -125,17 +120,8 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
         testPlatform: TestPlatform.OpenMetadata,
         supportedDataType: columnType,
       });
-      const updatedData = data.filter((definition) => {
-        if (definition.fullyQualifiedName === TABLE_DIFF) {
-          return (
-            table.serviceType &&
-            SUPPORTED_SERVICES_FOR_TABLE_DIFF.includes(table.serviceType)
-          );
-        }
 
-        return true;
-      });
-      setTestDefinitions(updatedData);
+      setTestDefinitions(data);
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
@@ -248,6 +234,24 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
       testDefinitions.find((item) => item.fullyQualifiedName === value)
     );
   };
+
+  const descriptionField: FieldProp = useMemo(
+    () => ({
+      name: 'description',
+      required: false,
+      label: t('label.description'),
+      id: 'root/description',
+      type: FieldTypes.DESCRIPTION,
+      props: {
+        'data-testid': 'description',
+        initialValue: initialValue?.description ?? '',
+        style: {
+          margin: 0,
+        },
+      },
+    }),
+    [initialValue?.description]
+  );
 
   useEffect(() => {
     const selectedColumn = table.columns.find(
@@ -418,18 +422,8 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
           getFieldValue('useDynamicAssertion') ? null : generateParamsField
         }
       </Form.Item>
-      <Form.Item
-        label={t('label.description')}
-        name="description"
-        trigger="onTextChange">
-        <RichTextEditor
-          height="200px"
-          initialValue={initialValue?.description || ''}
-          style={{
-            margin: 0,
-          }}
-        />
-      </Form.Item>
+
+      {generateFormFields([descriptionField])}
 
       {isComputeRowCountFieldVisible ? generateFormFields(formFields) : null}
 

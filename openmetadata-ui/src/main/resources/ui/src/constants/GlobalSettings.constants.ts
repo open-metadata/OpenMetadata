@@ -11,8 +11,6 @@
  *  limitations under the License.
  */
 
-import { ResourceEntity } from '../context/PermissionProvider/PermissionProvider.interface';
-
 export enum GlobalSettingsMenuCategory {
   ACCESS = 'access',
   NOTIFICATIONS = 'notifications',
@@ -79,19 +77,5 @@ export enum GlobalSettingOptions {
   METRICS = 'metrics',
   SEARCH_RBAC = 'search-rbac',
   LINEAGE_CONFIG = 'lineageConfig',
+  OM_URL_CONFIG = 'om-url-config',
 }
-
-export const GLOBAL_SETTING_PERMISSION_RESOURCES = [
-  ResourceEntity.TEAM,
-  ResourceEntity.USER,
-  ResourceEntity.ROLE,
-  ResourceEntity.POLICY,
-  ResourceEntity.DATABASE_SERVICE,
-  ResourceEntity.MESSAGING_SERVICE,
-  ResourceEntity.DASHBOARD_SERVICE,
-  ResourceEntity.PIPELINE_SERVICE,
-  ResourceEntity.ML_MODEL_SERVICE,
-  ResourceEntity.TYPE,
-  ResourceEntity.WEBHOOK,
-  ResourceEntity.BOT,
-];

@@ -12,7 +12,7 @@
  */
 import { Button, Space, Tooltip, Typography } from 'antd';
 import { isEmpty, map } from 'lodash';
-import React, { FC, Fragment, useCallback, useMemo, useState } from 'react';
+import React, { FC, useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as IconEdit } from '../../../assets/svg/edit-new.svg';
@@ -20,13 +20,12 @@ import { ReactComponent as PlusIcon } from '../../../assets/svg/plus-primary.svg
 import TagButton from '../../../components/common/TagButton/TagButton.component';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { DE_ACTIVE_COLOR, ICON_DIMENSION } from '../../../constants/constants';
-import { SUPPORTED_TABLE_CONSTRAINTS } from '../../../constants/Table.constants';
 import { EntityType, FqnPart } from '../../../enums/entity.enum';
 import { ConstraintType, Table } from '../../../generated/entity/data/table';
 import { getPartialNameFromTableFQN } from '../../../utils/CommonUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
+import { tableConstraintRendererBasedOnType } from '../../../utils/TableUtils';
 import ForeignKeyConstraint from './ForeignKeyConstraint';
-import PrimaryKeyConstraint from './PrimaryKeyConstraint';
 import './table-constraints.less';
 import TableConstraintsModal from './TableConstraintsModal/TableConstraintsModal.component';
 
@@ -44,16 +43,6 @@ const TableConstraints: FC<TableConstraintsProps> = ({
   const { t } = useTranslation();
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const supportedConstraints = useMemo(
-    () =>
-      tableDetails?.tableConstraints?.filter((constraint) =>
-        SUPPORTED_TABLE_CONSTRAINTS.includes(
-          constraint.constraintType as ConstraintType
-        )
-      ) ?? [],
-    [tableDetails?.tableConstraints]
-  );
-
   const handleOpenEditConstraintModal = useCallback(
     () => setIsModalOpen(true),
     []
@@ -70,13 +59,13 @@ const TableConstraints: FC<TableConstraintsProps> = ({
 
   return (
     <>
-      <Space className="p-b-sm" direction="vertical">
+      <Space className="p-b-sm w-full" direction="vertical">
         <Space size="middle">
           <Typography.Text className="right-panel-label">
             {t('label.table-constraints')}
           </Typography.Text>
 
-          {hasPermission && !isEmpty(supportedConstraints) && (
+          {hasPermission && !isEmpty(tableDetails?.tableConstraints) && (
             <Tooltip
               placement="right"
               title={t('label.edit-entity', {
@@ -100,7 +89,7 @@ const TableConstraints: FC<TableConstraintsProps> = ({
           )}
         </Space>
 
-        {hasPermission && supportedConstraints.length === 0 && (
+        {hasPermission && isEmpty(tableDetails?.tableConstraints) && (
           <TagButton
             className="text-primary cursor-pointer"
             dataTestId="table-constraints-add-button"
@@ -111,42 +100,43 @@ const TableConstraints: FC<TableConstraintsProps> = ({
           />
         )}
 
-        {supportedConstraints.map(
-          ({ constraintType, columns, referredColumns }, index) => {
+        {tableDetails?.tableConstraints?.map(
+          ({ constraintType, columns, referredColumns }) => {
             if (constraintType === ConstraintType.PrimaryKey) {
-              return (
-                <div className="d-flex constraint-columns" key={index}>
-                  <Space
-                    className="constraint-icon-container"
-                    direction="vertical"
-                    size={0}>
-                    {columns?.map((column, index) => (
-                      <Fragment key={column}>
-                        {(columns?.length ?? 0) - 1 !== index ? (
-                          <PrimaryKeyConstraint />
-                        ) : null}
-                      </Fragment>
-                    ))}
-                  </Space>
+              return tableConstraintRendererBasedOnType(
+                ConstraintType.PrimaryKey,
+                columns
+              );
+            }
 
-                  <Space direction="vertical" size={16}>
-                    {columns?.map((column) => (
-                      <Typography.Text
-                        className="w-60"
-                        ellipsis={{ tooltip: true }}
-                        key={column}>
-                        {column}
-                      </Typography.Text>
-                    ))}
-                  </Space>
-                </div>
+            if (constraintType === ConstraintType.SortKey) {
+              return tableConstraintRendererBasedOnType(
+                ConstraintType.SortKey,
+                columns
+              );
+            }
+
+            if (constraintType === ConstraintType.DistKey) {
+              return tableConstraintRendererBasedOnType(
+                ConstraintType.DistKey,
+                columns
+              );
+            }
+
+            if (constraintType === ConstraintType.Unique) {
+              return tableConstraintRendererBasedOnType(
+                ConstraintType.Unique,
+                columns
               );
             }
             if (constraintType === ConstraintType.ForeignKey) {
               return (
-                <Space className="constraint-columns" key={index}>
+                <div
+                  className="d-flex gap-2 constraint-columns"
+                  data-testid={`${ConstraintType.ForeignKey}-container`}
+                  key={ConstraintType.ForeignKey}>
                   <ForeignKeyConstraint />
-                  <Space direction="vertical" size={16}>
+                  <div className="d-flex flex-column gap-2">
                     <Typography.Text data-testid="constraint-column-name">
                       {columns?.join(', ')}
                     </Typography.Text>
@@ -178,8 +168,8 @@ const TableConstraints: FC<TableConstraintsProps> = ({
                         </Tooltip>
                       ))}
                     </div>
-                  </Space>
-                </Space>
+                  </div>
+                </div>
               );
             }
 
@@ -190,7 +180,7 @@ const TableConstraints: FC<TableConstraintsProps> = ({
 
       {isModalOpen && (
         <TableConstraintsModal
-          constraint={supportedConstraints}
+          constraint={tableDetails?.tableConstraints}
           tableDetails={tableDetails}
           onClose={handleCloseEditConstraintModal}
           onSave={handleSubmit}

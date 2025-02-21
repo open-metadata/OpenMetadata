@@ -18,21 +18,26 @@
       "default": "userApprovalTask"
     },
     "name": {
+      "title": "Name",
       "description": "Name that identifies this Node.",
       "$ref": "../../../../../type/basic.json#/definitions/entityName"
     },
     "displayName": {
+      "title": "Display Name",
       "description": "Display Name that identifies this Node.",
       "type": "string"
     },
     "description": {
+      "title": "Description",
       "description": "Description of the Node.",
       "$ref": "../../../../../type/basic.json#/definitions/markdown"
     },
     "config": {
+      "title": "Node Configuration",
       "type": "object",
       "properties": {
         "assignees": {
+          "title": "Assignees",
           "description": "People/Teams assigned to the Task.",
           "type": "object",
           "properties": {
@@ -40,13 +45,6 @@
               "description": "Add the Reviewers to the assignees List.",
               "type": "boolean",
               "default": false
-            },
-            "extraAssignees": {
-              "description": "Manually add Specific Assignees.",
-              "type": "array",
-              "items": {
-                "$ref": "../../../../../type/entityReference.json"
-              }
             }
           }
         }
@@ -62,10 +60,29 @@
       "minItems": 1,
       "maxItems": 1
     },
+    "inputNamespaceMap": {
+      "type": "object",
+      "properties": {
+        "relatedEntity": {
+          "type": "string",
+          "default": "global"
+        }
+      },
+      "additionalProperties": false,
+      "required": ["relatedEntity"]
+    },
     "output": {
       "type": "array",
       "items": { "type":  "string" },
-      "default": ["result", "resolvedBy"],
+      "default": ["updatedBy"],
+      "additionalItems": false,
+      "minItems": 1,
+      "maxItems": 1
+    },
+    "branches": {
+      "type": "array",
+      "items": { "type":  "string" },
+      "default": ["true", "false"],
       "additionalItems": false,
       "minItems": 2,
       "maxItems": 2

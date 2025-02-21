@@ -49,6 +49,7 @@
         "Dbt",
         "SapHana",
         "MongoDB",
+        "Cassandra",
         "Couchbase",
         "Greenplum",
         "Doris",
@@ -58,7 +59,8 @@
         "Teradata",
         "SapErp",
         "Synapse",
-        "Exasol"
+        "Exasol",
+        "Cockroach"
       ],
       "javaEnums": [
         {
@@ -164,6 +166,9 @@
           "name": "MongoDB"
         },
         {
+          "name": "Cassandra"
+        },
+        {
           "name": "Couchbase"
         },
         {
@@ -192,6 +197,9 @@
         },
         {
           "name": "Exasol"
+        },
+        {
+          "name": "Cockroach"
         }
       ]
     },
@@ -302,6 +310,9 @@
               "$ref": "./connections/database/mongoDBConnection.json"
             },
             {
+              "$ref": "./connections/database/cassandraConnection.json"
+            },
+            {
               "$ref": "./connections/database/couchbaseConnection.json"
             },
             {
@@ -330,6 +341,9 @@
             },
             {
               "$ref": "./connections/database/exasolConnection.json"
+            },
+            {
+              "$ref": "./connections/database/cockroachConnection.json"
             }
           ]
         }
@@ -402,6 +416,10 @@
       "$ref": "../../type/basic.json#/definitions/href"
     },
     "changeDescription": {
+      "description": "Change that lead to this version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "incrementalChangeDescription": {
       "description": "Change that lead to this version of the entity.",
       "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
     },

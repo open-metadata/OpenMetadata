@@ -165,7 +165,7 @@ public class PolicyRepository extends EntityRepository<Policy> {
 
     @Transaction
     @Override
-    public void entitySpecificUpdate() {
+    public void entitySpecificUpdate(boolean consolidatingChanges) {
       recordChange(ENABLED, original.getEnabled(), updated.getEnabled());
       updateRules(original.getRules(), updated.getRules());
     }

@@ -51,7 +51,7 @@ def test_connection(
 
     test_fn = {
         "GetClusterInfo": client.get_cluster_info,
-        "GetPipelines": client.get_connectors,
+        "GetPipelines": client.get_connectors_list,
         "GetPlugins": client.get_connector_plugins,
     }
 

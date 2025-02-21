@@ -16,7 +16,7 @@ import Form, { FormProps, IChangeEvent } from '@rjsf/core';
 import { Button } from 'antd';
 import classNames from 'classnames';
 import { LoadingState } from 'Models';
-import React, { forwardRef, FunctionComponent, useState } from 'react';
+import React, { forwardRef, FunctionComponent, useMemo, useState } from 'react';
 import { ServiceCategory } from '../../../enums/service.enum';
 import { ConfigData } from '../../../interface/service.interface';
 import { transformErrors } from '../../../utils/formUtils';
@@ -64,6 +64,10 @@ const FormBuilder: FunctionComponent<Props> = forwardRef(
     },
     ref
   ) => {
+    const isReadOnlyForm = useMemo(() => {
+      return !!props.readonly;
+    }, [props.readonly]);
+
     const [localFormData, setLocalFormData] = useState<ConfigData | undefined>(
       formatFormDataForRender(formData ?? {})
     );
@@ -86,6 +90,39 @@ const FormBuilder: FunctionComponent<Props> = forwardRef(
       setLocalFormData(e.formData);
       props.onChange && props.onChange(e);
     };
+
+    const submitButton = useMemo(() => {
+      if (status === 'waiting') {
+        return (
+          <Button
+            disabled
+            className="p-x-md p-y-xxs h-auto rounded-6"
+            type="primary">
+            <Loader size="small" type="white" />
+          </Button>
+        );
+      } else if (status === 'success') {
+        return (
+          <Button
+            disabled
+            className="p-x-md p-y-xxs h-auto rounded-6"
+            type="primary">
+            <CheckOutlined />
+          </Button>
+        );
+      } else {
+        return (
+          <Button
+            className="font-medium p-x-md p-y-xxs h-auto rounded-6"
+            data-testid="submit-btn"
+            htmlType="submit"
+            loading={isLoading}
+            type="primary">
+            {okText}
+          </Button>
+        );
+      }
+    }, [status, isLoading, okText]);
 
     return (
       <Form
@@ -124,30 +161,7 @@ const FormBuilder: FunctionComponent<Props> = forwardRef(
             </Button>
           )}
 
-          {status === 'waiting' ? (
-            <Button
-              disabled
-              className="p-x-md p-y-xxs h-auto rounded-6"
-              type="primary">
-              <Loader size="small" type="white" />
-            </Button>
-          ) : status === 'success' ? (
-            <Button
-              disabled
-              className="p-x-md p-y-xxs h-auto rounded-6"
-              type="primary">
-              <CheckOutlined />
-            </Button>
-          ) : (
-            <Button
-              className="font-medium p-x-md p-y-xxs h-auto rounded-6"
-              data-testid="submit-btn"
-              htmlType="submit"
-              loading={isLoading}
-              type="primary">
-              {okText}
-            </Button>
-          )}
+          {!isReadOnlyForm && submitButton}
         </div>
       </Form>
     );

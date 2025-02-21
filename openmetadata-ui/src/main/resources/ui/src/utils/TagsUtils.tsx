@@ -21,7 +21,7 @@ import type { CustomTagProps } from 'rc-select/lib/BaseSelect';
 import React from 'react';
 import { ReactComponent as DeleteIcon } from '../assets/svg/ic-delete.svg';
 import Loader from '../components/common/Loader/Loader';
-import RichTextEditorPreviewer from '../components/common/RichTextEditor/RichTextEditorPreviewer';
+import RichTextEditorPreviewerV1 from '../components/common/RichTextEditor/RichTextEditorPreviewerV1';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import { getExplorePath } from '../constants/constants';
 import {
@@ -163,7 +163,7 @@ export const getTagDisplay = (tag?: string) => {
 export const getTagTooltip = (fqn: string, description?: string) => (
   <div className="text-left p-xss">
     <div className="m-b-xs">
-      <RichTextEditorPreviewer
+      <RichTextEditorPreviewerV1
         enableSeeMoreVariant={false}
         markdown={`**${fqn}**\n${description ?? ''}`}
         textVariant="white"
@@ -554,4 +554,16 @@ export const getTagAssetsQueryFilter = (fqn: string) => {
   } else {
     return `(tags.tagFQN:"${fqn}")`;
   }
+};
+
+export const getTagImageSrc = (iconURL: string) => {
+  if (!iconURL) {
+    return '';
+  }
+
+  if (iconURL.startsWith('http') || iconURL.startsWith('data:image')) {
+    return iconURL;
+  }
+
+  return `${window.location.origin}/${iconURL}`;
 };

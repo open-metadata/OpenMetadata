@@ -459,10 +459,7 @@ const ClassificationDetails = forwardRef(
                       allowRename={!isSystemClassification}
                       allowSoftDelete={false}
                       canDelete={deletePermission && !isClassificationDisabled}
-                      displayName={
-                        currentClassification.displayName ??
-                        currentClassification.name
-                      }
+                      displayName={getEntityName(currentClassification)}
                       editDisplayNamePermission={
                         editDisplayNamePermission && !isClassificationDisabled
                       }

@@ -99,8 +99,12 @@ const GlossaryV1 = ({
 
   const [editMode, setEditMode] = useState(false);
 
-  const { activeGlossary, glossaryChildTerms, setGlossaryChildTerms } =
-    useGlossaryStore();
+  const {
+    activeGlossary,
+    glossaryChildTerms,
+    setGlossaryChildTerms,
+    insertNewGlossaryTermToChildTerms,
+  } = useGlossaryStore();
 
   const { id, fullyQualifiedName } = activeGlossary ?? {};
 
@@ -129,11 +133,9 @@ const GlossaryV1 = ({
       const { data } = await getFirstLevelGlossaryTerms(
         params?.glossary ?? params?.parent ?? ''
       );
-      const children = data.map((data) =>
-        data.childrenCount ?? 0 > 0 ? { ...data, children: [] } : data
-      );
-
-      setGlossaryChildTerms(children as ModifiedGlossary[]);
+      // We are considering childrenCount fot expand collapse state
+      // Hence don't need any intervention to list response here
+      setGlossaryChildTerms(data as ModifiedGlossary[]);
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
@@ -232,7 +234,11 @@ const GlossaryV1 = ({
           entity: t('label.glossary-term'),
         });
       } else {
-        updateGlossaryTermInStore(response);
+        updateGlossaryTermInStore({
+          ...response,
+          // Since patch didn't respond with childrenCount preserve it from currentData
+          childrenCount: currentData.childrenCount,
+        });
         setIsEditModalOpen(false);
       }
     } catch (error) {
@@ -257,29 +263,38 @@ const GlossaryV1 = ({
     }
   };
 
-  const onTermModalSuccess = useCallback(() => {
-    loadGlossaryTerms(true);
-    if (!isGlossaryActive && tab !== 'terms') {
-      history.push(
-        getGlossaryTermDetailsPath(
-          selectedData.fullyQualifiedName || '',
-          EntityTabs.TERMS
-        )
-      );
-    }
-    setIsEditModalOpen(false);
-  }, [isGlossaryActive, tab, selectedData]);
+  const onTermModalSuccess = useCallback(
+    (term: GlossaryTerm) => {
+      // Setting loading so that nested terms are rendered again on table with change
+      setIsTermsLoading(true);
+      // Update store with newly created term
+      insertNewGlossaryTermToChildTerms(term);
+      if (!isGlossaryActive && tab !== 'terms') {
+        history.push(
+          getGlossaryTermDetailsPath(
+            selectedData.fullyQualifiedName || '',
+            EntityTabs.TERMS
+          )
+        );
+      }
+      // Close modal and set loading to false
+      setIsEditModalOpen(false);
+      setIsTermsLoading(false);
+    },
+    [isGlossaryActive, tab, selectedData]
+  );
 
   const handleGlossaryTermAdd = async (formData: GlossaryTermForm) => {
     try {
-      await addGlossaryTerm({
+      const term = await addGlossaryTerm({
         ...formData,
         glossary:
           activeGlossaryTerm?.glossary?.name ||
           (selectedData.fullyQualifiedName ?? ''),
         parent: activeGlossaryTerm?.fullyQualifiedName,
       });
-      onTermModalSuccess();
+
+      onTermModalSuccess(term);
     } catch (error) {
       if (
         (error as AxiosError).response?.status === HTTP_STATUS_CODE.CONFLICT

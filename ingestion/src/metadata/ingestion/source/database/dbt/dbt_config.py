@@ -176,7 +176,11 @@ def _(config: DbtCloudConfig):  # pylint: disable=too-many-locals
         logger.debug(
             "Requesting [dbt_catalog], [dbt_manifest] and [dbt_run_results] data"
         )
-        params_data = {"order_by": "-finished_at", "limit": "1"}
+        params_data = {
+            "order_by": "-finished_at",
+            "limit": "1",
+            "status__in": "[10,20]",
+        }
         if project_id:
             params_data["project_id"] = project_id
 
@@ -194,7 +198,7 @@ def _(config: DbtCloudConfig):  # pylint: disable=too-many-locals
             last_run = runs_data[0]
             run_id = last_run["id"]
             logger.info(
-                f"Retrieved last successful run [{str(run_id)}]: "
+                f"Retrieved last completed run [{str(run_id)}]: "
                 f"Finished {str(last_run['finished_at_humanized'])} (duration: {str(last_run['duration_humanized'])})"
             )
             try:

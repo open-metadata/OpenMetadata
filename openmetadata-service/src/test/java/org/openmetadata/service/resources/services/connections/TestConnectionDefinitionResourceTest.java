@@ -26,13 +26,13 @@ public class TestConnectionDefinitionResourceTest extends OpenMetadataApplicatio
     TestConnectionDefinition mysqlTest =
         TestUtils.get(target, TestConnectionDefinition.class, ADMIN_AUTH_HEADERS);
     assertEquals("Mysql", mysqlTest.getName());
-    assertEquals(4, mysqlTest.getSteps().size());
+    assertEquals(5, mysqlTest.getSteps().size());
 
     WebTarget idTarget = getResourceById(mysqlTest.getId());
     TestConnectionDefinition mysqlTestById =
         TestUtils.get(idTarget, TestConnectionDefinition.class, ADMIN_AUTH_HEADERS);
     assertEquals("Mysql", mysqlTestById.getName());
-    assertEquals(4, mysqlTestById.getSteps().size());
+    assertEquals(5, mysqlTestById.getSteps().size());
   }
 
   @Test

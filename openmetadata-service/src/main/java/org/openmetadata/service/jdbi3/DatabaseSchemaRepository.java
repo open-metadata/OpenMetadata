@@ -74,7 +74,6 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
         "",
         "");
     supportsSearch = true;
-    parent = true;
   }
 
   @Override
@@ -223,7 +222,7 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
 
     @Transaction
     @Override
-    public void entitySpecificUpdate() {
+    public void entitySpecificUpdate(boolean consolidatingChanges) {
       recordChange("retentionPeriod", original.getRetentionPeriod(), updated.getRetentionPeriod());
       recordChange("sourceUrl", original.getSourceUrl(), updated.getSourceUrl());
       recordChange("sourceHash", original.getSourceHash(), updated.getSourceHash());

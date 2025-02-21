@@ -40,6 +40,7 @@ import {
   getEntityDetailsPath,
   getVersionPath,
   INITIAL_PAGING_VALUE,
+  INITIAL_TABLE_FILTERS,
   PAGE_SIZE,
   ROUTES,
 } from '../../constants/constants';
@@ -65,6 +66,7 @@ import { Include } from '../../generated/type/include';
 import { TagLabel } from '../../generated/type/tagLabel';
 import { usePaging } from '../../hooks/paging/usePaging';
 import { useFqn } from '../../hooks/useFqn';
+import { useTableFilters } from '../../hooks/useTableFilters';
 import { FeedCounts } from '../../interface/feed.interface';
 import {
   getDatabaseSchemaDetailsByFQN,
@@ -94,13 +96,22 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   const { getEntityPermissionByFqn } = usePermissionProvider();
   const pagingInfo = usePaging(PAGE_SIZE);
 
-  const { paging, pageSize, handlePagingChange } = pagingInfo;
+  const {
+    paging,
+    pageSize,
+    handlePagingChange,
+    currentPage,
+    handlePageChange,
+    pagingCursor,
+  } = pagingInfo;
 
+  const { filters: tableFilters, setFilters } = useTableFilters(
+    INITIAL_TABLE_FILTERS
+  );
   const { tab: activeTab = EntityTabs.TABLE } =
     useParams<{ tab: EntityTabs }>();
   const { fqn: decodedDatabaseSchemaFQN } = useFqn();
   const history = useHistory();
-
   const [threadType, setThreadType] = useState<ThreadType>(
     ThreadType.Conversation
   );
@@ -120,9 +131,6 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   const [threadLink, setThreadLink] = useState<string>('');
   const [databaseSchemaPermission, setDatabaseSchemaPermission] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
-  const [showDeletedTables, setShowDeletedTables] = useState<boolean>(false);
-  const [currentTablesPage, setCurrentTablesPage] =
-    useState<number>(INITIAL_PAGING_VALUE);
   const [storedProcedureCount, setStoredProcedureCount] = useState(0);
 
   const [updateProfilerSetting, setUpdateProfilerSetting] =
@@ -139,8 +147,8 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   );
 
   const handleShowDeletedTables = (value: boolean) => {
-    setShowDeletedTables(value);
-    setCurrentTablesPage(INITIAL_PAGING_VALUE);
+    setFilters({ showDeletedTables: value });
+    handlePageChange(INITIAL_PAGING_VALUE);
   };
 
   const { version: currentVersion, deleted } = useMemo(
@@ -222,7 +230,11 @@ const DatabaseSchemaPage: FunctionComponent = () => {
       const { description: schemaDescription = '' } = response;
       setDatabaseSchema(response);
       setDescription(schemaDescription);
-      setShowDeletedTables(response.deleted ?? false);
+      if (response.deleted) {
+        setFilters({
+          showDeletedTables: response.deleted,
+        });
+      }
     } catch (err) {
       // Error
       if ((err as AxiosError)?.response?.status === ClientErrors.FORBIDDEN) {
@@ -240,7 +252,10 @@ const DatabaseSchemaPage: FunctionComponent = () => {
         const res = await getTableList({
           ...params,
           databaseSchema: decodedDatabaseSchemaFQN,
-          include: showDeletedTables ? Include.Deleted : Include.NonDeleted,
+          limit: pageSize,
+          include: tableFilters.showDeletedTables
+            ? Include.Deleted
+            : Include.NonDeleted,
         });
         setTableData(res.data);
         handlePagingChange(res.paging);
@@ -250,7 +265,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
         setTableDataLoading(false);
       }
     },
-    [decodedDatabaseSchemaFQN, showDeletedTables]
+    [decodedDatabaseSchemaFQN, tableFilters.showDeletedTables, pageSize]
   );
 
   const onDescriptionEdit = useCallback((): void => {
@@ -417,6 +432,13 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   );
 
   const handleToggleDelete = (version?: number) => {
+    history.replace({
+      state: {
+        cursorData: null,
+        pageSize: null,
+        currentPage: INITIAL_PAGING_VALUE,
+      },
+    });
     setDatabaseSchema((prev) => {
       if (!prev) {
         return prev;
@@ -456,10 +478,18 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     ({ cursorType, currentPage }: PagingHandlerParams) => {
       if (cursorType) {
         getSchemaTables({ [cursorType]: paging[cursorType] });
+        handlePageChange(
+          currentPage,
+          {
+            cursorType: cursorType,
+            cursorValue: paging[cursorType]!,
+          },
+          pageSize
+        );
       }
-      setCurrentTablesPage(currentPage);
+      handlePageChange(currentPage);
     },
-    [paging, getSchemaTables]
+    [paging, getSchemaTables, handlePageChange]
   );
 
   const versionHandler = useCallback(() => {
@@ -516,10 +546,19 @@ const DatabaseSchemaPage: FunctionComponent = () => {
 
   useEffect(() => {
     if (viewDatabaseSchemaPermission && decodedDatabaseSchemaFQN) {
-      getSchemaTables({ limit: pageSize });
+      if (pagingCursor?.cursorData?.cursorType) {
+        // Fetch data if cursorType is present in state with cursor Value to handle browser back navigation
+        getSchemaTables({
+          [pagingCursor?.cursorData?.cursorType]:
+            pagingCursor?.cursorData?.cursorValue,
+        });
+      } else {
+        // Otherwise, just fetch the data without cursor value
+        getSchemaTables({ limit: pageSize });
+      }
     }
   }, [
-    showDeletedTables,
+    tableFilters.showDeletedTables,
     decodedDatabaseSchemaFQN,
     viewDatabaseSchemaPermission,
     deleted,
@@ -578,12 +617,12 @@ const DatabaseSchemaPage: FunctionComponent = () => {
         feedCount,
         tableData,
         activeTab,
-        currentTablesPage,
+        currentTablesPage: currentPage,
         databaseSchema,
         description,
         editDescriptionPermission,
         isEdit,
-        showDeletedTables,
+        showDeletedTables: tableFilters.showDeletedTables,
         tableDataLoading,
         editCustomAttributePermission,
         editTagsPermission,
@@ -610,12 +649,12 @@ const DatabaseSchemaPage: FunctionComponent = () => {
       feedCount,
       tableData,
       activeTab,
-      currentTablesPage,
+      currentPage,
       databaseSchema,
       description,
       editDescriptionPermission,
       isEdit,
-      showDeletedTables,
+      tableFilters.showDeletedTables,
       tableDataLoading,
       editCustomAttributePermission,
       editTagsPermission,

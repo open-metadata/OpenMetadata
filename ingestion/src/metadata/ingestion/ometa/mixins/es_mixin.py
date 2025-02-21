@@ -344,7 +344,7 @@ class ESMixin(Generic[T]):
             # Get next page
             last_hit = response.hits.hits[-1] if response.hits.hits else None
             if not last_hit or not last_hit.sort:
-                logger.info("No more pages to fetch")
+                logger.debug("No more pages to fetch")
                 break
 
             after = ",".join(last_hit.sort)
@@ -402,10 +402,51 @@ class ESMixin(Generic[T]):
             "query": {
                 "bool": {
                     "must": [
-                        {"term": {"service.name.keyword": service_name}},
-                        {"term": {"tableType": TableType.View.value}},
-                        {"term": {"deleted": False}},
-                        {"exists": {"field": "schemaDefinition"}},
+                        {
+                            "bool": {
+                                "should": [
+                                    {"term": {"service.name.keyword": service_name}}
+                                ]
+                            }
+                        },
+                        {
+                            "bool": {
+                                "must": [
+                                    {
+                                        "bool": {
+                                            "should": [
+                                                {
+                                                    "term": {
+                                                        "tableType": TableType.View.value
+                                                    }
+                                                },
+                                                {
+                                                    "term": {
+                                                        "tableType": TableType.MaterializedView.value
+                                                    }
+                                                },
+                                                {
+                                                    "term": {
+                                                        "tableType": TableType.SecureView.value
+                                                    }
+                                                },
+                                                {
+                                                    "term": {
+                                                        "tableType": TableType.Dynamic.value
+                                                    }
+                                                },
+                                            ]
+                                        }
+                                    }
+                                ]
+                            }
+                        },
+                        {"bool": {"should": [{"term": {"deleted": False}}]}},
+                        {
+                            "bool": {
+                                "should": [{"exists": {"field": "schemaDefinition"}}]
+                            }
+                        },
                     ]
                 }
             }
@@ -420,10 +461,11 @@ class ESMixin(Generic[T]):
                 _, database_name, schema_name, table_name = fqn.split(
                     hit.source["fullyQualifiedName"]
                 )
-                yield TableView(
-                    view_definition=hit.source["schemaDefinition"],
-                    service_name=service_name,
-                    db_name=database_name,
-                    schema_name=schema_name,
-                    table_name=table_name,
-                )
+                if hit.source.get("schemaDefinition"):
+                    yield TableView(
+                        view_definition=hit.source["schemaDefinition"],
+                        service_name=service_name,
+                        db_name=database_name,
+                        schema_name=schema_name,
+                        table_name=table_name,
+                    )

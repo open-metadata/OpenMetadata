@@ -54,6 +54,7 @@ import org.openmetadata.schema.type.IndexMappingLanguage;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareAnnotationSqlLocator;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
+import org.openmetadata.service.jobs.JobDAO;
 import org.openmetadata.service.migration.api.MigrationWorkflow;
 import org.openmetadata.service.resources.CollectionRegistry;
 import org.openmetadata.service.resources.databases.DatasourceConfig;
@@ -138,6 +139,8 @@ public abstract class OpenMetadataApplicationTest {
     sqlContainer.withReuse(false);
     sqlContainer.withStartupTimeoutSeconds(240);
     sqlContainer.withConnectTimeoutSeconds(240);
+    sqlContainer.withPassword("password");
+    sqlContainer.withUsername("username");
     sqlContainer.start();
 
     final String flyWayMigrationScriptsLocation =
@@ -217,7 +220,7 @@ public abstract class OpenMetadataApplicationTest {
     createClient();
   }
 
-  public static void validateAndRunSystemDataMigrations(
+  public void validateAndRunSystemDataMigrations(
       Jdbi jdbi,
       OpenMetadataApplicationConfig config,
       ConnectionType connType,
@@ -239,11 +242,16 @@ public abstract class OpenMetadataApplicationTest {
     // Initialize search repository
     SearchRepository searchRepository = new SearchRepository(getEsConfig());
     Entity.setSearchRepository(searchRepository);
-    Entity.setCollectionDAO(jdbi.onDemand(CollectionDAO.class));
+    Entity.setCollectionDAO(getDao(jdbi));
+    Entity.setJobDAO(jdbi.onDemand(JobDAO.class));
     Entity.initializeRepositories(config, jdbi);
     workflow.loadMigrations();
     workflow.runMigrationWorkflows();
     Entity.cleanup();
+  }
+
+  protected CollectionDAO getDao(Jdbi jdbi) {
+    return jdbi.onDemand(CollectionDAO.class);
   }
 
   @NotNull

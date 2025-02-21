@@ -97,7 +97,7 @@ public class BotRepository extends EntityRepository<Bot> {
 
     @Transaction
     @Override
-    public void entitySpecificUpdate() {
+    public void entitySpecificUpdate(boolean consolidatingChanges) {
       updateUser(original, updated);
     }
 

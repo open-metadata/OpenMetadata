@@ -17,6 +17,7 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
+import static org.openmetadata.service.jdbi3.ListFilter.NULL_PARAM;
 import static org.openmetadata.service.jdbi3.RoleRepository.DOMAIN_ONLY_ACCESS_ROLE;
 import static org.openmetadata.service.security.DefaultAuthorizer.getSubjectContext;
 
@@ -688,17 +689,20 @@ public final class EntityUtil {
     return result.stream().toList();
   }
 
-  public static void addDomainQueryParam(SecurityContext securityContext, ListFilter filter) {
+  public static void addDomainQueryParam(
+      SecurityContext securityContext, ListFilter filter, String entityType) {
     SubjectContext subjectContext = getSubjectContext(securityContext);
     // If the User is admin then no need to add domainId in the query param
     // Also if there are domain restriction on the subject context via role
-    if (!subjectContext.isAdmin() && subjectContext.hasAnyRole(DOMAIN_ONLY_ACCESS_ROLE)) {
+    if (!subjectContext.isAdmin()
+        && !subjectContext.isBot()
+        && subjectContext.hasAnyRole(DOMAIN_ONLY_ACCESS_ROLE)) {
       if (!nullOrEmpty(subjectContext.getUserDomains())) {
         filter.addQueryParam(
             "domainId", getCommaSeparatedIdsFromRefs(subjectContext.getUserDomains()));
       } else {
-        // TODO: Hack :(
-        filter.addQueryParam("domainId", "null");
+        filter.addQueryParam("domainId", NULL_PARAM);
+        filter.addQueryParam("entityType", entityType);
       }
     }
   }

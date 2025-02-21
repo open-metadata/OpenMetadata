@@ -31,7 +31,6 @@ import { DisplayType } from '../../components/Tag/TagsViewer/TagsViewer.interfac
 import {
   getEntityDetailsPath,
   getVersionPath,
-  INITIAL_PAGING_VALUE,
   PAGE_SIZE,
 } from '../../constants/constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
@@ -76,9 +75,14 @@ function DatabaseSchemaVersionPage() {
 
   const pagingInfo = usePaging(PAGE_SIZE);
 
-  const { paging, pageSize, handlePagingChange } = pagingInfo;
+  const {
+    paging,
+    pageSize,
+    handlePagingChange,
+    handlePageChange,
+    currentPage,
+  } = pagingInfo;
 
-  const [currentPage, setCurrentPage] = useState(INITIAL_PAGING_VALUE);
   const [tableData, setTableData] = useState<Array<Table>>([]);
   const [servicePermissions, setServicePermissions] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
@@ -195,7 +199,7 @@ function DatabaseSchemaVersionPage() {
       if (cursorType) {
         getSchemaTables({ [cursorType]: paging[cursorType] });
       }
-      setCurrentPage(currentPage);
+      handlePageChange(currentPage);
     },
     [paging, getSchemaTables]
   );

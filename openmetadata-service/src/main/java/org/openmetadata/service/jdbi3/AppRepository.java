@@ -1,5 +1,6 @@
 package org.openmetadata.service.jdbi3;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.util.UserUtil.getUser;
 
@@ -14,6 +15,7 @@ import org.openmetadata.schema.entity.Bot;
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppExtension;
 import org.openmetadata.schema.entity.app.AppRunRecord;
+import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
@@ -380,17 +382,73 @@ public class AppRepository extends EntityRepository<App> {
     return new AppRepository.AppUpdater(original, updated, operation);
   }
 
+  public App addEventSubscription(App app, EventSubscription eventSubscription) {
+    EntityReference existing =
+        listOrEmpty(app.getEventSubscriptions()).stream()
+            .filter(e -> e.getId().equals(eventSubscription.getId()))
+            .findFirst()
+            .orElse(null);
+    if (existing != null) {
+      return app;
+    }
+    addRelationship(
+        app.getId(),
+        eventSubscription.getId(),
+        Entity.APPLICATION,
+        Entity.EVENT_SUBSCRIPTION,
+        Relationship.CONTAINS);
+    List<EntityReference> newSubs = new ArrayList<>(listOrEmpty(app.getEventSubscriptions()));
+    newSubs.add(eventSubscription.getEntityReference());
+    App updated = JsonUtils.deepCopy(app, App.class).withEventSubscriptions(newSubs);
+    updated.setOpenMetadataServerConnection(null);
+    getUpdater(app, updated, EntityRepository.Operation.PUT).update();
+    return updated;
+  }
+
+  public App deleteEventSubscription(App app, UUID eventSubscriptionId) {
+    deleteRelationship(
+        app.getId(),
+        Entity.APPLICATION,
+        eventSubscriptionId,
+        Entity.EVENT_SUBSCRIPTION,
+        Relationship.CONTAINS);
+    List<EntityReference> newSubs = new ArrayList<>(listOrEmpty(app.getEventSubscriptions()));
+    newSubs.removeIf(sub -> sub.getId().equals(eventSubscriptionId));
+    App updated = JsonUtils.deepCopy(app, App.class).withEventSubscriptions(newSubs);
+    updated.setOpenMetadataServerConnection(null);
+    getUpdater(app, updated, EntityRepository.Operation.PUT).update();
+    return updated;
+  }
+
+  public void updateAppStatus(UUID appID, AppRunRecord record) {
+    daoCollection
+        .appExtensionTimeSeriesDao()
+        .update(
+            appID.toString(),
+            JsonUtils.pojoToJson(record),
+            record.getTimestamp(),
+            AppExtension.ExtensionType.STATUS.toString());
+  }
+
+  public void addAppStatus(AppRunRecord record) {
+    daoCollection
+        .appExtensionTimeSeriesDao()
+        .insert(JsonUtils.pojoToJson(record), AppExtension.ExtensionType.STATUS.toString());
+  }
+
   public class AppUpdater extends EntityUpdater {
     public AppUpdater(App original, App updated, Operation operation) {
       super(original, updated, operation);
     }
 
     @Override
-    public void entitySpecificUpdate() {
+    public void entitySpecificUpdate(boolean consolidatingChanges) {
       recordChange(
           "appConfiguration", original.getAppConfiguration(), updated.getAppConfiguration());
       recordChange("appSchedule", original.getAppSchedule(), updated.getAppSchedule());
       recordChange("bot", original.getBot(), updated.getBot());
+      recordChange(
+          "eventSubscriptions", original.getEventSubscriptions(), updated.getEventSubscriptions());
     }
   }
 }

@@ -131,7 +131,7 @@ def import_from_module(key: str) -> Type[Any]:
     try:
         obj = getattr(importlib.import_module(module_name), obj_name)
         return obj
-    except ModuleNotFoundError as err:
+    except (ModuleNotFoundError, ImportError) as err:
         logger.debug(traceback.format_exc())
         raise DynamicImportException(module=module_name, key=obj_name, cause=err)
 

@@ -150,7 +150,7 @@
     "indexName": "tag_search_index",
     "indexMappingFile": "/elasticsearch/%s/tag_index_mapping.json",
     "alias": "tag",
-    "parentAliases": ["classification","all", "dataAsset"],
+    "parentAliases": ["classification", "all", "dataAsset"],
     "childAliases": []
   },
   "classification": {
@@ -297,7 +297,7 @@
     "indexName": "ingestion_pipeline_search_index",
     "indexMappingFile": "/elasticsearch/%s/ingestion_pipeline_index_mapping.json",
     "alias": "ingestionPipeline",
-    "parentAliases": ["all", "dataAsset"],
+    "parentAliases": [],
     "childAliases": []
   }
 }

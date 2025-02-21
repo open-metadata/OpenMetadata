@@ -23,7 +23,7 @@ import DescriptionV1 from '../../components/common/EntityDescription/Description
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import NextPrevious from '../../components/common/NextPrevious/NextPrevious';
 import { NextPreviousProps } from '../../components/common/NextPrevious/NextPrevious.interface';
-import RichTextEditorPreviewer from '../../components/common/RichTextEditor/RichTextEditorPreviewer';
+import RichTextEditorPreviewerV1 from '../../components/common/RichTextEditor/RichTextEditorPreviewerV1';
 import TableAntd from '../../components/common/Table/Table';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
@@ -98,14 +98,10 @@ function SchemaTablesTab({
           displayName: data.displayName || undefined,
         };
         const jsonPatch = compare(tableDetails, updatedData);
-        await patchTableDetails(tableDetails.id, jsonPatch);
+        const response = await patchTableDetails(tableDetails.id, jsonPatch);
 
         setLocalTableData((prevData) =>
-          prevData.map((table) =>
-            table.id === id
-              ? { ...table, displayName: data.displayName }
-              : table
-          )
+          prevData.map((table) => (table.id === id ? response : table))
         );
       } catch (error) {
         showErrorToast(error as AxiosError);
@@ -148,7 +144,7 @@ function SchemaTablesTab({
         key: 'description',
         render: (text: string) =>
           text?.trim() ? (
-            <RichTextEditorPreviewer markdown={text} />
+            <RichTextEditorPreviewerV1 markdown={text} />
           ) : (
             <span className="text-grey-muted">{t('label.no-description')}</span>
           ),

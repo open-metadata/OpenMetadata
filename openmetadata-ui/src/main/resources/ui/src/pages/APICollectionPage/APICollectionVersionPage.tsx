@@ -32,7 +32,6 @@ import { DisplayType } from '../../components/Tag/TagsViewer/TagsViewer.interfac
 import {
   getEntityDetailsPath,
   getVersionPath,
-  INITIAL_PAGING_VALUE,
   PAGE_SIZE,
 } from '../../constants/constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
@@ -86,7 +85,13 @@ const APICollectionVersionPage = () => {
 
   const pagingInfo = usePaging(PAGE_SIZE);
 
-  const { paging, pageSize, handlePagingChange } = pagingInfo;
+  const {
+    paging,
+    pageSize,
+    handlePagingChange,
+    handlePageChange,
+    currentPage,
+  } = pagingInfo;
 
   const [collectionPermissions, setCollectionPermissions] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
@@ -105,9 +110,6 @@ const APICollectionVersionPage = () => {
   const [apiEndpointsLoading, setAPIEndpointsLoading] = useState<boolean>(true);
 
   const [apiEndpoints, setAPIEndpoints] = useState<Array<APIEndpoint>>([]);
-
-  const [currentEndpointsPage, setCurrentEndpointsPage] =
-    useState<number>(INITIAL_PAGING_VALUE);
 
   const { tier, owners, breadcrumbLinks, changeDescription, deleted, domain } =
     useMemo(
@@ -235,7 +237,7 @@ const APICollectionVersionPage = () => {
           },
         });
       }
-      setCurrentEndpointsPage(currentPage);
+      handlePageChange(currentPage);
     },
     [paging, getAPICollectionEndpoints]
   );
@@ -286,7 +288,7 @@ const APICollectionVersionPage = () => {
                 apiCollectionDetails={currentVersionData}
                 apiEndpoints={apiEndpoints}
                 apiEndpointsLoading={apiEndpointsLoading}
-                currentEndpointsPage={currentEndpointsPage}
+                currentEndpointsPage={currentPage}
                 description={description}
                 endpointPaginationHandler={endpointPaginationHandler}
                 pagingInfo={pagingInfo}
@@ -348,7 +350,7 @@ const APICollectionVersionPage = () => {
       currentVersionData,
       apiEndpoints,
       apiEndpointsLoading,
-      currentEndpointsPage,
+      currentPage,
       endpointPaginationHandler,
       viewVersionPermission,
     ]

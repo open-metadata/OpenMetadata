@@ -15,7 +15,11 @@ import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.api.configuration.UiThemePreference;
+import org.openmetadata.schema.api.configuration.OpenMetadataBaseUrlConfiguration;
 import org.openmetadata.schema.configuration.AssetCertificationSettings;
+import org.openmetadata.schema.configuration.ExecutorConfiguration;
+import org.openmetadata.schema.configuration.HistoryCleanUpConfiguration;
+import org.openmetadata.schema.configuration.WorkflowSettings;
 import org.openmetadata.schema.email.SmtpSettings;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
 import org.openmetadata.schema.security.client.OpenMetadataJWTClientConfig;
@@ -32,13 +36,16 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.exception.CustomExceptionMessage;
 import org.openmetadata.service.fernet.Fernet;
+import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.CollectionDAO.SystemDAO;
 import org.openmetadata.service.migration.MigrationValidationClient;
 import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
+import org.openmetadata.service.secrets.masker.PasswordEntityMasker;
 import org.openmetadata.service.security.JwtFilter;
+import org.openmetadata.service.security.auth.LoginAttemptCache;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
 import org.openmetadata.service.util.RestUtil;
@@ -103,6 +110,12 @@ public class SystemRepository {
         return null;
       }
 
+      if (fetchedSettings.getConfigType() == SettingsType.EMAIL_CONFIGURATION) {
+        SmtpSettings emailConfig = (SmtpSettings) fetchedSettings.getConfigValue();
+        emailConfig.setPassword(PasswordEntityMasker.PASSWORD_MASK);
+        fetchedSettings.setConfigValue(emailConfig);
+      }
+
       return fetchedSettings;
     } catch (Exception ex) {
       LOG.error("Error while trying fetch Settings ", ex);
@@ -119,6 +132,37 @@ public class SystemRepository {
         .orElse(null);
   }
 
+  public AssetCertificationSettings getAssetCertificationSettingOrDefault() {
+    AssetCertificationSettings assetCertificationSettings = getAssetCertificationSettings();
+    if (assetCertificationSettings == null) {
+      assetCertificationSettings =
+          new AssetCertificationSettings()
+              .withAllowedClassification("Certification")
+              .withValidityPeriod("P30D");
+    }
+    return assetCertificationSettings;
+  }
+
+  public WorkflowSettings getWorkflowSettings() {
+    Optional<Settings> oWorkflowSettings =
+        Optional.ofNullable(getConfigWithKey(SettingsType.WORKFLOW_SETTINGS.value()));
+
+    return oWorkflowSettings
+        .map(settings -> (WorkflowSettings) settings.getConfigValue())
+        .orElse(null);
+  }
+
+  public WorkflowSettings getWorkflowSettingsOrDefault() {
+    WorkflowSettings workflowSettings = getWorkflowSettings();
+    if (workflowSettings == null) {
+      workflowSettings =
+          new WorkflowSettings()
+              .withExecutorConfiguration(new ExecutorConfiguration())
+              .withHistoryCleanUpConfiguration(new HistoryCleanUpConfiguration());
+    }
+    return workflowSettings;
+  }
+
   public Settings getEmailConfigInternal() {
     try {
       Settings setting = dao.getConfigWithKey(SettingsType.EMAIL_CONFIGURATION.value());
@@ -128,6 +172,22 @@ public class SystemRepository {
       return setting;
     } catch (Exception ex) {
       LOG.error("Error while trying fetch EMAIL Settings " + ex.getMessage());
+    }
+    return null;
+  }
+
+  public Settings getOMBaseUrlConfigInternal() {
+    try {
+      Settings setting =
+          dao.getConfigWithKey(SettingsType.OPEN_METADATA_BASE_URL_CONFIGURATION.value());
+      OpenMetadataBaseUrlConfiguration urlConfiguration =
+          (OpenMetadataBaseUrlConfiguration) setting.getConfigValue();
+      setting.setConfigValue(urlConfiguration);
+      return setting;
+    } catch (Exception ex) {
+      LOG.error(
+          "Error while trying to fetch OpenMetadataBaseUrlConfiguration Settings {}",
+          ex.getMessage());
     }
     return null;
   }
@@ -209,12 +269,28 @@ public class SystemRepository {
     return (new RestUtil.PutResponse<>(Response.Status.OK, original, ENTITY_UPDATED)).toResponse();
   }
 
+  private void postUpdate(SettingsType settingsType) {
+    if (settingsType == SettingsType.WORKFLOW_SETTINGS) {
+      WorkflowHandler workflowHandler = WorkflowHandler.getInstance();
+      workflowHandler.initializeNewProcessEngine(workflowHandler.getProcessEngineConfiguration());
+    }
+
+    if (settingsType == SettingsType.LOGIN_CONFIGURATION) {
+      LoginAttemptCache.updateLoginConfiguration();
+    }
+  }
+
   public void updateSetting(Settings setting) {
     try {
       if (setting.getConfigType() == SettingsType.EMAIL_CONFIGURATION) {
         SmtpSettings emailConfig =
             JsonUtils.convertValue(setting.getConfigValue(), SmtpSettings.class);
         setting.setConfigValue(encryptEmailSetting(emailConfig));
+      } else if (setting.getConfigType() == SettingsType.OPEN_METADATA_BASE_URL_CONFIGURATION) {
+        OpenMetadataBaseUrlConfiguration omBaseUrl =
+            JsonUtils.convertValue(
+                setting.getConfigValue(), OpenMetadataBaseUrlConfiguration.class);
+        setting.setConfigValue(omBaseUrl);
       } else if (setting.getConfigType() == SettingsType.SLACK_APP_CONFIGURATION) {
         SlackAppConfiguration appConfiguration =
             JsonUtils.convertValue(setting.getConfigValue(), SlackAppConfiguration.class);
@@ -235,6 +311,7 @@ public class SystemRepository {
           setting.getConfigType().toString(), JsonUtils.pojoToJson(setting.getConfigValue()));
       // Invalidate Cache
       SettingsCache.invalidateSettings(setting.getConfigType().value());
+      postUpdate(setting.getConfigType());
     } catch (Exception ex) {
       LOG.error("Failing in Updating Setting.", ex);
       throw new CustomExceptionMessage(

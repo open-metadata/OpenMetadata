@@ -24,8 +24,8 @@ import static org.openmetadata.service.Entity.GLOSSARY_TERM;
 import static org.openmetadata.service.Entity.TEAM;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.invalidGlossaryTermMove;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.notReviewer;
-import static org.openmetadata.service.governance.workflows.Workflow.RESOLVED_BY_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.RESULT_VARIABLE;
+import static org.openmetadata.service.governance.workflows.Workflow.UPDATED_BY_VARIABLE;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.checkMutuallyExclusive;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.checkMutuallyExclusiveForParentAndSubField;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.getUniqueTags;
@@ -604,8 +604,10 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       UUID taskId = threadContext.getThread().getId();
       Map<String, Object> variables = new HashMap<>();
       variables.put(RESULT_VARIABLE, resolveTask.getNewValue().equalsIgnoreCase("approved"));
-      variables.put(RESOLVED_BY_VARIABLE, user);
-      WorkflowHandler.getInstance().resolveTask(taskId, variables);
+      variables.put(UPDATED_BY_VARIABLE, user);
+      WorkflowHandler workflowHandler = WorkflowHandler.getInstance();
+      workflowHandler.resolveTask(
+          taskId, workflowHandler.transformToNodeVariables(taskId, variables));
       // ---
 
       // TODO: performTask returns the updated Entity and the flow applies the new value.
@@ -803,25 +805,30 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     allRecords.addAll(fromRecords);
     allRecords.addAll(toRecords);
 
-    Map<UUID, List<EntityReference>> relatedTermsMap = new HashMap<>();
+    Map<UUID, Set<UUID>> relatedTermIdsMap = new HashMap<>();
 
     for (CollectionDAO.EntityRelationshipObject rec : allRecords) {
-      UUID termId;
-      UUID relatedTermId;
+      UUID termId = UUID.fromString(rec.getFromId());
+      UUID relatedTermId = UUID.fromString(rec.getToId());
 
-      if (termIdsSet.contains(rec.getFromId())) {
-        termId = UUID.fromString(rec.getFromId());
-        relatedTermId = UUID.fromString(rec.getToId());
-      } else {
-        termId = UUID.fromString(rec.getToId());
-        relatedTermId = UUID.fromString(rec.getFromId());
-      }
-
-      EntityReference relatedTermRef =
-          new EntityReference().withId(relatedTermId).withType(Entity.GLOSSARY_TERM);
-
-      relatedTermsMap.computeIfAbsent(termId, k -> new ArrayList<>()).add(relatedTermRef);
+      // store the bidirectional relationship in related-term map
+      relatedTermIdsMap.computeIfAbsent(termId, k -> new HashSet<>()).add(relatedTermId);
+      relatedTermIdsMap.computeIfAbsent(relatedTermId, k -> new HashSet<>()).add(termId);
     }
+
+    Map<UUID, List<EntityReference>> relatedTermsMap =
+        relatedTermIdsMap.entrySet().stream()
+            .collect(
+                Collectors.toMap(
+                    Map.Entry::getKey,
+                    entry ->
+                        entry.getValue().stream()
+                            .map(
+                                id ->
+                                    Entity.getEntityReferenceById(
+                                        Entity.GLOSSARY_TERM, id, Include.ALL))
+                            .sorted(EntityUtil.compareEntityReference)
+                            .toList()));
 
     if (!allRecords.isEmpty()) {
       for (GlossaryTerm term : entities) {
@@ -934,9 +941,9 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
 
     @Transaction
     @Override
-    public void entitySpecificUpdate() {
+    public void entitySpecificUpdate(boolean consolidatingChanges) {
       validateParent();
-      updateStatus(original, updated);
+      updateStatus(original, updated, consolidatingChanges);
       updateSynonyms(original, updated);
       updateReferences(original, updated);
       updateRelatedTerms(original, updated);
@@ -1000,12 +1007,14 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       }
     }
 
-    private void updateStatus(GlossaryTerm origTerm, GlossaryTerm updatedTerm) {
+    private void updateStatus(
+        GlossaryTerm origTerm, GlossaryTerm updatedTerm, boolean consolidatingChanges) {
       if (origTerm.getStatus() == updatedTerm.getStatus()) {
         return;
       }
       // Only reviewers can change from IN_REVIEW status to APPROVED/REJECTED status
-      if (origTerm.getStatus() == Status.IN_REVIEW
+      if (!consolidatingChanges
+          && origTerm.getStatus() == Status.IN_REVIEW
           && (updatedTerm.getStatus() == Status.APPROVED
               || updatedTerm.getStatus() == Status.REJECTED)) {
         checkUpdatedByReviewer(origTerm, updatedTerm.getUpdatedBy());

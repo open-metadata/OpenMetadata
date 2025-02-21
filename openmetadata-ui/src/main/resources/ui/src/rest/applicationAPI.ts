@@ -139,3 +139,11 @@ export const restoreApp = async (id: string) => {
 export const stopApp = async (name: string) => {
   return await APIClient.post(`${BASE_URL}/stop/${getEncodedFqn(name)}`);
 };
+
+export const getApplicationLogs = (appName: string, after?: string) => {
+  return APIClient.get(`${BASE_URL}/name/${appName}/logs`, {
+    params: {
+      after,
+    },
+  });
+};

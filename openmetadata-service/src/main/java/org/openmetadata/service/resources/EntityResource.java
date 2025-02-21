@@ -56,7 +56,9 @@ import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.search.SearchListFilter;
 import org.openmetadata.service.search.SearchSortFilter;
+import org.openmetadata.service.security.AuthRequest;
 import org.openmetadata.service.security.AuthorizationException;
+import org.openmetadata.service.security.AuthorizationLogic;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.CreateResourceContext;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
@@ -144,7 +146,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     Fields fields = getFields(fieldsParam);
     OperationContext listOperationContext =
         new OperationContext(entityType, getViewOperations(fields));
-
+    ResourceContext resourceContext = filter.getResourceContext(entityType);
     return listInternal(
         uriInfo,
         securityContext,
@@ -154,7 +156,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
         before,
         after,
         listOperationContext,
-        getResourceContext());
+        resourceContext);
   }
 
   public ResultList<T> listInternal(
@@ -171,7 +173,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     authorizer.authorize(securityContext, operationContext, resourceContext);
 
     // Add Domain Filter
-    EntityUtil.addDomainQueryParam(securityContext, filter);
+    EntityUtil.addDomainQueryParam(securityContext, filter, entityType);
 
     // List
     ResultList<T> resultList;
@@ -302,6 +304,21 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     return Response.created(entity.getHref()).entity(entity).build();
   }
 
+  public Response create(
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      List<AuthRequest> authRequests,
+      AuthorizationLogic authorizationLogic,
+      T entity) {
+    OperationContext operationContext = new OperationContext(entityType, CREATE);
+    CreateResourceContext<T> createResourceContext =
+        new CreateResourceContext<>(entityType, entity);
+    limits.enforceLimits(securityContext, createResourceContext, operationContext);
+    authorizer.authorizeRequests(securityContext, authRequests, authorizationLogic);
+    entity = addHref(uriInfo, repository.create(uriInfo, entity));
+    return Response.created(entity.getHref()).entity(entity).build();
+  }
+
   public Response createOrUpdate(UriInfo uriInfo, SecurityContext securityContext, T entity) {
     repository.prepareInternal(entity, true);
     // If entity does not exist, this is a create operation, else update operation
@@ -325,6 +342,31 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     return response.toResponse();
   }
 
+  public Response createOrUpdate(
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      List<AuthRequest> authRequests,
+      AuthorizationLogic authorizationLogic,
+      T entity) {
+    repository.prepareInternal(entity, true);
+    // If entity does not exist, this is a create operation, else update operation
+    ResourceContext<T> resourceContext = getResourceContextByName(entity.getFullyQualifiedName());
+    MetadataOperation operation = createOrUpdateOperation(resourceContext);
+    OperationContext operationContext = new OperationContext(entityType, operation);
+    if (operation == CREATE) {
+      CreateResourceContext<T> createResourceContext =
+          new CreateResourceContext<>(entityType, entity);
+      limits.enforceLimits(securityContext, createResourceContext, operationContext);
+      authorizer.authorizeRequests(securityContext, authRequests, authorizationLogic);
+      entity = addHref(uriInfo, repository.create(uriInfo, entity));
+      return new PutResponse<>(Response.Status.CREATED, entity, ENTITY_CREATED).toResponse();
+    }
+    authorizer.authorizeRequests(securityContext, authRequests, authorizationLogic);
+    PutResponse<T> response = repository.createOrUpdate(uriInfo, entity);
+    addHref(uriInfo, response.getEntity());
+    return response.toResponse();
+  }
+
   public Response patchInternal(
       UriInfo uriInfo, SecurityContext securityContext, UUID id, JsonPatch patch) {
     OperationContext operationContext = new OperationContext(entityType, patch);
@@ -332,6 +374,20 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
         securityContext,
         operationContext,
         getResourceContextById(id, ResourceContextInterface.Operation.PATCH));
+    PatchResponse<T> response =
+        repository.patch(uriInfo, id, securityContext.getUserPrincipal().getName(), patch);
+    addHref(uriInfo, response.entity());
+    return response.toResponse();
+  }
+
+  public Response patchInternal(
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      List<AuthRequest> authRequests,
+      AuthorizationLogic authorizationLogic,
+      UUID id,
+      JsonPatch patch) {
+    authorizer.authorizeRequests(securityContext, authRequests, authorizationLogic);
     PatchResponse<T> response =
         repository.patch(uriInfo, id, securityContext.getUserPrincipal().getName(), patch);
     addHref(uriInfo, response.entity());
@@ -361,7 +417,6 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
     DeleteResponse<T> response =
         repository.delete(securityContext.getUserPrincipal().getName(), id, recursive, hardDelete);
-    repository.deleteFromSearch(response.entity(), response.changeType());
     if (hardDelete) {
       limits.invalidateCache(entityType);
     }
@@ -380,7 +435,6 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     DeleteResponse<T> response =
         repository.deleteByName(
             securityContext.getUserPrincipal().getName(), name, recursive, hardDelete);
-    repository.deleteFromSearch(response.entity(), response.changeType());
     addHref(uriInfo, response.entity());
     return response.toResponse();
   }

@@ -85,6 +85,7 @@ def _(*_, **__):
 
 
 @compiles(RandomNumFn, Dialects.Postgres)
+@compiles(RandomNumFn, Dialects.Cockroach)
 def _(*_, **__):
     """Postgres random logic"""
     return "ABS((RANDOM() * 100)::INTEGER)"

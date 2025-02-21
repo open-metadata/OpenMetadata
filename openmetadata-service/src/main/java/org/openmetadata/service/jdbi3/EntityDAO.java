@@ -26,13 +26,16 @@ import lombok.SneakyThrows;
 import org.jdbi.v3.sqlobject.customizer.Bind;
 import org.jdbi.v3.sqlobject.customizer.BindMap;
 import org.jdbi.v3.sqlobject.customizer.Define;
+import org.jdbi.v3.sqlobject.statement.BatchChunkSize;
 import org.jdbi.v3.sqlobject.statement.SqlQuery;
 import org.jdbi.v3.sqlobject.statement.SqlUpdate;
+import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlBatch;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlQuery;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlUpdate;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -70,6 +73,22 @@ public interface EntityDAO<T extends EntityInterface> {
       @Define("nameHashColumn") String nameHashColumn,
       @BindFQN("nameHashColumnValue") String nameHashColumnValue,
       @Bind("json") String json);
+
+  /** Common queries for all entities implemented here. Do not override. */
+  @Transaction
+  @ConnectionAwareSqlBatch(
+      value = "INSERT INTO <table> (<nameHashColumn>, json) VALUES (:nameHashColumnValue, :json)",
+      connectionType = MYSQL)
+  @ConnectionAwareSqlBatch(
+      value =
+          "INSERT INTO <table> (<nameHashColumn>, json) VALUES (:nameHashColumnValue, :json :: jsonb)",
+      connectionType = POSTGRES)
+  @BatchChunkSize(100)
+  void insertMany(
+      @Define("table") String table,
+      @Define("nameHashColumn") String nameHashColumn,
+      @BindFQN("nameHashColumnValue") List<String> nameHashColumnValue,
+      @Bind("json") List<String> json);
 
   @ConnectionAwareSqlUpdate(
       value =
@@ -322,6 +341,14 @@ public interface EntityDAO<T extends EntityInterface> {
       @Bind("startHash") String startHash,
       @Bind("endHash") String endHash);
 
+  @SqlQuery("SELECT json FROM <table> <cond> AND <nameHashColumn> BETWEEN :startHash AND :endHash ")
+  List<String> listAll(
+      @Define("table") String table,
+      @Define("cond") String cond,
+      @Define("nameHashColumn") String nameHashColumn,
+      @Bind("startHash") String startHash,
+      @Bind("endHash") String endHash);
+
   @SqlQuery("SELECT json FROM <table> LIMIT :limit OFFSET :offset")
   List<String> listAfterWithOffset(
       @Define("table") String table, @Bind("limit") int limit, @Bind("offset") int offset);
@@ -364,6 +391,16 @@ public interface EntityDAO<T extends EntityInterface> {
   /** Default methods that interfaces with implementation. Don't override */
   default void insert(EntityInterface entity, String fqn) {
     insert(getTableName(), getNameHashColumn(), fqn, JsonUtils.pojoToJson(entity));
+  }
+
+  /** Default methods that interfaces with implementation. Don't override */
+  default void insertMany(List<EntityInterface> entities) {
+    List<String> fqns = entities.stream().map(EntityInterface::getFullyQualifiedName).toList();
+    insertMany(
+        getTableName(),
+        getNameHashColumn(),
+        fqns,
+        entities.stream().map(JsonUtils::pojoToJson).toList());
   }
 
   default void insert(String nameHash, EntityInterface entity, String fqn) {
@@ -468,6 +505,11 @@ public interface EntityDAO<T extends EntityInterface> {
   default List<String> listAll(String startHash, String endHash) {
     // Quoted name is stored in fullyQualifiedName column and not in the name column
     return listAll(getTableName(), getNameHashColumn(), startHash, endHash);
+  }
+
+  default List<String> listAll(String startHash, String endHash, ListFilter filter) {
+    // Quoted name is stored in fullyQualifiedName column and not in the name column
+    return listAll(getTableName(), filter.getCondition(), getNameHashColumn(), startHash, endHash);
   }
 
   default List<String> listAfterWithOffset(int limit, int offset) {

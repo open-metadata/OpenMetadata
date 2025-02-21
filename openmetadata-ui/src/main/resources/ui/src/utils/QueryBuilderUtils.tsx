@@ -33,6 +33,9 @@ import { generateUUID } from './StringsUtils';
 
 export const JSONLOGIC_FIELDS_TO_IGNORE_SPLIT = [
   EntityReferenceFields.EXTENSION,
+  EntityReferenceFields.SERVICE,
+  EntityReferenceFields.DATABASE,
+  EntityReferenceFields.DATABASE_SCHEMA,
 ];
 
 const resolveFieldType = (
@@ -206,6 +209,19 @@ export const getEqualFieldProperties = (
   };
 };
 
+export const getOperator = (
+  fieldType: string | undefined,
+  isNot: boolean
+): string => {
+  switch (fieldType) {
+    case 'text':
+    case 'boolean':
+      return isNot ? 'not_equal' : 'equal';
+    default:
+      return isNot ? 'select_not_equals' : 'select_equals';
+  }
+};
+
 export const getJsonTreePropertyFromQueryFilter = (
   parentPath: Array<string>,
   queryFilter: QueryFieldInterface[],
@@ -221,7 +237,7 @@ export const getJsonTreePropertyFromQueryFilter = (
       } else if (!isUndefined(curr.term)) {
         const [field, value] = Object.entries(curr.term)[0];
         const fieldType = fields ? resolveFieldType(fields, field) : '';
-        const op = fieldType === 'text' ? 'equal' : 'select_equals';
+        const op = getOperator(fieldType, false);
 
         return {
           ...acc,
@@ -238,7 +254,7 @@ export const getJsonTreePropertyFromQueryFilter = (
         const value = Object.values((curr.bool?.must_not as EsTerm)?.term)[0];
         const key = Object.keys((curr.bool?.must_not as EsTerm)?.term)[0];
         const fieldType = fields ? resolveFieldType(fields, key) : '';
-        const op = fieldType === 'text' ? 'not_equal' : 'select_not_equals';
+        const op = getOperator(fieldType, true);
 
         return {
           ...acc,
@@ -521,9 +537,15 @@ export const elasticsearchToJsonLogic = (
     if (field.includes('.')) {
       const [parentField, childField] = field.split('.');
 
-      return JSONLOGIC_FIELDS_TO_IGNORE_SPLIT.includes(
-        parentField as EntityReferenceFields
-      )
+      const shouldIgnoreSplit =
+        JSONLOGIC_FIELDS_TO_IGNORE_SPLIT.includes(
+          parentField as EntityReferenceFields
+        ) ||
+        JSONLOGIC_FIELDS_TO_IGNORE_SPLIT.includes(
+          field as EntityReferenceFields
+        );
+
+      return shouldIgnoreSplit
         ? { '==': [{ var: field }, value] }
         : {
             some: [

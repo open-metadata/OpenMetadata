@@ -30,6 +30,7 @@
 .ant-btn.ant-btn-background-ghost.expand-btn {
   background-color: white;
   box-shadow: none;
+
   &:hover {
     background-color: white;
   }
@@ -43,6 +44,7 @@
   border: 1px solid @lineage-border;
   border-radius: 10px;
   overflow: hidden;
+
   .profiler-item {
     width: 36px;
     height: 36px;
@@ -50,16 +52,20 @@
     border-radius: 4px;
     line-height: 36px;
     font-size: 14px;
+
     &.green {
       border: 1px solid @green-5;
     }
+
     &.amber {
       border: 1px solid @yellow-4;
     }
+
     &.red {
       border: 1px solid @red-5;
     }
   }
+
   .column-container {
     min-height: 48px;
     padding: 12px;
@@ -68,19 +74,24 @@
     .lineage-collapse-column.ant-collapse {
       border: none;
       border-radius: 0;
+
       .ant-collapse-header {
         padding: 0;
         font-size: 12px;
+
         .custom-node-column-container {
           background-color: @lineage-collapse-header;
         }
+
         .lineage-column-node-handle {
           background-color: @lineage-collapse-header;
         }
       }
+
       .ant-collapse-content-box {
         padding: 4px;
       }
+
       .ant-collapse-item {
         border: none;
         border-radius: 0;
@@ -114,6 +125,7 @@
   .lineage-node-handle {
     border-color: @primary-color;
   }
+
   .lineage-node {
     border-color: @primary-color !important;
   }
@@ -137,15 +149,19 @@
   .lineage-node {
     border-color: @primary-color !important;
   }
+
   .lineage-node-handle {
     border-color: @primary-color;
+
     svg {
       color: @primary-color;
     }
   }
+
   .label-container {
     background: @primary-1;
   }
+
   .column-container {
     background: @primary-1;
     border-top: 1px solid @border-color;
@@ -171,15 +187,19 @@
     &.lineage-node {
       border-color: @red-3 !important;
     }
+
     .lineage-node-handle {
       border-color: @red-3;
+
       svg {
         color: @red-3;
       }
     }
+
     .label-container {
       background: fade(@red-3, 10%);
     }
+
     .column-container {
       background: fade(@red-3, 10%);
       border-top: 1px solid @border-color;
@@ -191,15 +211,18 @@
   .label-container {
     background: @primary-1;
   }
+
   .column-container {
     background: @primary-1;
     border-top: 1px solid @border-color;
   }
 }
+
 .data-quality-failed-custom-node-header.custom-node-header-active {
   .label-container {
     background: fade(@red-3, 10%);
   }
+
   .column-container {
     background: fade(@red-3, 10%);
     border-top: 1px solid @red-3;
@@ -214,6 +237,7 @@
   .lineage-node-handle.react-flow__handle-left {
     left: -22px;
   }
+
   .lineage-node-handle.react-flow__handle-right {
     right: -22px;
   }
@@ -227,6 +251,7 @@
   border-color: @lineage-border !important;
   background: @white !important;
   top: 43px !important; // Need to show handles on top half
+
   svg {
     color: @text-grey-muted;
   }
@@ -241,9 +266,11 @@
   height: 25px;
   transform: none;
   border: none;
+
   &.react-flow__handle-left {
     left: 0;
   }
+
   &.react-flow__handle-right {
     right: 0;
   }
@@ -266,10 +293,16 @@
 
     .custom-node-name-icon {
       width: 14px;
+      display: flex;
+    }
+
+    .custom-node-column-label {
+      max-width: 140px;
     }
   }
 
   .custom-node-constraint {
+    padding-left: 4px;
     padding-right: 12px;
   }
 }

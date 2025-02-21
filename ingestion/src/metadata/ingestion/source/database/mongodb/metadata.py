@@ -13,7 +13,7 @@ MongoDB source methods.
 """
 
 import traceback
-from typing import Dict, List, Optional, Union
+from typing import Dict, Iterable, List, Optional, Union
 
 from pymongo.errors import OperationFailure
 
@@ -28,6 +28,7 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.common_nosql_source import (
     SAMPLE_SIZE,
     CommonNoSQLSource,
+    TableNameAndType,
 )
 from metadata.utils.logger import ingestion_logger
 
@@ -68,14 +69,18 @@ class MongodbSource(CommonNoSQLSource):
             logger.debug(traceback.format_exc())
         return []
 
-    def get_table_name_list(self, schema_name: str) -> List[str]:
+    def query_table_names_and_types(
+        self, schema_name: str
+    ) -> Iterable[TableNameAndType]:
         """
         Method to get list of table names available within schema db
         need to be overridden by sources
         """
         try:
             database = self.mongodb.get_database(schema_name)
-            return database.list_collection_names()
+            return [
+                TableNameAndType(name=name) for name in database.list_collection_names()
+            ]
         except Exception as exp:
             logger.debug(
                 f"Failed to list collection names for schema [{schema_name}]: {exp}"

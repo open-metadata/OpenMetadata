@@ -118,10 +118,10 @@ class BaseTestValidator(ABC):
             failed_rows = (
                 failed_rows if failed_rows is not None else (row_count - passed_rows)
             )
-            test_case_result.passedRows = passed_rows
-            test_case_result.failedRows = failed_rows
-            test_case_result.passedRowsPercentage = (passed_rows / row_count) * 100
-            test_case_result.failedRowsPercentage = (failed_rows / row_count) * 100  # type: ignore
+            test_case_result.passedRows = int(passed_rows)
+            test_case_result.failedRows = int(failed_rows)
+            test_case_result.passedRowsPercentage = float(passed_rows / row_count) * 100
+            test_case_result.failedRowsPercentage = float(failed_rows / row_count) * 100  # type: ignore
 
         return test_case_result
 

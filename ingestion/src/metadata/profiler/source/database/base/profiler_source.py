@@ -150,11 +150,10 @@ class ProfilerSource(ProfilerSourceInterface):
             database_entity=database_entity,
             table_config=config,
             default_sample_config=SampleConfig(
-                profile_sample=self.source_config.profileSample,
-                profile_sample_type=self.source_config.profileSampleType,
-                sampling_method_type=self.source_config.samplingMethodType,
+                profileSample=self.source_config.profileSample,
+                profileSampleType=self.source_config.profileSampleType,
+                samplingMethodType=self.source_config.samplingMethodType,
             ),
-            default_sample_data_count=self.source_config.sampleDataCount,
         )
 
         profiler_interface: ProfilerInterface = profiler_class.create(

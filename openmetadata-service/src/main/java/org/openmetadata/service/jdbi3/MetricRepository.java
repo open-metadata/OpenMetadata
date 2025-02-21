@@ -109,7 +109,7 @@ public class MetricRepository extends EntityRepository<Metric> {
 
     @Transaction
     @Override
-    public void entitySpecificUpdate() {
+    public void entitySpecificUpdate(boolean consolidatingChanges) {
       recordChange("granularity", original.getGranularity(), updated.getGranularity());
       recordChange("metricType", original.getMetricType(), updated.getMetricType());
       recordChange(

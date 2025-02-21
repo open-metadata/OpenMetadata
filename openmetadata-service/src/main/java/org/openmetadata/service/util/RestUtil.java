@@ -122,7 +122,7 @@ public final class RestUtil {
     @Getter private T entity;
     private ChangeEvent changeEvent;
     @Getter private final Response.Status status;
-    private final EventType changeType;
+    @Getter private final EventType changeType;
 
     /**
      * Response.Status.CREATED when PUT operation creates a new entity or Response.Status.OK when PUT operation updates

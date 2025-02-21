@@ -15,7 +15,8 @@
       "default": "StoredProcedure",
       "enum": [
         "StoredProcedure",
-        "UDF"
+        "UDF",
+        "StoredPackage"
       ],
       "javaEnums": [
         {
@@ -23,6 +24,9 @@
         },
         {
           "name": "UDF"
+        },
+        {
+          "name": "StoredPackage"
         }
       ]
     },
@@ -116,6 +120,10 @@
       "$ref": "../../type/basic.json#/definitions/href"
     },
     "changeDescription": {
+      "description": "Change that lead to this version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "incrementalChangeDescription": {
       "description": "Change that lead to this version of the entity.",
       "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
     },

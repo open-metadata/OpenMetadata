@@ -17,6 +17,7 @@ import static org.openmetadata.service.apps.bundles.changeEvent.AbstractEventCon
 import static org.openmetadata.service.apps.bundles.changeEvent.AbstractEventConsumer.ALERT_OFFSET_KEY;
 import static org.openmetadata.service.events.subscription.AlertUtil.getStartingOffset;
 
+import java.lang.reflect.InvocationTargetException;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
@@ -36,13 +37,20 @@ import org.openmetadata.schema.entity.events.FailedEventResponse;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.entity.events.SubscriptionStatus;
 import org.openmetadata.schema.type.ChangeEvent;
+import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.apps.bundles.changeEvent.AbstractEventConsumer;
 import org.openmetadata.service.apps.bundles.changeEvent.AlertPublisher;
+import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
 import org.openmetadata.service.events.subscription.AlertUtil;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.EventSubscriptionRepository;
 import org.openmetadata.service.resources.events.subscription.TypedEvent;
+import org.openmetadata.service.util.DIContainer;
 import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
+import org.quartz.Job;
 import org.quartz.JobBuilder;
 import org.quartz.JobDataMap;
 import org.quartz.JobDetail;
@@ -54,6 +62,8 @@ import org.quartz.Trigger;
 import org.quartz.TriggerBuilder;
 import org.quartz.TriggerKey;
 import org.quartz.impl.StdSchedulerFactory;
+import org.quartz.spi.JobFactory;
+import org.quartz.spi.TriggerFiredBundle;
 
 @Slf4j
 public class EventSubscriptionScheduler {
@@ -61,25 +71,53 @@ public class EventSubscriptionScheduler {
   public static final String ALERT_TRIGGER_GROUP = "OMAlertJobGroup";
   private static EventSubscriptionScheduler instance;
   private static volatile boolean initialized = false;
-  public static volatile boolean cleanupJobInitialised = false;
-
   private final Scheduler alertsScheduler = new StdSchedulerFactory().getScheduler();
 
-  private EventSubscriptionScheduler() throws SchedulerException {
+  private record CustomJobFactory(DIContainer di) implements JobFactory {
+
+    @Override
+    public Job newJob(TriggerFiredBundle bundle, Scheduler scheduler) throws SchedulerException {
+      try {
+        JobDetail jobDetail = bundle.getJobDetail();
+        Class<? extends Job> jobClass = jobDetail.getJobClass();
+        Job job = jobClass.getDeclaredConstructor(DIContainer.class).newInstance(di);
+        return job;
+      } catch (Exception e) {
+        throw new SchedulerException("Failed to create job instance", e);
+      }
+    }
+  }
+
+  private EventSubscriptionScheduler(
+      PipelineServiceClientInterface pipelineServiceClient,
+      OpenMetadataConnectionBuilder openMetadataConnectionBuilder)
+      throws SchedulerException {
+    DIContainer di = new DIContainer();
+    di.registerResource(PipelineServiceClientInterface.class, pipelineServiceClient);
+    di.registerResource(OpenMetadataConnectionBuilder.class, openMetadataConnectionBuilder);
+    this.alertsScheduler.setJobFactory(new CustomJobFactory(di));
     this.alertsScheduler.start();
   }
 
   @SneakyThrows
   public static EventSubscriptionScheduler getInstance() {
     if (!initialized) {
-      initialize();
+      throw new RuntimeException("Event Subscription Scheduler is not initialized");
     }
     return instance;
   }
 
-  private static void initialize() throws SchedulerException {
+  public static void initialize(OpenMetadataApplicationConfig openMetadataApplicationConfig) {
     if (!initialized) {
-      instance = new EventSubscriptionScheduler();
+      try {
+        instance =
+            new EventSubscriptionScheduler(
+                PipelineServiceClientFactory.createPipelineServiceClient(
+                    openMetadataApplicationConfig.getPipelineServiceClientConfiguration()),
+                new OpenMetadataConnectionBuilder(openMetadataApplicationConfig));
+      } catch (SchedulerException e) {
+        throw new RuntimeException("Failed to initialize Event Subscription Scheduler", e);
+      }
       initialized = true;
     } else {
       LOG.info("Event Subscription Scheduler is already initialized");
@@ -87,9 +125,26 @@ public class EventSubscriptionScheduler {
   }
 
   @Transaction
-  public void addSubscriptionPublisher(EventSubscription eventSubscription)
-      throws SchedulerException {
-    AlertPublisher alertPublisher = new AlertPublisher();
+  public void addSubscriptionPublisher(EventSubscription eventSubscription, boolean reinstall)
+      throws SchedulerException,
+          ClassNotFoundException,
+          NoSuchMethodException,
+          InvocationTargetException,
+          InstantiationException,
+          IllegalAccessException {
+    Class<? extends AbstractEventConsumer> defaultClass = AlertPublisher.class;
+    Class<? extends AbstractEventConsumer> clazz =
+        Class.forName(
+                Optional.ofNullable(eventSubscription.getClassName())
+                    .orElse(defaultClass.getCanonicalName()))
+            .asSubclass(AbstractEventConsumer.class);
+    // we can use an empty dependency container here because when initializing
+    // the consumer because it does need to access any state
+    AbstractEventConsumer publisher =
+        clazz.getDeclaredConstructor(DIContainer.class).newInstance(new DIContainer());
+    if (reinstall && isSubscriptionRegistered(eventSubscription)) {
+      deleteEventSubscriptionPublisher(eventSubscription);
+    }
     if (Boolean.FALSE.equals(
         eventSubscription.getEnabled())) { // Only add webhook that is enabled for publishing events
       eventSubscription
@@ -111,14 +166,13 @@ public class EventSubscriptionScheduler {
                       getSubscriptionStatusAtCurrentTime(SubscriptionStatus.Status.ACTIVE)));
       JobDetail jobDetail =
           jobBuilder(
-              alertPublisher,
+              publisher,
               eventSubscription,
               String.format("%s", eventSubscription.getId().toString()));
       Trigger trigger = trigger(eventSubscription);
 
       // Schedule the Job
       alertsScheduler.scheduleJob(jobDetail, trigger);
-      instance.scheduleCleanupJob();
 
       LOG.info(
           "Event Subscription started as {} : status {} for all Destinations",
@@ -127,8 +181,17 @@ public class EventSubscriptionScheduler {
     }
   }
 
+  public boolean isSubscriptionRegistered(EventSubscription eventSubscription) {
+    try {
+      return alertsScheduler.checkExists(getJobKey(eventSubscription));
+    } catch (SchedulerException e) {
+      LOG.error("Failed to check if subscription is registered: {}", eventSubscription.getId(), e);
+      return false;
+    }
+  }
+
   private JobDetail jobBuilder(
-      AlertPublisher publisher, EventSubscription eventSubscription, String jobIdentity) {
+      AbstractEventConsumer publisher, EventSubscription eventSubscription, String jobIdentity) {
     JobDataMap dataMap = new JobDataMap();
     dataMap.put(ALERT_INFO_KEY, eventSubscription);
     dataMap.put(ALERT_OFFSET_KEY, getStartingOffset(eventSubscription.getId()));
@@ -158,7 +221,7 @@ public class EventSubscriptionScheduler {
     // Remove Existing Subscription Publisher
     deleteEventSubscriptionPublisher(eventSubscription);
     if (Boolean.TRUE.equals(eventSubscription.getEnabled())) {
-      addSubscriptionPublisher(eventSubscription);
+      addSubscriptionPublisher(eventSubscription, true);
     }
   }
 
@@ -169,33 +232,6 @@ public class EventSubscriptionScheduler {
     alertsScheduler.unscheduleJob(
         new TriggerKey(deletedEntity.getId().toString(), ALERT_TRIGGER_GROUP));
     LOG.info("Alert publisher deleted for {}", deletedEntity.getName());
-  }
-
-  public void scheduleCleanupJob() {
-    if (!cleanupJobInitialised) {
-      try {
-        JobDetail cleanupJob =
-            JobBuilder.newJob(EventSubscriptionCleanupJob.class)
-                .withIdentity("CleanupJob", ALERT_JOB_GROUP)
-                .build();
-
-        Trigger cleanupTrigger =
-            TriggerBuilder.newTrigger()
-                .withIdentity("CleanupTrigger", ALERT_TRIGGER_GROUP)
-                .withSchedule(
-                    SimpleScheduleBuilder.simpleSchedule()
-                        .withIntervalInSeconds(10)
-                        .repeatForever())
-                .startNow()
-                .build();
-
-        alertsScheduler.scheduleJob(cleanupJob, cleanupTrigger);
-        cleanupJobInitialised = true;
-        LOG.info("Scheduled periodic cleanup job to run every 10 seconds.");
-      } catch (SchedulerException e) {
-        LOG.error("Failed to schedule cleanup job", e);
-      }
-    }
   }
 
   @Transaction
@@ -534,6 +570,14 @@ public class EventSubscriptionScheduler {
 
   public boolean doesRecordExist(UUID id) {
     return Entity.getCollectionDAO().changeEventDAO().recordExists(id.toString()) > 0;
+  }
+
+  public static JobKey getJobKey(EventSubscription eventSubscription) {
+    return getJobKey(eventSubscription.getId());
+  }
+
+  private static JobKey getJobKey(UUID subscriptionId) {
+    return new JobKey(subscriptionId.toString(), ALERT_JOB_GROUP);
   }
 
   public static void shutDown() throws SchedulerException {

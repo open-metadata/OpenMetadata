@@ -105,6 +105,9 @@ public final class TestUtils {
   public static String LONG_ENTITY_NAME = "a".repeat(256 + 1);
   public static final Map<String, String> ADMIN_AUTH_HEADERS =
       authHeaders(ADMIN_USER_NAME + "@open-metadata.org");
+  public static final String GOVERNANCE_BOT = "governance-bot";
+  public static final Map<String, String> GOVERNANCE_BOT_AUTH_HEADERS =
+      authHeaders(GOVERNANCE_BOT + "@open-metadata.org");
   public static final String INGESTION_BOT = "ingestion-bot";
   public static final Map<String, String> INGESTION_BOT_AUTH_HEADERS =
       authHeaders(INGESTION_BOT + "@open-metadata.org");
@@ -274,6 +277,13 @@ public final class TestUtils {
     assertEquals(expectedReason, exception.getReasonPhrase());
   }
 
+  public static void assertResponse(
+      Executable executable, Response.Status expectedStatus, List<String> expectedReasons) {
+    HttpResponseException exception = assertThrows(HttpResponseException.class, executable);
+    assertEquals(expectedStatus.getStatusCode(), exception.getStatusCode());
+    assertTrue(expectedReasons.contains(exception.getReasonPhrase()));
+  }
+
   public static void assertResponseContains(
       Executable executable, Response.Status expectedStatus, String expectedReason) {
     HttpResponseException exception = assertThrows(HttpResponseException.class, executable);
@@ -311,10 +321,16 @@ public final class TestUtils {
 
   public static <K> void post(WebTarget target, K request, Map<String, String> headers)
       throws HttpResponseException {
+    post(target, request, Status.CREATED.getStatusCode(), headers);
+  }
+
+  public static <K> void post(
+      WebTarget target, K request, int expectedStatus, Map<String, String> headers)
+      throws HttpResponseException {
     Entity<K> entity =
         (request == null) ? null : Entity.entity(request, MediaType.APPLICATION_JSON);
     Response response = SecurityUtil.addHeaders(target, headers).post(entity);
-    readResponse(response, Status.CREATED.getStatusCode());
+    readResponse(response, expectedStatus);
   }
 
   public static <T, K> T post(

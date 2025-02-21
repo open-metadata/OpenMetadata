@@ -84,6 +84,7 @@ import org.openmetadata.service.util.SchemaFieldExtractor;
 @Slf4j
 public class TypeResource extends EntityResource<Type, TypeRepository> {
   public static final String COLLECTION_PATH = "v1/metadata/types/";
+  private final TypeMapper mapper = new TypeMapper();
   public SchemaFieldExtractor extractor;
 
   @Override
@@ -117,7 +118,9 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
                 type.setCustomProperties(storedType.getCustomProperties());
               }
             } catch (Exception e) {
-              LOG.debug("Creating entity that does not exist ", e);
+              LOG.debug(
+                  "Type '{}' not found. Proceeding to add new type entity in database.",
+                  type.getName());
             }
             this.repository.createOrUpdate(null, type);
             this.repository.addToRegistry(type);
@@ -324,7 +327,7 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateType create) {
-    Type type = getType(create, securityContext.getUserPrincipal().getName());
+    Type type = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, type);
   }
 
@@ -403,7 +406,7 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateType create) {
-    Type type = getType(create, securityContext.getUserPrincipal().getName());
+    Type type = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, type);
   }
 
@@ -519,13 +522,5 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
                   + e.getMessage())
           .build();
     }
-  }
-
-  private Type getType(CreateType create, String user) {
-    return repository
-        .copy(new Type(), create, user)
-        .withFullyQualifiedName(create.getName())
-        .withCategory(create.getCategory())
-        .withSchema(create.getSchema());
   }
 }

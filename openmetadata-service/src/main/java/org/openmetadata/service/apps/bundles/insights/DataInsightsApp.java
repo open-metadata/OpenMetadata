@@ -1,8 +1,8 @@
 package org.openmetadata.service.apps.bundles.insights;
 
-import static org.openmetadata.service.apps.scheduler.AbstractOmAppJobListener.APP_RUN_STATS;
-import static org.openmetadata.service.apps.scheduler.AbstractOmAppJobListener.WEBSOCKET_STATUS_CHANNEL;
 import static org.openmetadata.service.apps.scheduler.AppScheduler.ON_DEMAND_JOB;
+import static org.openmetadata.service.apps.scheduler.OmAppJobListener.APP_RUN_STATS;
+import static org.openmetadata.service.apps.scheduler.OmAppJobListener.WEBSOCKET_STATUS_CHANNEL;
 import static org.openmetadata.service.socket.WebSocketManager.DATA_INSIGHTS_JOB_BROADCAST_CHANNEL;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getInitialStatsForEntities;
 
@@ -146,11 +146,19 @@ public class DataInsightsApp extends AbstractNativeApplication {
   private void createDataAssetsDataStream() {
     DataInsightsSearchInterface searchInterface = getSearchInterface();
 
+    ElasticSearchConfiguration config = searchRepository.getElasticSearchConfiguration();
+    String language =
+        config != null && config.getSearchIndexMappingLanguage() != null
+            ? config.getSearchIndexMappingLanguage().value()
+            : "en";
+
     try {
       for (String dataAssetType : dataAssetTypes) {
+        IndexMapping dataAssetIndex = searchRepository.getIndexMapping(dataAssetType);
         String dataStreamName = getDataStreamName(dataAssetType);
         if (!searchInterface.dataAssetDataStreamExists(dataStreamName)) {
-          searchInterface.createDataAssetsDataStream(dataStreamName);
+          searchInterface.createDataAssetsDataStream(
+              dataStreamName, dataAssetType, dataAssetIndex, language);
         }
       }
     } catch (IOException ex) {
@@ -312,7 +320,13 @@ public class DataInsightsApp extends AbstractNativeApplication {
   private WorkflowStats processDataAssets() {
     DataAssetsWorkflow workflow =
         new DataAssetsWorkflow(
-            timestamp, batchSize, backfill, dataAssetTypes, collectionDAO, searchRepository);
+            timestamp,
+            batchSize,
+            backfill,
+            dataAssetTypes,
+            collectionDAO,
+            searchRepository,
+            getSearchInterface());
     WorkflowStats workflowStats = workflow.getWorkflowStats();
 
     try {

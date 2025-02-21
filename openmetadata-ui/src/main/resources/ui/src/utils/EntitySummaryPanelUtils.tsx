@@ -39,11 +39,6 @@ import { stringToHTML } from './StringsUtils';
 
 const { Text } = Typography;
 
-export interface EntityNameProps {
-  name?: string;
-  displayName?: string;
-}
-
 export type SummaryListItem = Column | Field | Chart | Task | MlFeature;
 
 export interface ListItemHighlights {
@@ -98,7 +93,10 @@ export const getTitle = (
       </div>
     </Link>
   ) : (
-    <Text className="entity-title" data-testid="entity-title">
+    <Text
+      className="entity-title"
+      data-testid="entity-title"
+      ellipsis={{ tooltip: true }}>
       {title}
     </Text>
   );

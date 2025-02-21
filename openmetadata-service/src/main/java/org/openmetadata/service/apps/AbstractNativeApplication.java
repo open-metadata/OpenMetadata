@@ -1,7 +1,7 @@
 package org.openmetadata.service.apps;
 
-import static org.openmetadata.service.apps.scheduler.AbstractOmAppJobListener.JOB_LISTENER_NAME;
 import static org.openmetadata.service.apps.scheduler.AppScheduler.APP_NAME;
+import static org.openmetadata.service.apps.scheduler.OmAppJobListener.JOB_LISTENER_NAME;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.NO_MANUAL_TRIGGER_ERR;
 import static org.openmetadata.service.resources.apps.AppResource.SCHEDULED_TYPES;
 
@@ -105,7 +105,7 @@ public class AbstractNativeApplication implements NativeApplication {
     AppRuntime runtime = JsonUtils.convertValue(app.getRuntime(), ScheduledExecutionContext.class);
     validateServerExecutableApp(runtime);
     // Schedule New Application Run
-    AppScheduler.getInstance().addApplicationSchedule(app);
+    AppScheduler.getInstance().scheduleApplication(app);
   }
 
   public void scheduleExternal() {

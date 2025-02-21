@@ -54,6 +54,7 @@ from metadata.generated.schema.api.data.createStoredProcedure import (
 )
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.api.data.createTopic import CreateTopicRequest
+from metadata.generated.schema.api.docStore.createDocument import CreateDocumentRequest
 from metadata.generated.schema.api.domains.createDataProduct import (
     CreateDataProductRequest,
 )
@@ -91,6 +92,7 @@ from metadata.generated.schema.api.services.createStorageService import (
 from metadata.generated.schema.api.services.ingestionPipelines.createIngestionPipeline import (
     CreateIngestionPipelineRequest,
 )
+from metadata.generated.schema.api.teams.createPersona import CreatePersonaRequest
 from metadata.generated.schema.api.teams.createRole import CreateRoleRequest
 from metadata.generated.schema.api.teams.createTeam import CreateTeamRequest
 from metadata.generated.schema.api.teams.createUser import CreateUserRequest
@@ -136,6 +138,7 @@ from metadata.generated.schema.entity.data.searchIndex import SearchIndex
 from metadata.generated.schema.entity.data.storedProcedure import StoredProcedure
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.data.topic import Topic
+from metadata.generated.schema.entity.docStore.document import Document
 from metadata.generated.schema.entity.domains.dataProduct import DataProduct
 from metadata.generated.schema.entity.domains.domain import Domain
 from metadata.generated.schema.entity.feed.suggestion import Suggestion
@@ -155,6 +158,7 @@ from metadata.generated.schema.entity.services.mlmodelService import MlModelServ
 from metadata.generated.schema.entity.services.pipelineService import PipelineService
 from metadata.generated.schema.entity.services.searchService import SearchService
 from metadata.generated.schema.entity.services.storageService import StorageService
+from metadata.generated.schema.entity.teams.persona import Persona
 from metadata.generated.schema.entity.teams.role import Role
 from metadata.generated.schema.entity.teams.team import Team
 from metadata.generated.schema.entity.teams.user import AuthenticationMechanism, User
@@ -198,6 +202,8 @@ ROUTES = {
     CreateAPIEndpointRequest.__name__: "/apiEndpoints",
     APICollection.__name__: "/apiCollections",
     CreateAPICollectionRequest.__name__: "/apiCollections",
+    Document.__name__: "/docStore",
+    CreateDocumentRequest.__name__: "/docStore",
     # Classifications
     Tag.__name__: "/tags",
     CreateTagRequest.__name__: "/tags",
@@ -213,6 +219,8 @@ ROUTES = {
     CreateTeamRequest.__name__: "/teams",
     User.__name__: "/users",
     CreateUserRequest.__name__: "/users",
+    Persona.__name__: "/personas",
+    CreatePersonaRequest.__name__: "/personas",
     AuthenticationMechanism.__name__: "/users/auth-mechanism",
     Bot.__name__: "/bots",
     CreateBot.__name__: "/bots",

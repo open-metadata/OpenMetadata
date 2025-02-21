@@ -51,7 +51,9 @@ import {
 import { settingClick } from '../../utils/sidebar';
 
 // use the admin user to login
-test.use({ storageState: 'playwright/.auth/admin.json' });
+test.use({
+  storageState: 'playwright/.auth/admin.json',
+});
 
 const entities = [
   TableClass,
@@ -84,7 +86,8 @@ for (const EntityClass of entities) {
   test(`Lineage creation from ${defaultEntity.getType()} entity`, async ({
     browser,
   }) => {
-    test.slow(true);
+    // 5 minutes to avoid test timeout happening some times in AUTs
+    test.setTimeout(300_000);
 
     const { page } = await createNewPage(browser);
     const { currentEntity, entities, cleanup } = await setupEntitiesForLineage(
@@ -92,58 +95,70 @@ for (const EntityClass of entities) {
       defaultEntity
     );
 
-    await test.step('Should create lineage for the entity', async () => {
-      await redirectToHomePage(page);
-      await currentEntity.visitEntityPage(page);
-      await visitLineageTab(page);
-      await verifyColumnLayerInactive(page);
-      await editLineage(page);
-      await performZoomOut(page);
-      for (const entity of entities) {
-        await connectEdgeBetweenNodes(page, currentEntity, entity);
-      }
+    try {
+      await test.step('Should create lineage for the entity', async () => {
+        await redirectToHomePage(page);
+        await currentEntity.visitEntityPage(page);
+        await visitLineageTab(page);
+        await verifyColumnLayerInactive(page);
+        await editLineage(page);
+        await performZoomOut(page);
+        for (const entity of entities) {
+          await connectEdgeBetweenNodes(page, currentEntity, entity);
+        }
 
-      await redirectToHomePage(page);
-      await currentEntity.visitEntityPage(page);
-      await visitLineageTab(page);
-      await page
-        .locator('.react-flow__controls-fitview')
-        .dispatchEvent('click');
+        await redirectToHomePage(page);
+        await currentEntity.visitEntityPage(page);
+        await visitLineageTab(page);
+        await page.click('[data-testid="edit-lineage"]');
+        await page
+          .locator('.react-flow__controls-fitview')
+          .dispatchEvent('click');
 
-      for (const entity of entities) {
-        await verifyNodePresent(page, entity);
-      }
-    });
+        for (const entity of entities) {
+          await verifyNodePresent(page, entity);
+        }
+        await page.click('[data-testid="edit-lineage"]');
+      });
 
-    await test.step('Should create pipeline between entities', async () => {
-      await editLineage(page);
-      await performZoomOut(page);
+      await test.step('Should create pipeline between entities', async () => {
+        await redirectToHomePage(page);
+        await currentEntity.visitEntityPage(page);
+        await visitLineageTab(page);
+        await editLineage(page);
+        await page
+          .locator('.react-flow__controls-fitview')
+          .dispatchEvent('click');
 
-      for (const entity of entities) {
-        await applyPipelineFromModal(page, currentEntity, entity, pipeline);
-      }
-    });
+        for (const entity of entities) {
+          await applyPipelineFromModal(page, currentEntity, entity, pipeline);
+        }
+      });
 
-    await test.step('Verify Lineage Export CSV', async () => {
-      await redirectToHomePage(page);
-      await currentEntity.visitEntityPage(page);
-      await visitLineageTab(page);
-      await verifyExportLineageCSV(page, currentEntity, entities, pipeline);
-    });
+      await test.step('Verify Lineage Export CSV', async () => {
+        await redirectToHomePage(page);
+        await currentEntity.visitEntityPage(page);
+        await visitLineageTab(page);
+        await verifyExportLineageCSV(page, currentEntity, entities, pipeline);
+      });
 
-    await test.step('Remove lineage between nodes for the entity', async () => {
-      await redirectToHomePage(page);
-      await currentEntity.visitEntityPage(page);
-      await visitLineageTab(page);
-      await editLineage(page);
-      await performZoomOut(page);
+      await test.step(
+        'Remove lineage between nodes for the entity',
+        async () => {
+          await redirectToHomePage(page);
+          await currentEntity.visitEntityPage(page);
+          await visitLineageTab(page);
+          await editLineage(page);
+          await performZoomOut(page);
 
-      for (const entity of entities) {
-        await deleteEdge(page, currentEntity, entity);
-      }
-    });
-
-    await cleanup();
+          for (const entity of entities) {
+            await deleteEdge(page, currentEntity, entity);
+          }
+        }
+      );
+    } finally {
+      await cleanup();
+    }
   });
 }
 
@@ -384,6 +399,8 @@ test('Verify function data in edge drawer', async ({ browser }) => {
 });
 
 test('Verify global lineage config', async ({ browser }) => {
+  test.slow(true);
+
   const { page } = await createNewPage(browser);
   const { apiContext, afterAction } = await getApiContext(page);
   const table = new TableClass();

@@ -37,7 +37,7 @@ public class FeedMessageDecorator implements MessageDecorator<FeedMessage> {
 
   @Override
   public String getAddMarker() {
-    return "<span class=\"diff-added\">";
+    return "<span data-diff='true' class=\"diff-added\">";
   }
 
   @Override
@@ -47,7 +47,7 @@ public class FeedMessageDecorator implements MessageDecorator<FeedMessage> {
 
   @Override
   public String getRemoveMarker() {
-    return "<span class=\"diff-removed\">";
+    return "<span data-diff='true' class=\"diff-removed\">";
   }
 
   @Override

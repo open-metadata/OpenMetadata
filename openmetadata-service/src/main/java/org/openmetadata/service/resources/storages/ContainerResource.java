@@ -59,6 +59,7 @@ import org.openmetadata.service.util.ResultList;
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "containers")
 public class ContainerResource extends EntityResource<Container, ContainerRepository> {
+  private final ContainerMapper mapper = new ContainerMapper();
   public static final String COLLECTION_PATH = "v1/containers/";
   static final String FIELDS =
       "parent,children,dataModel,owners,tags,followers,extension,domain,sourceHash";
@@ -239,7 +240,8 @@ public class ContainerResource extends EntityResource<Container, ContainerReposi
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateContainer create) {
-    Container container = getContainer(create, securityContext.getUserPrincipal().getName());
+    Container container =
+        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, container);
   }
 
@@ -320,7 +322,8 @@ public class ContainerResource extends EntityResource<Container, ContainerReposi
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateContainer create) {
-    Container container = getContainer(create, securityContext.getUserPrincipal().getName());
+    Container container =
+        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, container);
   }
 
@@ -544,18 +547,38 @@ public class ContainerResource extends EntityResource<Container, ContainerReposi
     return restoreEntity(uriInfo, securityContext, restore.getId());
   }
 
-  private Container getContainer(CreateContainer create, String user) {
-    return repository
-        .copy(new Container(), create, user)
-        .withService(getEntityReference(Entity.STORAGE_SERVICE, create.getService()))
-        .withParent(create.getParent())
-        .withDataModel(create.getDataModel())
-        .withPrefix(create.getPrefix())
-        .withNumberOfObjects(create.getNumberOfObjects())
-        .withSize(create.getSize())
-        .withFullPath(create.getFullPath())
-        .withFileFormats(create.getFileFormats())
-        .withSourceUrl(create.getSourceUrl())
-        .withSourceHash(create.getSourceHash());
+  @GET
+  @Path("/name/{fqn}/children")
+  @Operation(
+      operationId = "listContainerChildren",
+      summary = "List children containers",
+      description = "Get a list of children containers with pagination.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "List of children containers",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ContainerList.class)))
+      })
+  public ResultList<Container> listChildren(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Fully qualified name of the container") @PathParam("fqn")
+          String fqn,
+      @Parameter(
+              description = "Limit the number of children returned. (1 to 1000000, default = 10)")
+          @DefaultValue("10")
+          @Min(0)
+          @Max(1000000)
+          @QueryParam("limit")
+          Integer limit,
+      @Parameter(description = "Returns list of children after the given offset")
+          @DefaultValue("0")
+          @QueryParam("offset")
+          @Min(0)
+          Integer offset) {
+    return repository.listChildren(fqn, limit, offset);
   }
 }

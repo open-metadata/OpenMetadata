@@ -193,11 +193,13 @@ class MetricsTest(TestCase):
             profiler_interface=self.sqa_profiler_interface,
         )
         res = profiler.compute_metrics()._column_results
-        assert (
-            res.get(User.dob.name).get(Metrics.MIN.name) == "1982-02-02 00:00:00.000000"
+        assert res.get(User.dob.name).get(Metrics.MIN.name) == datetime.datetime(
+            1982, 2, 2
         )
-        assert res.get(User.tob.name).get(Metrics.MIN.name) == "09:03:25.000000"
-        assert res.get(User.doe.name).get(Metrics.MIN.name) == "2009-11-11"
+        assert res.get(User.tob.name).get(Metrics.MIN.name) == datetime.time(9, 3, 25)
+        assert res.get(User.doe.name).get(Metrics.MIN.name) == datetime.date(
+            2009, 11, 11
+        )
 
     def test_latest_time(self):
         """
@@ -209,11 +211,13 @@ class MetricsTest(TestCase):
             profiler_interface=self.sqa_profiler_interface,
         )
         res = profiler.compute_metrics()._column_results
-        assert (
-            res.get(User.dob.name).get(Metrics.MAX.name) == "1992-05-17 00:00:00.000000"
+        assert res.get(User.dob.name).get(Metrics.MAX.name) == datetime.datetime(
+            1992, 5, 17
         )
-        assert res.get(User.tob.name).get(Metrics.MAX.name) == "11:02:32.000000"
-        assert res.get(User.doe.name).get(Metrics.MAX.name) == "2020-01-12"
+        assert res.get(User.tob.name).get(Metrics.MAX.name) == datetime.time(11, 2, 32)
+        assert res.get(User.doe.name).get(Metrics.MAX.name) == datetime.date(
+            2020, 1, 12
+        )
 
     def test_null_count(self):
         """

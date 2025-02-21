@@ -89,7 +89,6 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
     quoteFqn = true;
     supportsSearch = true;
     renameAllowed = true;
-    parent = true;
   }
 
   @Override
@@ -200,7 +199,7 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
           .withTags(
               getTagLabels(
                   printer, csvRecord, List.of(Pair.of(7, TagLabel.TagSource.CLASSIFICATION))))
-          .withReviewers(getOwners(printer, csvRecord, 8))
+          .withReviewers(getReviewers(printer, csvRecord, 8))
           .withOwners(getOwners(printer, csvRecord, 9))
           .withStatus(getTermStatus(printer, csvRecord))
           .withExtension(getExtension(printer, csvRecord, 11));
@@ -386,7 +385,7 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
 
     @Transaction
     @Override
-    public void entitySpecificUpdate() {
+    public void entitySpecificUpdate(boolean consolidatingChanges) {
       updateName(original, updated);
       // Mutually exclusive cannot be updated
       updated.setMutuallyExclusive(original.getMutuallyExclusive());

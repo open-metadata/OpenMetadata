@@ -10,15 +10,20 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import test, { expect } from '@playwright/test';
+import { expect, Page, test as base } from '@playwright/test';
+import { EDIT_USER_FOR_TEAM_RULES } from '../../constant/permission';
 import { GlobalSettingOptions } from '../../constant/settings';
+import { PolicyClass } from '../../support/access-control/PoliciesClass';
+import { RolesClass } from '../../support/access-control/RolesClass';
 import { EntityTypeEndpoint } from '../../support/entity/Entity.interface';
 import { TableClass } from '../../support/entity/TableClass';
 import { TeamClass } from '../../support/team/TeamClass';
 import { UserClass } from '../../support/user/UserClass';
+import { performAdminLogin } from '../../utils/admin';
 import {
   createNewPage,
   descriptionBox,
+  descriptionBoxReadOnly,
   getApiContext,
   redirectToHomePage,
   toastNotification,
@@ -28,6 +33,8 @@ import { addMultiOwner } from '../../utils/entity';
 import { settingClick } from '../../utils/sidebar';
 import {
   addTeamOwnerToEntity,
+  addUserInTeam,
+  checkTeamTabCount,
   createTeam,
   hardDeleteTeam,
   searchTeam,
@@ -35,10 +42,15 @@ import {
   verifyAssetsInTeamsPage,
 } from '../../utils/team';
 
-// use the admin user to login
-test.use({ storageState: 'playwright/.auth/admin.json' });
-
+const id = uuid();
+const dataConsumerUser = new UserClass();
+const editOnlyUser = new UserClass(); // this user will have only editUser permission in team
+let team = new TeamClass();
+const team2 = new TeamClass();
+const policy = new PolicyClass();
+const role = new RolesClass();
 const user = new UserClass();
+const user2 = new UserClass();
 const userName = user.data.email.split('@')[0];
 
 let teamDetails: {
@@ -55,7 +67,28 @@ let teamDetails: {
   updatedEmail: `pwteamUpdated${uuid()}@example.com`,
 };
 
+const test = base.extend<{
+  editOnlyUserPage: Page;
+  dataConsumerPage: Page;
+}>({
+  editOnlyUserPage: async ({ browser }, use) => {
+    const page = await browser.newPage();
+    await editOnlyUser.login(page);
+    await use(page);
+    await page.close();
+  },
+  dataConsumerPage: async ({ browser }, use) => {
+    const page = await browser.newPage();
+    await dataConsumerUser.login(page);
+    await use(page);
+    await page.close();
+  },
+});
+
 test.describe('Teams Page', () => {
+  // use the admin user to login
+  test.use({ storageState: 'playwright/.auth/admin.json' });
+
   test.slow(true);
 
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
@@ -81,7 +114,7 @@ test.describe('Teams Page', () => {
 
   test('Teams Page Flow', async ({ page }) => {
     await test.step('Create a new team', async () => {
-      await settingClick(page, GlobalSettingOptions.TEAMS);
+      await checkTeamTabCount(page);
       await page.waitForLoadState('networkidle');
 
       await page.waitForSelector('[data-testid="add-team"]');
@@ -272,7 +305,9 @@ test.describe('Teams Page', () => {
 
       // Validating the updated description
       await expect(
-        page.locator('[data-testid="asset-description-container"] p')
+        page.locator(
+          `[data-testid="asset-description-container"] ${descriptionBoxReadOnly}`
+        )
       ).toContainText(updatedDescription);
     });
 
@@ -634,5 +669,201 @@ test.describe('Teams Page', () => {
     ).not.toBeVisible();
 
     await afterAction();
+  });
+});
+
+test.describe('Teams Page with EditUser Permission', () => {
+  test.slow(true);
+
+  test.beforeAll('Setup pre-requests', async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    await editOnlyUser.create(apiContext);
+
+    const id = uuid();
+    await policy.create(apiContext, EDIT_USER_FOR_TEAM_RULES);
+    await role.create(apiContext, [policy.responseData.name]);
+
+    team = new TeamClass({
+      name: `PW%edit-user-team-${id}`,
+      displayName: `PW Edit User Team ${id}`,
+      description: 'playwright edit user team description',
+      teamType: 'Group',
+      users: [editOnlyUser.responseData.id],
+      defaultRoles: role.responseData.id ? [role.responseData.id] : [],
+    });
+    await team.create(apiContext);
+    await team2.create(apiContext);
+    await user.create(apiContext);
+    await user2.create(apiContext);
+    await afterAction();
+  });
+
+  test.afterAll('Cleanup', async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    await user.delete(apiContext);
+    await user2.delete(apiContext);
+    await editOnlyUser.delete(apiContext);
+    await team.delete(apiContext);
+    await team2.delete(apiContext);
+    await policy.delete(apiContext);
+    await role.delete(apiContext);
+    await afterAction();
+  });
+
+  test.beforeEach('Visit Home Page', async ({ editOnlyUserPage }) => {
+    await redirectToHomePage(editOnlyUserPage);
+    await team2.visitTeamPage(editOnlyUserPage);
+  });
+
+  test('Add and Remove User for Team', async ({ editOnlyUserPage }) => {
+    await test.step('Add user in Team from the placeholder', async () => {
+      await addUserInTeam(editOnlyUserPage, user);
+    });
+
+    await test.step('Add user in Team for the header manage area', async () => {
+      await addUserInTeam(editOnlyUserPage, user2);
+    });
+
+    await test.step('Remove user from Team', async () => {
+      await editOnlyUserPage
+        .getByRole('row', {
+          name: `${user.data.firstName.slice(0, 1).toUpperCase()} ${
+            user.data.firstName
+          }.`,
+        })
+        .getByTestId('remove-user-btn')
+        .click();
+
+      const userResponse = editOnlyUserPage.waitForResponse(
+        '/api/v1/users?fields=**'
+      );
+      await editOnlyUserPage.getByRole('button', { name: 'Confirm' }).click();
+      await userResponse;
+
+      await expect(
+        editOnlyUserPage.locator(`[data-testid="${userName.toLowerCase()}"]`)
+      ).not.toBeVisible();
+    });
+  });
+});
+
+test.describe('Teams Page with Data Consumer User', () => {
+  test.slow(true);
+
+  test.beforeAll('Setup pre-requests', async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    await dataConsumerUser.create(apiContext);
+    await user.create(apiContext);
+    await policy.create(apiContext, EDIT_USER_FOR_TEAM_RULES);
+    await role.create(apiContext, [policy.responseData.name]);
+
+    team = new TeamClass({
+      name: `PW%-data-consumer-team-${id}`,
+      displayName: `PW Data Consumer Team ${id}`,
+      description: 'playwright data consumer team description',
+      teamType: 'Group',
+      users: [user.responseData.id],
+      defaultRoles: role.responseData.id ? [role.responseData.id] : [],
+    });
+    await team.create(apiContext);
+    await team2.create(apiContext);
+    await afterAction();
+  });
+
+  test.afterAll('Cleanup', async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    await dataConsumerUser.delete(apiContext);
+    await user.delete(apiContext);
+    await team.delete(apiContext);
+    await team2.delete(apiContext);
+    await afterAction();
+  });
+
+  test.beforeEach('Visit Home Page', async ({ dataConsumerPage }) => {
+    await redirectToHomePage(dataConsumerPage);
+  });
+
+  test('Should not have edit access on team page with no data available', async ({
+    dataConsumerPage,
+  }) => {
+    await team2.visitTeamPage(dataConsumerPage);
+
+    await expect(
+      dataConsumerPage.getByTestId('edit-team-name')
+    ).not.toBeVisible();
+    await expect(dataConsumerPage.getByTestId('add-domain')).not.toBeVisible();
+    await expect(dataConsumerPage.getByTestId('edit-owner')).not.toBeVisible();
+    await expect(dataConsumerPage.getByTestId('edit-email')).not.toBeVisible();
+    await expect(
+      dataConsumerPage.getByTestId('edit-team-subscription')
+    ).not.toBeVisible();
+    await expect(
+      dataConsumerPage.getByTestId('manage-button')
+    ).not.toBeVisible();
+
+    await expect(dataConsumerPage.getByTestId('join-teams')).toBeVisible();
+
+    // User Tab
+    await expect(
+      dataConsumerPage.getByTestId('add-new-user')
+    ).not.toBeVisible();
+    await expect(
+      dataConsumerPage.getByTestId('permission-error-placeholder')
+    ).toBeVisible();
+
+    // Asset Tab
+    const assetResponse = dataConsumerPage.waitForResponse(
+      '/api/v1/search/query?**'
+    );
+    await dataConsumerPage.getByTestId('assets').click();
+    await assetResponse;
+
+    await expect(
+      dataConsumerPage.getByTestId('add-placeholder-button')
+    ).not.toBeVisible();
+    await expect(
+      dataConsumerPage.getByTestId('no-data-placeholder')
+    ).toBeVisible();
+
+    // Role Tab
+    await dataConsumerPage.getByTestId('roles').click();
+
+    await expect(
+      dataConsumerPage.getByTestId('add-placeholder-button')
+    ).not.toBeVisible();
+    await expect(
+      dataConsumerPage.getByTestId('permission-error-placeholder')
+    ).toBeVisible();
+
+    // Policies Tab
+    await dataConsumerPage.getByTestId('policies').click();
+
+    await expect(
+      dataConsumerPage.getByTestId('add-placeholder-button')
+    ).not.toBeVisible();
+    await expect(
+      dataConsumerPage.getByTestId('permission-error-placeholder')
+    ).toBeVisible();
+  });
+
+  test('Should not have edit access on team page with data available', async ({
+    dataConsumerPage,
+  }) => {
+    await team.visitTeamPage(dataConsumerPage);
+
+    // User Tab
+    await expect(
+      dataConsumerPage.getByTestId('add-new-user')
+    ).not.toBeVisible();
+
+    // Role Tab
+    await dataConsumerPage.getByTestId('roles').click();
+
+    await expect(dataConsumerPage.getByTestId('add-role')).not.toBeVisible();
+
+    // Policies Tab
+    await dataConsumerPage.getByTestId('policies').click();
+
+    await expect(dataConsumerPage.getByTestId('add-policy')).not.toBeVisible();
   });
 });

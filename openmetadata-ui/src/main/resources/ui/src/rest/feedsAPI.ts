@@ -152,12 +152,6 @@ export const updatePost = async (
   return response.data;
 };
 
-export const getTask = async (taskID: string) => {
-  const response = await APIClient.get<Thread>(`/feed/tasks/${taskID}`);
-
-  return response.data;
-};
-
 export const updateTask = (
   operation: TaskOperation,
   taskId: string,

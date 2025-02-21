@@ -78,6 +78,12 @@ export const EntityExportModalProvider = ({
     }
     try {
       setDownloading(true);
+      // assigning the job data to ref here, as exportData.onExport may take time to return the data
+      // and websocket connection may be respond before that, so we need to keep the job data in ref
+      // to handle the download
+      csvExportJobRef.current = {
+        fileName: fileName,
+      };
       const data = await exportData.onExport(exportData.name);
 
       if (isString(data)) {
@@ -114,6 +120,10 @@ export const EntityExportModalProvider = ({
   const handleCSVExportJobUpdate = (
     response: Partial<CSVExportWebsocketResponse>
   ) => {
+    // If multiple tab is open, then we need to check if the tab has active job or not before initiating the download
+    if (!csvExportJobRef.current) {
+      return;
+    }
     const updatedCSVExportJob: Partial<CSVExportJob> = {
       ...response,
       ...csvExportJobRef.current,
