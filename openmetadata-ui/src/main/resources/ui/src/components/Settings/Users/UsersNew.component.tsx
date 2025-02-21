@@ -55,15 +55,17 @@ const Users = ({
   queryFilters,
   updateUserDetails,
 }: Props) => {
-  const { tab: activeTab = UserPageTabs.ACTIVITY } =
-    useParams<{ tab: UserPageTabs }>();
+  const {
+    tab: activeTab = UserPageTabs.ACTIVITY,
+    subTab = ActivityFeedTabs.TASKS,
+  } = useParams<{ tab: UserPageTabs; subTab: ActivityFeedTabs }>();
   const { fqn: decodedUsername } = useFqn();
   const [assetCount, setAssetCount] = useState<number>(0);
   const { isAdminUser } = useAuth();
   const history = useHistory();
   const location = useCustomLocation();
   const { currentUser } = useApplicationStore();
-
+  const [currentTab, setCurrentTab] = useState<UserPageTabs>(activeTab);
   const [previewAsset, setPreviewAsset] =
     useState<EntityDetailsObjectInterface>();
 
@@ -94,14 +96,14 @@ const Users = ({
   };
 
   const activeTabHandler = (activeKey: string) => {
-    // To reset search params appends from other page for proper navigation
     location.search = '';
-    if (activeKey !== activeTab) {
+    if (activeKey !== currentTab) {
       history.push({
         pathname: getUserPath(decodedUsername, activeKey),
         search: location.search,
       });
     }
+    setCurrentTab(activeKey as UserPageTabs);
   };
 
   const handleAssetClick = useCallback((asset) => {
@@ -131,7 +133,7 @@ const Users = ({
       <Row
         className="user-page-layout"
         gutter={[20, 0]}
-        key={activeTab}
+        key={currentTab}
         wrap={false}>
         <Col flex="auto">
           <div className="user-layout-scroll">
@@ -156,16 +158,20 @@ const Users = ({
         )}
       </Row>
     ),
-    [previewAsset, assetCount, handleAssetClick, setPreviewAsset, activeTab]
+    [previewAsset, assetCount, handleAssetClick, setPreviewAsset, currentTab]
   );
-
+  useEffect(() => {
+    if (subTab === ActivityFeedTabs.MENTIONS) {
+      setCurrentTab(UserPageTabs.TASK);
+    }
+  }, [subTab]);
   const tabs = useMemo(
     () => [
       {
         label: (
           <TabsLabel
             id={UserPageTabs.ACTIVITY}
-            isActive={activeTab === UserPageTabs.ACTIVITY}
+            isActive={currentTab === UserPageTabs.ACTIVITY}
             name={t('label.activity')}
           />
         ),
@@ -186,7 +192,7 @@ const Users = ({
         label: (
           <TabsLabel
             id={UserPageTabs.TASK}
-            isActive={activeTab === UserPageTabs.TASK}
+            isActive={currentTab === UserPageTabs.TASK}
             name={t('label.task-plural')}
           />
         ),
@@ -261,12 +267,13 @@ const Users = ({
         : []),
     ],
     [
-      activeTab,
+      currentTab,
       userData.id,
       decodedUsername,
       setPreviewAsset,
       tabDataRender,
       disableFields,
+      subTab,
     ]
   );
 
@@ -338,7 +345,7 @@ const Users = ({
           <Row className="mb-sm w-full">
             <div className="tabs-container d-flex justify-center">
               <Tabs
-                activeKey={activeTab}
+                activeKey={currentTab}
                 className="user-page-tabs-new"
                 data-testid="tabs"
                 items={tabs.map((tab) => ({
@@ -356,7 +363,7 @@ const Users = ({
           </Row>
           <Row gutter={[16, 16]}>
             <Col span={24}>
-              {tabs.find((tab) => tab.key === activeTab)?.children}
+              {tabs.find((tab) => tab.key === currentTab)?.children}
             </Col>
           </Row>
         </Col>
