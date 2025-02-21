@@ -33,6 +33,7 @@ import static org.openmetadata.service.search.SearchClient.UPDATE_ADDED_DELETE_G
 import static org.openmetadata.service.search.SearchClient.UPDATE_CERTIFICATION_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.UPDATE_PROPAGATED_ENTITY_REFERENCE_FIELD_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.UPDATE_TAGS_FIELD_SCRIPT;
+import static org.openmetadata.service.search.SearchUtils.isConnectedVia;
 import static org.openmetadata.service.search.models.IndexMapping.indexNameSeparator;
 import static org.openmetadata.service.util.EntityUtil.compareEntityReferenceById;
 
@@ -1097,7 +1098,7 @@ public class SearchRepository {
             .withDownstreamDepth(downstreamDepth)
             .withQueryFilter(queryFilter)
             .withIncludeDeleted(deleted)
-            .withEntityType(entityType));
+            .withIsConnectedVia(isConnectedVia(entityType)));
   }
 
   public Response searchByField(String fieldName, String fieldValue, String index)

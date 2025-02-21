@@ -4,6 +4,7 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.search.SearchClient.FQN_FIELD;
 import static org.openmetadata.service.search.SearchClient.GLOBAL_SEARCH_ALIAS;
 import static org.openmetadata.service.search.SearchUtils.LINEAGE_AGGREGATION;
+import static org.openmetadata.service.search.SearchUtils.getLineageDirection;
 import static org.openmetadata.service.search.SearchUtils.getRelationshipRef;
 import static org.openmetadata.service.search.SearchUtils.getUpstreamLineageListIfExist;
 import static org.openmetadata.service.search.SearchUtils.paginateUpstreamEntities;
@@ -29,6 +30,7 @@ import org.openmetadata.schema.api.lineage.SearchLineageRequest;
 import org.openmetadata.schema.api.lineage.SearchLineageResult;
 import org.openmetadata.schema.type.LayerPaging;
 import org.openmetadata.schema.type.lineage.NodeInformation;
+import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
 public class ESLineageGraphBuilder {
@@ -104,7 +106,19 @@ public class ESLineageGraphBuilder {
       }
     }
 
-    fetchUpstreamNodesRecursively(lineageRequest, result, fqnSet, depth - 1);
+    // Pipeline only needs one call to get connect entities, so remaining other are
+    // just entities
+    if (Boolean.TRUE.equals(lineageRequest.getIsConnectedVia())) {
+      SearchLineageRequest newReq = JsonUtils.deepCopy(lineageRequest, SearchLineageRequest.class);
+      String directionValue = getLineageDirection(lineageRequest.getDirection(), false);
+      fetchUpstreamNodesRecursively(
+          newReq.withDirectionValue(directionValue).withIsConnectedVia(false),
+          result,
+          fqnSet,
+          depth - 1);
+    } else {
+      fetchUpstreamNodesRecursively(lineageRequest, result, fqnSet, depth - 1);
+    }
   }
 
   public SearchLineageResult getDownstreamLineage(SearchLineageRequest lineageRequest)
@@ -201,6 +215,18 @@ public class ESLineageGraphBuilder {
       }
     }
 
-    fetchDownstreamNodesRecursively(lineageRequest, result, fqnSet, depth - 1);
+    // Pipeline only needs one call to get connect entities, so remaining other are
+    // just entities
+    if (Boolean.TRUE.equals(lineageRequest.getIsConnectedVia())) {
+      SearchLineageRequest newReq = JsonUtils.deepCopy(lineageRequest, SearchLineageRequest.class);
+      String directionValue = getLineageDirection(lineageRequest.getDirection(), false);
+      fetchDownstreamNodesRecursively(
+          newReq.withDirectionValue(directionValue).withIsConnectedVia(false),
+          result,
+          fqnSet,
+          depth - 1);
+    } else {
+      fetchDownstreamNodesRecursively(lineageRequest, result, fqnSet, depth - 1);
+    }
   }
 }

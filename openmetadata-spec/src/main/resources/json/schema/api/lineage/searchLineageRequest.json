@@ -10,9 +10,9 @@
       "description": "Entity Fqn to search lineage",
       "type": "string"
     },
-    "entityType": {
-      "description": "Query Filter",
-      "type": "string"
+    "isConnectedVia": {
+      "description": "Connected Via",
+      "type": "boolean"
     },
     "direction": {
       "$ref": "./lineageDirection.json"

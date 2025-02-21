@@ -14,6 +14,7 @@
 package org.openmetadata.service.resources.lineage;
 
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
+import static org.openmetadata.service.search.SearchUtils.isConnectedVia;
 
 import es.org.elasticsearch.action.search.SearchResponse;
 import io.dropwizard.jersey.PATCH;
@@ -228,7 +229,7 @@ public class LineageResource {
                 .withDownstreamDepth(downstreamDepth)
                 .withQueryFilter(queryFilter)
                 .withIncludeDeleted(deleted)
-                .withEntityType(entityType)
+                .withIsConnectedVia(isConnectedVia(entityType))
                 .withLayerFrom(from)
                 .withLayerSize(size));
   }
@@ -283,7 +284,7 @@ public class LineageResource {
                 .withDownstreamDepth(downstreamDepth)
                 .withQueryFilter(queryFilter)
                 .withIncludeDeleted(deleted)
-                .withEntityType(entityType)
+                .withIsConnectedVia(isConnectedVia(entityType))
                 .withDirection(direction)
                 .withLayerFrom(from)
                 .withLayerSize(size));

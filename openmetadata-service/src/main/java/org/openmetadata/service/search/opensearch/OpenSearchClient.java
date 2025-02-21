@@ -855,7 +855,7 @@ public class OpenSearchClient implements SearchClient {
                 .withDirection(LineageDirection.DOWNSTREAM)
                 .withDirectionValue(
                     getLineageDirection(
-                        lineageRequest.getDirection(), lineageRequest.getEntityType())));
+                        lineageRequest.getDirection(), lineageRequest.getIsConnectedVia())));
     SearchLineageResult upstreamLineage =
         lineageGraphBuilder.getUpstreamLineage(
             lineageRequest
@@ -864,7 +864,7 @@ public class OpenSearchClient implements SearchClient {
                 .withDirection(LineageDirection.UPSTREAM)
                 .withDirectionValue(
                     getLineageDirection(
-                        lineageRequest.getDirection(), lineageRequest.getEntityType())));
+                        lineageRequest.getDirection(), lineageRequest.getIsConnectedVia())));
 
     // Here we are merging everything from downstream paging into upstream paging
     for (var nodeFromDownstream : result.getNodes().entrySet()) {
@@ -892,7 +892,7 @@ public class OpenSearchClient implements SearchClient {
               .withDownstreamDepth(downstreamDepth + 1)
               .withDirectionValue(
                   getLineageDirection(
-                      lineageRequest.getDirection(), lineageRequest.getEntityType())));
+                      lineageRequest.getDirection(), lineageRequest.getIsConnectedVia())));
     } else {
       return lineageGraphBuilder.getDownstreamLineage(
           lineageRequest
@@ -900,7 +900,7 @@ public class OpenSearchClient implements SearchClient {
               .withDownstreamDepth(downstreamDepth + 1)
               .withDirectionValue(
                   getLineageDirection(
-                      lineageRequest.getDirection(), lineageRequest.getEntityType())));
+                      lineageRequest.getDirection(), lineageRequest.getIsConnectedVia())));
     }
   }
 

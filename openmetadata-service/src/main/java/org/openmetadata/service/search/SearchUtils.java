@@ -59,21 +59,18 @@ public final class SearchUtils {
         .withPipelineEntityType(data.getPipelineEntityType());
   }
 
-  public static String getLineageDirection(LineageDirection direction, String entityType) {
-    boolean notPipelineOrStoredProcedure =
-        Boolean.FALSE.equals(entityType.equals(Entity.PIPELINE))
-            && Boolean.FALSE.equals(entityType.equals(Entity.STORED_PROCEDURE));
+  public static String getLineageDirection(LineageDirection direction, boolean isConnectedVia) {
     if (LineageDirection.UPSTREAM.equals(direction)) {
-      if (notPipelineOrStoredProcedure) {
-        return "fullyQualifiedName";
-      } else {
+      if (isConnectedVia) {
         return "upstreamLineage.pipeline.fullyQualifiedName";
+      } else {
+        return "fullyQualifiedName";
       }
     } else {
-      if (notPipelineOrStoredProcedure) {
-        return "upstreamLineage.fromEntity.fullyQualifiedName";
-      } else {
+      if (isConnectedVia) {
         return "upstreamLineage.pipeline.fullyQualifiedName";
+      } else {
+        return "upstreamLineage.fromEntity.fullyQualifiedName";
       }
     }
   }
@@ -109,6 +106,10 @@ public final class SearchUtils {
             elasticSearchConfiguration.getTruststorePassword(),
             "ElasticSearch")
         : null;
+  }
+
+  public static boolean isConnectedVia(String entityType) {
+    return Entity.PIPELINE.equals(entityType) || Entity.STORED_PROCEDURE.equals(entityType);
   }
 
   public static List<EsLineageData> paginateUpstreamEntities(
