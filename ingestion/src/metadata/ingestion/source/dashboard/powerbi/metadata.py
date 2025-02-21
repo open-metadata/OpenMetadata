@@ -171,7 +171,8 @@ class PowerbiSource(DashboardServiceSource):
         fetch all the workspace ids
         """
         groups = []
-        workspaces = self.client.api_client.fetch_all_workspaces()
+        filter_pattern = self.source_config.projectFilterPattern
+        workspaces = self.client.api_client.fetch_all_workspaces(filter_pattern)
         if workspaces:
             workspace_id_list = [workspace.id for workspace in workspaces]
 
