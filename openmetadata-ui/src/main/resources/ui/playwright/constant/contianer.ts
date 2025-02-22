@@ -10,20 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-/**
- * Event Based Entity Trigger.
- */
-export interface CustomSignalTrigger {
-    config?: Config;
-    type?:   string;
-}
+import { uuid } from '../utils/common';
 
-/**
- * Entity Event Trigger Configuration.
- */
-export interface Config {
-    /**
-     * The signal to be listened to.
-     */
-    signal: string;
-}
+export const CONTAINER_CHILDREN = Array.from({ length: 25 }, (_, i) => {
+  const id = uuid();
+
+  return {
+    name: `pw-container-children${i + 1}-${id}`,
+    displayName: `pw-container-children-${i + 1}-${id}`,
+  };
+});
