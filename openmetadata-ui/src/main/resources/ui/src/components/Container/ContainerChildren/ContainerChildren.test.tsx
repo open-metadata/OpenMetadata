@@ -13,9 +13,8 @@
 import { render, screen } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { TabSpecificField } from '../../../enums/entity.enum';
 import { usePaging } from '../../../hooks/paging/usePaging';
-import { getContainerByName } from '../../../rest/storageAPI';
+import { getContainerChildrenByName } from '../../../rest/storageAPI';
 import ContainerChildren from './ContainerChildren';
 
 jest.mock('../../common/NextPrevious/NextPrevious', () => {
@@ -54,6 +53,7 @@ jest.mock('../../Customization/GenericTab/GenericTab', () => ({
 jest.mock('../../../rest/storageAPI');
 jest.mock('../../../hooks/paging/usePaging', () => ({
   usePaging: jest.fn().mockImplementation(() => ({
+    pageSize: 15,
     paging: {
       total: 2,
     },
@@ -64,12 +64,10 @@ describe('ContainerChildren', () => {
   it('Should call fetch container function on load', () => {
     render(<ContainerChildren />, { wrapper: MemoryRouter });
 
-    expect(getContainerByName).toHaveBeenCalledWith(
-      '',
-      expect.objectContaining({
-        fields: TabSpecificField.CHILDREN,
-      })
-    );
+    expect(getContainerChildrenByName).toHaveBeenCalledWith('', {
+      limit: 15,
+      offset: 0,
+    });
   });
 
   it('Should render table with correct columns', () => {
@@ -87,8 +85,11 @@ describe('ContainerChildren', () => {
   });
 
   it('Should render container names as links', async () => {
-    (getContainerByName as jest.Mock).mockResolvedValue({
-      children: mockChildrenList,
+    (getContainerChildrenByName as jest.Mock).mockResolvedValue({
+      data: mockChildrenList,
+      paging: {
+        total: 2,
+      },
     });
     render(<ContainerChildren />, { wrapper: MemoryRouter });
 
