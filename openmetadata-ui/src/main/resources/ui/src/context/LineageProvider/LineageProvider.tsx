@@ -51,18 +51,16 @@ import EdgeInfoDrawer from '../../components/Entity/EntityInfoDrawer/EdgeInfoDra
 import EntityInfoDrawer from '../../components/Entity/EntityInfoDrawer/EntityInfoDrawer.component';
 import AddPipeLineModal from '../../components/Entity/EntityLineage/AppPipelineModel/AddPipeLineModal';
 import {
-  EdgeData,
-  EdgeTypeEnum,
   ElementLoadingState,
-  EntityReferenceChild,
   LineageConfig,
-  NodeIndexMap,
 } from '../../components/Entity/EntityLineage/EntityLineage.interface';
 import EntityLineageSidebar from '../../components/Entity/EntityLineage/EntityLineageSidebar.component';
 import NodeSuggestions from '../../components/Entity/EntityLineage/NodeSuggestions.component';
 import {
   EdgeDetails,
   EntityLineageResponse,
+  LineageData,
+  LineageEntityReference,
 } from '../../components/Lineage/Lineage.interface';
 import { SourceType } from '../../components/SearchedData/SearchedData.interface';
 import {
@@ -72,6 +70,7 @@ import {
 import { mockDatasetData } from '../../constants/mockTourData.constants';
 import { EntityLineageNodeType, EntityType } from '../../enums/entity.enum';
 import { AddLineage } from '../../generated/api/lineage/addLineage';
+import { LineageDirection } from '../../generated/api/lineage/lineageDirection';
 import { LineageSettings } from '../../generated/configuration/lineageSettings';
 import { LineageLayer } from '../../generated/settings/settings';
 import {
@@ -97,19 +96,19 @@ import {
   decodeLineageHandles,
   getAllTracedColumnEdge,
   getAllTracedNodes,
-  getChildMap,
   getClassifiedEdge,
   getConnectedNodesEdges,
+  getEdgeDataFromEdge,
   getELKLayoutedElements,
   getLineageEdge,
   getLineageEdgeForAPI,
   getLoadingStatusValue,
   getModalBodyText,
   getNewLineageConnectionDetails,
-  getPaginatedChildMap,
   getUpdatedColumnsFromEdge,
   getUpstreamDownstreamNodesEdges,
   onLoad,
+  parseLineageData,
   positionNodesUsingElk,
   removeLineageHandler,
 } from '../../utils/EntityLineageUtils';
@@ -151,6 +150,8 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     edges: [],
     entity: {} as EntityReference,
   });
+  const [lineageData, setLineageData] = useState<LineageData>();
+
   const [dataQualityLineage, setDataQualityLineage] =
     useState<EntityLineageResponse>();
   const [updatedEntityLineage, setUpdatedEntityLineage] =
@@ -190,8 +191,6 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
   const isFullScreen = queryParams.get('fullscreen') === 'true';
   const deletePressed = useKeyPress('Delete');
   const backspacePressed = useKeyPress('Backspace');
-  const [childMap, setChildMap] = useState<EntityReferenceChild>();
-  const [paginationData, setPaginationData] = useState({});
   const { showModal } = useEntityExportModalProvider();
 
   const lineageLayer = useMemo(() => {
@@ -202,30 +201,6 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
 
     return searchData.layers as LineageLayer[] | undefined;
   }, [location.search]);
-
-  const initLineageChildMaps = useCallback(
-    (
-      lineageData: EntityLineageResponse,
-      childMapObj: EntityReferenceChild | undefined,
-      paginationObj: Record<string, NodeIndexMap>
-    ) => {
-      if (lineageData && childMapObj) {
-        const { nodes: newNodes, edges } = getPaginatedChildMap(
-          lineageData,
-          childMapObj,
-          paginationObj,
-          lineageConfig.nodesPerLayer
-        );
-
-        setEntityLineage({
-          ...entityLineage,
-          nodes: newNodes,
-          edges: [...(entityLineage.edges ?? []), ...edges],
-        });
-      }
-    },
-    [entityLineage]
-  );
 
   const fetchDataQualityLineage = async (
     fqn: string,
@@ -256,56 +231,20 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
       setInit(false);
 
       try {
-        const res = await getLineageDataByFQN(
+        const res = await getLineageDataByFQN({
           fqn,
           entityType,
           config,
-          queryFilter
-        );
-        if (res) {
-          const { nodes = [], entity } = res;
-          const allNodes = uniqWith(
-            [...nodes, entity].filter(Boolean),
-            isEqual
-          );
+          queryFilter,
+        });
+        setLineageData(res);
 
-          if (
-            entityType !== EntityType.PIPELINE &&
-            entityType !== EntityType.STORED_PROCEDURE
-          ) {
-            const { map: childMapObj } = getChildMap(
-              { ...res, nodes: allNodes },
-              decodedFqn
-            );
-            setChildMap(childMapObj);
-            const { nodes: newNodes, edges: newEdges } = getPaginatedChildMap(
-              {
-                ...res,
-                nodes: allNodes,
-              },
-              childMapObj,
-              {},
-              config?.nodesPerLayer ?? 50
-            );
-
-            setEntityLineage({
-              ...res,
-              nodes: newNodes,
-              edges: [...(res.edges ?? []), ...newEdges],
-            });
-          } else {
-            setEntityLineage({
-              ...res,
-              nodes: allNodes,
-            });
-          }
-        } else {
-          showErrorToast(
-            t('server.entity-fetch-error', {
-              entity: t('label.lineage-data-lowercase'),
-            })
-          );
-        }
+        const { nodes, edges, entity } = parseLineageData(res, fqn);
+        setEntityLineage({
+          nodes,
+          edges,
+          entity,
+        });
       } catch (err) {
         showErrorToast(
           err as AxiosError,
@@ -318,7 +257,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
         setLoading(false);
       }
     },
-    [paginationData, queryFilter]
+    [queryFilter, decodedFqn]
   );
 
   const exportLineageData = useCallback(
@@ -343,38 +282,45 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
   }, [entityType, decodedFqn, lineageConfig, queryFilter]);
 
   const loadChildNodesHandler = useCallback(
-    async (node: SourceType, direction: EdgeTypeEnum) => {
+    async (node: SourceType, direction: LineageDirection) => {
       try {
-        const res = await getLineageDataByFQN(
-          node.fullyQualifiedName ?? '',
-          node.entityType ?? '',
-          {
-            upstreamDepth: direction === EdgeTypeEnum.UP_STREAM ? 1 : 0,
-            downstreamDepth: direction === EdgeTypeEnum.DOWN_STREAM ? 1 : 0,
+        const res = await getLineageDataByFQN({
+          fqn: node.fullyQualifiedName ?? '',
+          entityType: node.entityType ?? '',
+          config: {
+            upstreamDepth: direction === LineageDirection.Upstream ? 1 : 0,
+            downstreamDepth: direction === LineageDirection.Downstream ? 1 : 0,
             nodesPerLayer: lineageConfig.nodesPerLayer,
           }, // load only one level of child nodes
-          queryFilter
-        );
+          queryFilter,
+          direction,
+        });
 
-        const activeNode = nodes.find((n) => n.id === node.id);
-        if (activeNode) {
-          setActiveNode(activeNode);
-        }
+        const concatenatedLineageData = {
+          nodes: {
+            ...lineageData?.nodes,
+            ...res.nodes,
+          },
+          downstreamEdges: {
+            ...lineageData?.downstreamEdges,
+            ...res.downstreamEdges,
+          },
+          upstreamEdges: {
+            ...lineageData?.upstreamEdges,
+            ...res.upstreamEdges,
+          },
+        };
 
-        const allNodes = uniqWith(
-          [...(entityLineage?.nodes ?? []), ...(res.nodes ?? []), res.entity],
-          isEqual
-        );
-        const allEdges = uniqWith(
-          [...(entityLineage?.edges ?? []), ...(res.edges ?? [])],
-          isEqual
+        const { nodes: newNodes, edges: newEdges } = parseLineageData(
+          concatenatedLineageData,
+          node.fullyQualifiedName ?? ''
         );
 
         setEntityLineage((prev) => {
           return {
             ...prev,
-            nodes: allNodes,
-            edges: allEdges,
+            nodes: uniqWith([...(prev.nodes ?? []), ...newNodes], isEqual),
+            edges: uniqWith([...(prev.edges ?? []), ...newEdges], isEqual),
           };
         });
       } catch (err) {
@@ -448,15 +394,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
       return;
     }
 
-    const { data } = edge;
-
-    const edgeData: EdgeData = {
-      fromEntity: data.edge.fromEntity.type,
-      fromId: data.edge.fromEntity.id,
-      toEntity: data.edge.toEntity.type,
-      toId: data.edge.toEntity.id,
-    };
-
+    const edgeData = getEdgeDataFromEdge(edge);
     await removeLineageHandler(edgeData);
 
     const filteredEdges = (entityLineage.edges ?? []).filter(
@@ -536,14 +474,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
 
       await Promise.all(
         edgesToRemove.map(async (edge) => {
-          const { data } = edge;
-          const edgeData: EdgeData = {
-            fromEntity: data.edge.fromEntity.type,
-            fromId: data.edge.fromEntity.id,
-            toEntity: data.edge.toEntity.type,
-            toId: data.edge.toEntity.id,
-          };
-
+          const edgeData = getEdgeDataFromEdge(edge);
           await removeLineageHandler(edgeData);
 
           filteredEdges.push(
@@ -645,39 +576,77 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     setQueryFilter(query);
   }, []);
 
-  const selectLoadMoreNode = (node: Node) => {
-    const { pagination_data, edgeType } = node.data.node;
-    setPaginationData(
-      (prevState: {
-        [key: string]: { upstream: number[]; downstream: number[] };
-      }) => {
-        const { parentId, index } = pagination_data;
-        const updatedParentData = prevState[parentId] || {
-          upstream: [],
-          downstream: [],
-        };
-        const updatedIndexList =
-          edgeType === EdgeTypeEnum.DOWN_STREAM
-            ? {
-                upstream: updatedParentData.upstream,
-                downstream: [index],
-              }
-            : {
-                upstream: [index],
-                downstream: updatedParentData.downstream,
-              };
+  const selectLoadMoreNode = async (node: Node) => {
+    const { pagination_data, direction } = node.data.node;
+    const { parentId, index: from } = pagination_data;
 
-        const retnObj = {
-          ...prevState,
-          [parentId]: updatedIndexList,
-        };
-        if (entityLineage) {
-          initLineageChildMaps(entityLineage, childMap, retnObj);
-        }
+    // Find parent node to get its details
+    const parentNode = nodes.find((n) => n.id === parentId);
+    if (!parentNode) {
+      return;
+    }
 
-        return retnObj;
-      }
-    );
+    try {
+      const config: LineageConfig = {
+        ...lineageConfig,
+        upstreamDepth: direction === LineageDirection.Upstream ? 1 : 0,
+        downstreamDepth: direction === LineageDirection.Downstream ? 1 : 0,
+      };
+
+      const res = await getLineageDataByFQN({
+        fqn: parentNode.data.node.fullyQualifiedName,
+        entityType: parentNode.data.node.entityType,
+        config,
+        queryFilter,
+        from,
+        direction,
+      });
+
+      const concatenatedLineageData = {
+        nodes: {
+          ...lineageData?.nodes,
+          ...res.nodes,
+        },
+        downstreamEdges: {
+          ...lineageData?.downstreamEdges,
+          ...res.downstreamEdges,
+        },
+        upstreamEdges: {
+          ...lineageData?.upstreamEdges,
+          ...res.upstreamEdges,
+        },
+      };
+
+      const { nodes: newNodes, edges: newEdges } = parseLineageData(
+        concatenatedLineageData,
+        parentNode.data.node.fullyQualifiedName
+      );
+
+      setEntityLineage((prev) => {
+        // Filter out the load more node
+        const filteredNodes = (prev.nodes ?? []).filter(
+          (n) => n.id !== node.id
+        );
+
+        // Filter out the edge connected to load more node
+        const filteredEdges = (prev.edges ?? []).filter(
+          (e) => e.fromEntity.id !== node.id && e.toEntity.id !== node.id
+        );
+
+        return {
+          ...prev,
+          nodes: uniqWith([...filteredNodes, ...newNodes], isEqual),
+          edges: uniqWith([...filteredEdges, ...newEdges], isEqual),
+        };
+      });
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('server.entity-fetch-error', {
+          entity: t('label.lineage-data-lowercase'),
+        })
+      );
+    }
   };
 
   const onNodeClick = useCallback(
@@ -1044,7 +1013,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
   }, []);
 
   const onNodeCollapse = useCallback(
-    (node: Node | NodeProps, direction: EdgeTypeEnum) => {
+    (node: Node | NodeProps, direction: LineageDirection) => {
       const { nodeFqn, edges: connectedEdges } = getConnectedNodesEdges(
         node as Node,
         nodes,
@@ -1127,7 +1096,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
 
   const redrawLineage = useCallback(
     async (lineageData: EntityLineageResponse) => {
-      const allNodes = uniqWith(
+      const allNodes: LineageEntityReference[] = uniqWith(
         [
           ...(lineageData.nodes ?? []),
           ...(lineageData.entity ? [lineageData.entity] : []),
@@ -1373,7 +1342,6 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
 
   useEffect(() => {
     if (isTourOpen || isTourPage) {
-      setPaginationData({});
       setInit(true);
       setLoading(false);
       setEntityLineage(

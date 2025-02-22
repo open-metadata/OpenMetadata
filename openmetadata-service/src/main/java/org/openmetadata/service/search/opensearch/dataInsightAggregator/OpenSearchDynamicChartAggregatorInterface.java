@@ -1,7 +1,5 @@
 package org.openmetadata.service.search.opensearch.dataInsightAggregator;
 
-import static org.openmetadata.service.search.opensearch.OpenSearchClient.X_CONTENT_REGISTRY;
-
 import java.io.IOException;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
@@ -16,6 +14,7 @@ import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChartResultLi
 import org.openmetadata.schema.dataInsight.custom.FormulaHolder;
 import org.openmetadata.schema.dataInsight.custom.Function;
 import org.openmetadata.service.jdbi3.DataInsightSystemChartRepository;
+import org.openmetadata.service.search.opensearch.OsUtils;
 import org.openmetadata.service.security.policyevaluator.CompiledRule;
 import org.springframework.expression.Expression;
 import os.org.opensearch.action.search.SearchRequest;
@@ -189,7 +188,8 @@ public interface OpenSearchDynamicChartAggregatorInterface {
         XContentParser filterParser =
             XContentType.JSON
                 .xContent()
-                .createParser(X_CONTENT_REGISTRY, LoggingDeprecationHandler.INSTANCE, filter);
+                .createParser(
+                    OsUtils.osXContentRegistry, LoggingDeprecationHandler.INSTANCE, filter);
         QueryBuilder queryFilter = SearchSourceBuilder.fromXContent(filterParser).query();
         getDateHistogramByFormula(formula, queryFilter, aggregationBuilder, formulas);
       } else {
@@ -204,7 +204,7 @@ public interface OpenSearchDynamicChartAggregatorInterface {
       XContentParser filterParser =
           XContentType.JSON
               .xContent()
-              .createParser(X_CONTENT_REGISTRY, LoggingDeprecationHandler.INSTANCE, filter);
+              .createParser(OsUtils.osXContentRegistry, LoggingDeprecationHandler.INSTANCE, filter);
       QueryBuilder queryFilter = SearchSourceBuilder.fromXContent(filterParser).query();
       aggregationBuilder.subAggregation(
           AggregationBuilders.filter("filer", queryFilter).subAggregation(subAgg));

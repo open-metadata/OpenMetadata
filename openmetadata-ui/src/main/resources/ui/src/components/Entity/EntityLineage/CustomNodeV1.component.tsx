@@ -25,12 +25,11 @@ import {
 import { ReactComponent as IconTimesCircle } from '../../../assets/svg/ic-times-circle.svg';
 import { useLineageProvider } from '../../../context/LineageProvider/LineageProvider';
 import { EntityLineageNodeType } from '../../../enums/entity.enum';
+import { LineageDirection } from '../../../generated/api/lineage/lineageDirection';
 import { LineageLayer } from '../../../generated/configuration/lineageSettings';
-import { checkUpstreamDownstream } from '../../../utils/EntityLineageUtils';
 import './custom-node.less';
 import { getCollapseHandle, getExpandHandle } from './CustomNode.utils';
 import './entity-lineage.style.less';
-import { EdgeTypeEnum } from './EntityLineage.interface';
 import LineageNodeLabelV1 from './LineageNodeLabelV1';
 import NodeChildren from './NodeChildren/NodeChildren.component';
 
@@ -53,18 +52,9 @@ const CustomNodeV1 = (props: NodeProps) => {
 
   const { label, isNewNode, node = {}, isRootNode } = data;
 
-  const showDqTracing = useMemo(() => {
-    return (
-      (activeLayer.includes(LineageLayer.DataObservability) &&
-        dataQualityLineage?.nodes?.some((dqNode) => dqNode.id === node?.id)) ??
-      false
-    );
-  }, [activeLayer, dataQualityLineage, node]);
-
   const nodeType = isEditMode ? EntityLineageNodeType.DEFAULT : type;
   const isSelected = selectedNode === node;
-  const { id, lineage, fullyQualifiedName } = node;
-
+  const { id, fullyQualifiedName, expandPerformed = false } = node;
   const [isTraced, setIsTraced] = useState<boolean>(false);
 
   const getActiveNode = useCallback(
@@ -74,31 +64,30 @@ const CustomNodeV1 = (props: NodeProps) => {
     [id, nodes]
   );
 
-  const { hasDownstream, hasUpstream } = useMemo(() => {
-    return checkUpstreamDownstream(id, lineage ?? []);
-  }, [id, lineage]);
+  const showDqTracing = useMemo(() => {
+    return (
+      (activeLayer.includes(LineageLayer.DataObservability) &&
+        dataQualityLineage?.nodes?.some((dqNode) => dqNode.id === id)) ??
+      false
+    );
+  }, [activeLayer, dataQualityLineage, id]);
 
-  const { hasOutgoers, hasIncomers, isUpstreamLeafNode, isDownstreamLeafNode } =
-    useMemo(() => {
-      const activeNode = getActiveNode(id);
-      if (!activeNode) {
-        return {
-          hasOutgoers: false,
-          hasIncomers: false,
-          isUpstreamLeafNode: false,
-          isDownstreamLeafNode: false,
-        };
-      }
-      const outgoers = getOutgoers(activeNode, nodes, edges);
-      const incomers = getIncomers(activeNode, nodes, edges);
-
+  const { hasOutgoers, hasIncomers } = useMemo(() => {
+    const activeNode = getActiveNode(id);
+    if (!activeNode) {
       return {
-        hasOutgoers: outgoers.length > 0,
-        hasIncomers: incomers.length > 0,
-        isUpstreamLeafNode: incomers.length === 0 && hasUpstream,
-        isDownstreamLeafNode: outgoers.length === 0 && hasDownstream,
+        hasOutgoers: false,
+        hasIncomers: false,
       };
-    }, [id, nodes, edges, hasUpstream, hasDownstream]);
+    }
+    const outgoers = getOutgoers(activeNode, nodes, edges);
+    const incomers = getIncomers(activeNode, nodes, edges);
+
+    return {
+      hasOutgoers: outgoers.length > 0,
+      hasIncomers: incomers.length > 0,
+    };
+  }, [id, nodes, edges]);
 
   const { isUpstreamNode, isDownstreamNode } = useMemo(() => {
     return {
@@ -112,14 +101,14 @@ const CustomNodeV1 = (props: NodeProps) => {
   }, [fullyQualifiedName, upstreamDownstreamData]);
 
   const onExpand = useCallback(
-    (direction: EdgeTypeEnum) => {
+    (direction: LineageDirection) => {
       loadChildNodesHandler(node, direction);
     },
     [loadChildNodesHandler, node]
   );
 
   const onCollapse = useCallback(
-    (direction = EdgeTypeEnum.DOWN_STREAM) => {
+    (direction = LineageDirection.Downstream) => {
       const node = getActiveNode(id);
       if (node) {
         onNodeCollapse(node, direction);
@@ -165,21 +154,21 @@ const CustomNodeV1 = (props: NodeProps) => {
       <>
         {hasOutgoers &&
           (isDownstreamNode || isRootNode) &&
-          getCollapseHandle(EdgeTypeEnum.DOWN_STREAM, onCollapse)}
-        {isDownstreamLeafNode &&
-          (isDownstreamNode || isRootNode) &&
-          getExpandHandle(EdgeTypeEnum.DOWN_STREAM, () =>
-            onExpand(EdgeTypeEnum.DOWN_STREAM)
+          getCollapseHandle(LineageDirection.Downstream, onCollapse)}
+        {!hasOutgoers &&
+          !expandPerformed &&
+          getExpandHandle(LineageDirection.Downstream, () =>
+            onExpand(LineageDirection.Downstream)
           )}
         {hasIncomers &&
           (isUpstreamNode || isRootNode) &&
-          getCollapseHandle(EdgeTypeEnum.UP_STREAM, () =>
-            onCollapse(EdgeTypeEnum.UP_STREAM)
+          getCollapseHandle(LineageDirection.Upstream, () =>
+            onCollapse(LineageDirection.Upstream)
           )}
-        {isUpstreamLeafNode &&
-          (isUpstreamNode || isRootNode) &&
-          getExpandHandle(EdgeTypeEnum.UP_STREAM, () =>
-            onExpand(EdgeTypeEnum.UP_STREAM)
+        {!hasIncomers &&
+          !expandPerformed &&
+          getExpandHandle(LineageDirection.Upstream, () =>
+            onExpand(LineageDirection.Upstream)
           )}
       </>
     );
@@ -189,12 +178,9 @@ const CustomNodeV1 = (props: NodeProps) => {
     edges,
     hasOutgoers,
     hasIncomers,
-    isUpstreamLeafNode,
-    isDownstreamLeafNode,
-    isUpstreamNode,
-    isDownstreamNode,
     isEditMode,
     isRootNode,
+    expandPerformed,
   ]);
 
   const getHandle = useCallback(() => {
@@ -251,14 +237,7 @@ const CustomNodeV1 = (props: NodeProps) => {
           </>
         );
     }
-  }, [
-    node.id,
-    nodeType,
-    isConnectable,
-    isDownstreamLeafNode,
-    isUpstreamLeafNode,
-    loadChildNodesHandler,
-  ]);
+  }, [node.id, nodeType, isConnectable, loadChildNodesHandler]);
 
   useEffect(() => {
     setIsTraced(tracedNodes.includes(id));
