@@ -303,7 +303,7 @@ const Users = ({
   }, [userData.id]);
 
   return (
-    <div className="p-t-xs bg-grey p-x-box">
+    <div className="p-t-xs bg-grey p-x-box" data-testid="user-profile">
       <Row gutter={[20, 0]} wrap={false}>
         <Col flex="312px">
           <div className="profile-section">
