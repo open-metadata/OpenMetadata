@@ -14,32 +14,35 @@
 import { Card, Col, Divider, Row, Space, Typography } from 'antd';
 import { isEmpty } from 'lodash';
 import { EntityTags } from 'Models';
-import React, { Fragment, useMemo, useState } from 'react';
+import React, { Fragment, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { EntityType } from '../../../enums/entity.enum';
-import { MlFeature } from '../../../generated/entity/data/mlmodel';
+import { MlFeature, Mlmodel } from '../../../generated/entity/data/mlmodel';
 import { TagSource } from '../../../generated/type/schema';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { createTagObject } from '../../../utils/TagsUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 import TableDescription from '../../Database/TableDescription/TableDescription.component';
 import TableTags from '../../Database/TableTags/TableTags.component';
 import { ModalWithMarkdownEditor } from '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
-import { MlModelFeaturesListProp } from './MlModel.interface';
 import SourceList from './SourceList.component';
 
-const MlModelFeaturesList = ({
-  mlFeatures,
-  handleFeaturesUpdate,
-  permissions,
-  isDeleted,
-  entityFqn,
-}: MlModelFeaturesListProp) => {
+const MlModelFeaturesList = () => {
   const { t } = useTranslation();
   const [selectedFeature, setSelectedFeature] = useState<MlFeature>(
     {} as MlFeature
   );
   const [editDescription, setEditDescription] = useState<boolean>(false);
+  const { data, onUpdate, permissions } = useGenericContext<Mlmodel>();
+
+  const { mlFeatures, isDeleted, entityFqn } = useMemo(() => {
+    return {
+      mlFeatures: data?.mlFeatures,
+      isDeleted: data?.deleted,
+      entityFqn: data?.fullyQualifiedName ?? '',
+    };
+  }, [data]);
 
   const hasEditPermission = useMemo(
     () => permissions.EditTags || permissions.EditAll,
@@ -51,6 +54,13 @@ const MlModelFeaturesList = ({
     [permissions]
   );
 
+  const handleFeaturesUpdate = useCallback(
+    async (features: MlFeature[]) => {
+      await onUpdate({ ...data, mlFeatures: features });
+    },
+    [data, onUpdate]
+  );
+
   const handleCancelEditDescription = () => {
     setSelectedFeature({});
     setEditDescription(false);
@@ -58,16 +68,17 @@ const MlModelFeaturesList = ({
 
   const handleDescriptionChange = async (value: string) => {
     if (!isEmpty(selectedFeature) && editDescription) {
-      const updatedFeatures = mlFeatures?.map((feature) => {
-        if (feature.name === selectedFeature.name) {
-          return {
-            ...selectedFeature,
-            description: value,
-          };
-        } else {
-          return feature;
-        }
-      });
+      const updatedFeatures =
+        mlFeatures?.map((feature) => {
+          if (feature.name === selectedFeature.name) {
+            return {
+              ...selectedFeature,
+              description: value,
+            };
+          } else {
+            return feature;
+          }
+        }) ?? [];
       await handleFeaturesUpdate(updatedFeatures);
       handleCancelEditDescription();
     }
@@ -80,16 +91,17 @@ const MlModelFeaturesList = ({
     const newSelectedTags = createTagObject(selectedTags);
 
     if (newSelectedTags && targetFeature) {
-      const updatedFeatures = mlFeatures?.map((feature) => {
-        if (feature.name === targetFeature?.name) {
-          return {
-            ...targetFeature,
-            tags: newSelectedTags,
-          };
-        } else {
-          return feature;
-        }
-      });
+      const updatedFeatures =
+        mlFeatures?.map((feature) => {
+          if (feature.name === targetFeature?.name) {
+            return {
+              ...targetFeature,
+              tags: newSelectedTags,
+            };
+          } else {
+            return feature;
+          }
+        }) ?? [];
       await handleFeaturesUpdate(updatedFeatures);
     }
   };

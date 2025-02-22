@@ -28,6 +28,7 @@ import domainClassBase from '../Domain/DomainClassBase';
 import { getEntityName } from '../EntityUtils';
 import i18n from '../i18next/LocalUtil';
 import metricDetailsClassBase from '../MetricEntityUtils/MetricDetailsClassBase';
+import mlModelClassBase from '../MlModel/MlModelClassBase';
 import pipelineClassBase from '../PipelineClassBase';
 import searchIndexClassBase from '../SearchIndexDetailsClassBase';
 import storedProcedureClassBase from '../StoredProcedureBase';
@@ -187,6 +188,8 @@ export const getDefaultTabs = (pageType?: string): Tab[] => {
       return apiEndpointClassBase.getEndpointDetailPageTabsIds();
     case PageType.Metric:
       return metricDetailsClassBase.getMetricDetailPageTabsIds();
+    case PageType.MlModel:
+      return mlModelClassBase.getMlModelDetailPageTabsIds();
     default:
       return [
         {
@@ -234,6 +237,8 @@ export const getDefaultWidgetForTab = (pageType: PageType, tab: EntityTabs) => {
       return apiEndpointClassBase.getDefaultLayout(tab);
     case PageType.Metric:
       return metricDetailsClassBase.getDefaultLayout(tab);
+    case PageType.MlModel:
+      return mlModelClassBase.getDefaultLayout(tab);
     default:
       return [];
   }
@@ -295,6 +300,8 @@ export const getCustomizableWidgetByPage = (
       return apiEndpointClassBase.getCommonWidgetList();
     case PageType.Metric:
       return metricDetailsClassBase.getCommonWidgetList();
+    case PageType.MlModel:
+      return mlModelClassBase.getCommonWidgetList();
     case PageType.LandingPage:
     default:
       return [];
@@ -331,6 +338,8 @@ export const getDummyDataByPage = (pageType: PageType) => {
       return apiEndpointClassBase.getDummyData();
     case PageType.Metric:
       return metricDetailsClassBase.getDummyData();
+    case PageType.MlModel:
+      return mlModelClassBase.getDummyData();
 
     case PageType.LandingPage:
     default:
@@ -377,6 +386,8 @@ export const getWidgetsFromKey = (
       return apiEndpointClassBase.getWidgetsFromKey(widgetConfig);
     case PageType.Metric:
       return metricDetailsClassBase.getWidgetsFromKey(widgetConfig);
+    case PageType.MlModel:
+      return mlModelClassBase.getWidgetsFromKey(widgetConfig);
     default:
       return null;
   }

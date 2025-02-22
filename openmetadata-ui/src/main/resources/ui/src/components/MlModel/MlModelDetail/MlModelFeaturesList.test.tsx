@@ -13,7 +13,6 @@
 import { render, screen } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { Mlmodel } from '../../../generated/entity/data/mlmodel';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import MlModelFeaturesList from './MlModelFeaturesList';
 
@@ -143,27 +142,19 @@ jest.mock(
   })
 );
 
-const handleFeaturesUpdate = jest.fn();
+const mockHandleFeaturesUpdate = jest.fn();
 
-const mockProp = {
-  mlFeatures: mockData['mlFeatures'] as Mlmodel['mlFeatures'],
-  handleFeaturesUpdate,
-  permissions: DEFAULT_ENTITY_PERMISSION,
-  onThreadLinkSelect: jest.fn(),
-  entityFieldThreads: [
-    {
-      entityLink:
-        '<#E::mlmodel::mlflow_svc.eta_predictions::mlFeatures::sales::description>',
-      count: 1,
-      entityField: 'mlFeatures::sales::description',
-    },
-  ],
-  entityFqn: 'mlflow_svc.eta_predictions',
-};
+jest.mock('../../Customization/GenericProvider/GenericProvider', () => ({
+  useGenericContext: jest.fn().mockImplementation(() => ({
+    data: mockData,
+    permissions: DEFAULT_ENTITY_PERMISSION,
+    onUpdate: mockHandleFeaturesUpdate,
+  })),
+}));
 
 describe('Test MlModel feature list', () => {
   it('Should render MlModel feature list component', async () => {
-    render(<MlModelFeaturesList {...mockProp} />, {
+    render(<MlModelFeaturesList />, {
       wrapper: MemoryRouter,
     });
 
@@ -173,7 +164,7 @@ describe('Test MlModel feature list', () => {
   });
 
   it('Should render proper feature cards', async () => {
-    render(<MlModelFeaturesList {...mockProp} />, {
+    render(<MlModelFeaturesList />, {
       wrapper: MemoryRouter,
     });
 

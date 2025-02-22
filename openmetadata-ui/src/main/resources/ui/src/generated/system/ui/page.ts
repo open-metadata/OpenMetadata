@@ -125,6 +125,7 @@ export enum PageType {
     GlossaryTerm = "GlossaryTerm",
     LandingPage = "LandingPage",
     Metric = "Metric",
+    MlModel = "MlModel",
     Pipeline = "Pipeline",
     SearchIndex = "SearchIndex",
     StoredProcedure = "StoredProcedure",

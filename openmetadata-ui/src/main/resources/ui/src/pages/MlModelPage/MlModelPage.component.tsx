@@ -131,20 +131,6 @@ const MlModelPage = () => {
     [mlModelDetail]
   );
 
-  const descriptionUpdateHandler = async (updatedMlModel: Mlmodel) => {
-    try {
-      const response = await saveUpdatedMlModelData(updatedMlModel);
-      const { description, version } = response;
-      setMlModelDetail((preVDetail) => ({
-        ...preVDetail,
-        description,
-        version,
-      }));
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    }
-  };
-
   const followMlModel = async () => {
     try {
       const res = await addFollower(mlModelDetail.id, USERId);
@@ -183,24 +169,6 @@ const MlModelPage = () => {
     }
   };
 
-  const onTagUpdate = async (updatedMlModel: Mlmodel) => {
-    try {
-      const { tags, version } = await saveUpdatedMlModelData(updatedMlModel);
-      setMlModelDetail((preVDetail) => ({
-        ...preVDetail,
-        tags,
-        version,
-      }));
-    } catch (error) {
-      showErrorToast(
-        error as AxiosError,
-        t('server.entity-updating-error', {
-          entity: t('label.tag-plural'),
-        })
-      );
-    }
-  };
-
   const settingsUpdateHandler = async (
     updatedMlModel: Mlmodel
   ): Promise<void> => {
@@ -223,41 +191,6 @@ const MlModelPage = () => {
       );
     }
   };
-
-  const updateMlModelFeatures = async (updatedMlModel: Mlmodel) => {
-    try {
-      const { mlFeatures, version } = await saveUpdatedMlModelData(
-        updatedMlModel
-      );
-      setMlModelDetail((preVDetail) => ({
-        ...preVDetail,
-        mlFeatures,
-        version,
-      }));
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    }
-  };
-
-  const handleExtensionUpdate = useCallback(
-    async (updatedMlModel: Mlmodel) => {
-      try {
-        const data = await saveUpdatedMlModelData({
-          ...mlModelDetail,
-          extension: updatedMlModel.extension,
-        });
-        setMlModelDetail(data);
-      } catch (error) {
-        showErrorToast(
-          error as AxiosError,
-          t('server.entity-updating-error', {
-            entity: getEntityName(mlModelDetail),
-          })
-        );
-      }
-    },
-    [saveUpdatedMlModelData, setMlModelDetail, mlModelDetail]
-  );
 
   const versionHandler = () => {
     history.push(
@@ -304,6 +237,26 @@ const MlModelPage = () => {
     }));
   }, []);
 
+  const handleMlModelUpdate = useCallback(
+    async (data: Mlmodel) => {
+      try {
+        const response = await saveUpdatedMlModelData(data);
+        setMlModelDetail((prev) => ({
+          ...prev,
+          ...response,
+        }));
+      } catch (error) {
+        showErrorToast(
+          error as AxiosError,
+          t('server.entity-updating-error', {
+            entity: getEntityName(mlModelDetail),
+          })
+        );
+      }
+    },
+    [saveUpdatedMlModelData]
+  );
+
   useEffect(() => {
     fetchResourcePermission(mlModelFqn);
   }, [mlModelFqn]);
@@ -326,18 +279,15 @@ const MlModelPage = () => {
 
   return (
     <MlModelDetailComponent
-      descriptionUpdateHandler={descriptionUpdateHandler}
       fetchMlModel={() => fetchMlModelDetails(mlModelFqn)}
       followMlModelHandler={followMlModel}
       handleToggleDelete={handleToggleDelete}
       mlModelDetail={mlModelDetail}
       settingsUpdateHandler={settingsUpdateHandler}
-      tagUpdateHandler={onTagUpdate}
       unFollowMlModelHandler={unFollowMlModel}
       updateMlModelDetailsState={updateMlModelDetailsState}
-      updateMlModelFeatures={updateMlModelFeatures}
       versionHandler={versionHandler}
-      onExtensionUpdate={handleExtensionUpdate}
+      onMlModelUpdate={handleMlModelUpdate}
       onUpdateVote={updateVote}
     />
   );
