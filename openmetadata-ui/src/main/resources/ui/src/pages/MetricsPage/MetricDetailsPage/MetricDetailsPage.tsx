@@ -83,7 +83,7 @@ const MetricDetailsPage = () => {
         return {
           ...previous,
           version: res.version,
-          ...(key && { [key]: res[key] }),
+          ...(key ? { [key]: res[key] } : res),
         };
       });
     } catch (error) {
