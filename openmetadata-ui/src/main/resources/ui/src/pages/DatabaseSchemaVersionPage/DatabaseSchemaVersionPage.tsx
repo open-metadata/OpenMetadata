@@ -18,6 +18,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { CustomPropertyTable } from '../../components/common/CustomPropertyTable/CustomPropertyTable';
+import DescriptionV1 from '../../components/common/EntityDescription/DescriptionV1';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
@@ -250,6 +251,14 @@ function DatabaseSchemaVersionPage() {
         key: EntityTabs.TABLE,
         children: (
           <Row gutter={[0, 16]} wrap={false}>
+            <Col className="p-t-sm m-x-lg" flex="auto">
+              <DescriptionV1
+                description={description}
+                entityType={EntityType.DATABASE_SCHEMA}
+                isDescriptionExpanded={isEmpty(tableData)}
+                showActions={false}
+              />
+            </Col>
             <Col className="p-t-sm m-x-lg" flex="auto">
               <SchemaTablesTab isVersionView />
             </Col>

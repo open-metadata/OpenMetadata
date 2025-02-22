@@ -19,6 +19,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { CustomPropertyTable } from '../../components/common/CustomPropertyTable/CustomPropertyTable';
+import DescriptionV1 from '../../components/common/EntityDescription/DescriptionV1';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
@@ -283,6 +284,14 @@ const APICollectionVersionPage = () => {
         key: EntityTabs.API_ENDPOINT,
         children: (
           <Row gutter={[0, 16]} wrap={false}>
+            <Col className="p-t-sm m-x-lg" span={24}>
+              <DescriptionV1
+                description={description}
+                entityType={EntityType.API_COLLECTION}
+                isDescriptionExpanded={isEmpty(apiEndpoints)}
+                showActions={false}
+              />
+            </Col>
             <Col className="p-t-sm m-x-lg" flex="auto">
               <APIEndpointsTab isVersionView />
             </Col>

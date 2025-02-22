@@ -107,10 +107,10 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
   } = useMemo(
     () => ({
       hasDescriptionEditAccess:
-        permissions.EditAll ?? permissions.EditDescription,
-      hasTagEditAccess: permissions.EditAll ?? permissions.EditTags,
+        permissions.EditAll || permissions.EditDescription,
+      hasTagEditAccess: permissions.EditAll || permissions.EditTags,
       hasGlossaryTermEditAccess:
-        permissions.EditAll ?? permissions.EditGlossaryTerms,
+        permissions.EditAll || permissions.EditGlossaryTerms,
     }),
     [permissions]
   );
