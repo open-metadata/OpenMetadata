@@ -27,7 +27,8 @@
         "Domain",
         "APICollection",
         "APIEndpoint",
-        "Metric"
+        "Metric",
+        "MlModel"
       ]
     }
   },

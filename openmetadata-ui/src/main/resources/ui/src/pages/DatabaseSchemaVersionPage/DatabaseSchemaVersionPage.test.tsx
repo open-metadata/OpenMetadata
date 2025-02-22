@@ -174,6 +174,10 @@ jest.mock(
   })
 );
 
+jest.mock('../../components/common/EntityDescription/DescriptionV1', () =>
+  jest.fn().mockImplementation(() => <div>description</div>)
+);
+
 describe('DatabaseSchemaVersionPage', () => {
   it('should render all necessary components', async () => {
     await act(async () => {
