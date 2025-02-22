@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2023 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -111,31 +111,13 @@ const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
         return;
       }
       editorWrapper.setAttribute('dir', i18n.dir());
-      editorWrapper.style.textAlign = i18n.dir() === 'rtl' ? 'right' : 'left';
-    }, [i18n]);
-
-    const updatePTags = () => {
-      const pTags = document.querySelectorAll('div.tiptap p');
-
-      pTags.forEach((pTag) => {
-        // Check if <p> tag is empty or contains only a <br class="ProseMirror-trailingBreak">
-        const hasOnlyTrailingBreak =
-          pTag.children.length === 1 &&
-          pTag.children[0].tagName === 'BR' &&
-          pTag.children[0].classList.contains('ProseMirror-trailingBreak');
-
-        if (pTag.textContent?.trim() === '' || hasOnlyTrailingBreak) {
-          pTag.remove();
-        }
-      });
-    };
-
-    // Call the updatePTags function whenever editor content changes
-    useEffect(() => {
-      if (editor) {
-        updatePTags();
+      // text align right if rtl
+      if (i18n.dir() === 'rtl') {
+        editorWrapper.style.textAlign = 'right';
+      } else {
+        editorWrapper.style.textAlign = 'left';
       }
-    }, [editor?.getHTML()]); // Trigger whenever editor's HTML content is updated
+    }, [i18n]);
 
     return (
       <div

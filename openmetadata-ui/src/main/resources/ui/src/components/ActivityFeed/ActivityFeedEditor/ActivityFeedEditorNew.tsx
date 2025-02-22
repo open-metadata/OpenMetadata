@@ -85,6 +85,7 @@ const ActivityFeedEditor = forwardRef<editorRef, ActivityFeedEditorProp>(
     return (
       <div
         className={classNames('relative', className)}
+        data-testid="activity-feed-editor-new"
         onClick={(e) => e.stopPropagation()}>
         <FeedEditor
           defaultValue={defaultValue}

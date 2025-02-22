@@ -114,7 +114,8 @@ const ActivityFeedCardNew = ({
         },
         { 'activity-feed-reply-card': isPost },
         { 'active-card is-active': isActive }
-      )}>
+      )}
+      data-testid="feed-card-v2-sidebar">
       <Space align="start" className="w-full">
         <Space className="d-flex" direction="vertical">
           <Space
@@ -223,6 +224,7 @@ const ActivityFeedCardNew = ({
 
               <Input
                 className="comments-input-field"
+                data-testid="comments-input-field"
                 placeholder={t('message.input-placeholder')}
                 onClick={() => setShowFeedEditor(true)}
               />
@@ -230,7 +232,7 @@ const ActivityFeedCardNew = ({
           )}
 
           {showThread && feed?.posts && feed?.posts?.length > 0 && (
-            <Col className="p-l-0 p-r-0">
+            <Col className="p-l-0 p-r-0" data-testid="feed-replies">
               {feed?.posts
                 ?.slice()
                 .sort((a, b) => (b.postTs as number) - (a.postTs as number))
