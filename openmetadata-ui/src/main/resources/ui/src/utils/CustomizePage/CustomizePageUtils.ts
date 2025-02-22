@@ -27,6 +27,7 @@ import databaseSchemaClassBase from '../DatabaseSchemaClassBase';
 import domainClassBase from '../Domain/DomainClassBase';
 import { getEntityName } from '../EntityUtils';
 import i18n from '../i18next/LocalUtil';
+import metricDetailsClassBase from '../MetricEntityUtils/MetricDetailsClassBase';
 import pipelineClassBase from '../PipelineClassBase';
 import searchIndexClassBase from '../SearchIndexDetailsClassBase';
 import storedProcedureClassBase from '../StoredProcedureBase';
@@ -152,67 +153,6 @@ export const getTabLabelFromId = (tab: EntityTabs) => {
   }
 };
 
-export const getTableDefaultTabs = () => {
-  const tabs = tableClassBase.getTableDetailPageTabsIds();
-
-  return tabs;
-};
-
-export const getTopicDefaultTabs = () => {
-  const tabs = topicClassBase.getTopicDetailPageTabsIds();
-
-  return tabs;
-};
-
-export const getStoredProcedureDefaultTabs = () => {
-  const tabs = storedProcedureClassBase.getStoredProcedureDetailPageTabsIds();
-
-  return tabs;
-};
-
-export const getDashboardDataModelDefaultTabs = () => {
-  const tabs =
-    dashboardDataModelClassBase.getDashboardDataModelDetailPageTabsIds();
-
-  return tabs;
-};
-
-export const getDatabaseDefaultTabs = () => {
-  return databaseClassBase.getDatabaseDetailPageTabsIds();
-};
-
-export const getPipelineDefaultTabs = () => {
-  return pipelineClassBase.getPipelineDetailPageTabsIds();
-};
-
-export const getDatabaseSchemaDefaultTabs = () => {
-  return databaseSchemaClassBase.getDatabaseSchemaPageTabsIds();
-};
-
-export const getSearchIndexDefaultTabs = () => {
-  return searchIndexClassBase.getSearchIndexDetailPageTabsIds();
-};
-
-export const getContainerDefaultTabs = () => {
-  return containerDetailsClassBase.getContainerDetailPageTabsIds();
-};
-
-export const getDashboardDefaultTabs = () => {
-  return dashboardDetailsClassBase.getDashboardDetailPageTabsIds();
-};
-
-export const getDomainDefaultTabs = () => {
-  return domainClassBase.getDomainDetailPageTabsIds();
-};
-
-export const getAPICollectionDefaultTabs = () => {
-  return apiCollectionClassBase.getAPICollectionDetailPageTabsIds();
-};
-
-export const getAPIEndpointDefaultTabs = () => {
-  return apiEndpointClassBase.getEndpointDetailPageTabsIds();
-};
-
 export const getDefaultTabs = (pageType?: string): Tab[] => {
   switch (pageType) {
     case PageType.GlossaryTerm:
@@ -220,31 +160,33 @@ export const getDefaultTabs = (pageType?: string): Tab[] => {
     case PageType.Glossary:
       return getGlossaryDefaultTabs();
     case PageType.Table:
-      return getTableDefaultTabs();
+      return tableClassBase.getTableDetailPageTabsIds();
     case PageType.Topic:
-      return getTopicDefaultTabs();
+      return topicClassBase.getTopicDetailPageTabsIds();
     case PageType.StoredProcedure:
-      return getStoredProcedureDefaultTabs();
+      return storedProcedureClassBase.getStoredProcedureDetailPageTabsIds();
     case PageType.DashboardDataModel:
-      return getDashboardDataModelDefaultTabs();
+      return dashboardDataModelClassBase.getDashboardDataModelDetailPageTabsIds();
     case PageType.Container:
-      return getContainerDefaultTabs();
+      return containerDetailsClassBase.getContainerDetailPageTabsIds();
     case PageType.Database:
-      return getDatabaseDefaultTabs();
+      return databaseClassBase.getDatabaseDetailPageTabsIds();
     case PageType.SearchIndex:
-      return getSearchIndexDefaultTabs();
+      return searchIndexClassBase.getSearchIndexDetailPageTabsIds();
     case PageType.DatabaseSchema:
-      return getDatabaseSchemaDefaultTabs();
+      return databaseSchemaClassBase.getDatabaseSchemaPageTabsIds();
     case PageType.Pipeline:
-      return getPipelineDefaultTabs();
+      return pipelineClassBase.getPipelineDetailPageTabsIds();
     case PageType.Dashboard:
-      return getDashboardDefaultTabs();
+      return dashboardDetailsClassBase.getDashboardDetailPageTabsIds();
     case PageType.Domain:
-      return getDomainDefaultTabs();
+      return domainClassBase.getDomainDetailPageTabsIds();
     case PageType.APICollection:
-      return getAPICollectionDefaultTabs();
+      return apiCollectionClassBase.getAPICollectionDetailPageTabsIds();
     case PageType.APIEndpoint:
-      return getAPIEndpointDefaultTabs();
+      return apiEndpointClassBase.getEndpointDetailPageTabsIds();
+    case PageType.Metric:
+      return metricDetailsClassBase.getMetricDetailPageTabsIds();
     default:
       return [
         {
@@ -290,6 +232,8 @@ export const getDefaultWidgetForTab = (pageType: PageType, tab: EntityTabs) => {
       return apiCollectionClassBase.getDefaultLayout(tab);
     case PageType.APIEndpoint:
       return apiEndpointClassBase.getDefaultLayout(tab);
+    case PageType.Metric:
+      return metricDetailsClassBase.getDefaultLayout(tab);
     default:
       return [];
   }
@@ -349,6 +293,8 @@ export const getCustomizableWidgetByPage = (
       return apiCollectionClassBase.getCommonWidgetList();
     case PageType.APIEndpoint:
       return apiEndpointClassBase.getCommonWidgetList();
+    case PageType.Metric:
+      return metricDetailsClassBase.getCommonWidgetList();
     case PageType.LandingPage:
     default:
       return [];
@@ -383,6 +329,8 @@ export const getDummyDataByPage = (pageType: PageType) => {
       return apiCollectionClassBase.getDummyData();
     case PageType.APIEndpoint:
       return apiEndpointClassBase.getDummyData();
+    case PageType.Metric:
+      return metricDetailsClassBase.getDummyData();
 
     case PageType.LandingPage:
     default:
@@ -427,6 +375,8 @@ export const getWidgetsFromKey = (
       return apiCollectionClassBase.getWidgetsFromKey(widgetConfig);
     case PageType.APIEndpoint:
       return apiEndpointClassBase.getWidgetsFromKey(widgetConfig);
+    case PageType.Metric:
+      return metricDetailsClassBase.getWidgetsFromKey(widgetConfig);
     default:
       return null;
   }

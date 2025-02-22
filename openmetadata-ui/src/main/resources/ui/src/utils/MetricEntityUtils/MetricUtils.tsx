@@ -18,9 +18,11 @@ import { GenericTab } from '../../components/Customization/GenericTab/GenericTab
 import { CommonWidgets } from '../../components/DataAssets/CommonWidgets/CommonWidgets';
 import Lineage from '../../components/Lineage/Lineage.component';
 import MetricExpression from '../../components/Metric/MetricExpression/MetricExpression';
+import RelatedMetrics from '../../components/Metric/RelatedMetrics/RelatedMetrics';
 import { SourceType } from '../../components/SearchedData/SearchedData.interface';
 import LineageProvider from '../../context/LineageProvider/LineageProvider';
 import { CSMode } from '../../enums/codemirror.enum';
+import { DetailPageWidgetKeys } from '../../enums/CustomizeDetailPage.enum';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import {
   Language,
@@ -185,6 +187,10 @@ export const getMetricDetailsPageTabs = ({
 };
 
 export const getMetricWidgetsFromKey = (widgetConfig: WidgetConfig) => {
+  if (widgetConfig.i.startsWith(DetailPageWidgetKeys.RELATED_METRICS)) {
+    return <RelatedMetrics />;
+  }
+
   return (
     <CommonWidgets entityType={EntityType.METRIC} widgetConfig={widgetConfig} />
   );

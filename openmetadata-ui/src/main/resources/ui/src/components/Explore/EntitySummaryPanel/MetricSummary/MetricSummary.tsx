@@ -118,11 +118,7 @@ const MetricSummary = ({
             </Col>
             <Divider className="m-y-xs" />
             <Col span={24}>
-              <RelatedMetrics
-                isInSummaryPanel
-                hasEditPermission={false}
-                metricDetails={entityDetails}
-              />
+              <RelatedMetrics isInSummaryPanel />
             </Col>
           </Row>
         </GenericProvider>

@@ -90,16 +90,8 @@ class MetricDetailsClassBase {
 
     return [
       {
-        h: 2,
+        h: 6,
         i: DetailPageWidgetKeys.DESCRIPTION,
-        w: 6,
-        x: 0,
-        y: 0,
-        static: false,
-      },
-      {
-        h: 8,
-        i: DetailPageWidgetKeys.API_ENDPOINTS,
         w: 6,
         x: 0,
         y: 0,
@@ -130,11 +122,19 @@ class MetricDetailsClassBase {
         static: false,
       },
       {
+        h: 2,
+        i: DetailPageWidgetKeys.RELATED_METRICS,
+        w: 2,
+        x: 6,
+        y: 4,
+        static: false,
+      },
+      {
         h: 4,
         i: DetailPageWidgetKeys.CUSTOM_PROPERTIES,
         w: 2,
         x: 6,
-        y: 6,
+        y: 5,
         static: false,
       },
     ];
