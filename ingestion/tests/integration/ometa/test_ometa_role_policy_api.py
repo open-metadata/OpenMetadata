@@ -674,8 +674,8 @@ class OMetaRolePolicyTest(TestCase):
             data=CreateTeamRequest(
                 name="test-role-team-1",
                 teamType="Group",
-                users=[user.id],
-                defaultRoles=[role.id],
+                users=[user.fullyQualifiedName.root],
+                defaultRoles=[role.fullyQualifiedName.root],
             )
         )
 
