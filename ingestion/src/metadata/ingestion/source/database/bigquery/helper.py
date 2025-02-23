@@ -12,8 +12,9 @@
 """
 Source connection helper
 """
+import re
 import traceback
-from typing import Any
+from typing import Any, List, Tuple
 
 from pydantic import BaseModel
 from sqlalchemy import inspect
@@ -142,3 +143,10 @@ def get_foreign_keys(
             f"Error while fetching foreign key constraint error for table [{schema}.{table_name}]: {exc}"
         )
         return []
+
+
+def parse_bigqeury_labels(labels: str) -> List[Tuple[str, str]]:
+    """
+    This function is used to parse BigQuery label string into a list of tuples.
+    """
+    return re.findall(r'STRUCT\("([^"]+)",\s*"([^"]+)"\)', labels)
