@@ -52,6 +52,10 @@ public class TagLabelUtil {
     return Entity.getEntityByName(Entity.TAG, tagFqn, "", NON_DELETED);
   }
 
+  public static List<Tag> getTags(List<String> tagFQNs) {
+    return Entity.getEntityByNames(Entity.TAG, tagFQNs, "", NON_DELETED);
+  }
+
   public static Glossary getGlossary(String glossaryName) {
     return Entity.getEntityByName(Entity.GLOSSARY, glossaryName, "", NON_DELETED);
   }
