@@ -37,6 +37,14 @@ export interface SnowflakeConnection {
      */
     database?: string;
     /**
+     * List of default databases to exclude in ingestion.
+     */
+    defaultExcludeDatabases?: string[];
+    /**
+     * List of default schemas to exclude in ingestion.
+     */
+    defaultExcludeSchemas?: string[];
+    /**
      * Optional configuration for ingestion of TRANSIENT tables, By default, it will skip the
      * TRANSIENT tables.
      */

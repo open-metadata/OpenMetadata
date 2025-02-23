@@ -31,6 +31,14 @@ export interface PostgresConnection {
      */
     database: string;
     /**
+     * List of default databases to exclude in ingestion.
+     */
+    defaultExcludeDatabases?: string[];
+    /**
+     * List of default schemas to exclude in ingestion.
+     */
+    defaultExcludeSchemas?: string[];
+    /**
      * Host and port of the source service.
      */
     hostPort: string;
