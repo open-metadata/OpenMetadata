@@ -227,7 +227,7 @@ const UserProfileRoles = ({
                     showSearch
                     aria-label="Roles"
                     className="w-full"
-                    data-testid="persona-edit-roles"
+                    data-testid="profile-edit-roles-select"
                     dropdownMatchSelectWidth={false}
                     filterOption={handleSearchFilterOption}
                     loading={isLoading}
