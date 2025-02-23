@@ -31,6 +31,21 @@
       "type": "integer",
       "minimum": 0
     },
+    "totalAnnouncementCount": {
+      "description": "Total count of all the announcements associated with the entity.",
+      "type": "integer",
+      "minimum": 0
+    },
+    "activeAnnouncementCount": {
+      "description": "Total count of all the active announcements associated with the entity.",
+      "type": "integer",
+      "minimum": 0
+    },
+    "inactiveAnnouncementCount": {
+      "description": "Total count of all the inactive announcements associated with the entity.",
+      "type": "integer",
+      "minimum": 0
+    },
     "entityLink": {
       "$ref": "../../type/basic.json#/definitions/entityLink"
     }
