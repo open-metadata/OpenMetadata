@@ -1215,6 +1215,7 @@
     "suggestion": "ข้อเสนอแนะ",
     "suggestion-lowercase-plural": "ข้อเสนอแนะหลายรายการ",
     "suggestion-pending": "ข้อเสนอแนะที่รออยู่",
+    "suggestion-plural-pending": "{{count}} ข้อเสนอค้างอยู่",
     "suite": "ชุด",
     "sum": "ผลรวม",
     "summary": "สรุป",

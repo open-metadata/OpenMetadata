@@ -24,6 +24,7 @@ const BASE_URL = '/suggestions';
 
 export type ListSuggestionsParams = ListParams & {
   entityFQN?: string;
+  limit?: number;
 };
 
 export const getSuggestionsList = async (params?: ListSuggestionsParams) => {
@@ -43,7 +44,7 @@ export const updateSuggestionStatus = (
   return APIClient.put(url, {});
 };
 
-export const aproveRejectAllSuggestions = (
+export const approveRejectAllSuggestions = (
   userId: string,
   entityFQN: string,
   suggestionType: SuggestionType,

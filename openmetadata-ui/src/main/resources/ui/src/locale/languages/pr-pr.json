@@ -1215,6 +1215,7 @@
     "suggestion": "پیشنهاد",
     "suggestion-lowercase-plural": "پیشنهادات",
     "suggestion-pending": "پیشنهادات در انتظار",
+    "suggestion-plural-pending": "{{count}} پیشنهاد در انتظار",
     "suite": "مجموعه",
     "sum": "مجموع",
     "summary": "خلاصه",
