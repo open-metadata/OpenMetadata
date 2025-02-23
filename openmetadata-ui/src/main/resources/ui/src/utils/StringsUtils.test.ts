@@ -14,6 +14,7 @@ import {
   formatJsonString,
   getDecodedFqn,
   getEncodedFqn,
+  getJSONFromString,
   jsonToCSV,
   replaceCallback,
 } from './StringsUtils';
@@ -120,5 +121,36 @@ describe('StringsUtils', () => {
     expect(jsonToCSV(jsonData, headers)).toEqual(expectedCSV);
     expect(jsonToCSV(jsonData, [])).toEqual('');
     expect(jsonToCSV([], headers)).toEqual('');
+  });
+
+  describe('getJSONFromString', () => {
+    it('should format a string to JSON', () => {
+      const expectedOutput = { key1: 'value1', key2: 'value2' };
+      const jsonString = JSON.stringify(expectedOutput);
+
+      expect(getJSONFromString(jsonString)).toStrictEqual(expectedOutput);
+    });
+
+    it('should format a deeply nested JSON string', () => {
+      const expectedOutput = {
+        key1: 'value1',
+        key2: {
+          subKey1: 'subValue1',
+          subKey2: {
+            subSubKey1: 'subSubValue1',
+            subSubKey2: 'subSubValue2',
+          },
+        },
+      };
+      const jsonString = JSON.stringify(expectedOutput);
+
+      expect(getJSONFromString(jsonString)).toStrictEqual(expectedOutput);
+    });
+
+    it('should return null if it is not valid JSON string', () => {
+      const jsonString = 'not valid JSON';
+
+      expect(getJSONFromString(jsonString)).toBeNull();
+    });
   });
 });

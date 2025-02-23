@@ -16,8 +16,8 @@ import Icon from '@ant-design/icons/lib/components/Icon';
 import { Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { Operation } from 'fast-json-patch';
-import i18next from 'i18next';
-import { isEqual, isUndefined, lowerCase } from 'lodash';
+import i18next, { t } from 'i18next';
+import { isEqual, isNull, isUndefined } from 'lodash';
 import React, { ReactNode } from 'react';
 import ReactDOM from 'react-dom';
 import Showdown from 'showdown';
@@ -43,9 +43,7 @@ import { SearchIndex } from '../enums/search.enum';
 import { OwnerType } from '../enums/user.enum';
 import {
   CardStyle,
-  EntityTestResultSummaryObject,
   FieldOperation,
-  TestCaseStatus,
   Thread,
   ThreadType,
 } from '../generated/entity/feed/thread';
@@ -65,7 +63,10 @@ import {
   getRandomColor,
   Transi18next,
 } from './CommonUtils';
-import { getRelativeCalendar } from './date-time/DateTimeUtils';
+import {
+  formatDateTimeLong,
+  getRelativeCalendar,
+} from './date-time/DateTimeUtils';
 import EntityLink from './EntityLink';
 import entityUtilClassBase from './EntityUtilClassBase';
 import {
@@ -78,7 +79,11 @@ import {
   getImageWithResolutionAndFallback,
   ImageQuality,
 } from './ProfilerUtils';
-import { getDecodedFqn, getEncodedFqn } from './StringsUtils';
+import {
+  getDecodedFqn,
+  getEncodedFqn,
+  getJSONFromString,
+} from './StringsUtils';
 import { showErrorToast } from './ToastUtils';
 
 export const getEntityType = (entityLink: string) => {
@@ -655,68 +660,6 @@ export const getFieldOperationIcon = (fieldOperation?: FieldOperation) => {
   );
 };
 
-export const getTestCaseNameListForResult = (
-  testResultSummary: Array<EntityTestResultSummaryObject>,
-  status: TestCaseStatus
-) =>
-  testResultSummary.reduce((acc, curr) => {
-    if (curr.status === status) {
-      acc.push(curr.testCaseName ?? '');
-    }
-
-    return acc;
-  }, [] as Array<string>);
-
-export const getTestCaseResultCount = (
-  count: number,
-  status: TestCaseStatus
-) => (
-  <div
-    className={`test-result-container ${lowerCase(status)}`}
-    data-testid={`test-${status}`}>
-    <Typography.Text
-      className="font-medium text-md"
-      data-testid={`test-${status}-value`}>
-      {count}
-    </Typography.Text>
-  </div>
-);
-
-export const formatTestStatusData = (
-  testResultSummary: Array<EntityTestResultSummaryObject>
-) => {
-  const successCases = getTestCaseNameListForResult(
-    testResultSummary,
-    TestCaseStatus.Success
-  );
-  const failedCases = getTestCaseNameListForResult(
-    testResultSummary,
-    TestCaseStatus.Failed
-  );
-  const abortedCases = getTestCaseNameListForResult(
-    testResultSummary,
-    TestCaseStatus.Aborted
-  );
-
-  return {
-    success: {
-      status: TestCaseStatus.Success,
-      count: successCases.length,
-      testCases: successCases,
-    },
-    failed: {
-      status: TestCaseStatus.Failed,
-      count: failedCases.length,
-      testCases: failedCases,
-    },
-    aborted: {
-      status: TestCaseStatus.Aborted,
-      count: abortedCases.length,
-      testCases: abortedCases,
-    },
-  };
-};
-
 const getActionLabelFromCardStyle = (
   cardStyle?: CardStyle,
   isApplication?: boolean
@@ -758,20 +701,6 @@ export const getFeedHeaderTextFromCardStyle = (
     );
   }
   switch (cardStyle) {
-    case CardStyle.CustomProperties:
-      return (
-        <Transi18next
-          i18nKey="message.feed-custom-property-header"
-          renderElement={<Typography.Text className="font-bold" />}
-        />
-      );
-    case CardStyle.TestCaseResult:
-      return (
-        <Transi18next
-          i18nKey="message.feed-test-case-header"
-          renderElement={<Typography.Text className="font-bold" />}
-        />
-      );
     case CardStyle.Description:
     case CardStyle.Tags:
     case CardStyle.Owner:
@@ -804,8 +733,37 @@ export const getFeedHeaderTextFromCardStyle = (
 
       return getActionLabelFromCardStyle(cardStyle);
 
+    case CardStyle.Certification:
+      return (
+        <Transi18next
+          i18nKey="message.feed-field-action-entity-header"
+          renderElement={<Typography.Text className="font-bold" />}
+          values={{
+            field: i18next.t(`label.certification`),
+            action: i18next.t(`label.updated-lowercase`),
+          }}
+        />
+      );
+
     case CardStyle.Default:
     default:
       return i18next.t('label.posted-on-lowercase');
   }
+};
+
+export const getTextDiffCertification = (value: string) => {
+  const resultArray = getJSONFromString(value) as {
+    appliedDate: number;
+    expiryDate: number;
+  } | null;
+
+  if (isNull(resultArray)) {
+    return '';
+  }
+
+  return `* ${t('label.applied-date')}: **${formatDateTimeLong(
+    resultArray.appliedDate
+  )}** \n * ${t('label.expiry-date')}: **${formatDateTimeLong(
+    resultArray.expiryDate
+  )}** `;
 };
