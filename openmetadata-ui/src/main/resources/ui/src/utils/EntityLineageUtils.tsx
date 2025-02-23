@@ -646,7 +646,10 @@ export const getEntityChildrenAndLabel = (
       label: t('label.field-plural'),
     },
     [EntityType.API_ENDPOINT]: {
-      data: (node as APIEndpoint)?.responseSchema?.schemaFields ?? [],
+      data:
+        (node as APIEndpoint)?.responseSchema?.schemaFields ??
+        (node as APIEndpoint)?.requestSchema?.schemaFields ??
+        [],
       label: t('label.field-plural'),
     },
     [EntityType.SEARCH_INDEX]: {
