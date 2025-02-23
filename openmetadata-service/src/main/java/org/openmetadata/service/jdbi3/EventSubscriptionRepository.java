@@ -175,6 +175,7 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
             objectMatch,
             false);
         recordChange("trigger", original.getTrigger(), updated.getTrigger(), true);
+        recordChange("config", original.getConfig(), updated.getConfig(), true);
       }
     }
   }

@@ -11,10 +11,11 @@
  *  limitations under the License.
  */
 /**
- * Sets the GlossaryTerm Status to the configured value.
+ * Runs an App based on its name.
  */
-export interface PythonWorkflowAutomationTask {
-    config?: { [key: string]: any };
+export interface RunAppTask {
+    branches?: string[];
+    config?:   Config;
     /**
      * Description of the Node.
      */
@@ -22,7 +23,9 @@ export interface PythonWorkflowAutomationTask {
     /**
      * Display Name that identifies this Node.
      */
-    displayName?: string;
+    displayName?:       string;
+    input?:             string[];
+    inputNamespaceMap?: InputNamespaceMap;
     /**
      * Name that identifies this Node.
      */
@@ -30,4 +33,23 @@ export interface PythonWorkflowAutomationTask {
     subType?: string;
     type?:    string;
     [property: string]: any;
+}
+
+export interface Config {
+    /**
+     * Set which App should Run
+     */
+    appName: string;
+    /**
+     * Set the amount of seconds to wait before defining the App has timed out.
+     */
+    timeoutSeconds: number;
+    /**
+     * Set if this step should wait until the App finishes running
+     */
+    waitForCompletion: boolean;
+}
+
+export interface InputNamespaceMap {
+    relatedEntity: string;
 }

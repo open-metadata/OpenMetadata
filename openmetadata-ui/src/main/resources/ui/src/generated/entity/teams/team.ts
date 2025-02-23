@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * This schema defines the Team entity. A `Team` is a group of zero or more users and/or
  * other teams. Teams can own zero or more data assets. Hierarchical teams are supported
  * `Organization` -> `BusinessUnit` -> `Division` -> `Department`.
@@ -67,6 +65,10 @@ export interface Team {
      */
     href?: string;
     id:    string;
+    /**
+     * Change that lead to this version of the entity.
+     */
+    incrementalChangeDescription?: ChangeDescription;
     /**
      * Roles that a team is inheriting through membership in teams that have set team default
      * roles.
