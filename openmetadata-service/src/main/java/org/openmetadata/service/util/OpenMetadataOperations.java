@@ -1089,7 +1089,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
     Entity.setSystemRepository(new SystemRepository());
     Entity.initializeRepositories(config, jdbi);
 
-    WorkflowHandler.initialize(config);
+    WorkflowHandler.initialize(config, true);
   }
 
   private void promptUserForDelete() {
