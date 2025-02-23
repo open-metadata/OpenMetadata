@@ -1044,7 +1044,7 @@ public interface CollectionDAO {
             + "WHERE fromId IN (<fromIds>) AND fromEntity = :fromEntity AND relation = :relation AND toEntity = :toEntity "
             + "GROUP BY fromId")
     @RegisterRowMapper(ToRelationshipCountMapper.class)
-    List<EntityRelationshipCount> findToCount(
+    List<EntityRelationshipCount> countFindTo(
         @BindList("fromIds") List<String> fromIds,
         @Bind("fromEntity") String fromEntity,
         @Bind("relation") int relation,

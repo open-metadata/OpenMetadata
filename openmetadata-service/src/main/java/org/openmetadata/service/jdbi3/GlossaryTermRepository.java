@@ -1007,7 +1007,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     Map<UUID, Integer> termIdCountMap =
         daoCollection
             .relationshipDAO()
-            .findToCount(termIds, GLOSSARY_TERM, Relationship.CONTAINS.ordinal(), GLOSSARY_TERM)
+            .countFindTo(termIds, GLOSSARY_TERM, Relationship.CONTAINS.ordinal(), GLOSSARY_TERM)
             .stream()
             .collect(
                 Collectors.toMap(
