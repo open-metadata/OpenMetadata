@@ -12,6 +12,7 @@
  */
 import { act, render, screen } from '@testing-library/react';
 import React from 'react';
+import { GenericTab } from '../../components/Customization/GenericTab/GenericTab';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { TableType } from '../../generated/entity/data/table';
 import { getTableDetailsByFQN } from '../../rest/tableAPI';
@@ -115,10 +116,6 @@ jest.mock(
   }
 );
 
-jest.mock('../../components/Database/SchemaTab/SchemaTab.component', () => {
-  return jest.fn().mockImplementation(() => <p>testSchemaTab</p>);
-});
-
 jest.mock(
   '../../components/Database/Profiler/TableProfiler/TableProfiler',
   () => {
@@ -208,6 +205,10 @@ jest.mock('../../hoc/LimitWrapper', () => {
     .fn()
     .mockImplementation(({ children }) => <>LimitWrapper{children}</>);
 });
+
+jest.mock('../../components/Customization/GenericTab/GenericTab', () => ({
+  GenericTab: jest.fn().mockImplementation(() => <>GenericTab</>),
+}));
 
 describe('TestDetailsPageV1 component', () => {
   it('TableDetailsPageV1 should fetch permissions', () => {
@@ -426,6 +427,7 @@ describe('TestDetailsPageV1 component', () => {
       fields: COMMON_API_FIELDS,
     });
 
-    expect(await screen.findByText('testSchemaTab')).toBeInTheDocument();
+    expect(await screen.findByText('GenericTab')).toBeInTheDocument();
+    expect(GenericTab).toHaveBeenCalledWith({ type: 'Table' }, {});
   });
 });

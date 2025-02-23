@@ -10,12 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { noop } from 'lodash';
+import { camelCase, noop } from 'lodash';
 import React, { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import gridBgImg from '../../assets/img/grid-bg-img.png';
+import { CustomizeTabWidget } from '../../components/Customization/CustomizeTabWidget/CustomizeTabWidget';
 import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
-import { CustomizeTabWidget } from '../../components/Glossary/CustomiseWidgets/CustomizeTabWidget/CustomizeTabWidget';
 import { CustomizablePageHeader } from '../../components/MyData/CustomizableComponents/CustomizablePageHeader/CustomizablePageHeader';
 import { CustomizeMyDataProps } from '../../components/MyData/CustomizableComponents/CustomizeMyData/CustomizeMyData.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
@@ -54,6 +54,13 @@ export const CustomizeTableDetailPage = ({
     noop();
   };
 
+  if (!currentPageType) {
+    // eslint-disable-next-line no-console
+    console.error('currentPageType is not defined');
+
+    return null;
+  }
+
   return (
     <PageLayoutV1
       mainContainerClassName="p-t-0"
@@ -70,8 +77,9 @@ export const CustomizeTableDetailPage = ({
       />
       <div className="m-md">
         <DataAssetsHeader
+          isCustomizedView
           dataAsset={entityDummyData as Table}
-          entityType={EntityType.TABLE}
+          entityType={camelCase(currentPageType) as EntityType.TABLE}
           permissions={{} as OperationPermission}
           onDisplayNameUpdate={asyncNoop}
           onOwnerUpdate={asyncNoop}

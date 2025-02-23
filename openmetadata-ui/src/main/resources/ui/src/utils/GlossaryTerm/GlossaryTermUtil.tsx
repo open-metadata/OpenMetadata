@@ -10,17 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { TabsProps } from 'antd';
 import { isUndefined } from 'lodash';
 import React from 'react';
 import EmptyWidgetPlaceholder from '../../components/MyData/CustomizableComponents/EmptyWidgetPlaceholder/EmptyWidgetPlaceholder';
 import { SIZE } from '../../enums/common.enum';
-import { GlossaryTermDetailPageWidgetKeys } from '../../enums/CustomizeDetailPage.enum';
-import { EntityTabs } from '../../enums/entity.enum';
-import { Tab } from '../../generated/system/ui/uiCustomization';
 import { WidgetConfig } from '../../pages/CustomizablePage/CustomizablePage.interface';
-import customizeGlossaryTermPageClassBase from '../CustomiseGlossaryTermPage/CustomizeGlossaryTermPage';
-import { getEntityName } from '../EntityUtils';
+import customizeGlossaryTermPageClassBase from '../CustomizeGlossaryTerm/CustomizeGlossaryTermBaseClass';
 
 export const getWidgetFromKey = ({
   widgetConfig,
@@ -58,13 +53,9 @@ export const getWidgetFromKey = ({
     );
   }
 
-  const widgetKey = customizeGlossaryTermPageClassBase.getKeyFromWidgetName(
+  const Widget = customizeGlossaryTermPageClassBase.getWidgetsFromKey(
     widgetConfig.i
   );
-
-  const Widget = customizeGlossaryTermPageClassBase.getWidgetsFromKey<
-    typeof widgetKey
-  >(widgetConfig.i as GlossaryTermDetailPageWidgetKeys);
 
   return (
     <Widget
@@ -73,46 +64,5 @@ export const getWidgetFromKey = ({
       selectedGridSize={widgetConfig.w}
       widgetKey={widgetConfig.i}
     />
-  );
-};
-
-export const getGlossaryTermDetailTabs = (
-  defaultTabs: TabsProps['items'],
-  customizedTabs?: Tab[],
-  defaultTabId: EntityTabs = EntityTabs.OVERVIEW
-) => {
-  if (!customizedTabs) {
-    return defaultTabs;
-  }
-  const overviewTab = defaultTabs?.find((t) => t.key === defaultTabId);
-
-  const newTabs =
-    customizedTabs?.map((t) => {
-      const tabItemDetails = defaultTabs?.find((i) => i.key === t.id);
-
-      return (
-        tabItemDetails ?? {
-          label: getEntityName(t),
-          key: t.id,
-          children: overviewTab?.children,
-        }
-      );
-    }) ?? defaultTabs;
-
-  return newTabs;
-};
-
-export const getTabLabelMap = (tabs?: Tab[]): Record<EntityTabs, string> => {
-  const labelMap = {} as Record<EntityTabs, string>;
-
-  return (
-    tabs?.reduce((acc: Record<EntityTabs, string>, item) => {
-      if (item.id && item.displayName) {
-        const tab = item.id as EntityTabs;
-        acc[tab] = item.displayName;
-      }
-
-      return acc;
-    }, labelMap) ?? labelMap
   );
 };

@@ -43,6 +43,7 @@ import { getPersonaByName } from '../../rest/PersonaAPI';
 import { Transi18next } from '../../utils/CommonUtils';
 import { getSettingPath } from '../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
+import CustomizableDomainPage from '../CustomizableDomainPage/CustomizableDomainPage';
 import { CustomizeTableDetailPage } from '../CustomizeTableDetailPage/CustomizeTableDetailPage';
 import { SettingsNavigationPage } from '../SettingsNavigationPage/SettingsNavigationPage';
 import { useCustomizeStore } from './CustomizeStore';
@@ -180,7 +181,10 @@ export const CustomizablePage = () => {
               name: `${personaDetails.name}-${personaFQN}`,
               fullyQualifiedName: pageLayoutFQN,
               entityType: EntityType.PAGE,
-              data: {},
+              data: {
+                pages: [],
+                navigation: [],
+              },
             });
             setCurrentPageType(pageFqn as PageType);
           } else {
@@ -251,6 +255,14 @@ export const CustomizablePage = () => {
           onSaveLayout={handlePageCustomizeSave}
         />
       );
+    case PageType.Domain:
+      return (
+        <CustomizableDomainPage
+          initialPageData={currentPage}
+          personaDetails={personaDetails}
+          onSaveLayout={handlePageCustomizeSave}
+        />
+      );
 
     case PageType.Glossary:
     case PageType.GlossaryTerm:
@@ -263,6 +275,15 @@ export const CustomizablePage = () => {
         />
       );
     case PageType.Table:
+    case PageType.Topic:
+    case PageType.StoredProcedure:
+    case PageType.DashboardDataModel:
+    case PageType.Dashboard:
+    case PageType.Pipeline:
+    case PageType.DatabaseSchema:
+    case PageType.Database:
+    case PageType.Container:
+    case PageType.SearchIndex:
       return (
         <CustomizeTableDetailPage
           initialPageData={currentPage}
@@ -271,6 +292,7 @@ export const CustomizablePage = () => {
           onSaveLayout={handlePageCustomizeSave}
         />
       );
+
     default:
       return <ErrorPlaceHolder />;
   }

@@ -11,26 +11,42 @@
  *  limitations under the License.
  */
 import { TabProps } from '../components/common/TabsLabel/TabsLabel.interface';
+import {
+  CUSTOM_PROPERTIES_WIDGET,
+  DATA_PRODUCTS_WIDGET,
+  DESCRIPTION_WIDGET,
+  GLOSSARY_TERMS_WIDGET,
+  GridSizes,
+  TAGS_WIDGET,
+} from '../constants/CustomizeWidgets.constants';
 import { OperationPermission } from '../context/PermissionProvider/PermissionProvider.interface';
 import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 import { EntityTabs } from '../enums/entity.enum';
 import {
   Constraint,
+  ConstraintType,
   DatabaseServiceType,
   DataType,
+  RelationshipType,
   Table,
   TableType,
 } from '../generated/entity/data/table';
+import { Tab } from '../generated/system/ui/uiCustomization';
 import { TestSummary } from '../generated/tests/testCase';
 import { FeedCounts } from '../interface/feed.interface';
-import { getTableDetailPageBaseTabs } from './TableUtils';
+import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
+import { getTabLabelFromId } from './CustomizePage/CustomizePageUtils';
+import i18n from './i18next/LocalUtil';
+import {
+  getTableDetailPageBaseTabs,
+  getTableWidgetFromKey,
+} from './TableUtils';
 
 export interface TableDetailPageTabProps {
   queryCount: number;
   isTourOpen: boolean;
   activeTab: EntityTabs;
   totalFeedCount: number;
-  schemaTab: JSX.Element;
   isViewTableType: boolean;
   viewAllPermission: boolean;
   viewQueriesPermission: boolean;
@@ -44,8 +60,8 @@ export interface TableDetailPageTabProps {
   testCaseSummary?: TestSummary;
   getEntityFeedCount: () => void;
   fetchTableDetails: () => Promise<void>;
-  onExtensionUpdate: (updatedData: Table) => Promise<void>;
   handleFeedCount: (data: FeedCounts) => void;
+  labelMap?: Record<EntityTabs, string>;
 }
 
 class TableClassBase {
@@ -55,7 +71,7 @@ class TableClassBase {
     return getTableDetailPageBaseTabs(tableDetailsPageProps);
   }
 
-  public getTableDetailPageTabsIds(): EntityTabs[] {
+  public getTableDetailPageTabsIds(): Tab[] {
     return [
       EntityTabs.SCHEMA,
       EntityTabs.ACTIVITY_FEED,
@@ -66,74 +82,86 @@ class TableClassBase {
       EntityTabs.LINEAGE,
       EntityTabs.VIEW_DEFINITION,
       EntityTabs.CUSTOM_PROPERTIES,
-    ];
+    ].map((tab: EntityTabs) => ({
+      id: tab,
+      name: tab,
+      displayName: getTabLabelFromId(tab),
+      layout: this.getDefaultLayout(tab),
+      editable: tab === EntityTabs.SCHEMA,
+    }));
   }
 
-  public getDefaultLayout(tab: EntityTabs) {
-    switch (tab) {
-      case EntityTabs.SCHEMA:
-        return [
-          {
-            h: 2,
-            i: DetailPageWidgetKeys.DESCRIPTION,
-            w: 6,
-            x: 0,
-            y: 0,
-            static: false,
-          },
-          {
-            h: 11,
-            i: DetailPageWidgetKeys.TABLE_SCHEMA,
-            w: 6,
-            x: 0,
-            y: 0,
-            static: false,
-          },
-          {
-            h: 2,
-            i: DetailPageWidgetKeys.FREQUENTLY_JOINED_TABLES,
-            w: 2,
-            x: 6,
-            y: 0,
-            static: false,
-          },
-          {
-            h: 1,
-            i: DetailPageWidgetKeys.DATA_PRODUCTS,
-            w: 2,
-            x: 6,
-            y: 1,
-            static: false,
-          },
-          {
-            h: 2,
-            i: DetailPageWidgetKeys.TAGS,
-            w: 2,
-            x: 6,
-            y: 2,
-            static: false,
-          },
-          {
-            h: 2,
-            i: DetailPageWidgetKeys.GLOSSARY_TERMS,
-            w: 2,
-            x: 6,
-            y: 3,
-            static: false,
-          },
-          {
-            h: 4,
-            i: DetailPageWidgetKeys.CUSTOM_PROPERTIES,
-            w: 2,
-            x: 6,
-            y: 4,
-            static: false,
-          },
-        ];
-
-      default:
-        return [];
+  public getDefaultLayout(tab?: EntityTabs) {
+    if (tab && tab !== EntityTabs.SCHEMA) {
+      return [];
     }
+
+    return [
+      {
+        h: 1,
+        i: DetailPageWidgetKeys.DESCRIPTION,
+        w: 6,
+        x: 0,
+        y: 0,
+        static: false,
+      },
+      {
+        h: 8,
+        i: DetailPageWidgetKeys.TABLE_SCHEMA,
+        w: 6,
+        x: 0,
+        y: 0,
+        static: false,
+      },
+      {
+        h: 1,
+        i: DetailPageWidgetKeys.FREQUENTLY_JOINED_TABLES,
+        w: 2,
+        x: 6,
+        y: 0,
+        static: false,
+      },
+      {
+        h: 1,
+        i: DetailPageWidgetKeys.DATA_PRODUCTS,
+        w: 2,
+        x: 6,
+        y: 1,
+        static: false,
+      },
+      {
+        h: 1,
+        i: DetailPageWidgetKeys.TAGS,
+        w: 2,
+        x: 6,
+        y: 2,
+        static: false,
+      },
+      {
+        h: 1,
+        i: DetailPageWidgetKeys.GLOSSARY_TERMS,
+        w: 2,
+        x: 6,
+        y: 3,
+        static: false,
+      },
+      {
+        h: 1,
+        i: DetailPageWidgetKeys.TABLE_CONSTRAINTS,
+        w: 2,
+        x: 6,
+        y: 4,
+        static: false,
+      },
+      {
+        h: 4,
+        i: DetailPageWidgetKeys.CUSTOM_PROPERTIES,
+        w: 2,
+        x: 6,
+        y: 6,
+        static: false,
+      },
+    ];
   }
 
   public getAlertEnableStatus() {
@@ -241,6 +269,20 @@ class TableClassBase {
         fullyQualifiedName: 'sample_data',
         deleted: false,
       },
+      tableConstraints: [
+        {
+          constraintType: ConstraintType.ForeignKey,
+          columns: ['post_id'],
+          referredColumns: ['mysql_sample.default.posts_db.Posts.post_id'],
+          relationshipType: RelationshipType.ManyToOne,
+        },
+        {
+          constraintType: ConstraintType.ForeignKey,
+          columns: ['user_id'],
+          referredColumns: ['mysql_sample.default.posts_db.Users.user_id'],
+          relationshipType: RelationshipType.ManyToOne,
+        },
+      ],
       serviceType: DatabaseServiceType.BigQuery,
       tags: [],
       followers: [],
@@ -258,6 +300,41 @@ class TableClassBase {
       },
       deleted: false,
     };
+  }
+
+  public getCommonWidgetList() {
+    return [
+      DESCRIPTION_WIDGET,
+      {
+        fullyQualifiedName: DetailPageWidgetKeys.TABLE_SCHEMA,
+        name: i18n.t('label.schema'),
+        data: {
+          gridSizes: ['large'] as GridSizes[],
+        },
+      },
+      DATA_PRODUCTS_WIDGET,
+      TAGS_WIDGET,
+      GLOSSARY_TERMS_WIDGET,
+      {
+        fullyQualifiedName: DetailPageWidgetKeys.FREQUENTLY_JOINED_TABLES,
+        name: i18n.t('label.frequently-joined-table-plural'),
+        data: {
+          gridSizes: ['small'] as GridSizes[],
+        },
+      },
+      {
+        fullyQualifiedName: DetailPageWidgetKeys.TABLE_CONSTRAINTS,
+        name: i18n.t('label.table-constraints'),
+        data: {
+          gridSizes: ['small'] as GridSizes[],
+        },
+      },
+      CUSTOM_PROPERTIES_WIDGET,
+    ];
+  }
+
+  public getWidgetsFromKey(widgetConfig: WidgetConfig) {
+    return getTableWidgetFromKey(widgetConfig);
   }
 }
 

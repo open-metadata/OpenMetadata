@@ -113,6 +113,8 @@ export enum EntityType {
  * This schema defines the type used for describing different types of pages.
  */
 export enum PageType {
+    APICollection = "APICollection",
+    APIEndpoint = "APIEndpoint",
     Container = "Container",
     Dashboard = "Dashboard",
     DashboardDataModel = "DashboardDataModel",
@@ -122,6 +124,8 @@ export enum PageType {
     Glossary = "Glossary",
     GlossaryTerm = "GlossaryTerm",
     LandingPage = "LandingPage",
+    Metric = "Metric",
+    MlModel = "MlModel",
     Pipeline = "Pipeline",
     SearchIndex = "SearchIndex",
     StoredProcedure = "StoredProcedure",

@@ -104,10 +104,7 @@ import {
 } from '../../rest/serviceAPI';
 import { getContainers } from '../../rest/storageAPI';
 import { getTopics } from '../../rest/topicsAPI';
-import {
-  getEntityMissingError,
-  sortTagsCaseInsensitive,
-} from '../../utils/CommonUtils';
+import { getEntityMissingError } from '../../utils/CommonUtils';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
@@ -704,10 +701,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
           jsonPatch
         );
 
-        setServiceDetails({
-          ...response,
-          tags: sortTagsCaseInsensitive(response.tags ?? []),
-        });
+        setServiceDetails(response);
       } catch (err) {
         showErrorToast(err as AxiosError);
       }

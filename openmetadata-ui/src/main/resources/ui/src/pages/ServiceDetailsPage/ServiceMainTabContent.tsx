@@ -32,10 +32,8 @@ import { COMMON_RESIZABLE_PANEL_CONFIG } from '../../constants/ResizablePanel.co
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../../enums/entity.enum';
-import { DatabaseService } from '../../generated/entity/services/databaseService';
 import { Paging } from '../../generated/type/paging';
 import { UsePagingInterface } from '../../hooks/paging/usePaging';
-import { useFqn } from '../../hooks/useFqn';
 import { ServicesType } from '../../interface/service.interface';
 import {
   callServicePatchAPI,
@@ -84,11 +82,7 @@ function ServiceMainTabContent({
   const { serviceCategory } = useParams<{
     serviceCategory: ServiceTypes;
   }>();
-
-  const { fqn: serviceFQN } = useFqn();
   const { permissions } = usePermissionProvider();
-
-  const [isEdit, setIsEdit] = useState(false);
   const [pageData, setPageData] = useState<ServicePageData[]>([]);
 
   const tier = getTierTags(serviceDetails?.tags ?? []);
@@ -131,18 +125,8 @@ function ServiceMainTabContent({
       await onDescriptionUpdate(updatedHTML);
     } catch (e) {
       // Error
-    } finally {
-      setIsEdit(false);
     }
   }, []);
-
-  const onDescriptionEdit = (): void => {
-    setIsEdit(true);
-  };
-
-  const onCancel = () => {
-    setIsEdit(false);
-  };
 
   const handleDisplayNameUpdate = useCallback(
     async (entityData: EntityName, id?: string) => {
@@ -245,15 +229,11 @@ function ServiceMainTabContent({
                   <Col data-testid="description-container" span={24}>
                     <DescriptionV1
                       description={serviceDetails.description}
-                      entityFqn={serviceFQN}
                       entityName={serviceName}
                       entityType={entityType}
                       hasEditAccess={editDescriptionPermission}
-                      isEdit={isEdit}
                       showActions={!serviceDetails.deleted}
                       showCommentsIcon={false}
-                      onCancel={onCancel}
-                      onDescriptionEdit={onDescriptionEdit}
                       onDescriptionUpdate={handleDescriptionUpdate}
                     />
                   </Col>
@@ -314,14 +294,8 @@ function ServiceMainTabContent({
             children: (
               <div data-testid="entity-right-panel">
                 <EntityRightPanel
-                  dataProducts={
-                    (serviceDetails as DatabaseService)?.dataProducts ?? []
-                  }
-                  domain={(serviceDetails as DatabaseService)?.domain}
                   editGlossaryTermsPermission={editGlossaryTermsPermission}
                   editTagPermission={editTagsPermission}
-                  entityFQN={serviceFQN}
-                  entityId={serviceDetails.id}
                   entityType={entityType}
                   selectedTags={tags}
                   showDataProductContainer={

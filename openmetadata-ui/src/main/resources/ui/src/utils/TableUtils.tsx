@@ -119,7 +119,6 @@ import { LabelType, State, TagLabel } from '../generated/type/tagLabel';
 import {
   getPartialNameFromTableFQN,
   getTableFQNFromColumnFQN,
-  sortTagsCaseInsensitive,
 } from './CommonUtils';
 import EntityLink from './EntityLink';
 import searchClassBase from './SearchClassBase';
@@ -158,8 +157,19 @@ import { ReactComponent as IconUnknown } from '../assets/svg/data-type-icon/unkn
 import { ReactComponent as IconVarchar } from '../assets/svg/data-type-icon/varchar.svg';
 import { ReactComponent as IconVariant } from '../assets/svg/data-type-icon/variant.svg';
 import { ReactComponent as IconXML } from '../assets/svg/data-type-icon/xml.svg';
-import { Joined } from '../pages/TableDetailsPageV1/FrequentlyJoinedTables/FrequentlyJoinedTables.component';
+import { GenericTab } from '../components/Customization/GenericTab/GenericTab';
+import { CommonWidgets } from '../components/DataAssets/CommonWidgets/CommonWidgets';
+import SchemaTable from '../components/Database/SchemaTable/SchemaTable.component';
+import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
+import { PageType } from '../generated/system/ui/uiCustomization';
+import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
+import {
+  FrequentlyJoinedTables,
+  Joined,
+} from '../pages/TableDetailsPageV1/FrequentlyJoinedTables/FrequentlyJoinedTables.component';
+import { PartitionedKeys } from '../pages/TableDetailsPageV1/PartitionedKeys/PartitionedKeys.component';
 import ConstraintIcon from '../pages/TableDetailsPageV1/TableConstraints/ConstraintIcon';
+import TableConstraints from '../pages/TableDetailsPageV1/TableConstraints/TableConstraints';
 
 export const getUsagePercentile = (pctRank: number, isLiteral = false) => {
   const percentile = Math.round(pctRank * 10) / 10;
@@ -478,23 +488,11 @@ export const getServiceIcon = (source: SourceType) => {
   }
 };
 
-export const makeRow = <T extends Column | SearchIndexField>(column: T) => {
-  return {
-    description: column.description ?? '',
-    // Sorting tags as the response of PATCH request does not return the sorted order
-    // of tags, but is stored in sorted manner in the database
-    // which leads to wrong PATCH payload sent after further tags removal
-    tags: sortTagsCaseInsensitive(column.tags ?? []),
-    key: column?.name,
-    ...column,
-  };
-};
-
 export const makeData = <T extends Column | SearchIndexField>(
   columns: T[] = []
 ): Array<T & { id: string }> => {
   return columns.map((column) => ({
-    ...makeRow(column),
+    ...column,
     id: uniqueId(column.name),
     children: column.children ? makeData<T>(column.children as T[]) : undefined,
   }));
@@ -691,6 +689,18 @@ export const searchInFields = <T extends SearchIndexField | Column>(
   return searchedValue;
 };
 
+export const getUpdatedTags = (newFieldTags: Array<EntityTags>): TagLabel[] => {
+  const mappedNewTags: TagLabel[] = newFieldTags.map((tag) => ({
+    ...omit(tag, 'isRemovable'),
+    labelType: LabelType.Manual,
+    state: State.Confirmed,
+    source: tag.source || 'Classification',
+    tagFQN: tag.tagFQN,
+  }));
+
+  return mappedNewTags;
+};
+
 export const updateFieldTags = <T extends TableFieldsInfoCommonEntities>(
   changedFieldFQN: string,
   newFieldTags: EntityTags[],
@@ -707,18 +717,6 @@ export const updateFieldTags = <T extends TableFieldsInfoCommonEntities>(
       );
     }
   });
-};
-
-export const getUpdatedTags = (newFieldTags: Array<EntityTags>): TagLabel[] => {
-  const mappedNewTags: TagLabel[] = newFieldTags.map((tag) => ({
-    ...omit(tag, 'isRemovable'),
-    labelType: LabelType.Manual,
-    state: State.Confirmed,
-    source: tag.source || 'Classification',
-    tagFQN: tag.tagFQN,
-  }));
-
-  return mappedNewTags;
 };
 
 export const updateFieldDescription = <T extends TableFieldsInfoCommonEntities>(
@@ -740,7 +738,6 @@ export const updateFieldDescription = <T extends TableFieldsInfoCommonEntities>(
 };
 
 export const getTableDetailPageBaseTabs = ({
-  schemaTab,
   queryCount,
   isTourOpen,
   tablePermissions,
@@ -748,7 +745,6 @@ export const getTableDetailPageBaseTabs = ({
   deleted,
   tableDetails,
   totalFeedCount,
-  onExtensionUpdate,
   getEntityFeedCount,
   handleFeedCount,
   viewAllPermission,
@@ -760,6 +756,7 @@ export const getTableDetailPageBaseTabs = ({
   fetchTableDetails,
   testCaseSummary,
   isViewTableType,
+  labelMap,
 }: TableDetailPageTabProps): TabProps[] => {
   return [
     {
@@ -768,11 +765,11 @@ export const getTableDetailPageBaseTabs = ({
           count={tableDetails?.columns.length}
           id={EntityTabs.SCHEMA}
           isActive={activeTab === EntityTabs.SCHEMA}
-          name={t('label.schema')}
+          name={get(labelMap, EntityTabs.SCHEMA, t('label.schema'))}
         />
       ),
       key: EntityTabs.SCHEMA,
-      children: schemaTab,
+      children: <GenericTab type={PageType.Table} />,
     },
     {
       label: (
@@ -780,7 +777,11 @@ export const getTableDetailPageBaseTabs = ({
           count={totalFeedCount}
           id={EntityTabs.ACTIVITY_FEED}
           isActive={activeTab === EntityTabs.ACTIVITY_FEED}
-          name={t('label.activity-feed-and-task-plural')}
+          name={get(
+            labelMap,
+            EntityTabs.ACTIVITY_FEED,
+            t('label.activity-feed-and-task-plural')
+          )}
         />
       ),
       key: EntityTabs.ACTIVITY_FEED,
@@ -790,7 +791,6 @@ export const getTableDetailPageBaseTabs = ({
           columns={tableDetails?.columns}
           entityFeedTotalCount={totalFeedCount}
           entityType={EntityType.TABLE}
-          fqn={tableDetails?.fullyQualifiedName ?? ''}
           owners={tableDetails?.owners}
           onFeedUpdate={getEntityFeedCount}
           onUpdateEntityDetails={fetchTableDetails}
@@ -800,7 +800,10 @@ export const getTableDetailPageBaseTabs = ({
     },
     {
       label: (
-        <TabsLabel id={EntityTabs.SAMPLE_DATA} name={t('label.sample-data')} />
+        <TabsLabel
+          id={EntityTabs.SAMPLE_DATA}
+          name={get(labelMap, EntityTabs.SAMPLE_DATA, t('label.sample-data'))}
+        />
       ),
 
       key: EntityTabs.SAMPLE_DATA,
@@ -822,7 +825,11 @@ export const getTableDetailPageBaseTabs = ({
           count={queryCount}
           id={EntityTabs.TABLE_QUERIES}
           isActive={activeTab === EntityTabs.TABLE_QUERIES}
-          name={t('label.query-plural')}
+          name={get(
+            labelMap,
+            EntityTabs.TABLE_QUERIES,
+            t('label.query-plural')
+          )}
         />
       ),
       key: EntityTabs.TABLE_QUERIES,
@@ -839,7 +846,11 @@ export const getTableDetailPageBaseTabs = ({
       label: (
         <TabsLabel
           id={EntityTabs.PROFILER}
-          name={t('label.data-observability')}
+          name={get(
+            labelMap,
+            EntityTabs.PROFILER,
+            t('label.data-observability')
+          )}
         />
       ),
       key: EntityTabs.PROFILER,
@@ -855,7 +866,12 @@ export const getTableDetailPageBaseTabs = ({
         ),
     },
     {
-      label: <TabsLabel id={EntityTabs.LINEAGE} name={t('label.lineage')} />,
+      label: (
+        <TabsLabel
+          id={EntityTabs.LINEAGE}
+          name={get(labelMap, EntityTabs.LINEAGE, t('label.lineage'))}
+        />
+      ),
       key: EntityTabs.LINEAGE,
       children: (
         <LineageProvider>
@@ -869,7 +885,12 @@ export const getTableDetailPageBaseTabs = ({
       ),
     },
     {
-      label: <TabsLabel id={EntityTabs.DBT} name={t('label.dbt-lowercase')} />,
+      label: (
+        <TabsLabel
+          id={EntityTabs.DBT}
+          name={get(labelMap, EntityTabs.DBT, t('label.dbt-lowercase'))}
+        />
+      ),
       isHidden: !(
         tableDetails?.dataModel?.sql || tableDetails?.dataModel?.rawSql
       ),
@@ -899,33 +920,35 @@ export const getTableDetailPageBaseTabs = ({
               ? EntityTabs.VIEW_DEFINITION
               : EntityTabs.SCHEMA_DEFINITION
           }
-          name={
+          name={get(
+            labelMap,
+            EntityTabs.VIEW_DEFINITION,
             isViewTableType
               ? t('label.view-definition')
               : t('label.schema-definition')
-          }
+          )}
         />
       ),
       isHidden: isUndefined(tableDetails?.schemaDefinition),
-      key: isViewTableType
-        ? EntityTabs.VIEW_DEFINITION
-        : EntityTabs.SCHEMA_DEFINITION,
+      key: EntityTabs.VIEW_DEFINITION,
       children: <QueryViewer sqlQuery={tableDetails?.schemaDefinition ?? ''} />,
     },
     {
       label: (
         <TabsLabel
           id={EntityTabs.CUSTOM_PROPERTIES}
-          name={t('label.custom-property-plural')}
+          name={get(
+            labelMap,
+            EntityTabs.CUSTOM_PROPERTIES,
+            t('label.custom-property-plural')
+          )}
         />
       ),
       key: EntityTabs.CUSTOM_PROPERTIES,
-      children: tableDetails && (
+      children: (
         <div className="m-sm">
           <CustomPropertyTable<EntityType.TABLE>
-            entityDetails={tableDetails}
             entityType={EntityType.TABLE}
-            handleExtensionUpdate={onExtensionUpdate}
             hasEditAccess={editCustomAttributePermission}
             hasPermission={viewAllPermission}
           />
@@ -1039,4 +1062,29 @@ export const getColumnOptionsFromTableColumn = (columns: Column[]) => {
   });
 
   return options;
+};
+
+export const getTableWidgetFromKey = (
+  widgetConfig: WidgetConfig
+): JSX.Element | null => {
+  if (widgetConfig.i.startsWith(DetailPageWidgetKeys.TABLE_SCHEMA)) {
+    return <SchemaTable />;
+  } else if (
+    widgetConfig.i.startsWith(DetailPageWidgetKeys.TABLE_CONSTRAINTS)
+  ) {
+    return <TableConstraints />;
+  } else if (
+    widgetConfig.i.startsWith(DetailPageWidgetKeys.FREQUENTLY_JOINED_TABLES)
+  ) {
+    return <FrequentlyJoinedTables />;
+  } else if (widgetConfig.i.startsWith(DetailPageWidgetKeys.PARTITIONED_KEYS)) {
+    return <PartitionedKeys />;
+  } else {
+    return (
+      <CommonWidgets
+        entityType={EntityType.TABLE}
+        widgetConfig={widgetConfig}
+      />
+    );
+  }
 };

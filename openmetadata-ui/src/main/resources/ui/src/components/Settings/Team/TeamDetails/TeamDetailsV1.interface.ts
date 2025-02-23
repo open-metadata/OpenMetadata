@@ -22,13 +22,11 @@ export interface TeamDetailsProp {
   assetsCount: number;
   currentTeam: Team;
   teams?: Team[];
-  isDescriptionEditable: boolean;
   isTeamMemberLoading: number;
   isFetchingAdvancedDetails: boolean;
   isFetchingAllTeamAdvancedDetails: boolean;
   entityPermissions: OperationPermission;
   handleAddTeam: (value: boolean) => void;
-  descriptionHandler: (value: boolean) => void;
   onDescriptionUpdate: (value: string) => Promise<void>;
   updateTeamHandler: (data: Team, fetchTeam?: boolean) => Promise<void>;
   handleAddUser: (data: Array<EntityReference>) => Promise<void>;

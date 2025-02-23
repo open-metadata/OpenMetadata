@@ -13,7 +13,6 @@
 
 import { EntityTags } from 'Models';
 import { EntityType } from '../../../enums/entity.enum';
-import { ThreadType } from '../../../generated/api/feed/createThread';
 import { MlFeature } from '../../../generated/entity/data/mlmodel';
 import { Task } from '../../../generated/entity/data/pipeline';
 import { Column } from '../../../generated/entity/data/table';
@@ -35,7 +34,6 @@ export interface TableTagsComponentProps<T> {
     selectedTags: EntityTags[],
     editColumnTag: T
   ) => Promise<void>;
-  onThreadLinkSelect: (value: string, threadType?: ThreadType) => void;
 }
 
 export interface TableTagsProps {

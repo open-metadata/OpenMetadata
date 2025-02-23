@@ -13,7 +13,6 @@
 
 import { EntityType } from '../../../enums/entity.enum';
 import { Column } from '../../../generated/entity/data/table';
-import { ThreadType } from '../../../generated/entity/feed/thread';
 
 export interface TableDescriptionProps {
   index: number;
@@ -27,5 +26,4 @@ export interface TableDescriptionProps {
   hasEditPermission: boolean;
   isReadOnly?: boolean;
   onClick: () => void;
-  onThreadLinkSelect: (value: string, threadType?: ThreadType) => void;
 }
