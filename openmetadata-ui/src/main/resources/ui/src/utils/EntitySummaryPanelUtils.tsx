@@ -383,6 +383,8 @@ export const getEntityChildDetails = (
 ) => {
   let childComponent;
   let heading;
+  let headingTestId = 'schema-header';
+
   switch (entityType) {
     case EntityType.TABLE:
       heading = i18n.t('label.schema');
@@ -422,6 +424,7 @@ export const getEntityChildDetails = (
       break;
     case EntityType.PIPELINE:
       heading = i18n.t('label.task-plural');
+      headingTestId = 'tasks-header';
       childComponent = (
         <SummaryList
           formattedEntityData={getFormattedEntityData(
@@ -478,6 +481,7 @@ export const getEntityChildDetails = (
 
     case EntityType.MLMODEL:
       heading = i18n.t('label.feature-plural');
+      headingTestId = 'features-header';
       childComponent = (
         <SummaryList
           formattedEntityData={getFormattedEntityData(
@@ -506,6 +510,7 @@ export const getEntityChildDetails = (
 
     case EntityType.DASHBOARD_DATA_MODEL:
       heading = i18n.t('label.column-plural');
+      headingTestId = 'column-header';
       childComponent = (
         <SummaryList
           formattedEntityData={getFormattedEntityData(
@@ -519,6 +524,7 @@ export const getEntityChildDetails = (
       break;
     case EntityType.STORED_PROCEDURE:
       heading = i18n.t('label.code');
+      headingTestId = 'code-header';
       childComponent = (
         <SchemaEditor
           editorClass="custom-code-mirror-theme summary-panel-custom-query-editor"
@@ -539,6 +545,7 @@ export const getEntityChildDetails = (
       break;
     case EntityType.SEARCH_INDEX:
       heading = i18n.t('label.field-plural');
+      headingTestId = 'fields-header';
       childComponent = (
         <SummaryList
           entityType={SummaryEntityType.FIELD}
@@ -586,6 +593,7 @@ export const getEntityChildDetails = (
       break;
     case EntityType.CHART:
       heading = i18n.t('label.dashboard-plural');
+      headingTestId = 'dashboard-header';
       childComponent = (
         <SummaryList
           formattedEntityData={getFormattedEntityData(
@@ -645,7 +653,7 @@ export const getEntityChildDetails = (
       <Col span={24}>
         <Typography.Text
           className="summary-panel-section-title"
-          data-testid="schema-header">
+          data-testid={headingTestId}>
           {heading}
         </Typography.Text>
       </Col>

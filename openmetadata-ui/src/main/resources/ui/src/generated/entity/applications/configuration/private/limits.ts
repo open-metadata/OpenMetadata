@@ -11,27 +11,15 @@
  *  limitations under the License.
  */
 /**
- * Checks if an Entity attributes fit given rules.
+ * Private Configuration for the App Limits.
  */
-export interface JSONLogicTask {
-    config?: Config;
+export interface Limits {
     /**
-     * Description of the Node.
+     * The records of the limits.
      */
-    description?: string;
+    actions: { [key: string]: number };
     /**
-     * Display Name that identifies this Node.
+     * The start of this limit cycle.
      */
-    displayName?: string;
-    /**
-     * Name that identifies this Node.
-     */
-    name?:    string;
-    subType?: string;
-    type?:    string;
-    [property: string]: any;
-}
-
-export interface Config {
-    rules?: string;
+    billingCycleStart: Date;
 }
