@@ -35,6 +35,7 @@ import {
   ThreadType,
 } from '../../../generated/api/feed/createThread';
 import { Glossary } from '../../../generated/entity/data/glossary';
+import { withPageLayout } from '../../../hoc/withPageLayout';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../../hooks/useFqn';
@@ -206,7 +207,7 @@ const UpdateDescription = () => {
 
   return (
     <ResizablePanels
-      className="content-height-with-resizable-panel"
+      className="content-height-with-resizable-panel m--t-sm"
       firstPanel={{
         className: 'content-resizable-panel-container',
         minWidth: 700,
@@ -322,4 +323,4 @@ const UpdateDescription = () => {
   );
 };
 
-export default UpdateDescription;
+export default withPageLayout('')(UpdateDescription);

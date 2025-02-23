@@ -34,6 +34,7 @@ import {
 } from '../../enums/entity.enum';
 import { ProfilerDashboardType } from '../../enums/table.enum';
 import { CustomMetric, Table } from '../../generated/entity/data/table';
+import { withPageLayout } from '../../hoc/withPageLayout';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../hooks/useFqn';
 import { putCustomMetric } from '../../rest/customMetricAPI';
@@ -201,7 +202,7 @@ const AddCustomMetricPage = () => {
 
   return (
     <ResizablePanels
-      className="content-height-with-resizable-panel"
+      className="content-height-with-resizable-panel m--t-sm"
       firstPanel={{
         className: 'content-resizable-panel-container',
         children: (
@@ -268,4 +269,4 @@ const AddCustomMetricPage = () => {
   );
 };
 
-export default AddCustomMetricPage;
+export default withPageLayout('')(AddCustomMetricPage);

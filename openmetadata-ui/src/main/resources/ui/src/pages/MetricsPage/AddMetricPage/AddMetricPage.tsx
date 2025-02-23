@@ -32,6 +32,7 @@ import {
   MetricType,
   UnitOfMeasurement,
 } from '../../../generated/api/data/createMetric';
+import { withPageLayout } from '../../../hoc/withPageLayout';
 import { FieldProp, FieldTypes } from '../../../interface/FormUtils.interface';
 import { createMetric } from '../../../rest/metricsAPI';
 import { generateFormFields } from '../../../utils/formUtils';
@@ -261,7 +262,7 @@ const AddMetricPage = () => {
 
   return (
     <ResizablePanels
-      className="content-height-with-resizable-panel"
+      className="content-height-with-resizable-panel m--t-sm"
       firstPanel={{
         className: 'content-resizable-panel-container',
         children: (
@@ -343,4 +344,4 @@ const AddMetricPage = () => {
   );
 };
 
-export default AddMetricPage;
+export default withPageLayout('')(AddMetricPage);
