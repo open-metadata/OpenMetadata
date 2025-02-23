@@ -37,7 +37,6 @@ import static org.openmetadata.service.exception.CatalogExceptionMessage.CREATE_
 import static org.openmetadata.service.exception.CatalogExceptionMessage.DELETE_ORGANIZATION;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.INVALID_GROUP_TEAM_CHILDREN_UPDATE;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.INVALID_GROUP_TEAM_UPDATE;
-import static org.openmetadata.service.exception.CatalogExceptionMessage.TEAM_HIERARCHY;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.UNEXPECTED_PARENT;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.invalidChild;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.invalidParent;
@@ -47,6 +46,7 @@ import static org.openmetadata.service.util.EntityUtil.*;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -340,51 +340,8 @@ public class TeamRepository extends EntityRepository<Team> {
         .withDescription(team.getDescription());
   }
 
-  private TeamHierarchy deepCopy(TeamHierarchy team) {
-    TeamHierarchy newTeam =
-        new TeamHierarchy()
-            .withId(team.getId())
-            .withTeamType(team.getTeamType())
-            .withName(team.getName())
-            .withDisplayName(team.getDisplayName())
-            .withHref(team.getHref())
-            .withFullyQualifiedName(team.getFullyQualifiedName())
-            .withIsJoinable(team.getIsJoinable());
-    if (team.getChildren() != null) {
-      List<TeamHierarchy> children = new ArrayList<>();
-      for (TeamHierarchy n : team.getChildren()) {
-        children.add(deepCopy(n));
-      }
-      newTeam.withChildren(children);
-    }
-    return newTeam;
-  }
-
-  private TeamHierarchy mergeTrees(TeamHierarchy team1, TeamHierarchy team2) {
-    List<TeamHierarchy> team1Children = team1.getChildren();
-    List<TeamHierarchy> team2Children = team2.getChildren();
-    if (team1Children != null && team2Children != null) {
-      List<TeamHierarchy> toMerge = new ArrayList<>(team1Children);
-      toMerge.retainAll(team2Children);
-
-      for (TeamHierarchy n : toMerge) mergeTrees(n, team2Children.get(team2Children.indexOf(n)));
-    }
-    if (team2Children != null) {
-      List<TeamHierarchy> toAdd = new ArrayList<>(team2Children);
-      if (team1Children != null) {
-        toAdd.removeAll(team1Children);
-      } else {
-        team1.setChildren(new ArrayList<>());
-      }
-      for (TeamHierarchy n : toAdd) team1.getChildren().add(deepCopy(n));
-    }
-
-    return team1;
-  }
-
   public List<TeamHierarchy> listHierarchy(ListFilter filter, int limit, Boolean isJoinable) {
     Fields fields = getFields(PARENTS_FIELD);
-    Map<UUID, TeamHierarchy> map = new HashMap<>();
     ResultList<Team> resultList = listAfter(null, fields, filter, limit, null);
     List<Team> allTeams = resultList.getData();
     List<Team> joinableTeams =
@@ -392,42 +349,61 @@ public class TeamRepository extends EntityRepository<Team> {
             .filter(Boolean.TRUE.equals(isJoinable) ? Team::getIsJoinable : t -> true)
             .filter(t -> !t.getName().equals(ORGANIZATION_NAME))
             .toList();
-    // build hierarchy of joinable teams
-    joinableTeams.forEach(
-        team -> {
-          Team currentTeam = team;
-          TeamHierarchy currentHierarchy = getTeamHierarchy(team);
-          while (currentTeam != null
-              && !currentTeam.getParents().isEmpty()
-              && !currentTeam.getParents().get(0).getName().equals(ORGANIZATION_NAME)) {
-            EntityReference parentRef = currentTeam.getParents().get(0);
-            Team parent =
-                allTeams.stream()
-                    .filter(t -> t.getId().equals(parentRef.getId()))
-                    .findFirst()
-                    .orElseThrow(() -> new IllegalArgumentException(TEAM_HIERARCHY));
-            currentHierarchy =
-                getTeamHierarchy(parent).withChildren(new ArrayList<>(List.of(currentHierarchy)));
-            if (map.containsKey(parent.getId())) {
-              TeamHierarchy parentTeam = map.get(parent.getId());
-              currentHierarchy = mergeTrees(parentTeam, currentHierarchy);
-              currentTeam =
-                  allTeams.stream()
-                      .filter(t -> t.getId().equals(parent.getId()))
-                      .findFirst()
-                      .orElseThrow(() -> new IllegalArgumentException(TEAM_HIERARCHY));
-            } else {
-              currentTeam = parent;
-            }
-          }
-          UUID currentId = currentHierarchy.getId();
-          if (!map.containsKey(currentId)) {
-            map.put(currentId, currentHierarchy);
-          } else {
-            map.put(currentId, mergeTrees(map.get(currentId), currentHierarchy));
-          }
-        });
-    return new ArrayList<>(map.values());
+
+    Map<UUID, TeamHierarchy> hierarchyMap = new HashMap<>();
+    for (Team team : joinableTeams) {
+      if (!hierarchyMap.containsKey(team.getId())) {
+        hierarchyMap.put(team.getId(), getTeamHierarchy(team));
+      }
+    }
+
+    for (Team team : joinableTeams) {
+      for (EntityReference parentRef : team.getParents()) {
+        if (parentRef.getName().equals(ORGANIZATION_NAME)) {
+          continue;
+        }
+
+        Team parentTeam =
+            allTeams.stream()
+                .filter(t -> t.getId().equals(parentRef.getId()))
+                .findFirst()
+                .orElse(null);
+        if (parentTeam == null) {
+          continue;
+        }
+
+        hierarchyMap.putIfAbsent(parentTeam.getId(), getTeamHierarchy(parentTeam));
+        TeamHierarchy parentNode = hierarchyMap.get(parentTeam.getId());
+        TeamHierarchy childNode = hierarchyMap.get(team.getId());
+
+        if (parentNode.getChildren() == null) {
+          parentNode.setChildren(new ArrayList<>());
+        }
+
+        boolean childAlreadyAdded =
+            parentNode.getChildren().stream()
+                .anyMatch(child -> child.getId().equals(childNode.getId()));
+        if (!childAlreadyAdded) {
+          parentNode.getChildren().add(childNode);
+        }
+      }
+    }
+
+    Set<UUID> childIds = new HashSet<>();
+    for (TeamHierarchy node : hierarchyMap.values()) {
+      if (node.getChildren() != null) {
+        for (TeamHierarchy child : node.getChildren()) {
+          childIds.add(child.getId());
+        }
+      }
+    }
+    List<TeamHierarchy> topLevelNodes =
+        hierarchyMap.values().stream()
+            .filter(node -> !childIds.contains(node.getId()))
+            .sorted(Comparator.comparing(TeamHierarchy::getName))
+            .collect(Collectors.toList());
+
+    return topLevelNodes;
   }
 
   private List<EntityReference> getUsers(Team team) {
