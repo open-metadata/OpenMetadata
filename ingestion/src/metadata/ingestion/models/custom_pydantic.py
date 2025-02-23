@@ -20,9 +20,10 @@ import logging
 from typing import Any, Dict, Literal, Optional, Union
 
 from pydantic import BaseModel as PydanticBaseModel
-from pydantic import PlainSerializer, model_validator
+from pydantic import WrapSerializer, model_validator
 from pydantic.main import IncEx
 from pydantic.types import SecretStr
+from pydantic_core.core_schema import SerializationInfo
 from typing_extensions import Annotated
 
 from metadata.ingestion.models.custom_basemodel_validation import (
@@ -72,6 +73,7 @@ class BaseModel(PydanticBaseModel):
     def model_dump_json(  # pylint: disable=too-many-arguments
         self,
         *,
+        mask_secrets: bool = True,
         indent: Optional[int] = None,
         include: IncEx = None,
         exclude: IncEx = None,
@@ -96,6 +98,7 @@ class BaseModel(PydanticBaseModel):
         return json.dumps(
             self.model_dump(
                 mode="json",
+                mask_secrets=mask_secrets,
                 include=include,
                 exclude=exclude,
                 context=context,
@@ -109,6 +112,18 @@ class BaseModel(PydanticBaseModel):
             ),
             ensure_ascii=True,
         )
+
+    def model_dump(
+        self,
+        *,
+        mask_secrets: bool = False,
+        **kwargs,
+    ) -> Dict[str, Any]:
+        if mask_secrets:
+            context = kwargs.pop("context", None) or {}
+            context["mask_secrets"] = True
+            kwargs["context"] = context
+        return super().model_dump(**kwargs)
 
 
 class _CustomSecretStr(SecretStr):
@@ -154,9 +169,19 @@ class _CustomSecretStr(SecretStr):
         return self._secret_value
 
 
-CustomSecretStr = Annotated[
-    _CustomSecretStr, PlainSerializer(lambda secret: secret.get_secret_value())
-]
+def handle_secret(value: Any, handler, info: SerializationInfo) -> str:
+    """
+    Handle the secret value in the model.
+    """
+    if not (info.context is not None and info.context.get("mask_secrets", False)):
+        if info.mode == "json":
+            # short circuit the json serialization and return the actual value
+            return value.get_secret_value()
+        return handler(value.get_secret_value())
+    return str(value)  # use pydantic's logic to mask the secret
+
+
+CustomSecretStr = Annotated[_CustomSecretStr, WrapSerializer(handle_secret)]
 
 
 def ignore_type_decoder(type_: Any) -> None:

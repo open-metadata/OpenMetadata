@@ -111,6 +111,12 @@ class WorkflowStatusMixin:
                 pipeline_status.status = (
                     ingestion_status if ingestion_status else pipeline_status.status
                 )
+                # committing configurations can be a burden on resources,
+                # we dump a subset to be mindful of the payload size
+                pipeline_status.config = self.config.model_dump(
+                    include={"appConfig"},
+                    mask_secrets=True,
+                )
                 self.metadata.create_or_update_pipeline_status(
                     self.ingestion_pipeline.fullyQualifiedName.root, pipeline_status
                 )

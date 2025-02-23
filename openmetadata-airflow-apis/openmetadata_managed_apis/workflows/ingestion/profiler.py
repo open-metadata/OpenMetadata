@@ -42,7 +42,9 @@ def profiler_workflow(workflow_config: OpenMetadataWorkflowConfig):
 
     set_operator_logger(workflow_config)
 
-    config = json.loads(workflow_config.model_dump_json(exclude_defaults=False))
+    config = json.loads(
+        workflow_config.model_dump_json(exclude_defaults=False, mask_secrets=False)
+    )
     workflow = ProfilerWorkflow.create(config)
 
     workflow.execute()
