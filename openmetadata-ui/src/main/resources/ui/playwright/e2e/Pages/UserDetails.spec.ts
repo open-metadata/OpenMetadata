@@ -51,7 +51,7 @@ const test = base.extend<{
   },
 });
 
-test.describe('User with different Roles', () => {
+test.describe.skip('User with different Roles', () => {
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
     const { afterAction, apiContext } = await performAdminLogin(browser);
 

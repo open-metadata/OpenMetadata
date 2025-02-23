@@ -24,3 +24,15 @@
     }
   }
 }
+.domain-selectable-tree-new {
+  overflow: auto;
+  height: auto;
+
+  .ant-tree-treenode {
+    .ant-tree-node-content-wrapper {
+      &.ant-tree-node-selected {
+        background-color: @radio-button-checked-bg;
+      }
+    }
+  }
+}

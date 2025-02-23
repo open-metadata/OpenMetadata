@@ -41,7 +41,7 @@ test.describe('Entity Summary Panel', () => {
     await selectDataAssetFilter(page, 'database');
 
     await expect(
-      page.locator('.ant-drawer-title > [data-testid="entity-link"]')
+      page.locator('.ant-card-head-title > [data-testid="entity-link"]')
     ).toBeVisible();
     await expect(page.getByTestId('Owners-value')).toBeVisible();
     await expect(page.getByTestId('Tier-label')).toBeVisible();
@@ -56,7 +56,7 @@ test.describe('Entity Summary Panel', () => {
     await selectDataAssetFilter(page, 'databaseSchema');
 
     await expect(
-      page.locator('.ant-drawer-title > [data-testid="entity-link"]')
+      page.locator('.ant-card-head-title > [data-testid="entity-link"]')
     ).toBeVisible();
     await expect(page.getByTestId('Owners-value')).toBeVisible();
     await expect(page.getByTestId('Tier-label')).toBeVisible();
@@ -70,7 +70,7 @@ test.describe('Entity Summary Panel', () => {
     await selectDataAssetFilter(page, 'dashboard');
 
     await expect(
-      page.locator('.ant-drawer-title > [data-testid="entity-link"]')
+      page.locator('.ant-card-head-title > [data-testid="entity-link"]')
     ).toBeVisible();
 
     await expect(page.getByTestId('Dashboard URL-label')).toBeVisible();
@@ -84,7 +84,7 @@ test.describe('Entity Summary Panel', () => {
     await selectDataAssetFilter(page, 'dashboardDataModel');
 
     await expect(
-      page.locator('.ant-drawer-title > [data-testid="entity-link"]')
+      page.locator('.ant-card-head-title > [data-testid="entity-link"]')
     ).toBeVisible();
 
     await expect(page.getByTestId('Data Model URL-label')).toBeVisible();
@@ -100,7 +100,7 @@ test.describe('Entity Summary Panel', () => {
     await selectDataAssetFilter(page, 'pipeline');
 
     await expect(
-      page.locator('.ant-drawer-title > [data-testid="entity-link"]')
+      page.locator('.ant-card-head-title > [data-testid="entity-link"]')
     ).toBeVisible();
 
     await expect(page.getByTestId('Pipeline URL-label')).toBeVisible();
@@ -113,7 +113,7 @@ test.describe('Entity Summary Panel', () => {
     await selectDataAssetFilter(page, 'topic');
 
     await expect(
-      page.locator('.ant-drawer-title > [data-testid="entity-link"]')
+      page.locator('.ant-card-head-title > [data-testid="entity-link"]')
     ).toBeVisible();
 
     await expect(page.getByTestId('Partitions-label')).toBeVisible();
@@ -131,7 +131,7 @@ test.describe('Entity Summary Panel', () => {
     await selectDataAssetFilter(page, 'mlmodel');
 
     await expect(
-      page.locator('.ant-drawer-title > [data-testid="entity-link"]')
+      page.locator('.ant-card-head-title > [data-testid="entity-link"]')
     ).toBeVisible();
 
     await expect(page.getByTestId('Algorithm-label')).toBeVisible();
@@ -147,7 +147,7 @@ test.describe('Entity Summary Panel', () => {
     await selectDataAssetFilter(page, 'container');
 
     await expect(
-      page.locator('.ant-drawer-title > [data-testid="entity-link"]')
+      page.locator('.ant-card-head-title > [data-testid="entity-link"]')
     ).toBeVisible();
 
     await expect(page.getByTestId('Objects-label')).toBeVisible();
@@ -162,7 +162,7 @@ test.describe('Entity Summary Panel', () => {
     await selectDataAssetFilter(page, 'searchIndex');
 
     await expect(
-      page.locator('.ant-drawer-title > [data-testid="entity-link"]')
+      page.locator('.ant-card-head-title > [data-testid="entity-link"]')
     ).toBeVisible();
 
     await expect(page.getByTestId('tags-header')).toBeVisible();

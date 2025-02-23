@@ -27,4 +27,8 @@ export interface FeedPanelBodyPropV1 {
     showRepliesContainer?: boolean;
   };
   hidePopover: boolean;
+  showActivityFeedEditor?: boolean;
+  onAfterClose?: any;
+  onUpdateEntityDetails?: any;
+  handlePanelResize?: () => void;
 }

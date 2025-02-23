@@ -20,6 +20,7 @@ export type PersonaSelectableListProps = {
   children?: ReactNode;
   popoverProps?: PopoverProps;
   personaList?: EntityReference[];
+  isDefaultPersona?: boolean;
 } & (
   | {
       multiSelect?: true;

@@ -83,6 +83,7 @@ const Searchbar = ({
       <div className="flex relative">
         <Input
           allowClear={showClearSearch}
+          className="p-y-xs"
           data-testid={searchBarDataTestId ?? 'searchbar'}
           placeholder={placeholder}
           prefix={

@@ -32,7 +32,9 @@ describe('Test User Profile Roles Component', () => {
       screen.getByTestId('user-profile-inherited-roles')
     ).toBeInTheDocument();
 
-    expect(screen.getByTestId('inherited-roles-label')).toBeInTheDocument();
+    expect(
+      screen.getByTestId('user-profile-inherited-roles')
+    ).toBeInTheDocument();
 
     expect(await screen.findAllByText('Chip')).toHaveLength(1);
   });

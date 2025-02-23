@@ -581,6 +581,11 @@ export const ICON_DIMENSION = {
   height: 14,
   fontSize: 14,
 };
+export const ICON_DIMENSION_USER_PAGE = {
+  width: 16,
+  height: 16,
+  fontSize: 16,
+};
 
 export const DATA_ASSET_ICON_DIMENSION = {
   height: 18,
