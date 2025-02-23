@@ -126,7 +126,7 @@ Once you have your Test Case created you can write your results to it. You can u
 {
     "result": "<result message>",
     "testCaseStatus": "<Success or Failed or Aborted>",
-    "timestamp": <Unix timestamp>,
+    "timestamp": <Unix timestamp in milliseconds>,
     "testResultValue": [
       {
         "value": "<value>"
@@ -143,7 +143,7 @@ curl --location --request PUT 'http://localhost:8585/api/v1/dataQuality/testCase
 --data-raw '{
     "result": "found 1 values expected n",
     "testCaseStatus": "Success",
-    "timestamp": 1662129151,
+    "timestamp": 1662129151000,
     "testResultValue": [{
         "value": "10"
     }]
