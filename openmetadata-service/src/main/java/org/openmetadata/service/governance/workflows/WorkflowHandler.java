@@ -40,6 +40,7 @@ import org.openmetadata.service.resources.services.ingestionpipelines.IngestionP
 
 @Slf4j
 public class WorkflowHandler {
+  private final ProcessEngineConfiguration processEngineConfiguration;
   private ProcessEngine processEngine;
   private RepositoryService repositoryService;
   private RuntimeService runtimeService;
@@ -49,7 +50,7 @@ public class WorkflowHandler {
   private static WorkflowHandler instance;
   @Getter private static volatile boolean initialized = false;
 
-  private WorkflowHandler(OpenMetadataApplicationConfig config) {
+  private WorkflowHandler(OpenMetadataApplicationConfig config, boolean lazy) {
     ProcessEngineConfiguration processEngineConfiguration =
         new StandaloneProcessEngineConfiguration()
             .setJdbcUrl(config.getDataSourceFactory().getUrl())
@@ -65,7 +66,10 @@ public class WorkflowHandler {
     }
 
     initializeExpressionMap(config);
-    initializeNewProcessEngine(processEngineConfiguration);
+    this.processEngineConfiguration = processEngineConfiguration;
+    if (!lazy) {
+      initializeNewProcessEngine(processEngineConfiguration);
+    }
   }
 
   public void initializeExpressionMap(OpenMetadataApplicationConfig config) {
@@ -129,8 +133,12 @@ public class WorkflowHandler {
   }
 
   public static void initialize(OpenMetadataApplicationConfig config) {
+    initialize(config, false);
+  }
+
+  public static void initialize(OpenMetadataApplicationConfig config, boolean lazy) {
     if (!initialized) {
-      instance = new WorkflowHandler(config);
+      instance = new WorkflowHandler(config, lazy);
       initialized = true;
     } else {
       LOG.info("WorkflowHandler already initialized.");
@@ -138,7 +146,14 @@ public class WorkflowHandler {
   }
 
   public static WorkflowHandler getInstance() {
-    if (initialized) return instance;
+    if (initialized
+        && instance.processEngine == null
+        && instance.processEngineConfiguration != null) {
+      instance.initializeNewProcessEngine(instance.processEngineConfiguration);
+      return instance;
+    } else if (initialized) {
+      return instance;
+    }
     throw new UnhandledServerException("WorkflowHandler is not initialized.");
   }
 
