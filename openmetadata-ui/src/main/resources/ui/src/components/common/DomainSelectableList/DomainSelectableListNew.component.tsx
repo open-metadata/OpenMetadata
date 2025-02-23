@@ -167,7 +167,7 @@ const DomainSelectableListNew = ({
             })}>
             <EditIcon
               className="cursor-pointer"
-              data-testid="edit-persona"
+              data-testid="edit-domains"
               height={16}
             />
           </Tooltip>

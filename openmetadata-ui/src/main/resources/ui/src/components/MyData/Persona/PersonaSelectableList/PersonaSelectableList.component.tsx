@@ -188,6 +188,7 @@ export const PersonaSelectableList = ({
               className={classNames('profile-edit-popover', {
                 'single-select': isDefaultPersona,
               })}
+              data-testid="persona-select-list"
               defaultValue={selectedPersonas.map((persona) => persona.id)}
               maxTagCount={3}
               maxTagPlaceholder={(omittedValues) => (
@@ -219,7 +220,7 @@ export const PersonaSelectableList = ({
           <div className="flex justify-end gap-2">
             <Button
               className="persona-profile-edit-save"
-              data-testid="user-profile-persona-edit-save"
+              data-testid="user-profile-persona-edit-cancel"
               icon={
                 <ClosePopoverIcon height={24} style={{ marginTop: '2px' }} />
               }
@@ -229,7 +230,7 @@ export const PersonaSelectableList = ({
             />
             <Button
               className="persona-profile-edit-cancel"
-              data-testid="user-profile-persona-edit-cancel"
+              data-testid="user-profile-persona-edit-save"
               icon={
                 <SavePopoverIcon height={24} style={{ marginTop: '2px' }} />
               }
@@ -241,6 +242,7 @@ export const PersonaSelectableList = ({
           </div>
         </div>
       }
+      data-testid="persona-popover"
       open={popupVisible}
       overlayClassName="profile-edit-popover-card"
       placement="bottomLeft"
@@ -256,7 +258,7 @@ export const PersonaSelectableList = ({
           })}>
           <EditIcon
             className="cursor-pointer"
-            data-testid="edit-persona"
+            data-testid="edit-user-persona"
             height={16}
           />
         </Tooltip>
