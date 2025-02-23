@@ -129,6 +129,7 @@ const ProfileSectionUserDetailsCard = ({
       {isLoggedInUser && (
         <div
           className="profile-manage-item d-flex item-center"
+          data-testid="edit-displayname"
           onClick={() => {
             setEditProfile(!editProfile);
             setisPopoverVisible(false);
@@ -146,6 +147,7 @@ const ProfileSectionUserDetailsCard = ({
       {showChangePasswordComponent && (isLoggedInUser || isAdminUser) && (
         <div
           className="profile-manage-item d-flex item-center"
+          data-testid="change-password-button"
           onClick={() => {
             setIsChangePassword(true);
             setisPopoverVisible(false);
@@ -216,6 +218,7 @@ const ProfileSectionUserDetailsCard = ({
         {(isAdminUser || isLoggedInUser) && (
           <MenuDots
             className="cursor-pointer user-details-menu-icon"
+            data-testid="user-profile-manage-btn"
             onClick={() => setisPopoverVisible((prev) => !prev)}
           />
         )}
@@ -230,7 +233,9 @@ const ProfileSectionUserDetailsCard = ({
         />
       </div>
       <div>
-        <p className="profile-details-title">{userData?.displayName}</p>
+        <p className="profile-details-title" data-testid="user-display-name">
+          {userData?.displayName}
+        </p>
         {userEmailRender}
       </div>
       {showChangePasswordComponent && (

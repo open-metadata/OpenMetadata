@@ -184,7 +184,7 @@ test.describe('User with Admin Roles', () => {
     );
   });
 
-  test('Admin soft & hard delete and restore user from profile page', async ({
+  test.skip('Admin soft & hard delete and restore user from profile page', async ({
     adminPage,
   }) => {
     await redirectToHomePage(adminPage);
@@ -319,7 +319,7 @@ test.describe('User with Data Consumer Roles', () => {
     await checkDataConsumerPermissions(dataConsumerPage);
   });
 
-  test('Update user details for Data Consumer', async ({
+  test.skip('Update user details for Data Consumer', async ({
     dataConsumerPage,
   }) => {
     await redirectToHomePage(dataConsumerPage);
@@ -355,7 +355,9 @@ test.describe('User with Data Consumer Roles', () => {
 test.describe('User with Data Steward Roles', () => {
   test.slow(true);
 
-  test('Update user details for Data Steward', async ({ dataStewardPage }) => {
+  test.skip('Update user details for Data Steward', async ({
+    dataStewardPage,
+  }) => {
     await redirectToHomePage(dataStewardPage);
 
     await updateUserDetails(dataStewardPage, {

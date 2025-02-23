@@ -77,7 +77,7 @@ export const ProfileEditModal: FunctionComponent<ProfileEditModalProps> = ({
         </Button>,
         <Button
           className="m-t-xs save-updated-name-btn"
-          data-testid="save"
+          data-testid="save-display-name"
           key="saveButton"
           loading={isLoading}
           type="primary"
