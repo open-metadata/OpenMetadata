@@ -142,6 +142,12 @@ export const DataAssetSummaryPanel = ({
     }
   }, [dataAsset, isTourPage, isEntityDeleted, getEntityPermission]);
 
+  useEffect(() => {
+    if (entityPermissions) {
+      fetchEntityBasedDetails();
+    }
+  }, [entityPermissions]);
+
   const commonEntitySummaryInfo = useMemo(() => {
     switch (entityType) {
       case EntityType.API_COLLECTION:
