@@ -605,9 +605,7 @@ export const checkStewardServicesPermissions = async (page: Page) => {
   await getSearchResultResponse;
 
   // Click on the entity link in the drawer title
-  await page.click(
-    '.ant-drawer-title > [data-testid="entity-link"] > .ant-typography'
-  );
+  await page.click('.summary-panel-container [data-testid="entity-link"]');
 
   // Check if the edit tier button is visible
   await expect(page.locator('[data-testid="edit-tier"]')).toBeVisible();
