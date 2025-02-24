@@ -428,7 +428,7 @@ In this example, we aim to ingest a table named `_delta_log/file.json` within th
 
 {% note %}
 
-The backslash (\) is used as an escape character for the dot (.) in the pattern
+The backslash `\` is used as an escape character for the dot (.) in the pattern
 
 {% /note %}
 
