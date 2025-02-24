@@ -114,6 +114,7 @@ describe('Test UserListPage component', () => {
 
     expect(getUsers).toHaveBeenCalledWith({
       fields: 'profile,teams,roles',
+      include: 'non-deleted',
       isAdmin: false,
       isBot: false,
       limit: 25,
@@ -141,6 +142,7 @@ describe('Test UserListPage component', () => {
 
     expect(getUsers).toHaveBeenCalledWith({
       fields: 'profile,teams,roles',
+      include: 'non-deleted',
       isAdmin: false,
       isBot: false,
       limit: 25,

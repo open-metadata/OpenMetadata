@@ -123,7 +123,6 @@ const UserListPageV1 = () => {
         limit: pageSize,
         ...params,
       });
-
       setUserList(data);
       handlePagingChange(userPaging);
     } catch (error) {
@@ -223,12 +222,13 @@ const UserListPageV1 = () => {
 
   const handleShowDeletedUserChange = (value: boolean) => {
     handlePageChange(INITIAL_PAGING_VALUE);
+    handlePageSizeChange(PAGE_SIZE_MEDIUM);
     setSearchValue('');
     setShowDeletedUser(value);
     fetchUsersList({
       isAdmin: isAdminPage,
       include: value ? Include.Deleted : Include.NonDeleted,
-      limit: pageSize,
+      limit: PAGE_SIZE_MEDIUM,
     });
   };
 
@@ -269,6 +269,7 @@ const UserListPageV1 = () => {
       } else {
         fetchUsersList({
           isAdmin: isAdminPage,
+          include: showDeletedUser ? Include.Deleted : Include.NonDeleted,
         });
       }
     } else {
