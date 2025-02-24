@@ -44,6 +44,7 @@ import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder
 import Loader from '../../common/Loader/Loader';
 import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import TabsLabel from '../../common/TabsLabel/TabsLabel.component';
+import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
 import DataAssetsVersionHeader from '../../DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader';
 import DataProductsContainer from '../../DataProducts/DataProductsContainer/DataProductsContainer.component';
 import EntityVersionTimeLine from '../../Entity/EntityVersionTimeLine/EntityVersionTimeLine';
@@ -316,7 +317,6 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
         children: (
           <CustomPropertyTable
             isVersionView
-            entityDetails={currentVersionData}
             entityType={EntityType.MLMODEL}
             hasEditAccess={false}
             hasPermission={entityPermissions.ViewAll}
@@ -350,13 +350,21 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
                 onVersionClick={backHandler}
               />
             </Col>
-            <Col span={24}>
-              <Tabs
-                defaultActiveKey={tab ?? EntityTabs.FEATURES}
-                items={tabItems}
-                onChange={handleTabChange}
-              />
-            </Col>
+            <GenericProvider
+              isVersionView
+              currentVersionData={currentVersionData}
+              data={currentVersionData}
+              permissions={entityPermissions}
+              type={EntityType.MLMODEL}
+              onUpdate={() => Promise.resolve()}>
+              <Col span={24}>
+                <Tabs
+                  defaultActiveKey={tab ?? EntityTabs.FEATURES}
+                  items={tabItems}
+                  onChange={handleTabChange}
+                />
+              </Col>
+            </GenericProvider>
           </Row>
         </div>
       )}

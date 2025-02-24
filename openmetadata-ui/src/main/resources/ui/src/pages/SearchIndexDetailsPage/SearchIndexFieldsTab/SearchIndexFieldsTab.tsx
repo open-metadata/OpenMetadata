@@ -18,30 +18,44 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import Searchbar from '../../../components/common/SearchBarComponent/SearchBar.component';
 import ToggleExpandButton from '../../../components/common/ToggleExpandButton/ToggleExpandButton';
-import { SearchIndexField } from '../../../generated/entity/data/searchIndex';
+import { useGenericContext } from '../../../components/Customization/GenericProvider/GenericProvider';
+import {
+  SearchIndex,
+  SearchIndexField,
+} from '../../../generated/entity/data/searchIndex';
+import { useFqn } from '../../../hooks/useFqn';
 import {
   getAllRowKeysByKeyName,
   getTableExpandableConfig,
   searchInFields,
 } from '../../../utils/TableUtils';
 import SearchIndexFieldsTable from '../SearchIndexFieldsTable/SearchIndexFieldsTable';
-import { SearchIndexFieldsTabProps } from './SearchIndexFieldsTab.interface';
 
-function SearchIndexFieldsTab({
-  fields,
-  onUpdate,
-  hasDescriptionEditAccess,
-  hasTagEditAccess,
-  hasGlossaryTermEditAccess,
-  onThreadLinkSelect,
-  isReadOnly = false,
-  entityFqn,
-}: SearchIndexFieldsTabProps) {
+function SearchIndexFieldsTab() {
   const { t } = useTranslation();
   const [searchText, setSearchText] = useState('');
   const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
   const [searchedFields, setSearchedFields] = useState<Array<SearchIndexField>>(
     []
+  );
+  const { fqn: entityFqn } = useFqn();
+  const { data, permissions, onUpdate } = useGenericContext<SearchIndex>();
+
+  const { fields, deleted } = useMemo(() => data, [data.fields, data.deleted]);
+
+  const {
+    hasDescriptionEditAccess,
+    hasGlossaryTermEditAccess,
+    hasTagEditAccess,
+  } = useMemo(
+    () => ({
+      hasDescriptionEditAccess:
+        permissions.EditAll || permissions.EditDescription,
+      hasGlossaryTermEditAccess:
+        permissions.EditAll || permissions.EditGlossaryTerms,
+      hasTagEditAccess: permissions.EditAll || permissions.EditTags,
+    }),
+    [permissions]
   );
 
   const sortByOrdinalPosition = useMemo(
@@ -84,6 +98,16 @@ function SearchIndexFieldsTab({
     [expandedRowKeys]
   );
 
+  const handleSearchIndexFieldsUpdate = useCallback(
+    async (updatedFields: Array<SearchIndexField>) => {
+      await onUpdate({
+        ...data,
+        fields: updatedFields,
+      });
+    },
+    [data, onUpdate]
+  );
+
   useEffect(() => {
     if (!searchText) {
       setSearchedFields(sortByOrdinalPosition);
@@ -99,41 +123,39 @@ function SearchIndexFieldsTab({
   }, [searchText, sortByOrdinalPosition]);
 
   return (
-    <>
-      <Row align="middle" justify="space-between">
-        <Col span={12}>
-          <Searchbar
-            removeMargin
-            placeholder={`${t('message.find-in-table')}`}
-            searchValue={searchText}
-            typingInterval={500}
-            onSearch={handleSearchAction}
-          />
-        </Col>
+    <Row align="middle" gutter={16} justify="space-between">
+      <Col span={12}>
+        <Searchbar
+          removeMargin
+          placeholder={`${t('message.find-in-table')}`}
+          searchValue={searchText}
+          typingInterval={500}
+          onSearch={handleSearchAction}
+        />
+      </Col>
 
-        <Col>
-          <ToggleExpandButton
-            allRowKeys={fieldAllRowKeys}
-            expandedRowKeys={expandedRowKeys}
-            toggleExpandAll={toggleExpandAll}
-          />
-        </Col>
-      </Row>
-
-      <SearchIndexFieldsTable
-        entityFqn={entityFqn}
-        expandableConfig={expandableConfig}
-        hasDescriptionEditAccess={hasDescriptionEditAccess}
-        hasGlossaryTermEditAccess={hasGlossaryTermEditAccess}
-        hasTagEditAccess={hasTagEditAccess}
-        isReadOnly={isReadOnly}
-        searchIndexFields={fields}
-        searchText={searchText}
-        searchedFields={searchedFields}
-        onThreadLinkSelect={onThreadLinkSelect}
-        onUpdate={onUpdate}
-      />
-    </>
+      <Col>
+        <ToggleExpandButton
+          allRowKeys={fieldAllRowKeys}
+          expandedRowKeys={expandedRowKeys}
+          toggleExpandAll={toggleExpandAll}
+        />
+      </Col>
+      <Col span={24}>
+        <SearchIndexFieldsTable
+          entityFqn={entityFqn}
+          expandableConfig={expandableConfig}
+          hasDescriptionEditAccess={hasDescriptionEditAccess}
+          hasGlossaryTermEditAccess={hasGlossaryTermEditAccess}
+          hasTagEditAccess={hasTagEditAccess}
+          isReadOnly={Boolean(deleted)}
+          searchIndexFields={fields}
+          searchText={searchText}
+          searchedFields={searchedFields}
+          onUpdate={handleSearchIndexFieldsUpdate}
+        />
+      </Col>
+    </Row>
   );
 }
 

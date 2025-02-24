@@ -29,5 +29,4 @@ export interface GlossaryTermsV1Props {
   onEditGlossaryTerm: (glossaryTerm: GlossaryTerm) => void;
   updateVote?: (data: VotingDataProps) => Promise<void>;
   refreshActiveGlossaryTerm?: () => void;
-  onThreadLinkSelect: (value: string) => void;
 }

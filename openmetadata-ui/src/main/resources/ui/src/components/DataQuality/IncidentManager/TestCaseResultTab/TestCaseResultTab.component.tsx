@@ -49,7 +49,6 @@ const TestCaseResultTab = () => {
   } = useTestCaseStore();
   const additionalComponent =
     testCaseResultTabClassBase.getAdditionalComponents();
-  const [isDescriptionEdit, setIsDescriptionEdit] = useState<boolean>(false);
   const [isParameterEdit, setIsParameterEdit] = useState<boolean>(false);
 
   const { hasEditPermission, hasEditDescriptionPermission } = useMemo(() => {
@@ -103,8 +102,6 @@ const TestCaseResultTab = () => {
             );
           } catch (error) {
             showErrorToast(error as AxiosError);
-          } finally {
-            setIsDescriptionEdit(false);
           }
         }
       }
@@ -166,10 +163,7 @@ const TestCaseResultTab = () => {
           description={testCaseData?.description}
           entityType={EntityType.TEST_CASE}
           hasEditAccess={hasEditDescriptionPermission}
-          isEdit={isDescriptionEdit}
           showCommentsIcon={false}
-          onCancel={() => setIsDescriptionEdit(false)}
-          onDescriptionEdit={() => setIsDescriptionEdit(true)}
           onDescriptionUpdate={handleDescriptionChange}
         />
       </Col>

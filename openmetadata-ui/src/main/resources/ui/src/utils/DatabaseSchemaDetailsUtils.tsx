@@ -11,18 +11,19 @@
  *  limitations under the License.
  */
 
-import { Col, Row } from 'antd';
 import { t } from 'i18next';
 import React from 'react';
 import ActivityFeedProvider from '../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import { ActivityFeedTab } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import { CustomPropertyTable } from '../components/common/CustomPropertyTable/CustomPropertyTable';
-import ResizablePanels from '../components/common/ResizablePanels/ResizablePanels';
 import TabsLabel from '../components/common/TabsLabel/TabsLabel.component';
 import { TabProps } from '../components/common/TabsLabel/TabsLabel.interface';
-import EntityRightPanel from '../components/Entity/EntityRightPanel/EntityRightPanel';
-import { COMMON_RESIZABLE_PANEL_CONFIG } from '../constants/ResizablePanel.constants';
+import { GenericTab } from '../components/Customization/GenericTab/GenericTab';
+import { CommonWidgets } from '../components/DataAssets/CommonWidgets/CommonWidgets';
+import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 import { EntityTabs, EntityType, TabSpecificField } from '../enums/entity.enum';
+import { PageType } from '../generated/system/ui/page';
+import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
 import SchemaTablesTab from '../pages/DatabaseSchemaPage/SchemaTablesTab';
 import StoredProcedureTab from '../pages/StoredProcedure/StoredProcedureTab';
 import { DatabaseSchemaPageTabProps } from './DatabaseSchemaClassBase';
@@ -32,106 +33,27 @@ export const defaultFields = `${TabSpecificField.TAGS},${TabSpecificField.OWNERS
 
 export const getDataBaseSchemaPageBaseTabs = ({
   feedCount,
-  tableData,
   activeTab,
-  currentTablesPage,
-  databaseSchema,
-  description,
-  editDescriptionPermission,
-  isEdit,
-  showDeletedTables,
-  tableDataLoading,
-  editGlossaryTermsPermission,
   editCustomAttributePermission,
-  editTagsPermission,
-  decodedDatabaseSchemaFQN,
-  tags,
   viewAllPermission,
   storedProcedureCount,
-  onEditCancel,
-  handleExtensionUpdate,
-  handleTagSelection,
-  onThreadLinkSelect,
-  tablePaginationHandler,
-  onDescriptionEdit,
-  onDescriptionUpdate,
-  handleShowDeletedTables,
   getEntityFeedCount,
   fetchDatabaseSchemaDetails,
   handleFeedCount,
-  pagingInfo,
+  tableCount,
 }: DatabaseSchemaPageTabProps): TabProps[] => {
   return [
     {
       label: (
         <TabsLabel
-          count={pagingInfo.paging.total}
+          count={tableCount}
           id={EntityTabs.TABLE}
           isActive={activeTab === EntityTabs.TABLE}
           name={t('label.table-plural')}
         />
       ),
       key: EntityTabs.TABLE,
-      children: (
-        <Row gutter={[0, 16]} wrap={false}>
-          <Col className="tab-content-height-with-resizable-panel" span={24}>
-            <ResizablePanels
-              firstPanel={{
-                className: 'entity-resizable-panel-container',
-                children: (
-                  <div className="p-t-sm m-x-lg">
-                    <SchemaTablesTab
-                      currentTablesPage={currentTablesPage}
-                      databaseSchemaDetails={databaseSchema}
-                      description={description}
-                      editDescriptionPermission={editDescriptionPermission}
-                      isEdit={isEdit}
-                      pagingInfo={pagingInfo}
-                      showDeletedTables={showDeletedTables}
-                      tableData={tableData}
-                      tableDataLoading={tableDataLoading}
-                      tablePaginationHandler={tablePaginationHandler}
-                      onCancel={onEditCancel}
-                      onDescriptionEdit={onDescriptionEdit}
-                      onDescriptionUpdate={onDescriptionUpdate}
-                      onShowDeletedTablesChange={handleShowDeletedTables}
-                      onThreadLinkSelect={onThreadLinkSelect}
-                    />
-                  </div>
-                ),
-                ...COMMON_RESIZABLE_PANEL_CONFIG.LEFT_PANEL,
-              }}
-              secondPanel={{
-                children: (
-                  <div data-testid="entity-right-panel">
-                    <EntityRightPanel<EntityType.DATABASE_SCHEMA>
-                      customProperties={databaseSchema}
-                      dataProducts={databaseSchema?.dataProducts ?? []}
-                      domain={databaseSchema?.domain}
-                      editCustomAttributePermission={
-                        editCustomAttributePermission
-                      }
-                      editGlossaryTermsPermission={editGlossaryTermsPermission}
-                      editTagPermission={editTagsPermission}
-                      entityFQN={decodedDatabaseSchemaFQN}
-                      entityId={databaseSchema?.id ?? ''}
-                      entityType={EntityType.DATABASE_SCHEMA}
-                      selectedTags={tags}
-                      viewAllPermission={viewAllPermission}
-                      onExtensionUpdate={handleExtensionUpdate}
-                      onTagSelectionChange={handleTagSelection}
-                      onThreadLinkSelect={onThreadLinkSelect}
-                    />
-                  </div>
-                ),
-                ...COMMON_RESIZABLE_PANEL_CONFIG.RIGHT_PANEL,
-                className:
-                  'entity-resizable-right-panel-container entity-resizable-panel-container',
-              }}
-            />
-          </Col>
-        </Row>
-      ),
+      children: <GenericTab type={PageType.DatabaseSchema} />,
     },
     {
       label: (
@@ -161,7 +83,6 @@ export const getDataBaseSchemaPageBaseTabs = ({
             refetchFeed
             entityFeedTotalCount={feedCount.totalCount}
             entityType={EntityType.DATABASE_SCHEMA}
-            fqn={databaseSchema.fullyQualifiedName ?? ''}
             onFeedUpdate={getEntityFeedCount}
             onUpdateEntityDetails={fetchDatabaseSchemaDetails}
             onUpdateFeedCount={handleFeedCount}
@@ -177,13 +98,11 @@ export const getDataBaseSchemaPageBaseTabs = ({
         />
       ),
       key: EntityTabs.CUSTOM_PROPERTIES,
-      children: databaseSchema && (
+      children: (
         <div className="m-sm">
           <CustomPropertyTable<EntityType.DATABASE_SCHEMA>
             className=""
-            entityDetails={databaseSchema}
             entityType={EntityType.DATABASE_SCHEMA}
-            handleExtensionUpdate={handleExtensionUpdate}
             hasEditAccess={editCustomAttributePermission}
             hasPermission={viewAllPermission}
             isVersionView={false}
@@ -192,4 +111,17 @@ export const getDataBaseSchemaPageBaseTabs = ({
       ),
     },
   ];
+};
+
+export const getDatabaseSchemaWidgetsFromKey = (widgetConfig: WidgetConfig) => {
+  if (widgetConfig.i.startsWith(DetailPageWidgetKeys.TABLES)) {
+    return <SchemaTablesTab />;
+  }
+
+  return (
+    <CommonWidgets
+      entityType={EntityType.DATABASE_SCHEMA}
+      widgetConfig={widgetConfig}
+    />
+  );
 };

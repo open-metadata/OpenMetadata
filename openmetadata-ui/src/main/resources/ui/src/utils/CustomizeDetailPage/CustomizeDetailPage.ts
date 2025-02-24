@@ -12,7 +12,7 @@
  */
 
 import { FC } from 'react';
-import { GenericWidget } from '../../components/Glossary/CustomiseWidgets/SynonymsWidget/GenericWidget';
+import { GenericWidget } from '../../components/Customization/GenericWidget/GenericWidget';
 import {
   CUSTOM_PROPERTIES_WIDGET,
   DESCRIPTION_WIDGET,
@@ -42,7 +42,7 @@ class CustomizeDetailPageClassBase {
     dataProduct: 3,
     tags: 3,
     glossaryTerms: 3,
-    customProperty: 3,
+    customProperty: 4,
     tabs: 1,
     announcements: 3,
   };

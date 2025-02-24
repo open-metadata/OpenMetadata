@@ -215,7 +215,7 @@ const mockPaging = {
 const mockPagingCursor = {
   cursorData: {
     cursorType: null,
-    cursorValue: null,
+    cursorValue: undefined,
   },
   currentPage: 1,
   pageSize: 10,

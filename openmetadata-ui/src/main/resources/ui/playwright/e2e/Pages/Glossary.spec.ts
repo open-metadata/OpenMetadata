@@ -416,7 +416,7 @@ test.describe('Glossary tests', () => {
 
         // Dashboard Entity Right Panel
         await page.click(
-          '[data-testid="entity-right-panel"] [data-testid="glossary-container"] [data-testid="add-tag"]'
+          '[data-testid="KnowledgePanel.GlossaryTerms"] [data-testid="glossary-container"] [data-testid="add-tag"]'
         );
 
         // Select 1st term
@@ -472,7 +472,7 @@ test.describe('Glossary tests', () => {
 
         // Add non mutually exclusive tags
         await page.click(
-          '[data-testid="entity-right-panel"] [data-testid="glossary-container"] [data-testid="add-tag"]'
+          '[data-testid="KnowledgePanel.GlossaryTerms"] [data-testid="glossary-container"] [data-testid="add-tag"]'
         );
 
         // Select 1st term
@@ -523,7 +523,7 @@ test.describe('Glossary tests', () => {
 
         // Check if the terms are present
         const glossaryContainer = page.locator(
-          '[data-testid="entity-right-panel"] [data-testid="glossary-container"]'
+          '[data-testid="KnowledgePanel.GlossaryTerms"] [data-testid="glossary-container"]'
         );
         const glossaryContainerText = await glossaryContainer.innerText();
 
@@ -533,7 +533,7 @@ test.describe('Glossary tests', () => {
         // Check if the icons are present
 
         const icons = page.locator(
-          '[data-testid="entity-right-panel"] [data-testid="glossary-container"] [data-testid="glossary-icon"]'
+          '[data-testid="KnowledgePanel.GlossaryTerms"] [data-testid="glossary-container"] [data-testid="glossary-icon"]'
         );
 
         expect(await icons.count()).toBe(2);

@@ -18,21 +18,6 @@ import React from 'react';
 import { SearchIndexField } from '../../../generated/entity/data/searchIndex';
 import { MOCK_SEARCH_INDEX_FIELDS } from '../../../mocks/SearchIndex.mock';
 import SearchIndexFieldsTab from './SearchIndexFieldsTab';
-import { SearchIndexFieldsTabProps } from './SearchIndexFieldsTab.interface';
-
-const mockOnUpdate = jest.fn();
-const mockOnThreadLinkSelect = jest.fn();
-
-const mockProps: SearchIndexFieldsTabProps = {
-  fields: MOCK_SEARCH_INDEX_FIELDS,
-  onUpdate: mockOnUpdate,
-  hasDescriptionEditAccess: true,
-  hasTagEditAccess: true,
-  hasGlossaryTermEditAccess: true,
-  isReadOnly: false,
-  onThreadLinkSelect: mockOnThreadLinkSelect,
-  entityFqn: 'search_service.search_index_fqn',
-};
 
 jest.mock(
   '../../../components/common/SearchBarComponent/SearchBar.component',
@@ -88,9 +73,30 @@ jest.mock('../../../utils/EntityUtils', () => ({
   highlightSearchText: jest.fn((text) => text),
 }));
 
+jest.mock(
+  '../../../components/Customization/GenericProvider/GenericProvider',
+  () => ({
+    useGenericContext: jest.fn(() => ({
+      data: {
+        fields: MOCK_SEARCH_INDEX_FIELDS,
+      },
+      permissions: {
+        ViewAll: true,
+      },
+      onUpdate: jest.fn(),
+    })),
+  })
+);
+
+jest.mock('../../../hooks/useFqn', () => ({
+  useFqn: jest.fn(() => ({
+    fqn: 'search_service.search_index_fqn',
+  })),
+}));
+
 describe('SearchIndexFieldsTab component', () => {
   it('SearchIndexFieldsTab should pass all the fields to SearchIndexFieldsTable when not searched anything', () => {
-    render(<SearchIndexFieldsTab {...mockProps} />);
+    render(<SearchIndexFieldsTab />);
 
     expect(screen.getByText('testSearchBar')).toBeInTheDocument();
     expect(screen.getByText('testToggleExpandButton')).toBeInTheDocument();
@@ -102,7 +108,7 @@ describe('SearchIndexFieldsTab component', () => {
 
   it('SearchIndexFieldsTab should pass only filtered fields according to the search text', async () => {
     await act(async () => {
-      render(<SearchIndexFieldsTab {...mockProps} />);
+      render(<SearchIndexFieldsTab />);
     });
 
     const searchBar = screen.getByText('testSearchBar');
@@ -119,7 +125,7 @@ describe('SearchIndexFieldsTab component', () => {
 
   it('expandedRowKeys should be updated with proper value on click of toggle button', async () => {
     await act(async () => {
-      render(<SearchIndexFieldsTab {...mockProps} />);
+      render(<SearchIndexFieldsTab />);
     });
 
     const toggleExpandButton = screen.getByText('testToggleExpandButton');

@@ -24,7 +24,6 @@ export enum ActivityFeedTabs {
 }
 
 export interface ActivityFeedTabBasicProps {
-  fqn: string;
   isForFeedTab?: boolean;
   refetchFeed?: boolean;
   entityFeedTotalCount?: number;

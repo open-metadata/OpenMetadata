@@ -13,23 +13,13 @@
 
 import { TableProps } from 'antd';
 import { HTMLAttributes, ReactNode } from 'react';
-import { ThreadType } from '../../../generated/api/feed/createThread';
-import { Field, Topic } from '../../../generated/entity/data/topic';
+import { Field } from '../../../generated/entity/data/topic';
 
 export interface TopicSchemaFieldsProps
   extends HTMLAttributes<TableProps<Field>> {
-  messageSchema: Topic['messageSchema'];
-  hasDescriptionEditAccess: boolean;
-  hasTagEditAccess: boolean;
-  hasGlossaryTermEditAccess: boolean;
-  isReadOnly: boolean;
-  entityFqn: string;
-  isVersionView?: boolean;
   schemaTypePlaceholder?: ReactNode;
   defaultExpandAllRows?: boolean;
   showSchemaDisplayTypeSwitch?: boolean;
-  onUpdate?: (updatedMessageSchema: Topic['messageSchema']) => Promise<void>;
-  onThreadLinkSelect: (value: string, threadType?: ThreadType) => void;
 }
 
 export enum SchemaViewType {

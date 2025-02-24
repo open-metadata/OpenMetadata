@@ -37,6 +37,7 @@ import {
 import { getUpdatedSearchIndexFields } from '../../utils/SearchIndexVersionUtils';
 import Loader from '../common/Loader/Loader';
 import TabsLabel from '../common/TabsLabel/TabsLabel.component';
+import { GenericProvider } from '../Customization/GenericProvider/GenericProvider';
 import DataProductsContainer from '../DataProducts/DataProductsContainer/DataProductsContainer.component';
 import VersionTable from '../Entity/VersionTable/VersionTable.component';
 import { SearchIndexVersionProps } from './SearchIndexVersion.interface';
@@ -187,7 +188,6 @@ const SearchIndexVersion: React.FC<SearchIndexVersionProps> = ({
         children: (
           <CustomPropertyTable
             isVersionView
-            entityDetails={currentVersionData}
             entityType={EntityType.SEARCH_INDEX}
             hasEditAccess={false}
             hasPermission={entityPermissions.ViewAll}
@@ -221,13 +221,21 @@ const SearchIndexVersion: React.FC<SearchIndexVersionProps> = ({
                 onVersionClick={backHandler}
               />
             </Col>
-            <Col span={24}>
-              <Tabs
-                defaultActiveKey={tab ?? EntityTabs.FIELDS}
-                items={tabItems}
-                onChange={handleTabChange}
-              />
-            </Col>
+            <GenericProvider
+              isVersionView
+              currentVersionData={currentVersionData}
+              data={currentVersionData}
+              permissions={entityPermissions}
+              type={EntityType.SEARCH_INDEX}
+              onUpdate={() => Promise.resolve()}>
+              <Col span={24}>
+                <Tabs
+                  defaultActiveKey={tab ?? EntityTabs.FIELDS}
+                  items={tabItems}
+                  onChange={handleTabChange}
+                />
+              </Col>
+            </GenericProvider>
           </Row>
         </div>
       )}
