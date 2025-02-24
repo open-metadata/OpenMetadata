@@ -149,6 +149,10 @@
     "domain" : {
       "description": "Domain the MLModel service belongs to.",
       "$ref": "../../type/entityReference.json"
+    },
+    "ingestionAgent" : {
+      "description": "The ingestion agent responsible for executing the ingestion pipeline.",
+      "$ref": "../../type/entityReference.json"
     }
   },
   "required": ["id", "name", "serviceType"],

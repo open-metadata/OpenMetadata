@@ -17,6 +17,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.services.PipelineService;
 import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.type.PipelineConnection;
+import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.services.pipeline.PipelineServiceResource;
 
@@ -33,5 +34,18 @@ public class PipelineServiceRepository
         "",
         ServiceType.PIPELINE);
     supportsSearch = true;
+  }
+
+  @Override
+  public void storeRelationships(PipelineService service) {
+    super.storeRelationships(service);
+    if (service.getIngestionAgent() != null) {
+      addRelationship(
+          service.getId(),
+          service.getIngestionAgent().getId(),
+          entityType,
+          service.getIngestionAgent().getType(),
+          Relationship.HAS);
+    }
   }
 }

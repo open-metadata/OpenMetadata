@@ -2,6 +2,7 @@ package org.openmetadata.service.jdbi3;
 
 import org.openmetadata.schema.entity.services.SearchService;
 import org.openmetadata.schema.entity.services.ServiceType;
+import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.SearchConnection;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.services.storage.StorageServiceResource;
@@ -17,5 +18,18 @@ public class SearchServiceRepository
         "",
         ServiceType.SEARCH);
     supportsSearch = true;
+  }
+
+  @Override
+  public void storeRelationships(SearchService service) {
+    super.storeRelationships(service);
+    if (service.getIngestionAgent() != null) {
+      addRelationship(
+          service.getId(),
+          service.getIngestionAgent().getId(),
+          entityType,
+          service.getIngestionAgent().getType(),
+          Relationship.HAS);
+    }
   }
 }

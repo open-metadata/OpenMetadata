@@ -17,6 +17,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.services.MessagingService;
 import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.type.MessagingConnection;
+import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.services.messaging.MessagingServiceResource;
 
@@ -34,5 +35,18 @@ public class MessagingServiceRepository
         UPDATE_FIELDS,
         ServiceType.MESSAGING);
     supportsSearch = true;
+  }
+
+  @Override
+  public void storeRelationships(MessagingService service) {
+    super.storeRelationships(service);
+    if (service.getIngestionAgent() != null) {
+      addRelationship(
+          service.getId(),
+          service.getIngestionAgent().getId(),
+          entityType,
+          service.getIngestionAgent().getType(),
+          Relationship.HAS);
+    }
   }
 }

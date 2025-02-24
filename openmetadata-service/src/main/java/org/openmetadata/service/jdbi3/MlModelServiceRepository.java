@@ -17,6 +17,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.services.MlModelService;
 import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.type.MlModelConnection;
+import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.services.mlmodel.MlModelServiceResource;
 
@@ -34,5 +35,18 @@ public class MlModelServiceRepository
         UPDATE_FIELDS,
         ServiceType.ML_MODEL);
     supportsSearch = true;
+  }
+
+  @Override
+  public void storeRelationships(MlModelService service) {
+    super.storeRelationships(service);
+    if (service.getIngestionAgent() != null) {
+      addRelationship(
+          service.getId(),
+          service.getIngestionAgent().getId(),
+          entityType,
+          service.getIngestionAgent().getType(),
+          Relationship.HAS);
+    }
   }
 }

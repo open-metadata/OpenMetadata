@@ -57,6 +57,10 @@ export interface MessagingService {
      */
     incrementalChangeDescription?: ChangeDescription;
     /**
+     * The ingestion agent responsible for executing the ingestion pipeline.
+     */
+    ingestionAgent?: EntityReference;
+    /**
      * Name that identifies this messaging service.
      */
     name: string;
@@ -363,6 +367,8 @@ export enum MessagingServiceType {
  * the relationship of a table `belongs to a` database.
  *
  * Domain the Messaging service belongs to.
+ *
+ * The ingestion agent responsible for executing the ingestion pipeline.
  */
 export interface EntityReference {
     /**

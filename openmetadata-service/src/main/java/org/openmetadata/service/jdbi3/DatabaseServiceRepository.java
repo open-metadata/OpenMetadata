@@ -37,6 +37,7 @@ import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.csv.CsvDocumentation;
 import org.openmetadata.schema.type.csv.CsvFile;
@@ -84,6 +85,19 @@ public class DatabaseServiceRepository
         getByName(null, name, EntityUtil.Fields.EMPTY_FIELDS); // Validate glossary name
     DatabaseServiceCsv databaseServiceCsv = new DatabaseServiceCsv(databaseService, user);
     return databaseServiceCsv.importCsv(csv, dryRun);
+  }
+
+  @Override
+  public void storeRelationships(DatabaseService service) {
+    super.storeRelationships(service);
+    if (service.getIngestionAgent() != null) {
+      addRelationship(
+          service.getId(),
+          service.getIngestionAgent().getId(),
+          entityType,
+          service.getIngestionAgent().getType(),
+          Relationship.HAS);
+    }
   }
 
   public static class DatabaseServiceCsv extends EntityCsv<Database> {

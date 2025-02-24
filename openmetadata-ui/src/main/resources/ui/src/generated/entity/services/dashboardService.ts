@@ -56,6 +56,10 @@ export interface DashboardService {
      */
     incrementalChangeDescription?: ChangeDescription;
     /**
+     * The ingestion agent responsible for executing the ingestion pipeline.
+     */
+    ingestionAgent?: EntityReference;
+    /**
      * Name that identifies this dashboard service.
      */
     name: string;
@@ -1185,6 +1189,8 @@ export enum DashboardServiceType {
  * the relationship of a table `belongs to a` database.
  *
  * Domain the Dashboard service belongs to.
+ *
+ * The ingestion agent responsible for executing the ingestion pipeline.
  */
 export interface EntityReference {
     /**
