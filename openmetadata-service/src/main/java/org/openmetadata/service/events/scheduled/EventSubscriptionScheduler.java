@@ -76,7 +76,8 @@ public class EventSubscriptionScheduler {
 
   static {
     Properties properties = new Properties();
-    properties.setProperty("org.quartz.scheduler.instanceName", "OpenMetadataEventSubscriptionScheduler");
+    properties.setProperty(
+        "org.quartz.scheduler.instanceName", "OpenMetadataEventSubscriptionScheduler");
     try {
       StdSchedulerFactory factory = new StdSchedulerFactory();
       factory.initialize(properties);
