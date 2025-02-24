@@ -27,6 +27,7 @@ import { CustomPropertyTable } from '../../components/common/CustomPropertyTable
 import DescriptionV1 from '../../components/common/EntityDescription/DescriptionV1';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';
+import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
 import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
 import ContainerChildren from '../../components/Container/ContainerChildren/ContainerChildren';
@@ -63,8 +64,10 @@ import { Tag } from '../../generated/entity/classification/tag';
 import { Container } from '../../generated/entity/data/container';
 import { ThreadType } from '../../generated/entity/feed/thread';
 import { Include } from '../../generated/type/include';
+import { Paging } from '../../generated/type/paging';
 import { TagLabel } from '../../generated/type/tagLabel';
 import LimitWrapper from '../../hoc/LimitWrapper';
+import { usePaging } from '../../hooks/paging/usePaging';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useFqn } from '../../hooks/useFqn';
 import { FeedCounts } from '../../interface/feed.interface';
@@ -72,6 +75,7 @@ import { postThread } from '../../rest/feedsAPI';
 import {
   addContainerFollower,
   getContainerByName,
+  getContainerChildrenByName,
   patchContainerDetails,
   removeContainerFollower,
   restoreContainer,
@@ -121,6 +125,16 @@ const ContainerPage = () => {
     ThreadType.Conversation
   );
 
+  const {
+    paging,
+    pageSize,
+    currentPage,
+    showPagination,
+    handlePagingChange,
+    handlePageChange,
+    handlePageSizeChange,
+  } = usePaging();
+
   const fetchContainerDetail = async (containerFQN: string) => {
     setIsLoading(true);
     try {
@@ -161,13 +175,18 @@ const ContainerPage = () => {
     }
   };
 
-  const fetchContainerChildren = async () => {
+  const fetchContainerChildren = async (pagingOffset?: Paging) => {
     setIsChildrenLoading(true);
     try {
-      const { children } = await getContainerByName(decodedContainerName, {
-        fields: TabSpecificField.CHILDREN,
-      });
-      setContainerChildrenData(children);
+      const { data, paging } = await getContainerChildrenByName(
+        decodedContainerName,
+        {
+          limit: pageSize,
+          offset: pagingOffset?.offset ?? 0,
+        }
+      );
+      setContainerChildrenData(data);
+      handlePagingChange(paging);
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
@@ -562,6 +581,13 @@ const ContainerPage = () => {
     }
   };
 
+  const handleChildrenPageChange = ({ currentPage }: PagingHandlerParams) => {
+    handlePageChange(currentPage);
+    fetchContainerChildren({
+      offset: (currentPage - 1) * pageSize,
+    } as Paging);
+  };
+
   const handleTagSelection = async (selectedTags: EntityTags[]) => {
     const updatedTags: TagLabel[] | undefined = createTagObject(selectedTags);
 
@@ -611,6 +637,14 @@ const ContainerPage = () => {
                           childrenList={containerChildrenData}
                           fetchChildren={fetchContainerChildren}
                           isLoading={isChildrenLoading}
+                          pagingHookData={{
+                            paging,
+                            pageSize,
+                            currentPage,
+                            showPagination,
+                            handleChildrenPageChange,
+                            handlePageSizeChange,
+                          }}
                         />
                       ) : (
                         <ContainerDataModel
@@ -684,6 +718,14 @@ const ContainerPage = () => {
                       childrenList={containerChildrenData}
                       fetchChildren={fetchContainerChildren}
                       isLoading={isChildrenLoading}
+                      pagingHookData={{
+                        paging,
+                        pageSize,
+                        currentPage,
+                        showPagination,
+                        handleChildrenPageChange,
+                        handlePageSizeChange,
+                      }}
                     />
                   </Col>
                 </Row>

@@ -605,6 +605,10 @@ export interface ConfigClass {
      */
     httpPath?: string;
     /**
+     * Table name to fetch the query history.
+     */
+    queryHistoryTable?: string;
+    /**
      * Generated Token to connect to Databricks.
      */
     token?: string;
