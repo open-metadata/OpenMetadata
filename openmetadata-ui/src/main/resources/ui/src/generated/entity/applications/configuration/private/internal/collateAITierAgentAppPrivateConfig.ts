@@ -11,19 +11,27 @@
  *  limitations under the License.
  */
 /**
- * Event Based Entity Trigger.
+ * Private Configuration for the CollateAITierAgent Internal Application.
  */
-export interface CustomSignalTrigger {
-    config?: Config;
-    type?:   string;
+export interface CollateAITierAgentAppPrivateConfig {
+    /**
+     * Limits for the CollateAITierAgent Application.
+     */
+    limits: AppLimitsConfig;
 }
 
 /**
- * Entity Event Trigger Configuration.
+ * Limits for the CollateAITierAgent Application.
+ *
+ * Private Configuration for the App Limits.
  */
-export interface Config {
+export interface AppLimitsConfig {
     /**
-     * The signal to be listened to.
+     * The records of the limits.
      */
-    signal: string;
+    actions: { [key: string]: number };
+    /**
+     * The start of this limit cycle.
+     */
+    billingCycleStart: Date;
 }
