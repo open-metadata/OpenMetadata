@@ -294,7 +294,7 @@ class PowerBiApiClient:
                 f"Error converting regex '{regex}' to OData condition: {exc}"
             )
             return ""
-        
+
     def create_filter_query(self, filter_pattern) -> Optional[str]:
         """
         Create a complete filter query for workspaces from filter_pattern
