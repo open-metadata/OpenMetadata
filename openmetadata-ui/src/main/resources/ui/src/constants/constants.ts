@@ -611,6 +611,7 @@ export const STATUS_LABEL = {
   [Status.Started]: 'Started',
   [Status.Stopped]: 'Stopped',
   [Status.Success]: 'Success',
+  [Status.PartialSuccess]: 'Partial Success',
 };
 
 export const INITIAL_TABLE_FILTERS = {

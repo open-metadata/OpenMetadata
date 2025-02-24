@@ -12,7 +12,12 @@
  */
 
 import { upperFirst } from 'lodash';
-import { getEntityStatsData } from './ApplicationUtils';
+import { StatusType } from '../components/common/StatusBadge/StatusBadge.interface';
+import { Status } from '../generated/entity/applications/appRunRecord';
+import {
+  getEntityStatsData,
+  getStatusTypeForApplication,
+} from './ApplicationUtils';
 import {
   MOCK_APPLICATION_ENTITY_STATS,
   MOCK_APPLICATION_ENTITY_STATS_DATA,
@@ -29,5 +34,13 @@ describe('ApplicationUtils tests', () => {
 
     // Verify the result matches the sorted mock data
     expect(resultData).toEqual(sortedMockData);
+  });
+});
+
+describe('getStatusTypeForApplication tests', () => {
+  it('should return PartialSuccess for PartialSuccess status', () => {
+    expect(getStatusTypeForApplication(Status.PartialSuccess)).toBe(
+      StatusType.PartialSuccess
+    );
   });
 });
