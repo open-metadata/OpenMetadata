@@ -71,7 +71,6 @@ import org.openmetadata.service.apps.scheduler.AppScheduler;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.fernet.Fernet;
-import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.AppMarketPlaceRepository;
 import org.openmetadata.service.jdbi3.AppRepository;
 import org.openmetadata.service.jdbi3.CollectionDAO;
@@ -1088,8 +1087,6 @@ public class OpenMetadataOperations implements Callable<Integer> {
     Entity.setCollectionDAO(collectionDAO);
     Entity.setSystemRepository(new SystemRepository());
     Entity.initializeRepositories(config, jdbi);
-
-    WorkflowHandler.initialize(config, true);
   }
 
   private void promptUserForDelete() {
@@ -1116,13 +1113,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
     DatasourceConfig.initialize(connType.label);
     MigrationWorkflow workflow =
         new MigrationWorkflow(
-            jdbi,
-            nativeSQLScriptRootPath,
-            connType,
-            extensionSQLScriptRootPath,
-            config.getPipelineServiceClientConfiguration(),
-            config.getAuthenticationConfiguration(),
-            force);
+            jdbi, nativeSQLScriptRootPath, connType, extensionSQLScriptRootPath, config, force);
     workflow.loadMigrations();
     workflow.printMigrationInfo();
     workflow.runMigrationWorkflows();

@@ -47,8 +47,6 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.TestInstance;
 import org.openmetadata.common.utils.CommonUtil;
-import org.openmetadata.schema.api.configuration.pipelineServiceClient.PipelineServiceClientConfiguration;
-import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.type.IndexMappingLanguage;
 import org.openmetadata.service.jdbi3.CollectionDAO;
@@ -212,8 +210,6 @@ public abstract class OpenMetadataApplicationTest {
         ConnectionType.from(sqlContainer.getDriverClassName()),
         nativeMigrationScriptsLocation,
         extensionMigrationScripsLocation,
-        null,
-        null,
         false);
     createIndices();
     APP.before();
@@ -226,8 +222,6 @@ public abstract class OpenMetadataApplicationTest {
       ConnectionType connType,
       String nativeMigrationSQLPath,
       String extensionSQLScriptRootPath,
-      PipelineServiceClientConfiguration pipelineServiceClientConfiguration,
-      AuthenticationConfiguration authenticationConfiguration,
       boolean forceMigrations) {
     DatasourceConfig.initialize(connType.label);
     MigrationWorkflow workflow =
@@ -236,8 +230,7 @@ public abstract class OpenMetadataApplicationTest {
             nativeMigrationSQLPath,
             connType,
             extensionSQLScriptRootPath,
-            pipelineServiceClientConfiguration,
-            authenticationConfiguration,
+            config,
             forceMigrations);
     // Initialize search repository
     SearchRepository searchRepository = new SearchRepository(getEsConfig());
