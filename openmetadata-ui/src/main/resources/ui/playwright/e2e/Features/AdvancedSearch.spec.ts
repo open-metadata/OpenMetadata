@@ -28,11 +28,6 @@ import { createNewPage, redirectToHomePage } from '../../utils/common';
 import { assignTier } from '../../utils/entity';
 import { sidebarClick } from '../../utils/sidebar';
 
-test.describe.configure({
-  // 4 minutes to avoid test timeout happening some times in AUTs
-  timeout: 4 * 60 * 1000,
-});
-
 const creationConfig: EntityDataClassCreationConfig = {
   table: true,
   topic: true,
