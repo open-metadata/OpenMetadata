@@ -16,6 +16,7 @@ from functools import partial
 from typing import Optional
 
 from databricks.sdk import WorkspaceClient
+from sqlalchemy.engine import Engine
 
 from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
@@ -25,6 +26,11 @@ from metadata.generated.schema.entity.services.connections.database.unityCatalog
 )
 from metadata.generated.schema.entity.services.connections.testConnectionResult import (
     TestConnectionResult,
+)
+from metadata.ingestion.connections.builders import (
+    create_generic_db_connection,
+    get_connection_args_common,
+    init_empty_connection_arguments,
 )
 from metadata.ingestion.connections.test_connections import test_connection_steps
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -50,6 +56,23 @@ def get_connection(connection: UnityCatalogConnection) -> WorkspaceClient:
     return WorkspaceClient(
         host=get_host_from_host_port(connection.hostPort),
         token=connection.token.get_secret_value(),
+    )
+
+
+def get_sqlalchemy_connection(connection: UnityCatalogConnection) -> Engine:
+    """
+    Create sqlalchemy connection
+    """
+
+    if connection.httpPath:
+        if not connection.connectionArguments:
+            connection.connectionArguments = init_empty_connection_arguments()
+        connection.connectionArguments.root["http_path"] = connection.httpPath
+
+    return create_generic_db_connection(
+        connection=connection,
+        get_connection_url_fn=get_connection_url,
+        get_connection_args_fn=get_connection_args_common,
     )
 
 
