@@ -78,7 +78,7 @@ export interface CreatePipeline {
     /**
      * State of the pipeline.
      */
-    state?: PipelineState[] | boolean | number | number | { [key: string]: any } | null | string;
+    state?: PipelineState;
     /**
      * Tags for this Pipeline.
      */
@@ -237,7 +237,7 @@ export interface TagLabel {
      * 'Suggested' state is used when a tag label is suggested by users or tools. Owner of the
      * entity must confirm the suggested labels before it is marked as 'Confirmed'.
      */
-    state:  StateEnum;
+    state:  State;
     style?: Style;
     tagFQN: string;
 }
@@ -268,7 +268,7 @@ export enum TagSource {
  * 'Suggested' state is used when a tag label is suggested by users or tools. Owner of the
  * entity must confirm the suggested labels before it is marked as 'Confirmed'.
  */
-export enum StateEnum {
+export enum State {
     Confirmed = "Confirmed",
     Suggested = "Suggested",
 }

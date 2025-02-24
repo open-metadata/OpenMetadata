@@ -676,7 +676,7 @@ class AirflowSource(PipelineServiceSource):
                     and task.endDate.startswith(self.today)
                 )
                 if not current_task_usage:
-                    logger.debug(f"No usage to report for {pipeline_details.name}")
+                    logger.debug(f"No usage to report for {pipeline_details.dag_id}")
 
                 if not pipeline.usageSummary:
                     logger.info(
@@ -724,8 +724,8 @@ class AirflowSource(PipelineServiceSource):
         except Exception as exc:
             yield Either(
                 left=StackTraceError(
-                    name=f"{pipeline_details.name} Usage",
-                    error=f"Exception computing pipeline usage for {pipeline_details.name}: {exc}",
+                    name=f"{pipeline_details.dag_id} Usage",
+                    error=f"Exception computing pipeline usage for {pipeline_details.dag_id}: {exc}",
                     stackTrace=traceback.format_exc(),
                 )
             )

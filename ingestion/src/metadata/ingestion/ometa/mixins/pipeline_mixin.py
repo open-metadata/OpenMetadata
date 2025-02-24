@@ -21,6 +21,7 @@ from metadata.generated.schema.entity.data.pipeline import (
     PipelineStatus,
     Task,
 )
+from metadata.generated.schema.type.usageRequest import UsageRequest
 from metadata.ingestion.ometa.client import REST
 from metadata.utils.logger import ometa_logger
 
@@ -118,3 +119,18 @@ class OMetaPipelineMixin:
         )
 
         return self.create_or_update(updated_pipeline)
+
+    def publish_pipeline_usage(
+        self, pipeline: Pipeline, pipeline_usage_request: UsageRequest
+    ) -> None:
+        """
+        POST usage details for a Pipeline
+
+        :param pipeline: Pipeline Entity to update
+        :param pipeline_usage_request: Usage data to add
+        """
+        resp = self.client.put(
+            f"/usage/pipeline/{pipeline.id.root}",
+            data=pipeline_usage_request.model_dump_json(),
+        )
+        logger.debug("Published pipeline usage %s", resp)

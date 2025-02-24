@@ -53,9 +53,7 @@
     },
     "state": {
       "description": "State of the pipeline.",
-      "items": {
-        "$ref": "../../entity/data/pipeline.json#/definitions/pipelineState"
-      },
+      "$ref": "../../entity/data/pipeline.json#/definitions/pipelineState",
       "default": null
     },
     "tags": {
