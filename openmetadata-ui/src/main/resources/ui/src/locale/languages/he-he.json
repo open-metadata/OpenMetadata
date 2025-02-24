@@ -1215,6 +1215,7 @@
     "suggestion": "הצעה",
     "suggestion-lowercase-plural": "הצעות",
     "suggestion-pending": "Suggestions Pending",
+    "suggestion-plural-pending": "{{count}} הצעות ממתינות",
     "suite": "יחידת בדיקה",
     "sum": "סכום",
     "summary": "סיכום",

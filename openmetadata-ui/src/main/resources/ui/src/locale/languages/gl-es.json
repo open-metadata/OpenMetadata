@@ -1215,6 +1215,7 @@
     "suggestion": "Suxestión",
     "suggestion-lowercase-plural": "suxestións",
     "suggestion-pending": "Suxestións pendentes",
+    "suggestion-plural-pending": "{{count}} Sugestións Pendentes",
     "suite": "Suite",
     "sum": "Suma",
     "summary": "Resumo",
