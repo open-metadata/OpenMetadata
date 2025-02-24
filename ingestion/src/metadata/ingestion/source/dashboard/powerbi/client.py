@@ -266,7 +266,7 @@ class PowerBiApiClient:
             # Exact match
             if regex.startswith("^") and regex.endswith("$"):
                 literal = regex[1:-1]
-                return f"name eq '{literal}'"
+                return f"trim(name) eq '{literal}'"
 
             # Starts with
             if regex.startswith("^"):
@@ -294,7 +294,7 @@ class PowerBiApiClient:
                 f"Error converting regex '{regex}' to OData condition: {exc}"
             )
             return ""
-
+        
     def create_filter_query(self, filter_pattern) -> Optional[str]:
         """
         Create a complete filter query for workspaces from filter_pattern
@@ -311,7 +311,7 @@ class PowerBiApiClient:
                 for pattern in project_to_include:
                     condition = self.regex_to_odata_condition(pattern)
                     if condition:
-                        include_conditions.append(f"({condition})")
+                        include_conditions.append(f"{condition}")
 
                 if include_conditions:
                     filter_conditions.append(f"{' or '.join(include_conditions)}")
