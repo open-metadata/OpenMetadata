@@ -260,7 +260,7 @@
       "$ref": "../services/pipelineService.json#/definitions/pipelineServiceType"
     },
     "usageSummary": {
-      "description": "Latest usage information for this dashboard.",
+      "description": "Latest usage information for this pipeline.",
       "$ref": "../../type/usageDetails.json",
       "default": null
     },

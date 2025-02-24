@@ -137,7 +137,7 @@ export interface Pipeline {
      */
     updatedBy?: string;
     /**
-     * Latest usage information for this dashboard.
+     * Latest usage information for this pipeline.
      */
     usageSummary?: UsageDetails;
     /**
@@ -548,7 +548,7 @@ export interface Task {
 }
 
 /**
- * Latest usage information for this dashboard.
+ * Latest usage information for this pipeline.
  *
  * This schema defines the type for usage details. Daily, weekly, and monthly aggregation of
  * usage is computed along with the percentile rank based on the usage for a given day.
