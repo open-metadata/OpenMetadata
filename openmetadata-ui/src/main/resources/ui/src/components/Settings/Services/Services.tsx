@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { FilterOutlined } from '@ant-design/icons';
 import { Button, Col, Row, Space, Tooltip, Typography } from 'antd';
 import Card from 'antd/lib/card/Card';
 import { ColumnsType, TableProps } from 'antd/lib/table';
@@ -349,7 +350,13 @@ const Services = ({ serviceName }: ServicesProps) => {
       key: 'serviceType',
       width: 200,
       filterDropdown: ColumnFilter,
-      filterIcon: columnFilterIcon,
+      filterIcon: (filtered) => (
+        <FilterOutlined
+          style={{
+            color: filtered ? theme.primaryColor : undefined,
+          }}
+        />
+      ),
       filtered: !isEmpty(serviceTypeFilter),
       filteredValue: serviceTypeFilter,
       filters: serviceTypeFilters,
