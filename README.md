@@ -29,7 +29,7 @@ Define the **table structure** with **primary** and **unique** keys. Add the que
 bootstrap/sql/migrations/extension/1.7.0-extension/mysql/schemaChanges.sql
 ```
 ### **Configure the Migration Path**
-Ensure that in `conf/openmetadata.yaml`, under the `migrationConfiguration` section, the variable `extensionPath` points to the `schemaChanges.sql` file.
+Ensure that in `conf/openmetadata.yaml`, under the `migrationConfiguration` section, the variable `extensionPath` points to the `./bootstrap/sql/migrations/extension` directory.
 
 
 ## **Step 2: Specifications**
