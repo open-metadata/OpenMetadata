@@ -29,6 +29,7 @@ import CustomPieChart from '../../../Visualisations/Chart/CustomPieChart.compone
 import { PieChartWidgetCommonProps } from '../../DataQuality.interface';
 
 const TestCaseStatusPieChartWidget = ({
+  className = '',
   chartFilter,
 }: PieChartWidgetCommonProps) => {
   const { t } = useTranslation();
@@ -100,6 +101,7 @@ const TestCaseStatusPieChartWidget = ({
 
   return (
     <Card
+      className={className}
       data-testid="test-case-status-pie-chart-widget"
       loading={isTestCaseSummaryLoading}>
       <div className="d-flex flex-column items-center">
