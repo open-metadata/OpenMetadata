@@ -15,7 +15,7 @@ In this section, we provide guides and references to use the MSSQL connector.
 
 Configure and schedule MSSQL metadata and profiler workflows from the OpenMetadata UI:
 
-- [Remote-Connection]() 
+- [Remote-Connection](#for-remote-connection)
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
 - [Query Usage](/connectors/ingestion/workflows/usage)
