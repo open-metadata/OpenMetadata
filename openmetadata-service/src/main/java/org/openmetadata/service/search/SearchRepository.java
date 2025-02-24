@@ -33,6 +33,7 @@ import static org.openmetadata.service.search.SearchClient.UPDATE_ADDED_DELETE_G
 import static org.openmetadata.service.search.SearchClient.UPDATE_CERTIFICATION_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.UPDATE_PROPAGATED_ENTITY_REFERENCE_FIELD_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.UPDATE_TAGS_FIELD_SCRIPT;
+import static org.openmetadata.service.search.SearchUtils.isConnectedVia;
 import static org.openmetadata.service.search.models.IndexMapping.indexNameSeparator;
 import static org.openmetadata.service.util.EntityUtil.compareEntityReferenceById;
 
@@ -66,6 +67,8 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.EntityTimeSeriesInterface;
 import org.openmetadata.schema.analytics.ReportData;
+import org.openmetadata.schema.api.lineage.SearchLineageRequest;
+import org.openmetadata.schema.api.lineage.SearchLineageResult;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
@@ -1010,7 +1013,7 @@ public class SearchRepository {
     return searchClient.getDocByID(indexName, entityId.toString());
   }
 
-  public SearchClient.SearchResultListMapper listWithOffset(
+  public SearchResultListMapper listWithOffset(
       SearchListFilter filter,
       int limit,
       int offset,
@@ -1028,7 +1031,7 @@ public class SearchRepository {
         q);
   }
 
-  public SearchClient.SearchResultListMapper listWithDeepPagination(
+  public SearchResultListMapper listWithDeepPagination(
       String entityType,
       String query,
       String filter,
@@ -1052,16 +1055,13 @@ public class SearchRepository {
     return searchClient.searchBySourceUrl(sourceUrl);
   }
 
-  public Response searchLineage(
-      String fqn,
-      int upstreamDepth,
-      int downstreamDepth,
-      String queryFilter,
-      boolean deleted,
-      String entityType)
+  public SearchLineageResult searchLineage(SearchLineageRequest lineageRequest) throws IOException {
+    return searchClient.searchLineage(lineageRequest);
+  }
+
+  public SearchLineageResult searchLineageWithDirection(SearchLineageRequest lineageRequest)
       throws IOException {
-    return searchClient.searchLineage(
-        fqn, upstreamDepth, downstreamDepth, queryFilter, deleted, entityType);
+    return searchClient.searchLineageWithDirection(lineageRequest);
   }
 
   public Response searchEntityRelationship(
@@ -1083,7 +1083,7 @@ public class SearchRepository {
         fqn, upstreamDepth, downstreamDepth, queryFilter, deleted);
   }
 
-  public Map<String, Object> searchLineageForExport(
+  public SearchLineageResult searchLineageForExport(
       String fqn,
       int upstreamDepth,
       int downstreamDepth,
@@ -1091,8 +1091,14 @@ public class SearchRepository {
       boolean deleted,
       String entityType)
       throws IOException {
-    return searchClient.searchLineageInternal(
-        fqn, upstreamDepth, downstreamDepth, queryFilter, deleted, entityType);
+    return searchClient.searchLineage(
+        new SearchLineageRequest()
+            .withFqn(fqn)
+            .withUpstreamDepth(upstreamDepth)
+            .withDownstreamDepth(downstreamDepth)
+            .withQueryFilter(queryFilter)
+            .withIncludeDeleted(deleted)
+            .withIsConnectedVia(isConnectedVia(entityType)));
   }
 
   public Response searchByField(String fieldName, String fieldValue, String index)

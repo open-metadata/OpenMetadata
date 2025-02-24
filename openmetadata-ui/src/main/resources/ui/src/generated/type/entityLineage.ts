@@ -54,6 +54,15 @@ export interface LineageDetails {
      */
     columnsLineage?: ColumnLineage[];
     /**
+     * Last update time corresponding to the new version of the entity in Unix epoch time
+     * milliseconds.
+     */
+    createdAt?: number;
+    /**
+     * User who created the node.
+     */
+    createdBy?: string;
+    /**
      * description of lineage
      */
     description?: string;
@@ -69,6 +78,15 @@ export interface LineageDetails {
      * SQL used for transformation.
      */
     sqlQuery?: string;
+    /**
+     * Last update time corresponding to the new version of the entity in Unix epoch time
+     * milliseconds.
+     */
+    updatedAt?: number;
+    /**
+     * User who made the update.
+     */
+    updatedBy?: string;
     [property: string]: any;
 }
 

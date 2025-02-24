@@ -1,0 +1,58 @@
+{
+  "$id": "https://open-metadata.org/schema/api/lineage/searchLineageResult.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SearchLineageResult",
+  "description": "Search Lineage Response for the Lineage Request",
+  "javaType": "org.openmetadata.schema.api.lineage.SearchLineageResult",
+  "type": "object",
+  "definitions": {
+    "directionPaging": {
+      "properties": {
+        "upstream": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/layerPaging"
+          }
+        },
+        "downstream": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/layerPaging"
+          }
+        }
+      }
+    },
+    "layerPaging": {
+      "description": "Type used for cursor based pagination information in GET list responses.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.type.LayerPaging",
+      "properties": {
+        "entityDownstreamCount": {
+          "description": "Count of entities downstream current layer entity.",
+          "type": "integer"
+        },
+        "entityUpstreamCount": {
+          "description": "Count of entities upstream current layer entity.",
+          "type": "integer"
+        }
+      },
+      "additionalProperties": false
+    }
+    
+  },
+  "properties": {
+    "nodes" : {
+      "description": "Nodes in the lineage response.",
+      "existingJavaType": "java.util.Map<java.lang.String, org.openmetadata.schema.type.lineage.NodeInformation>"
+    },
+    "upstreamEdges": {
+      "description": "Upstream Edges for the entity.",
+      "existingJavaType": "java.util.Map<java.lang.String, org.openmetadata.schema.api.lineage.EsLineageData>"
+    },
+    "downstreamEdges": {
+      "description": "Downstream Edges for the node.",
+      "existingJavaType": "java.util.Map<java.lang.String, org.openmetadata.schema.api.lineage.EsLineageData>"
+    }
+  },
+  "additionalProperties": false
+}

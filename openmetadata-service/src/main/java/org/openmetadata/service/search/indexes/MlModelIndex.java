@@ -35,7 +35,7 @@ public class MlModelIndex implements SearchIndex {
     doc.put("tags", parseTags.getTags());
     doc.put("tier", parseTags.getTierTag());
     doc.put("serviceType", mlModel.getServiceType());
-    doc.put("lineage", SearchIndex.getLineageData(mlModel.getEntityReference()));
+    doc.put("upstreamLineage", SearchIndex.getLineageData(mlModel.getEntityReference()));
     doc.put("service", getEntityWithDisplayName(mlModel.getService()));
     return doc;
   }
