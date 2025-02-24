@@ -13,15 +13,19 @@
 
 import { Col, Row } from 'antd';
 import React from 'react';
+import DataQualityWidget from './DataQualityWidget/DataQualityWidget';
 import PlatformInsightsWidget from './PlatformInsightsWidget/PlatformInsightsWidget';
 import './service-insights-tab.less';
 import { ServiceInsightsTabProps } from './ServiceInsightsTab.interface';
 
 const ServiceInsightsTab: React.FC<ServiceInsightsTabProps> = () => {
   return (
-    <Row className="service-insights-tab">
+    <Row className="service-insights-tab" gutter={[16, 16]}>
       <Col span={24}>
         <PlatformInsightsWidget />
+      </Col>
+      <Col span={24}>
+        <DataQualityWidget />
       </Col>
     </Row>
   );

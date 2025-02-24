@@ -118,17 +118,17 @@ function PlatformInsightsWidget() {
   }, []);
 
   return (
-    <Card className="service-insights-widget platform-insights-card">
+    <Card className="service-insights-widget widget-flex-col platform-insights-card">
       <Typography.Text className="font-medium text-lg">
         {t('label.entity-insight-plural', { entity: t('label.platform') })}
       </Typography.Text>
       <Typography.Text className="text-grey-muted">
-        {t('message.platform-insights-description')}
+        {t('message.data-insight-subtitle')}
       </Typography.Text>
       <Row className="m-t-sm" gutter={16}>
         {chartsData.map((chart) => (
           <Col key={chart.chartType} span={6}>
-            <Card>
+            <Card className="widget-info-card">
               <Typography.Text className="font-semibold text-md">
                 {getTitleByChartType(chart.chartType)}
               </Typography.Text>
