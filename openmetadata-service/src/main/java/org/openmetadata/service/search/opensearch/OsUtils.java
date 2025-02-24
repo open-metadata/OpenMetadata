@@ -4,6 +4,7 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.search.SearchClient.FQN_FIELD;
 
+import com.nimbusds.jose.util.Pair;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
@@ -39,17 +40,21 @@ public class OsUtils {
   }
 
   public static Map<String, Object> searchEntityByKey(
-      String indexAlias, String keyName, String keyValue, List<String> fieldsToRemove)
+      String indexAlias,
+      String keyName,
+      Pair<String, String> hasToFqnPair,
+      List<String> fieldsToRemove)
       throws IOException {
     Map<String, Object> result =
-        searchEntitiesByKey(indexAlias, keyName, Set.of(keyValue), 0, 1, fieldsToRemove);
+        searchEntitiesByKey(
+            indexAlias, keyName, Set.of(hasToFqnPair.getLeft()), 0, 1, fieldsToRemove);
     if (result.size() == 1) {
-      return (Map<String, Object>) result.get(keyValue);
+      return (Map<String, Object>) result.get(hasToFqnPair.getRight());
     } else {
       throw new SearchException(
           String.format(
-              "Issue in Search Entity By Key: %s, Value: %s , Number of Hits: %s",
-              keyName, keyValue, result.size()));
+              "Issue in Search Entity By Key: %s, Value Fqn: %s , Number of Hits: %s",
+              keyName, hasToFqnPair.getRight(), result.size()));
     }
   }
 
@@ -105,7 +110,7 @@ public class OsUtils {
 
     // This assumes here that the key has a keyword field
     if (!nullOrEmpty(aggName)) {
-      searchSourceBuilder.aggregation(AggregationBuilders.terms(aggName).field(key + ".keyword"));
+      searchSourceBuilder.aggregation(AggregationBuilders.terms(aggName).field(key));
     }
 
     buildSearchSourceFilter(queryFilter, searchSourceBuilder);

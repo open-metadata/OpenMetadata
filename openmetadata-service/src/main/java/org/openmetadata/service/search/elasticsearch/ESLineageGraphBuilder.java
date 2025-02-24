@@ -1,6 +1,7 @@
 package org.openmetadata.service.search.elasticsearch;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.service.Entity.FIELD_FULLY_QUALIFIED_NAME_HASH_KEYWORD;
 import static org.openmetadata.service.search.SearchClient.FQN_FIELD;
 import static org.openmetadata.service.search.SearchClient.GLOBAL_SEARCH_ALIAS;
 import static org.openmetadata.service.search.SearchUtils.LINEAGE_AGGREGATION;
@@ -11,6 +12,7 @@ import static org.openmetadata.service.search.SearchUtils.paginateUpstreamEntiti
 import static org.openmetadata.service.search.elasticsearch.ElasticSearchClient.SOURCE_FIELDS_TO_EXCLUDE;
 import static org.openmetadata.service.search.elasticsearch.EsUtils.getSearchRequest;
 
+import com.nimbusds.jose.util.Pair;
 import es.org.elasticsearch.action.search.SearchResponse;
 import es.org.elasticsearch.client.RequestOptions;
 import es.org.elasticsearch.client.RestHighLevelClient;
@@ -19,10 +21,8 @@ import es.org.elasticsearch.search.aggregations.bucket.terms.ParsedStringTerms;
 import es.org.elasticsearch.search.aggregations.bucket.terms.Terms;
 import java.io.IOException;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.lineage.EsLineageData;
 import org.openmetadata.schema.api.lineage.RelationshipRef;
@@ -30,6 +30,7 @@ import org.openmetadata.schema.api.lineage.SearchLineageRequest;
 import org.openmetadata.schema.api.lineage.SearchLineageResult;
 import org.openmetadata.schema.type.LayerPaging;
 import org.openmetadata.schema.type.lineage.NodeInformation;
+import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
@@ -48,14 +49,20 @@ public class ESLineageGraphBuilder {
             .withDownstreamEdges(new HashMap<>());
 
     fetchUpstreamNodesRecursively(
-        request, result, Set.of(request.getFqn()), request.getUpstreamDepth());
+        request,
+        result,
+        Map.of(FullyQualifiedName.buildHash(request.getFqn()), request.getFqn()),
+        request.getUpstreamDepth());
     return result;
   }
 
   private void fetchUpstreamNodesRecursively(
-      SearchLineageRequest lineageRequest, SearchLineageResult result, Set<String> fqns, int depth)
+      SearchLineageRequest lineageRequest,
+      SearchLineageResult result,
+      Map<String, String> hasToFqnMap,
+      int depth)
       throws IOException {
-    if (depth < 0 || fqns.isEmpty()) {
+    if (depth < 0 || hasToFqnMap.isEmpty()) {
       return;
     }
 
@@ -64,14 +71,14 @@ public class ESLineageGraphBuilder {
           "LayerFrom and LayerSize should be greater than or equal to 0");
     }
 
-    Set<String> fqnSet = new HashSet<>();
+    Map<String, String> hasToFqnMapForLayer = new HashMap<>();
     es.org.elasticsearch.action.search.SearchRequest searchRequest =
         getSearchRequest(
             GLOBAL_SEARCH_ALIAS,
             lineageRequest.getQueryFilter(),
             LINEAGE_AGGREGATION,
             lineageRequest.getDirectionValue(),
-            fqns,
+            hasToFqnMap.keySet(),
             0,
             10000,
             lineageRequest.getIncludeDeleted(),
@@ -100,7 +107,7 @@ public class ESLineageGraphBuilder {
           result.getUpstreamEdges().putIfAbsent(data.getDocId(), data.withToEntity(toEntity));
           String fromFqn = data.getFromEntity().getFullyQualifiedName();
           if (!result.getNodes().containsKey(fromFqn)) {
-            fqnSet.add(fromFqn);
+            hasToFqnMapForLayer.put(FullyQualifiedName.buildHash(fromFqn), fromFqn);
           }
         }
       }
@@ -114,10 +121,10 @@ public class ESLineageGraphBuilder {
       fetchUpstreamNodesRecursively(
           newReq.withDirectionValue(directionValue).withIsConnectedVia(false),
           result,
-          fqnSet,
+          hasToFqnMapForLayer,
           depth - 1);
     } else {
-      fetchUpstreamNodesRecursively(lineageRequest, result, fqnSet, depth - 1);
+      fetchUpstreamNodesRecursively(lineageRequest, result, hasToFqnMapForLayer, depth - 1);
     }
   }
 
@@ -134,7 +141,7 @@ public class ESLineageGraphBuilder {
     fetchDownstreamNodesRecursively(
         lineageRequest,
         result,
-        Set.of(lineageRequest.getFqn()),
+        Map.of(FullyQualifiedName.buildHash(lineageRequest.getFqn()), lineageRequest.getFqn()),
         lineageRequest.getDownstreamDepth() - 1);
     return result;
   }
@@ -143,7 +150,10 @@ public class ESLineageGraphBuilder {
       SearchLineageRequest lineageRequest, SearchLineageResult result) throws IOException {
     Map<String, Object> entityMap =
         EsUtils.searchEntityByKey(
-            GLOBAL_SEARCH_ALIAS, FQN_FIELD, lineageRequest.getFqn(), SOURCE_FIELDS_TO_EXCLUDE);
+            GLOBAL_SEARCH_ALIAS,
+            FIELD_FULLY_QUALIFIED_NAME_HASH_KEYWORD,
+            Pair.of(FullyQualifiedName.buildHash(lineageRequest.getFqn()), lineageRequest.getFqn()),
+            SOURCE_FIELDS_TO_EXCLUDE);
     result
         .getNodes()
         .putIfAbsent(
@@ -154,20 +164,23 @@ public class ESLineageGraphBuilder {
   }
 
   private void fetchDownstreamNodesRecursively(
-      SearchLineageRequest lineageRequest, SearchLineageResult result, Set<String> fqns, int depth)
+      SearchLineageRequest lineageRequest,
+      SearchLineageResult result,
+      Map<String, String> hasToFqnMap,
+      int depth)
       throws IOException {
-    if (depth <= 0 || fqns.isEmpty()) {
+    if (depth <= 0 || hasToFqnMap.isEmpty()) {
       return;
     }
 
-    Set<String> fqnSet = new HashSet<>();
+    Map<String, String> hasToFqnMapForLayer = new HashMap<>();
     es.org.elasticsearch.action.search.SearchRequest searchRequest =
         getSearchRequest(
             GLOBAL_SEARCH_ALIAS,
             lineageRequest.getQueryFilter(),
             LINEAGE_AGGREGATION,
             lineageRequest.getDirectionValue(),
-            fqns,
+            hasToFqnMap.keySet(),
             lineageRequest.getLayerFrom(),
             lineageRequest.getLayerSize(),
             lineageRequest.getIncludeDeleted(),
@@ -183,9 +196,11 @@ public class ESLineageGraphBuilder {
         // Add Paging Details per entity
         ParsedStringTerms valueCountAgg = searchResponse.getAggregations().get(LINEAGE_AGGREGATION);
         for (Terms.Bucket bucket : valueCountAgg.getBuckets()) {
+          String fqnFromHash = hasToFqnMap.get(bucket.getKeyAsString());
           if (!nullOrEmpty(bucket.getKeyAsString())
-              && result.getNodes().containsKey(bucket.getKeyAsString())) {
-            NodeInformation nodeInformation = result.getNodes().get(bucket.getKeyAsString());
+              && fqnFromHash != null
+              && result.getNodes().containsKey(fqnFromHash)) {
+            NodeInformation nodeInformation = result.getNodes().get(fqnFromHash);
             nodeInformation.setPaging(
                 new LayerPaging().withEntityDownstreamCount((int) bucket.getDocCount()));
             result.getNodes().put(bucket.getKeyAsString(), nodeInformation);
@@ -194,7 +209,7 @@ public class ESLineageGraphBuilder {
 
         RelationshipRef toEntity = getRelationshipRef(entityMap);
         if (!result.getNodes().containsKey(fqn)) {
-          fqnSet.add(fqn);
+          hasToFqnMapForLayer.put(FullyQualifiedName.buildHash(fqn), fqn);
           result
               .getNodes()
               .put(
@@ -206,7 +221,7 @@ public class ESLineageGraphBuilder {
 
         List<EsLineageData> upstreamEntities = getUpstreamLineageListIfExist(entityMap);
         for (EsLineageData esLineageData : upstreamEntities) {
-          if (fqns.contains(esLineageData.getFromEntity().getFullyQualifiedName())) {
+          if (hasToFqnMap.containsKey(esLineageData.getFromEntity().getFqnHash())) {
             result
                 .getDownstreamEdges()
                 .putIfAbsent(esLineageData.getDocId(), esLineageData.withToEntity(toEntity));
@@ -223,10 +238,10 @@ public class ESLineageGraphBuilder {
       fetchDownstreamNodesRecursively(
           newReq.withDirectionValue(directionValue).withIsConnectedVia(false),
           result,
-          fqnSet,
+          hasToFqnMapForLayer,
           depth - 1);
     } else {
-      fetchDownstreamNodesRecursively(lineageRequest, result, fqnSet, depth - 1);
+      fetchDownstreamNodesRecursively(lineageRequest, result, hasToFqnMapForLayer, depth - 1);
     }
   }
 }

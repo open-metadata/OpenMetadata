@@ -231,7 +231,14 @@ public class LineageRepository {
     } else {
       pipelineMap = JsonUtils.getMap(Entity.getEntity(pipelineRef, "tags,owners", Include.ALL));
     }
+
+    // Remove fields
     fieldsToRemove.forEach(pipelineMap::remove);
+
+    // Add fqnHash
+    pipelineMap.put(
+        "fqnHash",
+        FullyQualifiedName.buildHash((String) pipelineMap.get(Entity.FIELD_FULLY_QUALIFIED_NAME)));
     return Pair.of(pipelineRef.getType(), pipelineMap);
   }
 

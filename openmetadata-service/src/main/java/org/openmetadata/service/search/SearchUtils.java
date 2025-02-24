@@ -62,15 +62,15 @@ public final class SearchUtils {
   public static String getLineageDirection(LineageDirection direction, boolean isConnectedVia) {
     if (LineageDirection.UPSTREAM.equals(direction)) {
       if (isConnectedVia) {
-        return "upstreamLineage.pipeline.fullyQualifiedName";
+        return "upstreamLineage.pipeline.fqnHash.keyword";
       } else {
-        return "fullyQualifiedName";
+        return Entity.FIELD_FULLY_QUALIFIED_NAME_HASH_KEYWORD;
       }
     } else {
       if (isConnectedVia) {
-        return "upstreamLineage.pipeline.fullyQualifiedName";
+        return "upstreamLineage.pipeline.fqnHash.keyword";
       } else {
-        return "upstreamLineage.fromEntity.fullyQualifiedName";
+        return "upstreamLineage.fromEntity.fqnHash.keyword";
       }
     }
   }

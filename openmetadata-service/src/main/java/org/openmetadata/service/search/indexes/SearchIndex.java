@@ -55,6 +55,13 @@ public interface SearchIndex {
     // Build Index Doc
     Map<String, Object> esDoc = this.buildSearchIndexDocInternal(JsonUtils.getMap(getEntity()));
 
+    // Add FqnHash
+    if (esDoc.containsKey(Entity.FIELD_FULLY_QUALIFIED_NAME)
+        && !nullOrEmpty((String) esDoc.get(Entity.FIELD_FULLY_QUALIFIED_NAME))) {
+      String fqn = (String) esDoc.get(Entity.FIELD_FULLY_QUALIFIED_NAME);
+      esDoc.put("fqnHash", FullyQualifiedName.buildHash(fqn));
+    }
+
     // Non Indexable Fields
     removeNonIndexableFields(esDoc);
 
