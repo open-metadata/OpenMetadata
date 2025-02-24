@@ -33,5 +33,7 @@ public interface ServiceEntityInterface extends EntityInterface {
 
   EnumInterface getServiceType();
 
-  EntityReference getIngestionAgent();
+  default EntityReference getIngestionAgent() {
+    return null;
+  }
 }
