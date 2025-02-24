@@ -15,7 +15,11 @@ import {
   DetailPageWidgetKeys,
   GlossaryTermDetailPageWidgetKeys,
 } from '../enums/CustomizeDetailPage.enum';
+import { EntityType } from '../enums/entity.enum';
+import { TagSource } from '../generated/type/tagLabel';
 import i18n from '../utils/i18next/LocalUtil';
+
+export const TAB_GRID_MAX_COLUMNS = 8;
 
 export type GridSizes = keyof typeof WidgetWidths;
 export interface CommonWidgetType {
@@ -43,7 +47,7 @@ export const TAGS_WIDGET: CommonWidgetType = {
 
 export const GLOSSARY_TERMS_WIDGET: CommonWidgetType = {
   fullyQualifiedName: DetailPageWidgetKeys.GLOSSARY_TERMS,
-  name: i18n.t('label.glossary-term'),
+  name: i18n.t('label.glossary-term-plural'),
   data: { gridSizes: ['small'] },
 };
 
@@ -79,7 +83,7 @@ export const REFERENCES_WIDGET: CommonWidgetType = {
 
 export const REVIEWER_WIDGET: CommonWidgetType = {
   fullyQualifiedName: GlossaryTermDetailPageWidgetKeys.REVIEWER,
-  name: i18n.t('label.reviewer'),
+  name: i18n.t('label.reviewer-plural'),
   data: { gridSizes: ['small'] },
 };
 
@@ -102,3 +106,39 @@ export const DATA_PRODUCTS_WIDGET: CommonWidgetType = {
   name: i18n.t('label.data-product-plural'),
   data: { gridSizes: ['small'] },
 };
+
+export const DUMMY_TAGS_LIST = [
+  {
+    tagFQN: 'BusinessGlossary.Purchase',
+    source: TagSource.Glossary,
+    name: 'Purchase',
+  },
+  {
+    tagFQN: 'Person.BankNumber',
+    source: TagSource.Glossary,
+    name: 'BankNumber',
+  },
+  {
+    tagFQN: 'Hospitality.Guest Type',
+    source: TagSource.Glossary,
+    name: 'Guest Type',
+  },
+  {
+    tagFQN: 'Financial Services',
+    source: TagSource.Glossary,
+    name: 'Auto Loan',
+  },
+];
+
+export const DUMMY_OWNER_LIST = [
+  {
+    name: 'Aaron Singh',
+    type: EntityType.USER,
+    id: '123',
+  },
+  {
+    name: 'Engineering',
+    type: EntityType.TEAM,
+    id: '123',
+  },
+];

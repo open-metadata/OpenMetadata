@@ -55,10 +55,10 @@ export const GenericTab = ({ type }: GenericTabProps) => {
 
       return renderedWidget ? (
         <div
+          className="overflow-scroll"
           data-grid={widget}
           id={widget.i}
-          key={widget.i}
-          style={{ overflow: 'scroll' }}>
+          key={widget.i}>
           {renderedWidget}
         </div>
       ) : null;

@@ -32,15 +32,16 @@ export const ContainerWidget = () => {
     editTagsPermission,
     deleted,
   } = useMemo(() => {
+    const isDeleted = containerData?.deleted;
+
     return {
       editDescriptionPermission:
-        permissions.EditAll ||
-        permissions.EditDescription ||
-        permissions.EditCustomFields,
+        (permissions.EditAll || permissions.EditDescription) && !isDeleted,
       editGlossaryTermsPermission:
-        permissions.EditAll || permissions.EditGlossaryTerms,
-      editTagsPermission: permissions.EditAll || permissions.EditTags,
-      deleted: containerData?.deleted,
+        (permissions.EditAll || permissions.EditGlossaryTerms) && !isDeleted,
+      editTagsPermission:
+        (permissions.EditAll || permissions.EditTags) && !isDeleted,
+      deleted: isDeleted,
     };
   }, [permissions, containerData]);
 

@@ -358,12 +358,6 @@ export const getWidgetsFromKey = (
       return topicClassBase.getWidgetsFromKey(widgetConfig);
     case PageType.StoredProcedure:
       return storedProcedureClassBase.getWidgetsFromKey(widgetConfig);
-    // case PageType.GlossaryTerm:
-    //   return customizeGlossaryTermPageClassBase.getWidgetsFromKey(widgetConfig);
-    // case PageType.Glossary:
-    //   return customizeGlossaryPageClassBase.getWidgetsFromKey(widgetConfig);
-    // case PageType.LandingPage:
-    //   return customizeMyDataPageClassBase.getWidgetsFromKey(widgetConfig);
     case PageType.DashboardDataModel:
       return dashboardDataModelClassBase.getWidgetsFromKey(widgetConfig);
     case PageType.Container:

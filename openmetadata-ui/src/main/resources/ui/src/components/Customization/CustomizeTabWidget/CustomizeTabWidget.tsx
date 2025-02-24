@@ -17,7 +17,10 @@ import React, { useCallback, useMemo, useState } from 'react';
 import RGL, { Layout, WidthProvider } from 'react-grid-layout';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
-import { CommonWidgetType } from '../../../constants/CustomizeWidgets.constants';
+import {
+  CommonWidgetType,
+  TAB_GRID_MAX_COLUMNS,
+} from '../../../constants/CustomizeWidgets.constants';
 import { EntityTabs } from '../../../enums/entity.enum';
 import { Document } from '../../../generated/entity/docStore/document';
 import { Page, Tab } from '../../../generated/system/ui/page';
@@ -112,7 +115,7 @@ export const CustomizeTabWidget = () => {
       tabs: [
         ...items,
         {
-          name: 'New Tab',
+          name: t('label.new-tab'),
           layout: [],
           id: newActiveKey,
           editable: true,
@@ -240,7 +243,7 @@ export const CustomizeTabWidget = () => {
           newWidgetData as unknown as Document,
           placeholderWidgetKey,
           widgetSize,
-          8
+          TAB_GRID_MAX_COLUMNS
         )
       );
       setIsWidgetModalOpen(false);
@@ -307,7 +310,7 @@ export const CustomizeTabWidget = () => {
 
       <ReactGridLayout
         className="grid-container"
-        cols={8}
+        cols={TAB_GRID_MAX_COLUMNS}
         draggableHandle=".drag-widget-icon"
         margin={[16, 16]}
         rowHeight={100}
@@ -319,7 +322,7 @@ export const CustomizeTabWidget = () => {
         <AddDetailsPageWidgetModal
           handleAddWidget={handleMainPanelAddWidget}
           handleCloseAddWidgetModal={() => setIsWidgetModalOpen(false)}
-          maxGridSizeSupport={8}
+          maxGridSizeSupport={TAB_GRID_MAX_COLUMNS}
           open={isWidgetModalOpen}
           placeholderWidgetKey={placeholderWidgetKey}
           widgetsList={getCustomizableWidgetByPage(currentPageType)}

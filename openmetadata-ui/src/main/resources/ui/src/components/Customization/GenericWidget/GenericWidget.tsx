@@ -15,13 +15,16 @@ import { Card, Space } from 'antd';
 import { noop, startCase } from 'lodash';
 import React, { useMemo } from 'react';
 import {
+  DUMMY_OWNER_LIST,
+  DUMMY_TAGS_LIST,
+} from '../../../constants/CustomizeWidgets.constants';
+import {
   DetailPageWidgetKeys,
   GlossaryTermDetailPageWidgetKeys,
 } from '../../../enums/CustomizeDetailPage.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import {
   Container,
-  DataType,
   EntityReference,
   TagSource,
 } from '../../../generated/entity/data/container';
@@ -32,6 +35,7 @@ import { WidgetCommonProps } from '../../../pages/CustomizablePage/CustomizableP
 import { FrequentlyJoinedTables } from '../../../pages/TableDetailsPageV1/FrequentlyJoinedTables/FrequentlyJoinedTables.component';
 import TableConstraints from '../../../pages/TableDetailsPageV1/TableConstraints/TableConstraints';
 import containerDetailsClassBase from '../../../utils/ContainerDetailsClassBase';
+import customizeGlossaryTermPageClassBase from '../../../utils/CustomizeGlossaryTerm/CustomizeGlossaryTermBaseClass';
 import dashboardDataModelClassBase from '../../../utils/DashboardDataModelBase';
 import domainClassBase from '../../../utils/Domain/DomainClassBase';
 import { renderReferenceElement } from '../../../utils/GlossaryUtils';
@@ -49,10 +53,7 @@ import ModelTab from '../../Dashboard/DataModel/DataModels/ModelTab/ModelTab.com
 import SchemaTable from '../../Database/SchemaTable/SchemaTable.component';
 import DataProductsContainer from '../../DataProducts/DataProductsContainer/DataProductsContainer.component';
 import GlossaryTermTab from '../../Glossary/GlossaryTermTab/GlossaryTermTab.component';
-import {
-  ModifiedGlossary,
-  useGlossaryStore,
-} from '../../Glossary/useGlossary.store';
+import { useGlossaryStore } from '../../Glossary/useGlossary.store';
 import TagsViewer from '../../Tag/TagsViewer/TagsViewer';
 import { DisplayType } from '../../Tag/TagsViewer/TagsViewer.interface';
 import TopicSchemaFields from '../../Topic/TopicSchema/TopicSchema';
@@ -71,159 +72,9 @@ export const GenericWidget = (props: WidgetCommonProps) => {
     if (
       props.widgetKey.startsWith(GlossaryTermDetailPageWidgetKeys.TERMS_TABLE)
     ) {
-      setGlossaryChildTerms([
-        {
-          id: 'ea7c8380-34a9-4ea9-93ea-a812c0e838d6',
-          name: 'Finance',
-          displayName: 'Finance',
-          description:
-            'A finance department is the unit of a business responsible for obtaining and handling any monies on behalf of the organization',
-
-          fullyQualifiedName: 'Business Department.Finance',
-
-          glossary: {
-            id: 'dae534b6-f5d1-4fc7-9ddf-0d1ec9df5c7e',
-            type: 'glossary',
-            name: 'Business Department',
-            fullyQualifiedName: 'Business Department',
-            description:
-              'Businesses often have several departments that perform unique functions, allowing them to operate efficiently and successfully.',
-            displayName: 'Business Department',
-            deleted: false,
-          },
-          references: [],
-          version: 0.9,
-          updatedAt: 1727894458563,
-          updatedBy: 'anandbhandari',
-          href: 'http://sandbox-beta.open-metadata.org/api/v1/glossaryTerms/ea7c8380-34a9-4ea9-93ea-a812c0e838d6',
-          owners: [],
-
-          status: 'Approved',
-          deleted: false,
-
-          mutuallyExclusive: false,
-          childrenCount: 1,
-        },
-        {
-          id: 'a8409ff4-b540-4ab0-9332-73f34125651c',
-          name: 'FOO',
-          displayName: '',
-          description: 'VCASCAS',
-
-          fullyQualifiedName: 'Business Department.FOO',
-          synonyms: [],
-          glossary: {
-            id: 'dae534b6-f5d1-4fc7-9ddf-0d1ec9df5c7e',
-            type: 'glossary',
-            name: 'Business Department',
-            fullyQualifiedName: 'Business Department',
-            description:
-              'Businesses often have several departments that perform unique functions, allowing them to operate efficiently and successfully.',
-            displayName: 'Business Department',
-            deleted: false,
-          },
-          references: [],
-          version: 0.1,
-          updatedAt: 1724662513442,
-          updatedBy: 'teddy',
-          owners: [],
-          status: 'Approved',
-          deleted: false,
-          mutuallyExclusive: false,
-          childrenCount: 0,
-        },
-        {
-          id: '5c415db9-0927-4815-b31b-ae8247ea6b0a',
-          name: 'Human resources',
-          displayName: 'Human resources',
-          description:
-            'Human resources (HR) is the department in a company that handles all things related to employees.',
-
-          fullyQualifiedName: 'Business Department.Human resources',
-          synonyms: ['Manpower', 'Human capital'],
-          glossary: {
-            id: 'dae534b6-f5d1-4fc7-9ddf-0d1ec9df5c7e',
-            type: 'glossary',
-            name: 'Business Department',
-            fullyQualifiedName: 'Business Department',
-            description:
-              'Businesses often have several departments that perform unique functions, allowing them to operate efficiently and successfully.',
-            displayName: 'Business Department',
-            deleted: false,
-            href: 'http://sandbox-beta.open-metadata.org/api/v1/glossaries/dae534b6-f5d1-4fc7-9ddf-0d1ec9df5c7e',
-          },
-          references: [],
-          version: 0.2,
-          updatedAt: 1701067069097,
-          updatedBy: 'sonal.w',
-          href: 'http://sandbox-beta.open-metadata.org/api/v1/glossaryTerms/5c415db9-0927-4815-b31b-ae8247ea6b0a',
-          owners: [],
-          changeDescription: {
-            fieldsAdded: [],
-            fieldsUpdated: [
-              {
-                name: 'status',
-                oldValue: 'Draft',
-                newValue: 'Approved',
-              },
-            ],
-            fieldsDeleted: [],
-            previousVersion: 0.1,
-          },
-          status: 'Approved',
-          deleted: false,
-
-          mutuallyExclusive: false,
-          childrenCount: 0,
-        },
-        {
-          id: 'e866ee75-711a-4649-968d-3ea889bd75b8',
-          name: 'Marketing',
-          displayName: 'Marketing',
-          description:
-            'A marketing department is a division within a business that helps to promote its brand, products and services.',
-          style: {},
-          fullyQualifiedName: 'Business Department.Marketing',
-          synonyms: ['Sell', 'Retails'],
-          glossary: {
-            id: 'dae534b6-f5d1-4fc7-9ddf-0d1ec9df5c7e',
-            type: 'glossary',
-            name: 'Business Department',
-            fullyQualifiedName: 'Business Department',
-            description:
-              'Businesses often have several departments that perform unique functions, allowing them to operate efficiently and successfully.',
-            displayName: 'Business Department',
-            deleted: false,
-            href: 'http://sandbox-beta.open-metadata.org/api/v1/glossaries/dae534b6-f5d1-4fc7-9ddf-0d1ec9df5c7e',
-          },
-          references: [],
-          version: 0.2,
-          updatedAt: 1700558309238,
-          updatedBy: 'shailesh',
-          href: 'http://sandbox-beta.open-metadata.org/api/v1/glossaryTerms/e866ee75-711a-4649-968d-3ea889bd75b8',
-          owners: [],
-
-          status: 'Rejected',
-          deleted: false,
-
-          mutuallyExclusive: false,
-          childrenCount: 1,
-        },
-        {
-          id: '288cfb46-a4c2-45a4-9dc0-321eac165812',
-          name: 'test_business_term',
-          displayName: 'Test Business Term',
-          description: 'this is test_business_term',
-          fullyQualifiedName: 'Business Department.test_business_term',
-          version: 0.2,
-          updatedAt: 1728547870161,
-          updatedBy: 'karan',
-          href: 'http://sandbox-beta.open-metadata.org/api/v1/glossaryTerms/288cfb46-a4c2-45a4-9dc0-321eac165812',
-          owners: [],
-          deleted: false,
-          mutuallyExclusive: false,
-        },
-      ] as ModifiedGlossary[]);
+      setGlossaryChildTerms(
+        customizeGlossaryTermPageClassBase.getGlossaryChildTerms()
+      );
     }
 
     return () => setGlossaryChildTerms([]);
@@ -241,28 +92,7 @@ export const GenericWidget = (props: WidgetCommonProps) => {
           displayType={DisplayType.READ_MORE}
           showNoDataPlaceholder={false}
           tagType={TagSource.Glossary}
-          tags={[
-            {
-              tagFQN: 'BusinessGlossary.Purchase',
-              source: TagSource.Glossary,
-              name: 'Purchase',
-            },
-            {
-              tagFQN: 'Person.BankNumber',
-              source: TagSource.Glossary,
-              name: 'BankNumber',
-            },
-            {
-              tagFQN: 'Hospitality.Guest Type',
-              source: TagSource.Glossary,
-              name: 'Guest Type',
-            },
-            {
-              tagFQN: 'Financial Services',
-              source: TagSource.Glossary,
-              name: 'Auto Loan',
-            },
-          ]}
+          tags={DUMMY_TAGS_LIST}
         />
       );
     } else if (
@@ -314,55 +144,13 @@ export const GenericWidget = (props: WidgetCommonProps) => {
           displayType={DisplayType.READ_MORE}
           showNoDataPlaceholder={false}
           tagType={TagSource.Classification}
-          tags={[
-            {
-              tagFQN: 'General.BankNumber',
-              source: TagSource.Classification,
-              name: 'BankNumber',
-            },
-            {
-              tagFQN: 'General.DriverLicense',
-              source: TagSource.Classification,
-              name: 'DriverLicense',
-            },
-            {
-              tagFQN: 'PII.Sensitive',
-              source: TagSource.Classification,
-              name: 'Sensitive',
-            },
-            {
-              tagFQN: 'Tier.Tier1',
-              source: TagSource.Classification,
-              name: 'Tier1',
-            },
-            {
-              tagFQN: 'PersonalData.SpecialCategory',
-              source: TagSource.Classification,
-              name: 'SpecialCategory',
-            },
-          ]}
+          tags={DUMMY_TAGS_LIST}
         />
       );
     } else if (
       props.widgetKey.startsWith(GlossaryTermDetailPageWidgetKeys.OWNER)
     ) {
-      return (
-        <OwnerLabel
-          hasPermission={false}
-          owners={[
-            {
-              name: 'Aaron Singh',
-              type: EntityType.USER,
-              id: '123',
-            },
-            {
-              name: 'Engeeneering',
-              type: EntityType.TEAM,
-              id: '123',
-            },
-          ]}
-        />
-      );
+      return <OwnerLabel hasPermission={false} owners={DUMMY_OWNER_LIST} />;
     } else if (
       props.widgetKey.startsWith(DetailPageWidgetKeys.CUSTOM_PROPERTIES) ||
       props.widgetKey.startsWith(
@@ -381,23 +169,7 @@ export const GenericWidget = (props: WidgetCommonProps) => {
     } else if (
       props.widgetKey.startsWith(GlossaryTermDetailPageWidgetKeys.REVIEWER)
     ) {
-      return (
-        <OwnerLabel
-          hasPermission={false}
-          owners={[
-            {
-              name: 'Andrew Jackson',
-              type: EntityType.USER,
-              id: '123',
-            },
-            {
-              name: 'Engineering',
-              type: EntityType.TEAM,
-              id: '123',
-            },
-          ]}
-        />
-      );
+      return <OwnerLabel hasPermission={false} owners={DUMMY_OWNER_LIST} />;
     } else if (
       props.widgetKey.startsWith(DetailPageWidgetKeys.DESCRIPTION) ||
       props.widgetKey.startsWith(GlossaryTermDetailPageWidgetKeys.DESCRIPTION)
@@ -409,135 +181,7 @@ export const GenericWidget = (props: WidgetCommonProps) => {
     } else if (props.widgetKey.startsWith(DetailPageWidgetKeys.TABLE_SCHEMA)) {
       return (
         <GenericProvider<Table>
-          data={{
-            ...tableClassBase.getDummyData(),
-            columns: [
-              {
-                name: 'address_id',
-                dataType: DataType.Numeric,
-                dataTypeDisplay: 'numeric',
-                description: 'Unique identifier for the address.',
-                fullyQualifiedName:
-                  'sample_data.ecommerce_db.shopify.dim_address_clean.address_id',
-                tags: [],
-                ordinalPosition: 1,
-              },
-              {
-                name: 'shop_id',
-                dataType: DataType.Numeric,
-                dataTypeDisplay: 'numeric',
-                description:
-                  'The ID of the store. This column is a foreign key reference to the shop_id column in the dim_shop table.',
-                fullyQualifiedName:
-                  'sample_data.ecommerce_db.shopify.dim_address_clean.shop_id',
-                tags: [],
-                ordinalPosition: 2,
-              },
-              {
-                name: 'first_name',
-                dataType: DataType.Varchar,
-                dataLength: 100,
-                dataTypeDisplay: 'varchar',
-                description: 'First name of the customer.',
-                fullyQualifiedName:
-                  'sample_data.ecommerce_db.shopify.dim_address_clean.first_name',
-                tags: [],
-                ordinalPosition: 3,
-              },
-              {
-                name: 'last_name',
-                dataType: DataType.Varchar,
-                dataLength: 100,
-                dataTypeDisplay: 'varchar',
-                description: 'Last name of the customer.',
-                fullyQualifiedName:
-                  'sample_data.ecommerce_db.shopify.dim_address_clean.last_name',
-                tags: [],
-                ordinalPosition: 4,
-              },
-              {
-                name: 'address',
-                dataType: DataType.Varchar,
-                dataLength: 500,
-                dataTypeDisplay: 'varchar',
-                description: 'Clean address test',
-                fullyQualifiedName:
-                  'sample_data.ecommerce_db.shopify.dim_address_clean.address',
-                tags: [],
-                ordinalPosition: 5,
-              },
-              {
-                name: 'company',
-                dataType: DataType.Varchar,
-                dataLength: 100,
-                dataTypeDisplay: 'varchar',
-                description:
-                  "The name of the customer's business, if one exists.",
-                fullyQualifiedName:
-                  'sample_data.ecommerce_db.shopify.dim_address_clean.company',
-                tags: [],
-                ordinalPosition: 7,
-              },
-              {
-                name: 'city',
-                dataType: DataType.Varchar,
-                dataLength: 100,
-                dataTypeDisplay: 'varchar',
-                description: 'The name of the city. For example, Palo Alto.',
-                fullyQualifiedName:
-                  'sample_data.ecommerce_db.shopify.dim_address_clean.city',
-                tags: [],
-                ordinalPosition: 8,
-              },
-              {
-                name: 'region',
-                dataType: DataType.Varchar,
-                dataLength: 512,
-                dataTypeDisplay: 'varchar',
-                description:
-                  // eslint-disable-next-line max-len
-                  'The name of the region, such as a province or state, where the customer is located. For example, Ontario or New York. This column is the same as CustomerAddress.province in the Admin API.',
-                fullyQualifiedName:
-                  'sample_data.ecommerce_db.shopify.dim_address_clean.region',
-                tags: [],
-                ordinalPosition: 9,
-              },
-              {
-                name: 'zip',
-                dataType: DataType.Varchar,
-                dataLength: 10,
-                dataTypeDisplay: 'varchar',
-                description: 'The ZIP or postal code. For example, 90210.',
-                fullyQualifiedName:
-                  'sample_data.ecommerce_db.shopify.dim_address_clean.zip',
-                tags: [],
-                ordinalPosition: 10,
-              },
-              {
-                name: 'country',
-                dataType: DataType.Varchar,
-                dataLength: 50,
-                dataTypeDisplay: 'varchar',
-                description:
-                  'The full name of the country. For example, Canada.',
-                fullyQualifiedName:
-                  'sample_data.ecommerce_db.shopify.dim_address_clean.country',
-                tags: [],
-                ordinalPosition: 11,
-              },
-              {
-                name: 'phone',
-                dataType: DataType.Varchar,
-                dataLength: 15,
-                dataTypeDisplay: 'varchar',
-                description: 'The phone number of the customer.',
-                fullyQualifiedName:
-                  'sample_data.ecommerce_db.shopify.dim_address_clean.phone',
-                tags: [],
-                ordinalPosition: 12,
-              },
-            ],
-          }}
+          data={tableClassBase.getDummyData()}
           permissions={DEFAULT_ENTITY_PERMISSION}
           type={EntityType.TABLE}
           onUpdate={async () => noop()}>

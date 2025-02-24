@@ -245,10 +245,6 @@ jest.mock('../../../hoc/LimitWrapper', () => {
   return jest.fn().mockImplementation(({ children }) => <div>{children}</div>);
 });
 
-// jest.mock('../../../utils/PipelineDetailsUtils', () => ({
-//   getPipelineDetailPageTabs: jest.fn().mockReturnValue([]),
-// }));
-
 jest.mock('../../Customization/GenericProvider/GenericProvider', () => ({
   GenericProvider: jest
     .fn()
