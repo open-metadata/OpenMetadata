@@ -67,12 +67,11 @@ import { ReactComponent as IconDistKey } from '../assets/svg/icon-distribution.s
 import { ReactComponent as IconKeyLineThrough } from '../assets/svg/icon-key-line-through.svg';
 import { ReactComponent as IconKey } from '../assets/svg/icon-key.svg';
 import { ReactComponent as IconNotNullLineThrough } from '../assets/svg/icon-not-null-line-through.svg';
-import { ReactComponent as IconSortLineThrough } from '../assets/svg/icon-sort-line-through.svg';
-import { ReactComponent as IconTestSuite } from '../assets/svg/icon-test-suite.svg';
-
 import { ReactComponent as IconNotNull } from '../assets/svg/icon-not-null.svg';
 import { ReactComponent as RoleIcon } from '../assets/svg/icon-role-grey.svg';
+import { ReactComponent as IconSortLineThrough } from '../assets/svg/icon-sort-line-through.svg';
 import { ReactComponent as IconSortKey } from '../assets/svg/icon-sort.svg';
+import { ReactComponent as IconTestSuite } from '../assets/svg/icon-test-suite.svg';
 import { ReactComponent as IconUniqueLineThrough } from '../assets/svg/icon-unique-line-through.svg';
 import { ReactComponent as IconUnique } from '../assets/svg/icon-unique.svg';
 import { ReactComponent as KPIIcon } from '../assets/svg/kpi.svg';
