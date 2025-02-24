@@ -73,7 +73,7 @@ class BaseModel(PydanticBaseModel):
     def model_dump_json(  # pylint: disable=too-many-arguments
         self,
         *,
-        mask_secrets: bool = True,
+        mask_secrets: bool = None,
         indent: Optional[int] = None,
         include: IncEx = None,
         exclude: IncEx = None,
@@ -94,7 +94,15 @@ class BaseModel(PydanticBaseModel):
 
         This solution is covered in the `test_pydantic_v2` test comparing the
         dump results from V1 vs. V2.
+
+        mask_secrets: bool - Can be overridedn by either passing it as an argument or setting it in the context. With the following rules:
+            - if mask_secrets is not None, it will be used as is
+            - if mask_secrets is None and context is not None, it will be set to context.get("mask_secrets", True)
+            - if mask_secrets is None and context is None, it will be set to True
+
         """
+        if mask_secrets is None:
+            mask_secrets = context.get("mask_secrets", True) if context else True
         return json.dumps(
             self.model_dump(
                 mode="json",
@@ -132,6 +140,9 @@ class _CustomSecretStr(SecretStr):
 
     If the secret string value starts with `config:` it will use the rest of the string as secret id to search for it
     in the secrets store.
+
+    By default the secrets will be unmasked when dumping ot python objects and masked when dumping to json unless
+    explicitly set otherwise using the `mask_secrets` or `context` arguments.
     """
 
     def __repr__(self) -> str:

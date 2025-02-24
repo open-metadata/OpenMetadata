@@ -269,7 +269,8 @@ class OpenMetadata(
         fn = getattr(self.client, method)
         resp = fn(
             # this might be a regular pydantic model so we build the context manually
-            self.get_suffix(entity), data=data.model_dump_json(context={"mask_secrets": False})
+            self.get_suffix(entity),
+            data=data.model_dump_json(context={"mask_secrets": False}),
         )
         if not resp:
             raise EmptyPayloadException(
