@@ -11,23 +11,30 @@
  *  limitations under the License.
  */
 /**
- * Sets the GlossaryTerm Status to the configured value.
+ * Configuration for the Collate AI Quality Agent.
  */
-export interface PythonWorkflowAutomationTask {
-    config?: { [key: string]: any };
+export interface CollateAITierAgentAppConfig {
     /**
-     * Description of the Node.
+     * Query filter to be passed to ES. E.g.,
+     * `{"query":{"bool":{"must":[{"bool":{"should":[{"term":{"domain.displayName.keyword":"DG
+     * Anim"}}]}}]}}}`. This is the same payload as in the Explore page.
      */
-    description?: string;
+    filter: string;
     /**
-     * Display Name that identifies this Node.
+     * Patch the tier if it is empty, instead of raising a suggestion
      */
-    displayName?: string;
+    patchIfEmpty?: boolean;
     /**
-     * Name that identifies this Node.
+     * Application Type
      */
-    name?:    string;
-    subType?: string;
-    type?:    string;
-    [property: string]: any;
+    type?: CollateAITierAgentAppType;
+}
+
+/**
+ * Application Type
+ *
+ * Application type.
+ */
+export enum CollateAITierAgentAppType {
+    CollateAITierAgent = "CollateAITierAgent",
 }
