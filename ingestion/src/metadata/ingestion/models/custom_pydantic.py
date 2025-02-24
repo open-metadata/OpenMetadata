@@ -95,7 +95,8 @@ class BaseModel(PydanticBaseModel):
         This solution is covered in the `test_pydantic_v2` test comparing the
         dump results from V1 vs. V2.
 
-        mask_secrets: bool - Can be overridedn by either passing it as an argument or setting it in the context. With the following rules:
+        mask_secrets: bool - Can be overridedn by either passing it as an argument or setting it in the context.
+        With the following rules:
             - if mask_secrets is not None, it will be used as is
             - if mask_secrets is None and context is not None, it will be set to context.get("mask_secrets", True)
             - if mask_secrets is None and context is None, it will be set to True
