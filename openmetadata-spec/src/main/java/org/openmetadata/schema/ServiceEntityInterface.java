@@ -32,4 +32,6 @@ public interface ServiceEntityInterface extends EntityInterface {
   void setTestConnectionResult(TestConnectionResult testConnectionResult);
 
   EnumInterface getServiceType();
+
+  EntityReference getIngestionAgent();
 }
