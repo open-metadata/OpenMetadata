@@ -43,6 +43,7 @@ import { Include } from '../../../generated/type/include';
 import LimitWrapper from '../../../hoc/LimitWrapper';
 import { usePaging } from '../../../hooks/paging/usePaging';
 import { useAirflowStatus } from '../../../hooks/useAirflowStatus';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { DatabaseServiceSearchSource } from '../../../interface/search.interface';
 import { ServicesType } from '../../../interface/service.interface';
 import { getServices, searchService } from '../../../rest/serviceAPI';
@@ -72,6 +73,7 @@ interface ServicesProps {
 }
 
 const Services = ({ serviceName }: ServicesProps) => {
+  const { theme } = useApplicationStore();
   const { t } = useTranslation();
   const { isFetchingStatus, platform } = useAirflowStatus();
 
