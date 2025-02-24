@@ -75,7 +75,19 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 0
 
+      - name: Setup Openmetadata Test Environment
+        uses: ./.github/actions/setup-openmetadata-test-environment
+        with:
+          python-version: "3.10"
+          args: "-m no-ui"
+          ingestion_dependency: "mysql,elasticsearch,sample-data"
+
       - name: Build Ingestion Operator & Ingest Sample Data
         run: |
           docker build -f ingestion/operators/docker/Dockerfile.ci . -t openmetadata/ingestion-base:test
-          docker run --net=host --rm openmetadata/igestion-base:test metadata ingest -c /openmetadata/pipelines/sample_data.yaml
+          docker run --net=host --rm openmetadata/ingestion-base:test metadata ingest -c ./pipelines/sample_data.yaml
+
+      - name: Validate ingestion
+        run: |
+          source env/bin/activate
+          python scripts/validate_sample_data.py
