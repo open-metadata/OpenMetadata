@@ -138,7 +138,9 @@ public class WorkflowHandler {
   }
 
   public static WorkflowHandler getInstance() {
-    if (initialized) return instance;
+    if (initialized) {
+      return instance;
+    }
     throw new UnhandledServerException("WorkflowHandler is not initialized.");
   }
 
