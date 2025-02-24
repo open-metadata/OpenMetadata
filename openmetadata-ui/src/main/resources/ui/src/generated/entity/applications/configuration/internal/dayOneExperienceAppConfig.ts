@@ -15,7 +15,7 @@
  */
 export interface DayOneExperienceAppConfig {
     /**
-     * Wheter the Day One Experience flow should be active or not.
+     * Whether the Day One Experience flow should be active or not.
      */
     active: boolean;
     /**

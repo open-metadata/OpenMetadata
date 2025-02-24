@@ -22,7 +22,7 @@
     },
     "active": {
       "title": "Active",
-      "description": "Wheter the Day One Experience flow should be active or not.",
+      "description": "Whether the Day One Experience flow should be active or not.",
       "type": "boolean",
       "default": true
     }
