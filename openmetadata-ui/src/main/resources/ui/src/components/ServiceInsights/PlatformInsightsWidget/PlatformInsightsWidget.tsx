@@ -132,8 +132,8 @@ function PlatformInsightsWidget() {
               <Typography.Text className="font-semibold text-md">
                 {getTitleByChartType(chart.chartType)}
               </Typography.Text>
-              <Row align="bottom" className="m-t-sm" gutter={8}>
-                <Col className="flex flex-col" span={16}>
+              <Row align="bottom" className="m-t-sm flex-1" gutter={8}>
+                <Col className="flex flex-col justify-between h-full" span={16}>
                   <Typography.Title level={3}>
                     {chart.currentCount}
                   </Typography.Title>
@@ -155,8 +155,8 @@ function PlatformInsightsWidget() {
                     </Typography.Text>
                   </div>
                 </Col>
-                <Col span={8}>
-                  <ResponsiveContainer height={50} width="100%">
+                <Col className="flex items-end h-full" span={8}>
+                  <ResponsiveContainer height={60} width="100%">
                     <AreaChart data={chart.data}>
                       <defs>
                         {[GREEN_1, RED_1].map((color) => (
