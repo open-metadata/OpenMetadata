@@ -178,7 +178,7 @@ describe('Test User Profile Roles Component', () => {
 
     fireEvent.click(screen.getByTestId('edit-roles-button'));
 
-    const selectInput = screen.getByTestId('persona-edit-roles');
+    const selectInput = screen.getByTestId('profile-edit-roles-select');
     fireEvent.click(selectInput);
     fireEvent.click(
       screen.getByTestId('user-profile-edit-roles-cancel-button')
