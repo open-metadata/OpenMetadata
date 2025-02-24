@@ -497,7 +497,6 @@ const GlossaryPage = () => {
               data-testid="glossary-left-panel-scroller"
               id="observer-element"
               ref={elementRef as RefObject<HTMLDivElement>}
-              style={{ height: '2px' }}
             />
             {isMoreGlossaryLoading && <Loader />}
           </>
