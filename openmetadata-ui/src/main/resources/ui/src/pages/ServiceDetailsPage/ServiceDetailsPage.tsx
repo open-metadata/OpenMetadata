@@ -44,7 +44,6 @@ import ServiceConnectionDetails from '../../components/Settings/Services/Service
 import {
   getServiceDetailsPath,
   INITIAL_PAGING_VALUE,
-  PAGE_SIZE,
   PAGE_SIZE_BASE,
   pagingObject,
   ROUTES,
@@ -170,7 +169,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
   const history = useHistory();
   const { isAdminUser } = useAuth();
   const ingestionPagingInfo = usePaging(PAGE_SIZE_BASE);
-  const pagingInfo = usePaging(PAGE_SIZE);
+  const pagingInfo = usePaging(PAGE_SIZE_BASE);
 
   const {
     paging: ingestionPaging,
