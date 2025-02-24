@@ -12,8 +12,7 @@
 """
 MySQL SQLAlchemy Helper Methods
 """
-import re
-from typing import Optional
+
 
 # pylint: disable=protected-access,too-many-branches,too-many-statements,too-many-locals
 from sqlalchemy import util
@@ -154,17 +153,3 @@ def parse_column(self, line, state):
     }
     col_d.update(col_kw)
     state.columns.append(col_d)
-
-
-def extract_column_definition(create_table_sql: str, column_name: str) -> Optional[str]:
-    """
-    Extracts the definition of a specific column from a MySQL CREATE TABLE statement.
-    """
-    # Regex pattern to match column definitions
-    column_pattern = re.compile(rf"`{column_name}`\s+([^,]+)", re.IGNORECASE)
-
-    # Find column definition
-    match = column_pattern.search(create_table_sql)
-    if match:
-        return match.group(1).strip()
-    return None
