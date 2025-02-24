@@ -383,6 +383,114 @@ public class OpenMetadataOperations implements Callable<Integer> {
     }
   }
 
+  @Command(
+      name = "create-user",
+      description = "Creates a new user when basic authentication is enabled.")
+  public Integer createUser(
+      @Option(
+              names = {"-u", "--user"},
+              description = "User email address",
+              required = true)
+          String email,
+      @Option(
+              names = {"-p", "--password"},
+              description = "User password",
+              interactive = true,
+              arity = "0..1",
+              required = true)
+          char[] password,
+      @Option(
+              names = {"--admin"},
+              description = "Promote the user as an admin",
+              defaultValue = "false")
+          boolean admin) {
+    try {
+      LOG.info("Creating user: {}", email);
+      if (nullOrEmpty(password)) {
+        throw new IllegalArgumentException("Password cannot be empty.");
+      }
+      parseConfig();
+      AuthProvider authProvider = config.getAuthenticationConfiguration().getProvider();
+      if (!authProvider.equals(AuthProvider.BASIC)) {
+        LOG.error("Authentication is not set to basic. User creation is not supported.");
+        return 1;
+      }
+      CollectionRegistry.initialize();
+      UserRepository userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
+      try {
+        userRepository.getByEmail(null, email, null);
+        LOG.error("User {} already exists.", email);
+        return 1;
+      } catch (EntityNotFoundException ex) {
+        // Expected – continue to create the user.
+      }
+
+      User newUser = new User();
+      newUser.setEmail(email);
+      String username = email.contains("@") ? email.substring(0, email.indexOf("@")) : email;
+      newUser.setName(username);
+      newUser.setIsBot(false);
+      newUser.setIsAdmin(admin);
+      String inputPwd = new String(password);
+      updateUserWithHashedPwd(newUser, inputPwd);
+      UserUtil.addOrUpdateUser(newUser);
+      LOG.info("User {} created successfully. Admin: {}", email, admin);
+      return 0;
+    } catch (Exception e) {
+      LOG.error("Failed to create user: {}", email, e);
+      return 1;
+    }
+  }
+
+  @Command(
+      name = "update-password",
+      description =
+          "Updates the password for an existing user when basic authentication is enabled.")
+  public Integer updateUserPassword(
+      @Option(
+              names = {"-u", "--user"},
+              description = "User email address",
+              required = true)
+          String email,
+      @Option(
+              names = {"-p", "--password"},
+              description = "New password for the user",
+              interactive = true,
+              arity = "0..1",
+              required = true)
+          char[] password) {
+    try {
+      LOG.info("Updating password for user: {}", email);
+      if (nullOrEmpty(password)) {
+        throw new IllegalArgumentException("Password cannot be empty.");
+      }
+      parseConfig();
+      AuthProvider authProvider = config.getAuthenticationConfiguration().getProvider();
+      if (!authProvider.equals(AuthProvider.BASIC)) {
+        LOG.error("Authentication is not set to basic. Password update is not supported.");
+        return 1;
+      }
+      CollectionRegistry.initialize();
+      UserRepository userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
+      Set<String> fieldList = new HashSet<>(userRepository.getPatchFields().getFieldList());
+      fieldList.add(AUTH_MECHANISM_FIELD);
+      User existingUser = userRepository.getByEmail(null, email, new EntityUtil.Fields(fieldList));
+      if (Boolean.TRUE.equals(existingUser.getIsBot())) {
+        LOG.error("Bot user {} cannot have password updated.", existingUser.getName());
+        return 1;
+      }
+      User updatedUser = JsonUtils.deepCopy(existingUser, User.class);
+      String inputPwd = new String(password);
+      updateUserWithHashedPwd(updatedUser, inputPwd);
+      UserUtil.addOrUpdateUser(updatedUser);
+      LOG.info("Password updated successfully for user: {}", email);
+      return 0;
+    } catch (Exception e) {
+      LOG.error("Failed to update password for user: {}", email, e);
+      return 1;
+    }
+  }
+
   private boolean isAppInstalled(AppRepository appRepository, String appName) {
     try {
       appRepository.findByName(appName, Include.NON_DELETED);
