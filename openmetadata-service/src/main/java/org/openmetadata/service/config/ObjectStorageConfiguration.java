@@ -13,6 +13,9 @@ public class ObjectStorageConfiguration {
   @JsonProperty("enabled")
   private boolean enabled = false;
 
+  @JsonProperty("maxFileSize")
+  private long maxFileSize = 5 * 1024 * 1024; // 5MB in bytes
+
   /**
    * Provider can be "s3", "azure", or "noop" (for local testing).
    */
@@ -27,4 +30,5 @@ public class ObjectStorageConfiguration {
   @JsonProperty("azure")
   @Valid
   private AzureConfiguration azureConfiguration;
+
 }
