@@ -1835,7 +1835,6 @@
     "pipeline-scheduler-message": "برنامه‌ریز ورود داده قادر به پاسخ نیست. لطفاً با پشتیبانی Collate تماس بگیرید. متشکرم.",
     "pipeline-will-trigger-manually": "خط لوله فقط به صورت دستی اجرا خواهد شد.",
     "pipeline-will-triggered-manually": "خط لوله فقط به صورت دستی اجرا خواهد شد.",
-    "platform-insights-description": "نمای یکپارچه‌ای از سلامت تمام دارایی‌های داده خود را در طول زمان مشاهده کنید.",
     "please-contact-us": "لطفاً برای جزئیات بیشتر با ما در support@getcollate.io تماس بگیرید.",
     "please-enter-to-find-data-assets": "دکمه Enter را فشار دهید تا دارایی‌های داده‌ای حاوی <0>{{keyword}}<0> پیدا شوند.",
     "please-refresh-the-page": "لطفاً صفحه را برای دیدن تغییرات به‌روزرسانی کنید.",

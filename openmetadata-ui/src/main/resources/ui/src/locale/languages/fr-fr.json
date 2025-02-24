@@ -1835,7 +1835,6 @@
     "pipeline-scheduler-message": "Le planificateur d'ingestion ne peut pas répondre. Veuillez contacter le support Collate. Merci.",
     "pipeline-will-trigger-manually": "La pipeline ne sera déclenchée manuellement que.",
     "pipeline-will-triggered-manually": "La pipeline ne sera déclenchée manuellement que.",
-    "platform-insights-description": "Obtenez une vue unique de l'état de tous vos actifs de données au fil du temps.",
     "please-contact-us": "Veuillez nous contacter à support@getcollate.io pour plus d'informations.",
     "please-enter-to-find-data-assets": "Appuyez sur Entrée pour trouver les actifs de données contenant <0>{{keyword}}</0>",
     "please-refresh-the-page": "Veuillez actualiser la page pour observer les modifications.",

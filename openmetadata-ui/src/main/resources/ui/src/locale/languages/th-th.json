@@ -1835,7 +1835,6 @@
     "pipeline-scheduler-message": "ผู้จัดตารางการนำเข้าไม่สามารถตอบสนองได้ โปรดติดต่อฝ่ายสนับสนุนของ Collate ขอบคุณค่ะ",
     "pipeline-will-trigger-manually": "ท่อจะถูกกระตุ้นเฉพาะเมื่อเรียกใช้งานด้วยตนเอง",
     "pipeline-will-triggered-manually": "ท่อจะถูกกระตุ้นเฉพาะเมื่อเรียกใช้งานด้วยตนเอง",
-    "platform-insights-description": "รับภาพรวมของสุขภาพของสินทรัพย์ข้อมูลของคุณตลอดเวลา",
     "please-contact-us": "โปรดติดต่อเราที่ support@getcollate.io สำหรับรายละเอียดเพิ่มเติม",
     "please-enter-to-find-data-assets": "กด Enter เพื่อตรวจสอบสินทรัพย์ข้อมูลที่มี <0>{{keyword}}<0>",
     "please-refresh-the-page": "โปรดรีเฟรชหน้าเพื่อดูการเปลี่ยนแปลง",

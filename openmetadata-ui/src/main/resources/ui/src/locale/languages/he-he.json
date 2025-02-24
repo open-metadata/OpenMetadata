@@ -1835,7 +1835,6 @@
     "pipeline-scheduler-message": "מתזמן השקת המעבד לא מסוגל להגיב. יש לפנות לתמיכת Collate. תודה.",
     "pipeline-will-trigger-manually": "תהליך הטעינה יופעל באופן ידני בלבד.",
     "pipeline-will-triggered-manually": "תהליך הטעינה יופעל באופן ידני בלבד",
-    "platform-insights-description": "קבל תצוגה אחידה של מצב כל נכסי הנתונים שלך לאורך זמן.",
     "please-contact-us": "Please contact us at support@getcollate.io for further details.",
     "please-enter-to-find-data-assets": "יש ללחוץ Enter כדי למצוא נכסי נתונים הכוללים <0>{{keyword}}</0>",
     "please-refresh-the-page": "Please refresh the page to see the changes.",

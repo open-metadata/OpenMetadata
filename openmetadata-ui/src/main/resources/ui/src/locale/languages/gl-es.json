@@ -1835,7 +1835,6 @@
     "pipeline-scheduler-message": "O Programador de Inxestión non pode responder. Por favor, contacta co soporte de Collate. Grazas.",
     "pipeline-will-trigger-manually": "O pipeline só se activará manualmente.",
     "pipeline-will-triggered-manually": "O pipeline só se activará manualmente",
-    "platform-insights-description": "Obtén unha vista única do estado de todos os teus activos de datos ao longo do tempo.",
     "please-contact-us": "Por favor, contacta connosco en support@getcollate.io para máis detalles.",
     "please-enter-to-find-data-assets": "Preme Enter para buscar activos de datos que conteñan <0>{{keyword}}<0>",
     "please-refresh-the-page": "Actualiza a páxina para ver os cambios.",

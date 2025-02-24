@@ -1835,7 +1835,6 @@
     "pipeline-scheduler-message": "De ingestiescheduler reageert niet. Neem contact op met Collate-ondersteuning. Dank je.",
     "pipeline-will-trigger-manually": "Pipeline wordt alleen handmatig geactiveerd.",
     "pipeline-will-triggered-manually": "Pipeline wordt alleen handmatig geactiveerd",
-    "platform-insights-description": "Krijg een overzichtelijk beeld van de gezondheid van al je data-assets in de loop van de tijd.",
     "please-contact-us": "Please contact us at support@getcollate.io for further details.",
     "please-enter-to-find-data-assets": "Druk op Enter om data-assets te vinden met <0>{{keyword}}<0>",
     "please-refresh-the-page": "Please refresh the page to see the changes.",

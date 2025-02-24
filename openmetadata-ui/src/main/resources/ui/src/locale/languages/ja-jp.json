@@ -1835,7 +1835,6 @@
     "pipeline-scheduler-message": "The Ingestion Scheduler is unable to respond. Please reach out to Collate support. Thank you.",
     "pipeline-will-trigger-manually": "パイプラインは手動でのみ起動できます。",
     "pipeline-will-triggered-manually": "パイプラインは手動でのみ起動できます",
-    "platform-insights-description": "時間の経過に伴うすべてのデータ資産の健全性を一元的に把握できます。",
     "please-contact-us": "Please contact us at support@getcollate.io for further details.",
     "please-enter-to-find-data-assets": "Press Enter to find data assets containing <0>{{keyword}}<0>",
     "please-refresh-the-page": "Please refresh the page to see the changes.",

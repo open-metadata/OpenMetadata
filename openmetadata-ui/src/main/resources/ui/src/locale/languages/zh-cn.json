@@ -1835,7 +1835,6 @@
     "pipeline-scheduler-message": "元数据提取编排器无回复，请联系系统管理员",
     "pipeline-will-trigger-manually": "工作流仅能手动触发",
     "pipeline-will-triggered-manually": "工作流仅能手动触发",
-    "platform-insights-description": "获取所有数据资产随时间的运行状况的单一窗格视图.",
     "please-contact-us": "如需了解更多详情, 请通过 support@getcollate.io 与我们联系",
     "please-enter-to-find-data-assets": "按 Enter 键查找包含<0>{{keyword}}<0>的数据资产",
     "please-refresh-the-page": "请刷新页面以查看更改",

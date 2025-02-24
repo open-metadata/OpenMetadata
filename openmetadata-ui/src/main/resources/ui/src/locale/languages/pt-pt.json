@@ -1835,7 +1835,6 @@
     "pipeline-scheduler-message": "O Agendador de Ingestão não está respondendo. Entre em contacto com o suporte da Collate. Obrigado.",
     "pipeline-will-trigger-manually": "O pipeline só será acionado manualmente.",
     "pipeline-will-triggered-manually": "O pipeline só será acionado manualmente",
-    "platform-insights-description": "Obtenha uma visão num único painel da saúde de todos os seus activos de dados ao longo do tempo.",
     "please-contact-us": "Please contact us at support@getcollate.io for further details.",
     "please-enter-to-find-data-assets": "Pressione Enter para encontrar ativos de dados contendo <0>{{keyword}}<0>",
     "please-refresh-the-page": "Please refresh the page to see the changes.",

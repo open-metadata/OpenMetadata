@@ -1835,7 +1835,6 @@
     "pipeline-scheduler-message": "Планировщик загрузки не может ответить. Обратитесь в службу поддержки. Спасибо.",
     "pipeline-will-trigger-manually": "Пайплайн будет запускаться только вручную.",
     "pipeline-will-triggered-manually": "Пайплайн будет запускаться только вручную.",
-    "platform-insights-description": "Получите единый обзор состояния всех ваших данных за все время.",
     "please-contact-us": "Please contact us at support@getcollate.io for further details.",
     "please-enter-to-find-data-assets": "Press Enter to find data assets containing <0>{{keyword}}<0>",
     "please-refresh-the-page": "Please refresh the page to see the changes.",
