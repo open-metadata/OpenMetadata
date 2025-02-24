@@ -159,7 +159,9 @@ class MicrostrategySource(DashboardServiceSource):
                 )
 
     def yield_dashboard_lineage_details(
-        self, dashboard_details: MstrDashboardDetails, db_service_name: str
+        self,
+        dashboard_details: MstrDashboardDetails,
+        db_service_name: Optional[str] = None,
     ) -> Optional[Iterable[AddLineageRequest]]:
         """Not Implemented"""
 

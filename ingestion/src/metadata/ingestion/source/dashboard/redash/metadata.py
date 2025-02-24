@@ -197,14 +197,17 @@ class RedashSource(DashboardServiceSource):
             )
 
     def yield_dashboard_lineage_details(  # pylint: disable=too-many-locals
-        self, dashboard_details: dict, db_service_name: str
+        self,
+        dashboard_details: dict,
+        db_service_name: Optional[str] = None,
     ) -> Iterable[Either[AddLineageRequest]]:
         """
         Get lineage between dashboard and data sources
         In redash we do not get table, database_schema or database name but we do get query
         the lineage is being generated based on the query
         """
-
+        if not db_service_name:
+            return
         to_fqn = fqn.build(
             self.metadata,
             entity_type=LineageDashboard,
