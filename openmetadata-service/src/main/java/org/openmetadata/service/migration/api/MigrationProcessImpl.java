@@ -46,9 +46,6 @@ public class MigrationProcessImpl implements MigrationProcess {
     this.collectionDAO = handle.attach(CollectionDAO.class);
     this.migrationDAO = handle.attach(MigrationDAO.class);
     this.openMetadataApplicationConfig = this.migrationFile.openMetadataApplicationConfig;
-    //    this.pipelineServiceClient =
-    //        PipelineServiceClientFactory.createPipelineServiceClient(
-    //            this.openMetadataApplicationConfig.getPipelineServiceClientConfiguration());
     this.authenticationConfiguration =
         this.openMetadataApplicationConfig.getAuthenticationConfiguration();
   }
