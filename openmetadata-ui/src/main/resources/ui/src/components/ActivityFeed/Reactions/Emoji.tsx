@@ -113,9 +113,12 @@ const Emoji: FC<EmojiProps> = ({
       zIndex={9999}
       onOpenChange={setVisible}>
       <Button
-        className={classNames('ant-btn-reaction m-r-xss flex-center', {
-          'ant-btn-isReacted': isReacted,
-        })}
+        className={classNames(
+          'ant-btn-reaction m-r-xss flex-center transparent',
+          {
+            'ant-btn-isReacted': isReacted,
+          }
+        )}
         data-testid="emoji-button"
         key={reaction}
         shape="round"

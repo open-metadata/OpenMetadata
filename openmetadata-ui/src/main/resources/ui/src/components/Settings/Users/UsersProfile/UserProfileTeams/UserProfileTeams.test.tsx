@@ -83,13 +83,13 @@ describe('Test User Profile Teams Component', () => {
   it('should render user profile teams component', async () => {
     render(<UserProfileTeams {...mockPropsData} />);
 
-    expect(screen.getByTestId('user-team-card-container')).toBeInTheDocument();
+    expect(screen.getByTestId('user-profile-teams')).toBeInTheDocument();
   });
 
   it('should render teams if data available', async () => {
     render(<UserProfileTeams {...mockPropsData} teams={USER_DATA.teams} />);
 
-    expect(screen.getByTestId('user-team-card-container')).toBeInTheDocument();
+    expect(screen.getByTestId('user-profile-teams')).toBeInTheDocument();
 
     expect(screen.getByTestId('edit-teams-button')).toBeInTheDocument();
 
@@ -101,17 +101,9 @@ describe('Test User Profile Teams Component', () => {
 
     fireEvent.click(screen.getByTestId('edit-teams-button'));
 
-    const selectInput = screen.getByTestId('select-user-teams');
-
-    act(() => {
-      fireEvent.change(selectInput, {
-        target: {
-          value: 'test',
-        },
-      });
-    });
-
-    fireEvent.click(screen.getByTestId('cancel'));
+    const selectInput = screen.getByTestId('team-select');
+    fireEvent.click(selectInput);
+    fireEvent.click(screen.getByTestId('teams-edit-close-btn'));
 
     fireEvent.click(screen.getByTestId('edit-teams-button'));
 
@@ -125,10 +117,12 @@ describe('Test User Profile Teams Component', () => {
 
     fireEvent.click(editButton);
 
-    expect(screen.getByText('InlineEdit')).toBeInTheDocument();
+    expect(
+      screen.getByTestId('profile-teams-edit-popover')
+    ).toBeInTheDocument();
 
     act(() => {
-      fireEvent.click(screen.getByTestId('save'));
+      fireEvent.click(screen.getByTestId('teams-edit-save-btn'));
     });
 
     expect(mockPropsData.updateUserDetails).toHaveBeenCalledWith(
@@ -149,7 +143,7 @@ describe('Test User Profile Teams Component', () => {
       <UserProfileTeams {...mockPropsData} isDeletedUser teams={USER_TEAMS} />
     );
 
-    expect(screen.getByTestId('user-team-card-container')).toBeInTheDocument();
+    expect(screen.getByTestId('user-profile-teams')).toBeInTheDocument();
 
     expect(screen.queryByTestId('edit-teams-button')).not.toBeInTheDocument();
   });
@@ -161,7 +155,7 @@ describe('Test User Profile Teams Component', () => {
 
     render(<UserProfileTeams {...mockPropsData} teams={USER_TEAMS} />);
 
-    expect(screen.getByTestId('user-team-card-container')).toBeInTheDocument();
+    expect(screen.getByTestId('user-profile-teams')).toBeInTheDocument();
 
     expect(screen.queryByTestId('edit-teams-button')).not.toBeInTheDocument();
   });

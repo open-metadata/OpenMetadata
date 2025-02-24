@@ -516,20 +516,17 @@ test.describe('Domains Rbac', () => {
 
     // Add domain role to the user
     await visitUserProfilePage(page, user1.responseData.name);
-    await page
-      .getByTestId('user-profile')
-      .locator('.ant-collapse-expand-icon')
-      .click();
     await page.getByTestId('edit-roles-button').click();
 
-    await page
-      .getByTestId('select-user-roles')
-      .getByLabel('Select roles')
-      .click();
+    await page.locator('[data-testid="user-profile-edit-popover"]').isVisible();
+    await page.locator('input[role="combobox"]').nth(1).click();
+    await page.waitForSelector('[data-testid="profile-edit-roles-select"]');
     await page.getByText('Domain Only Access Role').click();
     await page.click('body');
     const patchRes = page.waitForResponse('/api/v1/users/*');
-    await page.getByTestId('inline-save-btn').click();
+    await page
+      .locator('[data-testid="user-profile-edit-roles-save-button"]')
+      .click();
     await patchRes;
     await afterAction();
   });

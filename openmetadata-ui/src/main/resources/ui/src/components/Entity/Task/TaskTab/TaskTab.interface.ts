@@ -22,6 +22,7 @@ export type TaskTabProps = {
   hasGlossaryReviewer?: boolean;
   onUpdateEntityDetails?: () => void;
   onAfterClose?: () => void;
+  handlePanelResize?: () => void;
 } & (
   | TableTaskTabProps
   | { columns?: undefined; entityType: Exclude<EntityType, EntityType.TABLE> }

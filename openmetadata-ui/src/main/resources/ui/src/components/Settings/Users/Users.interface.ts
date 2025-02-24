@@ -28,6 +28,7 @@ export interface Props {
 
 export enum UserPageTabs {
   ACTIVITY = 'activity_feed',
+  TASK = 'task',
   MY_DATA = 'mydata',
   FOLLOWING = 'following',
   ACCESS_TOKEN = 'access-token',

@@ -100,24 +100,20 @@ export const setUserDefaultPersona = async (
 ) => {
   await visitOwnProfilePage(page);
 
-  await page
-    .locator(
-      '[data-testid="user-profile-details"] [data-testid="edit-persona"]'
-    )
-    .click();
-
-  await page.waitForSelector(
-    '[role="tooltip"] [data-testid="selectable-list"]'
-  );
+  await page.locator('[data-testid="edit-user-persona"]').nth(1).click();
+  await page.locator('[data-testid="persona-popover"]').isVisible();
+  await page.locator('input[role="combobox"]').nth(1).click();
+  await page.waitForSelector('[data-testid="persona-select-list"]');
 
   const setDefaultPersona = page.waitForResponse('/api/v1/users/*');
 
   await page.getByTitle(personaName).click();
+  await page.locator('[data-testid="user-profile-persona-edit-save"]').click();
 
   await setDefaultPersona;
 
   await expect(
-    page.locator('[data-testid="user-profile-details"]')
+    page.locator('[data-testid="persona-details-card"]')
   ).toContainText(personaName);
 };
 
