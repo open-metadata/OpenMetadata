@@ -67,64 +67,8 @@ import { ReactComponent as IconDistKey } from '../assets/svg/icon-distribution.s
 import { ReactComponent as IconKeyLineThrough } from '../assets/svg/icon-key-line-through.svg';
 import { ReactComponent as IconKey } from '../assets/svg/icon-key.svg';
 import { ReactComponent as IconNotNullLineThrough } from '../assets/svg/icon-not-null-line-through.svg';
-import { ReactComponent as IconNotNull } from '../assets/svg/icon-not-null.svg';
-import { ReactComponent as RoleIcon } from '../assets/svg/icon-role-grey.svg';
 import { ReactComponent as IconSortLineThrough } from '../assets/svg/icon-sort-line-through.svg';
-import { ReactComponent as IconSortKey } from '../assets/svg/icon-sort.svg';
 import { ReactComponent as IconTestSuite } from '../assets/svg/icon-test-suite.svg';
-import { ReactComponent as IconUniqueLineThrough } from '../assets/svg/icon-unique-line-through.svg';
-import { ReactComponent as IconUnique } from '../assets/svg/icon-unique.svg';
-import { ReactComponent as KPIIcon } from '../assets/svg/kpi.svg';
-import { ReactComponent as LocationIcon } from '../assets/svg/location.svg';
-import { ReactComponent as MetadataServiceIcon } from '../assets/svg/metadata-service.svg';
-import { ReactComponent as MetricIcon } from '../assets/svg/metric.svg';
-import { ReactComponent as NotificationIcon } from '../assets/svg/notification.svg';
-import { ReactComponent as PolicyIcon } from '../assets/svg/policies.svg';
-import { ReactComponent as ServicesIcon } from '../assets/svg/services.svg';
-import { ReactComponent as TagIcon } from '../assets/svg/tag.svg';
-import { ReactComponent as TaskIcon } from '../assets/svg/task-ic.svg';
-import { ReactComponent as TeamIcon } from '../assets/svg/teams.svg';
-import { ReactComponent as UserIcon } from '../assets/svg/user.svg';
-import { ActivityFeedTab } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
-import { CustomPropertyTable } from '../components/common/CustomPropertyTable/CustomPropertyTable';
-import ErrorPlaceHolder from '../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import QueryViewer from '../components/common/QueryViewer/QueryViewer.component';
-import TabsLabel from '../components/common/TabsLabel/TabsLabel.component';
-import { TabProps } from '../components/common/TabsLabel/TabsLabel.interface';
-import TableProfiler from '../components/Database/Profiler/TableProfiler/TableProfiler';
-import SampleDataTableComponent from '../components/Database/SampleDataTable/SampleDataTable.component';
-import TableQueries from '../components/Database/TableQueries/TableQueries';
-import Lineage from '../components/Lineage/Lineage.component';
-import { SourceType } from '../components/SearchedData/SearchedData.interface';
-import { NON_SERVICE_TYPE_ASSETS } from '../constants/Assets.constants';
-import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
-import { DE_ACTIVE_COLOR, TEXT_BODY_COLOR } from '../constants/constants';
-import LineageProvider from '../context/LineageProvider/LineageProvider';
-import { ERROR_PLACEHOLDER_TYPE } from '../enums/common.enum';
-import { EntityTabs, EntityType, FqnPart } from '../enums/entity.enum';
-import { SearchIndex } from '../enums/search.enum';
-import { ConstraintTypes, PrimaryTableDataTypes } from '../enums/table.enum';
-import { SearchIndexField } from '../generated/entity/data/searchIndex';
-import {
-  Column,
-  ConstraintType,
-  DataType,
-  JoinedWith,
-  TableConstraint,
-  TableJoins,
-} from '../generated/entity/data/table';
-import { Field } from '../generated/type/schema';
-import { LabelType, State, TagLabel } from '../generated/type/tagLabel';
-import {
-  getPartialNameFromTableFQN,
-  getTableFQNFromColumnFQN,
-} from './CommonUtils';
-import EntityLink from './EntityLink';
-import searchClassBase from './SearchClassBase';
-import serviceUtilClassBase from './ServiceUtilClassBase';
-import { ordinalize } from './StringsUtils';
-import { TableDetailPageTabProps } from './TableClassBase';
-import { TableFieldsInfoCommonEntities } from './TableUtils.interface';
 
 import { ReactComponent as IconArray } from '../assets/svg/data-type-icon/array.svg';
 import { ReactComponent as IconBinary } from '../assets/svg/data-type-icon/binary.svg';
@@ -156,11 +100,57 @@ import { ReactComponent as IconUnknown } from '../assets/svg/data-type-icon/unkn
 import { ReactComponent as IconVarchar } from '../assets/svg/data-type-icon/varchar.svg';
 import { ReactComponent as IconVariant } from '../assets/svg/data-type-icon/variant.svg';
 import { ReactComponent as IconXML } from '../assets/svg/data-type-icon/xml.svg';
+import { ReactComponent as TeamIcon } from '../assets/svg/ic-teams.svg';
+import { ReactComponent as IconNotNull } from '../assets/svg/icon-not-null.svg';
+import { ReactComponent as RoleIcon } from '../assets/svg/icon-role-grey.svg';
+import { ReactComponent as IconSortKey } from '../assets/svg/icon-sort.svg';
+import { ReactComponent as IconUniqueLineThrough } from '../assets/svg/icon-unique-line-through.svg';
+import { ReactComponent as IconUnique } from '../assets/svg/icon-unique.svg';
+import { ReactComponent as KPIIcon } from '../assets/svg/kpi.svg';
+import { ReactComponent as LocationIcon } from '../assets/svg/location.svg';
+import { ReactComponent as MetadataServiceIcon } from '../assets/svg/metadata-service.svg';
+import { ReactComponent as MetricIcon } from '../assets/svg/metric.svg';
+import { ReactComponent as NotificationIcon } from '../assets/svg/notification.svg';
+import { ReactComponent as PolicyIcon } from '../assets/svg/policies.svg';
+import { ReactComponent as ServicesIcon } from '../assets/svg/services.svg';
+import { ReactComponent as TagIcon } from '../assets/svg/tag.svg';
+import { ReactComponent as TaskIcon } from '../assets/svg/task-ic.svg';
+import { ReactComponent as UserIcon } from '../assets/svg/user.svg';
+import { ActivityFeedTab } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
+import { CustomPropertyTable } from '../components/common/CustomPropertyTable/CustomPropertyTable';
+import ErrorPlaceHolder from '../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import QueryViewer from '../components/common/QueryViewer/QueryViewer.component';
+import TabsLabel from '../components/common/TabsLabel/TabsLabel.component';
+import { TabProps } from '../components/common/TabsLabel/TabsLabel.interface';
 import { GenericTab } from '../components/Customization/GenericTab/GenericTab';
 import { CommonWidgets } from '../components/DataAssets/CommonWidgets/CommonWidgets';
+import TableProfiler from '../components/Database/Profiler/TableProfiler/TableProfiler';
+import SampleDataTableComponent from '../components/Database/SampleDataTable/SampleDataTable.component';
 import SchemaTable from '../components/Database/SchemaTable/SchemaTable.component';
+import TableQueries from '../components/Database/TableQueries/TableQueries';
+import Lineage from '../components/Lineage/Lineage.component';
+import { SourceType } from '../components/SearchedData/SearchedData.interface';
+import { NON_SERVICE_TYPE_ASSETS } from '../constants/Assets.constants';
+import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
+import { DE_ACTIVE_COLOR, TEXT_BODY_COLOR } from '../constants/constants';
+import LineageProvider from '../context/LineageProvider/LineageProvider';
+import { ERROR_PLACEHOLDER_TYPE } from '../enums/common.enum';
 import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
+import { EntityTabs, EntityType, FqnPart } from '../enums/entity.enum';
+import { SearchIndex } from '../enums/search.enum';
+import { ConstraintTypes, PrimaryTableDataTypes } from '../enums/table.enum';
+import { SearchIndexField } from '../generated/entity/data/searchIndex';
+import {
+  Column,
+  ConstraintType,
+  DataType,
+  JoinedWith,
+  TableConstraint,
+  TableJoins,
+} from '../generated/entity/data/table';
 import { PageType } from '../generated/system/ui/uiCustomization';
+import { Field } from '../generated/type/schema';
+import { LabelType, State, TagLabel } from '../generated/type/tagLabel';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
 import {
   FrequentlyJoinedTables,
@@ -169,6 +159,16 @@ import {
 import { PartitionedKeys } from '../pages/TableDetailsPageV1/PartitionedKeys/PartitionedKeys.component';
 import ConstraintIcon from '../pages/TableDetailsPageV1/TableConstraints/ConstraintIcon';
 import TableConstraints from '../pages/TableDetailsPageV1/TableConstraints/TableConstraints';
+import {
+  getPartialNameFromTableFQN,
+  getTableFQNFromColumnFQN,
+} from './CommonUtils';
+import EntityLink from './EntityLink';
+import searchClassBase from './SearchClassBase';
+import serviceUtilClassBase from './ServiceUtilClassBase';
+import { ordinalize } from './StringsUtils';
+import { TableDetailPageTabProps } from './TableClassBase';
+import { TableFieldsInfoCommonEntities } from './TableUtils.interface';
 
 export const getUsagePercentile = (pctRank: number, isLiteral = false) => {
   const percentile = Math.round(pctRank * 10) / 10;

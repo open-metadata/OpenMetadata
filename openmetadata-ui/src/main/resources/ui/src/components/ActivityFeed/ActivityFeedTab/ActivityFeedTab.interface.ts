@@ -32,6 +32,7 @@ export interface ActivityFeedTabBasicProps {
   onFeedUpdate: () => void;
   onUpdateEntityDetails?: () => void;
   owners?: EntityReference[];
+  subTab?: ActivityFeedTabs;
 }
 
 export type ActivityFeedTabProps = ActivityFeedTabBasicProps &
