@@ -12,14 +12,15 @@
 Base class for ingesting database services
 """
 from abc import ABC, abstractmethod
+from datetime import datetime
 from typing import Any, Iterable, List, Optional, Set
 
-from pydantic import Field
+from pydantic import BaseModel, Field
 from typing_extensions import Annotated
 
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
-from metadata.generated.schema.entity.data.pipeline import Pipeline
+from metadata.generated.schema.entity.data.pipeline import Pipeline, PipelineState
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.pipelineService import (
     PipelineConnection,
@@ -31,6 +32,7 @@ from metadata.generated.schema.metadataIngestion.pipelineServiceMetadataPipeline
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from metadata.generated.schema.type.usageRequest import UsageRequest
 from metadata.ingestion.api.delete import delete_entity_from_source
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import Source
@@ -58,6 +60,15 @@ from metadata.utils.helpers import retry_with_docker_host
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
+
+
+class PipelineUsage(BaseModel):
+    """
+    Wrapper to handle type at the sink
+    """
+
+    pipeline: Pipeline
+    usage: UsageRequest
 
 
 class PipelineServiceTopology(ServiceTopology):
@@ -115,6 +126,12 @@ class PipelineServiceTopology(ServiceTopology):
                 consumer=["pipeline_service"],
                 nullable=True,
             ),
+            NodeStage(
+                type_=UsageRequest,
+                processor="yield_pipeline_usage",
+                consumer=["pipeline_service"],
+                nullable=True,
+            ),
         ],
     )
 
@@ -143,6 +160,7 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
         super().__init__()
         self.config = config
         self.metadata = metadata
+        self.today = datetime.now().strftime("%Y-%m-%d")
         self.service_connection = self.config.serviceConnection.root.config
         self.source_config: PipelineServiceMetadataPipeline = (
             self.config.sourceConfig.config
@@ -183,6 +201,14 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
         self, pipeline_details: Any
     ) -> Iterable[Either[OMetaPipelineStatus]]:
         """Get Pipeline Status"""
+
+    def get_pipeline_state(self, pipeline_details: Any) -> Optional[PipelineState]:
+        """Get Pipeline State"""
+
+    def yield_pipeline_usage(self, pipeline_details: Any) -> Iterable[PipelineUsage]:
+        """
+        Method to pick up pipeline usage data
+        """
 
     def yield_pipeline_lineage(
         self, pipeline_details: Any

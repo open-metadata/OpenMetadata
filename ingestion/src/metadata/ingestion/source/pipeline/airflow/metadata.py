@@ -29,6 +29,7 @@ from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequ
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.pipeline import (
     Pipeline,
+    PipelineState,
     PipelineStatus,
     StatusType,
     Task,
@@ -54,6 +55,7 @@ from metadata.generated.schema.type.entityLineage import EntitiesEdge, LineageDe
 from metadata.generated.schema.type.entityLineage import Source as LineageSource
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
+from metadata.generated.schema.type.usageRequest import UsageRequest
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.connections.session import create_and_bind_session
@@ -70,7 +72,10 @@ from metadata.ingestion.source.pipeline.airflow.models import (
     AirflowTask,
 )
 from metadata.ingestion.source.pipeline.airflow.utils import get_schedule_interval
-from metadata.ingestion.source.pipeline.pipeline_service import PipelineServiceSource
+from metadata.ingestion.source.pipeline.pipeline_service import (
+    PipelineServiceSource,
+    PipelineUsage,
+)
 from metadata.utils import fqn
 from metadata.utils.constants import ENTITY_REFERENCE_TYPE_MAP
 from metadata.utils.helpers import clean_uri, datetime_to_ts
@@ -122,6 +127,7 @@ class AirflowSource(PipelineServiceSource):
         metadata: OpenMetadata,
     ):
         super().__init__(config, metadata)
+        self.today = datetime.now().strftime("%Y-%m-%d")
         self._session = None
 
     @classmethod
@@ -367,6 +373,16 @@ class AirflowSource(PipelineServiceSource):
                 break
             for serialized_dag in results:
                 try:
+                    dag_model = (
+                        self.session.query(DagModel)
+                        .filter(DagModel.dag_id == serialized_dag[0])
+                        .one_or_none()
+                    )
+                    pipeline_state = (
+                        PipelineState.Active.value
+                        if dag_model and not dag_model.is_paused
+                        else PipelineState.Inactive.value
+                    )
                     data = serialized_dag[1]["dag"]
                     dag = AirflowDagDetails(
                         dag_id=serialized_dag[0],
@@ -375,6 +391,7 @@ class AirflowSource(PipelineServiceSource):
                         max_active_runs=data.get("max_active_runs", None),
                         description=data.get("_description", None),
                         start_date=data.get("start_date", None),
+                        state=pipeline_state,
                         tasks=list(
                             map(self._extract_serialized_task, data.get("tasks", []))
                         ),
@@ -424,6 +441,14 @@ class AirflowSource(PipelineServiceSource):
         Get Pipeline Name
         """
         return pipeline_details.dag_id
+
+    def get_pipeline_state(
+        self, pipeline_details: AirflowDagDetails
+    ) -> Optional[PipelineState]:
+        """
+        Return the state of the DAG
+        """
+        return PipelineState[pipeline_details.state]
 
     def get_tasks_from_dag(self, dag: AirflowDagDetails, host_port: str) -> List[Task]:
         """
@@ -480,12 +505,15 @@ class AirflowSource(PipelineServiceSource):
         try:
             # Airflow uses /dags/dag_id/grid to show pipeline / dag
             source_url = f"{clean_uri(self.service_connection.hostPort)}/dags/{pipeline_details.dag_id}/grid"
+            pipeline_state = self.get_pipeline_state(pipeline_details)
+
             pipeline_request = CreatePipelineRequest(
                 name=EntityName(pipeline_details.dag_id),
                 description=Markdown(pipeline_details.description)
                 if pipeline_details.description
                 else None,
                 sourceUrl=SourceUrl(source_url),
+                state=pipeline_state,
                 concurrency=pipeline_details.max_active_runs,
                 pipelineLocation=pipeline_details.fileloc,
                 startDate=pipeline_details.start_date.isoformat()
@@ -612,6 +640,95 @@ class AirflowSource(PipelineServiceSource):
                         f"Could not find [{from_xlet.entity.__name__}] [{from_xlet.fqn}] from "
                         f"[{pipeline_entity.fullyQualifiedName.root}] inlets"
                     )
+
+    def yield_pipeline_usage(
+        self, pipeline_details: AirflowDagDetails
+    ) -> Iterable[Either[PipelineUsage]]:
+        """
+        Yield the usage of the pipeline
+        we will check the usage of the pipeline
+        by checking the tasks that have run today or are running today or ends today
+        we get the count of these tasks and compare it with the usageSummary
+        if the usageSummary is not present or the date is not today
+        we yield the fresh usage
+        """
+        try:
+            pipeline_fqn = fqn.build(
+                metadata=self.metadata,
+                entity_type=Pipeline,
+                service_name=self.context.get().pipeline_service,
+                pipeline_name=self.context.get().pipeline,
+            )
+
+            pipeline: Pipeline = self.metadata.get_by_name(
+                entity=Pipeline,
+                fqn=pipeline_fqn,
+                fields=["tasks", "usageSummary"],
+            )
+
+            if pipeline.tasks:
+                current_task_usage = sum(
+                    1
+                    for task in pipeline.tasks
+                    if task.startDate
+                    and task.startDate.startswith(self.today)
+                    or task.endDate
+                    and task.endDate.startswith(self.today)
+                )
+                if not current_task_usage:
+                    logger.debug(f"No usage to report for {pipeline_details.name}")
+
+                if not pipeline.usageSummary:
+                    logger.info(
+                        f"Yielding fresh usage for {pipeline.fullyQualifiedName.root}"
+                    )
+                    yield Either(
+                        right=PipelineUsage(
+                            pipeline=pipeline,
+                            usage=UsageRequest(
+                                date=self.today, count=current_task_usage
+                            ),
+                        )
+                    )
+
+                elif (
+                    str(pipeline.usageSummary.date.root) != self.today
+                    or not pipeline.usageSummary.dailyStats.count
+                ):
+                    latest_usage = pipeline.usageSummary.dailyStats.count
+
+                    new_usage = current_task_usage - latest_usage
+                    if new_usage < 0:
+                        raise ValueError(
+                            f"Wrong computation of usage difference. Got new_usage={new_usage}."
+                        )
+
+                    logger.info(
+                        f"Yielding new usage for {pipeline.fullyQualifiedName.root}"
+                    )
+                    yield Either(
+                        right=PipelineUsage(
+                            pipeline=pipeline,
+                            usage=UsageRequest(date=self.today, count=new_usage),
+                        )
+                    )
+
+                else:
+                    logger.debug(
+                        f"Latest usage {pipeline.usageSummary} vs. today {self.today}. Nothing to compute."
+                    )
+                    logger.info(
+                        f"Usage already informed for {pipeline.fullyQualifiedName.root}"
+                    )
+
+        except Exception as exc:
+            yield Either(
+                left=StackTraceError(
+                    name=f"{pipeline_details.name} Usage",
+                    error=f"Exception computing pipeline usage for {pipeline_details.name}: {exc}",
+                    stackTrace=traceback.format_exc(),
+                )
+            )
 
     def close(self):
         self.session.close()

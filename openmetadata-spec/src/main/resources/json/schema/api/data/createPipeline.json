@@ -51,6 +51,13 @@
       },
       "default": null
     },
+    "state": {
+      "description": "State of the pipeline.",
+      "items": {
+        "$ref": "../../entity/data/pipeline.json#/definitions/pipelineState"
+      },
+      "default": null
+    },
     "tags": {
       "description": "Tags for this Pipeline.",
       "type": "array",

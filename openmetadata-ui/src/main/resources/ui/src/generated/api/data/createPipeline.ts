@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * Create Pipeline entity request
  */
 export interface CreatePipeline {
@@ -77,6 +75,10 @@ export interface CreatePipeline {
      * Start date of the workflow
      */
     startDate?: Date;
+    /**
+     * State of the pipeline.
+     */
+    state?: PipelineState[] | boolean | number | number | { [key: string]: any } | null | string;
     /**
      * Tags for this Pipeline.
      */
@@ -190,6 +192,16 @@ export interface EntityReference {
 }
 
 /**
+ * State of the pipeline.
+ *
+ * Enum defining the possible Pipeline State.
+ */
+export enum PipelineState {
+    Active = "Active",
+    Inactive = "Inactive",
+}
+
+/**
  * This schema defines the type for labeling an entity with a Tag.
  */
 export interface TagLabel {
@@ -225,7 +237,7 @@ export interface TagLabel {
      * 'Suggested' state is used when a tag label is suggested by users or tools. Owner of the
      * entity must confirm the suggested labels before it is marked as 'Confirmed'.
      */
-    state:  State;
+    state:  StateEnum;
     style?: Style;
     tagFQN: string;
 }
@@ -256,7 +268,7 @@ export enum TagSource {
  * 'Suggested' state is used when a tag label is suggested by users or tools. Owner of the
  * entity must confirm the suggested labels before it is marked as 'Confirmed'.
  */
-export enum State {
+export enum StateEnum {
     Confirmed = "Confirmed",
     Suggested = "Suggested",
 }
