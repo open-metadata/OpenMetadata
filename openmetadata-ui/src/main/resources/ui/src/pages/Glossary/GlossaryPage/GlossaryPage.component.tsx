@@ -79,7 +79,8 @@ const GlossaryPage = () => {
     useState<boolean>(false);
   const [elementRef, isInView] = useElementInView({
     ...observerOptions,
-    rootMargin: '10px',
+    root: document.querySelector('#panel-container'),
+    rootMargin: '0px 0px 2px 0px',
   });
   const { paging, pageSize, handlePagingChange } = usePaging();
 
@@ -492,9 +493,11 @@ const GlossaryPage = () => {
           <>
             <GlossaryLeftPanel glossaries={glossaries} />
             <div
-              className="h-[1px] w-full"
+              className="w-full"
               data-testid="glossary-left-panel-scroller"
+              id="observer-element"
               ref={elementRef as RefObject<HTMLDivElement>}
+              style={{ height: '2px' }}
             />
             {isMoreGlossaryLoading && <Loader />}
           </>
