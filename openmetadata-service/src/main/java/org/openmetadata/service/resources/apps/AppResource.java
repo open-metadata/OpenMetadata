@@ -1139,6 +1139,9 @@ public class AppResource extends EntityResource<App, AppRepository> {
   }
 
   private void deleteApp(SecurityContext securityContext, App installedApp) {
+    ApplicationHandler.getInstance()
+        .uninstallApplication(installedApp, Entity.getCollectionDAO(), searchRepository);
+
     if (installedApp.getAppType().equals(AppType.Internal)) {
       try {
         AppScheduler.getInstance().deleteScheduledApplication(installedApp);

@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from 'antd';
+import { Col, Row, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import React, { FC, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -19,23 +19,43 @@ import { getEntityDetailsPath } from '../../../constants/constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { Container } from '../../../generated/entity/data/container';
 import { EntityReference } from '../../../generated/type/entityReference';
+import { Paging } from '../../../generated/type/paging';
 import { getColumnSorter, getEntityName } from '../../../utils/EntityUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import NextPrevious from '../../common/NextPrevious/NextPrevious';
+import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
 import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import Table from '../../common/Table/Table';
 
 interface ContainerChildrenProps {
   childrenList: Container['children'];
   isLoading?: boolean;
+  pagingHookData: {
+    paging: Paging;
+    pageSize: number;
+    currentPage: number;
+    showPagination: boolean;
+    handleChildrenPageChange: (data: PagingHandlerParams) => void;
+    handlePageSizeChange: (page: number) => void;
+  };
   fetchChildren: () => void;
 }
 
 const ContainerChildren: FC<ContainerChildrenProps> = ({
   childrenList,
   isLoading,
+  pagingHookData,
   fetchChildren,
 }) => {
   const { t } = useTranslation();
+  const {
+    paging,
+    pageSize,
+    currentPage,
+    showPagination,
+    handleChildrenPageChange,
+    handlePageSizeChange,
+  } = pagingHookData;
 
   const columns: ColumnsType<EntityReference> = useMemo(
     () => [
@@ -83,22 +103,39 @@ const ContainerChildren: FC<ContainerChildrenProps> = ({
 
   useEffect(() => {
     fetchChildren();
-  }, []);
+  }, [pageSize]);
 
   return (
-    <Table
-      bordered
-      columns={columns}
-      data-testid="container-list-table"
-      dataSource={childrenList}
-      loading={isLoading}
-      locale={{
-        emptyText: <ErrorPlaceHolder className="p-y-md" />,
-      }}
-      pagination={false}
-      rowKey="id"
-      size="small"
-    />
+    <Row className="m-b-md" gutter={[0, 16]}>
+      <Col span={24}>
+        <Table
+          bordered
+          columns={columns}
+          data-testid="container-list-table"
+          dataSource={childrenList}
+          loading={isLoading}
+          locale={{
+            emptyText: <ErrorPlaceHolder className="p-y-md" />,
+          }}
+          pagination={false}
+          rowKey="id"
+          size="small"
+        />
+      </Col>
+      <Col span={24}>
+        {showPagination && (
+          <NextPrevious
+            isNumberBased
+            currentPage={currentPage}
+            isLoading={isLoading}
+            pageSize={pageSize}
+            paging={paging}
+            pagingHandler={handleChildrenPageChange}
+            onShowSizeChange={handlePageSizeChange}
+          />
+        )}
+      </Col>
+    </Row>
   );
 };
 

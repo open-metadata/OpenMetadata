@@ -11,19 +11,24 @@
  *  limitations under the License.
  */
 /**
- * Event Based Entity Trigger.
+ * Configuration for the Day One Experience Flow.
  */
-export interface CustomSignalTrigger {
-    config?: Config;
-    type?:   string;
+export interface DayOneExperienceAppConfig {
+    /**
+     * Whether the Day One Experience flow should be active or not.
+     */
+    active: boolean;
+    /**
+     * Application Type
+     */
+    type?: DayOneExperienceAppType;
 }
 
 /**
- * Entity Event Trigger Configuration.
+ * Application Type
+ *
+ * Application type.
  */
-export interface Config {
-    /**
-     * The signal to be listened to.
-     */
-    signal: string;
+export enum DayOneExperienceAppType {
+    DayOneExperienceWorkflow = "DayOneExperienceWorkflow",
 }
