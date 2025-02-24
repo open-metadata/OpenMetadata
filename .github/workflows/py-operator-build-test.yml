@@ -78,4 +78,9 @@ jobs:
       - name: Build Ingestion Operator & Ingest Sample Data
         run: |
           docker build -f ingestion/operators/docker/Dockerfile.ci . -t openmetadata/ingestion-base:test
-          docker run --net=host --rm openmetadata/igestion-base:test metadata ingest -c /openmetadata/pipelines/sample_data.yaml
+          docker run --net=host --rm openmetadata/ingestion-base:test metadata ingest -c ./pipelines/sample_data.yaml
+
+      - name: Validate ingestion
+        run: |
+          source env/bin/activate
+          python scripts/validate_ingestion.py
