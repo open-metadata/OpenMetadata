@@ -125,6 +125,21 @@ public class ApplicationHandler {
     }
   }
 
+  public void uninstallApplication(
+      App app, CollectionDAO daoCollection, SearchRepository searchRepository) {
+    try {
+      runAppInit(app, daoCollection, searchRepository).uninstall();
+    } catch (ClassNotFoundException
+        | NoSuchMethodException
+        | InvocationTargetException
+        | InstantiationException
+        | IllegalAccessException e) {
+      LOG.error("Failed to uninstall application {}", app.getName(), e);
+      throw AppException.byMessage(
+          app.getName(), "install", e.getMessage(), Response.Status.INTERNAL_SERVER_ERROR);
+    }
+  }
+
   private void installEventSubscriptions(App app, String installedBy) {
     AppMarketPlaceDefinition definition = appMarketPlaceRepository.getDefinition(app);
     Map<String, EntityReference> eventSubscriptionsReferences =

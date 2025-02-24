@@ -351,13 +351,38 @@ public class WorkflowHandler {
     }
   }
 
+  public boolean isWorkflowSuspended(String workflowName) {
+    ProcessDefinition processDefinition =
+        repositoryService
+            .createProcessDefinitionQuery()
+            .processDefinitionKey(getTriggerWorkflowId(workflowName))
+            .latestVersion()
+            .singleResult();
+
+    if (processDefinition == null) {
+      throw new IllegalArgumentException(
+          "Process Definition not found for workflow: " + workflowName);
+    }
+
+    return processDefinition.isSuspended();
+  }
+
   public void suspendWorkflow(String workflowName) {
-    repositoryService.suspendProcessDefinitionByKey(getTriggerWorkflowId(workflowName), true, null);
+    if (isWorkflowSuspended(workflowName)) {
+      LOG.debug(String.format("Workflow '%s' is already suspended.", workflowName));
+    } else {
+      repositoryService.suspendProcessDefinitionByKey(
+          getTriggerWorkflowId(workflowName), true, null);
+    }
   }
 
   public void resumeWorkflow(String workflowName) {
-    repositoryService.activateProcessDefinitionByKey(
-        getTriggerWorkflowId(workflowName), true, null);
+    if (!isWorkflowSuspended(workflowName)) {
+      LOG.debug(String.format("Workflow '%s' is already active.", workflowName));
+    } else {
+      repositoryService.activateProcessDefinitionByKey(
+          getTriggerWorkflowId(workflowName), true, null);
+    }
   }
 
   public void terminateWorkflow(String workflowName) {
