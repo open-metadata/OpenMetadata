@@ -43,6 +43,7 @@ import {
   KpiTargetType,
 } from '../../generated/api/dataInsight/kpi/createKpiRequest';
 import { Kpi } from '../../generated/dataInsight/kpi/kpi';
+import { withPageLayout } from '../../hoc/withPageLayout';
 import { FieldProp, FieldTypes } from '../../interface/FormUtils.interface';
 import { getListKPIs, postKPI } from '../../rest/KpiAPI';
 import {
@@ -192,7 +193,7 @@ const AddKPIPage = () => {
 
   return (
     <ResizablePanels
-      className="content-height-with-resizable-panel"
+      className="content-height-with-resizable-panel m--t-sm"
       firstPanel={{
         className: 'content-resizable-panel-container',
         children: (
@@ -420,4 +421,4 @@ const AddKPIPage = () => {
   );
 };
 
-export default AddKPIPage;
+export default withPageLayout('')(AddKPIPage);

@@ -25,6 +25,7 @@ import TestSuiteIngestion from '../../components/DataQuality/AddDataQualityTest/
 import { TabSpecificField } from '../../enums/entity.enum';
 import { IngestionPipeline } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { TestSuite } from '../../generated/tests/testSuite';
+import { withPageLayout } from '../../hoc/withPageLayout';
 import { useFqn } from '../../hooks/useFqn';
 import { getIngestionPipelineByFqn } from '../../rest/ingestionPipelineAPI';
 import { getTestSuiteByName } from '../../rest/testAPI';
@@ -123,7 +124,7 @@ const TestSuiteIngestionPage = () => {
 
   return (
     <ResizablePanels
-      className="content-height-with-resizable-panel"
+      className="content-height-with-resizable-panel m--t-sm"
       firstPanel={{
         className: 'content-resizable-panel-container',
         children: (
@@ -153,4 +154,4 @@ const TestSuiteIngestionPage = () => {
   );
 };
 
-export default TestSuiteIngestionPage;
+export default withPageLayout('')(TestSuiteIngestionPage);

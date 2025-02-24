@@ -31,6 +31,7 @@ import {
 import { ServiceCategory } from '../../../enums/service.enum';
 import { OpenMetadataBaseURLConfiguration } from '../../../generated/configuration/openMetadataBaseUrlConfiguration';
 import { Settings, SettingType } from '../../../generated/settings/settings';
+import { withPageLayout } from '../../../hoc/withPageLayout';
 import {
   getSettingsConfigFromConfigType,
   updateSettingsConfig,
@@ -182,7 +183,7 @@ const EditUrlConfigurationPage = () => {
 
   return (
     <ResizablePanels
-      className="content-height-with-resizable-panel"
+      className="content-height-with-resizable-panel m--t-sm"
       firstPanel={{
         children: firstPanelChildren,
         minWidth: 700,
@@ -200,4 +201,4 @@ const EditUrlConfigurationPage = () => {
   );
 };
 
-export default EditUrlConfigurationPage;
+export default withPageLayout('')(EditUrlConfigurationPage);
