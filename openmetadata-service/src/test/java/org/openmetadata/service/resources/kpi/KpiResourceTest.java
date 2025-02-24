@@ -86,7 +86,8 @@ public class KpiResourceTest extends EntityResourceTest<Kpi, CreateKpiRequest> {
               dataStreamName,
               dataAssetType,
               getSearchRepository().getIndexMapping(dataAssetType),
-              "en");
+              "en",
+              7);
         }
       }
     } catch (IOException ex) {
