@@ -74,6 +74,24 @@
       "type": "boolean",
       "default": false
     },
+    "defaultExcludeDatabases": {
+      "title": "Exclude Default Databases",
+      "description": "List of default databases to exclude in ingestion.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": ["^template1$", "^template0$"]
+    },
+    "defaultExcludeSchemas": {
+      "title": "Exclude Default Schemas",
+      "description": "List of default schemas to exclude in ingestion.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": ["^information_schema$"]
+    },
     "sslMode": {
       "$ref": "../../../../security/ssl/verifySSLConfig.json#/definitions/sslMode"
     },

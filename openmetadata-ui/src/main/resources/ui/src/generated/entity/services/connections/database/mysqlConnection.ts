@@ -32,6 +32,10 @@ export interface MysqlConnection {
      */
     databaseSchema?: string;
     /**
+     * List of default schemas to exclude in ingestion.
+     */
+    defaultExcludeSchemas?: string[];
+    /**
      * Host and port of the MySQL service.
      */
     hostPort:                 string;

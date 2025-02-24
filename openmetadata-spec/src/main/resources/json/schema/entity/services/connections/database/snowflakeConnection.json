@@ -106,6 +106,24 @@
       "title": "Connection Arguments",
       "$ref": "../connectionBasicType.json#/definitions/connectionArguments"
     },
+    "defaultExcludeDatabases": {
+      "title": "Exclude Default Databases",
+      "description": "List of default databases to exclude in ingestion.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": ["^snowflake$"]
+    },
+    "defaultExcludeSchemas": {
+      "title": "Exclude Default Schemas",
+      "description": "List of default schemas to exclude in ingestion.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": ["^information_schema$"]
+    },
     "supportsMetadataExtraction": {
       "title": "Supports Metadata Extraction",
       "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"

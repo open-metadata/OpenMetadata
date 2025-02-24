@@ -22,6 +22,14 @@ export interface RedshiftConnection {
      */
     database: string;
     /**
+     * List of default databases to exclude in ingestion.
+     */
+    defaultExcludeDatabases?: string[];
+    /**
+     * List of default schemas to exclude in ingestion.
+     */
+    defaultExcludeSchemas?: string[];
+    /**
      * Host and port of the Redshift service.
      */
     hostPort: string;
