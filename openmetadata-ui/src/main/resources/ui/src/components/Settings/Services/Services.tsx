@@ -197,7 +197,7 @@ const Services = ({ serviceName }: ServicesProps) => {
 
   const handleServicePageChange = useCallback(
     ({ cursorType, currentPage }: PagingHandlerParams) => {
-      if (searchTerm) {
+      if (searchTerm || serviceTypeFilter?.length) {
         handlePageChange(currentPage);
         getServiceDetails({
           currentPage,
@@ -206,12 +206,19 @@ const Services = ({ serviceName }: ServicesProps) => {
           filters: serviceTypeFilter?.length
             ? `(${serviceTypeFilter
                 .map((type) => `serviceType:${type}`)
-                .join(' ')})`
+                .join(' OR ')})`
             : undefined,
         });
       } else if (cursorType) {
         handlePageChange(currentPage);
-        getServiceDetails({ [cursorType]: paging[cursorType] });
+        getServiceDetails({
+          [cursorType]: paging[cursorType],
+          filters: serviceTypeFilter?.length
+            ? `(${serviceTypeFilter
+                .map((type) => `serviceType:${type}`)
+                .join(' OR ')})`
+            : undefined,
+        });
       }
     },
     [getServiceDetails, searchTerm, serviceTypeFilter, paging, pageSize]
@@ -444,7 +451,7 @@ const Services = ({ serviceName }: ServicesProps) => {
       filters: serviceTypeFilter?.length
         ? `(${serviceTypeFilter
             .map((type) => `serviceType:${type}`)
-            .join(' ')})`
+            .join(' OR ')})`
         : undefined,
     });
   }, [
@@ -530,7 +537,7 @@ const Services = ({ serviceName }: ServicesProps) => {
           <NextPrevious
             currentPage={currentPage}
             isLoading={isLoading}
-            isNumberBased={!isEmpty(searchTerm)}
+            isNumberBased={!isEmpty(searchTerm) || !isEmpty(serviceTypeFilter)}
             pageSize={pageSize}
             paging={paging}
             pagingHandler={handleServicePageChange}
