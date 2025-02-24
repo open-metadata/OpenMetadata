@@ -1,0 +1,33 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/applications/configuration/external/automator/removeDataProductAction.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "RemoveDataProductAction",
+  "description": "Remove a Data Product to the selected assets.",
+  "type": "object",
+  "definitions": {
+    "RemoveDataProductActionType": {
+      "description": "Remove Data Products Action Type.",
+      "type": "string",
+      "enum": ["RemoveDataProductAction"],
+      "default": "RemoveDataProductAction"
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Application Type",
+      "description": "Application Type",
+      "$ref": "#/definitions/RemoveDataProductActionType",
+      "default": "RemoveDataProductAction"
+    },
+    "dataProducts": {
+      "description": "Data Products to remove",
+      "type": "array",
+        "items": {
+          "$ref": "../../../../../type/entityReference.json"
+        },
+      "default": null
+    }
+  },
+  "required": ["type", "dataProducts"],
+  "additionalProperties": false
+}
