@@ -17,6 +17,7 @@ import static java.lang.String.format;
 
 import es.org.elasticsearch.client.RestClient;
 import es.org.elasticsearch.client.RestClientBuilder;
+import io.dropwizard.db.DataSourceFactory;
 import io.dropwizard.jersey.jackson.JacksonFeature;
 import io.dropwizard.testing.ConfigOverride;
 import io.dropwizard.testing.ResourceHelpers;
@@ -140,6 +141,14 @@ public abstract class OpenMetadataApplicationTest {
     sqlContainer.withPassword("password");
     sqlContainer.withUsername("username");
     sqlContainer.start();
+
+    // Note: Added DataSourceFactory since this configuration is needed by the WorkflowHandler.
+    DataSourceFactory dataSourceFactory = new DataSourceFactory();
+    dataSourceFactory.setUrl(sqlContainer.getJdbcUrl());
+    dataSourceFactory.setUser(sqlContainer.getUsername());
+    dataSourceFactory.setPassword(sqlContainer.getPassword());
+    dataSourceFactory.setDriverClass(sqlContainer.getDriverClassName());
+    config.setDataSourceFactory(dataSourceFactory);
 
     final String flyWayMigrationScriptsLocation =
         ResourceHelpers.resourceFilePath(

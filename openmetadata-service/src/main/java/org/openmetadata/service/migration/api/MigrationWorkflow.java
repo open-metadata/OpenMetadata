@@ -17,8 +17,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Handle;
 import org.jdbi.v3.core.Jdbi;
 import org.json.JSONObject;
-import org.openmetadata.schema.api.configuration.pipelineServiceClient.PipelineServiceClientConfiguration;
-import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.MigrationDAO;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
@@ -57,14 +55,6 @@ public class MigrationWorkflow {
     this.connectionType = connectionType;
     this.extensionSQLScriptRootPath = extensionSQLScriptRootPath;
     this.openMetadataApplicationConfig = config;
-  }
-
-  public PipelineServiceClientConfiguration getPipelineServiceClientConfiguration() {
-    return openMetadataApplicationConfig.getPipelineServiceClientConfiguration();
-  }
-
-  public AuthenticationConfiguration getAuthenticationConfiguration() {
-    return openMetadataApplicationConfig.getAuthenticationConfiguration();
   }
 
   public void loadMigrations() {

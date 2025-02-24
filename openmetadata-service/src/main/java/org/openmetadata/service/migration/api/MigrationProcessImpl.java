@@ -28,7 +28,7 @@ public class MigrationProcessImpl implements MigrationProcess {
   protected CollectionDAO collectionDAO;
   protected Jdbi jdbi;
   protected Handle handle;
-  protected PipelineServiceClientInterface pipelineServiceClient;
+  //  protected PipelineServiceClientInterface pipelineServiceClient;
   protected AuthenticationConfiguration authenticationConfiguration;
   private final MigrationFile migrationFile;
   private OpenMetadataApplicationConfig openMetadataApplicationConfig;
@@ -46,15 +46,23 @@ public class MigrationProcessImpl implements MigrationProcess {
     this.collectionDAO = handle.attach(CollectionDAO.class);
     this.migrationDAO = handle.attach(MigrationDAO.class);
     this.openMetadataApplicationConfig = this.migrationFile.openMetadataApplicationConfig;
-    this.pipelineServiceClient =
-        PipelineServiceClientFactory.createPipelineServiceClient(
-            this.openMetadataApplicationConfig.getPipelineServiceClientConfiguration());
+    //    this.pipelineServiceClient =
+    //        PipelineServiceClientFactory.createPipelineServiceClient(
+    //            this.openMetadataApplicationConfig.getPipelineServiceClientConfiguration());
     this.authenticationConfiguration =
         this.openMetadataApplicationConfig.getAuthenticationConfiguration();
   }
 
   public void initializeWorkflowHandler() {
     WorkflowHandler.initialize(openMetadataApplicationConfig);
+  }
+
+  public PipelineServiceClientInterface getPipelineServiceClient() {
+    if (this.openMetadataApplicationConfig != null) {
+      return PipelineServiceClientFactory.createPipelineServiceClient(
+          this.openMetadataApplicationConfig.getPipelineServiceClientConfiguration());
+    }
+    return PipelineServiceClientFactory.createPipelineServiceClient(null);
   }
 
   @Override
