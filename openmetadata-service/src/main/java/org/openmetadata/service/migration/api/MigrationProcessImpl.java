@@ -28,7 +28,6 @@ public class MigrationProcessImpl implements MigrationProcess {
   protected CollectionDAO collectionDAO;
   protected Jdbi jdbi;
   protected Handle handle;
-  //  protected PipelineServiceClientInterface pipelineServiceClient;
   protected AuthenticationConfiguration authenticationConfiguration;
   private final MigrationFile migrationFile;
   private OpenMetadataApplicationConfig openMetadataApplicationConfig;
