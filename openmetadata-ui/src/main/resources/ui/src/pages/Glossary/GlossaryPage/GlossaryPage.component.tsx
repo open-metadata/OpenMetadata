@@ -435,26 +435,22 @@ const GlossaryPage = () => {
     );
   }
 
-  const glossaryElement = (
-    <div className="p-t-sm">
-      {isRightPanelLoading ? (
-        <Loader />
-      ) : (
-        <GlossaryV1
-          isGlossaryActive={isGlossaryActive}
-          isSummaryPanelOpen={Boolean(previewAsset)}
-          isVersionsView={false}
-          refreshActiveGlossaryTerm={fetchGlossaryTermDetails}
-          selectedData={activeGlossary as Glossary}
-          updateGlossary={updateGlossary}
-          updateVote={updateVote}
-          onAssetClick={handleAssetClick}
-          onGlossaryDelete={handleGlossaryDelete}
-          onGlossaryTermDelete={handleGlossaryTermDelete}
-          onGlossaryTermUpdate={handleGlossaryTermUpdate}
-        />
-      )}
-    </div>
+  const glossaryElement = isRightPanelLoading ? (
+    <Loader />
+  ) : (
+    <GlossaryV1
+      isGlossaryActive={isGlossaryActive}
+      isSummaryPanelOpen={Boolean(previewAsset)}
+      isVersionsView={false}
+      refreshActiveGlossaryTerm={fetchGlossaryTermDetails}
+      selectedData={activeGlossary as Glossary}
+      updateGlossary={updateGlossary}
+      updateVote={updateVote}
+      onAssetClick={handleAssetClick}
+      onGlossaryDelete={handleGlossaryDelete}
+      onGlossaryTermDelete={handleGlossaryTermDelete}
+      onGlossaryTermUpdate={handleGlossaryTermUpdate}
+    />
   );
 
   const resizableLayout = isGlossaryActive ? (
