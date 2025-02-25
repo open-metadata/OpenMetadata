@@ -48,6 +48,7 @@ export interface EdgeDetails {
   description?: string;
   pipelineEntityType?: EntityType.PIPELINE | EntityType.STORED_PROCEDURE;
   doc_id?: string;
+  extraInfo?: EdgeDetails;
 }
 
 export type LineageSourceType = Omit<SourceType, 'service'> & {

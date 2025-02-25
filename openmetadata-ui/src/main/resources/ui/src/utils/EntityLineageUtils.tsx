@@ -1369,6 +1369,7 @@ const processPipelineEdge = (
       type: pipelineEntityType,
       fqn: pipelineNode.fullyQualifiedName ?? '',
     },
+    extraInfo: edge,
   };
 
   const edgePipelineToTo: EdgeDetails = {
@@ -1378,6 +1379,7 @@ const processPipelineEdge = (
       fqn: pipelineNode.fullyQualifiedName ?? '',
     },
     toEntity: edge.toEntity,
+    extraInfo: edge,
   };
 
   return [edgeFromToPipeline, edgePipelineToTo];
@@ -1602,6 +1604,17 @@ export const getEdgePathData = (
 
 export const getEdgeDataFromEdge = (edge: Edge): EdgeData => {
   const { data } = edge;
+
+  if (data.edge.extraInfo) {
+    const { fromEntity, toEntity } = data.edge.extraInfo;
+
+    return {
+      fromEntity: fromEntity.type,
+      fromId: fromEntity.id,
+      toEntity: toEntity.type,
+      toId: toEntity.id,
+    };
+  }
 
   return {
     fromEntity: data.edge.fromEntity.type,

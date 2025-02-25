@@ -54,7 +54,12 @@ const CustomNodeV1 = (props: NodeProps) => {
 
   const nodeType = isEditMode ? EntityLineageNodeType.DEFAULT : type;
   const isSelected = selectedNode === node;
-  const { id, fullyQualifiedName, expandPerformed = false } = node;
+  const {
+    id,
+    fullyQualifiedName,
+    upstreamLineage = [],
+    expandPerformed = false,
+  } = node;
   const [isTraced, setIsTraced] = useState<boolean>(false);
 
   const getActiveNode = useCallback(
@@ -167,6 +172,7 @@ const CustomNodeV1 = (props: NodeProps) => {
           )}
         {!hasIncomers &&
           !expandPerformed &&
+          upstreamLineage.length > 0 &&
           getExpandHandle(LineageDirection.Upstream, () =>
             onExpand(LineageDirection.Upstream)
           )}

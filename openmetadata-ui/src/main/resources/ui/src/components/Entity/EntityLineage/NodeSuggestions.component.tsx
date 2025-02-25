@@ -54,6 +54,8 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
 
   const [searchValue, setSearchValue] = useState<string>('');
 
+  const [isOpen, setIsOpen] = useState(false);
+
   const getSuggestionLabelHeading = (fqn: string, type: string) => {
     if (type === EntityType.TABLE) {
       const database = getPartialNameFromTableFQN(fqn, [FqnPart.Database]);
@@ -103,14 +105,14 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
   const Icon = getEntityNodeIcon(entityType);
 
   return (
-    <div className="p-x-xs items-center d-flex" data-testid="suggestion-node">
+    <div className="p-md items-center d-flex " data-testid="suggestion-node">
       <Icon className="m-r-xs" height={16} name="entity-icon" width={16} />
       <Select
         autoFocus
-        open
         showSearch
         className="w-76 lineage-node-searchbox"
         data-testid="node-search-box"
+        open={isOpen}
         options={(data || []).map((entity) => ({
           value: entity.fullyQualifiedName,
           label: (
@@ -156,8 +158,10 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
           type: capitalize(entityType),
         })}s...`}
         popupClassName="lineage-suggestion-select-menu"
+        onBlur={() => setIsOpen(false)}
         onChange={handleChange}
         onClick={(e) => e.stopPropagation()}
+        onFocus={() => setIsOpen(true)}
         onSearch={handleChange}
       />
     </div>
