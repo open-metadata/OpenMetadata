@@ -62,14 +62,7 @@ Ingestion is a simple Python framework to ingest metadata from external sources 
 
 **Connectors**
 
-OpenMetadata defines and uses a set of components called `Connectors` for metadata ingestion. Each data service requires its own connector. See the documentation on how to [build a connector]() for details on developing connectors for new services.
-
-1. Workflow [`OpenMetadata/ingestion/src/metadata/ingestion/api/workflow.py`](https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/src/metadata/ingestion/api/workflow.py)
-2. Source [`OpenMetadata/ingestion/src/metadata/ingestion/api/source.py`](https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/src/metadata/ingestion/api/source.py)
-3. Processor [`OpenMetadata/ingestion/src/metadata/ingestion/api/processor.py`](https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/src/metadata/ingestion/api/processor.py)
-4. Sink [`OpenMetadata/ingestion/src/metadata/ingestion/api/sink.py`](https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/src/metadata/ingestion/api/sink.py)
-5. Stage [`OpenMetadata/ingestion/src/metadata/ingestion/api/stage.py`](https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/src/metadata/ingestion/api/stage.py)
-6. BulkSink [`OpenMetadata/ingestion/src/metadata/ingestion/api/bulk_sink.py`](https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/src/metadata/ingestion/api/bulk_sink.py)
+OpenMetadata defines and uses a set of components called `Connectors` for metadata ingestion. Each data service requires its own connector. See the documentation on how to [build a connector](/developers/contribute/developing-a-new-connector) for details on developing connectors for new services.
 
 Workflow is a simple orchestration job that runs `Source`, `Processor`, `Sink`, `Stage` and `BulkSink` based on the configurations present under [`OpenMetadata/ingestion/examples/workflows`](https://github.com/open-metadata/OpenMetadata/tree/main/ingestion/src/metadata/examples/workflows).
 
