@@ -3,6 +3,7 @@ package org.openmetadata.service.search.elasticsearch;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.search.SearchClient.FQN_FIELD;
+import static org.openmetadata.service.search.SearchUtils.getLineageDirectionAggregationField;
 
 import com.nimbusds.jose.util.Pair;
 import es.org.elasticsearch.action.search.SearchResponse;
@@ -27,6 +28,7 @@ import java.util.Map;
 import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
+import org.openmetadata.schema.api.lineage.LineageDirection;
 import org.openmetadata.sdk.exception.SearchException;
 import org.openmetadata.service.Entity;
 
@@ -40,6 +42,7 @@ public class EsUtils {
   }
 
   public static Map<String, Object> searchEntityByKey(
+      LineageDirection direction,
       String indexAlias,
       String keyName,
       Pair<String, String> hasToFqnPair,
@@ -47,7 +50,7 @@ public class EsUtils {
       throws IOException {
     Map<String, Object> result =
         searchEntitiesByKey(
-            indexAlias, keyName, Set.of(hasToFqnPair.getLeft()), 0, 1, fieldsToRemove);
+            direction, indexAlias, keyName, Set.of(hasToFqnPair.getLeft()), 0, 1, fieldsToRemove);
     if (result.size() == 1) {
       return (Map<String, Object>) result.get(hasToFqnPair.getRight());
     } else {
@@ -59,6 +62,7 @@ public class EsUtils {
   }
 
   public static Map<String, Object> searchEntitiesByKey(
+      LineageDirection direction,
       String indexAlias,
       String keyName,
       Set<String> keyValues,
@@ -71,7 +75,16 @@ public class EsUtils {
     Map<String, Object> result = new HashMap<>();
     es.org.elasticsearch.action.search.SearchRequest searchRequest =
         getSearchRequest(
-            indexAlias, null, null, keyName, keyValues, from, size, null, null, fieldsToRemove);
+            direction,
+            indexAlias,
+            null,
+            null,
+            Map.of(keyName, keyValues),
+            from,
+            size,
+            null,
+            null,
+            fieldsToRemove);
     SearchResponse searchResponse = client.search(searchRequest, RequestOptions.DEFAULT);
     for (SearchHit hit : searchResponse.getHits().getHits()) {
       Map<String, Object> esDoc = hit.getSourceAsMap();
@@ -81,11 +94,11 @@ public class EsUtils {
   }
 
   public static es.org.elasticsearch.action.search.SearchRequest getSearchRequest(
+      LineageDirection direction,
       String indexAlias,
       String queryFilter,
       String aggName,
-      String key,
-      Set<String> value,
+      Map<String, Set<String>> keysAndValues,
       int from,
       int size,
       Boolean deleted,
@@ -98,11 +111,12 @@ public class EsUtils {
     searchSourceBuilder.fetchSource(
         listOrEmpty(fieldsToInclude).toArray(String[]::new),
         listOrEmpty(fieldsToRemove).toArray(String[]::new));
-    searchSourceBuilder.query(QueryBuilders.boolQuery().must(QueryBuilders.termsQuery(key, value)));
+
+    searchSourceBuilder.query(getBoolQueriesWithShould(keysAndValues));
     if (!CommonUtil.nullOrEmpty(deleted)) {
       searchSourceBuilder.query(
           QueryBuilders.boolQuery()
-              .must(QueryBuilders.termsQuery(key, value))
+              .must(getBoolQueriesWithShould(keysAndValues))
               .must(QueryBuilders.termQuery("deleted", deleted)));
     }
     searchSourceBuilder.from(from);
@@ -110,12 +124,20 @@ public class EsUtils {
 
     // This assumes here that the key has a keyword field
     if (!nullOrEmpty(aggName)) {
-      searchSourceBuilder.aggregation(AggregationBuilders.terms(aggName).field(key));
+      searchSourceBuilder.aggregation(
+          AggregationBuilders.terms(aggName).field(getLineageDirectionAggregationField(direction)));
     }
 
     buildSearchSourceFilter(queryFilter, searchSourceBuilder);
     searchRequest.source(searchSourceBuilder);
     return searchRequest;
+  }
+
+  private static BoolQueryBuilder getBoolQueriesWithShould(Map<String, Set<String>> keysAndValues) {
+    BoolQueryBuilder boolQuery = QueryBuilders.boolQuery();
+    keysAndValues.forEach((key, values) -> boolQuery.should(QueryBuilders.termsQuery(key, values)));
+    boolQuery.minimumShouldMatch(1);
+    return boolQuery;
   }
 
   public static void buildSearchSourceFilter(

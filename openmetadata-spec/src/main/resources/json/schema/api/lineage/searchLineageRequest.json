@@ -19,7 +19,11 @@
     },
     "directionValue": {
       "description": "Lineage Direction Value.",
-      "type": "string"
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true
     },
     "upstreamDepth": {
       "description": "The upstream depth of the lineage",

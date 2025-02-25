@@ -1,13 +1,18 @@
 package org.openmetadata.service.search;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.service.Entity.FIELD_FULLY_QUALIFIED_NAME_HASH_KEYWORD;
 import static org.openmetadata.service.search.SearchClient.UPSTREAM_LINEAGE_FIELD;
 
 import java.security.KeyStoreException;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import javax.json.JsonArray;
 import javax.json.JsonObject;
 import javax.net.ssl.SSLContext;
@@ -27,6 +32,8 @@ import org.openmetadata.service.util.SSLUtil;
 
 public final class SearchUtils {
   public static final String LINEAGE_AGGREGATION = "matchesPerKey";
+  public static final String DOWNSTREAM_NODE_KEY = "upstreamLineage.fromEntity.fqnHash.keyword";
+  public static final String PIPELINE_AS_EDGE_KEY = "upstreamLineage.pipeline.fqnHash.keyword";
 
   private SearchUtils() {}
 
@@ -59,20 +66,31 @@ public final class SearchUtils {
         .withPipelineEntityType(data.getPipelineEntityType());
   }
 
-  public static String getLineageDirection(LineageDirection direction, boolean isConnectedVia) {
-    if (LineageDirection.UPSTREAM.equals(direction)) {
-      if (isConnectedVia) {
-        return "upstreamLineage.pipeline.fqnHash.keyword";
-      } else {
-        return Entity.FIELD_FULLY_QUALIFIED_NAME_HASH_KEYWORD;
-      }
-    } else {
-      if (isConnectedVia) {
-        return "upstreamLineage.pipeline.fqnHash.keyword";
-      } else {
-        return "upstreamLineage.fromEntity.fqnHash.keyword";
-      }
+  public static Set<String> getLineageDirection(
+      LineageDirection direction, boolean isConnectedVia) {
+    Set<String> fields =
+        new HashSet<>(
+            Set.of(
+                direction == LineageDirection.UPSTREAM
+                    ? FIELD_FULLY_QUALIFIED_NAME_HASH_KEYWORD
+                    : DOWNSTREAM_NODE_KEY));
+
+    if (isConnectedVia) {
+      fields.add(PIPELINE_AS_EDGE_KEY);
     }
+
+    return fields;
+  }
+
+  public static String getLineageDirectionAggregationField(LineageDirection direction) {
+    return direction == LineageDirection.UPSTREAM
+        ? FIELD_FULLY_QUALIFIED_NAME_HASH_KEYWORD
+        : DOWNSTREAM_NODE_KEY;
+  }
+
+  public static Map<String, Set<String>> buildDirectionToFqnSet(
+      Set<String> directionKeys, Set<String> fqnSet) {
+    return directionKeys.stream().collect(Collectors.toMap(Function.identity(), k -> fqnSet));
   }
 
   public static JsonArray getAggregationBuckets(JsonObject aggregationJson) {

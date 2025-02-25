@@ -5,6 +5,7 @@ import static org.openmetadata.service.Entity.FIELD_FULLY_QUALIFIED_NAME_HASH_KE
 import static org.openmetadata.service.search.SearchClient.FQN_FIELD;
 import static org.openmetadata.service.search.SearchClient.GLOBAL_SEARCH_ALIAS;
 import static org.openmetadata.service.search.SearchUtils.LINEAGE_AGGREGATION;
+import static org.openmetadata.service.search.SearchUtils.buildDirectionToFqnSet;
 import static org.openmetadata.service.search.SearchUtils.getLineageDirection;
 import static org.openmetadata.service.search.SearchUtils.getRelationshipRef;
 import static org.openmetadata.service.search.SearchUtils.getUpstreamLineageListIfExist;
@@ -19,6 +20,7 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.lineage.EsLineageData;
 import org.openmetadata.schema.api.lineage.RelationshipRef;
@@ -42,6 +44,11 @@ public class OSLineageGraphBuilder {
   }
 
   public SearchLineageResult getUpstreamLineage(SearchLineageRequest request) throws IOException {
+    if (request.getLayerFrom() < 0 || request.getLayerSize() < 0) {
+      throw new IllegalArgumentException(
+          "LayerFrom and LayerSize should be greater than or equal to 0");
+    }
+
     SearchLineageResult result =
         new SearchLineageResult()
             .withNodes(new HashMap<>())
@@ -66,19 +73,16 @@ public class OSLineageGraphBuilder {
       return;
     }
 
-    if (lineageRequest.getLayerFrom() < 0 || lineageRequest.getLayerSize() < 0) {
-      throw new IllegalArgumentException(
-          "LayerFrom and LayerSize should be greater than or equal to 0");
-    }
-
     Map<String, String> hasToFqnMapForLayer = new HashMap<>();
+    Map<String, Set<String>> directionKeyAndValues =
+        buildDirectionToFqnSet(lineageRequest.getDirectionValue(), hasToFqnMap.keySet());
     os.org.opensearch.action.search.SearchRequest searchRequest =
         getSearchRequest(
+            lineageRequest.getDirection(),
             GLOBAL_SEARCH_ALIAS,
             lineageRequest.getQueryFilter(),
             LINEAGE_AGGREGATION,
-            lineageRequest.getDirectionValue(),
-            hasToFqnMap.keySet(),
+            directionKeyAndValues,
             0,
             10000,
             lineageRequest.getIncludeDeleted(),
@@ -117,7 +121,7 @@ public class OSLineageGraphBuilder {
     // just entities
     if (Boolean.TRUE.equals(lineageRequest.getIsConnectedVia())) {
       SearchLineageRequest newReq = JsonUtils.deepCopy(lineageRequest, SearchLineageRequest.class);
-      String directionValue = getLineageDirection(lineageRequest.getDirection(), false);
+      Set<String> directionValue = getLineageDirection(lineageRequest.getDirection(), false);
       fetchUpstreamNodesRecursively(
           newReq.withDirectionValue(directionValue).withIsConnectedVia(false),
           result,
@@ -150,6 +154,7 @@ public class OSLineageGraphBuilder {
       SearchLineageRequest lineageRequest, SearchLineageResult result) throws IOException {
     Map<String, Object> entityMap =
         OsUtils.searchEntityByKey(
+            lineageRequest.getDirection(),
             GLOBAL_SEARCH_ALIAS,
             FIELD_FULLY_QUALIFIED_NAME_HASH_KEYWORD,
             Pair.of(FullyQualifiedName.buildHash(lineageRequest.getFqn()), lineageRequest.getFqn()),
@@ -174,13 +179,15 @@ public class OSLineageGraphBuilder {
     }
 
     Map<String, String> hasToFqnMapForLayer = new HashMap<>();
+    Map<String, Set<String>> directionKeyAndValues =
+        buildDirectionToFqnSet(lineageRequest.getDirectionValue(), hasToFqnMap.keySet());
     os.org.opensearch.action.search.SearchRequest searchRequest =
         getSearchRequest(
+            lineageRequest.getDirection(),
             GLOBAL_SEARCH_ALIAS,
             lineageRequest.getQueryFilter(),
             LINEAGE_AGGREGATION,
-            lineageRequest.getDirectionValue(),
-            hasToFqnMap.keySet(),
+            directionKeyAndValues,
             lineageRequest.getLayerFrom(),
             lineageRequest.getLayerSize(),
             lineageRequest.getIncludeDeleted(),
@@ -194,7 +201,10 @@ public class OSLineageGraphBuilder {
         String fqn = entityMap.get(FQN_FIELD).toString();
 
         // Add Paging Details per entity
-        ParsedStringTerms valueCountAgg = searchResponse.getAggregations().get(LINEAGE_AGGREGATION);
+        ParsedStringTerms valueCountAgg =
+            searchResponse.getAggregations() != null
+                ? searchResponse.getAggregations().get(LINEAGE_AGGREGATION)
+                : new ParsedStringTerms();
         for (Terms.Bucket bucket : valueCountAgg.getBuckets()) {
           String fqnFromHash = hasToFqnMap.get(bucket.getKeyAsString());
           if (!nullOrEmpty(bucket.getKeyAsString())
@@ -234,7 +244,7 @@ public class OSLineageGraphBuilder {
     // just entities
     if (Boolean.TRUE.equals(lineageRequest.getIsConnectedVia())) {
       SearchLineageRequest newReq = JsonUtils.deepCopy(lineageRequest, SearchLineageRequest.class);
-      String directionValue = getLineageDirection(lineageRequest.getDirection(), false);
+      Set<String> directionValue = getLineageDirection(lineageRequest.getDirection(), false);
       fetchDownstreamNodesRecursively(
           newReq.withDirectionValue(directionValue).withIsConnectedVia(false),
           result,
