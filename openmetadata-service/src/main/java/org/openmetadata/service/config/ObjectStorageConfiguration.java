@@ -30,5 +30,4 @@ public class ObjectStorageConfiguration {
   @JsonProperty("azure")
   @Valid
   private AzureConfiguration azureConfiguration;
-
 }
