@@ -104,7 +104,7 @@ def workflow(metadata, service, mysql_container):
                     password=mysql_container.password,
                 ),
                 hostPort=f"localhost:{mysql_container.get_exposed_port(3306)}",
-            ).model_dump_json(),
+            ).model_dump_json(mask_secrets=False),
             source_config={},
         )
     )
