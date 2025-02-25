@@ -69,7 +69,7 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha }}
 
       - name: Trigger Collate build & wait
-        uses: aurelien-baudet/workflow-dispatch@v2
+        uses: the-actions-org/workflow-dispatch@v4
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SHA: ${{ github.event_name == 'push' && github.event.after || github.event.pull_request.head.sha }}
