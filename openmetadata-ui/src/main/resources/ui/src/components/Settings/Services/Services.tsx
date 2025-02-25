@@ -97,6 +97,14 @@ const Services = ({ serviceName }: ServicesProps) => {
   const [deleted, setDeleted] = useState<boolean>(false);
   const { permissions } = usePermissionProvider();
 
+  const filterString = useMemo(() => {
+    return serviceTypeFilter?.length
+      ? `(${serviceTypeFilter
+          .map((type) => `serviceType:${type}`)
+          .join(' OR ')})`
+      : undefined;
+  }, [serviceTypeFilter]);
+
   const isPlatFormDisabled = useMemo(() => platform === DISABLED, [platform]);
 
   const searchIndex = useMemo(() => {
@@ -195,24 +203,23 @@ const Services = ({ serviceName }: ServicesProps) => {
 
   const handleServicePageChange = useCallback(
     ({ cursorType, currentPage }: PagingHandlerParams) => {
-      if (searchTerm) {
+      if (searchTerm || filterString) {
         handlePageChange(currentPage);
         getServiceDetails({
           currentPage,
           search: searchTerm,
           limit: pageSize,
-          filters: serviceTypeFilter?.length
-            ? `(${serviceTypeFilter
-                .map((type) => `serviceType:${type}`)
-                .join(' ')})`
-            : undefined,
+          filters: filterString,
         });
       } else if (cursorType) {
         handlePageChange(currentPage);
-        getServiceDetails({ [cursorType]: paging[cursorType] });
+        getServiceDetails({
+          [cursorType]: paging[cursorType],
+          filters: filterString,
+        });
       }
     },
-    [getServiceDetails, searchTerm, serviceTypeFilter, paging, pageSize]
+    [getServiceDetails, searchTerm, filterString, paging, pageSize]
   );
 
   const addServicePermission = useMemo(
@@ -257,11 +264,7 @@ const Services = ({ serviceName }: ServicesProps) => {
   }, [serviceName]);
 
   const noDataPlaceholder = useMemo(() => {
-    if (
-      addServicePermission &&
-      isEmpty(searchTerm) &&
-      isEmpty(serviceTypeFilter)
-    ) {
+    if (addServicePermission && isEmpty(searchTerm) && !filterString) {
       return (
         <ErrorPlaceHolder
           className="p-lg"
@@ -285,7 +288,7 @@ const Services = ({ serviceName }: ServicesProps) => {
     servicesDisplayName,
     serviceName,
     searchTerm,
-    serviceTypeFilter,
+    filterString,
     addServicePermission,
     handleAddServiceClick,
   ]);
@@ -433,20 +436,9 @@ const Services = ({ serviceName }: ServicesProps) => {
     getServiceDetails({
       search: searchTerm,
       limit: pageSize,
-      filters: serviceTypeFilter?.length
-        ? `(${serviceTypeFilter
-            .map((type) => `serviceType:${type}`)
-            .join(' ')})`
-        : undefined,
+      filters: filterString,
     });
-  }, [
-    searchIndex,
-    pageSize,
-    serviceName,
-    searchTerm,
-    serviceTypeFilter,
-    deleted,
-  ]);
+  }, [searchIndex, pageSize, serviceName, searchTerm, filterString, deleted]);
 
   const handleTableChange: TableProps<ServicesType>['onChange'] = (
     _pagination,
@@ -522,7 +514,7 @@ const Services = ({ serviceName }: ServicesProps) => {
           <NextPrevious
             currentPage={currentPage}
             isLoading={isLoading}
-            isNumberBased={!isEmpty(searchTerm)}
+            isNumberBased={!isEmpty(searchTerm) || !isEmpty(serviceTypeFilter)}
             pageSize={pageSize}
             paging={paging}
             pagingHandler={handleServicePageChange}

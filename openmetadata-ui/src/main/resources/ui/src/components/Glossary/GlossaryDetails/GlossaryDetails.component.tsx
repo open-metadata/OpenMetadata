@@ -368,7 +368,7 @@ const GlossaryDetails = ({
       type={EntityType.GLOSSARY}
       onUpdate={handleGlossaryUpdate}>
       <Row
-        className="glossary-details"
+        className="glossary-details p-t-sm"
         data-testid="glossary-details"
         gutter={[0, 16]}>
         <Col
