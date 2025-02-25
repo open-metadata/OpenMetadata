@@ -40,6 +40,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
@@ -164,8 +165,11 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   }
 
   @Override
-  public EntityUpdater getUpdater(
-      IngestionPipeline original, IngestionPipeline updated, Operation operation) {
+  public EntityRepository<IngestionPipeline>.EntityUpdater getUpdater(
+      IngestionPipeline original,
+      IngestionPipeline updated,
+      Operation operation,
+      ChangeSource changeSource) {
     return new IngestionPipelineUpdater(original, updated, operation);
   }
 

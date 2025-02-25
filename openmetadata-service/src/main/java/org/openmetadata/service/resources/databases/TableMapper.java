@@ -2,6 +2,7 @@ package org.openmetadata.service.resources.databases;
 
 import static org.openmetadata.service.util.EntityUtil.getEntityReference;
 
+import java.util.HashMap;
 import java.util.UUID;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.tests.CreateCustomMetric;
@@ -28,7 +29,8 @@ public class TableMapper implements EntityMapper<Table, CreateTable> {
                     getEntityReference(Entity.DATABASE_SCHEMA, create.getDatabaseSchema())))
         .withDatabaseSchema(getEntityReference(Entity.DATABASE_SCHEMA, create.getDatabaseSchema()))
         .withRetentionPeriod(create.getRetentionPeriod())
-        .withSourceHash(create.getSourceHash());
+        .withSourceHash(create.getSourceHash())
+        .withChangeSummary(new HashMap<>());
   }
 
   public CustomMetric createCustomMetricToEntity(CreateCustomMetric create, String user) {

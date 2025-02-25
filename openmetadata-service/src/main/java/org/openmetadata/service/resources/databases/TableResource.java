@@ -56,7 +56,6 @@ import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.tests.CreateCustomMetric;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.tests.CustomMetric;
-import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.ColumnProfile;
 import org.openmetadata.schema.type.DataModel;
@@ -68,6 +67,7 @@ import org.openmetadata.schema.type.TableData;
 import org.openmetadata.schema.type.TableJoins;
 import org.openmetadata.schema.type.TableProfile;
 import org.openmetadata.schema.type.TableProfilerConfig;
+import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ListFilter;
@@ -424,10 +424,10 @@ public class TableResource extends EntityResource<Table, TableRepository> {
           JsonPatch patch,
       @Parameter(
               description = "Context of the change",
-              schema = @Schema(implementation = ChangeDescription.ChangeContext.class))
-          @QueryParam("changeContext")
-          ChangeDescription.ChangeContext changeContext) {
-    return patchInternal(uriInfo, securityContext, id, patch, changeContext);
+              schema = @Schema(implementation = ChangeSource.class))
+          @QueryParam("changeSource")
+          ChangeSource changeSource) {
+    return patchInternal(uriInfo, securityContext, id, patch, changeSource);
   }
 
   @PATCH
@@ -458,10 +458,10 @@ public class TableResource extends EntityResource<Table, TableRepository> {
           JsonPatch patch,
       @Parameter(
               description = "Context of the change",
-              schema = @Schema(implementation = ChangeDescription.ChangeContext.class))
-          @QueryParam("changeContext")
-          ChangeDescription.ChangeContext changeContext) {
-    return patchInternal(uriInfo, securityContext, fqn, patch, changeContext);
+              schema = @Schema(implementation = ChangeSource.class))
+          @QueryParam("changeSource")
+          ChangeSource changeSource) {
+    return patchInternal(uriInfo, securityContext, fqn, patch, changeSource);
   }
 
   @GET

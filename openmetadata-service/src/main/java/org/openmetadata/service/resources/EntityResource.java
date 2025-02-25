@@ -40,7 +40,6 @@ import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.BulkAssetsRequestInterface;
 import org.openmetadata.schema.EntityInterface;
-import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
@@ -48,6 +47,7 @@ import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.Permission;
 import org.openmetadata.schema.type.ResourcePermission;
 import org.openmetadata.schema.type.api.BulkOperationResult;
+import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
@@ -383,7 +383,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       SecurityContext securityContext,
       UUID id,
       JsonPatch patch,
-      ChangeDescription.ChangeContext changeContext) {
+      ChangeSource changeSource) {
     OperationContext operationContext = new OperationContext(entityType, patch);
     authorizer.authorize(
         securityContext,
@@ -391,7 +391,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
         getResourceContextById(id, ResourceContextInterface.Operation.PATCH));
     PatchResponse<T> response =
         repository.patch(
-            uriInfo, id, securityContext.getUserPrincipal().getName(), patch, changeContext);
+            uriInfo, id, securityContext.getUserPrincipal().getName(), patch, changeSource);
     addHref(uriInfo, response.entity());
     return response.toResponse();
   }
@@ -420,7 +420,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       SecurityContext securityContext,
       String fqn,
       JsonPatch patch,
-      ChangeDescription.ChangeContext changeContext) {
+      ChangeSource changeSource) {
     OperationContext operationContext = new OperationContext(entityType, patch);
     authorizer.authorize(
         securityContext,
@@ -428,7 +428,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
         getResourceContextByName(fqn, ResourceContextInterface.Operation.PATCH));
     PatchResponse<T> response =
         repository.patch(
-            uriInfo, fqn, securityContext.getUserPrincipal().getName(), patch, changeContext);
+            uriInfo, fqn, securityContext.getUserPrincipal().getName(), patch, changeSource);
     addHref(uriInfo, response.entity());
     return response.toResponse();
   }

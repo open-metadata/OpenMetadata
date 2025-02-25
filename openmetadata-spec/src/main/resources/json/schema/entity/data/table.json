@@ -944,7 +944,18 @@
     "fileFormat": {
       "description": "File format in case of file/datalake tables.",
       "type": "string",
-      "enum": ["csv", "tsv", "avro", "parquet", "json", "json.gz", "json.zip", "jsonl", "jsonl.gz", "jsonl.zip"]
+      "enum": [
+        "csv",
+        "tsv",
+        "avro",
+        "parquet",
+        "json",
+        "json.gz",
+        "json.zip",
+        "jsonl",
+        "jsonl.gz",
+        "jsonl.zip"
+      ]
     }
   },
   "properties": {
@@ -1102,7 +1113,7 @@
       "type": "boolean",
       "default": false
     },
-    "retentionPeriod" : {
+    "retentionPeriod": {
       "description": "Retention period of the data in the table. Period is expressed as duration in ISO 8601 format in UTC. Example - `P23DT23H`. When not set, the retention period is inherited from the parent database schema, if it exists.",
       "$ref": "../../type/basic.json#/definitions/duration"
     },
@@ -1114,19 +1125,19 @@
       "description": "Source URL of table.",
       "$ref": "../../type/basic.json#/definitions/sourceUrl"
     },
-    "domain" : {
+    "domain": {
       "description": "Domain the asset belongs to. When not set, the asset inherits the domain from the parent it belongs to.",
       "$ref": "../../type/entityReference.json"
     },
-    "dataProducts" : {
+    "dataProducts": {
       "description": "List of data products this entity is part of.",
-      "$ref" : "../../type/entityReferenceList.json"
+      "$ref": "../../type/entityReferenceList.json"
     },
     "fileFormat": {
       "description": "File format in case of file/datalake tables.",
-      "$ref" : "#/definitions/fileFormat"
+      "$ref": "#/definitions/fileFormat"
     },
-    "votes" : {
+    "votes": {
       "description": "Votes on the entity.",
       "$ref": "../../type/votes.json"
     },
@@ -1142,6 +1153,9 @@
       "type": "string",
       "minLength": 1,
       "maxLength": 32
+    },
+    "changeSummary": {
+      "$ref": "../../type/changeSummary.json#definitions/changeSummaryMap"
     }
   },
   "required": [

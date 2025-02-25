@@ -23,6 +23,7 @@ import java.util.UUID;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.entity.type.Style;
 import org.openmetadata.schema.type.*;
+import org.openmetadata.schema.type.change.ChangeSummary;
 import org.openmetadata.schema.utils.EntityInterfaceUtil;
 
 /** Interface to be implemented by all entities to provide a way to access all the common fields. */
@@ -203,5 +204,27 @@ public interface EntityInterface {
             CANONICAL_ENTITY_NAME_MAP.get(this.getClass().getSimpleName().toLowerCase(Locale.ROOT)))
         .withDeleted(getDeleted())
         .withHref(getHref());
+  }
+
+  default Map<String, ChangeSummary> getChangeSummary() {
+    return new HashMap<>();
+  }
+
+  default void setChangeSummary(Map<String, ChangeSummary> changeSummary) {
+    /* no-op implementation to be overridden */
+  }
+
+  default void addChangeSummary(String fieldName, ChangeSummary changeSummary) {
+    if (getChangeSummary() == null) {
+      setChangeSummary(new HashMap<>());
+    }
+    getChangeSummary().put(fieldName, changeSummary);
+  }
+
+  default void removeChangeSummary(String fieldName) {
+    if (getChangeSummary() == null) {
+      setChangeSummary(new HashMap<>());
+    }
+    getChangeSummary().remove(fieldName);
   }
 }

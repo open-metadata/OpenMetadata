@@ -147,6 +147,7 @@ import org.openmetadata.schema.type.TableProfilerConfig;
 import org.openmetadata.schema.type.TableType;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TagLabel.LabelType;
+import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
@@ -1990,37 +1991,72 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   }
 
   @Test
-  void patch_withChangeContext(TestInfo test) throws IOException {
-    Column c1 = getColumn(C1, INT, null);
-    CreateTable create = createRequest(test).withColumns(List.of(c1));
+  void patch_withChangeSource(TestInfo test) throws IOException {
+    CreateTable create =
+        createRequest(test)
+            .withColumns(List.of(getColumn(C1, INT, null), getColumn(C2, BIGINT, null)));
     Table table = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
 
-    String json = JsonUtils.pojoToJson(table);
     Table updated = JsonUtils.deepCopy(table, Table.class);
     updated.setDescription("manual description");
     updated =
         patchEntity(
             table.getId(),
-            json,
+            JsonUtils.pojoToJson(table),
             updated,
             ADMIN_AUTH_HEADERS,
-            ChangeDescription.ChangeContext.MANUAL);
+            ChangeSource.MANUAL);
     assertEquals(
-        ChangeDescription.ChangeContext.MANUAL, updated.getChangeDescription().getChangeContext());
+        ChangeSource.MANUAL, updated.getChangeSummary().get("description").getChangeSource());
 
-    Table automatedUpdate = JsonUtils.deepCopy(table, Table.class);
-
+    Table automatedUpdate = JsonUtils.deepCopy(updated, Table.class);
     automatedUpdate.setDescription("automated description");
     automatedUpdate =
         patchEntity(
             table.getId(),
-            json,
+            JsonUtils.pojoToJson(updated),
             automatedUpdate,
             ADMIN_AUTH_HEADERS,
-            ChangeDescription.ChangeContext.AUTOMATED);
+            ChangeSource.AUTOMATED);
+    assertEquals(1, automatedUpdate.getChangeSummary().size());
     assertEquals(
-        ChangeDescription.ChangeContext.AUTOMATED,
-        automatedUpdate.getChangeDescription().getChangeContext());
+        ChangeSource.AUTOMATED,
+        automatedUpdate.getChangeSummary().get("description").getChangeSource());
+
+    Table columnUpdate = JsonUtils.deepCopy(automatedUpdate, Table.class);
+    columnUpdate.getColumns().get(0).setDescription("suggested column description");
+    columnUpdate =
+        patchEntity(
+            table.getId(),
+            JsonUtils.pojoToJson(automatedUpdate),
+            columnUpdate,
+            ADMIN_AUTH_HEADERS,
+            ChangeSource.SUGGESTED);
+
+    assertEquals(2, columnUpdate.getChangeSummary().size());
+    assertEquals(
+        ChangeSource.SUGGESTED,
+        columnUpdate
+            .getChangeSummary()
+            .get(
+                FullyQualifiedName.build(
+                    "columns", automatedUpdate.getColumns().get(0).getName(), "description"))
+            .getChangeSource());
+
+    Table columnDelete = JsonUtils.deepCopy(columnUpdate, Table.class);
+    columnDelete.getTableConstraints().remove(0);
+    columnDelete.getColumns().remove(0);
+    columnDelete =
+        patchEntity(
+            table.getId(), JsonUtils.pojoToJson(columnUpdate), columnDelete, ADMIN_AUTH_HEADERS);
+
+    assertEquals(1, columnDelete.getChangeSummary().size());
+    assertNull(
+        columnDelete
+            .getChangeSummary()
+            .get(
+                FullyQualifiedName.build(
+                    "columns", automatedUpdate.getColumns().get(0).getName(), "description")));
   }
 
   @Test

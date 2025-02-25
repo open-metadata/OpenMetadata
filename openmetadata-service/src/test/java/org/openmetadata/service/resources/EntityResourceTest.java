@@ -177,6 +177,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.LifeCycle;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.type.csv.CsvDocumentation;
 import org.openmetadata.schema.type.csv.CsvHeader;
 import org.openmetadata.schema.type.csv.CsvImportResult;
@@ -2879,7 +2880,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       String originalJson,
       T updated,
       Map<String, String> authHeaders,
-      ChangeDescription.ChangeContext changeContext)
+      ChangeSource changeSource)
       throws HttpResponseException {
     try {
       ObjectMapper mapper = new ObjectMapper();
@@ -2887,7 +2888,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       String updatedEntityJson = JsonUtils.pojoToJson(updated);
       JsonNode patch =
           JsonDiff.asJson(mapper.readTree(originalJson), mapper.readTree(updatedEntityJson));
-      return patchEntity(id, patch, authHeaders, changeContext);
+      return patchEntity(id, patch, authHeaders, changeSource);
     } catch (JsonProcessingException ignored) {
 
     }
@@ -2900,16 +2901,13 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   }
 
   public final T patchEntity(
-      UUID id,
-      JsonNode patch,
-      Map<String, String> authHeaders,
-      ChangeDescription.ChangeContext changeContext)
+      UUID id, JsonNode patch, Map<String, String> authHeaders, ChangeSource changeSource)
       throws HttpResponseException {
-    return patch(
-        getResource(id, Map.of("changeContext", changeContext.name())),
-        patch,
-        entityClass,
-        authHeaders);
+    Map<String, String> queryParams = new HashMap<>();
+    if (changeSource != null) {
+      queryParams.put("changeSource", changeSource.name());
+    }
+    return patch(getResource(id, queryParams), patch, entityClass, authHeaders);
   }
 
   public final T patchEntityUsingFqn(
@@ -3174,14 +3172,14 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       Map<String, String> authHeaders,
       UpdateType updateType,
       ChangeDescription expectedChange,
-      ChangeDescription.ChangeContext changeContext)
+      ChangeSource changeSource)
       throws IOException {
 
     String updatedBy =
         updateType == NO_CHANGE ? updated.getUpdatedBy() : getPrincipalName(authHeaders);
 
     // Validate information returned in patch response has the updates
-    T returned = patchEntity(updated.getId(), originalJson, updated, authHeaders, changeContext);
+    T returned = patchEntity(updated.getId(), originalJson, updated, authHeaders, changeSource);
 
     validateCommonEntityFields(updated, returned, updatedBy);
     compareEntities(updated, returned, authHeaders);
