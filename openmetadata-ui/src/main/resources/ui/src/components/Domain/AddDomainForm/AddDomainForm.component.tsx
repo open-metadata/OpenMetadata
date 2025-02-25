@@ -19,7 +19,10 @@ import { NAME_FIELD_RULES } from '../../../constants/Form.constants';
 import { HEX_COLOR_CODE_REGEX } from '../../../constants/regex.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
-import { CreateDataProduct } from '../../../generated/api/domains/createDataProduct';
+import {
+  CreateDataProduct,
+  TagSource,
+} from '../../../generated/api/domains/createDataProduct';
 import {
   CreateDomain,
   DomainType,
@@ -90,6 +93,27 @@ const AddDomainForm = ({
         'data-testid': 'description',
         initialValue: '',
         height: 'auto',
+      },
+    },
+    {
+      name: 'tags',
+      required: false,
+      label: t('label.tag-plural'),
+      id: 'root/tags',
+      type: FieldTypes.TAG_SUGGESTION,
+      props: {
+        'data-testid': 'tags-container',
+      },
+    },
+    {
+      name: 'glossaryTerms',
+      required: false,
+      label: t('label.glossary-term-plural'),
+      id: 'root/glossaryTerms',
+      type: FieldTypes.TAG_SUGGESTION,
+      props: {
+        'data-testid': 'glossary-terms',
+        tagType: TagSource.Glossary,
       },
     },
     {
@@ -206,16 +230,18 @@ const AddDomainForm = ({
   const expertsList = Form.useWatch<EntityReference[]>('experts', form) ?? [];
 
   const handleFormSubmit: FormProps['onFinish'] = (formData) => {
-    const updatedData = omit(formData, 'color', 'iconURL');
+    const updatedData = omit(formData, 'color', 'iconURL', 'glossaryTerms');
     const style = {
       color: formData.color,
       iconURL: formData.iconURL,
     };
+
     const data = {
       ...updatedData,
       style,
       experts: expertsList.map((item) => item.name ?? ''),
       owners: ownersList ?? [],
+      tags: [...(formData.tags || []), ...(formData.glossaryTerms || [])],
     } as CreateDomain | CreateDataProduct;
 
     onSubmit(data);
