@@ -44,7 +44,7 @@ import { Transi18next } from '../../utils/CommonUtils';
 import { getSettingPath } from '../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import CustomizableDomainPage from '../CustomizableDomainPage/CustomizableDomainPage';
-import { CustomizeTableDetailPage } from '../CustomizeTableDetailPage/CustomizeTableDetailPage';
+import { CustomizeDetailsPage } from '../CustomizeDetailsPage/CustomizeDetailsPage';
 import { SettingsNavigationPage } from '../SettingsNavigationPage/SettingsNavigationPage';
 import { useCustomizeStore } from './CustomizeStore';
 
@@ -284,8 +284,12 @@ export const CustomizablePage = () => {
     case PageType.Database:
     case PageType.Container:
     case PageType.SearchIndex:
+    case PageType.Metric:
+    case PageType.MlModel:
+    case PageType.APIEndpoint:
+    case PageType.APICollection:
       return (
-        <CustomizeTableDetailPage
+        <CustomizeDetailsPage
           initialPageData={currentPage}
           isGlossary={false}
           personaDetails={personaDetails}

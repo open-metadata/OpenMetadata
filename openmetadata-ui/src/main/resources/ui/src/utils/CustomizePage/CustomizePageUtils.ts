@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { TabsProps } from 'antd';
+import { noop } from 'lodash';
 import { CommonWidgetType } from '../../constants/CustomizeWidgets.constants';
 import { EntityTabs } from '../../enums/entity.enum';
 import { PageType, Tab } from '../../generated/system/ui/page';
@@ -430,4 +431,8 @@ export const getTabLabelMapFromTabs = (
       return acc;
     }, labelMap) ?? labelMap
   );
+};
+
+export const asyncNoop = async () => {
+  noop();
 };

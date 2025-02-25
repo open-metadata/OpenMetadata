@@ -354,13 +354,6 @@ export const getDomainDetailTabs = ({
       ),
       key: EntityTabs.DOCUMENTATION,
       children: <GenericTab type={PageType.Domain} />,
-      // <DocumentationTab
-      //   domain={domain}
-      //   isVersionsView={isVersionsView}
-      //   permissions={domainPermission}
-      //   onUpdate={(data: Domain | DataProduct) => onUpdate(data as Domain)}
-      // />
-      //   ),
     },
     ...(!isVersionsView
       ? [

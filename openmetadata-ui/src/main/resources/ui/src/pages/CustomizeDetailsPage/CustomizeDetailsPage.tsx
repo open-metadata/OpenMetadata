@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { camelCase, noop } from 'lodash';
 import React, { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import gridBgImg from '../../assets/img/grid-bg-img.png';
@@ -24,11 +23,15 @@ import { EntityType } from '../../enums/entity.enum';
 import { Table } from '../../generated/entity/data/table';
 import { Page, PageType } from '../../generated/system/ui/page';
 import { useGridLayoutDirection } from '../../hooks/useGridLayoutDirection';
-import { getDummyDataByPage } from '../../utils/CustomizePage/CustomizePageUtils';
+import {
+  asyncNoop,
+  getDummyDataByPage,
+} from '../../utils/CustomizePage/CustomizePageUtils';
 import { getEntityName } from '../../utils/EntityUtils';
 import { useCustomizeStore } from '../CustomizablePage/CustomizeStore';
+import { PageTypeToEntityTypeMap } from './CustomizeDetailPage.interface';
 
-export const CustomizeTableDetailPage = ({
+export const CustomizeDetailsPage = ({
   personaDetails,
   onSaveLayout,
 }: CustomizeMyDataProps) => {
@@ -50,14 +53,7 @@ export const CustomizeTableDetailPage = ({
   // call the hook to set the direction of the grid layout
   useGridLayoutDirection();
 
-  const asyncNoop = async () => {
-    noop();
-  };
-
   if (!currentPageType) {
-    // eslint-disable-next-line no-console
-    console.error('currentPageType is not defined');
-
     return null;
   }
 
@@ -79,7 +75,9 @@ export const CustomizeTableDetailPage = ({
         <DataAssetsHeader
           isCustomizedView
           dataAsset={entityDummyData as Table}
-          entityType={camelCase(currentPageType) as EntityType.TABLE}
+          entityType={
+            PageTypeToEntityTypeMap[currentPageType] as EntityType.TABLE
+          }
           permissions={{} as OperationPermission}
           onDisplayNameUpdate={asyncNoop}
           onOwnerUpdate={asyncNoop}

@@ -148,7 +148,7 @@ export const CustomizeTabWidget = () => {
       tabs: newPanes,
     } as Page);
 
-    onChange(newActiveKey ?? EntityTabs.OVERVIEW);
+    newActiveKey !== activeKey && onChange(newActiveKey ?? EntityTabs.OVERVIEW);
   };
 
   const onEdit = (

@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { isEmpty, noop } from 'lodash';
+import { isEmpty } from 'lodash';
 import { EntityTags } from 'Models';
 import React, { useMemo } from 'react';
 import {
@@ -24,8 +24,8 @@ import { Table } from '../../../generated/entity/data/table';
 import { EntityReference } from '../../../generated/entity/type';
 import { TagLabel, TagSource } from '../../../generated/type/tagLabel';
 import { WidgetConfig } from '../../../pages/CustomizablePage/CustomizablePage.interface';
+import commonWidgetClassBase from '../../../utils/CommonWidget/CommonWidgetClassBase';
 import { getEntityName } from '../../../utils/EntityUtils';
-import { getWidgetFromKey } from '../../../utils/GlossaryTerm/GlossaryTermUtil';
 import { getTagsWithoutTier, getTierTags } from '../../../utils/TableUtils';
 import { createTagObject } from '../../../utils/TagsUtils';
 import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
@@ -234,22 +234,16 @@ export const CommonWidgets = ({
       return <OwnerLabelV2<GenericEntity> />;
     }
 
-    return getWidgetFromKey({
-      widgetConfig: widgetConfig,
-      handleOpenAddWidgetModal: noop,
-      handlePlaceholderWidgetKey: noop,
-      handleRemoveWidget: noop,
-      isEditView: false,
-    });
+    return commonWidgetClassBase.getCommonWidgetsFromConfig(widgetConfig);
   }, [widgetConfig, descriptionWidget, glossaryWidget, tagsWidget]);
 
   return (
     <div
+      className="overflow-scroll"
       data-grid={widgetConfig}
       data-testid={widgetConfig.i}
       id={widgetConfig.i}
-      key={widgetConfig.i}
-      style={{ overflow: 'scroll' }}>
+      key={widgetConfig.i}>
       {widget}
     </div>
   );
