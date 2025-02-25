@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Col, Row, Typography } from 'antd';
+import { Col, Row } from 'antd';
 import { AxiosError } from 'axios';
 import React, { FC, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -22,6 +22,7 @@ import { showErrorToast } from '../../../utils/ToastUtils';
 import BulkEntityImport from '../../BulkImport/BulkEntityImport.component';
 import TitleBreadcrumb from '../../common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../common/TitleBreadcrumb/TitleBreadcrumb.interface';
+import PageLayoutV1 from '../../PageLayoutV1/PageLayoutV1';
 import './import-glossary.less';
 
 interface Props {
@@ -68,26 +69,24 @@ const ImportGlossary: FC<Props> = ({ glossaryName }) => {
   };
 
   return (
-    <Row className="import-glossary p-x-md p-b-md" gutter={[16, 8]}>
-      <Col span={24}>
-        <TitleBreadcrumb titleLinks={breadcrumbList} />
-      </Col>
-      <Col span={24}>
-        <Typography.Title data-testid="title" level={5}>
-          {t('label.import-entity', {
-            entity: t('label.glossary-term-plural'),
-          })}
-        </Typography.Title>
-      </Col>
-      <Col span={24}>
-        <BulkEntityImport
-          entityType={EntityType.GLOSSARY_TERM}
-          fqn={glossaryName}
-          onSuccess={handleGlossaryRedirection}
-          onValidateCsvString={handleImportCsv}
-        />
-      </Col>
-    </Row>
+    <PageLayoutV1
+      pageTitle={t('label.import-entity', {
+        entity: t('label.glossary-term-plural'),
+      })}>
+      <Row className="import-glossary p-x-lg" gutter={[16, 16]}>
+        <Col span={24}>
+          <TitleBreadcrumb titleLinks={breadcrumbList} />
+        </Col>
+        <Col span={24}>
+          <BulkEntityImport
+            entityType={EntityType.GLOSSARY_TERM}
+            fqn={glossaryName}
+            onSuccess={handleGlossaryRedirection}
+            onValidateCsvString={handleImportCsv}
+          />
+        </Col>
+      </Row>
+    </PageLayoutV1>
   );
 };
 
