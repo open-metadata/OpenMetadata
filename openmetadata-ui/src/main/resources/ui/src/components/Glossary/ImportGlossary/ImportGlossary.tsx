@@ -69,7 +69,10 @@ const ImportGlossary: FC<Props> = ({ glossaryName }) => {
   };
 
   return (
-    <PageLayoutV1 pageTitle="Import entity">
+    <PageLayoutV1
+      pageTitle={t('label.import-entity', {
+        entity: t('label.glossary-term-plural'),
+      })}>
       <Row className="import-glossary p-x-lg" gutter={[16, 16]}>
         <Col span={24}>
           <TitleBreadcrumb titleLinks={breadcrumbList} />
