@@ -155,8 +155,9 @@ public interface EntityDAO<T extends EntityInterface> {
   String findById(
       @Define("table") String table, @BindUUID("id") UUID id, @Define("cond") String cond);
 
-  @SqlQuery("SELECT json FROM <table> WHERE id IN (<ids>) <cond>")
-  List<String> findByIds(
+  @SqlQuery("SELECT id, json FROM <table> WHERE id IN (<ids>) <cond>")
+  @RegisterRowMapper(EntityIdJsonPairMapper.class)
+  List<EntityIdJsonPair> findByIds(
       @Define("table") String table,
       @BindList("ids") List<String> ids,
       @Define("cond") String cond);
@@ -478,7 +479,7 @@ public interface EntityDAO<T extends EntityInterface> {
             ids.stream().map(UUID::toString).distinct().toList(),
             getCondition(include))
         .stream()
-        .map(json -> jsonToEntity(json, ids))
+        .map(pair -> jsonToEntity(pair.json, pair.id))
         .toList();
   }
 
@@ -601,6 +602,15 @@ public interface EntityDAO<T extends EntityInterface> {
     @Override
     public EntityNameColumnHashJsonPair map(ResultSet r, StatementContext ctx) throws SQLException {
       return new EntityNameColumnHashJsonPair(r.getString(1), r.getString(2));
+    }
+  }
+
+  record EntityIdJsonPair(UUID id, String json) {}
+
+  class EntityIdJsonPairMapper implements RowMapper<EntityIdJsonPair> {
+    @Override
+    public EntityIdJsonPair map(ResultSet r, StatementContext ctx) throws SQLException {
+      return new EntityIdJsonPair(UUID.fromString(r.getString(1)), r.getString(2));
     }
   }
 }
