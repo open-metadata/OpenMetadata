@@ -962,6 +962,22 @@ export const TaskTabNew = ({
     []
   );
   const ActionRequired = () => {
+    if (!actionButtons) {
+      return null;
+    }
+
+    if (React.isValidElement(actionButtons)) {
+      const childrenProps = actionButtons.props as {
+        children: React.ReactNode;
+      };
+      const childrenCount = React.Children.toArray(
+        childrenProps.children
+      ).length;
+      if (childrenCount === 0) {
+        return null;
+      }
+    }
+
     return (
       <div className="action-required-card d-flex justify-between items-center">
         <Col span={12}>

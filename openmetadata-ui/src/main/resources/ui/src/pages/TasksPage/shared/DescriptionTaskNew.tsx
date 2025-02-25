@@ -102,7 +102,7 @@ const DescriptionTaskNew: FC<DescriptionTaskProps> = ({
   };
 
   return (
-    <div data-testid="task-description-tabs">
+    <div className="w-full" data-testid="task-description-tabs">
       <Fragment>
         {isTaskClosed ? (
           getDiffView()
