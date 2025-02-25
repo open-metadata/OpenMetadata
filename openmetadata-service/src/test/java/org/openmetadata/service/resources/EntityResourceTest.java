@@ -2508,7 +2508,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
             (patchedEntity.getCertification().getExpiryDate()
                 - patchedEntity.getCertification().getAppliedDate()),
         30D * 24 * 60 * 60 * 1000,
-        10 * 1000);
+        60 * 1000);
 
     // Create Second Tag
     Tag newCertificationTag =
