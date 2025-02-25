@@ -40,8 +40,8 @@ import React, {
   useMemo,
   useState,
 } from 'react';
-import { ReactComponent as AddPlaceHolderIcon } from '../../../../assets/svg/add-placeholder.svg';
 import { ReactComponent as DeleteIcon } from '../../../../assets/svg/ic-delete.svg';
+import { ReactComponent as AddPlaceHolderIcon } from '../../../../assets/svg/ic-no-records.svg';
 import { ReactComponent as TaskFilterIcon } from '../../../../assets/svg/ic-task-filter-button.svg';
 import { ReactComponent as IconDropdown } from '../../../../assets/svg/menu.svg';
 import { ASSET_MENU_KEYS } from '../../../../constants/Assets.constants';
@@ -92,6 +92,7 @@ import {
 import { getTagAssetsQueryFilter } from '../../../../utils/TagsUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import ErrorPlaceHolderNew from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolderNew';
 import { ManageButtonItemLabel } from '../../../common/ManageButtonContentItem/ManageButtonContentItem.component';
 import NextPrevious from '../../../common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../../common/NextPrevious/NextPrevious.interface';
@@ -440,17 +441,20 @@ const AssetsTabs = forwardRef(
         !permissions.Create
       ) {
         return (
-          <ErrorPlaceHolder>
+          <ErrorPlaceHolderNew
+            icon={<AddPlaceHolderIcon className="h-32 w-32" />}>
             {isObject(noDataPlaceholder) && (
-              <Typography.Paragraph>
-                {noDataPlaceholder.message}
-              </Typography.Paragraph>
+              <>
+                <Typography.Paragraph>
+                  {noDataPlaceholder.message}
+                </Typography.Paragraph>
+              </>
             )}
-          </ErrorPlaceHolder>
+          </ErrorPlaceHolderNew>
         );
       } else {
         return (
-          <ErrorPlaceHolder
+          <ErrorPlaceHolderNew
             icon={<AddPlaceHolderIcon className="h-32 w-32" />}
             type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
             <Typography.Paragraph>
@@ -497,7 +501,7 @@ const AssetsTabs = forwardRef(
                 </Button>
               </Tooltip>
             )}
-          </ErrorPlaceHolder>
+          </ErrorPlaceHolderNew>
         );
       }
     }, [
@@ -792,7 +796,7 @@ const AssetsTabs = forwardRef(
       <>
         <div
           className={classNames(
-            'assets-tab-container relative bg-white p-box border-radius-card'
+            'assets-tab-container relative bg-white p-box border-radius-card h-full'
           )}
           data-testid="table-container"
           id="asset-tab">

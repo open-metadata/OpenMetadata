@@ -153,6 +153,7 @@ export const ActivityFeedTabNew = ({
       )
     );
     setActiveThread();
+    setIsFullWidth(false);
   };
 
   const placeholderText = useMemo(() => {
@@ -438,8 +439,8 @@ export const ActivityFeedTabNew = ({
     );
   }, [t, handleTabChange]);
 
-  const handlePanelResize = () => {
-    setIsFullWidth(true);
+  const handlePanelResize = (isFullWidth: boolean) => {
+    setIsFullWidth(isFullWidth);
   };
 
   return (
@@ -469,6 +470,7 @@ export const ActivityFeedTabNew = ({
           componentsVisibility={componentsVisibility}
           emptyPlaceholderText={placeholderText}
           feedList={entityThread}
+          handlePanelResize={handlePanelResize}
           isForFeedTab={isForFeedTab}
           isLoading={false}
           selectedThread={selectedThread}
@@ -486,7 +488,7 @@ export const ActivityFeedTabNew = ({
         />
       </div>
 
-      <div className="right-container">
+      <div className={`right-container ${isFullWidth ? 'hide-panel' : ''}`}>
         {loader}
         {selectedThread &&
           !loading &&

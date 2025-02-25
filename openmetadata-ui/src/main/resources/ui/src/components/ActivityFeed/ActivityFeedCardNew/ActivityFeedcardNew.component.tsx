@@ -45,7 +45,7 @@ interface ActivityFeedCardNewProps {
   post: Post;
   showActivityFeedEditor?: boolean;
   showThread?: boolean;
-  handlePanelResize?: () => void;
+  handlePanelResize?: (isFullWidth: boolean) => void;
 }
 
 const ActivityFeedCardNew = ({
@@ -172,7 +172,7 @@ const ActivityFeedCardNew = ({
                     <CloseTabIcon
                       className="close-tab-icon"
                       height={16}
-                      onClick={handlePanelResize}
+                      onClick={() => handlePanelResize?.(true)}
                     />
                   )}
                 </Space>

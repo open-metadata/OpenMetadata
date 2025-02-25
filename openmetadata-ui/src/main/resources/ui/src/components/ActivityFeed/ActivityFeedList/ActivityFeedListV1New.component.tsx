@@ -13,11 +13,11 @@
 import { Typography } from 'antd';
 import { isEmpty } from 'lodash';
 import React, { ReactNode, useEffect, useMemo, useState } from 'react';
-import { ReactComponent as FeedEmptyIcon } from '../../../assets/svg/activity-feed-no-data-placeholder.svg';
-import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
+import { ReactComponent as FeedEmptyIcon } from '../../../assets/svg/ic-task-empty.svg';
+import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { Thread } from '../../../generated/entity/feed/thread';
 import { getFeedListWithRelativeDays } from '../../../utils/FeedUtils';
+import ErrorPlaceHolderNew from '../../common/ErrorWithPlaceholder/ErrorPlaceHolderNew';
 import Loader from '../../common/Loader/Loader';
 import FeedPanelBodyV1New from '../ActivityFeedPanel/FeedPanelBodyV1New';
 
@@ -37,6 +37,7 @@ interface ActivityFeedListV1Props {
   selectedThread?: Thread;
   onAfterClose?: () => void;
   onUpdateEntityDetails?: () => void;
+  handlePanelResize?: (isFullWidth: boolean) => void;
 }
 
 const ActivityFeedListV1New = ({
@@ -55,6 +56,7 @@ const ActivityFeedListV1New = ({
   selectedThread,
   onAfterClose,
   onUpdateEntityDetails,
+  handlePanelResize,
 }: ActivityFeedListV1Props) => {
   const [entityThread, setEntityThread] = useState<Thread[]>([]);
 
@@ -71,6 +73,14 @@ const ActivityFeedListV1New = ({
       );
     }
   }, [entityThread, selectedThread, onFeedClick]);
+
+  useEffect(() => {
+    if (isEmpty(feedList) && handlePanelResize) {
+      handlePanelResize?.(true);
+    } else {
+      handlePanelResize?.(false);
+    }
+  }, [feedList]);
 
   const feeds = useMemo(
     () =>
@@ -107,15 +117,15 @@ const ActivityFeedListV1New = ({
         className="h-full p-x-md"
         data-testid="no-data-placeholder-container"
         id="feedData">
-        <ErrorPlaceHolder
-          icon={<FeedEmptyIcon height={SIZE.X_SMALL} width={SIZE.X_SMALL} />}
+        <ErrorPlaceHolderNew
+          icon={<FeedEmptyIcon height={140} width={140} />}
           type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
           <Typography.Paragraph
-            className="tw-max-w-md"
+            className="placeholder-text"
             style={{ marginBottom: '0' }}>
             {emptyPlaceholderText}
           </Typography.Paragraph>
-        </ErrorPlaceHolder>
+        </ErrorPlaceHolderNew>
       </div>
     );
   }
