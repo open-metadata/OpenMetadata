@@ -19,7 +19,7 @@ from openmetadata_managed_apis.api.response import ApiResponse
 from openmetadata_managed_apis.utils.logger import routes_logger
 from pydantic import ValidationError
 
-from metadata.automations.runner import execute
+from metadata.automations.execute_runner import execute
 from metadata.ingestion.api.parser import parse_automation_workflow_gracefully
 from metadata.utils.secrets.secrets_manager_factory import SecretsManagerFactory
 

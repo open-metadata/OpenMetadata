@@ -62,6 +62,9 @@
             },
             {
               "$ref": "apiServiceMetadataPipeline.json"
+            },
+            {
+              "$ref": "reverseIngestionPipeline.json"
             }
           ]
         }

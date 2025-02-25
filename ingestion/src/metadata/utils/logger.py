@@ -60,6 +60,7 @@ class Loggers(Enum):
     TEST_SUITE = "TestSuite"
     QUERY_RUNNER = "QueryRunner"
     APP = "App"
+    REVERSE_INGESTION = "ReverseIngestion"
 
     @DynamicClassAttribute
     def value(self):
@@ -141,6 +142,14 @@ def ingestion_logger():
     """
 
     return logging.getLogger(Loggers.INGESTION.value)
+
+
+def reverse_ingestion_logger():
+    """
+    Method to get the REVERSE INGESTION logger
+    """
+
+    return logging.getLogger(Loggers.REVERSE_INGESTION.value)
 
 
 def utils_logger():
