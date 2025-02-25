@@ -1252,7 +1252,7 @@ export const TaskTabNew = ({
       <CloseTabIcon
         className="close-tab-icon cursor-pointer"
         height={16}
-        onClick={rest.handlePanelResize}
+        onClick={() => rest.handlePanelResize?.(true)}
       />
     </Row>
   );
