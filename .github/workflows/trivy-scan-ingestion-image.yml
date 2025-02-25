@@ -9,6 +9,8 @@ on:
           - "openmetadata-spec/src/main/resources/json/schema/**"
           - "pom.xml"
           - "Makefile"
+          - "**/*.py"
+          - "ingestion/Dockerfile.ci"
     
 concurrency: 
   group: trivy-ingestion-scan-${{ github.head_ref || github.run_id }}
