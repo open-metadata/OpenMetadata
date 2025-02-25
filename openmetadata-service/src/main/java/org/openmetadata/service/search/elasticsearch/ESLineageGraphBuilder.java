@@ -44,11 +44,6 @@ public class ESLineageGraphBuilder {
   }
 
   public SearchLineageResult getUpstreamLineage(SearchLineageRequest request) throws IOException {
-    if (request.getLayerFrom() < 0 || request.getLayerSize() < 0) {
-      throw new IllegalArgumentException(
-          "LayerFrom and LayerSize should be greater than or equal to 0");
-    }
-
     SearchLineageResult result =
         new SearchLineageResult()
             .withNodes(new HashMap<>())
@@ -71,6 +66,11 @@ public class ESLineageGraphBuilder {
       throws IOException {
     if (depth < 0 || hasToFqnMap.isEmpty()) {
       return;
+    }
+
+    if (lineageRequest.getLayerFrom() < 0 || lineageRequest.getLayerSize() < 0) {
+      throw new IllegalArgumentException(
+          "LayerFrom and LayerSize should be greater than or equal to 0");
     }
 
     Map<String, String> hasToFqnMapForLayer = new HashMap<>();
@@ -176,6 +176,11 @@ public class ESLineageGraphBuilder {
       throws IOException {
     if (depth <= 0 || hasToFqnMap.isEmpty()) {
       return;
+    }
+
+    if (lineageRequest.getLayerFrom() < 0 || lineageRequest.getLayerSize() < 0) {
+      throw new IllegalArgumentException(
+          "LayerFrom and LayerSize should be greater than or equal to 0");
     }
 
     Map<String, String> hasToFqnMapForLayer = new HashMap<>();

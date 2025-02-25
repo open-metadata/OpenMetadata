@@ -73,6 +73,11 @@ public class OSLineageGraphBuilder {
       return;
     }
 
+    if (lineageRequest.getLayerFrom() < 0 || lineageRequest.getLayerSize() < 0) {
+      throw new IllegalArgumentException(
+          "LayerFrom and LayerSize should be greater than or equal to 0");
+    }
+
     Map<String, String> hasToFqnMapForLayer = new HashMap<>();
     Map<String, Set<String>> directionKeyAndValues =
         buildDirectionToFqnSet(lineageRequest.getDirectionValue(), hasToFqnMap.keySet());
@@ -176,6 +181,11 @@ public class OSLineageGraphBuilder {
       throws IOException {
     if (depth <= 0 || hasToFqnMap.isEmpty()) {
       return;
+    }
+
+    if (lineageRequest.getLayerFrom() < 0 || lineageRequest.getLayerSize() < 0) {
+      throw new IllegalArgumentException(
+          "LayerFrom and LayerSize should be greater than or equal to 0");
     }
 
     Map<String, String> hasToFqnMapForLayer = new HashMap<>();
