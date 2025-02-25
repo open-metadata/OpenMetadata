@@ -175,7 +175,6 @@ const ServiceDetailsPage: FunctionComponent = () => {
     paging: ingestionPaging,
     currentPage: currentIngestionPage,
     pageSize: ingestionPageSize,
-    pagingCursor: ingestionPagingCursor,
     handlePageChange: handleIngestionPageChange,
     handlePagingChange: handleIngestionPagingChange,
   } = ingestionPagingInfo;
@@ -745,19 +744,10 @@ const ServiceDetailsPage: FunctionComponent = () => {
           { [cursorType]: ingestionPaging[cursorType] },
           ingestionPageSize
         );
-
-        handleIngestionPageChange(
-          currentPage,
-          {
-            cursorType: cursorType,
-            cursorValue: paging[cursorType]!,
-          },
-          ingestionPageSize
-        );
       } else if (!isEmpty(searchText)) {
         searchPipelines(searchText, currentPage);
-        handleIngestionPageChange(currentPage);
       }
+      handleIngestionPageChange(currentPage);
     },
     [
       ingestionPaging,
@@ -890,10 +880,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
   useEffect(() => {
     if (isAirflowAvailable && !isOpenMetadataService) {
       isEmpty(searchText)
-        ? getAllIngestionWorkflows(
-            {},
-            ingestionPagingCursor?.pageSize ?? ingestionPageSize
-          )
+        ? getAllIngestionWorkflows({}, ingestionPageSize)
         : searchPipelines(searchText, currentIngestionPage);
     }
   }, [isAirflowAvailable, searchText, ingestionPageSize]);
