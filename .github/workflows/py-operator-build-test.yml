@@ -90,4 +90,4 @@ jobs:
       - name: Validate ingestion
         run: |
           source env/bin/activate
-          python scripts/validate_ingestion.py
+          python scripts/validate_sample_data.py
