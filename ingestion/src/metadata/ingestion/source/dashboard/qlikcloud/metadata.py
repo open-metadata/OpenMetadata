@@ -191,18 +191,23 @@ class QlikcloudSource(QliksenseSource):
         db_service_name: Optional[str] = None,
     ) -> Iterable[Either[AddLineageRequest]]:
         """Get lineage method"""
-        if not db_service_name:
-            return
-        db_service_entity = self.metadata.get_by_name(
-            entity=DatabaseService, fqn=db_service_name
-        )
+        db_service_entity = None
+        if db_service_name:
+            db_service_entity = self.metadata.get_by_name(
+                entity=DatabaseService, fqn=db_service_name
+            )
         for datamodel in self.data_models or []:
             try:
                 data_model_entity = self._get_datamodel(datamodel_id=datamodel.id)
                 if data_model_entity:
-                    om_table = self._get_database_table(
-                        db_service_entity, data_model_entity
-                    )
+                    if db_service_entity:
+                        om_table = self._get_database_table(
+                            db_service_entity, data_model_entity
+                        )
+                    else:
+                        om_table = self.get_table_entity_from_es(
+                            table_name=data_model_entity.displayName,
+                        )
                     if om_table:
                         columns_list = [col.name for col in datamodel.fields]
                         column_lineage = self._get_column_lineage(
