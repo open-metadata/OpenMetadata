@@ -28,6 +28,11 @@ on:
       - "yarn.lock"
       - "Makefile"
       - "bootstrap/**"
+  pull_request_target:
+    types: [opened, synchronize, labeled]
+    paths:
+      - "openmetadata-service/**"
+      - "openmetadata-spec/src/main/resources/json/schema/**"
 
 permissions:
   contents: read
@@ -59,7 +64,7 @@ jobs:
           disable-reviews: true  # To not auto approve changes
 
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.head.sha }}
 
@@ -74,4 +79,4 @@ jobs:
           repo: open-metadata/openmetadata-collate
           token: ${{ secrets.COLLATE_PAT }}
           wait-for-completion: true
-          inputs: '{ "sha": "${{ env.SHA }}" }'
+          inputs: '{ "sha": "${{ env.SHA }}", "event": "${{ github.event_name }}" }'
