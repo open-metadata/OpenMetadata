@@ -4,7 +4,6 @@ import static org.openmetadata.schema.EntityInterface.ENTITY_TYPE_TO_CLASS_MAP;
 import static org.openmetadata.service.apps.bundles.insights.utils.TimestampUtils.END_TIMESTAMP_KEY;
 import static org.openmetadata.service.apps.bundles.insights.utils.TimestampUtils.START_TIMESTAMP_KEY;
 import static org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.DataAssetsWorkflow.ENTITY_TYPE_FIELDS_KEY;
-import static org.openmetadata.service.search.SearchIndexUtils.parseFollowers;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.ENTITY_TYPE_KEY;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.TIMESTAMP_KEY;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getUpdatedStats;
@@ -231,9 +230,6 @@ public class DataInsightsEntityEnricherProcessor
     Optional<Object> oCustomProperties = Optional.ofNullable(entityMap.get("extension"));
     oCustomProperties.ifPresent(
         o -> entityMap.put(String.format("%sCustomProperty", entityType), o));
-
-    // Parse Followers:
-    entityMap.put("followers", parseFollowers(entity.getFollowers()));
 
     return entityMap;
   }
