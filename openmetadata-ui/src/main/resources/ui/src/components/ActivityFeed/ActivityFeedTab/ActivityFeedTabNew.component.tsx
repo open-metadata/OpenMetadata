@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Dropdown, Segmented } from 'antd';
+import { Dropdown, Segmented, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import {
@@ -23,7 +23,7 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useHistory, useParams } from 'react-router-dom';
+import { useHistory, useParams } from 'react-router-dom';
 import { ReactComponent as TaskCloseIcon } from '../../../assets/svg/ic-check-circle-new.svg';
 import { ReactComponent as TaskCloseIconBlue } from '../../../assets/svg/ic-close-task.svg';
 import { ReactComponent as MentionIcon } from '../../../assets/svg/ic-mention.svg';
@@ -32,7 +32,7 @@ import { ReactComponent as TaskFilterIcon } from '../../../assets/svg/ic-task-fi
 import { ReactComponent as TaskIcon } from '../../../assets/svg/ic-task-new.svg';
 import { ReactComponent as MyTaskIcon } from '../../../assets/svg/task.svg';
 
-import { ICON_DIMENSION_USER_PAGE, ROUTES } from '../../../constants/constants';
+import { ICON_DIMENSION_USER_PAGE } from '../../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
 import { observerOptions } from '../../../constants/Mydata.constants';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
@@ -47,7 +47,7 @@ import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useElementInView } from '../../../hooks/useElementInView';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { getFeedCount } from '../../../rest/feedsAPI';
-import { getFeedCounts, Transi18next } from '../../../utils/CommonUtils';
+import { getFeedCounts } from '../../../utils/CommonUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import {
   ENTITY_LINK_SEPARATOR,
@@ -159,18 +159,32 @@ export const ActivityFeedTabNew = ({
   const placeholderText = useMemo(() => {
     if (activeTab === ActivityFeedTabs.ALL) {
       return (
-        <Transi18next
-          i18nKey="message.no-activity-feed"
-          renderElement={<Link to={ROUTES.EXPLORE} />}
-          values={{
-            explored: t('message.have-not-explored-yet'),
-          }}
-        />
+        <div className="d-flex flex-col gap-4">
+          <Typography.Text className="placeholder-title">
+            {t('message.no-activity-feed-title')}
+          </Typography.Text>
+          <Typography.Text className="placeholder-text">
+            {t('message.no-activity-feed-description')}
+          </Typography.Text>
+        </div>
       );
     } else if (activeTab === ActivityFeedTabs.MENTIONS) {
-      return t('message.no-mentions');
+      return (
+        <Typography.Text className="placeholder-text">
+          {t('message.no-mentions')}
+        </Typography.Text>
+      );
     } else {
-      return t('message.no-open-tasks');
+      return (
+        <div className="d-flex flex-col gap-4">
+          <Typography.Text className="placeholder-title">
+            {t('message.no-open-tasks-title')}
+          </Typography.Text>
+          <Typography.Text className="placeholder-text">
+            {t('message.no-open-tasks-description')}
+          </Typography.Text>
+        </div>
+      );
     }
   }, [activeTab]);
 
