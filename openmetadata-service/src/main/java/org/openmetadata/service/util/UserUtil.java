@@ -44,6 +44,7 @@ import org.openmetadata.schema.security.client.OpenMetadataJWTClientConfig;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.utils.EntityInterfaceUtil;
+import org.openmetadata.sdk.exception.UserCreationException;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.EntityRepository;
@@ -81,7 +82,7 @@ public final class UserUtil {
     }
   }
 
-  private static void createOrUpdateUser(
+  public static void createOrUpdateUser(
       AuthProvider authProvider, String username, String password, String domain, Boolean isAdmin) {
     UserRepository userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
     User updatedUser = null;
@@ -167,8 +168,8 @@ public final class UserUtil {
       // In HA set up the other server may have already added the user.
       LOG.debug("Caught exception", exception);
       user.setAuthenticationMechanism(null);
+      throw UserCreationException.byMessage(user.getName(), exception.getMessage());
     }
-    return null;
   }
 
   public static User user(String name, String domain, String updatedBy) {
