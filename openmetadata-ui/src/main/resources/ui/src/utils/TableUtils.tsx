@@ -70,6 +70,7 @@ import { ReactComponent as IconNotNullLineThrough } from '../assets/svg/icon-not
 import { ReactComponent as IconSortLineThrough } from '../assets/svg/icon-sort-line-through.svg';
 import { ReactComponent as IconTestSuite } from '../assets/svg/icon-test-suite.svg';
 
+import { ReactComponent as TeamIcon } from '../assets/svg/ic-teams.svg';
 import { ReactComponent as IconNotNull } from '../assets/svg/icon-not-null.svg';
 import { ReactComponent as RoleIcon } from '../assets/svg/icon-role-grey.svg';
 import { ReactComponent as IconSortKey } from '../assets/svg/icon-sort.svg';
@@ -84,7 +85,6 @@ import { ReactComponent as PolicyIcon } from '../assets/svg/policies.svg';
 import { ReactComponent as ServicesIcon } from '../assets/svg/services.svg';
 import { ReactComponent as TagIcon } from '../assets/svg/tag.svg';
 import { ReactComponent as TaskIcon } from '../assets/svg/task-ic.svg';
-import { ReactComponent as TeamIcon } from '../assets/svg/teams.svg';
 import { ReactComponent as UserIcon } from '../assets/svg/user.svg';
 import { ActivityFeedTab } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import { CustomPropertyTable } from '../components/common/CustomPropertyTable/CustomPropertyTable';
