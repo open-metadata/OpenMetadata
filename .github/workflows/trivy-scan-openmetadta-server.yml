@@ -12,6 +12,8 @@ on:
           - "yarn.lock"
           - "Makefile"
           - "bootstrap/**"
+          - "**/*.java"
+          - "docker/development/Dockerfile"
 concurrency: 
   group: trivy-server-scan-${{ github.head_ref || github.run_id }}
   cancel-in-progress: true
