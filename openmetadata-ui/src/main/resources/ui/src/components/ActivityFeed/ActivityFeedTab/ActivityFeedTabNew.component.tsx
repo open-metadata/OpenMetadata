@@ -460,7 +460,7 @@ export const ActivityFeedTabNew = ({
   return (
     <div className="activity-feed-tab">
       <div
-        className={`center-container ${isFullWidth ? 'full-width' : ''}`}
+        className={`center-container  ${isFullWidth ? 'full-width' : ''}`}
         id="center-container">
         {(isTaskActiveTab || isMentionTabSelected) && (
           <div

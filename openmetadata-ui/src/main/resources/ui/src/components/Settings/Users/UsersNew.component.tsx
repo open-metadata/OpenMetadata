@@ -222,9 +222,7 @@ const Users = ({
           queryFilter: queryFilters.myData,
           type: AssetsOfEntity.MY_DATA,
           noDataPlaceholder: {
-            message: t('server.you-have-not-action-anything-yet', {
-              action: t('label.owned-lowercase'),
-            }),
+            message: t('server.no-records-found'),
           },
         }),
       },
@@ -241,9 +239,7 @@ const Users = ({
           queryFilter: queryFilters.following,
           type: AssetsOfEntity.FOLLOWING,
           noDataPlaceholder: {
-            message: t('server.you-have-not-action-anything-yet', {
-              action: t('label.followed-lowercase'),
-            }),
+            message: t('server.no-records-found'),
           },
         }),
       },

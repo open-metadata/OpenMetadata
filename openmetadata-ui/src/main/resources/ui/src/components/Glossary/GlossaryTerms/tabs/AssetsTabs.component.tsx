@@ -442,13 +442,13 @@ const AssetsTabs = forwardRef(
       ) {
         return (
           <ErrorPlaceHolderNew
-            icon={<AddPlaceHolderIcon className="h-32 w-32" />}>
+            icon={<AddPlaceHolderIcon height={140} width={140} />}>
             {isObject(noDataPlaceholder) && (
-              <>
+              <div className="gap-4">
                 <Typography.Paragraph>
                   {noDataPlaceholder.message}
                 </Typography.Paragraph>
-              </>
+              </div>
             )}
           </ErrorPlaceHolderNew>
         );
