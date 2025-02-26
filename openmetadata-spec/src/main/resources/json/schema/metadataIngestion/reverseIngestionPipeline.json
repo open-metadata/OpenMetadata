@@ -57,7 +57,7 @@
             },
             "required": [
                 "id",
-                "entity",
+                "entityLink",
                 "type",
                 "parameters"
             ],
@@ -84,7 +84,8 @@
     },
     "additionalProperties": false,
     "required": [
-        "serviceId",
+        "type",
+        "service",
         "operations"
     ]
 }
