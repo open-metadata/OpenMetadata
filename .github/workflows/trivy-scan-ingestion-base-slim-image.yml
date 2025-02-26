@@ -4,11 +4,6 @@ on:
     pull_request_target:
         types: [labeled, opened, synchronize, reopened]
         paths:
-          - "ingestion/**"
-          - "openmetadata-service/**"
-          - "openmetadata-spec/src/main/resources/json/schema/**"
-          - "pom.xml"
-          - "Makefile"
           - "**/*.py"
           - "ingestion/operators/docker/Dockerfile.ci"
     
