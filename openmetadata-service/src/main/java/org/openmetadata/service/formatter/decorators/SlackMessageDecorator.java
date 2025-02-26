@@ -21,6 +21,8 @@ import com.slack.api.model.block.composition.BlockCompositions;
 import com.slack.api.model.block.composition.PlainTextObject;
 import com.slack.api.model.block.composition.TextObject;
 import com.slack.api.model.block.element.ImageElement;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
@@ -77,14 +79,18 @@ public class SlackMessageDecorator implements MessageDecorator<SlackMessage> {
     return "~";
   }
 
+  @Override
   public String getEntityUrl(String prefix, String fqn, String additionalParams) {
+    String encodedFqn =
+        URLEncoder.encode(fqn.trim(), StandardCharsets.UTF_8).replace("+", "%20"); // Encode URL
     return String.format(
         "<%s/%s/%s%s|%s>",
         EmailUtil.getOMBaseURL(),
         prefix,
-        fqn.trim().replaceAll(" ", "%20"),
+        encodedFqn, // Use encoded FQN in the URL
         nullOrEmpty(additionalParams) ? "" : String.format("/%s", additionalParams),
-        fqn.trim());
+        fqn.trim() // Display text remains unencoded
+        );
   }
 
   @Override

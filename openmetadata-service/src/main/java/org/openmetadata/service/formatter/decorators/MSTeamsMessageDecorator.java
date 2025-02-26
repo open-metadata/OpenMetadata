@@ -15,6 +15,8 @@ package org.openmetadata.service.formatter.decorators;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -81,11 +83,14 @@ public class MSTeamsMessageDecorator implements MessageDecorator<TeamsMessage> {
 
   @Override
   public String getEntityUrl(String prefix, String fqn, String additionalParams) {
+    String encodedFqn =
+        URLEncoder.encode(fqn.trim(), StandardCharsets.UTF_8).replace("+", "%20"); // Encode for URL
     return String.format(
-        "[%s](/%s/%s%s)",
+        "[%s](%s/%s/%s%s)",
         fqn.trim(),
         EmailUtil.getOMBaseURL(),
         prefix,
+        encodedFqn,
         nullOrEmpty(additionalParams) ? "" : String.format("/%s", additionalParams));
   }
 
