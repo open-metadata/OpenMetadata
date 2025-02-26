@@ -17,7 +17,7 @@ import incidentManagerSampleData from '../../../assets/img/incidentManagerSample
 import profilerConfigPage from '../../../assets/img/profilerConfigPage.png';
 import collateIcon from '../../../assets/svg/ic-collate.svg';
 
-export const COOKIE_VERSION = 'VERSION_1_6_4'; // To be changed with each release.
+export const COOKIE_VERSION = 'VERSION_1_6_5'; // To be changed with each release.
 
 // for youtube video make isImage = false and path = {video embed id}
 // embed:- youtube video => share => click on embed and take {url with id} from it
@@ -1610,6 +1610,22 @@ Since we are introducing the Auto Classification workflow, we are going to remov
 
 
 `,
+    },
+  },
+  {
+    id: 61,
+    version: 'v1.6.5',
+    description: 'Released on 27th February 2025.',
+    features: [],
+    changeLogs: {
+      Improvements: `-   Fix hyperlink encoding for alerts and notifications
+-   Fix failed tests sample data exception management
+-   Fix MySQL and MariaDB window function computation when no database is added in the connection
+-   Add support for tags and glossary terms in Domains and Data Products
+-   Fix consolidation issues on incremental changes
+-   Fix snowflake lineage Key Error
+-   Fix iframe SSO setup
+-   Support pagination for container children`,
     },
   },
 ];
