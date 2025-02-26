@@ -11,14 +11,17 @@
  *  limitations under the License.
  */
 
-export enum AlertDetailTabs {
-  CONFIGURATION = 'configuration',
-  RECENT_EVENTS = 'recentEvents',
-  DIAGNOSTIC_INFO = 'diagnostic info',
+export interface AlertDiagnosticData {
+  latestOffset: number;
+  currentOffset: number;
+  startingOffset: number;
+  hasProcessedAllEvents: boolean;
+  successfulEventsCount: number;
+  failedEventsCount: number;
+  relevantUnprocessedEventsCount: number;
+  totalUnprocessedEventsCount: number;
 }
 
-export enum AlertRecentEventFilters {
-  ALL = 'all',
-  SUCCESSFUL = 'successful',
-  FAILED = 'failed',
+export interface AlertDiagnosticInfoTabProps {
+  diagnosticData: AlertDiagnosticData;
 }

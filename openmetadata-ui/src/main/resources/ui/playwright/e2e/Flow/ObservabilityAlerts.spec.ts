@@ -381,3 +381,37 @@ test('Alert operations for a user with and without permissions', async ({
     await deleteAlert(userWithPermissionsPage, data.alertDetails, false);
   });
 });
+
+test('Alert Diagnostic Info', async ({ page }) => {
+  const ALERT_NAME = generateAlertName();
+
+  await test.step('Create alert', async () => {
+    await visitObservabilityAlertPage(page);
+    data.alertDetails = await createAlert({
+      page,
+      alertName: ALERT_NAME,
+      sourceName: SOURCE_NAME_1,
+      sourceDisplayName: SOURCE_DISPLAY_NAME_1,
+      user: user1,
+      createButtonId: 'create-observability',
+      selectId: 'Owner Name',
+      addTrigger: true,
+    });
+  });
+
+  await test.step('Verify diagnostic info tab', async () => {
+    await visitObservabilityAlertPage(page);
+    await visitAlertDetailsPage(page, data.alertDetails);
+
+    const diagnosticTab = page.getByRole('tab', { name: /diagnostic info/i });
+    const diagnosticInfoResponse = page.waitForResponse(
+      `/api/v1/events/subscriptions/**/diagnosticInfo`
+    );
+    await diagnosticTab.click();
+    await diagnosticInfoResponse;
+  });
+
+  await test.step('Delete alert', async () => {
+    await deleteAlert(page, data.alertDetails, false);
+  });
+});
