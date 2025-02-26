@@ -76,7 +76,7 @@ import org.openmetadata.service.util.ResultList;
 public class DataProductResource extends EntityResource<DataProduct, DataProductRepository> {
   public static final String COLLECTION_PATH = "/v1/dataProducts/";
   private final DataProductMapper mapper = new DataProductMapper();
-  static final String FIELDS = "domain,owners,experts,assets,extension";
+  static final String FIELDS = "domain,owners,experts,assets,extension,tags";
 
   public DataProductResource(Authorizer authorizer, Limits limits) {
     super(Entity.DATA_PRODUCT, authorizer, limits);

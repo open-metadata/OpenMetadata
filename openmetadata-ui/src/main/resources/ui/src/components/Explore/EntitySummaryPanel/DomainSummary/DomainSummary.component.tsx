@@ -1,5 +1,5 @@
 /*
- *  Copyright 2023 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,51 +10,35 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Col, Row, Space, Typography } from 'antd';
+import { Col, Divider, Row, Space, Typography } from 'antd';
 import { get } from 'lodash';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { DataProduct } from '../../../../generated/entity/domains/dataProduct';
+import { Domain } from '../../../../generated/entity/domains/domain';
 import { getSortedTagsWithHighlight } from '../../../../utils/EntitySummaryPanelUtils';
-import { getEntityName } from '../../../../utils/EntityUtils';
 import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
 import SummaryPanelSkeleton from '../../../common/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
 import SummaryTagsDescription from '../../../common/SummaryTagsDescription/SummaryTagsDescription.component';
 import { SearchedDataProps } from '../../../SearchedData/SearchedData.interface';
 
-interface DataProductSummaryProps {
-  entityDetails: DataProduct;
+interface DomainSummaryProps {
+  entityDetails: Domain;
   isLoading?: boolean;
   highlights?: SearchedDataProps['data'][number]['highlight'];
 }
 
-const DataProductSummary = ({
+const DomainSummary = ({
   entityDetails,
   isLoading,
   highlights,
-}: DataProductSummaryProps) => {
+}: DomainSummaryProps) => {
   const { t } = useTranslation();
 
   const experts = useMemo(() => entityDetails.experts ?? [], [entityDetails]);
 
   return (
     <SummaryPanelSkeleton loading={Boolean(isLoading)}>
-      <Space className="w-full" direction="vertical" size={20}>
-        <Row className="p-md border-radius-card" gutter={[0, 8]}>
-          <Col span={24}>
-            <Typography.Text
-              className="summary-panel-section-title"
-              data-testid="domain-header">
-              {t('label.domain')}
-            </Typography.Text>
-          </Col>
-          <Col span={24}>
-            <Typography.Text data-testid="domain-header">
-              {getEntityName(entityDetails.domain)}
-            </Typography.Text>
-          </Col>
-        </Row>
-
+      <>
         <SummaryTagsDescription
           entityDetail={entityDetails}
           tags={getSortedTagsWithHighlight(
@@ -63,7 +47,9 @@ const DataProductSummary = ({
           )}
         />
 
-        <Row className="p-md border-radius-card" gutter={[0, 8]}>
+        <Divider className="m-y-xs" />
+
+        <Row className="m-md m-t-0" gutter={[0, 8]}>
           <Col span={24}>
             <Typography.Text
               className="summary-panel-section-title"
@@ -76,7 +62,9 @@ const DataProductSummary = ({
           </Col>
         </Row>
 
-        <Row className="p-md border-radius-card" gutter={[0, 8]}>
+        <Divider className="m-y-xs" />
+
+        <Row className="m-md m-t-0" gutter={[0, 8]}>
           <Col span={24}>
             <Typography.Text
               className="summary-panel-section-title"
@@ -100,9 +88,11 @@ const DataProductSummary = ({
             )}
           </Col>
         </Row>
-      </Space>
+
+        <Divider className="m-y-xs" />
+      </>
     </SummaryPanelSkeleton>
   );
 };
 
-export default DataProductSummary;
+export default DomainSummary;
