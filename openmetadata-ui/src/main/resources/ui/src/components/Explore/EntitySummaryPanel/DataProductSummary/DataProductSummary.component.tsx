@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Col, Divider, Row, Space, Typography } from 'antd';
+import { Col, Row, Space, Typography } from 'antd';
 import { get } from 'lodash';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
