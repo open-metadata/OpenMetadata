@@ -14,6 +14,7 @@
 package org.openmetadata.service.formatter.decorators;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.service.util.EntityUtil.encodeEntityFqn;
 import static org.openmetadata.service.util.email.EmailUtil.getSmtpSettings;
 
 import java.util.ArrayList;
@@ -76,11 +77,12 @@ public class GChatMessageDecorator implements MessageDecorator<GChatMessage> {
 
   @Override
   public String getEntityUrl(String prefix, String fqn, String additionalParams) {
+    String encodedFqn = encodeEntityFqn(fqn);
     return String.format(
         "<%s/%s/%s%s|%s>",
         getSmtpSettings().getOpenMetadataUrl(),
         prefix,
-        fqn.trim().replace(" ", "%20"),
+        encodedFqn,
         nullOrEmpty(additionalParams) ? "" : String.format("/%s", additionalParams),
         fqn.trim());
   }
