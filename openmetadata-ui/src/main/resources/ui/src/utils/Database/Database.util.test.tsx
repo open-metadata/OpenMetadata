@@ -38,6 +38,7 @@ jest.mock(
   })
 );
 jest.mock('react-router-dom', () => ({
+  ...jest.requireActual('react-router-dom'),
   useHistory: jest.fn(),
 }));
 
@@ -168,54 +169,54 @@ describe('Database Util', () => {
       expect(usageRenderResult).toMatchSnapshot();
     });
   });
-});
 
-describe('ExtraDatabaseDropdownOptions', () => {
-  it('should render import button when user has editAll permission', () => {
-    const permission = {
-      ViewAll: false,
-      EditAll: true,
-    } as OperationPermission;
+  describe('Database Util - ExtraDatabaseDropdownOptions', () => {
+    it('should render import button when user has editAll permission', () => {
+      const permission = {
+        ViewAll: false,
+        EditAll: true,
+      } as OperationPermission;
 
-    const result = ExtraDatabaseDropdownOptions('databaseFqn', permission);
+      const result = ExtraDatabaseDropdownOptions('databaseFqn', permission);
 
-    expect(result).toHaveLength(1);
-    expect(result[0].key).toBe('import-button');
-  });
+      expect(result).toHaveLength(1);
+      expect(result[0].key).toBe('import-button');
+    });
 
-  it('should render export button when user has viewAll permission', () => {
-    const permission = {
-      ViewAll: true,
-      EditAll: false,
-    } as OperationPermission;
+    it('should render export button when user has viewAll permission', () => {
+      const permission = {
+        ViewAll: true,
+        EditAll: false,
+      } as OperationPermission;
 
-    const result = ExtraDatabaseDropdownOptions('databaseFqn', permission);
+      const result = ExtraDatabaseDropdownOptions('databaseFqn', permission);
 
-    expect(result).toHaveLength(1);
-    expect(result[0].key).toBe('export-button');
-  });
+      expect(result).toHaveLength(1);
+      expect(result[0].key).toBe('export-button');
+    });
 
-  it('should render both button when user has viewAll & editAll permission', () => {
-    const permission = {
-      ViewAll: true,
-      EditAll: true,
-    } as OperationPermission;
+    it('should render both button when user has viewAll & editAll permission', () => {
+      const permission = {
+        ViewAll: true,
+        EditAll: true,
+      } as OperationPermission;
 
-    const result = ExtraDatabaseDropdownOptions('databaseFqn', permission);
+      const result = ExtraDatabaseDropdownOptions('databaseFqn', permission);
 
-    expect(result).toHaveLength(2);
-    expect(result[0].key).toBe('import-button');
-    expect(result[1].key).toBe('export-button');
-  });
+      expect(result).toHaveLength(2);
+      expect(result[0].key).toBe('import-button');
+      expect(result[1].key).toBe('export-button');
+    });
 
-  it('should not render any buttons when user has neither viewAll nor editAll permission', () => {
-    const permission = {
-      ViewAll: false,
-      EditAll: false,
-    } as OperationPermission;
-    const result = ExtraDatabaseDropdownOptions('databaseFqn', permission);
+    it('should not render any buttons when user has neither viewAll nor editAll permission', () => {
+      const permission = {
+        ViewAll: false,
+        EditAll: false,
+      } as OperationPermission;
+      const result = ExtraDatabaseDropdownOptions('databaseFqn', permission);
 
-    expect(result).toHaveLength(0);
-    expect(result).toStrictEqual([]);
+      expect(result).toHaveLength(0);
+      expect(result).toStrictEqual([]);
+    });
   });
 });

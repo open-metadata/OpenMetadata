@@ -37,9 +37,9 @@ import Banner from '../../../components/common/Banner/Banner';
 import { ImportStatus } from '../../../components/common/EntityImport/ImportStatus/ImportStatus.component';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
-import { UploadCSVStep } from '../../../components/Entity/UploadCSVStep/UploadCSVStep';
 import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
 import Stepper from '../../../components/Settings/Services/Ingestion/IngestionStepper/IngestionStepper.component';
+import { UploadFile } from '../../../components/UploadFile/UploadFile';
 import {
   ENTITY_IMPORT_STEPS,
   VALIDATION_STEP,
@@ -527,7 +527,7 @@ const BulkEntityImportPage = () => {
                   </Space>
                 </Card>
               ) : (
-                <UploadCSVStep onCSVUploaded={handleLoadData} />
+                <UploadFile fileType=".csv" onCSVUploaded={handleLoadData} />
               )}
             </>
           )}
