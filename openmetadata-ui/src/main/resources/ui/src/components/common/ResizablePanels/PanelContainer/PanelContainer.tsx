@@ -22,7 +22,8 @@ const PanelContainer: React.FC<React.PropsWithChildren<PanelContainerProps>> =
     return (
       <div
         className={classNames(className, 'panel-container')}
-        data-testid="panel-container">
+        data-testid="panel-container"
+        id="panel-container">
         {overlay && width <= overlay.displayThreshold && (
           <div className="light-overlay">
             <Typography.Title

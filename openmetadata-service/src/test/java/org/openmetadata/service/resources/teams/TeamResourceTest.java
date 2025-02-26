@@ -64,9 +64,11 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -606,6 +608,47 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     fieldAdded(change, "parents", List.of(bu1.getEntityReference()));
     fieldDeleted(change, "parents", List.of(ORG_TEAM.getEntityReference()));
     patchEntityAndCheck(bu2, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+  }
+
+  @Test
+  void test_hierarchyNoDuplicateForGroupInDept() throws HttpResponseException {
+    // Team hierarchy: BU -> Division -> Department -> Group
+    Team bu = createWithParents("buTest-341f887e", BUSINESS_UNIT, ORG_TEAM.getEntityReference());
+    Team div = createWithParents("divTest-010f23ef", DIVISION, bu.getEntityReference());
+    Team dept = createWithParents("deptTest-0574ff5c", DEPARTMENT, div.getEntityReference());
+    Team group = createWithParents("groupTest-148facc0", GROUP, dept.getEntityReference());
+
+    List<TeamHierarchy> hierarchyList = getTeamsHierarchy(false, ADMIN_AUTH_HEADERS);
+
+    TeamHierarchy buHierarchy =
+        hierarchyList.stream().filter(t -> t.getId().equals(bu.getId())).findFirst().orElse(null);
+    assertNotNull(buHierarchy, "BU node should be present in the hierarchy");
+
+    TeamHierarchy divHierarchy =
+        buHierarchy.getChildren().stream()
+            .filter(t -> t.getId().equals(div.getId()))
+            .findFirst()
+            .orElse(null);
+    assertNotNull(divHierarchy, "Division node should be present under BU");
+
+    TeamHierarchy deptHierarchy =
+        divHierarchy.getChildren().stream()
+            .filter(t -> t.getId().equals(dept.getId()))
+            .findFirst()
+            .orElse(null);
+    assertNotNull(deptHierarchy, "Department node should be present under Division");
+
+    TeamHierarchy groupHierarchy =
+        deptHierarchy.getChildren().stream()
+            .filter(t -> t.getId().equals(group.getId()))
+            .findFirst()
+            .orElse(null);
+    assertNotNull(groupHierarchy, "Group node should be present under Department");
+
+    // Verify that within each parent's children list, no node is duplicated
+    for (TeamHierarchy topLevel : hierarchyList) {
+      verifyNoDuplicateChildrenTeam(topLevel);
+    }
   }
 
   @Test
@@ -1353,5 +1396,17 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
         isJoinable == null ? "" : isJoinable,
         defaultRoles,
         policies);
+  }
+
+  void verifyNoDuplicateChildrenTeam(TeamHierarchy parent) {
+    if (parent.getChildren() != null) {
+      Set<UUID> seenChildIds = new HashSet<>();
+      for (TeamHierarchy child : parent.getChildren()) {
+        assertTrue(
+            seenChildIds.add(child.getId()),
+            "Duplicate child " + child.getId() + " found under parent " + parent.getId());
+        verifyNoDuplicateChildrenTeam(child);
+      }
+    }
   }
 }
