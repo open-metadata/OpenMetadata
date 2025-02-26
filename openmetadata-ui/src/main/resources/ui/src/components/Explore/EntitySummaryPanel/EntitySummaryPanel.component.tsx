@@ -41,6 +41,7 @@ import { StoredProcedure } from '../../../generated/entity/data/storedProcedure'
 import { Table } from '../../../generated/entity/data/table';
 import { Topic } from '../../../generated/entity/data/topic';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
+import { Domain } from '../../../generated/entity/domains/domain';
 import { APIService } from '../../../generated/entity/services/apiService';
 import { DashboardService } from '../../../generated/entity/services/dashboardService';
 import { DatabaseService } from '../../../generated/entity/services/databaseService';
@@ -64,6 +65,7 @@ import DatabaseSchemaSummary from './DatabaseSchemaSummary/DatabaseSchemaSummary
 import DatabaseSummary from './DatabaseSummary/DatabaseSummary.component';
 import DataModelSummary from './DataModelSummary/DataModelSummary.component';
 import DataProductSummary from './DataProductSummary/DataProductSummary.component';
+import DomainSummary from './DomainSummary/DomainSummary.component';
 import './entity-summary-panel.less';
 import { EntitySummaryPanelProps } from './EntitySummaryPanel.interface';
 import GlossaryTermSummary from './GlossaryTermSummary/GlossaryTermSummary.component';
@@ -213,7 +215,20 @@ export default function EntitySummaryPanel({
         return <TagsSummary entityDetails={entity as Tag} />;
 
       case EntityType.DATA_PRODUCT:
-        return <DataProductSummary entityDetails={entity as DataProduct} />;
+        return (
+          <DataProductSummary
+            entityDetails={entity as DataProduct}
+            highlights={highlights}
+          />
+        );
+
+      case EntityType.DOMAIN:
+        return (
+          <DomainSummary
+            entityDetails={entity as Domain}
+            highlights={highlights}
+          />
+        );
 
       case EntityType.SEARCH_INDEX:
         return (

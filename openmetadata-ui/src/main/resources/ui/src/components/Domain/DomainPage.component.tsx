@@ -133,6 +133,7 @@ const DomainPage = () => {
           TabSpecificField.OWNERS,
           TabSpecificField.PARENT,
           TabSpecificField.EXPERTS,
+          TabSpecificField.TAGS,
         ],
       });
       setActiveDomain(data);
