@@ -87,7 +87,7 @@ class Median(StaticMetric, PercentilMixin):
             except MemoryError:
                 logger.error(
                     f"Unable to compute Median for {self.col.name} due to memory constraints."
-                    f"We recommend using a smaller sample size or partitionning."
+                    f"We recommend using a smaller sample size or partitioning."
                 )
                 return None
             try:

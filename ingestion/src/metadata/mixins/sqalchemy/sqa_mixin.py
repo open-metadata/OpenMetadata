@@ -24,6 +24,12 @@ from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.connections.database.databricksConnection import (
     DatabricksConnection,
 )
+from metadata.generated.schema.entity.services.connections.database.mariaDBConnection import (
+    MariaDBConnection,
+)
+from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
+    MysqlConnection,
+)
 from metadata.generated.schema.entity.services.connections.database.snowflakeConnection import (
     SnowflakeType,
 )
@@ -79,21 +85,26 @@ class SQAInterfaceMixin(Root):
             )
 
     def set_catalog(self, session) -> None:
-        """Set catalog for the session. Right now only databricks and unity catalog requires it
+        """Set the catalog or database for the session.
 
         Args:
             session (Session): sqa session object
         """
-        if not isinstance(
+        if isinstance(
             self.service_connection_config,
             (UnityCatalogConnection, DatabricksConnection),
         ):
-            return
-        bind = session.get_bind()
-        bind.execute(
-            "USE CATALOG %(catalog)s;",
-            {"catalog": self.service_connection_config.catalog},
-        ).first()
+            session.get_bind().execute(
+                "USE CATALOG %(catalog)s;",
+                {"catalog": self.service_connection_config.catalog},
+            ).first()
+
+        if isinstance(
+            self.service_connection_config, (MysqlConnection, MariaDBConnection)
+        ):
+            session.get_bind().execute(
+                f"USE {self.table_entity.databaseSchema.name};",
+            )
 
     def close(self):
         """close session"""
