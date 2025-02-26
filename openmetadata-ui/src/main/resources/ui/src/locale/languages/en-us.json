@@ -2042,6 +2042,7 @@
     "no-application-schema-found": "No application schema found for {{appName}}",
     "no-owned-entities": "You have not owned anything yet.",
     "no-query-available": "No query available.",
+    "no-records-found": "No records found",
     "no-task-available": "No task data is available.",
     "no-task-creation-without-assignee": "Cannot create a task without assignee",
     "page-layout-operation-error": "Error while {{operation}} the page layout.",
