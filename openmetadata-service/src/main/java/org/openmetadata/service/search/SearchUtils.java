@@ -3,8 +3,10 @@ package org.openmetadata.service.search;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.FIELD_FULLY_QUALIFIED_NAME_HASH_KEYWORD;
 import static org.openmetadata.service.search.SearchClient.UPSTREAM_LINEAGE_FIELD;
+import static org.openmetadata.service.search.elasticsearch.ElasticSearchClient.SOURCE_FIELDS_TO_EXCLUDE;
 
 import java.security.KeyStoreException;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
@@ -147,5 +149,17 @@ public final class SearchUtils {
 
     // Return the sublist
     return upstreamEntities.subList(from, to);
+  }
+
+  public static Set<String> getRequiredLineageFields(String fields) {
+    if ("*".equals(fields)) {
+      return Collections.emptySet();
+    }
+    Set<String> requiredFields = new HashSet<>(Arrays.asList(fields.replace(" ", "").split(",")));
+    requiredFields.removeAll(SOURCE_FIELDS_TO_EXCLUDE);
+    // Without these fields lineage can't be built
+    requiredFields.addAll(
+        Set.of("fullyQualifiedName", "service", "fqnHash", "id", "entityType", "upstreamLineage"));
+    return requiredFields;
   }
 }

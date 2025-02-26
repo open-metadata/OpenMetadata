@@ -91,7 +91,7 @@ public class OSLineageGraphBuilder {
             0,
             10000,
             lineageRequest.getIncludeDeleted(),
-            null,
+            lineageRequest.getIncludeSourceFields().stream().toList(),
             SOURCE_FIELDS_TO_EXCLUDE);
 
     SearchResponse searchResponse = esClient.search(searchRequest, RequestOptions.DEFAULT);
@@ -201,7 +201,7 @@ public class OSLineageGraphBuilder {
             lineageRequest.getLayerFrom(),
             lineageRequest.getLayerSize(),
             lineageRequest.getIncludeDeleted(),
-            null,
+            lineageRequest.getIncludeSourceFields().stream().toList(),
             SOURCE_FIELDS_TO_EXCLUDE);
 
     SearchResponse searchResponse = esClient.search(searchRequest, RequestOptions.DEFAULT);

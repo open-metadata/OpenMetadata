@@ -14,6 +14,7 @@
 package org.openmetadata.service.resources.lineage;
 
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
+import static org.openmetadata.service.search.SearchUtils.getRequiredLineageFields;
 import static org.openmetadata.service.search.SearchUtils.isConnectedVia;
 
 import es.org.elasticsearch.action.search.SearchResponse;
@@ -211,6 +212,10 @@ public class LineageResource {
       @Parameter(description = "Filter documents by deleted param. By default deleted is false")
           @QueryParam("includeDeleted")
           boolean deleted,
+      @Parameter(description = "Source Fields to Include", schema = @Schema(type = "string"))
+          @QueryParam("fields")
+          @DefaultValue("*")
+          String includeSourceFields,
       @Parameter(description = "entity type") @QueryParam("type") String entityType,
       @Parameter(description = "From field to paginate the results, defaults to 0")
           @DefaultValue("0")
@@ -231,7 +236,8 @@ public class LineageResource {
                 .withIncludeDeleted(deleted)
                 .withIsConnectedVia(isConnectedVia(entityType))
                 .withLayerFrom(from)
-                .withLayerSize(size));
+                .withLayerSize(size)
+                .withIncludeSourceFields(getRequiredLineageFields(includeSourceFields)));
   }
 
   @GET
@@ -266,6 +272,10 @@ public class LineageResource {
       @Parameter(description = "Filter documents by deleted param. By default deleted is false")
           @QueryParam("includeDeleted")
           boolean deleted,
+      @Parameter(description = "Source Fields to Include", schema = @Schema(type = "string"))
+          @QueryParam("fields")
+          @DefaultValue("*")
+          String includeSourceFields,
       @Parameter(description = "entity type") @QueryParam("type") String entityType,
       @Parameter(description = "From field to paginate the results, defaults to 0")
           @DefaultValue("0")
@@ -287,7 +297,8 @@ public class LineageResource {
                 .withIsConnectedVia(isConnectedVia(entityType))
                 .withDirection(direction)
                 .withLayerFrom(from)
-                .withLayerSize(size));
+                .withLayerSize(size)
+                .withIncludeSourceFields(getRequiredLineageFields(includeSourceFields)));
   }
 
   @GET

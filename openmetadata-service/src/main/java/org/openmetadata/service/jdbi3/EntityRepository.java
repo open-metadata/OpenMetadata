@@ -2583,16 +2583,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return new Fields(allowedFields, fields);
   }
 
-  public final Set<String> getCommonFields(Set<String> input) {
-    Set<String> result = new HashSet<>();
-    for (String field : input) {
-      if (allowedFields.contains(field)) {
-        result.add(field);
-      }
-    }
-    return result;
-  }
-
   public final Set<String> getAllowedFieldsCopy() {
     return new HashSet<>(allowedFields);
   }

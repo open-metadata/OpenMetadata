@@ -37,6 +37,7 @@ import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
 public class ESLineageGraphBuilder {
+
   private final RestHighLevelClient esClient;
 
   public ESLineageGraphBuilder(RestHighLevelClient esClient) {
@@ -86,7 +87,7 @@ public class ESLineageGraphBuilder {
             0,
             10000,
             lineageRequest.getIncludeDeleted(),
-            null,
+            lineageRequest.getIncludeSourceFields().stream().toList(),
             SOURCE_FIELDS_TO_EXCLUDE);
 
     SearchResponse searchResponse = esClient.search(searchRequest, RequestOptions.DEFAULT);
@@ -196,7 +197,7 @@ public class ESLineageGraphBuilder {
             lineageRequest.getLayerFrom(),
             lineageRequest.getLayerSize(),
             lineageRequest.getIncludeDeleted(),
-            null,
+            lineageRequest.getIncludeSourceFields().stream().toList(),
             SOURCE_FIELDS_TO_EXCLUDE);
 
     SearchResponse searchResponse = esClient.search(searchRequest, RequestOptions.DEFAULT);

@@ -53,6 +53,14 @@
       "description": "Include deleted entities",
       "type": "boolean",
       "default": null
+    },
+    "includeSourceFields": {
+      "description": "Include source fields",
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true
     }
   },
   "required": ["fqn", "entityType", "direction"],
