@@ -102,7 +102,9 @@ const AddDomainForm = ({
       id: 'root/tags',
       type: FieldTypes.TAG_SUGGESTION,
       props: {
-        'data-testid': 'tags-container',
+        selectProps: {
+          'data-testid': 'tags-container',
+        },
       },
     },
     {
@@ -112,8 +114,13 @@ const AddDomainForm = ({
       id: 'root/glossaryTerms',
       type: FieldTypes.TAG_SUGGESTION,
       props: {
-        'data-testid': 'glossary-terms',
+        selectProps: {
+          'data-testid': 'glossary-terms-container',
+        },
         tagType: TagSource.Glossary,
+        placeholder: t('label.select-field', {
+          field: t('label.glossary-term-plural'),
+        }),
       },
     },
     {
