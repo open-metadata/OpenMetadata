@@ -119,7 +119,7 @@ class BigQuerySampler(SQASampler):
             and self.raw_dataset_type != TableType.View
         ):
             return self._base_sample_query(column).cte(
-                f"{self.raw_dataset.__tablename__}_sample"
+                f"{self.get_sampler_table_name()}_sample"
             )
 
         return super().get_sample_query(column=column)

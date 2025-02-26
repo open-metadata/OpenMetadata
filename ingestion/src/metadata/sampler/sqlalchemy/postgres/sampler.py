@@ -85,7 +85,7 @@ class PostgresSampler(SQASampler):
     def get_sample_query(self, *, column=None) -> Query:
         if self.sample_config.profileSampleType == ProfileSampleType.PERCENTAGE:
             return self._base_sample_query(column).cte(
-                f"{self.raw_dataset.__tablename__}_rnd"
+                f"{self.get_sampler_table_name()}_rnd"
             )
 
         return super().get_sample_query(column=column)
