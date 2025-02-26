@@ -15,7 +15,7 @@ import { Button, Card, Col, Row, Tooltip, Typography } from 'antd';
 
 import classNames from 'classnames';
 import { isEmpty, isEqual, isUndefined, lowerCase } from 'lodash';
-import React, { useMemo } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import { ReactComponent as AssigneesIcon } from '../../../assets/svg/ic-assignees.svg';
@@ -44,6 +44,7 @@ import { TaskOperation } from '../../../constants/Feeds.constants';
 import { TASK_TYPES } from '../../../constants/Task.constant';
 import { TaskType } from '../../../generated/api/feed/createThread';
 import { ResolveTask } from '../../../generated/api/feed/resolveTask';
+import { useAuth } from '../../../hooks/authHooks';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import DescriptionTaskNew from '../../../pages/TasksPage/shared/DescriptionTaskNew';
 import TagsTask from '../../../pages/TasksPage/shared/TagsTask';
@@ -83,7 +84,7 @@ const TaskFeedCard = ({
   const { t } = useTranslation();
   const { setActiveThread } = useActivityFeedProvider();
   const { currentUser } = useApplicationStore();
-
+  const { isAdminUser } = useAuth();
   const { threadTs: timeStamp, task: taskDetails } = feed;
 
   const isTaskTags = isTagsTask(taskDetails?.type as TaskType);
@@ -215,10 +216,21 @@ const TaskFeedCard = ({
       })
       .catch((err: AxiosError) => showErrorToast(err));
   };
-
+  const isCreator = isEqual(feed.createdBy, currentUser?.name);
+  const checkIfUserPartOfTeam = useCallback(
+    (teamId: string): boolean => {
+      return Boolean(currentUser?.teams?.find((team) => teamId === team.id));
+    },
+    [currentUser]
+  );
   const isAssignee = taskDetails?.assignees?.some((assignee) =>
     isEqual(assignee.id, currentUser?.id)
   );
+  const isPartOfAssigneeTeam = taskDetails?.assignees?.some((assignee) =>
+    assignee.type === 'team' ? checkIfUserPartOfTeam(assignee.id) : false
+  );
+  const hasEditAccess =
+    isAdminUser || isAssignee || (Boolean(isPartOfAssigneeTeam) && !isCreator);
 
   return (
     <Button block className="remove-button-default-styling" type="text">
@@ -322,7 +334,7 @@ const TaskFeedCard = ({
               </Col>
             </Col>
 
-            {!isTaskTestCaseResult && isAssignee && (
+            {!isTaskTestCaseResult && hasEditAccess && (
               <Col className="d-flex gap-2">
                 {feed.task?.status === ThreadTaskStatus.Open && (
                   <Button
