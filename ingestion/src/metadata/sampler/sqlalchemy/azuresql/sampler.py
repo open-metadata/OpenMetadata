@@ -51,7 +51,7 @@ class AzureSQLSampler(SQASampler):
 
     def get_sample_query(self, *, column=None) -> Query:
         """get query for sample data"""
-        rnd = self._base_sample_query(column).cte(f"{self.get_sampler_table_name}_rnd")
+        rnd = self._base_sample_query(column).cte(f"{self.get_sampler_table_name()}_rnd")
         query = self.client.query(rnd)
         return query.cte(f"{self.get_sampler_table_name()}_sample")
 
