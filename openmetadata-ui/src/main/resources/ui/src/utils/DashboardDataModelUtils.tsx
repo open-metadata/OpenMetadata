@@ -29,7 +29,7 @@ import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 import { EntityTabs, EntityType } from '../enums/entity.enum';
 import { PageType } from '../generated/system/ui/page';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
-import { DashboardDataModelDetailPageTabProps } from './DashboardDataModelBase';
+import { DashboardDataModelDetailPageTabProps } from './DashboardDataModelClassBase';
 import i18n from './i18next/LocalUtil';
 
 export const getDashboardDataModelDetailPageTabs = ({

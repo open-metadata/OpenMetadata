@@ -21,7 +21,7 @@ import apiEndpointClassBase from '../APIEndpoints/APIEndpointClassBase';
 import containerDetailsClassBase from '../ContainerDetailsClassBase';
 import customizeGlossaryPageClassBase from '../CustomizeGlossaryPage/CustomizeGlossaryPage';
 import customizeGlossaryTermPageClassBase from '../CustomizeGlossaryTerm/CustomizeGlossaryTermBaseClass';
-import dashboardDataModelClassBase from '../DashboardDataModelBase';
+import dashboardDataModelClassBase from '../DashboardDataModelClassBase';
 import dashboardDetailsClassBase from '../DashboardDetailsClassBase';
 import databaseClassBase from '../Database/DatabaseClassBase';
 import databaseSchemaClassBase from '../DatabaseSchemaClassBase';
@@ -32,7 +32,7 @@ import metricDetailsClassBase from '../MetricEntityUtils/MetricDetailsClassBase'
 import mlModelClassBase from '../MlModel/MlModelClassBase';
 import pipelineClassBase from '../PipelineClassBase';
 import searchIndexClassBase from '../SearchIndexDetailsClassBase';
-import storedProcedureClassBase from '../StoredProcedureBase';
+import storedProcedureClassBase from '../StoredProcedureClassBase';
 import tableClassBase from '../TableClassBase';
 import topicClassBase from '../TopicClassBase';
 

@@ -36,7 +36,7 @@ import { FrequentlyJoinedTables } from '../../../pages/TableDetailsPageV1/Freque
 import TableConstraints from '../../../pages/TableDetailsPageV1/TableConstraints/TableConstraints';
 import containerDetailsClassBase from '../../../utils/ContainerDetailsClassBase';
 import customizeGlossaryTermPageClassBase from '../../../utils/CustomizeGlossaryTerm/CustomizeGlossaryTermBaseClass';
-import dashboardDataModelClassBase from '../../../utils/DashboardDataModelBase';
+import dashboardDataModelClassBase from '../../../utils/DashboardDataModelClassBase';
 import domainClassBase from '../../../utils/Domain/DomainClassBase';
 import { renderReferenceElement } from '../../../utils/GlossaryUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
