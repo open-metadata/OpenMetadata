@@ -11,22 +11,27 @@
  *  limitations under the License.
  */
 import { Col, Row, Space, Typography } from 'antd';
+import { get } from 'lodash';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { DataProduct } from '../../../../generated/entity/domains/dataProduct';
+import { getSortedTagsWithHighlight } from '../../../../utils/EntitySummaryPanelUtils';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
-import RichTextEditorPreviewerV1 from '../../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import SummaryPanelSkeleton from '../../../common/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
+import SummaryTagsDescription from '../../../common/SummaryTagsDescription/SummaryTagsDescription.component';
+import { SearchedDataProps } from '../../../SearchedData/SearchedData.interface';
 
 interface DataProductSummaryProps {
   entityDetails: DataProduct;
   isLoading?: boolean;
+  highlights?: SearchedDataProps['data'][number]['highlight'];
 }
 
 const DataProductSummary = ({
   entityDetails,
   isLoading,
+  highlights,
 }: DataProductSummaryProps) => {
   const { t } = useTranslation();
 
@@ -50,29 +55,13 @@ const DataProductSummary = ({
           </Col>
         </Row>
 
-        <Row className="p-md border-radius-card" gutter={[0, 8]}>
-          <Col span={24}>
-            <Typography.Text
-              className="summary-panel-section-title"
-              data-testid="description-header">
-              {t('label.description')}
-            </Typography.Text>
-          </Col>
-          <Col span={24}>
-            <div>
-              {entityDetails.description?.trim() ? (
-                <RichTextEditorPreviewerV1
-                  markdown={entityDetails.description}
-                  maxLength={80}
-                />
-              ) : (
-                <Typography className="text-grey-body">
-                  {t('label.no-data-found')}
-                </Typography>
-              )}
-            </div>
-          </Col>
-        </Row>
+        <SummaryTagsDescription
+          entityDetail={entityDetails}
+          tags={getSortedTagsWithHighlight(
+            entityDetails.tags,
+            get(highlights, 'tag.name')
+          )}
+        />
 
         <Row className="p-md border-radius-card" gutter={[0, 8]}>
           <Col span={24}>
