@@ -380,6 +380,31 @@ class PowerbiSource(DashboardServiceSource):
                 )
             )
 
+    def _get_child_measures(self, table: PowerBiTable) -> List[Column]:
+        """
+        Extract the measures of the tables
+        """
+        measures = []
+        for measure in table.measures or []:
+            try:
+                measure_type = (
+                    DataType.MEASURE_HIDDEN
+                    if measure.isHidden
+                    else DataType.MEASURE_VISIBLE
+                )
+                parsed_measure = {
+                    "dataType": measure_type,
+                    "dataTypeDisplay": measure_type,
+                    "name": measure.name,
+                    "description": f"""{measure.description}
+                                    \nExpression : {measure.expression}""",
+                }
+                measures.append(Column(**parsed_measure))
+            except Exception as err:
+                logger.debug(traceback.format_exc())
+                logger.warning(f"Error processing datamodel nested measure: {err}")
+        return measures
+
     def _get_child_columns(self, table: PowerBiTable) -> List[Column]:
         """
         Extract the child columns from the fields
@@ -419,8 +444,11 @@ class PowerbiSource(DashboardServiceSource):
                     "description": table.description,
                 }
                 child_columns = self._get_child_columns(table=table)
+                child_measures = self._get_child_measures(table=table)
                 if child_columns:
                     parsed_table["children"] = child_columns
+                if child_measures:
+                    parsed_table["children"].extend(child_measures)
                 datasource_columns.append(Column(**parsed_table))
             except Exception as exc:
                 logger.debug(traceback.format_exc())
