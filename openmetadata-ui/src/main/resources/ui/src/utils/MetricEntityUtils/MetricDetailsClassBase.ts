@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Layout } from 'react-grid-layout';
 import { TabProps } from '../../components/common/TabsLabel/TabsLabel.interface';
 import {
   CUSTOM_PROPERTIES_WIDGET,
@@ -83,7 +84,7 @@ class MetricDetailsClassBase {
     }));
   }
 
-  public getDefaultLayout(tab?: EntityTabs) {
+  public getDefaultLayout(tab?: EntityTabs): Layout[] {
     if (tab && tab !== EntityTabs.OVERVIEW) {
       return [];
     }

@@ -234,7 +234,10 @@ export const CommonWidgets = ({
       return <OwnerLabelV2<GenericEntity> />;
     }
 
-    return commonWidgetClassBase.getCommonWidgetsFromConfig(widgetConfig);
+    const Widget =
+      commonWidgetClassBase.getCommonWidgetsFromConfig(widgetConfig);
+
+    return Widget ? <Widget /> : null;
   }, [widgetConfig, descriptionWidget, glossaryWidget, tagsWidget]);
 
   return (

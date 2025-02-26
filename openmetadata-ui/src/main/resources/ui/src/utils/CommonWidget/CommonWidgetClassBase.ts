@@ -13,8 +13,10 @@
 import { WidgetConfig } from '../../pages/CustomizablePage/CustomizablePage.interface';
 
 export class CommonWidgetClassBase {
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  public getCommonWidgetsFromConfig(_widgetConfig: WidgetConfig) {
+  public getCommonWidgetsFromConfig(
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    _widgetConfig: WidgetConfig
+  ): null | React.FC {
     // this will be overridden to show additional widgets
     return null;
   }

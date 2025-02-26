@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Layout } from 'react-grid-layout';
 import { TabProps } from '../components/common/TabsLabel/TabsLabel.interface';
 import {
   CUSTOM_PROPERTIES_WIDGET,
@@ -71,7 +72,7 @@ class DashboardDetailsClassBase {
     }));
   }
 
-  public getDefaultLayout(tab?: EntityTabs) {
+  public getDefaultLayout(tab?: EntityTabs): Layout[] {
     if (tab && tab !== EntityTabs.DETAILS) {
       return [];
     }

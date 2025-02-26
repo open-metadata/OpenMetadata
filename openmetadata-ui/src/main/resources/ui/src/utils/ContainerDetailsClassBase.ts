@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Layout } from 'react-grid-layout';
 import { TabProps } from '../components/common/TabsLabel/TabsLabel.interface';
 import {
   CUSTOM_PROPERTIES_WIDGET,
@@ -75,7 +76,7 @@ class ContainerDetailsClassBase {
     }));
   }
 
-  public getDefaultLayout(tab?: EntityTabs) {
+  public getDefaultLayout(tab?: EntityTabs): Layout[] {
     if (tab && ![EntityTabs.CHILDREN, EntityTabs.SCHEMA].includes(tab)) {
       return [];
     }

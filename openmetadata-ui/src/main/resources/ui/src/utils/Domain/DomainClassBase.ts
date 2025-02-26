@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Layout } from 'react-grid-layout';
 import { TabProps } from '../../components/common/TabsLabel/TabsLabel.interface';
 import { DataProductsTabRef } from '../../components/Domain/DomainTabs/DataProductsTab/DataProductsTab.interface';
 import { EntityDetailsObjectInterface } from '../../components/Explore/ExplorePage.interface';
@@ -82,7 +83,7 @@ class DomainClassBase {
     }));
   }
 
-  public getDefaultLayout(tab?: EntityTabs) {
+  public getDefaultLayout(tab?: EntityTabs): Layout[] {
     if (tab && tab !== EntityTabs.DOCUMENTATION) {
       return [];
     }
