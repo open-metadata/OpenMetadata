@@ -24,7 +24,6 @@ import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/D
 import { QueryVote } from '../../components/Database/TableQueries/TableQueries.interface';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
-import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import {
   getEntityDetailsPath,
   getVersionPath,
@@ -44,13 +43,13 @@ import {
   StoredProcedure,
   StoredProcedureCodeObject,
 } from '../../generated/entity/data/storedProcedure';
-import { Page, PageType } from '../../generated/system/ui/page';
+import { PageType } from '../../generated/system/ui/page';
 import { Include } from '../../generated/type/include';
 import LimitWrapper from '../../hoc/LimitWrapper';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
+import { useCustomPages } from '../../hooks/useCustomPages';
 import { useFqn } from '../../hooks/useFqn';
 import { FeedCounts } from '../../interface/feed.interface';
-import { getDocumentByFQN } from '../../rest/DocStoreAPI';
 import {
   addStoredProceduresFollower,
   getStoredProceduresByFqn,
@@ -76,7 +75,7 @@ import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 
 const StoredProcedurePage = () => {
   const { t } = useTranslation();
-  const { currentUser, selectedPersona } = useApplicationStore();
+  const { currentUser } = useApplicationStore();
   const USER_ID = currentUser?.id ?? '';
   const history = useHistory();
   const { tab: activeTab = EntityTabs.CODE } = useParams<{ tab: string }>();
@@ -87,7 +86,7 @@ const StoredProcedurePage = () => {
   const [storedProcedure, setStoredProcedure] = useState<StoredProcedure>();
   const [storedProcedurePermissions, setStoredProcedurePermissions] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
-  const [customizedPage, setCustomizedPage] = useState<Page | null>(null);
+  const { customizedPage } = useCustomPages(PageType.StoredProcedure);
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA
   );
@@ -501,26 +500,6 @@ const StoredProcedurePage = () => {
       showErrorToast(error as AxiosError);
     }
   };
-
-  const fetchDocument = useCallback(async () => {
-    const pageFQN = `${EntityType.PERSONA}${FQN_SEPARATOR_CHAR}${selectedPersona.fullyQualifiedName}`;
-    try {
-      const doc = await getDocumentByFQN(pageFQN);
-      setCustomizedPage(
-        doc.data?.pages?.find(
-          (p: Page) => p.pageType === PageType.StoredProcedure
-        )
-      );
-    } catch (error) {
-      // fail silent
-    }
-  }, [selectedPersona.fullyQualifiedName]);
-
-  useEffect(() => {
-    if (selectedPersona?.fullyQualifiedName) {
-      fetchDocument();
-    }
-  }, [selectedPersona]);
 
   useEffect(() => {
     if (decodedStoredProcedureFQN) {

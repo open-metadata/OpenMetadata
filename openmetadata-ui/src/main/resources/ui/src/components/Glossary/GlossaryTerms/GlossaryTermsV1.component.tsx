@@ -22,7 +22,6 @@ import React, {
   useState,
 } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
-import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { getGlossaryTermDetailsPath } from '../../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
 import { EntityField } from '../../../constants/Feeds.constants';
@@ -36,12 +35,11 @@ import {
   GlossaryTerm,
   Status,
 } from '../../../generated/entity/data/glossaryTerm';
-import { Page, PageType } from '../../../generated/system/ui/page';
-import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { PageType } from '../../../generated/system/ui/page';
+import { useCustomPages } from '../../../hooks/useCustomPages';
 import { useFqn } from '../../../hooks/useFqn';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { MOCK_GLOSSARY_NO_PERMISSIONS } from '../../../mocks/Glossary.mock';
-import { getDocumentByFQN } from '../../../rest/DocStoreAPI';
 import { searchData } from '../../../rest/miscAPI';
 import { getCountBadge, getFeedCounts } from '../../../utils/CommonUtils';
 import {
@@ -91,11 +89,10 @@ const GlossaryTermsV1 = ({
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA
   );
-  const { selectedPersona } = useApplicationStore();
   const [assetCount, setAssetCount] = useState<number>(0);
   const { glossaryChildTerms } = useGlossaryStore();
   const childGlossaryTerms = glossaryChildTerms ?? [];
-  const [customizedPage, setCustomizedPage] = useState<Page | null>(null);
+  const { customizedPage } = useCustomPages(PageType.GlossaryTerm);
 
   const assetPermissions = useMemo(() => {
     const glossaryTermStatus = glossaryTerm.status ?? Status.Approved;
@@ -329,24 +326,6 @@ const GlossaryTermsV1 = ({
     }, 500);
     getEntityFeedCount();
   }, [glossaryFqn]);
-
-  const fetchDocument = useCallback(async () => {
-    const pageFQN = `${EntityType.PERSONA}${FQN_SEPARATOR_CHAR}${selectedPersona.fullyQualifiedName}`;
-    try {
-      const doc = await getDocumentByFQN(pageFQN);
-      setCustomizedPage(
-        doc.data?.pages?.find((p: Page) => p.pageType === PageType.GlossaryTerm)
-      );
-    } catch (error) {
-      // fail silent
-    }
-  }, [selectedPersona.fullyQualifiedName]);
-
-  useEffect(() => {
-    if (selectedPersona?.fullyQualifiedName) {
-      fetchDocument();
-    }
-  }, [selectedPersona]);
 
   const updatedGlossaryTerm = useMemo(() => {
     const name = isVersionView

@@ -13,6 +13,7 @@
 
 import { Layout } from 'react-grid-layout';
 import { TabProps } from '../components/common/TabsLabel/TabsLabel.interface';
+import { CONTAINER_DUMMY_DATA } from '../constants/Contianer.constants';
 import {
   CUSTOM_PROPERTIES_WIDGET,
   DATA_PRODUCTS_WIDGET,
@@ -23,11 +24,7 @@ import {
 } from '../constants/CustomizeWidgets.constants';
 import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 import { EntityTabs } from '../enums/entity.enum';
-import {
-  Container,
-  FileFormat,
-  StorageServiceType,
-} from '../generated/entity/data/container';
+import { Container } from '../generated/entity/data/container';
 import { Tab } from '../generated/system/ui/uiCustomization';
 import { FeedCounts } from '../interface/feed.interface';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
@@ -134,64 +131,7 @@ class ContainerDetailsClassBase {
   }
 
   public getDummyData(): Container {
-    return {
-      id: '4e90debf-d063-49fd-9a5d-71ee43e6840a',
-      name: 'departments',
-      fullyQualifiedName: 's3_storage_sample.departments',
-      displayName: 'Company departments',
-      description: 'Bucket containing company department information. asd',
-      version: 0.3,
-      updatedAt: 1722838506844,
-      updatedBy: 'sachin',
-      href: 'http://test-argo.getcollate.io/api/v1/containers/4e90debf-d063-49fd-9a5d-71ee43e6840a',
-      service: {
-        id: '5354aaf3-063e-47aa-9f1d-bae19755e905',
-        type: 'storageService',
-        name: 's3_storage_sample',
-        fullyQualifiedName: 's3_storage_sample',
-        displayName: 's3_storage_sample',
-        deleted: false,
-        href: 'http://test-argo.getcollate.io/api/v1/services/storageServices/5354aaf3-063e-47aa-9f1d-bae19755e905',
-      },
-      children: [
-        {
-          id: '11e8f1c5-77c8-4a27-a546-c6561baeba18',
-          type: 'container',
-          name: 'engineering',
-          fullyQualifiedName: 's3_storage_sample.departments.engineering',
-          description: 'Bucket containing engineering department information',
-          displayName: 'Engineering department',
-          deleted: false,
-          href: 'http://test-argo.getcollate.io/api/v1/containers/11e8f1c5-77c8-4a27-a546-c6561baeba18',
-        },
-        {
-          id: 'c704e3d2-33ec-4cf0-a3fc-5e8d181c2723',
-          type: 'container',
-          name: 'finance',
-          fullyQualifiedName: 's3_storage_sample.departments.finance',
-          description: 'Bucket containing finance department information',
-          displayName: 'Finance department',
-          deleted: false,
-          href: 'http://test-argo.getcollate.io/api/v1/containers/c704e3d2-33ec-4cf0-a3fc-5e8d181c2723',
-        },
-        {
-          id: 'ffe5b6be-57cd-4cdc-9e0a-09677658160c',
-          type: 'container',
-          name: 'media',
-          fullyQualifiedName: 's3_storage_sample.departments.media',
-          description: 'Bucket containing media department information',
-          displayName: 'Media department',
-          deleted: false,
-          href: 'http://test-argo.getcollate.io/api/v1/containers/ffe5b6be-57cd-4cdc-9e0a-09677658160c',
-        },
-      ],
-      prefix: '/departments/',
-      numberOfObjects: 2,
-      size: 2048,
-      fileFormats: [FileFormat.CSV],
-      serviceType: StorageServiceType.S3,
-      deleted: false,
-    };
+    return CONTAINER_DUMMY_DATA;
   }
 
   public getCommonWidgetList() {

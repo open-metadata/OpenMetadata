@@ -32,7 +32,6 @@ import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/D
 import { QueryVote } from '../../components/Database/TableQueries/TableQueries.interface';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
-import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import {
   getEntityDetailsPath,
   getVersionPath,
@@ -53,9 +52,9 @@ import {
 } from '../../enums/entity.enum';
 import { Tag } from '../../generated/entity/classification/tag';
 import { APICollection } from '../../generated/entity/data/apiCollection';
-import { Page, PageType } from '../../generated/system/ui/page';
+import { PageType } from '../../generated/system/ui/page';
 import { Include } from '../../generated/type/include';
-import { useApplicationStore } from '../../hooks/useApplicationStore';
+import { useCustomPages } from '../../hooks/useCustomPages';
 import { useFqn } from '../../hooks/useFqn';
 import { useTableFilters } from '../../hooks/useTableFilters';
 import { FeedCounts } from '../../interface/feed.interface';
@@ -66,7 +65,6 @@ import {
   updateApiCollectionVote,
 } from '../../rest/apiCollectionsAPI';
 import { getApiEndPoints } from '../../rest/apiEndpointsAPI';
-import { getDocumentByFQN } from '../../rest/DocStoreAPI';
 import apiCollectionClassBase from '../../utils/APICollection/APICollectionClassBase';
 import { getEntityMissingError, getFeedCounts } from '../../utils/CommonUtils';
 import {
@@ -82,8 +80,7 @@ import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 const APICollectionPage: FunctionComponent = () => {
   const { t } = useTranslation();
   const { getEntityPermissionByFqn } = usePermissionProvider();
-  const [customizedPage, setCustomizedPage] = useState<Page | null>(null);
-  const { selectedPersona } = useApplicationStore();
+  const { customizedPage } = useCustomPages(PageType.APICollection);
   const { tab: activeTab = EntityTabs.API_ENDPOINT } =
     useParams<{ tab: EntityTabs }>();
   const { fqn: decodedAPICollectionFQN } = useFqn();
@@ -435,26 +432,6 @@ const APICollectionPage: FunctionComponent = () => {
       showErrorToast(error as AxiosError);
     }
   };
-
-  const fetchDocument = useCallback(async () => {
-    const pageFQN = `${EntityType.PERSONA}${FQN_SEPARATOR_CHAR}${selectedPersona.fullyQualifiedName}`;
-    try {
-      const doc = await getDocumentByFQN(pageFQN);
-      setCustomizedPage(
-        doc.data?.pages?.find(
-          (p: Page) => p.pageType === PageType.APICollection
-        )
-      );
-    } catch (error) {
-      // fail silent
-    }
-  }, [selectedPersona.fullyQualifiedName]);
-
-  useEffect(() => {
-    if (selectedPersona?.fullyQualifiedName) {
-      fetchDocument();
-    }
-  }, [selectedPersona]);
 
   if (isPermissionsLoading) {
     return <Loader />;

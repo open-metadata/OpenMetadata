@@ -20,12 +20,10 @@ import {
   GridSizes,
   TAGS_WIDGET,
 } from '../constants/CustomizeWidgets.constants';
+import { DASHBOARD_DUMMY_DATA } from '../constants/Dashboard.constnats';
 import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 import { EntityTabs } from '../enums/entity.enum';
-import {
-  Dashboard,
-  DashboardServiceType,
-} from '../generated/entity/data/dashboard';
+import { Dashboard } from '../generated/entity/data/dashboard';
 import { Tab } from '../generated/system/ui/page';
 import { FeedCounts } from '../interface/feed.interface';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
@@ -130,76 +128,7 @@ class DashboardDetailsClassBase {
   }
 
   public getDummyData(): Dashboard {
-    return {
-      id: '574c383c-735f-44c8-abbb-355f87c8b19f',
-      name: 'customers',
-      displayName: 'Customers dashboard',
-      fullyQualifiedName: 'SampleLookerService.customers',
-      description: 'This is a sample Dashboard for Looker',
-      version: 0.1,
-      updatedAt: 1736493713236,
-      updatedBy: 'admin',
-      sourceUrl: 'http://localhost:808/looker/dashboard/1/',
-      charts: [
-        {
-          id: '81cdc1f3-66ae-462f-bf3e-b5fbbfe7792f',
-          type: 'chart',
-          name: 'chart_1',
-          fullyQualifiedName: 'SampleLookerService.chart_1',
-          description: 'This is a sample Chart for Looker',
-          displayName: 'Chart 1',
-          deleted: false,
-          href: 'http://test-argo.getcollate.io/api/v1/charts/81cdc1f3-66ae-462f-bf3e-b5fbbfe7792f',
-        },
-        {
-          id: '6f5057aa-8d7c-41a7-ab93-76bf8ed2bc27',
-          type: 'chart',
-          name: 'chart_2',
-          fullyQualifiedName: 'SampleLookerService.chart_2',
-          description: 'This is a sample Chart for Looker',
-          displayName: 'Chart 2',
-          deleted: false,
-          href: 'http://test-argo.getcollate.io/api/v1/charts/6f5057aa-8d7c-41a7-ab93-76bf8ed2bc27',
-        },
-      ],
-      href: 'http://test-argo.getcollate.io/api/v1/dashboards/574c383c-735f-44c8-abbb-355f87c8b19f',
-      owners: [],
-      followers: [],
-      tags: [],
-      service: {
-        id: 'fb4df3ed-75b9-45d3-a2df-da07785893d7',
-        type: 'dashboardService',
-        name: 'SampleLookerService',
-        fullyQualifiedName: 'SampleLookerService',
-        displayName: 'SampleLookerService',
-        deleted: false,
-        href: 'http://test-argo.getcollate.io/api/v1/services/dashboardServices/fb4df3ed-75b9-45d3-a2df-da07785893d7',
-      },
-      serviceType: DashboardServiceType.Looker,
-      usageSummary: {
-        dailyStats: {
-          count: 0,
-          percentileRank: 0,
-        },
-        weeklyStats: {
-          count: 0,
-          percentileRank: 0,
-        },
-        monthlyStats: {
-          count: 0,
-          percentileRank: 0,
-        },
-        date: new Date('2025-02-03'),
-      },
-      deleted: false,
-      dataProducts: [],
-      votes: {
-        upVotes: 0,
-        downVotes: 0,
-        upVoters: [],
-        downVoters: [],
-      },
-    };
+    return DASHBOARD_DUMMY_DATA;
   }
 
   public getCommonWidgetList() {

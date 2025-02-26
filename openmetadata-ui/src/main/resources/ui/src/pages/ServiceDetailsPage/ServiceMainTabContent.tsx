@@ -26,6 +26,7 @@ import Loader from '../../components/common/Loader/Loader';
 import NextPrevious from '../../components/common/NextPrevious/NextPrevious';
 import { NextPreviousProps } from '../../components/common/NextPrevious/NextPrevious.interface';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
+import { GenericProvider } from '../../components/Customization/GenericProvider/GenericProvider';
 import EntityRightPanel from '../../components/Entity/EntityRightPanel/EntityRightPanel';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import { COMMON_RESIZABLE_PANEL_CONFIG } from '../../constants/ResizablePanel.constants';
@@ -292,19 +293,25 @@ function ServiceMainTabContent({
           }}
           secondPanel={{
             children: (
-              <div data-testid="entity-right-panel">
-                <EntityRightPanel
-                  editGlossaryTermsPermission={editGlossaryTermsPermission}
-                  editTagPermission={editTagsPermission}
-                  entityType={entityType}
-                  selectedTags={tags}
-                  showDataProductContainer={
-                    entityType !== EntityType.METADATA_SERVICE
-                  }
-                  showTaskHandler={false}
-                  onTagSelectionChange={handleTagSelection}
-                />
-              </div>
+              <GenericProvider
+                data={serviceDetails}
+                permissions={servicePermission}
+                type={entityType}
+                onUpdate={saveUpdatedServiceData}>
+                <div data-testid="entity-right-panel">
+                  <EntityRightPanel
+                    editGlossaryTermsPermission={editGlossaryTermsPermission}
+                    editTagPermission={editTagsPermission}
+                    entityType={entityType}
+                    selectedTags={tags}
+                    showDataProductContainer={
+                      entityType !== EntityType.METADATA_SERVICE
+                    }
+                    showTaskHandler={false}
+                    onTagSelectionChange={handleTagSelection}
+                  />
+                </div>
+              </GenericProvider>
             ),
             ...COMMON_RESIZABLE_PANEL_CONFIG.RIGHT_PANEL,
             className:

@@ -142,7 +142,7 @@ export const getMlModelDetailsPageTabs = ({
 };
 
 export const getMlModelWidgetsFromKey = (widgetConfig: WidgetConfig) => {
-  if (widgetConfig.i.startsWith(DetailPageWidgetKeys.RELATED_METRICS)) {
+  if (widgetConfig.i.startsWith(DetailPageWidgetKeys.ML_MODEL_FEATURES)) {
     return <MlModelFeaturesList />;
   }
 

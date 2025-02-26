@@ -16,18 +16,17 @@ import { AxiosError } from 'axios';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { getEntityDetailsPath, ROUTES } from '../../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { Tag } from '../../../generated/entity/classification/tag';
 import { Metric } from '../../../generated/entity/data/metric';
-import { Page, PageType } from '../../../generated/system/ui/page';
+import { PageType } from '../../../generated/system/ui/page';
 import LimitWrapper from '../../../hoc/LimitWrapper';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { useCustomPages } from '../../../hooks/useCustomPages';
 import { useFqn } from '../../../hooks/useFqn';
 import { FeedCounts } from '../../../interface/feed.interface';
-import { getDocumentByFQN } from '../../../rest/DocStoreAPI';
 import { restoreMetric } from '../../../rest/metricsAPI';
 import { getFeedCounts } from '../../../utils/CommonUtils';
 import {
@@ -57,7 +56,7 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
   onUpdateVote,
 }: MetricDetailsProps) => {
   const { t } = useTranslation();
-  const { currentUser, selectedPersona } = useApplicationStore();
+  const { currentUser } = useApplicationStore();
   const { tab: activeTab = EntityTabs.OVERVIEW } =
     useParams<{ tab: EntityTabs }>();
   const { fqn: decodedMetricFqn } = useFqn();
@@ -71,7 +70,7 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
     deleted,
     followers = [],
   } = useMemo(() => metricDetails, [metricDetails]);
-  const [customizedPage, setCustomizedPage] = useState<Page | null>(null);
+  const { customizedPage } = useCustomPages(PageType.Metric);
 
   const { isFollowing } = useMemo(
     () => ({
@@ -213,24 +212,6 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
     viewSampleDataPermission,
     viewAllPermission,
   ]);
-
-  const fetchDocument = useCallback(async () => {
-    const pageFQN = `${EntityType.PERSONA}${FQN_SEPARATOR_CHAR}${selectedPersona.fullyQualifiedName}`;
-    try {
-      const doc = await getDocumentByFQN(pageFQN);
-      setCustomizedPage(
-        doc.data?.pages?.find((p: Page) => p.pageType === PageType.Metric)
-      );
-    } catch (error) {
-      // fail silent
-    }
-  }, [selectedPersona.fullyQualifiedName]);
-
-  useEffect(() => {
-    if (selectedPersona?.fullyQualifiedName) {
-      fetchDocument();
-    }
-  }, [selectedPersona]);
 
   return (
     <PageLayoutV1

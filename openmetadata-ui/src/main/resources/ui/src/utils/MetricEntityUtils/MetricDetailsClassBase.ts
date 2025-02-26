@@ -21,15 +21,10 @@ import {
   GridSizes,
   TAGS_WIDGET,
 } from '../../constants/CustomizeWidgets.constants';
+import { METRIC_DUMMY_DATA } from '../../constants/Metric.constnsts';
 import { DetailPageWidgetKeys } from '../../enums/CustomizeDetailPage.enum';
 import { EntityTabs } from '../../enums/entity.enum';
-import {
-  Language,
-  Metric,
-  MetricGranularity,
-  MetricType,
-  UnitOfMeasurement,
-} from '../../generated/entity/data/metric';
+import { Metric } from '../../generated/entity/data/metric';
 import { Tab } from '../../generated/system/ui/uiCustomization';
 import { FeedCounts } from '../../interface/feed.interface';
 import { WidgetConfig } from '../../pages/CustomizablePage/CustomizablePage.interface';
@@ -141,35 +136,7 @@ class MetricDetailsClassBase {
     ];
   }
   public getDummyData(): Metric {
-    return {
-      id: '2be869f2-a8c6-4781-89fa-df45d671e449',
-      name: 'LTV',
-      fullyQualifiedName: 'LTV',
-      displayName: 'Lifetime Value',
-      metricExpression: {
-        language: Language.Python,
-        code: 'def ltv(customer: Customer, orders: List[Order]):\n\tlifetime = customer.lifetime\n  ltv: float = sum([o.amount for o in orders if o.customer_id == customer.id])\n  \n  return ltv',
-      },
-      metricType: MetricType.Other,
-      unitOfMeasurement: UnitOfMeasurement.Dollars,
-      granularity: MetricGranularity.Quarter,
-      relatedMetrics: [],
-      version: 0.1,
-      updatedAt: 1727366423816,
-      updatedBy: 'teddy',
-      href: 'http://sandbox-beta.open-metadata.org/api/v1/metrics/2be869f2-a8c6-4781-89fa-df45d671e449',
-      owners: [],
-      followers: [],
-      tags: [],
-      deleted: false,
-      dataProducts: [],
-      votes: {
-        upVotes: 0,
-        downVotes: 0,
-        upVoters: [],
-        downVoters: [],
-      },
-    };
+    return METRIC_DUMMY_DATA;
   }
 
   public getCommonWidgetList() {

@@ -68,12 +68,11 @@ import { CreateDataProduct } from '../../../generated/api/domains/createDataProd
 import { CreateDomain } from '../../../generated/api/domains/createDomain';
 import { Domain } from '../../../generated/entity/domains/domain';
 import { ChangeDescription } from '../../../generated/entity/type';
-import { Page, PageType } from '../../../generated/system/ui/page';
+import { PageType } from '../../../generated/system/ui/page';
 import { Style } from '../../../generated/type/tagLabel';
-import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { useCustomPages } from '../../../hooks/useCustomPages';
 import { useFqn } from '../../../hooks/useFqn';
 import { addDataProducts } from '../../../rest/dataProductAPI';
-import { getDocumentByFQN } from '../../../rest/DocStoreAPI';
 import { addDomains } from '../../../rest/domainAPI';
 import { searchData } from '../../../rest/miscAPI';
 import { searchQuery } from '../../../rest/searchAPI';
@@ -149,8 +148,7 @@ const DomainDetailsPage = ({
   const encodedFqn = getEncodedFqn(
     escapeESReservedCharacters(domain.fullyQualifiedName)
   );
-  const { selectedPersona } = useApplicationStore();
-  const [customizedPage, setCustomizedPage] = useState<Page | null>(null);
+  const { customizedPage } = useCustomPages(PageType.Domain);
 
   const isSubDomain = useMemo(() => !isEmpty(domain.parent), [domain]);
 
@@ -562,24 +560,6 @@ const DomainDetailsPage = ({
     fetchDomainAssets();
     fetchDataProducts();
   }, [domain.fullyQualifiedName]);
-
-  const fetchDocument = useCallback(async () => {
-    const pageFQN = `${EntityType.PERSONA}${FQN_SEPARATOR_CHAR}${selectedPersona.fullyQualifiedName}`;
-    try {
-      const doc = await getDocumentByFQN(pageFQN);
-      setCustomizedPage(
-        doc.data?.pages?.find((p: Page) => p.pageType === PageType.Domain)
-      );
-    } catch (error) {
-      // fail silent
-    }
-  }, [selectedPersona.fullyQualifiedName]);
-
-  useEffect(() => {
-    if (selectedPersona?.fullyQualifiedName) {
-      fetchDocument();
-    }
-  }, [selectedPersona]);
 
   useEffect(() => {
     fetchSubDomains();

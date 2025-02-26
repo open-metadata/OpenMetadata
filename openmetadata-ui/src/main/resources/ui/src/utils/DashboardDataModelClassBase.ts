@@ -20,6 +20,7 @@ import {
   GridSizes,
   TAGS_WIDGET,
 } from '../constants/CustomizeWidgets.constants';
+import { DASHBOARD_DATA_MODEL_DUMMY_DATA } from '../constants/Dashboard.constnats';
 import { OperationPermission } from '../context/PermissionProvider/PermissionProvider.interface';
 import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 import { EntityTabs } from '../enums/entity.enum';
@@ -129,100 +130,7 @@ class DashboardDataModelBase {
   }
 
   public getDummyData(): DashboardDataModel {
-    return {
-      id: '3519340b-7a36-45d1-abdf-348a5f1c582c',
-      name: 'orders',
-      displayName: 'Orders',
-      fullyQualifiedName: 'sample_looker.model.orders',
-      description: 'Orders explore from Sample Data',
-      version: 0.1,
-      updatedAt: 1697265260863,
-      updatedBy: 'ingestion-bot',
-      href: 'http://sandbox-beta.open-metadata.org/api/v1/dashboard/datamodels/3519340b-7a36-45d1-abdf-348a5f1c582c',
-      owners: [],
-      dataProducts: [],
-      tags: [],
-      deleted: false,
-      followers: [],
-      service: {
-        id: '2d102aaa-e683-425c-a8bf-e4afa43dde99',
-        type: 'dashboardService',
-        name: 'sample_looker',
-        fullyQualifiedName: 'sample_looker',
-        displayName: 'sample_looker',
-        deleted: false,
-        href: 'http://sandbox-beta.open-metadata.org/api/v1/services/dashboardServices/2d102aaa-e683-425c-a8bf-e4afa43dde99',
-      },
-      serviceType: 'Looker',
-      dataModelType: 'LookMlExplore',
-      // eslint-disable-next-line max-len
-      sql: "SELECT CASE\n           WHEN stage_of_development = 'Pre-clinical' THEN '0. Pre-clinical'\n           WHEN stage_of_development = 'Phase I' THEN '1. Phase I'\n           WHEN stage_of_development = 'Phase I/II'\n                or stage_of_development = 'Phase II' THEN '2. Phase II or Combined I/II'\n           WHEN stage_of_development = 'Phase III' THEN '3. Phase III'\n           WHEN stage_of_development = 'Authorized' THEN '4. Authorized'\n       END AS clinical_stage,\n       COUNT(*) AS count\nFROM covid_vaccines\nGROUP BY CASE\n             WHEN stage_of_development = 'Pre-clinical' THEN '0. Pre-clinical'\n             WHEN stage_of_development = 'Phase I' THEN '1. Phase I'\n             WHEN stage_of_development = 'Phase I/II'\n                  or stage_of_development = 'Phase II' THEN '2. Phase II or Combined I/II'\n             WHEN stage_of_development = 'Phase III' THEN '3. Phase III'\n             WHEN stage_of_development = 'Authorized' THEN '4. Authorized'\n         END\nORDER BY count DESC\nLIMIT 10000\nOFFSET 0;\n",
-      columns: [
-        {
-          name: '0. Pre-clinical',
-          dataType: 'NUMERIC',
-          dataTypeDisplay: 'numeric',
-          description: "Vaccine Candidates in phase: 'Pre-clinical'",
-          fullyQualifiedName: 'sample_looker.model.orders."0. Pre-clinical"',
-          tags: [],
-          ordinalPosition: 1,
-        },
-        {
-          name: '2. Phase II or Combined I/II',
-          dataType: 'NUMERIC',
-          dataTypeDisplay: 'numeric',
-          description:
-            "Vaccine Candidates in phase: 'Phase II or Combined I/II'",
-          fullyQualifiedName:
-            'sample_looker.model.orders."2. Phase II or Combined I/II"',
-          tags: [],
-          ordinalPosition: 2,
-        },
-        {
-          name: '1. Phase I',
-          dataType: 'NUMERIC',
-          dataTypeDisplay: 'numeric',
-          description: "Vaccine Candidates in phase: 'Phase I'",
-          fullyQualifiedName: 'sample_looker.model.orders."1. Phase I"',
-          tags: [],
-          ordinalPosition: 3,
-        },
-        {
-          name: '3. Phase III',
-          dataType: 'NUMERIC',
-          dataTypeDisplay: 'numeric',
-          description: "Vaccine Candidates in phase: 'Phase III'",
-          fullyQualifiedName: 'sample_looker.model.orders."3. Phase III"',
-          tags: [],
-          ordinalPosition: 4,
-        },
-        {
-          name: '4. Authorized',
-          dataType: 'NUMERIC',
-          dataTypeDisplay: 'numeric',
-          description: "Vaccine Candidates in phase: 'Authorize'",
-          fullyQualifiedName: 'sample_looker.model.orders."4. Authorized"',
-          tags: [],
-          ordinalPosition: 5,
-        },
-      ],
-      domain: {
-        id: '52fc9c67-78b7-42bf-8147-69278853c230',
-        type: 'domain',
-        name: 'Design',
-        fullyQualifiedName: 'Design',
-        description: "<p>Here' the description for Product Design</p>",
-        displayName: 'Product Design ',
-        inherited: true,
-        href: 'http://sandbox-beta.open-metadata.org/api/v1/domains/52fc9c67-78b7-42bf-8147-69278853c230',
-      },
-      votes: {
-        upVotes: 0,
-        downVotes: 0,
-        upVoters: [],
-        downVoters: [],
-      },
-    } as DashboardDataModel;
+    return DASHBOARD_DATA_MODEL_DUMMY_DATA;
   }
 
   public getCommonWidgetList() {

@@ -25,7 +25,6 @@ import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/D
 import { QueryVote } from '../../components/Database/TableQueries/TableQueries.interface';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
-import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import {
   getEntityDetailsPath,
   getVersionPath,
@@ -46,14 +45,13 @@ import {
 } from '../../enums/entity.enum';
 import { Tag } from '../../generated/entity/classification/tag';
 import { Container } from '../../generated/entity/data/container';
-import { Page } from '../../generated/system/ui/page';
-import { PageType } from '../../generated/system/ui/uiCustomization';
+import { PageType } from '../../generated/system/ui/page';
 import { Include } from '../../generated/type/include';
 import LimitWrapper from '../../hoc/LimitWrapper';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
+import { useCustomPages } from '../../hooks/useCustomPages';
 import { useFqn } from '../../hooks/useFqn';
 import { FeedCounts } from '../../interface/feed.interface';
-import { getDocumentByFQN } from '../../rest/DocStoreAPI';
 import {
   addContainerFollower,
   getContainerByName,
@@ -80,16 +78,15 @@ import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 const ContainerPage = () => {
   const history = useHistory();
   const { t } = useTranslation();
-  const { currentUser, selectedPersona } = useApplicationStore();
+  const { currentUser } = useApplicationStore();
   const { getEntityPermissionByFqn } = usePermissionProvider();
   const { tab } = useParams<{ tab: EntityTabs }>();
-
+  const { customizedPage } = useCustomPages(PageType.Container);
   const { fqn: decodedContainerName } = useFqn();
 
   // Local states
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [hasError, setHasError] = useState<boolean>(false);
-  const [customizedPage, setCustomizedPage] = useState<Page | null>(null);
   const [containerData, setContainerData] = useState<Container>();
   const [containerPermissions, setContainerPermissions] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
@@ -489,24 +486,6 @@ const ContainerPage = () => {
       showErrorToast(error as AxiosError);
     }
   };
-
-  const fetchDocument = useCallback(async () => {
-    const pageFQN = `${EntityType.PERSONA}${FQN_SEPARATOR_CHAR}${selectedPersona.fullyQualifiedName}`;
-    try {
-      const doc = await getDocumentByFQN(pageFQN);
-      setCustomizedPage(
-        doc.data?.pages?.find((p: Page) => p.pageType === PageType.Container)
-      );
-    } catch (error) {
-      // fail silent
-    }
-  }, [selectedPersona.fullyQualifiedName]);
-
-  useEffect(() => {
-    if (selectedPersona?.fullyQualifiedName) {
-      fetchDocument();
-    }
-  }, [selectedPersona]);
 
   // Effects
   useEffect(() => {

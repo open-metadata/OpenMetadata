@@ -20,6 +20,7 @@ import {
   DESCRIPTION_WIDGET,
   GridSizes,
 } from '../../constants/CustomizeWidgets.constants';
+import { DOMAIN_DUMMY_DATA } from '../../constants/Domain.constants';
 import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { DetailPageWidgetKeys } from '../../enums/CustomizeDetailPage.enum';
 import { EntityTabs } from '../../enums/entity.enum';
@@ -125,52 +126,7 @@ class DomainClassBase {
   }
 
   public getDummyData(): Domain {
-    return {
-      id: '31c2b84e-b87a-4e47-934f-9c5309fbb7c3',
-      domainType: 'Consumer-aligned',
-      name: 'Engineering',
-      fullyQualifiedName: 'Engineering',
-      displayName: 'Engineering',
-      description: 'Domain related engineering development.',
-      style: {},
-      version: 0.8,
-      updatedAt: 1698061758989,
-      updatedBy: 'rupesh',
-      href: 'http://sandbox-beta.open-metadata.org/api/v1/domains/31c2b84e-b87a-4e47-934f-9c5309fbb7c3',
-      children: [],
-      owners: [
-        {
-          id: 'ebac156e-6779-499c-8bbf-ab98a6562bc5',
-          type: 'team',
-          name: 'Data',
-          fullyQualifiedName: 'Data',
-          description: '',
-          displayName: 'Data',
-          deleted: false,
-          href: 'http://sandbox-beta.open-metadata.org/api/v1/teams/ebac156e-6779-499c-8bbf-ab98a6562bc5',
-        },
-      ],
-      experts: [
-        {
-          id: '34ee72dc-7dad-4710-9f1d-e934ad0554a9',
-          type: 'user',
-          name: 'brian_smith7',
-          fullyQualifiedName: 'brian_smith7',
-          displayName: 'Brian Smith',
-          deleted: false,
-          href: 'http://sandbox-beta.open-metadata.org/api/v1/users/34ee72dc-7dad-4710-9f1d-e934ad0554a9',
-        },
-        {
-          id: '9a6687fa-8bd5-446c-aa8f-81416c88fe67',
-          type: 'user',
-          name: 'brittney_thomas3',
-          fullyQualifiedName: 'brittney_thomas3',
-          displayName: 'Brittney Thomas',
-          deleted: false,
-          href: 'http://sandbox-beta.open-metadata.org/api/v1/users/9a6687fa-8bd5-446c-aa8f-81416c88fe67',
-        },
-      ],
-    } as Domain;
+    return DOMAIN_DUMMY_DATA;
   }
 
   public getCommonWidgetList() {

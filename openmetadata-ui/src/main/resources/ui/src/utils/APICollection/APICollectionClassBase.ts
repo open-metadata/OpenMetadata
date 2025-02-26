@@ -13,6 +13,7 @@
 
 import { Layout } from 'react-grid-layout';
 import { TabProps } from '../../components/common/TabsLabel/TabsLabel.interface';
+import { API_COLLECTION_DUMMY_DATA } from '../../constants/APICollection.constnats';
 import {
   CUSTOM_PROPERTIES_WIDGET,
   DATA_PRODUCTS_WIDGET,
@@ -23,10 +24,7 @@ import {
 } from '../../constants/CustomizeWidgets.constants';
 import { DetailPageWidgetKeys } from '../../enums/CustomizeDetailPage.enum';
 import { EntityTabs } from '../../enums/entity.enum';
-import {
-  APICollection,
-  APIServiceType,
-} from '../../generated/entity/data/apiCollection';
+import { APICollection } from '../../generated/entity/data/apiCollection';
 import { Tab } from '../../generated/system/ui/uiCustomization';
 import { FeedCounts } from '../../interface/feed.interface';
 import { WidgetConfig } from '../../pages/CustomizablePage/CustomizablePage.interface';
@@ -136,36 +134,7 @@ class APICollectionClassBase {
     ];
   }
   public getDummyData(): APICollection {
-    return {
-      id: 'db03ef8f-82f9-4a23-a940-3ba5af5bba29',
-      name: 'pet',
-      fullyQualifiedName: 'sample_api_service.pet',
-      version: 0.1,
-      updatedAt: 1722588116104,
-      updatedBy: 'ingestion-bot',
-      endpointURL: 'https://petstore3.swagger.io/#/pet',
-      href: 'http://sandbox-beta.open-metadata.org/api/v1/apiCollections/db03ef8f-82f9-4a23-a940-3ba5af5bba29',
-      owners: [],
-      tags: [],
-      service: {
-        id: '449b7937-c4ca-4dce-866c-5f6d0acc45c1',
-        type: 'apiService',
-        name: 'sample_api_service',
-        fullyQualifiedName: 'sample_api_service',
-        displayName: 'sample_api_service',
-        deleted: false,
-        href: 'http://sandbox-beta.open-metadata.org/api/v1/services/apiServices/449b7937-c4ca-4dce-866c-5f6d0acc45c1',
-      },
-      serviceType: APIServiceType.REST,
-      deleted: false,
-      dataProducts: [],
-      votes: {
-        upVotes: 0,
-        downVotes: 0,
-        upVoters: [],
-        downVoters: [],
-      },
-    };
+    return API_COLLECTION_DUMMY_DATA;
   }
 
   public getCommonWidgetList() {

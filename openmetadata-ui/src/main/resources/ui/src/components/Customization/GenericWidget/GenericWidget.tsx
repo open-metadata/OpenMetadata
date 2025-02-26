@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { CloseOutlined, DragOutlined } from '@ant-design/icons';
-import { Card, Space } from 'antd';
+import { Button, Card, Space } from 'antd';
 import { noop, startCase } from 'lodash';
 import React, { useMemo } from 'react';
 import {
@@ -293,9 +293,10 @@ export const GenericWidget = (props: WidgetCommonProps) => {
                 data-testid="drag-widget-button"
                 size={14}
               />
-              <CloseOutlined
+              <Button
                 data-testid="remove-widget-button"
-                size={14}
+                icon={<CloseOutlined size={14} />}
+                size="small"
                 onClick={handleRemoveClick}
               />
             </Space>

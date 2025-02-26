@@ -17,7 +17,6 @@ import { isUndefined, toString } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import { FQN_SEPARATOR_CHAR } from '../../../../constants/char.constants';
 import {
   getEntityDetailsPath,
   getVersionPath,
@@ -25,12 +24,11 @@ import {
 import { FEED_COUNT_INITIAL_DATA } from '../../../../constants/entity.constants';
 import { EntityTabs, EntityType } from '../../../../enums/entity.enum';
 import { DashboardDataModel } from '../../../../generated/entity/data/dashboardDataModel';
-import { Page, PageType } from '../../../../generated/system/ui/page';
-import { useApplicationStore } from '../../../../hooks/useApplicationStore';
+import { PageType } from '../../../../generated/system/ui/page';
+import { useCustomPages } from '../../../../hooks/useCustomPages';
 import { useFqn } from '../../../../hooks/useFqn';
 import { FeedCounts } from '../../../../interface/feed.interface';
 import { restoreDataModel } from '../../../../rest/dataModelsAPI';
-import { getDocumentByFQN } from '../../../../rest/DocStoreAPI';
 import { getFeedCounts } from '../../../../utils/CommonUtils';
 import {
   getDetailsTabWithNewLabel,
@@ -61,8 +59,7 @@ const DataModelDetails = ({
   const history = useHistory();
   const { tab: activeTab } = useParams<{ tab: EntityTabs }>();
   const { fqn: decodedDataModelFQN } = useFqn();
-  const [customizedPage, setCustomizedPage] = useState<Page | null>(null);
-  const { selectedPersona } = useApplicationStore();
+  const { customizedPage } = useCustomPages(PageType.DashboardDataModel);
 
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA
@@ -190,26 +187,6 @@ const DataModelDetails = ({
     handleFeedCount,
     editLineagePermission,
   ]);
-
-  const fetchDocument = useCallback(async () => {
-    const pageFQN = `${EntityType.PERSONA}${FQN_SEPARATOR_CHAR}${selectedPersona.fullyQualifiedName}`;
-    try {
-      const doc = await getDocumentByFQN(pageFQN);
-      setCustomizedPage(
-        doc.data?.pages?.find(
-          (p: Page) => p.pageType === PageType.DashboardDataModel
-        )
-      );
-    } catch (error) {
-      // fail silent
-    }
-  }, [selectedPersona.fullyQualifiedName]);
-
-  useEffect(() => {
-    if (selectedPersona?.fullyQualifiedName) {
-      fetchDocument();
-    }
-  }, [selectedPersona]);
 
   return (
     <PageLayoutV1

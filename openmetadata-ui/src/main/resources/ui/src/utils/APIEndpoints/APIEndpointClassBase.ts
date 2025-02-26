@@ -13,6 +13,7 @@
 
 import { Layout } from 'react-grid-layout';
 import { TabProps } from '../../components/common/TabsLabel/TabsLabel.interface';
+import { API_ENDPOINT_DUMMY_DATA } from '../../constants/APICollection.constnats';
 import {
   CUSTOM_PROPERTIES_WIDGET,
   DATA_PRODUCTS_WIDGET,
@@ -23,13 +24,7 @@ import {
 } from '../../constants/CustomizeWidgets.constants';
 import { DetailPageWidgetKeys } from '../../enums/CustomizeDetailPage.enum';
 import { EntityTabs } from '../../enums/entity.enum';
-import {
-  APIEndpoint,
-  APIRequestMethod,
-  APIServiceType,
-  DataTypeTopic,
-  SchemaType,
-} from '../../generated/entity/data/apiEndpoint';
+import { APIEndpoint } from '../../generated/entity/data/apiEndpoint';
 import { Tab } from '../../generated/system/ui/uiCustomization';
 import { FeedCounts } from '../../interface/feed.interface';
 import { WidgetConfig } from '../../pages/CustomizablePage/CustomizablePage.interface';
@@ -140,178 +135,7 @@ class APIEndpointClassBase {
     ];
   }
   public getDummyData(): APIEndpoint {
-    return {
-      id: 'b41d3506-09ac-4e02-ae40-8d6933f6a77f',
-      name: 'addPet',
-      displayName: 'Add Pet',
-      fullyQualifiedName: 'sample_api_service.pet.addPet',
-      description: 'add a new pet',
-      version: 0.5,
-      updatedAt: 1723268606694,
-      updatedBy: 'sachin',
-      endpointURL: 'https://petstore3.swagger.io/#/pet/addPet',
-      requestMethod: APIRequestMethod.Post,
-      requestSchema: {
-        schemaType: SchemaType.JSON,
-        schemaFields: [
-          {
-            name: 'id',
-            dataType: DataTypeTopic.Int,
-            description: 'ID of pet that needs to be updated',
-            fullyQualifiedName: 'sample_api_service.pet.addPet.id',
-            tags: [],
-          },
-          {
-            name: 'name',
-            dataType: DataTypeTopic.String,
-            description: 'Name of pet',
-            fullyQualifiedName: 'sample_api_service.pet.addPet.name',
-            tags: [],
-          },
-          {
-            name: 'category',
-            dataType: DataTypeTopic.Record,
-            description: 'Category of pet',
-            fullyQualifiedName: 'sample_api_service.pet.addPet.category',
-            tags: [],
-            children: [
-              {
-                name: 'id',
-                dataType: DataTypeTopic.Int,
-                description: 'ID of category',
-                fullyQualifiedName: 'sample_api_service.pet.addPet.category.id',
-                tags: [],
-              },
-              {
-                name: 'name',
-                dataType: DataTypeTopic.String,
-                description: 'Name of category',
-                fullyQualifiedName:
-                  'sample_api_service.pet.addPet.category.name',
-                tags: [],
-              },
-            ],
-          },
-          {
-            name: 'photoUrls',
-            dataType: DataTypeTopic.Array,
-            description: "URLs of pet's photos",
-            fullyQualifiedName: 'sample_api_service.pet.addPet.photoUrls',
-            tags: [],
-          },
-          {
-            name: 'tags',
-            dataType: DataTypeTopic.Array,
-            description: 'Tags of pet',
-            fullyQualifiedName: 'sample_api_service.pet.addPet.tags',
-            tags: [],
-          },
-          {
-            name: 'status',
-            dataType: DataTypeTopic.String,
-            description: 'Status of pet',
-            fullyQualifiedName: 'sample_api_service.pet.addPet.status',
-            tags: [],
-          },
-        ],
-      },
-      responseSchema: {
-        schemaType: SchemaType.JSON,
-        schemaFields: [
-          {
-            name: 'id',
-            dataType: DataTypeTopic.Int,
-            description: 'ID of pet that needs to be updated',
-            fullyQualifiedName: 'sample_api_service.pet.addPet.id',
-            tags: [],
-          },
-          {
-            name: 'name',
-            dataType: DataTypeTopic.String,
-            description: 'Name of pet',
-            fullyQualifiedName: 'sample_api_service.pet.addPet.name',
-            tags: [],
-          },
-          {
-            name: 'category',
-            dataType: DataTypeTopic.Record,
-            description: 'Category of pet',
-            fullyQualifiedName: 'sample_api_service.pet.addPet.category',
-            tags: [],
-            children: [
-              {
-                name: 'id',
-                dataType: DataTypeTopic.Int,
-                description: 'ID of category',
-                fullyQualifiedName: 'sample_api_service.pet.addPet.category.id',
-                tags: [],
-              },
-              {
-                name: 'name',
-                dataType: DataTypeTopic.String,
-                description: 'Name of category',
-                fullyQualifiedName:
-                  'sample_api_service.pet.addPet.category.name',
-                tags: [],
-              },
-            ],
-          },
-          {
-            name: 'photoUrls',
-            dataType: DataTypeTopic.Array,
-            description: "URLs of pet's photos",
-            fullyQualifiedName: 'sample_api_service.pet.addPet.photoUrls',
-            tags: [],
-          },
-          {
-            name: 'tags',
-            dataType: DataTypeTopic.Array,
-            description: 'Tags of pet',
-            fullyQualifiedName: 'sample_api_service.pet.addPet.tags',
-            tags: [],
-          },
-          {
-            name: 'status',
-            dataType: DataTypeTopic.String,
-            description: 'Status of pet',
-            fullyQualifiedName: 'sample_api_service.pet.addPet.status',
-            tags: [],
-          },
-        ],
-      },
-      apiCollection: {
-        id: 'db03ef8f-82f9-4a23-a940-3ba5af5bba29',
-        type: 'apiCollection',
-        name: 'pet',
-        fullyQualifiedName: 'sample_api_service.pet',
-        displayName: 'pet',
-        deleted: false,
-        href: 'http://sandbox-beta.open-metadata.org/api/v1/apiCollections/db03ef8f-82f9-4a23-a940-3ba5af5bba29',
-      },
-      href: 'http://sandbox-beta.open-metadata.org/api/v1/apiEndpoints/b41d3506-09ac-4e02-ae40-8d6933f6a77f',
-      owners: [],
-      followers: [],
-      tags: [],
-      service: {
-        id: '449b7937-c4ca-4dce-866c-5f6d0acc45c1',
-        type: 'apiService',
-        name: 'sample_api_service',
-        fullyQualifiedName: 'sample_api_service',
-        displayName: 'sample_api_service',
-        deleted: false,
-        href: 'http://sandbox-beta.open-metadata.org/api/v1/services/apiServices/449b7937-c4ca-4dce-866c-5f6d0acc45c1',
-      },
-      serviceType: APIServiceType.REST,
-
-      deleted: false,
-      dataProducts: [],
-      votes: {
-        upVotes: 0,
-        downVotes: 0,
-        upVoters: [],
-        downVoters: [],
-      },
-    };
+    return API_ENDPOINT_DUMMY_DATA;
   }
 
   public getCommonWidgetList() {
