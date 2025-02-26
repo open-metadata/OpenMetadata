@@ -12,7 +12,9 @@ import org.jdbi.v3.core.Handle;
 import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.sdk.PipelineServiceClientInterface;
+import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
+import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.MigrationDAO;
 import org.openmetadata.service.migration.QueryStatus;
@@ -26,9 +28,9 @@ public class MigrationProcessImpl implements MigrationProcess {
   protected CollectionDAO collectionDAO;
   protected Jdbi jdbi;
   protected Handle handle;
-  protected PipelineServiceClientInterface pipelineServiceClient;
   protected AuthenticationConfiguration authenticationConfiguration;
   private final MigrationFile migrationFile;
+  private OpenMetadataApplicationConfig openMetadataApplicationConfig;
 
   public @Getter MigrationContext context;
 
@@ -42,10 +44,21 @@ public class MigrationProcessImpl implements MigrationProcess {
     this.jdbi = jdbi;
     this.collectionDAO = handle.attach(CollectionDAO.class);
     this.migrationDAO = handle.attach(MigrationDAO.class);
-    this.pipelineServiceClient =
-        PipelineServiceClientFactory.createPipelineServiceClient(
-            this.migrationFile.pipelineServiceClientConfiguration);
-    this.authenticationConfiguration = migrationFile.authenticationConfiguration;
+    this.openMetadataApplicationConfig = this.migrationFile.openMetadataApplicationConfig;
+    this.authenticationConfiguration =
+        this.openMetadataApplicationConfig.getAuthenticationConfiguration();
+  }
+
+  public void initializeWorkflowHandler() {
+    WorkflowHandler.initialize(openMetadataApplicationConfig);
+  }
+
+  public PipelineServiceClientInterface getPipelineServiceClient() {
+    if (this.openMetadataApplicationConfig != null) {
+      return PipelineServiceClientFactory.createPipelineServiceClient(
+          this.openMetadataApplicationConfig.getPipelineServiceClientConfiguration());
+    }
+    return PipelineServiceClientFactory.createPipelineServiceClient(null);
   }
 
   @Override

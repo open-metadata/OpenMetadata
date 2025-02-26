@@ -69,14 +69,15 @@ public class OpenMetadataApplicationConfig extends Configuration {
   private static final String CERTIFICATE_PATH = "certificatePath";
 
   public PipelineServiceClientConfiguration getPipelineServiceClientConfiguration() {
-
-    LinkedHashMap<String, String> temporarySSLConfig =
-        (LinkedHashMap<String, String>) pipelineServiceClientConfiguration.getSslConfig();
-    if (temporarySSLConfig != null && temporarySSLConfig.containsKey(CERTIFICATE_PATH)) {
-      temporarySSLConfig.put("caCertificate", temporarySSLConfig.get(CERTIFICATE_PATH));
-      temporarySSLConfig.remove(CERTIFICATE_PATH);
+    if (pipelineServiceClientConfiguration != null) {
+      LinkedHashMap<String, String> temporarySSLConfig =
+          (LinkedHashMap<String, String>) pipelineServiceClientConfiguration.getSslConfig();
+      if (temporarySSLConfig != null && temporarySSLConfig.containsKey(CERTIFICATE_PATH)) {
+        temporarySSLConfig.put("caCertificate", temporarySSLConfig.get(CERTIFICATE_PATH));
+        temporarySSLConfig.remove(CERTIFICATE_PATH);
+      }
+      pipelineServiceClientConfiguration.setSslConfig(temporarySSLConfig);
     }
-    pipelineServiceClientConfiguration.setSslConfig(temporarySSLConfig);
     return pipelineServiceClientConfiguration;
   }
 
