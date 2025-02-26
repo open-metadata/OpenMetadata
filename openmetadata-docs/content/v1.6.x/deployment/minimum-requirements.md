@@ -1,6 +1,6 @@
 ---
-title: Minimum Hardware Requirements
-slug: /deployment/minimum-hardware-requirements
+title: Minimum Requirements
+slug: /deployment/minimum-requirements
 collate: false
 ---
 
@@ -21,6 +21,13 @@ Our minimum specs recommendation for MySQL / PostgreSQL as database deployment i
 
 These settings apply as well when using managed instances, such as AWS RDS or GCP CloudSQL or Azure Flexible Servers.
 
+### Software Requirements
+
+OpenMetadata currently supports -
+
+- MySQL version 8.0.0 or higher
+- PostgreSQL version 12.0 or higher
+
 ## ElasticSearch or OpenSearch as Search Instance
 
 Our minimum specs recommendation for ElasticSearch / OpenSearch deployment is
@@ -29,4 +36,25 @@ Our minimum specs recommendation for ElasticSearch / OpenSearch deployment is
 - 100 GiB Storage (per node)
 - Master / Worker Nodes with atleast 1 Master and 2 Worker Nodes
 
+### Software Requirements
+
+OpenMetadata currently supports -
+
+- ElasticSearch version 8.X till 8.11.4
+- OpenSearch version 2.7
+
 These settings apply as well when using managed instances, such as AWS OpenSearch Service or Elastic Cloud on GCP, AWS, Azure.
+
+## Apache Airflow as Ingestion Instance
+
+Our minimum specs recommendation for Apache Airflow is
+- 4 vCPU
+- 16 GiB Memory
+- 100 GiB Storage for Airflow Dags and Logs
+
+### Software Requirements
+
+OpenMetadata currently supports -
+- Airflow version 2.9.1
+
+Learn more about how to deploy and manage the ingestion workflows [here](/deployment/ingestion).
