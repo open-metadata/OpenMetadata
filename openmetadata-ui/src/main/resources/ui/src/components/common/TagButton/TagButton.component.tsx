@@ -35,7 +35,7 @@ const TagButton: React.FC<TagButtonProps> = ({
   versionData,
 }) => {
   const buttonClassNames = classNames(
-    'tag-button-container d-inline-flex text-xs font-medium rounded-4 whitespace-nowrap bg-white items-center border font-semibold p-x-sm m-t-xs m-r-xs',
+    'tag-button-container d-inline-flex text-xs font-medium rounded-4 whitespace-nowrap bg-white items-center border font-semibold p-x-xs m-t-xs m-r-xs',
     { 'diff-added': versionData?.added },
     { 'diff-removed text-grey-muted': versionData?.removed },
     className

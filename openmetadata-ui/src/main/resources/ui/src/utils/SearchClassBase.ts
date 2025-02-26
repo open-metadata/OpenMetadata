@@ -541,7 +541,7 @@ class SearchClassBase {
   }
 
   public getListOfEntitiesWithoutDomain(): string[] {
-    return [EntityType.TEST_CASE];
+    return [EntityType.TEST_CASE, EntityType.DOMAIN];
   }
 
   public getEntityBreadcrumbs(

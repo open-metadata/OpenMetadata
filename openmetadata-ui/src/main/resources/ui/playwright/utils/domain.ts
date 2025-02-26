@@ -590,3 +590,49 @@ export const verifyDataProductAssetsAfterDelete = async (
     }
   );
 };
+
+export const addTagsAndGlossaryToDomain = async (
+  page: Page,
+  {
+    tagFqn,
+    glossaryTermFqn,
+    isDomain = true,
+  }: {
+    tagFqn: string;
+    glossaryTermFqn: string;
+    isDomain?: boolean;
+  }
+) => {
+  const addTagOrTerm = async (
+    containerType: 'tags' | 'glossary',
+    value: string
+  ) => {
+    const container = `[data-testid="${containerType}-container"]`;
+
+    // Click add button
+    await page.locator(`${container} [data-testid="add-tag"]`).click();
+
+    // Fill and select tag/term
+    const input = page.locator(`${container} #tagsForm_tags`);
+    await input.click();
+    await input.fill(value);
+    await page.getByTestId(`tag-${value}`).click();
+
+    // Save and wait for response
+    const updateResponse = page.waitForResponse(
+      (response) =>
+        response
+          .url()
+          .includes(`/api/v1/${isDomain ? 'domains' : 'dataProducts'}/`) &&
+        response.request().method() === 'PATCH'
+    );
+    await page.getByTestId('saveAssociatedTag').click();
+    await updateResponse;
+  };
+
+  // Add tag
+  await addTagOrTerm('tags', tagFqn);
+
+  // Add glossary term
+  await addTagOrTerm('glossary', glossaryTermFqn);
+};

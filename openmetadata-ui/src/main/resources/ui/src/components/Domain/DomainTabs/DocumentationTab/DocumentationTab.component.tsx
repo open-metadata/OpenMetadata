@@ -25,7 +25,11 @@ import { EntityField } from '../../../../constants/Feeds.constants';
 import { COMMON_RESIZABLE_PANEL_CONFIG } from '../../../../constants/ResizablePanel.constants';
 import { ResourceEntity } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType, TabSpecificField } from '../../../../enums/entity.enum';
-import { DataProduct } from '../../../../generated/entity/domains/dataProduct';
+import {
+  DataProduct,
+  TagLabel,
+  TagSource,
+} from '../../../../generated/entity/domains/dataProduct';
 import {
   Domain,
   DomainType,
@@ -44,6 +48,8 @@ import { CustomPropertyTable } from '../../../common/CustomPropertyTable/CustomP
 import FormItemLabel from '../../../common/Form/FormItemLabel';
 import ResizablePanels from '../../../common/ResizablePanels/ResizablePanels';
 import TagButton from '../../../common/TagButton/TagButton.component';
+import TagsContainerV2 from '../../../Tag/TagsContainerV2/TagsContainerV2';
+import { DisplayType } from '../../../Tag/TagsViewer/TagsViewer.interface';
 import '../../domain.less';
 import {
   DocumentationEntity,
@@ -73,6 +79,8 @@ const DocumentationTab = ({
     editAllPermission,
     editCustomAttributePermission,
     viewAllPermission,
+    editTagsPermission,
+    editGlossaryTermsPermission,
   } = useMemo(() => {
     if (isVersionsView) {
       return {
@@ -80,6 +88,8 @@ const DocumentationTab = ({
         editOwnerPermission: false,
         editAllPermission: false,
         editCustomAttributePermission: false,
+        editTagsPermission: false,
+        editGlossaryTermsPermission: false,
       };
     }
 
@@ -93,11 +103,17 @@ const DocumentationTab = ({
 
     const viewAll = permissions?.ViewAll;
 
+    const editTags = permissions?.EditTags;
+
+    const editGlossaryTerms = permissions?.EditGlossaryTerms;
+
     return {
       editDescriptionPermission: editAll || editDescription,
       editOwnerPermission: editAll || editOwner,
       editAllPermission: editAll,
       editCustomAttributePermission: editAll || editCustomAttribute,
+      editTagsPermission: editAll || editTags,
+      editGlossaryTermsPermission: editAll || editGlossaryTerms,
       viewAllPermission: viewAll,
     };
   }, [permissions, isVersionsView, resourceType]);
@@ -114,6 +130,14 @@ const DocumentationTab = ({
 
     [domain, isVersionsView]
   );
+
+  const onTagsUpdate = async (updatedTags: TagLabel[]) => {
+    const updatedDomain = {
+      ...domain,
+      tags: updatedTags,
+    };
+    await onUpdate(updatedDomain);
+  };
 
   const onDescriptionUpdate = async (updatedHTML: string) => {
     if (domain.description !== updatedHTML) {
@@ -233,7 +257,6 @@ const DocumentationTab = ({
                   editOwnerPermission || editAllPermission
                 )}
               </Space>
-
               {domain.owners?.length === 0 && editOwnerPermission && (
                 <UserTeamSelectableList
                   hasPermission
@@ -241,7 +264,7 @@ const DocumentationTab = ({
                   owner={domain.owners}
                   onUpdate={(updatedUser) => handleUpdatedOwner(updatedUser)}>
                   <TagButton
-                    className="tw-text-primary cursor-pointer"
+                    className="text-primary cursor-pointer"
                     icon={<PlusIcon height={16} name="plus" width={16} />}
                     label={t('label.add')}
                     tooltip=""
@@ -249,6 +272,37 @@ const DocumentationTab = ({
                 </UserTeamSelectableList>
               )}
             </Col>
+
+            <Col data-testid="domain-tags" span="24">
+              <TagsContainerV2
+                displayType={DisplayType.READ_MORE}
+                entityFqn={domain.fullyQualifiedName}
+                entityType={EntityType.DOMAIN}
+                permission={editTagsPermission as boolean}
+                selectedTags={domain.tags ?? []}
+                showTaskHandler={false}
+                tagType={TagSource.Classification}
+                onSelectionChange={async (updatedTags: TagLabel[]) =>
+                  await onTagsUpdate(updatedTags)
+                }
+              />
+            </Col>
+
+            <Col data-testid="domain-glossary-terms" span="24">
+              <TagsContainerV2
+                displayType={DisplayType.READ_MORE}
+                entityFqn={domain.fullyQualifiedName}
+                entityType={EntityType.DOMAIN}
+                permission={editGlossaryTermsPermission as boolean}
+                selectedTags={domain.tags ?? []}
+                showTaskHandler={false}
+                tagType={TagSource.Glossary}
+                onSelectionChange={async (updatedTags: TagLabel[]) =>
+                  await onTagsUpdate(updatedTags)
+                }
+              />
+            </Col>
+
             <Col data-testid="domain-expert-name" span="24">
               <div
                 className={`d-flex items-center ${
@@ -303,7 +357,7 @@ const DocumentationTab = ({
                       selectedUsers={domain.experts ?? []}
                       onUpdate={handleExpertsUpdate}>
                       <TagButton
-                        className="tw-text-primary cursor-pointer"
+                        className="text-primary cursor-pointer"
                         icon={<PlusIcon height={16} name="plus" width={16} />}
                         label={t('label.add')}
                         tooltip=""

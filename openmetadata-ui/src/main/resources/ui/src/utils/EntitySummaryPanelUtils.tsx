@@ -22,6 +22,7 @@ import { ReactComponent as IconExternalLink } from '../assets/svg/external-links
 import SchemaEditor from '../components/Database/SchemaEditor/SchemaEditor';
 import APIEndpointSummary from '../components/Explore/EntitySummaryPanel/APIEndpointSummary/APIEndpointSummary';
 import DataProductSummary from '../components/Explore/EntitySummaryPanel/DataProductSummary/DataProductSummary.component';
+import DomainSummary from '../components/Explore/EntitySummaryPanel/DomainSummary/DomainSummary.component';
 import GlossaryTermSummary from '../components/Explore/EntitySummaryPanel/GlossaryTermSummary/GlossaryTermSummary.component';
 import SummaryList from '../components/Explore/EntitySummaryPanel/SummaryList/SummaryList.component';
 import {
@@ -55,6 +56,7 @@ import {
 import { Column, Table, TableConstraint } from '../generated/entity/data/table';
 import { Field, Topic } from '../generated/entity/data/topic';
 import { DataProduct } from '../generated/entity/domains/dataProduct';
+import { Domain } from '../generated/entity/domains/domain';
 import { EntityReference } from '../generated/tests/testCase';
 import entityUtilClassBase from './EntityUtilClassBase';
 import { getEntityName } from './EntityUtils';
@@ -608,6 +610,16 @@ export const getEntityChildDetails = (
       return (
         <DataProductSummary
           entityDetails={entityInfo as DataProduct}
+          highlights={highlights}
+          isLoading={false}
+        />
+      );
+
+    case EntityType.DOMAIN:
+      return (
+        <DomainSummary
+          entityDetails={entityInfo as Domain}
+          highlights={highlights}
           isLoading={false}
         />
       );

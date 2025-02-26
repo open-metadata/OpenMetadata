@@ -23,6 +23,8 @@ test.use({ storageState: 'playwright/.auth/admin.json' });
 
 test.describe('Soft Delete User Pagination', () => {
   test.beforeAll('Creating and Soft Deleting 30 users', async ({ browser }) => {
+    test.slow(true);
+
     const { apiContext, afterAction } = await createNewPage(browser);
 
     await adminUser.create(apiContext);
@@ -48,6 +50,8 @@ test.describe('Soft Delete User Pagination', () => {
   });
 
   test.afterAll('Permanently deleting users', async ({ browser }) => {
+    test.slow(true);
+
     const { apiContext, afterAction } = await createNewPage(browser);
     for (const testUser of users) {
       await testUser.delete(apiContext);
