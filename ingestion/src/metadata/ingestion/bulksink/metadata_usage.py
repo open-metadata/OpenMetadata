@@ -19,10 +19,8 @@ produced by the stage. At the end, the path is removed.
 """
 import json
 import os
-import shutil
 import traceback
 from datetime import datetime
-from pathlib import Path
 from typing import List, Optional
 
 from pydantic import ValidationError
@@ -41,7 +39,11 @@ from metadata.generated.schema.entity.services.ingestionPipelines.status import 
 from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.type.basic import Timestamp
 from metadata.generated.schema.type.lifeCycle import AccessDetails, LifeCycle
-from metadata.generated.schema.type.tableUsageCount import TableColumn, TableUsageCount
+from metadata.generated.schema.type.tableUsageCount import (
+    QueryCostWrapper,
+    TableColumn,
+    TableUsageCount,
+)
 from metadata.generated.schema.type.usageRequest import UsageRequest
 from metadata.ingestion.api.steps import BulkSink
 from metadata.ingestion.lineage.sql_lineage import (
@@ -163,7 +165,7 @@ class MetadataUsageBulkSink(BulkSink):
                     )
                 )
 
-    def iterate_files(self):
+    def iterate_files(self, usage_files: bool = True):
         """
         Iterate through files in the given directory
         """
@@ -173,11 +175,13 @@ class MetadataUsageBulkSink(BulkSink):
                 full_file_name = os.path.join(self.config.filename, filename)
                 if not os.path.isfile(full_file_name):
                     continue
-                with open(full_file_name, encoding=UTF_8) as file:
-                    yield file
+                # if usage_files is True, then we want to iterate through files does not end with query
+                # if usage_files is False, then we want to iterate through files that end with query
+                if filename.endswith("query") ^ usage_files:
+                    with open(full_file_name, encoding=UTF_8) as file:
+                        yield file
 
-    # Check here how to properly pick up ES and/or table query data
-    def run(self) -> None:
+    def handle_table_usage(self) -> None:
         for file_handler in self.iterate_files():
             self.table_usage_map = {}
             for usage_record in file_handler.readlines():
@@ -209,6 +213,18 @@ class MetadataUsageBulkSink(BulkSink):
                 self.get_table_usage_and_joins(table_entities, table_usage)
 
             self.__publish_usage_records()
+
+    def handle_query_cost(self) -> None:
+        for file_handler in self.iterate_files(usage_files=False):
+            for usage_record in file_handler.readlines():
+                record = json.loads(usage_record)
+                cost_record = QueryCostWrapper(**record)
+                self.metadata.publish_query_cost(cost_record, self.service_name)
+
+    # Check here how to properly pick up ES and/or table query data
+    def run(self) -> None:
+        self.handle_table_usage()
+        self.handle_query_cost()
 
     def get_table_usage_and_joins(
         self, table_entities: List[Table], table_usage: TableUsageCount

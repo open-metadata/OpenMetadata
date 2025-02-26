@@ -45,6 +45,12 @@
       "description": "Configuration to set the file path for query logs",
       "type": "string",
       "title": "Query Log File Path"
+    },
+    "processQueryCostAnalysis": {
+      "description": "Configuration to process query cost",
+      "type": "boolean",
+      "default": true,
+      "title": "Process Query Cost"
     }
   },
   "additionalProperties": false

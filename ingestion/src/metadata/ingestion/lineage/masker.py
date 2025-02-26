@@ -14,14 +14,18 @@ Query masking utilities
 
 import traceback
 
+from cachetools import LRUCache
 from collate_sqllineage.runner import SQLPARSE_DIALECT, LineageRunner
 from sqlparse.sql import Comparison
 from sqlparse.tokens import Literal, Number, String
 
 from metadata.ingestion.lineage.models import Dialect
+from metadata.utils.lru_cache import LRU_CACHE_SIZE
 
 MASK_TOKEN = "?"
 
+
+masked_query_cache = LRUCache(maxsize=LRU_CACHE_SIZE)
 
 # pylint: disable=protected-access
 def get_logger():
@@ -114,6 +118,8 @@ def mask_query(
 ) -> str:
     logger = get_logger()
     try:
+        if masked_query_cache.get((query, dialect)):
+            return masked_query_cache.get((query, dialect))
         if not parser:
             try:
                 parser = LineageRunner(query, dialect=dialect)
@@ -122,8 +128,11 @@ def mask_query(
                 parser = LineageRunner(query)
                 len(parser.source_tables)
         if parser._dialect == SQLPARSE_DIALECT:
-            return mask_literals_with_sqlparse(query, parser)
-        return mask_literals_with_sqlfluff(query, parser)
+            masked_query = mask_literals_with_sqlparse(query, parser)
+        else:
+            masked_query = mask_literals_with_sqlfluff(query, parser)
+        masked_query_cache[(query, dialect)] = masked_query
+        return masked_query
     except Exception as exc:
         logger.debug(f"Failed to mask query with sqlfluff: {exc}")
         logger.debug(traceback.format_exc())
