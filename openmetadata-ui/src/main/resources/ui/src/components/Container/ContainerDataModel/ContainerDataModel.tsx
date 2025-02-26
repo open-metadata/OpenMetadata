@@ -39,6 +39,7 @@ import {
   searchTagInData,
 } from '../../../utils/TableTags/TableTags.utils';
 import { getTableExpandableConfig } from '../../../utils/TableUtils';
+import { EntityDescriptionProvider } from '../../common/EntityDescription/EntityDescriptionProvider/EntityDescriptionProvider';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { ColumnFilter } from '../../Database/ColumnFilter/ColumnFilter.component';
 import TableDescription from '../../Database/TableDescription/TableDescription.component';
@@ -267,18 +268,22 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
         size="small"
       />
       {editContainerColumnDescription && (
-        <ModalWithMarkdownEditor
-          header={`${t('label.edit-entity', {
-            entity: t('label.column'),
-          })}: "${getEntityName(editContainerColumnDescription)}"`}
-          placeholder={t('label.enter-field-description', {
-            field: t('label.column'),
-          })}
-          value={editContainerColumnDescription.description ?? ''}
-          visible={Boolean(editContainerColumnDescription)}
-          onCancel={() => setEditContainerColumnDescription(undefined)}
-          onSave={handleContainerColumnDescriptionChange}
-        />
+        <EntityDescriptionProvider
+          entityFqn={editContainerColumnDescription.fullyQualifiedName}
+          entityType={EntityType.CONTAINER}>
+          <ModalWithMarkdownEditor
+            header={`${t('label.edit-entity', {
+              entity: t('label.column'),
+            })}: "${getEntityName(editContainerColumnDescription)}"`}
+            placeholder={t('label.enter-field-description', {
+              field: t('label.column'),
+            })}
+            value={editContainerColumnDescription.description ?? ''}
+            visible={Boolean(editContainerColumnDescription)}
+            onCancel={() => setEditContainerColumnDescription(undefined)}
+            onSave={handleContainerColumnDescriptionChange}
+          />
+        </EntityDescriptionProvider>
       )}
     </>
   );

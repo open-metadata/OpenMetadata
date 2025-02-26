@@ -24,6 +24,7 @@ import {
 import { EntityTags, TagFilterOptions } from 'Models';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { EntityDescriptionProvider } from '../../../components/common/EntityDescription/EntityDescriptionProvider/EntityDescriptionProvider';
 import FilterTablePlaceHolder from '../../../components/common/ErrorWithPlaceholder/FilterTablePlaceHolder';
 import Table from '../../../components/common/Table/Table';
 import { ColumnFilter } from '../../../components/Database/ColumnFilter/ColumnFilter.component';
@@ -312,18 +313,22 @@ const SearchIndexFieldsTable = ({
         size="middle"
       />
       {editField && (
-        <ModalWithMarkdownEditor
-          header={`${t('label.edit-entity', {
-            entity: t('label.field'),
-          })}: "${getEntityName(editField.field)}"`}
-          placeholder={t('label.enter-field-description', {
-            field: t('label.field'),
-          })}
-          value={editField.field.description as string}
-          visible={Boolean(editField)}
-          onCancel={closeEditFieldModal}
-          onSave={handleEditFieldChange}
-        />
+        <EntityDescriptionProvider
+          entityFqn={editField.field.fullyQualifiedName}
+          entityType={EntityType.SEARCH_INDEX}>
+          <ModalWithMarkdownEditor
+            header={`${t('label.edit-entity', {
+              entity: t('label.field'),
+            })}: "${getEntityName(editField.field)}"`}
+            placeholder={t('label.enter-field-description', {
+              field: t('label.field'),
+            })}
+            value={editField.field.description as string}
+            visible={Boolean(editField)}
+            onCancel={closeEditFieldModal}
+            onSave={handleEditFieldChange}
+          />
+        </EntityDescriptionProvider>
       )}
     </>
   );

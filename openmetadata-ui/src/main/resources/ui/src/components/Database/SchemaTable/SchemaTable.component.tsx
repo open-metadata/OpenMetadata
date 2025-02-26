@@ -73,6 +73,7 @@ import {
   updateFieldTags,
 } from '../../../utils/TableUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import { EntityDescriptionProvider } from '../../common/EntityDescription/EntityDescriptionProvider/EntityDescriptionProvider';
 import FilterTablePlaceHolder from '../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
 import Table from '../../common/Table/Table';
 import TestCaseStatusSummaryIndicator from '../../common/TestCaseStatusSummaryIndicator/TestCaseStatusSummaryIndicator.component';
@@ -588,16 +589,20 @@ const SchemaTable = ({
         size="middle"
       />
       {editColumn && (
-        <ModalWithMarkdownEditor
-          header={`${t('label.edit-entity', {
-            entity: t('label.column'),
-          })}: "${getEntityName(editColumn)}"`}
-          placeholder={t('message.enter-column-description')}
-          value={editColumn.description as string}
-          visible={Boolean(editColumn)}
-          onCancel={closeEditColumnModal}
-          onSave={handleEditColumnChange}
-        />
+        <EntityDescriptionProvider
+          entityFqn={editColumn.fullyQualifiedName}
+          entityType={EntityType.TABLE}>
+          <ModalWithMarkdownEditor
+            header={`${t('label.edit-entity', {
+              entity: t('label.column'),
+            })}: "${getEntityName(editColumn)}"`}
+            placeholder={t('message.enter-column-description')}
+            value={editColumn.description as string}
+            visible={Boolean(editColumn)}
+            onCancel={closeEditColumnModal}
+            onSave={handleEditColumnChange}
+          />
+        </EntityDescriptionProvider>
       )}
       {editColumnDisplayName && (
         <EntityNameModal

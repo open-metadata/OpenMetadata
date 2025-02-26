@@ -51,6 +51,7 @@ import {
   updateFieldDescription,
   updateFieldTags,
 } from '../../../utils/TableUtils';
+import { EntityDescriptionProvider } from '../../common/EntityDescription/EntityDescriptionProvider/EntityDescriptionProvider';
 import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import ToggleExpandButton from '../../common/ToggleExpandButton/ToggleExpandButton';
 import { ColumnFilter } from '../../Database/ColumnFilter/ColumnFilter.component';
@@ -450,18 +451,22 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
         />
       </Col>
       {editFieldDescription && (
-        <ModalWithMarkdownEditor
-          header={`${t('label.edit-entity', {
-            entity: t('label.schema-field'),
-          })}: "${getEntityName(editFieldDescription)}"`}
-          placeholder={t('label.enter-field-description', {
-            field: t('label.schema-field'),
-          })}
-          value={editFieldDescription.description ?? ''}
-          visible={Boolean(editFieldDescription)}
-          onCancel={() => setEditFieldDescription(undefined)}
-          onSave={handleFieldDescriptionChange}
-        />
+        <EntityDescriptionProvider
+          entityFqn={editFieldDescription.fullyQualifiedName}
+          entityType={EntityType.API_ENDPOINT}>
+          <ModalWithMarkdownEditor
+            header={`${t('label.edit-entity', {
+              entity: t('label.schema-field'),
+            })}: "${getEntityName(editFieldDescription)}"`}
+            placeholder={t('label.enter-field-description', {
+              field: t('label.schema-field'),
+            })}
+            value={editFieldDescription.description ?? ''}
+            visible={Boolean(editFieldDescription)}
+            onCancel={() => setEditFieldDescription(undefined)}
+            onSave={handleFieldDescriptionChange}
+          />
+        </EntityDescriptionProvider>
       )}
     </Row>
   );

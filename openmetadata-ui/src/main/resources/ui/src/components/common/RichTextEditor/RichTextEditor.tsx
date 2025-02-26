@@ -21,6 +21,7 @@ import {
 } from '../../../utils/BlockEditorUtils';
 import BlockEditor from '../../BlockEditor/BlockEditor';
 import { BlockEditorRef } from '../../BlockEditor/BlockEditor.interface';
+import imageClassBase from '../../BlockEditor/Extensions/image/ImageClassBase';
 import {
   EditorContentRef,
   RichTextEditorProp,
@@ -39,6 +40,7 @@ const RichTextEditor = forwardRef<EditorContentRef, RichTextEditorProp>(
     }: RichTextEditorProp,
     ref
   ) => {
+    const blockEditorProps = imageClassBase.getBlockEditorProps();
     const editorRef = useRef<BlockEditorRef>({} as BlockEditorRef);
 
     const onChangeHandler = (backendFormatHtmlContent: string) => {
@@ -65,6 +67,7 @@ const RichTextEditor = forwardRef<EditorContentRef, RichTextEditorProp>(
           menuType="bar"
           editable={!readonly}
           onChange={onChangeHandler}
+          {...blockEditorProps}
         />
       </div>
     );

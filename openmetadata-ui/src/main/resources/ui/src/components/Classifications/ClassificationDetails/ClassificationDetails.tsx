@@ -482,6 +482,7 @@ const ClassificationDetails = forwardRef(
               'opacity-60': isClassificationDisabled,
             })}
             description={description}
+            entityFqn={currentClassification?.fullyQualifiedName}
             entityName={getEntityName(currentClassification)}
             entityType={EntityType.CLASSIFICATION}
             hasEditAccess={editDescriptionPermission}

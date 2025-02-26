@@ -45,6 +45,7 @@ import {
   updateFieldDescription,
   updateFieldTags,
 } from '../../../utils/TableUtils';
+import { EntityDescriptionProvider } from '../../common/EntityDescription/EntityDescriptionProvider/EntityDescriptionProvider';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import ToggleExpandButton from '../../common/ToggleExpandButton/ToggleExpandButton';
@@ -377,18 +378,22 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
         </>
       )}
       {editFieldDescription && (
-        <ModalWithMarkdownEditor
-          header={`${t('label.edit-entity', {
-            entity: t('label.schema-field'),
-          })}: "${getEntityName(editFieldDescription)}"`}
-          placeholder={t('label.enter-field-description', {
-            field: t('label.schema-field'),
-          })}
-          value={editFieldDescription.description ?? ''}
-          visible={Boolean(editFieldDescription)}
-          onCancel={() => setEditFieldDescription(undefined)}
-          onSave={handleFieldDescriptionChange}
-        />
+        <EntityDescriptionProvider
+          entityFqn={editFieldDescription.fullyQualifiedName}
+          entityType={EntityType.TOPIC}>
+          <ModalWithMarkdownEditor
+            header={`${t('label.edit-entity', {
+              entity: t('label.schema-field'),
+            })}: "${getEntityName(editFieldDescription)}"`}
+            placeholder={t('label.enter-field-description', {
+              field: t('label.schema-field'),
+            })}
+            value={editFieldDescription.description ?? ''}
+            visible={Boolean(editFieldDescription)}
+            onCancel={() => setEditFieldDescription(undefined)}
+            onSave={handleFieldDescriptionChange}
+          />
+        </EntityDescriptionProvider>
       )}
     </Row>
   );

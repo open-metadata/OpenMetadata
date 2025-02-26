@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,17 +10,22 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Node as ProseMirrorNode } from '@tiptap/pm/model';
+import { FileType } from '../../BlockEditor.interface';
 
-export type EditorContentRef = {
-  getEditorContent: () => string;
-};
+export interface FileNodeAttrs {
+  url: string;
+  fileName: string;
+  fileSize?: number;
+  mimeType: string;
+  type: FileType;
+}
 
-export interface ModalWithMarkdownEditorProps {
-  header: string;
-  value: string;
-  placeholder: string;
-  onSave?: (text: string) => Promise<void>;
-  onCancel?: () => void;
-  visible: boolean;
-  allowFileUpload?: boolean;
+export interface FileNodeOptions {
+  // Any configuration options we might need
+  allowedTypes?: FileType[];
+}
+
+export interface FileNodeStorage {
+  renderFileContent: (node: ProseMirrorNode) => HTMLElement;
 }

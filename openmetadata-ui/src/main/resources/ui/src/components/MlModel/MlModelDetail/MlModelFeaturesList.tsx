@@ -21,6 +21,7 @@ import { MlFeature } from '../../../generated/entity/data/mlmodel';
 import { TagSource } from '../../../generated/type/schema';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { createTagObject } from '../../../utils/TagsUtils';
+import { EntityDescriptionProvider } from '../../common/EntityDescription/EntityDescriptionProvider/EntityDescriptionProvider';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import TableDescription from '../../Database/TableDescription/TableDescription.component';
 import TableTags from '../../Database/TableTags/TableTags.component';
@@ -231,19 +232,23 @@ const MlModelFeaturesList = ({
           })}
         </Row>
         {!isEmpty(selectedFeature) && (
-          <ModalWithMarkdownEditor
-            header={t('label.edit-entity-name', {
-              entityType: t('label.feature'),
-              entityName: getEntityName(selectedFeature),
-            })}
-            placeholder={t('label.enter-field-description', {
-              field: t('label.feature-lowercase'),
-            })}
-            value={selectedFeature.description as string}
-            visible={editDescription}
-            onCancel={handleCancelEditDescription}
-            onSave={handleDescriptionChange}
-          />
+          <EntityDescriptionProvider
+            entityFqn={selectedFeature.fullyQualifiedName}
+            entityType={EntityType.MLMODEL}>
+            <ModalWithMarkdownEditor
+              header={t('label.edit-entity-name', {
+                entityType: t('label.feature'),
+                entityName: getEntityName(selectedFeature),
+              })}
+              placeholder={t('label.enter-field-description', {
+                field: t('label.feature-lowercase'),
+              })}
+              value={selectedFeature.description as string}
+              visible={editDescription}
+              onCancel={handleCancelEditDescription}
+              onSave={handleDescriptionChange}
+            />
+          </EntityDescriptionProvider>
         )}
       </Fragment>
     );

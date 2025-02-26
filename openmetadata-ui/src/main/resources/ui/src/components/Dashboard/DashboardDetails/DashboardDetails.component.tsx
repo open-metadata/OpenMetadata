@@ -59,6 +59,7 @@ import ActivityThreadPanel from '../../ActivityFeed/ActivityThreadPanel/Activity
 import { withActivityFeed } from '../../AppRouter/withActivityFeed';
 import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
 import DescriptionV1 from '../../common/EntityDescription/DescriptionV1';
+import { EntityDescriptionProvider } from '../../common/EntityDescription/EntityDescriptionProvider/EntityDescriptionProvider';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import ResizablePanels from '../../common/ResizablePanels/ResizablePanels';
 import TabsLabel from '../../common/TabsLabel/TabsLabel.component';
@@ -828,18 +829,22 @@ const DashboardDetails = ({
       </Row>
 
       {editChart && (
-        <ModalWithMarkdownEditor
-          header={t('label.edit-chart-name', {
-            name: getEntityName(editChart.chart),
-          })}
-          placeholder={t('label.enter-field-description', {
-            field: t('label.chart'),
-          })}
-          value={editChart.chart.description ?? ''}
-          visible={Boolean(editChart)}
-          onCancel={closeEditChartModal}
-          onSave={onChartUpdate}
-        />
+        <EntityDescriptionProvider
+          entityFqn={editChart.chart.fullyQualifiedName}
+          entityType={EntityType.CHART}>
+          <ModalWithMarkdownEditor
+            header={t('label.edit-chart-name', {
+              name: getEntityName(editChart.chart),
+            })}
+            placeholder={t('label.enter-field-description', {
+              field: t('label.chart'),
+            })}
+            value={editChart.chart.description ?? ''}
+            visible={Boolean(editChart)}
+            onCancel={closeEditChartModal}
+            onSave={onChartUpdate}
+          />
+        </EntityDescriptionProvider>
       )}
       <LimitWrapper resource="dashboard">
         <></>
