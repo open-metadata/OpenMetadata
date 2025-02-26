@@ -72,7 +72,7 @@ MSSQL_GET_SCHEMA_COMMENTS = textwrap.dedent(
      SELECT 
     DB_NAME() AS DATABASE_NAME, 
     s.name AS SCHEMA_NAME, 
-    ep.value AS COMMENT
+    CAST(ep.value AS NVARCHAR(MAX)) AS COMMENT 
 FROM sys.schemas s
 LEFT JOIN sys.extended_properties ep 
     ON ep.major_id = s.schema_id
