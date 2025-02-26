@@ -1,5 +1,6 @@
 package org.openmetadata.service.migration.mysql.v170;
 
+import static org.openmetadata.service.migration.utils.v170.MigrationUtil.updateDataInsightsApplication;
 import static org.openmetadata.service.migration.utils.v170.MigrationUtil.updateGovernanceWorkflowDefinitions;
 
 import lombok.SneakyThrows;
@@ -17,5 +18,6 @@ public class Migration extends MigrationProcessImpl {
   public void runDataMigration() {
     initializeWorkflowHandler();
     updateGovernanceWorkflowDefinitions();
+    updateDataInsightsApplication();
   }
 }
