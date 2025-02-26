@@ -21,7 +21,7 @@ public class ConfigurationReader {
   private final StringSubstitutor substitutor;
   private final ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
   private final YamlConfigurationFactory<Object> factory =
-      new YamlConfigurationFactory<>(Object.class, null, mapper, "dw");
+      new YamlConfigurationFactory<>(Object.class, null, mapper, "app");
 
   public ConfigurationReader(Map<String, String> envMap) {
     // envMap is for custom environment variables (e.g., for testing), defaulting to the system

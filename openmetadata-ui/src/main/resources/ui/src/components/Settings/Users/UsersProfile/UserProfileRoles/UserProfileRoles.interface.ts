@@ -17,4 +17,5 @@ export interface UserProfileRolesProps {
   isDeletedUser: User['deleted'];
   userRoles: User['roles'];
   updateUserDetails: (data: Partial<User>, key: keyof User) => Promise<void>;
+  userData?: User;
 }

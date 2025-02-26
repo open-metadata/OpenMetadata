@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Col, Divider, Row, Space, Typography } from 'antd';
+import { Col, Row, Space, Typography } from 'antd';
 import { isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -81,8 +81,11 @@ function GlossaryTermSummary({
 
   return (
     <SummaryPanelSkeleton loading={Boolean(isLoading)}>
-      <>
-        <Row className="m-md m-t-0" gutter={[0, 8]}>
+      <Space className="w-full" direction="vertical" size={20}>
+        <Row
+          className="p-md border-radius-card"
+          gutter={[0, 8]}
+          style={{ background: '#f5f5f5' }}>
           <Col span={24}>
             <Typography.Text
               className="summary-panel-section-title"
@@ -105,9 +108,10 @@ function GlossaryTermSummary({
           </Col>
         </Row>
 
-        <Divider className="m-y-xs" />
-
-        <Row className="m-md" gutter={[0, 8]}>
+        <Row
+          className="p-md border-radius-card"
+          gutter={[0, 8]}
+          style={{ background: '#f5f5f5' }}>
           <Col span={24}>
             <Typography.Text
               className="summary-panel-section-title"
@@ -136,9 +140,10 @@ function GlossaryTermSummary({
           </Col>
         </Row>
 
-        <Divider className="m-y-xs" />
-
-        <Row className="m-md" gutter={[0, 8]}>
+        <Row
+          className="p-md border-radius-card"
+          gutter={[0, 8]}
+          style={{ background: '#f5f5f5' }}>
           <Col span={24}>
             <Typography.Text
               className="summary-panel-section-title"
@@ -156,7 +161,7 @@ function GlossaryTermSummary({
             />
           </Col>
         </Row>
-      </>
+      </Space>
     </SummaryPanelSkeleton>
   );
 }
