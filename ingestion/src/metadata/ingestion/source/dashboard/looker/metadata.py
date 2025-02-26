@@ -780,7 +780,9 @@ class LookerSource(DashboardServiceSource):
         try:
             if dashboard_details.user_id is not None:
                 dashboard_owner = self.client.user(dashboard_details.user_id)
-                return self.metadata.get_reference_by_email(dashboard_owner.email)
+                return self.metadata.get_reference_by_email(
+                    dashboard_owner.email.lower()
+                )
 
         except Exception as err:
             logger.debug(traceback.format_exc())
