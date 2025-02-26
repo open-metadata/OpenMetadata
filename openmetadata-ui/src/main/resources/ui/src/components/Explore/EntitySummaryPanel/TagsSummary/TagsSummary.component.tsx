@@ -68,7 +68,7 @@ function TagsSummary({ entityDetails, isLoading }: TagsSummaryProps) {
 
   return (
     <SummaryPanelSkeleton loading={Boolean(isLoading)}>
-      <Row className="m-md m-t-0" gutter={[0, 8]}>
+      <Row className="p-md border-radius-card" gutter={[0, 8]}>
         <Col span={24}>
           <Typography.Text
             className="summary-panel-section-title"
