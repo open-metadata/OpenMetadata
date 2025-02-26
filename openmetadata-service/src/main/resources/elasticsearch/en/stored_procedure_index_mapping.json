@@ -91,7 +91,7 @@
       "description": {
         "type": "text",
         "analyzer": "om_analyzer",
-        "index_options": "freqs"
+        "similarity": "boolean"
       },
       "storedProcedureCode": {
         "properties": {
