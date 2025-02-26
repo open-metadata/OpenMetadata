@@ -15,13 +15,18 @@ import { ColumnsType } from 'antd/lib/table';
 import { t } from 'i18next';
 import { isUndefined, toLower } from 'lodash';
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useHistory } from 'react-router-dom';
+import { ReactComponent as ExportIcon } from '../../assets/svg/ic-export.svg';
+import { ReactComponent as ImportIcon } from '../../assets/svg/ic-import.svg';
+import { ManageButtonItemLabel } from '../../components/common/ManageButtonContentItem/ManageButtonContentItem.component';
 import { OwnerLabel } from '../../components/common/OwnerLabel/OwnerLabel.component';
 import RichTextEditorPreviewerV1 from '../../components/common/RichTextEditor/RichTextEditorPreviewerV1';
+import { useEntityExportModalProvider } from '../../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import {
   getEntityDetailsPath,
   NO_DATA_PLACEHOLDER,
 } from '../../constants/constants';
+import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { DetailPageWidgetKeys } from '../../enums/CustomizeDetailPage.enum';
 import {
   EntityTabs,
@@ -31,7 +36,10 @@ import {
 import { DatabaseSchema } from '../../generated/entity/data/databaseSchema';
 import { EntityReference } from '../../generated/entity/type';
 import { UsageDetails } from '../../generated/type/entityUsage';
-import { getEntityName } from '../EntityUtils';
+import LimitWrapper from '../../hoc/LimitWrapper';
+import { exportDatabaseDetailsInCSV } from '../../rest/databaseAPI';
+import { getEntityImportPath, getEntityName } from '../EntityUtils';
+import i18n from '../i18next/LocalUtil';
 import { getUsagePercentile } from '../TableUtils';
 
 export const getQueryFilterForDatabase = (
@@ -186,4 +194,62 @@ export const getDatabaseDetailsPageDefaultLayout = (tab: EntityTabs) => {
     default:
       return [];
   }
+};
+
+export const ExtraDatabaseDropdownOptions = (
+  fqn: string,
+  permission: OperationPermission
+) => {
+  const { showModal } = useEntityExportModalProvider();
+  const history = useHistory();
+
+  const { ViewAll, EditAll } = permission;
+
+  return [
+    ...(EditAll
+      ? [
+          {
+            label: (
+              <LimitWrapper resource="database">
+                <ManageButtonItemLabel
+                  description={i18n.t('message.import-entity-help', {
+                    entity: i18n.t('label.database'),
+                  })}
+                  icon={ImportIcon}
+                  id="import-button"
+                  name={i18n.t('label.import')}
+                  onClick={() =>
+                    history.push(getEntityImportPath(EntityType.DATABASE, fqn))
+                  }
+                />
+              </LimitWrapper>
+            ),
+            key: 'import-button',
+          },
+        ]
+      : []),
+    ...(ViewAll
+      ? [
+          {
+            label: (
+              <ManageButtonItemLabel
+                description={i18n.t('message.export-entity-help', {
+                  entity: i18n.t('label.database'),
+                })}
+                icon={ExportIcon}
+                id="export-button"
+                name={i18n.t('label.export')}
+                onClick={() =>
+                  showModal({
+                    name: fqn,
+                    onExport: exportDatabaseDetailsInCSV,
+                  })
+                }
+              />
+            ),
+            key: 'export-button',
+          },
+        ]
+      : []),
+  ];
 };

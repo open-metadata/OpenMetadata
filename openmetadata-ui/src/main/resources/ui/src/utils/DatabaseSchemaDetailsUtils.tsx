@@ -14,18 +14,28 @@
 import { Col, Row } from 'antd';
 import { t } from 'i18next';
 import React from 'react';
+import { useHistory } from 'react-router-dom';
+import { ReactComponent as ExportIcon } from '../assets/svg/ic-export.svg';
+import { ReactComponent as ImportIcon } from '../assets/svg/ic-import.svg';
 import ActivityFeedProvider from '../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import { ActivityFeedTab } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import { CustomPropertyTable } from '../components/common/CustomPropertyTable/CustomPropertyTable';
+import { ManageButtonItemLabel } from '../components/common/ManageButtonContentItem/ManageButtonContentItem.component';
 import ResizablePanels from '../components/common/ResizablePanels/ResizablePanels';
 import TabsLabel from '../components/common/TabsLabel/TabsLabel.component';
 import { TabProps } from '../components/common/TabsLabel/TabsLabel.interface';
+import { useEntityExportModalProvider } from '../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import EntityRightPanel from '../components/Entity/EntityRightPanel/EntityRightPanel';
 import { COMMON_RESIZABLE_PANEL_CONFIG } from '../constants/ResizablePanel.constants';
+import { OperationPermission } from '../context/PermissionProvider/PermissionProvider.interface';
 import { EntityTabs, EntityType, TabSpecificField } from '../enums/entity.enum';
+import LimitWrapper from '../hoc/LimitWrapper';
 import SchemaTablesTab from '../pages/DatabaseSchemaPage/SchemaTablesTab';
 import StoredProcedureTab from '../pages/StoredProcedure/StoredProcedureTab';
+import { exportDatabaseSchemaDetailsInCSV } from '../rest/databaseAPI';
 import { DatabaseSchemaPageTabProps } from './DatabaseSchemaClassBase';
+import { getEntityImportPath } from './EntityUtils';
+import i18n from './i18next/LocalUtil';
 
 // eslint-disable-next-line max-len
 export const defaultFields = `${TabSpecificField.TAGS},${TabSpecificField.OWNERS},${TabSpecificField.USAGE_SUMMARY},${TabSpecificField.DOMAIN},${TabSpecificField.DATA_PRODUCTS}`;
@@ -191,5 +201,65 @@ export const getDataBaseSchemaPageBaseTabs = ({
         </div>
       ),
     },
+  ];
+};
+
+export const ExtraDatabaseSchemaDropdownOptions = (
+  fqn: string,
+  permission: OperationPermission
+) => {
+  const { showModal } = useEntityExportModalProvider();
+  const history = useHistory();
+
+  const { ViewAll, EditAll } = permission;
+
+  return [
+    ...(EditAll
+      ? [
+          {
+            label: (
+              <LimitWrapper resource="databaseSchema">
+                <ManageButtonItemLabel
+                  description={i18n.t('message.import-entity-help', {
+                    entity: i18n.t('label.database-schema'),
+                  })}
+                  icon={ImportIcon}
+                  id="import-button"
+                  name={i18n.t('label.import')}
+                  onClick={() =>
+                    history.push(
+                      getEntityImportPath(EntityType.DATABASE_SCHEMA, fqn)
+                    )
+                  }
+                />
+              </LimitWrapper>
+            ),
+            key: 'import-button',
+          },
+        ]
+      : []),
+    ...(ViewAll
+      ? [
+          {
+            label: (
+              <ManageButtonItemLabel
+                description={i18n.t('message.export-entity-help', {
+                  entity: i18n.t('label.database-schema'),
+                })}
+                icon={ExportIcon}
+                id="export-button"
+                name={i18n.t('label.export')}
+                onClick={() =>
+                  showModal({
+                    name: fqn,
+                    onExport: exportDatabaseSchemaDetailsInCSV,
+                  })
+                }
+              />
+            ),
+            key: 'export-button',
+          },
+        ]
+      : []),
   ];
 };

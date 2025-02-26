@@ -29,6 +29,7 @@ import {
 } from 'lodash';
 import { EntityTags } from 'Models';
 import React, { CSSProperties, Fragment } from 'react';
+import { ReactComponent as ImportIcon } from '..//assets/svg/ic-import.svg';
 import { ReactComponent as AlertIcon } from '../assets/svg/alert.svg';
 import { ReactComponent as AnnouncementIcon } from '../assets/svg/announcements-black.svg';
 import { ReactComponent as ApplicationIcon } from '../assets/svg/application.svg';
@@ -61,19 +62,18 @@ import { ReactComponent as SchemaIcon } from '../assets/svg/ic-schema.svg';
 import { ReactComponent as ContainerIcon } from '../assets/svg/ic-storage.svg';
 import { ReactComponent as IconStoredProcedure } from '../assets/svg/ic-stored-procedure.svg';
 import { ReactComponent as TableIcon } from '../assets/svg/ic-table.svg';
+import { ReactComponent as TeamIcon } from '../assets/svg/ic-teams.svg';
 import { ReactComponent as TopicIcon } from '../assets/svg/ic-topic.svg';
 import { ReactComponent as IconDistLineThrough } from '../assets/svg/icon-dist-line-through.svg';
 import { ReactComponent as IconDistKey } from '../assets/svg/icon-distribution.svg';
 import { ReactComponent as IconKeyLineThrough } from '../assets/svg/icon-key-line-through.svg';
 import { ReactComponent as IconKey } from '../assets/svg/icon-key.svg';
 import { ReactComponent as IconNotNullLineThrough } from '../assets/svg/icon-not-null-line-through.svg';
-import { ReactComponent as IconSortLineThrough } from '../assets/svg/icon-sort-line-through.svg';
-import { ReactComponent as IconTestSuite } from '../assets/svg/icon-test-suite.svg';
-
-import { ReactComponent as TeamIcon } from '../assets/svg/ic-teams.svg';
 import { ReactComponent as IconNotNull } from '../assets/svg/icon-not-null.svg';
 import { ReactComponent as RoleIcon } from '../assets/svg/icon-role-grey.svg';
+import { ReactComponent as IconSortLineThrough } from '../assets/svg/icon-sort-line-through.svg';
 import { ReactComponent as IconSortKey } from '../assets/svg/icon-sort.svg';
+import { ReactComponent as IconTestSuite } from '../assets/svg/icon-test-suite.svg';
 import { ReactComponent as IconUniqueLineThrough } from '../assets/svg/icon-unique-line-through.svg';
 import { ReactComponent as IconUnique } from '../assets/svg/icon-unique.svg';
 import { ReactComponent as KPIIcon } from '../assets/svg/kpi.svg';
@@ -128,6 +128,7 @@ import { ordinalize } from './StringsUtils';
 import { TableDetailPageTabProps } from './TableClassBase';
 import { TableFieldsInfoCommonEntities } from './TableUtils.interface';
 
+import { useHistory } from 'react-router-dom';
 import { ReactComponent as IconArray } from '../assets/svg/data-type-icon/array.svg';
 import { ReactComponent as IconBinary } from '../assets/svg/data-type-icon/binary.svg';
 import { ReactComponent as IconBitmap } from '../assets/svg/data-type-icon/bitmap.svg';
@@ -158,8 +159,16 @@ import { ReactComponent as IconUnknown } from '../assets/svg/data-type-icon/unkn
 import { ReactComponent as IconVarchar } from '../assets/svg/data-type-icon/varchar.svg';
 import { ReactComponent as IconVariant } from '../assets/svg/data-type-icon/variant.svg';
 import { ReactComponent as IconXML } from '../assets/svg/data-type-icon/xml.svg';
+import { ReactComponent as ExportIcon } from '../assets/svg/ic-export.svg';
+import { ManageButtonItemLabel } from '../components/common/ManageButtonContentItem/ManageButtonContentItem.component';
+import { useEntityExportModalProvider } from '../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
+import { OperationPermission } from '../context/PermissionProvider/PermissionProvider.interface';
+import LimitWrapper from '../hoc/LimitWrapper';
 import { Joined } from '../pages/TableDetailsPageV1/FrequentlyJoinedTables/FrequentlyJoinedTables.component';
 import ConstraintIcon from '../pages/TableDetailsPageV1/TableConstraints/ConstraintIcon';
+import { exportTableDetailsInCSV } from '../rest/tableAPI';
+import { getEntityImportPath } from './EntityUtils';
+import i18n from './i18next/LocalUtil';
 
 export const getUsagePercentile = (pctRank: number, isLiteral = false) => {
   const percentile = Math.round(pctRank * 10) / 10;
@@ -1039,4 +1048,62 @@ export const getColumnOptionsFromTableColumn = (columns: Column[]) => {
   });
 
   return options;
+};
+
+export const ExtraTableDropdownOptions = (
+  fqn: string,
+  permission: OperationPermission
+) => {
+  const { showModal } = useEntityExportModalProvider();
+  const history = useHistory();
+
+  const { ViewAll, EditAll } = permission;
+
+  return [
+    ...(EditAll
+      ? [
+          {
+            label: (
+              <LimitWrapper resource="table">
+                <ManageButtonItemLabel
+                  description={i18n.t('message.import-entity-help', {
+                    entity: i18n.t('label.table'),
+                  })}
+                  icon={ImportIcon}
+                  id="import-button"
+                  name={i18n.t('label.import')}
+                  onClick={() =>
+                    history.push(getEntityImportPath(EntityType.TABLE, fqn))
+                  }
+                />
+              </LimitWrapper>
+            ),
+            key: 'import-button',
+          },
+        ]
+      : []),
+    ...(ViewAll
+      ? [
+          {
+            label: (
+              <ManageButtonItemLabel
+                description={i18n.t('message.export-entity-help', {
+                  entity: i18n.t('label.table'),
+                })}
+                icon={ExportIcon}
+                id="export-button"
+                name={i18n.t('label.export')}
+                onClick={() =>
+                  showModal({
+                    name: fqn,
+                    onExport: exportTableDetailsInCSV,
+                  })
+                }
+              />
+            ),
+            key: 'export-button',
+          },
+        ]
+      : []),
+  ];
 };

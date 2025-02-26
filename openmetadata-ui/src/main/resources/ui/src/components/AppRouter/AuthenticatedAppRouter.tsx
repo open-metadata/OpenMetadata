@@ -29,6 +29,8 @@ import { checkPermission, userPermissions } from '../../utils/PermissionsUtils';
 import AdminProtectedRoute from './AdminProtectedRoute';
 import withSuspenseFallback from './withSuspenseFallback';
 
+import { EntityImportRouter } from './EntityImportRouter';
+
 const DomainRouter = withSuspenseFallback(
   React.lazy(
     () => import(/* webpackChunkName: "DomainRouter" */ './DomainRouter')
@@ -280,6 +282,9 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
   return (
     <Switch>
       <Route exact component={ForbiddenPage} path={ROUTES.FORBIDDEN} />
+
+      {/* Handle Entity Import pages */}
+      <Route component={EntityImportRouter} path={ROUTES.ENTITY_IMPORT} />
 
       <Route exact component={MyDataPage} path={ROUTES.MY_DATA} />
       <Route exact component={TourPageComponent} path={ROUTES.TOUR} />
