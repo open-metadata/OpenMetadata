@@ -6,7 +6,6 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
-import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.governance.workflows.elements.EdgeDefinition;
 import org.openmetadata.schema.governance.workflows.elements.WorkflowNodeDefinitionInterface;
@@ -77,7 +76,6 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
       super(original, updated, operation);
     }
 
-    @Transaction
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
       updateTrigger();

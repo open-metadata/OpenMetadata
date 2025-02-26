@@ -30,7 +30,6 @@ import javax.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.mapper.RowMapper;
 import org.jdbi.v3.core.statement.StatementContext;
-import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.Chart;
 import org.openmetadata.schema.entity.data.Dashboard;
@@ -73,14 +72,12 @@ public class UsageRepository {
     return new EntityUsage().withUsage(usageDetails).withEntity(ref);
   }
 
-  @Transaction
   public RestUtil.PutResponse<?> create(String entityType, UUID id, DailyCount usage) {
     // Validate data entity for which usage is being collected
     Entity.getEntityReferenceById(entityType, id, Include.NON_DELETED);
     return addUsage(POST, entityType, id, usage);
   }
 
-  @Transaction
   public RestUtil.PutResponse<?> createByName(
       String entityType, String fullyQualifiedName, DailyCount usage) {
     EntityReference ref =
@@ -88,14 +85,12 @@ public class UsageRepository {
     return addUsage(POST, entityType, ref.getId(), usage);
   }
 
-  @Transaction
   public RestUtil.PutResponse<?> createOrUpdate(String entityType, UUID id, DailyCount usage) {
     // Validate data entity for which usage is being collected
     Entity.getEntityReferenceById(entityType, id, Include.NON_DELETED);
     return addUsage(PUT, entityType, id, usage);
   }
 
-  @Transaction
   public RestUtil.PutResponse<?> createOrUpdateByName(
       String entityType, String fullyQualifiedName, DailyCount usage) {
     EntityReference ref =
@@ -103,7 +98,6 @@ public class UsageRepository {
     return addUsage(PUT, entityType, ref.getId(), usage);
   }
 
-  @Transaction
   public void computePercentile(String entityType, String date) {
     dao.usageDAO().computePercentile(entityType, date);
   }

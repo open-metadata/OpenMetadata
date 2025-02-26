@@ -54,7 +54,6 @@ import org.jdbi.v3.sqlobject.customizer.Define;
 import org.jdbi.v3.sqlobject.statement.SqlQuery;
 import org.jdbi.v3.sqlobject.statement.SqlUpdate;
 import org.jdbi.v3.sqlobject.statement.UseRowMapper;
-import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.api.configuration.UiThemePreference;
 import org.openmetadata.schema.TokenInterface;
 import org.openmetadata.schema.analytics.ReportData;
@@ -716,7 +715,6 @@ public interface CollectionDAO {
         @Bind("jsonSchema") String jsonSchema,
         @Bind("json") String json);
 
-    @Transaction
     @ConnectionAwareSqlBatch(
         value =
             "REPLACE INTO entity_extension(id, extension, jsonSchema, json) "
@@ -770,7 +768,6 @@ public interface CollectionDAO {
                 parts = {":extensionPrefix", "%"})
             String extensionPrefix);
 
-    @Transaction
     @ConnectionAwareSqlBatch(
         value =
             "INSERT INTO entity_extension (id, extension, json, jsonschema) "

@@ -47,7 +47,6 @@ import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
-import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.csv.CsvUtil;
 import org.openmetadata.schema.api.lineage.AddLineage;
@@ -105,7 +104,6 @@ public class LineageRepository {
     return getLineage(ref, upstreamDepth, downstreamDepth);
   }
 
-  @Transaction
   public void addLineage(AddLineage addLineage) {
     // Validate from entity
     EntityReference from = addLineage.getEdge().getFromEntity();
@@ -604,7 +602,6 @@ public class LineageRepository {
     }
   }
 
-  @Transaction
   public boolean deleteLineageByFQN(
       String fromEntity, String fromFQN, String toEntity, String toFQN) {
     EntityReference from =
@@ -624,7 +621,6 @@ public class LineageRepository {
     return result;
   }
 
-  @Transaction
   public void deleteLineageBySource(UUID toId, String toEntity, String source) {
     List<CollectionDAO.EntityRelationshipObject> relations;
     if (source.equals(LineageDetails.Source.PIPELINE_LINEAGE.value())) {
@@ -645,7 +641,6 @@ public class LineageRepository {
     deleteLineageFromSearch(relations);
   }
 
-  @Transaction
   public boolean deleteLineage(String fromEntity, String fromId, String toEntity, String toId) {
     // Validate from entity
     EntityReference from =

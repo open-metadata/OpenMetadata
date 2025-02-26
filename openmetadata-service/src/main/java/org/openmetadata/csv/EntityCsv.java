@@ -58,7 +58,6 @@ import org.apache.commons.csv.CSVFormat.Builder;
 import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.csv.CSVRecord;
 import org.apache.commons.lang3.tuple.Pair;
-import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.ApiStatus;
@@ -722,7 +721,6 @@ public abstract class EntityCsv<T extends EntityInterface> {
     return getNextRecord(resultsPrinter, csvHeaders, csvRecords);
   }
 
-  @Transaction
   protected void createEntity(CSVPrinter resultsPrinter, CSVRecord csvRecord, T entity)
       throws IOException {
     entity.setId(UUID.randomUUID());
@@ -781,7 +779,6 @@ public abstract class EntityCsv<T extends EntityInterface> {
     }
   }
 
-  @Transaction
   protected void createUserEntity(CSVPrinter resultsPrinter, CSVRecord csvRecord, T entity)
       throws IOException {
     entity.setId(UUID.randomUUID());

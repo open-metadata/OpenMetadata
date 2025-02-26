@@ -26,7 +26,6 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
-import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.events.EventSubscriptionDiagnosticInfo;
@@ -124,7 +123,6 @@ public class EventSubscriptionScheduler {
     }
   }
 
-  @Transaction
   public void addSubscriptionPublisher(EventSubscription eventSubscription, boolean reinstall)
       throws SchedulerException,
           ClassNotFoundException,
@@ -215,7 +213,6 @@ public class EventSubscriptionScheduler {
     return new SubscriptionStatus().withStatus(status).withTimestamp(System.currentTimeMillis());
   }
 
-  @Transaction
   @SneakyThrows
   public void updateEventSubscription(EventSubscription eventSubscription) {
     // Remove Existing Subscription Publisher
@@ -225,7 +222,6 @@ public class EventSubscriptionScheduler {
     }
   }
 
-  @Transaction
   public void deleteEventSubscriptionPublisher(EventSubscription deletedEntity)
       throws SchedulerException {
     alertsScheduler.deleteJob(new JobKey(deletedEntity.getId().toString(), ALERT_JOB_GROUP));
@@ -234,7 +230,6 @@ public class EventSubscriptionScheduler {
     LOG.info("Alert publisher deleted for {}", deletedEntity.getName());
   }
 
-  @Transaction
   public void deleteSuccessfulAndFailedEventsRecordByAlert(UUID id) {
     Entity.getCollectionDAO()
         .eventSubscriptionDAO()

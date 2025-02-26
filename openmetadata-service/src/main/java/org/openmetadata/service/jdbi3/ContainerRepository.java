@@ -13,7 +13,6 @@ import static org.openmetadata.service.util.EntityUtil.getEntityReferences;
 import com.google.common.collect.Lists;
 import java.util.ArrayList;
 import java.util.List;
-import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.feed.ResolveTask;
 import org.openmetadata.schema.entity.data.Container;
@@ -313,7 +312,6 @@ public class ContainerRepository extends EntityRepository<Container> {
       super(original, updated, operation);
     }
 
-    @Transaction
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
       updateDataModel(original, updated);

@@ -18,7 +18,6 @@ import static org.openmetadata.service.Entity.PERSONA;
 
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
-import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.entity.teams.Persona;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Relationship;
@@ -99,7 +98,6 @@ public class PersonaRepository extends EntityRepository<Persona> {
       updateUsers(original, updated);
     }
 
-    @Transaction
     private void updateUsers(Persona origPersona, Persona updatedPersona) {
       List<EntityReference> origUsers = listOrEmpty(origPersona.getUsers());
       List<EntityReference> updatedUsers = listOrEmpty(updatedPersona.getUsers());

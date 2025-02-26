@@ -29,7 +29,6 @@ import org.jdbi.v3.sqlobject.customizer.Define;
 import org.jdbi.v3.sqlobject.statement.BatchChunkSize;
 import org.jdbi.v3.sqlobject.statement.SqlQuery;
 import org.jdbi.v3.sqlobject.statement.SqlUpdate;
-import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
@@ -75,7 +74,6 @@ public interface EntityDAO<T extends EntityInterface> {
       @Bind("json") String json);
 
   /** Common queries for all entities implemented here. Do not override. */
-  @Transaction
   @ConnectionAwareSqlBatch(
       value = "INSERT INTO <table> (<nameHashColumn>, json) VALUES (:nameHashColumnValue, :json)",
       connectionType = MYSQL)

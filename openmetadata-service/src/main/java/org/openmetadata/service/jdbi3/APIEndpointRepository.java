@@ -30,7 +30,6 @@ import java.util.Map;
 import java.util.function.BiPredicate;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.feed.ResolveTask;
 import org.openmetadata.schema.entity.data.APICollection;
@@ -394,7 +393,6 @@ public class APIEndpointRepository extends EntityRepository<APIEndpoint> {
       super(original, updated, operation);
     }
 
-    @Transaction
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
       recordChange("endpointURL", original.getEndpointURL(), updated.getEndpointURL());

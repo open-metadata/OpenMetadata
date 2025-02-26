@@ -24,7 +24,6 @@ import javax.json.JsonPatch;
 import javax.json.JsonValue;
 import javax.ws.rs.core.Response;
 import lombok.Getter;
-import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.EntityTimeSeriesInterface;
 import org.openmetadata.schema.system.EntityError;
@@ -69,12 +68,10 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
     Entity.registerEntity(entityClass, entityType, this);
   }
 
-  @Transaction
   public T createNewRecord(T recordEntity, String recordFQN) {
     return createNewRecord(recordEntity, null, recordFQN);
   }
 
-  @Transaction
   public T createNewRecord(T recordEntity, String extension, String recordFQN) {
     recordEntity.setId(UUID.randomUUID());
     storeInternal(recordEntity, recordFQN, extension);
@@ -83,12 +80,10 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
     return recordEntity;
   }
 
-  @Transaction
   protected void storeInternal(T recordEntity, String recordFQN) {
     storeInternal(recordEntity, recordFQN, null);
   }
 
-  @Transaction
   protected void storeInternal(T recordEntity, String recordFQN, String extension) {
     if (extension != null) {
       timeSeriesDao.insert(recordFQN, extension, entityType, JsonUtils.pojoToJson(recordEntity));
@@ -141,7 +136,6 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
     // Nothing to do in the default implementation
   }
 
-  @Transaction
   public final void addRelationship(
       UUID fromId,
       UUID toId,

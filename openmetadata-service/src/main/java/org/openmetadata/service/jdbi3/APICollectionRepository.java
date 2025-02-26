@@ -15,7 +15,6 @@ package org.openmetadata.service.jdbi3;
 
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
-import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.APICollection;
 import org.openmetadata.schema.entity.services.ApiService;
@@ -119,7 +118,6 @@ public class APICollectionRepository extends EntityRepository<APICollection> {
       super(original, updated, operation);
     }
 
-    @Transaction
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
       recordChange("sourceHash", original.getSourceHash(), updated.getSourceHash());

@@ -4,7 +4,6 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.function.Supplier;
 import lombok.extern.slf4j.Slf4j;
-import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.applications.configuration.internal.DataRetentionConfiguration;
@@ -48,7 +47,6 @@ public class DataRetention extends AbstractNativeApplication {
     cleanChangeEvents(config.getChangeEventRetentionPeriod());
   }
 
-  @Transaction
   private void cleanChangeEvents(int retentionPeriod) {
     LOG.info(
         "Initiating change events cleanup: Deleting records with a retention period of {} days.",

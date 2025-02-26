@@ -32,7 +32,6 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import javax.ws.rs.BadRequestException;
 import lombok.extern.slf4j.Slf4j;
-import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.entity.policies.Policy;
 import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.type.EntityReference;
@@ -163,7 +162,6 @@ public class PolicyRepository extends EntityRepository<Policy> {
       super(original, updated, operation);
     }
 
-    @Transaction
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
       recordChange(ENABLED, original.getEnabled(), updated.getEnabled());

@@ -14,7 +14,6 @@
 package org.openmetadata.service.jdbi3;
 
 import lombok.extern.slf4j.Slf4j;
-import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.entity.Bot;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
@@ -95,7 +94,6 @@ public class BotRepository extends EntityRepository<Bot> {
       super(original, updated, operation);
     }
 
-    @Transaction
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
       updateUser(original, updated);

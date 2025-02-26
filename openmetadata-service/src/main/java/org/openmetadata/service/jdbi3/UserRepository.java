@@ -42,7 +42,6 @@ import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.csv.CSVRecord;
-import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.teams.CreateTeam.TeamType;
@@ -623,7 +622,6 @@ public class UserRepository extends EntityRepository<User> {
       super(original, updated, operation);
     }
 
-    @Transaction
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
       // LowerCase Email

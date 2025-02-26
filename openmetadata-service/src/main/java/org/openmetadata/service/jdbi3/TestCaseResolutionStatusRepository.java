@@ -16,7 +16,6 @@ import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.ws.rs.core.Response;
 import lombok.SneakyThrows;
-import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.feed.CloseTask;
 import org.openmetadata.schema.api.feed.ResolveTask;
@@ -182,7 +181,6 @@ public class TestCaseResolutionStatusRepository
   }
 
   @Override
-  @Transaction
   public void storeInternal(
       TestCaseResolutionStatus recordEntity, String recordFQN, String extension) {
 

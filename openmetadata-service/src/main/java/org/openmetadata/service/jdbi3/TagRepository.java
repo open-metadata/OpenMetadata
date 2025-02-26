@@ -31,7 +31,6 @@ import java.util.Objects;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.ImmutablePair;
-import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.BulkAssetsRequestInterface;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.AddTagToAssetsRequest;
@@ -305,7 +304,6 @@ public class TagRepository extends EntityRepository<Tag> {
       super(original, updated, operation);
     }
 
-    @Transaction
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
       recordChange(

@@ -31,7 +31,6 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.UriInfo;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
-import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.EntityTimeSeriesInterface;
 import org.openmetadata.schema.api.feed.CloseTask;
@@ -346,7 +345,6 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
         Response.Status.CREATED, (TestCaseResult) response.getEntity(), ENTITY_UPDATED);
   }
 
-  @Transaction
   @Override
   protected void deleteChildren(
       List<CollectionDAO.EntityRelationshipRecord> children, boolean hardDelete, String updatedBy) {
@@ -367,7 +365,6 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     }
   }
 
-  @Transaction
   @Override
   protected void cleanup(TestCase entityInterface) {
     super.cleanup(entityInterface);
@@ -479,7 +476,6 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     }
   }
 
-  @Transaction
   public RestUtil.PutResponse<TestSuite> addTestCasesToLogicalTestSuite(
       TestSuite testSuite, List<UUID> testCaseIds) {
     bulkAddToRelationship(
@@ -500,7 +496,6 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     return new RestUtil.PutResponse<>(Response.Status.OK, testSuite, LOGICAL_TEST_CASE_ADDED);
   }
 
-  @Transaction
   public RestUtil.DeleteResponse<TestCase> deleteTestCaseFromLogicalTestSuite(
       UUID testSuiteId, UUID testCaseId) {
     TestCase testCase = Entity.getEntity(Entity.TEST_CASE, testCaseId, null, null);
@@ -537,7 +532,6 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     return super.getTaskWorkflow(threadContext);
   }
 
-  @Transaction
   public TestCase addFailedRowsSample(
       TestCase testCase, TableData tableData, boolean validateColumns) {
     EntityLink entityLink = EntityLink.parse(testCase.getEntityLink());
@@ -570,7 +564,6 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     return testCase.withFailedRowsSample(tableData);
   }
 
-  @Transaction
   public TestCase addInspectionQuery(UriInfo uri, UUID testCaseId, String sql) {
     TestCase original = get(uri, testCaseId, getFields("*"));
     TestCase updated =
@@ -581,7 +574,6 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     return updated;
   }
 
-  @Transaction
   public RestUtil.DeleteResponse<TableData> deleteTestCaseFailedRowsSample(UUID id) {
     daoCollection.entityExtensionDAO().delete(id, FAILED_ROWS_SAMPLE_EXTENSION);
     return new RestUtil.DeleteResponse<>(null, ENTITY_DELETED);
@@ -604,7 +596,6 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
      * If the task is resolved, we'll resolve the Incident with the given reason
      */
     @Override
-    @Transaction
     public TestCase performTask(String userName, ResolveTask resolveTask) {
 
       // We need to get the latest test case resolution status to get the state id
@@ -659,7 +650,6 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
      * resolved yet. Closing the task means that the incident is not applicable.
      */
     @Override
-    @Transaction
     public void closeTask(String userName, CloseTask closeTask) {
       TestCaseResolutionStatus latestTestCaseResolutionStatus =
           testCaseResolutionStatusRepository.getLatestRecord(closeTask.getTestCaseFQN());
@@ -710,7 +700,6 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
       super(original, updated, operation);
     }
 
-    @Transaction
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
       EntityLink origEntityLink = EntityLink.parse(original.getEntityLink());

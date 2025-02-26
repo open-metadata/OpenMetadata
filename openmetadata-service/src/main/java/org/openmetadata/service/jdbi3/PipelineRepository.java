@@ -30,7 +30,6 @@ import java.util.ArrayList;
 import java.util.List;
 import javax.ws.rs.core.Response;
 import org.apache.commons.lang3.tuple.Triple;
-import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.feed.ResolveTask;
 import org.openmetadata.schema.entity.data.Pipeline;
@@ -479,7 +478,6 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
       super(original, updated, operation);
     }
 
-    @Transaction
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
       updateTasks(original, updated);

@@ -26,7 +26,6 @@ import javax.json.JsonValue;
 import javax.ws.rs.core.SecurityContext;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
-import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.tests.DataQualityReport;
@@ -528,7 +527,6 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
       super(original, updated, operation);
     }
 
-    @Transaction
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
       List<EntityReference> origTests = listOrEmpty(original.getTests());

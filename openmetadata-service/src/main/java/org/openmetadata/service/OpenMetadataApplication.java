@@ -38,6 +38,7 @@ import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
 import java.security.cert.CertificateException;
 import java.util.EnumSet;
+import java.util.HashSet;
 import java.util.Optional;
 import javax.naming.ConfigurationException;
 import javax.servlet.DispatcherType;
@@ -128,6 +129,8 @@ import org.openmetadata.service.socket.FeedServlet;
 import org.openmetadata.service.socket.OpenMetadataAssetServlet;
 import org.openmetadata.service.socket.SocketAddressFilter;
 import org.openmetadata.service.socket.WebSocketManager;
+import org.openmetadata.service.transaction.JdbiUnitOfWorkProvider;
+import org.openmetadata.service.transaction.listeners.JdbiUnitOfWorkApplicationEventListener;
 import org.openmetadata.service.util.MicrometerBundleSingleton;
 import org.openmetadata.service.util.incidentSeverityClassifier.IncidentSeverityClassifierInterface;
 import org.pac4j.core.util.CommonHelper;
@@ -141,6 +144,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
   private Limits limits;
 
   protected Jdbi jdbi;
+  protected JdbiUnitOfWorkProvider provider;
 
   @Override
   public void run(OpenMetadataApplicationConfig catalogConfig, Environment environment)
@@ -166,6 +170,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     MicrometerBundleSingleton.initLatencyEvents(catalogConfig);
 
     jdbi = createAndSetupJDBI(environment, catalogConfig.getDataSourceFactory());
+    provider = JdbiUnitOfWorkProvider.withDefault(jdbi);
     Entity.setCollectionDAO(getDao(jdbi));
     Entity.setJobDAO(jdbi.onDemand(JobDAO.class));
     Entity.setJdbi(jdbi);
@@ -269,6 +274,11 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
     // Register Auth Handlers
     registerAuthServlets(catalogConfig, environment);
+
+    environment
+        .jersey()
+        .register(new JdbiUnitOfWorkApplicationEventListener(provider, new HashSet<>()));
+    ;
   }
 
   private void registerHealthCheckJobs(OpenMetadataApplicationConfig catalogConfig) {
@@ -367,7 +377,8 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
   }
 
   protected CollectionDAO getDao(Jdbi jdbi) {
-    return jdbi.onDemand(CollectionDAO.class);
+    CollectionDAO dao = (CollectionDAO) provider.getWrappedInstanceForDaoClass(CollectionDAO.class);
+    return dao;
   }
 
   private void registerSamlServlets(

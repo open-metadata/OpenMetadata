@@ -20,7 +20,6 @@ import java.util.Collections;
 import java.util.List;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
-import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.Chart;
 import org.openmetadata.schema.entity.services.DashboardService;
@@ -125,7 +124,6 @@ public class ChartRepository extends EntityRepository<Chart> {
       super(chart, updated, operation);
     }
 
-    @Transaction
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
       recordChange("chartType", original.getChartType(), updated.getChartType());

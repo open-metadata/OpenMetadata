@@ -21,7 +21,6 @@ import static org.openmetadata.service.Entity.populateEntityFieldTags;
 import java.util.List;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
-import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.feed.ResolveTask;
 import org.openmetadata.schema.entity.data.DashboardDataModel;
@@ -208,7 +207,6 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
       super(original, updated, operation);
     }
 
-    @Transaction
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
       DatabaseUtil.validateColumns(original.getColumns());

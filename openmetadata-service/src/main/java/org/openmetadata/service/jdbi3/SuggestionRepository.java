@@ -22,7 +22,6 @@ import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
-import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.feed.Suggestion;
 import org.openmetadata.schema.entity.teams.Team;
@@ -64,14 +63,12 @@ public class SuggestionRepository {
     ResourceRegistry.addResource("suggestion", null, Entity.getEntityFields(Suggestion.class));
   }
 
-  @Transaction
   public Suggestion create(Suggestion suggestion) {
     store(suggestion);
     storeRelationships(suggestion);
     return suggestion;
   }
 
-  @Transaction
   public Suggestion update(Suggestion suggestion, String userName) {
     suggestion.setUpdatedBy(userName);
     dao.suggestionDAO().update(suggestion.getId(), JsonUtils.pojoToJson(suggestion));
@@ -79,7 +76,6 @@ public class SuggestionRepository {
     return suggestion;
   }
 
-  @Transaction
   public void store(Suggestion suggestion) {
     // Insert a new Suggestion
     MessageParser.EntityLink entityLink =
@@ -87,7 +83,6 @@ public class SuggestionRepository {
     dao.suggestionDAO().insert(entityLink.getEntityFQN(), JsonUtils.pojoToJson(suggestion));
   }
 
-  @Transaction
   public void storeRelationships(Suggestion suggestion) {
     MessageParser.EntityLink entityLink =
         MessageParser.EntityLink.parse(suggestion.getEntityLink());
@@ -117,7 +112,6 @@ public class SuggestionRepository {
     return EntityUtil.validate(id, dao.suggestionDAO().findById(id), Suggestion.class);
   }
 
-  @Transaction
   public RestUtil.DeleteResponse<Suggestion> deleteSuggestion(
       Suggestion suggestion, String deletedByUser) {
     deleteSuggestionInternal(suggestion.getId());
@@ -125,7 +119,6 @@ public class SuggestionRepository {
     return new RestUtil.DeleteResponse<>(suggestion, SUGGESTION_DELETED);
   }
 
-  @Transaction
   public RestUtil.DeleteResponse<EntityInterface> deleteSuggestionsForAnEntity(
       EntityInterface entity, String deletedByUser) {
     deleteSuggestionInternalForAnEntity(entity);
@@ -133,7 +126,6 @@ public class SuggestionRepository {
     return new RestUtil.DeleteResponse<>(entity, SUGGESTION_DELETED);
   }
 
-  @Transaction
   public void deleteSuggestionInternal(UUID id) {
     // Delete all the relationships to other entities
     dao.relationshipDAO().deleteAll(id, Entity.SUGGESTION);
@@ -145,7 +137,6 @@ public class SuggestionRepository {
     dao.suggestionDAO().delete(id);
   }
 
-  @Transaction
   public void deleteSuggestionInternalForAnEntity(EntityInterface entity) {
     // Delete all the field relationships to other entities
     dao.fieldRelationshipDAO().deleteAllByPrefix(entity.getId().toString());
@@ -238,7 +229,6 @@ public class SuggestionRepository {
     update(suggestion, user);
   }
 
-  @Transaction
   protected void acceptSuggestionList(
       List<Suggestion> suggestions,
       SuggestionType suggestionType,
@@ -300,7 +290,6 @@ public class SuggestionRepository {
     return new RestUtil.PutResponse<>(Response.Status.OK, updatedHref, SUGGESTION_REJECTED);
   }
 
-  @Transaction
   public RestUtil.PutResponse<List<Suggestion>> rejectSuggestionList(
       UriInfo uriInfo, List<Suggestion> suggestions, String user) {
     for (Suggestion suggestion : suggestions) {

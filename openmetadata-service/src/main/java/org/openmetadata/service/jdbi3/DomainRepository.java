@@ -24,7 +24,6 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
-import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.EntityHierarchy;
 import org.openmetadata.schema.entity.domains.Domain;
@@ -193,7 +192,6 @@ public class DomainRepository extends EntityRepository<Domain> {
       super(original, updated, operation);
     }
 
-    @Transaction
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
       recordChange("domainType", original.getDomainType(), updated.getDomainType());

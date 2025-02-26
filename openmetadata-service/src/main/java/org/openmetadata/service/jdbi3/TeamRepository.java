@@ -61,7 +61,6 @@ import javax.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.csv.CSVRecord;
-import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.schema.api.teams.CreateTeam;
@@ -593,7 +592,6 @@ public class TeamRepository extends EntityRepository<Team> {
     }
   }
 
-  @Transaction
   public RestUtil.PutResponse<Team> updateTeamUsers(
       String updatedBy, UUID teamId, List<EntityReference> updatedUsers) {
 
@@ -849,7 +847,6 @@ public class TeamRepository extends EntityRepository<Team> {
       super(original, updated, operation);
     }
 
-    @Transaction
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
       if (original.getTeamType() != updated.getTeamType()) {

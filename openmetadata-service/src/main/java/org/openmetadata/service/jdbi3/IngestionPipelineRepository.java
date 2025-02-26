@@ -23,7 +23,6 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.UriInfo;
 import lombok.Getter;
 import lombok.Setter;
-import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.json.JSONObject;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.applications.configuration.ApplicationConfig;
@@ -118,7 +117,6 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     ingestionPipeline.setService(entityReference);
   }
 
-  @Transaction
   public IngestionPipeline deletePipelineStatus(UUID ingestionPipelineId) {
     // Validate the request content
     IngestionPipeline ingestionPipeline = find(ingestionPipelineId, Include.NON_DELETED);
@@ -324,7 +322,6 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
       super(buildIngestionPipelineDecrypted(original), updated, operation);
     }
 
-    @Transaction
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
       updateSourceConfig();

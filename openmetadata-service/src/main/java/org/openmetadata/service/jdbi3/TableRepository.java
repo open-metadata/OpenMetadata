@@ -55,7 +55,6 @@ import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.csv.CSVRecord;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.commons.lang3.tuple.Triple;
-import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.schema.EntityInterface;
@@ -226,7 +225,6 @@ public class TableRepository extends EntityRepository<Table> {
     ColumnUtil.setColumnFQN(table.getFullyQualifiedName(), table.getColumns());
   }
 
-  @Transaction
   public Table addJoins(UUID tableId, TableJoins joins) {
     // Validate the request content
     Table table = find(tableId, NON_DELETED);
@@ -262,7 +260,6 @@ public class TableRepository extends EntityRepository<Table> {
     return table.withJoins(getJoins(table));
   }
 
-  @Transaction
   public Table addSampleData(UUID tableId, TableData tableData) {
     // Validate the request content
     Table table = find(tableId, NON_DELETED);
@@ -310,7 +307,6 @@ public class TableRepository extends EntityRepository<Table> {
     return table;
   }
 
-  @Transaction
   public Table deleteSampleData(UUID tableId) {
     // Validate the request content
     Table table = find(tableId, NON_DELETED);
@@ -331,7 +327,6 @@ public class TableRepository extends EntityRepository<Table> {
     return getToEntityRef(table.getId(), Relationship.CONTAINS, TEST_SUITE, false);
   }
 
-  @Transaction
   public Table addTableProfilerConfig(UUID tableId, TableProfilerConfig tableProfilerConfig) {
     // Validate the request content
     Table table = find(tableId, NON_DELETED);
@@ -366,7 +361,6 @@ public class TableRepository extends EntityRepository<Table> {
     return table.withTableProfilerConfig(tableProfilerConfig);
   }
 
-  @Transaction
   public Table deleteTableProfilerConfig(UUID tableId) {
     // Validate the request content
     Table table = find(tableId, NON_DELETED);

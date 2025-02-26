@@ -21,7 +21,6 @@ import static org.openmetadata.schema.type.EventType.ENTITY_UPDATED;
 
 import java.util.ArrayList;
 import java.util.List;
-import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.util.JsonUtils;
@@ -55,12 +54,10 @@ public class ChangeEventRepository {
     return changeEvents;
   }
 
-  @Transaction
   public void insert(ChangeEvent event) {
     dao.insert(JsonUtils.pojoToJson(event));
   }
 
-  @Transaction
   public void deleteAll(String entityType) {
     dao.deleteAll(entityType);
   }

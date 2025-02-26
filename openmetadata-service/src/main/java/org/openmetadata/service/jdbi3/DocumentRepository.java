@@ -19,7 +19,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
-import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.email.EmailTemplate;
 import org.openmetadata.schema.email.SmtpSettings;
 import org.openmetadata.schema.email.TemplateValidationResponse;
@@ -92,7 +91,6 @@ public class DocumentRepository extends EntityRepository<Document> {
     return JsonUtils.convertValue(document.getData(), EmailTemplate.class);
   }
 
-  @Transaction
   public void deleteEmailTemplates() {
     dao.deleteEmailTemplates();
   }
@@ -142,7 +140,6 @@ public class DocumentRepository extends EntityRepository<Document> {
       super(original, updated, operation);
     }
 
-    @Transaction
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
       updateEmailTemplatePlaceholders(original, updated);

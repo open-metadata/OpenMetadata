@@ -26,7 +26,6 @@ import static org.openmetadata.service.util.EntityUtil.mlHyperParameterMatch;
 import java.util.ArrayList;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
-import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.feed.ResolveTask;
 import org.openmetadata.schema.entity.data.MlModel;
@@ -321,7 +320,6 @@ public class MlModelRepository extends EntityRepository<MlModel> {
       super(original, updated, operation);
     }
 
-    @Transaction
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
       updateAlgorithm(original, updated);

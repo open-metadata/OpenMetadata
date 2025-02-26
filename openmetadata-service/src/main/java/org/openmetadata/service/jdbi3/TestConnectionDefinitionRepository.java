@@ -2,7 +2,6 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.service.Entity.TEST_CONNECTION_DEFINITION;
 
-import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.entity.services.connections.TestConnectionDefinition;
 import org.openmetadata.service.Entity;
@@ -77,7 +76,6 @@ public class TestConnectionDefinitionRepository extends EntityRepository<TestCon
       super(original, updated, operation);
     }
 
-    @Transaction
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
       recordChange("steps", original.getSteps(), updated.getSteps(), true);

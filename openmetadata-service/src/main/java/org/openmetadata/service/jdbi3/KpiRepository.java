@@ -10,7 +10,6 @@ import static org.quartz.DateBuilder.MILLISECONDS_IN_DAY;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChartResult;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChartResultList;
@@ -140,7 +139,6 @@ public class KpiRepository extends EntityRepository<Kpi> {
       super(original, updated, operation);
     }
 
-    @Transaction
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
       updateToRelationship(

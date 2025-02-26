@@ -13,7 +13,6 @@ import javax.json.JsonValue;
 import javax.ws.rs.core.Response;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
-import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.api.configuration.UiThemePreference;
 import org.openmetadata.schema.api.configuration.OpenMetadataBaseUrlConfiguration;
 import org.openmetadata.schema.configuration.AssetCertificationSettings;
@@ -205,7 +204,6 @@ public class SystemRepository {
     return null;
   }
 
-  @Transaction
   public Response createOrUpdate(Settings setting) {
     Settings oldValue = getConfigWithKey(setting.getConfigType().toString());
 

@@ -35,7 +35,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.csv.CSVRecord;
 import org.apache.commons.lang3.tuple.Pair;
-import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.Database;
@@ -220,7 +219,6 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
       super(original, updated, operation);
     }
 
-    @Transaction
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
       recordChange("retentionPeriod", original.getRetentionPeriod(), updated.getRetentionPeriod());
