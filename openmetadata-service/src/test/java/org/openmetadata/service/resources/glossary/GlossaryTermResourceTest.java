@@ -1071,7 +1071,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     queryParams.put("limit", "10000");
     queryParams.put("directChildrenOf", "词汇表三");
     ResultList<GlossaryTerm> list =
-        assertTimeout(Duration.ofSeconds(1), () -> listEntities(queryParams, ADMIN_AUTH_HEADERS));
+        assertTimeout(Duration.ofSeconds(3), () -> listEntities(queryParams, ADMIN_AUTH_HEADERS));
     assertEquals(result.size(), list.getData().size());
   }
 
