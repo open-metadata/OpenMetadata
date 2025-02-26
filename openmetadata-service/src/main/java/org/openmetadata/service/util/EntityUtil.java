@@ -22,6 +22,8 @@ import static org.openmetadata.service.jdbi3.RoleRepository.DOMAIN_ONLY_ACCESS_R
 import static org.openmetadata.service.security.DefaultAuthorizer.getSubjectContext;
 
 import java.io.IOException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -705,5 +707,9 @@ public final class EntityUtil {
         filter.addQueryParam("entityType", entityType);
       }
     }
+  }
+
+  public static String encodeEntityFqn(String fqn) {
+    return URLEncoder.encode(fqn.trim(), StandardCharsets.UTF_8).replace("+", "%20");
   }
 }
