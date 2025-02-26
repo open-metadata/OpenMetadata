@@ -45,11 +45,6 @@ export const fillTextInputDetails = async (page: Page, text: string) => {
     .locator('.ant-layout-content')
     .getByRole('textbox')
     .press('Enter', { delay: 100 });
-
-  //   await page
-  //     .getByTestId('page-layout-v1')
-  //     .getByRole('textbox')
-  //     .press('Enter', { delay: 100 });
 };
 
 export const fillDescriptionDetails = async (
@@ -129,46 +124,29 @@ export const fillGlossaryTermDetails = async (
 
 export const fillDomainDetails = async (
   page: Page,
-  domains: { name: string; displayName: string }
+  domains: { name: string; displayName: string; fullyQualifiedName?: string }
 ) => {
-  await page
-    .locator('.InovuaReactDataGrid__cell--cell-active')
-    .press('Enter', { delay: 100 });
+  await page.locator('.InovuaReactDataGrid__cell--cell-active').press('Enter');
 
-  await page.click('[data-testid="selectable-list"] [data-testid="searchbar"]');
+  await page.click(
+    '[data-testid="domain-selectable-tree"] [data-testid="searchbar"]'
+  );
+
+  const searchDomain = page.waitForResponse(
+    `/api/v1/search/query?q=*${encodeURIComponent(domains.name)}*`
+  );
+
   await page
-    .locator('[data-testid="selectable-list"] [data-testid="searchbar"]')
+    .getByTestId('domain-selectable-tree')
+    .getByTestId('searchbar')
     .fill(domains.name);
 
-  await page.click(`.ant-popover [title="${domains.displayName}"]`);
+  await searchDomain;
+
+  await page.getByTestId(`tag-${domains.fullyQualifiedName}`).click();
+  await page.getByTestId('saveAssociatedTag').click();
   await page.waitForTimeout(100);
 };
-
-// export const fillDomainDetails = async (
-//   page: Page,
-//   domains: { name: string; displayName: string; fullyQualifiedName?: string }
-// ) => {
-//   await page.locator('.InovuaReactDataGrid__cell--cell-active').press('Enter');
-
-//   await page.click(
-//     '[data-testid="domain-selectable-tree"] [data-testid="searchbar"]'
-//   );
-
-//   const searchDomain = page.waitForResponse(
-//     `/api/v1/search/query?q=*${encodeURIComponent(domains.name)}*`
-//   );
-
-//   await page
-//     .getByTestId('domain-selectable-tree')
-//     .getByTestId('searchbar')
-//     .fill(domains.name);
-
-//   await searchDomain;
-
-//   await page.getByTestId(`tag-${domains.fullyQualifiedName}`).click();
-//   await page.getByTestId('saveAssociatedTag').click();
-//   await page.waitForTimeout(100);
-// };
 
 const editGlossaryCustomProperty = async (
   page: Page,
