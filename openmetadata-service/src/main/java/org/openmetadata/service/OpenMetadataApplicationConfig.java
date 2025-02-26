@@ -18,7 +18,7 @@ import io.dropwizard.Configuration;
 import io.dropwizard.db.DataSourceFactory;
 import io.dropwizard.health.conf.HealthConfiguration;
 import io.federecio.dropwizard.swagger.SwaggerBundleConfiguration;
-import java.util.LinkedHashMap;
+import java.util.Map;
 import javax.validation.Valid;
 import javax.validation.constraints.NotNull;
 import lombok.Getter;
@@ -36,6 +36,7 @@ import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearch
 import org.openmetadata.service.config.OMWebConfiguration;
 import org.openmetadata.service.migration.MigrationConfiguration;
 import org.openmetadata.service.monitoring.EventMonitorConfiguration;
+import org.openmetadata.service.util.JsonUtils;
 
 @Getter
 @Setter
@@ -70,8 +71,9 @@ public class OpenMetadataApplicationConfig extends Configuration {
 
   public PipelineServiceClientConfiguration getPipelineServiceClientConfiguration() {
     if (pipelineServiceClientConfiguration != null) {
-      LinkedHashMap<String, String> temporarySSLConfig =
-          (LinkedHashMap<String, String>) pipelineServiceClientConfiguration.getSslConfig();
+      Map<String, String> temporarySSLConfig =
+          JsonUtils.readOrConvertValue(
+              pipelineServiceClientConfiguration.getSslConfig(), Map.class);
       if (temporarySSLConfig != null && temporarySSLConfig.containsKey(CERTIFICATE_PATH)) {
         temporarySSLConfig.put("caCertificate", temporarySSLConfig.get(CERTIFICATE_PATH));
         temporarySSLConfig.remove(CERTIFICATE_PATH);
