@@ -14,6 +14,7 @@
 package org.openmetadata.service.formatter.decorators;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.service.util.EntityUtil.encodeEntityFqn;
 
 import com.slack.api.model.block.Blocks;
 import com.slack.api.model.block.LayoutBlock;
@@ -21,8 +22,6 @@ import com.slack.api.model.block.composition.BlockCompositions;
 import com.slack.api.model.block.composition.PlainTextObject;
 import com.slack.api.model.block.composition.TextObject;
 import com.slack.api.model.block.element.ImageElement;
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
@@ -81,8 +80,7 @@ public class SlackMessageDecorator implements MessageDecorator<SlackMessage> {
 
   @Override
   public String getEntityUrl(String prefix, String fqn, String additionalParams) {
-    String encodedFqn =
-        URLEncoder.encode(fqn.trim(), StandardCharsets.UTF_8).replace("+", "%20"); // Encode URL
+    String encodedFqn = encodeEntityFqn(fqn);
     return String.format(
         "<%s/%s/%s%s|%s>",
         EmailUtil.getOMBaseURL(),
