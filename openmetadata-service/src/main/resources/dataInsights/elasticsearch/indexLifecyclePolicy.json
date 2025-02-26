@@ -4,12 +4,13 @@
       "hot": {
         "actions": {
           "rollover": {
-            "max_primary_shard_size": "50gb"
+            "max_primary_shard_size": "10gb",
+            "max_age": "{{halfRetention}}d"
           }
         }
       },
       "warm": {
-        "min_age": "30d",
+        "min_age": "{{halfRetention}}d",
         "actions": {
           "shrink": {
             "number_of_shards": 1
@@ -20,7 +21,7 @@
         }
       },
       "delete": {
-        "min_age": "90d",
+        "min_age": "{{retention}}d",
         "actions": {
           "delete": {}
         }

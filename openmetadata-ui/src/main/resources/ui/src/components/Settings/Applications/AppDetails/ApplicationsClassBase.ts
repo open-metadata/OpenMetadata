@@ -20,7 +20,15 @@ class ApplicationsClassBase {
     return import(`../../../../utils/ApplicationSchemas/${fqn}.json`);
   }
   public getJSONUISchema() {
-    return {};
+    return {
+      moduleConfiguration: {
+        dataAssets: {
+          serviceFilter: {
+            'ui:widget': 'hidden',
+          },
+        },
+      },
+    };
   }
   public importAppLogo(appName: string) {
     return import(`../../../../assets/svg/${appName}.svg`);

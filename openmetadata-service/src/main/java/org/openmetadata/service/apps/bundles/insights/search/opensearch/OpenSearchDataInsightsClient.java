@@ -1,7 +1,9 @@
 package org.openmetadata.service.apps.bundles.insights.search.opensearch;
 
 import java.io.IOException;
+import org.apache.http.util.EntityUtils;
 import org.openmetadata.service.apps.bundles.insights.search.DataInsightsSearchInterface;
+import org.openmetadata.service.apps.bundles.insights.search.IndexLifecyclePolicyConfig;
 import org.openmetadata.service.search.models.IndexMapping;
 import os.org.opensearch.client.Request;
 import os.org.opensearch.client.Response;
@@ -10,6 +12,8 @@ import os.org.opensearch.client.RestClient;
 
 public class OpenSearchDataInsightsClient implements DataInsightsSearchInterface {
   private final RestClient client;
+  private final String resourcePath = "/dataInsights/opensearch";
+  private final String lifecyclePolicyName = "di-data-assets-lifecycle";
 
   public OpenSearchDataInsightsClient(RestClient client) {
     this.client = client;
@@ -65,12 +69,17 @@ public class OpenSearchDataInsightsClient implements DataInsightsSearchInterface
 
   @Override
   public void createDataAssetsDataStream(
-      String name, String entityType, IndexMapping entityIndexMapping, String language)
+      String name,
+      String entityType,
+      IndexMapping entityIndexMapping,
+      String language,
+      int retentionDays)
       throws IOException {
-    String resourcePath = "/dataInsights/opensearch";
     createLifecyclePolicy(
-        "di-data-assets-lifecycle",
-        readResource(String.format("%s/indexLifecyclePolicy.json", resourcePath)));
+        lifecyclePolicyName,
+        buildLifecyclePolicy(
+            readResource(String.format("%s/indexLifecyclePolicy.json", resourcePath)),
+            retentionDays));
     createComponentTemplate(
         "di-data-assets-mapping",
         buildMapping(
@@ -81,6 +90,32 @@ public class OpenSearchDataInsightsClient implements DataInsightsSearchInterface
     createIndexTemplate(
         "di-data-assets", readResource(String.format("%s/indexTemplate.json", resourcePath)));
     createDataStream(name);
+  }
+
+  private String buildLifecyclePolicy(String lifecyclePolicy, int retentionDays) {
+    return lifecyclePolicy
+        .replace("{{retention}}", String.valueOf(retentionDays))
+        .replace("{{halfRetention}}", String.valueOf(retentionDays / 2));
+  }
+
+  @Override
+  public void updateLifecyclePolicy(int retentionDays) throws IOException {
+    String currentLifecyclePolicy =
+        EntityUtils.toString(
+            performRequest("GET", String.format("/_plugins/_ism/policies/%s", lifecyclePolicyName))
+                .getEntity());
+    if (new IndexLifecyclePolicyConfig(
+                lifecyclePolicyName,
+                currentLifecyclePolicy,
+                IndexLifecyclePolicyConfig.SearchType.OPENSEARCH)
+            .getRetentionDays()
+        != retentionDays) {
+      String updatedLifecyclePolicy =
+          buildLifecyclePolicy(
+              readResource(String.format("%s/indexLifecyclePolicy.json", resourcePath)),
+              retentionDays);
+      createLifecyclePolicy(lifecyclePolicyName, updatedLifecyclePolicy);
+    }
   }
 
   @Override
