@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * A `Role` is a collection of `Policies` that provides access control. A user or a team can
  * be assigned one or multiple roles that provide privileges to a user and members of a team
  * to perform the job function.
@@ -60,7 +58,11 @@ export interface Role {
      */
     href?: string;
     id:    string;
-    name:  string;
+    /**
+     * Change that lead to this version of the entity.
+     */
+    incrementalChangeDescription?: ChangeDescription;
+    name:                          string;
     /**
      * Policies that is attached to this role.
      */

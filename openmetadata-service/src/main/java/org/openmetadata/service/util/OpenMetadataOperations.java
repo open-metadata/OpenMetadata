@@ -4,6 +4,7 @@ import static org.flywaydb.core.internal.info.MigrationInfoDumper.dumpToAsciiTab
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 import static org.openmetadata.service.Entity.FIELD_OWNERS;
+import static org.openmetadata.service.Entity.ORGANIZATION_NAME;
 import static org.openmetadata.service.apps.bundles.insights.utils.TimestampUtils.timestampToString;
 import static org.openmetadata.service.formatter.decorators.MessageDecorator.getDateStringEpochMilli;
 import static org.openmetadata.service.jdbi3.UserRepository.AUTH_MECHANISM_FIELD;
@@ -12,6 +13,7 @@ import static org.openmetadata.service.util.UserUtil.updateUserWithHashedPwd;
 
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.LoggerContext;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
@@ -56,15 +58,18 @@ import org.openmetadata.schema.entity.app.ScheduleTimeline;
 import org.openmetadata.schema.entity.applications.configuration.internal.BackfillConfiguration;
 import org.openmetadata.schema.entity.applications.configuration.internal.DataInsightsAppConfig;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
+import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.system.EventPublisherJob;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.TypeRegistry;
 import org.openmetadata.service.apps.ApplicationHandler;
 import org.openmetadata.service.apps.scheduler.AppScheduler;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
@@ -78,12 +83,17 @@ import org.openmetadata.service.jdbi3.EventSubscriptionRepository;
 import org.openmetadata.service.jdbi3.IngestionPipelineRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.MigrationDAO;
+import org.openmetadata.service.jdbi3.PolicyRepository;
+import org.openmetadata.service.jdbi3.RoleRepository;
 import org.openmetadata.service.jdbi3.SystemRepository;
+import org.openmetadata.service.jdbi3.TeamRepository;
+import org.openmetadata.service.jdbi3.TypeRepository;
 import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.migration.api.MigrationWorkflow;
 import org.openmetadata.service.resources.CollectionRegistry;
 import org.openmetadata.service.resources.apps.AppMapper;
+import org.openmetadata.service.resources.apps.AppMarketPlaceMapper;
 import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.secrets.SecretsManager;
@@ -329,43 +339,178 @@ public class OpenMetadataOperations implements Callable<Integer> {
   public Integer installApp(
       @Option(
               names = {"-n", "--name"},
-              description = "Number of records to process in each batch.",
+              description = "The name of the application to install.",
+              required = true)
+          String appName,
+      @Option(
+              names = {"--force"},
+              description = "Forces migrations to be run again, even if they have ran previously",
+              defaultValue = "false")
+          boolean force) {
+    try {
+      parseConfig();
+      AppRepository appRepository = (AppRepository) Entity.getEntityRepository(Entity.APPLICATION);
+
+      if (!force && isAppInstalled(appRepository, appName)) {
+        LOG.info("App already installed.");
+        return 0;
+      }
+
+      if (force && deleteApplication(appRepository, appName)) {
+        LOG.info("App deleted.");
+      }
+
+      LOG.info("App not installed. Installing...");
+      installApplication(appName, appRepository);
+      LOG.info("App Installed.");
+      return 0;
+    } catch (Exception e) {
+      LOG.error("Install Application Failed", e);
+      return 1;
+    }
+  }
+
+  @Command(name = "delete-app", description = "Delete the installed application.")
+  public Integer deleteApp(
+      @Option(
+              names = {"-n", "--name"},
+              description = "The name of the application to install.",
               required = true)
           String appName) {
     try {
       parseConfig();
-      CollectionRegistry.initialize();
-      ApplicationHandler.initialize(config);
-      CollectionRegistry.getInstance().loadSeedData(jdbi, config, null, null, null, true);
-      ApplicationHandler.initialize(config);
-      AppScheduler.initialize(config, collectionDAO, searchRepository);
-      // Instantiate JWT Token Generator
-      JWTTokenGenerator.getInstance()
-          .init(
-              config.getAuthenticationConfiguration().getTokenValidationAlgorithm(),
-              config.getJwtTokenConfiguration());
-      AppMarketPlaceRepository marketPlaceRepository =
-          (AppMarketPlaceRepository) Entity.getEntityRepository(Entity.APP_MARKET_PLACE_DEF);
-      AppMarketPlaceDefinition definition =
-          marketPlaceRepository.getByName(null, appName, marketPlaceRepository.getFields("id"));
       AppRepository appRepository = (AppRepository) Entity.getEntityRepository(Entity.APPLICATION);
-      CreateApp createApp =
-          new CreateApp()
-              .withName(definition.getName())
-              .withDescription(definition.getDescription())
-              .withDisplayName(definition.getDisplayName())
-              .withAppSchedule(new AppSchedule().withScheduleTimeline(ScheduleTimeline.NONE))
-              .withAppConfiguration(new AppConfiguration());
-      AppMapper appMapper = new AppMapper();
-      App entity = appMapper.createToEntity(createApp, ADMIN_USER_NAME);
-      appRepository.prepareInternal(entity, true);
-      appRepository.createOrUpdate(null, entity);
-      LOG.info("App Installed.");
+      if (deleteApplication(appRepository, appName)) {
+        LOG.info("App deleted.");
+      }
       return 0;
     } catch (Exception e) {
-      LOG.error("Install Application Failed ", e);
+      LOG.error("Delete Application Failed", e);
       return 1;
     }
+  }
+
+  @Command(
+      name = "create-user",
+      description = "Creates a new user when basic authentication is enabled.")
+  public Integer createUser(
+      @Option(
+              names = {"-u", "--user"},
+              description = "User email address",
+              required = true)
+          String email,
+      @Option(
+              names = {"-p", "--password"},
+              description = "User password",
+              interactive = true,
+              arity = "0..1",
+              required = true)
+          char[] password,
+      @Option(
+              names = {"--admin"},
+              description = "Promote the user as an admin",
+              defaultValue = "false")
+          boolean admin) {
+    try {
+      LOG.info("Creating user: {}", email);
+      if (nullOrEmpty(password)) {
+        throw new IllegalArgumentException("Password cannot be empty.");
+      }
+      if (nullOrEmpty(email)
+          || !email.matches("^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$")) {
+        throw new IllegalArgumentException("Invalid email address: " + email);
+      }
+      parseConfig();
+      AuthProvider authProvider = config.getAuthenticationConfiguration().getProvider();
+      if (!authProvider.equals(AuthProvider.BASIC)) {
+        LOG.error("Authentication is not set to basic. User creation is not supported.");
+        return 1;
+      }
+      initializeCollectionRegistry();
+      UserRepository userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
+      try {
+        userRepository.getByEmail(null, email, EntityUtil.Fields.EMPTY_FIELDS);
+        LOG.error("User {} already exists.", email);
+        return 1;
+      } catch (EntityNotFoundException ex) {
+        // Expected – continue to create the user.
+      }
+      initOrganization();
+      String domain = email.substring(email.indexOf("@") + 1);
+      String username = email.substring(0, email.indexOf("@"));
+      UserUtil.createOrUpdateUser(authProvider, username, new String(password), domain, admin);
+      LOG.info("User {} created successfully. Admin: {}", email, admin);
+      return 0;
+    } catch (Exception e) {
+      LOG.error("Failed to create user: {}", email, e);
+      return 1;
+    }
+  }
+
+  private void initializeCollectionRegistry() {
+    LoggerContext loggerContext = (LoggerContext) LoggerFactory.getILoggerFactory();
+    ch.qos.logback.classic.Logger rootLogger =
+        loggerContext.getLogger(org.slf4j.Logger.ROOT_LOGGER_NAME);
+    Level originalLevel = rootLogger.getLevel();
+
+    try {
+      rootLogger.setLevel(Level.ERROR);
+      CollectionRegistry.initialize();
+    } finally {
+      // Restore the original logging level.
+      rootLogger.setLevel(originalLevel);
+    }
+  }
+
+  private boolean isAppInstalled(AppRepository appRepository, String appName) {
+    try {
+      appRepository.findByName(appName, Include.NON_DELETED);
+      return true;
+    } catch (EntityNotFoundException e) {
+      return false;
+    }
+  }
+
+  private boolean deleteApplication(AppRepository appRepository, String appName) {
+    try {
+      appRepository.deleteByName(ADMIN_USER_NAME, appName, true, true);
+      return true;
+    } catch (EntityNotFoundException e) {
+      return false;
+    }
+  }
+
+  private void installApplication(String appName, AppRepository appRepository) throws Exception {
+    PipelineServiceClientInterface pipelineServiceClient =
+        PipelineServiceClientFactory.createPipelineServiceClient(
+            config.getPipelineServiceClientConfiguration());
+
+    JWTTokenGenerator.getInstance()
+        .init(
+            config.getAuthenticationConfiguration().getTokenValidationAlgorithm(),
+            config.getJwtTokenConfiguration());
+
+    AppMarketPlaceMapper mapper = new AppMarketPlaceMapper(pipelineServiceClient);
+    AppMarketPlaceRepository appMarketRepository =
+        (AppMarketPlaceRepository) Entity.getEntityRepository(Entity.APP_MARKET_PLACE_DEF);
+
+    AppMarketPlaceUtil.createAppMarketPlaceDefinitions(appMarketRepository, mapper);
+
+    AppMarketPlaceDefinition definition =
+        appMarketRepository.getByName(null, appName, appMarketRepository.getFields("id"));
+
+    CreateApp createApp =
+        new CreateApp()
+            .withName(definition.getName())
+            .withDescription(definition.getDescription())
+            .withDisplayName(definition.getDisplayName())
+            .withAppSchedule(new AppSchedule().withScheduleTimeline(ScheduleTimeline.NONE))
+            .withAppConfiguration(new AppConfiguration());
+
+    AppMapper appMapper = new AppMapper();
+    App entity = appMapper.createToEntity(createApp, ADMIN_USER_NAME);
+    appRepository.prepareInternal(entity, true);
+    appRepository.createOrUpdate(null, entity);
   }
 
   @Command(
@@ -430,6 +575,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
       }
       parseConfig();
       CollectionRegistry.initialize();
+
       AuthProvider authProvider = config.getAuthenticationConfiguration().getProvider();
 
       // Only Basic Auth provider is supported for password reset
@@ -577,6 +723,8 @@ public class OpenMetadataOperations implements Callable<Integer> {
       ApplicationHandler.initialize(config);
       CollectionRegistry.getInstance().loadSeedData(jdbi, config, null, null, null, true);
       ApplicationHandler.initialize(config);
+      TypeRepository typeRepository = (TypeRepository) Entity.getEntityRepository(Entity.TYPE);
+      TypeRegistry.instance().initialize(typeRepository);
       AppScheduler.initialize(config, collectionDAO, searchRepository);
       String appName = "SearchIndexingApplication";
       Set<String> entities =
@@ -710,9 +858,8 @@ public class OpenMetadataOperations implements Callable<Integer> {
       CollectionRegistry.getInstance().loadSeedData(jdbi, config, null, null, null, true);
       ApplicationHandler.initialize(config);
       AppScheduler.initialize(config, collectionDAO, searchRepository);
-      String appName = "DataInsightsApplication";
       return executeDataInsightsReindexApp(
-          appName, batchSize, recreateIndexes, getBackfillConfiguration(startDate, endDate));
+          batchSize, recreateIndexes, getBackfillConfiguration(startDate, endDate));
     } catch (Exception e) {
       LOG.error("Failed to reindex due to ", e);
       return 1;
@@ -734,13 +881,10 @@ public class OpenMetadataOperations implements Callable<Integer> {
   }
 
   private int executeDataInsightsReindexApp(
-      String appName,
-      int batchSize,
-      boolean recreateIndexes,
-      BackfillConfiguration backfillConfiguration) {
+      int batchSize, boolean recreateIndexes, BackfillConfiguration backfillConfiguration) {
     AppRepository appRepository = (AppRepository) Entity.getEntityRepository(Entity.APPLICATION);
     App originalDataInsightsApp =
-        appRepository.getByName(null, appName, appRepository.getFields("id"));
+        appRepository.getByName(null, "DataInsightsApplication", appRepository.getFields("id"));
 
     DataInsightsAppConfig storedConfig =
         JsonUtils.convertValue(
@@ -1049,16 +1193,46 @@ public class OpenMetadataOperations implements Callable<Integer> {
     DatasourceConfig.initialize(connType.label);
     MigrationWorkflow workflow =
         new MigrationWorkflow(
-            jdbi,
-            nativeSQLScriptRootPath,
-            connType,
-            extensionSQLScriptRootPath,
-            config.getPipelineServiceClientConfiguration(),
-            config.getAuthenticationConfiguration(),
-            force);
+            jdbi, nativeSQLScriptRootPath, connType, extensionSQLScriptRootPath, config, force);
     workflow.loadMigrations();
     workflow.printMigrationInfo();
     workflow.runMigrationWorkflows();
+  }
+
+  private void initOrganization() {
+    LoggerContext loggerContext = (LoggerContext) LoggerFactory.getILoggerFactory();
+    ch.qos.logback.classic.Logger rootLogger =
+        loggerContext.getLogger(org.slf4j.Logger.ROOT_LOGGER_NAME);
+    Level originalLevel = rootLogger.getLevel();
+    TeamRepository teamRepository = (TeamRepository) Entity.getEntityRepository(Entity.TEAM);
+    try {
+      teamRepository.getByName(null, ORGANIZATION_NAME, EntityUtil.Fields.EMPTY_FIELDS);
+    } catch (EntityNotFoundException e) {
+      try {
+        PolicyRepository policyRepository =
+            (PolicyRepository) Entity.getEntityRepository(Entity.POLICY);
+        policyRepository.initSeedDataFromResources();
+        RoleRepository roleRepository = (RoleRepository) Entity.getEntityRepository(Entity.ROLE);
+        List<Role> roles = roleRepository.getEntitiesFromSeedData();
+        for (Role role : roles) {
+          role.setFullyQualifiedName(role.getName());
+          List<EntityReference> policies = role.getPolicies();
+          for (EntityReference policy : policies) {
+            EntityReference ref =
+                Entity.getEntityReferenceByName(
+                    Entity.POLICY, policy.getName(), Include.NON_DELETED);
+            policy.setId(ref.getId());
+          }
+          roleRepository.initializeEntity(role);
+        }
+        teamRepository.initOrganization();
+      } catch (Exception ex) {
+        LOG.error("Failed to initialize organization due to ", ex);
+        throw new RuntimeException(ex);
+      } finally {
+        rootLogger.setLevel(originalLevel);
+      }
+    }
   }
 
   public static void printToAsciiTable(

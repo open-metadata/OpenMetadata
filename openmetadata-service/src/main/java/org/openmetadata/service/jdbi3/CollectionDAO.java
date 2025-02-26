@@ -1019,6 +1019,26 @@ public interface CollectionDAO {
         @Bind("relation") int relation,
         @Bind("toEntity") String toEntity);
 
+    @SqlQuery(
+        "SELECT COUNT(toId) FROM entity_relationship WHERE fromId = :fromId AND fromEntity = :fromEntity "
+            + "AND relation IN (<relation>)")
+    @RegisterRowMapper(ToRelationshipMapper.class)
+    int countFindTo(
+        @BindUUID("fromId") UUID fromId,
+        @Bind("fromEntity") String fromEntity,
+        @BindList("relation") List<Integer> relation);
+
+    @SqlQuery(
+        "SELECT toId, toEntity, json FROM entity_relationship WHERE fromId = :fromId AND fromEntity = :fromEntity "
+            + "AND relation IN (<relation>) ORDER BY toId LIMIT :limit OFFSET :offset")
+    @RegisterRowMapper(ToRelationshipMapper.class)
+    List<EntityRelationshipRecord> findToWithOffset(
+        @BindUUID("fromId") UUID fromId,
+        @Bind("fromEntity") String fromEntity,
+        @BindList("relation") List<Integer> relation,
+        @Bind("offset") int offset,
+        @Bind("limit") int limit);
+
     @ConnectionAwareSqlQuery(
         value =
             "SELECT toId, toEntity, json FROM entity_relationship "
