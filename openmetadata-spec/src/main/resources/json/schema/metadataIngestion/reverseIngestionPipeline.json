@@ -70,9 +70,9 @@
             "$ref": "#/definitions/reverseIngestionType",
             "default": "ReverseIngestion"
         },
-        "serviceId": {
-            "description": "The id of the database service to be modified",
-            "$ref": "../type/basic.json#/definitions/uuid"
+        "service": {
+            "description": "Service to be modified",
+            "$ref": "../type/entityReference.json"
         },
         "operations": {
             "description": "List of operations to be performed on the service",
