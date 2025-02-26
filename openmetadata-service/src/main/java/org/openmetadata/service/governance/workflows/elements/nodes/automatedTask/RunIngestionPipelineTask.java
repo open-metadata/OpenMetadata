@@ -28,7 +28,8 @@ public class RunIngestionPipelineTask implements NodeInterface {
   public RunIngestionPipelineTask(RunIngestionPipelineTaskDefinition nodeDefinition) {
     String subProcessId = nodeDefinition.getName();
 
-    SubProcess subProcess = new SubProcessBuilder().id(subProcessId).setAsync(true).build();
+    SubProcess subProcess =
+        new SubProcessBuilder().id(subProcessId).setAsync(true).exclusive(false).build();
 
     StartEvent startEvent =
         new StartEventBuilder().id(getFlowableElementId(subProcessId, "startEvent")).build();
