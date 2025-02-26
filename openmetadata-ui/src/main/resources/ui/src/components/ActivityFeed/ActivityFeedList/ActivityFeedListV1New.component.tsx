@@ -18,7 +18,6 @@ import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { Thread } from '../../../generated/entity/feed/thread';
 import { getFeedListWithRelativeDays } from '../../../utils/FeedUtils';
 import ErrorPlaceHolderNew from '../../common/ErrorWithPlaceholder/ErrorPlaceHolderNew';
-import Loader from '../../common/Loader/Loader';
 import FeedPanelBodyV1New from '../ActivityFeedPanel/FeedPanelBodyV1New';
 
 interface ActivityFeedListV1Props {
@@ -107,11 +106,7 @@ const ActivityFeedListV1New = ({
     ]
   );
 
-  if (isLoading) {
-    return <Loader />;
-  }
-
-  if (isEmpty(entityThread)) {
+  if (isEmpty(entityThread) && !isLoading) {
     return (
       <div
         className="p-x-md no-data-placeholder-container"
