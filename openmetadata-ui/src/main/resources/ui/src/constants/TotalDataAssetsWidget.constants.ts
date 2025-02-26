@@ -10,27 +10,26 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-@import '../../../styles/variables.less';
+import {
+  BLUE_2,
+  DESERT,
+  ELECTRIC_VIOLET,
+  LEMON_ZEST,
+  MY_SIN,
+  PINK_SALMON,
+  RIPTIDE,
+  SAN_MARINO,
+  SILVER_TREE,
+} from './Color.constants';
 
-.platform-insights-card {
-  .other-charts-container {
-    display: grid;
-    grid-template-rows: repeat(2, 1fr);
-    grid-template-columns: repeat(2, 1fr);
-    gap: 16px;
-  }
-
-  .other-charts-card.ant-card {
-    .ant-card-body {
-      height: 100%;
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
-
-      &::before,
-      &::after {
-        display: none;
-      }
-    }
-  }
-}
+export const totalDataAssetsWidgetColors = [
+  BLUE_2,
+  PINK_SALMON,
+  SILVER_TREE,
+  SAN_MARINO,
+  RIPTIDE,
+  MY_SIN,
+  DESERT,
+  ELECTRIC_VIOLET,
+  LEMON_ZEST,
+];

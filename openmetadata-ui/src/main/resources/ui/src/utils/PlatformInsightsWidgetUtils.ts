@@ -86,16 +86,20 @@ export const getTitleByChartType = (chartType: SystemChartType) => {
         entity: t('label.data-asset-plural'),
       });
     case SystemChartType.PercentageOfDataAssetWithDescription:
-      return t('label.data-asset-plural-with-field', {
-        field: t('label.description'),
+      return t('label.entity-coverage', {
+        entity: t('label.description'),
       });
     case SystemChartType.PercentageOfDataAssetWithOwner:
-      return t('label.data-asset-plural-with-field', {
-        field: t('label.owner-plural'),
+      return t('label.entity-coverage', {
+        entity: t('label.ownership'),
+      });
+    case SystemChartType.PercentageOfServiceWithDescription: // TODO: Replace this with PII chart
+      return t('label.entity-coverage', {
+        entity: t('label.pii-uppercase'),
       });
     case SystemChartType.TotalDataAssetsByTier:
-      return t('label.data-asset-plural-with-field', {
-        field: t('label.tier'),
+      return t('label.entity-coverage', {
+        entity: t('label.tier'),
       });
     default:
       return '';
@@ -110,6 +114,8 @@ export const getSummaryChartName = (chartType: SystemChartType) => {
       return SystemChartType.NumberOfDataAssetWithOwner;
     case SystemChartType.TotalDataAssetsByTier:
       return SystemChartType.TotalDataAssetsWithTierSummaryCard;
+    case SystemChartType.PercentageOfServiceWithDescription: // TODO: Replace this with PII chart
+      return SystemChartType.TotalDataAssetsSummaryCard;
     case SystemChartType.TotalDataAssets:
     default:
       return SystemChartType.TotalDataAssetsSummaryCard;
