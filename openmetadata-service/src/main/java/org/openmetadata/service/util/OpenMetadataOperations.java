@@ -4,6 +4,7 @@ import static org.flywaydb.core.internal.info.MigrationInfoDumper.dumpToAsciiTab
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 import static org.openmetadata.service.Entity.FIELD_OWNERS;
+import static org.openmetadata.service.Entity.ORGANIZATION_NAME;
 import static org.openmetadata.service.apps.bundles.insights.utils.TimestampUtils.timestampToString;
 import static org.openmetadata.service.formatter.decorators.MessageDecorator.getDateStringEpochMilli;
 import static org.openmetadata.service.jdbi3.UserRepository.AUTH_MECHANISM_FIELD;
@@ -12,6 +13,7 @@ import static org.openmetadata.service.util.UserUtil.updateUserWithHashedPwd;
 
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.LoggerContext;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
@@ -56,11 +58,13 @@ import org.openmetadata.schema.entity.app.ScheduleTimeline;
 import org.openmetadata.schema.entity.applications.configuration.internal.BackfillConfiguration;
 import org.openmetadata.schema.entity.applications.configuration.internal.DataInsightsAppConfig;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
+import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.system.EventPublisherJob;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.service.Entity;
@@ -79,7 +83,10 @@ import org.openmetadata.service.jdbi3.EventSubscriptionRepository;
 import org.openmetadata.service.jdbi3.IngestionPipelineRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.MigrationDAO;
+import org.openmetadata.service.jdbi3.PolicyRepository;
+import org.openmetadata.service.jdbi3.RoleRepository;
 import org.openmetadata.service.jdbi3.SystemRepository;
+import org.openmetadata.service.jdbi3.TeamRepository;
 import org.openmetadata.service.jdbi3.TypeRepository;
 import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
@@ -383,6 +390,78 @@ public class OpenMetadataOperations implements Callable<Integer> {
     }
   }
 
+  @Command(
+      name = "create-user",
+      description = "Creates a new user when basic authentication is enabled.")
+  public Integer createUser(
+      @Option(
+              names = {"-u", "--user"},
+              description = "User email address",
+              required = true)
+          String email,
+      @Option(
+              names = {"-p", "--password"},
+              description = "User password",
+              interactive = true,
+              arity = "0..1",
+              required = true)
+          char[] password,
+      @Option(
+              names = {"--admin"},
+              description = "Promote the user as an admin",
+              defaultValue = "false")
+          boolean admin) {
+    try {
+      LOG.info("Creating user: {}", email);
+      if (nullOrEmpty(password)) {
+        throw new IllegalArgumentException("Password cannot be empty.");
+      }
+      if (nullOrEmpty(email)
+          || !email.matches("^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$")) {
+        throw new IllegalArgumentException("Invalid email address: " + email);
+      }
+      parseConfig();
+      AuthProvider authProvider = config.getAuthenticationConfiguration().getProvider();
+      if (!authProvider.equals(AuthProvider.BASIC)) {
+        LOG.error("Authentication is not set to basic. User creation is not supported.");
+        return 1;
+      }
+      initializeCollectionRegistry();
+      UserRepository userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
+      try {
+        userRepository.getByEmail(null, email, EntityUtil.Fields.EMPTY_FIELDS);
+        LOG.error("User {} already exists.", email);
+        return 1;
+      } catch (EntityNotFoundException ex) {
+        // Expected – continue to create the user.
+      }
+      initOrganization();
+      String domain = email.substring(email.indexOf("@") + 1);
+      String username = email.substring(0, email.indexOf("@"));
+      UserUtil.createOrUpdateUser(authProvider, username, new String(password), domain, admin);
+      LOG.info("User {} created successfully. Admin: {}", email, admin);
+      return 0;
+    } catch (Exception e) {
+      LOG.error("Failed to create user: {}", email, e);
+      return 1;
+    }
+  }
+
+  private void initializeCollectionRegistry() {
+    LoggerContext loggerContext = (LoggerContext) LoggerFactory.getILoggerFactory();
+    ch.qos.logback.classic.Logger rootLogger =
+        loggerContext.getLogger(org.slf4j.Logger.ROOT_LOGGER_NAME);
+    Level originalLevel = rootLogger.getLevel();
+
+    try {
+      rootLogger.setLevel(Level.ERROR);
+      CollectionRegistry.initialize();
+    } finally {
+      // Restore the original logging level.
+      rootLogger.setLevel(originalLevel);
+    }
+  }
+
   private boolean isAppInstalled(AppRepository appRepository, String appName) {
     try {
       appRepository.findByName(appName, Include.NON_DELETED);
@@ -496,6 +575,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
       }
       parseConfig();
       CollectionRegistry.initialize();
+
       AuthProvider authProvider = config.getAuthenticationConfiguration().getProvider();
 
       // Only Basic Auth provider is supported for password reset
@@ -1123,6 +1203,42 @@ public class OpenMetadataOperations implements Callable<Integer> {
     workflow.loadMigrations();
     workflow.printMigrationInfo();
     workflow.runMigrationWorkflows();
+  }
+
+  private void initOrganization() {
+    LoggerContext loggerContext = (LoggerContext) LoggerFactory.getILoggerFactory();
+    ch.qos.logback.classic.Logger rootLogger =
+        loggerContext.getLogger(org.slf4j.Logger.ROOT_LOGGER_NAME);
+    Level originalLevel = rootLogger.getLevel();
+    TeamRepository teamRepository = (TeamRepository) Entity.getEntityRepository(Entity.TEAM);
+    try {
+      teamRepository.getByName(null, ORGANIZATION_NAME, EntityUtil.Fields.EMPTY_FIELDS);
+    } catch (EntityNotFoundException e) {
+      try {
+        PolicyRepository policyRepository =
+            (PolicyRepository) Entity.getEntityRepository(Entity.POLICY);
+        policyRepository.initSeedDataFromResources();
+        RoleRepository roleRepository = (RoleRepository) Entity.getEntityRepository(Entity.ROLE);
+        List<Role> roles = roleRepository.getEntitiesFromSeedData();
+        for (Role role : roles) {
+          role.setFullyQualifiedName(role.getName());
+          List<EntityReference> policies = role.getPolicies();
+          for (EntityReference policy : policies) {
+            EntityReference ref =
+                Entity.getEntityReferenceByName(
+                    Entity.POLICY, policy.getName(), Include.NON_DELETED);
+            policy.setId(ref.getId());
+          }
+          roleRepository.initializeEntity(role);
+        }
+        teamRepository.initOrganization();
+      } catch (Exception ex) {
+        LOG.error("Failed to initialize organization due to ", ex);
+        throw new RuntimeException(ex);
+      } finally {
+        rootLogger.setLevel(originalLevel);
+      }
+    }
   }
 
   public static void printToAsciiTable(
