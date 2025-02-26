@@ -10,18 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-export interface AlertDiagnosticData {
-  latestOffset: number;
-  currentOffset: number;
-  startingOffset: number;
-  hasProcessedAllEvents: boolean;
-  successfulEventsCount: number;
-  failedEventsCount: number;
-  relevantUnprocessedEventsCount: number;
-  totalUnprocessedEventsCount: number;
+export interface DiagnosticItem {
+  key: string;
+  value: string | number | boolean;
+  description: string;
 }
-
 export interface AlertDiagnosticInfoTabProps {
-  diagnosticData: AlertDiagnosticData;
+  fqn: string;
 }

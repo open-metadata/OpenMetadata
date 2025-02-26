@@ -10,27 +10,17 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
+@import (reference) url('../../../../styles/variables.less');
+
 .alert-diagnostic-container {
   .ant-card {
     border-radius: 8px;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-    transition: all 0.3s ease;
-
-    &:hover {
-      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    }
-
-    .ant-input {
-      &[readonly] {
-        background-color: transparent;
-        cursor: default;
-      }
-    }
   }
 
   .ant-statistic {
     .ant-statistic-title {
-      color: rgba(0, 0, 0, 0.45);
+      color: @primary-color;
       font-size: 14px;
     }
 
@@ -45,7 +35,7 @@
   }
 
   .text-grey-muted {
-    color: rgba(0, 0, 0, 0.45);
+    color: @primary-color;
   }
 }
 
@@ -56,7 +46,7 @@
   gap: 2px !important;
 
   .info-icon {
-    color: #c4c4c4;
+    color: @grey-3;
     font-size: 14px;
     display: flex;
     align-items: center;

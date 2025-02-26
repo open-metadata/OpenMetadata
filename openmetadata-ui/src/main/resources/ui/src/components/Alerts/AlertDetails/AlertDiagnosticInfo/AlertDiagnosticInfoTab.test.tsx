@@ -10,19 +10,31 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import React from 'react';
 import {
   mockDiagnosticData,
   mockEmptyDiagnosticData,
 } from '../../../../mocks/Alerts.mock';
+import { getDiagnosticInfo } from '../../../../rest/observabilityAPI';
 import AlertDiagnosticInfoTab from './AlertDiagnosticInfoTab';
 
-describe('AlertDiagnosticInfoTab', () => {
-  it('should render all offset information correctly', () => {
-    render(<AlertDiagnosticInfoTab diagnosticData={mockDiagnosticData} />);
+// Mock the API call
+jest.mock('../../../../rest/observabilityAPI', () => ({
+  getDiagnosticInfo: jest.fn(),
+}));
 
-    const inputs = screen.getAllByTestId('input-field');
+describe('AlertDiagnosticInfoTab', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('should render all offset information correctly', async () => {
+    (getDiagnosticInfo as jest.Mock).mockResolvedValue(mockDiagnosticData);
+
+    await act(async () => {
+      render(<AlertDiagnosticInfoTab fqn="test-fqn" />);
+    });
 
     // Check labels
     expect(screen.getByText('label.latest-offset:')).toBeInTheDocument();
@@ -36,33 +48,46 @@ describe('AlertDiagnosticInfoTab', () => {
       screen.getByText('label.processed-all-event-plural:')
     ).toBeInTheDocument();
 
-    // Check input values
-    expect(inputs[0]).toHaveValue('100');
-    expect(inputs[1]).toHaveValue('80');
-    expect(inputs[2]).toHaveValue('0');
-    expect(inputs[3]).toHaveValue('75');
-    expect(inputs[4]).toHaveValue('5');
-    expect(inputs[5]).toHaveValue('Yes');
+    // Check values
+    expect(screen.getByText('100')).toBeInTheDocument();
+    expect(screen.getByText('80')).toBeInTheDocument();
+    expect(screen.getByText('0')).toBeInTheDocument();
+    expect(screen.getByText('75')).toBeInTheDocument();
+    expect(screen.getByText('5')).toBeInTheDocument();
+    expect(screen.getByText('Yes')).toBeInTheDocument();
   });
 
-  it('should render processed all events status as "No" when false', () => {
-    render(<AlertDiagnosticInfoTab diagnosticData={mockEmptyDiagnosticData} />);
+  it('should render processed all events status as "No" when false', async () => {
+    (getDiagnosticInfo as jest.Mock).mockResolvedValue(mockEmptyDiagnosticData);
 
-    const inputs = screen.getAllByTestId('input-field');
+    await act(async () => {
+      render(<AlertDiagnosticInfoTab fqn="test-fqn" />);
+    });
 
-    expect(inputs[5]).toHaveValue('No');
+    expect(screen.getByText('No')).toBeInTheDocument();
   });
 
-  it('should render with empty/zero values correctly', () => {
-    render(<AlertDiagnosticInfoTab diagnosticData={mockEmptyDiagnosticData} />);
+  it('should render with empty/zero values correctly', async () => {
+    (getDiagnosticInfo as jest.Mock).mockResolvedValue(mockEmptyDiagnosticData);
 
-    const inputs = screen.getAllByTestId('input-field');
+    await act(async () => {
+      render(<AlertDiagnosticInfoTab fqn="test-fqn" />);
+    });
 
     // Check numeric fields have value "0"
-    expect(inputs[0]).toHaveValue('0'); // latestOffset
-    expect(inputs[1]).toHaveValue('0'); // currentOffset
-    expect(inputs[2]).toHaveValue('0'); // startingOffset
-    expect(inputs[3]).toHaveValue('0'); // successfulEventsCount
-    expect(inputs[4]).toHaveValue('0'); // failedEventsCount
+    const zeroValues = screen.getAllByText('0');
+
+    expect(zeroValues).toHaveLength(5); // Should find 5 zero values
+  });
+
+  it('should handle API error correctly', async () => {
+    const error = new Error('API Error');
+    (getDiagnosticInfo as jest.Mock).mockRejectedValue(error);
+
+    await act(async () => {
+      render(<AlertDiagnosticInfoTab fqn="test-fqn" />);
+    });
+
+    expect(screen.queryByText('100')).not.toBeInTheDocument();
   });
 });

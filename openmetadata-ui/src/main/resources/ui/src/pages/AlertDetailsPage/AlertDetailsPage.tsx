@@ -23,7 +23,6 @@ import { ReactComponent as EditIcon } from '../../assets/svg/edit-new.svg';
 import { ReactComponent as DeleteIcon } from '../../assets/svg/ic-delete.svg';
 import AlertConfigDetails from '../../components/Alerts/AlertDetails/AlertConfigDetails/AlertConfigDetails';
 import AlertDiagnosticInfoTab from '../../components/Alerts/AlertDetails/AlertDiagnosticInfo/AlertDiagnosticInfoTab';
-import { AlertDiagnosticData } from '../../components/Alerts/AlertDetails/AlertDiagnosticInfo/AlertDiagnosticInfoTab.interface';
 import AlertRecentEventsTab from '../../components/Alerts/AlertDetails/AlertRecentEventsTab/AlertRecentEventsTab';
 import DeleteWidgetModal from '../../components/common/DeleteWidget/DeleteWidgetModal';
 import DescriptionV1 from '../../components/common/EntityDescription/DescriptionV1';
@@ -54,7 +53,6 @@ import { useFqn } from '../../hooks/useFqn';
 import { updateNotificationAlert } from '../../rest/alertsAPI';
 import {
   getAlertEventsDiagnosticsInfo,
-  getDiagnosticInfo,
   getObservabilityAlertByFQN,
   syncOffset,
   updateObservabilityAlert,
@@ -95,7 +93,6 @@ function AlertDetailsPage({
   const [alertPermission, setAlertPermission] = useState<OperationPermission>(
     DEFAULT_ENTITY_PERMISSION
   );
-  const [diagnosticInfo, setDiagnosticInfo] = useState<AlertDiagnosticData>();
 
   const {
     viewPermission,
@@ -172,15 +169,6 @@ function AlertDetailsPage({
       // Error handling
     } finally {
       setAlertEventCountsLoading(false);
-    }
-  };
-
-  const fetchDiagnosticInfo = async () => {
-    try {
-      const diagnosticInfoData = await getDiagnosticInfo(fqn);
-      setDiagnosticInfo(diagnosticInfoData);
-    } catch (error) {
-      showErrorToast(error as AxiosError);
     }
   };
 
@@ -310,20 +298,16 @@ function AlertDetailsPage({
       {
         label: t('label.diagnostic-info'),
         key: AlertDetailTabs.DIAGNOSTIC_INFO,
-        children: isUndefined(diagnosticInfo) ? null : (
-          <AlertDiagnosticInfoTab diagnosticData={diagnosticInfo} />
+        children: isUndefined(fqn) ? null : (
+          <AlertDiagnosticInfoTab fqn={fqn} />
         ),
       },
     ],
-    [alertDetails, viewPermission, diagnosticInfo]
+    [alertDetails, viewPermission]
   );
 
   const handleTabChange = useCallback(
     (activeKey: string) => {
-      if (activeKey === AlertDetailTabs.DIAGNOSTIC_INFO) {
-        fetchDiagnosticInfo();
-      }
-
       history.replace(
         isNotificationAlert
           ? getNotificationAlertDetailsPath(fqn, activeKey)
