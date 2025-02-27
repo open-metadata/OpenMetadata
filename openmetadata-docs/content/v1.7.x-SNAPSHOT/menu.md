@@ -868,6 +868,8 @@ site_menu:
     url: /how-to-guides/data-quality-observability/profiler/workflow
   - category: How-to Guides / Data Quality and Observability / Data Profiler / Metrics
     url: /how-to-guides/data-quality-observability/profiler/metrics
+  - category: How-to Guides / Data Quality and Observability / Data Profiler / Custom Metrics
+    url: /how-to-guides/data-quality-observability/profiler/custom-metrics
   - category: How-to Guides / Data Quality and Observability / Data Profiler / Sample Data
     url: /how-to-guides/data-quality-observability/profiler/external-sample-data
   - category: How-to Guides / Data Quality and Observability / Data Profiler / External Workflow
@@ -959,6 +961,8 @@ site_menu:
     url: /how-to-guides/data-governance/domains-&-data-products/domains
   - category: How-to Guides / Data Governance / Domains & Data Product /  How to Use Data Products
     url: /how-to-guides/data-governance/domains-&-data-products/data-products
+  - category: How-to Guides / Data Governance / Metrics
+    url: /how-to-guides/data-governance/metrics
 
   - category: Releases
     url: /releases
