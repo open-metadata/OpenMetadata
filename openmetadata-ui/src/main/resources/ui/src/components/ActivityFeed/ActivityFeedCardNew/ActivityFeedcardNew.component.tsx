@@ -130,10 +130,11 @@ const ActivityFeedCardNew = ({
     } else if (showEntityLink) {
       return (
         <EntityPopOverCard entityFQN={entityFQN} entityType={entityType}>
-          <>
-            <span
-              className="m-r-xss d-inline-flex text-xl align-middle"
-              style={{ height: 16, width: 16 }}>
+          <div
+            className={classNames('text-sm', {
+              'max-one-line': !showThread,
+            })}>
+            <span className="m-r-xss d-inline-flex text-xl align-middle">
               {searchClassBase.getEntityIcon(entityType ?? '')}
             </span>
             <Link
@@ -146,7 +147,7 @@ const ActivityFeedCardNew = ({
                   : entityDisplayName(entityType, entityFQN)}
               </span>
             </Link>
-          </>
+          </div>
         </EntityPopOverCard>
       );
     } else {
