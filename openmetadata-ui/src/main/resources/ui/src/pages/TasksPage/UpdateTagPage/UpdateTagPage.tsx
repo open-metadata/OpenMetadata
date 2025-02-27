@@ -347,4 +347,4 @@ const UpdateTag = () => {
   );
 };
 
-export default withPageLayout('')(UpdateTag);
+export default withPageLayout('task')(UpdateTag);

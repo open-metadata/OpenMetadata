@@ -292,4 +292,4 @@ const RequestTag = () => {
   );
 };
 
-export default withPageLayout('')(RequestTag);
+export default withPageLayout('task')(RequestTag);

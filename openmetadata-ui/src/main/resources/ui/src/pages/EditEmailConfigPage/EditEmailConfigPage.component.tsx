@@ -191,4 +191,4 @@ function EditEmailConfigPage() {
   );
 }
 
-export default withPageLayout('')(EditEmailConfigPage);
+export default withPageLayout('add-entity', 'service')(EditEmailConfigPage);

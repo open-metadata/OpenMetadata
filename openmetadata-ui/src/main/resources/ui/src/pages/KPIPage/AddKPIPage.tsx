@@ -421,4 +421,4 @@ const AddKPIPage = () => {
   );
 };
 
-export default withPageLayout('')(AddKPIPage);
+export default withPageLayout('add-new-entity', 'kpi-uppercase')(AddKPIPage);

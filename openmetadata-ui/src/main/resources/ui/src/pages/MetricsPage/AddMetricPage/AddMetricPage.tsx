@@ -344,4 +344,4 @@ const AddMetricPage = () => {
   );
 };
 
-export default withPageLayout('')(AddMetricPage);
+export default withPageLayout('add-new-entity', 'metric')(AddMetricPage);

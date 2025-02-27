@@ -19,4 +19,4 @@ const ForbiddenPage = () => {
   return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
 };
 
-export default withPageLayout('')(ForbiddenPage);
+export default withPageLayout('no-access')(ForbiddenPage);

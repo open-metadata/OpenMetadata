@@ -358,4 +358,7 @@ const AddNotificationPage = () => {
   );
 };
 
-export default withPageLayout('')(AddNotificationPage);
+export default withPageLayout(
+  'entity-detail-plural',
+  'alert'
+)(AddNotificationPage);

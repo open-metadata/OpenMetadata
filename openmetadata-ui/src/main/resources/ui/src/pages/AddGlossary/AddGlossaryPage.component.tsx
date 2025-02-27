@@ -154,4 +154,4 @@ const AddGlossaryPage: FunctionComponent = () => {
   );
 };
 
-export default withPageLayout('')(AddGlossaryPage);
+export default withPageLayout('add-entity', 'glossary')(AddGlossaryPage);

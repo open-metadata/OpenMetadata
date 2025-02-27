@@ -323,4 +323,4 @@ const UpdateDescription = () => {
   );
 };
 
-export default withPageLayout('')(UpdateDescription);
+export default withPageLayout('task')(UpdateDescription);

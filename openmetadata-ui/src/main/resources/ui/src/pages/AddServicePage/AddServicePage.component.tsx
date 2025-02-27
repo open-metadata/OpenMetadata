@@ -177,4 +177,4 @@ const AddServicePage = () => {
   );
 };
 
-export default withPageLayout('')(AddServicePage);
+export default withPageLayout('add-entity', 'service')(AddServicePage);

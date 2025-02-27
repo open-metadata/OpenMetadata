@@ -99,4 +99,4 @@ const AlertsActivityFeedPage = () => {
   );
 };
 
-export default withPageLayout('')(AlertsActivityFeedPage);
+export default withPageLayout('alert-details')(AlertsActivityFeedPage);

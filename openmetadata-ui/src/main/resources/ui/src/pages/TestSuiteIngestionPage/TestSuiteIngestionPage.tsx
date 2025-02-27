@@ -154,4 +154,7 @@ const TestSuiteIngestionPage = () => {
   );
 };
 
-export default withPageLayout('')(TestSuiteIngestionPage);
+export default withPageLayout(
+  'add-entity',
+  'test-suite'
+)(TestSuiteIngestionPage);

@@ -309,4 +309,4 @@ const AddIngestionPage = () => {
   );
 };
 
-export default withPageLayout('')(AddIngestionPage);
+export default withPageLayout('add-entity', 'ingestion')(AddIngestionPage);

@@ -201,4 +201,7 @@ const EditUrlConfigurationPage = () => {
   );
 };
 
-export default withPageLayout('')(EditUrlConfigurationPage);
+export default withPageLayout(
+  'edit-entity',
+  'service'
+)(EditUrlConfigurationPage);

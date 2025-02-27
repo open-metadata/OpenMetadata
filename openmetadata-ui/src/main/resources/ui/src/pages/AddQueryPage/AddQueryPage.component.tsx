@@ -329,4 +329,4 @@ const AddQueryPage = () => {
   );
 };
 
-export default withPageLayout('')(AddQueryPage);
+export default withPageLayout('add-entity', 'query')(AddQueryPage);

@@ -343,4 +343,7 @@ function AddObservabilityPage() {
   );
 }
 
-export default withPageLayout('')(AddObservabilityPage);
+export default withPageLayout(
+  'entity-detail-plural',
+  'alert'
+)(AddObservabilityPage);

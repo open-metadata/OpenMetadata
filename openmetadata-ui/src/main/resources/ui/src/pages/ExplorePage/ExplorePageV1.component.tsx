@@ -479,4 +479,4 @@ const ExplorePageV1: FunctionComponent = () => {
   );
 };
 
-export default withPageLayout('')(withAdvanceSearch(ExplorePageV1));
+export default withPageLayout('explore')(withAdvanceSearch(ExplorePageV1));

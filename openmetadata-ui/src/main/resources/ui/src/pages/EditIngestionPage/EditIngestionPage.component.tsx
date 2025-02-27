@@ -323,4 +323,4 @@ const EditIngestionPage = () => {
   );
 };
 
-export default withPageLayout('')(EditIngestionPage);
+export default withPageLayout('edit-entity', 'ingestion')(EditIngestionPage);

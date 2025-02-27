@@ -269,4 +269,7 @@ const AddCustomMetricPage = () => {
   );
 };
 
-export default withPageLayout('')(AddCustomMetricPage);
+export default withPageLayout(
+  'add-entity',
+  'custom-metric'
+)(AddCustomMetricPage);

@@ -214,4 +214,7 @@ function EditConnectionFormPage() {
   );
 }
 
-export default withPageLayout('')(EditConnectionFormPage);
+export default withPageLayout(
+  'edit-entity',
+  'connection'
+)(EditConnectionFormPage);

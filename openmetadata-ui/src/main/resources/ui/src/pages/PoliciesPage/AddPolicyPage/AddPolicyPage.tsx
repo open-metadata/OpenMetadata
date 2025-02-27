@@ -217,4 +217,4 @@ const AddPolicyPage = () => {
   );
 };
 
-export default withPageLayout('')(AddPolicyPage);
+export default withPageLayout('add-entity', 'policy')(AddPolicyPage);

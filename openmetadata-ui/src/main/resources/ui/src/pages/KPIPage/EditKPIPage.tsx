@@ -451,4 +451,4 @@ const EditKPIPage = () => {
   );
 };
 
-export default withPageLayout('')(EditKPIPage);
+export default withPageLayout('edit-entity', 'kpi-uppercase')(EditKPIPage);

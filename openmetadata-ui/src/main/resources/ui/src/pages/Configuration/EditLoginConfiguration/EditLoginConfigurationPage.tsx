@@ -231,4 +231,4 @@ const EditLoginConfiguration = () => {
   );
 };
 
-export default withPageLayout('')(EditLoginConfiguration);
+export default withPageLayout('edit-entity', 'service')(EditLoginConfiguration);
