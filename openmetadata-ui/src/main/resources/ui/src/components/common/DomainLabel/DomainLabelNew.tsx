@@ -124,7 +124,7 @@ export const DomainLabelNew = ({
               domain,
               domainDisplayName,
               showDomainHeading,
-              textClassName
+              'chip-tag-link'
             )}
             {inheritedIcon && <div className="d-flex">{inheritedIcon}</div>}
           </div>

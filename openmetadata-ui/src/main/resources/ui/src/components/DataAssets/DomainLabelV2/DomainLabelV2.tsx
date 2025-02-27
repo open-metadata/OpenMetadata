@@ -127,7 +127,12 @@ export const DomainLabelV2 = <
                 width={16}
               />
             </Typography.Text>
-            {renderDomainLink(domain, getEntityName(domain), true, '')}
+            {renderDomainLink(
+              domain,
+              getEntityName(domain),
+              true,
+              'text-primary domain-link'
+            )}
             {inheritedIcon && <div className="d-flex">{inheritedIcon}</div>}
           </div>
         );

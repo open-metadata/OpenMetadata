@@ -200,12 +200,11 @@ export const renderDomainLink = (
 ) => (
   <Link
     className={classNames(
-      'no-underline domain-link',
+      'no-underline',
       { 'text-xs': !showDomainHeading },
       textClassName
     )}
     data-testid="domain-link"
-    style={{ color: '#535862', marginBottom: '8px' }}
     to={getDomainPath(domain?.fullyQualifiedName)}>
     {isUndefined(domainDisplayName) ? getEntityName(domain) : domainDisplayName}
   </Link>
