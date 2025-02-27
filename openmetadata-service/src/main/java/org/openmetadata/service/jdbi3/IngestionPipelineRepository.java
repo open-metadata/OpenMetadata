@@ -39,6 +39,7 @@ import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
@@ -53,6 +54,7 @@ import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 
 public class IngestionPipelineRepository extends EntityRepository<IngestionPipeline> {
+
   private static final String UPDATE_FIELDS =
       "sourceConfig,airflowConfig,loggerLevel,enabled,deployed";
   private static final String PATCH_FIELDS =
@@ -151,6 +153,14 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   @Override
   public void storeRelationships(IngestionPipeline ingestionPipeline) {
     addServiceRelationship(ingestionPipeline, ingestionPipeline.getService());
+    if (ingestionPipeline.getIngestionAgent() != null) {
+      addRelationship(
+          ingestionPipeline.getId(),
+          ingestionPipeline.getIngestionAgent().getId(),
+          entityType,
+          ingestionPipeline.getIngestionAgent().getType(),
+          Relationship.HAS);
+    }
   }
 
   @Override
@@ -271,6 +281,19 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
         allPipelineStatusList.size());
   }
 
+  /* Get the status of the external application by converting the configuration so that it can be
+   * served like an App configuration */
+  public ResultList<PipelineStatus> listExternalAppStatus(
+      String ingestionPipelineFQN, Long startTs, Long endTs) {
+    return listPipelineStatus(ingestionPipelineFQN, startTs, endTs)
+        .map(
+            pipelineStatus ->
+                pipelineStatus.withConfig(
+                    Optional.ofNullable(pipelineStatus.getConfig().getOrDefault("appConfig", null))
+                        .map(JsonUtils::getMap)
+                        .orElse(null)));
+  }
+
   public PipelineStatus getLatestPipelineStatus(IngestionPipeline ingestionPipeline) {
     return JsonUtils.readValue(
         getLatestExtensionFromTimeSeries(
@@ -291,8 +314,11 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
         PipelineStatus.class);
   }
 
-  /** Handles entity updated from PUT and POST operation. */
+  /**
+   * Handles entity updated from PUT and POST operation.
+   */
   public class IngestionPipelineUpdater extends EntityUpdater {
+
     public IngestionPipelineUpdater(
         IngestionPipeline original, IngestionPipeline updated, Operation operation) {
       super(buildIngestionPipelineDecrypted(original), updated, operation);

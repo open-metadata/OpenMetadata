@@ -7,9 +7,13 @@ import java.util.List;
 import java.util.Map;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.CheckEntityAttributesTaskDefinition;
+import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.CreateIngestionPipelineTaskDefinition;
+import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.RunAppTaskDefinition;
+import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.RunIngestionPipelineTaskDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.SetEntityCertificationTaskDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.SetGlossaryTermStatusTaskDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.endEvent.EndEventDefinition;
+import org.openmetadata.schema.governance.workflows.elements.nodes.gateway.ParallelGatewayDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.startEvent.StartEventDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.userTask.UserApprovalTaskDefinition;
 
@@ -27,6 +31,14 @@ import org.openmetadata.schema.governance.workflows.elements.nodes.userTask.User
       value = SetGlossaryTermStatusTaskDefinition.class,
       name = "setGlossaryTermStatusTask"),
   @JsonSubTypes.Type(value = UserApprovalTaskDefinition.class, name = "userApprovalTask"),
+  @JsonSubTypes.Type(
+      value = CreateIngestionPipelineTaskDefinition.class,
+      name = "createIngestionPipelineTask"),
+  @JsonSubTypes.Type(
+      value = RunIngestionPipelineTaskDefinition.class,
+      name = "runIngestionPipelineTask"),
+  @JsonSubTypes.Type(value = RunAppTaskDefinition.class, name = "runAppTask"),
+  @JsonSubTypes.Type(value = ParallelGatewayDefinition.class, name = "parallelGateway"),
 })
 public interface WorkflowNodeDefinitionInterface {
   String getType();

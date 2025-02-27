@@ -79,14 +79,12 @@ public class SetEntityCertificationTask implements NodeInterface {
             .fieldValue(inputNamespaceMap)
             .build();
 
-    ServiceTask serviceTask =
-        new ServiceTaskBuilder()
-            .id(getFlowableElementId(subProcessId, "setGlossaryTermStatus"))
-            .implementation(SetEntityCertificationImpl.class.getName())
-            .build();
-    serviceTask.getFieldExtensions().add(certificationExpr);
-    serviceTask.getFieldExtensions().add(inputNamespaceMapExpr);
-    return serviceTask;
+    return new ServiceTaskBuilder()
+        .id(getFlowableElementId(subProcessId, "setGlossaryTermStatus"))
+        .implementation(SetEntityCertificationImpl.class.getName())
+        .addFieldExtension(certificationExpr)
+        .addFieldExtension(inputNamespaceMapExpr)
+        .build();
   }
 
   public void addToWorkflow(BpmnModel model, Process process) {
