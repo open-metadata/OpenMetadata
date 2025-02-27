@@ -63,7 +63,7 @@ public class ServicesStatusJobHandler {
     try {
       instance = new ServicesStatusJobHandler(eventMonitorConfiguration, config, clusterName);
     } catch (Exception ex) {
-      LOG.error("Failed to initialize the Service Status Job Handler");
+      throw new RuntimeException("Failed to initialize the Pipeline Service Status Handler", ex);
     }
     return instance;
   }
