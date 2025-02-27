@@ -85,8 +85,7 @@ function AlertDetailsPage({
   const [ownerLoading, setOwnerLoading] = useState(false);
   const [alertEventCountsLoading, setAlertEventCountsLoading] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState<boolean>(false);
-  const [showDescriptionModal, setShowDescriptionModal] =
-    useState<boolean>(false);
+
   const [alertPermission, setAlertPermission] = useState<OperationPermission>(
     DEFAULT_ENTITY_PERMISSION
   );
@@ -109,14 +108,6 @@ function AlertDetailsPage({
     }),
     [alertPermission]
   );
-
-  const onDescriptionEdit = useCallback(() => {
-    setShowDescriptionModal(true);
-  }, []);
-
-  const onCancel = useCallback(() => {
-    setShowDescriptionModal(false);
-  }, []);
 
   const fetchResourcePermission = useCallback(async () => {
     try {
@@ -255,8 +246,6 @@ function AlertDetailsPage({
         setAlertDetails(updatedAlert);
       } catch (error) {
         showErrorToast(error as AxiosError);
-      } finally {
-        setShowDescriptionModal(false);
       }
     },
     [fqn, history, alertDetails]
@@ -420,10 +409,7 @@ function AlertDetailsPage({
                   description={alertDetails?.description}
                   entityType={EntityType.EVENT_SUBSCRIPTION}
                   hasEditAccess={editDescriptionPermission}
-                  isEdit={showDescriptionModal}
                   showCommentsIcon={false}
-                  onCancel={onCancel}
-                  onDescriptionEdit={onDescriptionEdit}
                   onDescriptionUpdate={onDescriptionUpdate}
                 />
               </Col>

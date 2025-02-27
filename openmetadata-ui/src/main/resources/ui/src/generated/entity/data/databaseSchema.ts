@@ -65,7 +65,7 @@ export interface DatabaseSchema {
     /**
      * Unique identifier that identifies this schema instance.
      */
-    id?: string;
+    id: string;
     /**
      * Change that lead to this version of the entity.
      */

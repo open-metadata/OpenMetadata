@@ -14,8 +14,8 @@
 import {
   CustomizeTabWidget,
   CustomizeTabWidgetProps,
-} from '../../components/Glossary/CustomiseWidgets/CustomizeTabWidget/CustomizeTabWidget';
-import { GenericWidget } from '../../components/Glossary/CustomiseWidgets/SynonymsWidget/GenericWidget';
+} from '../../components/Customization/CustomizeTabWidget/CustomizeTabWidget';
+import { GenericWidget } from '../../components/Customization/GenericWidget/GenericWidget';
 import GlossaryHeader from '../../components/Glossary/GlossaryHeader/GlossaryHeader.component';
 import { GlossaryHeaderProps } from '../../components/Glossary/GlossaryHeader/GlossaryHeader.interface';
 import { GlossaryHeaderWidget } from '../../components/Glossary/GlossaryHeader/GlossaryHeaderWidget';

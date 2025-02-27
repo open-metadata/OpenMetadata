@@ -168,7 +168,7 @@ const mockProp = {
   fetchFeedHandler: jest.fn(),
   postFeedHandler: jest.fn(),
   deletePostHandler: jest.fn(),
-
+  onMlModelUpdate: jest.fn(),
   updateThreadHandler: jest.fn(),
   entityFieldThreadCount: [],
   entityFieldTaskCount: [],

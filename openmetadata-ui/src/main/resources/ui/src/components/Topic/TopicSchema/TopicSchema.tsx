@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { FilterOutlined } from '@ant-design/icons';
 import {
   Col,
   Radio,
@@ -31,10 +30,17 @@ import { useTranslation } from 'react-i18next';
 import { TABLE_SCROLL_VALUE } from '../../../constants/Table.constants';
 import { CSMode } from '../../../enums/codemirror.enum';
 import { EntityType } from '../../../enums/entity.enum';
-import { DataTypeTopic, Field } from '../../../generated/entity/data/topic';
+import {
+  DataTypeTopic,
+  Field,
+  MessageSchemaObject,
+  Topic,
+} from '../../../generated/entity/data/topic';
 import { TagLabel, TagSource } from '../../../generated/type/tagLabel';
-import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { useFqn } from '../../../hooks/useFqn';
 import { getEntityName } from '../../../utils/EntityUtils';
+import { getVersionedSchema } from '../../../utils/SchemaVersionUtils';
+import { columnFilterIcon } from '../../../utils/TableColumn.util';
 import {
   getAllTags,
   searchTagInData,
@@ -48,6 +54,7 @@ import {
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import ToggleExpandButton from '../../common/ToggleExpandButton/ToggleExpandButton';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 import { ColumnFilter } from '../../Database/ColumnFilter/ColumnFilter.component';
 import SchemaEditor from '../../Database/SchemaEditor/SchemaEditor';
 import TableDescription from '../../Database/TableDescription/TableDescription.component';
@@ -59,24 +66,53 @@ import {
 } from './TopicSchema.interface';
 
 const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
-  messageSchema,
   className,
-  hasDescriptionEditAccess,
-  isReadOnly,
-  onUpdate,
-  hasTagEditAccess,
-  hasGlossaryTermEditAccess,
-  entityFqn,
-  onThreadLinkSelect,
-  isVersionView = false,
   schemaTypePlaceholder,
 }) => {
-  const { theme } = useApplicationStore();
   const { t } = useTranslation();
   const [editFieldDescription, setEditFieldDescription] = useState<Field>();
   const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
   const [viewType, setViewType] = useState<SchemaViewType>(
     SchemaViewType.FIELDS
+  );
+  const { fqn: entityFqn } = useFqn();
+  const {
+    data: topicDetails,
+    isVersionView,
+    permissions,
+    onUpdate,
+    currentVersionData,
+  } = useGenericContext<Topic>();
+
+  const isReadOnly = useMemo(() => {
+    // If there is a current version, it should be read only
+    return currentVersionData ? true : topicDetails.deleted;
+  }, [currentVersionData, topicDetails.deleted]);
+
+  const messageSchema = useMemo(
+    () =>
+      isVersionView && currentVersionData?.changeDescription
+        ? getVersionedSchema(
+            currentVersionData?.['messageSchema'] as MessageSchemaObject,
+            currentVersionData?.changeDescription
+          )
+        : topicDetails.messageSchema,
+    [currentVersionData, isVersionView, topicDetails]
+  );
+
+  const {
+    hasDescriptionEditAccess,
+    hasTagEditAccess,
+    hasGlossaryTermEditAccess,
+  } = useMemo(
+    () => ({
+      hasDescriptionEditAccess:
+        permissions.EditAll || permissions.EditDescription,
+      hasTagEditAccess: permissions.EditAll || permissions.EditTags,
+      hasGlossaryTermEditAccess:
+        permissions.EditAll || permissions.EditGlossaryTerms,
+    }),
+    [permissions]
   );
 
   const schemaAllRowKeys = useMemo(() => {
@@ -97,7 +133,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
         selectedTags,
         schema?.schemaFields
       );
-      await onUpdate(schema);
+      await onUpdate({ ...topicDetails, messageSchema: schema });
     }
   };
 
@@ -109,7 +145,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
         updatedDescription,
         schema?.schemaFields
       );
-      await onUpdate(schema);
+      await onUpdate({ ...topicDetails, messageSchema: schema });
       setEditFieldDescription(undefined);
     } else {
       setEditFieldDescription(undefined);
@@ -205,7 +241,6 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
             index={index}
             isReadOnly={isReadOnly}
             onClick={() => setEditFieldDescription(record)}
-            onThreadLinkSelect={onThreadLinkSelect}
           />
         ),
       },
@@ -215,14 +250,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
         key: 'tags',
         accessor: 'tags',
         width: 300,
-        filterIcon: (filtered) => (
-          <FilterOutlined
-            data-testid="tag-filter"
-            style={{
-              color: filtered ? theme.primaryColor : undefined,
-            }}
-          />
-        ),
+        filterIcon: columnFilterIcon,
         render: (tags: TagLabel[], record: Field, index: number) => (
           <TableTags<Field>
             entityFqn={entityFqn}
@@ -234,7 +262,6 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
             record={record}
             tags={tags}
             type={TagSource.Classification}
-            onThreadLinkSelect={onThreadLinkSelect}
           />
         ),
         filters: tagFilter.Classification,
@@ -247,14 +274,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
         key: 'glossary',
         accessor: 'tags',
         width: 300,
-        filterIcon: (filtered) => (
-          <FilterOutlined
-            data-testid="glossary-filter"
-            style={{
-              color: filtered ? theme.primaryColor : undefined,
-            }}
-          />
-        ),
+        filterIcon: columnFilterIcon,
         render: (tags: TagLabel[], record: Field, index: number) => (
           <TableTags<Field>
             entityFqn={entityFqn}
@@ -266,7 +286,6 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
             record={record}
             tags={tags}
             type={TagSource.Glossary}
-            onThreadLinkSelect={onThreadLinkSelect}
           />
         ),
         filters: tagFilter.Glossary,

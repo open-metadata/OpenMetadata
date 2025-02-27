@@ -26,7 +26,7 @@ import APIClient from './index';
 export type GetApiEndPointsType = {
   service: string;
   apiCollection: string;
-  fields: string;
+  fields?: string;
   paging?: PagingWithoutTotal;
   include?: Include;
 };

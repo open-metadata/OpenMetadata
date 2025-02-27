@@ -66,7 +66,6 @@ function ServiceVersionMainTabContent({
           <Col data-testid="description-container" span={24}>
             <DescriptionV1
               description={description}
-              entityFqn={serviceFQN}
               entityName={serviceName}
               entityType={entityType}
               showActions={false}

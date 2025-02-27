@@ -21,7 +21,7 @@ import { EntityReference } from '../../../generated/entity/type';
 import { getOwnerVersionLabel } from '../../../utils/EntityVersionUtils';
 import TagButton from '../../common/TagButton/TagButton.component';
 import { UserTeamSelectableList } from '../../common/UserTeamSelectableList/UserTeamSelectableList.component';
-import { useGenericContext } from '../../GenericProvider/GenericProvider';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 
 export const OwnerLabelV2 = <
   T extends { owners?: EntityReference[]; id: string }

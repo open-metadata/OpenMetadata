@@ -901,7 +901,7 @@ export const assignTagToGlossaryTerm = async (
   page: Page,
   tag: string,
   action: 'Add' | 'Edit' = 'Add',
-  parentTestId = 'entity-right-panel'
+  parentTestId = 'KnowledgePanel.GlossaryTerms'
 ) => {
   await page
     .getByTestId(parentTestId)

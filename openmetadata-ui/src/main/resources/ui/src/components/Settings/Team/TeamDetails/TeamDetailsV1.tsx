@@ -115,14 +115,12 @@ import { UserTab } from './UserTab/UserTab.component';
 const TeamDetailsV1 = ({
   assetsCount,
   currentTeam,
-  isDescriptionEditable,
   isTeamMemberLoading,
   childTeams,
   onTeamExpand,
   handleAddTeam,
   updateTeamHandler,
   onDescriptionUpdate,
-  descriptionHandler,
   showDeletedTeam,
   onShowDeletedTeamChange,
   handleJoinTeamClick,
@@ -1162,10 +1160,7 @@ const TeamDetailsV1 = ({
                       entityName={getEntityName(currentTeam)}
                       entityType={EntityType.TEAM}
                       hasEditAccess={editDescriptionPermission}
-                      isEdit={isDescriptionEditable}
                       showCommentsIcon={false}
-                      onCancel={() => descriptionHandler(false)}
-                      onDescriptionEdit={() => descriptionHandler(true)}
                       onDescriptionUpdate={onDescriptionUpdate}
                     />
                   </Card>

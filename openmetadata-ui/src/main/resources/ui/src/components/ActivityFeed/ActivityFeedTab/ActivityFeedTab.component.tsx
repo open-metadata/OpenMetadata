@@ -48,6 +48,7 @@ import {
 import { useAuth } from '../../../hooks/authHooks';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useElementInView } from '../../../hooks/useElementInView';
+import { useFqn } from '../../../hooks/useFqn';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { getFeedCount } from '../../../rest/feedsAPI';
 import {
@@ -81,7 +82,6 @@ const componentsVisibility = {
 };
 
 export const ActivityFeedTab = ({
-  fqn,
   owners = [],
   columns,
   entityType,
@@ -102,6 +102,7 @@ export const ActivityFeedTab = ({
     root: document.querySelector('#center-container'),
     rootMargin: '0px 0px 2px 0px',
   });
+  const { fqn } = useFqn();
   const {
     tab = EntityTabs.ACTIVITY_FEED,
     subTab: activeTab = ActivityFeedTabs.ALL,

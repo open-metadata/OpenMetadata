@@ -82,8 +82,6 @@ const TagsPage = () => {
   );
   const [currentClassification, setCurrentClassification] =
     useState<Classification>();
-  const [isEditClassification, setIsEditClassification] =
-    useState<boolean>(false);
   const [isAddingClassification, setIsAddingClassification] =
     useState<boolean>(false);
   const [isAddingTag, setIsAddingTag] = useState<boolean>(false);
@@ -370,7 +368,6 @@ const TagsPage = () => {
             );
           }
         } finally {
-          setIsEditClassification(false);
           setIsUpdateLoading(false);
         }
       }
@@ -483,14 +480,6 @@ const TagsPage = () => {
 
   const handleAddNewTagClick = useCallback(() => {
     setIsAddingTag(true);
-  }, []);
-
-  const handleEditDescriptionClick = useCallback(() => {
-    setIsEditClassification(true);
-  }, []);
-
-  const handleCancelEditDescription = useCallback(() => {
-    setIsEditClassification(false);
   }, []);
 
   useEffect(() => {
@@ -737,12 +726,9 @@ const TagsPage = () => {
                   handleActionDeleteTag={handleActionDeleteTag}
                   handleAddNewTagClick={handleAddNewTagClick}
                   handleAfterDeleteAction={handleAfterDeleteAction}
-                  handleCancelEditDescription={handleCancelEditDescription}
-                  handleEditDescriptionClick={handleEditDescriptionClick}
                   handleEditTagClick={handleEditTagClick}
                   handleUpdateClassification={handleUpdateClassification}
                   isAddingTag={isAddingTag}
-                  isEditClassification={isEditClassification}
                   ref={classificationDetailsRef}
                 />
               )}

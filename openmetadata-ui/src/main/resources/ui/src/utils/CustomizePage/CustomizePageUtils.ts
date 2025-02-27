@@ -11,34 +11,30 @@
  *  limitations under the License.
  */
 import { TabsProps } from 'antd';
-import {
-  CommonWidgetType,
-  CUSTOM_PROPERTIES_WIDGET,
-  DESCRIPTION_WIDGET,
-  DOMAIN_WIDGET,
-  GLOSSARY_TERMS_WIDGET,
-  TAGS_WIDGET,
-} from '../../constants/CustomizeWidgets.constants';
+import { noop } from 'lodash';
+import { CommonWidgetType } from '../../constants/CustomizeWidgets.constants';
 import { EntityTabs } from '../../enums/entity.enum';
-import { PageType } from '../../generated/system/ui/page';
-import customizeGlossaryTermPageClassBase from '../CustomiseGlossaryTermPage/CustomizeGlossaryTermPage';
-import customizeDetailPageClassBase from '../CustomizeDetailPage/CustomizeDetailPage';
+import { PageType, Tab } from '../../generated/system/ui/page';
+import { WidgetConfig } from '../../pages/CustomizablePage/CustomizablePage.interface';
+import apiCollectionClassBase from '../APICollection/APICollectionClassBase';
+import apiEndpointClassBase from '../APIEndpoints/APIEndpointClassBase';
+import containerDetailsClassBase from '../ContainerDetailsClassBase';
 import customizeGlossaryPageClassBase from '../CustomizeGlossaryPage/CustomizeGlossaryPage';
-import customizeMyDataPageClassBase from '../CustomizeMyDataPageClassBase';
+import customizeGlossaryTermPageClassBase from '../CustomizeGlossaryTerm/CustomizeGlossaryTermBaseClass';
+import dashboardDataModelClassBase from '../DashboardDataModelClassBase';
+import dashboardDetailsClassBase from '../DashboardDetailsClassBase';
+import databaseClassBase from '../Database/DatabaseClassBase';
+import databaseSchemaClassBase from '../DatabaseSchemaClassBase';
+import domainClassBase from '../Domain/DomainClassBase';
+import { getEntityName } from '../EntityUtils';
 import i18n from '../i18next/LocalUtil';
+import metricDetailsClassBase from '../MetricEntityUtils/MetricDetailsClassBase';
+import mlModelClassBase from '../MlModel/MlModelClassBase';
+import pipelineClassBase from '../PipelineClassBase';
+import searchIndexClassBase from '../SearchIndexDetailsClassBase';
+import storedProcedureClassBase from '../StoredProcedureClassBase';
 import tableClassBase from '../TableClassBase';
-
-export const getDefaultLayout = (pageType: string) => {
-  switch (pageType) {
-    case PageType.GlossaryTerm:
-      return customizeGlossaryTermPageClassBase.defaultLayout;
-    case PageType.Table:
-      return customizeDetailPageClassBase.defaultLayout;
-    case PageType.LandingPage:
-    default:
-      return customizeMyDataPageClassBase.defaultLayout;
-  }
-};
+import topicClassBase from '../TopicClassBase';
 
 export const getGlossaryTermDefaultTabs = () => {
   return [
@@ -120,7 +116,7 @@ export const getTabLabelFromId = (tab: EntityTabs) => {
     case EntityTabs.GLOSSARY_TERMS:
       return i18n.t('label.glossary-terms');
     case EntityTabs.ASSETS:
-      return i18n.t('label.assets');
+      return i18n.t('label.asset-plural');
     case EntityTabs.ACTIVITY_FEED:
       return i18n.t('label.activity-feed-and-task-plural');
     case EntityTabs.CUSTOM_PROPERTIES:
@@ -143,38 +139,58 @@ export const getTabLabelFromId = (tab: EntityTabs) => {
       return i18n.t('label.view-definition');
     case EntityTabs.DBT:
       return i18n.t('label.dbt-lowercase');
+    case EntityTabs.CHILDREN:
+      return i18n.t('label.children');
+    case EntityTabs.DETAILS:
+      return i18n.t('label.detail-plural');
+    case EntityTabs.SUBDOMAINS:
+      return i18n.t('label.sub-domain-plural');
+    case EntityTabs.DATA_PRODUCTS:
+      return i18n.t('label.data-product-plural');
+    case EntityTabs.DOCUMENTATION:
+      return i18n.t('label.documentation');
+
     default:
       return '';
   }
 };
 
-const getCustomizeTabObject = (tab: EntityTabs) => ({
-  id: tab,
-  name: tab,
-  displayName: getTabLabelFromId(tab),
-  layout: tableClassBase.getDefaultLayout(tab),
-  editable: [EntityTabs.SCHEMA, EntityTabs.OVERVIEW, EntityTabs.TERMS].includes(
-    tab
-  ),
-});
-
-export const getTableDefaultTabs = () => {
-  const tabs = tableClassBase
-    .getTableDetailPageTabsIds()
-    .map(getCustomizeTabObject);
-
-  return tabs;
-};
-
-export const getDefaultTabs = (pageType?: string) => {
+export const getDefaultTabs = (pageType?: string): Tab[] => {
   switch (pageType) {
     case PageType.GlossaryTerm:
       return getGlossaryTermDefaultTabs();
     case PageType.Glossary:
       return getGlossaryDefaultTabs();
     case PageType.Table:
-      return getTableDefaultTabs();
+      return tableClassBase.getTableDetailPageTabsIds();
+    case PageType.Topic:
+      return topicClassBase.getTopicDetailPageTabsIds();
+    case PageType.StoredProcedure:
+      return storedProcedureClassBase.getStoredProcedureDetailPageTabsIds();
+    case PageType.DashboardDataModel:
+      return dashboardDataModelClassBase.getDashboardDataModelDetailPageTabsIds();
     case PageType.Container:
+      return containerDetailsClassBase.getContainerDetailPageTabsIds();
+    case PageType.Database:
+      return databaseClassBase.getDatabaseDetailPageTabsIds();
+    case PageType.SearchIndex:
+      return searchIndexClassBase.getSearchIndexDetailPageTabsIds();
+    case PageType.DatabaseSchema:
+      return databaseSchemaClassBase.getDatabaseSchemaPageTabsIds();
+    case PageType.Pipeline:
+      return pipelineClassBase.getPipelineDetailPageTabsIds();
+    case PageType.Dashboard:
+      return dashboardDetailsClassBase.getDashboardDetailPageTabsIds();
+    case PageType.Domain:
+      return domainClassBase.getDomainDetailPageTabsIds();
+    case PageType.APICollection:
+      return apiCollectionClassBase.getAPICollectionDetailPageTabsIds();
+    case PageType.APIEndpoint:
+      return apiEndpointClassBase.getEndpointDetailPageTabsIds();
+    case PageType.Metric:
+      return metricDetailsClassBase.getMetricDetailPageTabsIds();
+    case PageType.MlModel:
+      return mlModelClassBase.getMlModelDetailPageTabsIds();
     default:
       return [
         {
@@ -196,6 +212,34 @@ export const getDefaultWidgetForTab = (pageType: PageType, tab: EntityTabs) => {
       return customizeGlossaryTermPageClassBase.getDefaultWidgetForTab(tab);
     case PageType.Table:
       return tableClassBase.getDefaultLayout(tab);
+    case PageType.Topic:
+      return topicClassBase.getDefaultLayout(tab);
+    case PageType.DashboardDataModel:
+      return dashboardDataModelClassBase.getDefaultLayout(tab);
+    case PageType.StoredProcedure:
+      return storedProcedureClassBase.getDefaultLayout(tab);
+    case PageType.Database:
+      return databaseClassBase.getDefaultLayout(tab);
+    case PageType.DatabaseSchema:
+      return databaseSchemaClassBase.getDefaultLayout(tab);
+    case PageType.Pipeline:
+      return pipelineClassBase.getDefaultLayout(tab);
+    case PageType.SearchIndex:
+      return searchIndexClassBase.getDefaultLayout(tab);
+    case PageType.Container:
+      return containerDetailsClassBase.getDefaultLayout(tab);
+    case PageType.Domain:
+      return domainClassBase.getDefaultLayout(tab);
+    case PageType.Dashboard:
+      return dashboardDetailsClassBase.getDefaultLayout(tab);
+    case PageType.APICollection:
+      return apiCollectionClassBase.getDefaultLayout(tab);
+    case PageType.APIEndpoint:
+      return apiEndpointClassBase.getDefaultLayout(tab);
+    case PageType.Metric:
+      return metricDetailsClassBase.getDefaultLayout(tab);
+    case PageType.MlModel:
+      return mlModelClassBase.getDefaultLayout(tab);
     default:
       return [];
   }
@@ -229,16 +273,36 @@ export const getCustomizableWidgetByPage = (
   switch (pageType) {
     case PageType.GlossaryTerm:
     case PageType.Glossary:
-      return customizeGlossaryTermPageClassBase.getCommonWidgetList();
+      return customizeGlossaryTermPageClassBase.getCommonWidgetList(
+        pageType === PageType.Glossary
+      );
 
     case PageType.Table:
-      return [
-        DESCRIPTION_WIDGET,
-        CUSTOM_PROPERTIES_WIDGET,
-        DOMAIN_WIDGET,
-        TAGS_WIDGET,
-        GLOSSARY_TERMS_WIDGET,
-      ];
+      return tableClassBase.getCommonWidgetList();
+    case PageType.Topic:
+      return topicClassBase.getCommonWidgetList();
+    case PageType.Dashboard:
+      return dashboardDetailsClassBase.getCommonWidgetList();
+    case PageType.Container:
+      return containerDetailsClassBase.getCommonWidgetList();
+    case PageType.Database:
+      return databaseClassBase.getCommonWidgetList();
+    case PageType.DatabaseSchema:
+      return databaseSchemaClassBase.getCommonWidgetList();
+    case PageType.Pipeline:
+      return pipelineClassBase.getCommonWidgetList();
+    case PageType.SearchIndex:
+      return searchIndexClassBase.getCommonWidgetList();
+    case PageType.Domain:
+      return domainClassBase.getCommonWidgetList();
+    case PageType.APICollection:
+      return apiCollectionClassBase.getCommonWidgetList();
+    case PageType.APIEndpoint:
+      return apiEndpointClassBase.getCommonWidgetList();
+    case PageType.Metric:
+      return metricDetailsClassBase.getCommonWidgetList();
+    case PageType.MlModel:
+      return mlModelClassBase.getCommonWidgetList();
     case PageType.LandingPage:
     default:
       return [];
@@ -249,9 +313,126 @@ export const getDummyDataByPage = (pageType: PageType) => {
   switch (pageType) {
     case PageType.Table:
       return tableClassBase.getDummyData();
+    case PageType.Topic:
+      return topicClassBase.getDummyData();
+    case PageType.StoredProcedure:
+      return storedProcedureClassBase.getDummyData();
+    case PageType.DashboardDataModel:
+      return dashboardDataModelClassBase.getDummyData();
+    case PageType.Container:
+      return containerDetailsClassBase.getDummyData();
+    case PageType.Database:
+      return databaseClassBase.getDummyData();
+    case PageType.DatabaseSchema:
+      return databaseSchemaClassBase.getDummyData();
+    case PageType.Pipeline:
+      return pipelineClassBase.getDummyData();
+    case PageType.SearchIndex:
+      return searchIndexClassBase.getDummyData();
+    case PageType.Dashboard:
+      return dashboardDetailsClassBase.getDummyData();
+    case PageType.Domain:
+      return domainClassBase.getDummyData();
+    case PageType.APICollection:
+      return apiCollectionClassBase.getDummyData();
+    case PageType.APIEndpoint:
+      return apiEndpointClassBase.getDummyData();
+    case PageType.Metric:
+      return metricDetailsClassBase.getDummyData();
+    case PageType.MlModel:
+      return mlModelClassBase.getDummyData();
 
     case PageType.LandingPage:
     default:
       return {};
   }
+};
+
+export const getWidgetsFromKey = (
+  pageType: PageType,
+  widgetConfig: WidgetConfig
+): JSX.Element | null => {
+  switch (pageType) {
+    case PageType.Table:
+      return tableClassBase.getWidgetsFromKey(widgetConfig);
+    case PageType.Topic:
+      return topicClassBase.getWidgetsFromKey(widgetConfig);
+    case PageType.StoredProcedure:
+      return storedProcedureClassBase.getWidgetsFromKey(widgetConfig);
+    case PageType.DashboardDataModel:
+      return dashboardDataModelClassBase.getWidgetsFromKey(widgetConfig);
+    case PageType.Container:
+      return containerDetailsClassBase.getWidgetsFromKey(widgetConfig);
+    case PageType.Database:
+      return databaseClassBase.getWidgetsFromKey(widgetConfig);
+    case PageType.DatabaseSchema:
+      return databaseSchemaClassBase.getWidgetsFromKey(widgetConfig);
+    case PageType.Pipeline:
+      return pipelineClassBase.getWidgetsFromKey(widgetConfig);
+    case PageType.SearchIndex:
+      return searchIndexClassBase.getWidgetsFromKey(widgetConfig);
+    case PageType.Dashboard:
+      return dashboardDetailsClassBase.getWidgetsFromKey(widgetConfig);
+    case PageType.Domain:
+      return domainClassBase.getWidgetsFromKey(widgetConfig);
+    case PageType.APICollection:
+      return apiCollectionClassBase.getWidgetsFromKey(widgetConfig);
+    case PageType.APIEndpoint:
+      return apiEndpointClassBase.getWidgetsFromKey(widgetConfig);
+    case PageType.Metric:
+      return metricDetailsClassBase.getWidgetsFromKey(widgetConfig);
+    case PageType.MlModel:
+      return mlModelClassBase.getWidgetsFromKey(widgetConfig);
+    default:
+      return null;
+  }
+};
+
+export const getDetailsTabWithNewLabel = (
+  defaultTabs: Array<
+    NonNullable<TabsProps['items']>[number] & { isHidden?: boolean }
+  >,
+  customizedTabs?: Tab[],
+  defaultTabId: EntityTabs = EntityTabs.OVERVIEW
+) => {
+  if (!customizedTabs) {
+    return defaultTabs.filter((data) => !data.isHidden);
+  }
+  const overviewTab = defaultTabs?.find((t) => t.key === defaultTabId);
+
+  const newTabs =
+    customizedTabs?.map((t) => {
+      const tabItemDetails = defaultTabs?.find((i) => i.key === t.id);
+
+      return (
+        tabItemDetails ?? {
+          label: getEntityName(t),
+          key: t.id,
+          children: overviewTab?.children,
+        }
+      );
+    }) ?? defaultTabs;
+
+  return newTabs.filter((data) => !data.isHidden);
+};
+
+export const getTabLabelMapFromTabs = (
+  tabs?: Tab[]
+): Record<EntityTabs, string> => {
+  const labelMap = {} as Record<EntityTabs, string>;
+
+  return (
+    tabs?.reduce((acc: Record<EntityTabs, string>, item) => {
+      if (item.id && item.displayName) {
+        const tab = item.id as EntityTabs;
+        acc[tab] = item.displayName;
+      }
+
+      return acc;
+    }, labelMap) ?? labelMap
+  );
+};
+
+export const asyncNoop = async () => {
+  noop();
 };

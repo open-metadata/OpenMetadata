@@ -10,53 +10,43 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { EntityTags } from 'Models';
-import { PagingHandlerParams } from '../components/common/NextPrevious/NextPrevious.interface';
+import { Layout } from 'react-grid-layout';
 import { TabProps } from '../components/common/TabsLabel/TabsLabel.interface';
+import {
+  CUSTOM_PROPERTIES_WIDGET,
+  DATA_PRODUCTS_WIDGET,
+  DESCRIPTION_WIDGET,
+  GLOSSARY_TERMS_WIDGET,
+  GridSizes,
+  TAGS_WIDGET,
+} from '../constants/CustomizeWidgets.constants';
+import { DATABASE_SCHEMA_DUMMY_DATA } from '../constants/Database.constants';
 import { OperationPermission } from '../context/PermissionProvider/PermissionProvider.interface';
 import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 import { EntityTabs } from '../enums/entity.enum';
 import { DatabaseSchema } from '../generated/entity/data/databaseSchema';
-import { Table } from '../generated/entity/data/table';
-import { ThreadType } from '../generated/entity/feed/thread';
-import { UsePagingInterface } from '../hooks/paging/usePaging';
+import { Tab } from '../generated/system/ui/uiCustomization';
 import { FeedCounts } from '../interface/feed.interface';
-import { getDataBaseSchemaPageBaseTabs } from './DatabaseSchemaDetailsUtils';
+import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
+import { getTabLabelFromId } from './CustomizePage/CustomizePageUtils';
+import {
+  getDataBaseSchemaPageBaseTabs,
+  getDatabaseSchemaWidgetsFromKey,
+} from './DatabaseSchemaDetailsUtils';
+import i18n from './i18next/LocalUtil';
 
 export interface DatabaseSchemaPageTabProps {
   feedCount: FeedCounts;
-  tableData: Table[];
   activeTab: EntityTabs;
-  currentTablesPage: number;
-  databaseSchema: DatabaseSchema;
-  description: string;
-  editDescriptionPermission: boolean;
-  isEdit: boolean;
-  showDeletedTables: boolean;
-  tableDataLoading: boolean;
   editCustomAttributePermission: boolean;
-  editTagsPermission: boolean;
-  editGlossaryTermsPermission: boolean;
-  decodedDatabaseSchemaFQN: string;
-  tags: any[];
   viewAllPermission: boolean;
-  storedProcedureCount: number;
   databaseSchemaPermission: OperationPermission;
-  handleExtensionUpdate: (schema: DatabaseSchema) => Promise<void>;
-  handleTagSelection: (selectedTags: EntityTags[]) => Promise<void>;
-  onThreadLinkSelect: (link: string, threadType?: ThreadType) => void;
-  tablePaginationHandler: ({
-    cursorType,
-    currentPage,
-  }: PagingHandlerParams) => void;
-  onEditCancel: () => void;
-  onDescriptionEdit: () => void;
-  onDescriptionUpdate: (updatedHTML: string) => Promise<void>;
-  handleShowDeletedTables: (value: boolean) => void;
+  storedProcedureCount: number;
   getEntityFeedCount: () => void;
   fetchDatabaseSchemaDetails: () => Promise<void>;
   handleFeedCount: (data: FeedCounts) => void;
-  pagingInfo: UsePagingInterface;
+  tableCount: number;
+  labelMap: Record<string, string>;
 }
 
 class DatabaseSchemaClassBase {
@@ -66,80 +56,102 @@ class DatabaseSchemaClassBase {
     return getDataBaseSchemaPageBaseTabs(databaseSchemaTabData);
   }
 
-  public getDatabaseSchemaPageTabsIds(): EntityTabs[] {
+  public getDatabaseSchemaPageTabsIds(): Tab[] {
     return [
-      EntityTabs.SCHEMA,
+      EntityTabs.TABLE,
+      EntityTabs.STORED_PROCEDURE,
       EntityTabs.ACTIVITY_FEED,
       EntityTabs.CUSTOM_PROPERTIES,
+    ].map((tab: EntityTabs) => ({
+      id: tab,
+      name: tab,
+      displayName: getTabLabelFromId(tab),
+      layout: this.getDefaultLayout(tab),
+      editable: [EntityTabs.TABLE].includes(tab),
+    }));
+  }
+
+  public getDefaultLayout(tab?: EntityTabs): Layout[] {
+    if (tab && tab !== EntityTabs.TABLE) {
+      return [];
+    }
+
+    return [
+      {
+        h: 1,
+        i: DetailPageWidgetKeys.DESCRIPTION,
+        w: 6,
+        x: 0,
+        y: 0,
+        static: false,
+      },
+      {
+        h: 8,
+        i: DetailPageWidgetKeys.TABLES,
+        w: 6,
+        x: 0,
+        y: 0,
+        static: false,
+      },
+      {
+        h: 1,
+        i: DetailPageWidgetKeys.DATA_PRODUCTS,
+        w: 2,
+        x: 6,
+        y: 1,
+        static: false,
+      },
+      {
+        h: 1,
+        i: DetailPageWidgetKeys.TAGS,
+        w: 2,
+        x: 6,
+        y: 2,
+        static: false,
+      },
+      {
+        h: 1,
+        i: DetailPageWidgetKeys.GLOSSARY_TERMS,
+        w: 2,
+        x: 6,
+        y: 3,
+        static: false,
+      },
+      {
+        h: 4,
+        i: DetailPageWidgetKeys.CUSTOM_PROPERTIES,
+        w: 2,
+        x: 6,
+        y: 6,
+        static: false,
+      },
     ];
   }
 
-  public getDatabaseSchemaPageDefaultLayout = (tab: EntityTabs) => {
-    switch (tab) {
-      case EntityTabs.SCHEMA:
-        return [
-          {
-            h: 2,
-            i: DetailPageWidgetKeys.DESCRIPTION,
-            w: 6,
-            x: 0,
-            y: 0,
-            static: false,
-          },
-          {
-            h: 8,
-            i: DetailPageWidgetKeys.TABLE_SCHEMA,
-            w: 6,
-            x: 0,
-            y: 0,
-            static: false,
-          },
-          {
-            h: 1,
-            i: DetailPageWidgetKeys.FREQUENTLY_JOINED_TABLES,
-            w: 2,
-            x: 6,
-            y: 0,
-            static: false,
-          },
-          {
-            h: 1,
-            i: DetailPageWidgetKeys.DATA_PRODUCTS,
-            w: 2,
-            x: 6,
-            y: 1,
-            static: false,
-          },
-          {
-            h: 1,
-            i: DetailPageWidgetKeys.TAGS,
-            w: 2,
-            x: 6,
-            y: 2,
-            static: false,
-          },
-          {
-            h: 1,
-            i: DetailPageWidgetKeys.GLOSSARY_TERMS,
-            w: 2,
-            x: 6,
-            y: 3,
-            static: false,
-          },
-          {
-            h: 3,
-            i: DetailPageWidgetKeys.CUSTOM_PROPERTIES,
-            w: 2,
-            x: 6,
-            y: 4,
-            static: false,
-          },
-        ];
+  public getCommonWidgetList() {
+    return [
+      DESCRIPTION_WIDGET,
+      {
+        fullyQualifiedName: DetailPageWidgetKeys.TABLE_SCHEMA,
+        name: i18n.t('label.table-plural'),
+        data: {
+          gridSizes: ['large'] as GridSizes[],
+        },
+      },
+      DATA_PRODUCTS_WIDGET,
+      TAGS_WIDGET,
+      GLOSSARY_TERMS_WIDGET,
+      CUSTOM_PROPERTIES_WIDGET,
+    ];
+  }
 
-      default:
-        return [];
-    }
-  };
+  public getDummyData(): DatabaseSchema {
+    return DATABASE_SCHEMA_DUMMY_DATA;
+  }
+
+  public getWidgetsFromKey(widgetConfig: WidgetConfig) {
+    return getDatabaseSchemaWidgetsFromKey(widgetConfig);
+  }
 }
 
 const databaseSchemaClassBase = new DatabaseSchemaClassBase();

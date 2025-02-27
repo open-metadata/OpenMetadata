@@ -18,7 +18,6 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import RGL, { WidthProvider } from 'react-grid-layout';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { getGlossaryTermDetailsPath } from '../../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
 import { EntityField } from '../../../constants/Feeds.constants';
@@ -29,31 +28,30 @@ import { ChangeDescription } from '../../../generated/entity/type';
 import { Page, PageType, Tab } from '../../../generated/system/ui/page';
 import { TagLabel } from '../../../generated/tests/testCase';
 import { TagSource } from '../../../generated/type/tagLabel';
-import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { useCustomPages } from '../../../hooks/useCustomPages';
 import { useGridLayoutDirection } from '../../../hooks/useGridLayoutDirection';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { WidgetConfig } from '../../../pages/CustomizablePage/CustomizablePage.interface';
 import { useCustomizeStore } from '../../../pages/CustomizablePage/CustomizeStore';
-import { getDocumentByFQN } from '../../../rest/DocStoreAPI';
 import { getFeedCounts } from '../../../utils/CommonUtils';
 import customizeGlossaryPageClassBase from '../../../utils/CustomizeGlossaryPage/CustomizeGlossaryPage';
+import {
+  getDetailsTabWithNewLabel,
+  getTabLabelMapFromTabs,
+} from '../../../utils/CustomizePage/CustomizePageUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import {
   getEntityVersionByField,
   getEntityVersionTags,
 } from '../../../utils/EntityVersionUtils';
-import {
-  getGlossaryTermDetailTabs,
-  getTabLabelMap,
-  getWidgetFromKey,
-} from '../../../utils/GlossaryTerm/GlossaryTermUtil';
+import { getWidgetFromKey } from '../../../utils/GlossaryTerm/GlossaryTermUtil';
 import { ActivityFeedTab } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import DescriptionV1 from '../../common/EntityDescription/DescriptionV1';
 import TabsLabel from '../../common/TabsLabel/TabsLabel.component';
+import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
 import { DomainLabelV2 } from '../../DataAssets/DomainLabelV2/DomainLabelV2';
 import { OwnerLabelV2 } from '../../DataAssets/OwnerLabelV2/OwnerLabelV2';
 import { ReviewerLabelV2 } from '../../DataAssets/ReviewerLabelV2/ReviewerLabelV2';
-import { GenericProvider } from '../../GenericProvider/GenericProvider';
 import TagsContainerV2 from '../../Tag/TagsContainerV2/TagsContainerV2';
 import { DisplayType } from '../../Tag/TagsViewer/TagsViewer.interface';
 import GlossaryHeader from '../GlossaryHeader/GlossaryHeader.component';
@@ -74,7 +72,6 @@ const GlossaryDetails = ({
   onAddGlossaryTerm,
   onEditGlossaryTerm,
   isVersionView,
-  onThreadLinkSelect,
 }: GlossaryDetailsProps) => {
   const { t } = useTranslation();
   const history = useHistory();
@@ -82,14 +79,11 @@ const GlossaryDetails = ({
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA
   );
-  const { selectedPersona } = useApplicationStore();
-  const [isDescriptionEditable, setIsDescriptionEditable] =
-    useState<boolean>(false);
   const { currentPersonaDocStore } = useCustomizeStore();
   // Since we are rendering this component for all customized tabs we need tab ID to get layout form store
   const { tab: activeTab = EntityTabs.TERMS } =
     useParams<{ tab: EntityTabs }>();
-  const [customizedPage, setCustomizedPage] = useState<Page | null>(null);
+  const { customizedPage } = useCustomPages(PageType.Glossary);
 
   useGridLayoutDirection();
 
@@ -98,7 +92,7 @@ const GlossaryDetails = ({
       return customizeGlossaryPageClassBase.getDefaultWidgetForTab(activeTab);
     }
 
-    const page = currentPersonaDocStore?.data?.pages.find(
+    const page = currentPersonaDocStore?.data?.pages?.find(
       (p: Page) => p.pageType === PageType.Glossary
     );
 
@@ -133,9 +127,6 @@ const GlossaryDetails = ({
         description: updatedHTML,
       };
       await handleGlossaryUpdate(updatedGlossaryDetails);
-      setIsDescriptionEditable(false);
-    } else {
-      setIsDescriptionEditable(false);
     }
   };
 
@@ -202,10 +193,9 @@ const GlossaryDetails = ({
         onSelectionChange={async (updatedTags: TagLabel[]) =>
           await handleGlossaryUpdate({ ...glossary, tags: updatedTags })
         }
-        onThreadLinkSelect={onThreadLinkSelect}
       />
     );
-  }, [tags, glossary, handleGlossaryUpdate, permissions, onThreadLinkSelect]);
+  }, [tags, glossary, handleGlossaryUpdate, permissions]);
 
   const widgets = useMemo(() => {
     const getWidgetFromKeyInternal = (widget: WidgetConfig) => {
@@ -213,18 +203,13 @@ const GlossaryDetails = ({
         return (
           <DescriptionV1
             description={updatedGlossary.description}
-            entityFqn={glossary.fullyQualifiedName}
             entityName={getEntityName(glossary)}
             entityType={EntityType.GLOSSARY}
             hasEditAccess={permissions.EditDescription || permissions.EditAll}
             isDescriptionExpanded={isEmpty(glossary.children)}
-            isEdit={isDescriptionEditable}
             owner={glossary?.owners}
             showActions={!glossary.deleted}
-            onCancel={() => setIsDescriptionEditable(false)}
-            onDescriptionEdit={() => setIsDescriptionEditable(true)}
             onDescriptionUpdate={onDescriptionUpdate}
-            onThreadLinkSelect={onThreadLinkSelect}
           />
         );
       } else if (
@@ -287,10 +272,10 @@ const GlossaryDetails = ({
         {widgets}
       </ReactGridLayout>
     );
-  }, [permissions, glossary, termsLoading, isDescriptionEditable, widgets]);
+  }, [permissions, glossary, termsLoading, widgets]);
 
   const tabs = useMemo(() => {
-    const tabLabelMap = getTabLabelMap(customizedPage?.tabs);
+    const tabLabelMap = getTabLabelMapFromTabs(customizedPage?.tabs);
 
     const items = [
       {
@@ -324,7 +309,6 @@ const GlossaryDetails = ({
                   refetchFeed
                   entityFeedTotalCount={feedCount.totalCount}
                   entityType={EntityType.GLOSSARY}
-                  fqn={glossary.fullyQualifiedName ?? ''}
                   hasGlossaryReviewer={!isEmpty(glossary.reviewers)}
                   owners={glossary.owners}
                   onFeedUpdate={getEntityFeedCount}
@@ -336,7 +320,7 @@ const GlossaryDetails = ({
         : []),
     ];
 
-    return getGlossaryTermDetailTabs(
+    return getDetailsTabWithNewLabel(
       items,
       customizedPage?.tabs,
       EntityTabs.TERMS
@@ -354,24 +338,6 @@ const GlossaryDetails = ({
   useEffect(() => {
     getEntityFeedCount();
   }, [glossary.fullyQualifiedName]);
-
-  const fetchDocument = useCallback(async () => {
-    const pageFQN = `${EntityType.PERSONA}${FQN_SEPARATOR_CHAR}${selectedPersona.fullyQualifiedName}`;
-    try {
-      const doc = await getDocumentByFQN(pageFQN);
-      setCustomizedPage(
-        doc.data?.pages?.find((p: Page) => p.pageType === PageType.Glossary)
-      );
-    } catch (error) {
-      // fail silent
-    }
-  }, [selectedPersona.fullyQualifiedName]);
-
-  useEffect(() => {
-    if (selectedPersona?.fullyQualifiedName) {
-      fetchDocument();
-    }
-  }, [selectedPersona]);
 
   return (
     <GenericProvider<Glossary>

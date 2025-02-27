@@ -35,7 +35,7 @@ import {
 } from '../../../../utils/EntityVersionUtils';
 import { renderReferenceElement } from '../../../../utils/GlossaryUtils';
 import TagButton from '../../../common/TagButton/TagButton.component';
-import { useGenericContext } from '../../../GenericProvider/GenericProvider';
+import { useGenericContext } from '../../../Customization/GenericProvider/GenericProvider';
 import GlossaryTermReferencesModal from '../GlossaryTermReferencesModal.component';
 
 const GlossaryTermReferences = () => {

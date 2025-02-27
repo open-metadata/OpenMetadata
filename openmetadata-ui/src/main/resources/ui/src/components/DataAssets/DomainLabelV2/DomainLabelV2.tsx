@@ -33,7 +33,7 @@ import { getEntityName } from '../../../utils/EntityUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { DomainLabelProps } from '../../common/DomainLabel/DomainLabel.interface';
 import DomainSelectableList from '../../common/DomainSelectableList/DomainSelectableList.component';
-import { useGenericContext } from '../../GenericProvider/GenericProvider';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 import { AssetsUnion } from '../AssetsSelectionModal/AssetSelectionModal.interface';
 import { DataAssetWithDomains } from '../DataAssetsHeader/DataAssetsHeader.interface';
 
@@ -43,14 +43,14 @@ export const DomainLabelV2 = <
     id: string;
     fullyQualifiedName: string;
   }
->(
-  props: Partial<DomainLabelProps>
-) => {
-  const { data, permissions, type: entityType } = useGenericContext<T>();
+>({
+  hasPermission,
+  ...props
+}: Partial<DomainLabelProps>) => {
+  const { data, type: entityType } = useGenericContext<T>();
   const { id: entityId, fullyQualifiedName: entityFqn, domain } = data;
   const { t } = useTranslation();
   const [activeDomain, setActiveDomain] = useState<EntityReference[]>([]);
-  const hasPermission = permissions.EditAll;
 
   const handleDomainSave = useCallback(
     async (selectedDomain: EntityReference | EntityReference[]) => {

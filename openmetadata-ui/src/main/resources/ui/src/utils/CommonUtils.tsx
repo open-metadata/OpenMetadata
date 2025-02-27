@@ -630,10 +630,6 @@ export const getTrimmedContent = (content: string, limit: number) => {
   return refinedContent.join(' ');
 };
 
-export const sortTagsCaseInsensitive = (tags: TagLabel[]) => {
-  return tags;
-};
-
 export const Transi18next = ({
   i18nKey,
   values,

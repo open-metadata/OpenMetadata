@@ -53,6 +53,7 @@ export const mockPipelineDetails: Pipeline = {
       displayName: 'Assert Table Exists',
     },
   ],
+  tags: [],
   service: {
     id: 'cbdc2874-0984-42fb-9469-bfa4e6a3d4e8',
     type: 'pipelineService',

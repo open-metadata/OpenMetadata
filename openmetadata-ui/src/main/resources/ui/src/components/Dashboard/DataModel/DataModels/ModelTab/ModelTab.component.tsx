@@ -17,37 +17,56 @@ import { EntityTags, TagFilterOptions } from 'Models';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { EntityType } from '../../../../../enums/entity.enum';
-import { Column } from '../../../../../generated/entity/data/dashboardDataModel';
+import {
+  Column,
+  DashboardDataModel,
+} from '../../../../../generated/entity/data/dashboardDataModel';
 import { TagLabel, TagSource } from '../../../../../generated/type/tagLabel';
 import { updateDataModelColumnDescription } from '../../../../../utils/DataModelsUtils';
 import {
   getColumnSorter,
   getEntityName,
 } from '../../../../../utils/EntityUtils';
+import { columnFilterIcon } from '../../../../../utils/TableColumn.util';
 import {
   getAllTags,
   searchTagInData,
 } from '../../../../../utils/TableTags/TableTags.utils';
 import { updateFieldTags } from '../../../../../utils/TableUtils';
 import Table from '../../../../common/Table/Table';
+import { useGenericContext } from '../../../../Customization/GenericProvider/GenericProvider';
 import { ColumnFilter } from '../../../../Database/ColumnFilter/ColumnFilter.component';
 import TableDescription from '../../../../Database/TableDescription/TableDescription.component';
 import TableTags from '../../../../Database/TableTags/TableTags.component';
 import { ModalWithMarkdownEditor } from '../../../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
-import { ModelTabProps } from './ModelTab.interface';
 
-const ModelTab = ({
-  data,
-  isReadOnly,
-  hasEditDescriptionPermission,
-  hasEditTagsPermission,
-  hasEditGlossaryTermPermission,
-  onUpdate,
-  entityFqn,
-  onThreadLinkSelect,
-}: ModelTabProps) => {
+const ModelTab = () => {
   const { t } = useTranslation();
   const [editColumnDescription, setEditColumnDescription] = useState<Column>();
+  const {
+    data: dataModel,
+    permissions,
+    onUpdate,
+  } = useGenericContext<DashboardDataModel>();
+  const {
+    columns: data,
+    fullyQualifiedName: entityFqn,
+    deleted: isReadOnly,
+  } = dataModel;
+
+  const {
+    hasEditDescriptionPermission,
+    hasEditTagsPermission,
+    hasEditGlossaryTermPermission,
+  } = useMemo(() => {
+    return {
+      hasEditDescriptionPermission:
+        permissions.EditAll || permissions.EditDescription,
+      hasEditTagsPermission: permissions.EditAll || permissions.EditTags,
+      hasEditGlossaryTermPermission:
+        permissions.EditAll || permissions.EditGlossaryTerms,
+    };
+  }, [permissions]);
 
   const tagFilter = useMemo(() => {
     const tags = getAllTags(data ?? []);
@@ -68,7 +87,7 @@ const ModelTab = ({
         dataModelData
       );
 
-      await onUpdate(dataModelData);
+      await onUpdate({ ...dataModel, columns: dataModelData });
     },
     [data, updateFieldTags]
   );
@@ -82,7 +101,10 @@ const ModelTab = ({
           editColumnDescription?.fullyQualifiedName ?? '',
           updatedDescription
         );
-        await onUpdate(dataModelColumns);
+        await onUpdate({
+          ...dataModel,
+          columns: dataModelColumns,
+        });
       }
       setEditColumnDescription(undefined);
     },
@@ -125,13 +147,12 @@ const ModelTab = ({
               fqn: record.fullyQualifiedName ?? '',
               field: record.description,
             }}
-            entityFqn={entityFqn}
+            entityFqn={entityFqn ?? ''}
             entityType={EntityType.DASHBOARD_DATA_MODEL}
             hasEditPermission={hasEditDescriptionPermission}
             index={index}
             isReadOnly={isReadOnly}
             onClick={() => setEditColumnDescription(record)}
-            onThreadLinkSelect={onThreadLinkSelect}
           />
         ),
       },
@@ -142,11 +163,12 @@ const ModelTab = ({
         accessor: 'tags',
         width: 250,
         filters: tagFilter.Classification,
+        filterIcon: columnFilterIcon,
         filterDropdown: ColumnFilter,
         onFilter: searchTagInData,
         render: (tags: TagLabel[], record: Column, index: number) => (
           <TableTags<Column>
-            entityFqn={entityFqn}
+            entityFqn={entityFqn ?? ''}
             entityType={EntityType.DASHBOARD_DATA_MODEL}
             handleTagSelection={handleFieldTagsChange}
             hasTagEditAccess={hasEditTagsPermission}
@@ -155,7 +177,6 @@ const ModelTab = ({
             record={record}
             tags={tags}
             type={TagSource.Classification}
-            onThreadLinkSelect={onThreadLinkSelect}
           />
         ),
       },
@@ -165,12 +186,13 @@ const ModelTab = ({
         key: 'glossary',
         accessor: 'tags',
         width: 250,
+        filterIcon: columnFilterIcon,
         filters: tagFilter.Glossary,
         filterDropdown: ColumnFilter,
         onFilter: searchTagInData,
         render: (tags: TagLabel[], record: Column, index: number) => (
           <TableTags<Column>
-            entityFqn={entityFqn}
+            entityFqn={entityFqn ?? ''}
             entityType={EntityType.DASHBOARD_DATA_MODEL}
             handleTagSelection={handleFieldTagsChange}
             hasTagEditAccess={hasEditGlossaryTermPermission}
@@ -179,7 +201,6 @@ const ModelTab = ({
             record={record}
             tags={tags}
             type={TagSource.Glossary}
-            onThreadLinkSelect={onThreadLinkSelect}
           />
         ),
       },
@@ -192,7 +213,6 @@ const ModelTab = ({
       hasEditGlossaryTermPermission,
       editColumnDescription,
       hasEditDescriptionPermission,
-      onThreadLinkSelect,
       handleFieldTagsChange,
     ]
   );

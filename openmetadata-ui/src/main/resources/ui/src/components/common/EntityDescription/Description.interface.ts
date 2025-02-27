@@ -20,13 +20,8 @@ export interface DescriptionProps {
   hasEditAccess?: boolean;
   removeBlur?: boolean;
   description?: string;
-  isEdit?: boolean;
   isReadOnly?: boolean;
   entityType: EntityType;
-  entityFqn?: string;
-  onThreadLinkSelect?: (value: string) => void;
-  onDescriptionEdit?: () => void;
-  onCancel?: () => void;
   onDescriptionUpdate?: (value: string) => Promise<void>;
   onSuggest?: (value: string) => void;
   onEntityFieldSelect?: (value: string) => void;

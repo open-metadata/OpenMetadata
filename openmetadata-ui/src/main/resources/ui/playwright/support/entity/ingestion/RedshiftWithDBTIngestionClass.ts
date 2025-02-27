@@ -206,7 +206,7 @@ class RedshiftWithDBTIngestionClass extends ServiceBaseClass {
 
       await expect(
         page
-          .getByTestId('entity-right-panel')
+          .getByTestId('KnowledgePanel.Tags')
           .getByTestId('tags-container')
           .getByTestId('entity-tags')
       ).toContainText(DBT.tagName);

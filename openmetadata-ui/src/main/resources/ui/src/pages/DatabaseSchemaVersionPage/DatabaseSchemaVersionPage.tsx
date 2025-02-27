@@ -18,10 +18,12 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { CustomPropertyTable } from '../../components/common/CustomPropertyTable/CustomPropertyTable';
+import DescriptionV1 from '../../components/common/EntityDescription/DescriptionV1';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
 import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
+import { GenericProvider } from '../../components/Customization/GenericProvider/GenericProvider';
 import DataAssetsVersionHeader from '../../components/DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader';
 import DataProductsContainer from '../../components/DataProducts/DataProductsContainer/DataProductsContainer.component';
 import EntityVersionTimeLine from '../../components/Entity/EntityVersionTimeLine/EntityVersionTimeLine';
@@ -250,16 +252,15 @@ function DatabaseSchemaVersionPage() {
         children: (
           <Row gutter={[0, 16]} wrap={false}>
             <Col className="p-t-sm m-x-lg" flex="auto">
-              <SchemaTablesTab
-                isVersionView
-                currentTablesPage={currentPage}
-                databaseSchemaDetails={currentVersionData}
+              <DescriptionV1
                 description={description}
-                pagingInfo={pagingInfo}
-                tableData={tableData}
-                tableDataLoading={isTableDataLoading}
-                tablePaginationHandler={tablePaginationHandler}
+                entityType={EntityType.DATABASE_SCHEMA}
+                isDescriptionExpanded={isEmpty(tableData)}
+                showActions={false}
               />
+            </Col>
+            <Col className="p-t-sm m-x-lg" flex="auto">
+              <SchemaTablesTab isVersionView />
             </Col>
             <Col
               className="entity-tag-right-panel-container"
@@ -299,7 +300,6 @@ function DatabaseSchemaVersionPage() {
         children: (
           <CustomPropertyTable
             isVersionView
-            entityDetails={currentVersionData}
             entityType={EntityType.DATABASE_SCHEMA}
             hasEditAccess={false}
             hasPermission={viewVersionPermission}
@@ -349,15 +349,23 @@ function DatabaseSchemaVersionPage() {
                   onVersionClick={backHandler}
                 />
               </Col>
-              <Col span={24}>
-                <Tabs
-                  className="entity-details-page-tabs"
-                  data-testid="tabs"
-                  defaultActiveKey={tab ?? EntityTabs.TABLE}
-                  items={tabs}
-                  onChange={handleTabChange}
-                />
-              </Col>
+              <GenericProvider
+                isVersionView
+                currentVersionData={currentVersionData}
+                data={currentVersionData}
+                permissions={servicePermissions}
+                type={EntityType.DATABASE}
+                onUpdate={() => Promise.resolve()}>
+                <Col span={24}>
+                  <Tabs
+                    className="entity-details-page-tabs"
+                    data-testid="tabs"
+                    defaultActiveKey={tab ?? EntityTabs.TABLE}
+                    items={tabs}
+                    onChange={handleTabChange}
+                  />
+                </Col>
+              </GenericProvider>
             </Row>
           </div>
         )}

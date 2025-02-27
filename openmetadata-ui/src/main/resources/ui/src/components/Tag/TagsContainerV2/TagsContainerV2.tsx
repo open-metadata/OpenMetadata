@@ -38,6 +38,7 @@ import {
   getUpdateTagsPath,
 } from '../../../utils/TasksUtils';
 import { SelectOption } from '../../common/AsyncSelectList/AsyncSelectList.interface';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 import { TableTagsProps } from '../../Database/TableTags/TableTags.interface';
 import TagSelectForm from '../TagsSelectForm/TagsSelectForm.component';
 import TagsV1 from '../TagsV1/TagsV1.component';
@@ -59,7 +60,6 @@ const TagsContainerV2 = ({
   showBottomEditButton,
   showInlineEditButton,
   onSelectionChange,
-  onThreadLinkSelect,
   children,
   defaultLabelType,
   defaultState,
@@ -67,6 +67,7 @@ const TagsContainerV2 = ({
   const history = useHistory();
   const [form] = Form.useForm();
   const { t } = useTranslation();
+  const { onThreadLinkSelect } = useGenericContext();
 
   const [isEditTags, setIsEditTags] = useState(false);
   const [tags, setTags] = useState<TableTagsProps>();
@@ -81,8 +82,8 @@ const TagsContainerV2 = ({
     () => ({
       isGlossaryType: tagType === TagSource.Glossary,
       showAddTagButton: permission && isEmpty(tags?.[tagType]),
-      selectedTagsInternal: tags?.[tagType].map(({ tagFQN }) => tagFQN),
-      initialOptions: tags?.[tagType].map((data) => ({
+      selectedTagsInternal: tags?.[tagType]?.map(({ tagFQN }) => tagFQN),
+      initialOptions: tags?.[tagType]?.map((data) => ({
         label: data.tagFQN,
         value: data.tagFQN,
         data,
@@ -297,7 +298,7 @@ const TagsContainerV2 = ({
               {showTaskHandler && (
                 <>
                   {tagType === TagSource.Classification && requestTagElement}
-                  {onThreadLinkSelect && conversationThreadElement}
+                  {conversationThreadElement}
                 </>
               )}
             </Row>
