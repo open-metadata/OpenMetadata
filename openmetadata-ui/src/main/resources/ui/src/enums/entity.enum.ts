@@ -211,6 +211,10 @@ export enum EntityTabs {
   ASSETS = 'assets',
   EXPRESSION = 'expression',
   INSIGHTS = 'insights',
+  DASHBOARD = 'dashboard',
+  DOCUMENTATION = 'documentation',
+  DATA_PRODUCTS = 'data_products',
+  SUBDOMAINS = 'subdomains',
 }
 
 export enum EntityAction {
