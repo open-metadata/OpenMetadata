@@ -459,8 +459,7 @@ public class SearchRepository {
       for (FieldChange field : changeDescription.getFieldsAdded()) {
         if (propagateFields.contains(field.getName())) {
           List<TagLabel> tagLabels =
-              JsonUtils.readObjects(
-                  (String) changeDescription.getFieldsAdded().get(0).getNewValue(), TagLabel.class);
+              JsonUtils.readObjects((String) field.getNewValue(), TagLabel.class);
           tagLabels.forEach(tagLabel -> tagLabel.setLabelType(TagLabel.LabelType.DERIVED));
           fieldData.put("tagAdded", tagLabels);
         }
@@ -468,9 +467,7 @@ public class SearchRepository {
       for (FieldChange field : changeDescription.getFieldsDeleted()) {
         if (propagateFields.contains(field.getName())) {
           List<TagLabel> tagLabels =
-              JsonUtils.readObjects(
-                  (String) changeDescription.getFieldsDeleted().get(0).getOldValue(),
-                  TagLabel.class);
+              JsonUtils.readObjects((String) field.getOldValue(), TagLabel.class);
           tagLabels.forEach(tagLabel -> tagLabel.setLabelType(TagLabel.LabelType.DERIVED));
           fieldData.put("tagDeleted", tagLabels);
         }
