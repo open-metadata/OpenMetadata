@@ -88,6 +88,10 @@ export interface Table {
      */
     id: string;
     /**
+     * Change that lead to this version of the entity.
+     */
+    incrementalChangeDescription?: ChangeDescription;
+    /**
      * Details of other tables this table is frequently joined with.
      */
     joins?: TableJoins;

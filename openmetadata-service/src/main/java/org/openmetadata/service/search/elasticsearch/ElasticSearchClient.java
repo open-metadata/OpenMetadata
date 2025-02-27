@@ -2240,12 +2240,13 @@ public class ElasticSearchClient implements SearchClient {
   }
 
   @Override
-  public void updateByFqnPrefix(String indexName, String oldParentFQN, String newParentFQN) {
+  public void updateByFqnPrefix(
+      String indexName, String oldParentFQN, String newParentFQN, String prefixFieldCondition) {
     // Match all children documents whose fullyQualifiedName starts with the old parent's FQN
-    PrefixQueryBuilder prefixQuery =
-        new PrefixQueryBuilder("fullyQualifiedName", oldParentFQN + ".");
+    PrefixQueryBuilder prefixQuery = new PrefixQueryBuilder(prefixFieldCondition, oldParentFQN);
 
-    UpdateByQueryRequest updateByQueryRequest = new UpdateByQueryRequest(indexName);
+    UpdateByQueryRequest updateByQueryRequest =
+        new UpdateByQueryRequest(Entity.getSearchRepository().getIndexOrAliasName(indexName));
     updateByQueryRequest.setQuery(prefixQuery);
 
     Map<String, Object> params = new HashMap<>();
@@ -2260,6 +2261,14 @@ public class ElasticSearchClient implements SearchClient {
             + "    if (ctx._source.parent.containsKey('fullyQualifiedName')) { "
             + "        String parentFQN = ctx._source.parent.fullyQualifiedName; "
             + "        ctx._source.parent.fullyQualifiedName = parentFQN.replace(params.oldParentFQN, params.newParentFQN); "
+            + "    } "
+            + "} "
+            + "if (ctx._source.containsKey('tags')) { "
+            + "    for (int i = 0; i < ctx._source.tags.size(); i++) { "
+            + "        if (ctx._source.tags[i].containsKey('tagFQN')) { "
+            + "            String tagFQN = ctx._source.tags[i].tagFQN; "
+            + "            ctx._source.tags[i].tagFQN = tagFQN.replace(params.oldParentFQN, params.newParentFQN); "
+            + "        } "
             + "    } "
             + "}";
 
@@ -2366,7 +2375,24 @@ public class ElasticSearchClient implements SearchClient {
     XContentParser parser = createXContentParser(query);
     parser.nextToken();
     deleteRequest.setQuery(RangeQueryBuilder.fromXContent(parser));
-    client.deleteByQuery(deleteRequest, RequestOptions.DEFAULT);
+    deleteEntityFromElasticSearchByQuery(deleteRequest);
+  }
+
+  @SneakyThrows
+  public void deleteByRangeAndTerm(
+      String index, String rangeQueryStr, String termKey, String termValue) {
+    DeleteByQueryRequest deleteRequest = new DeleteByQueryRequest(index);
+    // Hack: Due to an issue on how the RangeQueryBuilder.fromXContent works, we're removing the
+    // first token from the Parser
+    XContentParser rangeParser = createXContentParser(rangeQueryStr);
+    rangeParser.nextToken();
+    RangeQueryBuilder rangeQuery = RangeQueryBuilder.fromXContent(rangeParser);
+
+    TermQueryBuilder termQuery = QueryBuilders.termQuery(termKey, termValue);
+
+    BoolQueryBuilder query = QueryBuilders.boolQuery().must(rangeQuery).must(termQuery);
+    deleteRequest.setQuery(query);
+    deleteEntityFromElasticSearchByQuery(deleteRequest);
   }
 
   @SneakyThrows

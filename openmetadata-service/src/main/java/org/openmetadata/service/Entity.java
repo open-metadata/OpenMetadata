@@ -37,6 +37,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import javax.ws.rs.BadRequestException;
 import javax.ws.rs.core.UriInfo;
 import lombok.Getter;
@@ -111,6 +112,7 @@ public final class Entity {
   public static final String FIELD_DELETED = "deleted";
   public static final String FIELD_PIPELINE_STATUS = "pipelineStatus";
   public static final String FIELD_DISPLAY_NAME = "displayName";
+  public static final String FIELD_FULLY_QUALIFIED_NAME = "fullyQualifiedName";
   public static final String FIELD_EXTENSION = "extension";
   public static final String FIELD_USAGE_SUMMARY = "usageSummary";
   public static final String FIELD_CHILDREN = "children";
@@ -665,5 +667,12 @@ public final class Entity {
       return ENTITY_SERVICE_TYPE_MAP.get(entityType);
     }
     return entityType;
+  }
+
+  public static Set<String> getEntityTypeInService(String serviceType) {
+    return ENTITY_SERVICE_TYPE_MAP.entrySet().stream()
+        .filter(entry -> entry.getValue().equals(serviceType))
+        .map(Map.Entry::getKey)
+        .collect(Collectors.toSet());
   }
 }

@@ -285,6 +285,19 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
         allPipelineStatusList.size());
   }
 
+  /* Get the status of the external application by converting the configuration so that it can be
+   * served like an App configuration */
+  public ResultList<PipelineStatus> listExternalAppStatus(
+      String ingestionPipelineFQN, Long startTs, Long endTs) {
+    return listPipelineStatus(ingestionPipelineFQN, startTs, endTs)
+        .map(
+            pipelineStatus ->
+                pipelineStatus.withConfig(
+                    Optional.ofNullable(pipelineStatus.getConfig().getOrDefault("appConfig", null))
+                        .map(JsonUtils::getMap)
+                        .orElse(null)));
+  }
+
   public PipelineStatus getLatestPipelineStatus(IngestionPipeline ingestionPipeline) {
     return JsonUtils.readValue(
         getLatestExtensionFromTimeSeries(

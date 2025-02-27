@@ -8,6 +8,7 @@ import static org.openmetadata.service.Entity.FIELD_PARENT;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.Entity.STORAGE_SERVICE;
 import static org.openmetadata.service.Entity.populateEntityFieldTags;
+import static org.openmetadata.service.util.EntityUtil.getEntityReferences;
 
 import com.google.common.collect.Lists;
 import java.util.ArrayList;
@@ -34,6 +35,7 @@ import org.openmetadata.service.resources.storages.ContainerResource;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.service.util.ResultList;
 
 public class ContainerRepository extends EntityRepository<Container> {
   private static final String CONTAINER_UPDATE_FIELDS = "dataModel";
@@ -223,6 +225,49 @@ public class ContainerRepository extends EntityRepository<Container> {
       }
     }
     return super.getTaskWorkflow(threadContext);
+  }
+
+  public ResultList<Container> listChildren(String parentFQN, Integer limit, Integer offset) {
+
+    Container parentContainer = dao.findEntityByName(parentFQN);
+
+    try {
+      List<CollectionDAO.EntityRelationshipRecord> relationshipRecords =
+          daoCollection
+              .relationshipDAO()
+              .findToWithOffset(
+                  parentContainer.getId(),
+                  CONTAINER,
+                  List.of(Relationship.CONTAINS.ordinal()),
+                  offset,
+                  limit);
+
+      int total =
+          daoCollection
+              .relationshipDAO()
+              .countFindTo(
+                  parentContainer.getId(), CONTAINER, List.of(Relationship.CONTAINS.ordinal()));
+
+      if (relationshipRecords.isEmpty()) {
+        return new ResultList<>(new ArrayList<>(), null, null, total);
+      }
+
+      List<EntityReference> refs = getEntityReferences(relationshipRecords);
+      List<Container> children = new ArrayList<>();
+
+      for (EntityReference ref : refs) {
+        Container container =
+            Entity.getEntity(ref, EntityUtil.Fields.EMPTY_FIELDS.toString(), Include.ALL);
+        children.add(container);
+      }
+
+      return new ResultList<>(children, null, null, total);
+    } catch (Exception e) {
+      throw new RuntimeException(
+          String.format(
+              "Failed to fetch children for container [%s]: %s", parentFQN, e.getMessage()),
+          e);
+    }
   }
 
   static class DataModelDescriptionTaskWorkflow extends DescriptionTaskWorkflow {

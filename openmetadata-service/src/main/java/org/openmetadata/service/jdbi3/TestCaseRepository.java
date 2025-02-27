@@ -515,6 +515,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
                         .withName("testSuites")
                         .withNewValue(updatedTestCase.getTestSuites())));
     updatedTestCase.setChangeDescription(change);
+
     postUpdate(testCase, updatedTestCase);
     updateLogicalTestSuite(testSuiteId);
     testCase.setTestSuite(updatedTestCase.getTestSuite());

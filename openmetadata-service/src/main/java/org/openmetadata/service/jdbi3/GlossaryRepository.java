@@ -90,7 +90,6 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
     quoteFqn = true;
     supportsSearch = true;
     renameAllowed = true;
-    parent = true;
   }
 
   @Override

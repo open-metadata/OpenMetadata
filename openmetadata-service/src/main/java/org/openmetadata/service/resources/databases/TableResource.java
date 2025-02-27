@@ -1144,8 +1144,8 @@ public class TableResource extends EntityResource<Table, TableRepository> {
   @Path("/{id}/customMetric")
   @Operation(
       operationId = "addCustomMetric",
-      summary = "Add column custom metrics",
-      description = "Add column custom metrics.",
+      summary = "Add custom metrics",
+      description = "Add custom metrics. For columns, add columnName.",
       responses = {
         @ApiResponse(
             responseCode = "200",
