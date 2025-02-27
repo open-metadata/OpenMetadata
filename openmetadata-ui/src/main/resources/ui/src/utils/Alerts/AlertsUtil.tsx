@@ -38,7 +38,7 @@ import Form, { RuleObject } from 'antd/lib/form';
 import { AxiosError } from 'axios';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
 import { compare, Operation } from 'fast-json-patch';
-import i18next, { t, TFunction } from 'i18next';
+import i18next, { t } from 'i18next';
 import {
   isEmpty,
   isEqual,
@@ -1415,36 +1415,35 @@ export const getModifiedAlertDataForForm = (
 };
 
 export const getDiagnosticItems = (
-  diagnosticData: EventSubscriptionDiagnosticInfo | undefined,
-  t: TFunction
+  diagnosticData: EventSubscriptionDiagnosticInfo | undefined
 ) => [
   {
-    key: 'label.latest-offset',
+    key: t('label.latest-offset'),
     value: diagnosticData?.latestOffset,
     description: t('message.latest-offset-description'),
   },
   {
-    key: 'label.current-offset',
+    key: t('label.current-offset'),
     value: diagnosticData?.currentOffset,
     description: t('message.current-offset-description'),
   },
   {
-    key: 'label.starting-offset',
+    key: t('label.starting-offset'),
     value: diagnosticData?.startingOffset,
     description: t('message.starting-offset-description'),
   },
   {
-    key: 'label.successful-event-plural',
+    key: t('label.successful-event-plural'),
     value: diagnosticData?.successfulEventsCount,
     description: t('message.successful-events-description'),
   },
   {
-    key: 'label.failed-event-plural',
+    key: t('label.failed-event-plural'),
     value: diagnosticData?.failedEventsCount,
     description: t('message.failed-events-description'),
   },
   {
-    key: 'label.processed-all-event-plural',
+    key: t('label.processed-all-event-plural'),
     value: diagnosticData?.hasProcessedAllEvents,
     description: t('message.processed-all-events-description'),
   },

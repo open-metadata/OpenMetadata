@@ -222,10 +222,13 @@ function AlertDetailsPage({
 
   const handleAlertSync = useCallback(async () => {
     try {
+      setLoadingCount((count) => count + 1);
       await syncOffset(fqn);
-      showSuccessToast(t('label.alert-synced-successfully'));
+      showSuccessToast(t('message.alert-synced-successfully'));
     } catch (error) {
       showErrorToast(error as AxiosError);
+    } finally {
+      setLoadingCount((count) => count - 1);
     }
   }, [fqn]);
 
@@ -399,7 +402,7 @@ function AlertDetailsPage({
                   <Col>
                     <Space align="center" size={8}>
                       <Tooltip
-                        title={t('label.sync-entity', {
+                        title={t('label.sync-alert-offset', {
                           entity: t('label.alert'),
                         })}>
                         <Button

@@ -41,12 +41,20 @@ function AlertDiagnosticInfoTab({ fqn }: AlertDiagnosticInfoTabProps) {
 
   useEffect(() => {
     fetchDiagnosticInfo();
-  }, [fetchDiagnosticInfo]);
+  }, []);
 
   const diagnosticItems = useMemo(
-    () => getDiagnosticItems(diagnosticData, t),
-    [diagnosticData, t]
+    () => getDiagnosticItems(diagnosticData),
+    [diagnosticData]
   );
+
+  const formatValue = (value: unknown): string => {
+    if (typeof value === 'boolean') {
+      return value ? 'Yes' : 'No';
+    }
+
+    return String(value);
+  };
 
   return (
     <Card>
@@ -54,25 +62,21 @@ function AlertDiagnosticInfoTab({ fqn }: AlertDiagnosticInfoTabProps) {
         {diagnosticItems.map((item) => (
           <Col key={item.key} span={12}>
             <Row align="middle">
-              <Col className="d-flex items-center" span={10}>
-                <span className="d-flex items-center gap-1">
-                  <p className="text-grey-muted m-0">{t(item.key)}:</p>
+              <Col className="d-flex items-center" span={12}>
+                <Typography.Text className="d-flex items-center gap-1">
+                  <Typography.Text className="m-0" type="secondary">
+                    {`${item.key}:`}
+                  </Typography.Text>
                   <Tooltip placement="bottom" title={item.description}>
                     <InfoCircleOutlined
                       className="info-icon"
                       style={{ color: GRAYED_OUT_COLOR }}
                     />
                   </Tooltip>
-                </span>
+                </Typography.Text>
               </Col>
-              <Col span={10}>
-                <Text>
-                  {typeof item.value === 'boolean'
-                    ? item.value
-                      ? 'Yes'
-                      : 'No'
-                    : item.value}
-                </Text>
+              <Col span={12}>
+                <Text>{formatValue(item.value)}</Text>
               </Col>
             </Row>
           </Col>
