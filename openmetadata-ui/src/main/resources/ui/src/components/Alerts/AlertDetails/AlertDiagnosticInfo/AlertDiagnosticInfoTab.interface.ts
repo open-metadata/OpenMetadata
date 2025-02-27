@@ -15,6 +15,3 @@ export interface DiagnosticItem {
   value: string | number | boolean;
   description: string;
 }
-export interface AlertDiagnosticInfoTabProps {
-  fqn: string;
-}

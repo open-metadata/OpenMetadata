@@ -23,6 +23,7 @@ import AlertDiagnosticInfoTab from './AlertDiagnosticInfoTab';
 jest.mock('../../../../rest/observabilityAPI', () => ({
   getDiagnosticInfo: jest.fn(),
   formatValue: jest.fn(),
+  useFqn: jest.fn(),
 }));
 
 describe('AlertDiagnosticInfoTab', () => {
@@ -34,7 +35,7 @@ describe('AlertDiagnosticInfoTab', () => {
     (getDiagnosticInfo as jest.Mock).mockResolvedValue(mockDiagnosticData);
 
     await act(async () => {
-      render(<AlertDiagnosticInfoTab fqn="test-fqn" />);
+      render(<AlertDiagnosticInfoTab />);
     });
 
     // Check labels
@@ -62,7 +63,7 @@ describe('AlertDiagnosticInfoTab', () => {
     (getDiagnosticInfo as jest.Mock).mockResolvedValue(mockEmptyDiagnosticData);
 
     await act(async () => {
-      render(<AlertDiagnosticInfoTab fqn="test-fqn" />);
+      render(<AlertDiagnosticInfoTab />);
     });
 
     expect(screen.getByText('No')).toBeInTheDocument();
@@ -72,7 +73,7 @@ describe('AlertDiagnosticInfoTab', () => {
     (getDiagnosticInfo as jest.Mock).mockResolvedValue(mockEmptyDiagnosticData);
 
     await act(async () => {
-      render(<AlertDiagnosticInfoTab fqn="test-fqn" />);
+      render(<AlertDiagnosticInfoTab />);
     });
 
     // Check numeric fields have value "0"
@@ -86,7 +87,7 @@ describe('AlertDiagnosticInfoTab', () => {
     (getDiagnosticInfo as jest.Mock).mockRejectedValue(error);
 
     await act(async () => {
-      render(<AlertDiagnosticInfoTab fqn="test-fqn" />);
+      render(<AlertDiagnosticInfoTab />);
     });
 
     expect(screen.queryByText('100')).not.toBeInTheDocument();

@@ -12,30 +12,32 @@
  */
 
 import { InfoCircleOutlined } from '@ant-design/icons';
-import { Card, Col, Row, Tooltip, Typography } from 'antd';
+import { Card, Col, Row, Skeleton, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
 import { GRAYED_OUT_COLOR } from '../../../../constants/constants';
 import { EventSubscriptionDiagnosticInfo } from '../../../../generated/events/api/eventSubscriptionDiagnosticInfo';
+import { useFqn } from '../../../../hooks/useFqn';
 import { getDiagnosticInfo } from '../../../../rest/observabilityAPI';
 import { getDiagnosticItems } from '../../../../utils/Alerts/AlertsUtil';
 import { showErrorToast } from '../../../../utils/ToastUtils';
-import './alert-diagnostic-info-tab.less';
-import { AlertDiagnosticInfoTabProps } from './AlertDiagnosticInfoTab.interface';
 
-function AlertDiagnosticInfoTab({ fqn }: AlertDiagnosticInfoTabProps) {
-  const { t } = useTranslation();
+function AlertDiagnosticInfoTab() {
   const { Text } = Typography;
+  const { fqn } = useFqn();
   const [diagnosticData, setDiagnosticData] =
     useState<EventSubscriptionDiagnosticInfo>();
+  const [diagnosticIsLoading, setDiagnosticIsLoading] = useState(true);
 
   const fetchDiagnosticInfo = useCallback(async () => {
     try {
+      setDiagnosticIsLoading(true);
       const diagnosticInfoData = await getDiagnosticInfo(fqn);
       setDiagnosticData(diagnosticInfoData);
     } catch (error) {
       showErrorToast(error as AxiosError);
+    } finally {
+      setDiagnosticIsLoading(false);
     }
   }, [fqn]);
 
@@ -58,30 +60,32 @@ function AlertDiagnosticInfoTab({ fqn }: AlertDiagnosticInfoTabProps) {
 
   return (
     <Card>
-      <Row className="w-full" gutter={[16, 16]}>
-        {diagnosticItems.map((item) => (
-          <Col key={item.key} span={12}>
-            <Row align="middle">
-              <Col className="d-flex items-center" span={12}>
-                <Typography.Text className="d-flex items-center gap-1">
-                  <Typography.Text className="m-0" type="secondary">
-                    {`${item.key}:`}
+      <Skeleton active loading={diagnosticIsLoading} paragraph={{ rows: 3 }}>
+        <Row className="w-full" gutter={[16, 16]}>
+          {diagnosticItems.map((item) => (
+            <Col key={item.key} span={12}>
+              <Row align="middle">
+                <Col className="d-flex items-center" span={12}>
+                  <Typography.Text className="d-flex items-center gap-1">
+                    <Typography.Text className="m-0" type="secondary">
+                      {`${item.key}:`}
+                    </Typography.Text>
+                    <Tooltip placement="bottom" title={item.description}>
+                      <InfoCircleOutlined
+                        className="info-icon"
+                        style={{ color: GRAYED_OUT_COLOR }}
+                      />
+                    </Tooltip>
                   </Typography.Text>
-                  <Tooltip placement="bottom" title={item.description}>
-                    <InfoCircleOutlined
-                      className="info-icon"
-                      style={{ color: GRAYED_OUT_COLOR }}
-                    />
-                  </Tooltip>
-                </Typography.Text>
-              </Col>
-              <Col span={12}>
-                <Text>{formatValue(item.value)}</Text>
-              </Col>
-            </Row>
-          </Col>
-        ))}
-      </Row>
+                </Col>
+                <Col span={12}>
+                  <Text>{formatValue(item.value)}</Text>
+                </Col>
+              </Row>
+            </Col>
+          ))}
+        </Row>
+      </Skeleton>
     </Card>
   );
 }

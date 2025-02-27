@@ -69,7 +69,6 @@ import {
 } from '../../utils/RouterUtils';
 import searchClassBase from '../../utils/SearchClassBase';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
-import './alert-details-page.less';
 import { AlertDetailsPageProps } from './AlertDetailsPage.interface';
 
 function AlertDetailsPage({
@@ -93,7 +92,7 @@ function AlertDetailsPage({
   const [alertPermission, setAlertPermission] = useState<OperationPermission>(
     DEFAULT_ENTITY_PERMISSION
   );
-
+  const [isSyncing, setIsSyncing] = useState(false);
   const {
     viewPermission,
     editOwnersPermission,
@@ -222,13 +221,13 @@ function AlertDetailsPage({
 
   const handleAlertSync = useCallback(async () => {
     try {
-      setLoadingCount((count) => count + 1);
+      setIsSyncing(true);
       await syncOffset(fqn);
       showSuccessToast(t('message.alert-synced-successfully'));
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
-      setLoadingCount((count) => count - 1);
+      setIsSyncing(false);
     }
   }, [fqn]);
 
@@ -301,9 +300,7 @@ function AlertDetailsPage({
       {
         label: t('label.diagnostic-info'),
         key: AlertDetailTabs.DIAGNOSTIC_INFO,
-        children: isUndefined(fqn) ? null : (
-          <AlertDiagnosticInfoTab fqn={fqn} />
-        ),
+        children: <AlertDiagnosticInfoTab />,
       },
     ],
     [alertDetails, viewPermission]
@@ -409,6 +406,7 @@ function AlertDetailsPage({
                           className="flex flex-center"
                           data-testid="sync-button"
                           icon={<SyncOutlined height={16} width={16} />}
+                          loading={isSyncing}
                           onClick={handleAlertSync}
                         />
                       </Tooltip>
