@@ -19,6 +19,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { SearchedDataProps } from '../../src/components/SearchedData/SearchedData.interface';
 import { ReactComponent as IconExternalLink } from '../assets/svg/external-links.svg';
+import { GenericProvider } from '../components/Customization/GenericProvider/GenericProvider';
 import SchemaEditor from '../components/Database/SchemaEditor/SchemaEditor';
 import APIEndpointSummary from '../components/Explore/EntitySummaryPanel/APIEndpointSummary/APIEndpointSummary';
 import DataProductSummary from '../components/Explore/EntitySummaryPanel/DataProductSummary/DataProductSummary.component';
@@ -34,6 +35,7 @@ import MetricExpression from '../components/Metric/MetricExpression/MetricExpres
 import RelatedMetrics from '../components/Metric/RelatedMetrics/RelatedMetrics';
 import { ICON_DIMENSION, NO_DATA_PLACEHOLDER } from '../constants/constants';
 import { SummaryListHighlightKeys } from '../constants/EntitySummaryPanelUtils.constant';
+import { OperationPermission } from '../context/PermissionProvider/PermissionProvider.interface';
 import { CSMode } from '../enums/codemirror.enum';
 import { EntityType } from '../enums/entity.enum';
 import { SummaryEntityType } from '../enums/EntitySummary.enum';
@@ -569,13 +571,24 @@ export const getEntityChildDetails = (
       );
 
     case EntityType.METRIC:
-      heading = <MetricExpression metricDetails={entityInfo as Metric} />;
+      heading = (
+        <GenericProvider<Metric>
+          data={entityInfo as Metric}
+          permissions={{} as OperationPermission}
+          type={EntityType.METRIC}
+          onUpdate={() => Promise.resolve()}>
+          <MetricExpression />
+        </GenericProvider>
+      );
+
       childComponent = (
-        <RelatedMetrics
-          isInSummaryPanel
-          hasEditPermission={false}
-          metricDetails={entityInfo as Metric}
-        />
+        <GenericProvider<Metric>
+          data={entityInfo as Metric}
+          permissions={{} as OperationPermission}
+          type={EntityType.METRIC}
+          onUpdate={() => Promise.resolve()}>
+          <RelatedMetrics isInSummaryPanel />
+        </GenericProvider>
       );
 
       break;
