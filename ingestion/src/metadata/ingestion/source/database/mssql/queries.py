@@ -88,7 +88,7 @@ SELECT
     DB_NAME() AS DATABASE_NAME,
     s.name AS SCHEMA_NAME,
     p.name AS STORED_PROCEDURE,
-    ep.value AS COMMENT
+    CAST(ep.value AS NVARCHAR(MAX)) AS COMMENT
 FROM sys.procedures p
 JOIN sys.schemas s ON p.schema_id = s.schema_id
 LEFT JOIN sys.extended_properties ep 
