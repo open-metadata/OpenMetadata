@@ -22,8 +22,10 @@ import AlertDiagnosticInfoTab from './AlertDiagnosticInfoTab';
 // Mock the API call
 jest.mock('../../../../rest/observabilityAPI', () => ({
   getDiagnosticInfo: jest.fn(),
-  formatValue: jest.fn(),
-  useFqn: jest.fn(),
+}));
+
+jest.mock('../../../../hooks/useFqn', () => ({
+  useFqn: jest.fn().mockReturnValue({ fqn: 'test-fqn' }),
 }));
 
 describe('AlertDiagnosticInfoTab', () => {
