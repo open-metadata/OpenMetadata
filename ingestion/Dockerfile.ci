@@ -1,6 +1,6 @@
 FROM mysql:8.3 as mysql
 
-FROM apache/airflow:2.9.3-python3.10
+FROM apache/airflow:2.10.5-python3.10
 USER root
 RUN curl -sS https://packages.microsoft.com/keys/microsoft.asc | apt-key add -
 RUN curl -sS https://packages.microsoft.com/config/debian/11/prod.list > /etc/apt/sources.list.d/mssql-release.list
@@ -73,7 +73,7 @@ COPY --chown=airflow:0 openmetadata-airflow-apis /home/airflow/openmetadata-airf
 COPY --chown=airflow:0 ingestion/examples/airflow/dags /opt/airflow/dags
 
 USER airflow
-ARG AIRFLOW_CONSTRAINTS_LOCATION="https://raw.githubusercontent.com/apache/airflow/constraints-2.9.3/constraints-3.10.txt"
+ARG AIRFLOW_CONSTRAINTS_LOCATION="https://raw.githubusercontent.com/apache/airflow/constraints-2.10.5/constraints-3.10.txt"
 
 # Disable pip cache dir
 # https://pip.pypa.io/en/stable/topics/caching/#avoiding-caching
@@ -101,7 +101,7 @@ RUN [ $(uname -m) = "x86_64" ] \
 RUN pip install "python-daemon>=3.0.0"
 
 # remove all airflow providers except for docker and cncf kubernetes
-RUN pip freeze | grep "apache-airflow-providers" | grep --invert-match -E "docker|http|cncf|fab" | xargs pip uninstall -y
+RUN pip freeze | grep "apache-airflow-providers" | grep --invert-match -E "docker|http|cncf|fab|common" | xargs pip uninstall -y
 
 # Uninstalling psycopg2-binary and installing psycopg2 instead 
 # because the psycopg2-binary generates a architecture specific error 
