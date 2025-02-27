@@ -91,7 +91,8 @@ public class ServicesStatusJobHandler {
   }
 
   public void addPipelineServiceStatusJob() {
-    // Only register the job to listen to the status if the Pipeline Service Client is indeed enabled
+    // Only register the job to listen to the status if the Pipeline Service Client is indeed
+    // enabled
     if (config.getEnabled().equals(Boolean.TRUE)) {
       try {
         JobDetail jobDetail =
@@ -111,7 +112,8 @@ public class ServicesStatusJobHandler {
           jobBuilder(
               DatabseAndSearchServiceStatusJob.class, DATABASE_SEARCH_STATUS_JOB, STATUS_GROUP);
       Trigger trigger =
-          getTrigger(servicesHealthCheckInterval, DATABASE_SEARCH_STATUS_CRON_TRIGGER, STATUS_GROUP);
+          getTrigger(
+              servicesHealthCheckInterval, DATABASE_SEARCH_STATUS_CRON_TRIGGER, STATUS_GROUP);
       scheduler.scheduleJob(jobDetail, trigger);
     } catch (Exception ex) {
       LOG.error("Failed in setting up job Scheduler for Pipeline Service Status", ex);
