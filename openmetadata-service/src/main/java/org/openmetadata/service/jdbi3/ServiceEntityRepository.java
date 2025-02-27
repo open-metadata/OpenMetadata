@@ -92,7 +92,7 @@ public abstract class ServiceEntityRepository<
           service.getIngestionAgent().getId(),
           entityType,
           service.getIngestionAgent().getType(),
-          Relationship.HAS);
+          Relationship.USES);
     }
   }
 
