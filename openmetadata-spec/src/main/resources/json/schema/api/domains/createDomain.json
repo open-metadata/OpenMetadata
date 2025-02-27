@@ -48,6 +48,14 @@
         "type": "string"
       },
       "default": null
+    },
+    "tags": {
+      "description": "Tags for this Domain.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/tagLabel.json"
+      },
+      "default": null
     }
   },
   "required": [

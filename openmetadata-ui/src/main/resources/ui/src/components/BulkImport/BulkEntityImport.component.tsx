@@ -432,8 +432,8 @@ const BulkEntityImport = ({
       <Col span={24}>
         <Stepper activeStep={activeStep} steps={ENTITY_IMPORT_STEPS} />
       </Col>
-      <Col span={24}>
-        {activeAsyncImportJob?.jobId && (
+      {activeAsyncImportJob?.jobId && (
+        <Col span={24}>
           <Banner
             className="border-radius"
             isLoading={!activeAsyncImportJob.error}
@@ -442,8 +442,8 @@ const BulkEntityImport = ({
             }
             type={activeAsyncImportJob.error ? 'error' : 'success'}
           />
-        )}
-      </Col>
+        </Col>
+      )}
       <Col span={24}>
         {activeStep === 0 && (
           <>
