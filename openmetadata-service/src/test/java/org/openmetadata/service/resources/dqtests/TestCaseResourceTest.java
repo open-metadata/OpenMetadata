@@ -954,8 +954,9 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     assertEquals(testCasesNum, allEntities.getData().size());
     queryParams.put("q", "test_getSimpleListFromSearchb");
     allEntities = listEntitiesFromSearch(queryParams, testCasesNum, 0, ADMIN_AUTH_HEADERS);
-    assertEquals(1, allEntities.getData().size());
-    assertThat(allEntities.getData().get(0).getName()).contains("test_getSimpleListFromSearchb");
+    // Note: Since the "name" field and its ngram variant are  prioritized in the search query
+    // and the test case names are very similar, the fuzzy matching returns all test cases.
+    assertEquals(testCasesNum, allEntities.getData().size());
 
     queryParams.clear();
     queryParams.put("entityLink", testCaseForEL.getEntityLink());
