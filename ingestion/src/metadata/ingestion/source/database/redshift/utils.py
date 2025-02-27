@@ -34,6 +34,7 @@ from metadata.ingestion.source.database.redshift.queries import (
     REDSHIFT_TABLE_COMMENTS,
 )
 from metadata.utils.execution_time_tracker import calculate_execution_time
+from metadata.utils.logger import ingestion_logger
 from metadata.utils.sqlalchemy_utils import get_table_comment_wrapper
 
 sa_version = Version(sa.__version__)
@@ -43,6 +44,9 @@ GEOGRAPHY = create_sqlalchemy_type("GEOGRAPHY")
 ischema_names["geography"] = GEOGRAPHY
 ischema_names.update({"binary varying": sqltypes.VARBINARY})
 ischema_names.update(REDSHIFT_ISCHEMA_NAMES)
+
+
+logger = ingestion_logger()
 
 
 # pylint: disable=protected-access
@@ -414,3 +418,24 @@ def get_view_definition(self, connection, view_name, schema=None, **kw):
             f"CREATE VIEW {view.schema}.{view.relname} AS {view_definition}"
         )
     return view_definition
+
+
+def get_redshift_columns(self, connection, table_name, schema=None, **kw):
+    try:
+        info_cache = kw.get("info_cache")
+        all_schema_columns = self._get_schema_column_info(
+            connection,
+            schema,
+            info_cache=info_cache,
+        )
+        key = RelationKey(table_name, schema, connection)
+        if key not in all_schema_columns.keys():
+            key = key.unquoted()
+        return all_schema_columns[key]
+    except KeyError:
+        logger.error(
+            f"Fetching columns for table {schema}.{table_name} failed,"
+            " if this is a view with no schema binding, please make sure user has"
+            f' USAGE privilege on schema "{schema}"'
+        )
+        return []
