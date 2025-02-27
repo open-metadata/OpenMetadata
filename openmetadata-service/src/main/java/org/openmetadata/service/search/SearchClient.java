@@ -59,6 +59,8 @@ public interface SearchClient {
 
   String PROPAGATE_FIELD_SCRIPT = "ctx._source.put('%s', '%s')";
 
+  String PROPAGATE_NESTED_FIELD_SCRIPT = "ctx._source.%s = params.%s";
+
   String REMOVE_PROPAGATED_ENTITY_REFERENCE_FIELD_SCRIPT =
       "if ((ctx._source.%s != null) && (ctx._source.%s.inherited == true)){ ctx._source.remove('%s');}";
   String REMOVE_PROPAGATED_FIELD_SCRIPT = "ctx._source.remove('%s')";
@@ -111,6 +113,19 @@ public interface SearchClient {
       "if (ctx._source.owners != null && !ctx._source.owners.isEmpty()) { "
           + "ctx._source.owners.removeIf(owner -> "
           + "params.deletedOwners.stream().anyMatch(deletedOwner -> deletedOwner.id == owner.id) && owner.inherited == true); "
+          + "}";
+
+  String UPDATE_TAGS_FIELD_SCRIPT =
+      "if (ctx._source.tags != null) { "
+          + "for (int i = 0; i < ctx._source.tags.size(); i++) { "
+          + "if (ctx._source.tags[i].tagFQN == params.tagFQN) { "
+          + "for (String field : params.updates.keySet()) { "
+          + "if (field != null && params.updates[field] != null) { "
+          + "ctx._source.tags[i][field] = params.updates[field]; "
+          + "} "
+          + "} "
+          + "} "
+          + "} "
           + "}";
 
   String NOT_IMPLEMENTED_ERROR_TYPE = "NOT_IMPLEMENTED";
@@ -286,7 +301,8 @@ public interface SearchClient {
       Pair<String, String> fieldAndValue,
       Pair<String, Map<String, Object>> updates);
 
-  void updateByFqnPrefix(String indexName, String oldParentFQN, String newParentFQN);
+  void updateByFqnPrefix(
+      String indexName, String oldParentFQN, String newParentFQN, String prefixFieldCondition);
 
   void updateChildren(
       List<String> indexName,
@@ -315,6 +331,8 @@ public interface SearchClient {
 
   // TODO: Think if it makes sense to have this or maybe a specific deleteByRange
   void deleteByQuery(String index, String query);
+
+  void deleteByRangeAndTerm(String index, String rangeQueryStr, String termKey, String termValue);
 
   default BulkResponse bulk(BulkRequest data, RequestOptions options) throws IOException {
     throw new CustomExceptionMessage(

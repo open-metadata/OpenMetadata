@@ -328,7 +328,6 @@ const TreeAsyncSelectList: FC<Omit<AsyncSelectListProps, 'fetchOptions'>> = ({
       treeData={treeData}
       treeExpandedKeys={isEmpty(searchOptions) ? undefined : expandedRowKeys}
       onChange={handleChange}
-      onDropdownVisibleChange={(open) => !open && onCancel?.()}
       onSearch={onSearch}
       onTreeExpand={setExpandedRowKeys}
       {...props}

@@ -4,11 +4,8 @@ on:
     pull_request_target:
         types: [labeled, opened, synchronize, reopened]
         paths:
-          - "ingestion/**"
-          - "openmetadata-service/**"
-          - "openmetadata-spec/src/main/resources/json/schema/**"
-          - "pom.xml"
-          - "Makefile"
+          - "**/*.py"
+          - "ingestion/Dockerfile.ci"
     
 concurrency: 
   group: trivy-ingestion-scan-${{ github.head_ref || github.run_id }}
@@ -40,6 +37,8 @@ jobs:
 
       - name: Checkout Repository
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
             
       - name: Prepare for Docker Build
         id: prepare
