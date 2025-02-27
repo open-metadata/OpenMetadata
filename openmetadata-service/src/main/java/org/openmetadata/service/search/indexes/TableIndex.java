@@ -6,8 +6,10 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.regex.Pattern;
+import org.openmetadata.schema.entity.data.ChangeSummaryMap;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
@@ -106,6 +108,11 @@ public record TableIndex(Table table) implements ColumnIndex {
     doc.put("lineage", SearchIndex.getLineageData(table.getEntityReference()));
     doc.put("entityRelationship", SearchIndex.populateEntityRelationshipData(table));
     doc.put("databaseSchema", getEntityWithDisplayName(table.getDatabaseSchema()));
+    doc.put(
+        "changeSummary",
+        Optional.ofNullable(table.getChangeSummary())
+            .map(ChangeSummaryMap::getAdditionalProperties)
+            .orElse(null));
     return doc;
   }
 

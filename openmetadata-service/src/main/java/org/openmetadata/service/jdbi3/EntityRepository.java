@@ -597,8 +597,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   /** This use new version with changeSource. */
   @Deprecated
-  protected EntityUpdater getUpdater(
-          T original, T updated, Operation operation) {
+  protected EntityUpdater getUpdater(T original, T updated, Operation operation) {
     return new EntityUpdater(original, updated, operation, null);
   }
 
@@ -2932,7 +2931,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
 
     private void updateChangeSummary() {
-      if (changeDescription == null) {
+      if (changeDescription == null || updated.getChangeSummary() == null) {
         return;
       }
       List<FieldChange> changes = new ArrayList<>();
