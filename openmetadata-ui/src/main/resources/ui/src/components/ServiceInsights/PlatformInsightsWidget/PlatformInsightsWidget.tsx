@@ -26,15 +26,12 @@ import {
   getMultiChartsPreviewByName,
   SystemChartType,
 } from '../../../rest/DataInsightAPI';
+import Fqn from '../../../utils/Fqn';
 import {
   aggregateChartsDataByType,
   getSummaryChartName,
   getTitleByChartType,
 } from '../../../utils/PlatformInsightsWidgetUtils';
-import {
-  escapeESReservedCharacters,
-  getEncodedFqn,
-} from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import TotalDataAssetsWidget from '../TotalDataAssetsWidget/TotalDataAssetsWidget';
 import './platform-insights-widget.less';
@@ -49,11 +46,13 @@ function PlatformInsightsWidget() {
   const { t } = useTranslation();
   const [chartsData, setChartsData] = useState<ChartSeriesData[]>([]);
 
+  const nameWithoutQuotes = Fqn.getNameWithoutQuotes(serviceName);
+
   const fetchChartsData = async () => {
     try {
       const currentTimestampInMs = Date.now();
-      const threeDaysAgoTimestampInMs =
-        currentTimestampInMs - 3 * 24 * 60 * 60 * 1000;
+      const sevenDaysAgoTimestampInMs =
+        currentTimestampInMs - 7 * 24 * 60 * 60 * 1000;
 
       const chartsData = await getMultiChartsPreviewByName(
         [
@@ -66,11 +65,9 @@ function PlatformInsightsWidget() {
           SystemChartType.TotalDataAssetsByTier,
         ],
         {
-          start: threeDaysAgoTimestampInMs,
+          start: sevenDaysAgoTimestampInMs,
           end: currentTimestampInMs,
-          filter: `{"query":{"bool":{"must":[{"bool":{"must":[{"term":{"service.name.keyword":"${getEncodedFqn(
-            escapeESReservedCharacters(serviceName)
-          )}"}}]}}]}}}`,
+          filter: `{"query":{"bool":{"must":[{"term":{"service.name.keyword":"${nameWithoutQuotes}"}}]}}}`,
         }
       );
 
@@ -95,7 +92,7 @@ function PlatformInsightsWidget() {
 
         const percentageChange =
           ((lastDayValue - firstDayValue) /
-            (firstDayValue === 0 ? 1 : firstDayValue)) *
+            (firstDayValue === 0 ? lastDayValue : firstDayValue)) *
           100;
 
         const isIncreased = lastDayValue >= firstDayValue;

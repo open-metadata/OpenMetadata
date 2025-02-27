@@ -24,11 +24,8 @@ import { SearchIndex } from '../../../enums/search.enum';
 import { useFqn } from '../../../hooks/useFqn';
 import { searchQuery } from '../../../rest/searchAPI';
 import { getEntityNameLabel } from '../../../utils/EntityUtils';
+import Fqn from '../../../utils/Fqn';
 import { getAssetsByServiceType } from '../../../utils/PlatformInsightsWidgetUtils';
-import {
-  escapeESReservedCharacters,
-  getEncodedFqn,
-} from '../../../utils/StringsUtils';
 import { getEntityIcon } from '../../../utils/TableUtils';
 import './total-data-assets-widget.less';
 
@@ -45,6 +42,8 @@ function TotalDataAssetsWidget() {
       Array<{ name: string; value: number; fill: string; icon: JSX.Element }>
     >();
 
+  const nameWithoutQuotes = Fqn.getNameWithoutQuotes(serviceName);
+
   const getDataAssetsCount = useCallback(async () => {
     try {
       setLoadingCount((count) => count + 1);
@@ -55,9 +54,7 @@ function TotalDataAssetsWidget() {
               must: [
                 {
                   term: {
-                    'service.name.keyword': getEncodedFqn(
-                      escapeESReservedCharacters(serviceName)
-                    ),
+                    'service.name.keyword': nameWithoutQuotes,
                   },
                 },
               ],

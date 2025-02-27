@@ -14,6 +14,7 @@ import { Card, Col, Row, Typography } from 'antd';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useFqn } from '../../../hooks/useFqn';
+import Fqn from '../../../utils/Fqn';
 import DataAssetsCoveragePieChartWidget from '../../DataQuality/ChartWidgets/DataAssetsCoveragePieChartWidget/DataAssetsCoveragePieChartWidget.component';
 import EntityHealthStatusPieChartWidget from '../../DataQuality/ChartWidgets/EntityHealthStatusPieChartWidget/EntityHealthStatusPieChartWidget.component';
 import TestCaseStatusPieChartWidget from '../../DataQuality/ChartWidgets/TestCaseStatusPieChartWidget/TestCaseStatusPieChartWidget.component';
@@ -21,8 +22,12 @@ import TestCaseStatusPieChartWidget from '../../DataQuality/ChartWidgets/TestCas
 function DataQualityWidget() {
   const { t } = useTranslation();
   const { fqn: serviceName } = useFqn();
+  const nameWithoutQuotes = Fqn.getNameWithoutQuotes(serviceName);
 
-  const chartFilter = useMemo(() => ({ serviceName }), [serviceName]);
+  const chartFilter = useMemo(
+    () => ({ serviceName: nameWithoutQuotes }),
+    [nameWithoutQuotes]
+  );
 
   return (
     <Card className="service-insights-widget widget-flex-col">

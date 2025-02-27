@@ -29,11 +29,8 @@ import {
   getMultiChartsPreviewByName,
   SystemChartType,
 } from '../../../rest/DataInsightAPI';
+import Fqn from '../../../utils/Fqn';
 import { getPIIDistributionData } from '../../../utils/PIIDistributionWidgetUtils';
-import {
-  escapeESReservedCharacters,
-  getEncodedFqn,
-} from '../../../utils/StringsUtils';
 import { RoundedCornerBar } from '../../../utils/TierDistributionWidgetUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 
@@ -44,20 +41,20 @@ function PIIDistributionWidget() {
     DataInsightCustomChartResult['results']
   >([]);
 
+  const nameWithoutQuotes = Fqn.getNameWithoutQuotes(serviceName);
+
   const fetchChartsData = async () => {
     try {
       const currentTimestampInMs = Date.now();
-      const threeDaysAgoTimestampInMs =
-        currentTimestampInMs - 3 * 24 * 60 * 60 * 1000;
+      const sevenDaysAgoTimestampInMs =
+        currentTimestampInMs - 7 * 24 * 60 * 60 * 1000;
 
       const chartsData = await getMultiChartsPreviewByName(
         [SystemChartType.TotalDataAssetsByTier], // TODO: change to PII distribution
         {
-          start: threeDaysAgoTimestampInMs,
+          start: sevenDaysAgoTimestampInMs,
           end: currentTimestampInMs,
-          filter: `{"query":{"bool":{"must":[{"bool":{"must":[{"term":{"service.name.keyword":"${getEncodedFqn(
-            escapeESReservedCharacters(serviceName)
-          )}"}}]}}]}}}`,
+          filter: `{"query":{"bool":{"must":[{"term":{"service.name.keyword":"${nameWithoutQuotes}"}}]}}}`,
         }
       );
 

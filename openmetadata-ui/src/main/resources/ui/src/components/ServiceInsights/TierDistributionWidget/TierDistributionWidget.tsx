@@ -29,10 +29,7 @@ import {
   getMultiChartsPreviewByName,
   SystemChartType,
 } from '../../../rest/DataInsightAPI';
-import {
-  escapeESReservedCharacters,
-  getEncodedFqn,
-} from '../../../utils/StringsUtils';
+import Fqn from '../../../utils/Fqn';
 import {
   getTierDistributionData,
   RoundedCornerBar,
@@ -46,20 +43,20 @@ function TierDistributionWidget() {
     DataInsightCustomChartResult['results']
   >([]);
 
+  const nameWithoutQuotes = Fqn.getNameWithoutQuotes(serviceName);
+
   const fetchChartsData = async () => {
     try {
       const currentTimestampInMs = Date.now();
-      const threeDaysAgoTimestampInMs =
-        currentTimestampInMs - 3 * 24 * 60 * 60 * 1000;
+      const sevenDaysAgoTimestampInMs =
+        currentTimestampInMs - 7 * 24 * 60 * 60 * 1000;
 
       const chartsData = await getMultiChartsPreviewByName(
         [SystemChartType.TotalDataAssetsByTier],
         {
-          start: threeDaysAgoTimestampInMs,
+          start: sevenDaysAgoTimestampInMs,
           end: currentTimestampInMs,
-          filter: `{"query":{"bool":{"must":[{"bool":{"must":[{"term":{"service.name.keyword":"${getEncodedFqn(
-            escapeESReservedCharacters(serviceName)
-          )}"}}]}}]}}}`,
+          filter: `{"query":{"bool":{"must":[{"term":{"service.name.keyword":"${nameWithoutQuotes}"}}]}}}`,
         }
       );
 
