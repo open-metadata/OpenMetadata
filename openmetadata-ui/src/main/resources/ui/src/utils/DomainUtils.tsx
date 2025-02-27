@@ -458,6 +458,10 @@ export const getDomainWidgetsFromKey = (widgetConfig: WidgetConfig) => {
   }
 
   return (
-    <CommonWidgets entityType={EntityType.DOMAIN} widgetConfig={widgetConfig} />
+    <CommonWidgets
+      entityType={EntityType.DOMAIN}
+      showTaskHandler={false}
+      widgetConfig={widgetConfig}
+    />
   );
 };

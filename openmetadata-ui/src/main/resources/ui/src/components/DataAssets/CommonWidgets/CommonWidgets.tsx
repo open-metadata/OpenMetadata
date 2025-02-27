@@ -53,11 +53,13 @@ interface GenericEntity
 interface CommonWidgetsProps {
   widgetConfig: WidgetConfig;
   entityType: EntityType;
+  showTaskHandler?: boolean;
 }
 
 export const CommonWidgets = ({
   widgetConfig,
   entityType,
+  showTaskHandler = true,
 }: CommonWidgetsProps) => {
   const { data, type, onUpdate, permissions } =
     useGenericContext<GenericEntity>();
@@ -140,32 +142,38 @@ export const CommonWidgets = ({
   const tagsWidget = useMemo(() => {
     return (
       <TagsContainerV2
-        showTaskHandler
         displayType={DisplayType.READ_MORE}
         entityFqn={fullyQualifiedName}
         entityType={type}
         permission={editTagsPermission}
         selectedTags={tags}
+        showTaskHandler={showTaskHandler}
         tagType={TagSource.Classification}
         onSelectionChange={handleTagSelection}
       />
     );
-  }, [editTagsPermission, tags, type, fullyQualifiedName]);
+  }, [editTagsPermission, tags, type, fullyQualifiedName, showTaskHandler]);
 
   const glossaryWidget = useMemo(() => {
     return (
       <TagsContainerV2
-        showTaskHandler
         displayType={DisplayType.READ_MORE}
         entityFqn={fullyQualifiedName}
         entityType={type}
         permission={editGlossaryTermsPermission}
         selectedTags={tags}
+        showTaskHandler={showTaskHandler}
         tagType={TagSource.Glossary}
         onSelectionChange={handleTagSelection}
       />
     );
-  }, [editGlossaryTermsPermission, tags, type, fullyQualifiedName]);
+  }, [
+    editGlossaryTermsPermission,
+    tags,
+    type,
+    fullyQualifiedName,
+    showTaskHandler,
+  ]);
 
   const descriptionWidget = useMemo(() => {
     return (
