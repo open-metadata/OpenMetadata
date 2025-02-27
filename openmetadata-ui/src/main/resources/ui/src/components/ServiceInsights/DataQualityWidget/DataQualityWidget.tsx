@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { Card, Col, Row, Typography } from 'antd';
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useFqn } from '../../../hooks/useFqn';
 import DataAssetsCoveragePieChartWidget from '../../DataQuality/ChartWidgets/DataAssetsCoveragePieChartWidget/DataAssetsCoveragePieChartWidget.component';
@@ -21,6 +21,8 @@ import TestCaseStatusPieChartWidget from '../../DataQuality/ChartWidgets/TestCas
 function DataQualityWidget() {
   const { t } = useTranslation();
   const { fqn: serviceName } = useFqn();
+
+  const chartFilter = useMemo(() => ({ serviceName }), [serviceName]);
 
   return (
     <Card className="service-insights-widget widget-flex-col">
@@ -33,19 +35,19 @@ function DataQualityWidget() {
       <Row className="m-t-sm" gutter={[24, 24]}>
         <Col span={8}>
           <DataAssetsCoveragePieChartWidget
-            chartFilter={{ serviceName }}
+            chartFilter={chartFilter}
             className="widget-info-card"
           />
         </Col>
         <Col span={8}>
           <EntityHealthStatusPieChartWidget
-            chartFilter={{ serviceName }}
+            chartFilter={chartFilter}
             className="widget-info-card"
           />
         </Col>
         <Col span={8}>
           <TestCaseStatusPieChartWidget
-            chartFilter={{ serviceName }}
+            chartFilter={chartFilter}
             className="widget-info-card"
           />
         </Col>
