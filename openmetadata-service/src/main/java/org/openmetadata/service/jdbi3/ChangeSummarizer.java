@@ -41,24 +41,22 @@ public class ChangeSummarizer<T extends EntityInterface> {
       long changedAt) {
     return changes.stream()
         .filter(change -> isFieldTracked(change.getName()))
+        .filter(
+            change ->
+                Optional.ofNullable(currentSummary)
+                        .map(summary -> summary.get(change.getName()))
+                        .map(c -> c.getChangedAt())
+                        .orElse(0L)
+                        .compareTo(changedAt)
+                    < 0)
         .collect(
             java.util.stream.Collectors.toMap(
                 FieldChange::getName,
-                change -> {
-                  long currentChangedAt =
-                      Optional.ofNullable(currentSummary)
-                          .map(summary -> summary.get(change.getName()))
-                          .map(c -> c.getChangedAt())
-                          .orElse(0L);
-                  if (currentChangedAt < changedAt) {
-                    return new ChangeSummary()
+                change ->
+                    new ChangeSummary()
                         .withChangeSource(changeSource)
                         .withChangedAt(changedAt)
-                        .withChangedBy(changedBy);
-                  } else {
-                    return currentSummary.get(change.getName());
-                  }
-                }));
+                        .withChangedBy(changedBy)));
   }
 
   private boolean isFieldTracked(String fieldName) {

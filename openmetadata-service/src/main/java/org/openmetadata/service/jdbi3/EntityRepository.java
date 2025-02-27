@@ -142,6 +142,7 @@ import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.AssetCertification;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
+import org.openmetadata.schema.type.ChangeSummaryMap;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
@@ -2931,24 +2932,45 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
 
     private void updateChangeSummary() {
-      if (changeDescription == null || updated.getChangeSummary() == null) {
+      if (changeDescription == null) {
         return;
       }
+      // build new change summary
       List<FieldChange> changes = new ArrayList<>();
       changes.addAll(CommonUtil.listOrEmpty(changeDescription.getFieldsUpdated()));
       changes.addAll(CommonUtil.listOrEmpty(changeDescription.getFieldsAdded()));
-      changeSummarizer
-          .summarizeChanges(
-              updated.getChangeSummary().getAdditionalProperties(),
+
+      ChangeSummaryMap current =
+          Optional.ofNullable(original.getChangeDescription())
+              .map(ChangeDescription::getChangeSummary)
+              .orElse(new ChangeSummaryMap());
+
+      Map<String, ChangeSummary> addedSummaries =
+          changeSummarizer.summarizeChanges(
+              current.getAdditionalProperties(),
               changes,
               changeSource,
               updated.getUpdatedBy(),
-              updated.getUpdatedAt())
-          .forEach((key, value) -> updated.addChangeSummary(key, value));
+              updated.getUpdatedAt());
 
-      changeSummarizer
-          .processDeleted(CommonUtil.listOrEmpty(changeDescription.getFieldsDeleted()))
-          .forEach(updated::removeChangeSummary);
+      if (!addedSummaries.isEmpty()) {
+        changeDescription.setChangeSummary(current);
+        changeDescription.getChangeSummary().getAdditionalProperties().putAll(addedSummaries);
+      }
+
+      Set<String> keysToDelete =
+          changeSummarizer
+              .processDeleted(listOrEmpty(changeDescription.getFieldsDeleted()))
+              .stream()
+              .filter(k -> current.getAdditionalProperties().containsKey(k))
+              .collect(Collectors.toSet());
+
+      if (!keysToDelete.isEmpty()) {
+        changeDescription.setChangeSummary(
+            Optional.ofNullable(changeDescription.getChangeSummary()).orElse(current));
+        keysToDelete.forEach(
+            k -> changeDescription.getChangeSummary().getAdditionalProperties().remove(k));
+      }
     }
 
     @Transaction
@@ -3690,8 +3712,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
      * if the latest change source is not present in the entity (effectively ignoring the change source in this case).
      */
     private boolean diffChangeSource() {
-      return Optional.ofNullable(
-              latestChangeSource(original.getChangeSummary().getAdditionalProperties()))
+      return Optional.ofNullable(original.getChangeDescription())
+          .map(ChangeDescription::getChangeSummary)
+          .map(ChangeSummaryMap::getAdditionalProperties)
+          .map(this::latestChangeSource)
           .map(latestChangeSource -> !Objects.equals(latestChangeSource, changeSource))
           .orElse(true);
     }

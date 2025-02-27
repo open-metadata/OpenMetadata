@@ -21,10 +21,8 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 import org.openmetadata.common.utils.CommonUtil;
-import org.openmetadata.schema.entity.data.ChangeSummaryMap;
 import org.openmetadata.schema.entity.type.Style;
 import org.openmetadata.schema.type.*;
-import org.openmetadata.schema.type.change.ChangeSummary;
 import org.openmetadata.schema.utils.EntityInterfaceUtil;
 
 /** Interface to be implemented by all entities to provide a way to access all the common fields. */
@@ -209,17 +207,5 @@ public interface EntityInterface {
             CANONICAL_ENTITY_NAME_MAP.get(this.getClass().getSimpleName().toLowerCase(Locale.ROOT)))
         .withDeleted(getDeleted())
         .withHref(getHref());
-  }
-
-  default ChangeSummaryMap getChangeSummary() {
-    return null;
-  }
-
-  default void addChangeSummary(String fieldName, ChangeSummary changeSummary) {
-    getChangeSummary().setAdditionalProperty(fieldName, changeSummary);
-  }
-
-  default void removeChangeSummary(String fieldName) {
-    getChangeSummary().getAdditionalProperties().remove(fieldName);
   }
 }

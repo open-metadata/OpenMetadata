@@ -9,8 +9,9 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.regex.Pattern;
-import org.openmetadata.schema.entity.data.ChangeSummaryMap;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.type.ChangeDescription;
+import org.openmetadata.schema.type.ChangeSummaryMap;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.ParseTags;
@@ -110,7 +111,8 @@ public record TableIndex(Table table) implements ColumnIndex {
     doc.put("databaseSchema", getEntityWithDisplayName(table.getDatabaseSchema()));
     doc.put(
         "changeSummary",
-        Optional.ofNullable(table.getChangeSummary())
+        Optional.ofNullable(table.getChangeDescription())
+            .map(ChangeDescription::getChangeSummary)
             .map(ChangeSummaryMap::getAdditionalProperties)
             .orElse(null));
     return doc;

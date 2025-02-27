@@ -19,7 +19,6 @@ export interface Table {
      * Change that lead to this version of the entity.
      */
     changeDescription?: ChangeDescription;
-    changeSummary?:     { [key: string]: ChangeSummary };
     /**
      * Columns in this table.
      */
@@ -298,6 +297,7 @@ export interface Style {
  * Description of the change.
  */
 export interface ChangeDescription {
+    changeSummary?: { [key: string]: ChangeSummary };
     /**
      * Names of fields added during the version changes.
      */
@@ -314,23 +314,6 @@ export interface ChangeDescription {
      * When a change did not result in change, this could be same as the current version.
      */
     previousVersion?: number;
-}
-
-export interface FieldChange {
-    /**
-     * Name of the entity field that changed.
-     */
-    name?: string;
-    /**
-     * New value of the field. Note that this is a JSON string and use the corresponding field
-     * type to deserialize it.
-     */
-    newValue?: any;
-    /**
-     * Previous value of the field. Note that this is a JSON string and use the corresponding
-     * field type to deserialize it.
-     */
-    oldValue?: any;
 }
 
 export interface ChangeSummary {
@@ -354,6 +337,23 @@ export enum ChangeSource {
     Manual = "Manual",
     Propagated = "Propagated",
     Suggested = "Suggested",
+}
+
+export interface FieldChange {
+    /**
+     * Name of the entity field that changed.
+     */
+    name?: string;
+    /**
+     * New value of the field. Note that this is a JSON string and use the corresponding field
+     * type to deserialize it.
+     */
+    newValue?: any;
+    /**
+     * Previous value of the field. Note that this is a JSON string and use the corresponding
+     * field type to deserialize it.
+     */
+    oldValue?: any;
 }
 
 /**

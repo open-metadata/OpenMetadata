@@ -39,8 +39,7 @@ public class ChangeSummarizerTest {
     result =
         changeSummarizer.summarizeChanges(
             result, changes, ChangeSource.AUTOMATED, "older-change", updatedAt - 100);
-    assertEquals(updatedBy, result.get(fieldName).getChangedBy());
-    assertEquals(ChangeSource.MANUAL, result.get(fieldName).getChangeSource());
+    assert result.size() == 0;
   }
 
   @Test
