@@ -433,9 +433,10 @@ def get_redshift_columns(self, connection, table_name, schema=None, **kw):
             key = key.unquoted()
         return all_schema_columns[key]
     except KeyError:
+        schema_name = schema or "public"
         logger.error(
-            f"Fetching columns for table {schema}.{table_name} failed,"
+            f"Fetching columns for table {schema_name}.{table_name} failed,"
             " if this is a view with no schema binding, please make sure user has"
-            f' USAGE privilege on schema "{schema}"'
+            f' USAGE privilege on schema "{schema_name}"'
         )
         return []
