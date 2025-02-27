@@ -1140,7 +1140,7 @@
     },
     "certification": {
       "$ref": "../../type/assetCertification.json"
-    } ,
+    },
     "sourceHash": {
       "description": "Source hash of the entity",
       "type": "string",
