@@ -423,7 +423,8 @@ public class TableResource extends EntityResource<Table, TableRepository> {
                       }))
           JsonPatch patch,
       @Parameter(
-              description = "Context of the change",
+              description =
+                  "Optional source of the change. If the change is made by a user use 'Manual'.",
               schema = @Schema(implementation = ChangeSource.class))
           @QueryParam("changeSource")
           ChangeSource changeSource) {
