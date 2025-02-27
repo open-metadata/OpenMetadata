@@ -2899,22 +2899,21 @@ public abstract class EntityRepository<T extends EntityInterface> {
       if (changeDescription == null) {
         return;
       }
-      if (changeDescription.getFieldsUpdated() != null) {
-        changeSummarizer
-            .summarizeChanges(
-                updated.getChangeSummary(),
-                changeDescription.getFieldsUpdated(),
-                changeSource,
-                updated.getUpdatedBy(),
-                updated.getUpdatedAt())
-            .forEach((key, value) -> updated.addChangeSummary(key, value));
-      }
+      List<FieldChange> changes = new ArrayList<>();
+      changes.addAll(CommonUtil.listOrEmpty(changeDescription.getFieldsUpdated()));
+      changes.addAll(CommonUtil.listOrEmpty(changeDescription.getFieldsAdded()));
+      changeSummarizer
+          .summarizeChanges(
+              updated.getChangeSummary().getAdditionalProperties(),
+              changes,
+              changeSource,
+              updated.getUpdatedBy(),
+              updated.getUpdatedAt())
+          .forEach((key, value) -> updated.addChangeSummary(key, value));
 
-      if (changeDescription.getFieldsDeleted() != null) {
-        changeSummarizer
-            .processDeleted(changeDescription.getFieldsDeleted())
-            .forEach(updated::removeChangeSummary);
-      }
+      changeSummarizer
+          .processDeleted(CommonUtil.listOrEmpty(changeDescription.getFieldsDeleted()))
+          .forEach(updated::removeChangeSummary);
     }
 
     @Transaction
@@ -3647,7 +3646,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
      * if the latest change source is not present in the entity (effectively ignoring the change source in this case).
      */
     private boolean diffChangeSource() {
-      return Optional.ofNullable(latestChangeSource(original.getChangeSummary()))
+      return Optional.ofNullable(
+              latestChangeSource(original.getChangeSummary().getAdditionalProperties()))
           .map(latestChangeSource -> !Objects.equals(latestChangeSource, changeSource))
           .orElse(true);
     }

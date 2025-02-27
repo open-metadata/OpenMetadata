@@ -2,10 +2,10 @@ package org.openmetadata.service.resources.databases;
 
 import static org.openmetadata.service.util.EntityUtil.getEntityReference;
 
-import java.util.HashMap;
 import java.util.UUID;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.tests.CreateCustomMetric;
+import org.openmetadata.schema.entity.data.ChangeSummaryMap;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.tests.CustomMetric;
 import org.openmetadata.service.Entity;
@@ -30,7 +30,7 @@ public class TableMapper implements EntityMapper<Table, CreateTable> {
         .withDatabaseSchema(getEntityReference(Entity.DATABASE_SCHEMA, create.getDatabaseSchema()))
         .withRetentionPeriod(create.getRetentionPeriod())
         .withSourceHash(create.getSourceHash())
-        .withChangeSummary(new HashMap<>());
+        .withChangeSummary(new ChangeSummaryMap());
   }
 
   public CustomMetric createCustomMetricToEntity(CreateCustomMetric create, String user) {

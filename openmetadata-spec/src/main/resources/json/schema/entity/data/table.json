@@ -1155,7 +1155,7 @@
       "maxLength": 32
     },
     "changeSummary": {
-      "$ref": "../../type/changeSummary.json#definitions/changeSummaryMap"
+      "$ref": "../../type/changeSummaryMap.json"
     }
   },
   "required": [

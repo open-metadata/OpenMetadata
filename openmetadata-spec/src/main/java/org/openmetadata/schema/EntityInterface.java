@@ -21,6 +21,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 import org.openmetadata.common.utils.CommonUtil;
+import org.openmetadata.schema.entity.data.ChangeSummaryMap;
 import org.openmetadata.schema.entity.type.Style;
 import org.openmetadata.schema.type.*;
 import org.openmetadata.schema.type.change.ChangeSummary;
@@ -206,25 +207,15 @@ public interface EntityInterface {
         .withHref(getHref());
   }
 
-  default Map<String, ChangeSummary> getChangeSummary() {
-    return new HashMap<>();
-  }
-
-  default void setChangeSummary(Map<String, ChangeSummary> changeSummary) {
-    /* no-op implementation to be overridden */
+  default ChangeSummaryMap getChangeSummary() {
+    return null;
   }
 
   default void addChangeSummary(String fieldName, ChangeSummary changeSummary) {
-    if (getChangeSummary() == null) {
-      setChangeSummary(new HashMap<>());
-    }
-    getChangeSummary().put(fieldName, changeSummary);
+    getChangeSummary().setAdditionalProperty(fieldName, changeSummary);
   }
 
   default void removeChangeSummary(String fieldName) {
-    if (getChangeSummary() == null) {
-      setChangeSummary(new HashMap<>());
-    }
-    getChangeSummary().remove(fieldName);
+    getChangeSummary().getAdditionalProperties().remove(fieldName);
   }
 }

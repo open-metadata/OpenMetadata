@@ -19,7 +19,7 @@ export interface Table {
      * Change that lead to this version of the entity.
      */
     changeDescription?: ChangeDescription;
-    changeSummary?:     any[] | boolean | number | number | { [key: string]: ChangeSummary } | null | string;
+    changeSummary?:     { [key: string]: ChangeSummary };
     /**
      * Columns in this table.
      */

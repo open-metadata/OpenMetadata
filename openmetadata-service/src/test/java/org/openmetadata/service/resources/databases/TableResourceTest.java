@@ -2007,7 +2007,8 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
             ADMIN_AUTH_HEADERS,
             ChangeSource.MANUAL);
     assertEquals(
-        ChangeSource.MANUAL, updated.getChangeSummary().get("description").getChangeSource());
+        ChangeSource.MANUAL,
+        updated.getChangeSummary().getAdditionalProperties().get("description").getChangeSource());
 
     Table automatedUpdate = JsonUtils.deepCopy(updated, Table.class);
     automatedUpdate.setDescription("automated description");
@@ -2018,10 +2019,14 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
             automatedUpdate,
             ADMIN_AUTH_HEADERS,
             ChangeSource.AUTOMATED);
-    assertEquals(1, automatedUpdate.getChangeSummary().size());
+    assertEquals(1, automatedUpdate.getChangeSummary().getAdditionalProperties().size());
     assertEquals(
         ChangeSource.AUTOMATED,
-        automatedUpdate.getChangeSummary().get("description").getChangeSource());
+        automatedUpdate
+            .getChangeSummary()
+            .getAdditionalProperties()
+            .get("description")
+            .getChangeSource());
 
     Table columnUpdate = JsonUtils.deepCopy(automatedUpdate, Table.class);
     columnUpdate.getColumns().get(0).setDescription("suggested column description");
@@ -2033,11 +2038,12 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
             ADMIN_AUTH_HEADERS,
             ChangeSource.SUGGESTED);
 
-    assertEquals(2, columnUpdate.getChangeSummary().size());
+    assertEquals(2, columnUpdate.getChangeSummary().getAdditionalProperties().size());
     assertEquals(
         ChangeSource.SUGGESTED,
         columnUpdate
             .getChangeSummary()
+            .getAdditionalProperties()
             .get(
                 FullyQualifiedName.build(
                     "columns", automatedUpdate.getColumns().get(0).getName(), "description"))
@@ -2050,10 +2056,11 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
         patchEntity(
             table.getId(), JsonUtils.pojoToJson(columnUpdate), columnDelete, ADMIN_AUTH_HEADERS);
 
-    assertEquals(1, columnDelete.getChangeSummary().size());
+    assertEquals(1, columnDelete.getChangeSummary().getAdditionalProperties().size());
     assertNull(
         columnDelete
             .getChangeSummary()
+            .getAdditionalProperties()
             .get(
                 FullyQualifiedName.build(
                     "columns", automatedUpdate.getColumns().get(0).getName(), "description")));

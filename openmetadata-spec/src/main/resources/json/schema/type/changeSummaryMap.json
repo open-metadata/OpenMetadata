@@ -33,14 +33,10 @@
           "$ref": "./basic.json#/definitions/timestamp"
         }
       }
-    },
-    "changeSummaryMap": {
-      "description": "Map of change summaries",
-      "existingJavaType": "java.util.Map<String, org.openmetadata.schema.type.change.ChangeSummary>",
-      "additionalProperties": {
-        "$ref": "#/definitions/changeSummary"
-      }
     }
   },
-  "$ref": "#/definitions/changeSummary"
+  "type": "object",
+  "additionalProperties": {
+    "$ref": "#/definitions/changeSummary"
+  }
 }
