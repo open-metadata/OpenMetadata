@@ -14,6 +14,8 @@ import { Card, Col, Row, Skeleton, Tooltip, Typography } from 'antd';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { ServiceTypes } from 'Models';
+import { useParams } from 'react-router-dom';
 import { Cell, Pie, PieChart, ResponsiveContainer } from 'recharts';
 import { ReactComponent as PieChartIcon } from '../../../assets/svg/pie-chart.svg';
 import { WHITE_SMOKE } from '../../../constants/Color.constants';
@@ -22,6 +24,7 @@ import { SearchIndex } from '../../../enums/search.enum';
 import { useFqn } from '../../../hooks/useFqn';
 import { searchQuery } from '../../../rest/searchAPI';
 import { getEntityNameLabel } from '../../../utils/EntityUtils';
+import { getAssetsByServiceType } from '../../../utils/PlatformInsightsWidgetUtils';
 import {
   escapeESReservedCharacters,
   getEncodedFqn,
@@ -31,6 +34,10 @@ import './total-data-assets-widget.less';
 
 function TotalDataAssetsWidget() {
   const { t } = useTranslation();
+  const { serviceCategory } = useParams<{
+    serviceCategory: ServiceTypes;
+    tab: string;
+  }>();
   const { fqn: serviceName } = useFqn();
   const [loadingCount, setLoadingCount] = useState<number>(0);
   const [entityCounts, setEntityCounts] =
@@ -60,7 +67,11 @@ function TotalDataAssetsWidget() {
         searchIndex: SearchIndex.ALL,
       });
 
-      const buckets = response.aggregations['entityType'].buckets;
+      const assets = getAssetsByServiceType(serviceCategory);
+
+      const buckets = response.aggregations['entityType'].buckets.filter(
+        (bucket) => assets.includes(bucket.key)
+      );
 
       const entityCountsArray = buckets.map((bucket, index) => ({
         name: getEntityNameLabel(bucket.key),

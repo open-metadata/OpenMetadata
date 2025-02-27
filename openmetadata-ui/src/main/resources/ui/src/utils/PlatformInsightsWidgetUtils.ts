@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { t } from 'i18next';
-import { sortBy } from 'lodash';
+import { isEqual, sortBy } from 'lodash';
 import { ServiceTypes } from 'Models';
 import { ChartData } from '../components/ServiceInsights/PlatformInsightsWidget/PlatformInsightsWidget.interface';
 import { EntityType } from '../enums/entity.enum';
@@ -20,21 +20,21 @@ import {
   SystemChartType,
 } from '../rest/DataInsightAPI';
 
-const getAssetsByServiceType = (serviceType: ServiceTypes): string[] => {
+export const getAssetsByServiceType = (serviceType: ServiceTypes): string[] => {
   switch (serviceType) {
     case 'databaseServices':
       return [
         EntityType.DATABASE,
         EntityType.DATABASE_SCHEMA,
-        EntityType.TABLE,
         EntityType.STORED_PROCEDURE,
+        EntityType.TABLE,
       ];
     case 'messagingServices':
-      return [EntityType.MESSAGING_SERVICE];
+      return [EntityType.TOPIC];
     case 'dashboardServices':
       return [
-        EntityType.DASHBOARD,
         EntityType.CHART,
+        EntityType.DASHBOARD,
         EntityType.DASHBOARD_DATA_MODEL,
       ];
     case 'pipelineServices':
@@ -52,14 +52,39 @@ const getAssetsByServiceType = (serviceType: ServiceTypes): string[] => {
   }
 };
 
+export const getTierChartAggregateData = (
+  chartsData: DataInsightCustomChartResult
+): ChartData[] => {
+  const data = chartsData.results.filter((chart) => chart.group !== 'NoTier');
+
+  const sortedData = sortBy(data, 'day');
+
+  const uniqueDays = [...new Set(sortedData.map((chart) => chart.day))];
+
+  const combinedAssetsData = uniqueDays.map((day) => {
+    const dayData = sortedData.filter((chart) => chart.day === day);
+    const value = dayData.reduce((acc, chart) => acc + chart.count, 0);
+
+    return {
+      day,
+      value,
+    };
+  });
+
+  return combinedAssetsData;
+};
+
 export const aggregateChartsDataByType = (
   chartsData: DataInsightCustomChartResult,
-  serviceType: ServiceTypes
+  serviceType: ServiceTypes,
+  chartType: SystemChartType
 ): ChartData[] => {
   const assets = getAssetsByServiceType(serviceType);
 
   const data = chartsData.results.filter((chart) =>
-    assets.includes(chart.group)
+    isEqual(chartType, SystemChartType.TotalDataAssetsByTier)
+      ? chart.group !== 'NoTier'
+      : assets.includes(chart.group)
   );
 
   const sortedData = sortBy(data, 'day');
@@ -81,10 +106,6 @@ export const aggregateChartsDataByType = (
 
 export const getTitleByChartType = (chartType: SystemChartType) => {
   switch (chartType) {
-    case SystemChartType.TotalDataAssets:
-      return t('label.total-entity', {
-        entity: t('label.data-asset-plural'),
-      });
     case SystemChartType.PercentageOfDataAssetWithDescription:
       return t('label.entity-coverage', {
         entity: t('label.description'),
@@ -115,9 +136,7 @@ export const getSummaryChartName = (chartType: SystemChartType) => {
     case SystemChartType.TotalDataAssetsByTier:
       return SystemChartType.TotalDataAssetsWithTierSummaryCard;
     case SystemChartType.PercentageOfServiceWithDescription: // TODO: Replace this with PII chart
-      return SystemChartType.TotalDataAssetsSummaryCard;
-    case SystemChartType.TotalDataAssets:
     default:
-      return SystemChartType.TotalDataAssetsSummaryCard;
+      return SystemChartType.TotalDataAssetsWithTierSummaryCard;
   }
 };

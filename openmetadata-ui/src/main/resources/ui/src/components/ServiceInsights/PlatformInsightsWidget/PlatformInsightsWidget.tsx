@@ -57,12 +57,10 @@ function PlatformInsightsWidget() {
 
       const chartsData = await getMultiChartsPreviewByName(
         [
-          SystemChartType.TotalDataAssetsSummaryCard,
           SystemChartType.PercentageOfServiceWithDescription, // TODO: Replace this with PII chart
           SystemChartType.NumberOfDataAssetWithDescription,
           SystemChartType.NumberOfDataAssetWithOwner,
           SystemChartType.TotalDataAssetsWithTierSummaryCard,
-          SystemChartType.TotalDataAssets,
           SystemChartType.PercentageOfDataAssetWithDescription,
           SystemChartType.PercentageOfDataAssetWithOwner,
           SystemChartType.TotalDataAssetsByTier,
@@ -77,7 +75,6 @@ function PlatformInsightsWidget() {
       );
 
       const results = [
-        SystemChartType.TotalDataAssets,
         SystemChartType.PercentageOfDataAssetWithDescription,
         SystemChartType.PercentageOfServiceWithDescription, // TODO: Replace this with PII chart
         SystemChartType.TotalDataAssetsByTier,
@@ -87,7 +84,11 @@ function PlatformInsightsWidget() {
         const summaryChartName = getSummaryChartName(chartType);
         const summaryChartData = chartsData[summaryChartName];
 
-        const data = aggregateChartsDataByType(chartData, serviceCategory);
+        const data = aggregateChartsDataByType(
+          chartData,
+          serviceCategory,
+          chartType
+        );
 
         const firstDayValue = data.length > 1 ? data[0]?.value : 0;
         const lastDayValue = data[data.length - 1]?.value;
@@ -97,7 +98,7 @@ function PlatformInsightsWidget() {
             (firstDayValue === 0 ? 1 : firstDayValue)) *
           100;
 
-        const isIncreased = lastDayValue > firstDayValue;
+        const isIncreased = lastDayValue >= firstDayValue;
 
         return {
           chartType,
@@ -120,11 +121,8 @@ function PlatformInsightsWidget() {
     fetchChartsData();
   }, []);
 
-  const { totalDataAssets, otherChartsData } = useMemo(
+  const { otherChartsData } = useMemo(
     () => ({
-      totalDataAssets: chartsData.find(
-        (chart) => chart.chartType === SystemChartType.TotalDataAssets
-      ),
       otherChartsData: chartsData.filter(
         (chart) => chart.chartType !== SystemChartType.TotalDataAssets
       ),
@@ -204,11 +202,11 @@ function PlatformInsightsWidget() {
                       <Area
                         dataKey="value"
                         fill={
-                          chart.percentageChange > 0
+                          chart.isIncreased
                             ? `url(#color${GREEN_1})`
                             : `url(#color${RED_1})`
                         }
-                        stroke={chart.percentageChange > 0 ? GREEN_1 : RED_1}
+                        stroke={chart.isIncreased ? GREEN_1 : RED_1}
                         strokeWidth={2}
                         type="monotone"
                       />
