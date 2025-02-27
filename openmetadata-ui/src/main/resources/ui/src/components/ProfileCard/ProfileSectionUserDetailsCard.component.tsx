@@ -228,7 +228,7 @@ const ProfileSectionUserDetailsCard = ({
         <ProfilePicture
           avatarType="outlined"
           data-testid="replied-user"
-          name="admin"
+          name={userData.displayName ?? ''}
           width="80"
         />
       </div>

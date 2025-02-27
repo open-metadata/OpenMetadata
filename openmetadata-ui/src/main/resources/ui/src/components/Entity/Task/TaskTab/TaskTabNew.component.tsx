@@ -1055,7 +1055,7 @@ export const TaskTabNew = ({
                     <ProfilePicture
                       avatarType="outlined"
                       key={taskThread.id}
-                      name="admin"
+                      name={taskThread.createdBy ?? ''}
                       size={32}
                     />
                   </div>

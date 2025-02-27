@@ -213,7 +213,7 @@ const ActivityFeedCardNew = ({
             <ProfilePicture
               avatarType="outlined"
               key={feed.id}
-              name={feed.updatedBy!}
+              name={feed.createdBy ?? ''}
               size={showThread ? 40 : 32}
             />
             <Space className="d-flex flex-col align-start gap-2" size={0}>
@@ -233,9 +233,9 @@ const ActivityFeedCardNew = ({
                       'activity-feed-user-name': !isPost,
                       'reply-card-user-name': isPost,
                     })}
-                    userName={feed.updatedBy as string}>
-                    <Link to={getUserPath(feed.updatedBy as string)}>
-                      {feed.updatedBy}
+                    userName={feed.createdBy ?? ''}>
+                    <Link to={getUserPath(feed.createdBy ?? '')}>
+                      {feed.createdBy}
                     </Link>
                   </UserPopOverCard>
                 </Typography.Text>
@@ -304,7 +304,7 @@ const ActivityFeedCardNew = ({
                 <ProfilePicture
                   avatarType="outlined"
                   key={feed.id}
-                  name="admin"
+                  name={feed.createdBy ?? ''}
                   size={32}
                 />
               </div>
