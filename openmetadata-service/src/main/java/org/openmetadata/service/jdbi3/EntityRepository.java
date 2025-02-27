@@ -595,6 +595,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return entity;
   }
 
+  /** This use new version with changeSource. */
+  @Deprecated
+  protected EntityUpdater getUpdater(
+          T original, T updated, Operation operation) {
+    return new EntityUpdater(original, updated, operation, null);
+  }
+
   protected EntityUpdater getUpdater(
       T original, T updated, Operation operation, ChangeSource changeSource) {
     return new EntityUpdater(original, updated, operation, changeSource);
