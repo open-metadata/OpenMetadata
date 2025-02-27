@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-export const CONTAINER_DATA = {
+export const MOCK_CONTAINER_DATA = {
   id: '5d11e32a-8673-4a84-a9be-ccd9651ba9fc',
   name: 'transactions',
   fullyQualifiedName: 's3_storage_sample.transactions',
@@ -91,7 +91,7 @@ export const CONTAINER_DATA = {
   deleted: false,
 };
 
-export const CONTAINER_DATA_1 = {
-  ...CONTAINER_DATA,
+export const MOCK_CONTAINER_DATA_1 = {
+  ...MOCK_CONTAINER_DATA,
   dataModel: {},
 };
