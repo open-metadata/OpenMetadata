@@ -1728,13 +1728,14 @@ public class ElasticSearchClient implements SearchClient {
         AggregationBuilders.terms("databaseSchema.name.keyword")
             .field("databaseSchema.name.keyword")
             .size(MAX_AGGREGATE_SIZE));
+    // used for explore tree results
     searchSourceBuilder.aggregation(
-        AggregationBuilders.terms("database.displayName.keyword")
-            .field("database.displayName.keyword")
+        AggregationBuilders.terms("database.displayName")
+            .field("database.displayName")
             .size(MAX_AGGREGATE_SIZE));
     searchSourceBuilder.aggregation(
-        AggregationBuilders.terms("databaseSchema.displayName.keyword")
-            .field("databaseSchema.displayName.keyword")
+        AggregationBuilders.terms("databaseSchema.displayName")
+            .field("databaseSchema.displayName")
             .size(MAX_AGGREGATE_SIZE));
     return addAggregation(searchSourceBuilder);
   }
