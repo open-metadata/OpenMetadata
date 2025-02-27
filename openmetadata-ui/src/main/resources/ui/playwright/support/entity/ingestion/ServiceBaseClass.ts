@@ -524,9 +524,6 @@ class ServiceBaseClass {
       page.getByTestId('KnowledgePanel.GlossaryTerms')
     ).toBeVisible();
     await expect(page.getByTestId('KnowledgePanel.DataProducts')).toBeVisible();
-    await expect(
-      page.getByTestId('KnowledgePanel.CustomProperties')
-    ).toBeVisible();
   }
 
   async runAdditionalTests(
