@@ -537,6 +537,7 @@ public class LineageRepository {
         addField(recordList, getStringOrNull(edge, "description"));
         addField(recordList, getStringOrNull(edge, "pipeline", "id"));
         addField(recordList, getStringOrNull(edge, "pipeline", "fullyQualifiedName"));
+        addField(recordList, getStringOrNull(edge, "pipeline", "displayName"));
         addField(recordList, processColumnLineage(edge));
         addField(recordList, getStringOrNull(edge, "sqlQuery"));
         addField(recordList, getStringOrNull(edge, "source"));
