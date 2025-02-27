@@ -22,6 +22,7 @@ import { getUserPath } from '../../../constants/constants';
 import { ASSET_CARD_STYLES } from '../../../constants/Feeds.constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { CardStyle, Post, Thread } from '../../../generated/entity/feed/thread';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import {
   formatDateTime,
   getRelativeTime,
@@ -73,6 +74,7 @@ const ActivityFeedCardNew = ({
     return { entityFQN, entityType };
   }, [feed.about]);
   const { t } = useTranslation();
+  const { currentUser } = useApplicationStore();
   const { selectedThread, postFeed } = useActivityFeedProvider();
   const [showFeedEditor, setShowFeedEditor] = useState<boolean>(false);
   const [isEditPost, setIsEditPost] = useState<boolean>(false);
@@ -304,7 +306,7 @@ const ActivityFeedCardNew = ({
                 <ProfilePicture
                   avatarType="outlined"
                   key={feed.id}
-                  name={feed.createdBy ?? ''}
+                  name={currentUser?.displayName ?? ''}
                   size={32}
                 />
               </div>
