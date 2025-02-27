@@ -30,7 +30,11 @@ import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.inte
 import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import Table from '../../common/Table/Table';
 
-const ContainerChildren: FC = () => {
+interface ContainerChildrenProps {
+  isReadOnly?: boolean;
+}
+
+const ContainerChildren: FC<ContainerChildrenProps> = ({ isReadOnly }) => {
   const { t } = useTranslation();
   const {
     paging,
@@ -117,8 +121,10 @@ const ContainerChildren: FC = () => {
   };
 
   useEffect(() => {
-    fetchContainerChildren();
-  }, [pageSize]);
+    if (!isReadOnly) {
+      fetchContainerChildren();
+    }
+  }, [pageSize, isReadOnly]);
 
   return (
     <Row className="m-b-md" gutter={[0, 16]}>

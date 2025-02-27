@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { useEffect } from 'react';
-
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import { EntityType } from '../enums/entity.enum';
 import { Page, PageType } from '../generated/system/ui/page';

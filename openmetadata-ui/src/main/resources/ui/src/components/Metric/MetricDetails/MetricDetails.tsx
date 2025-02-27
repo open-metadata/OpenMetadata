@@ -205,6 +205,7 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
     metricDetails,
     fetchMetricDetails,
     deleted,
+    getEntityFeedCount,
     handleFeedCount,
     editCustomAttributePermission,
     editLineagePermission,

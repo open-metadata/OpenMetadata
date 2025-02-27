@@ -46,7 +46,7 @@ export interface MlModelDetailPageTabProps {
   mlModelDetail: Mlmodel;
   getMlHyperParameters: JSX.Element;
   getMlModelStore: JSX.Element;
-  fetchEntityFeedCount: () => void;
+  fetchEntityFeedCount: () => Promise<void>;
   labelMap: Record<EntityTabs, string>;
 }
 

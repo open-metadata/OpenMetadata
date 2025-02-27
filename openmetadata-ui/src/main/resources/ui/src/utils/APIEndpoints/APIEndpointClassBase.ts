@@ -13,7 +13,7 @@
 
 import { Layout } from 'react-grid-layout';
 import { TabProps } from '../../components/common/TabsLabel/TabsLabel.interface';
-import { API_ENDPOINT_DUMMY_DATA } from '../../constants/APICollection.constnats';
+import { API_ENDPOINT_DUMMY_DATA } from '../../constants/APICollection.constants';
 import {
   CUSTOM_PROPERTIES_WIDGET,
   DATA_PRODUCTS_WIDGET,

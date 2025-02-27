@@ -10,9 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { APIServiceType } from '../generated/entity/data/apiCollection';
-
-import { APICollection } from '../generated/entity/data/apiCollection';
+import {
+  APICollection,
+  APIServiceType,
+} from '../generated/entity/data/apiCollection';
 import {
   APIEndpoint,
   APIRequestMethod,

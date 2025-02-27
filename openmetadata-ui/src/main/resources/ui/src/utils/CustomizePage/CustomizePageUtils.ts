@@ -149,7 +149,48 @@ export const getTabLabelFromId = (tab: EntityTabs) => {
       return i18n.t('label.data-product-plural');
     case EntityTabs.DOCUMENTATION:
       return i18n.t('label.documentation');
-
+    case EntityTabs.MODEL:
+      return i18n.t('label.model');
+    case EntityTabs.FEATURES:
+      return i18n.t('label.feature-plural');
+    case EntityTabs.TASKS:
+      return i18n.t('label.task-plural');
+    case EntityTabs.CONFIG:
+      return i18n.t('label.config');
+    case EntityTabs.EXECUTIONS:
+      return i18n.t('label.execution-plural');
+    case EntityTabs.TABLE:
+      return i18n.t('label.table');
+    case EntityTabs.TEST_CASES:
+      return i18n.t('label.test-case-plural');
+    case EntityTabs.PIPELINE:
+      return i18n.t('label.pipeline');
+    case EntityTabs.DATA_Model:
+      return i18n.t('label.data-model');
+    case EntityTabs.INGESTIONS:
+      return i18n.t('label.ingestion-plural');
+    case EntityTabs.CONNECTION:
+      return i18n.t('label.connection');
+    case EntityTabs.SQL:
+      return i18n.t('label.sql');
+    case EntityTabs.FIELDS:
+      return i18n.t('label.field-plural');
+    case EntityTabs.SEARCH_INDEX_SETTINGS:
+      return i18n.t('label.search-index-settings');
+    case EntityTabs.STORED_PROCEDURE:
+      return i18n.t('label.stored-procedure');
+    case EntityTabs.CODE:
+      return i18n.t('label.code');
+    case EntityTabs.API_COLLECTION:
+      return i18n.t('label.api-collection');
+    case EntityTabs.API_ENDPOINT:
+      return i18n.t('label.api-endpoint');
+    case EntityTabs.SCHEMA_DEFINITION:
+      return i18n.t('label.schema-definition');
+    case EntityTabs.EXPRESSION:
+      return i18n.t('label.expression');
+    case EntityTabs.DASHBOARD:
+      return i18n.t('label.dashboard');
     default:
       return '';
   }
