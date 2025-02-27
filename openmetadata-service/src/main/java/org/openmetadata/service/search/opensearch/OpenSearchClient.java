@@ -1441,6 +1441,7 @@ public class OpenSearchClient implements SearchClient {
     hb.preTags(PRE_TAG);
     hb.postTags(POST_TAG);
     hb.maxAnalyzerOffset(MAX_ANALYZED_OFFSET);
+    hb.requireFieldMatch(false);
     return hb;
   }
 
@@ -1706,6 +1707,7 @@ public class OpenSearchClient implements SearchClient {
         AggregationBuilders.terms("databaseSchema.name.keyword")
             .field("databaseSchema.name.keyword")
             .size(MAX_AGGREGATE_SIZE));
+    // used for explore tree results
     searchSourceBuilder.aggregation(
         AggregationBuilders.terms("database.displayName")
             .field("database.displayName")

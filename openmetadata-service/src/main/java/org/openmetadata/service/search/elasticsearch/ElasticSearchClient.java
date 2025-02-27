@@ -1603,6 +1603,7 @@ public class ElasticSearchClient implements SearchClient {
     hb.preTags(PRE_TAG);
     hb.postTags(POST_TAG);
     hb.maxAnalyzedOffset(MAX_ANALYZED_OFFSET);
+    hb.requireFieldMatch(false);
     return hb;
   }
 
@@ -1699,6 +1700,7 @@ public class ElasticSearchClient implements SearchClient {
     QueryStringQueryBuilder queryStringBuilder =
         buildSearchQueryBuilder(query, SearchIndex.getAllFields());
     FunctionScoreQueryBuilder queryBuilder = boostScore(queryStringBuilder);
+    queryBuilder.boostMode(CombineFunction.SUM);
     SearchSourceBuilder searchSourceBuilder = searchBuilder(queryBuilder, null, from, size);
     searchSourceBuilder.aggregation(
         AggregationBuilders.terms("database.name.keyword")
@@ -1716,6 +1718,7 @@ public class ElasticSearchClient implements SearchClient {
     QueryStringQueryBuilder queryStringBuilder =
         buildSearchQueryBuilder(query, SearchIndex.getAllFields());
     FunctionScoreQueryBuilder queryBuilder = boostScore(queryStringBuilder);
+    queryBuilder.boostMode(CombineFunction.SUM);
     SearchSourceBuilder searchSourceBuilder = searchBuilder(queryBuilder, null, from, size);
     searchSourceBuilder.aggregation(
         AggregationBuilders.terms("database.name.keyword")
@@ -1725,6 +1728,7 @@ public class ElasticSearchClient implements SearchClient {
         AggregationBuilders.terms("databaseSchema.name.keyword")
             .field("databaseSchema.name.keyword")
             .size(MAX_AGGREGATE_SIZE));
+    // used for explore tree results
     searchSourceBuilder.aggregation(
         AggregationBuilders.terms("database.displayName")
             .field("database.displayName")
