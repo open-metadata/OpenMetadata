@@ -19,7 +19,6 @@ import { VotingDataProps } from '../../Entity/Voting/voting.interface';
 export type GlossaryDetailsProps = {
   isVersionView?: boolean;
   permissions: OperationPermission;
-
   termsLoading: boolean;
   updateGlossary: (value: Glossary) => Promise<void>;
   updateVote?: (data: VotingDataProps) => Promise<void>;
@@ -27,5 +26,4 @@ export type GlossaryDetailsProps = {
   refreshGlossaryTerms: () => void;
   onAddGlossaryTerm: (glossaryTerm: GlossaryTerm | undefined) => void;
   onEditGlossaryTerm: (glossaryTerm: GlossaryTerm) => void;
-  onThreadLinkSelect: (value: string) => void;
 };
