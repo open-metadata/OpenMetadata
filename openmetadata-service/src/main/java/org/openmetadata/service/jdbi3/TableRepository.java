@@ -101,6 +101,7 @@ import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
 import org.openmetadata.service.resources.databases.DatabaseUtil;
 import org.openmetadata.service.resources.databases.TableResource;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
+import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.security.mask.PIIMasker;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -133,6 +134,8 @@ public class TableRepository extends EntityRepository<Table> {
 
   public static final String COLUMN_FIELD = "columns";
   public static final String CUSTOM_METRICS = "customMetrics";
+
+  private static final SearchClient searchClient = Entity.getSearchRepository().getSearchClient();
 
   public TableRepository() {
     super(
@@ -1256,6 +1259,7 @@ public class TableRepository extends EntityRepository<Table> {
               EntityReference toTable = Entity.getEntityReferenceByName(TABLE, toParent, ALL);
               deleteRelationship(
                   table.getId(), TABLE, toTable.getId(), TABLE, Relationship.RELATED_TO);
+              searchRepository.deleteRelationshipFromSearch(table.getId(), toTable.getId());
             } catch (EntityNotFoundException e) {
               throw EntityNotFoundException.byName(
                   String.format(

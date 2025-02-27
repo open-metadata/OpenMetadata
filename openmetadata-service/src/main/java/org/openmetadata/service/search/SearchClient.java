@@ -85,6 +85,9 @@ public interface SearchClient {
   String REMOVE_LINEAGE_SCRIPT =
       "for (int i = 0; i < ctx._source.lineage.length; i++) { if (ctx._source.lineage[i].doc_id == '%s') { ctx._source.lineage.remove(i) }}";
 
+  String REMOVE_ENTITY_RELATIONSHIP =
+      "for (int i = 0; i < ctx._source.entityRelationship.length; i++) { if (ctx._source.entityRelationship[i].doc_id == '%s') { ctx._source.entityRelationship.remove(i) }}";
+
   String ADD_UPDATE_LINEAGE =
       "boolean docIdExists = false; for (int i = 0; i < ctx._source.lineage.size(); i++) { if (ctx._source.lineage[i].doc_id.equalsIgnoreCase(params.lineageData.doc_id)) { ctx._source.lineage[i] = params.lineageData; docIdExists = true; break;}}if (!docIdExists) {ctx._source.lineage.add(params.lineageData);}";
 
