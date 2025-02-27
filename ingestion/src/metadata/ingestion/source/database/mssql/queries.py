@@ -60,7 +60,7 @@ MSSQL_GET_DATABASE_COMMENTS = textwrap.dedent(
     """
     SELECT 
     DB_NAME() AS DATABASE_NAME,
-    ep.value AS COMMENT 
+    CAST(ep.value AS NVARCHAR(MAX)) AS COMMENT
 FROM sys.extended_properties ep
 WHERE ep.class = 0  
 AND ep.name = 'MS_Description'
