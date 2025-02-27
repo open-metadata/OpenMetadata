@@ -812,6 +812,7 @@
     "new-test-suite": "新しいテストスイート",
     "next": "次へ",
     "no": "いいえ",
+    "no-access": "「アクセス不可」",
     "no-comma-cancel": "No, cancel",
     "no-data-asset-found-for": "No data assets found for",
     "no-data-found": "データが見つかりません",
