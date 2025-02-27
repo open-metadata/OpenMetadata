@@ -16,12 +16,15 @@ package org.openmetadata.service.events.scheduled;
 import static org.openmetadata.service.apps.bundles.changeEvent.AbstractEventConsumer.ALERT_INFO_KEY;
 import static org.openmetadata.service.apps.bundles.changeEvent.AbstractEventConsumer.ALERT_OFFSET_KEY;
 import static org.openmetadata.service.events.subscription.AlertUtil.getStartingOffset;
+import static org.quartz.impl.StdSchedulerFactory.PROP_SCHED_INSTANCE_NAME;
+import static org.quartz.impl.StdSchedulerFactory.PROP_THREAD_POOL_PREFIX;
 
 import java.lang.reflect.InvocationTargetException;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Properties;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.SneakyThrows;
@@ -71,7 +74,24 @@ public class EventSubscriptionScheduler {
   public static final String ALERT_TRIGGER_GROUP = "OMAlertJobGroup";
   private static EventSubscriptionScheduler instance;
   private static volatile boolean initialized = false;
-  private final Scheduler alertsScheduler = new StdSchedulerFactory().getScheduler();
+  private static final Scheduler alertsScheduler;
+  private static final String SCHEDULER_NAME = "OpenMetadataEventSubscriptionScheduler";
+  private static final int SCHEDULER_THREAD_COUNT = 5;
+
+  static {
+    Properties properties = new Properties();
+    properties.setProperty(PROP_SCHED_INSTANCE_NAME, SCHEDULER_NAME);
+    properties.setProperty(
+        PROP_THREAD_POOL_PREFIX + ".threadCount", String.valueOf(SCHEDULER_THREAD_COUNT));
+
+    try {
+      StdSchedulerFactory factory = new StdSchedulerFactory();
+      factory.initialize(properties);
+      alertsScheduler = factory.getScheduler();
+    } catch (SchedulerException e) {
+      throw new ExceptionInInitializerError("Failed to initialize scheduler: " + e.getMessage());
+    }
+  }
 
   private record CustomJobFactory(DIContainer di) implements JobFactory {
 
