@@ -521,6 +521,7 @@ export const ActivityFeedTabNew = ({
                   handlePanelResize={handlePanelResize}
                   hidePopover={false}
                   isForFeedTab={isForFeedTab}
+                  isFullWidth={isFullWidth}
                   onAfterClose={handleAfterTaskClose}
                   onUpdateEntityDetails={onUpdateEntityDetails}
                 />

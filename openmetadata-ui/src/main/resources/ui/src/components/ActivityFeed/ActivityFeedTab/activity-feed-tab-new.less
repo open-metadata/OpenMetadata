@@ -111,8 +111,6 @@
     flex-wrap: wrap;
     width: inherit;
     border: none;
-    max-width: 500px;
-
     .ant-card-body {
       width: inherit;
       padding: 20px;
@@ -121,7 +119,9 @@
         width: inherit;
       }
     }
-
+    .max-width-500 {
+      max-width: 500px;
+    }
     .is-active {
       background: #e6f1fe;
     }
@@ -233,6 +233,10 @@
   line-height: 20px;
   letter-spacing: 0.03em;
   color: #181d27;
+}
+.activity-feed-user-name.ant-typography a {
+  color: #181d27;
+  font-weight: 600;
 }
 .reply-card-user-name {
   font-size: 14px;
