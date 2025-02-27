@@ -19,6 +19,7 @@ from metadata.ingestion.source.dashboard.lightdash.models import (
     LightdashChart,
     LightdashDashboard,
 )
+from metadata.utils.helpers import clean_uri
 from metadata.utils.logger import utils_logger
 
 logger = utils_logger()
@@ -34,7 +35,7 @@ class LightdashApiClient:
     def __init__(self, config):
         self.config = config
         client_config = ClientConfig(
-            base_url=str(self.config.hostPort),
+            base_url=clean_uri(self.config.hostPort),
             api_version="",
             access_token=self.config.apiKey.get_secret_value(),
             auth_header="Authorization",

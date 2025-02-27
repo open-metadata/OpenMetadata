@@ -59,7 +59,7 @@ class QlikCloudClient:
         self.socket_connection = None
 
         client_config: ClientConfig = ClientConfig(
-            base_url=str(self.config.hostPort),
+            base_url=clean_uri(self.config.hostPort),
             api_version=API_VERSION,
             auth_header=AUTHORIZATION_HEADER,
             auth_token=lambda: (self.config.token.get_secret_value(), 0),

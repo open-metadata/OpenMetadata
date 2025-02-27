@@ -18,6 +18,7 @@ from metadata.generated.schema.entity.services.connections.metadata.atlasConnect
     AtlasConnection,
 )
 from metadata.ingestion.ometa.client import REST, APIError, ClientConfig
+from metadata.utils.helpers import clean_uri
 
 
 class AtlasClient:
@@ -31,7 +32,7 @@ class AtlasClient:
             config.username, config.password.get_secret_value()
         )
         client_config: ClientConfig = ClientConfig(
-            base_url=str(config.hostPort),
+            base_url=clean_uri(config.hostPort),
             auth_header="Authorization",
             api_version="api",
             auth_token=self.get_auth_token,

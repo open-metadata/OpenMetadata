@@ -25,6 +25,7 @@ from metadata.ingestion.source.dashboard.superset.models import (
     SupersetDashboardCount,
     SupersetDatasource,
 )
+from metadata.utils.helpers import clean_uri
 from metadata.utils.logger import ometa_logger
 from metadata.utils.ssl_registry import get_verify_ssl_fn
 
@@ -41,7 +42,7 @@ class SupersetAuthenticationProvider(AuthenticationProvider):
         self.service_connection = self.config
         get_verify_ssl = get_verify_ssl_fn(config.connection.verifySSL)
         client_config = ClientConfig(
-            base_url=str(config.hostPort),
+            base_url=clean_uri(config.hostPort),
             api_version="api/v1",
             auth_token=lambda: ("no_token", 0),
             auth_header="Authorization",
@@ -90,7 +91,7 @@ class SupersetAPIClient:
         self._auth_provider = SupersetAuthenticationProvider.create(config)
         get_verify_ssl = get_verify_ssl_fn(config.connection.verifySSL)
         client_config = ClientConfig(
-            base_url=str(config.hostPort),
+            base_url=clean_uri(config.hostPort),
             api_version="api/v1",
             auth_token=self._auth_provider.get_access_token,
             auth_header="Authorization",

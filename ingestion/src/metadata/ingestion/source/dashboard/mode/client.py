@@ -18,6 +18,7 @@ from typing import Optional
 from requests._internal_utils import to_native_string
 
 from metadata.ingestion.ometa.client import REST, ClientConfig
+from metadata.utils.helpers import clean_uri
 from metadata.utils.logger import utils_logger
 
 logger = utils_logger()
@@ -50,7 +51,7 @@ class ModeApiClient:
     def __init__(self, config):
         self.config = config
         client_config = ClientConfig(
-            base_url=str(config.hostPort),
+            base_url=clean_uri(config.hostPort),
             api_version="api",
             auth_header="Authorization",
             auth_token_mode="Basic",
