@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { FilterOutlined } from '@ant-design/icons';
 import { Col, Radio, RadioChangeEvent, Row, Tooltip, Typography } from 'antd';
 import Table, { ColumnsType } from 'antd/lib/table';
 import classNames from 'classnames';
@@ -26,7 +25,6 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { TABLE_SCROLL_VALUE } from '../../../constants/Table.constants';
-import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../../../enums/entity.enum';
 import {
   APIEndpoint,
@@ -35,12 +33,12 @@ import {
   Field,
   TagSource,
 } from '../../../generated/entity/data/apiEndpoint';
-import { ThreadType } from '../../../generated/entity/feed/thread';
 import { APISchema } from '../../../generated/type/apiSchema';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getVersionedSchema } from '../../../utils/SchemaVersionUtils';
+import { columnFilterIcon } from '../../../utils/TableColumn.util';
 import {
   getAllTags,
   searchTagInData,
@@ -53,17 +51,13 @@ import {
 } from '../../../utils/TableUtils';
 import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import ToggleExpandButton from '../../common/ToggleExpandButton/ToggleExpandButton';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 import { ColumnFilter } from '../../Database/ColumnFilter/ColumnFilter.component';
 import TableDescription from '../../Database/TableDescription/TableDescription.component';
 import TableTags from '../../Database/TableTags/TableTags.component';
 import { ModalWithMarkdownEditor } from '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
-import { APIEndpointDetailsProps } from '../APIEndpointDetails/APIEndpointDetails.interface';
 
 interface APIEndpointSchemaProps {
-  apiEndpointDetails: APIEndpoint;
-  permissions: OperationPermission;
-  onThreadLinkSelect: (link: string, threadType?: ThreadType) => void;
-  onApiEndpointUpdate?: APIEndpointDetailsProps['onApiEndpointUpdate'];
   isVersionView?: boolean;
 }
 
@@ -73,10 +67,6 @@ export enum SchemaViewType {
 }
 
 const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
-  apiEndpointDetails,
-  permissions,
-  onThreadLinkSelect,
-  onApiEndpointUpdate,
   isVersionView = false,
 }) => {
   const { theme } = useApplicationStore();
@@ -86,6 +76,11 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
   const [viewType, setViewType] = useState<SchemaViewType>(
     SchemaViewType.REQUEST_SCHEMA
   );
+  const {
+    data: apiEndpointDetails,
+    permissions,
+    onUpdate: onApiEndpointUpdate,
+  } = useGenericContext<APIEndpoint>();
 
   const {
     requestSchemaAllRowKeys,
@@ -313,7 +308,6 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
             index={index}
             isReadOnly={Boolean(apiEndpointDetails.deleted) || isVersionView}
             onClick={() => setEditFieldDescription(record)}
-            onThreadLinkSelect={onThreadLinkSelect}
           />
         ),
       },
@@ -323,14 +317,7 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
         key: 'tags',
         accessor: 'tags',
         width: 300,
-        filterIcon: (filtered) => (
-          <FilterOutlined
-            data-testid="tag-filter"
-            style={{
-              color: filtered ? theme.primaryColor : undefined,
-            }}
-          />
-        ),
+        filterIcon: columnFilterIcon,
         render: (tags: TagLabel[], record: Field, index: number) => (
           <TableTags<Field>
             entityFqn={apiEndpointDetails.fullyQualifiedName ?? ''}
@@ -342,7 +329,6 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
             record={record}
             tags={tags}
             type={TagSource.Classification}
-            onThreadLinkSelect={onThreadLinkSelect}
           />
         ),
         filters: tagFilter.Classification,
@@ -355,14 +341,7 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
         key: 'glossary',
         accessor: 'tags',
         width: 300,
-        filterIcon: (filtered) => (
-          <FilterOutlined
-            data-testid="glossary-filter"
-            style={{
-              color: filtered ? theme.primaryColor : undefined,
-            }}
-          />
-        ),
+        filterIcon: columnFilterIcon,
         render: (tags: TagLabel[], record: Field, index: number) => (
           <TableTags<Field>
             entityFqn={apiEndpointDetails.fullyQualifiedName ?? ''}
@@ -376,7 +355,6 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
             record={record}
             tags={tags}
             type={TagSource.Glossary}
-            onThreadLinkSelect={onThreadLinkSelect}
           />
         ),
         filters: tagFilter.Glossary,
