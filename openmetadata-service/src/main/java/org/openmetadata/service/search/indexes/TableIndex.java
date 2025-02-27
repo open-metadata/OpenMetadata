@@ -109,14 +109,10 @@ public record TableIndex(Table table) implements ColumnIndex {
 
   public static Map<String, Float> getFields() {
     Map<String, Float> fields = SearchIndex.getDefaultFields();
-    fields.put("name", 10.0f);
-    fields.put("displayName", 10.0f);
-
     fields.put("database.name", 8.0f);
     fields.put("database.displayName", 8.0f);
     fields.put("databaseSchema.name", 8.0f);
     fields.put("databaseSchema.displayName", 8.0f);
-
     fields.put("columns.name", 5.0f);
     fields.put("columns.displayName", 5.0f);
     fields.put("columns.description", 2.0f);

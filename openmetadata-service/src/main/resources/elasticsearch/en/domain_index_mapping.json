@@ -1,8 +1,8 @@
 {
   "settings": {
-    "index": {
-      "max_ngram_diff": 17
-    },
+   "index": {
+     "max_ngram_diff": 17
+   },
     "analysis": {
       "tokenizer": {
         "n_gram_tokenizer": {
@@ -16,9 +16,7 @@
         "lowercase_normalizer": {
           "type": "custom",
           "char_filter": [],
-          "filter": [
-            "lowercase"
-          ]
+          "filter": ["lowercase"]
         }
       },
       "analyzer": {

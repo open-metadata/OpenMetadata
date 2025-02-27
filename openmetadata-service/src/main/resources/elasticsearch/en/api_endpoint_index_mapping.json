@@ -1,8 +1,8 @@
 {
   "settings": {
-    "index": {
-      "max_ngram_diff": 17
-    },
+   "index": {
+     "max_ngram_diff": 17
+   },
     "analysis": {
       "tokenizer": {
         "n_gram_tokenizer": {
@@ -270,7 +270,7 @@
               },
               "description": {
                 "type": "text",
-                "index_options": "docs",
+                "similarity": "boolean",
                 "analyzer": "om_analyzer"
               },
               "fullyQualifiedName": {
@@ -371,7 +371,7 @@
               },
               "description": {
                 "type": "text",
-                "index_options": "docs",
+                "similarity": "boolean",
                 "analyzer": "om_analyzer"
               },
               "fullyQualifiedName": {

@@ -1,8 +1,8 @@
 {
-  "settings": {
-    "index": {
-      "max_ngram_diff": 17
-    },
+ "settings": {
+   "index": {
+     "max_ngram_diff": 17
+   },
     "analysis": {
       "tokenizer": {
         "n_gram_tokenizer": {
@@ -49,7 +49,13 @@
   "mappings": {
     "properties": {
       "id": {
-        "type": "text"
+        "type": "text",
+        "fields": {
+          "keyword": {
+            "type": "keyword",
+            "ignore_above": 256
+          }
+        }
       },
       "name": {
         "type": "text",
@@ -69,9 +75,6 @@
       "fullyQualifiedName": {
         "type": "keyword",
         "normalizer": "lowercase_normalizer"
-      },
-      "fqnParts": {
-        "type": "keyword"
       },
       "displayName": {
         "type": "text",

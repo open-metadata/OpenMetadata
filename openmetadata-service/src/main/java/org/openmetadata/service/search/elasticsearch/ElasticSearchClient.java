@@ -1605,6 +1605,7 @@ public class ElasticSearchClient implements SearchClient {
     hb.preTags(PRE_TAG);
     hb.postTags(POST_TAG);
     hb.maxAnalyzedOffset(MAX_ANALYZED_OFFSET);
+    hb.requireFieldMatch(false);
     return hb;
   }
 
@@ -1728,12 +1729,12 @@ public class ElasticSearchClient implements SearchClient {
             .field("databaseSchema.name.keyword")
             .size(MAX_AGGREGATE_SIZE));
     searchSourceBuilder.aggregation(
-        AggregationBuilders.terms("database.displayName")
-            .field("database.displayName")
+        AggregationBuilders.terms("database.displayName.keyword")
+            .field("database.displayName.keyword")
             .size(MAX_AGGREGATE_SIZE));
     searchSourceBuilder.aggregation(
-        AggregationBuilders.terms("databaseSchema.displayName")
-            .field("databaseSchema.displayName")
+        AggregationBuilders.terms("databaseSchema.displayName.keyword")
+            .field("databaseSchema.displayName.keyword")
             .size(MAX_AGGREGATE_SIZE));
     return addAggregation(searchSourceBuilder);
   }
