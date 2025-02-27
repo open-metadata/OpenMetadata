@@ -119,7 +119,7 @@ export const DomainLabelNew = ({
         ) : null;
 
         return (
-          <div className="d-flex items-center gap-1" key={domain.id}>
+          <div className="d-flex gap-1" key={domain.id}>
             {renderDomainLink(
               domain,
               domainDisplayName,
@@ -161,7 +161,7 @@ export const DomainLabelNew = ({
   const label = useMemo(() => {
     return (
       <div
-        className="d-flex flex-col items-start gap-1 flex-wrap flex-center"
+        className="d-flex flex-col items-start gap-1 flex-wrap"
         data-testid="header-domain-container">
         {domainLink}
       </div>
