@@ -30,7 +30,7 @@ export interface CreateIngestionPipeline {
     /**
      * The ingestion agent responsible for executing the ingestion pipeline.
      */
-    ingestionAgent?: IngestionAgentElement;
+    ingestionAgent?: EntityReference;
     /**
      * Set the logging level for the workflow.
      */
@@ -42,12 +42,12 @@ export interface CreateIngestionPipeline {
     /**
      * Owner of this Ingestion Pipeline.
      */
-    owners?:      IngestionAgentElement[];
+    owners?:      EntityReference[];
     pipelineType: PipelineType;
     /**
      * Link to the service for which ingestion pipeline is ingesting the metadata.
      */
-    service:      IngestionAgentElement;
+    service:      EntityReference;
     sourceConfig: SourceConfig;
 }
 
@@ -131,8 +131,10 @@ export interface AirflowConfig {
  * Link to the service for which ingestion pipeline is ingesting the metadata.
  *
  * Domain to apply
+ *
+ * Service to be modified
  */
-export interface IngestionAgentElement {
+export interface EntityReference {
     /**
      * If true the entity referred to has been soft-deleted.
      */
@@ -679,7 +681,7 @@ export interface Pipeline {
     /**
      * Service to be modified
      */
-    service?: ConfigService;
+    service?: EntityReference;
 }
 
 /**
@@ -930,7 +932,7 @@ export interface Action {
     /**
      * Domain to apply
      */
-    domain?: IngestionAgentElement;
+    domain?: EntityReference;
     /**
      * Description to apply
      */
@@ -948,7 +950,7 @@ export interface Action {
     /**
      * Owners to apply
      */
-    owners?: IngestionAgentElement[];
+    owners?: EntityReference[];
     /**
      * Propagate the metadata to columns via column-level lineage.
      */
@@ -1552,7 +1554,7 @@ export interface GCPCredentialsConfiguration {
     /**
      * Google Cloud Platform account type.
      */
-    type?: string;
+    type?: TypeEnum;
     /**
      * Path of the file containing the GCP credentials info
      */
@@ -1570,7 +1572,7 @@ export interface GCPCredentialsConfiguration {
     /**
      * Google Cloud Platform account type.
      */
-    externalType?: string;
+    externalType?: ExternalTypeEnum;
     /**
      * Google Security Token Service subject token type based on the OAuth 2.0 token exchange
      * spec.
@@ -1581,6 +1583,16 @@ export interface GCPCredentialsConfiguration {
      */
     tokenURL?: string;
     [property: string]: any;
+}
+
+export enum ExternalTypeEnum {
+    ExternalAccount = "external_account",
+}
+
+export enum TypeEnum {
+    ExternalAccount = "external_account",
+    GcpCredentialPath = "gcp_credential_path",
+    ServiceAccount = "service_account",
 }
 
 /**
@@ -1684,11 +1696,11 @@ export interface ReverseIngestionConfig {
     /**
      * Added owners to be applied
      */
-    addedOwners?: IngestionAgentElement[];
+    addedOwners?: EntityReference[];
     /**
      * Removed owners from the entity
      */
-    removedOwners?: IngestionAgentElement[];
+    removedOwners?: EntityReference[];
     /**
      * Added tags to be applied
      */
@@ -1722,57 +1734,6 @@ export enum ProfileSampleType {
 export enum SamplingMethodType {
     Bernoulli = "BERNOULLI",
     System = "SYSTEM",
-}
-
-/**
- * Service to be modified
- *
- * This schema defines the EntityReference type used for referencing an entity.
- * EntityReference is used for capturing relationships from one entity to another. For
- * example, a table has an attribute called database of type EntityReference that captures
- * the relationship of a table `belongs to a` database.
- */
-export interface ConfigService {
-    /**
-     * If true the entity referred to has been soft-deleted.
-     */
-    deleted?: boolean;
-    /**
-     * Optional description of entity.
-     */
-    description?: string;
-    /**
-     * Display Name that identifies this entity.
-     */
-    displayName?: string;
-    /**
-     * Fully qualified name of the entity instance. For entities such as tables, databases
-     * fullyQualifiedName is returned in this field. For entities that don't have name hierarchy
-     * such as `user` and `team` this will be same as the `name` field.
-     */
-    fullyQualifiedName?: string;
-    /**
-     * Link to the entity resource.
-     */
-    href?: string;
-    /**
-     * Unique identifier that identifies an entity instance.
-     */
-    id: string;
-    /**
-     * If true the relationship indicated by this entity reference is inherited from the parent
-     * entity.
-     */
-    inherited?: boolean;
-    /**
-     * Name of the entity instance.
-     */
-    name?: string;
-    /**
-     * Entity type/class name - Examples: `database`, `table`, `metrics`, `databaseService`,
-     * `dashboardService`...
-     */
-    type: string;
 }
 
 /**
