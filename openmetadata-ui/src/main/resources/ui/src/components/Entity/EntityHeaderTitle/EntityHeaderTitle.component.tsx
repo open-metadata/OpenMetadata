@@ -12,6 +12,7 @@
  */
 import { ExclamationCircleFilled } from '@ant-design/icons';
 import { Badge, Col, Divider, Row, Typography } from 'antd';
+import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -39,6 +40,8 @@ const EntityHeaderTitle = ({
   color,
   showName = true,
   certification,
+  nameClassName = '',
+  displayNameClassName = '',
 }: EntityHeaderTitleProps) => {
   const { t } = useTranslation();
   const location = useCustomLocation();
@@ -57,9 +60,10 @@ const EntityHeaderTitle = ({
       wrap={false}>
       {icon && <Col className="flex-center">{icon}</Col>}
       <Col
-        className={
-          deleted || badge ? 'w-max-full-140' : 'entity-header-content'
-        }>
+        className={classNames(
+          deleted || badge ? 'w-max-full-140' : 'entity-header-content',
+          nameClassName
+        )}>
         {/* If we do not have displayName name only be shown in the bold from the below code */}
         {!isEmpty(displayName) && showName ? (
           <Typography.Text
@@ -71,7 +75,10 @@ const EntityHeaderTitle = ({
 
         {/* It will render displayName fallback to name */}
         <Typography.Text
-          className="m-b-0 d-block entity-header-display-name text-lg font-semibold"
+          className={classNames(
+            'm-b-0 d-block entity-header-display-name text-lg font-semibold',
+            displayNameClassName
+          )}
           data-testid="entity-header-display-name"
           ellipsis={{ tooltip: true }}
           style={{ color: color ?? TEXT_COLOR }}>

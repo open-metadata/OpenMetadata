@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Card, Col, Row, Typography } from 'antd';
+import { Col, Row, Typography } from 'antd';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useFqn } from '../../../hooks/useFqn';
@@ -30,7 +30,7 @@ function DataQualityWidget() {
   );
 
   return (
-    <Card className="service-insights-widget widget-flex-col">
+    <div className="service-insights-widget widget-flex-col">
       <Typography.Text className="font-medium text-lg">
         {t('label.data-quality')}
       </Typography.Text>
@@ -57,7 +57,7 @@ function DataQualityWidget() {
           />
         </Col>
       </Row>
-    </Card>
+    </div>
   );
 }
 

@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Card, Col, Row, Skeleton, Tooltip, Typography } from 'antd';
+import { Card, Skeleton, Tooltip, Typography } from 'antd';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -91,16 +91,15 @@ function TotalDataAssetsWidget() {
 
   return (
     <Card className="widget-info-card total-data-assets-widget">
-      <Row align="middle" gutter={[16, 16]}>
-        <Col className="p-0 icon-container">
+      <div className="flex items-center gap-2">
+        <div className="p-0 icon-container">
           <PieChartIcon height={16} width={16} />
-        </Col>
-        <Col>
-          <Typography.Text className="font-semibold text-md">
-            {t('label.total-entity', { entity: t('label.data-asset-plural') })}
-          </Typography.Text>
-        </Col>
-      </Row>
+        </div>
+
+        <Typography.Text className="font-semibold text-md">
+          {t('label.total-entity', { entity: t('label.data-asset-plural') })}
+        </Typography.Text>
+      </div>
       <Skeleton loading={loadingCount > 0}>
         <div className="total-data-assets-info">
           <div className="assets-list-container">

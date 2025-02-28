@@ -10,27 +10,38 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-@import '../../styles/variables.less';
+@import '../../../styles/variables.less';
 
-.service-insights-tab {
-  .service-insights-widget {
-    height: 100%;
-    background-color: @white;
-    border-radius: @border-radius-sm;
-    border: none;
-    padding: 20px;
-  }
+.most-used-assets-widget.ant-card {
+  height: 100%;
+  background-color: @white;
+  border-color: @grey-11;
+  border-radius: @border-radius-sm;
 
-  .widget-flex-col {
-    height: 100%;
+  & > .ant-card-body {
     display: flex;
     flex-direction: column;
     justify-content: space-between;
+    gap: 2px;
+    padding: 0px;
+
+    &::before,
+    &::after {
+      display: none;
+    }
   }
 
-  .ant-card.widget-info-card {
-    background-color: @grey-10;
-    border-color: @grey-11;
-    border-radius: @border-radius-sm;
+  .most-used-assets-widget-table {
+    .ant-table {
+      border-bottom-left-radius: @border-radius-sm;
+      border-bottom-right-radius: @border-radius-sm;
+
+      table > tbody > tr:last-child > td {
+        border-bottom: none;
+      }
+    }
+    .name-column {
+      padding-left: 24px;
+    }
   }
 }

@@ -17,6 +17,7 @@ import { ServiceTypes } from 'Models';
 import React from 'react';
 import { useParams } from 'react-router-dom';
 import DataQualityWidget from './DataQualityWidget/DataQualityWidget';
+import MostUsedAssetsWidget from './MostUsedAssetsWidget/MostUsedAssetsWidget';
 import PIIDistributionWidget from './PIIDistributionWidget/PIIDistributionWidget';
 import PlatformInsightsWidget from './PlatformInsightsWidget/PlatformInsightsWidget';
 import './service-insights-tab.less';
@@ -42,6 +43,11 @@ const ServiceInsightsTab: React.FC<ServiceInsightsTabProps> = () => {
       <Col span={12}>
         <TierDistributionWidget />
       </Col>
+      {isDatabaseService && (
+        <Col span={24}>
+          <MostUsedAssetsWidget />
+        </Col>
+      )}
       {isDatabaseService && (
         <Col span={24}>
           <DataQualityWidget />
