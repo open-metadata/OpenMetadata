@@ -23,7 +23,6 @@ class UnityCatalogSamplerInterface(SQASampler):
     def get_client(self):
         """client is the session for SQA"""
         self.connection = databricks_get_connection(self.service_connection_config)
-        self.client = super().get_client()  # pylint: disable=W0201
-        self.set_catalog(self.client)
-
-        return self.client
+        client = super().get_client()
+        self.set_catalog(client)
+        return client
