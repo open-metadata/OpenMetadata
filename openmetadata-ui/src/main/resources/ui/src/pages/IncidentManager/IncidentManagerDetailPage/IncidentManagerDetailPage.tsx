@@ -18,7 +18,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useLocation, useParams } from 'react-router-dom';
 import { ReactComponent as TestCaseIcon } from '../../../assets/svg/ic-checklist.svg';
-import ActivityFeedProvider from '../../../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
+import { withActivityFeed } from '../../../components/AppRouter/withActivityFeed';
 import ManageButton from '../../../components/common/EntityPageInfos/ManageButton/ManageButton';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../../components/common/Loader/Loader';
@@ -228,64 +228,60 @@ const IncidentManagerDetailPage = () => {
       pageTitle={t('label.entity-detail-plural', {
         entity: getEntityName(testCase) || t('label.test-case'),
       })}>
-      <ActivityFeedProvider>
-        <Row
-          data-testid="incident-manager-details-page-container"
-          gutter={[0, 12]}>
-          <Col className="p-x-lg" span={24}>
-            <TitleBreadcrumb className="m-b-sm" titleLinks={breadcrumb} />
-          </Col>
-          <Col className="p-x-lg" data-testid="entity-page-header" span={24}>
-            <Row gutter={16}>
-              <Col span={23}>
-                <EntityHeaderTitle
-                  className="w-max-full-45"
-                  displayName={testCase?.displayName}
-                  icon={<TestCaseIcon className="h-9" />}
-                  name={testCase?.name ?? ''}
-                  serviceName="testCase"
-                />
-              </Col>
-              <Col className="d-flex justify-end" span={1}>
-                <ManageButton
-                  isRecursiveDelete
-                  afterDeleteAction={() =>
-                    history.push(ROUTES.INCIDENT_MANAGER)
-                  }
-                  allowSoftDelete={false}
-                  canDelete={hasDeletePermission}
-                  displayName={testCase.displayName}
-                  editDisplayNamePermission={editDisplayNamePermission}
-                  entityFQN={testCase.fullyQualifiedName}
-                  entityId={testCase.id}
-                  entityName={testCase.name}
-                  entityType={EntityType.TEST_CASE}
-                  onEditDisplayName={handleDisplayNameChange}
-                />
-              </Col>
-            </Row>
-          </Col>
-          <Col className="p-x-lg">
-            <IncidentManagerPageHeader
-              fetchTaskCount={getEntityFeedCount}
-              testCaseData={testCase}
-              onOwnerUpdate={handleOwnerChange}
-            />
-          </Col>
-          <Col span={24}>
-            <Tabs
-              destroyInactiveTabPane
-              activeKey={activeTab}
-              className="entity-details-page-tabs"
-              data-testid="tabs"
-              items={tabDetails}
-              onChange={handleTabChange}
-            />
-          </Col>
-        </Row>
-      </ActivityFeedProvider>
+      <Row
+        data-testid="incident-manager-details-page-container"
+        gutter={[0, 12]}>
+        <Col className="p-x-lg" span={24}>
+          <TitleBreadcrumb className="m-b-sm" titleLinks={breadcrumb} />
+        </Col>
+        <Col className="p-x-lg" data-testid="entity-page-header" span={24}>
+          <Row gutter={16}>
+            <Col span={23}>
+              <EntityHeaderTitle
+                className="w-max-full-45"
+                displayName={testCase?.displayName}
+                icon={<TestCaseIcon className="h-9" />}
+                name={testCase?.name ?? ''}
+                serviceName="testCase"
+              />
+            </Col>
+            <Col className="d-flex justify-end" span={1}>
+              <ManageButton
+                isRecursiveDelete
+                afterDeleteAction={() => history.push(ROUTES.INCIDENT_MANAGER)}
+                allowSoftDelete={false}
+                canDelete={hasDeletePermission}
+                displayName={testCase.displayName}
+                editDisplayNamePermission={editDisplayNamePermission}
+                entityFQN={testCase.fullyQualifiedName}
+                entityId={testCase.id}
+                entityName={testCase.name}
+                entityType={EntityType.TEST_CASE}
+                onEditDisplayName={handleDisplayNameChange}
+              />
+            </Col>
+          </Row>
+        </Col>
+        <Col className="p-x-lg">
+          <IncidentManagerPageHeader
+            fetchTaskCount={getEntityFeedCount}
+            testCaseData={testCase}
+            onOwnerUpdate={handleOwnerChange}
+          />
+        </Col>
+        <Col span={24}>
+          <Tabs
+            destroyInactiveTabPane
+            activeKey={activeTab}
+            className="entity-details-page-tabs"
+            data-testid="tabs"
+            items={tabDetails}
+            onChange={handleTabChange}
+          />
+        </Col>
+      </Row>
     </PageLayoutV1>
   );
 };
 
-export default IncidentManagerDetailPage;
+export default withActivityFeed(IncidentManagerDetailPage);

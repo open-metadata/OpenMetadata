@@ -14,7 +14,6 @@
 import { Col, Row } from 'antd';
 import { t } from 'i18next';
 import React from 'react';
-import ActivityFeedProvider from '../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import { ActivityFeedTab } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import { CustomPropertyTable } from '../components/common/CustomPropertyTable/CustomPropertyTable';
 import ResizablePanels from '../components/common/ResizablePanels/ResizablePanels';
@@ -156,17 +155,15 @@ export const getDataBaseSchemaPageBaseTabs = ({
       ),
       key: EntityTabs.ACTIVITY_FEED,
       children: (
-        <ActivityFeedProvider>
-          <ActivityFeedTab
-            refetchFeed
-            entityFeedTotalCount={feedCount.totalCount}
-            entityType={EntityType.DATABASE_SCHEMA}
-            fqn={databaseSchema.fullyQualifiedName ?? ''}
-            onFeedUpdate={getEntityFeedCount}
-            onUpdateEntityDetails={fetchDatabaseSchemaDetails}
-            onUpdateFeedCount={handleFeedCount}
-          />
-        </ActivityFeedProvider>
+        <ActivityFeedTab
+          refetchFeed
+          entityFeedTotalCount={feedCount.totalCount}
+          entityType={EntityType.DATABASE_SCHEMA}
+          fqn={databaseSchema.fullyQualifiedName ?? ''}
+          onFeedUpdate={getEntityFeedCount}
+          onUpdateEntityDetails={fetchDatabaseSchemaDetails}
+          onUpdateFeedCount={handleFeedCount}
+        />
       ),
     },
     {

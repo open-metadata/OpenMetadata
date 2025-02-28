@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Modal, Space, Typography } from 'antd';
+import { Button, Col, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, isNil } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
@@ -50,7 +50,7 @@ import {
   getSettingPath,
 } from '../../../../utils/RouterUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
-import ActivityFeedProvider from '../../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
+import { withActivityFeed } from '../../../AppRouter/withActivityFeed';
 import PageLayoutV1 from '../../../PageLayoutV1/PageLayoutV1';
 import AddWidgetModal from '../AddWidgetModal/AddWidgetModal';
 import './customize-my-data.less';
@@ -252,7 +252,7 @@ function CustomizeMyData({
   useGridLayoutDirection();
 
   return (
-    <ActivityFeedProvider>
+    <>
       <PageLayoutV1
         header={
           <Col
@@ -339,21 +339,8 @@ function CustomizeMyData({
           placeholderWidgetKey={placeholderWidgetKey}
         />
       )}
-      {isResetModalOpen && (
-        <Modal
-          centered
-          cancelText={t('label.no')}
-          data-testid="reset-layout-modal"
-          okText={t('label.yes')}
-          open={isResetModalOpen}
-          title={t('label.reset-default-layout')}
-          onCancel={handleCloseResetModal}
-          onOk={handleReset}>
-          {t('message.reset-layout-confirmation')}
-        </Modal>
-      )}
-    </ActivityFeedProvider>
+    </>
   );
 }
 
-export default CustomizeMyData;
+export default withActivityFeed(CustomizeMyData);
