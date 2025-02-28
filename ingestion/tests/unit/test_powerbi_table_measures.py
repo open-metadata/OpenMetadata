@@ -67,14 +67,14 @@ test_cases = {
 }
 
 
-class Mockpowerbisource(PowerbiSource):
+class MockPowerbiSource(PowerbiSource):
     def __init__(self):
         pass
 
 
 @pytest.mark.parametrize("test_case_name, test_case", test_cases.items())
 def test_get_child_measures(test_case_name, test_case):
-    powerbi_source = Mockpowerbisource()
+    powerbi_source = MockPowerbiSource()
     test_table = PowerBiTable(
         name="test_table",
         measures=test_case["input"],

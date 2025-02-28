@@ -56,6 +56,7 @@ from metadata.ingestion.source.dashboard.powerbi.models import (
     Dataset,
     Group,
     PowerBIDashboard,
+    PowerBiMeasureModel,
     PowerBIReport,
     PowerBiTable,
 )
@@ -397,13 +398,13 @@ class PowerbiSource(DashboardServiceSource):
                     if measure.description
                     else f"Expression : {measure.expression}"
                 )
-                parsed_measure = {
-                    "dataType": measure_type,
-                    "dataTypeDisplay": measure_type,
-                    "name": measure.name,
-                    "description": description_text,
-                }
-                measures.append(Column(**parsed_measure))
+                parsed_measure = PowerBiMeasureModel(
+                    dataType=measure_type,
+                    dataTypeDisplay=measure_type,
+                    name=measure.name,
+                    description=description_text,
+                )
+                measures.append(Column(**parsed_measure.model_dump()))
             except Exception as err:
                 logger.debug(traceback.format_exc())
                 logger.warning(f"Error processing datamodel nested measure: {err}")

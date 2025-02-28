@@ -98,6 +98,17 @@ class PowerBiColumns(BaseModel):
     description: Optional[str] = None
 
 
+class PowerBiMeasureModel(BaseModel):
+    """
+    Represents a Power BI measure, used before converting to a Column instance.
+    """
+
+    dataType: str
+    dataTypeDisplay: str
+    name: str
+    description: str
+
+
 class PowerBiMeasures(BaseModel):
     """
     PowerBI Column Model
