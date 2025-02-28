@@ -11,17 +11,17 @@
  *  limitations under the License.
  */
 /**
- * Remove a Data Product to the selected assets.
+ * Add a Data Product to the selected assets.
  */
-export interface RemoveDataProduct {
+export interface AddDataProductAction {
     /**
-     * Data Products to remove
+     * Data Products to apply
      */
     dataProducts: EntityReference[];
     /**
      * Application Type
      */
-    type: RemoveDataProductActionType;
+    type: AddDataProductActionType;
 }
 
 /**
@@ -76,8 +76,8 @@ export interface EntityReference {
 /**
  * Application Type
  *
- * Remove Data Products Action Type.
+ * Add Data Products Action Type.
  */
-export enum RemoveDataProductActionType {
-    RemoveDataProductAction = "RemoveDataProductAction",
+export enum AddDataProductActionType {
+    AddDataProductAction = "AddDataProductAction",
 }
