@@ -706,7 +706,7 @@ export const TaskTabNew = ({
 
     return (
       <Space
-        className="items-end w-full justify-end task-cta-buttons"
+        className="items-end  justify-end task-cta-buttons"
         data-testid="task-cta-buttons"
         size="small">
         {isCreator && !hasEditAccess && (
@@ -979,8 +979,8 @@ export const TaskTabNew = ({
     }
 
     return (
-      <div className="action-required-card d-flex justify-between items-center">
-        <Col span={12}>
+      <div className="action-required-card d-flex flex-wrap justify-between items-center">
+        <Col>
           <Typography.Text className="action-required-text">
             {t('label.action-required')}
           </Typography.Text>
