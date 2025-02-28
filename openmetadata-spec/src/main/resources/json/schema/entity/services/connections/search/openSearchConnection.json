@@ -1,8 +1,8 @@
 {
   "$id": "https://open-metadata.org/schema/entity/services/connections/search/openSearchConnection.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "OpenSearch Connection",
-  "description": "OpenSearch Connection.",
+  "title": "OpenSearchConnection",
+  "description": "OpenSearch Connection Config",
   "type": "object",
   "javaType": "org.openmetadata.schema.services.connections.search.OpenSearchConnection",
   "definitions": {
@@ -31,15 +31,19 @@
       "description": "Choose Auth Config Type.",
       "oneOf": [
         {
-          "$ref": "./openSearch/basicAuth.json"
+          "$ref": "../../../../security/credentials/basicAuth.json"
         },
         {
           "$ref": "./openSearch/apiAuth.json"
         },
         {
-          "$ref": "./openSearch/awsIamAuth.json"
+          "$ref": "../../../../security/credentials/awsCredentials.json"
         }
       ]
+    },
+    "verifySSL": {
+      "$ref": "../../../../security/ssl/verifySSLConfig.json#/definitions/verifySSL",
+      "default": "no-ssl"
     },
     "sslConfig": {
       "title": "SSL Config",

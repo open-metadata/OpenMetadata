@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 /**
- * OpenSearch Connection.
+ * OpenSearch Connection Config
  */
 export interface OpenSearchConnection {
     /**
@@ -32,25 +32,26 @@ export interface OpenSearchConnection {
     /**
      * OpenSearch Type
      */
-    type?: OpenSearchType;
+    type?:      OpenSearchType;
+    verifySSL?: VerifySSL;
 }
 
 /**
  * Choose Auth Config Type.
  *
- * Basic Auth Configuration for ElasticSearch
+ * Basic Auth Credentials
  *
  * API Key Authentication for ElasticSearch
  *
- * Authentication for OpenSearch using AWS IAM credentials
+ * AWS credentials configs.
  */
 export interface AuthConfigurationType {
     /**
-     * Elastic Search Password for Login
+     * Password to access the service.
      */
     password?: string;
     /**
-     * Elastic Search Username for Login
+     * Username to access the service.
      */
     username?: string;
     /**
@@ -60,11 +61,47 @@ export interface AuthConfigurationType {
     /**
      * Elastic Search API Key ID for API Authentication
      */
-    apiKeyId?:           string;
-    awsAccessKeyId?:     string;
-    awsRegion?:          string;
+    apiKeyId?: string;
+    /**
+     * The Amazon Resource Name (ARN) of the role to assume. Required Field in case of Assume
+     * Role
+     */
+    assumeRoleArn?: string;
+    /**
+     * An identifier for the assumed role session. Use the role session name to uniquely
+     * identify a session when the same role is assumed by different principals or for different
+     * reasons. Required Field in case of Assume Role
+     */
+    assumeRoleSessionName?: string;
+    /**
+     * The Amazon Resource Name (ARN) of the role to assume. Optional Field in case of Assume
+     * Role
+     */
+    assumeRoleSourceIdentity?: string;
+    /**
+     * AWS Access key ID.
+     */
+    awsAccessKeyId?: string;
+    /**
+     * AWS Region
+     */
+    awsRegion?: string;
+    /**
+     * AWS Secret Access Key.
+     */
     awsSecretAccessKey?: string;
-    awsSessionToken?:    string;
+    /**
+     * AWS Session Token.
+     */
+    awsSessionToken?: string;
+    /**
+     * EndPoint URL for the AWS
+     */
+    endPointURL?: string;
+    /**
+     * The name of a profile to use with the boto session.
+     */
+    profileName?: string;
 }
 
 /**
@@ -123,4 +160,13 @@ export interface SSLCertificates {
  */
 export enum OpenSearchType {
     OpenSearch = "OpenSearch",
+}
+
+/**
+ * Client SSL verification. Make sure to configure the SSLConfig if enabled.
+ */
+export enum VerifySSL {
+    Ignore = "ignore",
+    NoSSL = "no-ssl",
+    Validate = "validate",
 }

@@ -27,7 +27,7 @@ from metadata.generated.schema.entity.data.searchIndex import (
     SearchIndexSampleData,
 )
 from metadata.generated.schema.entity.services.connections.search.openSearchConnection import (
-    OpensearchConnection,
+    OpenSearchConnection,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
@@ -74,10 +74,10 @@ class OpensearchSource(SearchServiceSource):
             An instance of OpensearchSource.
         """
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
-        connection: OpensearchConnection = config.serviceConnection.root.config
-        if not isinstance(connection, OpensearchConnection):
+        connection: OpenSearchConnection = config.serviceConnection.root.config
+        if not isinstance(connection, OpenSearchConnection):
             raise InvalidSourceException(
-                f"Expected OpensearchConnection, but got {connection}"
+                f"Expected OpenSearchConnection, but got {connection}"
             )
         return cls(config, metadata)
 

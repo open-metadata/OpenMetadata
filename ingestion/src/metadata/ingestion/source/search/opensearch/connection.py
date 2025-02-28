@@ -12,11 +12,9 @@
 """
 Source connection handler for OpenSearch with AWS IAM support.
 """
-import ssl
 from pathlib import Path
 from typing import Optional
 
-from httpx import create_ssl_context
 from opensearchpy import OpenSearch, RequestsHttpConnection
 from requests_aws4auth import AWS4Auth  # New: AWS4Auth for AWS IAM authentication
 
@@ -35,25 +33,20 @@ from metadata.generated.schema.entity.services.connections.common.sslConfig impo
 from metadata.generated.schema.entity.services.connections.search.openSearch.apiAuth import (
     ApiKeyAuthentication,
 )
-
-# New: Import AWS IAM authentication class.
-from metadata.generated.schema.entity.services.connections.search.openSearch.awsIamAuth import (
-    AwsIamAuthentication,
-)
-from metadata.generated.schema.entity.services.connections.search.openSearch.basicAuth import (
-    BasicAuthentication,
-)
 from metadata.generated.schema.entity.services.connections.search.openSearchConnection import (
-    OpensearchConnection,
+    OpenSearchConnection,
 )
 from metadata.generated.schema.entity.services.connections.testConnectionResult import (
     TestConnectionResult,
 )
+from metadata.generated.schema.security.credentials.awsCredentials import AWSCredentials
+from metadata.generated.schema.security.credentials.basicAuth import BasicAuth
+from metadata.generated.schema.security.ssl.verifySSLConfig import VerifySSL
 from metadata.ingestion.connections.builders import init_empty_connection_arguments
 from metadata.ingestion.connections.test_connections import test_connection_steps
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.constants import THREE_MIN, UTF_8
-from metadata.utils.helpers import init_staging_dir
+from metadata.utils.helpers import clean_uri, init_staging_dir
 
 CA_CERT_FILE_NAME = "root.pem"
 CLIENT_CERT_FILE_NAME = "client.pem"
@@ -108,58 +101,36 @@ def _handle_ssl_context_by_path(ssl_config: SslConfig):
     return ca_cert, client_cert, private_key
 
 
-def get_ssl_context(ssl_config: SslConfig) -> Optional[ssl.SSLContext]:
-    """
-    Method to get SSL Context for OpenSearch connection.
-    """
-    ca_cert = False
-    client_cert = None
-    private_key = None
-    cert_chain = None
-
-    if not ssl_config.certificates:
-        return None
-
-    if isinstance(ssl_config.certificates, SslCertificatesByValues):
-        ca_cert, client_cert, private_key = _handle_ssl_context_by_value(
-            ssl_config=ssl_config
-        )
-    elif isinstance(ssl_config.certificates, SslCertificatesByPath):
-        ca_cert, client_cert, private_key = _handle_ssl_context_by_path(
-            ssl_config=ssl_config
-        )
-
-    if client_cert and private_key:
-        cert_chain = (client_cert, private_key)
-    elif client_cert:
-        cert_chain = client_cert
-    else:
-        cert_chain = None
-
-    if ca_cert or cert_chain:
-        ssl_context = create_ssl_context(
-            cert=cert_chain,
-            verify=ca_cert,
-        )
-        return ssl_context
-
-    return ssl._create_unverified_context()  # pylint: disable=protected-access
-
-
-def get_connection(connection: OpensearchConnection) -> OpenSearch:
+def get_connection(connection: OpenSearchConnection) -> OpenSearch:
     """
     Create OpenSearch connection supporting Basic, API Key, and AWS IAM authentication.
     """
     basic_auth = None
     api_key = None
-    aws_auth = None  # New: AWS IAM auth placeholder
-    ssl_context = None
+    aws_auth = None
+    verify_ssl = False
+    ssl_show_warn = False
+    ca_cert = False
+    client_cert = None
+    private_key = None
+
+    if connection.verifySSL == VerifySSL.validate:
+        verify_ssl = True
+    elif connection.verifySSL == VerifySSL.ignore:
+        ssl_show_warn = True
+
+    if connection.sslConfig and connection.sslConfig.certificates:
+        if isinstance(connection.sslConfig.certificates, SslCertificatesByValues):
+            ca_cert, client_cert, private_key = _handle_ssl_context_by_value(
+                ssl_config=connection.sslConfig
+            )
+        elif isinstance(connection.sslConfig.certificates, SslCertificatesByPath):
+            ca_cert, client_cert, private_key = _handle_ssl_context_by_path(
+                ssl_config=connection.sslConfig
+            )
 
     # Check for Basic Authentication
-    if (
-        isinstance(connection.authType, BasicAuthentication)
-        and connection.authType.username
-    ):
+    if isinstance(connection.authType, BasicAuth) and connection.authType.username:
         basic_auth = (
             connection.authType.username,
             connection.authType.password.get_secret_value()
@@ -178,7 +149,7 @@ def get_connection(connection: OpensearchConnection) -> OpenSearch:
             api_key = connection.authType.apiKey.get_secret_value()
 
     # Check for AWS IAM Authentication
-    if isinstance(connection.authType, AwsIamAuthentication):
+    if isinstance(connection.authType, AWSCredentials):
         aws_access_key = (
             connection.authType.awsAccessKeyId.get_secret_value()
             if connection.authType.awsAccessKeyId
@@ -207,17 +178,18 @@ def get_connection(connection: OpensearchConnection) -> OpenSearch:
     if not connection.connectionArguments:
         connection.connectionArguments = init_empty_connection_arguments()
 
-    if connection.sslConfig:
-        ssl_context = get_ssl_context(connection.sslConfig)
-
     # Determine the http_auth based on the available authentication method.
     # AWS IAM takes precedence, followed by Basic Authentication, then API Key.
     http_auth = aws_auth if aws_auth else (basic_auth if basic_auth else api_key)
 
     return OpenSearch(
-        str(connection.hostPort),
+        clean_uri(str(connection.hostPort)),
         http_auth=http_auth,
-        ssl_context=ssl_context,
+        verify_certs=verify_ssl,
+        ssl_show_warn=ssl_show_warn,
+        ca_certs=ca_cert,
+        client_cert=client_cert,
+        client_key=private_key,
         connection_class=RequestsHttpConnection,  # Use RequestsHttpConnection for AWS auth support.
         **connection.connectionArguments.root,
     )
@@ -226,7 +198,7 @@ def get_connection(connection: OpensearchConnection) -> OpenSearch:
 def test_connection(
     metadata: OpenMetadata,
     client: OpenSearch,
-    service_connection: OpensearchConnection,
+    service_connection: OpenSearchConnection,
     automation_workflow: Optional[AutomationWorkflow] = None,
     timeout_seconds: Optional[int] = THREE_MIN,
 ) -> TestConnectionResult:
