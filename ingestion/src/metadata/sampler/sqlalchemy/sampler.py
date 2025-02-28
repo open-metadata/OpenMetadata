@@ -82,13 +82,14 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
         return session_factory()
 
     @contextlib.contextmanager
-    def context_client(self):
-        """Context manager for the SQA Client"""
-        client = self.get_client()
-        try:
-            yield client
-        finally:
-            client.close()
+    def context_session(self):
+        """Create a context session that closes the connection when done. This provides
+        us with a throw-away session that we can use to query the database and not leave
+        connections open.
+        More information about sqlalchemy session management can be found here:
+        https://docs.sqlalchemy.org/en/14/orm/session_basics.html#basics-of-using-a-session"""
+        with self.get_client() as session:
+            yield session
 
     def set_tablesample(self, selectable: Table):
         """Set the tablesample for the table. To be implemented by the child SQA sampler class
@@ -110,7 +111,7 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
         selectable = self.set_tablesample(self.raw_dataset.__table__)
 
         entity = selectable if column is None else selectable.c.get(column.key)
-        with self.context_client() as client:
+        with self.context_session() as client:
             if label is not None:
                 query = client.query(entity, label)
             else:
@@ -127,12 +128,12 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
                 column,
                 (ModuloFn(RandomNumFn(), 100)).label(RANDOM_LABEL),
             ).cte(f"{self.raw_dataset.__tablename__}_rnd")
-            with self.context_client() as client:
+            with self.context_session() as client:
                 session_query = client.query(rnd)
             return session_query.where(
                 rnd.c.random <= self.sample_config.profileSample
             ).cte(f"{self.raw_dataset.__tablename__}_sample")
-        with self.context_client() as client:
+        with self.context_session() as client:
             table_query = client.query(self.raw_dataset)
         session_query = self._base_sample_query(
             column,
@@ -186,7 +187,7 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
                 for col in inspect(ds).c
                 if col.name != RANDOM_LABEL and col.name in names
             ]
-        with self.context_client() as client:
+        with self.context_session() as client:
             try:
                 sqa_sample = (
                     client.query(*sqa_columns)
@@ -216,7 +217,7 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
         if not is_safe_sql_query(self.sample_query):
             raise RuntimeError(f"SQL expression is not safe\n\n{self.sample_query}")
 
-        with self.context_client() as client:
+        with self.context_session() as client:
             rnd = client.execute(f"{self.sample_query}")
         try:
             columns = [col.name for col in rnd.cursor.description]
@@ -257,7 +258,7 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
         )
         if query is not None:
             return query.filter(partition_filter)
-        with self.context_client() as client:
+        with self.context_session() as client:
             return client.query(self.raw_dataset).filter(partition_filter)
 
     def get_columns(self):
