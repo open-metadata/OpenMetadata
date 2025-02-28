@@ -46,6 +46,8 @@ function MostUsedAssetsWidget() {
         },
         searchIndex: SearchIndex.TABLE,
         trackTotalHits: true,
+        sortField: 'usageSummary.weeklyStats.percentileRank',
+        sortOrder: 'desc',
       });
       const data = response.hits.hits.map((schema) => schema._source);
       setTableData(data);

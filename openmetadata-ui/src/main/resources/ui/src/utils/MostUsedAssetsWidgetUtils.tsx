@@ -30,6 +30,7 @@ import {
 } from '../generated/entity/data/table';
 import { SearchSourceAlias } from '../interface/search.interface';
 import { getDataAssetsHeaderInfo } from './DataAssetsHeader.utils';
+import entityUtilClassBase from './EntityUtilClassBase';
 import serviceUtilClassBase from './ServiceUtilClassBase';
 import { getUsagePercentile } from './TableUtils';
 
@@ -71,6 +72,10 @@ export const getMostUsedAssetsWidgetColumns = (): ColumnsType<Table> => {
                 displayName={record.displayName}
                 displayNameClassName="text-md"
                 icon={icon}
+                link={entityUtilClassBase.getEntityLink(
+                  EntityType.TABLE,
+                  record.fullyQualifiedName ?? ''
+                )}
                 name={record?.name}
                 nameClassName="text-sm"
                 serviceName={record.service?.name ?? ''}
