@@ -10,9 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import React, { FC } from 'react';
+import React, { FC, useMemo } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useTranslation } from 'react-i18next';
+import brandImageClassBase from '../../../utils/BrandImage/BrandImageClassBase';
 
 interface DocumentTitleProps {
   title: string;
@@ -20,10 +21,13 @@ interface DocumentTitleProps {
 
 const DocumentTitle: FC<DocumentTitleProps> = ({ title }) => {
   const { t } = useTranslation();
+  const pageTitle = useMemo(() => {
+    return brandImageClassBase.getPageTitle();
+  }, []);
 
   return (
     <Helmet>
-      <title>{`${title} | ${t('label.open-metadata')}`}</title>
+      <title>{`${title} | ${t(`label.${pageTitle}`)}`}</title>
     </Helmet>
   );
 };

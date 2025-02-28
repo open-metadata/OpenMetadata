@@ -23,6 +23,10 @@ class BrandImageClassBase {
   public getLogo() {
     return { src: LogoSrc, svg: Logo };
   }
+
+  public getPageTitle() {
+    return 'open-metadata';
+  }
 }
 
 const brandImageClassBase = new BrandImageClassBase();
