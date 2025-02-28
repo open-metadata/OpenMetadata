@@ -336,6 +336,7 @@ class MetabaseSource(DashboardServiceSource):
             return None
         return self.metadata.get_by_name(DatabaseService, db_service_name)
 
+    # pylint: disable=too-many-locals
     def _yield_lineage_from_query(
         self,
         chart_details: MetabaseChart,
