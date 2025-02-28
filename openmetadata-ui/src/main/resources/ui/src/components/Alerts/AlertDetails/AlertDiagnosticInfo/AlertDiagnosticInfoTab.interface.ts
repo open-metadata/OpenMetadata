@@ -10,15 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-export enum AlertDetailTabs {
-  CONFIGURATION = 'configuration',
-  RECENT_EVENTS = 'recentEvents',
-  DIAGNOSTIC_INFO = 'diagnostic info',
-}
-
-export enum AlertRecentEventFilters {
-  ALL = 'all',
-  SUCCESSFUL = 'successful',
-  FAILED = 'failed',
+export interface DiagnosticItem {
+  key: string;
+  value: string | number | boolean;
+  description: string;
 }
