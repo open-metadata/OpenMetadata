@@ -12,6 +12,14 @@ import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.schema.entity.app.AppType;
 import org.openmetadata.schema.entity.app.external.CollateAIAppConfig;
+import org.openmetadata.schema.entity.applications.configuration.internal.AppAnalyticsConfig;
+import org.openmetadata.schema.entity.applications.configuration.internal.BackfillConfiguration;
+import org.openmetadata.schema.entity.applications.configuration.internal.CostAnalysisConfig;
+import org.openmetadata.schema.entity.applications.configuration.internal.DataAssetsConfig;
+import org.openmetadata.schema.entity.applications.configuration.internal.DataInsightsAppConfig;
+import org.openmetadata.schema.entity.applications.configuration.internal.DataQualityConfig;
+import org.openmetadata.schema.entity.applications.configuration.internal.ModuleConfiguration;
+import org.openmetadata.schema.entity.applications.configuration.internal.ServiceFilter;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatusType;
@@ -68,6 +76,8 @@ public class RunAppImpl {
     if (Entity.getEntityTypeFromObject(service).equals(Entity.DATABASE_SERVICE)
         && app.getName().equals("CollateAIApplication")) {
       return true;
+    } else if (app.getName().equals("DataInsightsApplication")) {
+      return true;
     } else {
       return false;
     }
@@ -83,6 +93,29 @@ public class RunAppImpl {
               String.format(
                   "{\"query\":{\"bool\":{\"must\":[{\"bool\":{\"must\":[{\"term\":{\"Tier.TagFQN\":\"Tier.Tier1\"}}]}},{\"bool\":{\"must\":[{\"term\":{\"entityType\":\"table\"}}]}},{\"bool\":{\"must\":[{\"term\":{\"service.name.keyword\":\"%s\"}}]}}]}}}",
                   service.getName().toLowerCase()));
+    } else if (app.getName().equals("DataInsightsApplication")) {
+      DataInsightsAppConfig updatedAppConfig =
+          (JsonUtils.convertValue(updatedConfig, DataInsightsAppConfig.class));
+      ModuleConfiguration updatedModuleConfig =
+          updatedAppConfig
+              .getModuleConfiguration()
+              .withAppAnalytics(new AppAnalyticsConfig().withEnabled(false))
+              .withCostAnalysis(new CostAnalysisConfig().withEnabled(false))
+              .withDataQuality(new DataQualityConfig().withEnabled(false))
+              .withDataAssets(
+                  new DataAssetsConfig()
+                      .withRetention(
+                          updatedAppConfig.getModuleConfiguration().getDataAssets().getRetention())
+                      .withServiceFilter(
+                          new ServiceFilter()
+                              .withServiceName(service.getName())
+                              .withServiceType(Entity.getEntityTypeFromObject(service))));
+
+      updatedConfig =
+          updatedAppConfig
+              .withBackfillConfiguration(new BackfillConfiguration().withEnabled(false))
+              .withRecreateDataAssetsIndex(false)
+              .withModuleConfiguration(updatedModuleConfig);
     }
     updatedApp.withAppConfiguration(updatedConfig);
     return updatedApp;
