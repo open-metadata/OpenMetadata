@@ -22,7 +22,7 @@ import React, {
 } from 'react';
 import RGL, { WidthProvider } from 'react-grid-layout';
 import { useTranslation } from 'react-i18next';
-import ActivityFeedProvider from '../../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
+import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
 import Loader from '../../components/common/Loader/Loader';
 import WelcomeScreen from '../../components/MyData/WelcomeScreen/WelcomeScreen.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
@@ -218,28 +218,24 @@ const MyDataPage = () => {
   }
 
   return (
-    <ActivityFeedProvider>
-      <PageLayoutV1
-        mainContainerClassName="p-t-0"
-        pageTitle={t('label.my-data')}>
-        <ReactGridLayout
-          className="bg-white"
-          cols={4}
-          isDraggable={false}
-          isResizable={false}
-          margin={[
-            customizePageClassBase.landingPageWidgetMargin,
-            customizePageClassBase.landingPageWidgetMargin,
-          ]}
-          rowHeight={100}>
-          {widgets}
-        </ReactGridLayout>
-        <LimitWrapper resource="dataAssets">
-          <br />
-        </LimitWrapper>
-      </PageLayoutV1>
-    </ActivityFeedProvider>
+    <PageLayoutV1 mainContainerClassName="p-t-0" pageTitle={t('label.my-data')}>
+      <ReactGridLayout
+        className="bg-white"
+        cols={4}
+        isDraggable={false}
+        isResizable={false}
+        margin={[
+          customizePageClassBase.landingPageWidgetMargin,
+          customizePageClassBase.landingPageWidgetMargin,
+        ]}
+        rowHeight={100}>
+        {widgets}
+      </ReactGridLayout>
+      <LimitWrapper resource="dataAssets">
+        <br />
+      </LimitWrapper>
+    </PageLayoutV1>
   );
 };
 
-export default MyDataPage;
+export default withActivityFeed(MyDataPage);

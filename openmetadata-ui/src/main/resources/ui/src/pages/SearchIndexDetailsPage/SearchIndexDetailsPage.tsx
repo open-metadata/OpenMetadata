@@ -19,6 +19,7 @@ import { EntityTags } from 'Models';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
+import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';
 import { GenericProvider } from '../../components/Customization/GenericProvider/GenericProvider';
@@ -575,4 +576,4 @@ function SearchIndexDetailsPage() {
   );
 }
 
-export default SearchIndexDetailsPage;
+export default withActivityFeed(SearchIndexDetailsPage);

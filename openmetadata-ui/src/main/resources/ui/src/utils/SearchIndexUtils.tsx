@@ -14,7 +14,6 @@
 import { t } from 'i18next';
 import { uniqueId } from 'lodash';
 import React from 'react';
-import ActivityFeedProvider from '../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import { ActivityFeedTab } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import { CustomPropertyTable } from '../components/common/CustomPropertyTable/CustomPropertyTable';
 import ErrorPlaceHolder from '../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -87,17 +86,15 @@ export const getSearchIndexDetailsTabs = ({
       ),
       key: EntityTabs.ACTIVITY_FEED,
       children: (
-        <ActivityFeedProvider>
-          <ActivityFeedTab
-            refetchFeed
-            entityFeedTotalCount={feedCount.totalCount}
-            entityType={EntityType.SEARCH_INDEX}
-            owners={searchIndexDetails?.owners}
-            onFeedUpdate={getEntityFeedCount}
-            onUpdateEntityDetails={fetchSearchIndexDetails}
-            onUpdateFeedCount={handleFeedCount}
-          />
-        </ActivityFeedProvider>
+        <ActivityFeedTab
+          refetchFeed
+          entityFeedTotalCount={feedCount.totalCount}
+          entityType={EntityType.SEARCH_INDEX}
+          owners={searchIndexDetails?.owners}
+          onFeedUpdate={getEntityFeedCount}
+          onUpdateEntityDetails={fetchSearchIndexDetails}
+          onUpdateFeedCount={handleFeedCount}
+        />
       ),
     },
     {
