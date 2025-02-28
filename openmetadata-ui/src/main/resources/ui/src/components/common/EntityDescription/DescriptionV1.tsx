@@ -15,7 +15,7 @@ import Icon from '@ant-design/icons';
 import { Card, Space, Tooltip, Typography } from 'antd';
 import classNames from 'classnames';
 import { t } from 'i18next';
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { useHistory } from 'react-router';
 import { ReactComponent as CommentIcon } from '../../../assets/svg/comment.svg';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
@@ -23,6 +23,7 @@ import { ReactComponent as RequestIcon } from '../../../assets/svg/request-icon.
 import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { EntityType } from '../../../enums/entity.enum';
+import { useFqn } from '../../../hooks/useFqn';
 import { isDescriptionContentEmpty } from '../../../utils/BlockEditorUtils';
 import { getEntityFeedLink } from '../../../utils/EntityUtils';
 import {
@@ -30,6 +31,7 @@ import {
   getUpdateDescriptionPath,
   TASK_ENTITIES,
 } from '../../../utils/TasksUtils';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 import { ModalWithMarkdownEditor } from '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import SuggestionsAlert from '../../Suggestions/SuggestionsAlert/SuggestionsAlert';
 import { useSuggestionsContext } from '../../Suggestions/SuggestionsProvider/SuggestionsProvider';
@@ -42,18 +44,13 @@ const { Text } = Typography;
 
 const DescriptionV1 = ({
   hasEditAccess,
-  onDescriptionEdit,
   description = '',
-  isEdit,
   className,
-  onCancel,
   onDescriptionUpdate,
   isReadOnly = false,
   removeBlur = false,
   entityName,
-  onThreadLinkSelect,
   entityType,
-  entityFqn,
   wrapInCard = false,
   showActions = true,
   showCommentsIcon = true,
@@ -64,18 +61,36 @@ const DescriptionV1 = ({
   const history = useHistory();
   const { suggestions = [], selectedUserSuggestions = [] } =
     useSuggestionsContext();
+  const [isEditDescription, setIsEditDescription] = useState(false);
+  const { fqn: entityFqn } = useFqn();
+  const { onThreadLinkSelect } = useGenericContext();
 
   const handleRequestDescription = useCallback(() => {
-    history.push(
-      getRequestDescriptionPath(entityType as string, entityFqn as string)
-    );
+    history.push(getRequestDescriptionPath(entityType, entityFqn));
   }, [entityType, entityFqn]);
 
   const handleUpdateDescription = useCallback(() => {
-    history.push(
-      getUpdateDescriptionPath(entityType as string, entityFqn as string)
-    );
+    history.push(getUpdateDescriptionPath(entityType, entityFqn));
   }, [entityType, entityFqn]);
+
+  // Callback to handle the edit button from description
+  const handleEditDescription = useCallback(() => {
+    setIsEditDescription(true);
+  }, []);
+
+  // Callback to handle the cancel button from modal
+  const handleCancelEditDescription = useCallback(() => {
+    setIsEditDescription(false);
+  }, []);
+
+  // Callback to handle the description change from modal
+  const handleDescriptionChange = useCallback(
+    async (description: string) => {
+      await onDescriptionUpdate?.(description);
+      setIsEditDescription(false);
+    },
+    [onDescriptionUpdate]
+  );
 
   const { entityLink, entityLinkWithoutField } = useMemo(() => {
     const entityLink = getEntityFeedLink(
@@ -136,7 +151,7 @@ const DescriptionV1 = ({
               component={EditIcon}
               data-testid="edit-description"
               style={{ color: DE_ACTIVE_COLOR }}
-              onClick={onDescriptionEdit}
+              onClick={handleEditDescription}
             />
           </Tooltip>
         )}
@@ -162,7 +177,7 @@ const DescriptionV1 = ({
     [
       isReadOnly,
       hasEditAccess,
-      onDescriptionEdit,
+      handleEditDescription,
       taskActionButton,
       showCommentsIcon,
       onThreadLinkSelect,
@@ -224,9 +239,9 @@ const DescriptionV1 = ({
               entity: t('label.description'),
             })}
             value={description}
-            visible={Boolean(isEdit)}
-            onCancel={onCancel}
-            onSave={onDescriptionUpdate}
+            visible={Boolean(isEditDescription)}
+            onCancel={handleCancelEditDescription}
+            onSave={handleDescriptionChange}
           />
         </div>
       </Space>

@@ -13,7 +13,7 @@
 
 import Icon from '@ant-design/icons';
 import { Button, Col, Drawer, Row, Space, Tooltip, Typography } from 'antd';
-import React, { useState } from 'react';
+import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
@@ -40,8 +40,6 @@ const TableQueryRightPanel = ({
   const { t } = useTranslation();
   const { EditAll, EditDescription, EditOwners, EditTags } = permission;
 
-  const [isEditDescription, setIsEditDescription] = useState(false);
-
   const handleUpdateOwner = async (owners: Query['owners']) => {
     const updatedData = {
       ...query,
@@ -56,7 +54,6 @@ const TableQueryRightPanel = ({
       description,
     };
     await onQueryUpdate(updatedData, 'description');
-    setIsEditDescription(false);
   };
   const handleTagSelection = async (tags?: TagLabel[]) => {
     if (tags) {
@@ -122,10 +119,7 @@ const TableQueryRightPanel = ({
                 entityFqn={query?.fullyQualifiedName}
                 entityType={EntityType.QUERY}
                 hasEditAccess={EditDescription || EditAll}
-                isEdit={isEditDescription}
                 showCommentsIcon={false}
-                onCancel={() => setIsEditDescription(false)}
-                onDescriptionEdit={() => setIsEditDescription(true)}
                 onDescriptionUpdate={onDescriptionUpdate}
               />
             </Space>

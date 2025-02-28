@@ -67,7 +67,6 @@ const SearchIndexFieldsTable = ({
   hasTagEditAccess,
   hasGlossaryTermEditAccess,
   isReadOnly = false,
-  onThreadLinkSelect,
   entityFqn,
   searchText,
 }: SearchIndexFieldsTableProps) => {
@@ -182,16 +181,9 @@ const SearchIndexFieldsTable = ({
         index={index}
         isReadOnly={isReadOnly}
         onClick={() => handleUpdate(record, index)}
-        onThreadLinkSelect={onThreadLinkSelect}
       />
     ),
-    [
-      entityFqn,
-      hasDescriptionEditAccess,
-      isReadOnly,
-      handleUpdate,
-      onThreadLinkSelect,
-    ]
+    [entityFqn, hasDescriptionEditAccess, isReadOnly, handleUpdate]
   );
 
   const fields: ColumnsType<SearchIndexField> = useMemo(
@@ -251,7 +243,6 @@ const SearchIndexFieldsTable = ({
             record={record}
             tags={tags}
             type={TagSource.Classification}
-            onThreadLinkSelect={onThreadLinkSelect}
           />
         ),
       },
@@ -275,7 +266,6 @@ const SearchIndexFieldsTable = ({
             record={record}
             tags={tags}
             type={TagSource.Glossary}
-            onThreadLinkSelect={onThreadLinkSelect}
           />
         ),
       },
@@ -289,8 +279,6 @@ const SearchIndexFieldsTable = ({
       handleTagSelection,
       renderDataTypeDisplay,
       renderDescription,
-      handleTagSelection,
-      onThreadLinkSelect,
       tagFilter,
     ]
   );

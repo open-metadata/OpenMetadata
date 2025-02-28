@@ -56,7 +56,6 @@ const BotDetails: FC<BotsDetailProps> = ({
 }) => {
   const [displayName, setDisplayName] = useState(botData.displayName);
   const [isDisplayNameEdit, setIsDisplayNameEdit] = useState(false);
-  const [isDescriptionEdit, setIsDescriptionEdit] = useState(false);
   const [selectedRoles, setSelectedRoles] = useState<Array<string>>([]);
   const [roles, setRoles] = useState<Array<Role>>([]);
   const { getResourceLimit, config } = useLimitStore();
@@ -114,8 +113,6 @@ const BotDetails: FC<BotsDetailProps> = ({
 
   const handleDescriptionChange = async (description: string) => {
     await updateBotsDetails({ description });
-
-    setIsDescriptionEdit(false);
   };
 
   const prepareSelectedRoles = () => {
@@ -204,10 +201,7 @@ const BotDetails: FC<BotsDetailProps> = ({
                     entityName={getEntityName(botData)}
                     entityType={EntityType.BOT}
                     hasEditAccess={descriptionPermission || editAllPermission}
-                    isEdit={isDescriptionEdit}
                     showCommentsIcon={false}
-                    onCancel={() => setIsDescriptionEdit(false)}
-                    onDescriptionEdit={() => setIsDescriptionEdit(true)}
                     onDescriptionUpdate={handleDescriptionChange}
                   />
                 </Space>

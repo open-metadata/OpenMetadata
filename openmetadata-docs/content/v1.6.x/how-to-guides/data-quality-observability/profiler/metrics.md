@@ -156,41 +156,6 @@ $$
 ## Grant Access to User for System Metrics
 OpenMetadata uses system tables to compute system metrics. You can find the required access as well as more details for your database engine below.
 
-### Custom Metrics
-Custom metrics in OpenMetadata enhance profiling capabilities by enabling users to define and compute unique business metrics using custom SQL queries. These metrics can be added at both the table and column levels, allowing tailored analysis specific to organizational needs. Once defined, custom metrics are incorporated into the profiler workflow, and their computed values are displayed alongside system metrics in the table and column profiles. This feature provides a flexible way to track specific data insights, empowering users to gain deeper visibility into their datasets.
-
-- Navigate to the **Database** and switch to the **Profile and Data** tab. Click on **Table Profile**, and on the right-hand side, select the **Add** option to access the custom metric feature.
-
-{% image
-  src="/images/v1.6/features/ingestion/workflows/profiler/custom-metric1.png"
-  alt="Click Add Custom Metric"
-  caption="Click Add Custom Metric"
- /%}
-
-- Enter a meaningful name for the custom metric and input the required SQL query based on your data requirements.
-
-{% image
-  src="/images/v1.6/features/ingestion/workflows/profiler/custom-metric2.png"
-  alt="Input SQL query"
-  caption="Input SQL query"
- /%}
-
-- Once the custom metric is defined, run the **ingestion** process in the **Database Services**.
-
-{% image
-  src="/images/v1.6/features/ingestion/workflows/profiler/custom-metric3.png"
-  alt="Run Ingestion"
-  caption="Run Ingestion"
- /%}
-
-- After the ingestion process is complete, return to the same dataset to view the computed custom metric within the table profile.
-
-{% image
-  src="/images/v1.6/features/ingestion/workflows/profiler/custom-metric4.png"
-  alt="View Custom Metric"
-  caption="View Custom Metric"
- /%}
-
 ### Snowflake
 OpenMetadata uses the `QUERY_HISTORY_BY_WAREHOUSE` view of the `INFORMATION_SCHEMA` to collect metrics about DML operations. To collect information about the `RESULT_SCAN` command alongside the QUERY ID will be passed to the `RESULT_SCAN` function to get the number of rows affected by the operation. You need to make sure the user running the profiler workflow has access to this view and this function.
 

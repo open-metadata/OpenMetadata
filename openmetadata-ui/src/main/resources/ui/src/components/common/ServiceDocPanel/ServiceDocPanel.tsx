@@ -104,10 +104,10 @@ const ServiceDocPanel: FC<ServiceDocPanelProp> = ({
 
       if (translation.status === 'fulfilled') {
         response = translation.value;
-      }
-
-      if (!isEnglishLanguage && fallbackTranslation.status === 'fulfilled') {
-        response = fallbackTranslation.value;
+      } else {
+        if (fallbackTranslation.status === 'fulfilled') {
+          response = fallbackTranslation.value;
+        }
       }
 
       setMarkdownContent(response);

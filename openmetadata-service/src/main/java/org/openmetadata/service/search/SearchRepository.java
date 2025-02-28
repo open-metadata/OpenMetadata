@@ -23,6 +23,7 @@ import static org.openmetadata.service.search.SearchClient.PROPAGATE_NESTED_FIEL
 import static org.openmetadata.service.search.SearchClient.PROPAGATE_TEST_SUITES_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.REMOVE_DATA_PRODUCTS_CHILDREN_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.REMOVE_DOMAINS_CHILDREN_SCRIPT;
+import static org.openmetadata.service.search.SearchClient.REMOVE_ENTITY_RELATIONSHIP;
 import static org.openmetadata.service.search.SearchClient.REMOVE_OWNERS_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.REMOVE_PROPAGATED_ENTITY_REFERENCE_FIELD_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.REMOVE_PROPAGATED_FIELD_SCRIPT;
@@ -484,8 +485,7 @@ public class SearchRepository {
       for (FieldChange field : changeDescription.getFieldsAdded()) {
         if (propagateFields.contains(field.getName())) {
           List<TagLabel> tagLabels =
-              JsonUtils.readObjects(
-                  (String) changeDescription.getFieldsAdded().get(0).getNewValue(), TagLabel.class);
+              JsonUtils.readObjects((String) field.getNewValue(), TagLabel.class);
           tagLabels.forEach(tagLabel -> tagLabel.setLabelType(TagLabel.LabelType.DERIVED));
           fieldData.put("tagAdded", tagLabels);
         }
@@ -493,9 +493,7 @@ public class SearchRepository {
       for (FieldChange field : changeDescription.getFieldsDeleted()) {
         if (propagateFields.contains(field.getName())) {
           List<TagLabel> tagLabels =
-              JsonUtils.readObjects(
-                  (String) changeDescription.getFieldsDeleted().get(0).getOldValue(),
-                  TagLabel.class);
+              JsonUtils.readObjects((String) field.getOldValue(), TagLabel.class);
           tagLabels.forEach(tagLabel -> tagLabel.setLabelType(TagLabel.LabelType.DERIVED));
           fieldData.put("tagDeleted", tagLabels);
         }
@@ -1188,5 +1186,13 @@ public class SearchRepository {
 
   public Set<String> getSearchEntities() {
     return new HashSet<>(entityIndexMap.keySet());
+  }
+
+  public void deleteRelationshipFromSearch(UUID fromTableId, UUID toTableId) {
+    String relationDocId = fromTableId.toString() + "-" + toTableId.toString();
+    searchClient.updateChildren(
+        GLOBAL_SEARCH_ALIAS,
+        new ImmutablePair<>("entityRelationship.doc_id.keyword", relationDocId),
+        new ImmutablePair<>(String.format(REMOVE_ENTITY_RELATIONSHIP, relationDocId), null));
   }
 }
