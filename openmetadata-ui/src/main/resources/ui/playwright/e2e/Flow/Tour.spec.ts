@@ -36,8 +36,7 @@ test.describe('Tour should work properly', () => {
   });
 
   test('All tour steps should work', async ({ page }) => {
-    await page.locator('[data-testid="help-icon"]').click();
-    await page.getByRole('link', { name: 'Tour', exact: true }).click();
+    await page.getByText('Take a product tour to get started!').click();
     await page.waitForURL('**/tour');
 
     await expect(page.locator(`[data-tour-elem="badge"]`)).toHaveText('1');
