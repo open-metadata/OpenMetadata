@@ -23,6 +23,7 @@ from pydantic import BaseModel, ConfigDict
 from metadata.generated.schema.entity.services.connections.dashboard.powerBIConnection import (
     PowerBIConnection,
 )
+from metadata.generated.schema.type.filterPattern import FilterPattern
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.ometa.client import REST, ClientConfig
 from metadata.ingestion.source.dashboard.powerbi.file_client import PowerBiFileClient
@@ -165,7 +166,7 @@ class PowerBiApiClient:
             response_data = self.client.get("/myorg/admin/dashboards")
             response = DashboardsResponse(**response_data)
             return response.value
-        group = self.fetch_all_workspaces(None)[0]
+        group = self.fetch_all_workspaces()[0]
         return self.fetch_all_org_dashboards(group_id=group.id)
 
     def fetch_all_org_dashboards(
@@ -336,7 +337,9 @@ class PowerBiApiClient:
             return None
 
     # pylint: disable=too-many-branches,too-many-statements
-    def fetch_all_workspaces(self, filter_pattern) -> Optional[List[Group]]:
+    def fetch_all_workspaces(
+        self, filter_pattern: Optional[FilterPattern] = None
+    ) -> Optional[List[Group]]:
         """Method to fetch all powerbi workspace details
         Returns:
             Group
