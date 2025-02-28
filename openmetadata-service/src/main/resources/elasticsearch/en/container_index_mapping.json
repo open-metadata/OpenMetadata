@@ -89,8 +89,8 @@
       },
       "description": {
         "type": "text",
-        "index_options": "docs",
-        "analyzer": "om_analyzer"
+        "analyzer": "om_analyzer",
+        "similarity": "boolean"
       },
       "version": {
         "type": "float"
@@ -142,7 +142,9 @@
             "type": "text"
           },
           "description": {
-            "type": "text"
+            "type": "text",
+            "analyzer": "om_analyzer",
+            "similarity": "boolean"
           },
           "deleted": {
             "type": "boolean"
@@ -178,8 +180,8 @@
               },
               "description": {
                 "type": "text",
-                "index_options": "docs",
-                "analyzer": "om_analyzer"
+                "analyzer": "om_analyzer",
+                "similarity": "boolean"
               },
               "fullyQualifiedName": {
                 "type": "text"
@@ -248,7 +250,9 @@
             "type": "keyword"
           },
           "description": {
-            "type": "text"
+            "type": "text",
+            "analyzer": "om_analyzer",
+            "similarity": "boolean"
           },
           "deleted": {
             "type": "boolean"
@@ -295,7 +299,9 @@
             "type": "keyword"
           },
           "description": {
-            "type": "text"
+            "type": "text",
+            "analyzer": "om_analyzer",
+            "similarity": "boolean"
           },
           "deleted": {
             "type": "boolean"
@@ -336,8 +342,8 @@
           },
           "description": {
             "type": "text",
-            "index_options": "docs",
-            "analyzer": "om_analyzer"
+            "analyzer": "om_analyzer",
+            "similarity": "boolean"
           },
           "deleted": {
             "type": "boolean"
@@ -396,7 +402,9 @@
             "type": "text"
           },
           "description": {
-            "type": "text"
+            "type": "text",
+            "analyzer": "om_analyzer",
+            "similarity": "boolean"
           },
           "deleted": {
             "type": "boolean"
@@ -444,7 +452,9 @@
             "type": "text"
           },
           "description": {
-            "type": "text"
+            "type": "text",
+            "analyzer": "om_analyzer",
+            "similarity": "boolean"
           },
           "deleted": {
             "type": "boolean"
