@@ -55,6 +55,7 @@ from metadata.ingestion.source.dashboard.qliksense.models import (
 )
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_chart, filter_by_datamodel
+from metadata.utils.fqn import build_es_fqn_search_string
 from metadata.utils.helpers import clean_uri
 from metadata.utils.logger import ingestion_logger
 
@@ -312,11 +313,6 @@ class QliksenseSource(DashboardServiceSource):
         db_service_name: Optional[str] = None,
     ) -> Iterable[Either[AddLineageRequest]]:
         """Get lineage method"""
-        db_service_entity = None
-        if db_service_name:
-            db_service_entity = self.metadata.get_by_name(
-                entity=DatabaseService, fqn=db_service_name
-            )
         for datamodel in self.data_models or []:
             try:
                 data_model_entity = self._get_datamodel(datamodel_id=datamodel.id)
@@ -331,20 +327,15 @@ class QliksenseSource(DashboardServiceSource):
                         database_name = None
                     else:
                         schema_name, database_name = None, None
-
-                    if db_service_entity:
-                        om_table = self._get_database_table(
-                            db_service_entity,
-                            data_model_entity,
-                            schema_name,
-                            database_name,
-                        )
-                    else:
-                        om_table = self.get_table_entity_from_es(
-                            table_name=data_model_entity.displayName,
-                            schema_name=schema_name,
-                            database_name=database_name,
-                        )
+                    fqn_search_string = build_es_fqn_search_string(
+                        database_name=database_name,
+                        schema_name=schema_name,
+                        service_name=db_service_name or "*",
+                        table_name=datamodel.tableName,
+                    )
+                    om_table = self.metadata.get_table_entities_from_es(
+                        fqn_search_string=fqn_search_string,
+                    )
                     if om_table:
                         columns_list = [col.name for col in datamodel.fields]
                         column_lineage = self._get_column_lineage(

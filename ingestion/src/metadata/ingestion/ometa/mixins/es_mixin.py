@@ -16,7 +16,17 @@ To be used by OpenMetadata class
 import functools
 import json
 import traceback
-from typing import Generic, Iterable, Iterator, List, Optional, Set, Type, TypeVar
+from typing import (
+    Generic,
+    Iterable,
+    Iterator,
+    List,
+    Optional,
+    Set,
+    Type,
+    TypeVar,
+    Union,
+)
 from urllib.parse import quote_plus
 
 from pydantic import Field
@@ -29,7 +39,7 @@ from metadata.ingestion.models.custom_pydantic import BaseModel
 from metadata.ingestion.ometa.client import REST, APIError
 from metadata.ingestion.ometa.utils import quote
 from metadata.ingestion.source.models import TableView
-from metadata.utils.elasticsearch import ES_INDEX_MAP
+from metadata.utils.elasticsearch import ES_INDEX_MAP, get_entity_from_es_result
 from metadata.utils.logger import ometa_logger
 
 logger = ometa_logger()
@@ -469,3 +479,25 @@ class ESMixin(Generic[T]):
                         schema_name=schema_name,
                         table_name=table_name,
                     )
+
+    def get_table_entities_from_es(
+        self, fqn_search_string: str, fetch_multiple_entities: bool = False
+    ) -> Optional[Union[List[Table], Table]]:
+        """
+        fetch table from es when with/without `db_service_name`
+        """
+        try:
+            table_entity = get_entity_from_es_result(
+                entity_list=self.es_search_from_fqn(
+                    entity_type=Table,
+                    fqn_search_string=fqn_search_string,
+                ),
+                fetch_multiple_entities=fetch_multiple_entities,
+            )
+            return table_entity
+        except Exception as exc:
+            logger.debug(
+                f"Error to fetch for table fqn={fqn_search_string} from es: {exc}"
+            )
+            logger.debug(traceback.format_exc())
+        return None

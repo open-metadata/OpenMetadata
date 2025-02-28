@@ -72,9 +72,7 @@ from metadata.ingestion.models.topology import (
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import get_connection, get_test_connection_fn
 from metadata.utils import fqn
-from metadata.utils.elasticsearch import get_entity_from_es_result
 from metadata.utils.filters import filter_by_dashboard, filter_by_project
-from metadata.utils.fqn import build_es_fqn_search_string
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -674,31 +672,3 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
         except Exception as exc:
             logger.debug(f"Error to get column lineage: {exc}")
             logger.debug(traceback.format_exc())
-
-    def get_table_entity_from_es(
-        self,
-        table_name: str,
-        schema_name: Optional[str] = None,
-        database_name: Optional[str] = None,
-    ) -> Optional[Table]:
-        """
-        fetch table from es when `db_service_name` not provided
-        """
-        try:
-            fqn_search_string = build_es_fqn_search_string(
-                database_name=database_name,
-                schema_name=schema_name,
-                service_name=None,
-                table_name=table_name,
-            )
-            return get_entity_from_es_result(
-                entity_list=self.metadata.es_search_from_fqn(
-                    entity_type=Table,
-                    fqn_search_string=fqn_search_string,
-                ),
-                fetch_multiple_entities=False,
-            )
-        except Exception as exc:
-            logger.debug(f"Error to fetch table={table_name} from es: {exc}")
-            logger.debug(traceback.format_exc())
-        return None

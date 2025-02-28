@@ -23,7 +23,6 @@ from metadata.generated.schema.entity.data.chart import Chart
 from metadata.generated.schema.entity.data.dashboard import (
     Dashboard as LineageDashboard,
 )
-from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.connections.dashboard.redashConnection import (
     RedashConnection,
 )
@@ -48,6 +47,7 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_chart
+from metadata.utils.fqn import build_es_fqn_search_string
 from metadata.utils.helpers import clean_uri, get_standard_chart_type
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.tag_utils import get_ometa_tag_and_classification, get_tag_labels
@@ -206,8 +206,6 @@ class RedashSource(DashboardServiceSource):
         In redash we do not get table, database_schema or database name but we do get query
         the lineage is being generated based on the query
         """
-        if not db_service_name:
-            return
         to_fqn = fqn.build(
             self.metadata,
             entity_type=LineageDashboard,
@@ -232,17 +230,16 @@ class RedashSource(DashboardServiceSource):
                         database_schema_name = self.check_database_schema_name(
                             database_schema
                         )
-                        from_fqn = fqn.build(
-                            self.metadata,
-                            entity_type=Table,
-                            service_name=db_service_name,
-                            schema_name=database_schema_name,
-                            table_name=database_schema_table.get("table"),
+                        if not database_schema_table.get("table"):
+                            continue
+                        fqn_search_string = build_es_fqn_search_string(
                             database_name=database_schema_table.get("database"),
+                            schema_name=database_schema_name,
+                            service_name=db_service_name or "*",
+                            table_name=database_schema_table.get("table"),
                         )
-                        from_entity = self.metadata.get_by_name(
-                            entity=Table,
-                            fqn=from_fqn,
+                        from_entity = self.metadata.get_table_entities_from_es(
+                            fqn_search_string=fqn_search_string,
                         )
                         if from_entity and to_entity:
                             yield self._get_add_lineage_request(

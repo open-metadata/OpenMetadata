@@ -38,12 +38,12 @@ from metadata.generated.schema.type.basic import (
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.lineage.parser import LineageParser
-from metadata.ingestion.lineage.sql_lineage import search_table_entities
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
 from metadata.ingestion.source.dashboard.mode import client
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_chart
+from metadata.utils.fqn import build_es_fqn_search_string
 from metadata.utils.helpers import clean_uri
 from metadata.utils.logger import ingestion_logger
 
@@ -153,22 +153,17 @@ class ModeSource(DashboardServiceSource):
                     database_schema_name = self.check_database_schema_name(
                         database_schema_name
                     )
-                    if not db_service_name:
-                        table_entity = self.get_table_entity_from_es(
-                            table_name=table,
-                            schema_name=database_schema_name,
-                            database_name=data_source.get(client.DATABASE),
-                        )
-                        from_entities = [table_entity] if table_entity else []
-                    else:
-                        from_entities = search_table_entities(
-                            metadata=self.metadata,
-                            database=data_source.get(client.DATABASE),
-                            service_name=db_service_name,
-                            database_schema=database_schema_name,
-                            table=table,
-                        )
-                    for from_entity in from_entities:
+                    fqn_search_string = build_es_fqn_search_string(
+                        database_name=data_source.get(client.DATABASE),
+                        schema_name=database_schema_name,
+                        service_name=db_service_name or "*",
+                        table_name=table,
+                    )
+                    from_entities = self.metadata.get_table_entities_from_es(
+                        fqn_search_string=fqn_search_string,
+                        fetch_multiple_entities=True,
+                    )
+                    for from_entity in from_entities or []:
                         to_entity = self.metadata.get_by_name(
                             entity=Lineage_Dashboard,
                             fqn=fqn.build(

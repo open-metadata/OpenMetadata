@@ -44,7 +44,6 @@ from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper, Dialect
 from metadata.ingestion.lineage.parser import LineageParser
-from metadata.ingestion.lineage.sql_lineage import search_table_entities
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
 from metadata.ingestion.source.dashboard.metabase.models import (
@@ -56,6 +55,7 @@ from metadata.ingestion.source.dashboard.metabase.models import (
 from metadata.utils import fqn
 from metadata.utils.constants import DEFAULT_DASHBAORD
 from metadata.utils.filters import filter_by_chart
+from metadata.utils.fqn import build_es_fqn_search_string
 from metadata.utils.helpers import (
     clean_uri,
     get_standard_chart_type,
@@ -369,22 +369,15 @@ class MetabaseSource(DashboardServiceSource):
         for table in lineage_parser.source_tables:
             database_schema_name, table = fqn.split(str(table))[-2:]
             database_schema_name = self.check_database_schema_name(database_schema_name)
-            if not db_service_name:
-                table_entity = self.get_table_entity_from_es(
-                    table_name=table,
-                    schema_name=database_schema_name,
-                    database_name=database_name,
-                )
-                from_entities = [table_entity] if table_entity else []
-            else:
-                from_entities = search_table_entities(
-                    metadata=self.metadata,
-                    database=database_name,
-                    service_name=db_service_name,
-                    database_schema=database_schema_name,
-                    table=table,
-                )
-
+            fqn_search_string = build_es_fqn_search_string(
+                database_name=database_name,
+                schema_name=database_schema_name,
+                service_name=db_service_name or "*",
+                table_name=table,
+            )
+            from_entities = self.metadata.get_table_entities_from_es(
+                fqn_search_string=fqn_search_string, fetch_multiple_entities=True
+            )
             to_fqn = fqn.build(
                 self.metadata,
                 entity_type=LineageDashboard,
@@ -396,7 +389,7 @@ class MetabaseSource(DashboardServiceSource):
                 fqn=to_fqn,
             )
 
-            for from_entity in from_entities:
+            for from_entity in from_entities or []:
                 yield self._get_add_lineage_request(
                     to_entity=to_entity, from_entity=from_entity
                 )
@@ -414,22 +407,15 @@ class MetabaseSource(DashboardServiceSource):
             return
 
         database_name = table.db.details.db if table.db and table.db.details else None
-        if not db_service_name:
-            table_entity = self.get_table_entity_from_es(
-                table_name=table_name,
-                schema_name=table.table_schema,
-                database_name=database_name,
-            )
-            from_entities = [table_entity] if table_entity else []
-        else:
-            from_entities = search_table_entities(
-                metadata=self.metadata,
-                database=database_name,
-                service_name=db_service_name,
-                database_schema=table.table_schema,
-                table=table_name,
-            )
-
+        fqn_search_string = build_es_fqn_search_string(
+            database_name=database_name,
+            schema_name=table.table_schema,
+            service_name=db_service_name or "*",
+            table_name=table_name,
+        )
+        from_entities = self.metadata.get_table_entities_from_es(
+            fqn_search_string=fqn_search_string, fetch_multiple_entities=True
+        )
         to_fqn = fqn.build(
             self.metadata,
             entity_type=LineageDashboard,
@@ -442,7 +428,7 @@ class MetabaseSource(DashboardServiceSource):
             fqn=to_fqn,
         )
 
-        for from_entity in from_entities:
+        for from_entity in from_entities or []:
             yield self._get_add_lineage_request(
                 to_entity=to_entity, from_entity=from_entity
             )

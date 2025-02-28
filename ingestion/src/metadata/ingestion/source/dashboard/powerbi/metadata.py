@@ -25,7 +25,7 @@ from metadata.generated.schema.entity.data.dashboardDataModel import (
     DashboardDataModel,
     DataModelType,
 )
-from metadata.generated.schema.entity.data.table import Column, DataType, Table
+from metadata.generated.schema.entity.data.table import Column, DataType
 from metadata.generated.schema.entity.services.connections.dashboard.powerBIConnection import (
     PowerBIConnection,
 )
@@ -67,6 +67,7 @@ from metadata.utils.filters import (
     filter_by_datamodel,
     filter_by_project,
 )
+from metadata.utils.fqn import build_es_fqn_search_string
 from metadata.utils.helpers import clean_uri
 from metadata.utils.logger import ingestion_logger
 
@@ -623,23 +624,15 @@ class PowerbiSource(DashboardServiceSource):
         Method to create lineage between table and datamodels
         """
         try:
-            if not db_service_name:
-                # search from all database services
-                table_entity = self.get_table_entity_from_es(table_name=table.name)
-            else:
-                table_fqn = fqn.build(
-                    self.metadata,
-                    entity_type=Table,
-                    service_name=db_service_name,
-                    database_name=None,
-                    schema_name=None,
-                    table_name=table.name,
-                )
-                table_entity = self.metadata.get_by_name(
-                    entity=Table,
-                    fqn=table_fqn,
-                )
-
+            fqn_search_string = build_es_fqn_search_string(
+                database_name=None,
+                schema_name=None,
+                service_name=db_service_name or "*",
+                table_name=table.name,
+            )
+            table_entity = self.metadata.get_table_entities_from_es(
+                fqn_search_string=fqn_search_string,
+            )
             if table_entity and datamodel_entity:
                 columns_list = [column.name for column in table.columns]
                 column_lineage = self._get_column_lineage(

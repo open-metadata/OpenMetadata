@@ -58,9 +58,9 @@ from metadata.generated.schema.type.entityLineage import ColumnLineage
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
-from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper
+from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper, Dialect
 from metadata.ingestion.lineage.parser import LineageParser
-from metadata.ingestion.lineage.sql_lineage import get_column_fqn, search_table_entities
+from metadata.ingestion.lineage.sql_lineage import get_column_fqn
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
@@ -77,6 +77,7 @@ from metadata.ingestion.source.dashboard.tableau.models import (
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_chart, filter_by_datamodel
+from metadata.utils.fqn import build_es_fqn_search_string
 from metadata.utils.helpers import (
     clean_uri,
     get_database_name_for_lineage,
@@ -444,7 +445,7 @@ class TableauSource(DashboardServiceSource):
         self,
         upstream_data_model: DataSource,
         datamodel: DataSource,
-        db_service_entity: DatabaseService,
+        db_service_name: Optional[str],
         upstream_data_model_entity: DashboardDataModel,
     ) -> Iterable[Either[AddLineageRequest]]:
         """
@@ -458,7 +459,7 @@ class TableauSource(DashboardServiceSource):
                 if column is not None
             }
             for table in datamodel.upstreamTables or []:
-                om_tables = self._get_database_tables(db_service_entity, table)
+                om_tables = self._get_database_tables(db_service_name, table)
                 for om_table_and_query in om_tables or []:
                     column_lineage = self._get_column_lineage(
                         table,
@@ -557,7 +558,7 @@ class TableauSource(DashboardServiceSource):
         self,
         datamodel: DataSource,
         data_model_entity: DashboardDataModel,
-        db_service_entity: DatabaseService,
+        db_service_name: Optional[str],
     ) -> Iterable[Either[AddLineageRequest]]:
         """ "
         Method to create lineage between tables<->published datasource<->embedded datasource
@@ -581,7 +582,7 @@ class TableauSource(DashboardServiceSource):
                     yield from self._get_table_datamodel_lineage(
                         upstream_data_model=upstream_data_model,
                         datamodel=datamodel,
-                        db_service_entity=db_service_entity,
+                        db_service_name=db_service_name,
                         upstream_data_model_entity=upstream_data_model_entity,
                     )
             except Exception as err:
@@ -590,7 +591,7 @@ class TableauSource(DashboardServiceSource):
                         name="Lineage",
                         error=(
                             "Error to yield datamodel table lineage details for DB "
-                            f"service name [{db_service_entity.name}]: {err}"
+                            f"service name [{db_service_name}]: {err}"
                         ),
                         stackTrace=traceback.format_exc(),
                     )
@@ -611,44 +612,38 @@ class TableauSource(DashboardServiceSource):
         Returns:
             Lineage request between Data Models and Database tables
         """
-        if not db_service_name:
-            return
-        db_service_entity = self.metadata.get_by_name(
-            entity=DatabaseService, fqn=db_service_name
-        )
-        if db_service_entity:
-            for datamodel in dashboard_details.dataModels or []:
-                try:
-                    data_model_entity = self._get_datamodel(datamodel=datamodel)
-                    if data_model_entity:
-                        if datamodel.upstreamDatasources:
-                            # if we have upstreamDatasources(Published Datasources), create lineage in below format
-                            # Table<->Published Datasource<->Embedded Datasource
-                            yield from self._get_datamodel_table_lineage(
-                                datamodel=datamodel,
-                                data_model_entity=data_model_entity,
-                                db_service_entity=db_service_entity,
-                            )
-                        else:
-                            # else we'll create lineage only using Embedded Datasources in below format
-                            # Table<->Embedded Datasource
-                            yield from self._get_table_datamodel_lineage(
-                                upstream_data_model=datamodel,
-                                datamodel=datamodel,
-                                db_service_entity=db_service_entity,
-                                upstream_data_model_entity=data_model_entity,
-                            )
-                except Exception as err:
-                    yield Either(
-                        left=StackTraceError(
-                            name="Lineage",
-                            error=(
-                                "Error to yield dashboard lineage details for DB "
-                                f"service name [{db_service_name}]: {err}"
-                            ),
-                            stackTrace=traceback.format_exc(),
+        for datamodel in dashboard_details.dataModels or []:
+            try:
+                data_model_entity = self._get_datamodel(datamodel=datamodel)
+                if data_model_entity:
+                    if datamodel.upstreamDatasources:
+                        # if we have upstreamDatasources(Published Datasources), create lineage in below format
+                        # Table<->Published Datasource<->Embedded Datasource
+                        yield from self._get_datamodel_table_lineage(
+                            datamodel=datamodel,
+                            data_model_entity=data_model_entity,
+                            db_service_name=db_service_name,
                         )
+                    else:
+                        # else we'll create lineage only using Embedded Datasources in below format
+                        # Table<->Embedded Datasource
+                        yield from self._get_table_datamodel_lineage(
+                            upstream_data_model=datamodel,
+                            datamodel=datamodel,
+                            db_service_name=db_service_name,
+                            upstream_data_model_entity=data_model_entity,
+                        )
+            except Exception as err:
+                yield Either(
+                    left=StackTraceError(
+                        name="Lineage",
+                        error=(
+                            "Error to yield dashboard lineage details for DB "
+                            f"service name [{db_service_name}]: {err}"
+                        ),
+                        stackTrace=traceback.format_exc(),
                     )
+                )
 
     def yield_dashboard_chart(
         self, dashboard_details: TableauDashboard
@@ -710,7 +705,7 @@ class TableauSource(DashboardServiceSource):
             logger.debug(f"Error closing connection - {err}")
 
     def _get_table_entities_from_api(
-        self, db_service_entity: DatabaseService, table: UpstreamTable
+        self, db_service_name: Optional[str], table: UpstreamTable
     ) -> Optional[List[TableAndQuery]]:
         """
         In case we get the table details from the Graphql APIs we process them
@@ -722,39 +717,39 @@ class TableauSource(DashboardServiceSource):
                 if table.database and table.database.name
                 else database_schema_table.get("database")
             )
-            if isinstance(db_service_entity.connection.config, BigQueryConnection):
-                database_name = None
-            database_name = get_database_name_for_lineage(
-                db_service_entity, database_name
-            )
+            if db_service_name:
+                db_service_entity = self.metadata.get_by_name(
+                    entity=DatabaseService, fqn=db_service_name
+                )
+                if isinstance(db_service_entity.connection.config, BigQueryConnection):
+                    database_name = None
+                database_name = get_database_name_for_lineage(
+                    db_service_entity, database_name
+                )
             schema_name = (
                 table.schema_
                 if table.schema_
                 else database_schema_table.get("database_schema")
             )
             table_name = database_schema_table.get("table")
-            table_fqn = fqn.build(
-                self.metadata,
-                entity_type=Table,
-                service_name=db_service_entity.name.root,
-                schema_name=schema_name,
-                table_name=table_name,
+            fqn_search_string = build_es_fqn_search_string(
                 database_name=database_name,
+                schema_name=schema_name,
+                service_name=db_service_name or "*",
+                table_name=table_name,
             )
-            if table_fqn:
-                table_entity = self.metadata.get_by_name(
-                    entity=Table,
-                    fqn=table_fqn,
-                )
-                if table_entity:
-                    return [TableAndQuery(table=table_entity)]
+            table_entity = self.metadata.get_table_entities_from_es(
+                fqn_search_string=fqn_search_string,
+            )
+            if table_entity:
+                return [TableAndQuery(table=table_entity)]
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(f"Error to get tables for lineage using GraphQL Apis: {exc}")
         return None
 
     def _get_table_entities_from_query(
-        self, db_service_entity: DatabaseService, table: UpstreamTable
+        self, db_service_name: Optional[str], table: UpstreamTable
     ) -> Optional[List[TableAndQuery]]:
         """
         In case we get the table details from the Graphql APIs we process them
@@ -762,34 +757,43 @@ class TableauSource(DashboardServiceSource):
         tables_list = []
         try:
             for custom_sql_table in table.referencedByQueries or []:
+                db_service_entity = None
+                if db_service_name:
+                    db_service_entity = self.metadata.get_by_name(
+                        entity=DatabaseService, fqn=db_service_name
+                    )
                 lineage_parser = LineageParser(
                     custom_sql_table.query,
                     ConnectionTypeDialectMapper.dialect_of(
                         db_service_entity.serviceType.value
                     )
                     if db_service_entity
-                    else None,
+                    else Dialect.ANSI,
                 )
                 for source_table in lineage_parser.source_tables or []:
                     database_schema_table = fqn.split_table_name(str(source_table))
                     database_name = database_schema_table.get("database")
-                    if isinstance(
-                        db_service_entity.connection.config, BigQueryConnection
-                    ):
-                        database_name = None
-                    database_name = get_database_name_for_lineage(
-                        db_service_entity, database_name
-                    )
+                    if db_service_entity:
+                        if isinstance(
+                            db_service_entity.connection.config, BigQueryConnection
+                        ):
+                            database_name = None
+                        database_name = get_database_name_for_lineage(
+                            db_service_entity, database_name
+                        )
                     schema_name = self.check_database_schema_name(
                         database_schema_table.get("database_schema")
                     )
                     table_name = database_schema_table.get("table")
-                    from_entities = search_table_entities(
-                        metadata=self.metadata,
-                        database=database_name,
-                        service_name=db_service_entity.fullyQualifiedName.root,
-                        database_schema=schema_name,
-                        table=table_name,
+                    fqn_search_string = build_es_fqn_search_string(
+                        database_name=database_name,
+                        schema_name=schema_name,
+                        service_name=db_service_name or "*",
+                        table_name=table_name,
+                    )
+                    from_entities = self.metadata.get_table_entities_from_es(
+                        fqn_search_string=fqn_search_string,
+                        fetch_multiple_entities=True,
                     )
                     tables_list.extend(
                         [
@@ -804,7 +808,7 @@ class TableauSource(DashboardServiceSource):
         return tables_list or []
 
     def _get_database_tables(
-        self, db_service_entity: DatabaseService, table: UpstreamTable
+        self, db_service_name: Optional[str], table: UpstreamTable
     ) -> Optional[List[TableAndQuery]]:
         """
         Get the table entities for lineage
@@ -812,12 +816,12 @@ class TableauSource(DashboardServiceSource):
         # If we get the table details from the Graphql APIs we process them directly
         if table.name:
             return self._get_table_entities_from_api(
-                db_service_entity=db_service_entity, table=table
+                db_service_name=db_service_name, table=table
             )
         # Else we get the table details from the SQL queries and process them using SQL lineage parser
         if table.referencedByQueries:
             return self._get_table_entities_from_query(
-                db_service_entity=db_service_entity, table=table
+                db_service_name=db_service_name, table=table
             )
         return None
 

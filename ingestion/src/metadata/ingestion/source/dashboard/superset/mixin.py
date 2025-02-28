@@ -20,7 +20,7 @@ from collate_sqllineage.core.models import Table as LineageTable
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.dashboardDataModel import DashboardDataModel
-from metadata.generated.schema.entity.data.table import Column, DataType, Table
+from metadata.generated.schema.entity.data.table import Column, DataType
 from metadata.generated.schema.entity.services.connections.dashboard.supersetConnection import (
     SupersetConnection,
 )
@@ -30,7 +30,6 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.entity.services.dashboardService import (
     DashboardServiceType,
 )
-from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
 )
@@ -245,20 +244,20 @@ class SupersetSourceMixin(DashboardServiceSource):
         self,
         from_entities: List[Tuple[FetchChart, Dict[str, List[str]]]],
         to_entity: DashboardDataModel,
-        db_service_entity: DatabaseService,
+        db_service_name: Optional[str],
     ):
         result = []
 
         for from_entity in from_entities:
             input_table, _column_lineage = from_entity
             datasource_fqn = self._get_datasource_fqn_for_lineage(
-                input_table, db_service_entity
+                input_table, db_service_name
             )
-            from_entity = self.metadata.get_by_name(
-                entity=Table,
-                fqn=datasource_fqn,
+            from_entity = self.metadata.get_table_entities_from_es(
+                fqn_search_string=datasource_fqn,
             )
-
+            if not from_entity:
+                continue
             column_lineage: List[ColumnLineage] = []
             for to_column, from_columns in _column_lineage.items():
                 _from_columns = [
@@ -313,46 +312,40 @@ class SupersetSourceMixin(DashboardServiceSource):
         """
         Get lineage between datamodel and table
         """
-        if not db_service_name:
-            return
-        db_service_entity = self.metadata.get_by_name(
-            entity=DatabaseService, fqn=db_service_name
-        )
-        if db_service_entity:
-            for chart_json in filter(
-                None,
-                [
-                    self.all_charts.get(chart_id)
-                    for chart_id in self._get_charts_of_dashboard(dashboard_details)
-                ],
-            ):
-                try:
-                    to_entity = self._get_dashboard_data_model_entity(chart_json)
+        for chart_json in filter(
+            None,
+            [
+                self.all_charts.get(chart_id)
+                for chart_id in self._get_charts_of_dashboard(dashboard_details)
+            ],
+        ):
+            try:
+                to_entity = self._get_dashboard_data_model_entity(chart_json)
 
-                    if to_entity:
-                        _input_tables = self._get_input_tables(chart_json)
-                        input_tables = self._enrich_raw_input_tables(
-                            _input_tables, to_entity, db_service_entity
-                        )
-                        for input_table in input_tables:
-                            from_entity_table, column_lineage = input_table
-
-                            yield self._get_add_lineage_request(
-                                to_entity=to_entity,
-                                from_entity=from_entity_table,
-                                column_lineage=column_lineage,
-                            )
-                except Exception as exc:
-                    yield Either(
-                        left=StackTraceError(
-                            name=db_service_name,
-                            error=(
-                                "Error to yield dashboard lineage details for DB "
-                                f"service name [{db_service_name}]: {exc}"
-                            ),
-                            stackTrace=traceback.format_exc(),
-                        )
+                if to_entity:
+                    _input_tables = self._get_input_tables(chart_json)
+                    input_tables = self._enrich_raw_input_tables(
+                        _input_tables, to_entity, db_service_name
                     )
+                    for input_table in input_tables:
+                        from_entity_table, column_lineage = input_table
+
+                        yield self._get_add_lineage_request(
+                            to_entity=to_entity,
+                            from_entity=from_entity_table,
+                            column_lineage=column_lineage,
+                        )
+            except Exception as exc:
+                yield Either(
+                    left=StackTraceError(
+                        name=db_service_name,
+                        error=(
+                            "Error to yield dashboard lineage details for DB "
+                            f"service name [{db_service_name}]: {exc}"
+                        ),
+                        stackTrace=traceback.format_exc(),
+                    )
+                )
 
     def _get_datamodel(
         self, datamodel: Union[SupersetDatasource, FetchChart]
