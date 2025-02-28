@@ -16,7 +16,6 @@ import React from 'react';
 import { useHistory } from 'react-router-dom';
 import { ReactComponent as ExportIcon } from '../assets/svg/ic-export.svg';
 import { ReactComponent as ImportIcon } from '../assets/svg/ic-import.svg';
-import ActivityFeedProvider from '../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import { ActivityFeedTab } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import { CustomPropertyTable } from '../components/common/CustomPropertyTable/CustomPropertyTable';
 import { ManageButtonItemLabel } from '../components/common/ManageButtonContentItem/ManageButtonContentItem.component';
@@ -88,16 +87,14 @@ export const getDataBaseSchemaPageBaseTabs = ({
       ),
       key: EntityTabs.ACTIVITY_FEED,
       children: (
-        <ActivityFeedProvider>
-          <ActivityFeedTab
-            refetchFeed
-            entityFeedTotalCount={feedCount.totalCount}
-            entityType={EntityType.DATABASE_SCHEMA}
-            onFeedUpdate={getEntityFeedCount}
-            onUpdateEntityDetails={fetchDatabaseSchemaDetails}
-            onUpdateFeedCount={handleFeedCount}
-          />
-        </ActivityFeedProvider>
+        <ActivityFeedTab
+          refetchFeed
+          entityFeedTotalCount={feedCount.totalCount}
+          entityType={EntityType.DATABASE_SCHEMA}
+          onFeedUpdate={getEntityFeedCount}
+          onUpdateEntityDetails={fetchDatabaseSchemaDetails}
+          onUpdateFeedCount={handleFeedCount}
+        />
       ),
     },
     {
