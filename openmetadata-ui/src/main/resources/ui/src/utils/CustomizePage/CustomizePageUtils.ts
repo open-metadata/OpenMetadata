@@ -12,6 +12,7 @@
  */
 import { TabsProps } from 'antd';
 import { noop } from 'lodash';
+import { TAB_LABEL_MAP } from '../../constants/Customize.constants';
 import { CommonWidgetType } from '../../constants/CustomizeWidgets.constants';
 import { EntityTabs } from '../../enums/entity.enum';
 import { PageType, Tab } from '../../generated/system/ui/page';
@@ -109,91 +110,10 @@ export const getGlossaryDefaultTabs = () => {
   ];
 };
 
-export const getTabLabelFromId = (tab: EntityTabs) => {
-  switch (tab) {
-    case EntityTabs.OVERVIEW:
-      return i18n.t('label.overview');
-    case EntityTabs.GLOSSARY_TERMS:
-      return i18n.t('label.glossary-terms');
-    case EntityTabs.ASSETS:
-      return i18n.t('label.asset-plural');
-    case EntityTabs.ACTIVITY_FEED:
-      return i18n.t('label.activity-feed-and-task-plural');
-    case EntityTabs.CUSTOM_PROPERTIES:
-      return i18n.t('label.custom-property-plural');
-    case EntityTabs.TERMS:
-      return i18n.t('label.terms');
-    case EntityTabs.SCHEMA:
-      return i18n.t('label.schema');
-    case EntityTabs.SAMPLE_DATA:
-      return i18n.t('label.sample-data');
-    case EntityTabs.TABLE_QUERIES:
-      return i18n.t('label.query-plural');
-    case EntityTabs.PROFILER:
-      return i18n.t('label.profiler-amp-data-quality');
-    case EntityTabs.INCIDENTS:
-      return i18n.t('label.incident-plural');
-    case EntityTabs.LINEAGE:
-      return i18n.t('label.lineage');
-    case EntityTabs.VIEW_DEFINITION:
-      return i18n.t('label.view-definition');
-    case EntityTabs.DBT:
-      return i18n.t('label.dbt-lowercase');
-    case EntityTabs.CHILDREN:
-      return i18n.t('label.children');
-    case EntityTabs.DETAILS:
-      return i18n.t('label.detail-plural');
-    case EntityTabs.SUBDOMAINS:
-      return i18n.t('label.sub-domain-plural');
-    case EntityTabs.DATA_PRODUCTS:
-      return i18n.t('label.data-product-plural');
-    case EntityTabs.DOCUMENTATION:
-      return i18n.t('label.documentation');
-    case EntityTabs.MODEL:
-      return i18n.t('label.model');
-    case EntityTabs.FEATURES:
-      return i18n.t('label.feature-plural');
-    case EntityTabs.TASKS:
-      return i18n.t('label.task-plural');
-    case EntityTabs.CONFIG:
-      return i18n.t('label.config');
-    case EntityTabs.EXECUTIONS:
-      return i18n.t('label.execution-plural');
-    case EntityTabs.TABLE:
-      return i18n.t('label.table');
-    case EntityTabs.TEST_CASES:
-      return i18n.t('label.test-case-plural');
-    case EntityTabs.PIPELINE:
-      return i18n.t('label.pipeline');
-    case EntityTabs.DATA_Model:
-      return i18n.t('label.data-model');
-    case EntityTabs.INGESTIONS:
-      return i18n.t('label.ingestion-plural');
-    case EntityTabs.CONNECTION:
-      return i18n.t('label.connection');
-    case EntityTabs.SQL:
-      return i18n.t('label.sql');
-    case EntityTabs.FIELDS:
-      return i18n.t('label.field-plural');
-    case EntityTabs.SEARCH_INDEX_SETTINGS:
-      return i18n.t('label.search-index-settings');
-    case EntityTabs.STORED_PROCEDURE:
-      return i18n.t('label.stored-procedure');
-    case EntityTabs.CODE:
-      return i18n.t('label.code');
-    case EntityTabs.API_COLLECTION:
-      return i18n.t('label.api-collection');
-    case EntityTabs.API_ENDPOINT:
-      return i18n.t('label.api-endpoint');
-    case EntityTabs.SCHEMA_DEFINITION:
-      return i18n.t('label.schema-definition');
-    case EntityTabs.EXPRESSION:
-      return i18n.t('label.expression');
-    case EntityTabs.DASHBOARD:
-      return i18n.t('label.dashboard');
-    default:
-      return '';
-  }
+export const getTabLabelFromId = (tab: EntityTabs): string => {
+  const labelKey = TAB_LABEL_MAP[tab];
+
+  return labelKey ? i18n.t(labelKey) : '';
 };
 
 export const getDefaultTabs = (pageType?: string): Tab[] => {
