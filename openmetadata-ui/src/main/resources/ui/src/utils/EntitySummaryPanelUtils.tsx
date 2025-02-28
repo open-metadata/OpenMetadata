@@ -19,9 +19,11 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { SearchedDataProps } from '../../src/components/SearchedData/SearchedData.interface';
 import { ReactComponent as IconExternalLink } from '../assets/svg/external-links.svg';
+import { GenericProvider } from '../components/Customization/GenericProvider/GenericProvider';
 import SchemaEditor from '../components/Database/SchemaEditor/SchemaEditor';
 import APIEndpointSummary from '../components/Explore/EntitySummaryPanel/APIEndpointSummary/APIEndpointSummary';
 import DataProductSummary from '../components/Explore/EntitySummaryPanel/DataProductSummary/DataProductSummary.component';
+import DomainSummary from '../components/Explore/EntitySummaryPanel/DomainSummary/DomainSummary.component';
 import GlossaryTermSummary from '../components/Explore/EntitySummaryPanel/GlossaryTermSummary/GlossaryTermSummary.component';
 import SummaryList from '../components/Explore/EntitySummaryPanel/SummaryList/SummaryList.component';
 import {
@@ -33,6 +35,7 @@ import MetricExpression from '../components/Metric/MetricExpression/MetricExpres
 import RelatedMetrics from '../components/Metric/RelatedMetrics/RelatedMetrics';
 import { ICON_DIMENSION, NO_DATA_PLACEHOLDER } from '../constants/constants';
 import { SummaryListHighlightKeys } from '../constants/EntitySummaryPanelUtils.constant';
+import { OperationPermission } from '../context/PermissionProvider/PermissionProvider.interface';
 import { CSMode } from '../enums/codemirror.enum';
 import { EntityType } from '../enums/entity.enum';
 import { SummaryEntityType } from '../enums/EntitySummary.enum';
@@ -55,6 +58,7 @@ import {
 import { Column, Table, TableConstraint } from '../generated/entity/data/table';
 import { Field, Topic } from '../generated/entity/data/topic';
 import { DataProduct } from '../generated/entity/domains/dataProduct';
+import { Domain } from '../generated/entity/domains/domain';
 import { EntityReference } from '../generated/tests/testCase';
 import entityUtilClassBase from './EntityUtilClassBase';
 import { getEntityName } from './EntityUtils';
@@ -567,13 +571,24 @@ export const getEntityChildDetails = (
       );
 
     case EntityType.METRIC:
-      heading = <MetricExpression metricDetails={entityInfo as Metric} />;
+      heading = (
+        <GenericProvider<Metric>
+          data={entityInfo as Metric}
+          permissions={{} as OperationPermission}
+          type={EntityType.METRIC}
+          onUpdate={() => Promise.resolve()}>
+          <MetricExpression />
+        </GenericProvider>
+      );
+
       childComponent = (
-        <RelatedMetrics
-          isInSummaryPanel
-          hasEditPermission={false}
-          metricDetails={entityInfo as Metric}
-        />
+        <GenericProvider<Metric>
+          data={entityInfo as Metric}
+          permissions={{} as OperationPermission}
+          type={EntityType.METRIC}
+          onUpdate={() => Promise.resolve()}>
+          <RelatedMetrics isInSummaryPanel />
+        </GenericProvider>
       );
 
       break;
@@ -608,6 +623,16 @@ export const getEntityChildDetails = (
       return (
         <DataProductSummary
           entityDetails={entityInfo as DataProduct}
+          highlights={highlights}
+          isLoading={false}
+        />
+      );
+
+    case EntityType.DOMAIN:
+      return (
+        <DomainSummary
+          entityDetails={entityInfo as Domain}
+          highlights={highlights}
           isLoading={false}
         />
       );

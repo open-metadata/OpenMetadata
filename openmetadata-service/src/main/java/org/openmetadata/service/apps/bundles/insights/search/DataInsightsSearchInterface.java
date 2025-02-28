@@ -82,10 +82,16 @@ public interface DataInsightsSearchInterface {
   }
 
   void createDataAssetsDataStream(
-      String name, String entityType, IndexMapping entityIndexMapping, String language)
+      String name,
+      String entityType,
+      IndexMapping entityIndexMapping,
+      String language,
+      int retentionDays)
       throws IOException;
 
   void deleteDataAssetDataStream(String name) throws IOException;
+
+  void updateLifecyclePolicy(int retentionDays) throws IOException;
 
   Boolean dataAssetDataStreamExists(String name) throws IOException;
 }
