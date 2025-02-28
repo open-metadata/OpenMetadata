@@ -48,6 +48,20 @@ export const getObservabilityAlertByFQN = async (
 
   return response.data;
 };
+export const syncOffset = async (fqn: string) => {
+  const response = await axiosClient.put(
+    `${BASE_URL}/name/${getEncodedFqn(fqn)}/syncOffset`
+  );
+
+  return response.data;
+};
+export const getDiagnosticInfo = async (fqn: string) => {
+  const response = await axiosClient.get(
+    `${BASE_URL}/name/${getEncodedFqn(fqn)}/diagnosticInfo`
+  );
+
+  return response.data;
+};
 
 export const getAllAlerts = async (params: ListParams) => {
   const response = await axiosClient.get<PagingResponse<EventSubscription[]>>(
