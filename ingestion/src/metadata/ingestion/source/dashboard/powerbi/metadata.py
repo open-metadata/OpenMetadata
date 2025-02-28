@@ -382,7 +382,7 @@ class PowerbiSource(DashboardServiceSource):
 
     def _get_child_measures(self, table: PowerBiTable) -> List[Column]:
         """
-        Extract the measures of the tables
+        Extract the measures of the table
         """
         measures = []
         for measure in table.measures or []:
@@ -396,8 +396,7 @@ class PowerbiSource(DashboardServiceSource):
                     "dataType": measure_type,
                     "dataTypeDisplay": measure_type,
                     "name": measure.name,
-                    "description": f"""{measure.description}
-                                    \nExpression : {measure.expression}""",
+                    "description": f"{measure.description}\n\nExpression : {measure.expression}",
                 }
                 measures.append(Column(**parsed_measure))
             except Exception as err:
