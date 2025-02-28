@@ -12,7 +12,6 @@
  */
 import React, { FC, useMemo } from 'react';
 import { Helmet } from 'react-helmet-async';
-import { useTranslation } from 'react-i18next';
 import brandImageClassBase from '../../../utils/BrandImage/BrandImageClassBase';
 
 interface DocumentTitleProps {
@@ -20,14 +19,13 @@ interface DocumentTitleProps {
 }
 
 const DocumentTitle: FC<DocumentTitleProps> = ({ title }) => {
-  const { t } = useTranslation();
   const pageTitle = useMemo(() => {
     return brandImageClassBase.getPageTitle();
   }, []);
 
   return (
     <Helmet>
-      <title>{`${title} | ${t(`label.${pageTitle}`)}`}</title>
+      <title>{`${title} | ${pageTitle}`}</title>
     </Helmet>
   );
 };

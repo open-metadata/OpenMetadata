@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { t } from 'i18next';
 import MonogramSrc, {
   ReactComponent as Monogram,
 } from '../../assets/svg/logo-monogram.svg';
@@ -25,7 +26,7 @@ class BrandImageClassBase {
   }
 
   public getPageTitle() {
-    return 'open-metadata';
+    return t('label.open-metadata');
   }
 }
 
