@@ -418,6 +418,7 @@ function AlertDetailsPage({
                 span={24}>
                 <DescriptionV1
                   description={alertDetails?.description}
+                  entityFqn={alertDetails?.fullyQualifiedName}
                   entityType={EntityType.EVENT_SUBSCRIPTION}
                   hasEditAccess={editDescriptionPermission}
                   isEdit={showDescriptionModal}

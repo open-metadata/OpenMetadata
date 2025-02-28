@@ -176,6 +176,7 @@ const DocumentationTab = ({
             <DescriptionV1
               removeBlur
               description={description}
+              entityFqn={domain.fullyQualifiedName}
               entityName={getEntityName(domain)}
               entityType={EntityType.DOMAIN}
               hasEditAccess={editDescriptionPermission}

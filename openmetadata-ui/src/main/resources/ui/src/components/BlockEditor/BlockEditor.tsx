@@ -122,7 +122,7 @@ const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
         cleanupTr.delete(pos, pos + loadingNode.nodeSize);
         view.dispatch(cleanupTr);
 
-        message.error(t('label.failed-to-upload-file'));
+        message.error(error ?? t('label.failed-to-upload-file'));
       }
     };
 

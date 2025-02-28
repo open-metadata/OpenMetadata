@@ -34,12 +34,13 @@ import moment from 'moment';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
+import { EntityDescriptionProvider } from '../../components/common/EntityDescription/EntityDescriptionProvider/EntityDescriptionProvider';
 import Loader from '../../components/common/Loader/Loader';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { ROUTES, VALIDATION_MESSAGES } from '../../constants/constants';
 import { KPI_DATE_PICKER_FORMAT } from '../../constants/DataInsight.constants';
-import { TabSpecificField } from '../../enums/entity.enum';
+import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { DataInsightChart } from '../../generated/api/dataInsight/kpi/createKpiRequest';
 import { Kpi, KpiTargetType } from '../../generated/dataInsight/kpi/kpi';
 import { useAuth } from '../../hooks/authHooks';
@@ -404,9 +405,11 @@ const EditKPIPage = () => {
                   </Form.Item>
                 </Col>
               </Row>
-
-              {getField(descriptionField)}
-
+              <EntityDescriptionProvider
+                entityFqn={kpiData?.fullyQualifiedName}
+                entityType={EntityType.KPI}>
+                {getField(descriptionField)}
+              </EntityDescriptionProvider>
               <Space align="center" className="w-full justify-end">
                 <Button
                   data-testid="cancel-btn"

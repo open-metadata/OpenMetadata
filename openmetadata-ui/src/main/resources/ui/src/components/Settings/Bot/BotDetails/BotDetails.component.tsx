@@ -200,6 +200,7 @@ const BotDetails: FC<BotsDetailProps> = ({
                   </div>
                   <DescriptionV1
                     description={botData.description || ''}
+                    entityFqn={botData.fullyQualifiedName}
                     entityName={getEntityName(botData)}
                     entityType={EntityType.BOT}
                     hasEditAccess={descriptionPermission || editAllPermission}

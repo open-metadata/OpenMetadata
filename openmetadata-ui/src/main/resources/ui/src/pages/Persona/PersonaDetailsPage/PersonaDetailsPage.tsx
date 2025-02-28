@@ -239,8 +239,9 @@ export const PersonaDetailsPage = () => {
         </Col>
         <Col span={24}>
           <DescriptionV1
-            hasEditAccess
             description={personaDetails.description}
+            entityFqn={personaDetails.fullyQualifiedName}
+            entityName={personaDetails.name}
             entityType={EntityType.PERSONA}
             isEdit={isEdit}
             showCommentsIcon={false}
