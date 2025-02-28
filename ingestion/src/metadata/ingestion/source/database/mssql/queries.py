@@ -56,13 +56,39 @@ WHERE
 """
 )
 
+MSSQL_GET_DATABASE_COMMENTS = textwrap.dedent(
+    """
+    SELECT 
+    DB_NAME() AS DATABASE_NAME,
+    CAST(ep.value AS NVARCHAR(MAX)) AS COMMENT
+FROM sys.extended_properties ep
+WHERE ep.class = 0  
+AND ep.name = 'MS_Description'
+"""
+)
+
+MSSQL_GET_SCHEMA_COMMENTS = textwrap.dedent(
+    """
+     SELECT 
+    DB_NAME() AS DATABASE_NAME, 
+    s.name AS SCHEMA_NAME, 
+    CAST(ep.value AS NVARCHAR(MAX)) AS COMMENT 
+FROM sys.schemas s
+LEFT JOIN sys.extended_properties ep 
+    ON ep.major_id = s.schema_id
+    AND ep.minor_id = 0 
+    AND ep.class = 3
+    AND ep.name = 'MS_Description'
+    """
+)
+
 MSSQL_GET_STORED_PROCEDURE_COMMENTS = textwrap.dedent(
     """
 SELECT 
     DB_NAME() AS DATABASE_NAME,
     s.name AS SCHEMA_NAME,
     p.name AS STORED_PROCEDURE,
-    ep.value AS COMMENT
+    CAST(ep.value AS NVARCHAR(MAX)) AS COMMENT
 FROM sys.procedures p
 JOIN sys.schemas s ON p.schema_id = s.schema_id
 LEFT JOIN sys.extended_properties ep 
