@@ -490,7 +490,6 @@ const TestSuiteDetailsPage = () => {
           <DescriptionV1
             className="test-suite-description"
             description={testSuiteDescription}
-            entityFqn={testSuite?.fullyQualifiedName}
             entityName={getEntityName(testSuite)}
             entityType={EntityType.TEST_SUITE}
             hasEditAccess={permissions.hasEditDescriptionPermission}

@@ -57,13 +57,18 @@ const DescriptionV1 = ({
   reduceDescription,
   showSuggestions = false,
   isDescriptionExpanded,
+  entityFullyQualifiedName,
 }: DescriptionProps) => {
   const history = useHistory();
   const { suggestions = [], selectedUserSuggestions = [] } =
     useSuggestionsContext();
   const [isEditDescription, setIsEditDescription] = useState(false);
-  const { fqn: entityFqn } = useFqn();
+  const { fqn } = useFqn();
   const { onThreadLinkSelect } = useGenericContext();
+
+  const entityFqn = useMemo(() => {
+    return entityFullyQualifiedName ?? fqn;
+  }, [entityFullyQualifiedName, fqn]);
 
   const handleRequestDescription = useCallback(() => {
     history.push(getRequestDescriptionPath(entityType, entityFqn));

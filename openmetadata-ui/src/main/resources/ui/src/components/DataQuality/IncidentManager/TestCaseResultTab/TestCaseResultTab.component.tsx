@@ -161,7 +161,6 @@ const TestCaseResultTab = () => {
       <Col span={24}>
         <DescriptionV1
           description={testCaseData?.description}
-          entityFqn={testCaseData?.fullyQualifiedName}
           entityType={EntityType.TEST_CASE}
           hasEditAccess={hasEditDescriptionPermission}
           showCommentsIcon={false}

@@ -233,7 +233,6 @@ export const PersonaDetailsPage = () => {
         <Col span={24}>
           <DescriptionV1
             description={personaDetails.description}
-            entityFqn={personaDetails.fullyQualifiedName}
             entityName={personaDetails.name}
             entityType={EntityType.PERSONA}
             showCommentsIcon={false}

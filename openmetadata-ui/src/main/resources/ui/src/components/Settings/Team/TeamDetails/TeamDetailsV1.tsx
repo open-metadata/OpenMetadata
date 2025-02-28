@@ -1157,7 +1157,6 @@ const TeamDetailsV1 = ({
                     data-testid="teams-description">
                     <DescriptionV1
                       description={currentTeam.description ?? ''}
-                      entityFqn={currentTeam.fullyQualifiedName}
                       entityName={getEntityName(currentTeam)}
                       entityType={EntityType.TEAM}
                       hasEditAccess={editDescriptionPermission}
