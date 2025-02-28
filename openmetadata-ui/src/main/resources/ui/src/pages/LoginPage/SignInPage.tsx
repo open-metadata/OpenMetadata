@@ -24,6 +24,7 @@ import IconGoogle from '../../assets/img/icon-google.png';
 import IconOkta from '../../assets/img/icon-okta.png';
 import loginBG from '../../assets/img/login-bg.png';
 import { ReactComponent as IconFailBadge } from '../../assets/svg/fail-badge.svg';
+import AlertUnauthenticated from '../../components/AlertBar/AlertUnauthenticated';
 import { useBasicAuth } from '../../components/Auth/AuthProviders/BasicAuthProvider';
 import BrandImage from '../../components/common/BrandImage/BrandImage';
 import Loader from '../../components/common/Loader/Loader';
@@ -31,6 +32,7 @@ import LoginButton from '../../components/common/LoginButton/LoginButton';
 import { ROUTES, VALIDATION_MESSAGES } from '../../constants/constants';
 import { EMAIL_REG_EX } from '../../constants/regex.constants';
 import { AuthProvider } from '../../generated/settings/settings';
+import { useAlertStore } from '../../hooks/useAlertStore';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import './login.style.less';
 import LoginCarousel from './LoginCarousel';
@@ -41,6 +43,7 @@ const SignInPage = () => {
 
   const history = useHistory();
   const { authConfig, onLoginHandler, isAuthenticated } = useApplicationStore();
+  const { alert, resetAlert } = useAlertStore();
 
   const { t } = useTranslation();
 
@@ -151,9 +154,15 @@ const SignInPage = () => {
     setLoading(false);
   };
 
-  const onClickSignUp = () => history.push(ROUTES.REGISTER);
+  const onClickSignUp = () => {
+    history.push(ROUTES.REGISTER);
+    resetAlert();
+  };
 
-  const onClickForgotPassword = () => history.push(ROUTES.FORGOT_PASSWORD);
+  const onClickForgotPassword = () => {
+    history.push(ROUTES.FORGOT_PASSWORD);
+    resetAlert();
+  };
 
   return (
     <Row className="h-full" data-testid="signin-page">
@@ -166,6 +175,8 @@ const SignInPage = () => {
           <Typography.Text className="mt-8 w-80 text-xl font-medium text-grey-muted">
             {t('message.om-description')}{' '}
           </Typography.Text>
+
+          {alert && <AlertUnauthenticated />}
 
           {isAuthProviderBasic ? (
             <div className="login-form ">

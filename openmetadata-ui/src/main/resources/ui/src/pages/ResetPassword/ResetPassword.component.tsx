@@ -17,11 +17,13 @@ import QueryString from 'qs';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
+import AlertUnauthenticated from '../../components/AlertBar/AlertUnauthenticated';
 import { useBasicAuth } from '../../components/Auth/AuthProviders/BasicAuthProvider';
 import BrandImage from '../../components/common/BrandImage/BrandImage';
 import { ROUTES, VALIDATION_MESSAGES } from '../../constants/constants';
 import { passwordRegex } from '../../constants/regex.constants';
 import { PasswordResetRequest } from '../../generated/auth/passwordResetRequest';
+import { useAlertStore } from '../../hooks/useAlertStore';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import { showErrorToast } from '../../utils/ToastUtils';
 import './reset-password.style.less';
@@ -35,6 +37,7 @@ const ResetPassword = () => {
   const { t } = useTranslation();
   const [form] = Form.useForm();
   const location = useCustomLocation();
+  const { alert } = useAlertStore();
 
   const { handleResetPassword } = useBasicAuth();
 
@@ -83,6 +86,8 @@ const ResetPassword = () => {
               {t('label.reset-your-password')}
             </Typography.Text>
           </Col>
+
+          {alert && <AlertUnauthenticated />}
 
           <Col span={24}>
             <Form

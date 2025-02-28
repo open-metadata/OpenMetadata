@@ -18,16 +18,19 @@ import React, { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import { ReactComponent as IconSuccessBadge } from '../../assets/svg/success-badge.svg';
+import AlertUnauthenticated from '../../components/AlertBar/AlertUnauthenticated';
 import { useBasicAuth } from '../../components/Auth/AuthProviders/BasicAuthProvider';
 import BrandImage from '../../components/common/BrandImage/BrandImage';
 import { HTTP_STATUS_CODE } from '../../constants/Auth.constants';
 import { ROUTES } from '../../constants/constants';
+import { useAlertStore } from '../../hooks/useAlertStore';
 import { showErrorToast } from '../../utils/ToastUtils';
 import './forgot-password.styles.less';
 
 const ForgotPassword = () => {
   const { t } = useTranslation();
   const { handleForgotPassword } = useBasicAuth();
+  const { alert, resetAlert } = useAlertStore();
   const history = useHistory();
   const [loading, setLoading] = useState(false);
 
@@ -55,6 +58,11 @@ const ForgotPassword = () => {
     [setShowResetLinkSentAlert, handleForgotPassword]
   );
 
+  const handleLogin = () => {
+    history.push(ROUTES.SIGNIN);
+    resetAlert();
+  };
+
   return (
     <div
       className="h-full py-24 forgot-password-container "
@@ -72,6 +80,8 @@ const ForgotPassword = () => {
               {t('message.enter-your-registered-email')}
             </Typography.Text>
           </Col>
+
+          {alert && <AlertUnauthenticated />}
 
           <Form
             className="w-full"
@@ -132,7 +142,7 @@ const ForgotPassword = () => {
               className="w-full"
               data-testid="go-back-button"
               type="primary"
-              onClick={() => history.push(ROUTES.SIGNIN)}>
+              onClick={handleLogin}>
               {t('message.go-back-to-login-page')}
             </Button>
           </Col>

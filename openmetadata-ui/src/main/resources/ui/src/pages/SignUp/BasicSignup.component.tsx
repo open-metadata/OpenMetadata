@@ -17,11 +17,13 @@ import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import loginBG from '../../assets/img/login-bg.png';
+import AlertUnauthenticated from '../../components/AlertBar/AlertUnauthenticated';
 import { useBasicAuth } from '../../components/Auth/AuthProviders/BasicAuthProvider';
 import BrandImage from '../../components/common/BrandImage/BrandImage';
 import { ROUTES, VALIDATION_MESSAGES } from '../../constants/constants';
 import { passwordRegex } from '../../constants/regex.constants';
 import { AuthProvider } from '../../generated/settings/settings';
+import { useAlertStore } from '../../hooks/useAlertStore';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import LoginCarousel from '../LoginPage/LoginCarousel';
 import './../LoginPage/login.style.less';
@@ -38,6 +40,7 @@ const BasicSignUp = () => {
   const { t } = useTranslation();
   const { authConfig } = useApplicationStore();
   const { handleRegister } = useBasicAuth();
+  const { alert, resetAlert } = useAlertStore();
   const history = useHistory();
 
   const [form] = Form.useForm();
@@ -63,7 +66,10 @@ const BasicSignUp = () => {
     }
   };
 
-  const handleLogin = () => history.push(ROUTES.SIGNIN);
+  const handleLogin = () => {
+    history.push(ROUTES.SIGNIN);
+    resetAlert();
+  };
 
   return (
     <Row className="h-full" data-testid="signin-page">
@@ -73,6 +79,8 @@ const BasicSignUp = () => {
           <Typography.Text className="mt-8 w-80 text-xl font-medium text-grey-muted">
             {t('message.om-description')}
           </Typography.Text>
+
+          {alert && <AlertUnauthenticated />}
 
           {isAuthProviderBasic ? (
             <div className="m-t-lg" style={{ width: '334px' }}>
