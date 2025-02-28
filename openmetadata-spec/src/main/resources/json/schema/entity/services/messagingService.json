@@ -151,6 +151,10 @@
     "domain" : {
       "description": "Domain the Messaging service belongs to.",
       "$ref": "../../type/entityReference.json"
+    },
+    "ingestionAgent" : {
+      "description": "The ingestion agent responsible for executing the ingestion pipeline.",
+      "$ref": "../../type/entityReference.json"
     }
   },
   "required": ["id", "name", "serviceType"],

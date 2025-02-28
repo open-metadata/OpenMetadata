@@ -58,6 +58,10 @@ export interface DatabaseService {
      */
     incrementalChangeDescription?: ChangeDescription;
     /**
+     * The ingestion agent responsible for executing the ingestion pipeline.
+     */
+    ingestionAgent?: EntityReference;
+    /**
      * Name that identifies this database service.
      */
     name: string;
@@ -1986,6 +1990,8 @@ export enum VerifySSL {
  * the relationship of a table `belongs to a` database.
  *
  * Domain the Database service belongs to.
+ *
+ * The ingestion agent responsible for executing the ingestion pipeline.
  */
 export interface EntityReference {
     /**

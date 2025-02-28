@@ -56,6 +56,10 @@ export interface StorageService {
      */
     incrementalChangeDescription?: ChangeDescription;
     /**
+     * The ingestion agent responsible for executing the ingestion pipeline.
+     */
+    ingestionAgent?: EntityReference;
+    /**
      * Name that identifies this storage service.
      */
     name: string;
@@ -405,6 +409,8 @@ export enum StorageServiceType {
  * the relationship of a table `belongs to a` database.
  *
  * Domain the Storage service belongs to.
+ *
+ * The ingestion agent responsible for executing the ingestion pipeline.
  */
 export interface EntityReference {
     /**
