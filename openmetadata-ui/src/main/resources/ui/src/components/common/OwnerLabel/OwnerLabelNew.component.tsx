@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Avatar, Typography } from 'antd';
+import { Avatar, Dropdown, Tooltip, Typography } from 'antd';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import React, { ReactNode, useMemo } from 'react';
@@ -49,7 +49,24 @@ export const OwnerLabelNew = ({
 
   const ownerElements = useMemo(() => {
     const visibleOwners = owners.slice(0, maxVisibleOwners);
+    const remainingOwners = owners.slice(maxVisibleOwners);
     const remainingOwnersCount = owners.length - maxVisibleOwners;
+
+    const remainingOwnersMenu = {
+      items: remainingOwners.map((owner) => ({
+        key: owner.id,
+        label: (
+          <div className="d-flex items-center gap-2">
+            <ProfilePicture
+              avatarType="outlined"
+              name={owner.displayName ?? ''}
+              size={avatarSize}
+            />
+            <Typography.Text>{owner.displayName}</Typography.Text>
+          </div>
+        ),
+      })),
+    };
 
     return (
       <div className="d-flex items-center gap-1" data-testid="owner-label">
@@ -61,24 +78,26 @@ export const OwnerLabelNew = ({
           )}>
           <Avatar.Group>
             {visibleOwners.map((owner) => (
-              <ProfilePicture
-                avatarType="outlined"
+              <Tooltip
                 key={owner.id}
-                name={owner.name ?? ''}
-                size={avatarSize}
-              />
+                placement="top"
+                title={owner.displayName ?? ''}>
+                <ProfilePicture
+                  avatarType="outlined"
+                  name={owner.displayName ?? ''}
+                  size={avatarSize}
+                />
+              </Tooltip>
             ))}
             {remainingOwnersCount > 0 && (
-              <Avatar
-                size={avatarSize}
-                style={{
-                  background: '#f9f5ff',
-                  color: '#7f56d9',
-                  border: '1px solid #7f56d9',
-                }}>
-                {t('label.plus-symbol')}
-                {remainingOwnersCount}
-              </Avatar>
+              <Dropdown menu={remainingOwnersMenu} trigger={['click']}>
+                <Avatar className="owner-count-avatar" size={avatarSize}>
+                  <span>
+                    {t('label.plus-symbol')}
+                    {remainingOwnersCount}
+                  </span>
+                </Avatar>
+              </Dropdown>
             )}
           </Avatar.Group>
         </div>
@@ -111,6 +130,7 @@ export const OwnerLabelNew = ({
     placeHolder,
     t,
     ownerDisplayName,
+    avatarSize,
   ]);
 
   return ownerElements;

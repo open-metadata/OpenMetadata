@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Avatar } from 'antd';
+import { Avatar, Tooltip } from 'antd';
 import classNames from 'classnames';
 import { parseInt } from 'lodash';
 import { ImageShape } from 'Models';
@@ -63,7 +63,7 @@ const ProfilePicture = ({
   });
 
   const getAvatarByName = () => {
-    return (
+    const avatar = (
       <Avatar
         className={classNames('flex-center', className)}
         data-testid="profile-avatar"
@@ -78,6 +78,12 @@ const ProfilePicture = ({
         }}
       />
     );
+
+    return (
+      <Tooltip placement="top" title={displayName ?? name}>
+        {avatar}
+      </Tooltip>
+    );
   };
 
   const getAvatarElement = () => {
@@ -85,8 +91,8 @@ const ProfilePicture = ({
       <div
         className="d-inline-block relative"
         style={{
-          height: `${height || width}px`,
-          width: `${width}px`,
+          height: typeof size === 'number' ? `${size}px` : height,
+          width: typeof size === 'number' ? `${size}px` : width,
         }}>
         {getAvatarByName()}
         <div
@@ -95,7 +101,10 @@ const ProfilePicture = ({
           <Loader
             className="absolute inset-0"
             size="small"
-            style={{ height: `${+width - 2}px`, width: `${+width - 2}px` }}
+            style={{
+              height: typeof size === 'number' ? `${size}px` : `${+width}px`,
+              width: typeof size === 'number' ? `${size}px` : `${+width}px`,
+            }}
             type="white"
           />
         </div>
@@ -106,13 +115,15 @@ const ProfilePicture = ({
   };
 
   return profileURL ? (
-    <Avatar
-      className={className}
-      data-testid="profile-image"
-      shape={type}
-      size={size ?? parseInt(width)}
-      src={profileURL}
-    />
+    <Tooltip placement="top" title={displayName ?? name}>
+      <Avatar
+        className={className}
+        data-testid="profile-image"
+        shape={type}
+        size={size ?? parseInt(width)}
+        src={profileURL}
+      />
+    </Tooltip>
   ) : (
     getAvatarElement()
   );
