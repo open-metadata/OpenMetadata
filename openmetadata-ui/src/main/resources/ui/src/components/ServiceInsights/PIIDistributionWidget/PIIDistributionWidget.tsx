@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Card, Typography } from 'antd';
+import { Card, Skeleton, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -37,6 +37,7 @@ import { showErrorToast } from '../../../utils/ToastUtils';
 function PIIDistributionWidget() {
   const { t } = useTranslation();
   const { fqn: serviceName } = useFqn();
+  const [isLoading, setIsLoading] = useState(false);
   const [chartsData, setChartsData] = useState<
     DataInsightCustomChartResult['results']
   >([]);
@@ -45,6 +46,7 @@ function PIIDistributionWidget() {
 
   const fetchChartsData = async () => {
     try {
+      setIsLoading(true);
       const currentTimestampInMs = Date.now();
       const sevenDaysAgoTimestampInMs =
         currentTimestampInMs - 7 * 24 * 60 * 60 * 1000;
@@ -65,6 +67,8 @@ function PIIDistributionWidget() {
       setChartsData(results);
     } catch (error) {
       showErrorToast(error as AxiosError);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -73,42 +77,49 @@ function PIIDistributionWidget() {
   }, []);
 
   return (
-    <Card className="service-insights-widget widget-flex-col">
-      <Typography.Text className="font-medium text-lg">
-        {t('label.entity-distribution', { entity: t('label.pii-uppercase') })}
-      </Typography.Text>
-      <Typography.Text className="text-grey-muted">
-        {t('message.pii-distribution-description')}
-      </Typography.Text>
-
-      <ResponsiveContainer className="m-t-md" height={300} width="100%">
-        <BarChart data={chartsData}>
-          <CartesianGrid stroke={LIGHT_GRAY} vertical={false} />
-          <XAxis
-            axisLine={{
-              stroke: LIGHT_GRAY,
-            }}
-            dataKey="group"
-            tickLine={false}
-          />
-          <YAxis
-            axisLine={false}
-            stroke={GRAY_1}
-            tickLine={{
-              stroke: LIGHT_GRAY,
-            }}
-          />
-          <Bar
-            activeBar={<RoundedCornerBar />}
-            background={{ fill: LIGHT_GRAY }}
-            barSize={20}
-            dataKey="count"
-            fill="#3538CD"
-            shape={<RoundedCornerBar />}
-          />
-        </BarChart>
-      </ResponsiveContainer>
-    </Card>
+    <div className="service-insights-widget widget-flex-col gap-4">
+      <div className="flex flex-col gap-1">
+        <Typography.Text className="font-medium text-lg">
+          {t('label.entity-distribution', { entity: t('label.pii-uppercase') })}
+        </Typography.Text>
+        <Typography.Text className="text-grey-muted">
+          {t('message.pii-distribution-description')}
+        </Typography.Text>
+      </div>
+      <Card className="widget-info-card bg-white">
+        <Skeleton active loading={isLoading} paragraph={{ rows: 10 }}>
+          <ResponsiveContainer height={300} width="100%">
+            <BarChart
+              data={chartsData}
+              margin={{ top: 0, right: 0, left: -24, bottom: 0 }}>
+              <CartesianGrid stroke={LIGHT_GRAY} vertical={false} />
+              <XAxis
+                axisLine={{
+                  stroke: LIGHT_GRAY,
+                }}
+                dataKey="group"
+                tickLine={false}
+              />
+              <YAxis
+                axisLine={false}
+                stroke={GRAY_1}
+                tickLine={{
+                  stroke: LIGHT_GRAY,
+                }}
+              />
+              <Bar
+                activeBar={<RoundedCornerBar />}
+                background={{ fill: LIGHT_GRAY }}
+                barSize={20}
+                dataKey="count"
+                fill="#3538CD"
+                shape={<RoundedCornerBar />}
+              />
+            </BarChart>
+          </ResponsiveContainer>
+        </Skeleton>
+      </Card>
+    </div>
   );
 }
 

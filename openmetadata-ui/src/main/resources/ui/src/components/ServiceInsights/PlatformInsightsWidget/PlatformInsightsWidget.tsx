@@ -10,11 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Card, Col, Row, Typography } from 'antd';
+import { Card, Col, Row, Skeleton, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { last, round } from 'lodash';
 import { ServiceTypes } from 'Models';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
 import { Area, AreaChart, ResponsiveContainer } from 'recharts';
@@ -44,12 +44,14 @@ function PlatformInsightsWidget() {
   }>();
   const { fqn: serviceName } = useFqn();
   const { t } = useTranslation();
+  const [isLoading, setIsLoading] = useState(false);
   const [chartsData, setChartsData] = useState<ChartSeriesData[]>([]);
 
   const nameWithoutQuotes = Fqn.getNameWithoutQuotes(serviceName);
 
   const fetchChartsData = async () => {
     try {
+      setIsLoading(true);
       const currentTimestampInMs = Date.now();
       const sevenDaysAgoTimestampInMs =
         currentTimestampInMs - 7 * 24 * 60 * 60 * 1000;
@@ -111,6 +113,8 @@ function PlatformInsightsWidget() {
       setChartsData(results);
     } catch (error) {
       showErrorToast(error as AxiosError);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -118,17 +122,8 @@ function PlatformInsightsWidget() {
     fetchChartsData();
   }, []);
 
-  const { otherChartsData } = useMemo(
-    () => ({
-      otherChartsData: chartsData.filter(
-        (chart) => chart.chartType !== SystemChartType.TotalDataAssets
-      ),
-    }),
-    [chartsData]
-  );
-
   return (
-    <Card className="service-insights-widget widget-flex-col platform-insights-card">
+    <div className="service-insights-widget widget-flex-col platform-insights-card">
       <Typography.Text className="font-medium text-lg">
         {t('label.entity-insight-plural', { entity: t('label.platform') })}
       </Typography.Text>
@@ -141,81 +136,100 @@ function PlatformInsightsWidget() {
           <TotalDataAssetsWidget />
         </Col>
         <Col className="other-charts-container" span={12}>
-          {otherChartsData.map((chart) => (
-            <Card
-              className="widget-info-card other-charts-card"
-              key={chart.chartType}>
-              <Typography.Text className="font-semibold text-md">
-                {getTitleByChartType(chart.chartType)}
-              </Typography.Text>
-              <Row align="bottom" className="m-t-sm flex-1" gutter={8}>
-                <Col className="flex flex-col justify-between h-full" span={14}>
-                  <Typography.Title level={3}>
-                    {chart.currentCount}
-                  </Typography.Title>
-                  <div className="flex items-center gap-1 flex-wrap">
-                    {chart.isIncreased ? (
-                      <ArrowUp color={GREEN_1} height={11} width={11} />
-                    ) : (
-                      <ArrowDown color={RED_1} height={11} width={11} />
-                    )}
-                    <Typography.Text
-                      className="font-medium text-sm"
-                      style={{
-                        color: chart.isIncreased ? GREEN_1 : RED_1,
-                      }}>
-                      {`${chart.percentageChange}%`}
-                    </Typography.Text>
-                    <Typography.Text className="font-medium text-grey-muted text-sm">
-                      {t('label.vs-last-month')}
-                    </Typography.Text>
-                  </div>
-                </Col>
-                <Col className="flex items-end h-full" span={10}>
-                  <ResponsiveContainer height={70} width="100%">
-                    <AreaChart data={chart.data}>
-                      <defs>
-                        {[GREEN_1, RED_1].map((color) => (
-                          <linearGradient
-                            id={`color${color}`}
-                            key={color}
-                            x1="0"
-                            x2="0"
-                            y1="0"
-                            y2="1">
-                            <stop
-                              offset="1%"
-                              stopColor={color}
-                              stopOpacity={0.3}
-                            />
-                            <stop
-                              offset="100%"
-                              stopColor={color}
-                              stopOpacity={0.05}
-                            />
-                          </linearGradient>
-                        ))}
-                      </defs>
-                      <Area
-                        dataKey="value"
-                        fill={
-                          chart.isIncreased
-                            ? `url(#color${GREEN_1})`
-                            : `url(#color${RED_1})`
-                        }
-                        stroke={chart.isIncreased ? GREEN_1 : RED_1}
-                        strokeWidth={2}
-                        type="monotone"
-                      />
-                    </AreaChart>
-                  </ResponsiveContainer>
-                </Col>
-              </Row>
-            </Card>
-          ))}
+          {isLoading
+            ? [
+                SystemChartType.PercentageOfDataAssetWithDescription,
+                SystemChartType.PercentageOfServiceWithDescription,
+                SystemChartType.TotalDataAssetsByTier,
+                SystemChartType.PercentageOfDataAssetWithOwner,
+              ].map((chartType) => (
+                <Card
+                  className="widget-info-card other-charts-card"
+                  key={chartType}>
+                  <Skeleton
+                    active
+                    loading={isLoading}
+                    paragraph={{ rows: 2 }}
+                  />
+                </Card>
+              ))
+            : chartsData.map((chart) => (
+                <Card
+                  className="widget-info-card other-charts-card"
+                  key={chart.chartType}>
+                  <Typography.Text className="font-semibold text-md">
+                    {getTitleByChartType(chart.chartType)}
+                  </Typography.Text>
+                  <Row align="bottom" className="m-t-sm flex-1" gutter={8}>
+                    <Col
+                      className="flex flex-col justify-between h-full"
+                      span={14}>
+                      <Typography.Title level={3}>
+                        {chart.currentCount}
+                      </Typography.Title>
+                      <div className="flex items-center gap-1 flex-wrap">
+                        {chart.isIncreased ? (
+                          <ArrowUp color={GREEN_1} height={11} width={11} />
+                        ) : (
+                          <ArrowDown color={RED_1} height={11} width={11} />
+                        )}
+                        <Typography.Text
+                          className="font-medium text-sm"
+                          style={{
+                            color: chart.isIncreased ? GREEN_1 : RED_1,
+                          }}>
+                          {`${chart.percentageChange}%`}
+                        </Typography.Text>
+                        <Typography.Text className="font-medium text-grey-muted text-sm">
+                          {t('label.vs-last-month')}
+                        </Typography.Text>
+                      </div>
+                    </Col>
+                    <Col className="flex items-end h-full" span={10}>
+                      <ResponsiveContainer height={70} width="100%">
+                        <AreaChart data={chart.data}>
+                          <defs>
+                            {[GREEN_1, RED_1].map((color) => (
+                              <linearGradient
+                                id={`color${color}`}
+                                key={color}
+                                x1="0"
+                                x2="0"
+                                y1="0"
+                                y2="1">
+                                <stop
+                                  offset="1%"
+                                  stopColor={color}
+                                  stopOpacity={0.3}
+                                />
+                                <stop
+                                  offset="100%"
+                                  stopColor={color}
+                                  stopOpacity={0.05}
+                                />
+                              </linearGradient>
+                            ))}
+                          </defs>
+                          <Area
+                            dataKey="value"
+                            fill={
+                              chart.isIncreased
+                                ? `url(#color${GREEN_1})`
+                                : `url(#color${RED_1})`
+                            }
+                            stroke={chart.isIncreased ? GREEN_1 : RED_1}
+                            strokeWidth={2}
+                            type="monotone"
+                          />
+                        </AreaChart>
+                      </ResponsiveContainer>
+                    </Col>
+                  </Row>
+                </Card>
+              ))}
         </Col>
       </Row>
-    </Card>
+    </div>
   );
 }
 
