@@ -29,27 +29,27 @@ import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getEntityIcon } from '../../../utils/TableUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 import { DataAssetOption } from '../../DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList.interface';
 import TagsV1 from '../../Tag/TagsV1/TagsV1.component';
 import './related-metrics.less';
 import { RelatedMetricsForm } from './RelatedMetricsForm';
 
 interface RelatedMetricsProps {
-  hasEditPermission: boolean;
-  metricDetails: Metric;
   isInSummaryPanel?: boolean;
-  onMetricUpdate?: (updatedData: Metric, key: keyof Metric) => Promise<void>;
 }
 
 const RelatedMetrics: FC<RelatedMetricsProps> = ({
-  metricDetails,
-  hasEditPermission,
-  onMetricUpdate,
   isInSummaryPanel = false,
 }) => {
   const { t } = useTranslation();
   const [isEdit, setIsEdit] = useState(false);
   const [isShowMore, setIsShowMore] = useState(false);
+  const {
+    data: metricDetails,
+    onUpdate: onMetricUpdate,
+    permissions,
+  } = useGenericContext<Metric>();
 
   const {
     defaultValue,
@@ -167,7 +167,7 @@ const RelatedMetrics: FC<RelatedMetricsProps> = ({
           </Typography.Text>
           {!isEdit &&
             !isEmpty(relatedMetrics) &&
-            hasEditPermission &&
+            permissions.EditAll &&
             !metricDetails.deleted && (
               <EditIcon
                 className="cursor-pointer"
@@ -182,7 +182,7 @@ const RelatedMetrics: FC<RelatedMetricsProps> = ({
       </Col>
       {isEmpty(relatedMetrics) &&
         !isEdit &&
-        hasEditPermission &&
+        permissions.EditAll &&
         !metricDetails.deleted && (
           <Col data-testid="add-related-metrics-container">
             <div onClick={() => setIsEdit(true)}>

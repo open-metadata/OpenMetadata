@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { FilterOutlined } from '@ant-design/icons';
 import { Tooltip, Typography } from 'antd';
 import Table, { ColumnsType } from 'antd/lib/table';
 import {
@@ -28,12 +27,12 @@ import { TABLE_SCROLL_VALUE } from '../../../constants/Table.constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { Column, TagLabel } from '../../../generated/entity/data/container';
 import { TagSource } from '../../../generated/type/tagLabel';
-import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import {
   updateContainerColumnDescription,
   updateContainerColumnTags,
 } from '../../../utils/ContainerDetailUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
+import { columnFilterIcon } from '../../../utils/TableColumn.util';
 import {
   getAllTags,
   searchTagInData,
@@ -54,9 +53,7 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
   isReadOnly,
   onUpdate,
   entityFqn,
-  onThreadLinkSelect,
 }) => {
-  const { theme } = useApplicationStore();
   const { t } = useTranslation();
 
   const [editContainerColumnDescription, setEditContainerColumnDescription] =
@@ -163,7 +160,6 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
             index={index}
             isReadOnly={isReadOnly}
             onClick={() => setEditContainerColumnDescription(record)}
-            onThreadLinkSelect={onThreadLinkSelect}
           />
         ),
       },
@@ -173,14 +169,7 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
         key: 'tags',
         accessor: 'tags',
         width: 300,
-        filterIcon: (filtered) => (
-          <FilterOutlined
-            data-testid="tag-filter"
-            style={{
-              color: filtered ? theme.primaryColor : undefined,
-            }}
-          />
-        ),
+        filterIcon: columnFilterIcon,
         filters: tagFilter.Classification,
         filterDropdown: ColumnFilter,
         onFilter: searchTagInData,
@@ -195,7 +184,6 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
             record={record}
             tags={tags}
             type={TagSource.Classification}
-            onThreadLinkSelect={onThreadLinkSelect}
           />
         ),
       },
@@ -205,14 +193,7 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
         key: 'glossary',
         accessor: 'tags',
         width: 300,
-        filterIcon: (filtered) => (
-          <FilterOutlined
-            data-testid="glossary-filter"
-            style={{
-              color: filtered ? theme.primaryColor : undefined,
-            }}
-          />
-        ),
+        filterIcon: columnFilterIcon,
         filters: tagFilter.Glossary,
         filterDropdown: ColumnFilter,
         onFilter: searchTagInData,
@@ -227,7 +208,6 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
             record={record}
             tags={tags}
             type={TagSource.Glossary}
-            onThreadLinkSelect={onThreadLinkSelect}
           />
         ),
       },
@@ -240,7 +220,6 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
       hasDescriptionEditAccess,
       editContainerColumnDescription,
       getEntityName,
-      onThreadLinkSelect,
       handleFieldTagsChange,
     ]
   );

@@ -691,6 +691,8 @@ site_menu:
     url: /how-to-guides/data-quality-observability/profiler/workflow
   - category: How-to Guides / Data Quality and Observability / Data Profiler / Metrics
     url: /how-to-guides/data-quality-observability/profiler/metrics
+  - category: How-to Guides / Data Quality and Observability / Data Profiler / Custom Metrics
+    url: /how-to-guides/data-quality-observability/profiler/custom-metrics
   - category: How-to Guides / Data Quality and Observability / Data Profiler / Sample Data
     url: /how-to-guides/data-quality-observability/profiler/external-sample-data
   - category: How-to Guides / Data Quality and Observability / Data Profiler / External Workflow
@@ -826,6 +828,8 @@ site_menu:
     url: /how-to-guides/data-governance/workflows/elements/nodes/set-glossary-term-status
   - category: How-to Guides / Data Governance / Workflows / How to Edit a Workflow
     url: /how-to-guides/data-governance/workflows/how-to-edit-workflow
+  - category: How-to Guides / Data Governance / Metrics
+    url: /how-to-guides/data-governance/metrics
 
   - category: Enable Security
     url: /security
