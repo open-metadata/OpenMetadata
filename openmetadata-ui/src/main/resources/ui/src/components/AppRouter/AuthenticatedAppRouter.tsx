@@ -23,13 +23,12 @@ import { Operation } from '../../generated/entity/policies/policy';
 import AddCustomMetricPage from '../../pages/AddCustomMetricPage/AddCustomMetricPage';
 import { CustomizablePage } from '../../pages/CustomizablePage/CustomizablePage';
 import DataQualityPage from '../../pages/DataQuality/DataQualityPage';
+import BulkEntityImportPage from '../../pages/EntityImport/BulkEntityImportPage/BulkEntityImportPage';
 import ForbiddenPage from '../../pages/ForbiddenPage/ForbiddenPage';
 import TagPage from '../../pages/TagPage/TagPage';
 import { checkPermission, userPermissions } from '../../utils/PermissionsUtils';
 import AdminProtectedRoute from './AdminProtectedRoute';
 import withSuspenseFallback from './withSuspenseFallback';
-
-import { EntityImportRouter } from './EntityImportRouter';
 
 const DomainRouter = withSuspenseFallback(
   React.lazy(
@@ -284,7 +283,11 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       <Route exact component={ForbiddenPage} path={ROUTES.FORBIDDEN} />
 
       {/* Handle Entity Import pages */}
-      <Route component={EntityImportRouter} path={ROUTES.ENTITY_IMPORT} />
+      <Route
+        exact
+        component={BulkEntityImportPage}
+        path={ROUTES.ENTITY_IMPORT}
+      />
 
       <Route exact component={MyDataPage} path={ROUTES.MY_DATA} />
       <Route exact component={TourPageComponent} path={ROUTES.TOUR} />

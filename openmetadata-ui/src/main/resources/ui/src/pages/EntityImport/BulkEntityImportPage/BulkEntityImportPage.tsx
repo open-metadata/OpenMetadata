@@ -57,8 +57,12 @@ import {
   getCSVStringFromColumnsAndDataSource,
   getEntityColumnsAndDataSourceFromCSV,
 } from '../../../utils/CSV/CSV.utils';
+import {
+  getBulkEntityImportBreadcrumbList,
+  getImportedEntityType,
+  validateCsvString,
+} from '../../../utils/EntityImport/EntityImportUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
-import Fqn from '../../../utils/Fqn';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import './bulk-entity-import-page.less';
 
@@ -90,21 +94,10 @@ const BulkEntityImportPage = () => {
     MutableRefObject<TypeComputedProps | null>
   >({ current: null });
 
-  const importedEntityType = useMemo(() => {
-    switch (entityType) {
-      case EntityType.DATABASE_SERVICE:
-        return EntityType.DATABASE;
-
-      case EntityType.DATABASE:
-        return EntityType.DATABASE_SCHEMA;
-
-      case EntityType.DATABASE_SCHEMA:
-        return EntityType.TABLE;
-
-      default:
-        return entityType;
-    }
-  }, [entityType]);
+  const importedEntityType = useMemo(
+    () => getImportedEntityType(entityType),
+    [entityType]
+  );
 
   const handleActiveStepChange = useCallback(
     (step: VALIDATION_STEP) => {
@@ -143,27 +136,15 @@ const BulkEntityImportPage = () => {
     [setDataSource, setColumns, handleActiveStepChange, focusToGrid]
   );
 
-  const validateCsvString = async (csvData: string) => {
-    const api =
-      entityType === EntityType.DATABASE_SERVICE
-        ? importServiceInCSVFormat
-        : importEntityInCSVFormat;
-
-    const response = await api({
-      entityType,
-      name: fqn,
-      data: csvData,
-      dryRun: true,
-    });
-
-    return response;
-  };
-
   const handleLoadData = useCallback(
     async (e: ProgressEvent<FileReader>) => {
       try {
         const result = e.target?.result as string;
-        const validationResponse = await validateCsvString(result);
+        const validationResponse = await validateCsvString(
+          result,
+          entityType,
+          fqn
+        );
 
         const jobData: CSVImportJobType = {
           ...validationResponse,
@@ -177,7 +158,7 @@ const BulkEntityImportPage = () => {
         showErrorToast(error as AxiosError);
       }
     },
-    [onCSVReadComplete]
+    [onCSVReadComplete, entityType, fqn]
   );
 
   const onEditComplete = useCallback(
@@ -191,17 +172,7 @@ const BulkEntityImportPage = () => {
   );
 
   const breadcrumbList: TitleBreadcrumbProps['titleLinks'] = useMemo(
-    () => [
-      {
-        name: Fqn.split(fqn).pop(),
-        url: entityUtilClassBase.getEntityLink(entityType, fqn),
-      },
-      {
-        name: t('label.import'),
-        url: '',
-        isActive: true,
-      },
-    ],
+    () => getBulkEntityImportBreadcrumbList(entityType, fqn),
     [entityType, fqn]
   );
 
@@ -479,7 +450,10 @@ const BulkEntityImportPage = () => {
   }, [socket]);
 
   return (
-    <PageLayoutV1 pageTitle="Import entity">
+    <PageLayoutV1
+      pageTitle={t('label.import-entity', {
+        entity: entityType,
+      })}>
       <Row className="p-x-lg" gutter={[16, 16]}>
         <Col span={24}>
           <TitleBreadcrumb titleLinks={breadcrumbList} />

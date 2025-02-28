@@ -64,7 +64,6 @@ export const fillDescriptionDetails = async (
 };
 
 export const fillOwnerDetails = async (page: Page, owners: string[]) => {
-  // await page.locator('[data-props-id="owner"]').last().click();
   await page
     .locator('.InovuaReactDataGrid__cell--cell-active')
     .press('Enter', { delay: 100 });
