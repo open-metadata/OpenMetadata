@@ -41,6 +41,8 @@ from metadata.ingestion.source.database.mssql.models import (
 )
 from metadata.ingestion.source.database.mssql.queries import (
     MSSQL_GET_DATABASE,
+    MSSQL_GET_DATABASE_COMMENTS,
+    MSSQL_GET_SCHEMA_COMMENTS,
     MSSQL_GET_STORED_PROCEDURE_COMMENTS,
     MSSQL_GET_STORED_PROCEDURES,
 )
@@ -101,6 +103,8 @@ class MssqlSource(CommonDbSourceService, MultiDBSource):
         metadata,
     ):
         super().__init__(config, metadata)
+        self.schema_desc_map = {}
+        self.database_desc_map = {}
         self.stored_procedure_desc_map = {}
 
     @classmethod
@@ -116,6 +120,43 @@ class MssqlSource(CommonDbSourceService, MultiDBSource):
             )
         return cls(config, metadata)
 
+    def get_configured_database(self) -> Optional[str]:
+        if not self.service_connection.ingestAllDatabases:
+            return self.service_connection.database
+        return None
+
+    def set_schema_description_map(self) -> None:
+        self.schema_desc_map.clear()
+        results = self.engine.execute(MSSQL_GET_SCHEMA_COMMENTS).all()
+        self.schema_desc_map = {
+            (row.DATABASE_NAME, row.SCHEMA_NAME): row.COMMENT for row in results
+        }
+
+    def set_database_description_map(self) -> None:
+        self.database_desc_map.clear()
+        results = self.engine.execute(MSSQL_GET_DATABASE_COMMENTS).all()
+        self.database_desc_map = {row.DATABASE_NAME: row.COMMENT for row in results}
+
+    def set_stored_procedure_description_map(self) -> None:
+        self.stored_procedure_desc_map.clear()
+        results = self.engine.execute(MSSQL_GET_STORED_PROCEDURE_COMMENTS).all()
+        self.stored_procedure_desc_map = {
+            (row.DATABASE_NAME, row.SCHEMA_NAME, row.STORED_PROCEDURE): row.COMMENT
+            for row in results
+        }
+
+    def get_schema_description(self, schema_name: str) -> Optional[str]:
+        """
+        Method to fetch the schema description
+        """
+        return self.schema_desc_map.get((self.context.get().database, schema_name))
+
+    def get_database_description(self, database_name: str) -> Optional[str]:
+        """
+        Method to fetch the database description
+        """
+        return self.database_desc_map.get(database_name)
+
     def get_stored_procedure_description(self, stored_procedure: str) -> Optional[str]:
         """
         Method to fetch the stored procedure description
@@ -129,25 +170,14 @@ class MssqlSource(CommonDbSourceService, MultiDBSource):
         )
         return Markdown(description) if description else None
 
-    def set_stored_procedure_description_map(self) -> None:
-        self.stored_procedure_desc_map.clear()
-        results = self.engine.execute(MSSQL_GET_STORED_PROCEDURE_COMMENTS).all()
-        self.stored_procedure_desc_map = {
-            (row.DATABASE_NAME, row.SCHEMA_NAME, row.STORED_PROCEDURE): row.COMMENT
-            for row in results
-        }
-
-    def get_configured_database(self) -> Optional[str]:
-        if not self.service_connection.ingestAllDatabases:
-            return self.service_connection.database
-        return None
-
     def get_database_names_raw(self) -> Iterable[str]:
         yield from self._execute_database_query(MSSQL_GET_DATABASE)
 
     def get_database_names(self) -> Iterable[str]:
         if not self.config.serviceConnection.root.config.ingestAllDatabases:
             configured_db = self.config.serviceConnection.root.config.database
+            self.set_schema_description_map()
+            self.set_database_description_map()
             self.set_stored_procedure_description_map()
             self.set_inspector(database_name=configured_db)
             yield configured_db
@@ -170,6 +200,9 @@ class MssqlSource(CommonDbSourceService, MultiDBSource):
                     continue
 
                 try:
+                    self.set_schema_description_map()
+                    self.set_database_description_map()
+                    self.set_stored_procedure_description_map()
                     self.set_inspector(database_name=new_database)
                     yield new_database
                 except Exception as exc:
