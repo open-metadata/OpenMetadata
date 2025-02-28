@@ -12,7 +12,10 @@
  */
 
 import { Col, Row } from 'antd';
+import { isEqual } from 'lodash';
+import { ServiceTypes } from 'Models';
 import React from 'react';
+import { useParams } from 'react-router-dom';
 import DataQualityWidget from './DataQualityWidget/DataQualityWidget';
 import PIIDistributionWidget from './PIIDistributionWidget/PIIDistributionWidget';
 import PlatformInsightsWidget from './PlatformInsightsWidget/PlatformInsightsWidget';
@@ -21,6 +24,13 @@ import { ServiceInsightsTabProps } from './ServiceInsightsTab.interface';
 import TierDistributionWidget from './TierDistributionWidget/TierDistributionWidget';
 
 const ServiceInsightsTab: React.FC<ServiceInsightsTabProps> = () => {
+  const { serviceCategory } = useParams<{
+    serviceCategory: ServiceTypes;
+    tab: string;
+  }>();
+
+  const isDatabaseService = isEqual(serviceCategory, 'databaseServices');
+
   return (
     <Row className="service-insights-tab" gutter={[16, 16]}>
       <Col span={24}>
@@ -32,9 +42,11 @@ const ServiceInsightsTab: React.FC<ServiceInsightsTabProps> = () => {
       <Col span={12}>
         <TierDistributionWidget />
       </Col>
-      <Col span={24}>
-        <DataQualityWidget />
-      </Col>
+      {isDatabaseService && (
+        <Col span={24}>
+          <DataQualityWidget />
+        </Col>
+      )}
     </Row>
   );
 };
