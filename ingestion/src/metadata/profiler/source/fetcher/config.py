@@ -42,3 +42,7 @@ class EntityFilterConfigInterface(Protocol):
     @property
     def useFqnForFiltering(self) -> Optional[bool]:
         ...
+
+    @property
+    def includeViews(self) -> Optional[bool]:
+        ...

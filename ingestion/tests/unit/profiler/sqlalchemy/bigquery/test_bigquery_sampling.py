@@ -127,20 +127,31 @@ class SampleTest(TestCase):
         """
         Test view sampling
         """
+        view_entity = Table(
+            id=uuid4(),
+            name="user",
+            columns=[
+                EntityColumn(
+                    name=ColumnName("id"),
+                    dataType=DataType.INT,
+                ),
+            ],
+            tableType=TableType.View,
+        )
+
         sampler = BigQuerySampler(
             service_connection_config=self.bq_conn,
             ometa_client=None,
-            entity=self.table_entity,
+            entity=view_entity,
             sample_config=SampleConfig(
                 profileSampleType=ProfileSampleType.PERCENTAGE, profileSample=50.0
             ),
-            table_type=TableType.View,
         )
         query: CTE = sampler.get_sample_query()
         expected_query = (
-            "WITH users_rnd AS \n(SELECT users.id AS id, ABS(RANDOM()) * 100 %% 100 AS random \n"
-            "FROM users)\n SELECT users_rnd.id, users_rnd.random \n"
-            "FROM users_rnd \nWHERE users_rnd.random <= 50.0"
+            'WITH "9bc65c2abec141778ffaa729489f3e87_rnd" AS \n(SELECT users.id AS id, ABS(RANDOM()) * 100 %% 100 AS random \n'
+            'FROM users)\n SELECT "9bc65c2abec141778ffaa729489f3e87_rnd".id, "9bc65c2abec141778ffaa729489f3e87_rnd".random \n'
+            'FROM "9bc65c2abec141778ffaa729489f3e87_rnd" \nWHERE "9bc65c2abec141778ffaa729489f3e87_rnd".random <= 50.0'
         )
         assert (
             expected_query.casefold()
@@ -151,10 +162,22 @@ class SampleTest(TestCase):
         """
         Test view sampling with partition
         """
+        view_entity = Table(
+            id=uuid4(),
+            name="user",
+            columns=[
+                EntityColumn(
+                    name=ColumnName("id"),
+                    dataType=DataType.INT,
+                ),
+            ],
+            tableType=TableType.View,
+        )
+
         sampler = BigQuerySampler(
             service_connection_config=self.bq_conn,
             ometa_client=None,
-            entity=self.table_entity,
+            entity=view_entity,
             sample_config=SampleConfig(
                 profileSampleType=ProfileSampleType.PERCENTAGE, profileSample=50.0
             ),
@@ -168,9 +191,9 @@ class SampleTest(TestCase):
         )
         query: CTE = sampler.get_sample_query()
         expected_query = (
-            "WITH users_rnd AS \n(SELECT users.id AS id, ABS(RANDOM()) * 100 %% 100 AS random \n"
-            "FROM users \nWHERE id in ('1', '2'))\n SELECT users_rnd.id, users_rnd.random \n"
-            "FROM users_rnd \nWHERE users_rnd.random <= 50.0"
+            'WITH "9bc65c2abec141778ffaa729489f3e87_rnd" AS \n(SELECT users.id AS id, ABS(RANDOM()) * 100 %% 100 AS random \n'
+            "FROM users \nWHERE id in ('1', '2'))\n SELECT \"9bc65c2abec141778ffaa729489f3e87_rnd\".id, \"9bc65c2abec141778ffaa729489f3e87_rnd\".random \n"
+            'FROM "9bc65c2abec141778ffaa729489f3e87_rnd" \nWHERE "9bc65c2abec141778ffaa729489f3e87_rnd".random <= 50.0'
         )
         assert (
             expected_query.casefold()

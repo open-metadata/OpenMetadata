@@ -121,6 +121,7 @@ class UsageSource(QueryParserSource, ABC):
                         for row in rows:
                             row = dict(row)
                             try:
+                                row.update({k.lower(): v for k, v in row.items()})
                                 logger.debug(f"Processing row: {query}")
                                 query_type = row.get("query_type")
                                 query = self.format_query(row["query_text"])
@@ -153,7 +154,7 @@ class UsageSource(QueryParserSource, ABC):
                 if query:
                     logger.debug(
                         (
-                            f"###### USAGE QUERY #######\n{mask_query(query, self.dialect.value)}"
+                            f"###### USAGE QUERY #######\n{mask_query(query, self.dialect.value) or query}"
                             "\n##########################"
                         )
                     )

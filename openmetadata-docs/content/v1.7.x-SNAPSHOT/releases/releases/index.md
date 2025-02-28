@@ -8,11 +8,90 @@ slug: /releases/all-releases
 {% note %}
 
 The OpenMetadata community is on a monthly release cadence. At every 4-5 weeks we will be releasing a new
-version. To see what's coming in next releases, please check our [Roadmap](/releases/roadmap) section.
+version. To see what's coming in next releases, please check our {% collateContent %}[Roadmap](https://www.getcollate.io/roadmap){% /collateContent %}{% ossContent %}[Roadmap](/roadmap){% /ossContent %} section.
 
 {% /note %}
 
 {% partial file="/v1.7/releases/latest.md" /%}
+
+# 1.6.3 Release 🎉
+
+{% note noteType="Tip" %}
+**Jan 29th, 2025**
+{% /note %}
+
+You can find the GitHub release [here](https://github.com/open-metadata/OpenMetadata/releases/tag/1.6.3-release).
+
+# What's Changed
+
+- Fix: Adds percona server for postgresql support.
+- Fix: Inherited Ownership for Data Products.
+- Fix: Favicon not being updated in the browser tab.
+- Fix: Fix Search Index for ER Model.
+- Fix: dbt ingestion picks up wrong service to patch metadata.
+- Fix: Wrong team count displayed on team tab.
+- Fix: Tracing highlighter in lineage after edge clicked.
+- Fix: Api should not called after time out in Test connection.
+- Fix: Get only non-deleted entities in export.
+- Fix: The permissions call made for search service.
+- Fix: Kafkaconnect validation errors.
+- Fix: DI Filter not getting applied.
+- Fix: Redash Get Dashboards flow.
+- Fix: Description not rendered in Glossary Modal while edit.
+- Fix: The persona JSON schema is named Team.
+- Fix: Redirection issue on IDP initiated calls.
+- Fix: Async export csv not happening in lineage.
+- Fix: Description renderer having tags in glossary,team and user import.
+- Fix: RichTextEditor output in case on no data save.
+- Fix: s3 storage parquet structureFormat ingestion.
+- Fix: Data Insights index mapping.
+- Fix: Edit description permission for domain owner.
+- Fix: Model dump dict key names.
+- Fix: Broken looker lineage.
+- Fix: Refresh call concurrency for multiple browser tabs.
+- Fix: Infinite loading for refresh attempted on app visit.
+- Fix: Duplicate table constraints.
+- Fix: Updated MSSQL queries causing arithmetic overflow error.
+- Fix: PowerBI tables, datamodel metadata missing.
+- Fix: Wrong dataset and project id in filter of system metric query.
+- Fix: Data Insight fix custom property filter.
+- Fix: Entity Hierarchy Schema.
+- Fix: Salesforce column description with toggle api.
+- Fix: Update glossary term table upon new term added.
+- Fix: Remove unwanted spacing around the list in block editor.
+- Fix: Postgres parse json schema.
+- Fix: Optimize multithreading for lineage.
+- Fix: Fetch Stored Procedures from account usage .
+- Fix: Add MaterializedView & DynamicTable for lineage computation.
+- Fix: MariaDB Lineage Dialect Issue.
+- Minor: Optimize Snowflake SP Query.
+- Minor: Hide description tooltip for tag edit mode.
+- Minor: BigQuery Improvement, Hive Partitioned Tables, Nonetype issue resolved
+- Minor: Typo for datetime attribute.
+- Minor: Get missing dataProducts and pipeline properties in /customProperties api.
+- Minor: Improve cron expression validations.
+- Minor: Change log localization improvement.
+- Minor: Async test case result deletion.
+- Minor: Retention period 'Cancel' international display issue.
+- Improvement: Logout user on unsuccessful refresh attempt.
+- Improvement: Support for Domain hierarchy listing.
+- Improvement: Avoid usage of CONCAT in WHERE clause.
+- Improvement: Glossary column width sizes for the resizable columns.
+- Improvement: Move Recreate Out of executors.
+- Improvement: Supported the task filter on landing page feed widget.
+- Improvement: Implement Data Quality Dashboards (Incident Manager + Data Quality).
+- Improvement: Added loading state, and manage error notification in TestSuite.
+- Improvement: Enhance Kafka SSL configuration support with consumerConfigSSL.
+- Improvement: Add prometheus counter for search and database.
+- Improvement: Retention Application : Delete change_events, activity threads, versions based on admin retention policies.
+- Fix: DQ Dashboard: update order of the pie chart. (Collate)
+- Fix: Lineage Propagation when Entity doesn't have a given field. (Collate)
+- Minor: Added limits configuration in telemetry payload. (Collate)
+- Improvement: Show displayName for custom dashboards. (Collate)
+- Improvement: Support rename for custom dashboard and charts. (Collate)
+- Improvement: Improve Onboarding Application. (Collate)
+
+**Full Changelog**: https://github.com/open-metadata/OpenMetadata/compare/1.6.2-release...1.6.3-release
 
 # 1.6.2 Release 🎉
 
@@ -168,7 +247,7 @@ ER diagrams help you better understand and manage your data architecture by show
 
 Organizations often struggle with data governance due to rigid, pre-defined manual workflows. OpenMetadata 1.6 introduces a new, automated data governance framework designed to be customized to each organization's needs.
 
-In Collate 1.6, the Glossary Approval Workflow has been migrated to this new framework. Now, you can create custom approval processes with specific conditions and rules and easily visualize them through intuitive workflow diagrams. You can also create smart approval processes for glossary terms with real-time state changes and task creation to save time and streamline work. 
+In Collate 1.6, the Glossary Approval Workflow has been migrated to this new framework. Now, you can create custom approval processes with specific conditions and rules and easily visualize them through intuitive workflow diagrams. You can also create smart approval processes for glossary terms with real-time state changes and task creation to save time and streamline work. 
 
 ## Data Certification Workflows for Automated Bronze, Silver, & Gold Data Standardization! (Collate)
 
@@ -202,7 +281,7 @@ OpenMetadata 1.6 extends Role-Based Access Control (RBAC) to search functionalit
 
 ## Expanded Connector Ecosystem and Diversity
 
-OpenMetadata's ingestion framework contains 80+ native connectors. These connectors are the foundation of the platform and bring in all the metadata your team needs: technical metadata, lineage, usage, profiling, etc.
+OpenMetadata's ingestion framework contains 90+ native connectors. These connectors are the foundation of the platform and bring in all the metadata your team needs: technical metadata, lineage, usage, profiling, etc.
 
 We bring new connectors in each release, continuously expanding our coverage. This time, release 1.6 comes with seven new connectors:
 
@@ -770,7 +849,7 @@ To continue pursuing this objective, the application was completely refactored t
 
 ## Ingestion Connectors
 
-80+ connectors to help teams to centralize metadata. We continue to push the boundaries of this mission, in
+90+ connectors to help teams to centralize metadata. We continue to push the boundaries of this mission, in
 
 - **Apache Flink** as a Pipeline Connector
 - **SAP ERP**, after a long and successful collaboration with our community and SAP experts

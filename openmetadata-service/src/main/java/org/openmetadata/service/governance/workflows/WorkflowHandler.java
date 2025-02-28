@@ -1,17 +1,20 @@
 package org.openmetadata.service.governance.workflows;
 
+import static org.openmetadata.service.governance.workflows.WorkflowVariableHandler.getNamespacedVariableName;
 import static org.openmetadata.service.governance.workflows.elements.TriggerFactory.getTriggerWorkflowId;
 
 import java.time.Duration;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.flowable.bpmn.converter.BpmnXMLConverter;
-import org.flowable.common.engine.api.FlowableException;
 import org.flowable.common.engine.api.FlowableObjectNotFoundException;
+import org.flowable.common.engine.impl.el.DefaultExpressionManager;
 import org.flowable.engine.HistoryService;
 import org.flowable.engine.ProcessEngine;
 import org.flowable.engine.ProcessEngineConfiguration;
@@ -29,9 +32,11 @@ import org.openmetadata.schema.configuration.WorkflowSettings;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
 import org.openmetadata.service.exception.UnhandledServerException;
 import org.openmetadata.service.jdbi3.SystemRepository;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
+import org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineMapper;
 
 @Slf4j
 public class WorkflowHandler {
@@ -40,8 +45,9 @@ public class WorkflowHandler {
   private RuntimeService runtimeService;
   private TaskService taskService;
   private HistoryService historyService;
+  private final Map<Object, Object> expressionMap = new HashMap<>();
   private static WorkflowHandler instance;
-  private static volatile boolean initialized = false;
+  @Getter private static volatile boolean initialized = false;
 
   private WorkflowHandler(OpenMetadataApplicationConfig config) {
     ProcessEngineConfiguration processEngineConfiguration =
@@ -58,7 +64,16 @@ public class WorkflowHandler {
       processEngineConfiguration.setDatabaseType(ProcessEngineConfiguration.DATABASE_TYPE_POSTGRES);
     }
 
+    initializeExpressionMap(config);
     initializeNewProcessEngine(processEngineConfiguration);
+  }
+
+  public void initializeExpressionMap(OpenMetadataApplicationConfig config) {
+    expressionMap.put("IngestionPipelineMapper", new IngestionPipelineMapper(config));
+    expressionMap.put(
+        "PipelineServiceClient",
+        PipelineServiceClientFactory.createPipelineServiceClient(
+            config.getPipelineServiceClientConfiguration()));
   }
 
   public void initializeNewProcessEngine(
@@ -86,6 +101,8 @@ public class WorkflowHandler {
         .setAsyncExecutorMaxPoolSize(workflowSettings.getExecutorConfiguration().getMaxPoolSize())
         .setAsyncExecutorThreadPoolQueueSize(
             workflowSettings.getExecutorConfiguration().getQueueSize())
+        .setAsyncExecutorAsyncJobLockTimeInMillis(
+            workflowSettings.getExecutorConfiguration().getJobLockTimeInMillis())
         .setAsyncExecutorMaxAsyncJobsDuePerAcquisition(
             workflowSettings.getExecutorConfiguration().getTasksDuePerAcquisition());
 
@@ -95,6 +112,9 @@ public class WorkflowHandler {
         .setCleanInstancesEndedAfter(
             Duration.ofDays(
                 workflowSettings.getHistoryCleanUpConfiguration().getCleanAfterNumberOfDays()));
+
+    // Add Expression Manager
+    processEngineConfiguration.setExpressionManager(new DefaultExpressionManager(expressionMap));
 
     // Add Global Failure Listener
     processEngineConfiguration.setEventListeners(List.of(new WorkflowFailureListener()));
@@ -198,19 +218,57 @@ public class WorkflowHandler {
     taskService.setVariable(taskId, "customTaskId", customTaskId.toString());
   }
 
+  public String getParentActivityId(String executionId) {
+    String activityId = null;
+
+    Execution execution =
+        runtimeService.createExecutionQuery().executionId(executionId).singleResult();
+
+    if (execution != null && execution.getParentId() != null) {
+      Execution parentExecution =
+          runtimeService.createExecutionQuery().executionId(execution.getParentId()).singleResult();
+
+      if (parentExecution != null) {
+        activityId = parentExecution.getActivityId();
+      }
+    }
+
+    return activityId;
+  }
+
+  private Task getTaskFromCustomTaskId(UUID customTaskId) {
+    return taskService
+        .createTaskQuery()
+        .processVariableValueEquals("customTaskId", customTaskId.toString())
+        .singleResult();
+  }
+
+  public Map<String, Object> transformToNodeVariables(
+      UUID customTaskId, Map<String, Object> variables) {
+    Map<String, Object> namespacedVariables = null;
+    Optional<Task> oTask = Optional.ofNullable(getTaskFromCustomTaskId(customTaskId));
+
+    if (oTask.isPresent()) {
+      Task task = oTask.get();
+      String namespace = getParentActivityId(task.getExecutionId());
+      namespacedVariables = new HashMap<>();
+      for (Map.Entry<String, Object> entry : variables.entrySet()) {
+        namespacedVariables.put(
+            getNamespacedVariableName(namespace, entry.getKey()), entry.getValue());
+      }
+    } else {
+      LOG.debug(String.format("Flowable Task for Task ID %s not found.", customTaskId));
+    }
+    return namespacedVariables;
+  }
+
   public void resolveTask(UUID taskId) {
     resolveTask(taskId, null);
   }
 
   public void resolveTask(UUID customTaskId, Map<String, Object> variables) {
     try {
-      Optional<Task> oTask =
-          Optional.ofNullable(
-              taskService
-                  .createTaskQuery()
-                  .processVariableValueEquals("customTaskId", customTaskId.toString())
-                  .singleResult());
-
+      Optional<Task> oTask = Optional.ofNullable(getTaskFromCustomTaskId(customTaskId));
       if (oTask.isPresent()) {
         Task task = oTask.get();
         Optional.ofNullable(variables)
@@ -222,11 +280,6 @@ public class WorkflowHandler {
       }
     } catch (FlowableObjectNotFoundException ex) {
       LOG.debug(String.format("Flowable Task for Task ID %s not found.", customTaskId));
-    } catch (
-        FlowableException
-            ex) { // TODO: Remove this once we change the Task flow. Currently closeTask() is called
-      // twice.
-      LOG.debug(String.format("Flowable Exception: %s.", ex));
     }
   }
 
@@ -248,11 +301,6 @@ public class WorkflowHandler {
       }
     } catch (FlowableObjectNotFoundException ex) {
       LOG.debug(String.format("Flowable Task for Task ID %s not found.", customTaskId));
-    } catch (
-        FlowableException
-            ex) { // TODO: Remove this once we change the Task flow. Currently closeTask() is called
-      // twice.
-      LOG.debug(String.format("Flowable Exception: %s.", ex));
     }
   }
 
@@ -303,13 +351,38 @@ public class WorkflowHandler {
     }
   }
 
+  public boolean isWorkflowSuspended(String workflowName) {
+    ProcessDefinition processDefinition =
+        repositoryService
+            .createProcessDefinitionQuery()
+            .processDefinitionKey(getTriggerWorkflowId(workflowName))
+            .latestVersion()
+            .singleResult();
+
+    if (processDefinition == null) {
+      throw new IllegalArgumentException(
+          "Process Definition not found for workflow: " + workflowName);
+    }
+
+    return processDefinition.isSuspended();
+  }
+
   public void suspendWorkflow(String workflowName) {
-    repositoryService.suspendProcessDefinitionByKey(getTriggerWorkflowId(workflowName), true, null);
+    if (isWorkflowSuspended(workflowName)) {
+      LOG.debug(String.format("Workflow '%s' is already suspended.", workflowName));
+    } else {
+      repositoryService.suspendProcessDefinitionByKey(
+          getTriggerWorkflowId(workflowName), true, null);
+    }
   }
 
   public void resumeWorkflow(String workflowName) {
-    repositoryService.activateProcessDefinitionByKey(
-        getTriggerWorkflowId(workflowName), true, null);
+    if (!isWorkflowSuspended(workflowName)) {
+      LOG.debug(String.format("Workflow '%s' is already active.", workflowName));
+    } else {
+      repositoryService.activateProcessDefinitionByKey(
+          getTriggerWorkflowId(workflowName), true, null);
+    }
   }
 
   public void terminateWorkflow(String workflowName) {

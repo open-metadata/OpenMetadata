@@ -96,6 +96,9 @@ export const DomainLabel = ({
       } else {
         setActiveDomain([domain]);
       }
+    } else {
+      // note: this is to handle the case where the domain is not set
+      setActiveDomain([]);
     }
   }, [domain]);
 
