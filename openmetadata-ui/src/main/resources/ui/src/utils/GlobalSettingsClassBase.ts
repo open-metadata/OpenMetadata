@@ -252,7 +252,7 @@ class GlobalSettingsClassBase {
         category: t('label.team-user-management'),
         key: GlobalSettingsMenuCategory.MEMBERS,
         icon: ManagementIcon,
-        description: t('message.brand-member-description', {
+        description: t('message.team-member-management-description', {
           brandName: brandClassBase.getPageTitle(),
         }),
         items: [
