@@ -17,10 +17,10 @@ import { ReactComponent as AdminIcon } from '../assets/svg/admin-colored.svg';
 import { ReactComponent as ApplicationIcon } from '../assets/svg/application-colored.svg';
 import { ReactComponent as BotIcon } from '../assets/svg/bot-colored.svg';
 import { ReactComponent as AppearanceIcon } from '../assets/svg/custom-logo-colored.svg';
-import { ReactComponent as DashboardIcon } from '../assets/svg/dashboard-colored.svg';
-import { ReactComponent as DatabaseIcon } from '../assets/svg/database-colored.svg';
+import { ReactComponent as DashboardIcon } from '../assets/svg/dashboard-colored-new.svg';
+import { ReactComponent as DatabaseIcon } from '../assets/svg/database-colored-new.svg';
 import { ReactComponent as EmailIcon } from '../assets/svg/email-colored.svg';
-import { ReactComponent as GlossaryIcon } from '../assets/svg/glossary-colored.svg';
+import { ReactComponent as GlossaryIcon } from '../assets/svg/glossary-term-colored-new.svg';
 import { ReactComponent as APICollectionIcon } from '../assets/svg/ic-api-collection.svg';
 import { ReactComponent as APIEndpointIcon } from '../assets/svg/ic-api-endpoint.svg';
 import { ReactComponent as IconAPI } from '../assets/svg/ic-api-service.svg';
@@ -32,12 +32,12 @@ import { ReactComponent as LinkIcon } from '../assets/svg/ic-url-link.svg';
 
 import { ReactComponent as LoginIcon } from '../assets/svg/login-colored.svg';
 import { ReactComponent as OpenMetadataIcon } from '../assets/svg/logo-monogram.svg';
-import { ReactComponent as MessagingIcon } from '../assets/svg/messaging-colored.svg';
+import { ReactComponent as MessagingIcon } from '../assets/svg/messaging-colored-new.svg';
 import { ReactComponent as MetricColoredIcon } from '../assets/svg/metric-colored.svg';
 import { ReactComponent as MlModelIcon } from '../assets/svg/ml-model-colored.svg';
 import { ReactComponent as OMHealthIcon } from '../assets/svg/om-health-colored.svg';
 import { ReactComponent as PersonasIcon } from '../assets/svg/persona-colored.svg';
-import { ReactComponent as PipelineIcon } from '../assets/svg/pipeline-colored.svg';
+import { ReactComponent as PipelineIcon } from '../assets/svg/pipelines-colored-new.svg';
 import { ReactComponent as PoliciesIcon } from '../assets/svg/policies-colored.svg';
 import { ReactComponent as ProfilerConfigIcon } from '../assets/svg/profiler-configuration-logo.svg';
 import { ReactComponent as RolesIcon } from '../assets/svg/role-colored.svg';
@@ -50,7 +50,8 @@ import { ReactComponent as NotificationIcon } from '../assets/svg/setting-notifi
 import { ReactComponent as ServiceIcon } from '../assets/svg/setting-services.svg';
 import { ReactComponent as StorageIcon } from '../assets/svg/storage-colored.svg';
 import { ReactComponent as StoredProcedureIcon } from '../assets/svg/stored-procedure-colored.svg';
-import { ReactComponent as TableIcon } from '../assets/svg/table-colored.svg';
+import { ReactComponent as TableIcon } from '../assets/svg/table-colored-new.svg';
+import { ReactComponent as TagIcon } from '../assets/svg/tags-colored-new.svg';
 import { ReactComponent as TeamsIcon } from '../assets/svg/teams-colored.svg';
 import { ReactComponent as UsersIcon } from '../assets/svg/user-colored.svg';
 import {
@@ -348,7 +349,7 @@ class GlobalSettingsClassBase {
             label: t('label.search'),
             description: t('message.page-sub-header-for-search-setting'),
             isProtected: Boolean(isAdminUser),
-            key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.SEARCH_RBAC}`,
+            key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.SEARCH_SETTINGS}`,
             icon: PoliciesIcon,
           },
           {
@@ -520,6 +521,140 @@ class GlobalSettingsClassBase {
             icon: GlossaryIcon,
           },
         ].sort((a, b) => a.label.localeCompare(b.label)),
+      },
+      {
+        category: t('label.search-setting-plural'),
+        key: GlobalSettingsMenuCategory.SEARCH_SETTING_CATEGORIES,
+        icon: SearchIcon,
+        description: 't(message.search-settings-description)',
+        items: [
+          {
+            label: t('label.table-plural'),
+            description: t('message.search-settings-for-entity', {
+              entity: t('label.table-plural'),
+            }),
+            isProtected: Boolean(isAdminUser),
+            key: `${GlobalSettingOptions.SEARCH_SETTINGS}/${GlobalSettingOptions.TABLE}`,
+            icon: TableIcon,
+          },
+          {
+            label: t('label.dashboard-plural'),
+            description: t('message.search-settings-for-entity', {
+              entity: t('label.dashboard-plural'),
+            }),
+            isProtected: Boolean(isAdminUser),
+            key: `${GlobalSettingOptions.SEARCH_SETTINGS}/${GlobalSettingOptions.DASHBOARD}`,
+            icon: DashboardIcon,
+          },
+          {
+            label: t('label.pipeline-plural'),
+            description: t('message.search-settings-for-entity', {
+              entity: t('label.pipeline-plural'),
+            }),
+            isProtected: Boolean(isAdminUser),
+            key: `${GlobalSettingOptions.SEARCH_SETTINGS}/${GlobalSettingOptions.PIPELINE}`,
+            icon: PipelineIcon,
+          },
+          {
+            label: t('label.topic-plural'),
+            description: t('message.search-settings-for-entity', {
+              entity: t('label.topic-plural'),
+            }),
+            isProtected: Boolean(isAdminUser),
+            key: `${GlobalSettingOptions.SEARCH_SETTINGS}/${GlobalSettingOptions.TOPIC}`,
+            icon: MessagingIcon,
+          },
+          {
+            label: t('label.glossary-term'),
+            description: t('message.search-settings-for-entity', {
+              entity: t('label.glossary-term'),
+            }),
+            isProtected: Boolean(isAdminUser),
+            key: `${GlobalSettingOptions.SEARCH_SETTINGS}/${GlobalSettingOptions.GLOSSARY_TERM}`,
+            icon: GlossaryIcon,
+          },
+          {
+            label: t('label.api-endpoint'),
+            description: t('message.search-settings-for-entity', {
+              entity: t('label.api-endpoint'),
+            }),
+            isProtected: Boolean(isAdminUser),
+            key: `${GlobalSettingOptions.SEARCH_SETTINGS}/${GlobalSettingOptions.API_ENDPOINT}`,
+            icon: APIEndpointIcon,
+          },
+          {
+            label: t('label.dashboard-data-model-plural'),
+            description: t('message.search-settings-for-entity', {
+              entity: t('label.dashboard-data-model-plural'),
+            }),
+            isProtected: Boolean(isAdminUser),
+            key: `${GlobalSettingOptions.SEARCH_SETTINGS}/${GlobalSettingOptions.DASHBOARD_DATA_MODELS}`,
+            icon: DashboardDataModelIcon,
+          },
+          {
+            label: t('label.stored-procedure-plural'),
+            description: t('message.search-settings-for-entity', {
+              entity: t('label.stored-procedure-plural'),
+            }),
+            isProtected: Boolean(isAdminUser),
+            key: `${GlobalSettingOptions.SEARCH_SETTINGS}/${GlobalSettingOptions.STORED_PROCEDURE}`,
+            icon: StoredProcedureIcon,
+          },
+          {
+            label: t('label.container-plural'),
+            description: t('message.search-settings-for-entity', {
+              entity: t('label.container-plural'),
+            }),
+            isProtected: Boolean(isAdminUser),
+            key: `${GlobalSettingOptions.SEARCH_SETTINGS}/${GlobalSettingOptions.CONTAINER}`,
+            icon: StorageIcon,
+          },
+          {
+            label: t('label.ml-model-plural'),
+            description: t('message.search-settings-for-entity', {
+              entity: t('label.ml-model-plural'),
+            }),
+            isProtected: Boolean(isAdminUser),
+            key: `${GlobalSettingOptions.SEARCH_SETTINGS}/${GlobalSettingOptions.ML_MODEL}`,
+            icon: MlModelIcon,
+          },
+          {
+            label: t('label.data-asset-plural'),
+            description: t('message.search-settings-for-entity', {
+              entity: t('label.data-asset-plural'),
+            }),
+            isProtected: Boolean(isAdminUser),
+            key: `${GlobalSettingOptions.SEARCH_SETTINGS}/${GlobalSettingOptions.DATA_ASSET}`,
+            icon: DatabaseIcon,
+          },
+          {
+            label: t('label.query'),
+            description: t('message.search-settings-for-entity', {
+              entity: t('label.query'),
+            }),
+            isProtected: Boolean(isAdminUser),
+            key: `${GlobalSettingOptions.SEARCH_SETTINGS}/${GlobalSettingOptions.QUERY}`,
+            icon: DatabaseIcon,
+          },
+          {
+            label: t('label.test-case-plural'),
+            description: t('message.search-settings-for-entity', {
+              entity: t('label.test-case-plural'),
+            }),
+            isProtected: Boolean(isAdminUser),
+            key: `${GlobalSettingOptions.SEARCH_SETTINGS}/${GlobalSettingOptions.TEST_CASE}`,
+            icon: DatabaseIcon,
+          },
+          {
+            label: t('label.tag-plural'),
+            description: t('message.search-settings-for-entity', {
+              entity: t('label.tag-plural'),
+            }),
+            isProtected: Boolean(isAdminUser),
+            key: `${GlobalSettingOptions.SEARCH_SETTINGS}/${GlobalSettingOptions.TAG}`,
+            icon: TagIcon,
+          },
+        ],
       },
       {
         category: t('label.bot-plural'),

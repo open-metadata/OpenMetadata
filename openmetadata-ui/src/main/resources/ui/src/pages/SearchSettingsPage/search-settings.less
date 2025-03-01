@@ -1,0 +1,154 @@
+/*
+ *  Copyright 2025 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+@import url('../../styles/variables.less');
+
+.search-settings {
+  background-color: @grey-1;
+}
+
+.settings-row {
+  margin: 18px;
+  margin-bottom: 24px;
+  background-color: @white;
+  border: 1px solid #e9eaeb;
+  border-radius: 10px;
+}
+
+.global-settings-cards-container {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+  margin: -10px;
+  margin-bottom: 8px;
+
+  .global-setting-card {
+    border: 1px solid #fafafa;
+    border-radius: 12px;
+    background-color: #fafafa;
+    flex: 1 1 300px;
+    max-width: calc(33.33% - 14px);
+    min-width: 270px;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+
+    &__content {
+      flex: 1;
+      min-width: 0;
+      font-size: 14px;
+      font-weight: 400;
+    }
+
+    &__action {
+      flex-shrink: 0;
+    }
+  }
+}
+
+.filters-configuration-row {
+  background-color: white;
+  border: 1px solid #e9eaeb;
+  border-radius: 10px;
+  margin: 20px;
+  margin-bottom: 24px;
+
+  .filter-configuration-container {
+    padding: 20px 16px;
+    border: 1px solid #e9eaeb;
+    border-radius: 12px;
+    background-color: #fafafa;
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    flex-wrap: wrap;
+    min-height: auto;
+
+    .add-filters-btn {
+      color: #175cd3;
+      border: 1px solid #d5d7da;
+      background-color: #e0f2fe;
+      border-radius: 8px;
+
+      &:hover,
+      &:focus {
+        color: #175cd3;
+        background-color: #e0f2fe;
+        border-color: #d5d7da;
+      }
+    }
+
+    .filter-option {
+      flex-direction: row-reverse;
+      border: 1px solid #d5d7da;
+      border-radius: 8px;
+    }
+
+    .filter-value {
+      border: 1px solid #d4d4d8;
+      border-radius: 8px;
+    }
+  }
+}
+
+.search-setting-card-item {
+  height: 100%;
+  border: 1px solid #fafafa;
+  border-radius: 12px;
+  transition: 0.3s ease-in-out;
+
+  .ant-card-body {
+    padding: 40px 20px;
+    text-align: center;
+
+    .search-setting-card-icon-container {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      .search-setting-card-icon {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        svg {
+          // font-size: 50px;
+          font-size: 90px;
+          fill: transparent;
+          display: flex;
+          justify-content: center;
+          align-items: center;
+        }
+      }
+    }
+
+    .search-setting-card-item-content {
+      margin-top: 16px;
+      .search-setting-card-title {
+        font-size: 16px;
+        font-weight: 600;
+      }
+
+      .search-setting-card-description {
+        margin-top: 16px;
+        font-size: 14px;
+        font-weight: 400;
+        color: #535862;
+      }
+    }
+
+    .search-setting-card-action-btn {
+      margin-top: 8px;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 14px;
+    }
+  }
+}

@@ -24,7 +24,7 @@ export type SelectOption = {
 };
 
 export interface AsyncSelectListProps {
-  mode?: 'multiple';
+  mode?: 'multiple' | 'tags';
   optionClassName?: string;
   placeholder?: string;
   debounceTimeout?: number;
