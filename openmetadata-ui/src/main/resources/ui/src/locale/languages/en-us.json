@@ -1233,7 +1233,6 @@
     "suggestion": "Suggestion",
     "suggestion-lowercase-plural": "suggestions",
     "suggestion-pending": "Suggestions Pending",
-    "suggestion-plural-pending": "{{count}} Suggestions Pending",
     "suite": "Suite",
     "sum": "Sum",
     "summary": "Summary",

@@ -44,8 +44,9 @@ const SuggestionsSlider = () => {
           className="suggestion-pending-btn"
           data-testid="more-suggestion-button"
           loading={loading}
+          type="primary"
           onClick={fetchSuggestions}>
-          {t('label.suggestion-plural-pending', {
+          {t('label.plus-count-more', {
             count: suggestionLimit - 10, // 10 is the default limit, and only show count of pending suggestions
           })}
         </Button>
