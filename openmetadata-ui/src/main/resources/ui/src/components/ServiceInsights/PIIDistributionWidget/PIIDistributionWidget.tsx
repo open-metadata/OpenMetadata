@@ -88,7 +88,7 @@ function PIIDistributionWidget() {
       </div>
       <Card className="widget-info-card bg-white">
         <Skeleton active loading={isLoading} paragraph={{ rows: 10 }}>
-          <ResponsiveContainer height={300} width="100%">
+          <ResponsiveContainer className="p-t-md" height={300} width="100%">
             <BarChart
               data={chartsData}
               margin={{ top: 0, right: 0, left: -24, bottom: 0 }}>
