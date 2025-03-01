@@ -56,6 +56,10 @@ export interface DashboardService {
      */
     incrementalChangeDescription?: ChangeDescription;
     /**
+     * The ingestion agent responsible for executing the ingestion pipeline.
+     */
+    ingestionAgent?: EntityReference;
+    /**
      * Name that identifies this dashboard service.
      */
     name: string;
@@ -1064,7 +1068,7 @@ export interface GCPCredentialsConfiguration {
     /**
      * Google Cloud Platform account type.
      */
-    type?: string;
+    type?: TypeEnum;
     /**
      * Path of the file containing the GCP credentials info
      */
@@ -1082,7 +1086,7 @@ export interface GCPCredentialsConfiguration {
     /**
      * Google Cloud Platform account type.
      */
-    externalType?: string;
+    externalType?: ExternalTypeEnum;
     /**
      * Google Security Token Service subject token type based on the OAuth 2.0 token exchange
      * spec.
@@ -1093,6 +1097,16 @@ export interface GCPCredentialsConfiguration {
      */
     tokenURL?: string;
     [property: string]: any;
+}
+
+export enum ExternalTypeEnum {
+    ExternalAccount = "external_account",
+}
+
+export enum TypeEnum {
+    ExternalAccount = "external_account",
+    GcpCredentialPath = "gcp_credential_path",
+    ServiceAccount = "service_account",
 }
 
 /**
@@ -1185,6 +1199,8 @@ export enum DashboardServiceType {
  * the relationship of a table `belongs to a` database.
  *
  * Domain the Dashboard service belongs to.
+ *
+ * The ingestion agent responsible for executing the ingestion pipeline.
  */
 export interface EntityReference {
     /**

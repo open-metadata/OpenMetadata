@@ -29,12 +29,12 @@ export const LIST_OF_FIELDS_TO_EDIT_NOT_TO_BE_PRESENT = [
   },
   {
     containerSelector:
-      '[data-testid="entity-right-panel"] [data-testid="tags-container"]',
+      '[data-testid="KnowledgePanel.Tags"] [data-testid="tags-container"]',
     elementSelector: '[data-testid="add-tag"]',
   },
   {
     containerSelector:
-      '[data-testid="entity-right-panel"] [data-testid="glossary-container"]',
+      '[data-testid="KnowledgePanel.GlossaryTerms"] [data-testid="glossary-container"]',
     elementSelector: '[data-testid="add-tag"]',
   },
 ];
