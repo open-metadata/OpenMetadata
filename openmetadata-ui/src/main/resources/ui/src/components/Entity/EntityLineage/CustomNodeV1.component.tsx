@@ -11,8 +11,6 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons/lib/components/Icon';
-import { Button } from 'antd';
 import classNames from 'classnames';
 import React, { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import {
@@ -22,11 +20,11 @@ import {
   NodeProps,
   Position,
 } from 'reactflow';
-import { ReactComponent as IconTimesCircle } from '../../../assets/svg/ic-times-circle.svg';
 import { useLineageProvider } from '../../../context/LineageProvider/LineageProvider';
 import { EntityLineageNodeType } from '../../../enums/entity.enum';
 import { LineageDirection } from '../../../generated/api/lineage/lineageDirection';
 import { LineageLayer } from '../../../generated/configuration/lineageSettings';
+import LineageNodeRemoveButton from '../../Lineage/LineageNodeRemoveButton';
 import './custom-node.less';
 import { getCollapseHandle, getExpandHandle } from './CustomNode.utils';
 import './entity-lineage.style.less';
@@ -130,19 +128,8 @@ const CustomNodeV1 = (props: NodeProps) => {
         <>
           <LineageNodeLabelV1 node={node} />
           {isSelected && isEditMode && !isRootNode ? (
-            <Button
-              className="lineage-node-remove-btn bg-body-hover"
-              data-testid="lineage-node-remove-btn"
-              icon={
-                <Icon
-                  alt="times-circle"
-                  className="align-middle"
-                  component={IconTimesCircle}
-                  style={{ fontSize: '16px' }}
-                />
-              }
-              type="link"
-              onClick={() => removeNodeHandler(props)}
+            <LineageNodeRemoveButton
+              onRemove={() => removeNodeHandler(props)}
             />
           ) : null}
         </>

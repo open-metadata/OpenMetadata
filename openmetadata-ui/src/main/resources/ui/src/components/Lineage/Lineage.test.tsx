@@ -86,6 +86,7 @@ jest.mock('../../context/LineageProvider/LineageProvider', () => ({
   useLineageProvider: jest.fn().mockImplementation(() => ({
     tracedNodes: [],
     tracedColumns: [],
+    activeLayer: [],
     entityLineage: entityLineage,
     updateEntityType: jest.fn(),
   })),

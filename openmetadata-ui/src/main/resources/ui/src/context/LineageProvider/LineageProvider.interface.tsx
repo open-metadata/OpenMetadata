@@ -95,4 +95,5 @@ export interface LineageContextType {
   onConnect: (connection: Edge | Connection) => void;
   updateEntityType: (entityType: EntityType) => void;
   onUpdateLayerView: (layers: LineageLayer[]) => void;
+  redraw: () => Promise<void>;
 }

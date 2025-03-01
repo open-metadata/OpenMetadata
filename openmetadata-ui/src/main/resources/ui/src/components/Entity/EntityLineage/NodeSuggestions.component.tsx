@@ -19,6 +19,7 @@ import React, {
   HTMLAttributes,
   useCallback,
   useEffect,
+  useRef,
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -49,12 +50,11 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
   onSelectHandler,
 }) => {
   const { t } = useTranslation();
+  const selectRef = useRef<any>(null);
 
   const [data, setData] = useState<Array<SourceType>>([]);
-
   const [searchValue, setSearchValue] = useState<string>('');
-
-  const [isOpen, setIsOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(true);
 
   const getSuggestionLabelHeading = (fqn: string, type: string) => {
     if (type === EntityType.TABLE) {
@@ -81,6 +81,7 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
       });
       const sources = data.hits.hits.map((hit) => hit._source);
       setData(sources);
+      selectRef.current?.focus();
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -158,6 +159,7 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
           type: capitalize(entityType),
         })}s...`}
         popupClassName="lineage-suggestion-select-menu"
+        ref={selectRef}
         onBlur={() => setIsOpen(false)}
         onChange={handleChange}
         onClick={(e) => e.stopPropagation()}

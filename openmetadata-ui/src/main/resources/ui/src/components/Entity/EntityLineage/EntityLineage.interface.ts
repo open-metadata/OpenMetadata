@@ -58,15 +58,7 @@ export interface CustomEdgeData {
 export type ElementLoadingState = Exclude<LoadingState, 'waiting'>;
 export type CustomElement = { node: Node[]; edge: FlowEdge[] };
 
-export interface ControlProps extends HTMLAttributes<HTMLDivElement> {
-  handleFullScreenViewClick?: () => void;
-  onExitFullScreenViewClick?: () => void;
-  deleted: boolean | undefined;
-  hasEditAccess: boolean | undefined;
-  onExpandColumnClick?: () => void;
-  onOptionSelect?: (value?: string) => void;
-  onLineageConfigUpdate?: (config: LineageConfig) => void;
-}
+export type ControlProps = HTMLAttributes<HTMLDivElement>;
 
 export interface LineageConfig {
   upstreamDepth: number;

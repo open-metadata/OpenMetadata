@@ -484,6 +484,7 @@
     "execution-plural": "Uitvoeringen",
     "execution-time": "Uitvoeringstijd",
     "exit-fit-to-screen": "Scherm passend maken verlaten",
+    "exit-full-screen": "Volledig scherm afsluiten",
     "exit-version-history": "Exit Version History",
     "expand": "Expand",
     "expand-all": "Alles uitvouwen",
@@ -978,6 +979,7 @@
     "re-verify": "Opnieuw controleren",
     "reaction-lowercase-plural": "reacties",
     "read-type": "Lees {{type}}",
+    "rearrange-nodes": "Nodes herschikken",
     "reason": "Reden",
     "receiver-plural": "Ontvangers",
     "recent-announcement-plural": "Recente aankondigingen",
@@ -1404,7 +1406,9 @@
     "yes": "Ja",
     "yes-comma-confirm": "Ja, bevestig",
     "yesterday": "Gisteren",
-    "your-entity": "Je {{entity}}"
+    "your-entity": "Je {{entity}}",
+    "zoom-in": "Inzoomen",
+    "zoom-out": "Uitzoomen"
   },
   "message": {
     "access-block-time-message": "Toegang wordt geblokkeerd voor milliseconden nadat het maximale aantal mislukte aanmeldpogingen is uitgevoerd.",

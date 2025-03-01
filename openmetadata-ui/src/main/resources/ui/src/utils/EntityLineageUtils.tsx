@@ -351,9 +351,9 @@ export const getLoadingStatusValue = (
   status: LoadingState
 ) => {
   if (loading) {
-    return <Loader size="small" type="white" />;
+    return <Loader className="text-primary" size="small" />;
   } else if (status === 'success') {
-    return <CheckOutlined className="text-white" />;
+    return <CheckOutlined className="text-primary" />;
   } else {
     return defaultState;
   }

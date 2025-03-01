@@ -24,7 +24,7 @@ import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import ReactFlow, {
   Background,
-  Controls,
+  MiniMap,
   Panel,
   ReactFlowProvider,
 } from 'reactflow';
@@ -47,6 +47,7 @@ import { getEntityBreadcrumbs } from '../../utils/EntityUtils';
 import Loader from '../common/Loader/Loader';
 import TitleBreadcrumb from '../common/TitleBreadcrumb/TitleBreadcrumb.component';
 import CustomControlsComponent from '../Entity/EntityLineage/CustomControls.component';
+import LineageControlButtons from '../Entity/EntityLineage/LineageControlButtons/LineageControlButtons';
 import LineageLayers from '../Entity/EntityLineage/LineageLayers/LineageLayers';
 import { LineageProps } from './Lineage.interface';
 
@@ -136,17 +137,19 @@ const Lineage = ({
         data-testid="lineage-container"
         ref={reactFlowWrapper}>
         {entityLineage && (
-          <CustomControlsComponent
-            className="absolute top-1 right-1 p-xs"
-            deleted={deleted}
-            handleFullScreenViewClick={
-              !isFullScreen ? onFullScreenClick : undefined
-            }
-            hasEditAccess={hasEditAccess}
-            onExitFullScreenViewClick={
-              isFullScreen ? onExitFullScreenViewClick : undefined
-            }
-          />
+          <>
+            <CustomControlsComponent className="absolute top-1 right-1 p-xs" />
+            <LineageControlButtons
+              deleted={deleted}
+              handleFullScreenViewClick={
+                !isFullScreen ? onFullScreenClick : undefined
+              }
+              hasEditAccess={hasEditAccess}
+              onExitFullScreenViewClick={
+                isFullScreen ? onExitFullScreenViewClick : undefined
+              }
+            />
+          </>
         )}
         {init ? (
           <ReactFlowProvider>
@@ -194,7 +197,7 @@ const Lineage = ({
               onNodesChange={onNodesChange}
               onPaneClick={onPaneClick}>
               <Background gap={12} size={1} />
-              <Controls position="bottom-right" showInteractive={false} />
+              <MiniMap position="bottom-right" />
               <Panel position="bottom-left">
                 <LineageLayers />
               </Panel>

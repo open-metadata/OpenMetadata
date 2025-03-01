@@ -10,8 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons/lib/components/Icon';
-import { Button, Modal } from 'antd';
+import { Modal } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEqual, isUndefined, uniq, uniqueId, uniqWith } from 'lodash';
@@ -38,7 +37,6 @@ import {
   useKeyPress,
   useNodesState,
 } from 'reactflow';
-import { ReactComponent as IconTimesCircle } from '../../assets/svg/ic-times-circle.svg';
 import { useEntityExportModalProvider } from '../../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import EdgeInfoDrawer from '../../components/Entity/EntityInfoDrawer/EdgeInfoDrawer.component';
 import EntityInfoDrawer from '../../components/Entity/EntityInfoDrawer/EntityInfoDrawer.component';
@@ -55,6 +53,7 @@ import {
   LineageData,
   LineageEntityReference,
 } from '../../components/Lineage/Lineage.interface';
+import LineageNodeRemoveButton from '../../components/Lineage/LineageNodeRemoveButton';
 import { SourceType } from '../../components/SearchedData/SearchedData.interface';
 import {
   ELEMENT_DELETE_STATE,
@@ -638,29 +637,16 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
         type: EntityLineageNodeType.DEFAULT,
         data: {
           label: (
-            <div className="relative">
-              <Button
-                className="lineage-node-remove-btn bg-body-hover"
-                data-testid="lineage-node-remove-btn"
-                icon={
-                  <Icon
-                    alt="times-circle"
-                    className="align-middle"
-                    component={IconTimesCircle}
-                    style={{ fontSize: '30px' }}
-                  />
-                }
-                type="link"
-                onClick={() => {
-                  removeNodeHandler(newNode as Node);
-                }}
+            <>
+              <LineageNodeRemoveButton
+                onRemove={() => removeNodeHandler(newNode as Node)}
               />
 
               <NodeSuggestions
                 entityType={entityType}
                 onSelectHandler={(value) => onEntitySelect(value, nodeId)}
               />
-            </div>
+            </>
           ),
           isEditMode,
           isNewNode: true,
@@ -1191,6 +1177,12 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     ]
   );
 
+  const redraw = useCallback(async () => {
+    if (entityLineage) {
+      await redrawLineage(entityLineage, true);
+    }
+  }, [entityLineage, redrawLineage]);
+
   useEffect(() => {
     if (defaultLineageConfig) {
       setLineageConfig({
@@ -1314,6 +1306,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
       onUpdateLayerView,
       onExportClick,
       dataQualityLineage,
+      redraw,
     };
   }, [
     dataQualityLineage,
@@ -1360,6 +1353,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     onAddPipelineClick,
     onUpdateLayerView,
     onExportClick,
+    redraw,
   ]);
 
   useEffect(() => {
@@ -1387,7 +1381,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
   return (
     <LineageContext.Provider value={activityFeedContextValues}>
       <div
-        className={classNames({
+        className={classNames('lineage-root', {
           'full-screen-lineage': isFullScreen,
         })}>
         {children}

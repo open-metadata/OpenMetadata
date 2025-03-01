@@ -484,6 +484,7 @@
     "execution-plural": "ביצועים",
     "execution-time": "Execution Time",
     "exit-fit-to-screen": "צא ממצב תאמת למסך",
+    "exit-full-screen": "צא ממסך מלא",
     "exit-version-history": "Exit Version History",
     "expand": "Expand",
     "expand-all": "הרחב הכל",
@@ -978,6 +979,7 @@
     "re-verify": "אמת מחדש",
     "reaction-lowercase-plural": "תגובות",
     "read-type": "קרא {{type}}",
+    "rearrange-nodes": "סדר מחדש צמתים",
     "reason": "סיבה",
     "receiver-plural": "מקבלים",
     "recent-announcement-plural": "הכרזות אחרונות",
@@ -1404,7 +1406,9 @@
     "yes": "כן",
     "yes-comma-confirm": "Yes, confirm",
     "yesterday": "אתמול",
-    "your-entity": "ה{{entity}} שלך"
+    "your-entity": "ה{{entity}} שלך",
+    "zoom-in": "הגדל תצוגה",
+    "zoom-out": "הקטן תצוגה"
   },
   "message": {
     "access-block-time-message": "הגישה תחוסם למשך מילישניות לאחר שנעשו מספר ניסיונות התחברות כושלים.",
