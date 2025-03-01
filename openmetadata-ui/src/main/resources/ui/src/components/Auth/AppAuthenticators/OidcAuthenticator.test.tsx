@@ -13,6 +13,7 @@
 import { act, render, screen } from '@testing-library/react';
 import { User } from 'oidc-client';
 import React from 'react';
+import { HelmetProvider } from 'react-helmet-async';
 import { Callback } from 'react-oidc';
 import { MemoryRouter } from 'react-router-dom';
 import { ROUTES } from '../../../constants/constants';
@@ -203,15 +204,17 @@ describe('OidcAuthenticator - Login Tests', () => {
 
     render(
       <MemoryRouter>
-        <OidcAuthenticator
-          childComponentType={() => <div>Child Component</div>}
-          ref={ref}
-          userConfig={{}}
-          onLoginFailure={mockOnLoginFailure}
-          onLoginSuccess={mockOnLoginSuccess}
-          onLogoutSuccess={mockOnLogoutSuccess}>
-          <div>Protected Content</div>
-        </OidcAuthenticator>
+        <HelmetProvider>
+          <OidcAuthenticator
+            childComponentType={() => <div>Child Component</div>}
+            ref={ref}
+            userConfig={{}}
+            onLoginFailure={mockOnLoginFailure}
+            onLoginSuccess={mockOnLoginSuccess}
+            onLogoutSuccess={mockOnLogoutSuccess}>
+            <div>Protected Content</div>
+          </OidcAuthenticator>
+        </HelmetProvider>
       </MemoryRouter>
     );
 
@@ -234,14 +237,16 @@ describe('OidcAuthenticator - Login Tests', () => {
 
     render(
       <MemoryRouter initialEntries={[ROUTES.SIGNIN]}>
-        <OidcAuthenticator
-          childComponentType={() => <div>Child Component</div>}
-          userConfig={{}}
-          onLoginFailure={mockOnLoginFailure}
-          onLoginSuccess={mockOnLoginSuccess}
-          onLogoutSuccess={mockOnLogoutSuccess}>
-          <div>Protected Content</div>
-        </OidcAuthenticator>
+        <HelmetProvider>
+          <OidcAuthenticator
+            childComponentType={() => <div>Child Component</div>}
+            userConfig={{}}
+            onLoginFailure={mockOnLoginFailure}
+            onLoginSuccess={mockOnLoginSuccess}
+            onLogoutSuccess={mockOnLogoutSuccess}>
+            <div>Protected Content</div>
+          </OidcAuthenticator>
+        </HelmetProvider>
       </MemoryRouter>
     );
 

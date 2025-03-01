@@ -90,7 +90,7 @@ const WhatsNewAlert = () => {
               <Typography.Text
                 className="whats-new-alert-header"
                 data-testid="whats-new-alert-header">
-                {t('label.open-metadata-updated', {
+                {t('label.brand-updated', {
                   brandName: title,
                 })}
               </Typography.Text>

@@ -252,7 +252,7 @@ class GlobalSettingsClassBase {
         category: t('label.team-user-management'),
         key: GlobalSettingsMenuCategory.MEMBERS,
         icon: ManagementIcon,
-        description: t('message.member-description', {
+        description: t('message.brand-member-description', {
           brandName: brandClassBase.getPageTitle(),
         }),
         items: [
@@ -314,7 +314,7 @@ class GlobalSettingsClassBase {
         category: t('label.preference-plural'),
         key: GlobalSettingsMenuCategory.PREFERENCES,
         icon: this.getPreferenceIcon(),
-        description: t('message.customize-open-metadata-description', {
+        description: t('message.customize-brand-description', {
           brandName: brandClassBase.getPageTitle(),
         }),
         items: [
