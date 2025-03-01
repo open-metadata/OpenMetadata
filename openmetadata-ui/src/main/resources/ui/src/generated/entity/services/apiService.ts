@@ -57,6 +57,10 @@ export interface APIService {
      */
     incrementalChangeDescription?: ChangeDescription;
     /**
+     * The ingestion agent responsible for executing the ingestion pipeline.
+     */
+    ingestionAgent?: EntityReference;
+    /**
      * Name that identifies this API service.
      */
     name: string;
@@ -189,6 +193,8 @@ export enum RESTType {
  * the relationship of a table `belongs to a` database.
  *
  * Domain the API service belongs to.
+ *
+ * The ingestion agent responsible for executing the ingestion pipeline.
  */
 export interface EntityReference {
     /**

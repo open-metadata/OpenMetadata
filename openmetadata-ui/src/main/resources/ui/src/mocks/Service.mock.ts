@@ -14,6 +14,7 @@
 import {
   DashboardService,
   DashboardServiceType,
+  TypeEnum,
 } from '../generated/entity/services/dashboardService';
 import {
   ConfigScheme,
@@ -79,7 +80,7 @@ export const MOCK_DATABASE_SERVICE: DatabaseService = {
       hostPort: 'localhost:1234',
       credentials: {
         gcpConfig: {
-          type: 'service_account',
+          type: TypeEnum.ServiceAccount,
           projectId: ['projectID'],
           privateKeyId: 'privateKeyId',
           privateKey: '*********',
