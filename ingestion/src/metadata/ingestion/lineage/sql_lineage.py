@@ -822,7 +822,7 @@ def _process_sequence(
                         )
                         if to_entity and from_entity:
                             # Create the table chain string
-                            table_relationship = "--- TEMPT TABLE LINEAGE \n--- " 
+                            table_relationship = "--- TEMPT TABLE LINEAGE \n--- "
                             table_relationship += " > ".join(table_chain)
                             yield _build_table_lineage(
                                 to_entity=to_entity,
