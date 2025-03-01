@@ -252,12 +252,15 @@ public class OpenSearchClient implements SearchClient {
     X_CONTENT_REGISTRY = new NamedXContentRegistry(searchModule.getNamedXContents());
   }
 
+  private final OpenSearchSourceBuilderFactory searchBuilderFactory;
+
   public OpenSearchClient(ElasticSearchConfiguration config) {
     client = createOpenSearchClient(config);
     clusterAlias = config != null ? config.getClusterAlias() : "";
     isClientAvailable = client != null;
     queryBuilderFactory = new OpenSearchQueryBuilderFactory();
     rbacConditionEvaluator = new RBACConditionEvaluator(queryBuilderFactory);
+    this.searchBuilderFactory = new OpenSearchSourceBuilderFactory();
   }
 
   @Override
@@ -368,7 +371,7 @@ public class OpenSearchClient implements SearchClient {
   @Override
   public Response search(SearchRequest request, SubjectContext subjectContext) throws IOException {
     SearchSourceBuilder searchSourceBuilder =
-        getSearchSourceBuilder(
+        searchBuilderFactory.getSearchSourceBuilder(
             request.getIndex(), request.getQuery(), request.getFrom(), request.getSize());
 
     buildSearchRBACQuery(subjectContext, searchSourceBuilder);
@@ -716,7 +719,7 @@ public class OpenSearchClient implements SearchClient {
       throws IOException {
     SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
     if (!nullOrEmpty(q)) {
-      searchSourceBuilder = getSearchSourceBuilder(index, q, offset, limit);
+      searchSourceBuilder = searchBuilderFactory.getSearchSourceBuilder(index, q, offset, limit);
     }
 
     List<Map<String, Object>> results = new ArrayList<>();
@@ -768,7 +771,7 @@ public class OpenSearchClient implements SearchClient {
       throws IOException {
     SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
     if (!nullOrEmpty(query)) {
-      searchSourceBuilder = getSearchSourceBuilder(index, query, 0, size);
+      searchSourceBuilder = searchBuilderFactory.getSearchSourceBuilder(index, query, 0, size);
     }
     if (!nullOrEmpty(fields)) {
       searchSourceBuilder.fetchSource(fields, null);
@@ -2778,58 +2781,6 @@ public class OpenSearchClient implements SearchClient {
     } else {
       return null;
     }
-  }
-
-  private static SearchSourceBuilder getSearchSourceBuilder(
-      String index, String q, int from, int size) {
-    return switch (Entity.getSearchRepository().getIndexNameWithoutAlias(index)) {
-      case "topic_search_index", "topic" -> buildTopicSearchBuilder(q, from, size);
-      case "dashboard_search_index", "dashboard" -> buildDashboardSearchBuilder(q, from, size);
-      case "pipeline_search_index", "pipeline" -> buildPipelineSearchBuilder(q, from, size);
-      case "mlmodel_search_index", "mlmodel" -> buildMlModelSearchBuilder(q, from, size);
-      case "table_search_index", "table" -> buildTableSearchBuilder(q, from, size);
-      case "database_schema_search_index",
-          "databaseSchema",
-          "database_search_index",
-          "database" -> buildGenericDataAssetSearchBuilder(q, from, size);
-      case "user_search_index", "user", "team_search_index", "team" -> buildUserOrTeamSearchBuilder(
-          q, from, size);
-      case "glossary_term_search_index", "glossaryTerm" -> buildGlossaryTermSearchBuilder(
-          q, from, size);
-      case "tag_search_index", "tag" -> buildTagSearchBuilder(q, from, size);
-      case "container_search_index", "container" -> buildContainerSearchBuilder(q, from, size);
-      case "query_search_index", "query" -> buildQuerySearchBuilder(q, from, size);
-      case "test_case_search_index",
-          "testCase",
-          "test_suite_search_index",
-          "testSuite" -> buildTestCaseSearch(q, from, size);
-      case "stored_procedure_search_index", "storedProcedure" -> buildStoredProcedureSearch(
-          q, from, size);
-      case "dashboard_data_model_search_index",
-          "dashboardDataModel" -> buildDashboardDataModelsSearch(q, from, size);
-      case "domain_search_index", "domain" -> buildDomainsSearch(q, from, size);
-      case "search_entity_search_index", "searchIndex" -> buildSearchEntitySearch(q, from, size);
-      case "raw_cost_analysis_report_data_index",
-          "aggregated_cost_analysis_report_data_index" -> buildCostAnalysisReportDataSearch(
-          q, from, size);
-      case "data_product_search_index" -> buildDataProductSearch(q, from, size);
-      case "test_case_resolution_status_search_index" -> buildTestCaseResolutionStatusSearch(
-          q, from, size);
-      case "test_case_result_search_index" -> buildTestCaseResultSearch(q, from, size);
-      case "api_endpoint_search_index", "apiEndpoint" -> buildApiEndpointSearch(q, from, size);
-      case "api_service_search_index",
-          "mlmodel_service_search_index",
-          "database_service_search_index",
-          "messaging_service_index",
-          "dashboard_service_index",
-          "pipeline_service_index",
-          "storage_service_index",
-          "search_service_index",
-          "metadata_service_index" -> buildServiceSearchBuilder(q, from, size);
-      case "dataAsset" -> buildDataAssetsSearchBuilder(q, from, size);
-      case "all" -> buildSearchAcrossIndexesBuilder(q, from, size);
-      default -> buildAggregateSearchBuilder(q, from, size);
-    };
   }
 
   private XContentParser createXContentParser(String query) throws IOException {
