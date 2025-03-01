@@ -55,6 +55,8 @@ export const ApplicationsProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     if (!isEmpty(permissions)) {
       fetchApplicationList();
+    } else {
+      setLoading(false);
     }
   }, [permissions]);
 
