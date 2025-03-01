@@ -136,7 +136,7 @@ const ActivityFeedCardNew = ({
             className={classNames('text-sm', {
               'max-one-line': !showThread,
             })}>
-            <span className="m-r-xss d-inline-flex text-xl align-middle">
+            <span className="w-4 h-4 m-r-xss d-inline-flex text-xl align-middle">
               {searchClassBase.getEntityIcon(entityType ?? '')}
             </span>
             <Link
@@ -159,7 +159,7 @@ const ActivityFeedCardNew = ({
             'items-start': showThread,
             'items-center': !showThread,
           })}>
-          <span className="w-5 h-5 m-r-xss d-inline-flex text-xl align-middle">
+          <span className="w-4 h-4 m-r-xss d-inline-flex text-xl align-middle">
             {searchClassBase.getEntityIcon(entityType ?? '')}
           </span>
           <Typography.Text
@@ -209,7 +209,7 @@ const ActivityFeedCardNew = ({
       <Space align="start" className="w-full">
         <Space className="d-flex" direction="vertical">
           <Space
-            className={classNames('d-inline-flex justify-start items-start', {
+            className={classNames('d-inline-flex justify-start  items-center', {
               'items-center': showThread,
             })}>
             <ProfilePicture
@@ -247,7 +247,7 @@ const ActivityFeedCardNew = ({
                 <Space
                   className={classNames('d-flex align-center gap-1', {
                     'header-container-card': !showThread,
-                    'header-container-card-right-panel align-start': showThread,
+                    'items-center': showThread,
                   })}>
                   <Typography.Text className="card-style-feed-header text-sm">
                     {feedHeaderText}
