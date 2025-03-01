@@ -28,7 +28,7 @@ import {
   getEntityTypeSearchIndexMapping,
   toastNotification,
 } from './common';
-import { parseCSV } from './EntityImport';
+import { parseCSV } from './entityImport';
 
 type LineageCSVRecord = {
   fromEntityFQN: string;
