@@ -905,7 +905,7 @@ export const TaskTabNew = ({
                       name={taskThread?.task?.assignees[0].displayName ?? ''}
                       width="24"
                     />
-                    <Typography.Text className="text-md text-grey-body">
+                    <Typography.Text className="text-grey-body">
                       {taskThread?.task?.assignees[0].displayName}
                     </Typography.Text>
                   </div>
