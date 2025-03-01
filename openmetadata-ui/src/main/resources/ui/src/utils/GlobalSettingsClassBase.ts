@@ -62,6 +62,7 @@ import {
   UIPermission,
 } from '../context/PermissionProvider/PermissionProvider.interface';
 import { userPermissions } from '../utils/PermissionsUtils';
+import brandClassBase from './BrandData/BrandClassBase';
 
 class GlobalSettingsClassBase {
   settingCategories: Record<string, { name: string; url: string }> = {
@@ -109,6 +110,14 @@ class GlobalSettingsClassBase {
     this.settingCategories = categories;
   }
 
+  public getServiceIcon() {
+    return ServiceIcon;
+  }
+
+  public getPreferenceIcon() {
+    return OpenMetadataIcon;
+  }
+
   /**
    * getSidebarItems
    */
@@ -120,7 +129,7 @@ class GlobalSettingsClassBase {
       {
         category: t('label.service-plural'),
         key: GlobalSettingsMenuCategory.SERVICES,
-        icon: ServiceIcon,
+        icon: this.getServiceIcon(),
         description: t('message.service-description'),
         items: [
           {
@@ -302,8 +311,10 @@ class GlobalSettingsClassBase {
       {
         category: t('label.preference-plural'),
         key: GlobalSettingsMenuCategory.PREFERENCES,
-        icon: OpenMetadataIcon,
-        description: t('message.customize-open-metadata-description'),
+        icon: this.getPreferenceIcon(),
+        description: t('message.customize-open-metadata-description', {
+          brandName: brandClassBase.getPageTitle(),
+        }),
         items: [
           {
             label: t('label.theme'),

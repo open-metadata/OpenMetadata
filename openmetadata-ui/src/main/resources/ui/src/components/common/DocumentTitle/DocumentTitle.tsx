@@ -12,7 +12,7 @@
  */
 import React, { FC, useMemo } from 'react';
 import { Helmet } from 'react-helmet-async';
-import brandImageClassBase from '../../../utils/BrandImage/BrandImageClassBase';
+import brandClassBase from '../../../utils/BrandData/BrandClassBase';
 
 interface DocumentTitleProps {
   title: string;
@@ -20,7 +20,7 @@ interface DocumentTitleProps {
 
 const DocumentTitle: FC<DocumentTitleProps> = ({ title }) => {
   const pageTitle = useMemo(() => {
-    return brandImageClassBase.getPageTitle();
+    return brandClassBase.getPageTitle();
   }, []);
 
   return (
