@@ -189,7 +189,6 @@ const MetricListPage = () => {
             record={record}
             tags={tags}
             type={TagSource.Classification}
-            onThreadLinkSelect={noop}
           />
         ),
       },
@@ -210,7 +209,6 @@ const MetricListPage = () => {
             record={record}
             tags={tags}
             type={TagSource.Glossary}
-            onThreadLinkSelect={noop}
           />
         ),
       },

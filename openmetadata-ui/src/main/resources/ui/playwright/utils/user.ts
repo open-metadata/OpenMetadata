@@ -211,18 +211,17 @@ export const hardDeleteUserProfilePage = async (
 };
 
 export const editDisplayName = async (page: Page, editedUserName: string) => {
-  await page.click('[data-testid="edit-displayName"]');
+  await page.click('[data-testid="user-profile-manage-btn"]');
+  await page.click('[data-testid="edit-displayname"]');
   await page.fill('[data-testid="displayName"]', '');
   await page.type('[data-testid="displayName"]', editedUserName);
 
   const saveResponse = page.waitForResponse('/api/v1/users/*');
-  await page.click('[data-testid="inline-save-btn"]');
+  await page.click('[data-testid="save-display-name"]');
   await saveResponse;
 
   // Verify the updated display name
-  const userName = await page.textContent(
-    '[data-testid="user-profile-details"] [data-testid="user-name"]'
-  );
+  const userName = await page.textContent('[data-testid="user-display-name"]');
 
   expect(userName).toContain(editedUserName);
 };
@@ -270,10 +269,7 @@ export const editDescription = async (
 
 export const handleAdminUpdateDetails = async (
   page: Page,
-  editedUserName: string,
-  updatedDescription: string,
-  teamName: string,
-  role?: string
+  editedUserName: string
 ) => {
   const feedResponse = page.waitForResponse('/api/v1/feed?type=Conversation');
   await visitOwnProfilePage(page);
@@ -281,22 +277,6 @@ export const handleAdminUpdateDetails = async (
 
   // edit displayName
   await editDisplayName(page, editedUserName);
-
-  // edit teams
-  await page.click('.ant-collapse-expand-icon > .anticon > svg');
-  await editTeams(page, teamName);
-
-  // edit description
-  await editDescription(page, updatedDescription);
-
-  await page.click('.ant-collapse-expand-icon > .anticon > svg');
-
-  // verify role for the user
-  const chipContainer = page.locator(
-    '[data-testid="user-profile-roles"] [data-testid="chip-container"]'
-  );
-
-  await expect(chipContainer).toContainText(role ?? '');
 };
 
 export const handleUserUpdateDetails = async (
@@ -324,8 +304,6 @@ export const updateUserDetails = async (
     updatedDisplayName,
     updatedDescription,
     isAdmin,
-    teamName,
-    role,
   }: {
     updatedDisplayName: string;
     updatedDescription: string;
@@ -335,13 +313,7 @@ export const updateUserDetails = async (
   }
 ) => {
   if (isAdmin) {
-    await handleAdminUpdateDetails(
-      page,
-      updatedDisplayName,
-      updatedDescription,
-      teamName,
-      role
-    );
+    await handleAdminUpdateDetails(page, updatedDisplayName);
   } else {
     await handleUserUpdateDetails(page, updatedDisplayName, updatedDescription);
   }
@@ -567,14 +539,14 @@ export const checkDataConsumerPermissions = async (page: Page) => {
   // Check right panel add tags button
   await expect(
     page.locator(
-      '[data-testid="entity-right-panel"] [data-testid="tags-container"] [data-testid="entity-tags"] .tag-chip-add-button'
+      '[data-testid="KnowledgePanel.Tags"] [data-testid="tags-container"] [data-testid="entity-tags"] .tag-chip-add-button'
     )
   ).toBeVisible();
 
   // Check right panel add glossary term button
   await expect(
     page.locator(
-      '[data-testid="entity-right-panel"] [data-testid="glossary-container"] [data-testid="entity-tags"] .tag-chip-add-button'
+      '[data-testid="KnowledgePanel.GlossaryTerms"] [data-testid="glossary-container"] [data-testid="entity-tags"] .tag-chip-add-button'
     )
   ).toBeVisible();
 
@@ -633,9 +605,7 @@ export const checkStewardServicesPermissions = async (page: Page) => {
   await getSearchResultResponse;
 
   // Click on the entity link in the drawer title
-  await page.click(
-    '.ant-drawer-title > [data-testid="entity-link"] > .ant-typography'
-  );
+  await page.click('.summary-panel-container [data-testid="entity-link"]');
 
   // Check if the edit tier button is visible
   await expect(page.locator('[data-testid="edit-tier"]')).toBeVisible();
@@ -663,14 +633,14 @@ export const checkStewardPermissions = async (page: Page) => {
   // Check right panel add tags button
   await expect(
     page.locator(
-      '[data-testid="entity-right-panel"] [data-testid="tags-container"] [data-testid="entity-tags"] .tag-chip-add-button'
+      '[data-testid="KnowledgePanel.Tags"] [data-testid="tags-container"] [data-testid="entity-tags"] .tag-chip-add-button'
     )
   ).toBeVisible();
 
   // Check right panel add glossary term button
   await expect(
     page.locator(
-      '[data-testid="entity-right-panel"] [data-testid="glossary-container"] [data-testid="entity-tags"] .tag-chip-add-button'
+      '[data-testid="KnowledgePanel.GlossaryTerms"] [data-testid="glossary-container"] [data-testid="entity-tags"] .tag-chip-add-button'
     )
   ).toBeVisible();
 
@@ -760,6 +730,7 @@ export const resetPassword = async (
 ) => {
   await visitOwnProfilePage(page);
 
+  await page.click('[data-testid="user-profile-manage-btn"]');
   await page.click('[data-testid="change-password-button"]');
 
   await expect(page.locator('.ant-modal-wrap')).toBeVisible();

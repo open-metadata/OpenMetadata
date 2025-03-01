@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * StorageService Metadata Pipeline Configuration.
  */
 export interface StorageServiceMetadataPipeline {
@@ -236,7 +234,7 @@ export interface GCPCredentialsConfiguration {
     /**
      * Google Cloud Platform account type.
      */
-    type?: string;
+    type?: TypeEnum;
     /**
      * Path of the file containing the GCP credentials info
      */
@@ -254,7 +252,7 @@ export interface GCPCredentialsConfiguration {
     /**
      * Google Cloud Platform account type.
      */
-    externalType?: string;
+    externalType?: ExternalTypeEnum;
     /**
      * Google Security Token Service subject token type based on the OAuth 2.0 token exchange
      * spec.
@@ -265,6 +263,16 @@ export interface GCPCredentialsConfiguration {
      */
     tokenURL?: string;
     [property: string]: any;
+}
+
+export enum ExternalTypeEnum {
+    ExternalAccount = "external_account",
+}
+
+export enum TypeEnum {
+    ExternalAccount = "external_account",
+    GcpCredentialPath = "gcp_credential_path",
+    ServiceAccount = "service_account",
 }
 
 /**
