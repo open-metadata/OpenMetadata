@@ -57,9 +57,10 @@ const WelcomeScreen = ({ onClose }: WelcomeScreenProps) => {
         />
       }>
       <Row className="p-md welcome-screen-full-height">
-        <Col span={12}>
+        <Col className="flex-center" span={12}>
           <img
             alt="welcome screen image"
+            className="welcome-screen-img"
             data-testid="welcome-screen-img"
             loading="lazy"
             src={welcomeScreenImg}
