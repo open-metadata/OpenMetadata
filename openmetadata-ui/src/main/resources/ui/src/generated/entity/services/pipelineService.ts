@@ -57,6 +57,10 @@ export interface PipelineService {
      */
     incrementalChangeDescription?: ChangeDescription;
     /**
+     * The ingestion agent responsible for executing the ingestion pipeline.
+     */
+    ingestionAgent?: EntityReference;
+    /**
      * Name that identifies this pipeline service.
      */
     name: string;
@@ -880,6 +884,8 @@ export enum VerifySSL {
  * the relationship of a table `belongs to a` database.
  *
  * Domain the Pipeline service belongs to.
+ *
+ * The ingestion agent responsible for executing the ingestion pipeline.
  */
 export interface EntityReference {
     /**

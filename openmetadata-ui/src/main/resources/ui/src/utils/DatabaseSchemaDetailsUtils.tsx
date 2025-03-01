@@ -13,7 +13,6 @@
 
 import { t } from 'i18next';
 import React from 'react';
-import ActivityFeedProvider from '../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import { ActivityFeedTab } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import { CustomPropertyTable } from '../components/common/CustomPropertyTable/CustomPropertyTable';
 import TabsLabel from '../components/common/TabsLabel/TabsLabel.component';
@@ -78,16 +77,14 @@ export const getDataBaseSchemaPageBaseTabs = ({
       ),
       key: EntityTabs.ACTIVITY_FEED,
       children: (
-        <ActivityFeedProvider>
-          <ActivityFeedTab
-            refetchFeed
-            entityFeedTotalCount={feedCount.totalCount}
-            entityType={EntityType.DATABASE_SCHEMA}
-            onFeedUpdate={getEntityFeedCount}
-            onUpdateEntityDetails={fetchDatabaseSchemaDetails}
-            onUpdateFeedCount={handleFeedCount}
-          />
-        </ActivityFeedProvider>
+        <ActivityFeedTab
+          refetchFeed
+          entityFeedTotalCount={feedCount.totalCount}
+          entityType={EntityType.DATABASE_SCHEMA}
+          onFeedUpdate={getEntityFeedCount}
+          onUpdateEntityDetails={fetchDatabaseSchemaDetails}
+          onUpdateFeedCount={handleFeedCount}
+        />
       ),
     },
     {

@@ -56,6 +56,10 @@ export interface SearchService {
      */
     incrementalChangeDescription?: ChangeDescription;
     /**
+     * The ingestion agent responsible for executing the ingestion pipeline.
+     */
+    ingestionAgent?: EntityReference;
+    /**
      * Name that identifies this search service.
      */
     name: string;
@@ -321,6 +325,8 @@ export enum SearchServiceType {
  * the relationship of a table `belongs to a` database.
  *
  * Domain the search service belongs to.
+ *
+ * The ingestion agent responsible for executing the ingestion pipeline.
  */
 export interface EntityReference {
     /**
