@@ -15,6 +15,7 @@ import { EditorContent } from '@tiptap/react';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isNil, isString, isUndefined } from 'lodash';
+
 import React, {
   forwardRef,
   useEffect,
@@ -40,6 +41,7 @@ import EditorSlots from './EditorSlots';
 import { extensions } from './Extensions';
 import './Extensions/File/file-node.less';
 import { useCustomEditor } from './hooks/useCustomEditor';
+
 const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
   (
     {
@@ -58,10 +60,11 @@ const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
   ) => {
     const { i18n, t } = useTranslation();
     const editorSlots = useRef<EditorSlotsRef>(null);
-    const [isDraggingFile, setIsDraggingFile] = useState(false);
     const { entityType, entityFqn } = useEntityDescription();
     const [errorMessage, setErrorMessage] = useState<string>();
+    const editorWrapperRef = useRef<HTMLDivElement>(null);
 
+    // Handle file upload logic
     const handleFileUpload = async (
       file: File,
       view: EditorView,
@@ -128,9 +131,7 @@ const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
       onUpdate({ editor }) {
         setErrorMessage(undefined);
         const htmlContent = editor.getHTML();
-
         const backendFormat = formatContent(htmlContent, 'server');
-
         onChange?.(backendFormat);
       },
       editorProps: {
@@ -139,66 +140,6 @@ const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
           ...(autoFocus ? { autofocus: 'true' } : {}),
         },
         handleDOMEvents: {
-          dragenter: (_view, event) => {
-            setErrorMessage(undefined);
-            // Allow drag if either image or file upload is enabled
-            if (!allowImageUpload && !allowFileUpload) {
-              return false;
-            }
-
-            const { items } = event.dataTransfer || {};
-            const hasFiles = Array.from(items || []).some(
-              (item) => item.kind === FileType.FILE
-            );
-
-            if (hasFiles) {
-              setIsDraggingFile(true);
-            }
-
-            return false;
-          },
-          dragleave: () => {
-            setIsDraggingFile(false);
-
-            return false;
-          },
-          drop: (view, event) => {
-            setIsDraggingFile(false);
-            // Allow drop if either image or file upload is enabled
-            if (!allowImageUpload && !allowFileUpload) {
-              return false;
-            }
-
-            const { files, items } = event.dataTransfer || {};
-
-            // Only handle file drops, let BlockAndDragDrop handle block moves
-            if (!files?.length || items?.[0]?.type === FileType.TEXT_HTML) {
-              return false;
-            }
-
-            event.preventDefault();
-
-            // Remove drag-over class immediately
-            const editorElement = document.querySelector(
-              '.ProseMirror[contenteditable="true"]'
-            );
-            if (editorElement) {
-              (editorElement as HTMLElement).classList.remove('drag-over');
-            }
-
-            const coordinates = view.posAtCoords({
-              left: event.clientX,
-              top: event.clientY,
-            });
-
-            if (!coordinates) {
-              return false;
-            }
-
-            handleFileUpload(files[0], view, coordinates.pos);
-
-            return true;
-          },
           paste: (view, event) => {
             // Allow paste if either image or file upload is enabled
             if (!allowImageUpload && !allowFileUpload) {
@@ -216,7 +157,6 @@ const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
             }
 
             event.preventDefault();
-
             const pos = view.state.selection.from;
             handleFileUpload(files[0], view, pos);
 
@@ -231,6 +171,69 @@ const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
     useImperativeHandle(ref, () => ({
       editor,
     }));
+
+    // Handle drag and drop events
+    const handleDragEnter = (e: React.DragEvent) => {
+      if (!allowImageUpload && !allowFileUpload) {
+        return;
+      }
+
+      setErrorMessage(undefined);
+      const { items } = e.dataTransfer;
+      const hasFiles = Array.from(items).some(
+        (item) => item.kind === FileType.FILE
+      );
+
+      if (hasFiles) {
+        const editorElement = document.querySelector(
+          '.ProseMirror[contenteditable="true"]'
+        );
+        if (editorElement) {
+          (editorElement as HTMLElement).classList.add('drag-over');
+        }
+      }
+    };
+
+    const handleDragLeave = (e: React.DragEvent) => {
+      const editorElement = document.querySelector(
+        '.ProseMirror[contenteditable="true"]'
+      );
+      // Only remove class if we're leaving the editor area
+      if (editorElement && !editorElement.contains(e.relatedTarget as Node)) {
+        (editorElement as HTMLElement).classList.remove('drag-over');
+      }
+    };
+
+    const handleDrop = (e: React.DragEvent) => {
+      if ((!allowImageUpload && !allowFileUpload) || !editor?.view) {
+        return;
+      }
+
+      e.preventDefault();
+
+      const editorElement = document.querySelector(
+        '.ProseMirror[contenteditable="true"]'
+      );
+      if (editorElement) {
+        (editorElement as HTMLElement).classList.remove('drag-over');
+      }
+
+      const { files, items } = e.dataTransfer;
+
+      // Only handle file drops, let BlockAndDragDrop handle block moves
+      if (!files?.length || items[0]?.type === FileType.TEXT_HTML) {
+        return;
+      }
+
+      const coordinates = editor.view.posAtCoords({
+        left: e.clientX,
+        top: e.clientY,
+      });
+
+      if (coordinates) {
+        handleFileUpload(files[0], editor.view, coordinates.pos);
+      }
+    };
 
     // this effect to handle the content change
     useEffect(() => {
@@ -265,66 +268,13 @@ const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
 
     // this effect to handle the RTL and LTR direction
     useEffect(() => {
-      const editorWrapper = document.getElementById('block-editor-wrapper');
+      const editorWrapper = editorWrapperRef.current;
       if (!editorWrapper) {
         return;
       }
       editorWrapper.setAttribute('dir', i18n.dir());
-      // text align right if rtl
-      if (i18n.dir() === 'rtl') {
-        editorWrapper.style.textAlign = 'right';
-      } else {
-        editorWrapper.style.textAlign = 'left';
-      }
+      editorWrapper.style.textAlign = i18n.dir() === 'rtl' ? 'right' : 'left';
     }, [i18n]);
-
-    // Add drag and drop visual feedback
-    useEffect(() => {
-      // Allow visual feedback if either image or file upload is enabled
-      if ((!allowImageUpload && !allowFileUpload) || !isDraggingFile) {
-        return;
-      }
-
-      // Target only editable ProseMirror instance
-      const editorElement = document.querySelector(
-        '.ProseMirror[contenteditable="true"]'
-      );
-      if (!editorElement) {
-        return;
-      }
-
-      const handleDragOver = (e: Event) => {
-        e.preventDefault();
-        if (e instanceof DragEvent) {
-          (editorElement as HTMLElement).classList.add('drag-over');
-        }
-      };
-
-      const handleDragLeave = (e: Event) => {
-        e.preventDefault();
-        if (e instanceof DragEvent) {
-          (editorElement as HTMLElement).classList.remove('drag-over');
-          setIsDraggingFile(false);
-        }
-      };
-
-      const handleDrop = (e: Event) => {
-        if (e instanceof DragEvent) {
-          (editorElement as HTMLElement).classList.remove('drag-over');
-          setIsDraggingFile(false);
-        }
-      };
-
-      editorElement.addEventListener('dragover', handleDragOver);
-      editorElement.addEventListener('dragleave', handleDragLeave);
-      editorElement.addEventListener('drop', handleDrop);
-
-      return () => {
-        editorElement.removeEventListener('dragover', handleDragOver);
-        editorElement.removeEventListener('dragleave', handleDragLeave);
-        editorElement.removeEventListener('drop', handleDrop);
-      };
-    }, [allowImageUpload, allowFileUpload, isDraggingFile]);
 
     return (
       <div
@@ -332,7 +282,12 @@ const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
           'block-editor-wrapper--bar-menu': menuType === 'bar',
           'block-editor-wrapper--bubble-menu': menuType === 'bubble',
         })}
-        id="block-editor-wrapper">
+        id="block-editor-wrapper"
+        ref={editorWrapperRef}
+        onDragEnter={handleDragEnter}
+        onDragLeave={handleDragLeave}
+        onDragOver={(e) => e.preventDefault()}
+        onDrop={handleDrop}>
         {showInlineAlert && errorMessage && (
           <Banner
             className="border-radius"
