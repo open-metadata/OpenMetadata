@@ -33,6 +33,7 @@ import {
   searchTagInData,
 } from '../../../../../utils/TableTags/TableTags.utils';
 import { updateFieldTags } from '../../../../../utils/TableUtils';
+import { EntityDescriptionProvider } from '../../../../common/EntityDescription/EntityDescriptionProvider/EntityDescriptionProvider';
 import Table from '../../../../common/Table/Table';
 import { useGenericContext } from '../../../../Customization/GenericProvider/GenericProvider';
 import { ColumnFilter } from '../../../../Database/ColumnFilter/ColumnFilter.component';
@@ -232,18 +233,22 @@ const ModelTab = () => {
       />
 
       {editColumnDescription && (
-        <ModalWithMarkdownEditor
-          header={`${t('label.edit-entity', {
-            entity: t('label.column'),
-          })}: "${getEntityName(editColumnDescription)}"`}
-          placeholder={t('label.enter-field-description', {
-            field: t('label.column'),
-          })}
-          value={editColumnDescription.description || ''}
-          visible={Boolean(editColumnDescription)}
-          onCancel={() => setEditColumnDescription(undefined)}
-          onSave={handleColumnDescriptionChange}
-        />
+        <EntityDescriptionProvider
+          entityFqn={editColumnDescription.fullyQualifiedName}
+          entityType={EntityType.DASHBOARD_DATA_MODEL}>
+          <ModalWithMarkdownEditor
+            header={`${t('label.edit-entity', {
+              entity: t('label.column'),
+            })}: "${getEntityName(editColumnDescription)}"`}
+            placeholder={t('label.enter-field-description', {
+              field: t('label.column'),
+            })}
+            value={editColumnDescription.description || ''}
+            visible={Boolean(editColumnDescription)}
+            onCancel={() => setEditColumnDescription(undefined)}
+            onSave={handleColumnDescriptionChange}
+          />
+        </EntityDescriptionProvider>
       )}
     </>
   );

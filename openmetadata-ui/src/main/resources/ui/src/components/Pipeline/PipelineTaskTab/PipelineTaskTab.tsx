@@ -39,6 +39,7 @@ import {
   searchTagInData,
 } from '../../../utils/TableTags/TableTags.utils';
 import { createTagObject } from '../../../utils/TagsUtils';
+import { EntityDescriptionProvider } from '../../common/EntityDescription/EntityDescriptionProvider/EntityDescriptionProvider';
 import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 import { ColumnFilter } from '../../Database/ColumnFilter/ColumnFilter.component';
@@ -323,18 +324,22 @@ export const PipelineTaskTab = () => {
       </Col>
 
       {editTask && (
-        <ModalWithMarkdownEditor
-          header={`${t('label.edit-entity', {
-            entity: t('label.task'),
-          })}: "${getEntityName(editTask.task)}"`}
-          placeholder={t('label.enter-field-description', {
-            field: t('label.task-lowercase'),
-          })}
-          value={editTask.task.description ?? ''}
-          visible={Boolean(editTask)}
-          onCancel={closeEditTaskModal}
-          onSave={onTaskUpdate}
-        />
+        <EntityDescriptionProvider
+          entityFqn={editTask.task.fullyQualifiedName}
+          entityType={EntityType.PIPELINE}>
+          <ModalWithMarkdownEditor
+            header={`${t('label.edit-entity', {
+              entity: t('label.task'),
+            })}: "${getEntityName(editTask.task)}"`}
+            placeholder={t('label.enter-field-description', {
+              field: t('label.task-lowercase'),
+            })}
+            value={editTask.task.description ?? ''}
+            visible={Boolean(editTask)}
+            onCancel={closeEditTaskModal}
+            onSave={onTaskUpdate}
+          />
+        </EntityDescriptionProvider>
       )}
     </Row>
   );
