@@ -194,7 +194,7 @@ module.exports = {
     },
     compress: true,
     hot: true,
-    port: 3000,
+    port: 3001,
     open: true,
     // Route all requests to index.html so that app gets to handle all copy pasted deep links
     historyApiFallback: {
