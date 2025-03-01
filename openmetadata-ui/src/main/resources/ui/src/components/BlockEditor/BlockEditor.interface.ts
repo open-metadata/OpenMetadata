@@ -46,6 +46,7 @@ export interface BlockEditorProps {
   placeholder?: string;
   allowImageUpload?: boolean;
   allowFileUpload?: boolean;
+  showInlineAlert?: boolean;
   onImageUpload?: (
     file: File,
     entityType?: EntityType,

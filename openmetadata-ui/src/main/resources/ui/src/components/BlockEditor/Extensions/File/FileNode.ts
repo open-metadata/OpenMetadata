@@ -11,11 +11,10 @@
  *  limitations under the License.
  */
 import { mergeAttributes, Node } from '@tiptap/core';
-import { Node as ProseMirrorNode } from '@tiptap/pm/model';
-import i18n from '../../../../utils/i18next/LocalUtil';
 import { bytesToSize } from '../../../../utils/StringsUtils';
 import { FileType } from '../../BlockEditor.interface';
 import { FileNodeAttrs, FileNodeOptions } from './FileNode.interface';
+
 declare module '@tiptap/core' {
   interface Commands<ReturnType> {
     fileAttachment: {
@@ -31,12 +30,7 @@ const FileNode = Node.create<FileNodeOptions>({
 
   addOptions() {
     return {
-      allowedTypes: [
-        FileType.FILE,
-        FileType.IMAGE,
-        FileType.VIDEO,
-        FileType.AUDIO,
-      ],
+      HTMLAttributes: {},
     };
   },
 
@@ -46,7 +40,6 @@ const FileNode = Node.create<FileNodeOptions>({
       fileName: { default: '' },
       fileSize: { default: null },
       mimeType: { default: '' },
-      type: { default: FileType.FILE },
     };
   },
 
@@ -59,44 +52,16 @@ const FileNode = Node.create<FileNodeOptions>({
             return false;
           }
 
-          // For video/audio elements
-          const mediaElement = element.querySelector('video, audio');
-          if (mediaElement) {
-            return {
-              url: mediaElement.getAttribute('src') || '',
-              fileName: mediaElement.getAttribute('alt') || '',
-              mimeType:
-                mediaElement instanceof HTMLVideoElement
-                  ? 'video/mp4'
-                  : 'audio/mpeg',
-            };
-          }
-
-          // For files
-          const link = element.querySelector('a');
-          if (link) {
-            return {
-              url: link.getAttribute('href') || '',
-              fileName: link.childNodes[0].textContent?.trim() || '',
-              fileSize: link.querySelector('.file-size')?.textContent || '',
-              mimeType: 'application/octet-stream',
-            };
-          }
-
-          return false;
-        },
-      },
-      {
-        tag: 'img',
-        getAttrs: (element) => {
-          if (!(element instanceof HTMLElement)) {
-            return false;
-          }
+          const url = element.getAttribute('data-url') || '';
+          const fileName = element.getAttribute('data-filename') || '';
+          const fileSize = element.getAttribute('data-filesize');
+          const mimeType = element.getAttribute('data-mimetype') || '';
 
           return {
-            url: element.getAttribute('src') || '',
-            fileName: element.getAttribute('alt') || '',
-            mimeType: 'image/jpeg',
+            url,
+            fileName,
+            fileSize: fileSize ? parseInt(fileSize) : null,
+            mimeType,
           };
         },
       },
@@ -105,21 +70,19 @@ const FileNode = Node.create<FileNodeOptions>({
 
   renderHTML({ node }) {
     const attrs = node.attrs as FileNodeAttrs;
+    const baseAttrs = {
+      'data-type': 'file-attachment',
+      'data-url': attrs.url,
+      'data-filename': attrs.fileName,
+      'data-filesize': attrs.fileSize?.toString(),
+      'data-mimetype': attrs.mimeType,
+    };
 
     switch (true) {
-      case attrs.mimeType.startsWith(FileType.IMAGE):
-        return [
-          'img',
-          mergeAttributes({
-            src: attrs.url,
-            alt: attrs.fileName,
-          }),
-        ];
       case attrs.mimeType.startsWith(FileType.VIDEO):
         return [
           'div',
-          mergeAttributes({
-            'data-type': 'file-attachment',
+          mergeAttributes(this.options.HTMLAttributes, baseAttrs, {
             class: 'file-attachment file-type-video',
           }),
           [
@@ -127,16 +90,15 @@ const FileNode = Node.create<FileNodeOptions>({
             {
               controls: 'true',
               src: attrs.url,
-              preload: 'metadata',
               class: 'video-player',
             },
           ],
         ];
+
       case attrs.mimeType.startsWith(FileType.AUDIO):
         return [
           'div',
-          mergeAttributes({
-            'data-type': 'file-attachment',
+          mergeAttributes(this.options.HTMLAttributes, baseAttrs, {
             class: 'file-attachment file-type-audio',
           }),
           [
@@ -144,16 +106,15 @@ const FileNode = Node.create<FileNodeOptions>({
             {
               controls: 'true',
               src: attrs.url,
-              preload: 'metadata',
               class: 'audio-player',
             },
           ],
         ];
+
       default:
         return [
           'div',
-          mergeAttributes({
-            'data-type': 'file-attachment',
+          mergeAttributes(this.options.HTMLAttributes, baseAttrs, {
             class: 'file-attachment file-type-file',
           }),
           [
@@ -162,86 +123,23 @@ const FileNode = Node.create<FileNodeOptions>({
               href: attrs.url,
               class: 'file-link',
               target: '_blank',
+              rel: 'noopener noreferrer',
             },
-            attrs.fileName,
-            ['span', { class: 'file-size' }, attrs.fileSize ?? ''],
+            [
+              'span',
+              { class: 'file-name' },
+              attrs.fileName,
+              attrs.fileSize
+                ? [
+                    'span',
+                    { class: 'file-size' },
+                    ` (${bytesToSize(attrs.fileSize)})`,
+                  ]
+                : null,
+            ],
           ],
         ];
     }
-  },
-
-  addStorage() {
-    return {
-      renderFileContent(node: ProseMirrorNode) {
-        const attrs = node.attrs as FileNodeAttrs;
-
-        switch (true) {
-          case attrs.mimeType.startsWith(FileType.IMAGE):
-            return ['img', { src: attrs.url, alt: attrs.fileName }];
-          case attrs.mimeType.startsWith(FileType.VIDEO):
-            return [
-              'div',
-              { class: 'video-wrapper' },
-              [
-                'video',
-                {
-                  controls: true,
-                  src: attrs.url,
-                  preload: 'metadata',
-                  class: 'video-player',
-                },
-                [
-                  'p',
-                  { class: 'video-fallback' },
-                  i18n.t('message.video-playback-not-supported'),
-                ],
-              ],
-            ];
-          case attrs.mimeType.startsWith(FileType.AUDIO):
-            return [
-              'div',
-              { class: 'audio-wrapper' },
-              [
-                'audio',
-                {
-                  controls: true,
-                  src: attrs.url,
-                  preload: 'metadata',
-                  class: 'audio-player',
-                },
-                [
-                  'p',
-                  { class: 'audio-fallback' },
-                  i18n.t('message.audio-playback-not-supported'),
-                ],
-              ],
-            ];
-          default:
-            return [
-              'div',
-              { class: 'file-link-wrapper' },
-              [
-                'a',
-                {
-                  href: attrs.url,
-                  class: 'file-link',
-                  target: '_blank',
-                },
-                [
-                  'span',
-                  { class: 'file-name' },
-                  attrs.fileName,
-                  [
-                    'span',
-                    { class: 'file-size' },
-                    attrs.fileSize ? `(${bytesToSize(attrs.fileSize)})` : '',
-                  ],
-                ],
-              ],
-            ];
-        }
-      },
-    };
   },
 
   addCommands() {

@@ -11,18 +11,19 @@
  *  limitations under the License.
  */
 import { Node as ProseMirrorNode } from '@tiptap/pm/model';
+import { HTMLAttributes } from 'react';
 import { FileType } from '../../BlockEditor.interface';
 
 export interface FileNodeAttrs {
   url: string;
   fileName: string;
-  fileSize?: number;
+  fileSize: number | null;
   mimeType: string;
   type: FileType;
 }
 
 export interface FileNodeOptions {
-  // Any configuration options we might need
+  HTMLAttributes: Partial<HTMLAttributes<HTMLElement>>;
   allowedTypes?: FileType[];
 }
 

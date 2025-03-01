@@ -12,9 +12,9 @@
  */
 import { EditorView } from '@tiptap/pm/view';
 import { EditorContent } from '@tiptap/react';
-import { message } from 'antd';
+import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { isNil } from 'lodash';
+import { isNil, isString, isUndefined } from 'lodash';
 import React, {
   forwardRef,
   useEffect,
@@ -25,6 +25,8 @@ import React, {
 import { useTranslation } from 'react-i18next';
 import { EDITOR_OPTIONS } from '../../constants/BlockEditor.constants';
 import { formatContent, setEditorContent } from '../../utils/BlockEditorUtils';
+import { showErrorToast } from '../../utils/ToastUtils';
+import Banner from '../common/Banner/Banner';
 import { useEntityDescription } from '../common/EntityDescription/EntityDescriptionProvider/EntityDescriptionProvider';
 import BarMenu from './BarMenu/BarMenu';
 import './block-editor.less';
@@ -38,7 +40,6 @@ import EditorSlots from './EditorSlots';
 import { extensions } from './Extensions';
 import './Extensions/File/file-node.less';
 import { useCustomEditor } from './hooks/useCustomEditor';
-
 const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
   (
     {
@@ -50,6 +51,7 @@ const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
       onChange,
       allowImageUpload,
       allowFileUpload,
+      showInlineAlert = true,
       onImageUpload,
     },
     ref
@@ -58,13 +60,13 @@ const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
     const editorSlots = useRef<EditorSlotsRef>(null);
     const [isDraggingFile, setIsDraggingFile] = useState(false);
     const { entityType, entityFqn } = useEntityDescription();
+    const [errorMessage, setErrorMessage] = useState<string>();
 
     const handleFileUpload = async (
       file: File,
       view: EditorView,
       pos: number
     ) => {
-      // Early return if no upload handler
       if (!onImageUpload) {
         return;
       }
@@ -72,57 +74,51 @@ const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
       const fileType = file.type;
       const isImage = fileType.startsWith(FileType.IMAGE);
 
-      // Check permissions based on file type
-      if (isImage) {
-        if (!allowImageUpload) {
-          return;
-        }
-      } else if (!allowFileUpload) {
-        message.error(t('message.only-image-files-supported'));
+      if (isImage && !allowImageUpload) {
+        return;
+      }
+
+      if (!isImage && !allowFileUpload) {
+        showInlineAlert
+          ? setErrorMessage(t('message.only-image-files-supported'))
+          : showErrorToast(t('message.only-image-files-supported'));
 
         return;
       }
 
-      // Insert loading text
-      const { tr } = view.state;
-      const loadingNode = view.state.schema.text(
-        t('label.uploading-file') + '...'
-      );
-      tr.insert(pos, loadingNode);
-      view.dispatch(tr);
-
       try {
-        // Upload the file
         const url = await onImageUpload(file, entityType, entityFqn);
-
-        // Replace loading text with the file
-        const newTr = view.state.tr;
-        newTr.delete(pos, pos + loadingNode.nodeSize);
 
         if (isImage) {
           const imageNode = view.state.schema.nodes.image.create({
             src: url,
             alt: file.name,
           });
-          newTr.insert(pos, imageNode);
+          const tr = view.state.tr.insert(pos, imageNode);
+          view.dispatch(tr);
         } else {
-          const fileNode = view.state.schema.nodes.fileAttachment.create({
+          const { state } = view;
+          const { tr } = state;
+
+          const fileNode = state.schema.nodes.fileAttachment.create({
             url,
             fileName: file.name,
             fileSize: file.size,
             mimeType: file.type,
           });
-          newTr.insert(pos, fileNode);
+
+          tr.insert(pos, fileNode);
+          view.dispatch(tr);
         }
-
-        view.dispatch(newTr);
       } catch (error) {
-        // Clean up loading text on error
-        const cleanupTr = view.state.tr;
-        cleanupTr.delete(pos, pos + loadingNode.nodeSize);
-        view.dispatch(cleanupTr);
-
-        message.error(error ?? t('label.failed-to-upload-file'));
+        showInlineAlert
+          ? setErrorMessage(
+              isString(error) ? error : t('label.failed-to-upload-file')
+            )
+          : showErrorToast(
+              error as AxiosError,
+              t('label.failed-to-upload-file')
+            );
       }
     };
 
@@ -130,6 +126,7 @@ const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
       ...EDITOR_OPTIONS,
       extensions,
       onUpdate({ editor }) {
+        setErrorMessage(undefined);
         const htmlContent = editor.getHTML();
 
         const backendFormat = formatContent(htmlContent, 'server');
@@ -143,6 +140,7 @@ const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
         },
         handleDOMEvents: {
           dragenter: (_view, event) => {
+            setErrorMessage(undefined);
             // Allow drag if either image or file upload is enabled
             if (!allowImageUpload && !allowFileUpload) {
               return false;
@@ -335,6 +333,14 @@ const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
           'block-editor-wrapper--bubble-menu': menuType === 'bubble',
         })}
         id="block-editor-wrapper">
+        {showInlineAlert && errorMessage && (
+          <Banner
+            className="border-radius"
+            isLoading={isUndefined(errorMessage)}
+            message={errorMessage}
+            type="error"
+          />
+        )}
         {menuType === 'bar' && !isNil(editor) && (
           <BarMenu
             editor={editor}
