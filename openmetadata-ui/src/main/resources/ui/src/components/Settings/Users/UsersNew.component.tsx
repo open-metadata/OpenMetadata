@@ -191,6 +191,7 @@ const Users = ({
       {
         label: (
           <TabsLabel
+            data-testid="user-profile-page-task-tab"
             id={UserPageTabs.TASK}
             isActive={currentTab === UserPageTabs.TASK}
             name={t('label.task-plural')}

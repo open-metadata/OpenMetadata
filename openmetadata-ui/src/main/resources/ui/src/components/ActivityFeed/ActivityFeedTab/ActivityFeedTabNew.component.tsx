@@ -345,7 +345,8 @@ export const ActivityFeedTabNew = ({
             className={classNames(
               'flex items-center justify-between px-4 py-2 gap-2',
               { active: taskFilter === ThreadTaskStatus.Open }
-            )}>
+            )}
+            data-testid="open-tasks">
             <div className="flex items-center space-x-2">
               {taskFilter === ThreadTaskStatus.Open ? (
                 <TaskOpenIcon
@@ -384,7 +385,8 @@ export const ActivityFeedTabNew = ({
             className={classNames(
               'flex items-center justify-between px-4 py-2 gap-2',
               { active: taskFilter === ThreadTaskStatus.Closed }
-            )}>
+            )}
+            data-testid="closed-tasks">
             <div className="flex items-center space-x-2">
               {taskFilter === ThreadTaskStatus.Closed ? (
                 <TaskCloseIconBlue
@@ -473,7 +475,10 @@ export const ActivityFeedTabNew = ({
               }}
               overlayClassName="task-tab-custom-dropdown"
               trigger={['click']}>
-              <TaskFilterIcon className="cursor-pointer task-filter-icon" />
+              <TaskFilterIcon
+                className="cursor-pointer task-filter-icon"
+                data-testid="user-profile-page-task-filter-icon"
+              />
             </Dropdown>
             {TaskToggle()}
           </div>

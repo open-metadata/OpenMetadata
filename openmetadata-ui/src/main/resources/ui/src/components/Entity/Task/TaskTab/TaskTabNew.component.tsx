@@ -1136,6 +1136,7 @@ export const TaskTabNew = ({
           destroyOnClose
           closable={false}
           closeIcon={null}
+          data-testid="suggestion-edit-task-modal"
           maskClosable={false}
           open={showEditTaskModel}
           title={`${t('label.edit-entity', {

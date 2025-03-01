@@ -199,9 +199,9 @@ const TaskFeedCard = ({
     }
   };
   const onTaskReject = () => {
-    const updatedComment = isTaskGlossaryApproval ? 'Rejected' : 'Rejected';
+    const updatedComment = 'Rejected';
     if (isTaskGlossaryApproval) {
-      const data = { newValue: 'rejected' };
+      const data = { newValue: 'Rejected' };
       updateTaskData(data as TaskDetails);
 
       return;
