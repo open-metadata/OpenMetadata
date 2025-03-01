@@ -251,10 +251,18 @@ export interface GlobalSettings {
      */
     aggregations?: Aggregation[];
     /**
+     * Boost factors based on field values with function modifiers (applied globally).
+     */
+    fieldValueBoosts?: FieldValueBoost[];
+    /**
      * Fields to include in the highlights.
      */
     highlightFields?:   string[];
     maxAggregateSize?:  number;
     maxAnalyzedOffset?: number;
     maxResultHits?:     number;
+    /**
+     * Boost factors for specific tags (applied globally).
+     */
+    tagBoosts?: TagBoost[];
 }

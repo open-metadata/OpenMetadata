@@ -38,6 +38,16 @@
           "type": "array",
           "items": { "type": "string" },
           "description": "Fields to include in the highlights."
+        },
+        "tagBoosts": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/tagBoost" },
+          "description": "Boost factors for specific tags (applied globally)."
+        },
+        "fieldValueBoosts": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/fieldValueBoost" },
+          "description": "Boost factors based on field values with function modifiers (applied globally)."
         }
       },
       "additionalProperties": false
