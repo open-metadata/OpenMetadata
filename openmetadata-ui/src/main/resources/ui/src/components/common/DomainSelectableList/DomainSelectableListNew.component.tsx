@@ -101,7 +101,8 @@ const DomainSelectableListNew = ({
       ) as HTMLElement;
 
       if (dropdown) {
-        setPopoverHeight(dropdown.scrollHeight + 136);
+        const newHeight = Math.min(dropdown.scrollHeight + 136, 350);
+        setPopoverHeight(newHeight);
       }
     });
 

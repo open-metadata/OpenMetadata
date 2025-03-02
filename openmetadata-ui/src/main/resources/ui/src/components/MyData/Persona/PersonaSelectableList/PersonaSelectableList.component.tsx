@@ -190,6 +190,10 @@ export const PersonaSelectableList = ({
               })}
               data-testid="persona-select-list"
               defaultValue={selectedPersonas.map((persona) => persona.id)}
+              dropdownStyle={{
+                maxHeight: '200px',
+                overflow: 'auto',
+              }}
               maxTagCount={3}
               maxTagPlaceholder={(omittedValues) => (
                 <span className="max-tag-text">
