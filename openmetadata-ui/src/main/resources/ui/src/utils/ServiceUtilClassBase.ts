@@ -11,8 +11,15 @@
  *  limitations under the License.
  */
 
-import { capitalize, get, toLower } from 'lodash';
+import { capitalize, get, isEqual, toLower } from 'lodash';
+import { ServiceTypes } from 'Models';
 import MetricIcon from '../assets/svg/metric.svg';
+import DataQualityWidget from '../components/ServiceInsights/DataQualityWidget/DataQualityWidget';
+import MostExpensiveQueriesWidget from '../components/ServiceInsights/MostExpensiveQueriesWidget/MostExpensiveQueriesWidget';
+import MostUsedAssetsWidget from '../components/ServiceInsights/MostUsedAssetsWidget/MostUsedAssetsWidget';
+import PIIDistributionWidget from '../components/ServiceInsights/PIIDistributionWidget/PIIDistributionWidget';
+import PlatformInsightsWidget from '../components/ServiceInsights/PlatformInsightsWidget/PlatformInsightsWidget';
+import TierDistributionWidget from '../components/ServiceInsights/TierDistributionWidget/TierDistributionWidget';
 import {
   AIRBYTE,
   AIRFLOW,
@@ -721,6 +728,27 @@ class ServiceUtilClassBase {
 
   public getAPIServiceConfig(type: APIServiceType) {
     return getAPIConfig(type);
+  }
+
+  public getInsightsTabWidgets(serviceCategory: ServiceTypes) {
+    const isDatabaseService = isEqual(serviceCategory, 'databaseServices');
+
+    let widgets: Record<string, React.ComponentType<any>> = {
+      PlatformInsightsWidget,
+      PIIDistributionWidget,
+      TierDistributionWidget,
+    };
+
+    if (isDatabaseService) {
+      widgets = {
+        ...widgets,
+        MostUsedAssetsWidget,
+        MostExpensiveQueriesWidget,
+        DataQualityWidget,
+      };
+    }
+
+    return widgets;
   }
 
   /**

@@ -12,18 +12,13 @@
  */
 
 import { Col, Row } from 'antd';
-import { isEqual } from 'lodash';
+import { isUndefined } from 'lodash';
 import { ServiceTypes } from 'Models';
 import React from 'react';
 import { useParams } from 'react-router-dom';
-import DataQualityWidget from './DataQualityWidget/DataQualityWidget';
-import MostExpensiveQueriesWidget from './MostExpensiveQueriesWidget/MostExpensiveQueriesWidget';
-import MostUsedAssetsWidget from './MostUsedAssetsWidget/MostUsedAssetsWidget';
-import PIIDistributionWidget from './PIIDistributionWidget/PIIDistributionWidget';
-import PlatformInsightsWidget from './PlatformInsightsWidget/PlatformInsightsWidget';
+import serviceUtilClassBase from '../../utils/ServiceUtilClassBase';
 import './service-insights-tab.less';
 import { ServiceInsightsTabProps } from './ServiceInsightsTab.interface';
-import TierDistributionWidget from './TierDistributionWidget/TierDistributionWidget';
 
 const ServiceInsightsTab: React.FC<ServiceInsightsTabProps> = () => {
   const { serviceCategory } = useParams<{
@@ -31,30 +26,43 @@ const ServiceInsightsTab: React.FC<ServiceInsightsTabProps> = () => {
     tab: string;
   }>();
 
-  const isDatabaseService = isEqual(serviceCategory, 'databaseServices');
+  const {
+    PlatformInsightsWidget,
+    PIIDistributionWidget,
+    TierDistributionWidget,
+    MostUsedAssetsWidget,
+    MostExpensiveQueriesWidget,
+    DataQualityWidget,
+    CollateAIWidget,
+  } = serviceUtilClassBase.getInsightsTabWidgets(serviceCategory);
 
   return (
     <Row className="service-insights-tab" gutter={[16, 16]}>
       <Col span={24}>
         <PlatformInsightsWidget />
       </Col>
+      {!isUndefined(CollateAIWidget) && (
+        <Col span={24}>
+          <CollateAIWidget />
+        </Col>
+      )}
       <Col span={12}>
         <PIIDistributionWidget />
       </Col>
       <Col span={12}>
         <TierDistributionWidget />
       </Col>
-      {isDatabaseService && (
+      {!isUndefined(MostUsedAssetsWidget) && (
         <Col span={24}>
           <MostUsedAssetsWidget />
         </Col>
       )}
-      {isDatabaseService && (
+      {!isUndefined(MostExpensiveQueriesWidget) && (
         <Col span={24}>
           <MostExpensiveQueriesWidget />
         </Col>
       )}
-      {isDatabaseService && (
+      {!isUndefined(DataQualityWidget) && (
         <Col span={24}>
           <DataQualityWidget />
         </Col>
