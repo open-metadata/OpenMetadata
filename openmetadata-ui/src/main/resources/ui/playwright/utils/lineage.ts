@@ -12,7 +12,6 @@
  */
 import { expect, Page } from '@playwright/test';
 import { get } from 'lodash';
-import { parseCSV } from '../../src/utils/EntityImport/EntityImportUtils';
 import { ApiEndpointClass } from '../support/entity/ApiEndpointClass';
 import { ContainerClass } from '../support/entity/ContainerClass';
 import { DashboardClass } from '../support/entity/DashboardClass';
@@ -29,6 +28,7 @@ import {
   getEntityTypeSearchIndexMapping,
   toastNotification,
 } from './common';
+import { parseCSV } from './entityImport';
 
 type LineageCSVRecord = {
   fromEntityFQN: string;

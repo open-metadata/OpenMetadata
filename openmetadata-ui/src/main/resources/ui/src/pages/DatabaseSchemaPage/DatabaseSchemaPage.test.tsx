@@ -116,6 +116,7 @@ jest.mock('../../rest/tableAPI', () => ({
 jest.mock('../../utils/CommonUtils', () => ({
   getEntityMissingError: jest.fn().mockImplementation((error) => error),
   getFeedCounts: jest.fn().mockImplementation(() => FEED_COUNT_INITIAL_DATA),
+  sortTagsCaseInsensitive: jest.fn(),
 }));
 
 jest.mock('../../utils/RouterUtils', () => ({
@@ -129,6 +130,9 @@ jest.mock('../../utils/TableUtils', () => ({
 
 jest.mock('../../utils/ToastUtils', () => ({
   showErrorToast: jest
+    .fn()
+    .mockImplementation(({ children }) => <div>{children}</div>),
+  showSuccessToast: jest
     .fn()
     .mockImplementation(({ children }) => <div>{children}</div>),
 }));
@@ -169,7 +173,18 @@ jest.mock('../../rest/databaseAPI', () => ({
     .mockImplementation(() =>
       Promise.resolve(mockPatchDatabaseSchemaDetailsData)
     ),
+  updateDatabaseSchemaVotes: jest
+    .fn()
+    .mockImplementation(() =>
+      Promise.resolve(mockPatchDatabaseSchemaDetailsData)
+    ),
 }));
+
+jest.mock('../../utils/EntityUtilClassBase', () => {
+  return {
+    getManageExtraOptions: jest.fn().mockReturnValue([]),
+  };
+});
 
 const mockParams = {
   fqn: 'sample_data.ecommerce_db.shopify',

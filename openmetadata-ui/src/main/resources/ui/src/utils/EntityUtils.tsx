@@ -51,6 +51,8 @@ import {
   getServiceDetailsPath,
   getTagsDetailsPath,
   NO_DATA,
+  PLACEHOLDER_ROUTE_ENTITY_TYPE,
+  PLACEHOLDER_ROUTE_FQN,
   ROUTES,
 } from '../constants/constants';
 import {
@@ -2476,4 +2478,11 @@ export const highlightSearchArrayElement = (
       part
     )
   );
+};
+
+export const getEntityImportPath = (entityType: EntityType, fqn: string) => {
+  return ROUTES.ENTITY_IMPORT.replace(
+    PLACEHOLDER_ROUTE_ENTITY_TYPE,
+    entityType
+  ).replace(PLACEHOLDER_ROUTE_FQN, fqn);
 };

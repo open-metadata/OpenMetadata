@@ -12,7 +12,15 @@
  */
 
 import { cloneDeep } from 'lodash';
+import React from 'react';
+import { useHistory } from 'react-router-dom';
+import { ReactComponent as ExportIcon } from '../assets/svg/ic-export.svg';
+import { ReactComponent as ImportIcon } from '../assets/svg/ic-import.svg';
+import { ManageButtonItemLabel } from '../components/common/ManageButtonContentItem/ManageButtonContentItem.component';
+import { useEntityExportModalProvider } from '../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import { COMMON_UI_SCHEMA } from '../constants/Services.constant';
+import { OperationPermission } from '../context/PermissionProvider/PermissionProvider.interface';
+import { EntityType } from '../enums/entity.enum';
 import { DatabaseServiceType } from '../generated/entity/services/databaseService';
 import athenaConnection from '../jsons/connectionSchemas/connections/database/athenaConnection.json';
 import azureSQLConnection from '../jsons/connectionSchemas/connections/database/azureSQLConnection.json';
@@ -58,6 +66,9 @@ import teradataConnection from '../jsons/connectionSchemas/connections/database/
 import trinoConnection from '../jsons/connectionSchemas/connections/database/trinoConnection.json';
 import unityCatalogConnection from '../jsons/connectionSchemas/connections/database/unityCatalogConnection.json';
 import verticaConnection from '../jsons/connectionSchemas/connections/database/verticaConnection.json';
+import { exportDatabaseServiceDetailsInCSV } from '../rest/serviceAPI';
+import { getEntityImportPath } from './EntityUtils';
+import i18n from './i18next/LocalUtil';
 
 export const getDatabaseConfig = (type: DatabaseServiceType) => {
   let schema = {};
@@ -292,4 +303,66 @@ export const getDatabaseConfig = (type: DatabaseServiceType) => {
   }
 
   return cloneDeep({ schema, uiSchema });
+};
+
+export const ExtraDatabaseServiceDropdownOptions = (
+  fqn: string,
+  permission: OperationPermission
+) => {
+  const { showModal } = useEntityExportModalProvider();
+  const history = useHistory();
+
+  const { ViewAll, EditAll } = permission;
+
+  return [
+    ...(EditAll
+      ? [
+          {
+            label: (
+              <ManageButtonItemLabel
+                description={i18n.t('message.import-entity-help', {
+                  entity: i18n.t('label.entity-service', {
+                    entity: i18n.t('label.database'),
+                  }),
+                })}
+                icon={ImportIcon}
+                id="import-button"
+                name={i18n.t('label.import')}
+                onClick={() =>
+                  history.push(
+                    getEntityImportPath(EntityType.DATABASE_SERVICE, fqn)
+                  )
+                }
+              />
+            ),
+            key: 'import-button',
+          },
+        ]
+      : []),
+    ...(ViewAll
+      ? [
+          {
+            label: (
+              <ManageButtonItemLabel
+                description={i18n.t('message.export-entity-help', {
+                  entity: i18n.t('label.entity-service', {
+                    entity: i18n.t('label.database'),
+                  }),
+                })}
+                icon={ExportIcon}
+                id="export-button"
+                name={i18n.t('label.export')}
+                onClick={() =>
+                  showModal({
+                    name: fqn,
+                    onExport: exportDatabaseServiceDetailsInCSV,
+                  })
+                }
+              />
+            ),
+            key: 'export-button',
+          },
+        ]
+      : []),
+  ];
 };

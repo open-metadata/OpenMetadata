@@ -84,6 +84,7 @@ const renderColumnDataEditor = (
   const { value } = recordData;
   switch (column) {
     case 'status':
+    case 'glossaryStatus':
       return statusRenderer(value as Status);
     case 'description':
       return (
@@ -112,7 +113,7 @@ export const getColumnConfig = (
     sortable: false,
     renderEditor: csvUtilsClassBase.getEditor(colType, entityType),
     minWidth: COLUMNS_WIDTH[colType] ?? 180,
-    render: (recordData) => renderColumnDataEditor(column, recordData),
+    render: (recordData) => renderColumnDataEditor(colType, recordData),
   } as TypeColumn;
 };
 

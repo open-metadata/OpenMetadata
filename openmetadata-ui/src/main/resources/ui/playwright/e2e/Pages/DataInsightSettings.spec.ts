@@ -12,17 +12,17 @@
  */
 
 import test, { expect } from '@playwright/test';
-import {
-  customFormatDateTime,
-  getCurrentMillis,
-  getEpochMillisForFutureDays,
-} from '../../../src/utils/date-time/DateTimeUtils';
 import { GlobalSettingOptions } from '../../constant/settings';
 import {
   getApiContext,
   redirectToHomePage,
   toastNotification,
 } from '../../utils/common';
+import {
+  customFormatDateTime,
+  getCurrentMillis,
+  getEpochMillisForFutureDays,
+} from '../../utils/dateTime';
 import { settingClick } from '../../utils/sidebar';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
