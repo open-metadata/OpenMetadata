@@ -491,6 +491,7 @@ export const ActivityFeedTabNew = ({
           feedList={entityThread}
           handlePanelResize={handlePanelResize}
           isForFeedTab={isForFeedTab}
+          isFullWidth={isFullWidth}
           isLoading={loading}
           selectedThread={selectedThread}
           showThread={false}

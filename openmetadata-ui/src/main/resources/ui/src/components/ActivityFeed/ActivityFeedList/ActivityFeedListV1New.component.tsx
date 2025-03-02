@@ -37,6 +37,7 @@ interface ActivityFeedListV1Props {
   onAfterClose?: () => void;
   onUpdateEntityDetails?: () => void;
   handlePanelResize?: (isFullWidth: boolean) => void;
+  isFullWidth?: boolean;
 }
 
 const ActivityFeedListV1New = ({
@@ -51,6 +52,7 @@ const ActivityFeedListV1New = ({
   activeFeedId,
   hidePopover = false,
   isForFeedTab = false,
+  isFullWidth,
   emptyPlaceholderText,
   selectedThread,
   onAfterClose,
@@ -86,9 +88,11 @@ const ActivityFeedListV1New = ({
       entityThread.map((feed) => (
         <FeedPanelBodyV1New
           feed={feed}
+          handlePanelResize={handlePanelResize}
           hidePopover={hidePopover}
           isActive={activeFeedId === feed.id}
           isForFeedTab={isForFeedTab}
+          isFullWidth={isFullWidth}
           key={feed.id}
           showThread={showThread}
           onAfterClose={onAfterClose}
@@ -103,6 +107,7 @@ const ActivityFeedListV1New = ({
       hidePopover,
       isForFeedTab,
       showThread,
+      isFullWidth,
     ]
   );
 
