@@ -349,7 +349,7 @@ public class AuthenticationCodeFlowHandler {
       if (session != null) {
         LOG.debug("Invalidating the session for logout");
         session.invalidate();
-        httpServletResponse.sendRedirect(serverUrl);
+        httpServletResponse.sendRedirect(serverUrl + "/logout");
       } else {
         LOG.error("No session store available for this web context");
       }

@@ -311,6 +311,7 @@ export const isProtectedRoute = (pathname: string) => {
       ROUTES.HOME,
       ROUTES.AUTH_CALLBACK,
       ROUTES.NOT_FOUND,
+      ROUTES.LOGOUT,
     ].indexOf(pathname) === -1
   );
 };

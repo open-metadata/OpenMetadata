@@ -97,6 +97,9 @@ export const useApplicationStore = create<ApplicationStore>()((set, get) => ({
   onLoginHandler: () => {
     // This is a placeholder function that will be replaced by the actual function
   },
+  /**
+   * Handler to perform logout within application
+   */
   onLogoutHandler: () => {
     // This is a placeholder function that will be replaced by the actual function
   },
@@ -109,11 +112,6 @@ export const useApplicationStore = create<ApplicationStore>()((set, get) => ({
   },
   updateAxiosInterceptors: () => {
     // This is a placeholder function that will be replaced by the actual function
-  },
-  trySilentSignIn: (forceLogout?: boolean) => {
-    if (forceLogout) {
-      // This is a placeholder function that will be replaced by the actual function
-    }
   },
   updateCurrentUser: (user) => {
     set({ currentUser: user });

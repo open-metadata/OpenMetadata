@@ -26,6 +26,7 @@ import AppContainer from '../AppContainer/AppContainer';
 import Loader from '../common/Loader/Loader';
 import { UnAuthenticatedAppRouter } from './UnAuthenticatedAppRouter';
 
+import { LogoutPage } from '../../pages/LogoutPage/LogoutPage';
 import SamlCallback from '../../pages/SamlCallback';
 
 const AppRouter = () => {
@@ -86,6 +87,7 @@ const AppRouter = () => {
   return (
     <Switch>
       <Route exact component={PageNotFound} path={ROUTES.NOT_FOUND} />
+      <Route exact component={LogoutPage} path={ROUTES.LOGOUT} />
       <Route
         exact
         component={AccessNotAllowedPage}
