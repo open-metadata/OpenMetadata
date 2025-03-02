@@ -18,7 +18,7 @@
 
 .entity-search-settings-header {
   margin: 20px;
-  border: 1px solid #e9eaeb;
+  border: 1px solid @border-color-1;
   border-radius: 10px;
 }
 
@@ -29,7 +29,7 @@
 }
 
 .configuration-container {
-  border: 1px solid #e9eaeb;
+  border: 1px solid @border-color-1;
 }
 
 .config-section {
@@ -37,7 +37,7 @@
   overflow-y: auto;
 
   .config-section-content {
-    border: 1px solid #e4e4e7;
+    border: 1px solid @border-color-4;
   }
 }
 
@@ -47,7 +47,7 @@
 }
 
 .preview-section {
-  border: 1px solid #e9eaeb;
+  border: 1px solid @border-color-1;
   flex: 2;
 
   .preview-content {
@@ -55,16 +55,20 @@
   }
 
   .restore-defaults-btn {
-    background-color: #f5faff;
-    border: 1px solid #f5faff;
-    color: #175cd3;
+    background-color: @blue-12;
+    border: 1px solid @blue-12;
+    color: @blue-10;
     border-radius: 8px;
   }
 
   .save-btn {
-    background-color: #175cd3;
-    border: 1px solid #175cd3;
-    color: white;
+    background-color: @blue-10;
+    border: 1px solid @blue-10;
+    color: @white;
     border-radius: 8px;
   }
+}
+
+.add-tag-boost-btn {
+  border-radius: 8px;
 }

@@ -10,31 +10,33 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+@import url('../../../styles/variables.less');
+
 .field-container-header {
   padding: 20px;
   border-radius: 10px;
 }
 
 .field-weightage {
-  background-color: #0950c51a;
+  background-color: @team-avatar-bg;
   border-radius: 6px;
-  color: #0950c5;
+  color: @blue-3;
   gap: 6px;
 }
 
 .field-weightage-text {
-  color: #0950c5;
+  color: @blue-3;
 }
 
 .add-boost-btn {
-  background-color: #f5faff;
-  border: 1px solid #f5faff;
+  background-color: @blue-12;
+  border: 1px solid @blue-12;
   border-radius: 8px;
   padding: 18px 16px;
-  color: #175cd3;
+  color: @blue-10;
   &:hover {
-    background-color: #f5faff;
-    border: 1px solid #f5faff;
+    background-color: @blue-12;
+    border: 1px solid @blue-12;
   }
 }
 
@@ -48,7 +50,7 @@
 
 .ant-collapse-borderless {
   > .ant-collapse-item:last-child {
-    border: 1px solid #dde3ea;
+    border: 1px solid @border-color-5;
     border-radius: 10px;
   }
 }

@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { GlobalSettingsMenuCategory } from '../constants/GlobalSettings.constants';
 import { UIPermission } from '../context/PermissionProvider/PermissionProvider.interface';
 import {
   BoostMode,
@@ -28,7 +29,10 @@ export const getSearchSettingCategories = (
 ): SettingCategoryData[] | undefined => {
   let categoryItem = globalSettingsClassBase
     .getGlobalSettingsMenuWithPermission(permissions, isAdminUser)
-    .find((item) => item.key === 'searchSettingCategories');
+    .find(
+      (item) =>
+        item.key === GlobalSettingsMenuCategory.SEARCH_SETTING_CATEGORIES
+    );
 
   if (categoryItem) {
     categoryItem = {
@@ -51,7 +55,7 @@ export const getEntitySearchConfig = (
   }
 
   return searchConfig.assetTypeConfigurations.find(
-    (config) => config.assetType.toLowerCase() === entityType.toLowerCase()
+    (config) => config.assetType === entityType
   );
 };
 

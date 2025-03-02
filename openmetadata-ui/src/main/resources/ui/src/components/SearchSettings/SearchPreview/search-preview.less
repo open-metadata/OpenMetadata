@@ -10,6 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+@import url('../../../styles/variables.less');
+
 .search-preview {
   flex: 1;
   display: flex;
@@ -21,13 +23,13 @@
   }
 
   .search-box {
-    background-color: #f8f8f8;
+    background-color: @grey-1;
     border: none;
     border-radius: 6px;
 
     .ant-input {
-      background-color: #f8f8f8;
-      border: 1px solid #fafafa;
+      background-color: @grey-1;
+      border: 1px solid @grey-10;
       padding: 8px;
       font-size: 14px;
 
@@ -35,7 +37,7 @@
       &:focus,
       &:focus-within,
       &-focused {
-        border-color: #fafafa;
+        border-color: @grey-10;
         box-shadow: none;
         outline: none;
       }
@@ -43,7 +45,7 @@
 
     &:focus-within {
       box-shadow: none;
-      border-color: #fafafa;
+      border-color: @grey-10;
     }
   }
 
@@ -54,7 +56,7 @@
     padding: 8px 0;
 
     .search-card {
-      background-color: #fafafa;
+      background-color: @grey-10;
       margin-bottom: 12px;
       border-radius: 10px;
     }

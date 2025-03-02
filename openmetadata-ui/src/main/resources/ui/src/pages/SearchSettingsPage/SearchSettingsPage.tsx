@@ -18,7 +18,6 @@ import {
   Col,
   Divider,
   Dropdown,
-  Menu,
   Row,
   Switch,
   Typography,
@@ -163,22 +162,21 @@ const SearchSettingsPage = () => {
     );
   };
 
-  const menu = (
-    <Menu
-      style={{
-        maxHeight: '250px',
-        overflowY: 'auto',
-      }}>
-      {entityFields.map((field) => (
-        <Menu.Item key={field.fieldName}>
+  const menuItems = useMemo(
+    () => ({
+      items: entityFields.map((field) => ({
+        key: field.fieldName,
+        label: (
           <Checkbox
             checked={checkedItems.includes(field.fieldName)}
             onChange={() => handleCheckboxChange(field.fieldName)}>
             {field.label}
           </Checkbox>
-        </Menu.Item>
-      ))}
-    </Menu>
+        ),
+      })),
+      className: 'menu-items',
+    }),
+    [entityFields, checkedItems]
   );
 
   useEffect(() => {
@@ -249,8 +247,8 @@ const SearchSettingsPage = () => {
         </Col>
         <Col className="filter-configuration-container" span={24}>
           <Dropdown
-            dropdownRender={() => menu}
             getPopupContainer={(triggerNode) => triggerNode.parentElement!}
+            menu={menuItems}
             open={visible}
             placement="bottomLeft"
             trigger={['click']}
@@ -261,13 +259,7 @@ const SearchSettingsPage = () => {
               {t('label.add-filter-plural')}
             </Button>
           </Dropdown>
-          <Divider
-            className="h-auto"
-            style={{
-              alignSelf: 'stretch',
-            }}
-            type="vertical"
-          />
+          <Divider className="h-auto self-stretch" type="vertical" />
           {DATA_ASSET_DROPDOWN_ITEMS.map((value) => (
             <div
               className="bg-white flex items-center justify-center gap-3 p-y-xss p-x-sm filter-value"

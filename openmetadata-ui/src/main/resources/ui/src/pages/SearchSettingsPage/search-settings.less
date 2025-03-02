@@ -20,7 +20,7 @@
   margin: 18px;
   margin-bottom: 24px;
   background-color: @white;
-  border: 1px solid #e9eaeb;
+  border: 1px solid @border-color-1;
   border-radius: 10px;
 }
 
@@ -32,9 +32,9 @@
   margin-bottom: 8px;
 
   .global-setting-card {
-    border: 1px solid #fafafa;
+    border: 1px solid @grey-10;
     border-radius: 12px;
-    background-color: #fafafa;
+    background-color: @grey-10;
     flex: 1 1 300px;
     max-width: calc(33.33% - 14px);
     min-width: 270px;
@@ -56,17 +56,17 @@
 }
 
 .filters-configuration-row {
-  background-color: white;
-  border: 1px solid #e9eaeb;
+  background-color: @white;
+  border: 1px solid @border-color-1;
   border-radius: 10px;
   margin: 20px;
   margin-bottom: 24px;
 
   .filter-configuration-container {
     padding: 20px 16px;
-    border: 1px solid #e9eaeb;
+    border: 1px solid @border-color-1;
     border-radius: 12px;
-    background-color: #fafafa;
+    background-color: @grey-10;
     display: flex;
     align-items: flex-start;
     gap: 8px;
@@ -74,35 +74,40 @@
     min-height: auto;
 
     .add-filters-btn {
-      color: #175cd3;
-      border: 1px solid #d5d7da;
-      background-color: #e0f2fe;
+      color: @blue-10;
+      border: 1px solid @border-color-2;
+      background-color: @blue-11;
       border-radius: 8px;
 
       &:hover,
       &:focus {
-        color: #175cd3;
-        background-color: #e0f2fe;
-        border-color: #d5d7da;
+        color: @blue-10;
+        background-color: @blue-11;
+        border-color: @border-color-2;
       }
     }
 
     .filter-option {
       flex-direction: row-reverse;
-      border: 1px solid #d5d7da;
+      border: 1px solid @border-color-2;
       border-radius: 8px;
     }
 
     .filter-value {
-      border: 1px solid #d4d4d8;
+      border: 1px solid @border-color-3;
       border-radius: 8px;
     }
   }
 }
 
+.menu-items {
+  max-height: 250px;
+  overflow-y: auto;
+}
+
 .search-setting-card-item {
   height: 100%;
-  border: 1px solid #fafafa;
+  border: 1px solid @grey-10;
   border-radius: 12px;
   transition: 0.3s ease-in-out;
 
@@ -140,7 +145,7 @@
         margin-top: 16px;
         font-size: 14px;
         font-weight: 400;
-        color: #535862;
+        color: @grey-8;
       }
     }
 

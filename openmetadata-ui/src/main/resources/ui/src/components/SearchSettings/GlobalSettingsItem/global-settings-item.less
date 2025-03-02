@@ -10,10 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+@import url('../../../styles/variables.less');
+
 .global-settings-item {
-  border: 1px solid #fafafa;
+  border: 1px solid @grey-10;
   border-radius: 12px;
-  background-color: #fafafa;
+  background-color: @grey-10;
   min-width: 250px;
   font-size: 14px;
   font-weight: 400;
@@ -37,7 +39,15 @@
 }
 
 .global-settings-item-value {
-  background-color: #0950c51a;
-  color: #0950c5;
+  background-color: @team-avatar-bg;
+  color: @blue-3;
   border-radius: 4px;
+}
+
+.inline-edit-container {
+  min-width: 145px;
+}
+
+.value-container {
+  min-width: 150px;
 }

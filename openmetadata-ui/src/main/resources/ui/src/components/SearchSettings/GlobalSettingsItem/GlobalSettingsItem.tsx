@@ -56,9 +56,7 @@ export const GlobalSettingItem = ({
       <Typography.Text>{label}</Typography.Text>
 
       {isEditing ? (
-        <div
-          className="m-l-md d-flex justify-end"
-          style={{ minWidth: '145px' }}>
+        <div className="m-l-md d-flex justify-end inline-edit-container">
           <InlineEdit
             isLoading={isUpdating}
             onCancel={handleCancel}
@@ -75,18 +73,15 @@ export const GlobalSettingItem = ({
           </InlineEdit>
         </div>
       ) : (
-        <div
-          className="d-flex items-center justify-end"
-          style={{ minWidth: '150px' }}>
+        <div className="d-flex items-center justify-end value-container">
           <span
             className="m-l-xlg font-semibold p-x-xss global-settings-item-value"
             data-testid="setting-value">
             {value}
           </span>
           <Icon
-            className="m-l-sm"
+            className="m-l-sm flex-shrink"
             component={EditIcon}
-            style={{ flexShrink: 0 }}
             onClick={() => setIsEditing(true)}
           />
         </div>

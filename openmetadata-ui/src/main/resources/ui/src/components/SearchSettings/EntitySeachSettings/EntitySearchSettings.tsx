@@ -331,7 +331,7 @@ const EntitySearchSettings = () => {
     try {
       const { data } = await restoreSettingsConfig(SettingType.SearchSettings);
 
-      const updatedSearchConfig = data.config_value as SearchSettings;
+      const updatedSearchConfig = data as SearchSettings;
 
       setAppPreferences({
         ...appPreferences,
@@ -344,7 +344,7 @@ const EntitySearchSettings = () => {
       });
 
       showSuccessToast(
-        t('server.restore-entity-success', {
+        t('server.update-entity-success', {
           entity: t('label.search-setting-plural'),
         })
       );
@@ -379,17 +379,10 @@ const EntitySearchSettings = () => {
           {entityFields.map((field, index) => (
             <FieldConfiguration
               field={field}
-              fieldBoosts={searchSettings.boosts ?? []}
-              fieldWeight={searchSettings.fields ?? {}}
               getSelectedMatchType={getSelectedMatchType}
-              highlightFields={searchSettings.highlightFields ?? []}
               index={index}
-              key={index}
-              matchFields={{
-                mustMatch: searchSettings.mustMatch || [],
-                shouldMatch: searchSettings.shouldMatch || [],
-                mustNotMatch: searchSettings.mustNotMatch || [],
-              }}
+              key={field.fieldName}
+              searchSettings={searchSettings}
               onBoostChange={handleBoostChange}
               onDeleteBoost={handleDeleteBoost}
               onFieldWeightChange={handleFieldWeightChange}
@@ -437,9 +430,7 @@ const EntitySearchSettings = () => {
             <div className="d-flex items-center justify-between">
               <Typography.Text>{t('label.tag-boost-plural')}</Typography.Text>
               <Button
-                style={{
-                  borderRadius: '8px',
-                }}
+                className="add-tag-boost-btn"
                 onClick={handleAddNewTagBoost}>
                 {t('label.add')}
               </Button>

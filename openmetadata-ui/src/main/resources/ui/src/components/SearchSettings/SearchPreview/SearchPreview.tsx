@@ -72,6 +72,42 @@ const SearchPreview = () => {
     [currentPage, pageSize, searchValue]
   );
 
+  const renderSearchResults = () => {
+    if (isLoading) {
+      return <Loader />;
+    }
+    if (data.length > 0) {
+      return (
+        <>
+          {data.map(({ _source, _id = '' }) => (
+            <ExploreSearchCard
+              showEntityIcon
+              className="search-card"
+              id={_id}
+              key={_source.name}
+              showTags={false}
+              source={_source}
+            />
+          ))}
+          {showPagination && (
+            <NextPrevious
+              isNumberBased
+              currentPage={currentPage}
+              pageSize={pageSize}
+              paging={paging}
+              pagingHandler={({ currentPage }: PagingHandlerParams) =>
+                handlePageChange(currentPage)
+              }
+              onShowSizeChange={handlePageSizeChange}
+            />
+          )}
+        </>
+      );
+    }
+
+    return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.NO_DATA} />;
+  };
+
   const handleSearch = useCallback(
     debounce((value: string) => {
       setSearchValue(value);
@@ -100,40 +136,7 @@ const SearchPreview = () => {
         value={searchValue}
         onChange={(e) => handleSearch(e.target.value)}
       />
-      <div className="search-results-container">
-        {isLoading ? (
-          <div>
-            <Loader />
-          </div>
-        ) : data.length > 0 ? (
-          <>
-            {data.map(({ _source, _id = '' }) => (
-              <ExploreSearchCard
-                showEntityIcon
-                className="search-card"
-                id={_id}
-                key={_id}
-                showTags={false}
-                source={_source}
-              />
-            ))}
-            {showPagination && (
-              <NextPrevious
-                isNumberBased
-                currentPage={currentPage}
-                pageSize={pageSize}
-                paging={paging}
-                pagingHandler={({ currentPage }: PagingHandlerParams) =>
-                  handlePageChange(currentPage)
-                }
-                onShowSizeChange={handlePageSizeChange}
-              />
-            )}
-          </>
-        ) : (
-          <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.NO_DATA} />
-        )}
-      </div>
+      <div className="search-results-container">{renderSearchResults()}</div>
     </div>
   );
 };

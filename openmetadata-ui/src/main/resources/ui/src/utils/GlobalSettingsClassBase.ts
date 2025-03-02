@@ -57,6 +57,7 @@ import { ReactComponent as UsersIcon } from '../assets/svg/user-colored.svg';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
+  SearchSettingsEntity,
 } from '../constants/GlobalSettings.constants';
 import {
   ResourceEntity,
@@ -534,7 +535,7 @@ class GlobalSettingsClassBase {
               entity: t('label.table-plural'),
             }),
             isProtected: Boolean(isAdminUser),
-            key: `${GlobalSettingOptions.SEARCH_SETTINGS}/${GlobalSettingOptions.TABLE}`,
+            key: `${GlobalSettingOptions.SEARCH_SETTINGS}/${SearchSettingsEntity.TABLE}`,
             icon: TableIcon,
           },
           {
@@ -543,7 +544,7 @@ class GlobalSettingsClassBase {
               entity: t('label.dashboard-plural'),
             }),
             isProtected: Boolean(isAdminUser),
-            key: `${GlobalSettingOptions.SEARCH_SETTINGS}/${GlobalSettingOptions.DASHBOARD}`,
+            key: `${GlobalSettingOptions.SEARCH_SETTINGS}/${SearchSettingsEntity.DASHBOARD}`,
             icon: DashboardIcon,
           },
           {
@@ -552,7 +553,7 @@ class GlobalSettingsClassBase {
               entity: t('label.pipeline-plural'),
             }),
             isProtected: Boolean(isAdminUser),
-            key: `${GlobalSettingOptions.SEARCH_SETTINGS}/${GlobalSettingOptions.PIPELINE}`,
+            key: `${GlobalSettingOptions.SEARCH_SETTINGS}/${SearchSettingsEntity.PIPELINE}`,
             icon: PipelineIcon,
           },
           {
@@ -561,7 +562,7 @@ class GlobalSettingsClassBase {
               entity: t('label.topic-plural'),
             }),
             isProtected: Boolean(isAdminUser),
-            key: `${GlobalSettingOptions.SEARCH_SETTINGS}/${GlobalSettingOptions.TOPIC}`,
+            key: `${GlobalSettingOptions.SEARCH_SETTINGS}/${SearchSettingsEntity.TOPIC}`,
             icon: MessagingIcon,
           },
           {
@@ -570,7 +571,7 @@ class GlobalSettingsClassBase {
               entity: t('label.glossary-term'),
             }),
             isProtected: Boolean(isAdminUser),
-            key: `${GlobalSettingOptions.SEARCH_SETTINGS}/${GlobalSettingOptions.GLOSSARY_TERM}`,
+            key: `${GlobalSettingOptions.SEARCH_SETTINGS}/${SearchSettingsEntity.GLOSSARY_TERM}`,
             icon: GlossaryIcon,
           },
           {
@@ -579,7 +580,7 @@ class GlobalSettingsClassBase {
               entity: t('label.api-endpoint'),
             }),
             isProtected: Boolean(isAdminUser),
-            key: `${GlobalSettingOptions.SEARCH_SETTINGS}/${GlobalSettingOptions.API_ENDPOINT}`,
+            key: `${GlobalSettingOptions.SEARCH_SETTINGS}/${SearchSettingsEntity.API_ENDPOINT}`,
             icon: APIEndpointIcon,
           },
           {
@@ -588,7 +589,7 @@ class GlobalSettingsClassBase {
               entity: t('label.dashboard-data-model-plural'),
             }),
             isProtected: Boolean(isAdminUser),
-            key: `${GlobalSettingOptions.SEARCH_SETTINGS}/${GlobalSettingOptions.DASHBOARD_DATA_MODELS}`,
+            key: `${GlobalSettingOptions.SEARCH_SETTINGS}/${SearchSettingsEntity.DASHBOARD_DATA_MODEL}`,
             icon: DashboardDataModelIcon,
           },
           {
@@ -597,7 +598,7 @@ class GlobalSettingsClassBase {
               entity: t('label.stored-procedure-plural'),
             }),
             isProtected: Boolean(isAdminUser),
-            key: `${GlobalSettingOptions.SEARCH_SETTINGS}/${GlobalSettingOptions.STORED_PROCEDURE}`,
+            key: `${GlobalSettingOptions.SEARCH_SETTINGS}/${SearchSettingsEntity.STORED_PROCEDURE}`,
             icon: StoredProcedureIcon,
           },
           {
@@ -606,7 +607,7 @@ class GlobalSettingsClassBase {
               entity: t('label.container-plural'),
             }),
             isProtected: Boolean(isAdminUser),
-            key: `${GlobalSettingOptions.SEARCH_SETTINGS}/${GlobalSettingOptions.CONTAINER}`,
+            key: `${GlobalSettingOptions.SEARCH_SETTINGS}/${SearchSettingsEntity.CONTAINER}`,
             icon: StorageIcon,
           },
           {
@@ -615,7 +616,7 @@ class GlobalSettingsClassBase {
               entity: t('label.ml-model-plural'),
             }),
             isProtected: Boolean(isAdminUser),
-            key: `${GlobalSettingOptions.SEARCH_SETTINGS}/${GlobalSettingOptions.ML_MODEL}`,
+            key: `${GlobalSettingOptions.SEARCH_SETTINGS}/${SearchSettingsEntity.ML_MODEL}`,
             icon: MlModelIcon,
           },
           {
@@ -624,7 +625,7 @@ class GlobalSettingsClassBase {
               entity: t('label.data-asset-plural'),
             }),
             isProtected: Boolean(isAdminUser),
-            key: `${GlobalSettingOptions.SEARCH_SETTINGS}/${GlobalSettingOptions.DATA_ASSET}`,
+            key: `${GlobalSettingOptions.SEARCH_SETTINGS}/${SearchSettingsEntity.DATA_ASSET}`,
             icon: DatabaseIcon,
           },
           {
@@ -633,7 +634,7 @@ class GlobalSettingsClassBase {
               entity: t('label.query'),
             }),
             isProtected: Boolean(isAdminUser),
-            key: `${GlobalSettingOptions.SEARCH_SETTINGS}/${GlobalSettingOptions.QUERY}`,
+            key: `${GlobalSettingOptions.SEARCH_SETTINGS}/${SearchSettingsEntity.QUERY}`,
             icon: DatabaseIcon,
           },
           {
@@ -642,7 +643,7 @@ class GlobalSettingsClassBase {
               entity: t('label.test-case-plural'),
             }),
             isProtected: Boolean(isAdminUser),
-            key: `${GlobalSettingOptions.SEARCH_SETTINGS}/${GlobalSettingOptions.TEST_CASE}`,
+            key: `${GlobalSettingOptions.SEARCH_SETTINGS}/${SearchSettingsEntity.TEST_CASE}`,
             icon: DatabaseIcon,
           },
           {
@@ -651,7 +652,7 @@ class GlobalSettingsClassBase {
               entity: t('label.tag-plural'),
             }),
             isProtected: Boolean(isAdminUser),
-            key: `${GlobalSettingOptions.SEARCH_SETTINGS}/${GlobalSettingOptions.TAG}`,
+            key: `${GlobalSettingOptions.SEARCH_SETTINGS}/${SearchSettingsEntity.TAG}`,
             icon: TagIcon,
           },
         ],

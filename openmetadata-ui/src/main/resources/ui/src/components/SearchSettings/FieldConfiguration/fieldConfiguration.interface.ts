@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { FieldBoost } from '../../../generated/configuration/searchSettings';
 import {
+  EntitySearchSettingsState,
   MatchFields,
   MatchType,
 } from '../../../pages/SearchSettingsPage/searchSettings.interface';
@@ -21,15 +21,8 @@ export interface FieldConfigurationProps {
     fieldName: string;
     weight: number;
   };
+  searchSettings: EntitySearchSettingsState;
   index: number;
-  highlightFields: string[];
-  fieldWeight: Record<string, number>;
-  matchFields: {
-    mustMatch: string[];
-    shouldMatch: string[];
-    mustNotMatch: string[];
-  };
-  fieldBoosts: FieldBoost[];
   onHighlightFieldsChange: (fieldName: string) => void;
   onMatchTypeChange: (fieldName: string, matchType: MatchType) => void;
   onFieldWeightChange: (fieldName: string, value: number) => void;

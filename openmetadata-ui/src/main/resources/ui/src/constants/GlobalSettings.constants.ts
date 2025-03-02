@@ -79,13 +79,16 @@ export enum GlobalSettingOptions {
   SEARCH_RBAC = 'search-rbac',
   LINEAGE_CONFIG = 'lineageConfig',
   OM_URL_CONFIG = 'om-url-config',
-  SEARCH_SETTINGS = 'searchSettings',
+  SEARCH_SETTINGS = 'search-settings',
+}
+
+export enum SearchSettingsEntity {
   TABLE = 'table',
   PIPELINE = 'pipeline',
   ML_MODEL = 'mlmodel',
   TOPIC = 'topic',
   DASHBOARD = 'dashboard',
-  DASHBOARD_DATA_MODELS = 'dashboardDataModel',
+  DASHBOARD_DATA_MODEL = 'dashboardDataModel',
   CONTAINER = 'container',
   STORED_PROCEDURE = 'storedProcedure',
   API_ENDPOINT = 'apiEndpoint',
@@ -93,4 +96,5 @@ export enum GlobalSettingOptions {
   DATA_ASSET = 'dataAsset',
   TAG = 'tag',
   TEST_CASE = 'testCase',
+  GLOSSARY_TERM = 'glossaryTerm',
 }

@@ -34,10 +34,7 @@ import { FieldConfigurationProps } from './fieldConfiguration.interface';
 const FieldConfiguration: React.FC<FieldConfigurationProps> = ({
   field,
   index,
-  highlightFields,
-  fieldWeight,
-  matchFields,
-  fieldBoosts,
+  searchSettings,
   onHighlightFieldsChange,
   onMatchTypeChange,
   onFieldWeightChange,
@@ -52,17 +49,23 @@ const FieldConfiguration: React.FC<FieldConfigurationProps> = ({
   const [boostDropdownOpen, setBoostDropdownOpen] = useState(false);
   const [activeBoostField, setActiveBoostField] = useState<string | null>(null);
 
+  const matchFields = {
+    mustMatch: searchSettings?.mustMatch ?? [],
+    shouldMatch: searchSettings?.shouldMatch ?? [],
+    mustNotMatch: searchSettings?.mustNotMatch ?? [],
+  };
+
   const boostMenuItems = useMemo(
     () => [
       {
         key: '1',
         label: (
-          <div
-            className="d-flex items-center gap-2"
+          <Button
+            className="d-flex items-center justify-between border-none bg-transparent"
             onClick={() => handleValueBoostClick(field.fieldName)}>
             <Icon className="text-xl" component={Document} />
             <Typography.Text>{t('label.value')}</Typography.Text>
-          </div>
+          </Button>
         ),
       },
     ],
@@ -135,7 +138,10 @@ const FieldConfiguration: React.FC<FieldConfigurationProps> = ({
               {t('label.highlight-field-plural')}
             </Typography.Text>
             <Switch
-              checked={highlightFields.includes(field.fieldName)}
+              checked={
+                searchSettings?.highlightFields?.includes(field.fieldName) ??
+                false
+              }
               className="m-l-xlg"
               onChange={() => onHighlightFieldsChange(field.fieldName)}
             />
@@ -159,14 +165,14 @@ const FieldConfiguration: React.FC<FieldConfigurationProps> = ({
           <div className="m-y-md m-b-lg d-flex items-center justify-between">
             <Typography.Text>{t('label.weight')}</Typography.Text>
             <Typography.Text className="font-semibold field-weightage-text">
-              {fieldWeight[field.fieldName] ?? field.weight}
+              {searchSettings?.fields?.[field.fieldName] ?? field.weight}
             </Typography.Text>
           </div>
           <Slider
             max={10}
             min={0}
             tooltip={{ open: false }}
-            value={fieldWeight[field.fieldName] ?? field.weight}
+            value={searchSettings?.fields?.[field.fieldName] ?? field.weight}
             onChange={handleWeightChange}
           />
           <Divider />
@@ -194,7 +200,7 @@ const FieldConfiguration: React.FC<FieldConfigurationProps> = ({
           {/* Add Boost Component */}
           {activeBoostField === field.fieldName && (
             <AddBoost
-              boosts={fieldBoosts}
+              boosts={searchSettings?.boosts ?? []}
               fieldName={field.fieldName}
               onBoostChange={onBoostChange}
               onDeleteBoost={handleDeleteBoost}
