@@ -40,6 +40,7 @@ import {
 import { resetWebAnalyticSession } from '../../../utils/WebAnalyticsUtils';
 
 import { toLower } from 'lodash';
+import TokenService from '../../../utils/Auth/TokenService/TokenServiceUtil';
 import { extractDetailsFromToken } from '../../../utils/AuthProvider.util';
 import {
   getOidcToken,
@@ -187,6 +188,8 @@ const BasicAuthProvider = ({
       try {
         await logoutUser({ token, refreshToken });
         setOidcToken('');
+        setRefreshToken('');
+        TokenService.getInstance().clearRefreshInProgress();
         history.push(ROUTES.SIGNIN);
       } catch (error) {
         showErrorToast(error as AxiosError);
