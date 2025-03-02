@@ -131,6 +131,7 @@ export const ROUTES = {
   NOT_FOUND: '/404',
   FORBIDDEN: '/403',
   UNAUTHORISED: '/unauthorised',
+  LOGOUT: '/logout',
   MY_DATA: '/my-data',
   TOUR: '/tour',
   REPORTS: '/reports',
