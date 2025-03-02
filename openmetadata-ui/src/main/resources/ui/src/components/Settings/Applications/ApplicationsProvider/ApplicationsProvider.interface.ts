@@ -14,5 +14,4 @@ import { App } from '../../../../generated/entity/applications/app';
 
 export type ApplicationsContextType = {
   applications: App[];
-  loading: boolean;
 };
