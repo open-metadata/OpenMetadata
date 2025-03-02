@@ -234,7 +234,7 @@ export interface GCPCredentialsConfiguration {
     /**
      * Google Cloud Platform account type.
      */
-    type?: TypeEnum;
+    type?: string;
     /**
      * Path of the file containing the GCP credentials info
      */
@@ -252,7 +252,7 @@ export interface GCPCredentialsConfiguration {
     /**
      * Google Cloud Platform account type.
      */
-    externalType?: ExternalTypeEnum;
+    externalType?: string;
     /**
      * Google Security Token Service subject token type based on the OAuth 2.0 token exchange
      * spec.
@@ -263,16 +263,6 @@ export interface GCPCredentialsConfiguration {
      */
     tokenURL?: string;
     [property: string]: any;
-}
-
-export enum ExternalTypeEnum {
-    ExternalAccount = "external_account",
-}
-
-export enum TypeEnum {
-    ExternalAccount = "external_account",
-    GcpCredentialPath = "gcp_credential_path",
-    ServiceAccount = "service_account",
 }
 
 /**

@@ -53,9 +53,5 @@ export interface GcpValues {
     /**
      * Google Cloud Platform account type.
      */
-    type?: CredentialsType;
-}
-
-export enum CredentialsType {
-    ServiceAccount = "service_account",
+    type?: string;
 }
