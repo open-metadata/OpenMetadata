@@ -32,7 +32,7 @@ function MostExpensiveQueriesWidget() {
           <Typography.Text className="font-medium text-lg">
             {t('label.most-expensive-query-plural')}
           </Typography.Text>
-          <Typography.Text className="text-grey-muted">
+          <Typography.Text className="text-grey-muted text-sm">
             {t('message.most-expensive-queries-widget-description')}
           </Typography.Text>
         </div>

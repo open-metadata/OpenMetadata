@@ -82,7 +82,7 @@ function PIIDistributionWidget() {
         <Typography.Text className="font-medium text-lg">
           {t('label.entity-distribution', { entity: t('label.pii-uppercase') })}
         </Typography.Text>
-        <Typography.Text className="text-grey-muted">
+        <Typography.Text className="text-grey-muted text-sm">
           {t('message.pii-distribution-description')}
         </Typography.Text>
       </div>

@@ -34,7 +34,7 @@ function DataQualityWidget() {
       <Typography.Text className="font-medium text-lg">
         {t('label.data-quality')}
       </Typography.Text>
-      <Typography.Text className="text-grey-muted">
+      <Typography.Text className="text-grey-muted text-sm">
         {t('message.page-sub-header-for-data-quality')}
       </Typography.Text>
       <Row className="m-t-sm" gutter={[24, 24]}>

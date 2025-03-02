@@ -71,7 +71,7 @@ function MostUsedAssetsWidget() {
           <Typography.Text className="font-medium text-lg">
             {t('label.most-used-data-assets')}
           </Typography.Text>
-          <Typography.Text className="text-grey-muted">
+          <Typography.Text className="text-grey-muted text-sm">
             {t('message.most-used-assets-widget-description')}
           </Typography.Text>
         </div>

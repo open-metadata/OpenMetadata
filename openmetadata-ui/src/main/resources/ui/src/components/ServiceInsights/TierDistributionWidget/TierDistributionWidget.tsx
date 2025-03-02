@@ -84,7 +84,7 @@ function TierDistributionWidget() {
         <Typography.Text className="font-medium text-lg">
           {t('label.entity-distribution', { entity: t('label.tier') })}
         </Typography.Text>
-        <Typography.Text className="text-grey-muted">
+        <Typography.Text className="text-grey-muted text-sm">
           {t('message.tier-distribution-description')}
         </Typography.Text>
       </div>

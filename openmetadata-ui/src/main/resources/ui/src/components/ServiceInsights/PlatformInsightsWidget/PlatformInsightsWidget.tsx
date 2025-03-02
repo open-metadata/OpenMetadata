@@ -127,7 +127,7 @@ function PlatformInsightsWidget() {
       <Typography.Text className="font-medium text-lg">
         {t('label.entity-insight-plural', { entity: t('label.platform') })}
       </Typography.Text>
-      <Typography.Text className="text-grey-muted">
+      <Typography.Text className="text-grey-muted text-sm">
         {t('message.platform-insight-description')}
       </Typography.Text>
 
