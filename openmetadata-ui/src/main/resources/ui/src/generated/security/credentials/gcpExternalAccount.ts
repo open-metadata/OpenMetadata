@@ -27,7 +27,7 @@ export interface GcpExternalAccount {
     /**
      * Google Cloud Platform account type.
      */
-    externalType?: CredentialsType;
+    externalType?: string;
     /**
      * Google Security Token Service subject token type based on the OAuth 2.0 token exchange
      * spec.
@@ -40,9 +40,5 @@ export interface GcpExternalAccount {
     /**
      * Google Cloud Platform account type.
      */
-    type?: CredentialsType;
-}
-
-export enum CredentialsType {
-    ExternalAccount = "external_account",
+    type?: string;
 }
