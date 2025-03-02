@@ -13,20 +13,13 @@
 
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import RGL, { WidthProvider } from 'react-grid-layout';
 import { useTranslation } from 'react-i18next';
 import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
 import Loader from '../../components/common/Loader/Loader';
 import WelcomeScreen from '../../components/MyData/WelcomeScreen/WelcomeScreen.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
-import { useApplicationsProvider } from '../../components/Settings/Applications/ApplicationsProvider/ApplicationsProvider';
 import {
   KNOWLEDGE_LIST_LENGTH,
   LOGGED_IN_USER_STORAGE_KEY,
@@ -54,14 +47,13 @@ const ReactGridLayout = WidthProvider(RGL);
 const MyDataPage = () => {
   const { t } = useTranslation();
   const { currentUser, selectedPersona } = useApplicationStore();
-  const { loading: applicationsLoading } = useApplicationsProvider();
   const { isWelcomeVisible } = useWelcomeStore();
   const [followedData, setFollowedData] = useState<Array<EntityReference>>([]);
   const [followedDataCount, setFollowedDataCount] = useState(0);
   const [isLoadingOwnedData, setIsLoadingOwnedData] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState(true);
   const [layout, setLayout] = useState<Array<WidgetConfig>>([]);
-  const isMounted = useRef(false);
+
   const [showWelcomeScreen, setShowWelcomeScreen] = useState(false);
   const [isAnnouncementLoading, setIsAnnouncementLoading] =
     useState<boolean>(true);
@@ -116,15 +108,14 @@ const MyDataPage = () => {
   };
 
   useEffect(() => {
-    !applicationsLoading && fetchDocument();
-  }, [selectedPersona, applicationsLoading]);
+    fetchDocument();
+  }, [selectedPersona]);
 
   useEffect(() => {
-    isMounted.current = true;
     updateWelcomeScreen(!usernameExistsInCookie && isWelcomeVisible);
 
     return () => updateWelcomeScreen(false);
-  }, [isWelcomeVisible]);
+  }, []);
 
   const fetchUserFollowedData = async () => {
     if (!currentUser?.id) {
@@ -205,7 +196,7 @@ const MyDataPage = () => {
   // call the hook to set the direction of the grid layout
   useGridLayoutDirection(isLoading);
 
-  if (isLoading || applicationsLoading) {
+  if (isLoading) {
     return <Loader fullScreen />;
   }
 
