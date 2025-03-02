@@ -143,7 +143,7 @@ const TaskTabIncidentManagerHeaderNew = ({ thread }: { thread: Thread }) => {
                 name={thread?.task?.assignees[0].displayName ?? ''}
                 width="24"
               />
-              <Typography.Text className="text-md text-grey-body">
+              <Typography.Text className="text-grey-body">
                 {thread?.task?.assignees[0].displayName}
               </Typography.Text>
             </div>
