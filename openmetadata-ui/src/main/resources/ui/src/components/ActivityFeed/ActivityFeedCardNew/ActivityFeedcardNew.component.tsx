@@ -155,7 +155,7 @@ const ActivityFeedCardNew = ({
     } else {
       return (
         <div
-          className={classNames('break-word header-link d-flex items-center', {
+          className={classNames('break-word header-link d-flex', {
             'items-start': showThread,
             'items-center': !showThread,
           })}>
@@ -209,8 +209,10 @@ const ActivityFeedCardNew = ({
       <Space align="start" className="w-full">
         <Space className="d-flex" direction="vertical">
           <Space
-            className={classNames('d-inline-flex justify-start  items-center', {
-              'items-center': showThread,
+            className={classNames('d-inline-flex justify-start', {
+              'items-center': !showThread,
+              'items-start':
+                showThread && feed.entityRef?.type === EntityType.CONTAINER,
             })}>
             <ProfilePicture
               avatarType="outlined"
@@ -245,9 +247,14 @@ const ActivityFeedCardNew = ({
               </Space>
               {!isPost && (
                 <Space
-                  className={classNames('d-flex align-center gap-1', {
+                  className={classNames('d-flex gap-1', {
                     'header-container-card': !showThread,
-                    'items-center': showThread,
+                    'items-start':
+                      showThread &&
+                      feed.entityRef?.type === EntityType.CONTAINER,
+                    ' items-center':
+                      showThread &&
+                      feed.entityRef?.type !== EntityType.CONTAINER,
                   })}>
                   <Typography.Text className="card-style-feed-header text-sm">
                     {feedHeaderText}
