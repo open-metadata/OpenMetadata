@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { Card } from 'antd';
-import { debounce } from 'lodash';
 import Qs from 'qs';
 import React, {
   DragEvent,
@@ -75,7 +74,6 @@ const Lineage = ({
     entityLineage,
     onPaneClick,
     onConnect,
-    onZoomUpdate,
     onInitReactFlow,
     updateEntityType,
   } = useLineageProvider();
@@ -99,10 +97,6 @@ const Lineage = ({
     event.preventDefault();
     event.dataTransfer.dropEffect = 'move';
   }, []);
-
-  const handleZoomLevel = debounce((value: number) => {
-    onZoomUpdate(value);
-  }, 150);
 
   const breadcrumbs = useMemo(
     () =>
@@ -182,7 +176,6 @@ const Lineage = ({
               }}
               onEdgesChange={onEdgesChange}
               onInit={onInitReactFlow}
-              onMove={(_e, viewPort) => handleZoomLevel(viewPort.zoom)}
               onNodeClick={(_e, node) => {
                 onNodeClick(node);
                 _e.stopPropagation();

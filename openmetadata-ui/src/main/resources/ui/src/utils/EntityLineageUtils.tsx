@@ -756,7 +756,8 @@ export const createNodes = (
   nodesData: LineageEntityReference[],
   edgesData: EdgeDetails[],
   entityFqn: string,
-  isExpanded = false
+  isExpanded = false,
+  hidden?: boolean
 ) => {
   const uniqueNodesData = removeDuplicateNodes(nodesData).sort((a, b) =>
     getEntityName(a).localeCompare(getEntityName(b))
@@ -788,6 +789,7 @@ export const createNodes = (
         x: 0,
         y: 0,
       },
+      ...(hidden && { hidden }),
     };
   });
 };
@@ -795,7 +797,8 @@ export const createNodes = (
 export const createEdges = (
   nodes: EntityReference[],
   edges: EdgeDetails[],
-  entityFqn: string
+  entityFqn: string,
+  hidden?: boolean
 ) => {
   const lineageEdgesV1: Edge[] = [];
   const edgeIds = new Set<string>();
@@ -839,6 +842,7 @@ export const createEdges = (
                   targetHandle: encodedToColumn,
                   sourceHandle: encodedFromColumn,
                 },
+                ...(hidden && { hidden }),
               });
             }
           });
@@ -1355,28 +1359,25 @@ const processNodeArray = (
     .flat();
 };
 
-const processPipelineEdge = (
-  edge: EdgeDetails,
-  pipelineNode: Pipeline
-): EdgeDetails[] => {
+const processPipelineEdge = (edge: EdgeDetails, pipelineNode: Pipeline) => {
   const pipelineEntityType = get(pipelineNode, 'entityType');
 
   // Create two edges: fromEntity -> pipeline and pipeline -> toEntity
-  const edgeFromToPipeline: EdgeDetails = {
+  const edgeFromToPipeline = {
     fromEntity: edge.fromEntity,
     toEntity: {
       id: pipelineNode.id,
       type: pipelineEntityType,
-      fqn: pipelineNode.fullyQualifiedName ?? '',
+      fullyQualifiedName: pipelineNode.fullyQualifiedName ?? '',
     },
     extraInfo: edge,
   };
 
-  const edgePipelineToTo: EdgeDetails = {
+  const edgePipelineToTo = {
     fromEntity: {
       id: pipelineNode.id,
       type: pipelineEntityType,
-      fqn: pipelineNode.fullyQualifiedName ?? '',
+      fullyQualifiedName: pipelineNode.fullyQualifiedName ?? '',
     },
     toEntity: edge.toEntity,
     extraInfo: edge,
@@ -1389,27 +1390,30 @@ const processEdges = (
   edges: EdgeDetails[],
   nodesArray: LineageEntityReference[]
 ): EdgeDetails[] => {
-  return edges.reduce((acc: EdgeDetails[], edge: EdgeDetails) => {
-    if (!edge.pipeline) {
-      return [...acc, edge];
-    }
+  return edges.reduce<EdgeDetails[]>(
+    (acc: EdgeDetails[], edge: EdgeDetails) => {
+      if (!edge.pipeline) {
+        return [...acc, edge];
+      }
 
-    // Find if pipeline node exists
-    const pipelineNode = nodesArray.find(
-      (node) => node.fullyQualifiedName === edge.pipeline?.fullyQualifiedName
-    );
+      // Find if pipeline node exists
+      const pipelineNode = nodesArray.find(
+        (node) => node.fullyQualifiedName === edge.pipeline?.fullyQualifiedName
+      );
 
-    if (!pipelineNode) {
-      return [...acc, edge];
-    }
+      if (!pipelineNode) {
+        return [...acc, edge];
+      }
 
-    const pipelineEdges = processPipelineEdge(
-      edge,
-      pipelineNode as unknown as Pipeline
-    );
+      const pipelineEdges = processPipelineEdge(
+        edge,
+        pipelineNode as unknown as Pipeline
+      );
 
-    return [...acc, ...pipelineEdges];
-  }, []);
+      return [...acc, ...pipelineEdges];
+    },
+    []
+  );
 };
 
 const processPagination = (
@@ -1479,7 +1483,10 @@ export const parseLineageData = (
 
   // Combine all nodes and edges
   const finalNodes = [...processedNodes, ...newNodes];
-  const finalEdges = [...processedEdges, ...newEdges];
+  const finalEdges = [
+    ...(processedEdges as unknown as EdgeDetails[]),
+    ...newEdges,
+  ];
 
   // Find the main entity
   const entity = nodesArray.find(
@@ -1622,4 +1629,29 @@ export const getEdgeDataFromEdge = (edge: Edge): EdgeData => {
     toEntity: data.edge.toEntity.type,
     toId: data.edge.toEntity.id,
   };
+};
+
+export const removeUnconnectedNodes = (
+  edgeData: { fromId: string; toId: string },
+  nodes: Node[],
+  edges: Edge[]
+): Node[] => {
+  const targetNode = nodes?.find((n) => edgeData.toId === n.id);
+  const sourceNode = nodes?.find((n) => edgeData.fromId === n.id);
+  let updatedNodes = [...nodes];
+
+  if (targetNode && sourceNode) {
+    const outgoersSourceNode = getOutgoers(sourceNode, nodes, edges);
+    const incomersTargetNode = getIncomers(targetNode, nodes, edges);
+
+    if (outgoersSourceNode.length === 1) {
+      updatedNodes = updatedNodes.filter((n) => n.id !== sourceNode.id);
+    }
+
+    if (incomersTargetNode.length === 1) {
+      updatedNodes = updatedNodes.filter((n) => n.id !== targetNode.id);
+    }
+  }
+
+  return updatedNodes;
 };
