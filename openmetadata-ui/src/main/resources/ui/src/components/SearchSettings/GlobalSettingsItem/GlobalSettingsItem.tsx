@@ -53,7 +53,9 @@ export const GlobalSettingItem = ({
 
   return (
     <div className="d-flex items-center justify-between p-y-xs global-settings-item">
-      <Typography.Text>{label}</Typography.Text>
+      <Typography.Text data-testid="global-setting-label">
+        {label}
+      </Typography.Text>
 
       {isEditing ? (
         <div className="m-l-md d-flex justify-end inline-edit-container">
@@ -76,12 +78,13 @@ export const GlobalSettingItem = ({
         <div className="d-flex items-center justify-end value-container">
           <span
             className="m-l-xlg font-semibold p-x-xss global-settings-item-value"
-            data-testid="setting-value">
+            data-testid="global-setting-value">
             {value}
           </span>
           <Icon
             className="m-l-sm flex-shrink"
             component={EditIcon}
+            data-testid="global-setting-edit-icon"
             onClick={() => setIsEditing(true)}
           />
         </div>

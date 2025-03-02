@@ -45,10 +45,12 @@ const TagBoostComponent: React.FC<TagBoostProps> = ({
       const formattedOptions = response.data.map((item) => ({
         label: (
           <div className="d-flex flex-column">
-            <Typography.Text className="text-sm">
+            <Typography.Text className="text-sm" data-testid="tag-option-label">
               {item.data.displayName ?? item.data.name}
             </Typography.Text>
-            <Typography.Text className="text-grey-muted text-sm">
+            <Typography.Text
+              className="text-grey-muted text-sm"
+              data-testid="tag-option-fully-qualified-name">
               {item.data.fullyQualifiedName}
             </Typography.Text>
           </div>
@@ -70,17 +72,19 @@ const TagBoostComponent: React.FC<TagBoostProps> = ({
       tagFQN: value,
     };
     setFormData(updatedData);
-    if (updatedData.tagFQN && updatedData.boost) {
-      onTagBoostChange(updatedData);
-    }
+    handleUpdateTagBoost(updatedData);
   };
 
   const handleBoostChange = (value: number) => {
     const updatedData = { ...formData, boost: value };
 
     setFormData(updatedData);
-    if (updatedData.tagFQN && updatedData.boost) {
-      onTagBoostChange(updatedData);
+    handleUpdateTagBoost(updatedData);
+  };
+
+  const handleUpdateTagBoost = (tagBoost: TagBoost) => {
+    if (tagBoost.tagFQN && tagBoost.boost) {
+      onTagBoostChange(tagBoost);
     }
   };
 
@@ -88,12 +92,13 @@ const TagBoostComponent: React.FC<TagBoostProps> = ({
     <div className="m-t-md">
       <div className="m-b-sm p-sm tag-boost-header">
         <div className="d-flex items-center justify-between m-b-sm">
-          <Typography.Text className="m-b-sm d-block">
+          <Typography.Text className="m-b-sm d-block" data-testid="tag-label">
             {t('label.tag')}
           </Typography.Text>
           <Icon
             className="font-semibold text-xl delete-icon"
             component={Delete}
+            data-testid="delete-tag-boost"
             onClick={() => onDeleteBoost(tagBoost.tagFQN)}
           />
         </div>
@@ -101,6 +106,7 @@ const TagBoostComponent: React.FC<TagBoostProps> = ({
           showSearch
           api={fetchTags}
           className="w-full"
+          data-testid="tag-select"
           disabled={!!tagBoost.tagFQN}
           filterOption={(input, option) =>
             (option?.value?.toString().toLowerCase() ?? '').includes(
@@ -116,8 +122,12 @@ const TagBoostComponent: React.FC<TagBoostProps> = ({
 
         <div className="m-t-lg">
           <div className="d-flex items-center justify-between">
-            <Typography.Text>{t('label.impact')}</Typography.Text>
-            <Typography.Text className="font-semibold boost-value">
+            <Typography.Text data-testid="tag-impact-label">
+              {t('label.impact')}
+            </Typography.Text>
+            <Typography.Text
+              className="font-semibold boost-value"
+              data-testid="tag-boost-value">
               {formData.boost}
             </Typography.Text>
           </div>

@@ -83,6 +83,7 @@ const SearchPreview = () => {
             <ExploreSearchCard
               showEntityIcon
               className="search-card"
+              data-testid="searched-data-card"
               id={_id}
               key={_source.name}
               showTags={false}
@@ -121,7 +122,10 @@ const SearchPreview = () => {
 
   return (
     <div className="search-preview">
-      <Typography.Title className="header-title" level={5}>
+      <Typography.Title
+        className="header-title"
+        data-testid="search-preview"
+        level={5}>
         {t('label.preview')}
       </Typography.Title>
       <Input

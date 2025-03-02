@@ -375,7 +375,7 @@ const EntitySearchSettings = () => {
       key: '1',
       label: t('label.field-plural'),
       children: (
-        <div className="config-section">
+        <div className="config-section" data-testid="field-configurations">
           {entityFields.map((field, index) => (
             <FieldConfiguration
               field={field}
@@ -397,7 +397,7 @@ const EntitySearchSettings = () => {
       key: '2',
       label: t('label.boost-plural'),
       children: (
-        <div className="config-section">
+        <div className="config-section" data-testid="boost-configurations">
           <div className="p-y-xs p-x-sm border-radius-card m-b-sm bg-white config-section-content">
             <Typography.Text className="text-grey-muted text-xs font-normal">
               {t('label.score-mode')}
@@ -405,6 +405,7 @@ const EntitySearchSettings = () => {
             <Select
               bordered={false}
               className="w-full border-none custom-select"
+              data-testid="score-mode-select"
               options={scoreModeOptions}
               value={searchSettings.scoreMode}
               onChange={(value: ScoreMode) =>
@@ -419,6 +420,7 @@ const EntitySearchSettings = () => {
             <Select
               bordered={false}
               className="w-full border-none custom-select"
+              data-testid="boost-mode-select"
               options={boostModeOptions}
               value={searchSettings.boostMode}
               onChange={(value: BoostMode) =>
@@ -455,6 +457,7 @@ const EntitySearchSettings = () => {
       pageTitle={t('label.search')}>
       <Row
         className="entity-search-settings-header bg-white m-b-lg p-y-md p-x-lg"
+        data-testid="entity-search-settings-header"
         gutter={[0, 16]}>
         <Col span={24}>
           <TitleBreadcrumb titleLinks={breadcrumbs} />
@@ -498,11 +501,13 @@ const EntitySearchSettings = () => {
           <div className="d-flex justify-end p-t-md">
             <Button
               className="restore-defaults-btn font-semibold"
+              data-testid="restore-defaults-btn"
               onClick={handleRestoreDefaults}>
               {t('label.restore-default-plural')}
             </Button>
             <Button
               className="save-btn font-semibold m-l-md"
+              data-testid="save-btn"
               onClick={handleSaveChanges}>
               {t('label.save')}
             </Button>

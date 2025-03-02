@@ -18,6 +18,7 @@ import { ReactComponent as Delete } from '../../../assets/svg/delete-white.svg';
 import { ReactComponent as Document } from '../../../assets/svg/document.svg';
 import { FieldBoost } from '../../../generated/configuration/searchSettings';
 import './add-boost.less';
+
 interface AddBoostProps {
   boosts: FieldBoost[];
   fieldName: string;
@@ -47,7 +48,7 @@ const AddBoost = ({
     <div className="bg-white custom-panel add-boost-container">
       <div className="d-flex items-center gap-2 add-boost-header">
         <Icon className="text-xl" component={Document} />
-        <Typography.Text className="font-medium">
+        <Typography.Text className="font-medium" data-testid="boost-label">
           {t('label.value-boost')}
         </Typography.Text>
       </div>
@@ -55,7 +56,9 @@ const AddBoost = ({
       <div className="m-y-sm p-box">
         <div className="d-flex items-center justify-between">
           <Typography.Text>{t('label.impact')}</Typography.Text>
-          <Typography.Text className="font-semibold boost-value">
+          <Typography.Text
+            className="font-semibold boost-value"
+            data-testid="boost-value">
             {currentBoost}
           </Typography.Text>
         </div>
@@ -71,6 +74,7 @@ const AddBoost = ({
         <div className="d-flex justify-end w-full">
           <Button
             className="delete-boost-btn d-flex items-center gap-2 border-none border-radius-card "
+            data-testid="delete-boost-btn"
             onClick={handleDelete}>
             <Icon className="text-xl font-semibold" component={Delete} />
             <span className="text-sm">{t('label.delete-boost')}</span>

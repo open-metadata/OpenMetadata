@@ -214,6 +214,7 @@ const SearchSettingsPage = () => {
               <Switch
                 checked={searchConfig?.enableAccessControl}
                 className="m-l-xlg global-setting-card__action"
+                data-testid="enable-roles-polices-in-search-switch"
                 disabled={isUpdating}
                 onChange={() =>
                   handleUpdateSearchConfig({
@@ -247,6 +248,7 @@ const SearchSettingsPage = () => {
         </Col>
         <Col className="filter-configuration-container" span={24}>
           <Dropdown
+            data-testid="add-filter-dropdown"
             getPopupContainer={(triggerNode) => triggerNode.parentElement!}
             menu={menuItems}
             open={visible}
@@ -301,6 +303,7 @@ const SearchSettingsPage = () => {
               </div>
               <Button
                 className="search-setting-card-action-btn"
+                data-testid="view-detail-button"
                 onClick={() => history.push(data.key)}>
                 {t('label.view-detail-plural')}
               </Button>

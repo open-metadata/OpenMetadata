@@ -62,6 +62,7 @@ const FieldConfiguration: React.FC<FieldConfigurationProps> = ({
         label: (
           <Button
             className="d-flex items-center justify-between border-none bg-transparent"
+            data-testid="value-boost-option"
             onClick={() => handleValueBoostClick(field.fieldName)}>
             <Icon className="text-xl" component={Document} />
             <Typography.Text>{t('label.value')}</Typography.Text>
@@ -111,17 +112,22 @@ const FieldConfiguration: React.FC<FieldConfigurationProps> = ({
         header={
           <div
             className="field-container-header"
+            data-testid="field-container-header"
             style={{
               backgroundColor: activeFieldKeys[index]?.includes(String(index))
                 ? '#F5FAFF'
                 : 'white',
             }}>
-            <Typography.Text>{field.fieldName}</Typography.Text>
+            <Typography.Text data-testid="field-name">
+              {field.fieldName}
+            </Typography.Text>
             <div className="d-flex items-center justify-between m-y-xss">
               <span className="text-grey-muted text-xs font-normal">
                 {t('label.select-test-type')}
               </span>
-              <span className="p-x-xs font-semibold text-primary d-flex items-center field-weightage">
+              <span
+                className="p-x-xs font-semibold text-primary d-flex items-center field-weightage"
+                data-testid="field-weight">
                 <Icon className="text-sm" component={FilterIcon} />
                 {field.weight < 10 ? `0${field.weight}` : field.weight}
               </span>
@@ -143,6 +149,7 @@ const FieldConfiguration: React.FC<FieldConfigurationProps> = ({
                 false
               }
               className="m-l-xlg"
+              data-testid="highlight-field-switch"
               onChange={() => onHighlightFieldsChange(field.fieldName)}
             />
           </div>
@@ -155,9 +162,15 @@ const FieldConfiguration: React.FC<FieldConfigurationProps> = ({
             onChange={(e) =>
               onMatchTypeChange(field.fieldName, e.target.value as MatchType)
             }>
-            <Radio value="mustMatch">{t('label.must-match')}</Radio>
-            <Radio value="shouldMatch">{t('label.should-match')}</Radio>
-            <Radio value="mustNotMatch">{t('label.must-not-match')}</Radio>
+            <Radio data-testid="must-match-radio" value="mustMatch">
+              {t('label.must-match')}
+            </Radio>
+            <Radio data-testid="should-match-radio" value="shouldMatch">
+              {t('label.should-match')}
+            </Radio>
+            <Radio data-testid="must-not-match-radio" value="mustNotMatch">
+              {t('label.must-not-match')}
+            </Radio>
           </Radio.Group>
           <Divider />
 
@@ -188,7 +201,9 @@ const FieldConfiguration: React.FC<FieldConfigurationProps> = ({
               placement="bottom"
               trigger={['click']}
               onOpenChange={handleBoostDropdownToggle}>
-              <Button className="add-boost-btn d-flex items-center justify-center gap-2">
+              <Button
+                className="add-boost-btn d-flex items-center justify-center gap-2"
+                data-testid="add-boost">
                 <span className="font-semibold text-sm">
                   {t('label.add-boost')}
                 </span>
