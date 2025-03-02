@@ -2,7 +2,11 @@ package org.openmetadata.service.search.elasticsearch;
 
 import static es.org.elasticsearch.index.query.QueryBuilders.*;
 import static org.openmetadata.service.search.EntityBuilderConstant.COLUMNS_NAME_KEYWORD;
+import static org.openmetadata.service.search.EntityBuilderConstant.DOMAIN_DISPLAY_NAME_KEYWORD;
+import static org.openmetadata.service.search.EntityBuilderConstant.ES_TAG_FQN_FIELD;
 import static org.openmetadata.service.search.EntityBuilderConstant.FIELD_COLUMN_NAMES;
+import static org.openmetadata.service.search.EntityBuilderConstant.MAX_AGGREGATE_SIZE;
+import static org.openmetadata.service.search.EntityBuilderConstant.OWNER_DISPLAY_NAME_KEYWORD;
 
 import es.org.elasticsearch.common.lucene.search.function.CombineFunction;
 import es.org.elasticsearch.common.lucene.search.function.FieldValueFactorFunction;
@@ -18,6 +22,8 @@ import es.org.elasticsearch.index.query.functionscore.ScoreFunctionBuilders;
 import es.org.elasticsearch.search.aggregations.AggregationBuilders;
 import es.org.elasticsearch.search.builder.SearchSourceBuilder;
 import es.org.elasticsearch.search.fetch.subphase.highlight.HighlightBuilder;
+
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
@@ -285,18 +291,12 @@ public class ElasticSearchSourceBuilderFactory
   }
 
   private SearchSourceBuilder buildGenericDataAssetSearchBuilder(String query, int from, int size) {
-    QueryStringQueryBuilder queryBuilder =
-        (QueryStringQueryBuilder)
-            buildSearchQueryBuilder(
-                query,
-                Map.of(
-                    "displayName", 15.0f,
-                    "displayName.ngram", 1.0f,
-                    "description", 1.0f,
-                    "description.ngram", 1.0f,
-                    "fullyQualifiedName", 10.0f,
-                    "fullyQualifiedName.ngram", 1.0f));
-    return searchBuilder(queryBuilder, buildHighlights(List.of()), from, size);
+    QueryStringQueryBuilder queryStringBuilder =
+        buildSearchQueryBuilder(query, SearchIndex.getDefaultFields());
+    FunctionScoreQueryBuilder queryBuilder = boostScore(queryStringBuilder);
+    HighlightBuilder hb = buildHighlights(new ArrayList<>());
+    SearchSourceBuilder searchSourceBuilder = searchBuilder(queryBuilder, hb, from, size);
+    return addAggregation(searchSourceBuilder);
   }
 
   private SearchSourceBuilder buildUserOrTeamSearchBuilder(String query, int from, int size) {
@@ -324,19 +324,31 @@ public class ElasticSearchSourceBuilderFactory
 
   private SearchSourceBuilder addAggregation(SearchSourceBuilder searchSourceBuilder) {
     searchSourceBuilder
-        .aggregation(AggregationBuilders.terms("serviceType").field("serviceType.keyword"))
-        .aggregation(AggregationBuilders.terms("entityType").field("entityType.keyword"))
-        .aggregation(
-            AggregationBuilders.terms("owner.displayName").field("owner.displayName.keyword"))
-        .aggregation(AggregationBuilders.terms("owner.type").field("owner.type.keyword"))
-        .aggregation(AggregationBuilders.terms("service.name").field("service.name.keyword"))
-        .aggregation(AggregationBuilders.terms("service.type").field("service.type.keyword"))
-        .aggregation(AggregationBuilders.terms("tier.tagFQN").field("tier.tagFQN.keyword"))
-        .aggregation(AggregationBuilders.terms("tags.tagFQN").field("tags.tagFQN.keyword"))
-        .aggregation(AggregationBuilders.terms("database.name").field("database.name.keyword"))
-        .aggregation(
-            AggregationBuilders.terms("databaseSchema.name").field("databaseSchema.name.keyword"))
-        .aggregation(AggregationBuilders.terms("domain.name").field("domain.name.keyword"));
+    .aggregation(
+        AggregationBuilders.terms("serviceType").field("serviceType").size(MAX_AGGREGATE_SIZE))
+    .aggregation(
+        AggregationBuilders.terms("service.displayName.keyword")
+            .field("service.displayName.keyword")
+            .size(MAX_AGGREGATE_SIZE))
+    .aggregation(
+        AggregationBuilders.terms("entityType").field("entityType").size(MAX_AGGREGATE_SIZE))
+    .aggregation(
+        AggregationBuilders.terms("tier.tagFQN").field("tier.tagFQN").size(MAX_AGGREGATE_SIZE))
+    .aggregation(
+        AggregationBuilders.terms("certification.tagLabel.tagFQN")
+            .field("certification.tagLabel.tagFQN")
+            .size(MAX_AGGREGATE_SIZE))
+    .aggregation(
+        AggregationBuilders.terms(OWNER_DISPLAY_NAME_KEYWORD)
+            .field(OWNER_DISPLAY_NAME_KEYWORD)
+            .size(MAX_AGGREGATE_SIZE))
+    .aggregation(
+        AggregationBuilders.terms(DOMAIN_DISPLAY_NAME_KEYWORD)
+            .field(DOMAIN_DISPLAY_NAME_KEYWORD)
+            .size(MAX_AGGREGATE_SIZE))
+    .aggregation(AggregationBuilders.terms(ES_TAG_FQN_FIELD).field(ES_TAG_FQN_FIELD))
+    .aggregation(
+        AggregationBuilders.terms("index_count").field("_index").size(MAX_AGGREGATE_SIZE));
     return searchSourceBuilder;
   }
 
@@ -620,7 +632,25 @@ public class ElasticSearchSourceBuilderFactory
                     "description.ngram", 1.0f,
                     "fullyQualifiedName", 10.0f,
                     "fullyQualifiedName.ngram", 1.0f));
-    return searchBuilder(queryBuilder, buildHighlights(List.of()), from, size);
+    SearchSourceBuilder searchSourceBuilder = searchBuilder(queryBuilder, buildHighlights(List.of()), from, size);
+    searchSourceBuilder.aggregation(
+        AggregationBuilders.terms("database.name.keyword")
+            .field("database.name.keyword")
+            .size(MAX_AGGREGATE_SIZE));
+    searchSourceBuilder.aggregation(
+        AggregationBuilders.terms("databaseSchema.name.keyword")
+            .field("databaseSchema.name.keyword")
+            .size(MAX_AGGREGATE_SIZE));
+    // used for explore tree results
+    searchSourceBuilder.aggregation(
+        AggregationBuilders.terms("database.displayName")
+            .field("database.displayName")
+            .size(MAX_AGGREGATE_SIZE));
+    searchSourceBuilder.aggregation(
+        AggregationBuilders.terms("databaseSchema.displayName")
+            .field("databaseSchema.displayName")
+            .size(MAX_AGGREGATE_SIZE));
+    return addAggregation(searchSourceBuilder);
   }
 
   private SearchSourceBuilder buildSearchAcrossIndexesBuilder(String query, int from, int size) {
@@ -636,12 +666,21 @@ public class ElasticSearchSourceBuilderFactory
                     "fullyQualifiedName", 10.0f,
                     "fullyQualifiedName.ngram", 1.0f,
                     "entityType", 10.0f));
-    return searchBuilder(queryBuilder, buildHighlights(List.of()), from, size);
+
+    SearchSourceBuilder searchSourceBuilder =  searchBuilder(queryBuilder, buildHighlights(List.of()), from, size);
+    searchSourceBuilder.aggregation(
+        AggregationBuilders.terms("database.name.keyword")
+            .field("database.name.keyword")
+            .size(MAX_AGGREGATE_SIZE));
+    searchSourceBuilder.aggregation(
+        AggregationBuilders.terms("databaseSchema.name.keyword")
+            .field("databaseSchema.name.keyword")
+            .size(MAX_AGGREGATE_SIZE));
+    return addAggregation(searchSourceBuilder);
   }
 
   private SearchSourceBuilder buildAggregateSearchBuilder(String query, int from, int size) {
     QueryStringQueryBuilder queryBuilder =
-        (QueryStringQueryBuilder)
             buildSearchQueryBuilder(
                 query,
                 Map.of(
