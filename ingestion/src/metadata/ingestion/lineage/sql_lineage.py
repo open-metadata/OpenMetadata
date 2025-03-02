@@ -787,6 +787,50 @@ def get_lineage_via_table_entity(
         )
 
 
+def _get_lineage_for_path(
+    from_fqn: str,
+    to_fqn: str,
+    from_node: Any,
+    current_node: Any,
+    table_chain: List[str],
+    metadata: OpenMetadata,
+) -> Optional[Either[AddLineageRequest]]:
+    """
+    Get lineage for a pair of FQNs in the path
+    """
+    try:
+        to_entity = get_entity_from_es_result(
+            entity_list=metadata.es_search_from_fqn(
+                entity_type=Table,
+                fqn_search_string=to_fqn,
+            ),
+        )
+        from_entity = get_entity_from_es_result(
+            entity_list=metadata.es_search_from_fqn(
+                entity_type=Table,
+                fqn_search_string=from_fqn,
+            ),
+        )
+        if to_entity and from_entity:
+            # Create the table chain string
+            table_relationship = "--- TEMPT TABLE LINEAGE \n--- "
+            table_relationship += " > ".join(table_chain)
+            return _build_table_lineage(
+                to_entity=to_entity,
+                from_entity=from_entity,
+                to_table_raw_name=str(current_node),
+                from_table_raw_name=str(from_node),
+                masked_query=table_relationship,  # Using table chain as the query
+                column_lineage_map={},
+                lineage_source=LineageSource.QueryLineage,
+                procedure=None,
+            )
+    except Exception as exc:
+        logger.debug(traceback.format_exc())
+        logger.error(f"Error fetching table entities [{from_fqn} -> {to_fqn}]: {exc}")
+    return None
+
+
 def _process_sequence(
     sequence: List[Any], graph: DiGraph, metadata: OpenMetadata
 ) -> Iterable[Either[AddLineageRequest]]:
@@ -794,7 +838,6 @@ def _process_sequence(
     Process a sequence of nodes to generate lineage information.
     """
     from_node = None
-    previous_node = None
     table_chain = []
     for node in sequence:
         try:
@@ -807,45 +850,39 @@ def _process_sequence(
             if current_fqns and from_node is not None:
                 from_fqns = from_node.get("fqns", [])
                 for from_fqn, to_fqn in itertools.product(from_fqns, current_fqns):
-                    try:
-                        to_entity = get_entity_from_es_result(
-                            entity_list=metadata.es_search_from_fqn(
-                                entity_type=Table,
-                                fqn_search_string=to_fqn,
-                            ),
-                        )
-                        from_entity = get_entity_from_es_result(
-                            entity_list=metadata.es_search_from_fqn(
-                                entity_type=Table,
-                                fqn_search_string=from_fqn,
-                            ),
-                        )
-                        if to_entity and from_entity:
-                            # Create the table chain string
-                            table_relationship = "--- TEMPT TABLE LINEAGE \n--- "
-                            table_relationship += " > ".join(table_chain)
-                            yield _build_table_lineage(
-                                to_entity=to_entity,
-                                from_entity=from_entity,
-                                to_table_raw_name=str(node),
-                                from_table_raw_name=str(from_node),
-                                masked_query=table_relationship,  # Using table chain as the query
-                                column_lineage_map={},
-                                lineage_source=LineageSource.QueryLineage,
-                                procedure=None,
-                            )
-                    except Exception as exc:
-                        logger.debug(traceback.format_exc())
-                        logger.error(
-                            f"Error fetching table entities [{from_fqn} -> {to_fqn}]: {exc}"
-                        )
+                    lineage = _get_lineage_for_path(
+                        from_fqn=from_fqn,
+                        to_fqn=to_fqn,
+                        from_node=from_node,
+                        current_node=node,
+                        table_chain=table_chain,
+                        metadata=metadata,
+                    )
+                    if lineage:
+                        yield lineage
 
             if current_fqns:
                 from_node = graph.nodes[node]
-            previous_node = node
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.error(f"Error creating lineage for node [{node}]: {exc}")
+
+
+def _get_paths_from_subtree(subtree: DiGraph) -> List[List[Any]]:
+    """
+    Get all paths from root nodes to leaf nodes in a subtree
+    """
+    paths = []
+    # Find all root nodes (nodes with no incoming edges)
+    root_nodes = [node for node in subtree if subtree.in_degree(node) == 0]
+    # Find all leaf nodes (nodes with no outgoing edges)
+    leaf_nodes = [node for node in subtree if subtree.out_degree(node) == 0]
+
+    # Find all simple paths from each root to each leaf
+    for root in root_nodes:
+        for leaf in leaf_nodes:
+            paths.extend(nx.all_simple_paths(subtree, root, leaf))
+    return paths
 
 
 def get_lineage_by_graph(
@@ -869,22 +906,8 @@ def get_lineage_by_graph(
     # Get all weakly connected components
     components = list(nx.weakly_connected_components(graph))
 
-    # Extract each component as an independent subgraph
-    independent_subtrees = [
-        graph.subgraph(component).copy() for component in components
-    ]
-
-    # Process each subtree
-    for subtree in independent_subtrees:
-        # Find all root nodes (nodes with no incoming edges)
-        root_nodes = [node for node in subtree if subtree.in_degree(node) == 0]
-
-        # For each root node, find all possible paths to leaf nodes
-        for root in root_nodes:
-            # Find all leaf nodes (nodes with no outgoing edges)
-            leaf_nodes = [node for node in subtree if subtree.out_degree(node) == 0]
-
-            # Find all simple paths from root to each leaf
-            for leaf in leaf_nodes:
-                for path in nx.all_simple_paths(subtree, root, leaf):
-                    yield from _process_sequence(path, subtree, metadata)
+    # Extract each component as an independent subgraph and process paths
+    for component in components:
+        subtree = graph.subgraph(component).copy()
+        for path in _get_paths_from_subtree(subtree):
+            yield from _process_sequence(path, subtree, metadata)
