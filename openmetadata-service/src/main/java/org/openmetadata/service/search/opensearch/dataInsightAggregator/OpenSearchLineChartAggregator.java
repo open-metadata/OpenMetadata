@@ -59,8 +59,23 @@ public class OpenSearchLineChartAggregator implements OpenSearchDynamicChartAggr
       String metricName = metric.getName() == null ? "metric_" + ++i : metric.getName();
       if (lineChart.getxAxisField() != null
           && !lineChart.getxAxisField().equals(DataInsightSystemChartRepository.TIMESTAMP_FIELD)) {
+        String[] includeArr = null;
+        String[] excludeArr = null;
+        if (!CommonUtil.nullOrEmpty(lineChart.getIncludeXAxisFiled())) {
+          includeArr = lineChart.getIncludeGroups().toArray(new String[0]);
+        }
+        if (!CommonUtil.nullOrEmpty(lineChart.getExcludeXAxisField())) {
+          excludeArr = lineChart.getExcludeGroups().toArray(new String[0]);
+        }
+        IncludeExclude includeExclude = null;
+        if (includeArr != null || excludeArr != null) {
+          includeExclude = new IncludeExclude(includeArr, excludeArr);
+        }
         aggregationBuilder =
-            AggregationBuilders.terms(metricName).field(lineChart.getxAxisField()).size(1000);
+            AggregationBuilders.terms(metricName)
+                .field(lineChart.getxAxisField())
+                .includeExclude(includeExclude)
+                .size(1000);
 
         // in case of horizontal axis only process data of 24 hr prior to end time
         start = end - MILLISECONDS_IN_DAY;

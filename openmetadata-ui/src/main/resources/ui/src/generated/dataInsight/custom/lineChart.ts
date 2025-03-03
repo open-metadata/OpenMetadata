@@ -19,6 +19,10 @@ export interface LineChart {
      */
     excludeGroups?: string[];
     /**
+     * List of fields to be excluded in the data insight chart when xAxisField is specified.
+     */
+    excludeXAxisField?: string[];
+    /**
      * Breakdown field for the data insight chart.
      */
     groupBy?: string;
@@ -26,7 +30,11 @@ export interface LineChart {
      * List of groups to be included in the data insight chart when groupBy is specified.
      */
     includeGroups?: string[];
-    kpiDetails?:    KpiDetails;
+    /**
+     * List of fields to be included in the data insight chart when xAxisField is specified.
+     */
+    includeXAxisFiled?: string[];
+    kpiDetails?:        KpiDetails;
     /**
      * Metrics for the data insight chart.
      */

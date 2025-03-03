@@ -86,6 +86,20 @@
             "description": "X-axis field for the data insight chart.",
             "type": "string",
             "default": "@timestamp"
+        },
+        "includeXAxisFiled": {
+            "description": "List of fields to be included in the data insight chart when xAxisField is specified.",
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "excludeXAxisField": {
+            "description": "List of fields to be excluded in the data insight chart when xAxisField is specified.",
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
         }
     },
     "additionalProperties": false
