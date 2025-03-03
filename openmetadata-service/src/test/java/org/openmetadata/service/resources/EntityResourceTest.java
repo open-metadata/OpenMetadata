@@ -177,6 +177,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.LifeCycle;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.type.csv.CsvDocumentation;
 import org.openmetadata.schema.type.csv.CsvHeader;
 import org.openmetadata.schema.type.csv.CsvImportResult;
@@ -2675,6 +2676,14 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     return getCollection().path("/" + id);
   }
 
+  protected final WebTarget getResource(UUID id, Map<String, String> queryParams) {
+    WebTarget target = getResource(id);
+    for (Entry<String, String> entry : queryParams.entrySet()) {
+      target = target.queryParam(entry.getKey(), entry.getValue());
+    }
+    return target;
+  }
+
   protected final WebTarget getResourceByName(String name) {
     return getCollection().path("/name/" + name);
   }
@@ -2752,13 +2761,23 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   public final T patchEntity(
       UUID id, String originalJson, T updated, Map<String, String> authHeaders)
       throws HttpResponseException {
+    return patchEntity(id, originalJson, updated, authHeaders, null);
+  }
+
+  public final T patchEntity(
+      UUID id,
+      String originalJson,
+      T updated,
+      Map<String, String> authHeaders,
+      ChangeSource changeSource)
+      throws HttpResponseException {
     try {
       ObjectMapper mapper = new ObjectMapper();
       updated.setOwners(reduceEntityReferences(updated.getOwners()));
       String updatedEntityJson = JsonUtils.pojoToJson(updated);
       JsonNode patch =
           JsonDiff.asJson(mapper.readTree(originalJson), mapper.readTree(updatedEntityJson));
-      return patchEntity(id, patch, authHeaders);
+      return patchEntity(id, patch, authHeaders, changeSource);
     } catch (JsonProcessingException ignored) {
 
     }
@@ -2767,7 +2786,17 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
   public final T patchEntity(UUID id, JsonNode patch, Map<String, String> authHeaders)
       throws HttpResponseException {
-    return TestUtils.patch(getResource(id), patch, entityClass, authHeaders);
+    return patchEntity(id, patch, authHeaders, null);
+  }
+
+  public final T patchEntity(
+      UUID id, JsonNode patch, Map<String, String> authHeaders, ChangeSource changeSource)
+      throws HttpResponseException {
+    Map<String, String> queryParams = new HashMap<>();
+    if (changeSource != null) {
+      queryParams.put("changeSource", changeSource.name());
+    }
+    return patch(getResource(id, queryParams), patch, entityClass, authHeaders);
   }
 
   public final T patchEntityUsingFqn(
@@ -3019,12 +3048,27 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       UpdateType updateType,
       ChangeDescription expectedChange)
       throws IOException {
+    return patchEntityAndCheck(
+        updated, originalJson, authHeaders, updateType, expectedChange, null);
+  }
+
+  /**
+   * Helper function to generate JSON PATCH, submit PATCH API request and validate response.
+   */
+  public final T patchEntityAndCheck(
+      T updated,
+      String originalJson,
+      Map<String, String> authHeaders,
+      UpdateType updateType,
+      ChangeDescription expectedChange,
+      ChangeSource changeSource)
+      throws IOException {
 
     String updatedBy =
         updateType == NO_CHANGE ? updated.getUpdatedBy() : getPrincipalName(authHeaders);
 
     // Validate information returned in patch response has the updates
-    T returned = patchEntity(updated.getId(), originalJson, updated, authHeaders);
+    T returned = patchEntity(updated.getId(), originalJson, updated, authHeaders, changeSource);
 
     validateCommonEntityFields(updated, returned, updatedBy);
     compareEntities(updated, returned, authHeaders);
@@ -3968,7 +4012,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   private String receiveCsvImportViaSocketIO(String entityName, String csv, boolean dryRun)
       throws Exception {
     UUID userId = getAdminUserId();
-    String uri = String.format("http://localhost:%d", APP.getLocalPort());
+    String uri = format("http://localhost:%d", APP.getLocalPort());
 
     IO.Options options = new IO.Options();
     options.path = "/api/v1/push/feed";
@@ -4046,7 +4090,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   protected String initiateExport(String entityName) throws IOException {
     WebTarget target = getResourceByName(entityName + "/exportAsync");
     CSVExportResponse response =
-        TestUtils.getWithResponse(
+        getWithResponse(
             target, CSVExportResponse.class, ADMIN_AUTH_HEADERS, Status.ACCEPTED.getStatusCode());
     return response.getJobId();
   }
@@ -4056,7 +4100,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     WebTarget target = getResourceByName(entityName + "/importAsync");
     target = !dryRun ? target.queryParam("dryRun", false) : target;
     CSVImportResponse response =
-        TestUtils.putCsv(target, csv, CSVImportResponse.class, Status.OK, ADMIN_AUTH_HEADERS);
+        putCsv(target, csv, CSVImportResponse.class, OK, ADMIN_AUTH_HEADERS);
     return response.getJobId();
   }
 
@@ -4125,7 +4169,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
   protected CsvDocumentation getCsvDocumentation() throws HttpResponseException {
     WebTarget target = getCollection().path("/documentation/csv");
-    return TestUtils.get(target, CsvDocumentation.class, ADMIN_AUTH_HEADERS);
+    return get(target, CsvDocumentation.class, ADMIN_AUTH_HEADERS);
   }
 
   public T assertOwnerInheritance(K createRequest, EntityReference expectedOwner)
@@ -4211,14 +4255,13 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       throws IOException {
     RestClient searchClient = getSearchClient();
     String entityType = entity.getType();
-    IndexMapping index = Entity.getSearchRepository().getIndexMapping(entityType);
+    IndexMapping index = getSearchRepository().getIndexMapping(entityType);
     Request request =
         new Request(
             "GET",
-            String.format(
-                "%s/_search", index.getIndexName(Entity.getSearchRepository().getClusterAlias())));
+            format("%s/_search", index.getIndexName(getSearchRepository().getClusterAlias())));
     String query =
-        String.format(
+        format(
             "{\"size\": 100, \"query\": {\"bool\": {\"must\": [{\"term\": {\"_id\": \"%s\"}}]}}}",
             entity.getId().toString());
     request.setJsonEntity(query);
@@ -4240,14 +4283,13 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       throws IOException {
     RestClient searchClient = getSearchClient();
     String entityType = entity.getType();
-    IndexMapping index = Entity.getSearchRepository().getIndexMapping(entityType);
+    IndexMapping index = getSearchRepository().getIndexMapping(entityType);
     Request request =
         new Request(
             "GET",
-            String.format(
-                "%s/_search", index.getIndexName(Entity.getSearchRepository().getClusterAlias())));
+            format("%s/_search", index.getIndexName(getSearchRepository().getClusterAlias())));
     String query =
-        String.format(
+        format(
             "{\"size\": 100, \"query\": {\"bool\": {\"must\": [{\"term\": {\"_id\": \"%s\"}}]}}}",
             entity.getId().toString());
     request.setJsonEntity(query);
