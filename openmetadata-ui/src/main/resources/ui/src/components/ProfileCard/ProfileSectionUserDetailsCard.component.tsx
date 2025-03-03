@@ -228,13 +228,13 @@ const ProfileSectionUserDetailsCard = ({
         <ProfilePicture
           avatarType="outlined"
           data-testid="replied-user"
-          name={userData.displayName ?? ''}
+          name={userData.displayName || userData.name}
           width="80"
         />
       </div>
       <div>
         <p className="profile-details-title" data-testid="user-display-name">
-          {userData?.displayName}
+          {userData?.displayName || userData.name}
         </p>
         {userEmailRender}
       </div>

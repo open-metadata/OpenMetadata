@@ -315,7 +315,7 @@ const ActivityFeedCardNew = ({
                 <ProfilePicture
                   avatarType="outlined"
                   key={feed.id}
-                  name={currentUser?.displayName ?? ''}
+                  name={currentUser?.displayName || currentUser?.name || ''}
                   size={32}
                 />
               </div>
