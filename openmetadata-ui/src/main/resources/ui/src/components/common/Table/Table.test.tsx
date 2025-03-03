@@ -19,15 +19,10 @@ import { getCustomizeColumnDetails } from '../../../utils/CustomizeColumnUtils';
 import Table from './Table';
 
 jest.mock('../../../utils/CustomizeColumnUtils', () => ({
-  getCustomizeColumnDetails: jest.fn().mockReturnValue({
-    staticColumns: ['static1'],
-    customizeColumns: ['col1', 'col2'],
-    columnDropdownSelections: ['col1'],
-    dropdownColumnList: [
-      { label: 'Column 1', value: 'col1' },
-      { label: 'Column 2', value: 'col2' },
-    ],
-  }),
+  getCustomizeColumnDetails: jest.fn().mockReturnValue([
+    { label: 'Column 1', value: 'col1' },
+    { label: 'Column 2', value: 'col2' },
+  ]),
   getReorderedColumns: jest.fn().mockImplementation((_, columns) => columns),
 }));
 
@@ -61,7 +56,6 @@ describe('Table component', () => {
   };
 
   it('should display skeleton loader if loading is true', async () => {
-    // render(<Table loading />);
     renderComponent({ loading: true });
 
     expect(await screen.findByTestId('loader')).toBeInTheDocument();
@@ -92,12 +86,7 @@ describe('Table component', () => {
   });
 
   it('should not render column dropdown when no customizable columns', () => {
-    (getCustomizeColumnDetails as jest.Mock).mockImplementationOnce(() => ({
-      staticColumns: [],
-      customizeColumns: [],
-      columnDropdownSelections: [],
-      dropdownColumnList: [],
-    }));
+    (getCustomizeColumnDetails as jest.Mock).mockImplementationOnce(() => []);
 
     renderComponent();
 
@@ -105,8 +94,8 @@ describe('Table component', () => {
   });
 
   it('should render table filters when provided', () => {
-    const tableFilters = <div data-testid="table-filters">Filters</div>;
-    renderComponent({ tableFilters });
+    const extraTableFilters = <div data-testid="table-filters">Filters</div>;
+    renderComponent({ extraTableFilters });
 
     expect(screen.getByTestId('table-filters')).toBeInTheDocument();
   });

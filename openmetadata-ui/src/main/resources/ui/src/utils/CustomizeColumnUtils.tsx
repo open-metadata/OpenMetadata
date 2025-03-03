@@ -11,49 +11,41 @@
  *  limitations under the License.
  */
 import { ColumnType } from 'antd/lib/table';
-import { has } from 'lodash';
-import {
-  TableColumnDropdownList,
-  TableColumns,
-} from '../components/common/Table/Table.interface';
+import { TableColumnDropdownList } from '../components/common/Table/Table.interface';
 
+/**
+ * Get customizable column details for table dropdown
+ * @param columns - Table columns configuration
+ * @param staticVisibleColumns - List of static visible column keys
+ * @returns Array of customizable columns for dropdown
+ */
 export const getCustomizeColumnDetails = <T extends ColumnType<T>>(
-  columns: TableColumns<T>[]
-) => {
-  const result = columns.reduce(
-    (acc, item) => {
-      const key = item.key as string;
-      const isCustomizable = has(item, 'defaultVisible');
+  columns?: ColumnType<T>[],
+  staticVisibleColumns?: string[]
+): TableColumnDropdownList[] => {
+  if (!columns?.length) {
+    return [];
+  }
 
-      if (isCustomizable) {
-        acc.customizeColumns.push(key);
-        acc.dropdownColumnList.push({
-          label: item.title as string,
-          value: key,
-        });
-        if (item.defaultVisible) {
-          acc.columnDropdownSelections.push(key);
-        }
-      } else {
-        acc.staticColumns.push(key);
-      }
-
-      return acc;
-    },
-    {
-      staticColumns: [] as string[],
-      customizeColumns: [] as string[],
-      columnDropdownSelections: [] as string[],
-      dropdownColumnList: [] as { label: string; value: string }[],
-    }
-  );
-
-  return result;
+  return columns
+    .filter(
+      (item) => !(staticVisibleColumns ?? []).includes(item.key as string)
+    )
+    .map((item) => ({
+      label: item.title as string,
+      value: item.key as string,
+    }));
 };
 
+/**
+ * Reorder columns based on the order in labels
+ * @param updatedColumnDropdownList - List of updated column dropdown list
+ * @param oldColumns - List of old columns
+ * @returns Reordered columns
+ */
 export const getReorderedColumns = <T extends ColumnType<T>>(
   updatedColumnDropdownList: TableColumnDropdownList[],
-  oldColumns: TableColumns<T>[]
+  oldColumns: ColumnType<T>[]
 ) => {
   // create a map of column positions based on labels
   const orderedColumns: Record<string, number> =

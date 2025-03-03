@@ -1079,7 +1079,6 @@ test.describe('Glossary tests', () => {
           'SYNONYMS',
           'OWNERS',
           'STATUS',
-          'ACTIONS',
         ];
         await verifyAllColumns(page, tableColumns, false);
       });

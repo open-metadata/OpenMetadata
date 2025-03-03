@@ -18,70 +18,78 @@ import {
 
 describe('CustomizeColumnUtils', () => {
   describe('getCustomizeColumnDetails', () => {
-    it('should return the correct structure for customizable and static columns', () => {
-      const columns = [
-        { key: 'col1', title: 'Column 1', defaultVisible: true },
-        { key: 'col2', title: 'Column 2', defaultVisible: false },
-        { key: 'col3', title: 'Column 3' }, // no defaultVisible property
-      ];
+    const columns = [
+      { key: 'col1', title: 'Column 1' },
+      { key: 'col2', title: 'Column 2' },
+    ];
 
-      const result = getCustomizeColumnDetails(columns);
-
-      expect(result).toEqual({
-        staticColumns: ['col3'],
-        customizeColumns: ['col1', 'col2'],
-        columnDropdownSelections: ['col1'],
-        dropdownColumnList: [
-          { label: 'Column 1', value: 'col1' },
-          { label: 'Column 2', value: 'col2' },
-        ],
-      });
+    it('should return an empty array when columns is not provided or is empty', () => {
+      expect(getCustomizeColumnDetails()).toEqual([]);
+      expect(getCustomizeColumnDetails([])).toEqual([]);
     });
 
-    it('should return an empty result when no columns are passed', () => {
-      const result = getCustomizeColumnDetails([]);
+    it('should return an empty array when there are no columns that match staticVisibleColumns', () => {
+      const staticVisibleColumns = ['col3']; // No matching columns
 
-      expect(result).toEqual({
-        staticColumns: [],
-        customizeColumns: [],
-        columnDropdownSelections: [],
-        dropdownColumnList: [],
-      });
+      expect(getCustomizeColumnDetails(columns, staticVisibleColumns)).toEqual([
+        { label: 'Column 1', value: 'col1' },
+        { label: 'Column 2', value: 'col2' },
+      ]);
     });
 
-    it('should handle columns without "defaultVisible" correctly', () => {
+    it('should exclude columns that are in staticVisibleColumns', () => {
       const columns = [
         { key: 'col1', title: 'Column 1' },
         { key: 'col2', title: 'Column 2' },
+        { key: 'col3', title: 'Column 3' },
       ];
+      const staticVisibleColumns = ['col2']; // Exclude 'col2'
 
-      const result = getCustomizeColumnDetails(columns);
-
-      expect(result).toEqual({
-        staticColumns: ['col1', 'col2'],
-        customizeColumns: [],
-        columnDropdownSelections: [],
-        dropdownColumnList: [],
-      });
+      expect(getCustomizeColumnDetails(columns, staticVisibleColumns)).toEqual([
+        { label: 'Column 1', value: 'col1' },
+        { label: 'Column 3', value: 'col3' },
+      ]);
     });
 
-    it('should handle columns with "defaultVisible" set to false', () => {
+    it('should return an empty array when all columns are excluded by staticVisibleColumns', () => {
       const columns = [
-        { key: 'col1', title: 'Column 1', defaultVisible: false },
-        { key: 'col2', title: 'Column 2', defaultVisible: false },
+        { key: 'col1', title: 'Column 1' },
+        { key: 'col2', title: 'Column 2' },
+        { key: 'col3', title: 'Column 3' },
       ];
+      const staticVisibleColumns = ['col1', 'col2', 'col3']; // All columns are excluded
 
-      const result = getCustomizeColumnDetails(columns);
+      expect(getCustomizeColumnDetails(columns, staticVisibleColumns)).toEqual(
+        []
+      );
+    });
 
-      expect(result).toEqual({
-        staticColumns: [],
-        customizeColumns: ['col1', 'col2'],
-        columnDropdownSelections: [],
-        dropdownColumnList: [
-          { label: 'Column 1', value: 'col1' },
-          { label: 'Column 2', value: 'col2' },
-        ],
-      });
+    it('should handle undefined staticVisibleColumns and return all columns', () => {
+      expect(getCustomizeColumnDetails(columns)).toEqual([
+        { label: 'Column 1', value: 'col1' },
+        { label: 'Column 2', value: 'col2' },
+      ]);
+    });
+
+    it('should handle null staticVisibleColumns and return all columns', () => {
+      expect(getCustomizeColumnDetails(columns)).toEqual([
+        { label: 'Column 1', value: 'col1' },
+        { label: 'Column 2', value: 'col2' },
+      ]);
+    });
+
+    it('should map columns correctly when both columns and staticVisibleColumns are provided', () => {
+      const columns = [
+        { key: 'col1', title: 'Column 1' },
+        { key: 'col2', title: 'Column 2' },
+        { key: 'col3', title: 'Column 3' },
+      ];
+      const staticVisibleColumns = ['col1']; // Exclude 'col1'
+
+      expect(getCustomizeColumnDetails(columns, staticVisibleColumns)).toEqual([
+        { label: 'Column 2', value: 'col2' },
+        { label: 'Column 3', value: 'col3' },
+      ]);
     });
   });
 

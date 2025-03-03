@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { ColumnType } from 'antd/lib/table';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
 import { TagLabel } from '../../../generated/type/tagLabel';
@@ -30,14 +29,9 @@ export type ModifiedGlossaryTerm = Omit<GlossaryTerm, 'children'> & {
   children?: GlossaryTerm[];
   value?: string;
   data?: TagLabel;
-  defaultVisible?: boolean;
 };
 
 export type MoveGlossaryTermType = {
   from: GlossaryTerm;
   to?: GlossaryTerm;
 };
-
-export interface GlossaryTermColumn extends ColumnType<ModifiedGlossaryTerm> {
-  defaultVisible?: boolean;
-}

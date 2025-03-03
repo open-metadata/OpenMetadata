@@ -53,20 +53,13 @@ const Table = <T extends object = any>(
 ) => {
   const { t } = useTranslation();
   const [propsColumns, setPropsColumns] = useState<ColumnType<T>[]>([]);
-  const [columnTypes, setColumnTypes] = useState<{
-    staticColumns: string[];
-    customizeColumns: string[];
-  }>({
-    staticColumns: [],
-    customizeColumns: [],
-  });
   const [isDropdownVisible, setIsDropdownVisible] = useState<boolean>(false);
   const [dropdownColumnList, setDropdownColumnList] = useState<
     TableColumnDropdownList[]
   >([]);
   const [columnDropdownSelections, setColumnDropdownSelections] = useState<
     string[]
-  >([]);
+  >(rest.defaultVisibleColumns ?? []);
   const { resizableColumns, components, tableWidth } = useAntdColumnResize(
     () => ({ columns: propsColumns, minWidth: 150 }),
     [propsColumns]
@@ -86,9 +79,9 @@ const Table = <T extends object = any>(
   );
 
   const handleColumnItemSelect = useCallback(
-    (key: string, checked: boolean) => {
+    (key: string, selected: boolean) => {
       setColumnDropdownSelections((prev: string[]) => {
-        return checked ? [...prev, key] : prev.filter((item) => item !== key);
+        return selected ? [...prev, key] : prev.filter((item) => item !== key);
       });
     },
     [setColumnDropdownSelections]
@@ -170,32 +163,26 @@ const Table = <T extends object = any>(
     : {};
 
   useEffect(() => {
-    const {
-      staticColumns,
-      customizeColumns,
-      dropdownColumnList,
-      columnDropdownSelections,
-    } = getCustomizeColumnDetails<T>(rest.columns ?? []);
-    setColumnTypes({ staticColumns, customizeColumns });
-    setDropdownColumnList(dropdownColumnList);
-    setColumnDropdownSelections(columnDropdownSelections);
-  }, [rest.columns]);
+    setDropdownColumnList(
+      getCustomizeColumnDetails<T>(rest.columns, rest.staticVisibleColumns)
+    );
+  }, [rest.columns, rest.staticVisibleColumns]);
 
   useEffect(() => {
     const filteredColumns = (rest.columns ?? []).filter(
       (item) =>
         columnDropdownSelections.includes(item.key as string) ||
-        columnTypes.staticColumns.includes(item.key as string)
+        (rest.staticVisibleColumns ?? []).includes(item.key as string)
     );
 
     setPropsColumns(getReorderedColumns(dropdownColumnList, filteredColumns));
-  }, [rest.columns, columnDropdownSelections, columnTypes.staticColumns]);
+  }, [rest.columns, columnDropdownSelections, rest.staticVisibleColumns]);
 
   return (
     <div className="table-container">
       {!isEmpty(dropdownColumnList) && (
         <div className="d-flex justify-end items-center gap-5 mb-4">
-          {rest.tableFilters}
+          {rest.extraTableFilters}
 
           <DndProvider backend={HTML5Backend}>
             <Dropdown

@@ -24,7 +24,7 @@ import {
   TableProps,
   Tooltip,
 } from 'antd';
-import { ExpandableConfig } from 'antd/lib/table/interface';
+import { ColumnsType, ExpandableConfig } from 'antd/lib/table/interface';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
@@ -58,6 +58,11 @@ import {
   TEXT_BODY_COLOR,
 } from '../../../constants/constants';
 import { GLOSSARIES_DOCS } from '../../../constants/docs.constants';
+import {
+  DEFAULT_VISIBLE_COLUMNS,
+  GLOSSARY_TERM_TABLE_COLUMNS_KEYS,
+  STATIC_VISIBLE_COLUMNS,
+} from '../../../constants/Glossary.contant';
 import { TABLE_CONSTANTS } from '../../../constants/Teams.constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { TabSpecificField } from '../../../enums/entity.enum';
@@ -90,7 +95,6 @@ import Table from '../../common/Table/Table';
 import TagButton from '../../common/TagButton/TagButton.component';
 import { ModifiedGlossary, useGlossaryStore } from '../useGlossary.store';
 import {
-  GlossaryTermColumn,
   GlossaryTermTabProps,
   ModifiedGlossaryTerm,
   MoveGlossaryTermType,
@@ -180,11 +184,11 @@ const GlossaryTermTab = ({
   );
 
   const columns = useMemo(() => {
-    const data: GlossaryTermColumn[] = [
+    const data: ColumnsType<ModifiedGlossaryTerm> = [
       {
         title: t('label.term-plural'),
-        dataIndex: 'name',
-        key: 'name',
+        dataIndex: GLOSSARY_TERM_TABLE_COLUMNS_KEYS.NAME,
+        key: GLOSSARY_TERM_TABLE_COLUMNS_KEYS.NAME,
         className: 'glossary-name-column',
         ellipsis: true,
         width: tableColumnsWidth.name,
@@ -214,10 +218,9 @@ const GlossaryTermTab = ({
       },
       {
         title: t('label.description'),
-        dataIndex: 'description',
-        key: 'description',
+        dataIndex: GLOSSARY_TERM_TABLE_COLUMNS_KEYS.DESCRIPTION,
+        key: GLOSSARY_TERM_TABLE_COLUMNS_KEYS.DESCRIPTION,
         width: tableColumnsWidth.description,
-        defaultVisible: true,
         render: (description: string) =>
           description.trim() ? (
             <RichTextEditorPreviewerV1
@@ -231,10 +234,9 @@ const GlossaryTermTab = ({
       },
       {
         title: t('label.reviewer'),
-        dataIndex: 'reviewers',
-        key: 'reviewers',
+        dataIndex: GLOSSARY_TERM_TABLE_COLUMNS_KEYS.REVIEWERS,
+        key: GLOSSARY_TERM_TABLE_COLUMNS_KEYS.REVIEWERS,
         width: tableColumnsWidth.reviewers,
-        defaultVisible: false,
         render: (reviewers: EntityReference[]) => (
           <OwnerLabel
             owners={reviewers}
@@ -246,10 +248,9 @@ const GlossaryTermTab = ({
       },
       {
         title: t('label.synonym-plural'),
-        dataIndex: 'synonyms',
-        key: 'synonyms',
+        dataIndex: GLOSSARY_TERM_TABLE_COLUMNS_KEYS.SYNONYMS,
+        key: GLOSSARY_TERM_TABLE_COLUMNS_KEYS.SYNONYMS,
         width: tableColumnsWidth.synonyms,
-        defaultVisible: false,
         render: (synonyms: string[]) => {
           return isEmpty(synonyms) ? (
             <div>{NO_DATA_PLACEHOLDER}</div>
@@ -268,17 +269,15 @@ const GlossaryTermTab = ({
       },
       {
         title: t('label.owner-plural'),
-        dataIndex: 'owners',
-        key: 'owners',
+        dataIndex: GLOSSARY_TERM_TABLE_COLUMNS_KEYS.OWNERS,
+        key: GLOSSARY_TERM_TABLE_COLUMNS_KEYS.OWNERS,
         width: tableColumnsWidth.owners,
-        defaultVisible: true,
         render: (owners: EntityReference[]) => <OwnerLabel owners={owners} />,
       },
       {
         title: t('label.status'),
-        dataIndex: 'status',
-        key: 'status',
-        defaultVisible: true,
+        dataIndex: GLOSSARY_TERM_TABLE_COLUMNS_KEYS.STATUS,
+        key: GLOSSARY_TERM_TABLE_COLUMNS_KEYS.STATUS,
         // this check is added to the width, since the last column is optional and to maintain
         // the re-sizing of the column should not be affected the others columns width sizes.
         ...(permissions.Create && {
@@ -301,8 +300,8 @@ const GlossaryTermTab = ({
     if (permissions.Create) {
       data.push({
         title: t('label.action-plural'),
-        key: 'new-term',
-        defaultVisible: true,
+        dataIndex: GLOSSARY_TERM_TABLE_COLUMNS_KEYS.ACTIONS,
+        key: GLOSSARY_TERM_TABLE_COLUMNS_KEYS.ACTIONS,
         render: (_, record) => {
           const status = record.status ?? Status.Approved;
           const allowAddTerm = status === Status.Approved;
@@ -483,7 +482,7 @@ const GlossaryTermTab = ({
     ]
   );
 
-  const tableFilters = useMemo(() => {
+  const extraTableFilters = useMemo(() => {
     return (
       <>
         <Button
@@ -711,13 +710,15 @@ const GlossaryTermTab = ({
               components={TABLE_CONSTANTS}
               data-testid="glossary-terms-table"
               dataSource={filteredGlossaryTerms}
+              defaultVisibleColumns={DEFAULT_VISIBLE_COLUMNS}
               expandable={expandableConfig}
+              extraTableFilters={extraTableFilters}
               loading={isTableLoading}
               pagination={false}
               ref={tableRef}
               rowKey="fullyQualifiedName"
               size="small"
-              tableFilters={tableFilters}
+              staticVisibleColumns={STATIC_VISIBLE_COLUMNS}
               onHeaderRow={onTableHeader}
               onRow={onTableRow}
             />

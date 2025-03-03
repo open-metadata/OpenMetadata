@@ -10,19 +10,23 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { TableProps } from 'antd/lib/table';
+export const GLOSSARY_TERM_TABLE_COLUMNS_KEYS = {
+  NAME: 'name',
+  DESCRIPTION: 'description',
+  REVIEWERS: 'reviewers',
+  SYNONYMS: 'synonyms',
+  OWNERS: 'owners',
+  STATUS: 'status',
+  ACTIONS: 'actions',
+};
 
-export interface TableComponentProps<T> extends TableProps<T> {
-  resizableColumns?: boolean;
-  /** Filter's in ReactNode that will be aligned with TableColumnFilter. Example: GlossaryTableFilter */
-  extraTableFilters?: React.ReactNode;
-  /** Columns that will be visible by default in the Table */
-  defaultVisibleColumns?: string[];
-  /** Columns that will be statically visible in the Table and will not be Filtered */
-  staticVisibleColumns?: string[];
-}
+export const DEFAULT_VISIBLE_COLUMNS = [
+  GLOSSARY_TERM_TABLE_COLUMNS_KEYS.DESCRIPTION,
+  GLOSSARY_TERM_TABLE_COLUMNS_KEYS.OWNERS,
+  GLOSSARY_TERM_TABLE_COLUMNS_KEYS.STATUS,
+];
 
-export interface TableColumnDropdownList {
-  label: string;
-  value: string;
-}
+export const STATIC_VISIBLE_COLUMNS = [
+  GLOSSARY_TERM_TABLE_COLUMNS_KEYS.NAME,
+  GLOSSARY_TERM_TABLE_COLUMNS_KEYS.ACTIONS,
+];
