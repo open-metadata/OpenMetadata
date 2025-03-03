@@ -135,19 +135,19 @@ describe('Test EntityLineageUtils utility', () => {
         fromEntity: {
           id: 'sourceId',
           type: 'table',
-          fqn: 'sourceFqn',
+          fullyQualifiedName: 'sourceFqn',
         },
         toEntity: {
           id: 'targetId',
           type: 'table',
-          fqn: 'targetFqn',
+          fullyQualifiedName: 'targetFqn',
         },
         sqlQuery: '',
       },
     });
     expect(result.edge.fromEntity.type).toBe('table');
-    expect(result.edge.toEntity.fqn).toBe('targetFqn');
-    expect(result.edge.fromEntity.fqn).toBe('sourceFqn');
+    expect(result.edge.toEntity.fullyQualifiedName).toBe('targetFqn');
+    expect(result.edge.fromEntity.fullyQualifiedName).toBe('sourceFqn');
     expect(result.edge.toEntity.type).toBe('table');
   });
 
@@ -308,12 +308,12 @@ describe('Test EntityLineageUtils utility', () => {
       fromEntity: {
         id: 'source',
         type: 'table',
-        fqn: 'sourceFqn',
+        fullyQualifiedName: 'sourceFqn',
       },
       toEntity: {
         id: 'target',
         type: 'table',
-        fqn: 'targetFqn',
+        fullyQualifiedName: 'targetFqn',
       },
       columns: [],
     };
@@ -463,16 +463,16 @@ describe('Test EntityLineageUtils utility', () => {
   describe('getUpstreamDownstreamNodesEdges', () => {
     const edges = [
       {
-        fromEntity: { fqn: 'node1', type: 'table', id: '1' },
-        toEntity: { fqn: 'node2', type: 'table', id: '2' },
+        fromEntity: { fullyQualifiedName: 'node1', type: 'table', id: '1' },
+        toEntity: { fullyQualifiedName: 'node2', type: 'table', id: '2' },
       },
       {
-        fromEntity: { fqn: 'node2', type: 'table', id: '2' },
-        toEntity: { fqn: 'node3', type: 'table', id: '3' },
+        fromEntity: { fullyQualifiedName: 'node2', type: 'table', id: '2' },
+        toEntity: { fullyQualifiedName: 'node3', type: 'table', id: '3' },
       },
       {
-        fromEntity: { fqn: 'node3', type: 'table', id: '3' },
-        toEntity: { fqn: 'node4', type: 'table', id: '4' },
+        fromEntity: { fullyQualifiedName: 'node3', type: 'table', id: '3' },
+        toEntity: { fullyQualifiedName: 'node4', type: 'table', id: '4' },
       },
     ];
 
@@ -499,18 +499,18 @@ describe('Test EntityLineageUtils utility', () => {
 
       expect(result.downstreamEdges).toEqual([
         {
-          fromEntity: { fqn: 'node2', type: 'table', id: '2' },
-          toEntity: { fqn: 'node3', type: 'table', id: '3' },
+          fromEntity: { fullyQualifiedName: 'node2', type: 'table', id: '2' },
+          toEntity: { fullyQualifiedName: 'node3', type: 'table', id: '3' },
         },
         {
-          fromEntity: { fqn: 'node3', type: 'table', id: '3' },
-          toEntity: { fqn: 'node4', type: 'table', id: '4' },
+          fromEntity: { fullyQualifiedName: 'node3', type: 'table', id: '3' },
+          toEntity: { fullyQualifiedName: 'node4', type: 'table', id: '4' },
         },
       ]);
       expect(result.upstreamEdges).toEqual([
         {
-          fromEntity: { fqn: 'node1', type: 'table', id: '1' },
-          toEntity: { fqn: 'node2', type: 'table', id: '2' },
+          fromEntity: { fullyQualifiedName: 'node1', type: 'table', id: '1' },
+          toEntity: { fullyQualifiedName: 'node2', type: 'table', id: '2' },
         },
       ]);
       expect(result.downstreamNodes).toEqual([

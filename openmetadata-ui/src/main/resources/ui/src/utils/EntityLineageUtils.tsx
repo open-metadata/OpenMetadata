@@ -289,8 +289,12 @@ export const getModalBodyText = (selectedEdge: Edge) => {
   let sourceEntity = '';
   let targetEntity = '';
 
-  const sourceFQN = isColumnLineage ? sourceHandle : fromEntity.fqn;
-  const targetFQN = isColumnLineage ? targetHandle : toEntity.fqn;
+  const sourceFQN = isColumnLineage
+    ? sourceHandle
+    : fromEntity.fullyQualifiedName;
+  const targetFQN = isColumnLineage
+    ? targetHandle
+    : toEntity.fullyQualifiedName;
   const fqnPart = isColumnLineage ? FqnPart.Column : FqnPart.Table;
 
   if (fromEntity.type === EntityType.TABLE) {
@@ -927,12 +931,12 @@ export const getLineageEdge = (
       fromEntity: {
         id: sourceId ?? '',
         type: sourceType ?? '',
-        fqn: sourceFqn ?? '',
+        fullyQualifiedName: sourceFqn ?? '',
       },
       toEntity: {
         id: targetId ?? '',
         type: targetType ?? '',
-        fqn: targetFqn ?? '',
+        fullyQualifiedName: targetFqn ?? '',
       },
       sqlQuery: '',
     },
@@ -1161,12 +1165,12 @@ export const getUpstreamDownstreamNodesEdges = (
 
   function findDownstream(node: EntityReference) {
     const directDownstream = edges.filter(
-      (edge) => edge.fromEntity.fqn === node.fullyQualifiedName
+      (edge) => edge.fromEntity.fullyQualifiedName === node.fullyQualifiedName
     );
     downstreamEdges.push(...directDownstream);
     directDownstream.forEach((edge) => {
       const toNode = nodes.find(
-        (item) => item.fullyQualifiedName === edge.toEntity.fqn
+        (item) => item.fullyQualifiedName === edge.toEntity.fullyQualifiedName
       );
       if (!isUndefined(toNode)) {
         if (!downstreamNodes.includes(toNode)) {
@@ -1179,12 +1183,12 @@ export const getUpstreamDownstreamNodesEdges = (
 
   function findUpstream(node: EntityReference) {
     const directUpstream = edges.filter(
-      (edge) => edge.toEntity.fqn === node.fullyQualifiedName
+      (edge) => edge.toEntity.fullyQualifiedName === node.fullyQualifiedName
     );
     upstreamEdges.push(...directUpstream);
     directUpstream.forEach((edge) => {
       const fromNode = nodes.find(
-        (item) => item.fullyQualifiedName === edge.fromEntity.fqn
+        (item) => item.fullyQualifiedName === edge.fromEntity.fullyQualifiedName
       );
       if (!isUndefined(fromNode)) {
         if (!upstreamNodes.includes(fromNode)) {
@@ -1300,12 +1304,12 @@ const createLoadMoreEdge = (
     fromEntity: {
       id: source.id,
       type: source.type,
-      fqn: source.fullyQualifiedName ?? '',
+      fullyQualifiedName: source.fullyQualifiedName ?? '',
     },
     toEntity: {
       id: target.id,
       type: target.type,
-      fqn: target.fullyQualifiedName ?? '',
+      fullyQualifiedName: target.fullyQualifiedName ?? '',
     },
   };
 };
