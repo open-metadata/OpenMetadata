@@ -22,9 +22,9 @@ import {
   Typography,
 } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
+import { t } from 'i18next';
 import { isEmpty, isUndefined } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import AlertFormSourceItem from '../../components/Alerts/AlertFormSourceItem/AlertFormSourceItem';
 import DestinationFormItem from '../../components/Alerts/DestinationFormItem/DestinationFormItem.component';
@@ -72,7 +72,6 @@ import {
 } from '../AddObservabilityPage/AddObservabilityPage.interface';
 
 const AddNotificationPage = () => {
-  const { t } = useTranslation();
   const [form] = useForm<ModifiedCreateEventSubscription>();
   const history = useHistory();
   const { fqn } = useFqn();
@@ -359,6 +358,7 @@ const AddNotificationPage = () => {
 };
 
 export default withPageLayout(
-  'entity-detail-plural',
-  'alert'
+  t('label.entity-detail-plural', {
+    entity: t('label.alert'),
+  })
 )(AddNotificationPage);

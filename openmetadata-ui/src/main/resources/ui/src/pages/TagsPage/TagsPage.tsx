@@ -15,6 +15,7 @@ import { Badge, Button, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
+import { t } from 'i18next';
 import { isUndefined, omit } from 'lodash';
 import React, {
   useCallback,
@@ -23,7 +24,6 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import { ReactComponent as PlusIcon } from '../../assets/svg/plus-primary.svg';
 import ClassificationDetails from '../../components/Classifications/ClassificationDetails/ClassificationDetails';
@@ -100,7 +100,6 @@ const TagsPage = () => {
 
   const [isButtonLoading, setIsButtonLoading] = useState<boolean>(false);
 
-  const { t } = useTranslation();
   const createClassificationPermission = useMemo(
     () =>
       checkPermission(
@@ -787,4 +786,4 @@ const TagsPage = () => {
   );
 };
 
-export default withPageLayout('tag-plural')(TagsPage);
+export default withPageLayout(t('label.tag-plural'))(TagsPage);

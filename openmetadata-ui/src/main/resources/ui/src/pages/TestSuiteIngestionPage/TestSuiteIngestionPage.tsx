@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 import { AxiosError } from 'axios';
+import { t } from 'i18next';
 import { isUndefined } from 'lodash';
 import React, { useEffect, useState } from 'react';
-import { useTranslation } from 'react-i18next';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
@@ -36,7 +36,6 @@ import { showErrorToast } from '../../utils/ToastUtils';
 
 const TestSuiteIngestionPage = () => {
   const { fqn: testSuiteFQN, ingestionFQN } = useFqn();
-  const { t } = useTranslation();
 
   const [isLoading, setIsLoading] = useState(true);
   const [testSuite, setTestSuite] = useState<TestSuite>();
@@ -155,6 +154,7 @@ const TestSuiteIngestionPage = () => {
 };
 
 export default withPageLayout(
-  'add-entity',
-  'test-suite'
+  t('label.add-entity', {
+    entity: t('label.test-suite'),
+  })
 )(TestSuiteIngestionPage);

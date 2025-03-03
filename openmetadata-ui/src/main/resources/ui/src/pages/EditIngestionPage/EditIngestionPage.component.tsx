@@ -13,10 +13,10 @@
 
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
+import { t } from 'i18next';
 import { isEmpty } from 'lodash';
 import { ServicesUpdateRequest } from 'Models';
 import React, { useEffect, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';
@@ -60,7 +60,6 @@ import { getServiceType } from '../../utils/ServiceUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const EditIngestionPage = () => {
-  const { t } = useTranslation();
   const { fetchAirflowStatus } = useAirflowStatus();
   const { ingestionType, serviceCategory } = useParams<{
     ingestionType: string;
@@ -323,4 +322,8 @@ const EditIngestionPage = () => {
   );
 };
 
-export default withPageLayout('edit-entity', 'ingestion')(EditIngestionPage);
+export default withPageLayout(
+  t('label.edit-entity', {
+    entity: t('label.ingestion'),
+  })
+)(EditIngestionPage);

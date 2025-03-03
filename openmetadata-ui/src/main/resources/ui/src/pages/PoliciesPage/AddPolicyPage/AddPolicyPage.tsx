@@ -217,4 +217,8 @@ const AddPolicyPage = () => {
   );
 };
 
-export default withPageLayout('add-entity', 'policy')(AddPolicyPage);
+export default withPageLayout(
+  t('label.add-entity', {
+    entity: t('label.policy'),
+  })
+)(AddPolicyPage);

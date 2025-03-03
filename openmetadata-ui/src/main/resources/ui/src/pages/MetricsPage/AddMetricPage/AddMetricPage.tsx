@@ -12,9 +12,9 @@
  */
 import { Button, Col, Form, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
+import { t } from 'i18next';
 import { omit, startCase } from 'lodash';
 import React, { FocusEvent, useCallback, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import ResizablePanels from '../../../components/common/ResizablePanels/ResizablePanels';
 import ServiceDocPanel from '../../../components/common/ServiceDocPanel/ServiceDocPanel';
@@ -40,7 +40,6 @@ import { showErrorToast } from '../../../utils/ToastUtils';
 
 const AddMetricPage = () => {
   const history = useHistory();
-  const { t } = useTranslation();
   const [form] = Form.useForm();
 
   const [isCreating, setIsCreating] = useState<boolean>(false);
@@ -344,4 +343,8 @@ const AddMetricPage = () => {
   );
 };
 
-export default withPageLayout('add-new-entity', 'metric')(AddMetricPage);
+export default withPageLayout(
+  t('label.add-new-entity', {
+    entity: t('label.metric'),
+  })
+)(AddMetricPage);

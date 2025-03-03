@@ -29,10 +29,10 @@ import {
 import { useForm, useWatch } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
+import { t } from 'i18next';
 import { isUndefined } from 'lodash';
 import moment from 'moment';
 import React, { useEffect, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import Loader from '../../components/common/Loader/Loader';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
@@ -65,7 +65,6 @@ const EditKPIPage = () => {
   const { isAdminUser } = useAuth();
   const { fqn: kpiName } = useFqn();
 
-  const { t } = useTranslation();
   const history = useHistory();
   const [form] = useForm<KPIFormValues>();
 
@@ -451,4 +450,8 @@ const EditKPIPage = () => {
   );
 };
 
-export default withPageLayout('edit-entity', 'kpi-uppercase')(EditKPIPage);
+export default withPageLayout(
+  t('label.edit-entity', {
+    entity: t('label.kpi-uppercase'),
+  })
+)(EditKPIPage);

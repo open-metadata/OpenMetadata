@@ -13,6 +13,7 @@
 
 import { Skeleton } from 'antd';
 import { AxiosError } from 'axios';
+import { t } from 'i18next';
 import React, {
   FocusEvent,
   useCallback,
@@ -20,7 +21,6 @@ import React, {
   useMemo,
   useState,
 } from 'react';
-import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
 import ServiceDocPanel from '../../components/common/ServiceDocPanel/ServiceDocPanel';
@@ -46,7 +46,6 @@ import { getSettingPath } from '../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 
 function EditEmailConfigPage() {
-  const { t } = useTranslation();
   const history = useHistory();
   const [emailConfigValues, setEmailConfigValues] = useState<SMTPSettings>();
   const [loading, setLoading] = useState<boolean>(false);
@@ -191,4 +190,8 @@ function EditEmailConfigPage() {
   );
 }
 
-export default withPageLayout('add-entity', 'service')(EditEmailConfigPage);
+export default withPageLayout(
+  t('label.add-entity', {
+    entity: t('label.service'),
+  })
+)(EditEmailConfigPage);

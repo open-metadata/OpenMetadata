@@ -12,9 +12,9 @@
  */
 import { Button, Col, Row, Skeleton, Space } from 'antd';
 import Card from 'antd/lib/card/Card';
+import { t } from 'i18next';
 import { isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import NextPrevious from '../../../components/common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../../components/common/NextPrevious/NextPrevious.interface';
@@ -37,7 +37,6 @@ import { getSettingPageEntityBreadCrumb } from '../../../utils/GlobalSettingsUti
 
 const PersonaPageLayout = () => {
   const { isAdminUser } = useAuth();
-  const { t } = useTranslation();
 
   const [persona, setPersona] = useState<Persona[]>();
 
@@ -191,4 +190,6 @@ const PersonaPageLayout = () => {
   );
 };
 
-export const PersonaPage = withPageLayout('persona-plural')(PersonaPageLayout);
+export const PersonaPage = withPageLayout(t('label.persona-plural'))(
+  PersonaPageLayout
+);

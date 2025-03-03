@@ -12,6 +12,7 @@
  */
 
 import { Typography } from 'antd';
+import { t } from 'i18next';
 import { get, isEmpty, isNil, isString, lowerCase } from 'lodash';
 import Qs from 'qs';
 import React, {
@@ -479,4 +480,6 @@ const ExplorePageV1: FunctionComponent = () => {
   );
 };
 
-export default withPageLayout('explore')(withAdvanceSearch(ExplorePageV1));
+export default withPageLayout(t('label.explore'))(
+  withAdvanceSearch(ExplorePageV1)
+);

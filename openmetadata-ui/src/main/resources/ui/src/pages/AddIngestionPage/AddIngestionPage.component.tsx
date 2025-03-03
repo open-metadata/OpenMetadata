@@ -12,9 +12,9 @@
  */
 
 import { AxiosError } from 'axios';
+import { t } from 'i18next';
 import { isEmpty } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';
@@ -61,7 +61,6 @@ const AddIngestionPage = () => {
     ingestionType: string;
   }>();
   const { fqn: serviceFQN } = useFqn();
-  const { t } = useTranslation();
   const history = useHistory();
   const [serviceData, setServiceData] = useState<DataObj>();
   const [activeIngestionStep, setActiveIngestionStep] = useState(1);
@@ -309,4 +308,8 @@ const AddIngestionPage = () => {
   );
 };
 
-export default withPageLayout('add-entity', 'ingestion')(AddIngestionPage);
+export default withPageLayout(
+  t('label.add-entity', {
+    entity: t('label.ingestion'),
+  })
+)(AddIngestionPage);

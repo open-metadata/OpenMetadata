@@ -31,7 +31,6 @@ import { t } from 'i18next';
 import { isUndefined, kebabCase } from 'lodash';
 import moment from 'moment';
 import React, { useEffect, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
@@ -77,7 +76,6 @@ const breadcrumb = [
 ];
 
 const AddKPIPage = () => {
-  const { t } = useTranslation();
   const history = useHistory();
   const [form] = useForm<KPIFormValues>();
 
@@ -421,4 +419,8 @@ const AddKPIPage = () => {
   );
 };
 
-export default withPageLayout('add-new-entity', 'kpi-uppercase')(AddKPIPage);
+export default withPageLayout(
+  t('label.add-new-entity', {
+    entity: t('label.kpi-uppercase'),
+  })
+)(AddKPIPage);

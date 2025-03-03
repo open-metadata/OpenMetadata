@@ -12,8 +12,8 @@
  */
 import { Button, Col, Form, Input, Row } from 'antd';
 import { AxiosError } from 'axios';
+import { t } from 'i18next';
 import React, { useEffect, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import Loader from '../../../components/common/Loader/Loader';
 import ResizablePanels from '../../../components/common/ResizablePanels/ResizablePanels';
@@ -41,7 +41,6 @@ import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 
 const { Item } = Form;
 const EditUrlConfigurationPage = () => {
-  const { t } = useTranslation();
   const history = useHistory();
   const [form] = Form.useForm<OpenMetadataBaseURLConfiguration>();
   const [activeField, setActiveField] = useState<string>('');
@@ -202,6 +201,7 @@ const EditUrlConfigurationPage = () => {
 };
 
 export default withPageLayout(
-  'edit-entity',
-  'service'
+  t('label.edit-entity', {
+    entity: t('label.service'),
+  })
 )(EditUrlConfigurationPage);

@@ -15,8 +15,8 @@ import { DefaultOptionType } from 'antd/lib/select';
 import { AxiosError } from 'axios';
 import { filter, isEmpty } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
 
+import { t } from 'i18next';
 import { AsyncSelect } from '../../components/common/AsyncSelect/AsyncSelect';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
@@ -54,7 +54,6 @@ import { getField } from '../../utils/formUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 
 const AddQueryPage = () => {
-  const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
   const { fqn: datasetFQN } = useFqn();
   const { permissions } = usePermissionProvider();
@@ -329,4 +328,8 @@ const AddQueryPage = () => {
   );
 };
 
-export default withPageLayout('add-entity', 'query')(AddQueryPage);
+export default withPageLayout(
+  t('label.add-entity', {
+    entity: t('label.query'),
+  })
+)(AddQueryPage);

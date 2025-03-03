@@ -14,9 +14,9 @@
 import { Button, Form, FormProps, Input, Space, Typography } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
+import { t } from 'i18next';
 import { isEmpty, isUndefined } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { ActivityFeedTabs } from '../../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import Loader from '../../../components/common/Loader/Loader';
@@ -63,7 +63,6 @@ import '../task-page.style.less';
 import { EntityData, Option } from '../TasksPage.interface';
 
 const UpdateTag = () => {
-  const { t } = useTranslation();
   const location = useCustomLocation();
   const history = useHistory();
   const [form] = useForm();
@@ -347,4 +346,4 @@ const UpdateTag = () => {
   );
 };
 
-export default withPageLayout('task')(UpdateTag);
+export default withPageLayout(t('label.task'))(UpdateTag);

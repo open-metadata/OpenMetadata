@@ -12,9 +12,9 @@
  */
 
 import { Card } from 'antd';
+import { t } from 'i18next';
 import { noop, trim } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
 import Loader from '../../components/common/Loader/Loader';
 import { AlertDetailsComponent } from '../../components/Settings/Alerts/AlertsDetails/AlertDetails.component';
 import { EventFilterRule } from '../../generated/events/eventFilterRule';
@@ -30,8 +30,6 @@ import { showErrorToast } from '../../utils/ToastUtils';
 const AlertsActivityFeedPage = () => {
   const [loading, setLoading] = useState(false);
   const [alert, setAlert] = useState<EventSubscription>();
-
-  const { t } = useTranslation();
 
   const fetchActivityFeedAlert = useCallback(async () => {
     try {
@@ -99,4 +97,4 @@ const AlertsActivityFeedPage = () => {
   );
 };
 
-export default withPageLayout('alert-details')(AlertsActivityFeedPage);
+export default withPageLayout(t('label.alert-details'))(AlertsActivityFeedPage);

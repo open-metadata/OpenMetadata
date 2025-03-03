@@ -13,9 +13,9 @@
 
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
+import { t } from 'i18next';
 import { isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { ES_MAX_PAGE_SIZE, ROUTES } from '../../constants/constants';
@@ -43,7 +43,6 @@ import DomainDetailsPage from './DomainDetailsPage/DomainDetailsPage.component';
 import DomainsLeftPanel from './DomainLeftPanel/DomainLeftPanel.component';
 
 const DomainPage = () => {
-  const { t } = useTranslation();
   const { fqn: domainFqn } = useFqn();
   const history = useHistory();
   const { permissions } = usePermissionProvider();
@@ -235,4 +234,4 @@ const DomainPage = () => {
   );
 };
 
-export default withPageLayout('domain')(DomainPage);
+export default withPageLayout(t('label.domain'))(DomainPage);

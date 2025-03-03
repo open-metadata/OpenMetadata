@@ -12,10 +12,10 @@
  */
 
 import { AxiosError } from 'axios';
+import { t } from 'i18next';
 import { startCase } from 'lodash';
 import { ServicesUpdateRequest, ServiceTypes } from 'Models';
 import React, { useEffect, useState } from 'react';
-import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
 import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import AddService from '../../components/Settings/Services/AddService/AddService.component';
@@ -41,7 +41,6 @@ import { getServiceRouteFromServiceType } from '../../utils/ServiceUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const AddServicePage = () => {
-  const { t } = useTranslation();
   const { serviceCategory } = useParams<{ serviceCategory: string }>();
   const [newServiceData, setNewServiceData] = useState<ServicesUpdateRequest>();
   const [ingestionProgress, setIngestionProgress] = useState(0);
@@ -177,4 +176,8 @@ const AddServicePage = () => {
   );
 };
 
-export default withPageLayout('add-entity', 'service')(AddServicePage);
+export default withPageLayout(
+  t('label.add-entity', {
+    entity: t('label.service'),
+  })
+)(AddServicePage);

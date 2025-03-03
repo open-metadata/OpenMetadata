@@ -13,6 +13,7 @@
 
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
+import { t } from 'i18next';
 import { isEmpty } from 'lodash';
 import React, {
   RefObject,
@@ -21,7 +22,6 @@ import React, {
   useMemo,
   useState,
 } from 'react';
-import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../../components/common/Loader/Loader';
@@ -67,7 +67,6 @@ import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import GlossaryLeftPanel from '../GlossaryLeftPanel/GlossaryLeftPanel.component';
 
 const GlossaryPage = () => {
-  const { t } = useTranslation();
   const { permissions } = usePermissionProvider();
   const { fqn: glossaryFqn } = useFqn();
   const history = useHistory();
@@ -537,4 +536,4 @@ const GlossaryPage = () => {
   return <div className="m--t-sm">{resizableLayout}</div>;
 };
 
-export default withPageLayout('glossary')(GlossaryPage);
+export default withPageLayout(t('label.glossary'))(GlossaryPage);

@@ -14,9 +14,9 @@
 import { Button, Col, Row, Skeleton, Space, Tabs, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
+import { t } from 'i18next';
 import { isUndefined, omitBy } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { ReactComponent as EditIcon } from '../../assets/svg/edit-new.svg';
 import { ReactComponent as DeleteIcon } from '../../assets/svg/ic-delete.svg';
@@ -72,7 +72,6 @@ import { AlertDetailsPageProps } from './AlertDetailsPage.interface';
 function AlertDetailsPage({
   isNotificationAlert = false,
 }: Readonly<AlertDetailsPageProps>) {
-  const { t } = useTranslation();
   const { getEntityPermissionByFqn } = usePermissionProvider();
   const { tab = AlertDetailTabs.CONFIGURATION } =
     useParams<{ tab: AlertDetailTabs }>();
@@ -449,6 +448,8 @@ function AlertDetailsPage({
   );
 }
 
-export default withPageLayout<AlertDetailsPageProps>('alert-detail-plural')(
-  AlertDetailsPage
-);
+export default withPageLayout<AlertDetailsPageProps>(
+  t('label.entity-detail-plural', {
+    entity: t('label.alert'),
+  })
+)(AlertDetailsPage);

@@ -12,8 +12,8 @@
  */
 
 import { Col, Menu, MenuProps, Row, Typography } from 'antd';
+import { t } from 'i18next';
 import React, { useMemo } from 'react';
-import { useTranslation } from 'react-i18next';
 import {
   Redirect,
   Route,
@@ -33,7 +33,6 @@ import { DataQualityPageTabs } from './DataQualityPage.interface';
 import DataQualityProvider from './DataQualityProvider';
 
 const DataQualityPage = () => {
-  const { t } = useTranslation();
   const { tab: activeTab } = useParams<{ tab: DataQualityPageTabs }>();
   const history = useHistory();
 
@@ -144,4 +143,4 @@ const DataQualityPage = () => {
   );
 };
 
-export default withPageLayout('quality')(DataQualityPage);
+export default withPageLayout(t('label.quality'))(DataQualityPage);

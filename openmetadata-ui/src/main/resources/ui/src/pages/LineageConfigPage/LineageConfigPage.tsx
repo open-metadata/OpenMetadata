@@ -12,6 +12,7 @@
  */
 import { Button, Col, Form, Input, Row, Select, Typography } from 'antd';
 import { AxiosError } from 'axios';
+import { t } from 'i18next';
 import React, {
   FocusEvent,
   useCallback,
@@ -19,7 +20,6 @@ import React, {
   useMemo,
   useState,
 } from 'react';
-import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import Loader from '../../components/common/Loader/Loader';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
@@ -43,7 +43,6 @@ import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils'
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 
 const LineageConfigPage = () => {
-  const { t } = useTranslation();
   const [isLoading, setIsLoading] = useState(true);
   const [activeField, setActiveField] = useState<string>('');
   const [lineageConfig, setLineageConfig] = useState<LineageSettings>();
@@ -245,4 +244,4 @@ const LineageConfigPage = () => {
   );
 };
 
-export default withPageLayout('lineage-config')(LineageConfigPage);
+export default withPageLayout(t('label.lineage-config'))(LineageConfigPage);

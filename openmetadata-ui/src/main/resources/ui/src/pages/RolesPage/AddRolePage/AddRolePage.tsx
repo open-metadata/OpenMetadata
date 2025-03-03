@@ -236,4 +236,8 @@ const AddRolePage = () => {
   );
 };
 
-export default withPageLayout('add-new-entity', 'role')(AddRolePage);
+export default withPageLayout(
+  t('label.add-new-entity', {
+    entity: t('label.role'),
+  })
+)(AddRolePage);

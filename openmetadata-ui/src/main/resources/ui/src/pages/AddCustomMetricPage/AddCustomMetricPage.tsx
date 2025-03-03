@@ -12,9 +12,9 @@
  */
 import { Button, Col, Form, Row, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
+import { t } from 'i18next';
 import QueryString from 'qs';
 import React, { useEffect, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import Loader from '../../components/common/Loader/Loader';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
@@ -51,7 +51,6 @@ const AddCustomMetricPage = () => {
   const history = useHistory();
   const location = useCustomLocation();
   const isColumnMetric = dashboardType === ProfilerDashboardType.COLUMN;
-  const { t } = useTranslation();
   const [form] = Form.useForm<CustomMetric>();
   const [table, setTable] = useState<Table>();
   const [isLoading, setIsLoading] = useState(true);
@@ -270,6 +269,7 @@ const AddCustomMetricPage = () => {
 };
 
 export default withPageLayout(
-  'add-entity',
-  'custom-metric'
+  t('label.add-entity', {
+    entity: t('label.custom-metric'),
+  })
 )(AddCustomMetricPage);

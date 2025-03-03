@@ -176,4 +176,4 @@ const DataInsightPage = () => {
   );
 };
 
-export default withPageLayout('data-insight')(DataInsightPage);
+export default withPageLayout(t('label.data-insight'))(DataInsightPage);

@@ -14,10 +14,10 @@
 import { Card, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
+import { t } from 'i18next';
 import { isEmpty, isUndefined, startCase } from 'lodash';
 import { ServicesData, ServicesUpdateRequest, ServiceTypes } from 'Models';
 import React, { useEffect, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';
@@ -46,7 +46,6 @@ import {
 import { showErrorToast } from '../../utils/ToastUtils';
 
 function EditConnectionFormPage() {
-  const { t } = useTranslation();
   const { serviceCategory } = useParams<{
     serviceCategory: ServiceCategory;
   }>();
@@ -215,6 +214,7 @@ function EditConnectionFormPage() {
 }
 
 export default withPageLayout(
-  'edit-entity',
-  'connection'
+  t('label.edit-entity', {
+    entity: t('label.connection'),
+  })
 )(EditConnectionFormPage);

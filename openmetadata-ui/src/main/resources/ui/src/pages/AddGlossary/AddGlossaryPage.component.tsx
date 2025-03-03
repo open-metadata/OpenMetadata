@@ -12,6 +12,7 @@
  */
 
 import { AxiosError } from 'axios';
+import { t } from 'i18next';
 import React, {
   FunctionComponent,
   useCallback,
@@ -19,7 +20,6 @@ import React, {
   useMemo,
   useState,
 } from 'react';
-import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import AddGlossary from '../../components/Glossary/AddGlossary/AddGlossary.component';
@@ -46,7 +46,6 @@ const AddGlossaryPage: FunctionComponent = () => {
     TitleBreadcrumbProps['titleLinks']
   >([]);
 
-  const { t } = useTranslation();
   const createPermission = useMemo(
     () =>
       checkPermission(Operation.Create, ResourceEntity.GLOSSARY, permissions),
@@ -154,4 +153,8 @@ const AddGlossaryPage: FunctionComponent = () => {
   );
 };
 
-export default withPageLayout('add-entity', 'glossary')(AddGlossaryPage);
+export default withPageLayout(
+  t('label.add-entity', {
+    entity: t('label.glossary'),
+  })
+)(AddGlossaryPage);
