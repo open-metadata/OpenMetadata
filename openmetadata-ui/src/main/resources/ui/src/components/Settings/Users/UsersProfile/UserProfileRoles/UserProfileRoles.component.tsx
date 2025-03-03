@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Divider, Popover, Select, Typography } from 'antd';
+import { Button, Divider, Popover, Select, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, toLower } from 'lodash';
 import React, {
@@ -304,12 +304,17 @@ const UserProfileRoles = ({
             trigger="click"
             onOpenChange={setIsRolesEdit}>
             {isAdminUser && (
-              <EditIcon
-                className="cursor-pointer align-middle"
-                data-testid="edit-roles-button"
-                height={16}
-                onClick={() => setIsRolesEdit(true)}
-              />
+              <Tooltip
+                title={t('label.edit-entity', {
+                  entity: t('label.role-plural'),
+                })}>
+                <EditIcon
+                  className="cursor-pointer align-middle"
+                  data-testid="edit-roles-button"
+                  height={16}
+                  onClick={() => setIsRolesEdit(true)}
+                />
+              </Tooltip>
             )}
           </Popover>
         </div>

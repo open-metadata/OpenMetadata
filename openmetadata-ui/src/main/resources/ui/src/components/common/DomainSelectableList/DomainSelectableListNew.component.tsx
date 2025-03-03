@@ -101,7 +101,7 @@ const DomainSelectableListNew = ({
       ) as HTMLElement;
 
       if (dropdown) {
-        const newHeight = Math.min(dropdown.scrollHeight + 136, 350);
+        const newHeight = Math.min(dropdown.scrollHeight + 161, 350);
         setPopoverHeight(newHeight);
       }
     });
@@ -164,7 +164,7 @@ const DomainSelectableListNew = ({
         {hasPermission && (
           <Tooltip
             title={t('label.edit-entity', {
-              entity: t('label.persona'),
+              entity: t('label.domain'),
             })}>
             <EditIcon
               className="cursor-pointer"

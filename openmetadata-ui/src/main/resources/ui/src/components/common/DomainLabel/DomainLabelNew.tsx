@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Divider, Tooltip, Typography } from 'antd';
+import { Divider, Popover, Space, Tag, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
@@ -108,28 +108,86 @@ export const DomainLabelNew = ({
       Array.isArray(activeDomain) &&
       activeDomain.length > 0
     ) {
-      return activeDomain.map((domain) => {
-        const inheritedIcon = domain?.inherited ? (
-          <Tooltip
-            title={t('label.inherited-entity', {
-              entity: t('label.domain'),
-            })}>
-            <InheritIcon className="inherit-icon cursor-pointer" width={14} />
-          </Tooltip>
-        ) : null;
+      const displayDomains = activeDomain.slice(0, 5);
+      const remainingDomains = activeDomain.slice(5);
+      const remainingCount = remainingDomains.length;
 
-        return (
-          <div className="d-flex gap-1" key={domain.id}>
-            {renderDomainLink(
-              domain,
-              domainDisplayName,
-              showDomainHeading,
-              'chip-tag-link'
-            )}
-            {inheritedIcon && <div className="d-flex">{inheritedIcon}</div>}
+      return (
+        <div className="d-flex flex-col gap-1 items-start">
+          <div className="d-flex gap-1 flex-wrap">
+            {displayDomains.map((domain) => {
+              const inheritedIcon = domain?.inherited ? (
+                <Tooltip
+                  title={t('label.inherited-entity', {
+                    entity: t('label.domain'),
+                  })}>
+                  <InheritIcon
+                    className="inherit-icon cursor-pointer"
+                    width={14}
+                  />
+                </Tooltip>
+              ) : null;
+
+              return (
+                <div className="d-flex gap-1" key={domain.id}>
+                  {renderDomainLink(
+                    domain,
+                    domainDisplayName,
+                    showDomainHeading,
+                    'chip-tag-link'
+                  )}
+                  {inheritedIcon && (
+                    <div className="d-flex">{inheritedIcon}</div>
+                  )}
+                </div>
+              );
+            })}
           </div>
-        );
-      });
+          {remainingCount > 0 && (
+            <div className="d-flex justify-start">
+              <Popover
+                className="cursor-pointer"
+                content={
+                  <Space wrap>
+                    {remainingDomains.map((domain) => {
+                      const inheritedIcon = domain?.inherited ? (
+                        <Tooltip
+                          title={t('label.inherited-entity', {
+                            entity: t('label.domain'),
+                          })}>
+                          <InheritIcon
+                            className="inherit-icon cursor-pointer"
+                            width={14}
+                          />
+                        </Tooltip>
+                      ) : null;
+
+                      return (
+                        <div className="d-flex gap-1" key={domain.id}>
+                          {renderDomainLink(
+                            domain,
+                            domainDisplayName,
+                            showDomainHeading,
+                            'chip-tag-link'
+                          )}
+                          {inheritedIcon && (
+                            <div className="d-flex">{inheritedIcon}</div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </Space>
+                }
+                overlayClassName="w-auto"
+                trigger="click">
+                <Tag className="chip-text p-0" data-testid="plus-more-count">
+                  {`+${remainingCount} more`}
+                </Tag>
+              </Popover>
+            </div>
+          )}
+        </div>
+      );
     } else {
       return (
         <Typography.Text

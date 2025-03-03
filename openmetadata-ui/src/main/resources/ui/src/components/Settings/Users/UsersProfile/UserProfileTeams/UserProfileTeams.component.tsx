@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Divider, Popover, Typography } from 'antd';
+import { Button, Divider, Popover, Tooltip, Typography } from 'antd';
 import React, {
   useCallback,
   useEffect,
@@ -210,12 +210,17 @@ const UserProfileTeams = ({
             trigger="click"
             onOpenChange={setIsTeamsEdit}>
             {isAdminUser && !isDeletedUser && (
-              <EditIcon
-                className="cursor-pointer"
-                data-testid="edit-teams-button"
-                height={16}
-                onClick={() => setIsTeamsEdit(true)}
-              />
+              <Tooltip
+                title={t('label.edit-entity', {
+                  entity: t('label.team-plural'),
+                })}>
+                <EditIcon
+                  className="cursor-pointer"
+                  data-testid="edit-teams-button"
+                  height={16}
+                  onClick={() => setIsTeamsEdit(true)}
+                />
+              </Tooltip>
             )}
           </Popover>
         </div>

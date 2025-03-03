@@ -1034,11 +1034,11 @@ export const TaskTabNew = ({
         <Col span={24}>
           <div className="activity-feed-comments-container d-flex flex-col">
             <Typography.Text
-              className={`activity-feed-comments-title ${
-                taskThread?.task?.status === ThreadTaskStatus.Open
-                  ? 'm-b-md'
-                  : ''
-              }`}>
+              className={classNames('activity-feed-comments-title', {
+                'm-b-md':
+                  taskThread?.task?.status === ThreadTaskStatus.Open &&
+                  !showFeedEditor,
+              })}>
               {t('label.comment')}
             </Typography.Text>
 
