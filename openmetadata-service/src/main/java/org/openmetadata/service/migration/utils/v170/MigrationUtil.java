@@ -173,6 +173,7 @@ public class MigrationUtil {
   }
 
   public static void createServiceCharts() {
+    dataInsightSystemChartRepository = new DataInsightSystemChartRepository();
     createChart(
         "assets_with_pii_bar",
         new LineChart()
