@@ -139,6 +139,8 @@ test.describe('Tour should work properly', () => {
   });
 
   test('Tour should work from URL directly', async ({ page }) => {
+    await expect(page.getByTestId('global-search-selector')).toBeVisible();
+
     await page.goto('/tour');
     await page.waitForURL('**/tour');
     await validateTourSteps(page);
