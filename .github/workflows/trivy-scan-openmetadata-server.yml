@@ -1,10 +1,8 @@
 name: Trivy Scan For OpenMetadata Server Docker Image
 on:
-    pull_request_target:
-        types: [labeled, opened, synchronize, reopened]
-        paths:
-          - "**/*.java"
-          - "docker/development/Dockerfile"
+  schedule:
+    - cron: '15 4 * * *'
+  workflow_dispatch:
 concurrency: 
   group: trivy-server-scan-${{ github.head_ref || github.run_id }}
   cancel-in-progress: true
@@ -14,24 +12,6 @@ jobs:
     permissions:
       pull-requests: write
     steps:
-      - name: Wait for the labeler
-        uses: lewagon/wait-on-check-action@v1.3.3
-        if: ${{ github.event_name == 'pull_request_target' }}
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
-          check-name: Team Label
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-          wait-interval: 90
-
-      - name: Verify PR labels
-        uses: jesusvasquez333/verify-pr-label-action@v1.4.0
-        if: ${{ github.event_name == 'pull_request_target' }}
-        with:
-          github-token: '${{ secrets.GITHUB_TOKEN }}'
-          valid-labels: 'safe to test'
-          pull-request-number: '${{ github.event.pull_request.number }}'
-          disable-reviews: true  # To not auto approve changes
-
       - name: Checkout Repository
         uses: actions/checkout@v4
         with:
@@ -61,13 +41,6 @@ jobs:
             scan-ref: .
             format: 'template'
             template: "@.github/trivy/templates/github.tpl"
-            output: trivy-result-openmetadata-server.md
+            output: $GITHUB_STEP_SUMMARY
         env:
             TRIVY_DISABLE_VEX_NOTICE: "true"
-     
-      - name: Comment Trivy Scan Results on PR
-        uses: marocchino/sticky-pull-request-comment@v2
-        with:
-            path: trivy-result-openmetadata-server.md
-            header: "trivy-scan-${{ github.workflow }}"
-       
