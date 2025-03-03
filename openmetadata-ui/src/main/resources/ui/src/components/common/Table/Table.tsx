@@ -111,11 +111,14 @@ const Table = <T extends object = any>(
           key: 'header',
           label: (
             <div className="d-flex justify-between items-center w-52 p-x-md p-b-xss border-bottom">
-              <Typography.Text className="text-sm text-grey-muted font-medium">
+              <Typography.Text
+                className="text-sm text-grey-muted font-medium"
+                data-testid="column-dropdown-title">
                 {t('label.column')}
               </Typography.Text>
               <Button
                 className="text-primary text-sm p-0"
+                data-testid="column-dropdown-action-button"
                 type="text"
                 onClick={handleBulkColumnAction}>
                 {dropdownColumnList.length === columnDropdownSelections.length
