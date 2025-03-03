@@ -136,7 +136,7 @@ const ActivityFeedCardNew = ({
             className={classNames('text-sm', {
               'max-one-line': !showThread,
             })}>
-            <span className="w-4 h-4 m-r-xss d-inline-flex text-xl align-middle">
+            <span className="w-4 h-4 m-r-xss d-inline-flex  align-middle">
               {searchClassBase.getEntityIcon(entityType ?? '')}
             </span>
             <Link
@@ -161,7 +161,7 @@ const ActivityFeedCardNew = ({
             ' m-t-xss':
               showThread && feed.entityRef?.type === EntityType.CONTAINER,
           })}>
-          <span className="w-4 h-4 m-r-xss d-inline-flex text-xl align-middle">
+          <span className="w-4 h-4 m-r-xss d-inline-flex  align-middle">
             {searchClassBase.getEntityIcon(entityType ?? '')}
           </span>
           <Typography.Text
