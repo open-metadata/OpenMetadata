@@ -33,7 +33,7 @@ import { EntityReference } from '../../../generated/entity/type';
 import { useFqn } from '../../../hooks/useFqn';
 import { usePub } from '../../../hooks/usePubSub';
 import {
-  aproveRejectAllSuggestions,
+  approveRejectAllSuggestions,
   getSuggestionsList,
   updateSuggestionStatus,
 } from '../../../rest/suggestionsAPI';
@@ -62,16 +62,19 @@ const SuggestionsProvider = ({ children }: { children?: ReactNode }) => {
   const publish = usePub();
 
   const [loading, setLoading] = useState(false);
+  const [suggestionLimit, setSuggestionLimit] = useState<number>(10);
   const refreshEntity = useRef<(suggestion: Suggestion) => void>();
   const { permissions } = usePermissionProvider();
 
-  const fetchSuggestions = useCallback(async (entityFQN: string) => {
+  const fetchSuggestions = useCallback(async () => {
     setLoading(true);
     try {
-      const { data } = await getSuggestionsList({
-        entityFQN,
+      const { data, paging } = await getSuggestionsList({
+        entityFQN: entityFqn,
+        limit: suggestionLimit,
       });
       setSuggestions(data);
+      setSuggestionLimit(paging.total);
 
       const allUsersData = data.map(
         (suggestion) => suggestion.createdBy as EntityReference
@@ -100,13 +103,13 @@ const SuggestionsProvider = ({ children }: { children?: ReactNode }) => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [entityFqn, suggestionLimit]);
 
   const acceptRejectSuggestion = useCallback(
     async (suggestion: Suggestion, status: SuggestionAction) => {
       try {
         await updateSuggestionStatus(suggestion, status);
-        await fetchSuggestions(entityFqn);
+        await fetchSuggestions();
         if (status === SuggestionAction.Accept) {
           // call component refresh function
           publish('updateDetails', suggestion);
@@ -115,7 +118,7 @@ const SuggestionsProvider = ({ children }: { children?: ReactNode }) => {
         showErrorToast(err as AxiosError);
       }
     },
-    [entityFqn, refreshEntity]
+    [fetchSuggestions, refreshEntity]
   );
 
   const onUpdateActiveUser = useCallback(
@@ -137,14 +140,14 @@ const SuggestionsProvider = ({ children }: { children?: ReactNode }) => {
         setLoadingReject(true);
       }
       try {
-        await aproveRejectAllSuggestions(
+        await approveRejectAllSuggestions(
           activeUser?.id ?? '',
           entityFqn,
           suggestionType,
           status
         );
 
-        await fetchSuggestions(entityFqn);
+        await fetchSuggestions();
         if (status === SuggestionAction.Accept) {
           selectedUserSuggestions.forEach((suggestion) => {
             publish('updateDetails', suggestion);
@@ -158,18 +161,19 @@ const SuggestionsProvider = ({ children }: { children?: ReactNode }) => {
         setLoadingReject(false);
       }
     },
-    [activeUser, entityFqn, selectedUserSuggestions]
+    [activeUser, entityFqn, selectedUserSuggestions, fetchSuggestions]
   );
 
   useEffect(() => {
     if (!isEmpty(permissions) && !isEmpty(entityFqn)) {
-      fetchSuggestions(entityFqn);
+      fetchSuggestions();
     }
   }, [entityFqn, permissions]);
 
   const suggestionsContextObj = useMemo(() => {
     return {
       suggestions,
+      suggestionLimit,
       suggestionsByUser,
       selectedUserSuggestions,
       entityFqn,
@@ -184,6 +188,7 @@ const SuggestionsProvider = ({ children }: { children?: ReactNode }) => {
     };
   }, [
     suggestions,
+    suggestionLimit,
     suggestionsByUser,
     selectedUserSuggestions,
     entityFqn,
