@@ -8,7 +8,7 @@ name="Domo"
 stage="PROD"
 platform="OpenMetadata"
 availableFeatures=["Metadata"]
-unavailableFeatures=["Query Usage", "Data Profiler", "Data Quality", "Lineage", "Column-level Lineage", "Owners", "Tags", "Stored Procedures", "dbt"]
+unavailableFeatures=["Query Usage", "Data Profiler", "Data Quality", "Lineage", "Column-level Lineage", "Owners", "Tags", "Stored Procedures", "dbt", "Sample Data"]
 / %}
 
 In this section, we provide guides and references to use the Domo Database connector.

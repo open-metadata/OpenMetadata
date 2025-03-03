@@ -8,7 +8,7 @@ name="Couchbase"
 stage="BETA"
 platform="OpenMetadata"
 availableFeatures=["Metadata"]
-unavailableFeatures=["Owners", "Tags", "Stored Procedures", "Query Usage", "Lineage", "Column-level Lineage", "Data Profiler", "Data Quality", "dbt"]
+unavailableFeatures=["Owners", "Tags", "Stored Procedures", "Query Usage", "Lineage", "Column-level Lineage", "Data Profiler", "Data Quality", "dbt", "Sample Data"]
 / %}
 
 In this section, we provide guides and references to use the Couchbase connector.
