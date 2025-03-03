@@ -1,0 +1,142 @@
+/*
+ *  Copyright 2025 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+export enum ECustomizedDataAssets {
+  TABLE = 'Table',
+  TOPIC = 'Topic',
+  DASHBOARD = 'Dashboard',
+  ML_MODEL = 'ML Model',
+  PIPELINE = 'Pipeline',
+  DASHBOARD_DATA_MODEL = 'Dashboard Data Model',
+  API_COLLECTION = 'API Collection',
+  SEARCH_INDEX = 'Search Index',
+  CONTAINER = 'Container',
+  DATABASE = 'Database',
+  DATABASE_SCHEMA = 'Database Schema',
+  STORED_PROCEDURE = 'Stored Procedure',
+  API_ENDPOINT = 'API Endpoint',
+}
+
+export const TABLE_DEFAULT_TABS = [
+  'Schema 4',
+  'Activity Feeds & Tasks 0',
+  'Sample Data',
+  'Queries 0',
+  'Data Observability',
+  'Lineage',
+  'Custom Properties',
+];
+
+export const TOPIC_DEFAULT_TABS = [
+  'Schema 2',
+  'Activity Feeds & Tasks 0',
+  'Sample Data',
+  'Config',
+  'Lineage',
+  'Custom Properties',
+];
+
+export const DASHBOARD_DEFAULT_TABS = [
+  'Details',
+  'Activity Feeds & Tasks 0',
+  'Lineage',
+  'Custom Properties',
+];
+
+export const MLMODEL_DEFAULT_TABS = [
+  'Features',
+  'Activity Feeds & Tasks 0',
+  'Details',
+  'Lineage',
+  'Custom Properties',
+];
+
+export const PIPELINE_DEFAULT_TABS = [
+  'Tasks',
+  'Activity Feeds & Tasks 0',
+  'Executions',
+  'Lineage',
+  'Custom Properties',
+];
+
+export const DASHBOARD_DATAMODEL_DEFAULT_TABS = [
+  'Model',
+  'Activity Feeds & Tasks 0',
+  'SQL',
+  'Lineage',
+  'Custom Properties',
+];
+
+export const API_COLLECTION_DEFAULT_TABS = [
+  'Collections 1',
+  'Activity Feeds & Tasks 0',
+  'Custom Properties',
+];
+
+export const SEARCH_INDEX_DEFAULT_TABS = [
+  'Fields',
+  'Activity Feeds & Tasks 0',
+  'Sample Data',
+  'Lineage',
+  'Search Index Settings',
+  'Custom Properties',
+];
+
+export const CONTAINER_DEFAULT_TABS = [
+  'Schema',
+  'Children',
+  'Activity Feeds & Tasks 0',
+  'Lineage',
+  'Custom Properties',
+];
+
+export const DATABASE_DEFAULT_TABS = [
+  'Schemas 1',
+  'Activity Feeds 1',
+  'Custom Properties',
+];
+
+export const DATABASE_SCHEMA_DEFAULT_TABS = [
+  'Tables 0',
+  'Stored Procedures 0',
+  'Activity Feeds 0',
+  'Custom Properties',
+];
+
+export const STORED_PROCEDURE_DEFAULT_TABS = [
+  'Code',
+  'Activity Feeds & Tasks 0',
+  'Lineage',
+  'Custom Properties',
+];
+
+export const API_ENDPOINT_DEFAULT_TABS = [
+  'Schema',
+  'Activity Feeds & Tasks 0',
+  'Lineage',
+  'Custom Properties',
+];
+
+export const DASHBOARD_DATA_MODEL_DEFAULT_TABS = [
+  'Model',
+  'Activity Feeds & Tasks 0',
+  'Lineage',
+  'Custom Properties',
+];
+
+export const ML_MODEL_DEFAULT_TABS = [
+  'Features',
+  'Activity Feeds & Tasks 0',
+  'Details',
+  'Lineage',
+  'Custom Properties',
+];
