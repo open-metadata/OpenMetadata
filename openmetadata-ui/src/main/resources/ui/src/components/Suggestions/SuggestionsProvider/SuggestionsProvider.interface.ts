@@ -17,6 +17,7 @@ import {
 import { EntityReference } from '../../../generated/entity/type';
 
 export interface SuggestionsContextType {
+  suggestionLimit: number;
   selectedUserSuggestions: Suggestion[];
   suggestions: Suggestion[];
   suggestionsByUser: Map<string, Suggestion[]>;
@@ -25,7 +26,7 @@ export interface SuggestionsContextType {
   loadingReject: boolean;
   allSuggestionsUsers: EntityReference[];
   onUpdateActiveUser: (user?: EntityReference) => void;
-  fetchSuggestions: (entityFqn: string) => void;
+  fetchSuggestions: () => void;
   acceptRejectSuggestion: (
     suggestion: Suggestion,
     action: SuggestionAction
