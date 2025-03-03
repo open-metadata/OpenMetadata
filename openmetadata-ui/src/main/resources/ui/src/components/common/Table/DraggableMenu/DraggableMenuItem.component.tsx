@@ -65,7 +65,12 @@ const DraggableMenuItem: React.FC<DraggableMenuItemProps> = ({
       ref={(node) => {
         drag(drop(node));
       }}>
-      <ColumnDragIcon className="text-grey-muted" height={16} width={16} />
+      <ColumnDragIcon
+        className="text-grey-muted"
+        data-testid="draggable-menu-item-drag-icon"
+        height={16}
+        width={16}
+      />
 
       <Button
         className="draggable-menu-item-button"

@@ -38,8 +38,8 @@ import {
   getReorderedColumns,
 } from '../../../utils/CustomizeColumnUtils';
 import { getTableExpandableConfig } from '../../../utils/TableUtils';
-import DraggableMenuItem from '../../Glossary/GlossaryColumnsSelectionDropdown/DraggableMenuItem.component';
 import Loader from '../Loader/Loader';
+import DraggableMenuItem from './DraggableMenu/DraggableMenuItem.component';
 import {
   TableColumnDropdownList,
   TableComponentProps,
