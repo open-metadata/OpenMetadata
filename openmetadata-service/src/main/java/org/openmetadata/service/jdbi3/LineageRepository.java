@@ -318,7 +318,7 @@ public class LineageRepository {
       for (JsonNode node : nodes) {
         JsonNode entityNode = node.path("entity");
         String id = entityNode.path("id").asText();
-        entityMap.put(id, node);
+        entityMap.put(id, entityNode);
       }
 
       StringWriter csvContent = new StringWriter();
