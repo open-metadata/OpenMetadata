@@ -605,6 +605,7 @@
     "help": "도움말",
     "here-lowercase": "여기",
     "hide": "숨기기",
+    "hide-all": "모두 숨기기",
     "hide-deleted-entity": "삭제된 {{entity}} 숨기기",
     "history": "히스토리",
     "home": "홈",
