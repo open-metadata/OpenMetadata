@@ -13,7 +13,6 @@
 import { act, render, screen } from '@testing-library/react';
 import { User } from 'oidc-client';
 import React from 'react';
-import { HelmetProvider } from 'react-helmet-async';
 import { Callback } from 'react-oidc';
 import { MemoryRouter } from 'react-router-dom';
 import { ROUTES } from '../../../constants/constants';
@@ -47,6 +46,13 @@ jest.mock('react-router-dom', () => ({
   useHistory: () => ({
     push: mockHistoryPush,
   }),
+}));
+
+jest.mock('react-helmet-async', () => ({
+  HelmetProvider: ({ children }: { children: React.ReactNode }) => (
+    <>{children}</>
+  ),
+  Helmet: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
 
 describe('OidcAuthenticator - Silent SignIn Tests', () => {
@@ -204,17 +210,15 @@ describe('OidcAuthenticator - Login Tests', () => {
 
     render(
       <MemoryRouter>
-        <HelmetProvider>
-          <OidcAuthenticator
-            childComponentType={() => <div>Child Component</div>}
-            ref={ref}
-            userConfig={{}}
-            onLoginFailure={mockOnLoginFailure}
-            onLoginSuccess={mockOnLoginSuccess}
-            onLogoutSuccess={mockOnLogoutSuccess}>
-            <div>Protected Content</div>
-          </OidcAuthenticator>
-        </HelmetProvider>
+        <OidcAuthenticator
+          childComponentType={() => <div>Child Component</div>}
+          ref={ref}
+          userConfig={{}}
+          onLoginFailure={mockOnLoginFailure}
+          onLoginSuccess={mockOnLoginSuccess}
+          onLogoutSuccess={mockOnLogoutSuccess}>
+          <div>Protected Content</div>
+        </OidcAuthenticator>
       </MemoryRouter>
     );
 
@@ -237,16 +241,14 @@ describe('OidcAuthenticator - Login Tests', () => {
 
     render(
       <MemoryRouter initialEntries={[ROUTES.SIGNIN]}>
-        <HelmetProvider>
-          <OidcAuthenticator
-            childComponentType={() => <div>Child Component</div>}
-            userConfig={{}}
-            onLoginFailure={mockOnLoginFailure}
-            onLoginSuccess={mockOnLoginSuccess}
-            onLogoutSuccess={mockOnLogoutSuccess}>
-            <div>Protected Content</div>
-          </OidcAuthenticator>
-        </HelmetProvider>
+        <OidcAuthenticator
+          childComponentType={() => <div>Child Component</div>}
+          userConfig={{}}
+          onLoginFailure={mockOnLoginFailure}
+          onLoginSuccess={mockOnLoginSuccess}
+          onLogoutSuccess={mockOnLogoutSuccess}>
+          <div>Protected Content</div>
+        </OidcAuthenticator>
       </MemoryRouter>
     );
 
