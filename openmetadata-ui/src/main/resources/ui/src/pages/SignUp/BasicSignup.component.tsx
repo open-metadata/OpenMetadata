@@ -148,14 +148,14 @@ const BasicSignUp = () => {
                       {
                         validator: (_, value) => {
                           if (isEmpty(password)) {
-                            return Promise.reject(
-                              t('label.please-password-type-first')
-                            );
+                            return Promise.reject({
+                              message: t('label.please-password-type-first'),
+                            });
                           }
                           if (value !== password) {
-                            return Promise.reject(
-                              t('label.password-not-match')
-                            );
+                            return Promise.reject({
+                              message: t('label.password-not-match'),
+                            });
                           }
 
                           return Promise.resolve();
