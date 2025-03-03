@@ -1,7 +1,7 @@
-# 1.6.4 Release 🎉
+# 1.6.5 Release 🎉
 
 {% note noteType="Tip" %}
-**Feb 20th, 2025**
+**Feb 28th, 2025**
 {% /note %}
 
 {% inlineCalloutContainer %}
@@ -10,39 +10,20 @@ color="violet-70"
 icon="celebration"
 bold="Upgrade OpenMetadata"
 href="/deployment/upgrade" %}
-Learn how to upgrade your OpenMetadata instance to 1.6.4!
+Learn how to upgrade your OpenMetadata instance to 1.6.5!
 {% /inlineCallout %}
 {% /inlineCalloutContainer %}
 
-You can find the GitHub release [here](https://github.com/open-metadata/OpenMetadata/releases/tag/1.6.4-release).
+You can find the GitHub release [here](https://github.com/open-metadata/OpenMetadata/releases/tag/1.6.5-release).
 
-- Fix: Powerbi test connection sucess with bad credentials.
-- Fix: Remove description check for columnDescriptionStatus.
-- Fix: Markdown editor fix.
-- Fix: Postgres usage not terminating with bad connection.
-- Fix: Fix followers for Data Insights index.
-- Fix: Add support for temp table lineage.
-- Fix: Exclude deleted Stored Procedure Snowflake.
-- Fix: Fix databricks schema not found.
-- Fix: API service schema fields of object type not listed.
-- Fix: Multiple Tier selection not resulting correct DQ dashboard view.
-- Fix: Not able to edit sql query from test case details page.
-- Fix: Implement the right SQA Sampler for UnityCatalog.
-- Fix: Fix dbt Test case Timestamp issue.
-- Fix: Delete pipelines from logical suites at deletion.
-- Fix: Table Update Sys Metric shows wrong value.
-- Fix: Fix unity catalog lineage - handle errors.
-- Improvement: Trino Add missing import.
-- Improvement: Optimise Pipeline Lineage Extraction.
-- Improvement: Powerbi fetch workspaces failure handle.
-- Improvement: Validate basic suites do have basicEntityRef.
-- Improvement: Add support for cluster key information - bigquery.
-- Improvement: Automator - Remove tags by label type.
-- Improvement: Show sub domain assets to top level.
-- Improvement: Sort Enum type Custom Property Values.
-- Improvement: Modify the appeariance of self connecting edge lineage.
-- Improvement: Global search should persist quick filter in explore.
-- Improvement: Show sourceUrl if present.
-- Improvement: Modify the lineage alignment algorithm to tree view.
+- Fix hyperlink encoding for alerts and notifications  
+- Fix failed tests sample data exception management  
+- Fix MySQL and MariaDB window function computation when no database is added in the connection  
+- Add support for tags and glossary terms in Domains and Data Products  
+- Fix consolidation issues on incremental changes  
+- Fix Snowflake lineage Key Error  
+- Fix iframe SSO setup  
+- Support pagination for container children  
+- Improved search matching for keywords
 
-**Full Changelog**: https://github.com/open-metadata/OpenMetadata/compare/1.6.3-release...1.6.4-release
+**Full Changelog**: https://github.com/open-metadata/OpenMetadata/compare/1.6.4-release...1.6.5-release
