@@ -37,6 +37,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import javax.ws.rs.BadRequestException;
 import javax.ws.rs.core.UriInfo;
 import lombok.Getter;
@@ -668,5 +669,12 @@ public final class Entity {
       return ENTITY_SERVICE_TYPE_MAP.get(entityType);
     }
     return entityType;
+  }
+
+  public static Set<String> getEntityTypeInService(String serviceType) {
+    return ENTITY_SERVICE_TYPE_MAP.entrySet().stream()
+        .filter(entry -> entry.getValue().equals(serviceType))
+        .map(Map.Entry::getKey)
+        .collect(Collectors.toSet());
   }
 }

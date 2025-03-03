@@ -1,7 +1,5 @@
 package org.openmetadata.service.search.indexes;
 
-import static org.openmetadata.service.search.EntityBuilderConstant.COLUMNS_NAME_KEYWORD;
-
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -111,7 +109,6 @@ public record TableIndex(Table table) implements ColumnIndex {
 
   public static Map<String, Float> getFields() {
     Map<String, Float> fields = SearchIndex.getDefaultFields();
-    fields.put(COLUMNS_NAME_KEYWORD, 5.0f);
     fields.put("columns.name", 5.0f);
     fields.put("columns.displayName", 5.0f);
     fields.put("columns.description", 2.0f);

@@ -3234,7 +3234,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
       AssetCertification origCertification = original.getCertification();
       AssetCertification updatedCertification = updated.getCertification();
 
-      if (origCertification == updatedCertification || updatedCertification == null) return;
+      if (Objects.equals(origCertification, updatedCertification) || updatedCertification == null)
+        return;
 
       SystemRepository systemRepository = Entity.getSystemRepository();
       AssetCertificationSettings assetCertificationSettings =

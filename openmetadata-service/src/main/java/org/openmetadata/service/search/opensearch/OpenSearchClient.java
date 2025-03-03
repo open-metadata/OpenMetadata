@@ -1298,6 +1298,7 @@ public class OpenSearchClient implements SearchClient {
     hb.preTags(PRE_TAG);
     hb.postTags(POST_TAG);
     hb.maxAnalyzerOffset(MAX_ANALYZED_OFFSET);
+    hb.requireFieldMatch(false);
     return hb;
   }
 
@@ -1563,6 +1564,7 @@ public class OpenSearchClient implements SearchClient {
         AggregationBuilders.terms("databaseSchema.name.keyword")
             .field("databaseSchema.name.keyword")
             .size(MAX_AGGREGATE_SIZE));
+    // used for explore tree results
     searchSourceBuilder.aggregation(
         AggregationBuilders.terms("database.displayName")
             .field("database.displayName")
@@ -2192,7 +2194,24 @@ public class OpenSearchClient implements SearchClient {
     XContentParser parser = createXContentParser(query);
     parser.nextToken();
     deleteRequest.setQuery(RangeQueryBuilder.fromXContent(parser));
-    client.deleteByQuery(deleteRequest, RequestOptions.DEFAULT);
+    deleteEntityFromOpenSearchByQuery(deleteRequest);
+  }
+
+  @SneakyThrows
+  public void deleteByRangeAndTerm(
+      String index, String rangeQueryStr, String termKey, String termValue) {
+    DeleteByQueryRequest deleteRequest = new DeleteByQueryRequest(index);
+    // Hack: Due to an issue on how the RangeQueryBuilder.fromXContent works, we're removing the
+    // first token from the Parser
+    XContentParser rangeParser = createXContentParser(rangeQueryStr);
+    rangeParser.nextToken();
+    RangeQueryBuilder rangeQuery = RangeQueryBuilder.fromXContent(rangeParser);
+
+    TermQueryBuilder termQuery = QueryBuilders.termQuery(termKey, termValue);
+
+    BoolQueryBuilder query = QueryBuilders.boolQuery().must(rangeQuery).must(termQuery);
+    deleteRequest.setQuery(query);
+    deleteEntityFromOpenSearchByQuery(deleteRequest);
   }
 
   @SneakyThrows

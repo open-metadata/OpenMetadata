@@ -9,11 +9,15 @@ import java.util.Map;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Handle;
+import org.jdbi.v3.core.statement.UnableToExecuteStatementException;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.governance.workflows.elements.WorkflowNodeDefinitionInterface;
 import org.openmetadata.schema.type.LineageDetails;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.governance.workflows.flowable.MainWorkflow;
+import org.openmetadata.service.jdbi3.AppMarketPlaceRepository;
+import org.openmetadata.service.jdbi3.AppRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.WorkflowDefinitionRepository;
 import org.openmetadata.service.resources.databases.DatasourceConfig;
@@ -74,6 +78,31 @@ public class MigrationUtil {
       LOG.error(
           "Error while updating non null json rows with createdAt, createdBy, updatedAt and updatedBy for lineage.",
           ex);
+    }
+  public static void updateDataInsightsApplication() {
+    // Delete DataInsightsApplication - It will be recreated on AppStart
+    AppRepository appRepository = (AppRepository) Entity.getEntityRepository(Entity.APPLICATION);
+
+    try {
+      appRepository.deleteByName("admin", "DataInsightsApplication", true, true);
+    } catch (EntityNotFoundException ex) {
+      LOG.debug("DataInsights Application not found.");
+    } catch (UnableToExecuteStatementException ex) {
+      // Note: Due to a change in the code this delete fails on a postDelete step that is not
+      LOG.debug("[UnableToExecuteStatementException]: {}", ex.getMessage());
+    }
+
+    // Update DataInsightsApplication MarketplaceDefinition - It will be recreated on AppStart
+    AppMarketPlaceRepository marketPlaceRepository =
+        (AppMarketPlaceRepository) Entity.getEntityRepository(Entity.APP_MARKET_PLACE_DEF);
+
+    try {
+      marketPlaceRepository.deleteByName("admin", "DataInsightsApplication", true, true);
+    } catch (EntityNotFoundException ex) {
+      LOG.debug("DataInsights Application Marketplace Definition not found.");
+    } catch (UnableToExecuteStatementException ex) {
+      // Note: Due to a change in the code this delete fails on a postDelete step that is not
+      LOG.debug("[UnableToExecuteStatementException]: {}", ex.getMessage());
     }
   }
 

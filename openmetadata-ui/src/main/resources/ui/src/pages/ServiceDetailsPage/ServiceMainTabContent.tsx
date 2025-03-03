@@ -26,16 +26,15 @@ import Loader from '../../components/common/Loader/Loader';
 import NextPrevious from '../../components/common/NextPrevious/NextPrevious';
 import { NextPreviousProps } from '../../components/common/NextPrevious/NextPrevious.interface';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
+import { GenericProvider } from '../../components/Customization/GenericProvider/GenericProvider';
 import EntityRightPanel from '../../components/Entity/EntityRightPanel/EntityRightPanel';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import { COMMON_RESIZABLE_PANEL_CONFIG } from '../../constants/ResizablePanel.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../../enums/entity.enum';
-import { DatabaseService } from '../../generated/entity/services/databaseService';
 import { Paging } from '../../generated/type/paging';
 import { UsePagingInterface } from '../../hooks/paging/usePaging';
-import { useFqn } from '../../hooks/useFqn';
 import { ServicesType } from '../../interface/service.interface';
 import {
   callServicePatchAPI,
@@ -84,11 +83,7 @@ function ServiceMainTabContent({
   const { serviceCategory } = useParams<{
     serviceCategory: ServiceTypes;
   }>();
-
-  const { fqn: serviceFQN } = useFqn();
   const { permissions } = usePermissionProvider();
-
-  const [isEdit, setIsEdit] = useState(false);
   const [pageData, setPageData] = useState<ServicePageData[]>([]);
 
   const tier = getTierTags(serviceDetails?.tags ?? []);
@@ -131,18 +126,8 @@ function ServiceMainTabContent({
       await onDescriptionUpdate(updatedHTML);
     } catch (e) {
       // Error
-    } finally {
-      setIsEdit(false);
     }
   }, []);
-
-  const onDescriptionEdit = (): void => {
-    setIsEdit(true);
-  };
-
-  const onCancel = () => {
-    setIsEdit(false);
-  };
 
   const handleDisplayNameUpdate = useCallback(
     async (entityData: EntityName, id?: string) => {
@@ -245,15 +230,11 @@ function ServiceMainTabContent({
                   <Col data-testid="description-container" span={24}>
                     <DescriptionV1
                       description={serviceDetails.description}
-                      entityFqn={serviceFQN}
                       entityName={serviceName}
                       entityType={entityType}
                       hasEditAccess={editDescriptionPermission}
-                      isEdit={isEdit}
                       showActions={!serviceDetails.deleted}
                       showCommentsIcon={false}
-                      onCancel={onCancel}
-                      onDescriptionEdit={onDescriptionEdit}
                       onDescriptionUpdate={handleDescriptionUpdate}
                     />
                   </Col>
@@ -312,25 +293,25 @@ function ServiceMainTabContent({
           }}
           secondPanel={{
             children: (
-              <div data-testid="entity-right-panel">
-                <EntityRightPanel
-                  dataProducts={
-                    (serviceDetails as DatabaseService)?.dataProducts ?? []
-                  }
-                  domain={(serviceDetails as DatabaseService)?.domain}
-                  editGlossaryTermsPermission={editGlossaryTermsPermission}
-                  editTagPermission={editTagsPermission}
-                  entityFQN={serviceFQN}
-                  entityId={serviceDetails.id}
-                  entityType={entityType}
-                  selectedTags={tags}
-                  showDataProductContainer={
-                    entityType !== EntityType.METADATA_SERVICE
-                  }
-                  showTaskHandler={false}
-                  onTagSelectionChange={handleTagSelection}
-                />
-              </div>
+              <GenericProvider
+                data={serviceDetails}
+                permissions={servicePermission}
+                type={entityType}
+                onUpdate={saveUpdatedServiceData}>
+                <div data-testid="entity-right-panel">
+                  <EntityRightPanel
+                    editGlossaryTermsPermission={editGlossaryTermsPermission}
+                    editTagPermission={editTagsPermission}
+                    entityType={entityType}
+                    selectedTags={tags}
+                    showDataProductContainer={
+                      entityType !== EntityType.METADATA_SERVICE
+                    }
+                    showTaskHandler={false}
+                    onTagSelectionChange={handleTagSelection}
+                  />
+                </div>
+              </GenericProvider>
             ),
             ...COMMON_RESIZABLE_PANEL_CONFIG.RIGHT_PANEL,
             className:

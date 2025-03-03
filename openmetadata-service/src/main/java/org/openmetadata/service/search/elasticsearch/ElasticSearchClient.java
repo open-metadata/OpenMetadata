@@ -1461,6 +1461,7 @@ public class ElasticSearchClient implements SearchClient {
     hb.preTags(PRE_TAG);
     hb.postTags(POST_TAG);
     hb.maxAnalyzedOffset(MAX_ANALYZED_OFFSET);
+    hb.requireFieldMatch(false);
     return hb;
   }
 
@@ -1557,6 +1558,7 @@ public class ElasticSearchClient implements SearchClient {
     QueryStringQueryBuilder queryStringBuilder =
         buildSearchQueryBuilder(query, SearchIndex.getAllFields());
     FunctionScoreQueryBuilder queryBuilder = boostScore(queryStringBuilder);
+    queryBuilder.boostMode(CombineFunction.SUM);
     SearchSourceBuilder searchSourceBuilder = searchBuilder(queryBuilder, null, from, size);
     searchSourceBuilder.aggregation(
         AggregationBuilders.terms("database.name.keyword")
@@ -1574,6 +1576,7 @@ public class ElasticSearchClient implements SearchClient {
     QueryStringQueryBuilder queryStringBuilder =
         buildSearchQueryBuilder(query, SearchIndex.getAllFields());
     FunctionScoreQueryBuilder queryBuilder = boostScore(queryStringBuilder);
+    queryBuilder.boostMode(CombineFunction.SUM);
     SearchSourceBuilder searchSourceBuilder = searchBuilder(queryBuilder, null, from, size);
     searchSourceBuilder.aggregation(
         AggregationBuilders.terms("database.name.keyword")
@@ -1583,6 +1586,7 @@ public class ElasticSearchClient implements SearchClient {
         AggregationBuilders.terms("databaseSchema.name.keyword")
             .field("databaseSchema.name.keyword")
             .size(MAX_AGGREGATE_SIZE));
+    // used for explore tree results
     searchSourceBuilder.aggregation(
         AggregationBuilders.terms("database.displayName")
             .field("database.displayName")
@@ -2232,7 +2236,24 @@ public class ElasticSearchClient implements SearchClient {
     XContentParser parser = createXContentParser(query);
     parser.nextToken();
     deleteRequest.setQuery(RangeQueryBuilder.fromXContent(parser));
-    client.deleteByQuery(deleteRequest, RequestOptions.DEFAULT);
+    deleteEntityFromElasticSearchByQuery(deleteRequest);
+  }
+
+  @SneakyThrows
+  public void deleteByRangeAndTerm(
+      String index, String rangeQueryStr, String termKey, String termValue) {
+    DeleteByQueryRequest deleteRequest = new DeleteByQueryRequest(index);
+    // Hack: Due to an issue on how the RangeQueryBuilder.fromXContent works, we're removing the
+    // first token from the Parser
+    XContentParser rangeParser = createXContentParser(rangeQueryStr);
+    rangeParser.nextToken();
+    RangeQueryBuilder rangeQuery = RangeQueryBuilder.fromXContent(rangeParser);
+
+    TermQueryBuilder termQuery = QueryBuilders.termQuery(termKey, termValue);
+
+    BoolQueryBuilder query = QueryBuilders.boolQuery().must(rangeQuery).must(termQuery);
+    deleteRequest.setQuery(query);
+    deleteEntityFromElasticSearchByQuery(deleteRequest);
   }
 
   @SneakyThrows

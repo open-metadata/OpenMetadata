@@ -5,10 +5,12 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
 import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
+import static org.openmetadata.service.Entity.FIELD_NAME;
 import static org.openmetadata.service.Entity.getEntityByName;
 import static org.openmetadata.service.jdbi3.LineageRepository.buildEntityLineageData;
 import static org.openmetadata.service.search.EntityBuilderConstant.DISPLAY_NAME_KEYWORD;
 import static org.openmetadata.service.search.EntityBuilderConstant.FIELD_DISPLAY_NAME_NGRAM;
+import static org.openmetadata.service.search.EntityBuilderConstant.FIELD_NAME_NGRAM;
 import static org.openmetadata.service.search.EntityBuilderConstant.FULLY_QUALIFIED_NAME;
 import static org.openmetadata.service.search.EntityBuilderConstant.FULLY_QUALIFIED_NAME_PARTS;
 import static org.openmetadata.service.util.FullyQualifiedName.getParentFQN;
@@ -362,8 +364,10 @@ public interface SearchIndex {
   static Map<String, Float> getDefaultFields() {
     Map<String, Float> fields = new HashMap<>();
     fields.put(DISPLAY_NAME_KEYWORD, 10.0f);
-    fields.put(FIELD_DISPLAY_NAME_NGRAM, 1.0f);
+    fields.put(FIELD_NAME, 10.0f);
+    fields.put(FIELD_NAME_NGRAM, 1.0f);
     fields.put(FIELD_DISPLAY_NAME, 10.0f);
+    fields.put(FIELD_DISPLAY_NAME_NGRAM, 1.0f);
     fields.put(FIELD_DESCRIPTION, 2.0f);
     fields.put(FULLY_QUALIFIED_NAME, 5.0f);
     fields.put(FULLY_QUALIFIED_NAME_PARTS, 5.0f);
