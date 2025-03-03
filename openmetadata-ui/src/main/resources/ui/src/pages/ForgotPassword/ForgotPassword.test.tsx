@@ -34,6 +34,10 @@ jest.mock('../../components/Auth/AuthProviders/BasicAuthProvider', () => {
   };
 });
 
+jest.mock('../../components/common/DocumentTitle/DocumentTitle', () => {
+  return jest.fn().mockReturnValue(<p>DocumentTitle</p>);
+});
+
 jest.mock('../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
 }));

@@ -20,6 +20,7 @@ import { useHistory } from 'react-router-dom';
 import { ReactComponent as IconSuccessBadge } from '../../assets/svg/success-badge.svg';
 import { useBasicAuth } from '../../components/Auth/AuthProviders/BasicAuthProvider';
 import BrandImage from '../../components/common/BrandImage/BrandImage';
+import DocumentTitle from '../../components/common/DocumentTitle/DocumentTitle';
 import { HTTP_STATUS_CODE } from '../../constants/Auth.constants';
 import { ROUTES } from '../../constants/constants';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -59,6 +60,7 @@ const ForgotPassword = () => {
     <div
       className="h-full py-24 forgot-password-container "
       data-testid="forgot-password-container">
+      <DocumentTitle title={t('label.forgot-password')} />
       <Card
         bodyStyle={{ padding: '48px' }}
         className="m-auto"

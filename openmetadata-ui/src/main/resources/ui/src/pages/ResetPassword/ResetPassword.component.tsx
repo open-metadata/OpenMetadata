@@ -19,6 +19,7 @@ import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import { useBasicAuth } from '../../components/Auth/AuthProviders/BasicAuthProvider';
 import BrandImage from '../../components/common/BrandImage/BrandImage';
+import DocumentTitle from '../../components/common/DocumentTitle/DocumentTitle';
 import { ROUTES, VALIDATION_MESSAGES } from '../../constants/constants';
 import { passwordRegex } from '../../constants/regex.constants';
 import { PasswordResetRequest } from '../../generated/auth/passwordResetRequest';
@@ -69,6 +70,7 @@ const ResetPassword = () => {
 
   return (
     <div className="h-full p-y-36" data-testid="reset-password-container">
+      <DocumentTitle title={t('label.reset-your-password')} />
       <Card
         bodyStyle={{ padding: '48px' }}
         className="m-auto p-x-lg"
