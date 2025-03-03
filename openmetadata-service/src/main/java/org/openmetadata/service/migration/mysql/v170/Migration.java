@@ -18,12 +18,12 @@ public class Migration extends MigrationProcessImpl {
   @Override
   @SneakyThrows
   public void runDataMigration() {
-    //Governance
+    // Governance
     initializeWorkflowHandler();
     updateGovernanceWorkflowDefinitions();
     updateDataInsightsApplication();
 
-    //Lineage
+    // Lineage
     runLineageMigrationForNullColumn(handle);
     runLineageMigrationForNonNullColumn(handle);
   }

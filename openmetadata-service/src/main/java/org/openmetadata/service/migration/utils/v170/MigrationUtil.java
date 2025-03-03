@@ -29,14 +29,14 @@ public class MigrationUtil {
   private MigrationUtil() {}
 
   private static final String UPDATE_NULL_JSON =
-      "UPDATE entity_relationship SET json = :json WHERE json IS NULL";
+      "UPDATE entity_relationship SET json = :json WHERE json IS NULL AND relation = 13";
 
   private static final String UPDATE_NON_NULL_MYSQL_JSON =
       "UPDATE entity_relationship SET json = JSON_SET(json, '$.createdAt', IFNULL(CAST(json->>'$.createdAt' AS UNSIGNED), :currTime), '$.createdBy', IFNULL(JSON_UNQUOTE(json->>'$.createdBy'), 'admin'), '$.updatedAt', IFNULL(CAST(json->>'$.updatedAt' AS UNSIGNED), :currTime), '$.updatedBy', IFNULL(JSON_UNQUOTE(json->>'$.updatedBy'), 'admin')) WHERE "
-          + "json IS NOT NULL AND (json->>'$.createdAt' IS NULL OR JSON_UNQUOTE(json->>'$.createdBy') IS NULL OR json->>'$.updatedAt' IS NULL OR JSON_UNQUOTE(json->>'$.updatedBy') IS NULL)";
+          + "relation = 13 AND json IS NOT NULL AND (json->>'$.createdAt' IS NULL OR JSON_UNQUOTE(json->>'$.createdBy') IS NULL OR json->>'$.updatedAt' IS NULL OR JSON_UNQUOTE(json->>'$.updatedBy') IS NULL)";
 
   private static final String UPDATE_NON_NULL_POSTGRES_JSON =
-      "UPDATE entity_relationship SET json = jsonb_set(jsonb_set(jsonb_set(jsonb_set(json, '{createdAt}', COALESCE((json->>'createdAt')::bigint, :currTime)::text::jsonb, true), '{createdBy}', COALESCE(json->>'createdBy', '\"admin\"')::jsonb, true), '{updatedAt}', COALESCE((json->>'updatedAt')::bigint, :currTime)::text::jsonb, true), '{updatedBy}', COALESCE(json->>'updatedBy', '\"admin\"')::jsonb, true) WHERE json IS NOT NULL AND (json->>'createdAt' IS NULL OR json->>'createdBy' IS NULL OR json->>'updatedAt' IS NULL OR json->>'updatedBy' IS NULL)";
+      "UPDATE entity_relationship SET json = jsonb_set(jsonb_set(jsonb_set(jsonb_set(json, '{createdAt}', COALESCE((json->>'createdAt')::bigint, :currTime)::text::jsonb, true), '{createdBy}', COALESCE(json->>'createdBy', '\"admin\"')::jsonb, true), '{updatedAt}', COALESCE((json->>'updatedAt')::bigint, :currTime)::text::jsonb, true), '{updatedBy}', COALESCE(json->>'updatedBy', '\"admin\"')::jsonb, true) WHERE relation = 13 AND json IS NOT NULL AND (json->>'createdAt' IS NULL OR json->>'createdBy' IS NULL OR json->>'updatedAt' IS NULL OR json->>'updatedBy' IS NULL)";
 
   public static void runLineageMigrationForNullColumn(Handle handle) {
     try {
@@ -79,6 +79,8 @@ public class MigrationUtil {
           "Error while updating non null json rows with createdAt, createdBy, updatedAt and updatedBy for lineage.",
           ex);
     }
+  }
+
   public static void updateDataInsightsApplication() {
     // Delete DataInsightsApplication - It will be recreated on AppStart
     AppRepository appRepository = (AppRepository) Entity.getEntityRepository(Entity.APPLICATION);
