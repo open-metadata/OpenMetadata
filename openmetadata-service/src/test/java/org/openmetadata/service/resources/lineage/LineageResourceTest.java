@@ -863,10 +863,20 @@ public class LineageResourceTest extends OpenMetadataApplicationTest {
 
   public void assertEdge(EntityLineage lineage, Edge expectedEdge, boolean downstream) {
     if (downstream) {
-      assertTrue(lineage.getDownstreamEdges().contains(expectedEdge));
+      assertTrue(assertEdgeFromLineage(lineage.getDownstreamEdges(), expectedEdge));
     } else {
-      assertTrue(lineage.getUpstreamEdges().contains(expectedEdge));
+      assertTrue(assertEdgeFromLineage(lineage.getUpstreamEdges(), expectedEdge));
     }
+  }
+
+  public boolean assertEdgeFromLineage(List<Edge> actualEdges, Edge expectedEdge) {
+    for (Edge actualEdge : actualEdges) {
+      if (actualEdge.getFromEntity().equals(expectedEdge.getFromEntity())
+          && actualEdge.getToEntity().equals(expectedEdge.getToEntity())) {
+        return true;
+      }
+    }
+    return false;
   }
 
   public void assertDeleted(EntityLineage lineage, Edge expectedEdge, boolean downstream) {
@@ -881,11 +891,11 @@ public class LineageResourceTest extends OpenMetadataApplicationTest {
       EntityLineage lineage, Edge[] expectedUpstreamEdges, Edge[] expectedDownstreamEdges) {
     assertEquals(lineage.getUpstreamEdges().size(), expectedUpstreamEdges.length);
     for (Edge expectedUpstreamEdge : expectedUpstreamEdges) {
-      assertTrue(lineage.getUpstreamEdges().contains(expectedUpstreamEdge));
+      assertEdgeFromLineage(lineage.getUpstreamEdges(), expectedUpstreamEdge);
     }
     assertEquals(lineage.getDownstreamEdges().size(), expectedDownstreamEdges.length);
     for (Edge expectedDownstreamEdge : expectedDownstreamEdges) {
-      assertTrue(lineage.getDownstreamEdges().contains(expectedDownstreamEdge));
+      assertEdgeFromLineage(lineage.getDownstreamEdges(), expectedDownstreamEdge);
     }
   }
 }
