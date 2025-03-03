@@ -160,7 +160,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
           ingestionPipeline.getIngestionAgent().getId(),
           entityType,
           ingestionPipeline.getIngestionAgent().getType(),
-          Relationship.HAS);
+          Relationship.USES);
     }
   }
 

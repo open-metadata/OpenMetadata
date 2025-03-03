@@ -172,9 +172,7 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
 
         await testCaseResponse;
 
-        const listUserResponse = page.waitForResponse('/api/v1/users?*');
         await page.click('[data-testid="assignee"] [data-testid="edit-owner"]');
-        listUserResponse;
         await page.waitForSelector('[data-testid="loader"]', {
           state: 'detached',
         });

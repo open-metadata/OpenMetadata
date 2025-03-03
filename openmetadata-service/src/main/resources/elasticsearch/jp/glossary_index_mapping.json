@@ -1,5 +1,8 @@
 {
   "settings": {
+    "index": {
+      "max_ngram_diff": 17
+    },
     "analysis": {
       "normalizer": {
         "lowercase_normalizer": {
@@ -41,10 +44,17 @@
   "mappings": {
     "properties": {
       "id": {
-        "type": "text"
+        "type": "text",
+        "fields": {
+          "keyword": {
+            "type": "keyword",
+            "ignore_above": 256
+          }
+        }
       },
       "name": {
-        "type": "keyword",
+        "type": "text",
+        "analyzer": "om_analyzer_jp",
         "fields": {
           "keyword": {
             "type": "keyword",
@@ -81,7 +91,8 @@
       },
       "description": {
         "type": "text",
-        "analyzer": "om_analyzer_jp"
+        "analyzer": "om_analyzer_jp",
+        "similarity": "boolean"
       },
       "domain" : {
         "properties": {
