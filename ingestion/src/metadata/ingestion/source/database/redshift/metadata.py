@@ -110,15 +110,11 @@ STANDARD_TABLE_TYPES = {
     "v": TableType.View,
 }
 
-
-RedshiftDialectMixin._get_column_info = (  # pylint: disable=protected-access
-    _get_column_info
-)
-RedshiftDialectMixin._get_schema_column_info = (  # pylint: disable=protected-access
-    _get_schema_column_info
-)
+# pylint: disable=protected-access
+RedshiftDialectMixin._get_column_info = _get_column_info
+RedshiftDialectMixin._get_schema_column_info = _get_schema_column_info
 RedshiftDialectMixin.get_columns = get_columns
-PGDialect._get_column_info = _get_pg_column_info  # pylint: disable=protected-access
+PGDialect._get_column_info = _get_pg_column_info
 RedshiftDialect.get_all_table_comments = get_all_table_comments
 RedshiftDialect.get_table_comment = get_table_comment
 RedshiftDialect.get_view_definition = get_view_definition
