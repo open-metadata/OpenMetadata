@@ -111,9 +111,7 @@ for (const EntityClass of entities) {
         await currentEntity.visitEntityPage(page);
         await visitLineageTab(page);
         await page.click('[data-testid="edit-lineage"]');
-        await page
-          .locator('.react-flow__controls-fitview')
-          .dispatchEvent('click');
+        await page.getByTestId('fit-screen').click();
 
         for (const entity of entities) {
           await verifyNodePresent(page, entity);
@@ -126,9 +124,7 @@ for (const EntityClass of entities) {
         await currentEntity.visitEntityPage(page);
         await visitLineageTab(page);
         await editLineage(page);
-        await page
-          .locator('.react-flow__controls-fitview')
-          .dispatchEvent('click');
+        await page.getByTestId('fit-screen').click();
 
         for (const entity of entities) {
           await applyPipelineFromModal(page, currentEntity, entity, pipeline);

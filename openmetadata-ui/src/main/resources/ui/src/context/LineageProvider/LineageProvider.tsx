@@ -555,9 +555,6 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
       });
     }
 
-    // On deleting of edge storing the result in a separate state.
-    // This state variable is applied to main entityLineage state variable when the edit operation is
-    // closed. This is done to perform the redrawing of the lineage graph on exit of edit mode.
     setUpdatedEntityLineage(() => {
       return {
         ...entityLineage,
@@ -597,6 +594,10 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
       };
     });
 
+    // filter the edge from edges
+    setEdges((prev) => {
+      return prev.filter((item) => item.id !== edge.id);
+    });
     setShowDeleteModal(false);
   };
 
@@ -961,8 +962,13 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
               edges: allEdges,
             });
 
-            const createdEdges = createEdges(allNodes, allEdges, decodedFqn);
-            setEdges(createdEdges.edges);
+            const { edges: createdEdges, columnsHavingLineage } = createEdges(
+              allNodes,
+              allEdges,
+              decodedFqn
+            );
+            setEdges(createdEdges);
+            setColumnsHavingLineage(columnsHavingLineage);
 
             setNewAddedNode({} as Node);
           })

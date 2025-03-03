@@ -84,7 +84,7 @@ export const editLineage = async (page: Page) => {
 };
 
 export const performZoomOut = async (page: Page) => {
-  const zoomOutBtn = page.locator('.react-flow__controls-zoomout');
+  const zoomOutBtn = page.getByTestId('zoom-out');
   const enabled = await zoomOutBtn.isEnabled();
   if (enabled) {
     for (const _ of Array.from({ length: 8 })) {

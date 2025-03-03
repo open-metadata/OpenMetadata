@@ -342,7 +342,7 @@ export const CustomEdge = ({
 
   const dataTestId = useMemo(() => {
     if (!isColumnLineage) {
-      return `edge-${edge.fromEntity.fqn}-${edge.toEntity.fqn}`;
+      return `edge-${edge.fromEntity.fullyQualifiedName}-${edge.toEntity.fullyQualifiedName}`;
     } else {
       return `column-edge-${sourceHandle}-${targetHandle}`;
     }
@@ -365,7 +365,7 @@ export const CustomEdge = ({
         hasLabel &&
         getLineageEdgeIcon(
           <PipelineIcon />,
-          `pipeline-label-${edge.fromEntity.fqn}-${edge.toEntity.fqn}`,
+          `pipeline-label-${edge.fromEntity.fullyQualifiedName}-${edge.toEntity.fullyQualifiedName}`,
           currentPipelineStatus
         )}
       {isColumnLineageAllowed &&
@@ -380,7 +380,7 @@ export const CustomEdge = ({
         data.isExpanded &&
         getLineageEdgeIcon(
           <FunctionIcon />,
-          `function-icon-${edge.fromEntity.fqn}-${edge.toEntity.fqn}`
+          `function-icon-${edge.fromEntity.fullyQualifiedName}-${edge.toEntity.fullyQualifiedName}`
         )}
     </Fragment>
   );

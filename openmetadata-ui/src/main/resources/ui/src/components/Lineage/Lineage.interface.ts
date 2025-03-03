@@ -33,7 +33,6 @@ export interface EntityLineageResponse {
 }
 
 export interface EdgeFromToData {
-  fqn?: string;
   id: string;
   type: string;
   fullyQualifiedName?: string;
