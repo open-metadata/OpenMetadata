@@ -397,6 +397,7 @@ public class LineageRepository {
               "",
               "",
               "",
+              "",
               "");
           LOG.debug(
               "Exported ColumnMapping: from='{}', to='{}'",
@@ -406,7 +407,7 @@ public class LineageRepository {
       } else if (!pipeline.isMissingNode() && !pipeline.isNull()) {
         writePipelineRow(csvWriter, baseRow, pipeline);
       } else {
-        writeCsvRow(csvWriter, baseRow, "", "", "", "", "", "", "", "", "");
+        writeCsvRow(csvWriter, baseRow, "", "", "", "", "", "", "", "", "", "");
       }
     }
   }
@@ -572,6 +573,7 @@ public class LineageRepository {
       addField(recordList, getStringOrNull(data.getDescription()));
       addField(recordList, getStringOrNull(pipeline, "pipeline", "id"));
       addField(recordList, getStringOrNull(pipeline, "pipeline", "fullyQualifiedName"));
+      addField(recordList, getStringOrNull(pipeline, "pipeline", "displayName"));
       addField(recordList, processColumnLineage(data.getColumns()));
       addField(recordList, getStringOrNull(data.getSqlQuery()));
       addField(recordList, getStringOrNull(data.getSource()));
