@@ -38,6 +38,7 @@ import {
 } from '../../../utils/TableTags/TableTags.utils';
 import { createTagObject } from '../../../utils/TagsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import { EntityDescriptionProvider } from '../../common/EntityDescription/EntityDescriptionProvider/EntityDescriptionProvider';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Table from '../../common/Table/Table';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
@@ -406,18 +407,22 @@ export const DashboardChartTable = () => {
         size="small"
       />
       {editChart && (
-        <ModalWithMarkdownEditor
-          header={t('label.edit-chart-name', {
-            name: getEntityName(editChart.chart),
-          })}
-          placeholder={t('label.enter-field-description', {
-            field: t('label.chart'),
-          })}
-          value={editChart.chart.description ?? ''}
-          visible={Boolean(editChart)}
-          onCancel={closeEditChartModal}
-          onSave={onChartUpdate}
-        />
+        <EntityDescriptionProvider
+          entityFqn={editChart.chart.fullyQualifiedName}
+          entityType={EntityType.CHART}>
+          <ModalWithMarkdownEditor
+            header={t('label.edit-chart-name', {
+              name: getEntityName(editChart.chart),
+            })}
+            placeholder={t('label.enter-field-description', {
+              field: t('label.chart'),
+            })}
+            value={editChart.chart.description ?? ''}
+            visible={Boolean(editChart)}
+            onCancel={closeEditChartModal}
+            onSave={onChartUpdate}
+          />
+        </EntityDescriptionProvider>
       )}
     </>
   );
