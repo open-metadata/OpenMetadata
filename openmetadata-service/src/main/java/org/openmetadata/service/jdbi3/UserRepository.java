@@ -648,8 +648,8 @@ public class UserRepository extends EntityRepository<User> {
       deleteFrom(original.getId(), USER, Relationship.HAS, Entity.ROLE);
       assignRoles(updated, updated.getRoles());
 
-      List<EntityReference> origRoles = listOrEmpty(original.getRoles());
-      List<EntityReference> updatedRoles = listOrEmpty(updated.getRoles());
+      List<EntityReference> origRoles = listOrEmptyMutable(original.getRoles());
+      List<EntityReference> updatedRoles = listOrEmptyMutable(updated.getRoles());
 
       origRoles.sort(EntityUtil.compareEntityReference);
       updatedRoles.sort(EntityUtil.compareEntityReference);
