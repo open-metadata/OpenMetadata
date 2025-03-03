@@ -202,7 +202,7 @@ const TaskTabIncidentManagerHeaderNew = ({ thread }: { thread: Thread }) => {
             />
           </Col>
         )}
-        <Col span={24}>
+        <Col className="p-l-0" span={24}>
           <div className="task-resolution-steps-container-new">
             <Steps
               className="task-resolution-steps w-full"

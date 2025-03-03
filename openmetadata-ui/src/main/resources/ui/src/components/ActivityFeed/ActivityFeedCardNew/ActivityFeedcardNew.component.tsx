@@ -158,6 +158,8 @@ const ActivityFeedCardNew = ({
           className={classNames('break-word header-link d-flex', {
             'items-start': showThread,
             'items-center': !showThread,
+            ' m-t-xss':
+              showThread && feed.entityRef?.type === EntityType.CONTAINER,
           })}>
           <span className="w-4 h-4 m-r-xss d-inline-flex text-xl align-middle">
             {searchClassBase.getEntityIcon(entityType ?? '')}
