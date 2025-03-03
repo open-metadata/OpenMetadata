@@ -63,10 +63,10 @@ public class ElasticSearchLineChartAggregator
         String[] includeArr = null;
         String[] excludeArr = null;
         if (!CommonUtil.nullOrEmpty(lineChart.getIncludeXAxisFiled())) {
-          includeArr = lineChart.getIncludeGroups().toArray(new String[0]);
+          includeArr = lineChart.getIncludeXAxisFiled().toArray(new String[0]);
         }
         if (!CommonUtil.nullOrEmpty(lineChart.getExcludeXAxisField())) {
-          excludeArr = lineChart.getExcludeGroups().toArray(new String[0]);
+          excludeArr = lineChart.getExcludeXAxisField().toArray(new String[0]);
         }
         IncludeExclude includeExclude = null;
         if (includeArr != null || excludeArr != null) {

@@ -179,7 +179,7 @@ public class MigrationUtil {
         new LineChart()
             .withMetrics(List.of(new LineChartMetric().withFormula("count(k='id.keyword')")))
             .withxAxisField("tags.tagFQN")
-            .withIncludeXAxisFiled(List.of("pii.none", "pii.sensitive", "pii.none")),
+            .withIncludeXAxisFiled(List.of("pii.none", "pii.sensitive", "pii.nonsensitive")),
         DataInsightCustomChart.ChartType.BAR_CHART);
 
     createChart(
