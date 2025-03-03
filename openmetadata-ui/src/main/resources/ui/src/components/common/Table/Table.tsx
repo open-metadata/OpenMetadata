@@ -19,6 +19,7 @@ import {
   Typography,
 } from 'antd';
 import { ColumnType } from 'antd/lib/table';
+import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import React, {
   forwardRef,
@@ -68,6 +69,13 @@ const Table = <T extends object = any>(
   const isLoading = useMemo(
     () => (loading as SpinProps)?.spinning ?? (loading as boolean) ?? false,
     [loading]
+  );
+
+  // Check if the table is in Full View mode, if so, the dropdown and Customize Column feature is not available
+  const isFullViewTable = useMemo(
+    () =>
+      isEmpty(rest.staticVisibleColumns) && isEmpty(rest.defaultVisibleColumns),
+    [rest.staticVisibleColumns, rest.defaultVisibleColumns]
   );
 
   const handleMoveItem = useCallback(
@@ -163,27 +171,40 @@ const Table = <T extends object = any>(
     : {};
 
   useEffect(() => {
-    setDropdownColumnList(
-      getCustomizeColumnDetails<T>(rest.columns, rest.staticVisibleColumns)
-    );
-  }, [rest.columns, rest.staticVisibleColumns]);
+    if (!isFullViewTable) {
+      setDropdownColumnList(
+        getCustomizeColumnDetails<T>(rest.columns, rest.staticVisibleColumns)
+      );
+    }
+  }, [isFullViewTable, rest.columns, rest.staticVisibleColumns]);
 
   useEffect(() => {
-    const filteredColumns = (rest.columns ?? []).filter(
-      (item) =>
-        columnDropdownSelections.includes(item.key as string) ||
-        (rest.staticVisibleColumns ?? []).includes(item.key as string)
-    );
+    if (isFullViewTable) {
+      setPropsColumns(rest.columns ?? []);
+    } else {
+      const filteredColumns = (rest.columns ?? []).filter(
+        (item) =>
+          columnDropdownSelections.includes(item.key as string) ||
+          (rest.staticVisibleColumns ?? []).includes(item.key as string)
+      );
 
-    setPropsColumns(getReorderedColumns(dropdownColumnList, filteredColumns));
-  }, [rest.columns, columnDropdownSelections, rest.staticVisibleColumns]);
+      setPropsColumns(getReorderedColumns(dropdownColumnList, filteredColumns));
+    }
+  }, [
+    isFullViewTable,
+    rest.columns,
+    columnDropdownSelections,
+    rest.staticVisibleColumns,
+  ]);
 
   return (
     <div className="table-container">
-      {!isEmpty(dropdownColumnList) && (
-        <div className="d-flex justify-end items-center gap-5 mb-4">
-          {rest.extraTableFilters}
-
+      <div
+        className={classNames('d-flex justify-end items-center gap-5', {
+          'mb-4': rest.extraTableFilters || !isFullViewTable,
+        })}>
+        {rest.extraTableFilters}
+        {!isFullViewTable && (
           <DndProvider backend={HTML5Backend}>
             <Dropdown
               className="custom-column-dropdown-menu"
@@ -205,8 +226,8 @@ const Table = <T extends object = any>(
               </Button>
             </Dropdown>
           </DndProvider>
-        </div>
-      )}
+        )}
+      </div>
 
       <AntdTable
         {...rest}

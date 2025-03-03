@@ -31,13 +31,11 @@ const mockColumns = [
     title: 'Column 1',
     dataIndex: 'col1',
     key: 'col1',
-    defaultVisible: true,
   },
   {
     title: 'Column 2',
     dataIndex: 'col2',
     key: 'col2',
-    defaultVisible: false,
   },
 ];
 
@@ -80,12 +78,15 @@ describe('Table component', () => {
   });
 
   it('should render table with column dropdown when columns are provided', () => {
-    renderComponent();
+    renderComponent({
+      staticVisibleColumns: ['col1'],
+      defaultVisibleColumns: ['col2'],
+    });
 
     expect(screen.getByTestId('column-dropdown')).toBeInTheDocument();
   });
 
-  it('should not render column dropdown when no customizable columns', () => {
+  it('should not render column dropdown when no customizable columns props are provided', () => {
     (getCustomizeColumnDetails as jest.Mock).mockImplementationOnce(() => []);
 
     renderComponent();
@@ -95,7 +96,9 @@ describe('Table component', () => {
 
   it('should render table filters when provided', () => {
     const extraTableFilters = <div data-testid="table-filters">Filters</div>;
-    renderComponent({ extraTableFilters });
+    renderComponent({
+      extraTableFilters,
+    });
 
     expect(screen.getByTestId('table-filters')).toBeInTheDocument();
   });
