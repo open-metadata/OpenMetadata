@@ -131,13 +131,15 @@ const TagBoostComponent: React.FC<TagBoostProps> = ({
               {formData.boost}
             </Typography.Text>
           </div>
-          <Slider
-            max={10}
-            min={0}
-            tooltip={{ open: false }}
-            value={formData.boost}
-            onChange={handleBoostChange}
-          />
+          <div data-testid="tag-boost-slider">
+            <Slider
+              max={10}
+              min={0}
+              tooltip={{ open: false }}
+              value={formData.boost}
+              onChange={handleBoostChange}
+            />
+          </div>
         </div>
       </div>
     </div>

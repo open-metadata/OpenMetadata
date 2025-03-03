@@ -144,7 +144,7 @@ const SearchSettingsPage = () => {
 
       showSuccessToast(
         t('server.update-entity-success', {
-          entity: t('label.search-search-setting-plural'),
+          entity: t('label.search-setting-plural'),
         })
       );
     } catch (error) {
@@ -283,7 +283,9 @@ const SearchSettingsPage = () => {
         }}>
         {settingCategoryData?.map((data) => (
           <Col key={data.key} span={6}>
-            <Card className="search-setting-card-item" data-testid={data.key}>
+            <Card
+              className="search-setting-card-item"
+              data-testid={`search-settings-card-${data.key}`}>
               <div className="search-setting-card-icon-container">
                 <Icon
                   className="search-setting-card-icon"

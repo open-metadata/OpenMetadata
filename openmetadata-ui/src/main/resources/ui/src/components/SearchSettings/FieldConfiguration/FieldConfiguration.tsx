@@ -177,17 +177,22 @@ const FieldConfiguration: React.FC<FieldConfigurationProps> = ({
           {/* Weight Section */}
           <div className="m-y-md m-b-lg d-flex items-center justify-between">
             <Typography.Text>{t('label.weight')}</Typography.Text>
-            <Typography.Text className="font-semibold field-weightage-text">
+            <Typography.Text
+              className="font-semibold field-weightage-text"
+              data-testid="field-weight-value">
               {searchSettings?.fields?.[field.fieldName] ?? field.weight}
             </Typography.Text>
           </div>
-          <Slider
-            max={10}
-            min={0}
-            tooltip={{ open: false }}
-            value={searchSettings?.fields?.[field.fieldName] ?? field.weight}
-            onChange={handleWeightChange}
-          />
+          <div data-testid="field-weight-slider">
+            <Slider
+              max={10}
+              min={0}
+              tooltip={{ open: false }}
+              value={searchSettings?.fields?.[field.fieldName] ?? field.weight}
+              onChange={handleWeightChange}
+            />
+          </div>
+
           <Divider />
 
           {/* Boost Section */}

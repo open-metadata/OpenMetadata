@@ -58,18 +58,21 @@ const AddBoost = ({
           <Typography.Text>{t('label.impact')}</Typography.Text>
           <Typography.Text
             className="font-semibold boost-value"
-            data-testid="boost-value">
+            data-testid="field-boost-value">
             {currentBoost}
           </Typography.Text>
         </div>
-        <Slider
-          disabled={false}
-          max={10}
-          min={0}
-          tooltip={{ open: false }}
-          value={currentBoost}
-          onChange={handleSliderChange}
-        />
+        <div data-testid="field-boost-slider">
+          <Slider
+            disabled={false}
+            max={10}
+            min={0}
+            tooltip={{ open: false }}
+            value={currentBoost}
+            onChange={handleSliderChange}
+          />
+        </div>
+
         <Divider />
         <div className="d-flex justify-end w-full">
           <Button

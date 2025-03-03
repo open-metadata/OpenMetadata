@@ -433,6 +433,7 @@ const EntitySearchSettings = () => {
               <Typography.Text>{t('label.tag-boost-plural')}</Typography.Text>
               <Button
                 className="add-tag-boost-btn"
+                data-testid="add-tag-boost"
                 onClick={handleAddNewTagBoost}>
                 {t('label.add')}
               </Button>

@@ -40,7 +40,7 @@ describe('AddBoost Component', () => {
 
     expect(screen.getByTestId('boost-label')).toBeInTheDocument();
 
-    expect(screen.getByTestId('boost-value')).toHaveTextContent('5');
+    expect(screen.getByTestId('field-boost-value')).toHaveTextContent('5');
 
     expect(screen.getByTestId('delete-boost-btn')).toBeInTheDocument();
   });

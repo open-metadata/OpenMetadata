@@ -27,15 +27,17 @@ describe('GlobalSettingItem', () => {
     expect(screen.getByTestId('global-setting-label')).toHaveTextContent(
       mockProps.label
     );
-    expect(screen.getByTestId('global-setting-value')).toHaveTextContent(
-      mockProps.value.toString()
-    );
+    expect(
+      screen.getByTestId(`global-setting-value-${mockProps.label}`)
+    ).toHaveTextContent(mockProps.value.toString());
   });
 
   it('Should switch to edit mode when edit icon is clicked', () => {
     render(<GlobalSettingItem {...mockProps} />);
 
-    const editIcon = screen.getByTestId('global-setting-edit-icon');
+    const editIcon = screen.getByTestId(
+      `global-setting-edit-icon-${mockProps.label}`
+    );
     fireEvent.click(editIcon);
 
     expect(screen.getByTestId('value-input')).toBeInTheDocument();
@@ -44,7 +46,9 @@ describe('GlobalSettingItem', () => {
   it('Should update value when input changes', () => {
     render(<GlobalSettingItem {...mockProps} />);
 
-    const editIcon = screen.getByTestId('global-setting-edit-icon');
+    const editIcon = screen.getByTestId(
+      `global-setting-edit-icon-${mockProps.label}`
+    );
     fireEvent.click(editIcon);
 
     const input = screen.getByTestId('value-input');

@@ -78,13 +78,13 @@ export const GlobalSettingItem = ({
         <div className="d-flex items-center justify-end value-container">
           <span
             className="m-l-xlg font-semibold p-x-xss global-settings-item-value"
-            data-testid="global-setting-value">
+            data-testid={`global-setting-value-${label}`}>
             {value}
           </span>
           <Icon
             className="m-l-sm flex-shrink"
             component={EditIcon}
-            data-testid="global-setting-edit-icon"
+            data-testid={`global-setting-edit-icon-${label}`}
             onClick={() => setIsEditing(true)}
           />
         </div>
