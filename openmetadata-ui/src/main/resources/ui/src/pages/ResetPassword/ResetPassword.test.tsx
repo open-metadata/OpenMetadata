@@ -34,6 +34,10 @@ jest.mock('../../components/Auth/AuthProviders/BasicAuthProvider', () => {
   };
 });
 
+jest.mock('../../components/common/DocumentTitle/DocumentTitle', () => {
+  return jest.fn().mockReturnValue(<p>DocumentTitle</p>);
+});
+
 describe('ResetPassword', () => {
   it('should render correctly', async () => {
     render(<ResetPassword />);
