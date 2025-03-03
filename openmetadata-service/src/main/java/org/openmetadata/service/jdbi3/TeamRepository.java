@@ -76,6 +76,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.api.BulkAssets;
 import org.openmetadata.schema.type.api.BulkOperationResult;
+import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.type.csv.CsvDocumentation;
 import org.openmetadata.schema.type.csv.CsvErrorType;
 import org.openmetadata.schema.type.csv.CsvFile;
@@ -281,7 +282,8 @@ public class TeamRepository extends EntityRepository<Team> {
   }
 
   @Override
-  public TeamUpdater getUpdater(Team original, Team updated, Operation operation) {
+  public EntityRepository<Team>.EntityUpdater getUpdater(
+      Team original, Team updated, Operation operation, ChangeSource changeSource) {
     return new TeamUpdater(original, updated, operation);
   }
 

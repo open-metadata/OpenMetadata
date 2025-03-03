@@ -34,6 +34,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.api.BulkAssets;
 import org.openmetadata.schema.type.api.BulkOperationResult;
+import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.domains.DataProductResource;
 import org.openmetadata.service.util.EntityUtil;
@@ -113,7 +114,8 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
   }
 
   @Override
-  public EntityUpdater getUpdater(DataProduct original, DataProduct updated, Operation operation) {
+  public EntityRepository<DataProduct>.EntityUpdater getUpdater(
+      DataProduct original, DataProduct updated, Operation operation, ChangeSource changeSource) {
     return new DataProductUpdater(original, updated, operation);
   }
 

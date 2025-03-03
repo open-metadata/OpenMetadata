@@ -81,6 +81,7 @@ import org.openmetadata.schema.type.TaskStatus;
 import org.openmetadata.schema.type.TaskType;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.api.BulkResponse;
+import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
@@ -530,8 +531,8 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   }
 
   @Override
-  public GlossaryTermUpdater getUpdater(
-      GlossaryTerm original, GlossaryTerm updated, Operation operation) {
+  public EntityRepository<GlossaryTerm>.EntityUpdater getUpdater(
+      GlossaryTerm original, GlossaryTerm updated, Operation operation, ChangeSource changeSource) {
     return new GlossaryTermUpdater(original, updated, operation);
   }
 

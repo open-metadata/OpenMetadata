@@ -62,6 +62,9 @@
         "previousVersion": {
           "description": "When a change did not result in change, this could be same as the current version.",
           "$ref": "#/definitions/entityVersion"
+        },
+        "changeSummary": {
+          "$ref": "./changeSummaryMap.json"
         }
       },
       "additionalProperties": false

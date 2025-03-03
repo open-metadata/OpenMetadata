@@ -26,6 +26,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TaskType;
+import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.FeedRepository.TaskWorkflow;
 import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
@@ -169,7 +170,8 @@ public class ContainerRepository extends EntityRepository<Container> {
   }
 
   @Override
-  public EntityUpdater getUpdater(Container original, Container updated, Operation operation) {
+  public EntityRepository<Container>.EntityUpdater getUpdater(
+      Container original, Container updated, Operation operation, ChangeSource changeSource) {
     return new ContainerUpdater(original, updated, operation);
   }
 

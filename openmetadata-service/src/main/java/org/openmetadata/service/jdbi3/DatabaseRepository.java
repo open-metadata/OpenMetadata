@@ -42,6 +42,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.type.csv.CsvDocumentation;
 import org.openmetadata.schema.type.csv.CsvFile;
 import org.openmetadata.schema.type.csv.CsvHeader;
@@ -179,7 +180,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
 
   @Override
   public EntityRepository<Database>.EntityUpdater getUpdater(
-      Database original, Database updated, Operation operation) {
+      Database original, Database updated, Operation operation, ChangeSource changeSource) {
     return new DatabaseUpdater(original, updated, operation);
   }
 

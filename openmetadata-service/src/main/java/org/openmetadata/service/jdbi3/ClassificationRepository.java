@@ -34,6 +34,7 @@ import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TagLabel.TagSource;
+import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
@@ -57,8 +58,11 @@ public class ClassificationRepository extends EntityRepository<Classification> {
   }
 
   @Override
-  public EntityUpdater getUpdater(
-      Classification original, Classification updated, Operation operation) {
+  public EntityRepository<Classification>.EntityUpdater getUpdater(
+      Classification original,
+      Classification updated,
+      Operation operation,
+      ChangeSource changeSource) {
     return new ClassificationUpdater(original, updated, operation);
   }
 
