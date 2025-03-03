@@ -7,7 +7,7 @@ slug: /connectors/database/athena/yaml
 name="Athena"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=["Metadata", "Query Usage", "Lineage", "Column-level Lineage", "Data Profiler", "Data Quality", "Tags", "dbt"]
+availableFeatures=["Metadata", "Query Usage", "Lineage", "Column-level Lineage", "Data Profiler", "Data Quality", "Tags", "dbt", "Sample Data"]
 unavailableFeatures=["Owners", "Stored Procedures"]
 / %}
 

@@ -8,7 +8,7 @@ collate: true
 name="Synapse"
 stage="PROD"
 platform="Collate"
-availableFeatures=["Metadata", "Query Usage", "Lineage", "Column-level Lineage", "Data Profiler", "Data Quality", "Stored Procedures", "dbt"]
+availableFeatures=["Metadata", "Query Usage", "Lineage", "Column-level Lineage", "Data Profiler", "Data Quality", "Stored Procedures", "dbt", "Sample Data"]
 unavailableFeatures=["Owners", "Tags"]
 / %}
 

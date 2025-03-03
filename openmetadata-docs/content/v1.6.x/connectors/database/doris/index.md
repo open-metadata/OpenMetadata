@@ -7,7 +7,7 @@ slug: /connectors/database/doris
 name="Doris"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=["Metadata", "Data Profiler", "Data Quality", "dbt"]
+availableFeatures=["Metadata", "Data Profiler", "Data Quality", "dbt", "Sample Data"]
 unavailableFeatures=["Query Usage", "Lineage", "Column-level Lineage", "Owners", "Tags", "Stored Procedures"]
 / %}
 

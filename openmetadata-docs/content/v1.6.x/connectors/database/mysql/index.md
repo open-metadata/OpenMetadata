@@ -7,7 +7,7 @@ slug: /connectors/database/mysql
 name="MySQL"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=["Metadata", "Data Profiler", "Data Quality", "dbt", "View Lineage", "View Column-level Lineage", "Query Usage"]
+availableFeatures=["Metadata", "Data Profiler", "Data Quality", "dbt", "View Lineage", "View Column-level Lineage", "Query Usage", "Sample Data"]
 unavailableFeatures=["Owners", "Tags", "Stored Procedures"]
 / %}
 

@@ -7,7 +7,7 @@ slug: /connectors/database/greenplum
 name="Greenplum"
 stage="BETA"
 platform="OpenMetadata"
-availableFeatures=["Metadata", "Data Profiler", "Data Quality", "dbt", "View Lineage"]
+availableFeatures=["Metadata", "Data Profiler", "Data Quality", "dbt", "View Lineage", "Sample Data"]
 unavailableFeatures=["Query Usage", "Owners", "Tags", "Stored Procedures", "Lineage", "Column-level Lineage"]
 / %}
 

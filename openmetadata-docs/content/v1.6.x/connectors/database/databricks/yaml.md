@@ -7,7 +7,7 @@ slug: /connectors/database/databricks/yaml
 name="Databricks"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=["Metadata", "Query Usage", "Lineage", "Column-level Lineage", "Data Profiler", "Data Quality", "dbt", "Tags"]
+availableFeatures=["Metadata", "Query Usage", "Lineage", "Column-level Lineage", "Data Profiler", "Data Quality", "dbt", "Tags", "Sample Data"]
 unavailableFeatures=["Owners", "Stored Procedures"]
 / %}
 

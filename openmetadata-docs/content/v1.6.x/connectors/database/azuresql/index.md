@@ -7,7 +7,7 @@ slug: /connectors/database/azuresql
 name="AzureSQL"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=["Metadata", "Query Usage", "Lineage", "Column-level Lineage", "Data Profiler", "Data Quality", "dbt"]
+availableFeatures=["Metadata", "Query Usage", "Lineage", "Column-level Lineage", "Data Profiler", "Data Quality", "dbt", "Sample Data"]
 unavailableFeatures=["Stored Procedures", "Owners", "Tags"]
 / %}
 
