@@ -53,7 +53,7 @@ export const getCustomizeColumnDetails = <T extends ColumnType<T>>(
 
 export const getReorderedColumns = <T extends ColumnType<T>>(
   updatedColumnDropdownList: TableColumnDropdownList[],
-  propsColumns: TableColumns<T>[]
+  oldColumns: TableColumns<T>[]
 ) => {
   // create a map of column positions based on labels
   const orderedColumns: Record<string, number> =
@@ -64,7 +64,8 @@ export const getReorderedColumns = <T extends ColumnType<T>>(
     }, {} as Record<string, number>);
 
   // sort columns based on the order in labels
-  return propsColumns.sort((a, b) => {
+  // creating a new reference for oldColumns, so that the useAntdColumnResize hook is triggered
+  return [...oldColumns].sort((a, b) => {
     const titleA = String(a.title);
     const titleB = String(b.title);
     const indexA = orderedColumns[titleA];

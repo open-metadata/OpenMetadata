@@ -80,10 +80,7 @@ const Table = <T extends object = any>(
   const handleMoveItem = useCallback(
     (updatedList: TableColumnDropdownList[]) => {
       setDropdownColumnList(updatedList);
-      const reorderedColumns = getReorderedColumns(updatedList, [
-        ...propsColumns, // creating a new reference for propsColumns, so that the useAntdColumnResize hook is triggered
-      ]);
-      setPropsColumns(reorderedColumns);
+      setPropsColumns(getReorderedColumns(updatedList, propsColumns));
     },
     [propsColumns]
   );
@@ -182,14 +179,13 @@ const Table = <T extends object = any>(
   }, [rest.columns]);
 
   useEffect(() => {
-    setPropsColumns(
-      (rest.columns ?? []).filter((item) => {
-        return (
-          columnDropdownSelections.includes(item.key as string) ||
-          columnTypes.staticColumns.includes(item.key as string)
-        );
-      })
+    const filteredColumns = (rest.columns ?? []).filter(
+      (item) =>
+        columnDropdownSelections.includes(item.key as string) ||
+        columnTypes.staticColumns.includes(item.key as string)
     );
+
+    setPropsColumns(getReorderedColumns(dropdownColumnList, filteredColumns));
   }, [rest.columns, columnDropdownSelections, columnTypes.staticColumns]);
 
   return (
