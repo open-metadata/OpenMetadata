@@ -39,7 +39,7 @@ export interface OpenSearchConnection {
 /**
  * Choose Auth Config Type.
  *
- * Basic Auth Credentials
+ * Basic Auth Configuration for ElasticSearch
  *
  * API Key Authentication for ElasticSearch
  *
@@ -47,11 +47,11 @@ export interface OpenSearchConnection {
  */
 export interface AuthConfigurationType {
     /**
-     * Password to access the service.
+     * Elastic Search Password for Login
      */
     password?: string;
     /**
-     * Username to access the service.
+     * Elastic Search Username for Login
      */
     username?: string;
     /**

@@ -10,13 +10,13 @@
 #  limitations under the License.
 
 """
-Source connection handler for OpenSearch with AWS IAM support.
+Source connection handler for OpenSearch
 """
 from pathlib import Path
 from typing import Optional
 
 from opensearchpy import OpenSearch, RequestsHttpConnection
-from requests_aws4auth import AWS4Auth  # New: AWS4Auth for AWS IAM authentication
+from requests_aws4auth import AWS4Auth
 
 from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
@@ -30,17 +30,15 @@ from metadata.generated.schema.entity.services.connections.common.sslCertValues 
 from metadata.generated.schema.entity.services.connections.common.sslConfig import (
     SslConfig,
 )
-from metadata.generated.schema.entity.services.connections.search.openSearch.apiAuth import (
-    ApiKeyAuthentication,
-)
 from metadata.generated.schema.entity.services.connections.search.openSearchConnection import (
     OpenSearchConnection,
 )
 from metadata.generated.schema.entity.services.connections.testConnectionResult import (
     TestConnectionResult,
 )
+from metadata.generated.schema.entity.services.connections.search.elasticSearch.basicAuth import BasicAuthentication
+from metadata.generated.schema.entity.services.connections.search.elasticSearch.apiAuth import ApiKeyAuthentication
 from metadata.generated.schema.security.credentials.awsCredentials import AWSCredentials
-from metadata.generated.schema.security.credentials.basicAuth import BasicAuth
 from metadata.generated.schema.security.ssl.verifySSLConfig import VerifySSL
 from metadata.ingestion.connections.builders import init_empty_connection_arguments
 from metadata.ingestion.connections.test_connections import test_connection_steps
@@ -130,7 +128,7 @@ def get_connection(connection: OpenSearchConnection) -> OpenSearch:
             )
 
     # Check for Basic Authentication
-    if isinstance(connection.authType, BasicAuth) and connection.authType.username:
+    if isinstance(connection.authType, BasicAuthentication) and connection.authType.username:
         basic_auth = (
             connection.authType.username,
             connection.authType.password.get_secret_value()

@@ -208,7 +208,6 @@ export const excludedService = [
   MlModelServiceType.Sklearn,
   MetadataServiceType.MetadataES,
   MetadataServiceType.OpenMetadata,
-  SearchServiceType.OpenSearch,
 ];
 
 export const arrServiceTypes: Array<ServiceTypes> = [
@@ -409,6 +408,7 @@ export const BETA_SERVICES = [
   MetadataServiceType.AlationSink,
   DatabaseServiceType.Synapse,
   DatabaseServiceType.Cockroach,
+  SearchServiceType.OpenSearch,
 ];
 
 export const TEST_CONNECTION_INITIAL_MESSAGE = i18n.t(
