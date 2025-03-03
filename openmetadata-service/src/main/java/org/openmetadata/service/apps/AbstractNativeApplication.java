@@ -6,6 +6,7 @@ import static org.openmetadata.service.exception.CatalogExceptionMessage.NO_MANU
 import static org.openmetadata.service.resources.apps.AppResource.SCHEDULED_TYPES;
 
 import java.util.List;
+import java.util.Map;
 import lombok.Getter;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -93,7 +94,7 @@ public class AbstractNativeApplication implements NativeApplication {
   }
 
   @Override
-  public void triggerOnDemand() {
+  public void triggerOnDemand(Map<String, Object> payload) {
     // Validate Native Application
     if (app.getScheduleType().equals(ScheduleType.ScheduledOrManual)) {
       AppRuntime runtime = getAppRuntime(app);

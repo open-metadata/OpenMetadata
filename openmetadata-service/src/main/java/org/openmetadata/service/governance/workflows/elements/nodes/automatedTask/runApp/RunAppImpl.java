@@ -135,7 +135,8 @@ public class RunAppImpl {
       long startTime,
       long timeoutMillis) {
     ApplicationHandler.getInstance()
-        .triggerApplicationOnDemand(app, Entity.getCollectionDAO(), Entity.getSearchRepository());
+        .triggerApplicationOnDemand(
+            app, Entity.getCollectionDAO(), Entity.getSearchRepository(), null);
 
     if (waitForCompletion) {
       return waitForCompletion(repository, app, startTime, timeoutMillis);

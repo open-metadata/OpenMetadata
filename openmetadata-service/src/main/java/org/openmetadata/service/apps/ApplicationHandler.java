@@ -95,9 +95,12 @@ public class ApplicationHandler {
   }
 
   public void triggerApplicationOnDemand(
-      App app, CollectionDAO daoCollection, SearchRepository searchRepository) {
+      App app,
+      CollectionDAO daoCollection,
+      SearchRepository searchRepository,
+      Map<String, Object> payload) {
     try {
-      runAppInit(app, daoCollection, searchRepository).triggerOnDemand();
+      runAppInit(app, daoCollection, searchRepository).triggerOnDemand(payload);
     } catch (ClassNotFoundException
         | NoSuchMethodException
         | InvocationTargetException

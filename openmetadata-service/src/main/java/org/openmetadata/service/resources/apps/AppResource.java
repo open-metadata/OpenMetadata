@@ -967,6 +967,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
   }
 
   @POST
+  @Consumes(MediaType.APPLICATION_JSON)
   @Path("/trigger/{name}")
   @Operation(
       operationId = "triggerApplicationRun",
@@ -986,12 +987,13 @@ public class AppResource extends EntityResource<App, AppRepository> {
       @Context SecurityContext securityContext,
       @Parameter(description = "Name of the App", schema = @Schema(type = "string"))
           @PathParam("name")
-          String name) {
+          String name,
+      Map<String, Object> payload) {
     EntityUtil.Fields fields = getFields(String.format("%s,bot,pipelines", FIELD_OWNERS));
     App app = repository.getByName(uriInfo, name, fields);
     if (app.getAppType().equals(AppType.Internal)) {
       ApplicationHandler.getInstance()
-          .triggerApplicationOnDemand(app, Entity.getCollectionDAO(), searchRepository);
+          .triggerApplicationOnDemand(app, Entity.getCollectionDAO(), searchRepository, payload);
       return Response.status(Response.Status.OK).entity("Application Triggered").build();
     } else {
       if (!app.getPipelines().isEmpty()) {
