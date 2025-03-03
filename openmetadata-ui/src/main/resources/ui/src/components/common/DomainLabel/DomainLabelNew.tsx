@@ -161,7 +161,7 @@ export const DomainLabelNew = ({
   const label = useMemo(() => {
     return (
       <div
-        className="d-flex flex-col items-start gap-1 flex-wrap"
+        className="d-flex flex-col items-start gap-1 flex-wrap justify-center"
         data-testid="header-domain-container">
         {domainLink}
       </div>

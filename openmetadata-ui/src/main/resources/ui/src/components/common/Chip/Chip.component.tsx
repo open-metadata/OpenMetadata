@@ -70,7 +70,7 @@ const Chip = ({
   return (
     <Row
       wrap
-      className="align-middle d-flex flex-col flex-start"
+      className="align-middle d-flex flex-col flex-start justify-center"
       data-testid="chip-container"
       gutter={[20, 0]}>
       {data.slice(0, USER_DATA_SIZE).map(getChipElement)}
