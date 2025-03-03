@@ -77,10 +77,16 @@ const Table = <T extends object = any>(
     [loading]
   );
 
-  const handleMoveItem = (updatedList: TableColumnDropdownList[]) => {
-    setDropdownColumnList(updatedList);
-    setPropsColumns(getReorderedColumns(updatedList, propsColumns));
-  };
+  const handleMoveItem = useCallback(
+    (updatedList: TableColumnDropdownList[]) => {
+      setDropdownColumnList(updatedList);
+      const reorderedColumns = getReorderedColumns(updatedList, [
+        ...propsColumns, // creating a new reference for propsColumns, so that the useAntdColumnResize hook is triggered
+      ]);
+      setPropsColumns(reorderedColumns);
+    },
+    [propsColumns]
+  );
 
   const handleColumnItemSelect = useCallback(
     (key: string, checked: boolean) => {
