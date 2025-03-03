@@ -5177,24 +5177,24 @@ public interface CollectionDAO {
 
     // TODO: Do not change id on override... updating json changed the id as well
     @ConnectionAwareSqlUpdate(
-            value =
-                    "INSERT INTO <table>(entityFQNHash, jsonSchema, json) "
-                            + "VALUES (:entityFQNHash, :jsonSchema, :json) ON DUPLICATE KEY UPDATE" +
-                            "    json = VALUES(json);",
-            connectionType = MYSQL)
+        value =
+            "INSERT INTO <table>(entityFQNHash, jsonSchema, json) "
+                + "VALUES (:entityFQNHash, :jsonSchema, :json) ON DUPLICATE KEY UPDATE"
+                + "    json = VALUES(json);",
+        connectionType = MYSQL)
     @ConnectionAwareSqlUpdate(
-            value =
-                    "INSERT INTO <table>(entityFQNHash, jsonSchema, json) "
-                            + "VALUES (:entityFQNHash, :jsonSchema, (:json :: jsonb)) " +
-                            "ON CONFLICT (entityFQNHash, timestamp)" +
-                            "DO UPDATE SET" +
-                            "json = EXCLUDED.json",
-            connectionType = POSTGRES)
+        value =
+            "INSERT INTO <table>(entityFQNHash, jsonSchema, json) "
+                + "VALUES (:entityFQNHash, :jsonSchema, (:json :: jsonb)) "
+                + "ON CONFLICT (entityFQNHash, timestamp)"
+                + "DO UPDATE SET"
+                + "json = EXCLUDED.json",
+        connectionType = POSTGRES)
     void insertWithoutExtension(
-            @Define("table") String table,
-            @BindFQN("entityFQNHash") String entityFQNHash,
-            @Bind("jsonSchema") String jsonSchema,
-            @Bind("json") String json);
+        @Define("table") String table,
+        @BindFQN("entityFQNHash") String entityFQNHash,
+        @Bind("jsonSchema") String jsonSchema,
+        @Bind("json") String json);
   }
 
   interface TestCaseResolutionStatusTimeSeriesDAO extends EntityTimeSeriesDAO {
