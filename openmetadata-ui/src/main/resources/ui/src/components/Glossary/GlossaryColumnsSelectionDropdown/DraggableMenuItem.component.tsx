@@ -10,35 +10,31 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Checkbox } from 'antd';
-import React, { useCallback } from 'react';
+import { EyeInvisibleFilled, EyeOutlined } from '@ant-design/icons';
+import { Button, Typography } from 'antd';
+import React, { useCallback, useMemo } from 'react';
 import { useDrag, useDrop } from 'react-dnd';
 import { ReactComponent as ColumnDragIcon } from '../../../assets/svg/menu-duo.svg';
+import './draggable-menu-item.less';
+import { DraggableMenuItemProps } from './DraggableMenuItem.interface';
 
-interface DraggableMenuItemProps {
-  option: { value: string; label: string };
-  index: number;
-  options: { value: string; label: string }[];
-  onMoveItem: (updatedList: { value: string; label: string }[]) => void;
-  selectedOptions: string[];
-  onSelect: (key: string, checked: boolean, type: 'columns' | 'status') => void;
-}
 const DraggableMenuItem: React.FC<DraggableMenuItemProps> = ({
-  option,
+  currentItem,
   index,
-  options,
-  onMoveItem,
+  itemList,
   selectedOptions,
   onSelect,
+  onMoveItem,
 }) => {
+  const { value, label } = currentItem;
   const moveDropdownMenuItem = useCallback(
     (fromIndex: number, toIndex: number) => {
-      const updatedList = [...options];
+      const updatedList = [...itemList];
       const [movedItem] = updatedList.splice(fromIndex, 1);
       updatedList.splice(toIndex, 0, movedItem);
       onMoveItem(updatedList);
     },
-    [options, onMoveItem]
+    [itemList, onMoveItem]
   );
   const [{ isDragging }, drag] = useDrag({
     type: 'CHECKBOX',
@@ -58,25 +54,29 @@ const DraggableMenuItem: React.FC<DraggableMenuItemProps> = ({
     },
   });
 
+  const isItemSelected = useMemo(
+    () => selectedOptions.includes(value),
+    [selectedOptions, value]
+  );
+
   return (
     <div
       className={`draggable-menu-item ${isDragging ? 'dragging' : ''}`}
       ref={(node) => {
         drag(drop(node));
       }}>
-      <ColumnDragIcon
-        className="glossary-col-dropdown-drag-icon m-l-xs m-t-xs"
-        height={16}
-        width={16}
-      />
-      <Checkbox
-        checked={selectedOptions.includes(option.value)}
-        className="custom-glossary-col-sel-checkbox"
-        key={option.value}
-        value={option.value}
-        onChange={(e) => onSelect(option.value, e.target.checked, 'columns')}>
-        <p className="glossary-dropdown-label">{option.label}</p>
-      </Checkbox>
+      <ColumnDragIcon className="text-grey-muted" height={16} width={16} />
+
+      <Button
+        className="draggable-menu-item-button"
+        type="text"
+        onClick={() => onSelect(value, !isItemSelected)}>
+        <Typography.Text className="draggable-menu-item-button-label">
+          {label}
+        </Typography.Text>
+
+        {isItemSelected ? <EyeOutlined /> : <EyeInvisibleFilled />}
+      </Button>
     </div>
   );
 };

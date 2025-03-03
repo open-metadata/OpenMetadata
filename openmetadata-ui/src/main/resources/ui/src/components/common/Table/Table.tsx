@@ -10,24 +10,66 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { SpinProps, Table as AntdTable, TableProps } from 'antd';
-import React, { forwardRef, Ref, useMemo } from 'react';
+import Icon from '@ant-design/icons';
+import {
+  Button,
+  Dropdown,
+  SpinProps,
+  Table as AntdTable,
+  Typography,
+} from 'antd';
+import { ColumnType } from 'antd/lib/table';
+import { isEmpty } from 'lodash';
+import React, {
+  forwardRef,
+  Ref,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import { useAntdColumnResize } from 'react-antd-column-resize';
+import { DndProvider } from 'react-dnd';
+import { HTML5Backend } from 'react-dnd-html5-backend';
+import { useTranslation } from 'react-i18next';
+import { ReactComponent as ColumnIcon } from '../../../assets/svg/ic-column.svg';
+import {
+  getCustomizeColumnDetails,
+  getReorderedColumns,
+} from '../../../utils/CustomizeColumnUtils';
 import { getTableExpandableConfig } from '../../../utils/TableUtils';
+import DraggableMenuItem from '../../Glossary/GlossaryColumnsSelectionDropdown/DraggableMenuItem.component';
 import Loader from '../Loader/Loader';
-
-interface TableComponentProps<T> extends TableProps<T> {
-  resizableColumns?: boolean;
-}
+import {
+  TableColumnDropdownList,
+  TableComponentProps,
+} from './Table.interface';
+import './table.less';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/ban-types
 const Table = <T extends object = any>(
   { loading, ...rest }: TableComponentProps<T>,
   ref: Ref<HTMLDivElement> | null | undefined
 ) => {
+  const { t } = useTranslation();
+  const [propsColumns, setPropsColumns] = useState<ColumnType<T>[]>([]);
+  const [columnTypes, setColumnTypes] = useState<{
+    staticColumns: string[];
+    customizeColumns: string[];
+  }>({
+    staticColumns: [],
+    customizeColumns: [],
+  });
+  const [isDropdownVisible, setIsDropdownVisible] = useState<boolean>(false);
+  const [dropdownColumnList, setDropdownColumnList] = useState<
+    TableColumnDropdownList[]
+  >([]);
+  const [columnDropdownSelections, setColumnDropdownSelections] = useState<
+    string[]
+  >([]);
   const { resizableColumns, components, tableWidth } = useAntdColumnResize(
-    () => ({ columns: rest.columns || [], minWidth: 150 }),
-    [rest.columns]
+    () => ({ columns: propsColumns, minWidth: 150 }),
+    [propsColumns]
   );
 
   const isLoading = useMemo(
@@ -35,39 +77,77 @@ const Table = <T extends object = any>(
     [loading]
   );
 
-  // TODO: Need to remove the skeleton loading to fix: https://github.com/open-metadata/OpenMetadata/issues/16655
-  // Let's circle back once we have a better solution for this.
-  //   const dataSource = useMemo(
-  //     () => getUniqueArray(SMALL_TABLE_LOADER_SIZE) as T[],
-  //     []
-  //   );
+  const handleMoveItem = (updatedList: TableColumnDropdownList[]) => {
+    setDropdownColumnList(updatedList);
+    setPropsColumns(getReorderedColumns(updatedList, propsColumns));
+  };
 
-  //   if (isLoading) {
-  //     const { columns } = { ...rest };
-  //     const column = columns?.map((column) => {
-  //       return {
-  //         ...column,
-  //         render: () => (
-  //           <Skeleton
-  //             title
-  //             active={isLoading}
-  //             key={column.key}
-  //             paragraph={false}
-  //           />
-  //         ),
-  //       };
-  //     });
+  const handleColumnItemSelect = useCallback(
+    (key: string, checked: boolean) => {
+      setColumnDropdownSelections((prev: string[]) => {
+        return checked ? [...prev, key] : prev.filter((item) => item !== key);
+      });
+    },
+    [setColumnDropdownSelections]
+  );
 
-  //     return (
-  //       <AntdTable
-  //         {...rest}
-  //         columns={column}
-  //         data-testid="skeleton-table"
-  //         dataSource={isEmpty(rest.dataSource) ? dataSource : rest.dataSource}
-  //         expandable={undefined}
-  //       />
-  //     );
-  //   }
+  const handleBulkColumnAction = useCallback(() => {
+    if (dropdownColumnList.length === columnDropdownSelections.length) {
+      setColumnDropdownSelections([]);
+    } else {
+      setColumnDropdownSelections(
+        dropdownColumnList.map((option) => option.value)
+      );
+    }
+  }, [dropdownColumnList, columnDropdownSelections]);
+
+  const menu = useMemo(
+    () => ({
+      items: [
+        {
+          key: 'header',
+          label: (
+            <div className="d-flex justify-between items-center w-52 p-x-md p-b-xss border-bottom">
+              <Typography.Text className="text-sm text-grey-muted font-medium">
+                {t('label.column')}
+              </Typography.Text>
+              <Button
+                className="text-primary text-sm p-0"
+                type="text"
+                onClick={handleBulkColumnAction}>
+                {dropdownColumnList.length === columnDropdownSelections.length
+                  ? t('label.hide-all')
+                  : t('label.view-all')}
+              </Button>
+            </div>
+          ),
+        },
+        {
+          key: 'columns',
+          label: dropdownColumnList.map(
+            (item: TableColumnDropdownList, index: number) => (
+              <DraggableMenuItem
+                currentItem={item}
+                index={index}
+                itemList={dropdownColumnList}
+                key={item.value}
+                selectedOptions={columnDropdownSelections}
+                onMoveItem={handleMoveItem}
+                onSelect={handleColumnItemSelect}
+              />
+            )
+          ),
+        },
+      ],
+    }),
+    [
+      dropdownColumnList,
+      columnDropdownSelections,
+      handleMoveItem,
+      handleColumnItemSelect,
+      handleBulkColumnAction,
+    ]
+  );
 
   const resizingTableProps = rest.resizableColumns
     ? {
@@ -83,21 +163,75 @@ const Table = <T extends object = any>(
       }
     : {};
 
+  useEffect(() => {
+    const {
+      staticColumns,
+      customizeColumns,
+      dropdownColumnList,
+      columnDropdownSelections,
+    } = getCustomizeColumnDetails<T>(rest.columns ?? []);
+    setColumnTypes({ staticColumns, customizeColumns });
+    setDropdownColumnList(dropdownColumnList);
+    setColumnDropdownSelections(columnDropdownSelections);
+  }, [rest.columns]);
+
+  useEffect(() => {
+    setPropsColumns(
+      (rest.columns ?? []).filter((item) => {
+        return (
+          columnDropdownSelections.includes(item.key as string) ||
+          columnTypes.staticColumns.includes(item.key as string)
+        );
+      })
+    );
+  }, [rest.columns, columnDropdownSelections, columnTypes.staticColumns]);
+
   return (
-    <AntdTable
-      {...rest}
-      expandable={{ ...getTableExpandableConfig<T>(), ...rest.expandable }}
-      loading={{
-        spinning: isLoading,
-        indicator: <Loader />,
-      }}
-      locale={{
-        ...rest.locale,
-        emptyText: isLoading ? null : rest.locale?.emptyText,
-      }}
-      ref={ref}
-      {...resizingTableProps}
-    />
+    <div className="table-container">
+      {!isEmpty(dropdownColumnList) && (
+        <div className="d-flex justify-end items-center gap-5 mb-4">
+          {rest.tableFilters}
+
+          <DndProvider backend={HTML5Backend}>
+            <Dropdown
+              className="custom-column-dropdown-menu"
+              getPopupContainer={(trigger) => {
+                const customContainer = trigger.closest(
+                  '.custom-column-dropdown-menu'
+                );
+
+                return customContainer as HTMLElement;
+              }}
+              menu={menu}
+              open={isDropdownVisible}
+              trigger={['click']}
+              onOpenChange={setIsDropdownVisible}>
+              <Button
+                data-testid="column-dropdown"
+                icon={<Icon component={ColumnIcon} />}>
+                {t('label.column-plural')}
+              </Button>
+            </Dropdown>
+          </DndProvider>
+        </div>
+      )}
+
+      <AntdTable
+        {...rest}
+        columns={propsColumns}
+        expandable={{ ...getTableExpandableConfig<T>(), ...rest.expandable }}
+        loading={{
+          spinning: isLoading,
+          indicator: <Loader />,
+        }}
+        locale={{
+          ...rest.locale,
+          emptyText: isLoading ? null : rest.locale?.emptyText,
+        }}
+        ref={ref}
+        {...resizingTableProps}
+      />
+    </div>
   );
 };
 
