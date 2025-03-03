@@ -21,6 +21,7 @@ import { ReactComponent as IconSuccessBadge } from '../../assets/svg/success-bad
 import AlertUnauthenticated from '../../components/AlertBar/AlertUnauthenticated';
 import { useBasicAuth } from '../../components/Auth/AuthProviders/BasicAuthProvider';
 import BrandImage from '../../components/common/BrandImage/BrandImage';
+import DocumentTitle from '../../components/common/DocumentTitle/DocumentTitle';
 import { HTTP_STATUS_CODE } from '../../constants/Auth.constants';
 import { ROUTES } from '../../constants/constants';
 import { useAlertStore } from '../../hooks/useAlertStore';
@@ -67,6 +68,7 @@ const ForgotPassword = () => {
     <div
       className="h-full py-24 forgot-password-container "
       data-testid="forgot-password-container">
+      <DocumentTitle title={t('label.forgot-password')} />
       <Card
         bodyStyle={{ padding: '48px' }}
         className="m-auto"

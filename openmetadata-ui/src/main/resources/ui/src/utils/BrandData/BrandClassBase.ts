@@ -10,12 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { t } from 'i18next';
+import WelcomeScreenSrc from '../../assets/img/welcome-screen.png';
 import MonogramSrc, {
   ReactComponent as Monogram,
 } from '../../assets/svg/logo-monogram.svg';
 import LogoSrc, { ReactComponent as Logo } from '../../assets/svg/logo.svg';
 
-class BrandImageClassBase {
+class BrandClassBase {
   public getMonogram() {
     return { src: MonogramSrc, svg: Monogram };
   }
@@ -23,9 +25,17 @@ class BrandImageClassBase {
   public getLogo() {
     return { src: LogoSrc, svg: Logo };
   }
+
+  public getPageTitle() {
+    return t('label.open-metadata');
+  }
+
+  public getWelcomeScreenImg() {
+    return WelcomeScreenSrc;
+  }
 }
 
-const brandImageClassBase = new BrandImageClassBase();
+const brandClassBase = new BrandClassBase();
 
-export default brandImageClassBase;
-export { BrandImageClassBase };
+export default brandClassBase;
+export { BrandClassBase };

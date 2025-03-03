@@ -57,6 +57,10 @@ export interface MlmodelService {
      */
     incrementalChangeDescription?: ChangeDescription;
     /**
+     * The ingestion agent responsible for executing the ingestion pipeline.
+     */
+    ingestionAgent?: EntityReference;
+    /**
      * Name that identifies this pipeline service.
      */
     name: string;
@@ -382,6 +386,8 @@ export enum MlModelServiceType {
  * the relationship of a table `belongs to a` database.
  *
  * Domain the MLModel service belongs to.
+ *
+ * The ingestion agent responsible for executing the ingestion pipeline.
  */
 export interface EntityReference {
     /**
