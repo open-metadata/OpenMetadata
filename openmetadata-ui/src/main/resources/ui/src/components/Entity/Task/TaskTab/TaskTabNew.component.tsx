@@ -1055,7 +1055,7 @@ export const TaskTabNew = ({
                     <ProfilePicture
                       avatarType="outlined"
                       key={taskThread.id}
-                      name={currentUser?.displayName ?? ''}
+                      name={currentUser?.displayName || currentUser?.name || ''}
                       size={32}
                     />
                   </div>
