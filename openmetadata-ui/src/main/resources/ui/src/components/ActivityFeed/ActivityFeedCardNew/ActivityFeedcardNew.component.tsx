@@ -250,7 +250,7 @@ const ActivityFeedCardNew = ({
               {!isPost && (
                 <Space
                   className={classNames('d-flex gap-1', {
-                    'header-container-card': !showThread,
+                    'header-container-card flex-wrap': !showThread,
                     'items-start':
                       showThread &&
                       feed.entityRef?.type === EntityType.CONTAINER,

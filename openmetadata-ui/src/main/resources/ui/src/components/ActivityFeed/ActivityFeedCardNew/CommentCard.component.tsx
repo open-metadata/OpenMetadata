@@ -106,10 +106,10 @@ const CommentCard = ({ feed, post, isLastReply }: CommentCardInterface) => {
       <div>
         <div className="d-flex items-center gap-2 flex-wrap">
           <Typography.Text className="activity-feed-user-name reply-card-user-name">
-            <UserPopOverCard
-              className="reply-card-user-name"
-              userName={feed.updatedBy ?? ''}>
-              <Link to={getUserPath(feed.updatedBy ?? '')}>
+            <UserPopOverCard userName={feed.updatedBy ?? ''}>
+              <Link
+                className="reply-card-user-name"
+                to={getUserPath(feed.updatedBy ?? '')}>
                 {feed.updatedBy}
               </Link>
             </UserPopOverCard>
