@@ -48,6 +48,13 @@ jest.mock('react-router-dom', () => ({
   }),
 }));
 
+jest.mock('react-helmet-async', () => ({
+  HelmetProvider: ({ children }: { children: React.ReactNode }) => (
+    <>{children}</>
+  ),
+  Helmet: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+}));
+
 describe('OidcAuthenticator - Silent SignIn Tests', () => {
   const mockUpdateAxiosInterceptors = jest.fn();
   const mockTokenServiceInstance = {

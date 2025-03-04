@@ -32,7 +32,7 @@ import {
   getNameFromUserData,
   setUrlPathnameExpiryAfterRoute,
 } from '../../utils/AuthProvider.util';
-import brandImageClassBase from '../../utils/BrandImage/BrandImageClassBase';
+import brandClassBase from '../../utils/BrandData/BrandClassBase';
 import { getImages, Transi18next } from '../../utils/CommonUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
@@ -52,7 +52,7 @@ const SignUp = () => {
   } = useApplicationStore();
 
   const [loading, setLoading] = useState<boolean>(false);
-  const OMDLogo = useMemo(() => brandImageClassBase.getMonogram().svg, []);
+  const OMDLogo = useMemo(() => brandClassBase.getMonogram().svg, []);
 
   const handleCreateNewUser: FormProps['onFinish'] = async (data) => {
     setLoading(true);

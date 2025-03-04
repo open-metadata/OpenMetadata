@@ -8,7 +8,7 @@ name="DynamoDB"
 stage="PROD"
 platform="OpenMetadata"
 availableFeatures=["Metadata", "Data Profiler"]
-unavailableFeatures=["Query Usage", "Owners", "Tags", "Stored Procedures", "Data Quality", "Lineage", "Column-level Lineage", "dbt"]
+unavailableFeatures=["Query Usage", "Owners", "Tags", "Stored Procedures", "Data Quality", "Lineage", "Column-level Lineage", "dbt", "Sample Data"]
 / %}
 
 In this section, we provide guides and references to use the DynamoDB connector.
