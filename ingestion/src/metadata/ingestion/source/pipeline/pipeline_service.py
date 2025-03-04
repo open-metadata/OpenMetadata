@@ -11,6 +11,7 @@
 """
 Base class for ingesting database services
 """
+import traceback
 from abc import ABC, abstractmethod
 from datetime import datetime
 from typing import Any, Iterable, List, Optional, Set
@@ -22,6 +23,9 @@ from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequ
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.pipeline import Pipeline, PipelineState
 from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.entity.services.ingestionPipelines.status import (
+    StackTraceError,
+)
 from metadata.generated.schema.entity.services.pipelineService import (
     PipelineConnection,
     PipelineService,
@@ -205,10 +209,96 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
     def get_pipeline_state(self, pipeline_details: Any) -> Optional[PipelineState]:
         """Get Pipeline State"""
 
-    def yield_pipeline_usage(self, pipeline_details: Any) -> Iterable[PipelineUsage]:
+    def yield_pipeline_usage(
+        self, pipeline_details: Any
+    ) -> Iterable[Either[PipelineUsage]]:
         """
-        Method to pick up pipeline usage data
+        Yield the usage of the pipeline
+        we will check the usage of the pipeline
+        by checking the tasks that have run today or are running today or ends today
+        we get the count of these tasks and compare it with the usageSummary
+        if the usageSummary is not present or the date is not today
+        we yield the fresh usage
         """
+        try:
+            pipeline_fqn = fqn.build(
+                metadata=self.metadata,
+                entity_type=Pipeline,
+                service_name=self.context.get().pipeline_service,
+                pipeline_name=self.context.get().pipeline,
+            )
+
+            pipeline: Pipeline = self.metadata.get_by_name(
+                entity=Pipeline,
+                fqn=pipeline_fqn,
+                fields=["tasks", "usageSummary"],
+            )
+
+            if pipeline.tasks:
+                current_task_usage = sum(
+                    1
+                    for task in pipeline.tasks
+                    if task.startDate
+                    and task.startDate.startswith(self.today)
+                    or task.endDate
+                    and task.endDate.startswith(self.today)
+                )
+                if not current_task_usage:
+                    logger.debug(
+                        f"No usage to report for {pipeline.fullyQualifiedName.root}"
+                    )
+
+                if not pipeline.usageSummary:
+                    logger.info(
+                        f"Yielding fresh usage for {pipeline.fullyQualifiedName.root}"
+                    )
+                    yield Either(
+                        right=PipelineUsage(
+                            pipeline=pipeline,
+                            usage=UsageRequest(
+                                date=self.today, count=current_task_usage
+                            ),
+                        )
+                    )
+
+                elif (
+                    str(pipeline.usageSummary.date.root) != self.today
+                    or not pipeline.usageSummary.dailyStats.count
+                ):
+                    latest_usage = pipeline.usageSummary.dailyStats.count
+
+                    new_usage = current_task_usage - latest_usage
+                    if new_usage < 0:
+                        raise ValueError(
+                            f"Wrong computation of usage difference. Got new_usage={new_usage}."
+                        )
+
+                    logger.info(
+                        f"Yielding new usage for {pipeline.fullyQualifiedName.root}"
+                    )
+                    yield Either(
+                        right=PipelineUsage(
+                            pipeline=pipeline,
+                            usage=UsageRequest(date=self.today, count=new_usage),
+                        )
+                    )
+
+                else:
+                    logger.debug(
+                        f"Latest usage {pipeline.usageSummary} vs. today {self.today}. Nothing to compute."
+                    )
+                    logger.info(
+                        f"Usage already informed for {pipeline.fullyQualifiedName.root}"
+                    )
+
+        except Exception as exc:
+            yield Either(
+                left=StackTraceError(
+                    name=f"{pipeline.fullyQualifiedName.root} Usage",
+                    error=f"Exception computing pipeline usage for {pipeline.fullyQualifiedName.root}: {exc}",
+                    stackTrace=traceback.format_exc(),
+                )
+            )
 
     def yield_pipeline_lineage(
         self, pipeline_details: Any
@@ -257,6 +347,7 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
 
     def close(self):
         """Method to implement any required logic after the ingestion process is completed"""
+        self.metadata.compute_percentile(Pipeline, self.today)
 
     def get_services(self) -> Iterable[WorkflowSource]:
         yield self.config

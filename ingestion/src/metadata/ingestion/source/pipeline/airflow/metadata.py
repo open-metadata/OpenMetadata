@@ -55,7 +55,6 @@ from metadata.generated.schema.type.entityLineage import EntitiesEdge, LineageDe
 from metadata.generated.schema.type.entityLineage import Source as LineageSource
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
-from metadata.generated.schema.type.usageRequest import UsageRequest
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.connections.session import create_and_bind_session
@@ -72,10 +71,7 @@ from metadata.ingestion.source.pipeline.airflow.models import (
     AirflowTask,
 )
 from metadata.ingestion.source.pipeline.airflow.utils import get_schedule_interval
-from metadata.ingestion.source.pipeline.pipeline_service import (
-    PipelineServiceSource,
-    PipelineUsage,
-)
+from metadata.ingestion.source.pipeline.pipeline_service import PipelineServiceSource
 from metadata.utils import fqn
 from metadata.utils.constants import ENTITY_REFERENCE_TYPE_MAP
 from metadata.utils.helpers import clean_uri, datetime_to_ts
@@ -641,94 +637,6 @@ class AirflowSource(PipelineServiceSource):
                         f"[{pipeline_entity.fullyQualifiedName.root}] inlets"
                     )
 
-    def yield_pipeline_usage(
-        self, pipeline_details: AirflowDagDetails
-    ) -> Iterable[Either[PipelineUsage]]:
-        """
-        Yield the usage of the pipeline
-        we will check the usage of the pipeline
-        by checking the tasks that have run today or are running today or ends today
-        we get the count of these tasks and compare it with the usageSummary
-        if the usageSummary is not present or the date is not today
-        we yield the fresh usage
-        """
-        try:
-            pipeline_fqn = fqn.build(
-                metadata=self.metadata,
-                entity_type=Pipeline,
-                service_name=self.context.get().pipeline_service,
-                pipeline_name=self.context.get().pipeline,
-            )
-
-            pipeline: Pipeline = self.metadata.get_by_name(
-                entity=Pipeline,
-                fqn=pipeline_fqn,
-                fields=["tasks", "usageSummary"],
-            )
-
-            if pipeline.tasks:
-                current_task_usage = sum(
-                    1
-                    for task in pipeline.tasks
-                    if task.startDate
-                    and task.startDate.startswith(self.today)
-                    or task.endDate
-                    and task.endDate.startswith(self.today)
-                )
-                if not current_task_usage:
-                    logger.debug(f"No usage to report for {pipeline_details.dag_id}")
-
-                if not pipeline.usageSummary:
-                    logger.info(
-                        f"Yielding fresh usage for {pipeline.fullyQualifiedName.root}"
-                    )
-                    yield Either(
-                        right=PipelineUsage(
-                            pipeline=pipeline,
-                            usage=UsageRequest(
-                                date=self.today, count=current_task_usage
-                            ),
-                        )
-                    )
-
-                elif (
-                    str(pipeline.usageSummary.date.root) != self.today
-                    or not pipeline.usageSummary.dailyStats.count
-                ):
-                    latest_usage = pipeline.usageSummary.dailyStats.count
-
-                    new_usage = current_task_usage - latest_usage
-                    if new_usage < 0:
-                        raise ValueError(
-                            f"Wrong computation of usage difference. Got new_usage={new_usage}."
-                        )
-
-                    logger.info(
-                        f"Yielding new usage for {pipeline.fullyQualifiedName.root}"
-                    )
-                    yield Either(
-                        right=PipelineUsage(
-                            pipeline=pipeline,
-                            usage=UsageRequest(date=self.today, count=new_usage),
-                        )
-                    )
-
-                else:
-                    logger.debug(
-                        f"Latest usage {pipeline.usageSummary} vs. today {self.today}. Nothing to compute."
-                    )
-                    logger.info(
-                        f"Usage already informed for {pipeline.fullyQualifiedName.root}"
-                    )
-
-        except Exception as exc:
-            yield Either(
-                left=StackTraceError(
-                    name=f"{pipeline_details.dag_id} Usage",
-                    error=f"Exception computing pipeline usage for {pipeline_details.dag_id}: {exc}",
-                    stackTrace=traceback.format_exc(),
-                )
-            )
-
     def close(self):
+        self.metadata.compute_percentile(Pipeline, self.today)
         self.session.close()
