@@ -291,7 +291,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
           ingestionPipelineRepository.get(
               uriInfo, pipelineRef.getId(), ingestionPipelineRepository.getFields(FIELD_OWNERS));
       return ingestionPipelineRepository
-          .listPipelineStatus(ingestionPipeline.getFullyQualifiedName(), startTs, endTs)
+          .listExternalAppStatus(ingestionPipeline.getFullyQualifiedName(), startTs, endTs)
           .map(pipelineStatus -> convertPipelineStatus(installation, pipelineStatus));
     }
     throw new IllegalArgumentException("App does not have a scheduled deployment");
@@ -301,7 +301,11 @@ public class AppResource extends EntityResource<App, AppRepository> {
     return new AppRunRecord()
         .withAppId(app.getId())
         .withAppName(app.getName())
-        .withExecutionTime(pipelineStatus.getStartDate())
+        .withStartTime(pipelineStatus.getStartDate())
+        .withExecutionTime(
+            pipelineStatus.getEndDate() == null
+                ? System.currentTimeMillis() - pipelineStatus.getStartDate()
+                : pipelineStatus.getEndDate() - pipelineStatus.getStartDate())
         .withEndTime(pipelineStatus.getEndDate())
         .withStatus(
             switch (pipelineStatus.getPipelineState()) {
@@ -1135,6 +1139,9 @@ public class AppResource extends EntityResource<App, AppRepository> {
   }
 
   private void deleteApp(SecurityContext securityContext, App installedApp) {
+    ApplicationHandler.getInstance()
+        .uninstallApplication(installedApp, Entity.getCollectionDAO(), searchRepository);
+
     if (installedApp.getAppType().equals(AppType.Internal)) {
       try {
         AppScheduler.getInstance().deleteScheduledApplication(installedApp);

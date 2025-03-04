@@ -63,11 +63,10 @@ test.describe('Container entity specific tests ', () => {
     await expect(page.getByTestId('page-indicator')).toContainText('2/2 Page');
 
     // Check around the page sizing change
-    await page.getByTestId('page-size-selection-dropdown').click();
-
     const childrenResponseSizeChange = page.waitForResponse(
       '/api/v1/containers/name/*/children?limit=25&offset=0'
     );
+    await page.getByRole('button', { name: '/ Page down' }).click();
     await page.getByText('25 / Page').click();
     await childrenResponseSizeChange;
 
@@ -80,11 +79,10 @@ test.describe('Container entity specific tests ', () => {
     await expect(page.getByTestId('page-indicator')).toContainText('1/1 Page');
 
     // Back to the original page size
-    await page.getByTestId('page-size-selection-dropdown').click();
-
     const childrenResponseSizeChange2 = page.waitForResponse(
       '/api/v1/containers/name/*/children?limit=15&offset=0'
     );
+    await page.getByRole('button', { name: '/ Page down' }).click();
     await page.getByText('15 / Page').click();
     await childrenResponseSizeChange2;
 

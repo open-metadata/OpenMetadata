@@ -7,7 +7,7 @@ slug: /connectors/database/redshift
 name="Redshift"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=["Metadata", "Query Usage", "Data Profiler", "Data Quality", "dbt", "Lineage", "Column-level Lineage", "Stored Procedures"]
+availableFeatures=["Metadata", "Query Usage", "Data Profiler", "Data Quality", "dbt", "Lineage", "Column-level Lineage", "Stored Procedures", "Sample Data"]
 unavailableFeatures=["Owners", "Tags"]
 / %}
 
@@ -40,6 +40,14 @@ CREATE USER test_user with PASSWORD 'password';
 -- Grant SELECT on table
 GRANT SELECT ON TABLE svv_table_info to test_user;
 ```
+
+{% note %}
+Ensure that the ingestion user has **USAGE** privileges on the schema containing the views. If additional access is needed, run the following command:  
+
+```sql
+GRANT USAGE ON SCHEMA "<schema_name>" TO <ingestion_user>;
+```
+{% /note %}
 
 ### Profiler & Data Quality
 Executing the profiler workflow or data quality tests, will require the user to have `SELECT` permission on the tables/schemas where the profiler/tests will be executed. More information on the profiler workflow setup can be found [here](/how-to-guides/data-quality-observability/profiler/workflow) and data quality tests [here](/how-to-guides/data-quality-observability/quality).

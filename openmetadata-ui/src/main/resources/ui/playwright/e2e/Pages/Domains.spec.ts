@@ -18,6 +18,10 @@ import { DataProduct } from '../../support/domain/DataProduct';
 import { Domain } from '../../support/domain/Domain';
 import { SubDomain } from '../../support/domain/SubDomain';
 import { ENTITY_PATH } from '../../support/entity/Entity.interface';
+import { Glossary } from '../../support/glossary/Glossary';
+import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
+import { ClassificationClass } from '../../support/tag/ClassificationClass';
+import { TagClass } from '../../support/tag/TagClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import { getApiContext, redirectToHomePage } from '../../utils/common';
@@ -25,6 +29,7 @@ import { CustomPropertyTypeByName } from '../../utils/customProperty';
 import {
   addAssetsToDataProduct,
   addAssetsToDomain,
+  addTagsAndGlossaryToDomain,
   checkAssetsCount,
   createDataProduct,
   createDomain,
@@ -43,6 +48,17 @@ import { performUserLogin, visitUserProfilePage } from '../../utils/user';
 const user = new UserClass();
 
 const domain = new Domain();
+
+const classification = new ClassificationClass({
+  provider: 'system',
+  mutuallyExclusive: true,
+});
+const tag = new TagClass({
+  classification: classification.data.name,
+});
+
+const glossary = new Glossary();
+const glossaryTerm = new GlossaryTerm(glossary);
 
 const test = base.extend<{
   page: Page;
@@ -67,7 +83,10 @@ test.describe('Domains', () => {
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
     await user.create(apiContext);
-
+    await classification.create(apiContext);
+    await tag.create(apiContext);
+    await glossary.create(apiContext);
+    await glossaryTerm.create(apiContext);
     await domain.create(apiContext);
 
     await domain.patch({
@@ -84,6 +103,16 @@ test.describe('Domains', () => {
       ],
     });
 
+    await afterAction();
+  });
+
+  test.afterAll('Cleanup', async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    await user.delete(apiContext);
+    await classification.delete(apiContext);
+    await tag.delete(apiContext);
+    await glossary.delete(apiContext);
+    await glossaryTerm.delete(apiContext);
     await afterAction();
   });
 
@@ -472,6 +501,65 @@ test.describe('Domains', () => {
     }
     await afterAction();
   });
+
+  test('Verify domain tags and glossary terms', async ({ page }) => {
+    const { afterAction, apiContext } = await getApiContext(page);
+    const domain = new Domain();
+    try {
+      await domain.create(apiContext);
+      await page.reload();
+      await sidebarClick(page, SidebarItem.DOMAIN);
+      await selectDomain(page, domain.data);
+
+      await addTagsAndGlossaryToDomain(page, {
+        tagFqn: tag.responseData.fullyQualifiedName,
+        glossaryTermFqn: glossaryTerm.responseData.fullyQualifiedName,
+      });
+
+      await redirectToHomePage(page);
+      await sidebarClick(page, SidebarItem.DOMAIN);
+      await selectDomain(page, domain.data);
+
+      await page.waitForLoadState('networkidle');
+
+      await expect(
+        page.locator(
+          `[data-testid="tag-${tag.responseData.fullyQualifiedName}"]`
+        )
+      ).toBeVisible();
+    } finally {
+      await domain.delete(apiContext);
+      await afterAction();
+    }
+  });
+
+  test('Verify data product tags and glossary terms', async ({ page }) => {
+    const { afterAction, apiContext } = await getApiContext(page);
+    const domain1 = new Domain();
+    const dataProduct = new DataProduct(domain1);
+    try {
+      await domain1.create(apiContext);
+      await page.reload();
+      await redirectToHomePage(page);
+      await sidebarClick(page, SidebarItem.DOMAIN);
+      await selectDomain(page, domain1.data);
+      await createDataProduct(page, dataProduct.data);
+
+      await redirectToHomePage(page);
+      await sidebarClick(page, SidebarItem.DOMAIN);
+      await selectDataProduct(page, domain1.data, dataProduct.data);
+
+      await addTagsAndGlossaryToDomain(page, {
+        tagFqn: tag.responseData.fullyQualifiedName,
+        glossaryTermFqn: glossaryTerm.responseData.fullyQualifiedName,
+        isDomain: false,
+      });
+    } finally {
+      await dataProduct.delete(apiContext);
+      await domain1.delete(apiContext);
+      await afterAction();
+    }
+  });
 });
 
 test.describe('Domains Rbac', () => {
@@ -516,20 +604,17 @@ test.describe('Domains Rbac', () => {
 
     // Add domain role to the user
     await visitUserProfilePage(page, user1.responseData.name);
-    await page
-      .getByTestId('user-profile')
-      .locator('.ant-collapse-expand-icon')
-      .click();
     await page.getByTestId('edit-roles-button').click();
 
-    await page
-      .getByTestId('select-user-roles')
-      .getByLabel('Select roles')
-      .click();
+    await page.locator('[data-testid="user-profile-edit-popover"]').isVisible();
+    await page.locator('input[role="combobox"]').nth(1).click();
+    await page.waitForSelector('[data-testid="profile-edit-roles-select"]');
     await page.getByText('Domain Only Access Role').click();
     await page.click('body');
     const patchRes = page.waitForResponse('/api/v1/users/*');
-    await page.getByTestId('inline-save-btn').click();
+    await page
+      .locator('[data-testid="user-profile-edit-roles-save-button"]')
+      .click();
     await patchRes;
     await afterAction();
   });

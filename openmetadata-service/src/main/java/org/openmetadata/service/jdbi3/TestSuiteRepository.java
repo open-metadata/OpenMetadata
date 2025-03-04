@@ -39,6 +39,7 @@ import org.openmetadata.schema.tests.type.TestSummary;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.dqtests.TestSuiteResource;
 import org.openmetadata.service.resources.feeds.MessageParser;
@@ -404,7 +405,7 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
 
   @Override
   public EntityRepository<TestSuite>.EntityUpdater getUpdater(
-      TestSuite original, TestSuite updated, Operation operation) {
+      TestSuite original, TestSuite updated, Operation operation, ChangeSource changeSource) {
     return new TestSuiteUpdater(original, updated, operation);
   }
 
@@ -449,7 +450,7 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
       updated.setUpdatedBy(updatedBy);
       updated.setUpdatedAt(System.currentTimeMillis());
       updated.setDeleted(true);
-      EntityUpdater updater = getUpdater(original, updated, Operation.SOFT_DELETE);
+      EntityUpdater updater = getUpdater(original, updated, Operation.SOFT_DELETE, null);
       updater.update();
       changeType = ENTITY_SOFT_DELETED;
     } else {
