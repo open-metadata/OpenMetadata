@@ -19,9 +19,9 @@ export interface LineChart {
      */
     excludeGroups?: string[];
     /**
-     * List of fields to be excluded in the data insight chart when xAxisField is specified.
+     * Regex to exclude fields from the data insight chart when xAxisField is specified.
      */
-    excludeXAxisField?: string[];
+    excludeXAxisField?: string;
     /**
      * Breakdown field for the data insight chart.
      */
@@ -31,9 +31,9 @@ export interface LineChart {
      */
     includeGroups?: string[];
     /**
-     * List of fields to be included in the data insight chart when xAxisField is specified.
+     * Regex to include fields in the data insight chart when xAxisField is specified.
      */
-    includeXAxisFiled?: string[];
+    includeXAxisFiled?: string;
     kpiDetails?:        KpiDetails;
     /**
      * Metrics for the data insight chart.

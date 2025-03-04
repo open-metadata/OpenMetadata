@@ -88,18 +88,12 @@
             "default": "@timestamp"
         },
         "includeXAxisFiled": {
-            "description": "List of fields to be included in the data insight chart when xAxisField is specified.",
-            "type": "array",
-            "items": {
-                "type": "string"
-            }
+            "description": "Regex to include fields in the data insight chart when xAxisField is specified.",
+            "type": "string"
         },
         "excludeXAxisField": {
-            "description": "List of fields to be excluded in the data insight chart when xAxisField is specified.",
-            "type": "array",
-            "items": {
-                "type": "string"
-            }
+            "description": "Regex to exclude fields from the data insight chart when xAxisField is specified.",
+            "type": "string"
         }
     },
     "additionalProperties": false

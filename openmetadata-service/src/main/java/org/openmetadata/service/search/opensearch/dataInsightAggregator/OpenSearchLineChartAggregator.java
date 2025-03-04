@@ -59,17 +59,12 @@ public class OpenSearchLineChartAggregator implements OpenSearchDynamicChartAggr
       String metricName = metric.getName() == null ? "metric_" + ++i : metric.getName();
       if (lineChart.getxAxisField() != null
           && !lineChart.getxAxisField().equals(DataInsightSystemChartRepository.TIMESTAMP_FIELD)) {
-        String[] includeArr = null;
-        String[] excludeArr = null;
-        if (!CommonUtil.nullOrEmpty(lineChart.getIncludeXAxisFiled())) {
-          includeArr = lineChart.getIncludeXAxisFiled().toArray(new String[0]);
-        }
-        if (!CommonUtil.nullOrEmpty(lineChart.getExcludeXAxisField())) {
-          excludeArr = lineChart.getExcludeXAxisField().toArray(new String[0]);
-        }
         IncludeExclude includeExclude = null;
-        if (includeArr != null || excludeArr != null) {
-          includeExclude = new IncludeExclude(includeArr, excludeArr);
+        if (!CommonUtil.nullOrEmpty(lineChart.getIncludeXAxisFiled())
+            || !CommonUtil.nullOrEmpty(lineChart.getExcludeXAxisField())) {
+          includeExclude =
+              new IncludeExclude(
+                  lineChart.getIncludeXAxisFiled(), lineChart.getExcludeXAxisField());
         }
         aggregationBuilder =
             AggregationBuilders.terms(metricName)
