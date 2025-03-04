@@ -547,26 +547,16 @@ export const checkDataConsumerPermissions = async (page: Page) => {
     )
   ).toBeVisible();
 
-  if (process.env.PLAYWRIGHT_IS_OSS) {
-    await expect(
-      page.locator('[data-testid="manage-button"]')
-    ).not.toBeVisible();
-  } else {
-    await expect(page.locator('[data-testid="manage-button"]')).toBeVisible();
+  await expect(page.locator('[data-testid="manage-button"]')).toBeVisible();
 
-    await page.click('[data-testid="manage-button"]');
+  await page.click('[data-testid="manage-button"]');
 
-    await expect(page.locator('[data-testid="export-button"]')).toBeVisible();
-    await expect(
-      page.locator('[data-testid="import-button"]')
-    ).not.toBeVisible();
-    await expect(
-      page.locator('[data-testid="announcement-button"]')
-    ).not.toBeVisible();
-    await expect(
-      page.locator('[data-testid="delete-button"]')
-    ).not.toBeVisible();
-  }
+  await expect(page.locator('[data-testid="export-button"]')).toBeVisible();
+  await expect(page.locator('[data-testid="import-button"]')).not.toBeVisible();
+  await expect(
+    page.locator('[data-testid="announcement-button"]')
+  ).not.toBeVisible();
+  await expect(page.locator('[data-testid="delete-button"]')).not.toBeVisible();
 
   await page.click('[data-testid="lineage"]');
 
