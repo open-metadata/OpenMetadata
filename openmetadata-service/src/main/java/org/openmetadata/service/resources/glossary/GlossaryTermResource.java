@@ -416,6 +416,36 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
     return create(uriInfo, securityContext, term);
   }
 
+  @POST
+  @Path("/createMany")
+  @Operation(
+      operationId = "createManyGlossaryTerm",
+      summary = "Create multiple glossary terms at once",
+      description = "Create multiple new glossary terms.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "The glossary term",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = GlossaryTerm.class))),
+        @ApiResponse(responseCode = "400", description = "Bad request")
+      })
+  public Response createMany(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid List<CreateGlossaryTerm> creates) {
+    List<GlossaryTerm> terms =
+        creates.stream()
+            .map(
+                create ->
+                    mapper.createToEntity(create, securityContext.getUserPrincipal().getName()))
+            .toList();
+    List<GlossaryTerm> result = repository.createMany(uriInfo, terms);
+    return Response.ok(result).build();
+  }
+
   @PATCH
   @Path("/{id}")
   @Operation(

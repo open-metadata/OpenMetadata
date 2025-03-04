@@ -41,6 +41,7 @@ import static org.openmetadata.service.util.EntityUtil.termReferenceMatch;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.google.gson.Gson;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -57,6 +58,7 @@ import java.util.stream.Collectors;
 import javax.json.JsonPatch;
 import javax.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.common.utils.CommonUtil;
@@ -121,8 +123,10 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
         UPDATE_FIELDS);
     supportsSearch = true;
     renameAllowed = true;
-    fieldFetchers.put("relatedTerms", this::fetchAndSetRelatedTerms);
     fieldFetchers.put("parent", this::fetchAndSetParentOrGlossary);
+    fieldFetchers.put("relatedTerms", this::fetchAndSetRelatedTerms);
+    fieldFetchers.put("usageCount", this::fetchAndSetUsageCount);
+    fieldFetchers.put("childrenCount", this::fetchAndSetChildrenCount);
   }
 
   @Override
@@ -134,6 +138,15 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
         fields.contains("usageCount") ? getUsageCount(entity) : entity.getUsageCount());
     entity.withChildrenCount(
         fields.contains("childrenCount") ? getChildrenCount(entity) : entity.getChildrenCount());
+  }
+
+  @Override
+  public void setFieldsInBulk(Fields fields, List<GlossaryTerm> entities) {
+    fetchAndSetFields(entities, fields);
+    setInheritedFields(entities, fields);
+    for (GlossaryTerm entity : entities) {
+      clearFieldsInternal(entity, fields);
+    }
   }
 
   @Override
@@ -149,6 +162,25 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     inheritOwners(glossaryTerm, fields, parent);
     inheritDomain(glossaryTerm, fields, parent);
     inheritReviewers(glossaryTerm, fields, parent);
+  }
+
+  @Override
+  public void setInheritedFields(List<GlossaryTerm> glossaryTerms, Fields fields) {
+    List<? extends EntityInterface> parents =
+        getParentEntities(glossaryTerms, "owners,domain,reviewers");
+    Map<UUID, EntityInterface> parentMap =
+        parents.stream().collect(Collectors.toMap(EntityInterface::getId, e -> e));
+    for (GlossaryTerm glossaryTerm : glossaryTerms) {
+      EntityInterface parent = null;
+      if (glossaryTerm.getParent() != null) {
+        parent = parentMap.get(glossaryTerm.getParent().getId());
+      } else if (glossaryTerm.getGlossary() != null) {
+        parent = parentMap.get(glossaryTerm.getGlossary().getId());
+      }
+      inheritOwners(glossaryTerm, fields, parent);
+      inheritDomain(glossaryTerm, fields, parent);
+      inheritReviewers(glossaryTerm, fields, parent);
+    }
   }
 
   private Integer getUsageCount(GlossaryTerm term) {
@@ -216,6 +248,24 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
         .withParent(parentTerm)
         .withRelatedTerms(relatedTerms)
         .withReviewers(reviewers);
+  }
+
+  @Override
+  public void storeEntities(List<GlossaryTerm> entities) {
+    List<GlossaryTerm> entitiesToStore = new ArrayList<>();
+    Gson gson = new Gson();
+    for (GlossaryTerm entity : entities) {
+      EntityReference glossary = entity.getGlossary();
+      EntityReference parentTerm = entity.getParent();
+      List<EntityReference> reviewers = entity.getReviewers();
+
+      String jsonCopy = gson.toJson(entity.withGlossary(null).withParent(null).withReviewers(null));
+      entitiesToStore.add(gson.fromJson(jsonCopy, GlossaryTerm.class));
+
+      // restore the relationships
+      entity.withGlossary(glossary).withParent(parentTerm).withReviewers(reviewers);
+    }
+    storeMany(entitiesToStore);
   }
 
   @Override
@@ -625,6 +675,24 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
         : Entity.getEntity(entity.getGlossary(), fields, Include.ALL);
   }
 
+  public List<EntityInterface> getParentEntities(List<GlossaryTerm> entities, String fields) {
+    List<EntityInterface> result = new ArrayList<>();
+    if (CollectionUtils.isEmpty(entities)) {
+      return result;
+    }
+    List<EntityReference> parents =
+        entities.stream().map(GlossaryTerm::getParent).filter(Objects::nonNull).distinct().toList();
+    result.addAll(Entity.getEntities(parents, fields, Include.ALL));
+    List<EntityReference> glossaries =
+        entities.stream()
+            .map(GlossaryTerm::getGlossary)
+            .filter(Objects::nonNull)
+            .distinct()
+            .toList();
+    result.addAll(Entity.getEntities(glossaries, fields, Include.ALL));
+    return result;
+  }
+
   private void addGlossaryRelationship(GlossaryTerm term) {
     Relationship relationship = term.getParent() != null ? Relationship.HAS : Relationship.CONTAINS;
     addRelationship(
@@ -841,11 +909,12 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   }
 
   private void fetchAndSetParentOrGlossary(List<GlossaryTerm> terms, Fields fields) {
-    if (terms == null || terms.isEmpty() || (!fields.contains("parent"))) {
+    if (terms == null || terms.isEmpty()) {
       return;
     }
 
-    List<String> entityIds = terms.stream().map(GlossaryTerm::getId).map(UUID::toString).toList();
+    List<String> entityIds =
+        terms.stream().map(GlossaryTerm::getId).map(UUID::toString).distinct().toList();
 
     List<CollectionDAO.EntityRelationshipObject> parentRecords =
         daoCollection
@@ -916,6 +985,39 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       if (glossaryRef != null) {
         term.setGlossary(glossaryRef);
       }
+    }
+  }
+
+  private void fetchAndSetUsageCount(List<GlossaryTerm> entities, Fields fields) {
+    if (!fields.contains("usageCount") || entities.isEmpty()) {
+      return;
+    }
+    // TODO: modify to use a single db query
+    for (GlossaryTerm entity : entities) {
+      entity.withUsageCount(getUsageCount(entity));
+    }
+  }
+
+  private void fetchAndSetChildrenCount(List<GlossaryTerm> entities, Fields fields) {
+    if (!fields.contains("childrenCount") || entities.isEmpty()) {
+      return;
+    }
+    List<String> termIds =
+        entities.stream().map(GlossaryTerm::getId).map(UUID::toString).distinct().toList();
+
+    Map<UUID, Integer> termIdCountMap =
+        daoCollection
+            .relationshipDAO()
+            .countFindTo(termIds, GLOSSARY_TERM, Relationship.CONTAINS.ordinal(), GLOSSARY_TERM)
+            .stream()
+            .collect(
+                Collectors.toMap(
+                    CollectionDAO.EntityRelationshipCount::getId,
+                    CollectionDAO.EntityRelationshipCount::getCount));
+
+    for (GlossaryTerm entity : entities) {
+      entity.setChildrenCount(
+          termIdCountMap.getOrDefault(entity.getId(), entity.getChildrenCount()));
     }
   }
 
