@@ -378,7 +378,9 @@ class LineageSource(QueryParserSource, ABC):
         if self.source_config.processQueryLineage:
             if hasattr(self.service_connection, "supportsLineageExtraction"):
                 yield from self.yield_query_lineage() or []
-                yield from get_lineage_by_graph(graph=self.graph)
+                yield from get_lineage_by_graph(
+                    graph=self.graph, metadata=self.metadata
+                )
             else:
                 logger.warning(
                     f"Lineage extraction is not supported for {str(self.service_connection.type.value)} connection"
