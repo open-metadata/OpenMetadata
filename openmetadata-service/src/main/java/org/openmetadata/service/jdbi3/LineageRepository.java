@@ -189,6 +189,23 @@ public class LineageRepository {
         addLineageToSearch(from, to, updatedLineageTimestamps);
       }
     }
+
+    // Add Domain Level Lineage
+    if (fromEntity.getDomain() != null && toEntity.getDomain() != null) {
+      EntityReference fromDomain = fromEntity.getDomain();
+      EntityReference toDomain = toEntity.getDomain();
+      if (Boolean.FALSE.equals(fromDomain.getId().equals(toDomain.getId()))) {
+        dao.relationshipDAO()
+            .insert(
+                fromDomain.getId(),
+                toDomain.getId(),
+                fromDomain.getType(),
+                toDomain.getType(),
+                Relationship.UPSTREAM.ordinal(),
+                JsonUtils.pojoToJson(updatedLineageTimestamps));
+        addLineageToSearch(from, to, updatedLineageTimestamps);
+      }
+    }
   }
 
   private void addLineageToSearch(
