@@ -324,6 +324,7 @@ export const DatabaseSchemaTable = ({
           data-testid="database-databaseSchemas"
           dataSource={schemas}
           defaultVisibleColumns={DEFAULT_DATABASE_SCHEMA_VISIBLE_COLUMNS}
+          loading={isLoading}
           locale={{
             emptyText: <ErrorPlaceHolder className="m-y-md" />,
           }}
