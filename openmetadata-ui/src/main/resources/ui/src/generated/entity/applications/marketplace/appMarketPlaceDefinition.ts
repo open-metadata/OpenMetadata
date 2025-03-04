@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * This schema defines the applications for Open-Metadata.
  */
 export interface AppMarketPlaceDefinition {
@@ -91,6 +89,10 @@ export interface AppMarketPlaceDefinition {
      */
     id: string;
     /**
+     * Change that lead to this version of the entity.
+     */
+    incrementalChangeDescription?: ChangeDescription;
+    /**
      * Name of the Application.
      */
     name: string;
@@ -168,6 +170,8 @@ export interface AppMarketPlaceDefinition {
  * Search Indexing App.
  *
  * Configuration for the Collate AI Quality Agent.
+ *
+ * Configuration for the Day One Experience Flow.
  */
 export interface CollateAIAppConfig {
     /**
@@ -207,7 +211,8 @@ export interface CollateAIAppConfig {
      *
      * Maximum number of events sent in a batch (Default 100).
      */
-    batchSize?: number;
+    batchSize?:           number;
+    moduleConfiguration?: ModuleConfiguration;
     /**
      * Recreates the DataAssets index on DataInsights. Useful if you changed a Custom Property
      * Type and are facing errors. Bear in mind that recreating the index will delete your
@@ -262,6 +267,8 @@ export interface CollateAIAppConfig {
     searchIndexMappingLanguage?: SearchIndexMappingLanguage;
     /**
      * Whether the suggested tests should be active or not upon suggestion
+     *
+     * Whether the Day One Experience flow should be active or not.
      */
     active?: boolean;
     /**
@@ -298,13 +305,13 @@ export interface Action {
      * Apply tags to the children of the selected assets that match the criteria. E.g., columns,
      * tasks, topic fields,...
      *
-     * Remove tags from all the children of the selected assets. E.g., columns, tasks, topic
+     * Remove tags from the children of the selected assets. E.g., columns, tasks, topic
      * fields,...
      *
      * Apply the description to the children of the selected assets that match the criteria.
      * E.g., columns, tasks, topic fields,...
      *
-     * Remove descriptions from all children of the selected assets. E.g., columns, tasks, topic
+     * Remove descriptions from the children of the selected assets. E.g., columns, tasks, topic
      * fields,...
      */
     applyToChildren?: string[];
@@ -342,6 +349,16 @@ export interface Action {
      * Application Type
      */
     type: ActionType;
+    /**
+     * Remove tags from all the children and parent of the selected assets.
+     *
+     * Remove descriptions from all the children and parent of the selected assets.
+     */
+    applyToAll?: boolean;
+    /**
+     * Remove tags by its label type
+     */
+    labels?: LabelElement[];
     /**
      * Domain to apply
      */
@@ -456,6 +473,15 @@ export interface EntityReference {
 }
 
 /**
+ * Remove tags by its label type
+ */
+export enum LabelElement {
+    Automated = "Automated",
+    Manual = "Manual",
+    Propagated = "Propagated",
+}
+
+/**
  * This schema defines the type for labeling an entity with a Tag.
  *
  * tier to apply
@@ -480,7 +506,7 @@ export interface TagLabel {
      * label was propagated from upstream based on lineage. 'Automated' is used when a tool was
      * used to determine the tag label.
      */
-    labelType: LabelType;
+    labelType: LabelTypeEnum;
     /**
      * Name of the tag or glossary term.
      */
@@ -505,7 +531,7 @@ export interface TagLabel {
  * label was propagated from upstream based on lineage. 'Automated' is used when a tool was
  * used to determine the tag label.
  */
-export enum LabelType {
+export enum LabelTypeEnum {
     Automated = "Automated",
     Derived = "Derived",
     Manual = "Manual",
@@ -610,6 +636,83 @@ export interface BackfillConfiguration {
 }
 
 /**
+ * Different Module Configurations
+ */
+export interface ModuleConfiguration {
+    /**
+     * App Analytics Module configuration
+     */
+    appAnalytics: AppAnalyticsConfig;
+    /**
+     * Cost Analysis Insights Module configuration
+     */
+    costAnalysis: CostAnalysisConfig;
+    /**
+     * Data Assets Insights Module configuration
+     */
+    dataAssets: DataAssetsConfig;
+    /**
+     * Data Quality Insights Module configuration
+     */
+    dataQuality: DataQualityConfig;
+}
+
+/**
+ * App Analytics Module configuration
+ */
+export interface AppAnalyticsConfig {
+    /**
+     * If Enabled, App Analytics insights will be populated when the App runs.
+     */
+    enabled: boolean;
+}
+
+/**
+ * Cost Analysis Insights Module configuration
+ */
+export interface CostAnalysisConfig {
+    /**
+     * If Enabled, Cost Analysis insights will be populated when the App runs.
+     */
+    enabled: boolean;
+}
+
+/**
+ * Data Assets Insights Module configuration
+ */
+export interface DataAssetsConfig {
+    /**
+     * If Enabled, Data Asset insights will be populated when the App runs.
+     */
+    enabled: boolean;
+    /**
+     * List of Entities to Reindex
+     */
+    entities?: string[];
+    /**
+     * Defines the number of days the Data Assets Insights information will be kept. After it
+     * they will be deleted.
+     */
+    retention?:     number;
+    serviceFilter?: ServiceFilter;
+}
+
+export interface ServiceFilter {
+    serviceName?: string;
+    serviceType?: string;
+}
+
+/**
+ * Data Quality Insights Module configuration
+ */
+export interface DataQualityConfig {
+    /**
+     * If Enabled, Data Quality insights will be populated when the App runs.
+     */
+    enabled: boolean;
+}
+
+/**
  * Entities selected to run the automation.
  */
 export interface Resource {
@@ -648,6 +751,7 @@ export enum Type {
     CollateAIQualityAgent = "CollateAIQualityAgent",
     DataInsights = "DataInsights",
     DataInsightsReport = "DataInsightsReport",
+    DayOneExperienceWorkflow = "DayOneExperienceWorkflow",
     SearchIndexing = "SearchIndexing",
 }
 
@@ -716,6 +820,7 @@ export interface CreateEventSubscription {
      * Consumer Class for the Event Subscription. Will use 'AlertPublisher' if not provided.
      */
     className?: string;
+    config?:    { [key: string]: any };
     /**
      * A short description of the Alert, comprehensible to regular users.
      */
@@ -771,6 +876,7 @@ export interface CreateEventSubscription {
  */
 export enum AlertType {
     ActivityFeed = "ActivityFeed",
+    Custom = "Custom",
     GovernanceWorkflowChangeEvent = "GovernanceWorkflowChangeEvent",
     Notification = "Notification",
     Observability = "Observability",

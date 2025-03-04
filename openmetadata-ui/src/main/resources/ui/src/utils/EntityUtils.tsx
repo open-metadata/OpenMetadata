@@ -29,11 +29,11 @@ import { OwnerLabel } from '../components/common/OwnerLabel/OwnerLabel.component
 import QueryCount from '../components/common/QueryCount/QueryCount.component';
 import { TitleLink } from '../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import { DataAssetsWithoutServiceField } from '../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
+import { DataAssetSummaryPanelProps } from '../components/DataAssetSummaryPanel/DataAssetSummaryPanel.interface';
 import { TableProfilerTab } from '../components/Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
 import { QueryVoteType } from '../components/Database/TableQueries/TableQueries.interface';
 import {
   EntityServiceUnion,
-  EntityUnion,
   EntityWithServices,
 } from '../components/Explore/ExplorePage.interface';
 import {
@@ -51,6 +51,8 @@ import {
   getServiceDetailsPath,
   getTagsDetailsPath,
   NO_DATA,
+  PLACEHOLDER_ROUTE_ENTITY_TYPE,
+  PLACEHOLDER_ROUTE_FQN,
   ROUTES,
 } from '../constants/constants';
 import {
@@ -424,7 +426,7 @@ const getTopicOverview = (topicDetails: Topic) => {
   } = topicDetails;
 
   const overview: BasicEntityOverviewInfo[] = [
-    ...getCommonOverview({ domain }, false),
+    ...getCommonOverview({ domain, owners: topicDetails.owners }),
     {
       name: i18next.t('label.partition-plural'),
       value: partitions ?? NO_DATA,
@@ -1167,65 +1169,80 @@ const getMetricOverview = (metric: Metric) => {
 
 export const getEntityOverview = (
   type: string,
-  entityDetail: EntityUnion,
+  entityDetail: DataAssetSummaryPanelProps['dataAsset'],
   additionalInfo?: Record<string, number | string>
 ): Array<BasicEntityOverviewInfo> => {
   switch (type) {
-    case ExplorePageTabs.TABLES: {
+    case ExplorePageTabs.TABLES:
+    case EntityType.TABLE: {
       return getTableOverview(entityDetail as Table, additionalInfo);
     }
 
-    case ExplorePageTabs.TOPICS: {
+    case ExplorePageTabs.TOPICS:
+    case EntityType.TOPIC: {
       return getTopicOverview(entityDetail as Topic);
     }
 
-    case ExplorePageTabs.PIPELINES: {
+    case ExplorePageTabs.PIPELINES:
+    case EntityType.PIPELINE: {
       return getPipelineOverview(entityDetail as Pipeline);
     }
 
-    case ExplorePageTabs.DASHBOARDS: {
+    case ExplorePageTabs.DASHBOARDS:
+    case EntityType.DASHBOARD: {
       return getDashboardOverview(entityDetail as Dashboard);
     }
 
-    case ExplorePageTabs.SEARCH_INDEX: {
+    case ExplorePageTabs.SEARCH_INDEX:
+    case EntityType.SEARCH_INDEX: {
       return getSearchIndexOverview(entityDetail as SearchIndexEntity);
     }
 
-    case ExplorePageTabs.MLMODELS: {
+    case ExplorePageTabs.MLMODELS:
+    case EntityType.MLMODEL: {
       return getMlModelOverview(entityDetail as Mlmodel);
     }
-    case ExplorePageTabs.CONTAINERS: {
+    case ExplorePageTabs.CONTAINERS:
+    case EntityType.CONTAINER: {
       return getContainerOverview(entityDetail as Container);
     }
-    case ExplorePageTabs.CHARTS: {
+    case ExplorePageTabs.CHARTS:
+    case EntityType.CHART: {
       return getChartOverview(entityDetail as Chart);
     }
 
-    case ExplorePageTabs.DASHBOARD_DATA_MODEL: {
+    case ExplorePageTabs.DASHBOARD_DATA_MODEL:
+    case EntityType.DASHBOARD_DATA_MODEL: {
       return getDataModelOverview(entityDetail as DashboardDataModel);
     }
 
-    case ExplorePageTabs.STORED_PROCEDURE: {
+    case ExplorePageTabs.STORED_PROCEDURE:
+    case EntityType.STORED_PROCEDURE: {
       return getStoredProcedureOverview(entityDetail as StoredProcedure);
     }
 
-    case ExplorePageTabs.DATABASE: {
+    case ExplorePageTabs.DATABASE:
+    case EntityType.DATABASE: {
       return getDatabaseOverview(entityDetail as Database);
     }
 
-    case ExplorePageTabs.DATABASE_SCHEMA: {
+    case ExplorePageTabs.DATABASE_SCHEMA:
+    case EntityType.DATABASE_SCHEMA: {
       return getDatabaseSchemaOverview(entityDetail as DatabaseSchema);
     }
 
-    case ExplorePageTabs.API_COLLECTION: {
+    case ExplorePageTabs.API_COLLECTION:
+    case EntityType.API_COLLECTION: {
       return getApiCollectionOverview(entityDetail as APICollection);
     }
 
-    case ExplorePageTabs.API_ENDPOINT: {
+    case ExplorePageTabs.API_ENDPOINT:
+    case EntityType.API_ENDPOINT: {
       return getApiEndpointOverview(entityDetail as APIEndpoint);
     }
 
-    case ExplorePageTabs.METRIC: {
+    case ExplorePageTabs.METRIC:
+    case EntityType.METRIC: {
       return getMetricOverview(entityDetail as Metric);
     }
 
@@ -1235,7 +1252,14 @@ export const getEntityOverview = (
     case ExplorePageTabs.ML_MODEL_SERVICE:
     case ExplorePageTabs.PIPELINE_SERVICE:
     case ExplorePageTabs.SEARCH_INDEX_SERVICE:
-    case ExplorePageTabs.API_SERVICE: {
+    case ExplorePageTabs.API_SERVICE:
+    case EntityType.DATABASE_SERVICE:
+    case EntityType.MESSAGING_SERVICE:
+    case EntityType.DASHBOARD_SERVICE:
+    case EntityType.MLMODEL_SERVICE:
+    case EntityType.PIPELINE_SERVICE:
+    case EntityType.SEARCH_SERVICE:
+    case EntityType.API_SERVICE: {
       return getEntityServiceOverview(entityDetail as EntityServiceUnion);
     }
 
@@ -2454,4 +2478,11 @@ export const highlightSearchArrayElement = (
       part
     )
   );
+};
+
+export const getEntityImportPath = (entityType: EntityType, fqn: string) => {
+  return ROUTES.ENTITY_IMPORT.replace(
+    PLACEHOLDER_ROUTE_ENTITY_TYPE,
+    entityType
+  ).replace(PLACEHOLDER_ROUTE_FQN, fqn);
 };

@@ -191,6 +191,8 @@ site_menu:
     url: /deployment/rds-iam-auth
   - category: Deployment / How to enable Azure Auth
     url: /deployment/azure-auth
+  - category: Deployment / Azure - Enable Passwordless Database Backend Connection
+    url: /deployment/azure-passwordless-auth
   - category: Deployment / Production-Ready Requirements
     url: /deployment/requirements
   - category: Deployment / Server Configuration Reference
@@ -868,6 +870,8 @@ site_menu:
     url: /how-to-guides/data-quality-observability/profiler/workflow
   - category: How-to Guides / Data Quality and Observability / Data Profiler / Metrics
     url: /how-to-guides/data-quality-observability/profiler/metrics
+  - category: How-to Guides / Data Quality and Observability / Data Profiler / Custom Metrics
+    url: /how-to-guides/data-quality-observability/profiler/custom-metrics
   - category: How-to Guides / Data Quality and Observability / Data Profiler / Sample Data
     url: /how-to-guides/data-quality-observability/profiler/external-sample-data
   - category: How-to Guides / Data Quality and Observability / Data Profiler / External Workflow
@@ -959,6 +963,8 @@ site_menu:
     url: /how-to-guides/data-governance/domains-&-data-products/domains
   - category: How-to Guides / Data Governance / Domains & Data Product /  How to Use Data Products
     url: /how-to-guides/data-governance/domains-&-data-products/data-products
+  - category: How-to Guides / Data Governance / Metrics
+    url: /how-to-guides/data-governance/metrics
 
   - category: Releases
     url: /releases
@@ -968,6 +974,10 @@ site_menu:
     url: /releases/supported
   - category: Releases / All Releases
     url: /releases/all-releases
+  - category: Releases / All Releases / 1.6.4 Release
+    url: /releases/all-releases/#1.6.4-release
+  - category: Releases / All Releases / 1.6.3 Release
+    url: /releases/all-releases/#1.6.3-release
   - category: Releases / All Releases / 1.6.2 Release
     url: /releases/all-releases/#1.6.2-release
   - category: Releases / All Releases / 1.6.1 Release

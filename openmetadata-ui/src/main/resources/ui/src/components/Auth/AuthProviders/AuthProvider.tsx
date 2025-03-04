@@ -167,6 +167,7 @@ export const AuthProvider = ({
     resetWebAnalyticSession();
   };
 
+  // Handler to perform logout within application
   const onLogoutHandler = useCallback(() => {
     clearTimeout(timeoutId);
 
@@ -392,6 +393,7 @@ export const AuthProvider = ({
     ]
   );
 
+  // Callback to cleanup session related info upon successful logout
   const handleSuccessfulLogout = () => {
     resetUserDetails();
   };

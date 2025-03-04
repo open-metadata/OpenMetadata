@@ -40,6 +40,10 @@ export interface AppRunRecord {
      */
     failureContext?: { [key: string]: any };
     /**
+     * Arbitrary metadata that will be attached to the report.
+     */
+    properties?: { [key: string]: any };
+    /**
      * This schema defines the type of application Run.
      */
     runType?:      string;

@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { FilterOutlined } from '@ant-design/icons';
 import { Button, Col, Row, Space, Tooltip, Typography } from 'antd';
 import Card from 'antd/lib/card/Card';
 import { ColumnsType, TableProps } from 'antd/lib/table';
@@ -43,7 +42,6 @@ import { Include } from '../../../generated/type/include';
 import LimitWrapper from '../../../hoc/LimitWrapper';
 import { usePaging } from '../../../hooks/paging/usePaging';
 import { useAirflowStatus } from '../../../hooks/useAirflowStatus';
-import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { DatabaseServiceSearchSource } from '../../../interface/search.interface';
 import { ServicesType } from '../../../interface/service.interface';
 import { getServices, searchService } from '../../../rest/serviceAPI';
@@ -57,6 +55,7 @@ import {
   getServiceTypesFromServiceCategory,
 } from '../../../utils/ServiceUtils';
 import { stringToHTML } from '../../../utils/StringsUtils';
+import { columnFilterIcon } from '../../../utils/TableColumn.util';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { ListView } from '../../common/ListView/ListView.component';
@@ -73,7 +72,6 @@ interface ServicesProps {
 }
 
 const Services = ({ serviceName }: ServicesProps) => {
-  const { theme } = useApplicationStore();
   const { t } = useTranslation();
   const { isFetchingStatus, platform } = useAirflowStatus();
 
@@ -98,6 +96,14 @@ const Services = ({ serviceName }: ServicesProps) => {
   } = usePaging();
   const [deleted, setDeleted] = useState<boolean>(false);
   const { permissions } = usePermissionProvider();
+
+  const filterString = useMemo(() => {
+    return serviceTypeFilter?.length
+      ? `(${serviceTypeFilter
+          .map((type) => `serviceType:${type}`)
+          .join(' OR ')})`
+      : undefined;
+  }, [serviceTypeFilter]);
 
   const isPlatFormDisabled = useMemo(() => platform === DISABLED, [platform]);
 
@@ -197,24 +203,23 @@ const Services = ({ serviceName }: ServicesProps) => {
 
   const handleServicePageChange = useCallback(
     ({ cursorType, currentPage }: PagingHandlerParams) => {
-      if (searchTerm) {
+      if (searchTerm || filterString) {
         handlePageChange(currentPage);
         getServiceDetails({
           currentPage,
           search: searchTerm,
           limit: pageSize,
-          filters: serviceTypeFilter?.length
-            ? `(${serviceTypeFilter
-                .map((type) => `serviceType:${type}`)
-                .join(' ')})`
-            : undefined,
+          filters: filterString,
         });
       } else if (cursorType) {
         handlePageChange(currentPage);
-        getServiceDetails({ [cursorType]: paging[cursorType] });
+        getServiceDetails({
+          [cursorType]: paging[cursorType],
+          filters: filterString,
+        });
       }
     },
-    [getServiceDetails, searchTerm, serviceTypeFilter, paging, pageSize]
+    [getServiceDetails, searchTerm, filterString, paging, pageSize]
   );
 
   const addServicePermission = useMemo(
@@ -259,11 +264,7 @@ const Services = ({ serviceName }: ServicesProps) => {
   }, [serviceName]);
 
   const noDataPlaceholder = useMemo(() => {
-    if (
-      addServicePermission &&
-      isEmpty(searchTerm) &&
-      isEmpty(serviceTypeFilter)
-    ) {
+    if (addServicePermission && isEmpty(searchTerm) && !filterString) {
       return (
         <ErrorPlaceHolder
           className="p-lg"
@@ -287,7 +288,7 @@ const Services = ({ serviceName }: ServicesProps) => {
     servicesDisplayName,
     serviceName,
     searchTerm,
-    serviceTypeFilter,
+    filterString,
     addServicePermission,
     handleAddServiceClick,
   ]);
@@ -344,13 +345,7 @@ const Services = ({ serviceName }: ServicesProps) => {
       key: 'serviceType',
       width: 200,
       filterDropdown: ColumnFilter,
-      filterIcon: (filtered) => (
-        <FilterOutlined
-          style={{
-            color: filtered ? theme.primaryColor : undefined,
-          }}
-        />
-      ),
+      filterIcon: columnFilterIcon,
       filtered: !isEmpty(serviceTypeFilter),
       filteredValue: serviceTypeFilter,
       filters: serviceTypeFilters,
@@ -441,20 +436,9 @@ const Services = ({ serviceName }: ServicesProps) => {
     getServiceDetails({
       search: searchTerm,
       limit: pageSize,
-      filters: serviceTypeFilter?.length
-        ? `(${serviceTypeFilter
-            .map((type) => `serviceType:${type}`)
-            .join(' ')})`
-        : undefined,
+      filters: filterString,
     });
-  }, [
-    searchIndex,
-    pageSize,
-    serviceName,
-    searchTerm,
-    serviceTypeFilter,
-    deleted,
-  ]);
+  }, [searchIndex, pageSize, serviceName, searchTerm, filterString, deleted]);
 
   const handleTableChange: TableProps<ServicesType>['onChange'] = (
     _pagination,
@@ -530,7 +514,7 @@ const Services = ({ serviceName }: ServicesProps) => {
           <NextPrevious
             currentPage={currentPage}
             isLoading={isLoading}
-            isNumberBased={!isEmpty(searchTerm)}
+            isNumberBased={!isEmpty(searchTerm) || !isEmpty(serviceTypeFilter)}
             pageSize={pageSize}
             paging={paging}
             pagingHandler={handleServicePageChange}
