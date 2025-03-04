@@ -73,7 +73,7 @@ jobs:
         disable-reviews: true  # To not auto approve changes
 
     - name: Checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
       with:
         ref: ${{ github.event.pull_request.head.sha }}
         fetch-depth: 0
