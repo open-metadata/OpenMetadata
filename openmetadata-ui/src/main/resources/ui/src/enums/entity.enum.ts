@@ -57,6 +57,7 @@ export enum EntityType {
   PERSONA = 'persona',
   DOC_STORE = 'docStore',
   PAGE = 'Page',
+  KNOWLEDGE_PAGE = 'page',
   knowledgePanels = 'KnowLedgePanels',
   GOVERN = 'govern',
   ALL = 'all',
