@@ -204,5 +204,15 @@ public class MigrationUtil {
         new LineChart()
             .withMetrics(
                 List.of(new LineChartMetric().withFormula("count(k='id.keyword',q='owners: *')"))));
+
+    createChart(
+        "assets_with_pii",
+        new LineChart()
+            .withMetrics(
+                List.of(
+                    new LineChartMetric()
+                        .withFormula(
+                            "count(q='tags.tagFQN: pii.sensitive OR tags.tagFQN:"
+                                + " pii.nonsensitive OR tags.tagFQN: pii.none')"))));
   }
 }
