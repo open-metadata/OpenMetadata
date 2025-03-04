@@ -64,7 +64,7 @@ import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import { useDomainStore } from '../../hooks/useDomainStore';
 import { getVersion } from '../../rest/miscAPI';
 import { isProtectedRoute } from '../../utils/AuthProvider.util';
-import brandImageClassBase from '../../utils/BrandImage/BrandImageClassBase';
+import brandClassBase from '../../utils/BrandData/BrandClassBase';
 import {
   hasNotificationPermission,
   shouldRequestPermission,
@@ -121,7 +121,7 @@ const NavBar = ({
   const { onUpdateCSVExportJob } = useEntityExportModalProvider();
   const { searchCriteria, updateSearchCriteria } = useApplicationStore();
   const searchContainerRef = useRef<HTMLDivElement>(null);
-  const Logo = useMemo(() => brandImageClassBase.getMonogram().src, []);
+  const Logo = useMemo(() => brandClassBase.getMonogram().src, []);
   const [showVersionMissMatchAlert, setShowVersionMissMatchAlert] =
     useState(false);
   const location = useCustomLocation();
