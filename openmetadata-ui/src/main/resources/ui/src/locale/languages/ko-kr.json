@@ -494,6 +494,7 @@
     "execution-plural": "실행들",
     "execution-time": "실행 시간",
     "exit-fit-to-screen": "화면 맞춤 종료",
+    "exit-full-screen": "Exit full screen",
     "exit-version-history": "버전 기록 종료",
     "expand": "확장",
     "expand-all": "전체 확장",
@@ -993,6 +994,7 @@
     "re-verify": "재검증",
     "reaction-lowercase-plural": "반응들",
     "read-type": "{{type}} 읽기",
+    "rearrange-nodes": "Rearrange Nodes",
     "reason": "이유",
     "receiver-plural": "수신자들",
     "recent-announcement-plural": "최근 공지사항들",
@@ -1427,7 +1429,9 @@
     "yes": "예",
     "yes-comma-confirm": "예, 확인",
     "yesterday": "어제",
-    "your-entity": "당신의 {{entity}}"
+    "your-entity": "당신의 {{entity}}",
+    "zoom-in": "Zoom In",
+    "zoom-out": "Zoom Out"
   },
   "message": {
     "access-block-time-message": "최대 로그인 실패 시도 후 몇 밀리초 동안 접근이 차단됩니다.",
