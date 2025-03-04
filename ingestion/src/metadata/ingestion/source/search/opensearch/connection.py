@@ -37,7 +37,6 @@ from metadata.generated.schema.entity.services.connections.testConnectionResult 
     TestConnectionResult,
 )
 from metadata.generated.schema.entity.services.connections.search.elasticSearch.basicAuth import BasicAuthentication
-from metadata.generated.schema.entity.services.connections.search.elasticSearch.apiAuth import ApiKeyAuthentication
 from metadata.generated.schema.security.credentials.awsCredentials import AWSCredentials
 from metadata.generated.schema.security.ssl.verifySSLConfig import VerifySSL
 from metadata.ingestion.connections.builders import init_empty_connection_arguments
@@ -101,10 +100,9 @@ def _handle_ssl_context_by_path(ssl_config: SslConfig):
 
 def get_connection(connection: OpenSearchConnection) -> OpenSearch:
     """
-    Create OpenSearch connection supporting Basic, API Key, and AWS IAM authentication.
+    Create OpenSearch connection supporting Basic and AWS IAM authentication.
     """
     basic_auth = None
-    api_key = None
     aws_auth = None
     verify_ssl = False
     ssl_show_warn = False
@@ -135,16 +133,6 @@ def get_connection(connection: OpenSearchConnection) -> OpenSearch:
             if connection.authType.password
             else None,
         )
-
-    # Check for API Key Authentication
-    if isinstance(connection.authType, ApiKeyAuthentication):
-        if connection.authType.apiKeyId and connection.authType.apiKey:
-            api_key = (
-                connection.authType.apiKeyId,
-                connection.authType.apiKey.get_secret_value(),
-            )
-        elif connection.authType.apiKey:
-            api_key = connection.authType.apiKey.get_secret_value()
 
     # Check for AWS IAM Authentication
     if isinstance(connection.authType, AWSCredentials):
@@ -177,8 +165,8 @@ def get_connection(connection: OpenSearchConnection) -> OpenSearch:
         connection.connectionArguments = init_empty_connection_arguments()
 
     # Determine the http_auth based on the available authentication method.
-    # AWS IAM takes precedence, followed by Basic Authentication, then API Key.
-    http_auth = aws_auth if aws_auth else (basic_auth if basic_auth else api_key)
+    # AWS IAM takes precedence, followed by Basic Authentication.
+    http_auth = aws_auth if aws_auth else basic_auth
 
     return OpenSearch(
         clean_uri(str(connection.hostPort)),

@@ -24,10 +24,9 @@ $$section
 There are 3 types of auth configs:
 
 - Basic Auth.
-- API Key Auth.
 - IAM based Auth.
 
-User can authenticate the OpenSearch Instance with auth type as `Basic Authentication` i.e. Username and Password **or** by using `API Key Authentication` **or** by using `IAM based Authentication` to connect to AWS related services.
+User can authenticate the OpenSearch Instance with auth type as `Basic Authentication` i.e. Username and Password **or** by using `IAM based Authentication` to connect to AWS related services.
 $$
 
 ## Basic Auth
@@ -40,18 +39,6 @@ $$
 $$section
 ### Password $(id="password")
 Password of the user account to connect with OpenSearch.
-$$
-
-## API Key Auth Config
-
-$$section
-### API Key $(id="apiKey")
-API Key to connect to OpenSearch required when API Key Authentication is enabled on OpenSearch.
-$$
-
-$$section
-### API Key ID $(id="apiKeyId")
-Enter API Key ID In case of API Key Authentication if there is any API Key ID associated with the API Key, otherwise this field can be left blank.
 $$
 
 ## IAM based Auth Config

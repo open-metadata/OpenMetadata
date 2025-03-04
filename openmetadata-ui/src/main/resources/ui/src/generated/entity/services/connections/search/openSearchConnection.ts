@@ -41,8 +41,6 @@ export interface OpenSearchConnection {
  *
  * Basic Auth Configuration for ElasticSearch
  *
- * API Key Authentication for ElasticSearch
- *
  * AWS credentials configs.
  */
 export interface AuthConfigurationType {
@@ -54,14 +52,6 @@ export interface AuthConfigurationType {
      * Elastic Search Username for Login
      */
     username?: string;
-    /**
-     * Elastic Search API Key for API Authentication
-     */
-    apiKey?: string;
-    /**
-     * Elastic Search API Key ID for API Authentication
-     */
-    apiKeyId?: string;
     /**
      * The Amazon Resource Name (ARN) of the role to assume. Required Field in case of Assume
      * Role

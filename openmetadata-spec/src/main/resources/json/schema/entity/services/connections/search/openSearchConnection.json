@@ -34,9 +34,6 @@
           "$ref": "./elasticSearch/basicAuth.json"
         },
         {
-          "$ref": "./elasticSearch/apiAuth.json"
-        },
-        {
           "$ref": "../../../../security/credentials/awsCredentials.json"
         }
       ]
