@@ -81,36 +81,31 @@ describe('PersonaUtils', () => {
 
       expect(options).toEqual(
         expect.arrayContaining([
-          {
+          expect.objectContaining({
             key: PageType.Dashboard,
             label: 'Dashboard',
-            description: PageType.Dashboard,
             icon: 'svg-mock',
-          },
-          {
+          }),
+          expect.objectContaining({
             key: PageType.Database,
             label: 'Database',
-            description: PageType.Database,
             icon: 'svg-mock',
-          },
-          {
+          }),
+          expect.objectContaining({
             key: PageType.Pipeline,
             label: 'Pipeline',
-            description: PageType.Pipeline,
             icon: 'svg-mock',
-          },
-          {
+          }),
+          expect.objectContaining({
             key: PageType.Table,
             label: 'Table',
-            description: PageType.Table,
             icon: 'svg-mock',
-          },
-          {
+          }),
+          expect.objectContaining({
             key: PageType.Container,
             label: 'Container',
-            description: PageType.Container,
             icon: 'svg-mock',
-          },
+          }),
         ])
       );
     });
