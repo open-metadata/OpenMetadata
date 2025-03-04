@@ -14,7 +14,7 @@
 import classNames from 'classnames';
 import { Change } from 'diff';
 import { uniqueId } from 'lodash';
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Thread,
@@ -33,6 +33,8 @@ export const DiffViewNew = ({
 }) => {
   const { t } = useTranslation();
   const [expanded, setExpanded] = useState(false);
+  const [shouldShowViewMore, setShouldShowViewMore] = useState<boolean>(false);
+  const contentRef = useRef<HTMLDivElement>(null);
 
   function stripHtml(html: string) {
     return html
@@ -73,6 +75,29 @@ export const DiffViewNew = ({
       />
     );
   });
+
+  // Check if content exceeds the clamp height
+  useEffect(() => {
+    const checkHeight = () => {
+      if (contentRef.current) {
+        const element = contentRef.current;
+        // Get the line height and max lines from CSS
+        const lineHeight = parseInt(
+          window.getComputedStyle(element).lineHeight
+        );
+        const maxLines = showDescTitle ? 3 : 2;
+        const maxHeight = lineHeight * maxLines;
+
+        setShouldShowViewMore(element.scrollHeight > maxHeight);
+      }
+    };
+
+    checkHeight();
+    // Add resize listener to recheck on window resize
+    window.addEventListener('resize', checkHeight);
+
+    return () => window.removeEventListener('resize', checkHeight);
+  }, [diffArr, showDescTitle]);
 
   return (
     <div
@@ -117,15 +142,16 @@ export const DiffViewNew = ({
                   : showDescTitle
                   ? 'clamp-text-3 overflow-hidden'
                   : 'clamp-text-2  overflow-hidden'
-              )}>
+              )}
+              ref={contentRef}>
               {elements}
             </div>
-            {!expanded && diffArr.length > 2 && (
+            {!expanded && shouldShowViewMore && (
               <span className="text-expand" onClick={() => setExpanded(true)}>
                 {t('label.view-more')}
               </span>
             )}
-            {expanded && diffArr.length > 2 && (
+            {expanded && shouldShowViewMore && (
               <span className="text-expand" onClick={() => setExpanded(false)}>
                 {t('label.view-less')}
               </span>
