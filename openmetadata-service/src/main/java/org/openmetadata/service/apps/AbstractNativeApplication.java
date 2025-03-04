@@ -1,7 +1,7 @@
 package org.openmetadata.service.apps;
 
 import static org.openmetadata.service.apps.scheduler.AppScheduler.APP_NAME;
-import static org.openmetadata.service.apps.scheduler.AppScheduler.CONFIG_OVERRIDE_KEY;
+import static org.openmetadata.service.apps.scheduler.OmAppJobListener.APP_CONFIG;
 import static org.openmetadata.service.apps.scheduler.OmAppJobListener.JOB_LISTENER_NAME;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.NO_MANUAL_TRIGGER_ERR;
 import static org.openmetadata.service.resources.apps.AppResource.SCHEDULED_TYPES;
@@ -245,13 +245,9 @@ public class AbstractNativeApplication implements NativeApplication {
     String appName = (String) jobExecutionContext.getJobDetail().getJobDataMap().get(APP_NAME);
     App jobApp = collectionDAO.applicationDAO().findEntityByName(appName);
     ApplicationHandler.getInstance().setAppRuntimeProperties(jobApp);
-
-    Object overrideConfig =
-        jobExecutionContext.getMergedJobDataMap().getWrappedMap().get(CONFIG_OVERRIDE_KEY);
-    if (overrideConfig != null) {
-      jobApp.getAppConfiguration().putAll((Map<String, Object>) overrideConfig);
-    }
-
+    jobApp.setAppConfiguration(
+        JsonUtils.getMapFromJson(
+            (String) jobExecutionContext.getJobDetail().getJobDataMap().get(APP_CONFIG)));
     // Initialise the Application
     this.init(jobApp);
 

@@ -780,35 +780,27 @@ public class OpenMetadataOperations implements Callable<Integer> {
       int maxRequests,
       int retries) {
     AppRepository appRepository = (AppRepository) Entity.getEntityRepository(Entity.APPLICATION);
-    App originalSearchIndexApp =
-        appRepository.getByName(null, appName, appRepository.getFields("id"));
+    App app = appRepository.getByName(null, appName, appRepository.getFields("id"));
 
-    EventPublisherJob storedJob =
-        JsonUtils.convertValue(
-            originalSearchIndexApp.getAppConfiguration(), EventPublisherJob.class);
+    EventPublisherJob config =
+        ((EventPublisherJob) app.getAppConfiguration())
+            .withEntities(entities)
+            .withBatchSize(batchSize)
+            .withPayLoadSize(payloadSize)
+            .withRecreateIndex(recreateIndexes)
+            .withProducerThreads(producerThreads)
+            .withConsumerThreads(consumerThreads)
+            .withQueueSize(queueSize)
+            .withInitialBackoff(backOff)
+            .withMaxBackoff(maxBackOff)
+            .withMaxConcurrentRequests(maxRequests)
+            .withMaxRetries(retries);
 
-    EventPublisherJob updatedJob = JsonUtils.deepCopy(storedJob, EventPublisherJob.class);
-    updatedJob
-        .withEntities(entities)
-        .withBatchSize(batchSize)
-        .withPayLoadSize(payloadSize)
-        .withRecreateIndex(recreateIndexes)
-        .withProducerThreads(producerThreads)
-        .withConsumerThreads(consumerThreads)
-        .withQueueSize(queueSize)
-        .withInitialBackoff(backOff)
-        .withMaxBackoff(maxBackOff)
-        .withMaxConcurrentRequests(maxRequests)
-        .withMaxRetries(retries);
-
-    // Update the search index app with the new configurations
-    App updatedSearchIndexApp = JsonUtils.deepCopy(originalSearchIndexApp, App.class);
     // Trigger Application
     long currentTime = System.currentTimeMillis();
-    AppScheduler.getInstance()
-        .triggerOnDemandApplication(updatedSearchIndexApp, JsonUtils.getMap(updatedJob));
+    AppScheduler.getInstance().triggerOnDemandApplication(app, JsonUtils.getMap(config));
 
-    int result = waitAndReturnReindexingAppStatus(updatedSearchIndexApp, currentTime);
+    int result = waitAndReturnReindexingAppStatus(app, currentTime);
 
     return result;
   }
@@ -873,29 +865,20 @@ public class OpenMetadataOperations implements Callable<Integer> {
   private int executeDataInsightsReindexApp(
       int batchSize, boolean recreateIndexes, BackfillConfiguration backfillConfiguration) {
     AppRepository appRepository = (AppRepository) Entity.getEntityRepository(Entity.APPLICATION);
-    App originalDataInsightsApp =
+    App app =
         appRepository.getByName(null, "DataInsightsApplication", appRepository.getFields("id"));
 
-    DataInsightsAppConfig storedConfig =
-        JsonUtils.convertValue(
-            originalDataInsightsApp.getAppConfiguration(), DataInsightsAppConfig.class);
-
-    DataInsightsAppConfig updatedConfig =
-        JsonUtils.deepCopy(storedConfig, DataInsightsAppConfig.class);
-    updatedConfig
-        .withBatchSize(batchSize)
-        .withRecreateDataAssetsIndex(recreateIndexes)
-        .withBackfillConfiguration(backfillConfiguration);
-
-    // Update the data insights app with the new configurations
-    App updatedDataInsightsApp = JsonUtils.deepCopy(originalDataInsightsApp, App.class);
+    DataInsightsAppConfig config =
+        ((DataInsightsAppConfig) app.getAppConfiguration())
+            .withBatchSize(batchSize)
+            .withRecreateDataAssetsIndex(recreateIndexes)
+            .withBackfillConfiguration(backfillConfiguration);
 
     // Trigger Application
     long currentTime = System.currentTimeMillis();
-    AppScheduler.getInstance()
-        .triggerOnDemandApplication(updatedDataInsightsApp, JsonUtils.getMap(updatedConfig));
+    AppScheduler.getInstance().triggerOnDemandApplication(app, JsonUtils.getMap(config));
 
-    int result = waitAndReturnReindexingAppStatus(updatedDataInsightsApp, currentTime);
+    int result = waitAndReturnReindexingAppStatus(app, currentTime);
 
     return result;
   }

@@ -349,12 +349,20 @@ public class AppsResourceTest extends EntityResourceTest<App, CreateApp> {
   }
 
   @Test
-  void post_trigger_app_200() throws HttpResponseException {
+  void post_trigger_app_200() throws HttpResponseException, InterruptedException {
     String appName = "SearchIndexingApplication";
     postTriggerApp(appName, ADMIN_AUTH_HEADERS);
     assertAppStatusAvailableAfterTrigger(appName);
     assertListExtension(appName, AppExtension.ExtensionType.STATUS);
     assertAppRanAfterTriggerWithStatus(appName, AppRunRecord.Status.SUCCESS);
+
+    postTriggerApp(appName, ADMIN_AUTH_HEADERS, Map.of("batchSize", 1234));
+
+    assertEventually(
+        "triggerCustomConfig",
+        () ->
+            Assertions.assertEquals(
+                1234, getLatestAppRun(appName, ADMIN_AUTH_HEADERS).getConfig().get("batchSize")));
   }
 
   private void assertAppStatusAvailableAfterTrigger(String appName) {
@@ -540,8 +548,15 @@ public class AppsResourceTest extends EntityResourceTest<App, CreateApp> {
 
   private void postTriggerApp(String appName, Map<String, String> authHeaders)
       throws HttpResponseException {
+    postTriggerApp(appName, authHeaders, Map.of());
+  }
+
+  private void postTriggerApp(
+      String appName, Map<String, String> authHeaders, Map<String, Object> config)
+      throws HttpResponseException {
     WebTarget target = getResource("apps/trigger").path(appName);
-    Response response = SecurityUtil.addHeaders(target, authHeaders).post(null);
+    Response response =
+        SecurityUtil.addHeaders(target, authHeaders).post(javax.ws.rs.client.Entity.json(config));
     readResponse(response, OK.getStatusCode());
   }
 
