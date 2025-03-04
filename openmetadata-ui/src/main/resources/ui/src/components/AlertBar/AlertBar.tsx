@@ -19,9 +19,13 @@ import { getIconAndClassName } from '../../utils/ToastUtils';
 import './alert-bar.style.less';
 import { AlertBarProps } from './AlertBar.interface';
 
-const AlertBar = ({ type, message }: AlertBarProps): JSX.Element => {
+const AlertBar = ({
+  type,
+  message,
+  isUnauthenticated,
+}: AlertBarProps): JSX.Element => {
   const { resetAlert, animationClass } = useAlertStore();
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(isUnauthenticated ? true : false);
 
   const { icon: AlertIcon, className } = useMemo(() => {
     return getIconAndClassName(type);

@@ -17,7 +17,7 @@ import QueryString from 'qs';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
-import AlertUnauthenticated from '../../components/AlertBar/AlertUnauthenticated';
+import AlertBar from '../../components/AlertBar/AlertBar';
 import { useBasicAuth } from '../../components/Auth/AuthProviders/BasicAuthProvider';
 import BrandImage from '../../components/common/BrandImage/BrandImage';
 import DocumentTitle from '../../components/common/DocumentTitle/DocumentTitle';
@@ -89,7 +89,15 @@ const ResetPassword = () => {
             </Typography.Text>
           </Col>
 
-          {alert && <AlertUnauthenticated />}
+          {alert && (
+            <Col className="m-b-lg" span={24}>
+              <AlertBar
+                isUnauthenticated
+                message={alert?.message}
+                type={alert?.type}
+              />
+            </Col>
+          )}
 
           <Col span={24}>
             <Form

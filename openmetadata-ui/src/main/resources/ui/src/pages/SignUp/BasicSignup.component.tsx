@@ -17,7 +17,7 @@ import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import loginBG from '../../assets/img/login-bg.png';
-import AlertUnauthenticated from '../../components/AlertBar/AlertUnauthenticated';
+import AlertBar from '../../components/AlertBar/AlertBar';
 import { useBasicAuth } from '../../components/Auth/AuthProviders/BasicAuthProvider';
 import BrandImage from '../../components/common/BrandImage/BrandImage';
 import DocumentTitle from '../../components/common/DocumentTitle/DocumentTitle';
@@ -83,7 +83,11 @@ const BasicSignUp = () => {
               {t('message.om-description')}
             </Typography.Text>
 
-            {alert && <AlertUnauthenticated />}
+            {alert && (
+              <div className="m-t-lg" style={{ width: '334px' }}>
+                <AlertBar message={alert?.message} type={alert?.type} />
+              </div>
+            )}
 
             {isAuthProviderBasic ? (
               <div className="m-t-lg" style={{ width: '334px' }}>

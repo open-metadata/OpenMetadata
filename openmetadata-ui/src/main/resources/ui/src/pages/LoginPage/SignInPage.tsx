@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons/lib/components/Icon';
 import { Button, Col, Divider, Form, Input, Row, Typography } from 'antd';
 import classNames from 'classnames';
 import React, { useEffect, useMemo, useState } from 'react';
@@ -23,8 +22,7 @@ import IconAzure from '../../assets/img/icon-azure.png';
 import IconGoogle from '../../assets/img/icon-google.png';
 import IconOkta from '../../assets/img/icon-okta.png';
 import loginBG from '../../assets/img/login-bg.png';
-import { ReactComponent as IconFailBadge } from '../../assets/svg/fail-badge.svg';
-import AlertUnauthenticated from '../../components/AlertBar/AlertUnauthenticated';
+import AlertBar from '../../components/AlertBar/AlertBar';
 import { useBasicAuth } from '../../components/Auth/AuthProviders/BasicAuthProvider';
 import BrandImage from '../../components/common/BrandImage/BrandImage';
 import DocumentTitle from '../../components/common/DocumentTitle/DocumentTitle';
@@ -178,8 +176,15 @@ const SignInPage = () => {
             <Typography.Text className="mt-8 w-80 text-xl font-medium text-grey-muted">
               {t('message.om-description')}{' '}
             </Typography.Text>
-
-            {alert && <AlertUnauthenticated />}
+            {(alert || loginError) && (
+              <div className="m-t-lg" style={{ width: '334px' }}>
+                <AlertBar
+                  isUnauthenticated
+                  message={(loginError || alert?.message) ?? ''}
+                  type={alert?.type}
+                />
+              </div>
+            )}
 
             {isAuthProviderBasic ? (
               <div className="login-form ">
@@ -228,7 +233,7 @@ const SignInPage = () => {
                     {t('label.login')}
                   </Button>
                 </Form>
-                {loginError && (
+                {/* {loginError && (
                   <div
                     className="d-flex flex-col m-y-md"
                     data-testid="login-error-container">
@@ -244,7 +249,7 @@ const SignInPage = () => {
                       </p>
                     </div>
                   </div>
-                )}
+                )} */}
                 {!isAuthProviderLDAP && (
                   <>
                     <div className="mt-8" onClick={onClickForgotPassword}>
