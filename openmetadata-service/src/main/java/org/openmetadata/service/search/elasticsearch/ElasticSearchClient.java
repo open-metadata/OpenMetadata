@@ -152,6 +152,7 @@ import org.apache.http.client.CredentialsProvider;
 import org.apache.http.impl.client.BasicCredentialsProvider;
 import org.jetbrains.annotations.NotNull;
 import org.openmetadata.common.utils.CommonUtil;
+import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChartResultList;
@@ -159,6 +160,7 @@ import org.openmetadata.schema.dataInsight.custom.FormulaHolder;
 import org.openmetadata.schema.entity.data.EntityHierarchy;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
+import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.tests.DataQualityReport;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
@@ -171,6 +173,7 @@ import org.openmetadata.service.jdbi3.DataInsightSystemChartRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TableRepository;
 import org.openmetadata.service.jdbi3.TestCaseResultRepository;
+import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.search.SearchAggregation;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchHealthStatus;
@@ -222,9 +225,13 @@ import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Slf4j
 public class ElasticSearchClient implements SearchClient {
+
+  private static final Logger LOG = LoggerFactory.getLogger(ElasticSearchClient.class);
 
   @SuppressWarnings("deprecated")
   @Getter
@@ -258,15 +265,12 @@ public class ElasticSearchClient implements SearchClient {
     xContentRegistry = new NamedXContentRegistry(searchModule.getNamedXContents());
   }
 
-  private final ElasticSearchSourceBuilderFactory searchBuilderFactory;
-
   public ElasticSearchClient(ElasticSearchConfiguration config) {
-    client = createElasticSearchClient(config);
+    this.client = createElasticSearchClient(config);
     clusterAlias = config != null ? config.getClusterAlias() : "";
     isClientAvailable = client != null;
     queryBuilderFactory = new ElasticQueryBuilderFactory();
     rbacConditionEvaluator = new RBACConditionEvaluator(queryBuilderFactory);
-    this.searchBuilderFactory = new ElasticSearchSourceBuilderFactory();
   }
 
   @Override
@@ -378,6 +382,10 @@ public class ElasticSearchClient implements SearchClient {
 
   @Override
   public Response search(SearchRequest request, SubjectContext subjectContext) throws IOException {
+    SearchSettings searchSettings =
+        SettingsCache.getSetting(SettingsType.SEARCH_SETTINGS, SearchSettings.class);
+    ElasticSearchSourceBuilderFactory searchBuilderFactory =
+        new ElasticSearchSourceBuilderFactory(searchSettings);
     SearchSourceBuilder searchSourceBuilder =
         searchBuilderFactory.getSearchSourceBuilder(
             request.getIndex(), request.getQuery(), request.getFrom(), request.getSize());
@@ -732,7 +740,8 @@ public class ElasticSearchClient implements SearchClient {
       throws IOException {
     SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
     if (!nullOrEmpty(q)) {
-      searchSourceBuilder = searchBuilderFactory.getSearchSourceBuilder(index, q, offset, limit);
+      searchSourceBuilder =
+          getSearchBuilderFactory().getSearchSourceBuilder(index, q, offset, limit);
     }
 
     List<Map<String, Object>> results = new ArrayList<>();
@@ -787,7 +796,7 @@ public class ElasticSearchClient implements SearchClient {
     SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
 
     if (!nullOrEmpty(query)) {
-      searchSourceBuilder = searchBuilderFactory.getSearchSourceBuilder(index, query, 0, size);
+      searchSourceBuilder = getSearchBuilderFactory().getSearchSourceBuilder(index, query, 0, size);
     }
     if (!nullOrEmpty(fields)) {
       searchSourceBuilder.fetchSource(fields, null);
@@ -2899,5 +2908,11 @@ public class ElasticSearchClient implements SearchClient {
         LOG.warn("Error parsing query_filter from query parameters, ignoring filter", ex);
       }
     }
+  }
+
+  private ElasticSearchSourceBuilderFactory getSearchBuilderFactory() {
+    SearchSettings searchSettings =
+        SettingsCache.getSetting(SettingsType.SEARCH_SETTINGS, SearchSettings.class);
+    return new ElasticSearchSourceBuilderFactory(searchSettings);
   }
 }

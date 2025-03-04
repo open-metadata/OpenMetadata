@@ -1,503 +1,432 @@
 {
-  "enableAccessControl": false,
   "globalSettings": {
+    "enableAccessControl": true,
+    "useNaturalLanguageSearch": false,
     "maxAggregateSize": 10000,
     "maxResultHits": 10000,
     "maxAnalyzedOffset": 1000,
     "aggregations": [
+      { "name": "serviceType", "type": "terms", "field": "serviceType" },
+      { "name": "service.displayName.keyword", "type": "terms", "field": "service.displayName.keyword" },
+      { "name": "entityType", "type": "terms", "field": "entityType" },
+      { "name": "tier.tagFQN", "type": "terms", "field": "tier.tagFQN" },
+      {"name":  "owners.displayName.keyword", "type":  "terms", "field":  "owners.displayName.keyword"},
+      {"name":  "domain.displayName.keyword", "type":  "terms", "field":  "domain.displayName.keyword"},
+      {"name":  "tags.tagFQN", "type":  "terms", "field":  "tags.tagFQN"},
+      {"name":  "certification.tagLabel.tagFQN", "type":  "terms", "field":  "certification.tagLabel.tagFQN"}
+
+    ],
+    "highlightFields": ["name", "displayName", "description"],
+    "termBoosts": [
       {
-        "name": "serviceType",
-        "type": "terms",
-        "field": "serviceType"
+        "field": "tier.tagFQN",
+        "value": "Tier.Tier1",
+        "boost": 50
       },
       {
-        "name": "service.displayName.keyword",
-        "type": "terms",
-        "field": "service.displayName.keyword"
+        "field": "tier.tagFQN",
+        "value": "Tier.Tier2",
+        "boost": 30
       },
       {
-        "name": "entityType",
-        "type": "terms",
-        "field": "entityType"
-      },
-      {
-        "name": "tier.tagFQN",
-        "type": "terms",
-        "field": "tier.tagFQN"
-      },
-      {
-        "name": "certification.tagLabel.tagFQN",
-        "type": "terms",
-        "field": "certification.tagLabel.tagFQN"
-      },
-      {
-        "name": "owners.displayName.keyword",
-        "type": "terms",
-        "field": "owners.displayName.keyword"
-      },
-      {
-        "name": "domain.displayName.keyword",
-        "type": "terms",
-        "field": "domain.displayName.keyword"
-      },
-      {
-        "name": "tags.tagFQN",
-        "type": "terms",
-        "field": "tags.tagFQN"
+        "field": "tier.tagFQN",
+        "value": "Tier.Tier3",
+        "boost": 10
       }
     ],
-    "highlightFields": ["name", "displayName", "description", "displayName.ngram", "name.ngram"]
+    "fieldValueBoosts": [
+      {
+        "field": "usageSummary.weeklyStats.count",
+        "factor": 4.0,
+        "modifier": "sqrt",
+        "missing": 1
+      }
+    ]
   },
   "assetTypeConfigurations": [
     {
+      "assetType": "database",
+      "searchFields": [
+        { "field": "name.keyword", "boost": 10.0 },
+        { "field": "name", "boost": 10.0 },
+        { "field": "name.ngram", "boost": 1.0 },
+        { "field": "displayName", "boost": 10.0 },
+        { "field": "displayName.ngram", "boost": 1.0 },
+        { "field": "description", "boost": 2.0 },
+        { "field": "fullyQualifiedName", "boost": 5.0 },
+        { "field": "fqnParts", "boost": 5.0 }
+      ],
+      "highlightFields": ["name", "description", "displayName"],
+      "aggregations": [
+      ],
+      "scoreMode": "sum",
+      "boostMode": "multiply"
+    },
+    {
+      "assetType": "databaseSchema",
+      "searchFields": [
+        { "field": "name.keyword", "boost": 10.0 },
+        { "field": "name", "boost": 10.0 },
+        { "field": "name.ngram", "boost": 1.0 },
+        { "field": "displayName", "boost": 10.0 },
+        { "field": "displayName.ngram", "boost": 1.0 },
+        { "field": "description", "boost": 2.0 },
+        { "field": "fullyQualifiedName", "boost": 5.0 },
+        { "field": "fqnParts", "boost": 5.0 }
+      ],
+      "highlightFields": ["name", "description", "displayName"],
+      "aggregations": [
+
+      ],
+      "scoreMode": "sum",
+      "boostMode": "multiply"
+    },
+    {
       "assetType": "table",
-      "fields": {
-        "name": 10.0,
-        "displayName": 10.0,
-        "description": 2.0,
-        "fullyQualifiedName": 5.0,
-        "fullyQualifiedNameParts": 5.0,
-        "columns.name": 5.0,
-        "columns.displayName": 5.0,
-        "columns.description": 2.0,
-        "columns.children.name": 3.0
-      },
-      "mustMatch": ["name", "fullyQualifiedName"],
-      "shouldMatch": ["displayName", "description", "columns.name", "columns.description", "columns.children.name"],
-      "highlightFields": ["name","description","displayName","columns.name","columns.description","columns.children.name"],
+      "searchFields": [
+        { "field": "name.keyword", "boost": 10.0 },
+        { "field": "name", "boost": 10.0 },
+        { "field": "name.ngram", "boost": 2.0 },
+        { "field": "displayName", "boost": 10.0 },
+        { "field": "displayName.ngram", "boost": 2.0 },
+        { "field": "description", "boost": 2.0 },
+        { "field": "fullyQualifiedName", "boost": 5.0 },
+        { "field": "fqnParts", "boost": 5.0 },
+        { "field": "columns.name.keyword", "boost": 2.0 },
+        { "field": "columns.displayName.keyword", "boost": 2.0 },
+        { "field": "columns.children.name.keyword", "boost": 1.0 }
+      ],
       "aggregations": [
-        {
-          "name": "database",
-          "type": "terms",
-          "field": "database.displayName.keyword"
-        },
-        {
-          "name": "databaseSchema",
-          "type": "terms",
-          "field": "databaseSchema.displayName.keyword"
-        },
-        {
-          "name": "columns",
-          "type": "terms",
-          "field": "columns.name.keyword"
-        },
-        {
-          "name": "columnNames",
-          "type": "terms",
-          "field": "columnNames"
-        },
-        {
-          "name": "tableType",
-          "type": "terms",
-          "field": "tableType"
-        }
-      ],
-      "boosts": [
-        { "field": "columns.name", "boost": 5.0 },
-        { "field": "columns.displayName", "boost": 5.0 },
-        { "field": "columns.description", "boost": 2.0 },
-        { "field": "columns.children.name", "boost": 3.0 }
+        {"name": "database.displayName.keyword", "type": "terms", "field": "database.displayName.keyword"},
+        {"name": "databaseSchema.displayName.keyword", "type": "terms", "field": "databaseSchema.displayName.keyword" }
       ],
       "scoreMode": "sum",
-      "boostMode": "multiply"
-    },
-    {
-      "assetType": "pipeline",
-      "fields": {
-        "name": 10.0,
-        "displayName": 10.0,
-        "description": 2.0,
-        "fullyQualifiedName": 5.0,
-        "fullyQualifiedNameParts": 5.0,
-        "tasks.name": 8.0,
-        "tasks.description": 1.0
-      },
-      "mustMatch": ["name", "fullyQualifiedName"],
-      "shouldMatch": ["displayName", "description", "tasks.name", "tasks.description"],
-      "highlightFields": ["tasks.name", "tasks.description"],
-      "aggregations": [
-        {
-          "name": "tasks",
-          "type": "terms",
-          "field": "tasks.displayName.keyword"
-        }
-      ],
-      "boosts": [
-        { "field": "tasks.name", "boost": 8.0 },
-        { "field": "tasks.description", "boost": 1.0 }
-      ],
-      "scoreMode": "sum",
-      "boostMode": "multiply"
-    },
-    {
-      "assetType": "mlmodel",
-      "fields": {
-        "name": 10.0,
-        "displayName": 10.0,
-        "description": 2.0,
-        "fullyQualifiedName": 5.0,
-        "fullyQualifiedNameParts": 5.0,
-        "mlFeatures.name": 8.0,
-        "mlFeatures.description": 1.0
-      },
-      "mustMatch": ["name", "fullyQualifiedName"],
-      "shouldMatch": ["displayName", "description", "mlFeatures.name", "mlFeatures.description"],
-      "highlightFields": ["mlFeatures.name", "mlFeatures.description"],
-      "boosts": [
-        { "field": "mlFeatures.name", "boost": 8.0 },
-        { "field": "mlFeatures.description", "boost": 1.0 }
-      ],
-      "scoreMode": "sum",
-      "boostMode": "multiply"
-    },
-    {
-      "assetType": "topic",
-      "fields": {
-        "name": 10.0,
-        "displayName": 10.0,
-        "description": 2.0,
-        "fullyQualifiedName": 5.0,
-        "fullyQualifiedNameParts": 5.0,
-        "messageSchema.schemaText": 7.0,
-        "messageSchema.schemaFields.name.keyword": 5.0,
-        "messageSchema.schemaFields.description": 1.0,
-        "messageSchema.schemaFields.children.name": 7.0,
-        "messageSchema.schemaFields.children.keyword": 5.0
-      },
-      "mustMatch": ["name", "fullyQualifiedName"],
-      "shouldMatch": [
-        "displayName",
-        "description",
-        "messageSchema.schemaText",
-        "messageSchema.schemaFields.name.keyword",
-        "messageSchema.schemaFields.description",
-        "messageSchema.schemaFields.children.name"
-      ],
-      "highlightFields": [],
-      "aggregations": [
-        {
-          "name": "messageSchema",
-          "type": "terms",
-          "field": "messageSchema.schemaText.keyword"
-        },
-        {
-          "name": "schemaFieldNames",
-          "type": "terms",
-          "field": "schemaFieldNames"
-        }
-      ],
-      "boosts": [
-        { "field": "messageSchema.schemaText", "boost": 7.0 },
-        { "field": "messageSchema.schemaFields.name.keyword", "boost": 5.0 },
-        { "field": "messageSchema.schemaFields.description", "boost": 1.0 },
-        { "field": "messageSchema.schemaFields.children.name", "boost": 7.0 },
-        { "field": "messageSchema.schemaFields.children.keyword", "boost": 5.0 }
-      ],
-      "scoreMode": "sum",
-      "boostMode": "multiply"
-    },
-    {
-      "assetType": "dashboard",
-      "fields": {
-        "name": 10.0,
-        "displayName": 10.0,
-        "description": 2.0,
-        "fullyQualifiedName": 5.0,
-        "fullyQualifiedNameParts": 5.0,
-        "charts.name": 7.0,
-        "charts.displayName": 5.0
-      },
-      "mustMatch": ["name", "fullyQualifiedName"],
-      "shouldMatch": [
-        "displayName",
-        "description",
-        "charts.name",
-        "charts.displayName"
-      ],
-      "highlightFields": [],
-      "aggregations": [
-        {
-          "name": "dataModels.displayName.keyword",
-          "type": "terms",
-          "field": "dataModels.displayName.keyword"
-        },
-        {
-          "name": "project.keyword",
-          "type": "terms",
-          "field": "project.keyword"
-        },
-        {
-          "name": "charts.displayName.keyword",
-          "type": "terms",
-          "field": "charts.displayName.keyword"
-        }
-      ],
-      "boosts": [
-        { "field": "charts.name", "boost": 2.0 },
-        { "field": "charts.description", "boost": 5.0 }
-      ],
-      "scoreMode": "sum",
-      "boostMode": "multiply"
-    },
-    {
-      "assetType": "dashboardDataModel",
-      "fields": {
-        "name": 10.0,
-        "displayName": 10.0,
-        "description": 2.0,
-        "fullyQualifiedName": 5.0,
-        "fullyQualifiedNameParts": 5.0
-      },
-      "mustMatch": ["name", "fullyQualifiedName", "query", "query.ngram"],
-      "shouldMatch": ["columns.name", "columns.description", "columns.children.name", "columns.displayName"],
-      "highlightFields": [],
-      "aggregations": [
-        {
-          "name": "dataModelType",
-          "type": "terms",
-          "field": "dataModelType"
-        },
-        {
-            "name": "project.keyword",
-            "type": "terms",
-            "field": "project.keyword"
-        },
-        {
-            "name": "columnNames",
-            "type": "terms",
-            "field": "columnNames"
-        },
-        {
-          "name": "columns.name.keyword",
-          "type": "terms",
-          "field": "columns.name.keyword"
-        }
-      ],
-      "boosts": [
-      ],
-      "scoreMode": "sum",
-      "boostMode": "multiply"
-    },
-    {
-      "assetType": "container",
-      "fields": {
-        "name": 10.0,
-        "displayName": 10.0,
-        "description": 2.0,
-        "fullyQualifiedName": 5.0,
-        "fullyQualifiedNameParts": 5.0
-      },
-      "mustMatch": ["name", "fullyQualifiedName"],
-      "shouldMatch": [
-        "classfiication.name",
-        "description"
-      ],
-      "highlightFields": ["dataModel.columns.name", "dataModel.columns.description", "dataModel.columns.children.name"],
-      "aggregations": [
-        {
-          "name": "dataModel.columns.name.keyword",
-          "type": "terms",
-          "field": "dataModel.columns.name.keyword"
-        },
-        {
-          "name": "columnNames",
-          "type": "terms",
-          "field": "columnNames"
-        }
-      ],
-      "boosts": [
-      ],
-      "scoreMode": "sum",
-      "boostMode": "multiply"
+      "boostMode": "multiply",
+      "highlightFields": ["name", "description", "displayName"]
     },
     {
       "assetType": "storedProcedure",
-      "fields": {
-        "name": 10.0,
-        "displayName": 10.0,
-        "description": 2.0,
-        "fullyQualifiedName": 5.0,
-        "fullyQualifiedNameParts": 5.0
-      },
-      "mustMatch": ["name", "fullyQualifiedName", "query", "query.ngram"],
-      "shouldMatch": [],
-      "highlightFields": [],
-      "aggregations": [
+      "searchFields": [
+        { "field": "name.keyword", "boost": 10.0 },
+        { "field": "name", "boost": 10.0 },
+        { "field": "name.ngram", "boost": 1.0 },
+        { "field": "displayName", "boost": 10.0 },
+        { "field": "displayName.ngram", "boost": 1.0 },
+        { "field": "description", "boost": 2.0 },
+        { "field": "fullyQualifiedName", "boost": 5.0 },
+        { "field": "fqnParts", "boost": 5.0 }
       ],
-      "boosts": [
+      "aggregations": [
+        {"name": "database.displayName.keyword", "type": "terms", "field": "database.displayName.keyword"},
+        {"name": "databaseSchema.displayName.keyword", "type": "terms", "field": "databaseSchema.displayName.keyword" }
       ],
       "scoreMode": "sum",
-      "boostMode": "multiply"
-    },
-    {
-      "assetType": "apiEndpoint",
-      "fields": {
-        "name": 10.0,
-        "displayName": 10.0,
-        "description": 2.0,
-        "fullyQualifiedName": 5.0,
-        "fullyQualifiedNameParts": 5.0
-      },
-      "mustMatch": ["name", "fullyQualifiedName", "query", "query.ngram"],
-      "shouldMatch": ["responseSchema.schemaFields.name.keyword", "responseSchema.schemaFields.description",
-        "responseSchema.schemaFields.children.name", "responseSchema.schemaFields.children.keyword"],
-      "highlightFields": [],
-      "aggregations": [
-        {
-          "name": "responseSchema.schemaFields.name",
-          "type": "terms",
-          "field": "responseSchema.schemaFields.name.keyword"
-        },
-        {
-          "name": "fieldNames",
-          "type": "terms",
-          "field": "fieldNames"
-        }
-      ],
-      "boosts": [
-      ],
-      "scoreMode": "sum",
-      "boostMode": "multiply"
+      "boostMode": "multiply",
+      "highlightFields": ["name", "description", "displayName"]
     },
     {
       "assetType": "query",
-      "fields": {
-        "name": 10.0,
-        "displayName": 10.0,
-        "description": 2.0,
-        "fullyQualifiedName": 5.0,
-        "fullyQualifiedNameParts": 5.0
-      },
-      "mustMatch": ["name", "fullyQualifiedName", "query", "query.ngram"],
-      "highlightFields": [],
-      "aggregations": [
+      "searchFields": [
+        { "field": "name.keyword", "boost": 10.0 },
+        { "field": "name", "boost": 10.0 },
+        { "field": "name.ngram", "boost": 1.0 },
+        { "field": "displayName", "boost": 10.0 },
+        { "field": "displayName.ngram", "boost": 1.0 },
+        { "field": "description", "boost": 2.0 },
+        { "field": "fullyQualifiedName", "boost": 5.0 },
+        { "field": "fqnParts", "boost": 5.0 },
+        { "field": "queryText", "boost": 5.0 },
+        { "field": "queryText.ngram", "boost": 1.0 }
       ],
-      "boosts": [
+      "aggregations": [
+        {"name": "queryType", "type": "terms", "field": "queryType"}
       ],
       "scoreMode": "sum",
-      "boostMode": "multiply"
+      "boostMode": "multiply",
+      "highlightFields": ["name", "description", "displayName"]
     },
     {
-      "assetType": "dataAsset",
-      "fields": {
-        "name": 10.0,
-        "displayName": 10.0,
-        "description": 2.0,
-        "fullyQualifiedName": 5.0,
-        "fullyQualifiedNameParts": 5.0
-      },
-      "mustMatch": ["name", "fullyQualifiedName"],
-      "shouldMatch": [
-        "displayName",
-        "description",
-        "charts.name",
-        "charts.displayName"
+      "assetType": "topic",
+      "searchFields": [
+        { "field": "name.keyword", "boost": 10.0 },
+        { "field": "name", "boost": 10.0 },
+        { "field": "name.ngram", "boost": 1.0 },
+        { "field": "displayName", "boost": 10.0 },
+        { "field": "displayName.ngram", "boost": 1.0 },
+        { "field": "description", "boost": 2.0 },
+        { "field": "fullyQualifiedName", "boost": 5.0 },
+        { "field": "fqnParts", "boost": 5.0 },
+        { "field": "messageSchema.schemaFields.name", "boost": 7.0 },
+        { "field": "messageSchema.schemaFields.name.keyword", "boost": 1.0},
+        { "field": "messageSchema.schemaFields.description", "boost": 1.0 },
+        { "field": "messageSchema.schemaFields.children.name", "boost": 7.0 },
+        { "field": "messageSchema.schemaFields.children.name.keyword", "boost": 1.0 }
       ],
-      "highlightFields": [],
       "aggregations": [
-      ],
-      "boosts": [
+        {"name": "messageSchema.schemaFields.name.keyword", "type": "terms", "field": "messageSchema.schemaFields.name.keyword"},
+        { "name": "fieldNames", "type": "terms", "field": "fieldsNames" }
       ],
       "scoreMode": "sum",
-      "boostMode": "multiply"
+      "boostMode": "multiply",
+      "highlightFields": ["name", "displayName", "description"]
     },
     {
-      "assetType": "glossaryTerm",
-      "fields": {
-        "name": 10.0,
-        "displayName": 10.0,
-        "description": 2.0,
-        "fullyQualifiedName": 5.0,
-        "fullyQualifiedNameParts": 5.0
-      },
-      "mustMatch": ["name", "fullyQualifiedName"],
-      "shouldMatch": [
-        "displayName",
-        "description",
-        "synonyms",
-        "synonyms.ngram",
-        "glossary.name",
-        "glossary.displayName"
+      "assetType": "dashboard",
+      "searchFields": [
+        { "field": "name.keyword", "boost": 10.0 },
+        { "field": "name", "boost": 10.0 },
+        { "field": "name.ngram", "boost": 1.0 },
+        { "field": "displayName", "boost": 10.0 },
+        { "field": "displayName.ngram", "boost": 1.0 },
+        { "field": "description", "boost": 2.0 },
+        { "field": "fullyQualifiedName", "boost": 5.0 },
+        { "field": "fqnParts", "boost": 5.0 },
+        { "field": "charts.name", "boost": 2.0 },
+        { "field": "charts.description", "boost": 2.0},
+        { "field": "messageSchema.schemaFields.description", "boost": 1.0 }
       ],
-      "highlightFields": ["synonyms"],
       "aggregations": [
-        {
-            "name": "glossary.name.keyword",
-            "type": "terms",
-            "field": "glossary.name.keyword"
-        },
-        {
-            "name": "fqnParts_agg",
-            "type": "terms",
-            "field": "fqnParts"
-        }
-      ],
-      "boosts": [
+        {"name": "serviceType", "type": "terms", "field": "serviceType"},
+        {"name": "service.displayName.keyword", "type": "terms", "field": "service.displayName.keyword"},
+        {"name": "tier.tagFQN", "type": "terms", "field": "tier.tagFQN"},
+        {"name": "certification.tagLabel.tagFQN", "type":  "terms", "field":  "certification.tagLabel.tagFQN"},
+        {"name":  "owners.displayName.keyword", "type":  "terms", "field":  "owners.displayName.keyword"},
+        {"name":  "domain.displayName.keyword", "type":  "terms", "field":  "domain.displayName.keyword"},
+        {"name":  "tags.tagFQN", "type":  "terms", "field":  "tags.tagFQN"},
+        {"name": "dataModels.displayName.keyword", "type": "terms", "field": "dataModels.displayName.keyword"},
+        { "name": "charts.displayName.keyword", "type": "terms", "field": "charts.displayName.keyword" }
       ],
       "scoreMode": "sum",
-      "boostMode": "multiply"
+      "boostMode": "multiply",
+      "highlightFields": ["name", "displayName", "description", "charts.name"]
+    },
+    {
+      "assetType": "dashboardDataModel",
+      "searchFields": [
+        { "field": "name.keyword", "boost": 10.0 },
+        { "field": "name", "boost": 10.0 },
+        { "field": "name.ngram", "boost": 1.0 },
+        { "field": "displayName", "boost": 10.0 },
+        { "field": "displayName.ngram", "boost": 1.0 },
+        { "field": "description", "boost": 2.0 },
+        { "field": "fullyQualifiedName", "boost": 5.0 },
+        { "field": "fqnParts", "boost": 5.0 },
+        { "field": "columns.name.keyword", "boost": 10.0 },
+        { "field": "columns.name", "boost": 2.0 },
+        { "field": "columns.displayName", "boost": 1.0 },
+        { "field": "columns.description", "boost": 1.0 },
+        { "field": "columns.children.name", "boost": 2.0 }
+      ],
+      "aggregations": [
+        {"name": "dataModelType", "type": "terms", "field": "dataModelType"},
+        {"name": "columns.name.keyword", "type": "terms", "field": "columns.name.keyword" },
+        {"name": "columnNames", "type": "terms", "field": "columnNames" }
+      ],
+      "scoreMode": "sum",
+      "boostMode": "multiply",
+      "highlightFields": ["name", "displayName", "description", "charts.name"]
+    },
+    {
+      "assetType": "pipeline",
+      "searchFields": [
+        { "field": "name.keyword", "boost": 10.0 },
+        { "field": "name", "boost": 10.0 },
+        { "field": "name.ngram", "boost": 1.0 },
+        { "field": "displayName", "boost": 10.0 },
+        { "field": "displayName.ngram", "boost": 1.0 },
+        { "field": "description", "boost": 2.0 },
+        { "field": "fullyQualifiedName", "boost": 5.0 },
+        { "field": "fqnParts", "boost": 5.0 },
+        { "field": "tasks.name", "boost": 8.0 },
+        { "field": "tasks.description", "boost": 1.0}
+      ],
+      "aggregations": [
+        {"name": "tasks.displayName.keyword", "type": "terms", "field": "tasks.displayName.keyword"}
+      ],
+      "scoreMode": "sum",
+      "boostMode": "multiply",
+      "highlightFields": ["name", "displayName", "description", "tasks.name", "tasks.description"]
+    },
+    {
+      "assetType": "mlmodel",
+      "searchFields": [
+        { "field": "name.keyword", "boost": 10.0 },
+        { "field": "name", "boost": 10.0 },
+        { "field": "name.ngram", "boost": 1.0 },
+        { "field": "displayName", "boost": 10.0 },
+        { "field": "displayName.ngram", "boost": 1.0 },
+        { "field": "description", "boost": 2.0 },
+        { "field": "fullyQualifiedName", "boost": 5.0 },
+        { "field": "fqnParts", "boost": 5.0 },
+        { "field": "mlFeatures.name", "boost": 8.0 },
+        { "field": "mlFeatures.description", "boost": 1.0}
+      ],
+      "aggregations": [
+        {"name": "mlFeatures.name.keyword", "type": "terms", "field": "mlFeatures.name.keyword"}
+      ],
+      "scoreMode": "sum",
+      "boostMode": "multiply",
+      "highlightFields": ["name", "displayName", "description", "mlFeatures.name", "mlFeatures.description"]
+    },
+    {
+      "assetType": "searchIndex",
+      "searchFields": [
+        { "field": "name.keyword", "boost": 10.0 },
+        { "field": "name", "boost": 10.0 },
+        { "field": "name.ngram", "boost": 1.0 },
+        { "field": "displayName", "boost": 10.0 },
+        { "field": "displayName.ngram", "boost": 1.0 },
+        { "field": "description", "boost": 2.0 },
+        { "field": "fullyQualifiedName", "boost": 5.0 },
+        { "field": "fqnParts", "boost": 5.0 },
+        { "field": "mlFeatures.name", "boost": 8.0 },
+        { "field": "mlFeatures.description", "boost": 1.0}
+      ],
+      "aggregations": [
+        {"name": "mlFeatures.name.keyword", "type": "terms", "field": "mlFeatures.name.keyword"}
+      ],
+      "scoreMode": "sum",
+      "boostMode": "multiply",
+      "highlightFields": ["name", "displayName", "description", "mlFeatures.name", "mlFeatures.description"]
+    },
+    {
+      "assetType": "container",
+      "searchFields": [
+        { "field": "name.keyword", "boost": 10.0 },
+        { "field": "name", "boost": 10.0 },
+        { "field": "name.ngram", "boost": 1.0 },
+        { "field": "displayName", "boost": 10.0 },
+        { "field": "displayName.ngram", "boost": 1.0 },
+        { "field": "description", "boost": 2.0 },
+        { "field": "fullyQualifiedName", "boost": 5.0 },
+        { "field": "fqnParts", "boost": 5.0 },
+        { "field": "dataModel.columns.name", "boost": 8.0 },
+        { "field": "dataModel.columns.name.keyword", "boost": 10.0},
+        { "field": "dataModel.columns.displayName", "boost": 2.0 },
+        { "field": "dataModel.columns.description", "boost": 1.0 },
+        { "field": "dataModel.columns.children.name", "boost": 2.0 }
+      ],
+      "aggregations": [
+        {"name": "columnNames", "type": "terms", "field": "columnNames" }
+      ],
+      "scoreMode": "sum",
+      "boostMode": "multiply",
+      "highlightFields": ["name", "displayName", "description", "dataModel.columns.name", "dataModel.columns.description", "dataModel.columns.children.name"]
+    },
+    {
+      "assetType": "apiEndpoint",
+      "searchFields": [
+        { "field": "name.keyword", "boost": 10.0 },
+        { "field": "name", "boost": 10.0 },
+        { "field": "name.ngram", "boost": 1.0 },
+        { "field": "displayName", "boost": 10.0 },
+        { "field": "displayName.ngram", "boost": 1.0 },
+        { "field": "description", "boost": 2.0 },
+        { "field": "fullyQualifiedName", "boost": 5.0 },
+        { "field": "fqnParts", "boost": 5.0 },
+        { "field": "responseSchema.schemaFields.name", "boost": 7.0 },
+        { "field": "responseSchema.schemaFields.name.keyword", "boost": 8.0 },
+        { "field": "responseSchema.schemaFields.description", "boost": 1.0},
+        { "field": "responseSchema.schemaFields.children.name", "boost": 7.0 },
+        { "field": "responseSchema.schemaFields.children.keyword", "boost": 5.0 }
+      ],
+      "aggregations": [
+        {"name": "responseSchema.schemaFields.name.keyword", "type": "terms", "field": "responseSchema.schemaFields.name" },
+        { "name": "fieldNames", "type": "terms", "field": "fieldsNames" }
+
+      ],
+      "scoreMode": "sum",
+      "boostMode": "multiply",
+      "highlightFields": ["name", "displayName", "description"]
+    },
+    {
+      "assetType": "domain",
+      "searchFields": [
+        { "field": "name.keyword", "boost": 10.0 },
+        { "field": "name", "boost": 10.0 },
+        { "field": "name.ngram", "boost": 1.0 },
+        { "field": "displayName", "boost": 10.0 },
+        { "field": "displayName.ngram", "boost": 1.0 },
+        { "field": "description", "boost": 2.0 },
+        { "field": "fullyQualifiedName", "boost": 5.0 },
+        { "field": "fqnParts", "boost": 5.0 }
+      ],
+      "aggregations": [
+      ],
+      "scoreMode": "sum",
+      "boostMode": "multiply",
+      "highlightFields": ["name", "displayName", "description"]
+    },
+    {
+      "assetType": "dataProduct",
+      "searchFields": [
+        { "field": "name.keyword", "boost": 10.0 },
+        { "field": "name", "boost": 10.0 },
+        { "field": "name.ngram", "boost": 1.0 },
+        { "field": "displayName", "boost": 10.0 },
+        { "field": "displayName.ngram", "boost": 1.0 },
+        { "field": "description", "boost": 2.0 },
+        { "field": "fullyQualifiedName", "boost": 5.0 },
+        { "field": "fqnParts", "boost": 5.0 }
+      ],
+      "aggregations": [
+      ],
+      "scoreMode": "sum",
+      "boostMode": "multiply",
+      "highlightFields": ["name", "displayName", "description"]
     },
     {
       "assetType": "tag",
-      "fields": {
-        "name": 10.0,
-        "displayName": 10.0,
-        "description": 2.0,
-        "fullyQualifiedName": 5.0,
-        "fullyQualifiedNameParts": 5.0
-      },
-      "mustMatch": ["name", "fullyQualifiedName"],
-      "shouldMatch": [
-        "classfiication.name",
-        "description"
+      "searchFields": [
+        { "field": "name.keyword", "boost": 10.0 },
+        { "field": "name", "boost": 10.0 },
+        { "field": "name.ngram", "boost": 1.0 },
+        { "field": "displayName", "boost": 10.0 },
+        { "field": "displayName.ngram", "boost": 1.0 },
+        { "field": "description", "boost": 2.0 },
+        { "field": "fullyQualifiedName", "boost": 5.0 },
+        { "field": "fqnParts", "boost": 5.0 },
+        { "field": "classification.name", "boost": 7.0 }
       ],
-      "highlightFields": [],
       "aggregations": [
-        {
-          "name": "classification.name.keyword",
-          "type": "terms",
-          "field": "classification.name.keyword"
-        }
-      ],
-      "boosts": [
       ],
       "scoreMode": "sum",
-      "boostMode": "multiply"
+      "boostMode": "multiply",
+      "highlightFields": ["name", "displayName", "description"]
     },
     {
-      "assetType": "testCase",
-      "fields": {
-        "name": 10.0,
-        "displayName": 10.0,
-        "description": 2.0,
-        "fullyQualifiedName": 5.0,
-        "fullyQualifiedNameParts": 5.0
-      },
-      "mustMatch": ["name", "fullyQualifiedName", "query", "query.ngram"],
-      "shouldMatch": ["testSuite.fullyQualifiedName", "testSuite.name", "testSuite.description", "entityLink", "entityFQN"],
-      "highlightFields": ["testSuite.name", "testSuite.description"],
-      "aggregations": [
+      "assetType": "glossaryTerm",
+      "searchFields": [
+        { "field": "name.keyword", "boost": 10.0 },
+        { "field": "name", "boost": 10.0 },
+        { "field": "name.ngram", "boost": 1.0 },
+        { "field": "displayName", "boost": 10.0 },
+        { "field": "displayName.ngram", "boost": 1.0 },
+        { "field": "description", "boost": 2.0 },
+        { "field": "fullyQualifiedName", "boost": 5.0 },
+        { "field": "fqnParts", "boost": 5.0 },
+        { "field": "synonyms", "boost": 5.0 },
+        { "field": "synonyms.ngram", "boost": 1.0 },
+        { "field": "glossary.name", "boost": 5.0 },
+        { "field": "glossary.displayName", "boost": 5.0 }
       ],
-      "boosts": [
+      "aggregations": [
+        {"name": "glossary.name.keyword", "type":  "terms", "field":  "glossary.name.keyword"},
+        {"name": "fqnParts_agg", "type":  "terms", "field":  "fqnParts"},
+        {"name": "status", "type":  "terms", "field":  "status"}
       ],
       "scoreMode": "sum",
-      "boostMode": "multiply"
+      "boostMode": "multiply",
+      "highlightFields": ["name", "displayName", "description"]
     }
   ],
   "defaultConfiguration": {
     "assetType": "default",
-    "fields": {
-      "name": 10.0,
-      "displayName": 10.0,
-      "description": 2.0,
-      "fullyQualifiedName": 5.0,
-      "fullyQualifiedNameParts": 5.0
-    },
-    "mustMatch": ["name", "fullyQualifiedName"],
-    "shouldMatch": ["displayName", "description"],
+    "searchFields": [
+      { "field": "name", "boost": 5.0 },
+      { "field": "description", "boost": 1.0 }
+    ],
     "highlightFields": [],
-    "aggregations": [],
-    "scoreMode": "sum",
-    "boostMode": "multiply"
+    "aggregations": []
   }
 }

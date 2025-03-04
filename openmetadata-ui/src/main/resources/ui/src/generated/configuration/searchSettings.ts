@@ -10,109 +10,81 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-/**
- * This schema defines the Search Configuration, including ranking logic and other settings
- * per asset type.
- */
 export interface SearchSettings {
     /**
-     * List of search configurations for each asset type.
+     * List of per-asset search configurations that override the global settings.
      */
     assetTypeConfigurations?: AssetTypeConfiguration[];
     /**
-     * Default search configuration when an entity doesn't match.
+     * Fallback configuration for any entity/asset not matched in assetTypeConfigurations.
      */
     defaultConfiguration?: AssetTypeConfiguration;
-    /**
-     * Flag to enable or disable the RBAC Search Configuration.
-     */
-    enableAccessControl?: boolean;
-    /**
-     * Global settings for search.
-     */
-    globalSettings?: GlobalSettings;
+    globalSettings?:       GlobalSettings;
 }
 
 /**
- * Defines the search configuration for a specific asset type.
- *
- * Default search configuration when an entity doesn't match.
+ * Fallback configuration for any entity/asset not matched in assetTypeConfigurations.
  */
 export interface AssetTypeConfiguration {
     /**
-     * Additional settings specific to the asset type.
+     * Catch-all for any advanced or asset-specific search settings.
      */
     additionalSettings?: { [key: string]: any };
     /**
-     * List of aggregations to include in the search query.
+     * List of additional aggregations for this asset type.
      */
     aggregations?: Aggregation[];
     /**
-     * The type of data asset this configuration applies to.
+     * Name or type of the asset to which this configuration applies.
      */
     assetType: string;
     /**
-     * Determines how the combined score and the query score are combined.
+     * How the function score is combined with the main query score.
      */
     boostMode?: BoostMode;
     /**
-     * Boost factors for specific fields.
-     */
-    boosts?: FieldBoost[];
-    /**
-     * Fields to search with their boosts.
-     */
-    fields: { [key: string]: number };
-    /**
-     * Boost factors based on field values with function modifiers.
+     * List of numeric field-based boosts that apply only to this asset.
      */
     fieldValueBoosts?: FieldValueBoost[];
     /**
-     * Fields to include in the highlights.
+     * Which fields to highlight for this asset.
      */
     highlightFields?: string[];
     /**
-     * Fields that must match in the search query.
-     */
-    mustMatch?: string[];
-    /**
-     * Fields that must not match.
-     */
-    mustNotMatch?: string[];
-    /**
-     * Determines how the computed scores are combined.
+     * How to combine function scores if multiple boosts are applied.
      */
     scoreMode?: ScoreMode;
     /**
-     * Fields that should match in the search query.
+     * Which fields to search for this asset, with their boost values.
      */
-    shouldMatch?: string[];
+    searchFields?: FieldBoost[];
     /**
-     * Boost factors for specific tags.
+     * List of field=value term-boost rules that apply only to this asset.
      */
-    tagBoosts?: TagBoost[];
+    termBoosts?: TermBoost[];
+    /**
+     * Override global 'useNaturalLanguageSearch' for this specific asset.
+     */
+    useNaturalLanguageSearch?: boolean;
 }
 
-/**
- * Defines an aggregation for the search query.
- */
 export interface Aggregation {
     /**
-     * The field to aggregate on.
+     * The field on which this aggregation is performed.
      */
     field: string;
     /**
-     * The name of the aggregation.
+     * A descriptive name for the aggregation.
      */
     name: string;
     /**
-     * The type of aggregation.
+     * The type of aggregation to perform.
      */
     type: Type;
 }
 
 /**
- * The type of aggregation.
+ * The type of aggregation to perform.
  */
 export enum Type {
     Avg = "avg",
@@ -132,7 +104,7 @@ export enum Type {
 }
 
 /**
- * Determines how the combined score and the query score are combined.
+ * How the function score is combined with the main query score.
  */
 export enum BoostMode {
     Avg = "avg",
@@ -143,68 +115,45 @@ export enum BoostMode {
     Sum = "sum",
 }
 
-export interface FieldBoost {
-    /**
-     * Boost factor for the field.
-     */
-    boost: number;
-    /**
-     * Field name to boost.
-     */
-    field: string;
-}
-
 export interface FieldValueBoost {
     /**
-     * Condition to apply the boost.
+     * Conditional logic (e.g., range constraints) to apply the boost only for certain values.
      */
     condition?: Condition;
     /**
-     * Factor by which to multiply the field value.
+     * Multiplier factor for the field value.
      */
     factor: number;
     /**
-     * Field name whose value is used for boosting.
+     * Numeric field name whose value will affect the score.
      */
     field: string;
     /**
-     * Value to use if the field is missing.
+     * Value to use if the field is missing on a document.
      */
     missing?: number;
     /**
-     * Modifier function to apply to the field value.
+     * Optional mathematical transformation to apply to the field value.
      */
     modifier?: Modifier;
 }
 
 /**
- * Condition to apply the boost.
+ * Conditional logic (e.g., range constraints) to apply the boost only for certain values.
  */
 export interface Condition {
     range?: Range;
 }
 
 export interface Range {
-    /**
-     * Greater than value.
-     */
-    gt?: number;
-    /**
-     * Greater than or equal to value.
-     */
+    gt?:  number;
     gte?: number;
-    /**
-     * Less than value.
-     */
-    lt?: number;
-    /**
-     * Less than or equal to value.
-     */
+    lt?:  number;
     lte?: number;
 }
 
 /**
- * Modifier function to apply to the field value.
+ * Optional mathematical transformation to apply to the field value.
  */
 export enum Modifier {
     Ln = "ln",
@@ -220,7 +169,7 @@ export enum Modifier {
 }
 
 /**
- * Determines how the computed scores are combined.
+ * How to combine function scores if multiple boosts are applied.
  */
 export enum ScoreMode {
     Avg = "avg",
@@ -231,38 +180,59 @@ export enum ScoreMode {
     Sum = "sum",
 }
 
-export interface TagBoost {
+export interface FieldBoost {
     /**
-     * Boost factor for the tag.
+     * Relative boost factor for the above field.
+     */
+    boost?: number;
+    /**
+     * Field name to search/boost.
+     */
+    field: string;
+}
+
+export interface TermBoost {
+    /**
+     * Numeric boost factor to apply if a document has field==value.
      */
     boost: number;
     /**
-     * Fully Qualified Name of the tag.
+     * The keyword field to match, e.g. tier.tagFQN, tags.tagFQN, certification.tagLabel.tagFQN,
+     * etc.
      */
-    tagFQN: string;
+    field: string;
+    /**
+     * The exact keyword value to match in the above field.
+     */
+    value: string;
 }
 
-/**
- * Global settings for search.
- */
 export interface GlobalSettings {
     /**
-     * List of aggregations to include in the search query.
+     * List of global aggregations to include in the search query.
      */
     aggregations?: Aggregation[];
     /**
-     * Boost factors based on field values with function modifiers (applied globally).
+     * Flag to enable or disable RBAC Search Configuration globally.
+     */
+    enableAccessControl?: boolean;
+    /**
+     * Optional list of numeric field-based boosts applied globally.
      */
     fieldValueBoosts?: FieldValueBoost[];
     /**
-     * Fields to include in the highlights.
+     * Which fields to highlight by default.
      */
     highlightFields?:   string[];
     maxAggregateSize?:  number;
     maxAnalyzedOffset?: number;
     maxResultHits?:     number;
     /**
-     * Boost factors for specific tags (applied globally).
+     * List of field=value term-boost rules that apply only to this asset.
      */
-    tagBoosts?: TagBoost[];
+    termBoosts?: TermBoost[];
+    /**
+     * If true, uses more flexible natural language search (fuzziness, synonyms, etc.) globally.
+     */
+    useNaturalLanguageSearch?: boolean;
 }

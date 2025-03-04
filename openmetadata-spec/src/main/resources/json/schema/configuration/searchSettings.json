@@ -2,19 +2,22 @@
   "$id": "https://open-metadata.org/schema/entity/configuration/searchSettings.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "SearchSettings",
-  "description": "This schema defines the Search Configuration, including ranking logic and other settings per asset type.",
   "type": "object",
   "javaType": "org.openmetadata.schema.api.search.SearchSettings",
   "properties": {
-    "enableAccessControl": {
-      "type": "boolean",
-      "description": "Flag to enable or disable the RBAC Search Configuration.",
-      "default": false
-    },
     "globalSettings": {
       "type": "object",
-      "description": "Global settings for search.",
       "properties": {
+        "enableAccessControl": {
+          "type": "boolean",
+          "description": "Flag to enable or disable RBAC Search Configuration globally.",
+          "default": false
+        },
+        "useNaturalLanguageSearch": {
+          "type": "boolean",
+          "description": "If true, uses more flexible natural language search (fuzziness, synonyms, etc.) globally.",
+          "default": false
+        },
         "maxAggregateSize": {
           "type": "integer",
           "default": 10000
@@ -29,7 +32,7 @@
         },
         "aggregations": {
           "type": "array",
-          "description": "List of aggregations to include in the search query.",
+          "description": "List of global aggregations to include in the search query.",
           "items": {
             "$ref": "#/definitions/aggregation"
           }
@@ -37,156 +40,177 @@
         "highlightFields": {
           "type": "array",
           "items": { "type": "string" },
-          "description": "Fields to include in the highlights."
+          "description": "Which fields to highlight by default."
         },
-        "tagBoosts": {
+        "termBoosts": {
           "type": "array",
-          "items": { "$ref": "#/definitions/tagBoost" },
-          "description": "Boost factors for specific tags (applied globally)."
+          "items": { "$ref": "#/definitions/termBoost" },
+          "description": "List of field=value term-boost rules that apply only to this asset."
         },
         "fieldValueBoosts": {
           "type": "array",
           "items": { "$ref": "#/definitions/fieldValueBoost" },
-          "description": "Boost factors based on field values with function modifiers (applied globally)."
+          "description": "Optional list of numeric field-based boosts applied globally."
         }
       },
       "additionalProperties": false
     },
     "assetTypeConfigurations": {
       "type": "array",
-      "description": "List of search configurations for each asset type.",
+      "description": "List of per-asset search configurations that override the global settings.",
       "items": {
         "$ref": "#/definitions/assetTypeConfiguration"
       }
     },
     "defaultConfiguration": {
       "$ref": "#/definitions/assetTypeConfiguration",
-      "description": "Default search configuration when an entity doesn't match."
+      "description": "Fallback configuration for any entity/asset not matched in assetTypeConfigurations."
     }
   },
   "definitions": {
     "assetTypeConfiguration": {
       "type": "object",
-      "description": "Defines the search configuration for a specific asset type.",
       "properties": {
         "assetType": {
           "type": "string",
-          "description": "The type of data asset this configuration applies to."
+          "description": "Name or type of the asset to which this configuration applies."
         },
-        "fields": {
-          "type": "object",
-          "description": "Fields to search with their boosts.",
-          "additionalProperties": {
-            "type": "number"
-          }
+        "useNaturalLanguageSearch": {
+          "type": "boolean",
+          "description": "Override global 'useNaturalLanguageSearch' for this specific asset.",
+          "default": false
         },
-        "mustMatch": {
+        "searchFields": {
           "type": "array",
-          "items": { "type": "string" },
-          "description": "Fields that must match in the search query."
-        },
-        "shouldMatch": {
-          "type": "array",
-          "items": { "type": "string" },
-          "description": "Fields that should match in the search query."
-        },
-        "mustNotMatch": {
-          "type": "array",
-          "items": { "type": "string" },
-          "description": "Fields that must not match."
-        },
-        "boosts": {
-          "type": "array",
+          "description": "Which fields to search for this asset, with their boost values.",
           "items": {
             "$ref": "#/definitions/fieldBoost"
-          },
-          "description": "Boost factors for specific fields."
-        },
-        "tagBoosts": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/tagBoost"
-          },
-          "description": "Boost factors for specific tags."
-        },
-        "fieldValueBoosts": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/fieldValueBoost"
-          },
-          "description": "Boost factors based on field values with function modifiers."
+          }
         },
         "highlightFields": {
           "type": "array",
           "items": { "type": "string" },
-          "description": "Fields to include in the highlights."
+          "description": "Which fields to highlight for this asset."
         },
         "aggregations": {
           "type": "array",
-          "description": "List of aggregations to include in the search query.",
-          "items": {
-            "$ref": "#/definitions/aggregation"
-          }
+          "items": { "$ref": "#/definitions/aggregation" },
+          "description": "List of additional aggregations for this asset type."
+        },
+        "termBoosts": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/termBoost" },
+          "description": "List of field=value term-boost rules that apply only to this asset."
+        },
+        "fieldValueBoosts": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/fieldValueBoost" },
+          "description": "List of numeric field-based boosts that apply only to this asset."
         },
         "scoreMode": {
           "type": "string",
           "enum": ["multiply", "sum", "avg", "first", "max", "min"],
-          "description": "Determines how the computed scores are combined."
+          "description": "How to combine function scores if multiple boosts are applied."
         },
         "boostMode": {
           "type": "string",
           "enum": ["multiply", "replace", "sum", "avg", "max", "min"],
-          "description": "Determines how the combined score and the query score are combined."
+          "description": "How the function score is combined with the main query score."
         },
         "additionalSettings": {
           "type": "object",
-          "description": "Additional settings specific to the asset type.",
-          "additionalProperties": true
+          "additionalProperties": true,
+          "description": "Catch-all for any advanced or asset-specific search settings."
         }
       },
-      "required": ["assetType", "fields"],
+      "required": ["assetType"],
       "additionalProperties": false
     },
     "fieldBoost": {
       "type": "object",
       "properties": {
-        "field": { "type": "string", "description": "Field name to boost." },
-        "boost": { "type": "number", "description": "Boost factor for the field." }
+        "field": {
+          "type": "string",
+          "description": "Field name to search/boost."
+        },
+        "boost": {
+          "type": "number",
+          "description": "Relative boost factor for the above field.",
+          "default": 1.0
+        }
       },
-      "required": ["field", "boost"],
+      "required": ["field"],
       "additionalProperties": false
     },
-    "tagBoost": {
+    "termBoost": {
       "type": "object",
       "properties": {
-        "tagFQN": { "type": "string", "description": "Fully Qualified Name of the tag." },
-        "boost": { "type": "number", "description": "Boost factor for the tag." }
+        "field": {
+          "type": "string",
+          "description": "The keyword field to match, e.g. tier.tagFQN, tags.tagFQN, certification.tagLabel.tagFQN, etc."
+        },
+        "value": {
+          "type": "string",
+          "description": "The exact keyword value to match in the above field."
+        },
+        "boost": {
+          "type": "number",
+          "description": "Numeric boost factor to apply if a document has field==value."
+        }
       },
-      "required": ["tagFQN", "boost"],
+      "required": ["field", "value", "boost"],
       "additionalProperties": false
     },
     "fieldValueBoost": {
       "type": "object",
       "properties": {
-        "field": { "type": "string", "description": "Field name whose value is used for boosting." },
-        "factor": { "type": "number", "description": "Factor by which to multiply the field value." },
+        "field": {
+          "type": "string",
+          "description": "Numeric field name whose value will affect the score."
+        },
+        "factor": {
+          "type": "number",
+          "description": "Multiplier factor for the field value."
+        },
         "modifier": {
           "type": "string",
-          "enum": ["none", "log", "log1p", "log2p", "ln", "ln1p", "ln2p", "square", "sqrt", "reciprocal"],
-          "description": "Modifier function to apply to the field value."
+          "enum": [
+            "none",
+            "log",
+            "log1p",
+            "log2p",
+            "ln",
+            "ln1p",
+            "ln2p",
+            "square",
+            "sqrt",
+            "reciprocal"
+          ],
+          "description": "Optional mathematical transformation to apply to the field value."
         },
-        "missing": { "type": "number", "description": "Value to use if the field is missing." },
+        "missing": {
+          "type": "number",
+          "description": "Value to use if the field is missing on a document."
+        },
         "condition": {
           "type": "object",
-          "description": "Condition to apply the boost.",
+          "description": "Conditional logic (e.g., range constraints) to apply the boost only for certain values.",
           "properties": {
             "range": {
               "type": "object",
               "properties": {
-                "gt": { "type": "number", "description": "Greater than value." },
-                "gte": { "type": "number", "description": "Greater than or equal to value." },
-                "lt": { "type": "number", "description": "Less than value." },
-                "lte": { "type": "number", "description": "Less than or equal to value." }
+                "gt": {
+                  "type": "number"
+                },
+                "gte": {
+                  "type": "number"
+                },
+                "lt": {
+                  "type": "number"
+                },
+                "lte": {
+                  "type": "number"
+                }
               },
               "additionalProperties": false
             }
@@ -199,20 +223,34 @@
     },
     "aggregation": {
       "type": "object",
-      "description": "Defines an aggregation for the search query.",
       "properties": {
         "name": {
           "type": "string",
-          "description": "The name of the aggregation."
+          "description": "A descriptive name for the aggregation."
         },
         "type": {
           "type": "string",
-          "enum": ["terms", "range", "histogram", "date_histogram", "filters", "missing", "nested", "reverse_nested", "top_hits", "max", "min", "avg", "sum", "stats"],
-          "description": "The type of aggregation."
+          "enum": [
+            "terms",
+            "range",
+            "histogram",
+            "date_histogram",
+            "filters",
+            "missing",
+            "nested",
+            "reverse_nested",
+            "top_hits",
+            "max",
+            "min",
+            "avg",
+            "sum",
+            "stats"
+          ],
+          "description": "The type of aggregation to perform."
         },
         "field": {
           "type": "string",
-          "description": "The field to aggregate on."
+          "description": "The field on which this aggregation is performed."
         }
       },
       "required": ["name", "type", "field"],

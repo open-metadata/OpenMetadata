@@ -52,12 +52,4 @@ public interface SearchSourceBuilderFactory<S, Q, H, F> {
    * @return a search source builder
    */
   S searchBuilder(Q queryBuilder, H highlightBuilder, int from, int size);
-
-  /**
-   * Apply boosting to a query string query builder.
-   *
-   * @param queryBuilder the query string query builder
-   * @return a function score query builder with boosting applied
-   */
-  F boostScore(Q queryBuilder);
 }

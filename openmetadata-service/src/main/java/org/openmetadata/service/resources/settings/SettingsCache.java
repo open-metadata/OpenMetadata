@@ -151,7 +151,7 @@ public class SettingsCache {
       Settings setting =
           new Settings()
               .withConfigType(SEARCH_SETTINGS)
-              .withConfigValue(new SearchSettings().withEnableAccessControl(false));
+              .withConfigValue(new SearchSettings().getDefaultConfiguration());
       Entity.getSystemRepository().createNewSetting(setting);
     }
 

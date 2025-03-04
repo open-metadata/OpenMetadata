@@ -180,10 +180,6 @@ public class SearchResource {
           boolean explain)
       throws IOException {
 
-    if (nullOrEmpty(query)) {
-      query = "*";
-    }
-
     // Add Domain Filter
     List<EntityReference> domains = new ArrayList<>();
     SubjectContext subjectContext = getSubjectContext(securityContext);

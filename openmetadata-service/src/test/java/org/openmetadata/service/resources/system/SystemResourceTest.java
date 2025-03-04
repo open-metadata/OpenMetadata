@@ -40,9 +40,8 @@ import org.openmetadata.schema.api.configuration.profiler.MetricConfigurationDef
 import org.openmetadata.schema.api.configuration.profiler.ProfilerConfiguration;
 import org.openmetadata.schema.api.data.*;
 import org.openmetadata.schema.api.lineage.LineageSettings;
-import org.openmetadata.schema.api.search.Aggregation;
 import org.openmetadata.schema.api.search.AssetTypeConfiguration;
-import org.openmetadata.schema.api.search.Fields;
+import org.openmetadata.schema.api.search.FieldBoost;
 import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.api.services.CreateDashboardService;
 import org.openmetadata.schema.api.services.CreateDatabaseService;
@@ -165,9 +164,9 @@ public class SystemResourceTest extends OpenMetadataApplicationTest {
     CreateContainer createContainer = containerResourceTest.createRequest(test);
     containerResourceTest.createEntity(createContainer, ADMIN_AUTH_HEADERS);
 
-    SearchIndexResourceTest SearchIndexResourceTest = new SearchIndexResourceTest();
-    CreateSearchIndex createSearchIndex = SearchIndexResourceTest.createRequest(test);
-    SearchIndexResourceTest.createEntity(createSearchIndex, ADMIN_AUTH_HEADERS);
+    SearchIndexResourceTest searchIndexResourceTest = new SearchIndexResourceTest();
+    CreateSearchIndex createSearchIndex = searchIndexResourceTest.createRequest(test);
+    searchIndexResourceTest.createEntity(createSearchIndex, ADMIN_AUTH_HEADERS);
 
     GlossaryResourceTest glossaryResourceTest = new GlossaryResourceTest();
     CreateGlossary createGlossary = glossaryResourceTest.createRequest(test);
@@ -211,7 +210,7 @@ public class SystemResourceTest extends OpenMetadataApplicationTest {
   }
 
   @Test
-  void testSystemConfigsUpdate(TestInfo test) throws HttpResponseException {
+  void testSystemConfigsUpdate() throws HttpResponseException {
     // Test Custom Logo Update and theme preference
     UiThemePreference updateConfigReq =
         new UiThemePreference()
@@ -407,7 +406,7 @@ public class SystemResourceTest extends OpenMetadataApplicationTest {
         JsonUtils.convertValue(searchSettings.getConfigValue(), SearchSettings.class);
 
     // Assert default values
-    assertEquals(false, searchConfig.getEnableAccessControl());
+    assertEquals(false, searchConfig.getGlobalSettings().getEnableAccessControl());
 
     // Verify that global settings are loaded
     assertNotNull(searchConfig.getGlobalSettings());
@@ -430,7 +429,7 @@ public class SystemResourceTest extends OpenMetadataApplicationTest {
     // Check if 'table' asset type configuration exists
     boolean tableConfigExists =
         searchConfig.getAssetTypeConfigurations().stream()
-            .anyMatch(config -> "table".equalsIgnoreCase(config.getAssetType()));
+            .anyMatch(conf -> "table".equalsIgnoreCase(conf.getAssetType()));
     assertTrue(tableConfigExists);
 
     // Verify default configuration is loaded
@@ -443,16 +442,16 @@ public class SystemResourceTest extends OpenMetadataApplicationTest {
     SearchSettings searchConfig =
         JsonUtils.convertValue(searchSettings.getConfigValue(), SearchSettings.class);
 
-    searchConfig.setEnableAccessControl(true);
+    searchConfig.getGlobalSettings().setEnableAccessControl(true);
     searchConfig.getGlobalSettings().setMaxAggregateSize(5000);
 
     AssetTypeConfiguration tableConfig =
         searchConfig.getAssetTypeConfigurations().stream()
-            .filter(config -> "table".equalsIgnoreCase(config.getAssetType()))
+            .filter(conf -> "table".equalsIgnoreCase(conf.getAssetType()))
             .findFirst()
             .orElseThrow(() -> new AssertionError("Table configuration not found"));
 
-    tableConfig.getFields().getAdditionalProperties().put("name", 20.0);
+    tableConfig.getSearchFields().add(new FieldBoost().withField("name").withBoost(20.0));
 
     Settings updatedSettings =
         new Settings().withConfigType(SettingsType.SEARCH_SETTINGS).withConfigValue(searchConfig);
@@ -463,20 +462,20 @@ public class SystemResourceTest extends OpenMetadataApplicationTest {
     SearchSettings modifiedSearchConfig =
         JsonUtils.convertValue(modifiedSettings.getConfigValue(), SearchSettings.class);
 
-    assertEquals(true, modifiedSearchConfig.getEnableAccessControl());
+    assertEquals(true, modifiedSearchConfig.getGlobalSettings().getEnableAccessControl());
     assertEquals(5000, modifiedSearchConfig.getGlobalSettings().getMaxAggregateSize());
     assertEquals(
         20.0,
         modifiedSearchConfig.getAssetTypeConfigurations().stream()
-            .filter(config -> "table".equalsIgnoreCase(config.getAssetType()))
+            .filter(conf -> "table".equalsIgnoreCase(conf.getAssetType()))
             .findFirst()
             .get()
-            .getFields()
-            .getAdditionalProperties()
-            .get("name"));
+            .getSearchFields()
+            .get(0)
+            .getBoost());
 
     // Step 2: Reset the settings to default
-    resetSystemConfig(SettingsType.SEARCH_SETTINGS);
+    resetSystemConfig();
 
     // Retrieve the settings after reset
     Settings resetSettings = getSystemConfig(SettingsType.SEARCH_SETTINGS);
@@ -484,17 +483,17 @@ public class SystemResourceTest extends OpenMetadataApplicationTest {
         JsonUtils.convertValue(resetSettings.getConfigValue(), SearchSettings.class);
 
     // Verify that the settings are reset to default values
-    assertEquals(false, resetSearchConfig.getEnableAccessControl());
+    assertEquals(false, resetSearchConfig.getGlobalSettings().getEnableAccessControl());
     assertEquals(10000, resetSearchConfig.getGlobalSettings().getMaxAggregateSize());
     assertEquals(
         10.0,
         resetSearchConfig.getAssetTypeConfigurations().stream()
-            .filter(config -> "table".equalsIgnoreCase(config.getAssetType()))
+            .filter(conf -> "table".equalsIgnoreCase(conf.getAssetType()))
             .findFirst()
             .get()
-            .getFields()
-            .getAdditionalProperties()
-            .get("name"));
+            .getSearchFields()
+            .get(0)
+            .getBoost());
   }
 
   @Test
@@ -511,15 +510,11 @@ public class SystemResourceTest extends OpenMetadataApplicationTest {
     searchConfig.getGlobalSettings().setMaxResultHits(8000);
     searchConfig.getGlobalSettings().setMaxAnalyzedOffset(2000);
 
-    // Step 3: Attempt to modify restricted fields
-    List<Aggregation> originalAggregations = searchConfig.getGlobalSettings().getAggregations();
-    List<String> originalHighlightFields = searchConfig.getGlobalSettings().getHighlightFields();
-
     // Modify restricted fields
     searchConfig
         .getGlobalSettings()
         .setAggregations(new ArrayList<>()); // Attempt to clear aggregations
-    searchConfig.getGlobalSettings().setHighlightFields(Arrays.asList("modifiedField"));
+    searchConfig.getGlobalSettings().setHighlightFields(List.of("modifiedField"));
 
     // Step 4: Save the updated settings
     Settings updatedSettings =
@@ -555,7 +550,7 @@ public class SystemResourceTest extends OpenMetadataApplicationTest {
     // Remove an asset type, e.g., 'table'
     searchConfig
         .getAssetTypeConfigurations()
-        .removeIf(config -> "table".equalsIgnoreCase(config.getAssetType()));
+        .removeIf(conf -> "table".equalsIgnoreCase(conf.getAssetType()));
 
     // Save the updated settings
     Settings updatedSettings =
@@ -570,7 +565,7 @@ public class SystemResourceTest extends OpenMetadataApplicationTest {
     // Verify that 'table' asset type still exists
     boolean tableConfigExists =
         updatedSearchConfig.getAssetTypeConfigurations().stream()
-            .anyMatch(config -> "table".equalsIgnoreCase(config.getAssetType()));
+            .anyMatch(conf -> "table".equalsIgnoreCase(conf.getAssetType()));
     assertTrue(tableConfigExists);
   }
 
@@ -585,11 +580,10 @@ public class SystemResourceTest extends OpenMetadataApplicationTest {
     AssetTypeConfiguration newAssetType =
         new AssetTypeConfiguration()
             .withAssetType("newAsset")
-            .withFields(new Fields())
-            .withShouldMatch(Arrays.asList("description"))
+            .withSearchFields(new ArrayList<>())
             .withHighlightFields(Arrays.asList("name", "description"))
             .withAggregations(new ArrayList<>())
-            .withBoosts(new ArrayList<>())
+            .withTermBoosts(new ArrayList<>())
             .withScoreMode(AssetTypeConfiguration.ScoreMode.MULTIPLY)
             .withBoostMode(AssetTypeConfiguration.BoostMode.MULTIPLY);
 
@@ -609,7 +603,7 @@ public class SystemResourceTest extends OpenMetadataApplicationTest {
     // Verify that the new asset type is added
     boolean newAssetTypeExists =
         updatedSearchConfig.getAssetTypeConfigurations().stream()
-            .anyMatch(config -> "newAsset".equalsIgnoreCase(config.getAssetType()));
+            .anyMatch(conf -> "newAsset".equalsIgnoreCase(conf.getAssetType()));
     assertTrue(newAssetTypeExists);
   }
 
@@ -667,7 +661,7 @@ public class SystemResourceTest extends OpenMetadataApplicationTest {
     updateSystemConfig(updatedLineageSettings);
 
     // Retrieve the updated settings
-    Settings updatedSettings = getSystemConfigAsUser(SettingsType.LINEAGE_SETTINGS);
+    Settings updatedSettings = getSystemConfigAsUser();
     LineageSettings updatedLineageConfig =
         JsonUtils.convertValue(updatedSettings.getConfigValue(), LineageSettings.class);
 
@@ -719,8 +713,7 @@ public class SystemResourceTest extends OpenMetadataApplicationTest {
   }
 
   @Test
-  void globalProfilerConfig(TestInfo test) throws HttpResponseException {
-    // Create a profiler config
+  void globalProfilerConfig() throws HttpResponseException {
     ProfilerConfiguration profilerConfiguration = new ProfilerConfiguration();
     MetricConfigurationDefinition intMetricConfigDefinition =
         new MetricConfigurationDefinition()
@@ -784,9 +777,9 @@ public class SystemResourceTest extends OpenMetadataApplicationTest {
     return TestUtils.get(target, Settings.class, ADMIN_AUTH_HEADERS);
   }
 
-  private static Settings getSystemConfigAsUser(SettingsType settingsType)
-      throws HttpResponseException {
-    WebTarget target = getResource(String.format("system/settings/%s", settingsType.value()));
+  private static Settings getSystemConfigAsUser() throws HttpResponseException {
+    WebTarget target =
+        getResource(String.format("system/settings/%s", SettingsType.LINEAGE_SETTINGS.value()));
     return TestUtils.get(target, Settings.class, TEST_AUTH_HEADERS);
   }
 
@@ -805,8 +798,8 @@ public class SystemResourceTest extends OpenMetadataApplicationTest {
     TestUtils.put(target, updatedSetting, Response.Status.CREATED, ADMIN_AUTH_HEADERS);
   }
 
-  private void resetSystemConfig(SettingsType settingsType) throws HttpResponseException {
-    WebTarget target = getResource("system/settings/reset/" + settingsType.value());
+  private void resetSystemConfig() throws HttpResponseException {
+    WebTarget target = getResource("system/settings/reset/" + SettingsType.SEARCH_SETTINGS.value());
     TestUtils.put(target, Response.Status.OK, ADMIN_AUTH_HEADERS);
   }
 }

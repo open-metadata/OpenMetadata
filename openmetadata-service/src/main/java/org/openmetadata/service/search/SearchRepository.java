@@ -1144,7 +1144,7 @@ public class SearchRepository {
 
       SearchRequest searchRequest =
           new SearchRequest.ElasticSearchRequestBuilder(
-                  "*", size, Entity.getSearchRepository().getIndexOrAliasName(indexName))
+                  "", size, Entity.getSearchRepository().getIndexOrAliasName(indexName))
               .from(0)
               .queryFilter(queryFilter)
               .fetchSource(true)
