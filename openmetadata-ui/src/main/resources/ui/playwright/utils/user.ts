@@ -13,10 +13,6 @@
 
 import { Browser, expect, Page, Response } from '@playwright/test';
 import {
-  customFormatDateTime,
-  getEpochMillisForFutureDays,
-} from '../../src/utils/date-time/DateTimeUtils';
-import {
   GLOBAL_SETTING_PERMISSIONS,
   SETTING_PAGE_ENTITY_PERMISSION,
 } from '../constant/permission';
@@ -37,6 +33,7 @@ import {
   toastNotification,
   visitOwnProfilePage,
 } from './common';
+import { customFormatDateTime, getEpochMillisForFutureDays } from './dateTime';
 import { settingClick, SettingOptionsType, sidebarClick } from './sidebar';
 
 export const visitUserListPage = async (page: Page) => {
@@ -539,14 +536,14 @@ export const checkDataConsumerPermissions = async (page: Page) => {
   // Check right panel add tags button
   await expect(
     page.locator(
-      '[data-testid="entity-right-panel"] [data-testid="tags-container"] [data-testid="entity-tags"] .tag-chip-add-button'
+      '[data-testid="KnowledgePanel.Tags"] [data-testid="tags-container"] [data-testid="entity-tags"] .tag-chip-add-button'
     )
   ).toBeVisible();
 
   // Check right panel add glossary term button
   await expect(
     page.locator(
-      '[data-testid="entity-right-panel"] [data-testid="glossary-container"] [data-testid="entity-tags"] .tag-chip-add-button'
+      '[data-testid="KnowledgePanel.GlossaryTerms"] [data-testid="glossary-container"] [data-testid="entity-tags"] .tag-chip-add-button'
     )
   ).toBeVisible();
 
@@ -633,14 +630,14 @@ export const checkStewardPermissions = async (page: Page) => {
   // Check right panel add tags button
   await expect(
     page.locator(
-      '[data-testid="entity-right-panel"] [data-testid="tags-container"] [data-testid="entity-tags"] .tag-chip-add-button'
+      '[data-testid="KnowledgePanel.Tags"] [data-testid="tags-container"] [data-testid="entity-tags"] .tag-chip-add-button'
     )
   ).toBeVisible();
 
   // Check right panel add glossary term button
   await expect(
     page.locator(
-      '[data-testid="entity-right-panel"] [data-testid="glossary-container"] [data-testid="entity-tags"] .tag-chip-add-button'
+      '[data-testid="KnowledgePanel.GlossaryTerms"] [data-testid="glossary-container"] [data-testid="entity-tags"] .tag-chip-add-button'
     )
   ).toBeVisible();
 

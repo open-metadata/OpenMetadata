@@ -41,14 +41,10 @@ import {
 import {
   addToRecentViewed,
   getEntityMissingError,
-  sortTagsCaseInsensitive,
 } from '../../utils/CommonUtils';
 import { getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
-import {
-  defaultFields,
-  getFormattedPipelineDetails,
-} from '../../utils/PipelineDetailsUtils';
+import { defaultFields } from '../../utils/PipelineDetailsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const PipelineDetailsPage = () => {
@@ -204,10 +200,7 @@ const PipelineDetailsPage = () => {
   const settingsUpdateHandler = async (updatedPipeline: Pipeline) => {
     try {
       const res = await saveUpdatedPipelineData(updatedPipeline);
-      setPipelineDetails({
-        ...res,
-        tags: sortTagsCaseInsensitive(res.tags ?? []),
-      });
+      setPipelineDetails(res);
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -221,8 +214,7 @@ const PipelineDetailsPage = () => {
   const onTaskUpdate = async (jsonPatch: Array<Operation>) => {
     try {
       const response = await patchPipelineDetails(pipelineId, jsonPatch);
-      const formattedPipelineDetails = getFormattedPipelineDetails(response);
-      setPipelineDetails(formattedPipelineDetails);
+      setPipelineDetails(response);
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
