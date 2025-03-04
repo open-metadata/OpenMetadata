@@ -105,7 +105,10 @@ import {
   removeLineageHandler,
   removeUnconnectedNodes,
 } from '../../utils/EntityLineageUtils';
-import { getEntityReferenceFromEntity } from '../../utils/EntityUtils';
+import {
+  getEntityReferenceFromEntity,
+  updateNodeType,
+} from '../../utils/EntityUtils';
 import tableClassBase from '../../utils/TableClassBase';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useTourProvider } from '../TourProvider/TourProvider';
@@ -957,6 +960,12 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
               nodes: allNodes,
               edges: allEdges,
             });
+
+            setNodes((prev) =>
+              prev.map((node) =>
+                updateNodeType(node, sourceNode?.id, targetNode?.id)
+              )
+            );
 
             const { edges: createdEdges, columnsHavingLineage } = createEdges(
               allNodes,

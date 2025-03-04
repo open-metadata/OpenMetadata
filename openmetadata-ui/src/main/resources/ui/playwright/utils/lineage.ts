@@ -62,6 +62,21 @@ export const LINEAGE_CSV_HEADERS = [
   'pipelineServiceType',
 ];
 
+export type LineageEdge = {
+  fromEntity: {
+    id: string;
+    type: string;
+  };
+  toEntity: {
+    id: string;
+    type: string;
+  };
+  columns: {
+    fromColumns: string[];
+    toColumn: string;
+  }[];
+};
+
 export const verifyColumnLayerInactive = async (page: Page) => {
   await page.click('[data-testid="lineage-layer-btn"]'); // Open Layer popover
   await page.waitForSelector(
@@ -458,7 +473,7 @@ export const addPipelineBetweenNodes = async (
   bVerifyPipeline = false
 ) => {
   await sourceEntity.visitEntityPage(page);
-  await page.click('[data-testid="lineage"]');
+  await visitLineageTab(page);
   await editLineage(page);
 
   await performZoomOut(page);

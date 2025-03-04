@@ -37,6 +37,7 @@ import {
   deleteNode,
   editLineage,
   fillLineageConfigForm,
+  LineageEdge,
   performExpand,
   performZoomOut,
   removeColumnLineage,
@@ -164,8 +165,7 @@ test('Verify column lineage between tables', async ({ browser }) => {
   const table1 = new TableClass();
   const table2 = new TableClass();
 
-  await table1.create(apiContext);
-  await table2.create(apiContext);
+  await Promise.all([table1.create(apiContext), table2.create(apiContext)]);
 
   const sourceTableFqn = get(table1, 'entityResponseData.fullyQualifiedName');
   const sourceCol = `${sourceTableFqn}.${get(
@@ -201,8 +201,7 @@ test('Verify column lineage between table and topic', async ({ browser }) => {
   const { apiContext, afterAction } = await getApiContext(page);
   const table = new TableClass();
   const topic = new TopicClass();
-  await table.create(apiContext);
-  await topic.create(apiContext);
+  await Promise.all([table.create(apiContext), topic.create(apiContext)]);
 
   const sourceTableFqn = get(table, 'entityResponseData.fullyQualifiedName');
   const sourceCol = `${sourceTableFqn}.${get(
@@ -246,8 +245,7 @@ test('Verify column lineage between topic and api endpoint', async ({
   const topic = new TopicClass();
   const apiEndpoint = new ApiEndpointClass();
 
-  await topic.create(apiContext);
-  await apiEndpoint.create(apiContext);
+  await Promise.all([topic.create(apiContext), apiEndpoint.create(apiContext)]);
 
   const sourceCol = get(
     topic,
@@ -283,8 +281,7 @@ test('Verify column lineage between table and api endpoint', async ({
   const { apiContext, afterAction } = await getApiContext(page);
   const table = new TableClass();
   const apiEndpoint = new ApiEndpointClass();
-  await table.create(apiContext);
-  await apiEndpoint.create(apiContext);
+  await Promise.all([table.create(apiContext), apiEndpoint.create(apiContext)]);
 
   const sourceTableFqn = get(table, 'entityResponseData.fullyQualifiedName');
   const sourceCol = `${sourceTableFqn}.${get(
@@ -319,8 +316,7 @@ test('Verify function data in edge drawer', async ({ browser }) => {
   const table2 = new TableClass();
 
   try {
-    await table1.create(apiContext);
-    await table2.create(apiContext);
+    await Promise.all([table1.create(apiContext), table2.create(apiContext)]);
     const sourceTableFqn = get(table1, 'entityResponseData.fullyQualifiedName');
     const sourceColName = `${sourceTableFqn}.${get(
       table1,
@@ -341,7 +337,7 @@ test('Verify function data in edge drawer', async ({ browser }) => {
     await page.reload();
     const lineageRes = await lineageReq;
     const jsonRes = await lineageRes.json();
-    const edge = jsonRes.edges[0];
+    const edge: LineageEdge = [...Object.values(jsonRes.downstreamEdges)][0];
     const columnData = edge.columns[0];
 
     const newEdge = {
@@ -388,8 +384,7 @@ test('Verify function data in edge drawer', async ({ browser }) => {
       'count'
     );
   } finally {
-    await table1.delete(apiContext);
-    await table2.delete(apiContext);
+    await Promise.all([table1.delete(apiContext), table2.delete(apiContext)]);
     await afterAction();
   }
 });
@@ -406,11 +401,13 @@ test('Verify global lineage config', async ({ browser }) => {
   const searchIndex = new SearchIndexClass();
 
   try {
-    await table.create(apiContext);
-    await topic.create(apiContext);
-    await dashboard.create(apiContext);
-    await mlModel.create(apiContext);
-    await searchIndex.create(apiContext);
+    await Promise.all([
+      table.create(apiContext),
+      topic.create(apiContext),
+      dashboard.create(apiContext),
+      mlModel.create(apiContext),
+      searchIndex.create(apiContext),
+    ]);
 
     await addPipelineBetweenNodes(page, table, topic);
     await addPipelineBetweenNodes(page, topic, dashboard);
@@ -480,11 +477,13 @@ test('Verify global lineage config', async ({ browser }) => {
       }
     );
   } finally {
-    await table.delete(apiContext);
-    await topic.delete(apiContext);
-    await dashboard.delete(apiContext);
-    await mlModel.delete(apiContext);
-    await searchIndex.delete(apiContext);
+    await Promise.all([
+      table.delete(apiContext),
+      topic.delete(apiContext),
+      dashboard.delete(apiContext),
+      mlModel.delete(apiContext),
+      searchIndex.delete(apiContext),
+    ]);
 
     await afterAction();
   }
