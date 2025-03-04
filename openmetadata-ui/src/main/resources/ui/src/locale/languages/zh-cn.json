@@ -1711,6 +1711,7 @@
     "new-conversation": "您正在开始一次新的对话",
     "new-to-the-platform": "您是平台新用户？",
     "no-access-placeholder": "您还没有权限访问, 请联系系统管理员",
+    "no-activity-feed": "您拥有或者跟进的数据集近期没有活动信息",
     "no-activity-feed-description": "暂无活动！一旦有更新，您将在这里看到。",
     "no-activity-feed-title": "您的动态为空",
     "no-announcement-message": "没有公告, 请单击添加公告以新增一个",

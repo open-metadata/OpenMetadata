@@ -1711,6 +1711,7 @@
     "new-conversation": "Sie beginnen eine neue Konversation.",
     "new-to-the-platform": "Neu auf der Plattform?",
     "no-access-placeholder": "Sie haben keinen Zugriff. Bitte wenden Sie sich an den Administrator, um Berechtigungen zu erhalten.",
+    "no-activity-feed": "Es wurden keine Aktivitäten in den Datenressourcen gefunden, die Sie besitzen oder denen Sie derzeit folgen.",
     "no-activity-feed-description": "Noch keine Aktivität! Sobald es losgeht, werden Sie hier Updates sehen.",
     "no-activity-feed-title": "Ihr Feed ist leer",
     "no-announcement-message": "Keine Ankündigungen gefunden. Klicken Sie auf Ankündigung hinzufügen, um eine hinzuzufügen.",
