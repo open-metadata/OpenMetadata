@@ -14,19 +14,22 @@ import { Card, Skeleton, Tooltip, Typography } from 'antd';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { isEmpty } from 'lodash';
 import { ServiceTypes } from 'Models';
 import { useParams } from 'react-router-dom';
 import { Cell, Pie, PieChart, ResponsiveContainer } from 'recharts';
 import { ReactComponent as PieChartIcon } from '../../../assets/svg/pie-chart.svg';
 import { WHITE_SMOKE } from '../../../constants/Color.constants';
 import { totalDataAssetsWidgetColors } from '../../../constants/TotalDataAssetsWidget.constants';
+import { SIZE } from '../../../enums/common.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { useFqn } from '../../../hooks/useFqn';
 import { searchQuery } from '../../../rest/searchAPI';
 import { getEntityNameLabel } from '../../../utils/EntityUtils';
 import Fqn from '../../../utils/Fqn';
-import { getAssetsByServiceType } from '../../../utils/PlatformInsightsWidgetUtils';
+import { getAssetsByServiceType } from '../../../utils/ServiceInsightsTabUtils';
 import { getEntityIcon } from '../../../utils/TableUtils';
+import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import './total-data-assets-widget.less';
 
 function TotalDataAssetsWidget() {
@@ -101,58 +104,69 @@ function TotalDataAssetsWidget() {
         </Typography.Text>
       </div>
       <Skeleton loading={loadingCount > 0}>
-        <div className="total-data-assets-info">
-          <div className="assets-list-container">
-            {entityCounts?.map((entity) => (
-              <div
-                className="flex items-center justify-between"
-                key={entity.name}>
-                <div className="flex items-center gap-3">
+        {isEmpty(entityCounts) ? (
+          <ErrorPlaceHolder
+            placeholderText={t('message.no-entity-data-available', {
+              entity: t('label.data-asset-lowercase-plural'),
+            })}
+            size={SIZE.MEDIUM}
+          />
+        ) : (
+          <>
+            <div className="total-data-assets-info">
+              <div className="assets-list-container">
+                {entityCounts?.map((entity) => (
                   <div
-                    className="bullet"
-                    style={{
-                      backgroundColor: entity.fill,
-                    }}
-                  />
-                  <div className="p-0 icon-container">{entity.icon}</div>
+                    className="flex items-center justify-between"
+                    key={entity.name}>
+                    <div className="flex items-center gap-3">
+                      <div
+                        className="bullet"
+                        style={{
+                          backgroundColor: entity.fill,
+                        }}
+                      />
+                      <div className="p-0 icon-container">{entity.icon}</div>
 
-                  <Typography.Text>{entity.name}</Typography.Text>
-                </div>
+                      <Typography.Text>{entity.name}</Typography.Text>
+                    </div>
 
-                <Typography.Text className="font-semibold">
-                  {entity.value}
-                </Typography.Text>
+                    <Typography.Text className="font-semibold">
+                      {entity.value}
+                    </Typography.Text>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-          <div className="h-full flex-center flex-half">
-            <ResponsiveContainer height="100%" width="100%">
-              <PieChart>
-                <Pie
-                  cx="50%"
-                  cy="50%"
-                  data={[{ value: 1 }]}
-                  dataKey="value"
-                  fill={WHITE_SMOKE}
-                  innerRadius="75%"
-                  outerRadius="98%">
-                  <Cell fill={WHITE_SMOKE} />
-                </Pie>
-                <Pie
-                  cx="50%"
-                  cy="50%"
-                  data={entityCounts}
-                  dataKey="value"
-                  innerRadius="80%"
-                  isAnimationActive={false}
-                  nameKey="name"
-                  outerRadius="93%"
-                />
-                <Tooltip />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
+              <div className="h-full flex-center flex-half">
+                <ResponsiveContainer height="100%" width="100%">
+                  <PieChart>
+                    <Pie
+                      cx="50%"
+                      cy="50%"
+                      data={[{ value: 1 }]}
+                      dataKey="value"
+                      fill={WHITE_SMOKE}
+                      innerRadius="75%"
+                      outerRadius="98%">
+                      <Cell fill={WHITE_SMOKE} />
+                    </Pie>
+                    <Pie
+                      cx="50%"
+                      cy="50%"
+                      data={entityCounts}
+                      dataKey="value"
+                      innerRadius="80%"
+                      isAnimationActive={false}
+                      nameKey="name"
+                      outerRadius="93%"
+                    />
+                    <Tooltip />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          </>
+        )}
       </Skeleton>
     </Card>
   );

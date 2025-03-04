@@ -10,17 +10,17 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { SystemChartType } from '../../../rest/DataInsightAPI';
+import { SystemChartType } from '../rest/DataInsightAPI';
 
-export interface ChartData {
-  day: number;
-  count: number;
-}
+export const PLATFORM_INSIGHTS_CHART: SystemChartType[] = [
+  SystemChartType.DescriptionCoverage,
+  SystemChartType.PIICoverage,
+  SystemChartType.TierCoverage,
+  SystemChartType.OwnersCoverage,
+];
 
-export interface ChartSeriesData {
-  chartType: SystemChartType;
-  data: ChartData[];
-  percentageChange: number;
-  currentCount: number;
-  isIncreased: boolean;
-}
+export const SERVICE_INSIGHTS_CHART: SystemChartType[] = [
+  ...PLATFORM_INSIGHTS_CHART,
+  SystemChartType.PIIDistribution,
+  SystemChartType.TierDistribution,
+];

@@ -12,19 +12,107 @@
  */
 
 import { Col, Row } from 'antd';
-import { isUndefined } from 'lodash';
+import { AxiosError } from 'axios';
+import { isUndefined, last, round } from 'lodash';
 import { ServiceTypes } from 'Models';
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
+import {
+  PLATFORM_INSIGHTS_CHART,
+  SERVICE_INSIGHTS_CHART,
+} from '../../constants/ServiceInsightsTab.constants';
+import { useFqn } from '../../hooks/useFqn';
+import {
+  getMultiChartsPreviewByName,
+  SystemChartType,
+} from '../../rest/DataInsightAPI';
+import Fqn from '../../utils/Fqn';
 import serviceUtilClassBase from '../../utils/ServiceUtilClassBase';
+import { showErrorToast } from '../../utils/ToastUtils';
+import {
+  ChartData,
+  ChartSeriesData,
+} from './PlatformInsightsWidget/PlatformInsightsWidget.interface';
 import './service-insights-tab.less';
 import { ServiceInsightsTabProps } from './ServiceInsightsTab.interface';
 
 const ServiceInsightsTab: React.FC<ServiceInsightsTabProps> = () => {
+  const { fqn: serviceName } = useFqn();
   const { serviceCategory } = useParams<{
     serviceCategory: ServiceTypes;
     tab: string;
   }>();
+  const [chartsResults, setChartsResults] = useState<{
+    platformInsightsChart: ChartSeriesData[];
+    piiDistributionChart: ChartData[];
+    tierDistributionChart: ChartData[];
+  }>();
+  const [isLoading, setIsLoading] = useState(false);
+
+  const nameWithoutQuotes = Fqn.getNameWithoutQuotes(serviceName);
+
+  const fetchChartsData = async () => {
+    try {
+      setIsLoading(true);
+      const currentTimestampInMs = Date.now();
+      const sevenDaysAgoTimestampInMs =
+        currentTimestampInMs - 7 * 24 * 60 * 60 * 1000;
+
+      const chartsData = await getMultiChartsPreviewByName(
+        SERVICE_INSIGHTS_CHART,
+        {
+          start: sevenDaysAgoTimestampInMs,
+          end: currentTimestampInMs,
+          filter: `{"query":{"bool":{"must":[{"term":{"service.name.keyword":"${nameWithoutQuotes}"}}]}}}`,
+        }
+      );
+
+      const platformInsightsChart = PLATFORM_INSIGHTS_CHART.map((chartType) => {
+        const summaryChartData = chartsData[chartType];
+
+        const data = summaryChartData.results;
+
+        const firstDayValue = data.length > 1 ? data[0]?.count : 0;
+        const lastDayValue = data[data.length - 1]?.count;
+
+        const percentageChange =
+          ((lastDayValue - firstDayValue) /
+            (firstDayValue === 0 ? lastDayValue : firstDayValue)) *
+          100;
+
+        const isIncreased = lastDayValue >= firstDayValue;
+
+        return {
+          chartType,
+          data,
+          isIncreased,
+          percentageChange: isNaN(percentageChange)
+            ? 0
+            : round(Math.abs(percentageChange), 2),
+          currentCount: round(last(summaryChartData.results)?.count ?? 0, 2),
+        };
+      });
+
+      const piiDistributionChart =
+        chartsData[SystemChartType.PIIDistribution].results;
+      const tierDistributionChart =
+        chartsData[SystemChartType.TierDistribution].results;
+
+      setChartsResults({
+        platformInsightsChart,
+        piiDistributionChart,
+        tierDistributionChart,
+      });
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchChartsData();
+  }, []);
 
   const {
     PlatformInsightsWidget,
@@ -39,7 +127,10 @@ const ServiceInsightsTab: React.FC<ServiceInsightsTabProps> = () => {
   return (
     <Row className="service-insights-tab" gutter={[16, 16]}>
       <Col span={24}>
-        <PlatformInsightsWidget />
+        <PlatformInsightsWidget
+          chartsData={chartsResults?.platformInsightsChart ?? []}
+          isLoading={isLoading}
+        />
       </Col>
       {!isUndefined(CollateAIWidget) && (
         <Col span={24}>
@@ -47,10 +138,16 @@ const ServiceInsightsTab: React.FC<ServiceInsightsTabProps> = () => {
         </Col>
       )}
       <Col span={12}>
-        <PIIDistributionWidget />
+        <PIIDistributionWidget
+          chartsData={chartsResults?.piiDistributionChart ?? []}
+          isLoading={isLoading}
+        />
       </Col>
       <Col span={12}>
-        <TierDistributionWidget />
+        <TierDistributionWidget
+          chartsData={chartsResults?.tierDistributionChart ?? []}
+          isLoading={isLoading}
+        />
       </Col>
       {!isUndefined(MostUsedAssetsWidget) && (
         <Col span={24}>

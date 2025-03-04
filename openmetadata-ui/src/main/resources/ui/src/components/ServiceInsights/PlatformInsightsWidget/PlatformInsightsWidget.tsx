@@ -11,116 +11,26 @@
  *  limitations under the License.
  */
 import { Card, Col, Row, Skeleton, Typography } from 'antd';
-import { AxiosError } from 'axios';
-import { last, round } from 'lodash';
-import { ServiceTypes } from 'Models';
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { useParams } from 'react-router-dom';
 import { Area, AreaChart, ResponsiveContainer } from 'recharts';
 import { ReactComponent as ArrowDown } from '../../../assets/svg/down-full-arrow.svg';
 import { ReactComponent as ArrowUp } from '../../../assets/svg/up-full-arrow.svg';
 import { GREEN_1, RED_1 } from '../../../constants/Color.constants';
-import { useFqn } from '../../../hooks/useFqn';
-import {
-  getMultiChartsPreviewByName,
-  SystemChartType,
-} from '../../../rest/DataInsightAPI';
-import Fqn from '../../../utils/Fqn';
-import {
-  aggregateChartsDataByType,
-  getSummaryChartName,
-  getTitleByChartType,
-} from '../../../utils/PlatformInsightsWidgetUtils';
-import { showErrorToast } from '../../../utils/ToastUtils';
+import { PLATFORM_INSIGHTS_CHART } from '../../../constants/ServiceInsightsTab.constants';
+import { getTitleByChartType } from '../../../utils/ServiceInsightsTabUtils';
 import TotalDataAssetsWidget from '../TotalDataAssetsWidget/TotalDataAssetsWidget';
 import './platform-insights-widget.less';
 import { ChartSeriesData } from './PlatformInsightsWidget.interface';
 
-function PlatformInsightsWidget() {
-  const { serviceCategory } = useParams<{
-    serviceCategory: ServiceTypes;
-    tab: string;
-  }>();
-  const { fqn: serviceName } = useFqn();
+function PlatformInsightsWidget({
+  chartsData,
+  isLoading,
+}: {
+  chartsData: ChartSeriesData[];
+  isLoading: boolean;
+}) {
   const { t } = useTranslation();
-  const [isLoading, setIsLoading] = useState(false);
-  const [chartsData, setChartsData] = useState<ChartSeriesData[]>([]);
-
-  const nameWithoutQuotes = Fqn.getNameWithoutQuotes(serviceName);
-
-  const fetchChartsData = async () => {
-    try {
-      setIsLoading(true);
-      const currentTimestampInMs = Date.now();
-      const sevenDaysAgoTimestampInMs =
-        currentTimestampInMs - 7 * 24 * 60 * 60 * 1000;
-
-      const chartsData = await getMultiChartsPreviewByName(
-        [
-          SystemChartType.PercentageOfServiceWithDescription, // TODO: Replace this with PII chart
-          SystemChartType.NumberOfDataAssetWithDescription,
-          SystemChartType.NumberOfDataAssetWithOwner,
-          SystemChartType.TotalDataAssetsWithTierSummaryCard,
-          SystemChartType.PercentageOfDataAssetWithDescription,
-          SystemChartType.PercentageOfDataAssetWithOwner,
-          SystemChartType.TotalDataAssetsByTier,
-        ],
-        {
-          start: sevenDaysAgoTimestampInMs,
-          end: currentTimestampInMs,
-          filter: `{"query":{"bool":{"must":[{"term":{"service.name.keyword":"${nameWithoutQuotes}"}}]}}}`,
-        }
-      );
-
-      const results = [
-        SystemChartType.PercentageOfDataAssetWithDescription,
-        SystemChartType.PercentageOfServiceWithDescription, // TODO: Replace this with PII chart
-        SystemChartType.TotalDataAssetsByTier,
-        SystemChartType.PercentageOfDataAssetWithOwner,
-      ].map((chartType) => {
-        const chartData = chartsData[chartType];
-        const summaryChartName = getSummaryChartName(chartType);
-        const summaryChartData = chartsData[summaryChartName];
-
-        const data = aggregateChartsDataByType(
-          chartData,
-          serviceCategory,
-          chartType
-        );
-
-        const firstDayValue = data.length > 1 ? data[0]?.value : 0;
-        const lastDayValue = data[data.length - 1]?.value;
-
-        const percentageChange =
-          ((lastDayValue - firstDayValue) /
-            (firstDayValue === 0 ? lastDayValue : firstDayValue)) *
-          100;
-
-        const isIncreased = lastDayValue >= firstDayValue;
-
-        return {
-          chartType,
-          data,
-          isIncreased,
-          percentageChange: isNaN(percentageChange)
-            ? 0
-            : round(Math.abs(percentageChange), 2),
-          currentCount: round(last(summaryChartData.results)?.count ?? 0, 2),
-        };
-      });
-
-      setChartsData(results);
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchChartsData();
-  }, []);
 
   return (
     <div className="service-insights-widget widget-flex-col platform-insights-card">
@@ -137,12 +47,7 @@ function PlatformInsightsWidget() {
         </Col>
         <Col className="other-charts-container" span={12}>
           {isLoading
-            ? [
-                SystemChartType.PercentageOfDataAssetWithDescription,
-                SystemChartType.PercentageOfServiceWithDescription,
-                SystemChartType.TotalDataAssetsByTier,
-                SystemChartType.PercentageOfDataAssetWithOwner,
-              ].map((chartType) => (
+            ? PLATFORM_INSIGHTS_CHART.map((chartType) => (
                 <Card
                   className="widget-info-card other-charts-card"
                   key={chartType}>
@@ -211,7 +116,7 @@ function PlatformInsightsWidget() {
                             ))}
                           </defs>
                           <Area
-                            dataKey="value"
+                            dataKey="count"
                             fill={
                               chart.isIncreased
                                 ? `url(#color${GREEN_1})`

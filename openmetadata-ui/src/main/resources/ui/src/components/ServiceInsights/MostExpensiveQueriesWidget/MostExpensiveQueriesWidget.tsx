@@ -11,17 +11,16 @@
  *  limitations under the License.
  */
 import { Card, Typography } from 'antd';
-import React, { useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Query } from '../../../generated/entity/data/query';
 import { getMostExpensiveQueriesWidgetColumns } from '../../../utils/MostExpensiveQueriesWidgetUtils';
 import Table from '../../common/Table/Table';
 import './most-expensive-queries-widget.less';
 
 function MostExpensiveQueriesWidget() {
   const { t } = useTranslation();
-  const [isLoading, setIsLoading] = useState(false);
-  const [queryData, setQueryData] = useState<Array<Query>>([]);
+  // const [isLoading, setIsLoading] = useState(false);
+  // const [queryData, setQueryData] = useState<Array<Query>>([]);
 
   const columns = useMemo(() => getMostExpensiveQueriesWidgetColumns(), []);
 
@@ -39,8 +38,8 @@ function MostExpensiveQueriesWidget() {
         <Table
           className="most-expensive-queries-widget-table"
           columns={columns}
-          dataSource={queryData}
-          loading={isLoading}
+          dataSource={[]}
+          loading={false}
           pagination={false}
         />
       </Card>

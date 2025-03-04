@@ -28,6 +28,12 @@ export enum SystemChartType {
   TotalDataAssetsWithTierSummaryCard = 'total_data_assets_with_tier_summary_card',
   NumberOfDataAssetWithDescription = 'number_of_data_asset_with_description_kpi',
   NumberOfDataAssetWithOwner = 'number_of_data_asset_with_owner_kpi',
+  DescriptionCoverage = 'assets_with_description',
+  PIICoverage = 'assets_with_pii',
+  TierCoverage = 'assets_with_tier',
+  OwnersCoverage = 'assets_with_owners',
+  PIIDistribution = 'assets_with_pii_bar',
+  TierDistribution = 'assets_with_tier_bar',
 }
 
 export interface DataInsightCustomChartResult {
