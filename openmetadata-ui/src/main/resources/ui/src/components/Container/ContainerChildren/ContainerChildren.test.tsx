@@ -10,10 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render, screen } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import React from 'react';
-import { BrowserRouter } from 'react-router-dom';
-import { pagingObject } from '../../../constants/constants';
+import { MemoryRouter } from 'react-router-dom';
+import { usePaging } from '../../../hooks/paging/usePaging';
+import { getContainerChildrenByName } from '../../../rest/storageAPI';
 import ContainerChildren from './ContainerChildren';
 
 jest.mock('../../common/NextPrevious/NextPrevious', () => {
@@ -25,10 +26,6 @@ jest.mock('../../common/NextPrevious/NextPrevious', () => {
     </div>
   ));
 });
-
-const mockFetchChildren = jest.fn();
-const mockHandleChildrenPageChange = jest.fn();
-const mockHandlePageSizeChange = jest.fn();
 
 const mockChildrenList = [
   {
@@ -47,45 +44,34 @@ const mockChildrenList = [
   },
 ];
 
-const mockDataProps = {
-  childrenList: mockChildrenList,
-  fetchChildren: mockFetchChildren,
-  pagingHookData: {
-    paging: pagingObject,
+jest.mock('../../Customization/GenericTab/GenericTab', () => ({
+  useGenericContext: jest.fn().mockImplementation(() => ({
+    data: { children: mockChildrenList },
+  })),
+}));
+
+jest.mock('../../../rest/storageAPI');
+jest.mock('../../../hooks/paging/usePaging', () => ({
+  usePaging: jest.fn().mockImplementation(() => ({
     pageSize: 15,
-    currentPage: 1,
-    showPagination: true,
-    handleChildrenPageChange: mockHandleChildrenPageChange,
-    handlePageSizeChange: mockHandlePageSizeChange,
-  },
-};
+    paging: {
+      total: 2,
+    },
+  })),
+}));
 
 describe('ContainerChildren', () => {
-  beforeEach(() => {
-    jest.useFakeTimers();
-  });
-
-  afterEach(() => {
-    jest.runOnlyPendingTimers();
-    jest.useRealTimers();
-  });
-
   it('Should call fetch container function on load', () => {
-    render(
-      <BrowserRouter>
-        <ContainerChildren {...mockDataProps} />
-      </BrowserRouter>
-    );
+    render(<ContainerChildren />, { wrapper: MemoryRouter });
 
-    expect(mockFetchChildren).toHaveBeenCalled();
+    expect(getContainerChildrenByName).toHaveBeenCalledWith('', {
+      limit: 15,
+      offset: 0,
+    });
   });
 
   it('Should render table with correct columns', () => {
-    render(
-      <BrowserRouter>
-        <ContainerChildren {...mockDataProps} />
-      </BrowserRouter>
-    );
+    render(<ContainerChildren />, { wrapper: MemoryRouter });
 
     expect(screen.getByTestId('container-list-table')).toBeInTheDocument();
     expect(screen.getByText('label.name')).toBeInTheDocument();
@@ -93,29 +79,21 @@ describe('ContainerChildren', () => {
   });
 
   it('Should not render pagination component when not visible', () => {
-    render(
-      <BrowserRouter>
-        <ContainerChildren
-          {...mockDataProps}
-          pagingHookData={{
-            ...mockDataProps.pagingHookData,
-            showPagination: false,
-          }}
-        />
-      </BrowserRouter>
-    );
+    render(<ContainerChildren />, { wrapper: MemoryRouter });
 
     expect(screen.queryByText('NextPreviousComponent')).not.toBeInTheDocument();
   });
 
-  it('Should render container names as links', () => {
-    render(
-      <BrowserRouter>
-        <ContainerChildren {...mockDataProps} />
-      </BrowserRouter>
-    );
+  it('Should render container names as links', async () => {
+    (getContainerChildrenByName as jest.Mock).mockResolvedValue({
+      data: mockChildrenList,
+      paging: {
+        total: 2,
+      },
+    });
+    render(<ContainerChildren />, { wrapper: MemoryRouter });
 
-    const containerNameLinks = screen.getAllByTestId('container-name');
+    const containerNameLinks = await screen.findAllByTestId('container-name');
 
     expect(containerNameLinks).toHaveLength(2);
 
@@ -128,62 +106,12 @@ describe('ContainerChildren', () => {
     });
   });
 
-  it('Should render container descriptions as rich text', () => {
-    render(
-      <BrowserRouter>
-        <ContainerChildren {...mockDataProps} />
-      </BrowserRouter>
-    );
-
-    // Fast-forward until all timers have been executed
-    jest.runAllTimers();
-
-    const richTextPreviewers = screen.getAllByTestId('viewer-container');
-
-    expect(richTextPreviewers).toHaveLength(2);
-
-    richTextPreviewers.forEach((previewer, index) => {
-      expect(previewer).toHaveTextContent(mockChildrenList[index].description);
-    });
-  });
-
   it('Should render pagination component when showPagination props is true', () => {
-    render(
-      <BrowserRouter>
-        <ContainerChildren
-          {...mockDataProps}
-          pagingHookData={{
-            ...mockDataProps.pagingHookData,
-            showPagination: true,
-          }}
-        />
-      </BrowserRouter>
-    );
+    (usePaging as jest.Mock).mockImplementation(() => ({
+      showPagination: true,
+    }));
+    render(<ContainerChildren />, { wrapper: MemoryRouter });
 
     expect(screen.getByText('NextPreviousComponent')).toBeInTheDocument();
-  });
-
-  it('Should trigger handleChildrenPageChange hook prop on button click', () => {
-    render(
-      <BrowserRouter>
-        <ContainerChildren {...mockDataProps} />
-      </BrowserRouter>
-    );
-
-    fireEvent.click(screen.getByText('childrenPageChangeButton'));
-
-    expect(mockHandleChildrenPageChange).toHaveBeenCalled();
-  });
-
-  it('Should trigger handlePageSizeChange hook prop on button click', () => {
-    render(
-      <BrowserRouter>
-        <ContainerChildren {...mockDataProps} />
-      </BrowserRouter>
-    );
-
-    fireEvent.click(screen.getByText('pageSizeChangeButton'));
-
-    expect(mockHandlePageSizeChange).toHaveBeenCalled();
   });
 });

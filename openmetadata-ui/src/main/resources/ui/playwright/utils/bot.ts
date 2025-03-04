@@ -11,10 +11,6 @@
  *  limitations under the License.
  */
 import { expect, Page } from '@playwright/test';
-import {
-  customFormatDateTime,
-  getEpochMillisForFutureDays,
-} from '../../src/utils/date-time/DateTimeUtils';
 import { GlobalSettingOptions } from '../constant/settings';
 import {
   descriptionBox,
@@ -22,6 +18,7 @@ import {
   toastNotification,
   uuid,
 } from './common';
+import { customFormatDateTime, getEpochMillisForFutureDays } from './dateTime';
 import { settingClick } from './sidebar';
 import { revokeToken } from './user';
 

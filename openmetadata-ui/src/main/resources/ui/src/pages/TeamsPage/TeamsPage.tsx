@@ -65,8 +65,6 @@ const TeamsPage = () => {
 
   const [showDeletedTeam, setShowDeletedTeam] = useState<boolean>(false);
   const [isPageLoading, setIsPageLoading] = useState<boolean>(true);
-  const [isDescriptionEditable, setIsDescriptionEditable] =
-    useState<boolean>(false);
 
   const [isAddingTeam, setIsAddingTeam] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -85,10 +83,6 @@ const TeamsPage = () => {
     () => entityPermissions.ViewAll || entityPermissions.ViewBasic,
     [entityPermissions]
   );
-
-  const descriptionHandler = (value: boolean) => {
-    setIsDescriptionEditable(value);
-  };
 
   const handleAddTeam = (value: boolean) => {
     setIsAddingTeam(value);
@@ -432,11 +426,7 @@ const TeamsPage = () => {
         }
       } catch (error) {
         showErrorToast(error as AxiosError);
-      } finally {
-        descriptionHandler(false);
       }
-    } else {
-      descriptionHandler(false);
     }
   };
 
@@ -517,13 +507,11 @@ const TeamsPage = () => {
         assetsCount={assets}
         childTeams={childTeams}
         currentTeam={selectedTeam}
-        descriptionHandler={descriptionHandler}
         entityPermissions={entityPermissions}
         handleAddTeam={handleAddTeam}
         handleAddUser={addUsersToTeam}
         handleJoinTeamClick={handleJoinTeamClick}
         handleLeaveTeamClick={handleLeaveTeamClick}
-        isDescriptionEditable={isDescriptionEditable}
         isFetchingAdvancedDetails={isFetchingAdvancedDetails}
         isFetchingAllTeamAdvancedDetails={isFetchAllTeamAdvancedDetails}
         isTeamMemberLoading={isDataLoading}
