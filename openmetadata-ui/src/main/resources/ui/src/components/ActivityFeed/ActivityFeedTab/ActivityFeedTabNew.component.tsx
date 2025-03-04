@@ -324,7 +324,10 @@ export const ActivityFeedTabNew = ({
     }
   }, [entityPaging, loading, isInView, fqn]);
 
-  const loader = useMemo(() => (loading ? <Loader /> : null), [loading]);
+  const loader = useMemo(
+    () => (loading ? <Loader className="aspect-square" /> : null),
+    [loading]
+  );
 
   const handleUpdateTaskFilter = (filter: ThreadTaskStatus) => {
     setTaskFilter(filter);
