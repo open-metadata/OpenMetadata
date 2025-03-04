@@ -17,9 +17,13 @@ import { MOCK_SEARCH_INDEX_FIELDS } from '../../../mocks/SearchIndex.mock';
 import SearchIndexFieldsTable from './SearchIndexFieldsTable';
 
 const mockOnUpdate = jest.fn();
+const toggleExpandAll = jest.fn();
 const mockOnThreadLinkSelect = jest.fn();
 
 const mockProps = {
+  fieldAllRowKeys: [],
+  expandedRowKeys: [],
+  toggleExpandAll: toggleExpandAll,
   searchIndexFields: MOCK_SEARCH_INDEX_FIELDS,
   searchedFields: MOCK_SEARCH_INDEX_FIELDS,
   onUpdate: mockOnUpdate,

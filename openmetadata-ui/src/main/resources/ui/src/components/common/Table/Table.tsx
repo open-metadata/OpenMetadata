@@ -200,9 +200,13 @@ const Table = <T extends object = any>(
   return (
     <div className="table-container">
       <div
-        className={classNames('d-flex justify-end items-center gap-5', {
-          'mb-4': rest.extraTableFilters || !isFullViewTable,
-        })}>
+        className={classNames(
+          'd-flex justify-end items-center gap-5',
+          rest.extraTableFiltersClassName,
+          {
+            'mb-4': rest.extraTableFilters || !isFullViewTable,
+          }
+        )}>
         {rest.extraTableFilters}
         {!isFullViewTable && (
           <DndProvider backend={HTML5Backend}>
