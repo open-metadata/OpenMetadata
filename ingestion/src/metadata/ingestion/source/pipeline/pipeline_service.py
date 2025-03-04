@@ -294,8 +294,8 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
         except Exception as exc:
             yield Either(
                 left=StackTraceError(
-                    name=f"{pipeline.fullyQualifiedName.root} Usage",
-                    error=f"Exception computing pipeline usage for {pipeline.fullyQualifiedName.root}: {exc}",
+                    name="Pipeline Usage",
+                    error=f"Exception computing pipeline usage for {pipeline_details}: {exc}",
                     stackTrace=traceback.format_exc(),
                 )
             )
