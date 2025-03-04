@@ -23,6 +23,7 @@ import { Operation } from '../../generated/entity/policies/policy';
 import AddCustomMetricPage from '../../pages/AddCustomMetricPage/AddCustomMetricPage';
 import { CustomizablePage } from '../../pages/CustomizablePage/CustomizablePage';
 import DataQualityPage from '../../pages/DataQuality/DataQualityPage';
+import BulkEntityImportPage from '../../pages/EntityImport/BulkEntityImportPage/BulkEntityImportPage';
 import ForbiddenPage from '../../pages/ForbiddenPage/ForbiddenPage';
 import TagPage from '../../pages/TagPage/TagPage';
 import { checkPermission, userPermissions } from '../../utils/PermissionsUtils';
@@ -280,6 +281,13 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
   return (
     <Switch>
       <Route exact component={ForbiddenPage} path={ROUTES.FORBIDDEN} />
+
+      {/* Handle Entity Import pages */}
+      <Route
+        exact
+        component={BulkEntityImportPage}
+        path={ROUTES.ENTITY_IMPORT}
+      />
 
       <Route exact component={MyDataPage} path={ROUTES.MY_DATA} />
       <Route exact component={TourPageComponent} path={ROUTES.TOUR} />
