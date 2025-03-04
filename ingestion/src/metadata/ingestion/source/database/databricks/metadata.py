@@ -765,6 +765,8 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
                 table_name=table_name,
                 schema=schema_name,
             )
+            found_location = False
+            log_location = None
             for result in list(cursor):
                 data = result.values()
                 if data[0] and data[0].strip() == "Comment":
@@ -777,6 +779,12 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
                         if data and data[1] and not data[1].startswith("dbfs")
                         else None
                     )
+                    found_location = True
+                    log_location = data[1]
+            if found_location and log_location:
+                logger.debug(f"Table {schema_name}.{table_name} has location {log_location}")
+            else:
+                logger.debug(f"Table {schema_name}.{table_name} does not have location")
 
         # Catch any exception without breaking the ingestion
         except Exception as exc:  # pylint: disable=broad-except
