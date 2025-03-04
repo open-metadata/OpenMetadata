@@ -18,6 +18,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
+import javax.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.Pair;
 import org.openmetadata.common.utils.CommonUtil;
@@ -35,6 +36,7 @@ import org.openmetadata.service.apps.AbstractNativeApplication;
 import org.openmetadata.service.apps.bundles.insights.utils.TimestampUtils;
 import org.openmetadata.service.events.scheduled.template.DataInsightDescriptionAndOwnerTemplate;
 import org.openmetadata.service.events.scheduled.template.DataInsightTotalAssetTemplate;
+import org.openmetadata.service.exception.AppException;
 import org.openmetadata.service.exception.EventSubscriptionJobException;
 import org.openmetadata.service.exception.SearchIndexException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
@@ -102,6 +104,17 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
     } catch (Exception e) {
       LOG.error("[DIReport] Failed in sending report due to", e);
       throw new EventSubscriptionJobException(e);
+    }
+  }
+
+  @Override
+  protected void validateConfig(Map<String, Object> config) {
+    try {
+      JsonUtils.convertValue(config, DataInsightsReportAppConfig.class);
+    } catch (IllegalArgumentException e) {
+      throw AppException.byMessage(
+          Response.Status.BAD_REQUEST,
+          "Invalid DataInsightsReportAppConfig configuration: " + e.getMessage());
     }
   }
 

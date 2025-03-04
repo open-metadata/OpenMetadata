@@ -105,10 +105,24 @@ public class AbstractNativeApplication implements NativeApplication {
       AppRuntime runtime = getAppRuntime(app);
       validateServerExecutableApp(runtime);
       // Trigger the application with the provided configuration payload
+      Map<String, Object> appConfig = JsonUtils.getMap(app.getAppConfiguration());
+      if (config != null) {
+        appConfig.putAll(config);
+      }
+      validateConfig(appConfig);
       AppScheduler.getInstance().triggerOnDemandApplication(app, config);
     } else {
       throw new IllegalArgumentException(NO_MANUAL_TRIGGER_ERR);
     }
+  }
+
+  /**
+   * Validate the configuration of the application. This method is called before the application is
+   * triggered.
+   * @param config
+   */
+  protected void validateConfig(Map<String, Object> config) {
+    LOG.warn("validateConfig is not implemented for this application. Skipping validation.");
   }
 
   public void scheduleInternal() {

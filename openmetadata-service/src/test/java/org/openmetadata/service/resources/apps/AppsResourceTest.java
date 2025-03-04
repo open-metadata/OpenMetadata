@@ -365,6 +365,15 @@ public class AppsResourceTest extends EntityResourceTest<App, CreateApp> {
                 1234, getLatestAppRun(appName, ADMIN_AUTH_HEADERS).getConfig().get("batchSize")));
   }
 
+  @Test
+  void post_trigger_app_400() throws HttpResponseException {
+    String appName = "SearchIndexingApplication";
+    assertResponseContains(
+        () -> postTriggerApp(appName, ADMIN_AUTH_HEADERS, Map.of("thisShouldFail", "but will it?")),
+        BAD_REQUEST,
+        "Unrecognized field \"thisShouldFail\"");
+  }
+
   private void assertAppStatusAvailableAfterTrigger(String appName) {
     assertEventually(
         "appIsRunning",
