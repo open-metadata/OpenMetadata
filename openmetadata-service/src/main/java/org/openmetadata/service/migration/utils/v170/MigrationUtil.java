@@ -219,9 +219,6 @@ public class MigrationUtil {
         "assets_with_tier",
         new LineChart()
             .withMetrics(
-                List.of(
-                    new LineChartMetric()
-                        .withFormula(
-                            "count(q='tags.tagFQN: tier.*')"))));
+                List.of(new LineChartMetric().withFormula("count(q='tags.tagFQN: tier.*')"))));
   }
 }
