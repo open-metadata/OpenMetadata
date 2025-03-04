@@ -76,6 +76,10 @@ public interface EntityInterface {
     return null;
   }
 
+  default EntityReference getService() {
+    return null;
+  }
+
   String getFullyQualifiedName();
 
   default Object getExtension() {

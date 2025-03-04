@@ -50,6 +50,7 @@ import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.csv.CsvUtil;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.lineage.AddLineage;
 import org.openmetadata.schema.api.lineage.EsLineageData;
 import org.openmetadata.schema.api.lineage.LineageDirection;
@@ -154,6 +155,40 @@ public class LineageRepository {
             Relationship.UPSTREAM.ordinal(),
             detailsJson);
     addLineageToSearch(from, to, addLineage.getEdge().getLineageDetails());
+
+    // build Extended Lineage
+    buildExtendedLineage(from, to, lineageDetails);
+  }
+
+  private void buildExtendedLineage(
+      EntityReference from, EntityReference to, LineageDetails lineageDetails) {
+    EntityInterface fromEntity =
+        Entity.getEntity(from.getType(), from.getId(), "service,domain,dataProducts", Include.ALL);
+    EntityInterface toEntity =
+        Entity.getEntity(to.getType(), to.getId(), "service,domain,dataProducts", Include.ALL);
+    LineageDetails updatedLineageTimestamps =
+        new LineageDetails()
+            .withCreatedAt(lineageDetails.getCreatedAt())
+            .withCreatedBy(lineageDetails.getCreatedBy())
+            .withUpdatedAt(lineageDetails.getUpdatedAt())
+            .withUpdatedBy(lineageDetails.getUpdatedBy());
+
+    // Add Service Level Lineage
+    if (fromEntity.getService() != null && toEntity.getService() != null) {
+      EntityReference fromService = fromEntity.getService();
+      EntityReference toService = toEntity.getService();
+      if (Boolean.FALSE.equals(fromService.getId().equals(toService.getId()))) {
+        dao.relationshipDAO()
+            .insert(
+                fromService.getId(),
+                toService.getId(),
+                fromService.getType(),
+                toService.getType(),
+                Relationship.UPSTREAM.ordinal(),
+                JsonUtils.pojoToJson(updatedLineageTimestamps));
+        addLineageToSearch(from, to, updatedLineageTimestamps);
+      }
+    }
   }
 
   private void addLineageToSearch(
