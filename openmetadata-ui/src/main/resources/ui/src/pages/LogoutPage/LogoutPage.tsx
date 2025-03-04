@@ -10,4 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-type Basic = any;
+import React, { useEffect } from 'react';
+import Loader from '../../components/common/Loader/Loader';
+import { useApplicationStore } from '../../hooks/useApplicationStore';
+
+export const LogoutPage = () => {
+  const { onLogoutHandler } = useApplicationStore();
+
+  useEffect(() => {
+    onLogoutHandler();
+  }, []);
+
+  return <Loader fullScreen />;
+};
