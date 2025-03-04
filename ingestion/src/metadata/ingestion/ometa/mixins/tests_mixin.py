@@ -215,7 +215,7 @@ class OMetaTestsMixin:
             TestSuite:
         """
         table_entity = self.get_by_name(
-            entity=Table, fqn=entity_fqn, fields=["testSuite"]
+            entity=Table, fqn=entity_fqn
         )
         if not table_entity:
             raise RuntimeError(
