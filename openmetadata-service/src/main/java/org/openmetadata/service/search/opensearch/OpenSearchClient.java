@@ -6,8 +6,6 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.AGGREGATED_COST_ANALYSIS_REPORT_DATA;
 import static org.openmetadata.service.Entity.DATA_PRODUCT;
 import static org.openmetadata.service.Entity.DOMAIN;
-import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
-import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
 import static org.openmetadata.service.Entity.GLOSSARY_TERM;
 import static org.openmetadata.service.Entity.QUERY;
 import static org.openmetadata.service.Entity.RAW_COST_ANALYSIS_REPORT_DATA;
@@ -15,23 +13,13 @@ import static org.openmetadata.service.Entity.TABLE;
 import static org.openmetadata.service.events.scheduled.ServicesStatusJobHandler.HEALTHY_STATUS;
 import static org.openmetadata.service.events.scheduled.ServicesStatusJobHandler.UNHEALTHY_STATUS;
 import static org.openmetadata.service.exception.CatalogGenericExceptionMapper.getResponse;
-import static org.openmetadata.service.search.EntityBuilderConstant.API_RESPONSE_SCHEMA_FIELD;
-import static org.openmetadata.service.search.EntityBuilderConstant.API_RESPONSE_SCHEMA_FIELD_KEYWORD;
-import static org.openmetadata.service.search.EntityBuilderConstant.COLUMNS_NAME_KEYWORD;
-import static org.openmetadata.service.search.EntityBuilderConstant.DATA_MODEL_COLUMNS_NAME_KEYWORD;
 import static org.openmetadata.service.search.EntityBuilderConstant.DOMAIN_DISPLAY_NAME_KEYWORD;
-import static org.openmetadata.service.search.EntityBuilderConstant.ES_MESSAGE_SCHEMA_FIELD_KEYWORD;
 import static org.openmetadata.service.search.EntityBuilderConstant.ES_TAG_FQN_FIELD;
-import static org.openmetadata.service.search.EntityBuilderConstant.FIELD_COLUMN_NAMES;
-import static org.openmetadata.service.search.EntityBuilderConstant.FIELD_DISPLAY_NAME_NGRAM;
 import static org.openmetadata.service.search.EntityBuilderConstant.MAX_AGGREGATE_SIZE;
-import static org.openmetadata.service.search.EntityBuilderConstant.MAX_ANALYZED_OFFSET;
 import static org.openmetadata.service.search.EntityBuilderConstant.MAX_RESULT_HITS;
 import static org.openmetadata.service.search.EntityBuilderConstant.OWNER_DISPLAY_NAME_KEYWORD;
 import static org.openmetadata.service.search.EntityBuilderConstant.POST_TAG;
 import static org.openmetadata.service.search.EntityBuilderConstant.PRE_TAG;
-import static org.openmetadata.service.search.EntityBuilderConstant.SCHEMA_FIELD_NAMES;
-import static org.openmetadata.service.search.EntityBuilderConstant.UNIFIED;
 import static org.openmetadata.service.search.UpdateSearchEventsConstant.SENDING_REQUEST_TO_ELASTIC_SEARCH;
 import static org.openmetadata.service.search.opensearch.OpenSearchEntitiesProcessor.getUpdateRequest;
 import static org.openmetadata.service.util.FullyQualifiedName.getParentFQN;
@@ -95,26 +83,6 @@ import org.openmetadata.service.search.SearchHealthStatus;
 import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.SearchRequest;
 import org.openmetadata.service.search.SearchSortFilter;
-import org.openmetadata.service.search.indexes.APIEndpointIndex;
-import org.openmetadata.service.search.indexes.ContainerIndex;
-import org.openmetadata.service.search.indexes.DashboardDataModelIndex;
-import org.openmetadata.service.search.indexes.DashboardIndex;
-import org.openmetadata.service.search.indexes.DataProductIndex;
-import org.openmetadata.service.search.indexes.DomainIndex;
-import org.openmetadata.service.search.indexes.GlossaryTermIndex;
-import org.openmetadata.service.search.indexes.MlModelIndex;
-import org.openmetadata.service.search.indexes.PipelineIndex;
-import org.openmetadata.service.search.indexes.QueryIndex;
-import org.openmetadata.service.search.indexes.SearchEntityIndex;
-import org.openmetadata.service.search.indexes.SearchIndex;
-import org.openmetadata.service.search.indexes.StoredProcedureIndex;
-import org.openmetadata.service.search.indexes.TableIndex;
-import org.openmetadata.service.search.indexes.TagIndex;
-import org.openmetadata.service.search.indexes.TestCaseIndex;
-import org.openmetadata.service.search.indexes.TestCaseResolutionStatusIndex;
-import org.openmetadata.service.search.indexes.TestCaseResultIndex;
-import org.openmetadata.service.search.indexes.TopicIndex;
-import org.openmetadata.service.search.indexes.UserIndex;
 import org.openmetadata.service.search.models.IndexMapping;
 import org.openmetadata.service.search.opensearch.aggregations.OpenAggregations;
 import org.openmetadata.service.search.opensearch.aggregations.OpenAggregationsBuilder;
@@ -167,9 +135,6 @@ import os.org.opensearch.client.indices.GetMappingsResponse;
 import os.org.opensearch.client.indices.PutMappingRequest;
 import os.org.opensearch.cluster.health.ClusterHealthStatus;
 import os.org.opensearch.cluster.metadata.MappingMetadata;
-import os.org.opensearch.common.lucene.search.function.CombineFunction;
-import os.org.opensearch.common.lucene.search.function.FieldValueFactorFunction;
-import os.org.opensearch.common.lucene.search.function.FunctionScoreQuery;
 import os.org.opensearch.common.settings.Settings;
 import os.org.opensearch.common.unit.Fuzziness;
 import os.org.opensearch.common.unit.TimeValue;
@@ -189,8 +154,6 @@ import os.org.opensearch.index.query.QueryStringQueryBuilder;
 import os.org.opensearch.index.query.RangeQueryBuilder;
 import os.org.opensearch.index.query.ScriptQueryBuilder;
 import os.org.opensearch.index.query.TermQueryBuilder;
-import os.org.opensearch.index.query.functionscore.FunctionScoreQueryBuilder;
-import os.org.opensearch.index.query.functionscore.ScoreFunctionBuilders;
 import os.org.opensearch.index.reindex.DeleteByQueryRequest;
 import os.org.opensearch.index.reindex.UpdateByQueryRequest;
 import os.org.opensearch.rest.RestStatus;
@@ -511,7 +474,6 @@ public class OpenSearchClient implements SearchClient {
       if (!request.isGetHierarchy()) {
         return Response.status(OK).entity(searchResponse.toString()).build();
       } else {
-        // Build the nested hierarchy from elastic search response
         List<?> response = buildSearchHierarchy(request, searchResponse);
         return Response.status(OK).entity(response).build();
       }
@@ -1395,65 +1357,6 @@ public class OpenSearchClient implements SearchClient {
     return responseMap;
   }
 
-  private static FunctionScoreQueryBuilder boostScore(QueryStringQueryBuilder queryBuilder) {
-    FunctionScoreQueryBuilder.FilterFunctionBuilder tier1Boost =
-        new FunctionScoreQueryBuilder.FilterFunctionBuilder(
-            QueryBuilders.termQuery("tier.tagFQN", "Tier1"),
-            ScoreFunctionBuilders.weightFactorFunction(50.0f));
-
-    FunctionScoreQueryBuilder.FilterFunctionBuilder tier2Boost =
-        new FunctionScoreQueryBuilder.FilterFunctionBuilder(
-            QueryBuilders.termQuery("tier.tagFQN", "Tier2"),
-            ScoreFunctionBuilders.weightFactorFunction(30.0f));
-
-    FunctionScoreQueryBuilder.FilterFunctionBuilder tier3Boost =
-        new FunctionScoreQueryBuilder.FilterFunctionBuilder(
-            QueryBuilders.termQuery("tier.tagFQN", "Tier3"),
-            ScoreFunctionBuilders.weightFactorFunction(15.0f));
-
-    FunctionScoreQueryBuilder.FilterFunctionBuilder weeklyStatsBoost =
-        new FunctionScoreQueryBuilder.FilterFunctionBuilder(
-            QueryBuilders.rangeQuery("usageSummary.weeklyStats.count").gt(0),
-            ScoreFunctionBuilders.fieldValueFactorFunction("usageSummary.weeklyStats.count")
-                .factor(4.0f)
-                .modifier(FieldValueFactorFunction.Modifier.SQRT)
-                .missing(1));
-
-    FunctionScoreQueryBuilder.FilterFunctionBuilder totalVotesBoost =
-        new FunctionScoreQueryBuilder.FilterFunctionBuilder(
-            QueryBuilders.rangeQuery("totalVotes").gt(0),
-            ScoreFunctionBuilders.fieldValueFactorFunction("totalVotes")
-                .factor(3.0f)
-                .modifier(FieldValueFactorFunction.Modifier.LN1P)
-                .missing(0));
-
-    // FunctionScoreQueryBuilder with an array of score functions
-    return QueryBuilders.functionScoreQuery(
-            queryBuilder,
-            new FunctionScoreQueryBuilder.FilterFunctionBuilder[] {
-              tier1Boost, tier2Boost, tier3Boost, weeklyStatsBoost, totalVotesBoost
-            })
-        .scoreMode(FunctionScoreQuery.ScoreMode.SUM)
-        .boostMode(CombineFunction.MULTIPLY);
-  }
-
-  private static HighlightBuilder buildHighlights(List<String> fields) {
-    List<String> defaultFields =
-        List.of(FIELD_DISPLAY_NAME, FIELD_DESCRIPTION, FIELD_DISPLAY_NAME_NGRAM);
-    defaultFields = Stream.concat(defaultFields.stream(), fields.stream()).toList();
-    HighlightBuilder hb = new HighlightBuilder();
-    for (String field : defaultFields) {
-      HighlightBuilder.Field highlightField = new HighlightBuilder.Field(field);
-      highlightField.highlighterType(UNIFIED);
-      hb.field(highlightField);
-    }
-    hb.preTags(PRE_TAG);
-    hb.postTags(POST_TAG);
-    hb.maxAnalyzerOffset(MAX_ANALYZED_OFFSET);
-    hb.requireFieldMatch(false);
-    return hb;
-  }
-
   @Override
   public Response searchByField(String fieldName, String fieldValue, String index)
       throws IOException {
@@ -1628,284 +1531,6 @@ public class OpenSearchClient implements SearchClient {
     return Response.status(OK).entity(suggest.toString()).build();
   }
 
-  private static SearchSourceBuilder buildPipelineSearchBuilder(String query, int from, int size) {
-    QueryStringQueryBuilder queryStringBuilder =
-        buildSearchQueryBuilder(query, PipelineIndex.getFields());
-    FunctionScoreQueryBuilder queryBuilder = boostScore(queryStringBuilder);
-    HighlightBuilder hb = buildHighlights(List.of("tasks.name", "tasks.description"));
-    SearchSourceBuilder searchSourceBuilder = searchBuilder(queryBuilder, hb, from, size);
-    searchSourceBuilder.aggregation(
-        AggregationBuilders.terms("tasks.displayName.keyword").field("tasks.displayName.keyword"));
-    return addAggregation(searchSourceBuilder);
-  }
-
-  private static SearchSourceBuilder buildMlModelSearchBuilder(String query, int from, int size) {
-    QueryStringQueryBuilder queryStringBuilder =
-        buildSearchQueryBuilder(query, MlModelIndex.getFields());
-    FunctionScoreQueryBuilder queryBuilder = boostScore(queryStringBuilder);
-    HighlightBuilder hb = buildHighlights(List.of("mlFeatures.name", "mlFeatures.description"));
-    SearchSourceBuilder searchSourceBuilder = searchBuilder(queryBuilder, hb, from, size);
-    return addAggregation(searchSourceBuilder);
-  }
-
-  private static SearchSourceBuilder buildTopicSearchBuilder(String query, int from, int size) {
-    QueryStringQueryBuilder queryStringBuilder =
-        buildSearchQueryBuilder(query, TopicIndex.getFields());
-    FunctionScoreQueryBuilder queryBuilder = boostScore(queryStringBuilder);
-    HighlightBuilder hb =
-        buildHighlights(
-            List.of(
-                "messageSchema.schemaFields.description",
-                "messageSchema.schemaFields.children.name"));
-    SearchSourceBuilder searchSourceBuilder = searchBuilder(queryBuilder, hb, from, size);
-    searchSourceBuilder
-        .aggregation(
-            AggregationBuilders.terms(ES_MESSAGE_SCHEMA_FIELD_KEYWORD)
-                .field(ES_MESSAGE_SCHEMA_FIELD_KEYWORD))
-        .aggregation(AggregationBuilders.terms(SCHEMA_FIELD_NAMES).field(SCHEMA_FIELD_NAMES));
-    return addAggregation(searchSourceBuilder);
-  }
-
-  private static SearchSourceBuilder buildDashboardSearchBuilder(String query, int from, int size) {
-    QueryStringQueryBuilder queryStringBuilder =
-        buildSearchQueryBuilder(query, DashboardIndex.getFields());
-    FunctionScoreQueryBuilder queryBuilder = boostScore(queryStringBuilder);
-    HighlightBuilder hb = buildHighlights(List.of("charts.name", "charts.description"));
-    SearchSourceBuilder searchSourceBuilder = searchBuilder(queryBuilder, hb, from, size);
-    searchSourceBuilder
-        .aggregation(
-            AggregationBuilders.terms("dataModels.displayName.keyword")
-                .field("dataModels.displayName.keyword"))
-        .aggregation(AggregationBuilders.terms("project.keyword").field("project.keyword"))
-        .aggregation(
-            AggregationBuilders.terms("charts.displayName.keyword")
-                .field("charts.displayName.keyword"));
-    return addAggregation(searchSourceBuilder);
-  }
-
-  private static SearchSourceBuilder buildSearchAcrossIndexesBuilder(
-      String query, int from, int size) {
-    QueryStringQueryBuilder queryStringBuilder =
-        buildSearchQueryBuilder(query, SearchIndex.getAllFields());
-    FunctionScoreQueryBuilder queryBuilder = boostScore(queryStringBuilder);
-    queryBuilder.boostMode(CombineFunction.SUM);
-    SearchSourceBuilder searchSourceBuilder = searchBuilder(queryBuilder, null, from, size);
-    searchSourceBuilder.aggregation(
-        AggregationBuilders.terms("database.name.keyword")
-            .field("database.name.keyword")
-            .size(MAX_AGGREGATE_SIZE));
-    searchSourceBuilder.aggregation(
-        AggregationBuilders.terms("databaseSchema.name.keyword")
-            .field("databaseSchema.name.keyword")
-            .size(MAX_AGGREGATE_SIZE));
-    return addAggregation(searchSourceBuilder);
-  }
-
-  private static SearchSourceBuilder buildDataAssetsSearchBuilder(
-      String query, int from, int size) {
-    QueryStringQueryBuilder queryStringBuilder =
-        buildSearchQueryBuilder(query, SearchIndex.getAllFields());
-    FunctionScoreQueryBuilder queryBuilder = boostScore(queryStringBuilder);
-    queryBuilder.boostMode(CombineFunction.SUM);
-    SearchSourceBuilder searchSourceBuilder = searchBuilder(queryBuilder, null, from, size);
-    searchSourceBuilder.aggregation(
-        AggregationBuilders.terms("database.name.keyword")
-            .field("database.name.keyword")
-            .size(MAX_AGGREGATE_SIZE));
-    searchSourceBuilder.aggregation(
-        AggregationBuilders.terms("databaseSchema.name.keyword")
-            .field("databaseSchema.name.keyword")
-            .size(MAX_AGGREGATE_SIZE));
-    // used for explore tree results
-    searchSourceBuilder.aggregation(
-        AggregationBuilders.terms("database.displayName")
-            .field("database.displayName")
-            .size(MAX_AGGREGATE_SIZE));
-    searchSourceBuilder.aggregation(
-        AggregationBuilders.terms("databaseSchema.displayName")
-            .field("databaseSchema.displayName")
-            .size(MAX_AGGREGATE_SIZE));
-    return addAggregation(searchSourceBuilder);
-  }
-
-  private static SearchSourceBuilder buildGenericDataAssetSearchBuilder(
-      String query, int from, int size) {
-    QueryStringQueryBuilder queryStringBuilder =
-        buildSearchQueryBuilder(query, SearchIndex.getDefaultFields());
-    FunctionScoreQueryBuilder queryBuilder = boostScore(queryStringBuilder);
-    HighlightBuilder hb = buildHighlights(new ArrayList<>());
-    SearchSourceBuilder searchSourceBuilder = searchBuilder(queryBuilder, hb, from, size);
-    return addAggregation(searchSourceBuilder);
-  }
-
-  private static SearchSourceBuilder buildTableSearchBuilder(String query, int from, int size) {
-    QueryStringQueryBuilder queryStringBuilder =
-        buildSearchQueryBuilder(query, TableIndex.getFields());
-
-    FunctionScoreQueryBuilder queryBuilder = boostScore(queryStringBuilder);
-    HighlightBuilder hb =
-        buildHighlights(List.of("columns.name", "columns.description", "columns.children.name"));
-    SearchSourceBuilder searchSourceBuilder =
-        new SearchSourceBuilder().query(queryBuilder).highlighter(hb).from(from).size(size);
-    searchSourceBuilder.aggregation(
-        AggregationBuilders.terms("database.displayName.keyword")
-            .field("database.displayName.keyword"));
-    searchSourceBuilder
-        .aggregation(
-            AggregationBuilders.terms("databaseSchema.displayName.keyword")
-                .field("databaseSchema.displayName.keyword"))
-        .aggregation(AggregationBuilders.terms(COLUMNS_NAME_KEYWORD).field(COLUMNS_NAME_KEYWORD))
-        .aggregation(AggregationBuilders.terms(FIELD_COLUMN_NAMES).field(FIELD_COLUMN_NAMES))
-        .aggregation(AggregationBuilders.terms("tableType").field("tableType"));
-    return addAggregation(searchSourceBuilder);
-  }
-
-  private static SearchSourceBuilder buildUserOrTeamSearchBuilder(
-      String query, int from, int size) {
-    QueryStringQueryBuilder queryBuilder =
-        QueryBuilders.queryStringQuery(query)
-            .fields(UserIndex.getFields())
-            .fuzziness(Fuzziness.AUTO);
-    return searchBuilder(queryBuilder, null, from, size);
-  }
-
-  private static SearchSourceBuilder buildGlossaryTermSearchBuilder(
-      String query, int from, int size) {
-    QueryStringQueryBuilder queryStringBuilder =
-        buildSearchQueryBuilder(query, GlossaryTermIndex.getFields());
-    FunctionScoreQueryBuilder queryBuilder = boostScore(queryStringBuilder);
-    HighlightBuilder hb = buildHighlights(List.of("synonyms"));
-    SearchSourceBuilder searchSourceBuilder =
-        new SearchSourceBuilder().query(queryBuilder).highlighter(hb).from(from).size(size);
-    searchSourceBuilder.aggregation(
-        AggregationBuilders.terms("glossary.name.keyword").field("glossary.name.keyword"));
-    searchSourceBuilder.aggregation(
-        AggregationBuilders.terms("fqnParts_agg").field("fqnParts").size(1000));
-    searchSourceBuilder.aggregation(AggregationBuilders.terms("status").field("status"));
-    return addAggregation(searchSourceBuilder);
-  }
-
-  private static SearchSourceBuilder buildTagSearchBuilder(String query, int from, int size) {
-    QueryStringQueryBuilder queryStringBuilder =
-        buildSearchQueryBuilder(query, TagIndex.getFields());
-    FunctionScoreQueryBuilder queryBuilder = boostScore(queryStringBuilder);
-    HighlightBuilder hb = buildHighlights(new ArrayList<>());
-    SearchSourceBuilder searchSourceBuilder =
-        new SearchSourceBuilder().query(queryBuilder).highlighter(hb).from(from).size(size);
-    searchSourceBuilder.aggregation(
-        AggregationBuilders.terms("classification.name.keyword")
-            .field("classification.name.keyword"));
-    return addAggregation(searchSourceBuilder);
-  }
-
-  private static SearchSourceBuilder buildContainerSearchBuilder(String query, int from, int size) {
-    QueryStringQueryBuilder queryStringBuilder =
-        buildSearchQueryBuilder(query, ContainerIndex.getFields());
-    FunctionScoreQueryBuilder queryBuilder = boostScore(queryStringBuilder);
-    HighlightBuilder hb =
-        buildHighlights(
-            List.of(
-                "dataModel.columns.name",
-                "dataModel.columns.description",
-                "dataModel.columns.name.description"));
-    SearchSourceBuilder searchSourceBuilder =
-        new SearchSourceBuilder().query(queryBuilder).highlighter(hb).from(from).size(size);
-    searchSourceBuilder
-        .aggregation(
-            AggregationBuilders.terms(DATA_MODEL_COLUMNS_NAME_KEYWORD)
-                .field(DATA_MODEL_COLUMNS_NAME_KEYWORD))
-        .aggregation(AggregationBuilders.terms(FIELD_COLUMN_NAMES).field(FIELD_COLUMN_NAMES));
-    return addAggregation(searchSourceBuilder);
-  }
-
-  private static SearchSourceBuilder buildQuerySearchBuilder(String query, int from, int size) {
-    QueryStringQueryBuilder queryStringBuilder =
-        buildSearchQueryBuilder(query, QueryIndex.getFields());
-    FunctionScoreQueryBuilder queryBuilder = boostScore(queryStringBuilder);
-    HighlightBuilder hb = buildHighlights(new ArrayList<>());
-    return searchBuilder(queryBuilder, hb, from, size);
-  }
-
-  private static SearchSourceBuilder buildTestCaseSearch(String query, int from, int size) {
-    QueryStringQueryBuilder queryStringBuilder =
-        buildSearchQueryBuilder(query, TestCaseIndex.getFields());
-    FunctionScoreQueryBuilder queryBuilder = boostScore(queryStringBuilder);
-    HighlightBuilder hb = buildHighlights(List.of("testSuite.name", "testSuite.description"));
-    return searchBuilder(queryBuilder, hb, from, size);
-  }
-
-  private static SearchSourceBuilder buildStoredProcedureSearch(String query, int from, int size) {
-    QueryStringQueryBuilder queryStringBuilder =
-        buildSearchQueryBuilder(query, StoredProcedureIndex.getFields());
-    FunctionScoreQueryBuilder queryBuilder = boostScore(queryStringBuilder);
-    HighlightBuilder hb = buildHighlights(new ArrayList<>());
-    SearchSourceBuilder searchSourceBuilder =
-        new SearchSourceBuilder().query(queryBuilder).highlighter(hb).from(from).size(size);
-    return addAggregation(searchSourceBuilder);
-  }
-
-  private static SearchSourceBuilder buildDashboardDataModelsSearch(
-      String query, int from, int size) {
-    QueryStringQueryBuilder queryStringBuilder =
-        buildSearchQueryBuilder(query, DashboardDataModelIndex.getFields());
-    FunctionScoreQueryBuilder queryBuilder = boostScore(queryStringBuilder);
-    HighlightBuilder hb = buildHighlights(new ArrayList<>());
-    SearchSourceBuilder searchSourceBuilder =
-        new SearchSourceBuilder().query(queryBuilder).highlighter(hb).from(from).size(size);
-    searchSourceBuilder
-        .aggregation(AggregationBuilders.terms("dataModelType").field("dataModelType"))
-        .aggregation(AggregationBuilders.terms(COLUMNS_NAME_KEYWORD).field(COLUMNS_NAME_KEYWORD))
-        .aggregation(AggregationBuilders.terms("project.keyword").field("project.keyword"))
-        .aggregation(AggregationBuilders.terms(FIELD_COLUMN_NAMES).field(FIELD_COLUMN_NAMES));
-    return addAggregation(searchSourceBuilder);
-  }
-
-  private static SearchSourceBuilder buildCostAnalysisReportDataSearch(
-      String query, int from, int size) {
-    QueryStringQueryBuilder queryBuilder = QueryBuilders.queryStringQuery(query);
-    return searchBuilder(queryBuilder, null, from, size);
-  }
-
-  private static SearchSourceBuilder buildDomainsSearch(String query, int from, int size) {
-    QueryStringQueryBuilder queryStringBuilder =
-        buildSearchQueryBuilder(query, DomainIndex.getFields());
-    FunctionScoreQueryBuilder queryBuilder = boostScore(queryStringBuilder);
-    HighlightBuilder hb = buildHighlights(new ArrayList<>());
-    SearchSourceBuilder searchSourceBuilder = searchBuilder(queryBuilder, hb, from, size);
-    searchSourceBuilder.aggregation(
-        AggregationBuilders.terms("fqnParts_agg").field("fqnParts").size(1000));
-    return addAggregation(searchSourceBuilder);
-  }
-
-  private static SearchSourceBuilder buildSearchEntitySearch(String query, int from, int size) {
-    QueryStringQueryBuilder queryStringBuilder =
-        buildSearchQueryBuilder(query, SearchEntityIndex.getFields());
-    FunctionScoreQueryBuilder queryBuilder = boostScore(queryStringBuilder);
-    HighlightBuilder hb = buildHighlights(new ArrayList<>());
-    SearchSourceBuilder searchSourceBuilder =
-        new SearchSourceBuilder().query(queryBuilder).highlighter(hb).from(from).size(size);
-    searchSourceBuilder.aggregation(
-        AggregationBuilders.terms("fields.name.keyword").field("fields.name.keyword"));
-    return addAggregation(searchSourceBuilder);
-  }
-
-  private static SearchSourceBuilder buildTestCaseResolutionStatusSearch(
-      String query, int from, int size) {
-    QueryStringQueryBuilder queryStringBuilder =
-        buildSearchQueryBuilder(query, TestCaseResolutionStatusIndex.getFields());
-    FunctionScoreQueryBuilder queryBuilder = boostScore(queryStringBuilder);
-    HighlightBuilder hb = buildHighlights(new ArrayList<>());
-    return searchBuilder(queryBuilder, hb, from, size);
-  }
-
-  private static SearchSourceBuilder buildTestCaseResultSearch(String query, int from, int size) {
-    QueryStringQueryBuilder queryStringBuilder =
-        buildSearchQueryBuilder(query, TestCaseResultIndex.getFields());
-    FunctionScoreQueryBuilder queryBuilder = boostScore(queryStringBuilder);
-    HighlightBuilder hb = buildHighlights(new ArrayList<>());
-    return searchBuilder(queryBuilder, hb, from, size);
-  }
-
   private static QueryStringQueryBuilder buildSearchQueryBuilder(
       String query, Map<String, Float> fields) {
     return QueryBuilders.queryStringQuery(query)
@@ -1915,29 +1540,6 @@ public class OpenSearchClient implements SearchClient {
         .fuzziness(Fuzziness.AUTO)
         .fuzzyPrefixLength(3)
         .tieBreaker(0.5f);
-  }
-
-  private static SearchSourceBuilder buildApiEndpointSearch(String query, int from, int size) {
-    QueryStringQueryBuilder queryStringBuilder =
-        buildSearchQueryBuilder(query, APIEndpointIndex.getFields());
-    FunctionScoreQueryBuilder queryBuilder = boostScore(queryStringBuilder);
-    HighlightBuilder hb = buildHighlights(new ArrayList<>());
-    SearchSourceBuilder searchSourceBuilder = searchBuilder(queryBuilder, hb, from, size);
-    searchSourceBuilder
-        .aggregation(
-            AggregationBuilders.terms(API_RESPONSE_SCHEMA_FIELD)
-                .field(API_RESPONSE_SCHEMA_FIELD_KEYWORD))
-        .aggregation(AggregationBuilders.terms(SCHEMA_FIELD_NAMES).field(SCHEMA_FIELD_NAMES));
-    return addAggregation(searchSourceBuilder);
-  }
-
-  private static SearchSourceBuilder buildAggregateSearchBuilder(String query, int from, int size) {
-    QueryStringQueryBuilder queryBuilder =
-        QueryBuilders.queryStringQuery(query)
-            .fields(SearchIndex.getAllFields())
-            .fuzziness(Fuzziness.AUTO);
-    SearchSourceBuilder searchSourceBuilder = searchBuilder(queryBuilder, null, from, size);
-    return addAggregation(searchSourceBuilder);
   }
 
   private static SearchSourceBuilder addAggregation(SearchSourceBuilder builder) {
@@ -1968,23 +1570,6 @@ public class OpenSearchClient implements SearchClient {
         .aggregation(
             AggregationBuilders.terms("index_count").field("_index").size(MAX_AGGREGATE_SIZE));
     return builder;
-  }
-
-  private static SearchSourceBuilder buildServiceSearchBuilder(String query, int from, int size) {
-    QueryStringQueryBuilder queryBuilder =
-        buildSearchQueryBuilder(query, SearchIndex.getDefaultFields());
-    HighlightBuilder hb = buildHighlights(new ArrayList<>());
-    return searchBuilder(queryBuilder, hb, from, size);
-  }
-
-  private static SearchSourceBuilder buildDataProductSearch(String query, int from, int size) {
-    QueryStringQueryBuilder queryStringBuilder =
-        buildSearchQueryBuilder(query, DataProductIndex.getFields());
-    FunctionScoreQueryBuilder queryBuilder = boostScore(queryStringBuilder);
-    HighlightBuilder hb = buildHighlights(new ArrayList<>());
-    SearchSourceBuilder searchSourceBuilder =
-        new SearchSourceBuilder().query(queryBuilder).highlighter(hb).from(from).size(size);
-    return addAggregation(searchSourceBuilder);
   }
 
   private static SearchSourceBuilder searchBuilder(

@@ -219,39 +219,41 @@ public class ElasticSearchSourceBuilderFactory
         assetConfig.getUseNaturalLanguageSearch() != null
             ? assetConfig.getUseNaturalLanguageSearch()
             : searchSettings.getGlobalSettings().getUseNaturalLanguageSearch();
+
     QueryBuilder userQuery;
     if (query == null || query.trim().isEmpty()) {
       userQuery = QueryBuilders.matchAllQuery();
     } else {
-
-      MultiMatchQueryBuilder multiMatchQuery = QueryBuilders.multiMatchQuery(query);
-
+      // Build a fields map from asset config if available, else use default fields
+      Map<String, Float> fields;
       if (assetConfig.getSearchFields() != null && !assetConfig.getSearchFields().isEmpty()) {
+        fields = new HashMap<>();
         assetConfig
             .getSearchFields()
             .forEach(
                 fieldBoost ->
-                    multiMatchQuery.field(
-                        fieldBoost.getField(), fieldBoost.getBoost().floatValue()));
+                    fields.put(fieldBoost.getField(), fieldBoost.getBoost().floatValue()));
       } else {
-        multiMatchQuery.fields(SearchIndex.getDefaultFields());
+        fields = SearchIndex.getDefaultFields();
       }
+
+      QueryStringQueryBuilder qsQuery =
+          QueryBuilders.queryStringQuery(query)
+              .fields(fields)
+              .fuzziness(Fuzziness.AUTO)
+              .fuzzyPrefixLength(3)
+              .tieBreaker(0.5f);
 
       if (useNatLang) {
-        multiMatchQuery
-            .type(MultiMatchQueryBuilder.Type.MOST_FIELDS)
-            .fuzziness(Fuzziness.AUTO)
-            .operator(Operator.OR)
-            .tieBreaker(0.5f);
+        qsQuery.type(MultiMatchQueryBuilder.Type.MOST_FIELDS).defaultOperator(Operator.AND);
       } else {
-        multiMatchQuery.type(MultiMatchQueryBuilder.Type.BEST_FIELDS).operator(Operator.AND);
+        qsQuery.type(MultiMatchQueryBuilder.Type.BEST_FIELDS).defaultOperator(Operator.AND);
       }
 
-      userQuery = multiMatchQuery;
+      userQuery = qsQuery;
     }
 
     List<FunctionScoreQueryBuilder.FilterFunctionBuilder> functions = new ArrayList<>();
-
     if (searchSettings.getGlobalSettings().getTermBoosts() != null) {
       for (TermBoost tb : searchSettings.getGlobalSettings().getTermBoosts()) {
         functions.add(buildTermBoostFunction(tb));
@@ -262,7 +264,6 @@ public class ElasticSearchSourceBuilderFactory
         functions.add(buildTermBoostFunction(tb));
       }
     }
-
     if (searchSettings.getGlobalSettings().getFieldValueBoosts() != null) {
       for (FieldValueBoost fvb : searchSettings.getGlobalSettings().getFieldValueBoosts()) {
         functions.add(buildFieldValueBoostFunction(fvb));
@@ -279,19 +280,16 @@ public class ElasticSearchSourceBuilderFactory
       FunctionScoreQueryBuilder functionScore =
           QueryBuilders.functionScoreQuery(
               userQuery, functions.toArray(new FunctionScoreQueryBuilder.FilterFunctionBuilder[0]));
-
       if (assetConfig.getScoreMode() != null) {
         functionScore.scoreMode(toScoreMode(assetConfig.getScoreMode().value()));
       } else {
         functionScore.scoreMode(FunctionScoreQuery.ScoreMode.SUM);
       }
-
       if (assetConfig.getBoostMode() != null) {
         functionScore.boostMode(toCombineFunction(assetConfig.getBoostMode().value()));
       } else {
         functionScore.boostMode(CombineFunction.MULTIPLY);
       }
-
       finalQuery = functionScore;
     }
 

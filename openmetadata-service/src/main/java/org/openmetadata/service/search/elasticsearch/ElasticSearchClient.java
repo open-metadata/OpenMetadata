@@ -6,9 +6,6 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.AGGREGATED_COST_ANALYSIS_REPORT_DATA;
 import static org.openmetadata.service.Entity.DATA_PRODUCT;
 import static org.openmetadata.service.Entity.DOMAIN;
-import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
-import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
-import static org.openmetadata.service.Entity.FIELD_NAME;
 import static org.openmetadata.service.Entity.GLOSSARY_TERM;
 import static org.openmetadata.service.Entity.QUERY;
 import static org.openmetadata.service.Entity.RAW_COST_ANALYSIS_REPORT_DATA;
@@ -16,24 +13,8 @@ import static org.openmetadata.service.Entity.TABLE;
 import static org.openmetadata.service.events.scheduled.ServicesStatusJobHandler.HEALTHY_STATUS;
 import static org.openmetadata.service.events.scheduled.ServicesStatusJobHandler.UNHEALTHY_STATUS;
 import static org.openmetadata.service.exception.CatalogGenericExceptionMapper.getResponse;
-import static org.openmetadata.service.search.EntityBuilderConstant.API_RESPONSE_SCHEMA_FIELD;
-import static org.openmetadata.service.search.EntityBuilderConstant.API_RESPONSE_SCHEMA_FIELD_KEYWORD;
-import static org.openmetadata.service.search.EntityBuilderConstant.COLUMNS_NAME_KEYWORD;
-import static org.openmetadata.service.search.EntityBuilderConstant.DATA_MODEL_COLUMNS_NAME_KEYWORD;
-import static org.openmetadata.service.search.EntityBuilderConstant.DOMAIN_DISPLAY_NAME_KEYWORD;
-import static org.openmetadata.service.search.EntityBuilderConstant.ES_MESSAGE_SCHEMA_FIELD_KEYWORD;
-import static org.openmetadata.service.search.EntityBuilderConstant.ES_TAG_FQN_FIELD;
-import static org.openmetadata.service.search.EntityBuilderConstant.FIELD_COLUMN_NAMES;
-import static org.openmetadata.service.search.EntityBuilderConstant.FIELD_DISPLAY_NAME_NGRAM;
-import static org.openmetadata.service.search.EntityBuilderConstant.FIELD_NAME_NGRAM;
 import static org.openmetadata.service.search.EntityBuilderConstant.MAX_AGGREGATE_SIZE;
-import static org.openmetadata.service.search.EntityBuilderConstant.MAX_ANALYZED_OFFSET;
 import static org.openmetadata.service.search.EntityBuilderConstant.MAX_RESULT_HITS;
-import static org.openmetadata.service.search.EntityBuilderConstant.OWNER_DISPLAY_NAME_KEYWORD;
-import static org.openmetadata.service.search.EntityBuilderConstant.POST_TAG;
-import static org.openmetadata.service.search.EntityBuilderConstant.PRE_TAG;
-import static org.openmetadata.service.search.EntityBuilderConstant.SCHEMA_FIELD_NAMES;
-import static org.openmetadata.service.search.EntityBuilderConstant.UNIFIED;
 import static org.openmetadata.service.search.UpdateSearchEventsConstant.SENDING_REQUEST_TO_ELASTIC_SEARCH;
 import static org.openmetadata.service.search.elasticsearch.ElasticSearchEntitiesProcessor.getUpdateRequest;
 import static org.openmetadata.service.util.FullyQualifiedName.getParentFQN;
@@ -68,26 +49,19 @@ import es.org.elasticsearch.client.indices.GetMappingsResponse;
 import es.org.elasticsearch.client.indices.PutMappingRequest;
 import es.org.elasticsearch.cluster.health.ClusterHealthStatus;
 import es.org.elasticsearch.cluster.metadata.MappingMetadata;
-import es.org.elasticsearch.common.lucene.search.function.CombineFunction;
-import es.org.elasticsearch.common.lucene.search.function.FieldValueFactorFunction;
-import es.org.elasticsearch.common.lucene.search.function.FunctionScoreQuery;
 import es.org.elasticsearch.common.settings.Settings;
 import es.org.elasticsearch.common.unit.Fuzziness;
 import es.org.elasticsearch.common.xcontent.LoggingDeprecationHandler;
 import es.org.elasticsearch.core.TimeValue;
 import es.org.elasticsearch.index.query.BoolQueryBuilder;
 import es.org.elasticsearch.index.query.MatchQueryBuilder;
-import es.org.elasticsearch.index.query.MultiMatchQueryBuilder;
 import es.org.elasticsearch.index.query.Operator;
 import es.org.elasticsearch.index.query.PrefixQueryBuilder;
 import es.org.elasticsearch.index.query.QueryBuilder;
 import es.org.elasticsearch.index.query.QueryBuilders;
-import es.org.elasticsearch.index.query.QueryStringQueryBuilder;
 import es.org.elasticsearch.index.query.RangeQueryBuilder;
 import es.org.elasticsearch.index.query.ScriptQueryBuilder;
 import es.org.elasticsearch.index.query.TermQueryBuilder;
-import es.org.elasticsearch.index.query.functionscore.FunctionScoreQueryBuilder;
-import es.org.elasticsearch.index.query.functionscore.ScoreFunctionBuilders;
 import es.org.elasticsearch.index.reindex.DeleteByQueryRequest;
 import es.org.elasticsearch.index.reindex.UpdateByQueryRequest;
 import es.org.elasticsearch.rest.RestStatus;
@@ -108,7 +82,6 @@ import es.org.elasticsearch.search.aggregations.metrics.MaxAggregationBuilder;
 import es.org.elasticsearch.search.aggregations.metrics.SumAggregationBuilder;
 import es.org.elasticsearch.search.builder.SearchSourceBuilder;
 import es.org.elasticsearch.search.fetch.subphase.FetchSourceContext;
-import es.org.elasticsearch.search.fetch.subphase.highlight.HighlightBuilder;
 import es.org.elasticsearch.search.sort.FieldSortBuilder;
 import es.org.elasticsearch.search.sort.NestedSortBuilder;
 import es.org.elasticsearch.search.sort.SortBuilders;
@@ -197,26 +170,6 @@ import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.Elas
 import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.ElasticSearchUnusedAssetsAggregator;
 import org.openmetadata.service.search.elasticsearch.queries.ElasticQueryBuilder;
 import org.openmetadata.service.search.elasticsearch.queries.ElasticQueryBuilderFactory;
-import org.openmetadata.service.search.indexes.APIEndpointIndex;
-import org.openmetadata.service.search.indexes.ContainerIndex;
-import org.openmetadata.service.search.indexes.DashboardDataModelIndex;
-import org.openmetadata.service.search.indexes.DashboardIndex;
-import org.openmetadata.service.search.indexes.DataProductIndex;
-import org.openmetadata.service.search.indexes.DomainIndex;
-import org.openmetadata.service.search.indexes.GlossaryTermIndex;
-import org.openmetadata.service.search.indexes.MlModelIndex;
-import org.openmetadata.service.search.indexes.PipelineIndex;
-import org.openmetadata.service.search.indexes.QueryIndex;
-import org.openmetadata.service.search.indexes.SearchEntityIndex;
-import org.openmetadata.service.search.indexes.SearchIndex;
-import org.openmetadata.service.search.indexes.StoredProcedureIndex;
-import org.openmetadata.service.search.indexes.TableIndex;
-import org.openmetadata.service.search.indexes.TagIndex;
-import org.openmetadata.service.search.indexes.TestCaseIndex;
-import org.openmetadata.service.search.indexes.TestCaseResolutionStatusIndex;
-import org.openmetadata.service.search.indexes.TestCaseResultIndex;
-import org.openmetadata.service.search.indexes.TopicIndex;
-import org.openmetadata.service.search.indexes.UserIndex;
 import org.openmetadata.service.search.models.IndexMapping;
 import org.openmetadata.service.search.queries.OMQueryBuilder;
 import org.openmetadata.service.search.queries.QueryBuilderFactory;
@@ -1554,71 +1507,6 @@ public class ElasticSearchClient implements SearchClient {
     String response = client.search(searchRequest, RequestOptions.DEFAULT).toString();
     JsonObject jsonResponse = JsonUtils.readJson(response).asJsonObject();
     return jsonResponse.getJsonObject("aggregations");
-  }
-
-  private static FunctionScoreQueryBuilder boostScore(QueryStringQueryBuilder queryBuilder) {
-
-    FunctionScoreQueryBuilder.FilterFunctionBuilder tier1Boost =
-        new FunctionScoreQueryBuilder.FilterFunctionBuilder(
-            QueryBuilders.termQuery("tier.tagFQN", "Tier.Tier1"),
-            ScoreFunctionBuilders.weightFactorFunction(50.0f));
-
-    FunctionScoreQueryBuilder.FilterFunctionBuilder tier2Boost =
-        new FunctionScoreQueryBuilder.FilterFunctionBuilder(
-            QueryBuilders.termQuery("tier.tagFQN", "Tier.Tier2"),
-            ScoreFunctionBuilders.weightFactorFunction(30.0f));
-
-    FunctionScoreQueryBuilder.FilterFunctionBuilder tier3Boost =
-        new FunctionScoreQueryBuilder.FilterFunctionBuilder(
-            QueryBuilders.termQuery("tier.tagFQN", "Tier.Tier3"),
-            ScoreFunctionBuilders.weightFactorFunction(15.0f));
-
-    FunctionScoreQueryBuilder.FilterFunctionBuilder weeklyStatsBoost =
-        new FunctionScoreQueryBuilder.FilterFunctionBuilder(
-            QueryBuilders.rangeQuery("usageSummary.weeklyStats.count").gt(0),
-            ScoreFunctionBuilders.fieldValueFactorFunction("usageSummary.weeklyStats.count")
-                .factor(4.0f)
-                .modifier(FieldValueFactorFunction.Modifier.SQRT)
-                .missing(1));
-
-    FunctionScoreQueryBuilder.FilterFunctionBuilder totalVotesBoost =
-        new FunctionScoreQueryBuilder.FilterFunctionBuilder(
-            QueryBuilders.rangeQuery("totalVotes").gt(0),
-            ScoreFunctionBuilders.fieldValueFactorFunction("totalVotes")
-                .factor(3.0f)
-                .modifier(FieldValueFactorFunction.Modifier.LN1P)
-                .missing(0));
-
-    // FunctionScoreQueryBuilder with an array of score functions
-    return QueryBuilders.functionScoreQuery(
-            queryBuilder,
-            new FunctionScoreQueryBuilder.FilterFunctionBuilder[] {
-              tier1Boost, tier2Boost, tier3Boost, weeklyStatsBoost, totalVotesBoost
-            })
-        .scoreMode(FunctionScoreQuery.ScoreMode.SUM)
-        .boostMode(CombineFunction.MULTIPLY);
-  }
-
-  private static HighlightBuilder buildHighlights(List<String> fields) {
-    List<String> defaultFields =
-        List.of(
-            FIELD_DISPLAY_NAME,
-            FIELD_NAME,
-            FIELD_DESCRIPTION,
-            FIELD_DISPLAY_NAME_NGRAM,
-            FIELD_NAME_NGRAM);
-    defaultFields = Stream.concat(defaultFields.stream(), fields.stream()).toList();
-    HighlightBuilder hb = new HighlightBuilder();
-    for (String field : defaultFields) {
-      HighlightBuilder.Field highlightField = new HighlightBuilder.Field(field);
-      highlightField.highlighterType(UNIFIED);
-      hb.field(highlightField);
-    }
-    hb.preTags(PRE_TAG);
-    hb.postTags(POST_TAG);
-    hb.maxAnalyzedOffset(MAX_ANALYZED_OFFSET);
-    hb.requireFieldMatch(false);
-    return hb;
   }
 
   @Override
