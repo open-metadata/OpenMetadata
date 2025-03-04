@@ -214,5 +214,14 @@ public class MigrationUtil {
                         .withFormula(
                             "count(q='tags.tagFQN: pii.sensitive OR tags.tagFQN:"
                                 + " pii.nonsensitive OR tags.tagFQN: pii.none')"))));
+
+    createChart(
+        "assets_with_tier",
+        new LineChart()
+            .withMetrics(
+                List.of(
+                    new LineChartMetric()
+                        .withFormula(
+                            "count(q='tags.tagFQN: tier.*')"))));
   }
 }
