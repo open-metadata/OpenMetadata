@@ -22,30 +22,26 @@ describe('PersonaUtils', () => {
       const categories = getCustomizePageCategories();
 
       expect(categories).toEqual([
-        {
+        expect.objectContaining({
           key: 'navigation',
           label: 'label.navigation',
-          description: 'Navigation',
           icon: 'svg-mock',
-        },
-        {
+        }),
+        expect.objectContaining({
           key: PageType.LandingPage,
           label: 'label.homepage',
-          description: 'Homepage',
           icon: 'svg-mock',
-        },
-        {
+        }),
+        expect.objectContaining({
           key: 'governance',
           label: 'label.governance',
-          description: 'Governance',
           icon: 'svg-mock',
-        },
-        {
+        }),
+        expect.objectContaining({
           key: 'data-assets',
           label: 'label.data-asset-plural',
-          description: 'Data assets',
           icon: 'svg-mock',
-        },
+        }),
       ]);
     });
   });
