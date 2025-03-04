@@ -67,8 +67,9 @@ const EntityHeaderTitle = ({
         {/* If we do not have displayName name only be shown in the bold from the below code */}
         {!isEmpty(displayName) && showName ? (
           <Typography.Text
-            className="m-b-0 d-block text-grey-muted"
-            data-testid="entity-header-name">
+            className="entity-header-name"
+            data-testid="entity-header-name"
+            ellipsis={{ tooltip: true }}>
             {stringToHTML(name)}
           </Typography.Text>
         ) : null}
@@ -76,7 +77,7 @@ const EntityHeaderTitle = ({
         {/* It will render displayName fallback to name */}
         <Typography.Text
           className={classNames(
-            'm-b-0 d-block entity-header-display-name text-lg font-semibold',
+            'entity-header-display-name',
             displayNameClassName
           )}
           data-testid="entity-header-display-name"

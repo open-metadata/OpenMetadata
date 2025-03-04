@@ -41,7 +41,7 @@ export const getMostUsedAssetsWidgetColumns = (): ColumnsType<Table> => {
       className: 'name-column',
       dataIndex: 'name',
       key: 'name',
-      width: 300,
+      width: 350,
       render: (_, record: Table) => {
         const { breadcrumbs } = getDataAssetsHeaderInfo(
           EntityType.TABLE,
@@ -67,7 +67,6 @@ export const getMostUsedAssetsWidgetColumns = (): ColumnsType<Table> => {
             </Col>
             <Col span={24}>
               <EntityHeaderTitle
-                certification={(record as Table)?.certification}
                 deleted={record?.deleted}
                 displayName={record.displayName}
                 displayNameClassName="text-md"
