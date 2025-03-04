@@ -11,12 +11,13 @@
  *  limitations under the License.
  */
 import {
-  CompressOutlined,
+  ArrowsAltOutlined,
   ExpandOutlined,
   FullscreenExitOutlined,
   FullscreenOutlined,
   NodeIndexOutlined,
   SettingOutlined,
+  ShrinkOutlined,
   ZoomInOutlined,
   ZoomOutOutlined,
 } from '@ant-design/icons';
@@ -117,7 +118,7 @@ const LineageControlButtons: FC<LineageControlButtonsProps> = ({
           <Button
             className="lineage-button"
             data-testid="expand-column"
-            icon={expandAllColumns ? <CompressOutlined /> : <ExpandOutlined />}
+            icon={expandAllColumns ? <ShrinkOutlined /> : <ArrowsAltOutlined />}
             title={
               expandAllColumns ? t('label.collapse-all') : t('label.expand-all')
             }
@@ -171,16 +172,6 @@ const LineageControlButtons: FC<LineageControlButtonsProps> = ({
 
         <Button
           className="lineage-button"
-          data-testid="lineage-config"
-          disabled={isEditMode}
-          icon={<SettingOutlined />}
-          title={t('label.setting-plural')}
-          type="text"
-          onClick={() => setDialogVisible(true)}
-        />
-
-        <Button
-          className="lineage-button"
           data-testid="zoom-in"
           icon={<ZoomInOutlined />}
           title={t('label.zoom-in')}
@@ -213,6 +204,16 @@ const LineageControlButtons: FC<LineageControlButtonsProps> = ({
           title={t('label.rearrange-nodes')}
           type="text"
           onClick={handleRearrange}
+        />
+
+        <Button
+          className="lineage-button"
+          data-testid="lineage-config"
+          disabled={isEditMode}
+          icon={<SettingOutlined />}
+          title={t('label.setting-plural')}
+          type="text"
+          onClick={() => setDialogVisible(true)}
         />
       </div>
 

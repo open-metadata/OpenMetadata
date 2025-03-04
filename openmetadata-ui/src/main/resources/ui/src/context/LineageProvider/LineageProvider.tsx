@@ -355,6 +355,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
           edges,
           entity,
         };
+
         setEntityLineage(updatedEntityLineage);
       } catch (err) {
         showErrorToast(
@@ -748,28 +749,23 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
         },
       };
 
+      setLineageData(concatenatedLineageData);
+
       const { nodes: newNodes, edges: newEdges } = parseLineageData(
         concatenatedLineageData,
         parentNode.data.node.fullyQualifiedName
       );
 
-      setEntityLineage((prev) => {
-        // Filter out the load more node
-        const filteredNodes = (prev.nodes ?? []).filter(
-          (n) => n.id !== node.id
-        );
-
-        // Filter out the edge connected to load more node
-        const filteredEdges = (prev.edges ?? []).filter(
-          (e) => e.fromEntity.id !== node.id && e.toEntity.id !== node.id
-        );
-
-        return {
-          ...prev,
-          nodes: uniqWith([...filteredNodes, ...newNodes], isEqual),
-          edges: uniqWith([...filteredEdges, ...newEdges], isEqual),
-        };
-      });
+      updateLineageData(
+        {
+          ...entityLineage,
+          nodes: uniqWith([...newNodes], isEqual),
+          edges: uniqWith([...newEdges], isEqual),
+        },
+        {
+          shouldRedraw: true,
+        }
+      );
     } catch (error) {
       showErrorToast(
         error as AxiosError,
