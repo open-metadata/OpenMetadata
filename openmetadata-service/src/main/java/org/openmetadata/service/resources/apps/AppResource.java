@@ -988,18 +988,26 @@ public class AppResource extends EntityResource<App, AppRepository> {
       @Parameter(description = "Name of the App", schema = @Schema(type = "string"))
           @PathParam("name")
           String name,
-      Map<String, Object> payload) {
+      @RequestBody(
+              description = "Configuration payload",
+              content = @Content(mediaType = MediaType.APPLICATION_JSON))
+          Map<String, Object> configPayload) {
     EntityUtil.Fields fields = getFields(String.format("%s,bot,pipelines", FIELD_OWNERS));
     App app = repository.getByName(uriInfo, name, fields);
     if (app.getAppType().equals(AppType.Internal)) {
       ApplicationHandler.getInstance()
-          .triggerApplicationOnDemand(app, Entity.getCollectionDAO(), searchRepository, payload);
-      return Response.status(Response.Status.OK).entity("Application Triggered").build();
+          .triggerApplicationOnDemand(
+              app, Entity.getCollectionDAO(), searchRepository, configPayload);
+      return Response.status(Response.Status.OK).build();
     } else {
       if (!app.getPipelines().isEmpty()) {
         IngestionPipeline ingestionPipeline = getIngestionPipeline(uriInfo, securityContext, app);
         ServiceEntityInterface service =
             Entity.getEntity(ingestionPipeline.getService(), "", Include.NON_DELETED);
+        if (configPayload != null) {
+          throw new BadRequestException(
+              "Overriding app config is not supported for external applications.");
+        }
         PipelineServiceClientResponse response =
             pipelineServiceClient.runPipeline(ingestionPipeline, service);
         return Response.status(response.getCode()).entity(response).build();

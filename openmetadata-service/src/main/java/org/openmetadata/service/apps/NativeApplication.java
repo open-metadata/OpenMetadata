@@ -12,7 +12,9 @@ public interface NativeApplication extends InterruptableJob {
 
   void uninstall();
 
-  void triggerOnDemand(Map<String, Object> payload);
+  void triggerOnDemand();
+
+  void triggerOnDemand(Map<String, Object> config);
 
   void configure();
 

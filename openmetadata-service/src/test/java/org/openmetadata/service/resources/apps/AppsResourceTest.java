@@ -42,7 +42,6 @@ import org.openmetadata.schema.api.data.CreateTableProfile;
 import org.openmetadata.schema.api.events.CreateEventSubscription;
 import org.openmetadata.schema.api.services.CreateDatabaseService;
 import org.openmetadata.schema.entity.app.App;
-import org.openmetadata.schema.entity.app.AppConfiguration;
 import org.openmetadata.schema.entity.app.AppExtension;
 import org.openmetadata.schema.entity.app.AppMarketPlaceDefinition;
 import org.openmetadata.schema.entity.app.AppRunRecord;
@@ -422,7 +421,7 @@ public class AppsResourceTest extends EntityResourceTest<App, CreateApp> {
             .withAppType(AppType.Internal)
             .withScheduleType(ScheduleType.Scheduled)
             .withRuntime(new ScheduledExecutionContext().withEnabled(true))
-            .withAppConfiguration(new AppConfiguration())
+            .withAppConfiguration(Map.of())
             .withPermission(NativeAppPermission.All)
             .withEventSubscriptions(
                 List.of(
@@ -446,9 +445,7 @@ public class AppsResourceTest extends EntityResourceTest<App, CreateApp> {
 
     // install app
     CreateApp installApp =
-        new CreateApp()
-            .withName(createRequest.getName())
-            .withAppConfiguration(new AppConfiguration());
+        new CreateApp().withName(createRequest.getName()).withAppConfiguration(Map.of());
     createEntity(installApp, ADMIN_AUTH_HEADERS);
     TestUtils.get(
         getResource(String.format("events/subscriptions/name/%s", subscriptionName)),

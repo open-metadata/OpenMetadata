@@ -37,7 +37,6 @@ import java.util.Objects;
 import java.util.Scanner;
 import java.util.Set;
 import java.util.concurrent.Callable;
-import javax.json.JsonPatch;
 import javax.validation.Validator;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -49,7 +48,6 @@ import org.openmetadata.schema.ServiceEntityInterface;
 import org.openmetadata.schema.api.configuration.OpenMetadataBaseUrlConfiguration;
 import org.openmetadata.schema.email.SmtpSettings;
 import org.openmetadata.schema.entity.app.App;
-import org.openmetadata.schema.entity.app.AppConfiguration;
 import org.openmetadata.schema.entity.app.AppMarketPlaceDefinition;
 import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.schema.entity.app.AppSchedule;
@@ -505,7 +503,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
             .withDescription(definition.getDescription())
             .withDisplayName(definition.getDisplayName())
             .withAppSchedule(new AppSchedule().withScheduleTimeline(ScheduleTimeline.NONE))
-            .withAppConfiguration(new AppConfiguration());
+            .withAppConfiguration(Map.of());
 
     AppMapper appMapper = new AppMapper();
     App entity = appMapper.createToEntity(createApp, ADMIN_USER_NAME);
@@ -805,20 +803,12 @@ public class OpenMetadataOperations implements Callable<Integer> {
 
     // Update the search index app with the new configurations
     App updatedSearchIndexApp = JsonUtils.deepCopy(originalSearchIndexApp, App.class);
-    updatedSearchIndexApp.withAppConfiguration(updatedJob);
-    JsonPatch patch = JsonUtils.getJsonPatch(originalSearchIndexApp, updatedSearchIndexApp);
-
-    appRepository.patch(null, originalSearchIndexApp.getId(), "admin", patch);
-
     // Trigger Application
     long currentTime = System.currentTimeMillis();
-    AppScheduler.getInstance().triggerOnDemandApplication(updatedSearchIndexApp);
+    AppScheduler.getInstance()
+        .triggerOnDemandApplication(updatedSearchIndexApp, JsonUtils.getMap(updatedJob));
 
     int result = waitAndReturnReindexingAppStatus(updatedSearchIndexApp, currentTime);
-
-    // Re-patch with original configuration
-    JsonPatch repatch = JsonUtils.getJsonPatch(updatedSearchIndexApp, originalSearchIndexApp);
-    appRepository.patch(null, originalSearchIndexApp.getId(), "admin", repatch);
 
     return result;
   }
@@ -899,20 +889,13 @@ public class OpenMetadataOperations implements Callable<Integer> {
 
     // Update the data insights app with the new configurations
     App updatedDataInsightsApp = JsonUtils.deepCopy(originalDataInsightsApp, App.class);
-    updatedDataInsightsApp.withAppConfiguration(updatedConfig);
-    JsonPatch patch = JsonUtils.getJsonPatch(originalDataInsightsApp, updatedDataInsightsApp);
-
-    appRepository.patch(null, originalDataInsightsApp.getId(), "admin", patch);
 
     // Trigger Application
     long currentTime = System.currentTimeMillis();
-    AppScheduler.getInstance().triggerOnDemandApplication(updatedDataInsightsApp);
+    AppScheduler.getInstance()
+        .triggerOnDemandApplication(updatedDataInsightsApp, JsonUtils.getMap(updatedConfig));
 
     int result = waitAndReturnReindexingAppStatus(updatedDataInsightsApp, currentTime);
-
-    // Re-patch with original configuration
-    JsonPatch repatch = JsonUtils.getJsonPatch(updatedDataInsightsApp, originalDataInsightsApp);
-    appRepository.patch(null, originalDataInsightsApp.getId(), "admin", repatch);
 
     return result;
   }

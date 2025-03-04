@@ -117,7 +117,7 @@ public class RunAppImpl {
               .withRecreateDataAssetsIndex(false)
               .withModuleConfiguration(updatedModuleConfig);
     }
-    updatedApp.withAppConfiguration(updatedConfig);
+    updatedApp.withAppConfiguration(JsonUtils.getMap(updatedConfig));
     return updatedApp;
   }
 

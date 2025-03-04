@@ -6,6 +6,7 @@
   "type": "object",
   "definitions": {
     "appConfig": {
+      "existingJavaType": "java.util.Map<String, Object>",
       "oneOf": [
         {
           "$ref": "external/collateAIAppConfig.json"
@@ -37,6 +38,7 @@
       ]
     },
     "privateConfig": {
+      "existingJavaType": "java.util.Map<String, Object>",
       "oneOf": [
         {
           "$ref": "private/external/collateAIAppPrivateConfig.json"

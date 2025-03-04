@@ -73,7 +73,7 @@ public class ApplicationHandler {
     try {
       AppPrivateConfig appPrivateConfig = configReader.readConfigFromResource(app.getName());
       app.setPreview(appPrivateConfig.getPreview());
-      app.setPrivateConfiguration(appPrivateConfig.getParameters());
+      app.setPrivateConfiguration(appPrivateConfig.getParameters().getAdditionalProperties());
     } catch (IOException e) {
       LOG.debug("Config file for app {} not found: ", app.getName(), e);
     } catch (ConfigurationException e) {
@@ -98,9 +98,9 @@ public class ApplicationHandler {
       App app,
       CollectionDAO daoCollection,
       SearchRepository searchRepository,
-      Map<String, Object> payload) {
+      Map<String, Object> configPayload) {
     try {
-      runAppInit(app, daoCollection, searchRepository).triggerOnDemand(payload);
+      runAppInit(app, daoCollection, searchRepository).triggerOnDemand(configPayload);
     } catch (ClassNotFoundException
         | NoSuchMethodException
         | InvocationTargetException
