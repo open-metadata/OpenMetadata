@@ -15,7 +15,12 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.schema.type.EventType.ENTITY_FIELDS_CHANGED;
 import static org.openmetadata.schema.type.EventType.ENTITY_UPDATED;
-import static org.openmetadata.service.Entity.*;
+import static org.openmetadata.service.Entity.CHART;
+import static org.openmetadata.service.Entity.DASHBOARD;
+import static org.openmetadata.service.Entity.FIELD_USAGE_SUMMARY;
+import static org.openmetadata.service.Entity.MLMODEL;
+import static org.openmetadata.service.Entity.TABLE;
+import static org.openmetadata.service.Entity.PIPELINE;
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
 
 import java.sql.ResultSet;
@@ -28,7 +33,11 @@ import org.jdbi.v3.core.mapper.RowMapper;
 import org.jdbi.v3.core.statement.StatementContext;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
-import org.openmetadata.schema.entity.data.*;
+import org.openmetadata.schema.entity.data.Chart;
+import org.openmetadata.schema.entity.data.Dashboard;
+import org.openmetadata.schema.entity.data.MlModel;
+import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.data.Pipeline;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.DailyCount;
