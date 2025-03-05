@@ -56,7 +56,10 @@ def test_connection(
     of a metadata workflow or during an Automation Workflow
     """
 
-    test_fn = {"GetToken": client.get_auth_token, "GetWorkbooks": client.get_dashboards}
+    test_fn = {
+        "GetToken": client.get_auth_token,
+        "GetWorkbooks": client.test_get_dashboards,
+    }
 
     return test_connection_steps(
         metadata=metadata,
