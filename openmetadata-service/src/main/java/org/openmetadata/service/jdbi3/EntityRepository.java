@@ -2993,6 +2993,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       ChangeSummaryMap current =
           Optional.ofNullable(original.getChangeDescription())
               .map(ChangeDescription::getChangeSummary)
+              .map(changeSummaryMap -> JsonUtils.deepCopy(changeSummaryMap, ChangeSummaryMap.class))
               .orElse(new ChangeSummaryMap());
 
       Map<String, ChangeSummary> addedSummaries =
