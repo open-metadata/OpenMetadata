@@ -231,11 +231,6 @@ public class DataInsightsEntityEnricherProcessor
     oCustomProperties.ifPresent(
         o -> entityMap.put(String.format("%sCustomProperty", entityType), o));
 
-    // Remove 'changeDescription' field
-    entityMap.remove("changeDescription");
-    // Remove 'sampleData'
-    entityMap.remove("sampleData");
-
     return entityMap;
   }
 

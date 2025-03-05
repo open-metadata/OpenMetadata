@@ -118,7 +118,9 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
                 type.setCustomProperties(storedType.getCustomProperties());
               }
             } catch (Exception e) {
-              LOG.debug("Creating entity that does not exist ", e);
+              LOG.debug(
+                  "Type '{}' not found. Proceeding to add new type entity in database.",
+                  type.getName());
             }
             this.repository.createOrUpdate(null, type);
             this.repository.addToRegistry(type);

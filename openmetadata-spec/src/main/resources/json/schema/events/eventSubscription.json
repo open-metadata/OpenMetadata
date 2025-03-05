@@ -78,7 +78,7 @@
     "alertType": {
       "description": "Type of Alerts supported.",
       "type": "string",
-      "enum": ["Notification", "Observability", "ActivityFeed", "GovernanceWorkflowChangeEvent"],
+      "enum": ["Notification", "Observability", "ActivityFeed", "GovernanceWorkflowChangeEvent", "Custom"],
       "default": "Notification"
     },
     "subscriptionCategory": {
@@ -279,6 +279,10 @@
       "description": "Change that led to this version of the Event Subscription.",
       "$ref": "../type/entityHistory.json#/definitions/changeDescription"
     },
+    "incrementalChangeDescription": {
+      "description": "Change that lead to this version of the entity.",
+      "$ref": "../type/entityHistory.json#/definitions/changeDescription"
+    },
     "alertType": {
       "description": "Type of Alert",
       "$ref": "#/definitions/alertType"
@@ -328,6 +332,9 @@
     "domain" : {
       "description": "Domain the asset belongs to. When not set, the asset inherits the domain from the parent it belongs to.",
       "$ref": "../type/entityReference.json"
+    },
+    "config": {
+      "$ref": "../type/basic.json#/definitions/map"
     }
   },
   "required": ["id", "name", "alertType", "destinations"],

@@ -54,6 +54,14 @@ export interface DatabaseService {
      */
     id: string;
     /**
+     * Change that lead to this version of the entity.
+     */
+    incrementalChangeDescription?: ChangeDescription;
+    /**
+     * The ingestion agent responsible for executing the ingestion pipeline.
+     */
+    ingestionAgent?: EntityReference;
+    /**
      * Name that identifies this database service.
      */
     name: string;
@@ -99,6 +107,7 @@ export interface DatabaseService {
  * Description of the change.
  */
 export interface ChangeDescription {
+    changeSummary?: { [key: string]: ChangeSummary };
     /**
      * Names of fields added during the version changes.
      */
@@ -115,6 +124,29 @@ export interface ChangeDescription {
      * When a change did not result in change, this could be same as the current version.
      */
     previousVersion?: number;
+}
+
+export interface ChangeSummary {
+    changedAt?: number;
+    /**
+     * Name of the user or bot who made this change
+     */
+    changedBy?:    string;
+    changeSource?: ChangeSource;
+    [property: string]: any;
+}
+
+/**
+ * The source of the change. This will change based on the context of the change (example:
+ * manual vs programmatic)
+ */
+export enum ChangeSource {
+    Automated = "Automated",
+    Derived = "Derived",
+    Ingested = "Ingested",
+    Manual = "Manual",
+    Propagated = "Propagated",
+    Suggested = "Suggested",
 }
 
 export interface FieldChange {
@@ -307,10 +339,11 @@ export interface ConfigClass {
      *
      * Couchbase driver scheme options.
      */
-    scheme?:                ConfigScheme;
-    supportsDatabase?:      boolean;
-    supportsDataDiff?:      boolean;
-    supportsDBTExtraction?: boolean;
+    scheme?:                                ConfigScheme;
+    supportsDatabase?:                      boolean;
+    supportsDataDiff?:                      boolean;
+    supportsDBTExtraction?:                 boolean;
+    supportsIncrementalMetadataExtraction?: boolean;
     /**
      * Supports Lineage Extraction.
      */
@@ -600,6 +633,10 @@ export interface ConfigClass {
      */
     httpPath?: string;
     /**
+     * Table name to fetch the query history.
+     */
+    queryHistoryTable?: string;
+    /**
      * Generated Token to connect to Databricks.
      */
     token?: string;
@@ -710,6 +747,10 @@ export interface ConfigClass {
      * usage monitoring.
      */
     account?: string;
+    /**
+     * Full name of the schema where the account usage data is stored.
+     */
+    accountUsageSchema?: string;
     /**
      * Optional configuration for ingestion to keep the client session active in case the
      * ingestion process runs for longer durations.
@@ -1973,6 +2014,8 @@ export enum VerifySSL {
  * the relationship of a table `belongs to a` database.
  *
  * Domain the Database service belongs to.
+ *
+ * The ingestion agent responsible for executing the ingestion pipeline.
  */
 export interface EntityReference {
     /**

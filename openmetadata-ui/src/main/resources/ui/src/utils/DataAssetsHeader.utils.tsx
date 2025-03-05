@@ -22,6 +22,8 @@ import {
 import {
   DataAssetHeaderInfo,
   DataAssetsHeaderProps,
+  DataAssetsType,
+  DataAssetsWithServiceField,
 } from '../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
 import {
   getEntityDetailsPath,
@@ -103,14 +105,6 @@ export const getDataAssetsHeaderInfo = (
 
       returnData.extraInfo = (
         <>
-          {dashboardDetails.sourceUrl && (
-            <ExtraInfoLink
-              newTab
-              href={dashboardDetails.sourceUrl}
-              label=""
-              value={getEntityName(dashboardDetails)}
-            />
-          )}
           {dashboardDetails.dashboardType && (
             <ExtraInfoLabel
               label={t('label.entity-type-plural', {
@@ -143,19 +137,6 @@ export const getDataAssetsHeaderInfo = (
       break;
     case EntityType.PIPELINE:
       const pipelineDetails = dataAsset as Pipeline;
-
-      returnData.extraInfo = (
-        <>
-          {pipelineDetails.sourceUrl && (
-            <ExtraInfoLink
-              newTab
-              href={pipelineDetails.sourceUrl}
-              label=""
-              value={getEntityName(pipelineDetails)}
-            />
-          )}
-        </>
-      );
 
       returnData.breadcrumbs =
         getBreadcrumbForEntitiesWithServiceOnly(pipelineDetails);
@@ -258,6 +239,12 @@ export const getDataAssetsHeaderInfo = (
             <ExtraInfoLabel
               label={t('label.data-model-type')}
               value={dataModelDetails.dataModelType}
+            />
+          )}
+          {dataModelDetails.project && (
+            <ExtraInfoLabel
+              label={t('label.project')}
+              value={dataModelDetails.project}
             />
           )}
         </>
@@ -389,14 +376,6 @@ export const getDataAssetsHeaderInfo = (
 
       returnData.extraInfo = (
         <>
-          {storedProcedureDetails.sourceUrl && (
-            <ExtraInfoLink
-              newTab
-              href={storedProcedureDetails.sourceUrl}
-              label=""
-              value={getEntityName(storedProcedureDetails)}
-            />
-          )}
           {isObject(storedProcedureDetails.storedProcedureCode) && (
             <ExtraInfoLabel
               label={t('label.language')}
@@ -516,5 +495,26 @@ export const getDataAssetsHeaderInfo = (
       break;
   }
 
+  if ('sourceUrl' in dataAsset && dataAsset.sourceUrl) {
+    returnData.extraInfo = (
+      <>
+        {returnData.extraInfo}
+        <ExtraInfoLink
+          ellipsis
+          newTab
+          href={dataAsset.sourceUrl}
+          label=""
+          value={getEntityName(dataAsset)}
+        />
+      </>
+    );
+  }
+
   return returnData;
+};
+
+export const isDataAssetsWithServiceField = (
+  asset: DataAssetsType
+): asset is DataAssetsWithServiceField => {
+  return (asset as DataAssetsWithServiceField).service !== undefined;
 };

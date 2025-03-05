@@ -36,6 +36,7 @@ import { showErrorToast } from '../../../utils/ToastUtils';
 import { ROUTES } from '../../../constants/constants';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { AccessTokenResponse, refreshSAMLToken } from '../../../rest/auth-API';
+import TokenService from '../../../utils/Auth/TokenService/TokenServiceUtil';
 import {
   getOidcToken,
   getRefreshToken,
@@ -76,24 +77,19 @@ const SamlAuthenticator = forwardRef<AuthenticatorRef, Props>(
       }
     };
 
-    const logout = () => {
+    const logout = async () => {
       const token = getOidcToken();
       if (token) {
-        postSamlLogout()
-          .then(() => {
-            setIsAuthenticated(false);
-            try {
-              onLogoutSuccess();
-            } catch (err) {
-              // TODO: Handle error on logout failure
-              // eslint-disable-next-line no-console
-              console.log(err);
-            }
-          })
-          .catch((err) => {
-            // eslint-disable-next-line no-console
-            console.log('Error while logging out', err);
-          });
+        try {
+          await postSamlLogout();
+          setIsAuthenticated(false);
+          onLogoutSuccess();
+          TokenService.getInstance().clearRefreshInProgress();
+        } catch (err) {
+          // TODO: Handle error on logout failure
+          // eslint-disable-next-line no-console
+          console.log(err);
+        }
       }
     };
 

@@ -40,6 +40,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 import lombok.extern.slf4j.Slf4j;
@@ -255,6 +256,7 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
     // Changes from this PATCH is consolidated with the previous changes
     originalJson = JsonUtils.pojoToJson(container);
     change = getChangeDescription(container, CHANGE_CONSOLIDATED);
+    change.setPreviousVersion(container.getVersion());
     ContainerDataModel newModel =
         new ContainerDataModel()
             .withIsPartitioned(false)
@@ -263,22 +265,19 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
         List.of(ContainerFileFormat.Gz, ContainerFileFormat.Csv);
     container.withPrefix("prefix2").withDataModel(newModel).withFileFormats(newFileFormats);
 
-    fieldAdded(change, "dataModel", newModel);
-    fieldAdded(change, "prefix", "prefix2");
+    fieldUpdated(change, "prefix", "prefix1", "prefix2");
+    fieldUpdated(change, "dataModel.partition", true, false);
+    fieldDeleted(change, "fileFormats", FILE_FORMATS);
     fieldAdded(change, "fileFormats", newFileFormats);
-    patchEntityAndCheck(container, originalJson, ADMIN_AUTH_HEADERS, CHANGE_CONSOLIDATED, change);
+    patchEntityAndCheck(container, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
     // Update the container size and number of objects
     // Changes from this PATCH is consolidated with the previous changes
     originalJson = JsonUtils.pojoToJson(container);
-    change = getChangeDescription(container, CHANGE_CONSOLIDATED);
-    fieldAdded(change, "dataModel", newModel);
-    fieldAdded(change, "prefix", "prefix2");
-    fieldAdded(change, "fileFormats", newFileFormats);
+    change = getChangeDescription(container, MINOR_UPDATE);
     container.withSize(2.0).withNumberOfObjects(3.0);
     container =
-        patchEntityAndCheck(
-            container, originalJson, ADMIN_AUTH_HEADERS, CHANGE_CONSOLIDATED, change);
+        patchEntityAndCheck(container, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
     assertEquals(2.0, container.getSize());
     assertEquals(3.0, container.getNumberOfObjects());
   }
@@ -345,7 +344,7 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
     // Update description, chartType and chart url and verify patch
     // Changes from this PATCH is consolidated with the previous changes
     originalJson = JsonUtils.pojoToJson(container);
-    change = getChangeDescription(container, CHANGE_CONSOLIDATED);
+    change = getChangeDescription(container, MINOR_UPDATE);
     ContainerDataModel newModel =
         new ContainerDataModel()
             .withIsPartitioned(false)
@@ -354,23 +353,20 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
         List.of(ContainerFileFormat.Gz, ContainerFileFormat.Csv);
     container.withPrefix("prefix2").withDataModel(newModel).withFileFormats(newFileFormats);
 
-    fieldAdded(change, "dataModel", newModel);
-    fieldAdded(change, "prefix", "prefix2");
+    fieldUpdated(change, "prefix", "prefix1", "prefix2");
+    fieldUpdated(change, "dataModel.partition", true, false);
+    fieldDeleted(change, "fileFormats", FILE_FORMATS);
     fieldAdded(change, "fileFormats", newFileFormats);
-    patchEntityUsingFqnAndCheck(
-        container, originalJson, ADMIN_AUTH_HEADERS, CHANGE_CONSOLIDATED, change);
+    patchEntityUsingFqnAndCheck(container, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
     // Update the container size and number of objects
     // Changes from this PATCH is consolidated with the previous changes
     originalJson = JsonUtils.pojoToJson(container);
-    change = getChangeDescription(container, CHANGE_CONSOLIDATED);
-    fieldAdded(change, "dataModel", newModel);
-    fieldAdded(change, "prefix", "prefix2");
-    fieldAdded(change, "fileFormats", newFileFormats);
+    change = getChangeDescription(container, MINOR_UPDATE);
     container.withSize(2.0).withNumberOfObjects(3.0);
     container =
         patchEntityUsingFqnAndCheck(
-            container, originalJson, ADMIN_AUTH_HEADERS, CHANGE_CONSOLIDATED, change);
+            container, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
     assertEquals(2.0, container.getSize());
     assertEquals(3.0, container.getNumberOfObjects());
   }
@@ -399,6 +395,7 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
             .withOwners(List.of(DATA_CONSUMER.getEntityReference()))
             .withSize(0.0);
     Container rootContainer = createAndCheckEntity(createRootContainer, ADMIN_AUTH_HEADERS);
+    String rootContainerFQN = rootContainer.getFullyQualifiedName();
 
     CreateContainer createChildOneContainer =
         new CreateContainer()
@@ -490,6 +487,19 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
     ResultList<Container> rootContainerList = listEntities(queryParams, ADMIN_AUTH_HEADERS);
     assertEquals(1, rootContainerList.getData().size());
     assertEquals("s3.0_root", rootContainerList.getData().get(0).getFullyQualifiedName());
+
+    // Test paginated child container list
+    ResultList<Container> children = getContainerChildren(rootContainerFQN, null, null);
+    assertEquals(2, children.getData().size());
+
+    ResultList<Container> childrenWithLimit = getContainerChildren(rootContainerFQN, 5, 0);
+    assertEquals(2, childrenWithLimit.getData().size());
+
+    ResultList<Container> childrenWithOffset = getContainerChildren(rootContainerFQN, 1, 1);
+    assertEquals(1, childrenWithOffset.getData().size());
+
+    ResultList<Container> childrenWithLargeOffset = getContainerChildren(rootContainerFQN, 1, 3);
+    assertTrue(childrenWithLargeOffset.getData().isEmpty());
   }
 
   @Test
@@ -699,6 +709,14 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
             : FullyQualifiedName.add(
                 createdEntity.getService().getFullyQualifiedName(), createdEntity.getName()),
         createdEntity.getFullyQualifiedName());
+  }
+
+  private ResultList<Container> getContainerChildren(String fqn, Integer limit, Integer offset)
+      throws HttpResponseException {
+    WebTarget target = getResource(String.format("containers/name/%s/children", fqn));
+    target = limit != null ? target.queryParam("limit", limit) : target;
+    target = offset != null ? target.queryParam("offset", offset) : target;
+    return TestUtils.get(target, ContainerList.class, ADMIN_AUTH_HEADERS);
   }
 
   @Test

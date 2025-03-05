@@ -303,7 +303,7 @@ export const verifyAssetsInTeamsPage = async (
     .locator(`a:has-text("${team.data.displayName}")`)
     .click();
 
-  const res = page.waitForResponse('/api/v1/search/query?*size=15');
+  const res = page.waitForResponse('/api/v1/search/query?*size=15*');
   await page.getByTestId('assets').click();
   await res;
 

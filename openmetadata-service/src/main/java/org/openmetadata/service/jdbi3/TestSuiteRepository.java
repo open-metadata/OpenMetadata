@@ -39,6 +39,7 @@ import org.openmetadata.schema.tests.type.TestSummary;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.dqtests.TestSuiteResource;
 import org.openmetadata.service.resources.feeds.MessageParser;
@@ -107,7 +108,6 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
         UPDATE_FIELDS);
     quoteFqn = false;
     supportsSearch = true;
-    parent = true;
   }
 
   @Override
@@ -127,7 +127,7 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
 
   @Override
   public void setInheritedFields(TestSuite testSuite, EntityUtil.Fields fields) {
-    if (Boolean.TRUE.equals(testSuite.getBasic())) {
+    if (Boolean.TRUE.equals(testSuite.getBasic()) && testSuite.getBasicEntityReference() != null) {
       Table table =
           Entity.getEntity(
               TABLE, testSuite.getBasicEntityReference().getId(), "owners,domain", ALL);
@@ -156,7 +156,7 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
 
   @Override
   public EntityInterface getParentEntity(TestSuite entity, String fields) {
-    if (entity.getBasic()) {
+    if (entity.getBasic() && entity.getBasicEntityReference() != null) {
       return Entity.getEntity(entity.getBasicEntityReference(), fields, ALL);
     }
     return null;
@@ -405,7 +405,7 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
 
   @Override
   public EntityRepository<TestSuite>.EntityUpdater getUpdater(
-      TestSuite original, TestSuite updated, Operation operation) {
+      TestSuite original, TestSuite updated, Operation operation, ChangeSource changeSource) {
     return new TestSuiteUpdater(original, updated, operation);
   }
 
@@ -440,6 +440,7 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
     String updatedBy = securityContext.getUserPrincipal().getName();
     preDelete(original, updatedBy);
     setFieldsInternal(original, putFields);
+    deleteChildIngestionPipelines(original.getId(), hardDelete, updatedBy);
 
     EventType changeType;
     TestSuite updated = JsonUtils.readValue(JsonUtils.pojoToJson(original), TestSuite.class);
@@ -449,7 +450,7 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
       updated.setUpdatedBy(updatedBy);
       updated.setUpdatedAt(System.currentTimeMillis());
       updated.setDeleted(true);
-      EntityUpdater updater = getUpdater(original, updated, Operation.SOFT_DELETE);
+      EntityUpdater updater = getUpdater(original, updated, Operation.SOFT_DELETE, null);
       updater.update();
       changeType = ENTITY_SOFT_DELETED;
     } else {
@@ -458,6 +459,24 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
     }
     LOG.info("{} deleted {}", hardDelete ? "Hard" : "Soft", updated.getFullyQualifiedName());
     return new RestUtil.DeleteResponse<>(updated, changeType);
+  }
+
+  /**
+   * Always delete as if it was marked recursive. Deleting a Logical Suite should
+   * just go ahead and clean the Ingestion Pipelines
+   */
+  private void deleteChildIngestionPipelines(UUID id, boolean hardDelete, String updatedBy) {
+    List<CollectionDAO.EntityRelationshipRecord> childrenRecords =
+        daoCollection
+            .relationshipDAO()
+            .findTo(id, entityType, Relationship.CONTAINS.ordinal(), Entity.INGESTION_PIPELINE);
+
+    if (childrenRecords.isEmpty()) {
+      LOG.debug("No children to delete");
+      return;
+    }
+    // Delete all the contained entities
+    deleteChildren(childrenRecords, hardDelete, updatedBy);
   }
 
   private void updateTestSummaryFromBucket(JsonObject bucket, TestSummary testSummary) {

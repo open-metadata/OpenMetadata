@@ -13,6 +13,11 @@
 import test from '@playwright/test';
 import { SidebarItem } from '../../constant/sidebar';
 import { EntityDataClass } from '../../support/entity/EntityDataClass';
+import { EntityDataClassCreationConfig } from '../../support/entity/EntityDataClass.interface';
+import { TableClass } from '../../support/entity/TableClass';
+import { Glossary } from '../../support/glossary/Glossary';
+import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
+import { UserClass } from '../../support/user/UserClass';
 import {
   FIELDS,
   OPERATOR,
@@ -23,10 +28,21 @@ import { createNewPage, redirectToHomePage } from '../../utils/common';
 import { assignTier } from '../../utils/entity';
 import { sidebarClick } from '../../utils/sidebar';
 
-test.describe.configure({
-  // 4 minutes to avoid test timeout happening some times in AUTs
-  timeout: 4 * 60 * 1000,
-});
+const creationConfig: EntityDataClassCreationConfig = {
+  table: true,
+  topic: true,
+  dashboard: true,
+  mlModel: true,
+  pipeline: true,
+  dashboardDataModel: true,
+  apiCollection: true,
+  searchIndex: true,
+  container: true,
+};
+
+const user = new UserClass();
+const table = new TableClass(undefined, 'Regular');
+let glossaryEntity: Glossary;
 
 test.describe('Advanced Search', { tag: '@advanced-search' }, () => {
   // use the admin user to login
@@ -36,7 +52,21 @@ test.describe('Advanced Search', { tag: '@advanced-search' }, () => {
 
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
     const { page, apiContext, afterAction } = await createNewPage(browser);
-    await EntityDataClass.preRequisitesForTests(apiContext);
+    await EntityDataClass.preRequisitesForTests(apiContext, creationConfig);
+    await user.create(apiContext);
+    glossaryEntity = new Glossary(undefined, [
+      {
+        id: user.responseData.id,
+        type: 'user',
+        name: user.responseData.name,
+        displayName: user.responseData.displayName,
+      },
+    ]);
+    const glossaryTermEntity = new GlossaryTerm(glossaryEntity);
+
+    await glossaryEntity.create(apiContext);
+    await glossaryTermEntity.create(apiContext);
+    await table.create(apiContext);
 
     // Add Owner & Tag to the table
     await EntityDataClass.table1.visitEntityPage(page);
@@ -142,7 +172,10 @@ test.describe('Advanced Search', { tag: '@advanced-search' }, () => {
         EntityDataClass.table1.schema.name,
         EntityDataClass.table2.schema.name,
       ],
-      'columns.name.keyword': ['email', 'shop_id'],
+      'columns.name.keyword': [
+        EntityDataClass.table1.entity.columns[2].name,
+        EntityDataClass.table2.entity.columns[3].name,
+      ],
       'displayName.keyword': [
         EntityDataClass.table1.entity.displayName,
         EntityDataClass.table2.entity.displayName,
@@ -153,11 +186,11 @@ test.describe('Advanced Search', { tag: '@advanced-search' }, () => {
       ],
       'messageSchema.schemaFields.name.keyword': [
         EntityDataClass.topic1.entity.messageSchema.schemaFields[0].name,
-        EntityDataClass.topic1.entity.messageSchema.schemaFields[1].name,
+        EntityDataClass.topic2.entity.messageSchema.schemaFields[1].name,
       ],
       'dataModel.columns.name.keyword': [
-        EntityDataClass.dashboard1.dataModel.columns[0].name,
-        EntityDataClass.dashboard1.dataModel.columns[1].name,
+        EntityDataClass.container1.entity.dataModel.columns[0].name,
+        EntityDataClass.container2.entity.dataModel.columns[1].name,
       ],
       dataModelType: [
         EntityDataClass.dashboard1.dataModel.dataModelType,
@@ -165,11 +198,11 @@ test.describe('Advanced Search', { tag: '@advanced-search' }, () => {
       ],
       'fields.name.keyword': [
         EntityDataClass.searchIndex1.entity.fields[1].name,
-        EntityDataClass.searchIndex1.entity.fields[3].name,
+        EntityDataClass.searchIndex2.entity.fields[3].name,
       ],
       'tasks.displayName.keyword': [
         EntityDataClass.pipeline1.entity.tasks[0].displayName,
-        EntityDataClass.pipeline1.entity.tasks[1].displayName,
+        EntityDataClass.pipeline2.entity.tasks[1].displayName,
       ],
       'domain.displayName.keyword': [
         EntityDataClass.domain1.data.displayName,
@@ -178,13 +211,13 @@ test.describe('Advanced Search', { tag: '@advanced-search' }, () => {
       'responseSchema.schemaFields.name.keyword': [
         EntityDataClass.apiCollection1.apiEndpoint.responseSchema
           .schemaFields[0].name,
-        EntityDataClass.apiCollection1.apiEndpoint.responseSchema
+        EntityDataClass.apiCollection2.apiEndpoint.responseSchema
           .schemaFields[1].name,
       ],
       'requestSchema.schemaFields.name.keyword': [
         EntityDataClass.apiCollection1.apiEndpoint.requestSchema.schemaFields[0]
           .name,
-        EntityDataClass.apiCollection1.apiEndpoint.requestSchema.schemaFields[1]
+        EntityDataClass.apiCollection2.apiEndpoint.requestSchema.schemaFields[1]
           .name,
       ],
       'name.keyword': [
@@ -196,6 +229,12 @@ test.describe('Advanced Search', { tag: '@advanced-search' }, () => {
         EntityDataClass.dashboardDataModel2.entity.project,
       ],
       status: ['Approved', 'In Review'],
+      tableType: [table.entity.tableType, 'MaterializedView'],
+      entityType: ['dashboard', 'mlmodel'],
+      'charts.displayName.keyword': [
+        EntityDataClass.dashboard1.charts.displayName,
+        EntityDataClass.dashboard2.charts.displayName,
+      ],
     };
 
     await afterAction();
@@ -203,7 +242,10 @@ test.describe('Advanced Search', { tag: '@advanced-search' }, () => {
 
   test.afterAll('Cleanup', async ({ browser }) => {
     const { apiContext, afterAction } = await createNewPage(browser);
-    await EntityDataClass.postRequisitesForTests(apiContext);
+    await EntityDataClass.postRequisitesForTests(apiContext, creationConfig);
+    await glossaryEntity.delete(apiContext);
+    await user.delete(apiContext);
+    await table.delete(apiContext);
     await afterAction();
   });
 

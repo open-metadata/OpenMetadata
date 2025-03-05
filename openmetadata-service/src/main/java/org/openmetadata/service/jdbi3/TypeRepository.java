@@ -27,6 +27,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -44,6 +45,7 @@ import org.openmetadata.schema.type.CustomPropertyConfig;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.type.customProperties.EnumConfig;
 import org.openmetadata.schema.type.customProperties.TableConfig;
 import org.openmetadata.service.Entity;
@@ -120,7 +122,8 @@ public class TypeRepository extends EntityRepository<Type> {
   }
 
   @Override
-  public EntityUpdater getUpdater(Type original, Type updated, Operation operation) {
+  public EntityRepository<Type>.EntityUpdater getUpdater(
+      Type original, Type updated, Operation operation, ChangeSource changeSource) {
     return new TypeUpdater(original, updated, operation);
   }
 
@@ -174,6 +177,11 @@ public class TypeRepository extends EntityRepository<Type> {
     for (Triple<String, String, String> result : results) {
       CustomProperty property = JsonUtils.readValue(result.getRight(), CustomProperty.class);
       property.setPropertyType(this.getReferenceByName(result.getMiddle(), NON_DELETED));
+
+      if ("enum".equals(property.getPropertyType().getName())) {
+        sortEnumKeys(property);
+      }
+
       customProperties.add(property);
     }
     customProperties.sort(EntityUtil.compareCustomProperty);
@@ -267,6 +275,19 @@ public class TypeRepository extends EntityRepository<Type> {
 
       throw new IllegalArgumentException(
           CatalogExceptionMessage.customPropertyConfigError("table", validationErrors));
+    }
+  }
+
+  @SuppressWarnings("unchecked")
+  private void sortEnumKeys(CustomProperty property) {
+    Object enumConfig = property.getCustomPropertyConfig().getConfig();
+    if (enumConfig instanceof Map) {
+      Map<String, Object> configMap = (Map<String, Object>) enumConfig;
+      if (configMap.get("values") instanceof List) {
+        List<String> values = (List<String>) configMap.get("values");
+        List<String> sortedValues = values.stream().sorted().collect(Collectors.toList());
+        configMap.put("values", sortedValues);
+      }
     }
   }
 
@@ -460,6 +481,7 @@ public class TypeRepository extends EntityRepository<Type> {
         Type entity, CustomProperty origProperty, CustomProperty updatedProperty) {
       String updatedBy = entity.getUpdatedBy();
       if (origProperty.getPropertyType().getName().equals("enum")) {
+        sortEnumKeys(updatedProperty);
         EnumConfig origConfig =
             JsonUtils.convertValue(
                 origProperty.getCustomPropertyConfig().getConfig(), EnumConfig.class);

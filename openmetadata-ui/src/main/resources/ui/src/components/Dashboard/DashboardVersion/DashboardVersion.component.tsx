@@ -41,6 +41,7 @@ import DescriptionV1 from '../../common/EntityDescription/DescriptionV1';
 import Loader from '../../common/Loader/Loader';
 import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import TabsLabel from '../../common/TabsLabel/TabsLabel.component';
+import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
 import DataAssetsVersionHeader from '../../DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader';
 import DataProductsContainer from '../../DataProducts/DataProductsContainer/DataProductsContainer.component';
 import EntityVersionTimeLine from '../../Entity/EntityVersionTimeLine/EntityVersionTimeLine';
@@ -238,7 +239,6 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
         children: (
           <CustomPropertyTable
             isVersionView
-            entityDetails={currentVersionData}
             entityType={EntityType.DASHBOARD}
             hasEditAccess={false}
             hasPermission={entityPermissions.ViewAll}
@@ -272,14 +272,22 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
                 onVersionClick={backHandler}
               />
             </Col>
-            <Col span={24}>
-              <Tabs
-                data-testid="tabs"
-                defaultActiveKey={tab ?? EntityTabs.DETAILS}
-                items={tabItems}
-                onChange={handleTabChange}
-              />
-            </Col>
+            <GenericProvider
+              isVersionView
+              currentVersionData={currentVersionData}
+              data={currentVersionData}
+              permissions={entityPermissions}
+              type={EntityType.DASHBOARD}
+              onUpdate={() => Promise.resolve()}>
+              <Col span={24}>
+                <Tabs
+                  data-testid="tabs"
+                  defaultActiveKey={tab ?? EntityTabs.DETAILS}
+                  items={tabItems}
+                  onChange={handleTabChange}
+                />
+              </Col>
+            </GenericProvider>
           </Row>
         </div>
       )}

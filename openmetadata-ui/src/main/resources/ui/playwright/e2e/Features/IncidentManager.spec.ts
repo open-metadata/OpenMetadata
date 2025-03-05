@@ -44,7 +44,7 @@ test.describe.configure({ mode: 'serial' });
 test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
   test.beforeAll(async ({ browser }) => {
     // since we need to poll for the pipeline status, we need to increase the timeout
-    test.setTimeout(90000);
+    test.slow();
 
     const { afterAction, apiContext, page } = await createNewPage(browser);
 
@@ -172,9 +172,7 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
 
         await testCaseResponse;
 
-        const listUserResponse = page.waitForResponse('/api/v1/users?*');
         await page.click('[data-testid="assignee"] [data-testid="edit-owner"]');
-        listUserResponse;
         await page.waitForSelector('[data-testid="loader"]', {
           state: 'detached',
         });

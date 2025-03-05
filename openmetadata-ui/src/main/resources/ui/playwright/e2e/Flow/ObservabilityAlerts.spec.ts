@@ -156,6 +156,18 @@ test('Pipeline Alert', async ({ page }) => {
     });
   });
 
+  await test.step('Verify diagnostic info tab', async () => {
+    await visitObservabilityAlertPage(page);
+    await visitAlertDetailsPage(page, data.alertDetails);
+
+    const diagnosticTab = page.getByRole('tab', { name: /diagnostic info/i });
+    const diagnosticInfoResponse = page.waitForResponse(
+      `/api/v1/events/subscriptions/**/diagnosticInfo`
+    );
+    await diagnosticTab.click();
+    await diagnosticInfoResponse;
+  });
+
   await test.step('Check created alert details', async () => {
     await visitObservabilityAlertPage(page);
     await visitAlertDetailsPage(page, data.alertDetails);

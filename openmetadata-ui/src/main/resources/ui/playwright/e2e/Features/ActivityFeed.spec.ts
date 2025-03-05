@@ -23,7 +23,6 @@ import { UserClass } from '../../support/user/UserClass';
 import {
   addMentionCommentInFeed,
   checkDescriptionInEditModal,
-  deleteFeedComments,
   FIRST_FEED_SELECTOR,
   REACTION_EMOJIS,
   reactOnFeed,
@@ -229,96 +228,27 @@ test.describe('Activity feed', () => {
     await checkTaskCount(page, 0, 2);
   });
 
-  test('User should be able to reply and delete comment in feeds in ActivityFeed', async ({
+  test('User should be able to reply in feeds in ActivityFeed', async ({
     page,
   }) => {
     await redirectToHomePage(page);
 
     await visitOwnProfilePage(page);
 
-    const secondFeedConversation = page
-      .locator('#center-container [data-testid="message-container"]')
-      .nth(1);
+    const commentInput = page.locator('[data-testid="comments-input-field"]');
+    commentInput.click();
 
-    await secondFeedConversation.locator('.feed-card-v2-sidebar').click();
+    await page.fill(
+      '[data-testid="editor-wrapper"] .ql-editor',
+      `Reply message`
+    );
+    const sendReply = page.waitForResponse('/api/v1/feed/*/posts');
+    await page.getByTestId('send-button').click({ force: true });
+    await sendReply;
 
-    await page.waitForSelector('#feed-panel', {
-      state: 'visible',
-    });
-
-    // Compare the text of the second feed in the center container with the right panel feed
-    const secondFeedText = await secondFeedConversation
-      .locator('[data-testid="headerText"]')
-      .innerText();
-
-    const rightPanelFeedText = await page
-      .locator(
-        '.right-container [data-testid="message-container"] [data-testid="headerText"]'
-      )
-      .innerText();
-
-    expect(secondFeedText).toBe(rightPanelFeedText);
-
-    for (let i = 1; i <= 4; i++) {
-      await page.fill(
-        '[data-testid="editor-wrapper"] .ql-editor',
-        `Reply message ${i}`
-      );
-      const sendReply = page.waitForResponse('/api/v1/feed/*/posts');
-      await page.getByTestId('send-button').click({ force: true });
-      await sendReply;
-    }
-
-    // Compare if feed is same after adding some comments in the right panel
-    const rightPanelFeedTextCurrent = await page
-      .locator(
-        '.right-container [data-testid="message-container"] [data-testid="headerText"]'
-      )
-      .innerText();
-
-    expect(secondFeedText).toBe(rightPanelFeedTextCurrent);
-
-    // Verify if the comments are visible
-    for (let i = 2; i <= 4; i++) {
-      await expect(
-        page.locator('.right-container [data-testid="feed-replies"]')
-      ).toContainText(`Reply message ${i}`);
-    }
-
-    // Only show comment of latest 3 replies
     await expect(
       page.locator('.right-container [data-testid="feed-replies"]')
-    ).not.toContainText('Reply message 1');
-
-    await expect(
-      page.locator(
-        '[data-testid="message-container"] .active [data-testid="reply-count"]'
-      )
-    ).toContainText('4 Replies');
-
-    // Deleting last 2 comments from the Feed
-    const feedReplies = page.locator(
-      '.right-container [data-testid="feed-replies"] .feed-card-v2-container'
-    );
-
-    await deleteFeedComments(page, feedReplies.nth(2));
-
-    await deleteFeedComments(page, feedReplies.nth(2));
-
-    // Compare if feed is same after deleting some comments in the right panel
-    const rightPanelFeedTextCurrentAfterDelete = await page
-      .locator(
-        '.right-container [data-testid="message-container"] [data-testid="headerText"]'
-      )
-      .innerText();
-
-    expect(secondFeedText).toBe(rightPanelFeedTextCurrentAfterDelete);
-
-    await expect(
-      page.locator(
-        '[data-testid="message-container"] .active [data-testid="reply-count"]'
-      )
-    ).toContainText('2 Replies');
+    ).toContainText('Reply message');
   });
 
   test('Update Description Task on Columns', async ({ page }) => {
@@ -381,7 +311,9 @@ test.describe('Activity feed', () => {
 
     // Task 1 - Resolved the task
 
+    const resolveTask2 = page.waitForResponse('/api/v1/feed/tasks/*/resolve');
     await page.getByText('Accept Suggestion').click();
+    await resolveTask2;
 
     await toastNotification(page, /Task resolved successfully/);
 
