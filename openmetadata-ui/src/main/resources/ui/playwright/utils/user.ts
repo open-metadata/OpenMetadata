@@ -102,7 +102,7 @@ export const visitUserProfilePage = async (page: Page, userName: string) => {
     }
   );
   const userResponse = page.waitForResponse(
-    '/api/v1/search/query?q=**&from=0&size=*&index=*'
+    '/api/v1/search/query?q=**AND%20isAdmin:false%20isBot:false&from=0&size=*&index=*'
   );
   const loader = page.waitForSelector(
     '[data-testid="user-list-v1-component"] [data-testid="loader"]',
