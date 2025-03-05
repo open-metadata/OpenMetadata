@@ -26,7 +26,7 @@ setup('authenticate as admin', async ({ page }) => {
 
   await resetTokenFromBotPage(page, {
     name: 'ingestion',
-    testId: 'bot-link-ingestion-bot',
+    testId: 'bot-link-IngestionBot',
   });
 
   // End of authentication steps.
