@@ -101,9 +101,10 @@ export const DiffViewNew = ({
 
   return (
     <div
-      className={classNames(
-        'w-full h-max-56 overflow-y-auto p-md border-radius-xs'
-      )}
+      className={classNames('w-full overflow-y-auto p-md border-radius-xs', {
+        'diff-view-container-card': !showDescTitle,
+        'diff-view-container-card-right-panel': showDescTitle,
+      })}
       style={{
         ...(showDescTitle
           ? {
