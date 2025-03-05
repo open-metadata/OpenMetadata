@@ -226,12 +226,12 @@ export const resetTokenFromBotPage = async (
     testId: string;
   }
 ) => {
+  const settingClickResponse = page.waitForResponse('api/v1/bots?*');
   await settingClick(page, GlobalSettingOptions.BOTS);
+  await settingClickResponse;
 
   await page.getByTestId('searchbar').click();
   await page.getByTestId('searchbar').fill(bot.name);
-
-  await expect(page.getByTestId(bot.testId)).toBeVisible();
 
   await page.getByTestId(bot.testId).click();
 
