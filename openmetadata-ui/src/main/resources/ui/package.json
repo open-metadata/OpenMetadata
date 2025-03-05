@@ -200,7 +200,7 @@
     "eslint-plugin-react": "7.36.1",
     "eslint-plugin-react-hooks": "4.2.0",
     "file-loader": "^6.2.0",
-    "fork-ts-checker-webpack-plugin": "6.5.0",
+    "fork-ts-checker-webpack-plugin": "^9.0.2",
     "fs-extra": "^10.1.0",
     "html-webpack-plugin": "^5.5.0",
     "husky": "^8.0.1",
@@ -221,7 +221,7 @@
     "sync-i18n": "^0.0.20",
     "thread-loader": "^4.0.4",
     "ts-jest": "^26.4.4",
-    "ts-loader": "^8.0.14",
+    "ts-loader": "^9.5.1",
     "tslib": "^2.4.1",
     "typescript": "^4.2.4",
     "url-loader": "^4.1.1",
@@ -236,7 +236,6 @@
     "prosemirror-state": "1.4.1",
     "prosemirror-transform": "1.7.0",
     "prosemirror-view": "1.28.2",
-    "axios": "1.7.9",
     "ws": "8.17.1",
     "micromatch": "4.0.8",
     "minimatch": "3.0.5",
@@ -250,7 +249,6 @@
     "cookie": "0.7.0",
     "jsonpath-plus": "10.3.0",
     "cross-spawn": "7.0.5",
-    "serialize-javascript": "6.0.2",
-    "dompurify": "3.2.4"
+    "serialize-javascript": "6.0.2"
   }
 }
