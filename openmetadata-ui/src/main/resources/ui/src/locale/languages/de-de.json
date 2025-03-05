@@ -613,6 +613,7 @@
     "help": "Hilfe",
     "here-lowercase": "hier",
     "hide": "Verstecken",
+    "hide-all": "Alle ausblenden",
     "hide-deleted-entity": "Gelöschte {{entity}} verbergen",
     "history": "History",
     "home": "Startseite",

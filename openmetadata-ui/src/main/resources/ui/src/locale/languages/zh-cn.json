@@ -613,6 +613,7 @@
     "help": "帮助",
     "here-lowercase": "这里",
     "hide": "隐藏",
+    "hide-all": "隐藏全部",
     "hide-deleted-entity": "隐藏已删除的{{entity}}",
     "history": "历史",
     "home": "主页",
