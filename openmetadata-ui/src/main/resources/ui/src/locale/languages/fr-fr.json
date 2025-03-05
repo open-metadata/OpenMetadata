@@ -607,6 +607,7 @@
     "help": "Aide",
     "here-lowercase": "ici",
     "hide": "Masquer",
+    "hide-all": "Tout masquer",
     "hide-deleted-entity": "Masquer les {{entity}} Supprimé·e·s",
     "history": "History",
     "home": "Accueil",

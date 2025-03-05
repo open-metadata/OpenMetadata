@@ -34,7 +34,7 @@ export const OktaAuthProvider: FunctionComponent<Props> = ({
 }: Props) => {
   const { authConfig } = useApplicationStore();
   const { clientId, issuer, redirectUri, scopes, pkce } =
-    authConfig as OktaAuthOptions;
+    authConfig as unknown as OktaAuthOptions;
 
   const oktaAuth = useMemo(
     () =>
