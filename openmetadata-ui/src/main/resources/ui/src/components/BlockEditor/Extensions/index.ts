@@ -81,7 +81,7 @@ export const extensions = [
   }),
   LinkExtension.configure({
     autolink: false,
-    openOnClick: false,
+    openOnClick: true,
     linkOnPaste: true,
     HTMLAttributes: {
       rel: 'noopener noreferrer nofollow',
