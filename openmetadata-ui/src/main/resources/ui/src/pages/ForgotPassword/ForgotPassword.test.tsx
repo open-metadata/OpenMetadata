@@ -108,9 +108,9 @@ describe('ForgotPassword', () => {
     });
 
     expect(mockHandleForgotPassword).toHaveBeenCalledWith('test@example.com');
-    expect(getByTestId('success-screen-container')).toBeInTheDocument();
-    expect(getByTestId('success-icon')).toBeInTheDocument();
-    expect(getByTestId('success-line')).toBeInTheDocument();
+    expect(getByTestId('alert-bar')).toBeInTheDocument();
+    expect(getByTestId('alert-icon')).toBeInTheDocument();
+    expect(getByTestId('alert-message')).toBeInTheDocument();
   });
 
   it('show call push back to login', async () => {
@@ -142,6 +142,6 @@ describe('ForgotPassword', () => {
 
     expect(showErrorToast).toHaveBeenCalledWith('server.email-not-found');
     expect(mockHandleError).toHaveBeenCalledWith('test@example.com');
-    expect(queryByTestId('success-screen-container')).not.toBeInTheDocument();
+    expect(queryByTestId('alert-bar')).not.toBeInTheDocument();
   });
 });
