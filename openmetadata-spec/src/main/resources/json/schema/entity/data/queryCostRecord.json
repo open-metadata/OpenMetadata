@@ -41,6 +41,11 @@
         "count": {
             "description": "Number of times the query was executed",
             "type": "number"
+        },
+        "totalDuration": {
+            "description": "Total duration of the query",
+            "type": "number",
+            "default": 0
         }
     },
     "required": [

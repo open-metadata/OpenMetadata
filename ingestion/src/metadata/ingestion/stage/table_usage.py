@@ -183,6 +183,10 @@ class TableUsageStage(Stage):
                     + (parsed_data.cost or 0),
                     "count": self.query_cost[(query_hash, parsed_data.date)]["count"]
                     + 1,
+                    "totalDuration": self.query_cost[(query_hash, parsed_data.date)][
+                        "totalDuration"
+                    ]
+                    + (parsed_data.duration or 0),
                 }
             )
         else:
@@ -191,6 +195,7 @@ class TableUsageStage(Stage):
                 "count": 1,
                 "query": parsed_data.sql,
                 "dialect": parsed_data.dialect,
+                "totalDuration": parsed_data.duration or 0,
             }
 
     def _run(self, record: QueryParserData) -> Iterable[Either[str]]:
@@ -233,6 +238,7 @@ class TableUsageStage(Stage):
                     "count": value["count"],
                     "query": value["query"],
                     "dialect": value["dialect"],
+                    "totalDuration": value["totalDuration"],
                 }
                 with open(
                     os.path.join(

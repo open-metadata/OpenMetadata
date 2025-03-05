@@ -62,6 +62,10 @@
         "dialect": {
           "description": "SQL dialect",
           "type": "string"
+        },
+        "totalDuration": {
+          "description": "Total duration of the query",
+          "type": "number"
         }
       },
       "required": ["cost", "count"],

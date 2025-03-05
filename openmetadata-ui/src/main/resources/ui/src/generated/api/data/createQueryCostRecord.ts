@@ -34,6 +34,10 @@ export interface CreateQueryCostRecord {
      * Timestamp on which the failure was created.
      */
     timestamp: number;
+    /**
+     * Total duration of the query
+     */
+    totalDuration?: number;
 }
 
 /**

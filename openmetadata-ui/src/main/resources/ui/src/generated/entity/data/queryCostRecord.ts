@@ -39,6 +39,10 @@ export interface QueryCostRecord {
      */
     timestamp: number;
     /**
+     * Total duration of the query
+     */
+    totalDuration?: number;
+    /**
      * Time when query cost record was updated.
      */
     updatedAt?: number;

@@ -152,6 +152,7 @@ class OMetaQueryMixin:
             queryReference=EntityReference(id=query.id.root, type="query"),
             cost=query_cost_data.cost,
             count=query_cost_data.count,
+            totalDuration=query_cost_data.totalDuration,
         )
 
         return self.client.post(

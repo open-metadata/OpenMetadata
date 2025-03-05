@@ -20,6 +20,7 @@ public class QueryCostRecordMapper
         .withTimestamp(create.getTimestamp())
         .withCost(create.getCost())
         .withCount(create.getCount())
+        .withTotalDuration(create.getTotalDuration())
         .withUpdatedAt(System.currentTimeMillis())
         .withUpdatedBy(userEntity.getEntityReference())
         .withQueryReference(query.getEntityReference());

@@ -175,8 +175,7 @@
                         }
                     },
                     "query": {
-                        "type": "text",
-                        "analyzer": "om_analyzer"
+                        "type": "keyword"
                     },
                     "queryDate": {
                         "type": "long"
@@ -477,6 +476,9 @@
                 "type": "date"
             },
             "count": {
+                "type": "long"
+            },
+            "totalDuration": {
                 "type": "long"
             }
         }
