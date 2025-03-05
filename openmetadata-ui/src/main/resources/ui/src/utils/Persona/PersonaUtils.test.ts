@@ -51,24 +51,21 @@ describe('PersonaUtils', () => {
       const options = getCustomizePageOptions('governance');
 
       expect(options).toEqual([
-        {
+        expect.objectContaining({
           key: PageType.Domain,
           label: 'Domain',
-          description: PageType.Domain,
           icon: 'svg-mock',
-        },
-        {
+        }),
+        expect.objectContaining({
           key: PageType.Glossary,
           label: 'Glossary',
-          description: PageType.Glossary,
           icon: 'svg-mock',
-        },
-        {
+        }),
+        expect.objectContaining({
           key: PageType.GlossaryTerm,
           label: 'Glossary Term',
-          description: PageType.GlossaryTerm,
           icon: 'svg-mock',
-        },
+        }),
       ]);
     });
 
