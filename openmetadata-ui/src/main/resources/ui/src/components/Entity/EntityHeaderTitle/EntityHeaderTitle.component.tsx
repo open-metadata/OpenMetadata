@@ -60,14 +60,13 @@ const EntityHeaderTitle = ({
       wrap={false}>
       {icon && <Col className="flex-center">{icon}</Col>}
       <Col
-        className={classNames(
-          deleted || badge ? 'w-max-full-140' : 'entity-header-content',
-          nameClassName
-        )}>
+        className={
+          deleted || badge ? 'w-max-full-140' : 'entity-header-content'
+        }>
         {/* If we do not have displayName name only be shown in the bold from the below code */}
         {!isEmpty(displayName) && showName ? (
           <Typography.Text
-            className="entity-header-name"
+            className={classNames('entity-header-name', nameClassName)}
             data-testid="entity-header-name"
             ellipsis={{ tooltip: true }}>
             {stringToHTML(name)}
