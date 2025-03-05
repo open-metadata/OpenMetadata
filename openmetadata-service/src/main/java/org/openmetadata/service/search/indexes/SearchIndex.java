@@ -289,7 +289,7 @@ public interface SearchIndex {
     relationshipsMap.put("entity", buildEntityRefMap(entity.getEntityReference()));
     relationshipsMap.put("relatedEntity", buildEntityRefMap(relatedEntity.getEntityReference()));
     relationshipsMap.put(
-        "doc_id", entity.getId().toString() + "-" + relatedEntity.getId().toString());
+        "docId", entity.getId().toString() + "-" + relatedEntity.getId().toString());
     return relationshipsMap;
   }
 

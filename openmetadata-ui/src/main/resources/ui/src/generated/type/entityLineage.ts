@@ -50,6 +50,10 @@ export interface Edge {
  */
 export interface LineageDetails {
     /**
+     * Asset count in case of child assets lineage.
+     */
+    assetEdges?: number;
+    /**
      * Lineage information of how upstream columns were combined to get downstream column.
      */
     columnsLineage?: ColumnLineage[];
@@ -166,6 +170,7 @@ export interface EntityReference {
  * Lineage type describes how a lineage was created.
  */
 export enum Source {
+    ChildAssets = "ChildAssets",
     CrossDatabaseLineage = "CrossDatabaseLineage",
     DashboardLineage = "DashboardLineage",
     DbtLineage = "DbtLineage",

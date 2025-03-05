@@ -60,7 +60,7 @@
       "description": "Source of the Lineage.",
       "type": "string"
     },
-    "doc_id": {
+    "docId": {
       "description": "Doc Id for the Lineage.",
       "type": "string"
     },

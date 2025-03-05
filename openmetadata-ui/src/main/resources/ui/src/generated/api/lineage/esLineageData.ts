@@ -25,7 +25,7 @@ export interface EsLineageData {
     /**
      * Doc Id for the Lineage.
      */
-    doc_id?: string;
+    docId?: string;
     /**
      * From Entity.
      */

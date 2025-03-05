@@ -52,7 +52,7 @@
         "source": {
           "description": "Lineage type describes how a lineage was created.",
           "type": "string",
-          "enum": ["Manual", "ViewLineage", "QueryLineage", "PipelineLineage", "DashboardLineage", "DbtLineage", "SparkLineage", "OpenLineage", "ExternalTableLineage", "CrossDatabaseLineage"],
+          "enum": ["Manual", "ViewLineage", "QueryLineage", "PipelineLineage", "DashboardLineage", "DbtLineage", "SparkLineage", "OpenLineage", "ExternalTableLineage", "CrossDatabaseLineage", "ChildAssets"],
           "default": "Manual"
         },
         "createdAt": {
@@ -70,6 +70,11 @@
         "updatedBy": {
           "description": "User who made the update.",
           "type": "string"
+        },
+        "assetEdges": {
+          "description": "Asset count in case of child assets lineage.",
+          "type": "integer",
+          "default": null
         }
       }
     },

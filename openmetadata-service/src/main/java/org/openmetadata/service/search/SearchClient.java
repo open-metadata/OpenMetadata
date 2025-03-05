@@ -79,19 +79,19 @@ public interface SearchClient {
       "if (ctx._source.certification != null && ctx._source.certification.tagLabel != null) {ctx._source.certification.tagLabel.style = params.style; ctx._source.certification.tagLabel.description = params.description; ctx._source.certification.tagLabel.tagFQN = params.tagFQN; ctx._source.certification.tagLabel.name = params.name;  }";
 
   String REMOVE_LINEAGE_SCRIPT =
-      "for (int i = 0; i < ctx._source.upstreamLineage.length; i++) { if (ctx._source.upstreamLineage[i].doc_id == '%s') { ctx._source.upstreamLineage.remove(i) }}";
+      "for (int i = 0; i < ctx._source.upstreamLineage.length; i++) { if (ctx._source.upstreamLineage[i].docId == '%s') { ctx._source.upstreamLineage.remove(i) }}";
 
   String REMOVE_ENTITY_RELATIONSHIP =
-      "for (int i = 0; i < ctx._source.entityRelationship.length; i++) { if (ctx._source.entityRelationship[i].doc_id == '%s') { ctx._source.entityRelationship.remove(i) }}";
+      "for (int i = 0; i < ctx._source.entityRelationship.length; i++) { if (ctx._source.entityRelationship[i].docId == '%s') { ctx._source.entityRelationship.remove(i) }}";
 
   String ADD_UPDATE_LINEAGE =
-      "boolean docIdExists = false; for (int i = 0; i < ctx._source.upstreamLineage.size(); i++) { if (ctx._source.upstreamLineage[i].doc_id.equalsIgnoreCase(params.lineageData.doc_id)) { ctx._source.upstreamLineage[i] = params.lineageData; docIdExists = true; break;}}if (!docIdExists) {ctx._source.upstreamLineage.add(params.lineageData);}";
+      "boolean docIdExists = false; for (int i = 0; i < ctx._source.upstreamLineage.size(); i++) { if (ctx._source.upstreamLineage[i].docId.equalsIgnoreCase(params.lineageData.docId)) { ctx._source.upstreamLineage[i] = params.lineageData; docIdExists = true; break;}}if (!docIdExists) {ctx._source.upstreamLineage.add(params.lineageData);}";
 
   // The script is used for updating the entityRelationship attribute of the entity in ES
-  // It checks if any duplicate entry is present based on the doc_id and updates only if it is not
+  // It checks if any duplicate entry is present based on the docId and updates only if it is not
   // present
   String ADD_UPDATE_ENTITY_RELATIONSHIP =
-      "boolean docIdExists = false; for (int i = 0; i < ctx._source.entityRelationship.size(); i++) { if (ctx._source.entityRelationship[i].doc_id.equalsIgnoreCase(params.entityRelationshipData.doc_id)) { ctx._source.entityRelationship[i] = params.entityRelationshipData; docIdExists = true; break;}}if (!docIdExists) {ctx._source.entityRelationship.add(params.entityRelationshipData);}";
+      "boolean docIdExists = false; for (int i = 0; i < ctx._source.entityRelationship.size(); i++) { if (ctx._source.entityRelationship[i].docId.equalsIgnoreCase(params.entityRelationshipData.docId)) { ctx._source.entityRelationship[i] = params.entityRelationshipData; docIdExists = true; break;}}if (!docIdExists) {ctx._source.entityRelationship.add(params.entityRelationshipData);}";
   String UPDATE_ADDED_DELETE_GLOSSARY_TAGS =
       "if (ctx._source.tags != null) { for (int i = ctx._source.tags.size() - 1; i >= 0; i--) { if (params.tagDeleted != null) { for (int j = 0; j < params.tagDeleted.size(); j++) { if (ctx._source.tags[i].tagFQN.equalsIgnoreCase(params.tagDeleted[j].tagFQN)) { ctx._source.tags.remove(i); } } } } } if (ctx._source.tags == null) { ctx._source.tags = []; } if (params.tagAdded != null) { ctx._source.tags.addAll(params.tagAdded); } ctx._source.tags = ctx._source.tags .stream() .distinct() .sorted((o1, o2) -> o1.tagFQN.compareTo(o2.tagFQN)) .collect(Collectors.toList());";
   String REMOVE_TEST_SUITE_CHILDREN_SCRIPT =

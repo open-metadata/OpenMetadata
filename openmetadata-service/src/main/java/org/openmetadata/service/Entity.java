@@ -713,8 +713,8 @@ public final class Entity {
         .collect(Collectors.toSet());
   }
 
-  public static boolean entityHasField(EntityReference ref, String field) {
-    EntityRepository<?> entityRepository = Entity.getEntityRepository(ref.getType());
+  public static boolean entityHasField(String entityType, String field) {
+    EntityRepository<?> entityRepository = Entity.getEntityRepository(entityType);
     return entityRepository.getAllowedFields().contains(field);
   }
 }
