@@ -473,6 +473,7 @@ export const ActivityFeedTabNew = ({
             className="d-flex gap-4  p-b-xs justify-between items-center"
             style={{ marginTop: '6px' }}>
             <Dropdown
+              disabled={isMentionTabSelected}
               menu={{
                 items: taskFilterOptions,
                 selectedKeys: [...taskFilter],
@@ -480,7 +481,9 @@ export const ActivityFeedTabNew = ({
               overlayClassName="task-tab-custom-dropdown"
               trigger={['click']}>
               <TaskFilterIcon
-                className="cursor-pointer task-filter-icon"
+                className={`task-filter-icon ${
+                  isMentionTabSelected ? 'cursor-not-allowed' : 'cursor-pointer'
+                }`}
                 data-testid="user-profile-page-task-filter-icon"
               />
             </Dropdown>
