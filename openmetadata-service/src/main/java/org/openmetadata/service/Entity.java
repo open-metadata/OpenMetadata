@@ -712,4 +712,9 @@ public final class Entity {
         .map(Map.Entry::getKey)
         .collect(Collectors.toSet());
   }
+
+  public static boolean entityHasField(EntityReference ref, String field) {
+    EntityRepository<?> entityRepository = Entity.getEntityRepository(ref.getType());
+    return entityRepository.getAllowedFields().contains(field);
+  }
 }

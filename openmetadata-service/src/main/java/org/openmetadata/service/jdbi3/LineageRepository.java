@@ -125,6 +125,12 @@ public class LineageRepository {
     EntityReference to = addLineage.getEdge().getToEntity();
     to = Entity.getEntityReferenceById(to.getType(), to.getId(), Include.NON_DELETED);
 
+    boolean relationAlreadyExists =
+        Boolean.FALSE.equals(
+            nullOrEmpty(
+                dao.relationshipDAO()
+                    .getRecord(from.getId(), to.getId(), Relationship.UPSTREAM.ordinal())));
+
     if (lineageDetails.getPipeline() != null) {
       // Validate pipeline entity
       EntityReference pipeline = lineageDetails.getPipeline();
@@ -157,15 +163,25 @@ public class LineageRepository {
     addLineageToSearch(from, to, addLineage.getEdge().getLineageDetails());
 
     // build Extended Lineage
-    buildExtendedLineage(from, to, lineageDetails);
+    buildExtendedLineage(from, to, lineageDetails, relationAlreadyExists);
   }
 
   private void buildExtendedLineage(
-      EntityReference from, EntityReference to, LineageDetails lineageDetails) {
+      EntityReference from,
+      EntityReference to,
+      LineageDetails lineageDetails,
+      boolean childRelationExists) {
+    boolean addService =
+        Entity.entityHasField(from, "service") && Entity.entityHasField(to, "service");
+    boolean addDomain =
+        Entity.entityHasField(from, "domain") && Entity.entityHasField(to, "domain");
+    boolean addDataProduct =
+        Entity.entityHasField(from, "dataProducts") && Entity.entityHasField(to, "dataProducts");
+
+    String fields = getExtendedLineageFields(addService, addDomain, addDataProduct);
     EntityInterface fromEntity =
-        Entity.getEntity(from.getType(), from.getId(), "service,domain,dataProducts", Include.ALL);
-    EntityInterface toEntity =
-        Entity.getEntity(to.getType(), to.getId(), "service,domain,dataProducts", Include.ALL);
+        Entity.getEntity(from.getType(), from.getId(), fields, Include.ALL);
+    EntityInterface toEntity = Entity.getEntity(to.getType(), to.getId(), fields, Include.ALL);
     LineageDetails updatedLineageTimestamps =
         new LineageDetails()
             .withCreatedAt(lineageDetails.getCreatedAt())
@@ -174,7 +190,7 @@ public class LineageRepository {
             .withUpdatedBy(lineageDetails.getUpdatedBy());
 
     // Add Service Level Lineage
-    if (fromEntity.getService() != null && toEntity.getService() != null) {
+    if (addService && fromEntity.getService() != null && toEntity.getService() != null) {
       EntityReference fromService = fromEntity.getService();
       EntityReference toService = toEntity.getService();
       if (Boolean.FALSE.equals(fromService.getId().equals(toService.getId()))) {
@@ -191,7 +207,7 @@ public class LineageRepository {
     }
 
     // Add Domain Level Lineage
-    if (fromEntity.getDomain() != null && toEntity.getDomain() != null) {
+    if (addDomain && fromEntity.getDomain() != null && toEntity.getDomain() != null) {
       EntityReference fromDomain = fromEntity.getDomain();
       EntityReference toDomain = toEntity.getDomain();
       if (Boolean.FALSE.equals(fromDomain.getId().equals(toDomain.getId()))) {
@@ -206,6 +222,23 @@ public class LineageRepository {
         addLineageToSearch(from, to, updatedLineageTimestamps);
       }
     }
+  }
+
+  private String getExtendedLineageFields(boolean service, boolean domain, boolean dataProducts) {
+    StringBuilder fieldsBuilder = new StringBuilder();
+
+    if (service) {
+      fieldsBuilder.append("service");
+      fieldsBuilder.append(",");
+    }
+    if (domain) {
+      fieldsBuilder.append("domain");
+      fieldsBuilder.append(",");
+    }
+    if (dataProducts) {
+      fieldsBuilder.append("dataProducts");
+    }
+    return fieldsBuilder.toString();
   }
 
   private void addLineageToSearch(
