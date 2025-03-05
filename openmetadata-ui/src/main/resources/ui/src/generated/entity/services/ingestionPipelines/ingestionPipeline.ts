@@ -44,7 +44,7 @@ export interface IngestionPipeline {
      * Domain the asset belongs to. When not set, the asset inherits the domain from the parent
      * it belongs to.
      */
-    domain?: DomainElement;
+    domain?: EntityReference;
     /**
      * True if the pipeline is ready to be run in the next schedule. False if it is paused.
      */
@@ -68,7 +68,7 @@ export interface IngestionPipeline {
     /**
      * The ingestion agent responsible for executing the ingestion pipeline.
      */
-    ingestionAgent?: DomainElement;
+    ingestionAgent?: EntityReference;
     /**
      * Set the logging level for the workflow.
      */
@@ -81,7 +81,7 @@ export interface IngestionPipeline {
     /**
      * Owners of this Pipeline.
      */
-    owners?: DomainElement[];
+    owners?: EntityReference[];
     /**
      * Last of executions and status for the Pipeline.
      */
@@ -92,7 +92,7 @@ export interface IngestionPipeline {
      * Link to the service (such as database, messaging, storage services, etc. for which this
      * ingestion pipeline ingests the metadata from.
      */
-    service?:     DomainElement;
+    service?:     EntityReference;
     sourceConfig: SourceConfig;
     /**
      * Last update time corresponding to the new version of the entity in Unix epoch time
@@ -236,8 +236,10 @@ export interface FieldChange {
  * ingestion pipeline ingests the metadata from.
  *
  * Domain to apply
+ *
+ * Service to be modified
  */
-export interface DomainElement {
+export interface EntityReference {
     /**
      * If true the entity referred to has been soft-deleted.
      */
@@ -1148,7 +1150,7 @@ export interface Pipeline {
     /**
      * Service to be modified
      */
-    service?: ConfigService;
+    service?: EntityReference;
 }
 
 /**
@@ -1333,6 +1335,10 @@ export interface CollateAIAppConfig {
  *
  * Remove Custom Properties Action Type
  *
+ * Add a Data Product to the selected assets.
+ *
+ * Remove a Data Product to the selected assets.
+ *
  * Propagate description, tags and glossary terms via lineage
  *
  * ML Tagging action configuration for external automator.
@@ -1399,7 +1405,7 @@ export interface Action {
     /**
      * Domain to apply
      */
-    domain?: DomainElement;
+    domain?: EntityReference;
     /**
      * Description to apply
      */
@@ -1417,7 +1423,13 @@ export interface Action {
     /**
      * Owners to apply
      */
-    owners?: DomainElement[];
+    owners?: EntityReference[];
+    /**
+     * Data Products to apply
+     *
+     * Data Products to remove
+     */
+    dataProducts?: EntityReference[];
     /**
      * Propagate the metadata to columns via column-level lineage.
      */
@@ -1571,12 +1583,17 @@ export interface Style {
  *
  * Remove Custom Properties Action Type.
  *
+ * Add Data Products Action Type.
+ *
+ * Remove Data Products Action Type.
+ *
  * Lineage propagation action type.
  *
  * ML PII Tagging action type.
  */
 export enum ActionType {
     AddCustomPropertiesAction = "AddCustomPropertiesAction",
+    AddDataProductAction = "AddDataProductAction",
     AddDescriptionAction = "AddDescriptionAction",
     AddDomainAction = "AddDomainAction",
     AddOwnerAction = "AddOwnerAction",
@@ -1585,6 +1602,7 @@ export enum ActionType {
     LineagePropagationAction = "LineagePropagationAction",
     MLTaggingAction = "MLTaggingAction",
     RemoveCustomPropertiesAction = "RemoveCustomPropertiesAction",
+    RemoveDataProductAction = "RemoveDataProductAction",
     RemoveDescriptionAction = "RemoveDescriptionAction",
     RemoveDomainAction = "RemoveDomainAction",
     RemoveOwnerAction = "RemoveOwnerAction",
@@ -2153,11 +2171,11 @@ export interface ReverseIngestionConfig {
     /**
      * Added owners to be applied
      */
-    addedOwners?: DomainElement[];
+    addedOwners?: EntityReference[];
     /**
      * Removed owners from the entity
      */
-    removedOwners?: DomainElement[];
+    removedOwners?: EntityReference[];
     /**
      * Added tags to be applied
      */
@@ -2191,57 +2209,6 @@ export enum ProfileSampleType {
 export enum SamplingMethodType {
     Bernoulli = "BERNOULLI",
     System = "SYSTEM",
-}
-
-/**
- * Service to be modified
- *
- * This schema defines the EntityReference type used for referencing an entity.
- * EntityReference is used for capturing relationships from one entity to another. For
- * example, a table has an attribute called database of type EntityReference that captures
- * the relationship of a table `belongs to a` database.
- */
-export interface ConfigService {
-    /**
-     * If true the entity referred to has been soft-deleted.
-     */
-    deleted?: boolean;
-    /**
-     * Optional description of entity.
-     */
-    description?: string;
-    /**
-     * Display Name that identifies this entity.
-     */
-    displayName?: string;
-    /**
-     * Fully qualified name of the entity instance. For entities such as tables, databases
-     * fullyQualifiedName is returned in this field. For entities that don't have name hierarchy
-     * such as `user` and `team` this will be same as the `name` field.
-     */
-    fullyQualifiedName?: string;
-    /**
-     * Link to the entity resource.
-     */
-    href?: string;
-    /**
-     * Unique identifier that identifies an entity instance.
-     */
-    id: string;
-    /**
-     * If true the relationship indicated by this entity reference is inherited from the parent
-     * entity.
-     */
-    inherited?: boolean;
-    /**
-     * Name of the entity instance.
-     */
-    name?: string;
-    /**
-     * Entity type/class name - Examples: `database`, `table`, `metrics`, `databaseService`,
-     * `dashboardService`...
-     */
-    type: string;
 }
 
 /**

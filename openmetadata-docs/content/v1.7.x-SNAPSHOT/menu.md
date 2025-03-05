@@ -191,6 +191,8 @@ site_menu:
     url: /deployment/rds-iam-auth
   - category: Deployment / How to enable Azure Auth
     url: /deployment/azure-auth
+  - category: Deployment / Azure - Enable Passwordless Database Backend Connection
+    url: /deployment/azure-passwordless-auth
   - category: Deployment / Production-Ready Requirements
     url: /deployment/requirements
   - category: Deployment / Server Configuration Reference
@@ -972,6 +974,8 @@ site_menu:
     url: /releases/supported
   - category: Releases / All Releases
     url: /releases/all-releases
+  - category: Releases / All Releases / 1.6.4 Release
+    url: /releases/all-releases/#1.6.4-release
   - category: Releases / All Releases / 1.6.3 Release
     url: /releases/all-releases/#1.6.3-release
   - category: Releases / All Releases / 1.6.2 Release

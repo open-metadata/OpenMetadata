@@ -308,7 +308,7 @@ public final class EntityUtil {
     }
 
     public Fields(Set<String> allowedFields, Set<String> fieldsParam) {
-      if (CommonUtil.nullOrEmpty(fieldsParam)) {
+      if (nullOrEmpty(fieldsParam)) {
         fieldList = new HashSet<>();
         return;
       }

@@ -11,10 +11,6 @@
  *  limitations under the License.
  */
 import { expect, Page } from '@playwright/test';
-import {
-  customFormatDateTime,
-  getEpochMillisForFutureDays,
-} from '../../src/utils/date-time/DateTimeUtils';
 import { GlobalSettingOptions } from '../constant/settings';
 import {
   descriptionBox,
@@ -22,6 +18,7 @@ import {
   toastNotification,
   uuid,
 } from './common';
+import { customFormatDateTime, getEpochMillisForFutureDays } from './dateTime';
 import { settingClick } from './sidebar';
 import { revokeToken } from './user';
 
@@ -229,12 +226,12 @@ export const resetTokenFromBotPage = async (
     testId: string;
   }
 ) => {
+  const settingClickResponse = page.waitForResponse('api/v1/bots?*');
   await settingClick(page, GlobalSettingOptions.BOTS);
+  await settingClickResponse;
 
   await page.getByTestId('searchbar').click();
   await page.getByTestId('searchbar').fill(bot.name);
-
-  await expect(page.getByTestId(bot.testId)).toBeVisible();
 
   await page.getByTestId(bot.testId).click();
 
