@@ -45,6 +45,7 @@ import {
 import { useAuth } from '../../../hooks/authHooks';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useElementInView } from '../../../hooks/useElementInView';
+import { useFqn } from '../../../hooks/useFqn';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { getFeedCount } from '../../../rest/feedsAPI';
 import { getFeedCounts } from '../../../utils/CommonUtils';
@@ -72,7 +73,6 @@ const componentsVisibility = {
 };
 
 export const ActivityFeedTabNew = ({
-  fqn,
   owners = [],
   columns,
   entityType,
@@ -89,6 +89,7 @@ export const ActivityFeedTabNew = ({
   const { currentUser } = useApplicationStore();
   const { isAdminUser } = useAuth();
   const initialRender = useRef(true);
+  const { fqn } = useFqn();
   const [elementRef, isInView] = useElementInView({
     ...observerOptions,
     root: document.querySelector('#center-container'),

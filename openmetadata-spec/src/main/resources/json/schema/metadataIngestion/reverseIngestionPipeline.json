@@ -1,5 +1,5 @@
 {
-    "$id": "https://open-metadata.org/schema/entity/applications/metadataIngestion/reverseIngestionPipeline.json",
+    "$id": "https://open-metadata.org/schema/metadataIngestion/reverseIngestionPipeline.json",
     "$schema": "http://json-schema.org/draft-07/schema#",
     "title": "reverseIngestionPipeline",
     "javaType": "org.openmetadata.schema.metadataIngestion.ReverseIngestionPipeline",
@@ -57,7 +57,7 @@
             },
             "required": [
                 "id",
-                "entity",
+                "entityLink",
                 "type",
                 "parameters"
             ],
@@ -70,9 +70,9 @@
             "$ref": "#/definitions/reverseIngestionType",
             "default": "ReverseIngestion"
         },
-        "serviceId": {
-            "description": "The id of the database service to be modified",
-            "$ref": "../type/basic.json#/definitions/uuid"
+        "service": {
+            "description": "Service to be modified",
+            "$ref": "../type/entityReference.json"
         },
         "operations": {
             "description": "List of operations to be performed on the service",
@@ -84,7 +84,8 @@
     },
     "additionalProperties": false,
     "required": [
-        "serviceId",
+        "type",
+        "service",
         "operations"
     ]
 }

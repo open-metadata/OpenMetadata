@@ -514,11 +514,16 @@ class ServiceBaseClass {
 
     await page.getByTestId('data-assets-header').waitFor({ state: 'visible' });
 
-    await expect(page.getByTestId('entity-right-panel')).toBeVisible();
-
     await expect(page.getByTestId('markdown-parser').first()).toHaveText(
       description
     );
+
+    // Check for right side widgets visibility
+    await expect(page.getByTestId('KnowledgePanel.Tags')).toBeVisible();
+    await expect(
+      page.getByTestId('KnowledgePanel.GlossaryTerms')
+    ).toBeVisible();
+    await expect(page.getByTestId('KnowledgePanel.DataProducts')).toBeVisible();
   }
 
   async runAdditionalTests(
