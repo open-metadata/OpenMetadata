@@ -305,6 +305,7 @@ public class LineageRepository {
         "fromChildEntityFQN",
         "toChildEntityFQN",
         "pipelineName",
+        "pipelineDisplayName",
         "pipelineType",
         "pipelineDescription",
         "pipelineOwners",
@@ -353,6 +354,7 @@ public class LineageRepository {
                 "",
                 "",
                 "",
+                "",
                 "");
             LOG.debug(
                 "Exported ColumnMapping: from='{}', to='{}'",
@@ -362,7 +364,7 @@ public class LineageRepository {
         } else if (!pipeline.isMissingNode() && !pipeline.isNull()) {
           writePipelineRow(csvWriter, baseRow, pipeline);
         } else {
-          writeCsvRow(csvWriter, baseRow, "", "", "", "", "", "", "", "", "");
+          writeCsvRow(csvWriter, baseRow, "", "", "", "", "", "", "", "", "", "");
         }
       }
       csvWriter.close();
@@ -375,6 +377,7 @@ public class LineageRepository {
   private void writePipelineRow(
       CSVWriter csvWriter, Map<String, String> baseRow, JsonNode pipeline) {
     String pipelineName = getText(pipeline, "name");
+    String pipelineDisplayName = getText(pipeline, "displayName");
     String pipelineType = getText(pipeline, "serviceType");
     String pipelineDescription = getText(pipeline, "description");
     String pipelineOwners = getOwners(pipeline.path("owners"));
@@ -388,6 +391,7 @@ public class LineageRepository {
         "",
         "",
         pipelineName,
+        pipelineDisplayName,
         pipelineType,
         pipelineDescription,
         pipelineOwners,
@@ -403,6 +407,7 @@ public class LineageRepository {
       String fromChildFQN,
       String toChildFQN,
       String pipelineName,
+      String pipelineDisplayName,
       String pipelineType,
       String pipelineDescription,
       String pipelineOwners,
@@ -423,6 +428,7 @@ public class LineageRepository {
       fromChildFQN,
       toChildFQN,
       pipelineName,
+      pipelineDisplayName,
       pipelineType,
       pipelineDescription,
       pipelineOwners,
@@ -529,6 +535,7 @@ public class LineageRepository {
         addField(recordList, getStringOrNull(edge, "description"));
         addField(recordList, getStringOrNull(edge, "pipeline", "id"));
         addField(recordList, getStringOrNull(edge, "pipeline", "fullyQualifiedName"));
+        addField(recordList, getStringOrNull(edge, "pipeline", "displayName"));
         addField(recordList, processColumnLineage(edge));
         addField(recordList, getStringOrNull(edge, "sqlQuery"));
         addField(recordList, getStringOrNull(edge, "source"));

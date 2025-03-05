@@ -59,6 +59,7 @@ import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TagLabel.TagSource;
+import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.type.csv.CsvDocumentation;
 import org.openmetadata.schema.type.csv.CsvFile;
 import org.openmetadata.schema.type.csv.CsvHeader;
@@ -135,7 +136,8 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
   }
 
   @Override
-  public EntityUpdater getUpdater(Glossary original, Glossary updated, Operation operation) {
+  public EntityRepository<Glossary>.EntityUpdater getUpdater(
+      Glossary original, Glossary updated, Operation operation, ChangeSource changeSource) {
     return new GlossaryUpdater(original, updated, operation);
   }
 

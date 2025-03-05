@@ -12,6 +12,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.LineageDetails;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.databases.StoredProcedureResource;
 import org.openmetadata.service.util.EntityUtil;
@@ -112,8 +113,11 @@ public class StoredProcedureRepository extends EntityRepository<StoredProcedure>
   }
 
   @Override
-  public StoredProcedureUpdater getUpdater(
-      StoredProcedure original, StoredProcedure updated, Operation operation) {
+  public EntityRepository<StoredProcedure>.EntityUpdater getUpdater(
+      StoredProcedure original,
+      StoredProcedure updated,
+      Operation operation,
+      ChangeSource changeSource) {
     return new StoredProcedureUpdater(original, updated, operation);
   }
 

@@ -10,6 +10,7 @@ import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.governance.workflows.elements.EdgeDefinition;
 import org.openmetadata.schema.governance.workflows.elements.WorkflowNodeDefinitionInterface;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.governance.workflows.Workflow;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
@@ -65,8 +66,11 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
   protected void prepare(WorkflowDefinition entity, boolean update) {}
 
   @Override
-  public EntityUpdater getUpdater(
-      WorkflowDefinition original, WorkflowDefinition updated, Operation operation) {
+  public EntityRepository<WorkflowDefinition>.EntityUpdater getUpdater(
+      WorkflowDefinition original,
+      WorkflowDefinition updated,
+      Operation operation,
+      ChangeSource changeSource) {
     return new WorkflowDefinitionRepository.WorkflowDefinitionUpdater(original, updated, operation);
   }
 

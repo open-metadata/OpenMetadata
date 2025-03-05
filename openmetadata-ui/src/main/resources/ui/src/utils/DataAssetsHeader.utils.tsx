@@ -22,6 +22,8 @@ import {
 import {
   DataAssetHeaderInfo,
   DataAssetsHeaderProps,
+  DataAssetsType,
+  DataAssetsWithServiceField,
 } from '../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
 import {
   getEntityDetailsPath,
@@ -509,4 +511,10 @@ export const getDataAssetsHeaderInfo = (
   }
 
   return returnData;
+};
+
+export const isDataAssetsWithServiceField = (
+  asset: DataAssetsType
+): asset is DataAssetsWithServiceField => {
+  return (asset as DataAssetsWithServiceField).service !== undefined;
 };

@@ -44,6 +44,7 @@ import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TagLabel.TagSource;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.api.BulkResponse;
+import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
@@ -236,7 +237,7 @@ public class TagRepository extends EntityRepository<Tag> {
 
   @Override
   public EntityRepository<Tag>.EntityUpdater getUpdater(
-      Tag original, Tag updated, Operation operation) {
+      Tag original, Tag updated, Operation operation, ChangeSource changeSource) {
     return new TagUpdater(original, updated, operation);
   }
 

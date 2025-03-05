@@ -21,6 +21,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.teams.Persona;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.teams.PersonaResource;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -79,7 +80,8 @@ public class PersonaRepository extends EntityRepository<Persona> {
   }
 
   @Override
-  public PersonaUpdater getUpdater(Persona original, Persona updated, Operation operation) {
+  public EntityRepository<Persona>.EntityUpdater getUpdater(
+      Persona original, Persona updated, Operation operation, ChangeSource changeSource) {
     return new PersonaUpdater(original, updated, operation);
   }
 
