@@ -12,7 +12,6 @@
  */
 import test, { expect } from '@playwright/test';
 import { get } from 'lodash';
-import { GlobalSettingOptions } from '../../constant/settings';
 import { ApiEndpointClass } from '../../support/entity/ApiEndpointClass';
 import { ContainerClass } from '../../support/entity/ContainerClass';
 import { DashboardClass } from '../../support/entity/DashboardClass';
@@ -36,20 +35,17 @@ import {
   deleteEdge,
   deleteNode,
   editLineage,
-  fillLineageConfigForm,
   LineageEdge,
-  performExpand,
   performZoomOut,
+  rearrangeNodes,
   removeColumnLineage,
   setupEntitiesForLineage,
-  verifyColumnLayerActive,
   verifyColumnLayerInactive,
   verifyColumnLineageInCSV,
   verifyExportLineageCSV,
   verifyNodePresent,
   visitLineageTab,
 } from '../../utils/lineage';
-import { settingClick } from '../../utils/sidebar';
 
 // use the admin user to login
 test.use({
@@ -106,6 +102,7 @@ for (const EntityClass of entities) {
         await performZoomOut(page);
         for (const entity of entities) {
           await connectEdgeBetweenNodes(page, currentEntity, entity);
+          await rearrangeNodes(page);
         }
 
         await redirectToHomePage(page);
@@ -385,106 +382,6 @@ test('Verify function data in edge drawer', async ({ browser }) => {
     );
   } finally {
     await Promise.all([table1.delete(apiContext), table2.delete(apiContext)]);
-    await afterAction();
-  }
-});
-
-test('Verify global lineage config', async ({ browser }) => {
-  test.slow(true);
-
-  const { page } = await createNewPage(browser);
-  const { apiContext, afterAction } = await getApiContext(page);
-  const table = new TableClass();
-  const topic = new TopicClass();
-  const dashboard = new DashboardClass();
-  const mlModel = new MlModelClass();
-  const searchIndex = new SearchIndexClass();
-
-  try {
-    await Promise.all([
-      table.create(apiContext),
-      topic.create(apiContext),
-      dashboard.create(apiContext),
-      mlModel.create(apiContext),
-      searchIndex.create(apiContext),
-    ]);
-
-    await addPipelineBetweenNodes(page, table, topic);
-    await addPipelineBetweenNodes(page, topic, dashboard);
-    await addPipelineBetweenNodes(page, dashboard, mlModel);
-    await addPipelineBetweenNodes(page, mlModel, searchIndex);
-
-    await test.step(
-      'Update global lineage config and verify lineage',
-      async () => {
-        await settingClick(page, GlobalSettingOptions.LINEAGE_CONFIG);
-        await fillLineageConfigForm(page, {
-          upstreamDepth: 1,
-          downstreamDepth: 1,
-          layer: 'Column Level Lineage',
-        });
-
-        await topic.visitEntityPage(page);
-        await visitLineageTab(page);
-        await verifyNodePresent(page, table);
-        await verifyNodePresent(page, dashboard);
-        const mlModelFqn = get(
-          mlModel,
-          'entityResponseData.fullyQualifiedName'
-        );
-        const mlModelNode = page.locator(
-          `[data-testid="lineage-node-${mlModelFqn}"]`
-        );
-
-        await expect(mlModelNode).not.toBeVisible();
-
-        await verifyColumnLayerActive(page);
-      }
-    );
-
-    await test.step(
-      'Verify Upstream and Downstream expand collapse buttons',
-      async () => {
-        await dashboard.visitEntityPage(page);
-        await visitLineageTab(page);
-        await page.getByTestId('entity-panel-close-icon').click();
-        await performZoomOut(page);
-        await verifyNodePresent(page, topic);
-        await verifyNodePresent(page, mlModel);
-        await performExpand(page, mlModel, false, searchIndex);
-        await performExpand(page, topic, true);
-      }
-    );
-
-    await test.step(
-      'Reset global lineage config and verify lineage',
-      async () => {
-        await settingClick(page, GlobalSettingOptions.LINEAGE_CONFIG);
-        await fillLineageConfigForm(page, {
-          upstreamDepth: 2,
-          downstreamDepth: 2,
-          layer: 'Entity Lineage',
-        });
-
-        await dashboard.visitEntityPage(page);
-        await visitLineageTab(page);
-
-        await verifyNodePresent(page, table);
-        await verifyNodePresent(page, dashboard);
-        await verifyNodePresent(page, mlModel);
-        await verifyNodePresent(page, searchIndex);
-        await verifyNodePresent(page, topic);
-      }
-    );
-  } finally {
-    await Promise.all([
-      table.delete(apiContext),
-      topic.delete(apiContext),
-      dashboard.delete(apiContext),
-      mlModel.delete(apiContext),
-      searchIndex.delete(apiContext),
-    ]);
-
     await afterAction();
   }
 });

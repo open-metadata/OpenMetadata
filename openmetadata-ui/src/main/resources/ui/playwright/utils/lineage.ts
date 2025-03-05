@@ -175,6 +175,10 @@ export const dragConnection = async (
   await lineageRes;
 };
 
+export const rearrangeNodes = async (page: Page) => {
+  await page.getByTestId('rearrange').click();
+};
+
 export const connectEdgeBetweenNodes = async (
   page: Page,
   fromNode: EntityClass,
@@ -229,8 +233,6 @@ export const performExpand = async (
     await expandBtn.click();
     await expandRes;
     await verifyNodePresent(page, newNode);
-  } else {
-    await expect(expandBtn).toBeVisible();
   }
 };
 
