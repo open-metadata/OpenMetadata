@@ -276,7 +276,7 @@ public class ApplicationHandler {
     updatedApp.setUpdatedBy(currentApp.getUpdatedBy());
     updatedApp.setFullyQualifiedName(currentApp.getFullyQualifiedName());
     EntityRepository<App>.EntityUpdater updater =
-        appRepository.getUpdater(currentApp, updatedApp, EntityRepository.Operation.PATCH);
+        appRepository.getUpdater(currentApp, updatedApp, EntityRepository.Operation.PATCH, null);
     updater.update();
     AppScheduler.getInstance().deleteScheduledApplication(updatedApp);
     AppScheduler.getInstance().scheduleApplication(updatedApp);
