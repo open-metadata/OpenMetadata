@@ -339,7 +339,7 @@ public class LineageRepository {
       lineageData.setUpdatedBy(nullOrDefault(lineageDetails.getUpdatedBy(), null));
       lineageData.setAssetEdges(nullOrDefault(lineageDetails.getAssetEdges(), null));
     }
-    return lineageData; 
+    return lineageData;
   }
 
   private static String getDocumentId(
@@ -869,9 +869,109 @@ public class LineageRepository {
       LineageDetails lineageDetails =
           JsonUtils.readValue(relationshipObject.getJson(), LineageDetails.class);
       deleteLineageFromSearch(from, to, lineageDetails);
+      if (result) {
+        cleanUpExtendedLineage(from, to);
+      }
       return result;
     }
     return false;
+  }
+
+  private void cleanUpExtendedLineage(EntityReference from, EntityReference to) {
+    boolean addService =
+        Entity.entityHasField(from.getType(), "service")
+            && Entity.entityHasField(to.getType(), "service");
+    boolean addDomain =
+        Entity.entityHasField(from.getType(), "domain")
+            && Entity.entityHasField(to.getType(), "domain");
+    boolean addDataProduct =
+        Entity.entityHasField(from.getType(), "dataProducts")
+            && Entity.entityHasField(to.getType(), "dataProducts");
+
+    String fields = getExtendedLineageFields(addService, addDomain, addDataProduct);
+    EntityInterface fromEntity =
+        Entity.getEntity(from.getType(), from.getId(), fields, Include.ALL);
+    EntityInterface toEntity = Entity.getEntity(to.getType(), to.getId(), fields, Include.ALL);
+
+    cleanUpServiceLineage(fromEntity, toEntity);
+    cleanUpDomainLineage(fromEntity, toEntity);
+  }
+
+  private void cleanUpServiceLineage(EntityInterface fromEntity, EntityInterface toEntity) {
+    boolean hasServiceField =
+        Entity.entityHasField(fromEntity.getEntityReference().getType(), "service")
+            && Entity.entityHasField(toEntity.getEntityReference().getType(), "service");
+    if (hasServiceField && fromEntity.getService() != null && toEntity.getService() != null) {
+      EntityReference fromService = fromEntity.getService();
+      EntityReference toService = toEntity.getService();
+      CollectionDAO.EntityRelationshipObject serviceRelation =
+          dao.relationshipDAO()
+              .getRecord(fromService.getId(), toService.getId(), Relationship.UPSTREAM.ordinal());
+      LineageDetails serviceLineageDetails;
+      if (serviceRelation != null) {
+        serviceLineageDetails =
+            JsonUtils.readValue(serviceRelation.getJson(), LineageDetails.class);
+        if (serviceLineageDetails.getAssetEdges() - 1 < 1) {
+          dao.relationshipDAO()
+              .delete(
+                  fromService.getId(),
+                  fromService.getType(),
+                  toService.getId(),
+                  toService.getType(),
+                  Relationship.UPSTREAM.ordinal());
+          deleteLineageFromSearch(fromService, toService, serviceLineageDetails);
+        } else {
+          serviceLineageDetails.withAssetEdges(serviceLineageDetails.getAssetEdges() - 1);
+          dao.relationshipDAO()
+              .insert(
+                  fromService.getId(),
+                  toService.getId(),
+                  fromService.getType(),
+                  toService.getType(),
+                  Relationship.UPSTREAM.ordinal(),
+                  JsonUtils.pojoToJson(serviceLineageDetails));
+          addLineageToSearch(fromService, toService, serviceLineageDetails);
+        }
+      }
+    }
+  }
+
+  private void cleanUpDomainLineage(EntityInterface fromEntity, EntityInterface toEntity) {
+    boolean hasDomainField =
+        Entity.entityHasField(fromEntity.getEntityReference().getType(), "domain")
+            && Entity.entityHasField(toEntity.getEntityReference().getType(), "domain");
+    if (hasDomainField && fromEntity.getDomain() != null && toEntity.getDomain() != null) {
+      EntityReference fromDomain = fromEntity.getDomain();
+      EntityReference toDomain = toEntity.getDomain();
+      CollectionDAO.EntityRelationshipObject domainRelation =
+          dao.relationshipDAO()
+              .getRecord(fromDomain.getId(), toDomain.getId(), Relationship.UPSTREAM.ordinal());
+      LineageDetails domainLineageDetails;
+      if (domainRelation != null) {
+        domainLineageDetails = JsonUtils.readValue(domainRelation.getJson(), LineageDetails.class);
+        if (domainLineageDetails.getAssetEdges() - 1 < 1) {
+          dao.relationshipDAO()
+              .delete(
+                  fromDomain.getId(),
+                  fromDomain.getType(),
+                  toDomain.getId(),
+                  toDomain.getType(),
+                  Relationship.UPSTREAM.ordinal());
+          deleteLineageFromSearch(fromDomain, toDomain, domainLineageDetails);
+        } else {
+          domainLineageDetails.withAssetEdges(domainLineageDetails.getAssetEdges() - 1);
+          dao.relationshipDAO()
+              .insert(
+                  fromDomain.getId(),
+                  toDomain.getId(),
+                  fromDomain.getType(),
+                  toDomain.getType(),
+                  Relationship.UPSTREAM.ordinal(),
+                  JsonUtils.pojoToJson(domainLineageDetails));
+          addLineageToSearch(fromDomain, toDomain, domainLineageDetails);
+        }
+      }
+    }
   }
 
   private void deleteLineageFromSearch(List<CollectionDAO.EntityRelationshipObject> relations) {
