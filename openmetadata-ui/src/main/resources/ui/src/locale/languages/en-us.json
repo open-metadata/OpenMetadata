@@ -1603,6 +1603,7 @@
     "enter-your-registered-email": "Enter your registered email to receive password reset link",
     "entity-already-exists": "{{entity}} already exists.",
     "entity-are-not-available": "{{entity}} are not available",
+    "entity-customize-description": "Customize {{entity}} detail page with choice of your widget and tabs which is more useful for your use case.",
     "entity-delimiters-not-allowed": "Name with delimiters are not allowed",
     "entity-details-updated": "{{entityType}} {{fqn}} details updated successfully",
     "entity-does-not-have-followers": "{{entityName}} doesn't have any followers yet",

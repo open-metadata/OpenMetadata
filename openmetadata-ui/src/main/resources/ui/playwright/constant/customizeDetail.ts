@@ -14,7 +14,7 @@ export enum ECustomizedDataAssets {
   TABLE = 'Table',
   TOPIC = 'Topic',
   DASHBOARD = 'Dashboard',
-  ML_MODEL = 'ML Model',
+  ML_MODEL = 'Ml Model',
   PIPELINE = 'Pipeline',
   DASHBOARD_DATA_MODEL = 'Dashboard Data Model',
   API_COLLECTION = 'API Collection',
@@ -27,18 +27,20 @@ export enum ECustomizedDataAssets {
 }
 
 export const TABLE_DEFAULT_TABS = [
-  'Schema 4',
-  'Activity Feeds & Tasks 0',
+  'Schema',
+  'Activity Feeds & Tasks',
   'Sample Data',
-  'Queries 0',
+  'Queries',
   'Data Observability',
+  'Incidents',
   'Lineage',
+  'View Definition',
   'Custom Properties',
 ];
 
 export const TOPIC_DEFAULT_TABS = [
-  'Schema 2',
-  'Activity Feeds & Tasks 0',
+  'Schema',
+  'Activity Feeds & Tasks',
   'Sample Data',
   'Config',
   'Lineage',
@@ -47,14 +49,14 @@ export const TOPIC_DEFAULT_TABS = [
 
 export const DASHBOARD_DEFAULT_TABS = [
   'Details',
-  'Activity Feeds & Tasks 0',
+  'Activity Feeds & Tasks',
   'Lineage',
   'Custom Properties',
 ];
 
 export const MLMODEL_DEFAULT_TABS = [
   'Features',
-  'Activity Feeds & Tasks 0',
+  'Activity Feeds & Tasks',
   'Details',
   'Lineage',
   'Custom Properties',
@@ -62,7 +64,7 @@ export const MLMODEL_DEFAULT_TABS = [
 
 export const PIPELINE_DEFAULT_TABS = [
   'Tasks',
-  'Activity Feeds & Tasks 0',
+  'Activity Feeds & Tasks',
   'Executions',
   'Lineage',
   'Custom Properties',
@@ -70,21 +72,21 @@ export const PIPELINE_DEFAULT_TABS = [
 
 export const DASHBOARD_DATAMODEL_DEFAULT_TABS = [
   'Model',
-  'Activity Feeds & Tasks 0',
+  'Activity Feeds & Tasks',
   'SQL',
   'Lineage',
   'Custom Properties',
 ];
 
 export const API_COLLECTION_DEFAULT_TABS = [
-  'Collections 1',
-  'Activity Feeds & Tasks 0',
+  'Collections',
+  'Activity Feeds & Tasks',
   'Custom Properties',
 ];
 
 export const SEARCH_INDEX_DEFAULT_TABS = [
   'Fields',
-  'Activity Feeds & Tasks 0',
+  'Activity Feeds & Tasks',
   'Sample Data',
   'Lineage',
   'Search Index Settings',
@@ -94,48 +96,48 @@ export const SEARCH_INDEX_DEFAULT_TABS = [
 export const CONTAINER_DEFAULT_TABS = [
   'Schema',
   'Children',
-  'Activity Feeds & Tasks 0',
+  'Activity Feeds & Tasks',
   'Lineage',
   'Custom Properties',
 ];
 
 export const DATABASE_DEFAULT_TABS = [
-  'Schemas 1',
-  'Activity Feeds 1',
+  'Schemas',
+  'Activity Feeds',
   'Custom Properties',
 ];
 
 export const DATABASE_SCHEMA_DEFAULT_TABS = [
-  'Tables 0',
-  'Stored Procedures 0',
-  'Activity Feeds 0',
+  'Tables',
+  'Stored Procedures',
+  'Activity Feeds',
   'Custom Properties',
 ];
 
 export const STORED_PROCEDURE_DEFAULT_TABS = [
   'Code',
-  'Activity Feeds & Tasks 0',
+  'Activity Feeds & Tasks',
   'Lineage',
   'Custom Properties',
 ];
 
 export const API_ENDPOINT_DEFAULT_TABS = [
   'Schema',
-  'Activity Feeds & Tasks 0',
+  'Activity Feeds & Tasks',
   'Lineage',
   'Custom Properties',
 ];
 
 export const DASHBOARD_DATA_MODEL_DEFAULT_TABS = [
   'Model',
-  'Activity Feeds & Tasks 0',
+  'Activity Feeds & Tasks',
   'Lineage',
   'Custom Properties',
 ];
 
 export const ML_MODEL_DEFAULT_TABS = [
   'Features',
-  'Activity Feeds & Tasks 0',
+  'Activity Feeds & Tasks',
   'Details',
   'Lineage',
   'Custom Properties',

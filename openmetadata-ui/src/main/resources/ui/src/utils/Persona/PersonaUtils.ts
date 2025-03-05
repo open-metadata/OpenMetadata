@@ -91,7 +91,9 @@ export const getCustomizePageCategories = (): SettingMenuItem[] => {
 const generateSettingItems = (pageType: PageType): SettingMenuItem => ({
   key: pageType,
   label: startCase(pageType),
-  description: pageType,
+  description: i18n.t('message.entity-customize-description', {
+    entity: startCase(pageType),
+  }),
   icon: ENTITY_ICONS[pageType],
 });
 

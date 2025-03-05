@@ -20,6 +20,7 @@ import { useApplicationStore } from './useApplicationStore';
 export const useCustomPages = (pageType: PageType) => {
   const { selectedPersona } = useApplicationStore();
   const [customizedPage, setCustomizedPage] = useState<Page | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   const fetchDocument = useCallback(async () => {
     const pageFQN = `${EntityType.PERSONA}${FQN_SEPARATOR_CHAR}${selectedPersona.fullyQualifiedName}`;
@@ -30,16 +31,21 @@ export const useCustomPages = (pageType: PageType) => {
       );
     } catch (error) {
       // fail silent
+    } finally {
+      setIsLoading(false);
     }
   }, [selectedPersona.fullyQualifiedName, pageType]);
 
   useEffect(() => {
     if (selectedPersona?.fullyQualifiedName) {
       fetchDocument();
+    } else {
+      setIsLoading(false);
     }
   }, [selectedPersona, pageType]);
 
   return {
     customizedPage,
+    isLoading,
   };
 };

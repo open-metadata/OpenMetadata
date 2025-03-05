@@ -22,7 +22,7 @@ export const TAB_LABEL_MAP: Record<EntityTabs, string> = {
   [EntityTabs.SCHEMA]: 'label.schema',
   [EntityTabs.SAMPLE_DATA]: 'label.sample-data',
   [EntityTabs.TABLE_QUERIES]: 'label.query-plural',
-  [EntityTabs.PROFILER]: 'label.profiler-amp-data-quality',
+  [EntityTabs.PROFILER]: 'label.data-observability',
   [EntityTabs.INCIDENTS]: 'label.incident-plural',
   [EntityTabs.LINEAGE]: 'label.lineage',
   [EntityTabs.VIEW_DEFINITION]: 'label.view-definition',
