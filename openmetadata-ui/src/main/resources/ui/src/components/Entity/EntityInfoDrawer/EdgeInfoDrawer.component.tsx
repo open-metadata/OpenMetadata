@@ -53,8 +53,6 @@ const EdgeInfoDrawer = ({
   const [edgeData, setEdgeData] = useState<EdgeInformationType>();
   const [mysqlQuery, setMysqlQuery] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [isDescriptionEditable, setIsDescriptionEditable] =
-    useState<boolean>(false);
   const [showSqlQueryModal, setShowSqlQueryModal] = useState(false);
 
   const { t } = useTranslation();
@@ -162,7 +160,6 @@ const EdgeInfoDrawer = ({
         };
         await onEdgeDetailsUpdate?.(updatedEdgeDetails);
       }
-      setIsDescriptionEditable(false);
     },
     [edgeDescription, edgeEntity, edge]
   );
@@ -244,10 +241,7 @@ const EdgeInfoDrawer = ({
                 entityName="Edge"
                 entityType={EntityType.LINEAGE_EDGE}
                 hasEditAccess={hasEditAccess}
-                isEdit={isDescriptionEditable}
                 showCommentsIcon={false}
-                onCancel={() => setIsDescriptionEditable(false)}
-                onDescriptionEdit={() => setIsDescriptionEditable(true)}
                 onDescriptionUpdate={onDescriptionUpdate}
               />
             </Col>

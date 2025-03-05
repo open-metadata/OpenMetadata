@@ -47,6 +47,7 @@ import org.openmetadata.schema.type.Status;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.Task;
 import org.openmetadata.schema.type.TaskType;
+import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
@@ -420,7 +421,8 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   }
 
   @Override
-  public EntityUpdater getUpdater(Pipeline original, Pipeline updated, Operation operation) {
+  public EntityRepository<Pipeline>.EntityUpdater getUpdater(
+      Pipeline original, Pipeline updated, Operation operation, ChangeSource changeSource) {
     return new PipelineUpdater(original, updated, operation);
   }
 

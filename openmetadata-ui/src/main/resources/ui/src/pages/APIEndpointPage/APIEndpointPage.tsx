@@ -31,7 +31,6 @@ import {
 import { ClientErrors } from '../../enums/Axios.enum';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
-import { CreateThread } from '../../generated/api/feed/createThread';
 import { APIEndpoint } from '../../generated/entity/data/apiEndpoint';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useFqn } from '../../hooks/useFqn';
@@ -42,11 +41,9 @@ import {
   removeApiEndpointFollower,
   updateApiEndPointVote,
 } from '../../rest/apiEndpointsAPI';
-import { postThread } from '../../rest/feedsAPI';
 import {
   addToRecentViewed,
   getEntityMissingError,
-  sortTagsCaseInsensitive,
 } from '../../utils/CommonUtils';
 import { getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
@@ -82,24 +79,16 @@ const APIEndpointPage = () => {
 
   const handleApiEndpointUpdate = async (
     updatedData: APIEndpoint,
-    key: keyof APIEndpoint
+    key?: keyof APIEndpoint
   ) => {
     try {
       const res = await saveUpdatedApiEndpointData(updatedData);
 
       setApiEndpointDetails((previous) => {
-        if (key === 'tags') {
-          return {
-            ...previous,
-            version: res.version,
-            [key]: sortTagsCaseInsensitive(res.tags ?? []),
-          };
-        }
-
         return {
           ...previous,
-          version: res.version,
-          [key]: res[key],
+          ...res,
+          ...(key && { [key]: res[key] }),
         };
       });
     } catch (error) {
@@ -222,19 +211,6 @@ const APIEndpointPage = () => {
       );
   };
 
-  const handleCreateThread = async (data: CreateThread) => {
-    try {
-      await postThread(data);
-    } catch (error) {
-      showErrorToast(
-        error as AxiosError,
-        t('server.create-entity-error', {
-          entity: t('label.conversation'),
-        })
-      );
-    }
-  };
-
   const handleToggleDelete = (version?: number) => {
     setApiEndpointDetails((prev) => {
       if (!prev) {
@@ -305,7 +281,6 @@ const APIEndpointPage = () => {
       apiEndpointPermissions={apiEndpointPermissions}
       fetchAPIEndpointDetails={() => fetchApiEndPointDetail(apiEndpointFqn)}
       onApiEndpointUpdate={handleApiEndpointUpdate}
-      onCreateThread={handleCreateThread}
       onFollowApiEndPoint={followApiEndPoint}
       onToggleDelete={handleToggleDelete}
       onUnFollowApiEndPoint={unFollowApiEndPoint}

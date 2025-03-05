@@ -47,15 +47,18 @@ public class DomainFormatter extends DefaultFieldFormatter {
                 JsonUtils.readOrConvertValue(fieldChange.getOldValue(), EntityReference.class))
             .withUpdatedDomain(
                 JsonUtils.readOrConvertValue(fieldChange.getNewValue(), EntityReference.class));
+
+    String domainUrl = null;
+    // in case of deletion updated domain will be null
+    if (domainFeedInfo.getUpdatedDomain() != null) {
+      domainUrl =
+          messageDecorator.getEntityUrl(
+              Entity.DOMAIN, domainFeedInfo.getUpdatedDomain().getFullyQualifiedName(), "");
+    }
+
     FeedInfo feedInfo =
         new FeedInfo()
-            .withHeaderMessage(
-                getHeaderForOwnerUpdate(
-                    operation.value(),
-                    messageDecorator.getEntityUrl(
-                        Entity.DOMAIN,
-                        domainFeedInfo.getUpdatedDomain().getFullyQualifiedName(),
-                        "")))
+            .withHeaderMessage(getHeaderForOwnerUpdate(operation.value(), domainUrl))
             .withFieldName(FIELD_DOMAIN)
             .withEntitySpecificInfo(domainFeedInfo);
     populateThreadFeedInfo(thread, threadMessage, Thread.CardStyle.DOMAIN, operation, feedInfo);

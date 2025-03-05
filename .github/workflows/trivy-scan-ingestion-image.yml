@@ -4,11 +4,8 @@ on:
     pull_request_target:
         types: [labeled, opened, synchronize, reopened]
         paths:
-          - "ingestion/**"
-          - "openmetadata-service/**"
-          - "openmetadata-spec/src/main/resources/json/schema/**"
-          - "pom.xml"
-          - "Makefile"
+          - "**/*.py"
+          - "ingestion/Dockerfile.ci"
     
 concurrency: 
   group: trivy-ingestion-scan-${{ github.head_ref || github.run_id }}
@@ -21,7 +18,7 @@ jobs:
       pull-requests: write
     steps:
       - name: Wait for the labeler
-        uses: lewagon/wait-on-check-action@v1.3.3
+        uses: lewagon/wait-on-check-action@v1.3.4
         if: ${{ github.event_name == 'pull_request_target' }}
         with:
           ref: ${{ github.event.pull_request.head.sha }}

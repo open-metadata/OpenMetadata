@@ -9,7 +9,7 @@ name="Iceberg"
 stage="BETA"
 platform="OpenMetadata"
 availableFeatures=["Metadata", "Owners"]
-unavailableFeatures=["Query Usage", "Data Profiler", "Data Quality", "Lineage", "Column-level Lineage", "dbt", "Tags", "Stored Procedures"]
+unavailableFeatures=["Query Usage", "Data Profiler", "Data Quality", "Lineage", "Column-level Lineage", "dbt", "Tags", "Stored Procedures", "Sample Data"]
 / %}
 
 
