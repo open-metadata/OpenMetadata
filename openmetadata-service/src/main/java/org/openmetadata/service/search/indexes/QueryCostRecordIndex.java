@@ -23,7 +23,7 @@ public class QueryCostRecordIndex implements SearchIndex {
     doc.put("count", queryCostRecord.getCount());
     doc.put("timestamp", queryCostRecord.getTimestamp());
     doc.put("@timestamp", queryCostRecord.getTimestamp());
-      doc.put("totalDuration", queryCostRecord.getTotalDuration());
+    doc.put("totalDuration", queryCostRecord.getTotalDuration());
     return doc;
   }
 

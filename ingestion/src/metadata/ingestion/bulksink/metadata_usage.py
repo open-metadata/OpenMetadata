@@ -19,10 +19,10 @@ produced by the stage. At the end, the path is removed.
 """
 import json
 import os
-from pathlib import Path
 import shutil
 import traceback
 from datetime import datetime
+from pathlib import Path
 from typing import List, Optional
 
 from pydantic import ValidationError
