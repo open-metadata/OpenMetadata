@@ -12,6 +12,7 @@
  */
 import { test as setup } from '@playwright/test';
 import { AdminClass } from '../support/user/AdminClass';
+import { resetTokenFromBotPage } from '../utils/bot';
 import { loginAsAdmin } from '../utils/initialSetup';
 const adminFile = 'playwright/.auth/admin.json';
 
@@ -20,6 +21,13 @@ setup('authenticate as admin', async ({ page }) => {
 
   // login with admin user
   await loginAsAdmin(page, admin);
+
+  // Temp fix for Ingestion bot token issue #20062
+
+  await resetTokenFromBotPage(page, {
+    name: 'ingestion',
+    testId: 'bot-link-ingestion-bot',
+  });
 
   // End of authentication steps.
   await page.context().storageState({ path: adminFile });
