@@ -38,7 +38,7 @@ import {
 } from '../../../utils/TableTags/TableTags.utils';
 import { createTagObject } from '../../../utils/TagsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import { EntityDescriptionProvider } from '../../common/EntityDescription/EntityDescriptionProvider/EntityDescriptionProvider';
+import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Table from '../../common/Table/Table';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
@@ -407,7 +407,7 @@ export const DashboardChartTable = () => {
         size="small"
       />
       {editChart && (
-        <EntityDescriptionProvider
+        <EntityAttachmentProvider
           entityFqn={editChart.chart.fullyQualifiedName}
           entityType={EntityType.CHART}>
           <ModalWithMarkdownEditor
@@ -422,7 +422,7 @@ export const DashboardChartTable = () => {
             onCancel={closeEditChartModal}
             onSave={onChartUpdate}
           />
-        </EntityDescriptionProvider>
+        </EntityAttachmentProvider>
       )}
     </>
   );

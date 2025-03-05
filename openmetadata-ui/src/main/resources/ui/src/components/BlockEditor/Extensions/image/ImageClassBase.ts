@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import i18n from '../../../../utils/i18next/LocalUtil';
-import { BlockEditorProps } from '../../BlockEditor.interface';
+import { BlockEditorAttachmentProps } from '../../BlockEditor.interface';
 import EmbedLinkElement from './EmbedLinkElement/EmbedLinkElement';
 
 class ImageClassBase {
@@ -25,7 +25,9 @@ class ImageClassBase {
     ];
   }
 
-  public getBlockEditorProps(): BlockEditorProps | undefined {
+  public getBlockEditorAttachmentProps():
+    | BlockEditorAttachmentProps
+    | undefined {
     return undefined;
   }
 }

@@ -38,7 +38,7 @@ import {
   searchTagInData,
 } from '../../../utils/TableTags/TableTags.utils';
 import { getTableExpandableConfig } from '../../../utils/TableUtils';
-import { EntityDescriptionProvider } from '../../common/EntityDescription/EntityDescriptionProvider/EntityDescriptionProvider';
+import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { ColumnFilter } from '../../Database/ColumnFilter/ColumnFilter.component';
 import TableDescription from '../../Database/TableDescription/TableDescription.component';
@@ -247,7 +247,7 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
         size="small"
       />
       {editContainerColumnDescription && (
-        <EntityDescriptionProvider
+        <EntityAttachmentProvider
           entityFqn={editContainerColumnDescription.fullyQualifiedName}
           entityType={EntityType.CONTAINER}>
           <ModalWithMarkdownEditor
@@ -262,7 +262,7 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
             onCancel={() => setEditContainerColumnDescription(undefined)}
             onSave={handleContainerColumnDescriptionChange}
           />
-        </EntityDescriptionProvider>
+        </EntityAttachmentProvider>
       )}
     </>
   );

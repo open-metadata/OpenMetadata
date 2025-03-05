@@ -30,7 +30,7 @@ import {
 } from '../../../../interface/FormUtils.interface';
 import { generateFormFields } from '../../../../utils/formUtils';
 import Banner from '../../../common/Banner/Banner';
-import { EntityDescriptionProvider } from '../../../common/EntityDescription/EntityDescriptionProvider/EntityDescriptionProvider';
+import { EntityAttachmentProvider } from '../../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 
 export interface FormData {
   description: string;
@@ -232,11 +232,11 @@ const EditCustomPropertyModal: FC<EditCustomPropertyModalProps> = ({
         initialValues={initialValues}
         layout="vertical"
         onFinish={handleSubmit}>
-        <EntityDescriptionProvider
+        <EntityAttachmentProvider
           entityFqn={customProperty?.name}
           entityType={EntityType.TYPE}>
           {generateFormFields(formFields)}
-        </EntityDescriptionProvider>
+        </EntityAttachmentProvider>
         {!isUndefined(customProperty.customPropertyConfig) && (
           <>
             {hasEnumConfig && (

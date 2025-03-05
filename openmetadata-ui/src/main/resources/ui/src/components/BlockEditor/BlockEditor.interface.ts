@@ -44,9 +44,11 @@ export interface BlockEditorProps {
   menuType?: MenuType;
   autoFocus?: boolean;
   placeholder?: string;
-  allowImageUpload?: boolean;
-  allowFileUpload?: boolean;
   showInlineAlert?: boolean;
+}
+
+export interface BlockEditorAttachmentProps {
+  allowImageUpload?: boolean;
   onImageUpload?: (
     file: File,
     entityType?: EntityType,

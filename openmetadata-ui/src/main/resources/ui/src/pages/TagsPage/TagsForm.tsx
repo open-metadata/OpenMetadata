@@ -14,7 +14,7 @@
 import { Form, Modal, Typography } from 'antd';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { EntityDescriptionProvider } from '../../components/common/EntityDescription/EntityDescriptionProvider/EntityDescriptionProvider';
+import { EntityAttachmentProvider } from '../../components/common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import { VALIDATION_MESSAGES } from '../../constants/constants';
 import {
   HEX_COLOR_CODE_REGEX,
@@ -256,7 +256,7 @@ const TagsForm = ({
         form.setFieldsValue(DEFAULT_FORM_VALUE);
         onCancel();
       }}>
-      <EntityDescriptionProvider
+      <EntityAttachmentProvider
         entityFqn={initialValues?.fullyQualifiedName}
         entityType={
           isClassification ? EntityType.CLASSIFICATION : EntityType.TAG
@@ -270,7 +270,7 @@ const TagsForm = ({
           onFinish={handleSave}>
           {generateFormFields(formFields)}
         </Form>
-      </EntityDescriptionProvider>
+      </EntityAttachmentProvider>
     </Modal>
   );
 };

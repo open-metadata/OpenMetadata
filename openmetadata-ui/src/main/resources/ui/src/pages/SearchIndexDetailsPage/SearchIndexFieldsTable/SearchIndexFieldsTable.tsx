@@ -24,7 +24,7 @@ import {
 import { EntityTags, TagFilterOptions } from 'Models';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { EntityDescriptionProvider } from '../../../components/common/EntityDescription/EntityDescriptionProvider/EntityDescriptionProvider';
+import { EntityAttachmentProvider } from '../../../components/common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import FilterTablePlaceHolder from '../../../components/common/ErrorWithPlaceholder/FilterTablePlaceHolder';
 import Table from '../../../components/common/Table/Table';
 import { ColumnFilter } from '../../../components/Database/ColumnFilter/ColumnFilter.component';
@@ -301,7 +301,7 @@ const SearchIndexFieldsTable = ({
         size="middle"
       />
       {editField && (
-        <EntityDescriptionProvider
+        <EntityAttachmentProvider
           entityFqn={editField.field.fullyQualifiedName}
           entityType={EntityType.SEARCH_INDEX}>
           <ModalWithMarkdownEditor
@@ -316,7 +316,7 @@ const SearchIndexFieldsTable = ({
             onCancel={closeEditFieldModal}
             onSave={handleEditFieldChange}
           />
-        </EntityDescriptionProvider>
+        </EntityAttachmentProvider>
       )}
     </>
   );

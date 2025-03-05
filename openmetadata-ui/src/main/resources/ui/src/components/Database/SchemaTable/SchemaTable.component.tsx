@@ -71,7 +71,7 @@ import {
   prepareConstraintIcon,
   updateFieldTags,
 } from '../../../utils/TableUtils';
-import { EntityDescriptionProvider } from '../../common/EntityDescription/EntityDescriptionProvider/EntityDescriptionProvider';
+import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import FilterTablePlaceHolder from '../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
 import Searchbar from '../../common/SearchBarComponent/SearchBar.component';
 import Table from '../../common/Table/Table';
@@ -618,7 +618,7 @@ const SchemaTable = () => {
         />
       </Col>
       {editColumn && (
-        <EntityDescriptionProvider
+        <EntityAttachmentProvider
           entityFqn={editColumn.fullyQualifiedName}
           entityType={EntityType.TABLE}>
           <ModalWithMarkdownEditor
@@ -631,7 +631,7 @@ const SchemaTable = () => {
             onCancel={closeEditColumnModal}
             onSave={handleEditColumnChange}
           />
-        </EntityDescriptionProvider>
+        </EntityAttachmentProvider>
       )}
       {editColumnDisplayName && (
         <EntityNameModal

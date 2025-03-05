@@ -39,7 +39,7 @@ import {
   searchTagInData,
 } from '../../../utils/TableTags/TableTags.utils';
 import { createTagObject } from '../../../utils/TagsUtils';
-import { EntityDescriptionProvider } from '../../common/EntityDescription/EntityDescriptionProvider/EntityDescriptionProvider';
+import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 import { ColumnFilter } from '../../Database/ColumnFilter/ColumnFilter.component';
@@ -324,7 +324,7 @@ export const PipelineTaskTab = () => {
       </Col>
 
       {editTask && (
-        <EntityDescriptionProvider
+        <EntityAttachmentProvider
           entityFqn={editTask.task.fullyQualifiedName}
           entityType={EntityType.PIPELINE}>
           <ModalWithMarkdownEditor
@@ -339,7 +339,7 @@ export const PipelineTaskTab = () => {
             onCancel={closeEditTaskModal}
             onSave={onTaskUpdate}
           />
-        </EntityDescriptionProvider>
+        </EntityAttachmentProvider>
       )}
     </Row>
   );

@@ -33,7 +33,7 @@ import {
   searchTagInData,
 } from '../../../../../utils/TableTags/TableTags.utils';
 import { updateFieldTags } from '../../../../../utils/TableUtils';
-import { EntityDescriptionProvider } from '../../../../common/EntityDescription/EntityDescriptionProvider/EntityDescriptionProvider';
+import { EntityAttachmentProvider } from '../../../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import Table from '../../../../common/Table/Table';
 import { useGenericContext } from '../../../../Customization/GenericProvider/GenericProvider';
 import { ColumnFilter } from '../../../../Database/ColumnFilter/ColumnFilter.component';
@@ -233,7 +233,7 @@ const ModelTab = () => {
       />
 
       {editColumnDescription && (
-        <EntityDescriptionProvider
+        <EntityAttachmentProvider
           entityFqn={editColumnDescription.fullyQualifiedName}
           entityType={EntityType.DASHBOARD_DATA_MODEL}>
           <ModalWithMarkdownEditor
@@ -248,7 +248,7 @@ const ModelTab = () => {
             onCancel={() => setEditColumnDescription(undefined)}
             onSave={handleColumnDescriptionChange}
           />
-        </EntityDescriptionProvider>
+        </EntityAttachmentProvider>
       )}
     </>
   );

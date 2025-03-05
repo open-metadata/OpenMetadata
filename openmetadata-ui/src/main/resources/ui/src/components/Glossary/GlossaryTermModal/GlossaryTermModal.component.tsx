@@ -19,7 +19,7 @@ import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
 import { getGlossaryTermByFQN } from '../../../rest/glossaryAPI';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import { EntityDescriptionProvider } from '../../common/EntityDescription/EntityDescriptionProvider/EntityDescriptionProvider';
+import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import Loader from '../../common/Loader/Loader';
 import AddGlossaryTermForm from '../AddGlossaryTermForm/AddGlossaryTermForm.component';
 import { GlossaryTermForm } from '../AddGlossaryTermForm/AddGlossaryTermForm.interface';
@@ -114,7 +114,7 @@ const GlossaryTermModal: FC<Props> = ({
       title={dialogTitle}
       width={800}
       onCancel={onCancel}>
-      <EntityDescriptionProvider
+      <EntityAttachmentProvider
         entityFqn={glossaryTermFQN}
         entityType={EntityType.GLOSSARY_TERM}>
         {isLoading ? (
@@ -128,7 +128,7 @@ const GlossaryTermModal: FC<Props> = ({
             onSave={handleSave}
           />
         )}
-      </EntityDescriptionProvider>
+      </EntityAttachmentProvider>
     </Modal>
   );
 };

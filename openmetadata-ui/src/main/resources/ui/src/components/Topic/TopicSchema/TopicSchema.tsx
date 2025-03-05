@@ -51,7 +51,7 @@ import {
   updateFieldDescription,
   updateFieldTags,
 } from '../../../utils/TableUtils';
-import { EntityDescriptionProvider } from '../../common/EntityDescription/EntityDescriptionProvider/EntityDescriptionProvider';
+import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import ToggleExpandButton from '../../common/ToggleExpandButton/ToggleExpandButton';
@@ -397,7 +397,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
         </>
       )}
       {editFieldDescription && (
-        <EntityDescriptionProvider
+        <EntityAttachmentProvider
           entityFqn={editFieldDescription.fullyQualifiedName}
           entityType={EntityType.TOPIC}>
           <ModalWithMarkdownEditor
@@ -412,7 +412,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
             onCancel={() => setEditFieldDescription(undefined)}
             onSave={handleFieldDescriptionChange}
           />
-        </EntityDescriptionProvider>
+        </EntityAttachmentProvider>
       )}
     </Row>
   );

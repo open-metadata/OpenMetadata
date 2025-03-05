@@ -38,7 +38,7 @@ import { useSuggestionsContext } from '../../Suggestions/SuggestionsProvider/Sug
 import SuggestionsSlider from '../../Suggestions/SuggestionsSlider/SuggestionsSlider';
 import RichTextEditorPreviewerV1 from '../RichTextEditor/RichTextEditorPreviewerV1';
 import { DescriptionProps } from './Description.interface';
-import { EntityDescriptionProvider } from './EntityDescriptionProvider/EntityDescriptionProvider';
+import { EntityAttachmentProvider } from './EntityAttachmentProvider/EntityAttachmentProvider';
 
 const { Text } = Typography;
 
@@ -222,7 +222,7 @@ const DescriptionV1 = ({
   }, [description, suggestionData, isDescriptionExpanded]);
 
   const content = (
-    <EntityDescriptionProvider entityFqn={entityFqn} entityType={entityType}>
+    <EntityAttachmentProvider entityFqn={entityFqn} entityType={entityType}>
       <Space
         className={classNames('schema-description d-flex', className)}
         data-testid="asset-description-container"
@@ -250,7 +250,7 @@ const DescriptionV1 = ({
           />
         </div>
       </Space>
-    </EntityDescriptionProvider>
+    </EntityAttachmentProvider>
   );
 
   return wrapInCard ? <Card>{content}</Card> : content;

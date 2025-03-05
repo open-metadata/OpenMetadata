@@ -10,25 +10,21 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { EditorView } from '@tiptap/pm/view';
 import { EditorContent } from '@tiptap/react';
-import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { isNil, isString, isUndefined } from 'lodash';
+import { isNil, isUndefined } from 'lodash';
 
 import React, {
   forwardRef,
   useEffect,
   useImperativeHandle,
   useRef,
-  useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { EDITOR_OPTIONS } from '../../constants/BlockEditor.constants';
 import { formatContent, setEditorContent } from '../../utils/BlockEditorUtils';
-import { showErrorToast } from '../../utils/ToastUtils';
 import Banner from '../common/Banner/Banner';
-import { useEntityDescription } from '../common/EntityDescription/EntityDescriptionProvider/EntityDescriptionProvider';
+import { useEntityAttachment } from '../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import BarMenu from './BarMenu/BarMenu';
 import './block-editor.less';
 import {
@@ -51,85 +47,27 @@ const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
       autoFocus,
       placeholder,
       onChange,
-      allowImageUpload,
-      allowFileUpload,
       showInlineAlert = true,
-      onImageUpload,
     },
     ref
   ) => {
-    const { i18n, t } = useTranslation();
+    const { i18n } = useTranslation();
     const editorSlots = useRef<EditorSlotsRef>(null);
-    const { entityType, entityFqn } = useEntityDescription();
-    const [errorMessage, setErrorMessage] = useState<string>();
+    const {
+      allowFileUpload,
+      allowImageUpload,
+      handleFileUpload,
+      errorMessage,
+      handleErrorMessage,
+    } = useEntityAttachment();
+
     const editorWrapperRef = useRef<HTMLDivElement>(null);
-
-    // Handle file upload logic
-    const handleFileUpload = async (
-      file: File,
-      view: EditorView,
-      pos: number
-    ) => {
-      if (!onImageUpload) {
-        return;
-      }
-
-      const fileType = file.type;
-      const isImage = fileType.startsWith(FileType.IMAGE);
-
-      if (isImage && !allowImageUpload) {
-        return;
-      }
-
-      if (!isImage && !allowFileUpload) {
-        showInlineAlert
-          ? setErrorMessage(t('message.only-image-files-supported'))
-          : showErrorToast(t('message.only-image-files-supported'));
-
-        return;
-      }
-
-      try {
-        const url = await onImageUpload(file, entityType, entityFqn);
-
-        if (isImage) {
-          const imageNode = view.state.schema.nodes.image.create({
-            src: url,
-            alt: file.name,
-          });
-          const tr = view.state.tr.insert(pos, imageNode);
-          view.dispatch(tr);
-        } else {
-          const { state } = view;
-          const { tr } = state;
-
-          const fileNode = state.schema.nodes.fileAttachment.create({
-            url,
-            fileName: file.name,
-            fileSize: file.size,
-            mimeType: file.type,
-          });
-
-          tr.insert(pos, fileNode);
-          view.dispatch(tr);
-        }
-      } catch (error) {
-        showInlineAlert
-          ? setErrorMessage(
-              isString(error) ? error : t('label.failed-to-upload-file')
-            )
-          : showErrorToast(
-              error as AxiosError,
-              t('label.failed-to-upload-file')
-            );
-      }
-    };
 
     const editor = useCustomEditor({
       ...EDITOR_OPTIONS,
       extensions,
       onUpdate({ editor }) {
-        setErrorMessage(undefined);
+        handleErrorMessage(undefined);
         const htmlContent = editor.getHTML();
         const backendFormat = formatContent(htmlContent, 'server');
         onChange?.(backendFormat);
@@ -158,7 +96,7 @@ const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
 
             event.preventDefault();
             const pos = view.state.selection.from;
-            handleFileUpload(files[0], view, pos);
+            handleFileUpload(files[0], view, pos, showInlineAlert);
 
             return true;
           },
@@ -178,7 +116,7 @@ const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
         return;
       }
 
-      setErrorMessage(undefined);
+      handleErrorMessage(undefined);
       const { items } = e.dataTransfer;
       const hasFiles = Array.from(items).some(
         (item) => item.kind === FileType.FILE
@@ -231,7 +169,12 @@ const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
       });
 
       if (coordinates) {
-        handleFileUpload(files[0], editor.view, coordinates.pos);
+        handleFileUpload(
+          files[0],
+          editor.view,
+          coordinates.pos,
+          showInlineAlert
+        );
       }
     };
 

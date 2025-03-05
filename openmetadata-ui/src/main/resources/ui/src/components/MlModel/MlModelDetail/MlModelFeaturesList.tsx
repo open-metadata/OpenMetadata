@@ -21,7 +21,7 @@ import { MlFeature, Mlmodel } from '../../../generated/entity/data/mlmodel';
 import { TagSource } from '../../../generated/type/schema';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { createTagObject } from '../../../utils/TagsUtils';
-import { EntityDescriptionProvider } from '../../common/EntityDescription/EntityDescriptionProvider/EntityDescriptionProvider';
+import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 import TableDescription from '../../Database/TableDescription/TableDescription.component';
@@ -240,7 +240,7 @@ const MlModelFeaturesList = () => {
           })}
         </Row>
         {!isEmpty(selectedFeature) && (
-          <EntityDescriptionProvider
+          <EntityAttachmentProvider
             entityFqn={selectedFeature.fullyQualifiedName}
             entityType={EntityType.MLMODEL}>
             <ModalWithMarkdownEditor
@@ -256,7 +256,7 @@ const MlModelFeaturesList = () => {
               onCancel={handleCancelEditDescription}
               onSave={handleDescriptionChange}
             />
-          </EntityDescriptionProvider>
+          </EntityAttachmentProvider>
         )}
       </Fragment>
     );

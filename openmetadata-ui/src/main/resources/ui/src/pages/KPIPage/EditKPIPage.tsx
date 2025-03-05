@@ -34,7 +34,7 @@ import moment from 'moment';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
-import { EntityDescriptionProvider } from '../../components/common/EntityDescription/EntityDescriptionProvider/EntityDescriptionProvider';
+import { EntityAttachmentProvider } from '../../components/common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import Loader from '../../components/common/Loader/Loader';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
@@ -405,11 +405,11 @@ const EditKPIPage = () => {
                   </Form.Item>
                 </Col>
               </Row>
-              <EntityDescriptionProvider
+              <EntityAttachmentProvider
                 entityFqn={kpiData?.fullyQualifiedName}
                 entityType={EntityType.KPI}>
                 {getField(descriptionField)}
-              </EntityDescriptionProvider>
+              </EntityAttachmentProvider>
               <Space align="center" className="w-full justify-end">
                 <Button
                   data-testid="cancel-btn"

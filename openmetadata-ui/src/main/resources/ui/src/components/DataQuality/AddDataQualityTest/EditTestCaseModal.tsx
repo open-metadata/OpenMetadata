@@ -47,7 +47,7 @@ import { getEntityFQN } from '../../../utils/FeedUtils';
 import { generateFormFields } from '../../../utils/formUtils';
 import { isValidJSONString } from '../../../utils/StringsUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
-import { EntityDescriptionProvider } from '../../common/EntityDescription/EntityDescriptionProvider/EntityDescriptionProvider';
+import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import Loader from '../../common/Loader/Loader';
 import { EditTestCaseModalProps } from './AddDataQualityTest.interface';
 import ParameterForm from './components/ParameterForm';
@@ -264,7 +264,7 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
       width={720}
       onCancel={onCancel}
       onOk={() => form.submit()}>
-      <EntityDescriptionProvider
+      <EntityAttachmentProvider
         entityFqn={testCase?.fullyQualifiedName}
         entityType={EntityType.TEST_CASE}>
         {isLoading ? (
@@ -346,7 +346,7 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
             )}
           </Form>
         )}
-      </EntityDescriptionProvider>
+      </EntityAttachmentProvider>
     </Modal>
   );
 };
