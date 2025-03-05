@@ -70,7 +70,9 @@ public class AppScheduler {
   public static final String APPS_JOB_GROUP = "OMAppsJobGroup";
   public static final String APPS_TRIGGER_GROUP = "OMAppsJobGroup";
   public static final String APP_INFO_KEY = "applicationInfoKey";
-  public static final String APP_NAME = "appName";
+  public static final String APP_NAME ="appName";
+  public static String CONFIG_OVERRIDE_KEY = "configOverride";
+
   private static AppScheduler instance;
   private static volatile boolean initialized = false;
   @Getter private final Scheduler scheduler;
