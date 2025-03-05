@@ -119,9 +119,28 @@ class TableauClient:
         """
         try:
             views_df = get_views_dataframe(self._client, all_fields=False)
+            if views_df.empty:
+                logger.debug("No views data found to process usage metrics.")
+                return
+
+            if "workbook" not in views_df.columns:
+                logger.debug("Expected 'workbook' column not found in views data.")
+                return
+
             usage_views_df = flatten_dict_column(
                 df=views_df, keys=["id"], col_name="workbook"
-            )[["workbook_id", "usage_totalViewCount"]]
+            )
+
+            if (
+                "workbook_id" not in usage_views_df.columns
+                or "usage_totalViewCount" not in usage_views_df.columns
+            ):
+                logger.debug(
+                    "Expected columns 'workbook_id' or 'usage_totalViewCount' not found after flattening."
+                )
+                return
+
+            usage_views_df = usage_views_df[["workbook_id", "usage_totalViewCount"]]
             usage_views_df = (
                 usage_views_df.groupby("workbook_id", as_index=False)[
                     "usage_totalViewCount"
