@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { SystemChartType } from '../rest/DataInsightAPI';
+
+import { SystemChartType } from '../enums/DataInsight.enum';
 
 export const PLATFORM_INSIGHTS_CHART: SystemChartType[] = [
   SystemChartType.DescriptionCoverage,

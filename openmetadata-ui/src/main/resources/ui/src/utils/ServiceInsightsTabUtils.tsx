@@ -12,8 +12,8 @@
  */
 import { t } from 'i18next';
 import { ServiceTypes } from 'Models';
+import { SystemChartType } from '../enums/DataInsight.enum';
 import { EntityType } from '../enums/entity.enum';
-import { SystemChartType } from '../rest/DataInsightAPI';
 
 export const getAssetsByServiceType = (serviceType: ServiceTypes): string[] => {
   switch (serviceType) {

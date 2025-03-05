@@ -21,11 +21,9 @@ import {
   PLATFORM_INSIGHTS_CHART,
   SERVICE_INSIGHTS_CHART,
 } from '../../constants/ServiceInsightsTab.constants';
+import { SystemChartType } from '../../enums/DataInsight.enum';
 import { useFqn } from '../../hooks/useFqn';
-import {
-  getMultiChartsPreviewByName,
-  SystemChartType,
-} from '../../rest/DataInsightAPI';
+import { getMultiChartsPreviewByName } from '../../rest/DataInsightAPI';
 import Fqn from '../../utils/Fqn';
 import serviceUtilClassBase from '../../utils/ServiceUtilClassBase';
 import { showErrorToast } from '../../utils/ToastUtils';
