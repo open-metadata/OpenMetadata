@@ -300,7 +300,8 @@ def get_schema_columns(self, connection, schema, **kw):
             sa_util.warn(
                 f"Did not recognize type '{coltype}' of column '{column_name}'"
             )
-            col_type = sqltypes.NULLTYPE
+            col_type = sqltypes.NullType
+            type_instance = col_type()
         else:
             if issubclass(col_type, FLOAT):
                 col_type_kw["precision"] = numeric_precision
@@ -310,8 +311,7 @@ def get_schema_columns(self, connection, schema, **kw):
                 col_type_kw["scale"] = numeric_scale
             elif issubclass(col_type, (sqltypes.String, sqltypes.BINARY)):
                 col_type_kw["length"] = character_maximum_length
-
-        type_instance = col_type(**col_type_kw)
+            type_instance = col_type(**col_type_kw)
 
         current_table_pks = schema_primary_keys.get(table_name)
 
