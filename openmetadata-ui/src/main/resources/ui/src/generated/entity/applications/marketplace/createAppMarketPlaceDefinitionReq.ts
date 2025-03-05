@@ -253,6 +253,10 @@ export interface CollateAIAppConfig {
  *
  * Remove Custom Properties Action Type
  *
+ * Add a Data Product to the selected assets.
+ *
+ * Remove a Data Product to the selected assets.
+ *
  * Propagate description, tags and glossary terms via lineage
  *
  * ML Tagging action configuration for external automator.
@@ -338,6 +342,12 @@ export interface Action {
      * Owners to apply
      */
     owners?: EntityReference[];
+    /**
+     * Data Products to apply
+     *
+     * Data Products to remove
+     */
+    dataProducts?: EntityReference[];
     /**
      * Propagate the metadata to columns via column-level lineage.
      */
@@ -549,12 +559,17 @@ export interface Style {
  *
  * Remove Custom Properties Action Type.
  *
+ * Add Data Products Action Type.
+ *
+ * Remove Data Products Action Type.
+ *
  * Lineage propagation action type.
  *
  * ML PII Tagging action type.
  */
 export enum ActionType {
     AddCustomPropertiesAction = "AddCustomPropertiesAction",
+    AddDataProductAction = "AddDataProductAction",
     AddDescriptionAction = "AddDescriptionAction",
     AddDomainAction = "AddDomainAction",
     AddOwnerAction = "AddOwnerAction",
@@ -563,6 +578,7 @@ export enum ActionType {
     LineagePropagationAction = "LineagePropagationAction",
     MLTaggingAction = "MLTaggingAction",
     RemoveCustomPropertiesAction = "RemoveCustomPropertiesAction",
+    RemoveDataProductAction = "RemoveDataProductAction",
     RemoveDescriptionAction = "RemoveDescriptionAction",
     RemoveDomainAction = "RemoveDomainAction",
     RemoveOwnerAction = "RemoveOwnerAction",
