@@ -529,13 +529,12 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     if (customPipelineEdge) {
       // find all edges where customPipelineEdge.docId is equal to extraInfo.docId
       filteredEdges = (entityLineage.edges ?? []).filter(
-        (item) => item.extraInfo?.doc_id !== customPipelineEdge.doc_id
+        (item) => item.extraInfo?.docId !== customPipelineEdge.docId
       );
 
       setEdges((prev) => {
         return prev.filter(
-          (item) =>
-            item.data.edge.extraInfo?.doc_id !== customPipelineEdge.doc_id
+          (item) => item.data.edge.extraInfo?.docId !== customPipelineEdge.docId
         );
       });
     } else {

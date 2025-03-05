@@ -47,7 +47,7 @@ export interface EdgeDetails {
   columns?: ColumnLineage[];
   description?: string;
   pipelineEntityType?: EntityType.PIPELINE | EntityType.STORED_PROCEDURE;
-  doc_id?: string;
+  docId?: string;
   extraInfo?: EdgeDetails;
 }
 

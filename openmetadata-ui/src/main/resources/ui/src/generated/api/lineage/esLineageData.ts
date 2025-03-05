@@ -15,9 +15,22 @@
  */
 export interface EsLineageData {
     /**
+     * Asset count in case of child assets lineage.
+     */
+    assetEdges?: number;
+    /**
      * Columns associated.
      */
     columns?: ColumnLineage[];
+    /**
+     * Last update time corresponding to the new version of the entity in Unix epoch time
+     * milliseconds.
+     */
+    createdAt?: number;
+    /**
+     * User who created the node.
+     */
+    createdBy?: string;
     /**
      * Description.
      */
@@ -50,6 +63,15 @@ export interface EsLineageData {
      * To Entity.
      */
     toEntity?: RelationshipRef;
+    /**
+     * Last update time corresponding to the new version of the entity in Unix epoch time
+     * milliseconds.
+     */
+    updatedAt?: number;
+    /**
+     * User who made the update.
+     */
+    updatedBy?: string;
 }
 
 export interface ColumnLineage {

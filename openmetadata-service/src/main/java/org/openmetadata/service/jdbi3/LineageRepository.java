@@ -333,8 +333,13 @@ public class LineageRepository {
       lineageData.setColumns(collectionOrDefault(lineageDetails.getColumnsLineage(), null));
       lineageData.setSqlQuery(nullOrDefault(lineageDetails.getSqlQuery(), null));
       lineageData.setSource(nullOrDefault(lineageDetails.getSource().value(), null));
+      lineageData.setCreatedAt(nullOrDefault(lineageDetails.getCreatedAt(), null));
+      lineageData.setCreatedBy(nullOrDefault(lineageDetails.getCreatedBy(), null));
+      lineageData.setUpdatedAt(nullOrDefault(lineageDetails.getUpdatedAt(), null));
+      lineageData.setUpdatedBy(nullOrDefault(lineageDetails.getUpdatedBy(), null));
+      lineageData.setAssetEdges(nullOrDefault(lineageDetails.getAssetEdges(), null));
     }
-    return lineageData;
+    return lineageData; 
   }
 
   private static String getDocumentId(

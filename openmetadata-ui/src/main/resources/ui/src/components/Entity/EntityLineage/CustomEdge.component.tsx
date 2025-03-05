@@ -120,7 +120,7 @@ export const CustomEdge = ({
     return (
       (activeLayer.includes(LineageLayer.DataObservability) &&
         dataQualityLineage?.edges?.some(
-          (dqEdge) => dqEdge?.doc_id === edge?.doc_id
+          (dqEdge) => dqEdge?.docId === edge?.docId
         )) ??
       false
     );
