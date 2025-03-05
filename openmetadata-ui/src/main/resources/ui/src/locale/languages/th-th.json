@@ -1603,6 +1603,7 @@
     "enter-your-registered-email": "กรอกอีเมลที่ลงทะเบียนเพื่อรับลิงก์รีเซ็ตรหัสผ่าน",
     "entity-already-exists": "{{entity}} มีอยู่แล้ว",
     "entity-are-not-available": "{{entity}} ไม่สามารถใช้งานได้",
+    "entity-customize-description": "ปรับแต่งแท็บและลำดับของแท็บสำหรับ {{entity}}",
     "entity-delimiters-not-allowed": "ชื่อที่มีตัวแบ่งไม่อนุญาต",
     "entity-details-updated": "รายละเอียด {{entityType}} {{fqn}} ได้รับการอัปเดตสำเร็จ",
     "entity-does-not-have-followers": "{{entityName}} ยังไม่มีผู้ติดตาม",

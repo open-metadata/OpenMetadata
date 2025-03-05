@@ -1603,6 +1603,7 @@
     "enter-your-registered-email": "Geben Sie Ihre registrierte E-Mail-Adresse ein, um einen Link zum Zurücksetzen des Passworts zu erhalten.",
     "entity-already-exists": "{{entity}} existiert bereits.",
     "entity-are-not-available": "{{entity}} sind nicht verfügbar.",
+    "entity-customize-description": "Customize {{entity}} detail page with choice of your widget and tabs which is more useful for your use case.",
     "entity-delimiters-not-allowed": "Namen mit Trennzeichen sind nicht erlaubt.",
     "entity-details-updated": "{{entityType}} {{fqn}} details updated successfully",
     "entity-does-not-have-followers": "{{entityName}} hat bisher keine Follower.",

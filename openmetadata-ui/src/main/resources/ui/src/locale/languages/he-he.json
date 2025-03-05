@@ -1603,6 +1603,7 @@
     "enter-your-registered-email": "הזן את הדוא\"ל שנרשמת בו כדי לקבל קישור לאיפוס הסיסמה",
     "entity-already-exists": "{{entity}} כבר קיימת.",
     "entity-are-not-available": "{{entity}} אינם זמינים",
+    "entity-customize-description": "התאם אישית את הכרטיסיות והסדר שלהן עבור {{entity}}",
     "entity-delimiters-not-allowed": "אסור להשתמש במפרידי שמות",
     "entity-details-updated": "{{entityType}} {{fqn}} details updated successfully",
     "entity-does-not-have-followers": "{{entityName}} אין לה עוקבים עד כה",

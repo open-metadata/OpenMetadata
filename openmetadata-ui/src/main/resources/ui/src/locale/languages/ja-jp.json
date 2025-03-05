@@ -1603,6 +1603,7 @@
     "enter-your-registered-email": "パスワードリセット用のリンクを受け取るためにあなたの登録済みのEmailアドレスを入力してください",
     "entity-already-exists": "{{entity}}は既に存在しています。",
     "entity-are-not-available": "{{entity}} are not available",
+    "entity-customize-description": "Customize {{entity}} detail page with choice of your widget and tabs which is more useful for your use case.",
     "entity-delimiters-not-allowed": "Name with delimiters are not allowed",
     "entity-details-updated": "{{entityType}} {{fqn}} details updated successfully",
     "entity-does-not-have-followers": "{{entityName}}はフォロワーがいません",
