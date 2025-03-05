@@ -13,7 +13,9 @@
 import Icon from '@ant-design/icons';
 import {
   Button,
+  Col,
   Dropdown,
+  Row,
   SpinProps,
   Table as AntdTable,
   Typography,
@@ -198,57 +200,58 @@ const Table = <T extends object = any>(
   ]);
 
   return (
-    <div className="table-container">
-      <div
-        className={classNames(
-          'd-flex justify-end items-center gap-5',
-          rest.extraTableFiltersClassName,
-          {
-            'mb-4': rest.extraTableFilters || !isFullViewTable,
-          }
-        )}>
-        {rest.extraTableFilters}
-        {!isFullViewTable && (
-          <DndProvider backend={HTML5Backend}>
-            <Dropdown
-              className="custom-column-dropdown-menu"
-              getPopupContainer={(trigger) => {
-                const customContainer = trigger.closest(
-                  '.custom-column-dropdown-menu'
-                );
+    <Row className="table-container" gutter={[0, 16]}>
+      {(rest.extraTableFilters || !isFullViewTable) && (
+        <Col
+          className={classNames(
+            'd-flex justify-end items-center gap-5',
+            rest.extraTableFiltersClassName
+          )}
+          span={24}>
+          {rest.extraTableFilters}
+          {!isFullViewTable && (
+            <DndProvider backend={HTML5Backend}>
+              <Dropdown
+                className="custom-column-dropdown-menu"
+                getPopupContainer={(trigger) => {
+                  const customContainer = trigger.closest(
+                    '.custom-column-dropdown-menu'
+                  );
 
-                return customContainer as HTMLElement;
-              }}
-              menu={menu}
-              open={isDropdownVisible}
-              trigger={['click']}
-              onOpenChange={setIsDropdownVisible}>
-              <Button
-                data-testid="column-dropdown"
-                icon={<Icon component={ColumnIcon} />}>
-                {t('label.column-plural')}
-              </Button>
-            </Dropdown>
-          </DndProvider>
-        )}
-      </div>
-
-      <AntdTable
-        {...rest}
-        columns={propsColumns}
-        expandable={{ ...getTableExpandableConfig<T>(), ...rest.expandable }}
-        loading={{
-          spinning: isLoading,
-          indicator: <Loader />,
-        }}
-        locale={{
-          ...rest.locale,
-          emptyText: isLoading ? null : rest.locale?.emptyText,
-        }}
-        ref={ref}
-        {...resizingTableProps}
-      />
-    </div>
+                  return customContainer as HTMLElement;
+                }}
+                menu={menu}
+                open={isDropdownVisible}
+                trigger={['click']}
+                onOpenChange={setIsDropdownVisible}>
+                <Button
+                  data-testid="column-dropdown"
+                  icon={<Icon component={ColumnIcon} />}>
+                  {t('label.column-plural')}
+                </Button>
+              </Dropdown>
+            </DndProvider>
+          )}
+        </Col>
+      )}
+      <Col span={24}>
+        <AntdTable
+          {...rest}
+          columns={propsColumns}
+          expandable={{ ...getTableExpandableConfig<T>(), ...rest.expandable }}
+          loading={{
+            spinning: isLoading,
+            indicator: <Loader />,
+          }}
+          locale={{
+            ...rest.locale,
+            emptyText: isLoading ? null : rest.locale?.emptyText,
+          }}
+          ref={ref}
+          {...resizingTableProps}
+        />
+      </Col>
+    </Row>
   );
 };
 

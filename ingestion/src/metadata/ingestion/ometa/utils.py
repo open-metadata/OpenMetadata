@@ -20,6 +20,7 @@ from pydantic import BaseModel
 from requests.utils import quote as url_quote
 
 from metadata.generated.schema.type.basic import FullyQualifiedEntityName
+from metadata.generated.schema.type.entityReference import EntityReference
 
 T = TypeVar("T", bound=BaseModel)
 
@@ -85,3 +86,15 @@ def quote(fqn: Union[FullyQualifiedEntityName, str]) -> str:
     E.g., `"foo.bar/baz"` -> `%22foo.bar%2Fbaz%22`
     """
     return url_quote(model_str(fqn), safe="")
+
+
+def build_entity_reference(entity: T) -> EntityReference:
+    """Get the EntityReference from the Entity itself"""
+    return EntityReference(
+        id=entity.id,
+        type=get_entity_type(type(entity)),
+        name=model_str(entity.name),
+        fullyQualifiedName=model_str(entity.fullyQualifiedName),
+        description=entity.description,
+        href=entity.href,
+    )
