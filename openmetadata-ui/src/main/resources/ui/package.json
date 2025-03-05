@@ -249,6 +249,7 @@
     "cookie": "0.7.0",
     "jsonpath-plus": "10.3.0",
     "cross-spawn": "7.0.5",
-    "serialize-javascript": "6.0.2"
+    "serialize-javascript": "6.0.2",
+    "dompurify": "3.2.4"
   }
 }
