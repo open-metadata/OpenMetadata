@@ -180,7 +180,6 @@ const Users = ({
           <ActivityFeedProvider user={userData.id}>
             <ActivityFeedTabNew
               entityType={EntityType.USER}
-              fqn={decodedUsername}
               isForFeedTab={false}
               subTab={ActivityFeedTabs.ALL}
               onFeedUpdate={noop}
@@ -202,7 +201,6 @@ const Users = ({
           <ActivityFeedProvider user={userData.id}>
             <ActivityFeedTabNew
               entityType={EntityType.USER}
-              fqn={decodedUsername}
               isForFeedTab={false}
               subTab={ActivityFeedTabs.TASKS}
               onFeedUpdate={noop}

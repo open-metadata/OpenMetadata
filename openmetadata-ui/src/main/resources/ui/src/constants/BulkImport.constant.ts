@@ -13,23 +13,23 @@
 import { startCase } from 'lodash';
 import i18n from '../utils/i18next/LocalUtil';
 
-export const ENTITY_IMPORT_STEPS = [
-  {
-    name: startCase(i18n.t('label.upload-csv-uppercase-file')),
-    step: 0,
-  },
-  {
-    name: startCase(i18n.t('label.preview-and-edit')),
-    step: 1,
-  },
-  {
-    name: startCase(i18n.t('label.update')),
-    step: 2,
-  },
-];
-
 export enum VALIDATION_STEP {
   UPLOAD = 0,
   EDIT_VALIDATE = 1,
   UPDATE = 2,
 }
+
+export const ENTITY_IMPORT_STEPS = [
+  {
+    name: startCase(i18n.t('label.upload-csv-uppercase-file')),
+    step: VALIDATION_STEP.UPLOAD,
+  },
+  {
+    name: i18n.t('label.preview-and-edit'),
+    step: VALIDATION_STEP.EDIT_VALIDATE,
+  },
+  {
+    name: i18n.t('label.update'),
+    step: VALIDATION_STEP.UPDATE,
+  },
+];

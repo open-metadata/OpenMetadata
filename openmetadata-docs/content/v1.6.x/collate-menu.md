@@ -868,6 +868,8 @@ site_menu:
     url: /releases/supported
   - category: Releases / All Releases
     url: /releases/all-releases
+  - category: Releases / All Releases / 1.6.4 Release
+    url: /releases/all-releases/#1.6.4-release
   - category: Releases / All Releases / 1.6.3 Release
     url: /releases/all-releases/#1.6.3-release
   - category: Releases / All Releases / 1.6.2 Release
