@@ -137,18 +137,22 @@ const ServiceInsightsTab: React.FC<ServiceInsightsTabProps> = () => {
           <CollateAIWidget />
         </Col>
       )}
-      <Col span={12}>
-        <PIIDistributionWidget
-          chartsData={chartsResults?.piiDistributionChart ?? []}
-          isLoading={isLoading}
-        />
-      </Col>
-      <Col span={12}>
-        <TierDistributionWidget
-          chartsData={chartsResults?.tierDistributionChart ?? []}
-          isLoading={isLoading}
-        />
-      </Col>
+      {!isUndefined(PIIDistributionWidget) && (
+        <Col span={12}>
+          <PIIDistributionWidget
+            chartsData={chartsResults?.piiDistributionChart ?? []}
+            isLoading={isLoading}
+          />
+        </Col>
+      )}
+      {!isUndefined(TierDistributionWidget) && (
+        <Col span={12}>
+          <TierDistributionWidget
+            chartsData={chartsResults?.tierDistributionChart ?? []}
+            isLoading={isLoading}
+          />
+        </Col>
+      )}
       {!isUndefined(MostUsedAssetsWidget) && (
         <Col span={24}>
           <MostUsedAssetsWidget />

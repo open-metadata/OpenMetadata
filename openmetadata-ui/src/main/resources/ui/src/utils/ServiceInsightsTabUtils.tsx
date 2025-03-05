@@ -10,26 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Card, Skeleton } from 'antd';
 import { t } from 'i18next';
-import { isEmpty } from 'lodash';
 import { ServiceTypes } from 'Models';
-import React from 'react';
-import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  ResponsiveContainer,
-  XAxis,
-  YAxis,
-} from 'recharts';
-import ErrorPlaceHolder from '../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import { ChartData } from '../components/ServiceInsights/PlatformInsightsWidget/PlatformInsightsWidget.interface';
-import { GRAY_1, LIGHT_GRAY } from '../constants/Color.constants';
-import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../enums/common.enum';
 import { EntityType } from '../enums/entity.enum';
 import { SystemChartType } from '../rest/DataInsightAPI';
-import { RoundedCornerBar } from './TierDistributionWidgetUtils';
 
 export const getAssetsByServiceType = (serviceType: ServiceTypes): string[] => {
   switch (serviceType) {
@@ -84,58 +68,4 @@ export const getTitleByChartType = (chartType: SystemChartType) => {
     default:
       return '';
   }
-};
-
-export const getDistributionChart = (
-  chartsData: ChartData[],
-  isLoading: boolean
-) => {
-  const noData = (
-    <ErrorPlaceHolder
-      className="h-full"
-      placeholderText={t('message.no-service-insights-data')}
-      size={SIZE.MEDIUM}
-      type={ERROR_PLACEHOLDER_TYPE.NO_DATA}
-    />
-  );
-
-  return (
-    <Card className="widget-info-card distribution-widget">
-      <Skeleton active loading={isLoading} paragraph={{ rows: 10 }}>
-        {isEmpty(chartsData) ? (
-          noData
-        ) : (
-          <ResponsiveContainer className="p-t-md" height={350} width="100%">
-            <BarChart
-              data={chartsData}
-              margin={{ top: 0, right: 0, left: -24, bottom: 12 }}>
-              <CartesianGrid stroke={LIGHT_GRAY} vertical={false} />
-              <XAxis
-                axisLine={{
-                  stroke: LIGHT_GRAY,
-                }}
-                dataKey="term"
-                tickLine={false}
-              />
-              <YAxis
-                axisLine={false}
-                stroke={GRAY_1}
-                tickLine={{
-                  stroke: LIGHT_GRAY,
-                }}
-              />
-              <Bar
-                activeBar={<RoundedCornerBar />}
-                background={{ fill: LIGHT_GRAY }}
-                barSize={20}
-                dataKey="count"
-                fill="#3538CD"
-                shape={<RoundedCornerBar />}
-              />
-            </BarChart>
-          </ResponsiveContainer>
-        )}
-      </Skeleton>
-    </Card>
-  );
 };
