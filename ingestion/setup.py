@@ -230,9 +230,8 @@ plugins: Dict[str, Set[str]] = {
     "dynamodb": {VERSIONS["boto3"]},
     "elasticsearch": {
         VERSIONS["elasticsearch8"],
-        "httpx>=0.28.1",
     },  # also requires requests-aws4auth which is in base
-    "opensearch": {VERSIONS["opensearch"], "httpx>=0.28.1"},
+    "opensearch": {VERSIONS["opensearch"]},
     "exasol": {"sqlalchemy_exasol>=5,<6"},
     "glue": {VERSIONS["boto3"]},
     "great-expectations": {VERSIONS["great-expectations"]},

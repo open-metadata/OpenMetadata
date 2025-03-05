@@ -30,13 +30,15 @@ from metadata.generated.schema.entity.services.connections.common.sslCertValues 
 from metadata.generated.schema.entity.services.connections.common.sslConfig import (
     SslConfig,
 )
+from metadata.generated.schema.entity.services.connections.search.elasticSearch.basicAuth import (
+    BasicAuthentication,
+)
 from metadata.generated.schema.entity.services.connections.search.openSearchConnection import (
     OpenSearchConnection,
 )
 from metadata.generated.schema.entity.services.connections.testConnectionResult import (
     TestConnectionResult,
 )
-from metadata.generated.schema.entity.services.connections.search.elasticSearch.basicAuth import BasicAuthentication
 from metadata.generated.schema.security.credentials.awsCredentials import AWSCredentials
 from metadata.generated.schema.security.ssl.verifySSLConfig import VerifySSL
 from metadata.ingestion.connections.builders import init_empty_connection_arguments
@@ -126,7 +128,10 @@ def get_connection(connection: OpenSearchConnection) -> OpenSearch:
             )
 
     # Check for Basic Authentication
-    if isinstance(connection.authType, BasicAuthentication) and connection.authType.username:
+    if (
+        isinstance(connection.authType, BasicAuthentication)
+        and connection.authType.username
+    ):
         basic_auth = (
             connection.authType.username,
             connection.authType.password.get_secret_value()
