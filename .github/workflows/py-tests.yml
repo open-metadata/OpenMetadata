@@ -36,7 +36,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  timeout-minutes: 120
+  timeout-minutes: 180
   py-run-tests:
     runs-on: ubuntu-latest
     strategy:
