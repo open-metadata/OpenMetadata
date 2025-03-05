@@ -114,7 +114,7 @@ import { EditorContentRef } from '../../../ActivityFeed/ActivityFeedEditor/Activ
 import ActivityFeedEditorNew from '../../../ActivityFeed/ActivityFeedEditor/ActivityFeedEditorNew';
 import { useActivityFeedProvider } from '../../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import InlineEdit from '../../../common/InlineEdit/InlineEdit.component';
-import { OwnerLabelNew } from '../../../common/OwnerLabel/OwnerLabelNew.component';
+import { UserAvatarGroup } from '../../../common/OwnerLabel/OwnerLabelNew.component';
 import EntityPopOverCard from '../../../common/PopOverCard/EntityPopOverCard';
 import ProfilePicture from '../../../common/ProfilePicture/ProfilePicture';
 import TaskTabIncidentManagerHeaderNew from '../TaskTabIncidentManagerHeader/TasktabIncidentManagerHeaderNew';
@@ -910,7 +910,7 @@ export const TaskTabNew = ({
                     </Typography.Text>
                   </div>
                 ) : (
-                  <OwnerLabelNew
+                  <UserAvatarGroup
                     avatarSize={24}
                     className="p-t-05"
                     owners={taskThread?.task?.assignees}

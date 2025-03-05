@@ -114,7 +114,7 @@ export const DomainLabelNew = ({
 
       return (
         <div className="d-flex flex-col gap-1 items-start">
-          <div className="d-flex gap-1 flex-wrap">
+          <div className="d-flex gap-1 flex-wrap flex-col">
             {displayDomains.map((domain) => {
               const inheritedIcon = domain?.inherited ? (
                 <Tooltip

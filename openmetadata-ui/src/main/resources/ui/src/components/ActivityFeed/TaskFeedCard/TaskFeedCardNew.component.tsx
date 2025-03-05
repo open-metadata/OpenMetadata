@@ -56,7 +56,7 @@ import {
   isTagsTask,
 } from '../../../utils/TasksUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
-import { OwnerLabelNew } from '../../common/OwnerLabel/OwnerLabelNew.component';
+import { UserAvatarGroup } from '../../common/OwnerLabel/OwnerLabelNew.component';
 import { useActivityFeedProvider } from '../ActivityFeedProvider/ActivityFeedProvider';
 import './task-feed-card.less';
 
@@ -326,7 +326,7 @@ const TaskFeedCard = ({
                     : ''
                 }`}>
                 <AssigneesIcon {...ICON_DIMENSION_USER_PAGE} />
-                <OwnerLabelNew
+                <UserAvatarGroup
                   avatarSize={16}
                   className="p-t-05"
                   owners={feed?.task?.assignees}

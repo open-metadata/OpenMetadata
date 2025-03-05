@@ -21,7 +21,7 @@ import { EntityReference } from '../../../generated/entity/data/table';
 import ProfilePicture from '../ProfilePicture/ProfilePicture';
 import './owner-label.less';
 
-export const OwnerLabelNew = ({
+export const UserAvatarGroup = ({
   owners = [],
   className,
   onUpdate,
