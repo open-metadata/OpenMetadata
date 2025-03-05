@@ -204,6 +204,7 @@ export const PersonaSelectableList = ({
               options={selectOptions?.map((persona) => ({
                 label: persona.displayName || persona.name,
                 value: persona.id,
+                className: 'font-normal',
               }))}
               placeholder="Please select"
               popupClassName="persona-custom-dropdown-class"

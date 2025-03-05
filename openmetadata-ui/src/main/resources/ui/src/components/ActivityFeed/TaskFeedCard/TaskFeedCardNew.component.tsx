@@ -39,7 +39,6 @@ import EntityLink from '../../../utils/EntityLink';
 import { getEntityFQN, getEntityType } from '../../../utils/FeedUtils';
 
 import { AxiosError } from 'axios';
-import { ICON_DIMENSION_USER_PAGE } from '../../../constants/constants';
 import { TaskOperation } from '../../../constants/Feeds.constants';
 import { TASK_TYPES } from '../../../constants/Task.constant';
 import { TaskType } from '../../../generated/api/feed/createThread';
@@ -56,7 +55,8 @@ import {
   isTagsTask,
 } from '../../../utils/TasksUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
-import { UserAvatarGroup } from '../../common/OwnerLabel/OwnerLabelNew.component';
+
+import { UserAvatarGroup } from '../../common/OwnerLabel/UserAvatarGroup.component';
 import { useActivityFeedProvider } from '../ActivityFeedProvider/ActivityFeedProvider';
 import './task-feed-card.less';
 
@@ -306,7 +306,7 @@ const TaskFeedCard = ({
             span={24}>
             <Col className="d-flex">
               <Col className="d-flex flex-center">
-                <ReplyIcon className="m-r-xs" />
+                <ReplyIcon className="m-r-xs" height={20} width={20} />
                 {feed.posts && feed.posts?.length > 0 && (
                   <span className="posts-length m-r-xss">
                     {t(
@@ -325,9 +325,9 @@ const TaskFeedCard = ({
                     ? 'task-card-assignee'
                     : ''
                 }`}>
-                <AssigneesIcon {...ICON_DIMENSION_USER_PAGE} />
+                <AssigneesIcon height={20} width={20} />
                 <UserAvatarGroup
-                  avatarSize={16}
+                  avatarSize={24}
                   className="p-t-05"
                   owners={feed?.task?.assignees}
                 />

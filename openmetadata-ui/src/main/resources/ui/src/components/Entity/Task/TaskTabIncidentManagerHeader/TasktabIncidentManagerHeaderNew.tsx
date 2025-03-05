@@ -26,7 +26,8 @@ import { TestCaseResolutionStatusTypes } from '../../../../generated/tests/testC
 import { formatDateTime } from '../../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import { useActivityFeedProvider } from '../../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
-import { UserAvatarGroup } from '../../../common/OwnerLabel/OwnerLabelNew.component';
+
+import { UserAvatarGroup } from '../../../common/OwnerLabel/UserAvatarGroup.component';
 import ProfilePicture from '../../../common/ProfilePicture/ProfilePicture';
 import RichTextEditorPreviewerV1 from '../../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import Severity from '../../../DataQuality/IncidentManager/Severity/Severity.component';

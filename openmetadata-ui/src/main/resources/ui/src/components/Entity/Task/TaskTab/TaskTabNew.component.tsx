@@ -114,7 +114,8 @@ import { EditorContentRef } from '../../../ActivityFeed/ActivityFeedEditor/Activ
 import ActivityFeedEditorNew from '../../../ActivityFeed/ActivityFeedEditor/ActivityFeedEditorNew';
 import { useActivityFeedProvider } from '../../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import InlineEdit from '../../../common/InlineEdit/InlineEdit.component';
-import { UserAvatarGroup } from '../../../common/OwnerLabel/OwnerLabelNew.component';
+
+import { UserAvatarGroup } from '../../../common/OwnerLabel/UserAvatarGroup.component';
 import EntityPopOverCard from '../../../common/PopOverCard/EntityPopOverCard';
 import ProfilePicture from '../../../common/ProfilePicture/ProfilePicture';
 import TaskTabIncidentManagerHeaderNew from '../TaskTabIncidentManagerHeader/TasktabIncidentManagerHeaderNew';

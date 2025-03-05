@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Avatar, Button, Col, Row } from 'antd';
+import { Avatar, Col, Row } from 'antd';
 import classNames from 'classnames';
 import { min, noop, sortBy } from 'lodash';
 import React, { useCallback, useMemo } from 'react';
@@ -75,17 +75,8 @@ function FeedCardFooterNew({
             )}
 
             {!isPost && (
-              <Button
-                className="flex-center p-0"
-                data-testid="thread-count"
-                icon={<ThreadIcon height={20} />}
-                shape="circle"
-                size="small"
-                style={{ marginTop: '2px' }}
-                type="text"
-              />
+              <ThreadIcon data-testid="thread-count" height={18} width={18} />
             )}
-
             <Reactions
               reactions={post.reactions ?? []}
               onReactionSelect={onReactionUpdate ?? noop}

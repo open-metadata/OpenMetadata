@@ -16,6 +16,8 @@ import classNames from 'classnames';
 import { parseInt } from 'lodash';
 import { ImageShape } from 'Models';
 import React, { useMemo } from 'react';
+import { Link } from 'react-router-dom';
+import { getUserPath } from '../../../constants/constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { User } from '../../../generated/entity/teams/user';
@@ -23,6 +25,7 @@ import { useUserProfile } from '../../../hooks/user-profile/useUserProfile';
 import { getRandomColor } from '../../../utils/CommonUtils';
 import { userPermissions } from '../../../utils/PermissionsUtils';
 import Loader from '../Loader/Loader';
+import UserPopOverCard from '../PopOverCard/UserPopOverCard';
 
 type UserData = Pick<User, 'name' | 'displayName'>;
 
@@ -80,9 +83,11 @@ const ProfilePicture = ({
     );
 
     return (
-      <Tooltip placement="top" title={displayName ?? name}>
-        {avatar}
-      </Tooltip>
+      <UserPopOverCard userName={name ?? ''}>
+        <Link className="no-underline" to={getUserPath(name ?? '')}>
+          {avatar}
+        </Link>
+      </UserPopOverCard>
     );
   };
 

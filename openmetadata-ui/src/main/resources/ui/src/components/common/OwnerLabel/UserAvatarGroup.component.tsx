@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Avatar, Dropdown, Tooltip, Typography } from 'antd';
+import { Avatar, Dropdown, Typography } from 'antd';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import React, { ReactNode, useMemo } from 'react';
@@ -76,22 +76,25 @@ export const UserAvatarGroup = ({
             { inherited: Boolean(owners.some((owner) => owner?.inherited)) },
             className
           )}>
-          <Avatar.Group>
+          <Avatar.Group
+            className="avatar-group"
+            maxCount={maxVisibleOwners}
+            maxPopoverTrigger="click">
             {visibleOwners.map((owner) => (
-              <Tooltip
-                key={owner.id}
-                placement="top"
-                title={owner.displayName ?? ''}>
+              <div className="avatar-overlap" key={owner.id}>
                 <ProfilePicture
                   avatarType="outlined"
-                  name={owner.displayName ?? ''}
+                  displayName={owner.displayName ?? ''}
+                  name={owner.name ?? ''}
                   size={avatarSize}
                 />
-              </Tooltip>
+              </div>
             ))}
             {remainingOwnersCount > 0 && (
               <Dropdown menu={remainingOwnersMenu} trigger={['click']}>
-                <Avatar className="owner-count-avatar" size={avatarSize}>
+                <Avatar
+                  className="owner-count-avatar avatar-overlap"
+                  size={avatarSize}>
                   <span>
                     {t('label.plus-symbol')}
                     {remainingOwnersCount}
