@@ -20,6 +20,8 @@ import static org.openmetadata.service.search.elasticsearch.ElasticSearchEntitie
 import static org.openmetadata.service.util.FullyQualifiedName.getParentFQN;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import es.org.elasticsearch.ElasticsearchStatusException;
 import es.org.elasticsearch.action.ActionListener;
 import es.org.elasticsearch.action.admin.cluster.health.ClusterHealthRequest;
@@ -36,6 +38,7 @@ import es.org.elasticsearch.action.search.SearchResponse;
 import es.org.elasticsearch.action.support.WriteRequest;
 import es.org.elasticsearch.action.support.master.AcknowledgedResponse;
 import es.org.elasticsearch.action.update.UpdateRequest;
+import es.org.elasticsearch.client.Request;
 import es.org.elasticsearch.client.RequestOptions;
 import es.org.elasticsearch.client.RestClient;
 import es.org.elasticsearch.client.RestClientBuilder;
@@ -123,6 +126,7 @@ import org.apache.http.auth.AuthScope;
 import org.apache.http.auth.UsernamePasswordCredentials;
 import org.apache.http.client.CredentialsProvider;
 import org.apache.http.impl.client.BasicCredentialsProvider;
+import org.apache.http.util.EntityUtils;
 import org.jetbrains.annotations.NotNull;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.search.SearchSettings;
@@ -337,6 +341,15 @@ public class ElasticSearchClient implements SearchClient {
   public Response search(SearchRequest request, SubjectContext subjectContext) throws IOException {
     SearchSettings searchSettings =
         SettingsCache.getSetting(SettingsType.SEARCH_SETTINGS, SearchSettings.class);
+    return doSearch(request, subjectContext, searchSettings);
+  }
+
+  @Override
+  public Response previewSearch(SearchRequest request, SubjectContext subjectContext, SearchSettings searchSettings) throws IOException {
+    return doSearch(request, subjectContext, searchSettings);
+  }
+
+  public Response doSearch(SearchRequest request, SubjectContext subjectContext, SearchSettings searchSettings) throws IOException {
     ElasticSearchSourceBuilderFactory searchBuilderFactory =
         new ElasticSearchSourceBuilderFactory(searchSettings);
     SearchSourceBuilder searchSourceBuilder =
@@ -344,7 +357,6 @@ public class ElasticSearchClient implements SearchClient {
             request.getIndex(), request.getQuery(), request.getFrom(), request.getSize());
 
     buildSearchRBACQuery(subjectContext, searchSourceBuilder);
-
     // Add Filter
     buildSearchSourceFilter(request.getQueryFilter(), searchSourceBuilder);
 
@@ -703,11 +715,11 @@ public class ElasticSearchClient implements SearchClient {
     searchSourceBuilder.timeout(new TimeValue(30, TimeUnit.SECONDS));
     searchSourceBuilder.from(offset);
     searchSourceBuilder.size(limit);
-    if (searchSortFilter.isSorted()) {
+    if (Boolean.TRUE.equals(searchSortFilter.isSorted())) {
       FieldSortBuilder fieldSortBuilder =
           SortBuilders.fieldSort(searchSortFilter.getSortField())
               .order(SortOrder.fromString(searchSortFilter.getSortType()));
-      if (searchSortFilter.isNested()) {
+      if (Boolean.TRUE.equals(searchSortFilter.isNested())) {
         NestedSortBuilder nestedSortBuilder =
             new NestedSortBuilder(searchSortFilter.getSortNestedPath());
         fieldSortBuilder.setNestedSort(nestedSortBuilder);
@@ -850,6 +862,24 @@ public class ElasticSearchClient implements SearchClient {
     responseMap.put("edges", edges);
     responseMap.put("nodes", nodes);
     return responseMap;
+  }
+
+  @Override
+  public Response searchWithNLQ(SearchRequest request, SubjectContext subjectContext)
+      throws IOException {
+    String endpoint = "/" + request.getIndex() + "/_nlq";
+    Request nlqRequest = new Request("POST", endpoint);
+    nlqRequest.setJsonEntity(buildNLQRequest(request));
+    es.org.elasticsearch.client.Response esResponse = client.getLowLevelClient().performRequest(nlqRequest);
+    String responseBody = EntityUtils.toString(esResponse.getEntity());
+    return Response.status(Response.Status.OK).entity(responseBody).build();
+  }
+
+  private String buildNLQRequest(SearchRequest request)  {
+    ObjectMapper mapper = new ObjectMapper();
+    ObjectNode queryJson = mapper.createObjectNode();
+    queryJson.put("query", request.getQuery());
+    return queryJson.toString();
   }
 
   @Override

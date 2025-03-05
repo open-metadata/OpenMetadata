@@ -42,6 +42,9 @@ import java.util.stream.Stream;
 import javax.json.JsonObject;
 import javax.net.ssl.SSLContext;
 import javax.ws.rs.core.Response;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import lombok.Getter;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -53,6 +56,7 @@ import org.apache.http.auth.AuthScope;
 import org.apache.http.auth.UsernamePasswordCredentials;
 import org.apache.http.client.CredentialsProvider;
 import org.apache.http.impl.client.BasicCredentialsProvider;
+import org.apache.http.util.EntityUtils;
 import org.jetbrains.annotations.NotNull;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.search.SearchSettings;
@@ -123,10 +127,12 @@ import os.org.opensearch.action.search.SearchResponse;
 import os.org.opensearch.action.support.WriteRequest;
 import os.org.opensearch.action.support.master.AcknowledgedResponse;
 import os.org.opensearch.action.update.UpdateRequest;
+import os.org.opensearch.client.Request;
 import os.org.opensearch.client.RequestOptions;
 import os.org.opensearch.client.RestClient;
 import os.org.opensearch.client.RestClientBuilder;
 import os.org.opensearch.client.RestHighLevelClient;
+import os.org.opensearch.client.WarningsHandler;
 import os.org.opensearch.client.indices.CreateIndexRequest;
 import os.org.opensearch.client.indices.CreateIndexResponse;
 import os.org.opensearch.client.indices.GetIndexRequest;
@@ -180,11 +186,13 @@ import os.org.opensearch.search.sort.NestedSortBuilder;
 import os.org.opensearch.search.sort.SortBuilders;
 import os.org.opensearch.search.sort.SortMode;
 import os.org.opensearch.search.sort.SortOrder;
+import os.org.opensearch.search.sort.SortMode;
 import os.org.opensearch.search.suggest.Suggest;
 import os.org.opensearch.search.suggest.SuggestBuilder;
 import os.org.opensearch.search.suggest.SuggestBuilders;
 import os.org.opensearch.search.suggest.completion.CompletionSuggestionBuilder;
 import os.org.opensearch.search.suggest.completion.context.CategoryQueryContext;
+import com.fasterxml.jackson.core.JsonProcessingException;
 
 @Slf4j
 // Not tagged with Repository annotation as it is programmatically initialized
@@ -213,9 +221,16 @@ public class OpenSearchClient implements SearchClient {
       Stream.concat(FIELDS_TO_REMOVE.stream(), Stream.of("schemaDefinition", "customMetrics"))
           .toList();
 
+  private static final RequestOptions OPENSEARCH_REQUEST_OPTIONS;
+
   static {
     SearchModule searchModule = new SearchModule(Settings.EMPTY, List.of());
     X_CONTENT_REGISTRY = new NamedXContentRegistry(searchModule.getNamedXContents());
+    RequestOptions.Builder builder = RequestOptions.DEFAULT.toBuilder();
+    builder.addHeader("Content-Type", "application/json");
+    builder.addHeader("Accept", "application/json");
+    builder.setWarningsHandler(WarningsHandler.PERMISSIVE);
+    OPENSEARCH_REQUEST_OPTIONS = builder.build();
   }
 
   public OpenSearchClient(ElasticSearchConfiguration config) {
@@ -333,8 +348,17 @@ public class OpenSearchClient implements SearchClient {
 
   @Override
   public Response search(SearchRequest request, SubjectContext subjectContext) throws IOException {
-    SearchSettings searchSettings =
-        SettingsCache.getSetting(SettingsType.SEARCH_SETTINGS, SearchSettings.class);
+      SearchSettings searchSettings =
+          SettingsCache.getSetting(SettingsType.SEARCH_SETTINGS, SearchSettings.class);
+      return doSearch(request, subjectContext, searchSettings);
+  }
+
+  @Override
+  public Response previewSearch(SearchRequest request, SubjectContext subjectContext, SearchSettings searchSettings) throws IOException {
+    return doSearch(request, subjectContext, searchSettings);
+  }
+
+  public Response doSearch(SearchRequest request, SubjectContext subjectContext, SearchSettings searchSettings) throws IOException {
     OpenSearchSourceBuilderFactory searchBuilderFactory =
         new OpenSearchSourceBuilderFactory(searchSettings);
     SearchSourceBuilder searchSourceBuilder =
@@ -466,11 +490,15 @@ public class OpenSearchClient implements SearchClient {
       searchSourceBuilder.explain(true);
     }
     try {
+      RequestOptions.Builder builder = RequestOptions.DEFAULT.toBuilder();
+      builder.addHeader("Content-Type", "application/json");
+      RequestOptions requestOptions = builder.build();
+      searchSourceBuilder.toString();
       SearchResponse searchResponse =
           client.search(
               new os.org.opensearch.action.search.SearchRequest(request.getIndex())
                   .source(searchSourceBuilder),
-              RequestOptions.DEFAULT);
+              OPENSEARCH_REQUEST_OPTIONS);
       if (!request.isGetHierarchy()) {
         return Response.status(OK).entity(searchResponse.toString()).build();
       } else {
@@ -481,6 +509,26 @@ public class OpenSearchClient implements SearchClient {
       throw new SearchIndexNotFoundException(
           String.format("Failed to to find index %s", request.getIndex()));
     }
+  }
+
+  @Override
+  public Response searchWithNLQ(SearchRequest request, SubjectContext subjectContext)
+      throws IOException {
+    Request nlqRequest = new Request("POST", "/_nlq");
+    nlqRequest.setJsonEntity(buildNLQRequest(request));
+    os.org.opensearch.client.Response nlqResponse = client.getLowLevelClient().performRequest(nlqRequest);
+    String responseBody = EntityUtils.toString(nlqResponse.getEntity());
+    return Response.status(Response.Status.OK).entity(responseBody).build();
+  }
+
+  private String buildNLQRequest(SearchRequest request) throws IOException {
+    ObjectMapper mapper = new ObjectMapper();
+    ObjectNode queryJson = mapper.createObjectNode();
+    queryJson.put("index", request.getIndex());
+    queryJson.put("query", request.getQuery());
+    queryJson.put("size", request.getSize());
+    queryJson.put("from", request.getFrom());
+    return queryJson.toString();
   }
 
   @Override
@@ -1721,11 +1769,19 @@ public class OpenSearchClient implements SearchClient {
       String indexName, String docId, Map<String, Object> doc, String scriptTxt) {
     if (isClientAvailable) {
       UpdateRequest updateRequest = new UpdateRequest(indexName, docId);
-      Script script =
-          new Script(
-              ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, scriptTxt, JsonUtils.getMap(doc));
-      updateRequest.scriptedUpsert(true);
+      // Create script with proper parameters
+      Map<String, Object> parameters = new HashMap<>(doc);
+      Script script = new Script(
+          ScriptType.INLINE,
+          Script.DEFAULT_SCRIPT_LANG,
+          scriptTxt,
+          parameters
+      );
+
       updateRequest.script(script);
+      updateRequest.scriptedUpsert(true);
+      updateRequest.docAsUpsert(true);
+      updateRequest.doc(doc, XContentType.JSON);
       updateOpenSearch(updateRequest);
     }
   }
@@ -2361,8 +2417,8 @@ public class OpenSearchClient implements SearchClient {
                 requestConfigBuilder
                     .setConnectTimeout(esConfig.getConnectionTimeoutSecs() * 1000)
                     .setSocketTimeout(esConfig.getSocketTimeoutSecs() * 1000));
-        restClientBuilder.setCompressionEnabled(true);
-        restClientBuilder.setChunkedEnabled(true);
+        //restClientBuilder.setCompressionEnabled(true);
+        //restClientBuilder.setChunkedEnabled(true);
         return new RestHighLevelClient(restClientBuilder);
       } catch (Exception e) {
         LOG.error("Failed to create open search client ", e);

@@ -75,11 +75,6 @@
           "type": "string",
           "description": "Name or type of the asset to which this configuration applies."
         },
-        "useNaturalLanguageSearch": {
-          "type": "boolean",
-          "description": "Override global 'useNaturalLanguageSearch' for this specific asset.",
-          "default": false
-        },
         "searchFields": {
           "type": "array",
           "description": "Which fields to search for this asset, with their boost values.",

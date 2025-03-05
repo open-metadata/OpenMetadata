@@ -24,14 +24,17 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import javax.ws.rs.Consumes;
 import javax.ws.rs.DefaultValue;
 import javax.ws.rs.GET;
+import javax.ws.rs.POST;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
@@ -42,6 +45,7 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.search.PreviewSearchRequest;
 import org.openmetadata.schema.system.EventPublisherJob;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
@@ -210,6 +214,87 @@ public class SearchResource {
             .explain(explain)
             .build();
     return searchRepository.search(request, subjectContext);
+  }
+
+  @POST
+  @Path("/preview")
+  @Consumes(MediaType.APPLICATION_JSON)
+  @Produces(MediaType.APPLICATION_JSON)
+  @Operation(
+      operationId = "previewSearch",
+      summary = "Preview Search Results",
+      description = "Preview search results based on provided SearchSettings without saving changes.",
+      responses = {
+          @ApiResponse(
+              responseCode = "200",
+              description = "Search preview response",
+              content = @Content(
+                  mediaType = "application/json",
+                  schema = @Schema(implementation = SearchResponse.class)))
+      })
+  public Response previewSearch(
+      @Context SecurityContext securityContext,
+      @RequestBody(description = "Preview request containing search settings", required = true)
+      PreviewSearchRequest previewRequest) throws IOException {
+
+    SubjectContext subjectContext = getSubjectContext(securityContext);
+
+    SearchRequest searchRequest =
+        new SearchRequest.ElasticSearchRequestBuilder(
+            previewRequest.getQuery(),
+            previewRequest.getSize(),
+            Entity.getSearchRepository().getIndexOrAliasName(previewRequest.getIndex()))
+            .from(previewRequest.getFrom())
+            .queryFilter(previewRequest.getQueryFilter())
+            .postFilter(previewRequest.getPostFilter())
+            .fetchSource(previewRequest.getFetchSource())
+            .trackTotalHits(previewRequest.getTrackTotalHits())
+            .sortFieldParam(previewRequest.getSortField())
+            .sortOrder(previewRequest.getSortOrder().value())
+            .includeSourceFields(previewRequest.getIncludeSourceFields())
+            .explain(previewRequest.getExplain())
+            .build();
+
+    return searchRepository.previewSearch(searchRequest, subjectContext, previewRequest.getSearchSettings());
+  }
+
+  @GET
+  @Path("/nlq/query")
+  @Operation(
+      operationId = "searchEntitiesWithNLQ",
+      summary = "Search entities using Natural Language Query (NLQ)",
+      description = "Search entities using Natural Language Queries (NLQ).",
+      responses = {
+          @ApiResponse(
+              responseCode = "200",
+              description = "NLQ search response",
+              content =
+              @Content(
+                  mediaType = "application/json",
+                  schema = @Schema(implementation = SearchResponse.class))),
+      })
+  public Response searchWithNLQ(
+      @Context SecurityContext securityContext,
+      @Parameter(description = "ElasticSearch/OpenSearch index name", required = true)
+      @DefaultValue("table_search_index")
+      @QueryParam("index")
+      String index,
+      @Parameter(description = "NLQ query string in natural language") @QueryParam("q") String nlqQuery,
+      @Parameter(description = "From offset for pagination") @DefaultValue("0") @QueryParam("from")
+      int from,
+      @Parameter(description = "Number of results to return") @DefaultValue("10") @QueryParam("size")
+      int size)
+      throws IOException {
+
+    SubjectContext subjectContext = getSubjectContext(securityContext);
+
+    SearchRequest request =
+        new SearchRequest.ElasticSearchRequestBuilder(
+            nlqQuery, size, Entity.getSearchRepository().getIndexOrAliasName(index))
+            .from(from)
+            .build();
+
+    return searchRepository.searchWithNLQ(request, subjectContext);
   }
 
   @GET

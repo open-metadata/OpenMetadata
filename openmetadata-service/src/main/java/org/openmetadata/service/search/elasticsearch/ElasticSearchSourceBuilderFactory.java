@@ -215,10 +215,6 @@ public class ElasticSearchSourceBuilderFactory
   private SearchSourceBuilder buildDataAssetSearchBuilder(
       String indexName, String query, int from, int size) {
     AssetTypeConfiguration assetConfig = findAssetTypeConfig(indexName);
-    boolean useNatLang =
-        assetConfig.getUseNaturalLanguageSearch() != null
-            ? assetConfig.getUseNaturalLanguageSearch()
-            : searchSettings.getGlobalSettings().getUseNaturalLanguageSearch();
 
     QueryBuilder userQuery;
     if (query == null || query.trim().isEmpty()) {
@@ -243,13 +239,7 @@ public class ElasticSearchSourceBuilderFactory
               .fuzziness(Fuzziness.AUTO)
               .fuzzyPrefixLength(3)
               .tieBreaker(0.5f);
-
-      if (useNatLang) {
-        qsQuery.type(MultiMatchQueryBuilder.Type.MOST_FIELDS).defaultOperator(Operator.AND);
-      } else {
-        qsQuery.type(MultiMatchQueryBuilder.Type.BEST_FIELDS).defaultOperator(Operator.AND);
-      }
-
+      qsQuery.type(MultiMatchQueryBuilder.Type.BEST_FIELDS).defaultOperator(Operator.AND);
       userQuery = qsQuery;
     }
 

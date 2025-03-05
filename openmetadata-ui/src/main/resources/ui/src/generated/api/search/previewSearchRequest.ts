@@ -10,6 +10,38 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+/**
+ * Preview Search Results
+ */
+export interface PreviewSearchRequest {
+    explain?:     boolean;
+    fetchSource?: boolean;
+    /**
+     * Pagination start index.
+     */
+    from?:                number;
+    includeSourceFields?: string[];
+    /**
+     * The index to run the query against (e.g., table_search_index).
+     */
+    index:       string;
+    postFilter?: string;
+    /**
+     * The query text to execute against the search index.
+     */
+    query:          string;
+    queryFilter?:   string;
+    searchSettings: SearchSettings;
+    /**
+     * Number of results to return.
+     */
+    size?:           number;
+    sortField?:      string;
+    sortOrder?:      SortOrder;
+    trackTotalHits?: boolean;
+    [property: string]: any;
+}
+
 export interface SearchSettings {
     /**
      * List of per-asset search configurations that override the global settings.
@@ -231,4 +263,9 @@ export interface GlobalSettings {
      * If true, uses more flexible natural language search (fuzziness, synonyms, etc.) globally.
      */
     useNaturalLanguageSearch?: boolean;
+}
+
+export enum SortOrder {
+    Asc = "asc",
+    Desc = "desc",
 }

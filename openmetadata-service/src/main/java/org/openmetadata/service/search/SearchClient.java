@@ -177,7 +177,11 @@ public interface SearchClient {
 
   void addIndexAlias(IndexMapping indexMapping, String... aliasName);
 
+  Response previewSearch(SearchRequest request, SubjectContext subjectContext, SearchSettings searchSettings) throws IOException;
+
   Response search(SearchRequest request, SubjectContext subjectContext) throws IOException;
+
+  Response searchWithNLQ(SearchRequest request, SubjectContext subjectContext) throws IOException;
 
   Response getDocByID(String indexName, String entityId) throws IOException;
 
