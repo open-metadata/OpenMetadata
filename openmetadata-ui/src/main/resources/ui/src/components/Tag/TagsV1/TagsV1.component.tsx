@@ -42,6 +42,7 @@ const TagsV1 = ({
   tagType,
   size,
   isEditTags,
+  isNewDesign = false,
 }: TagsV1Props) => {
   const color = useMemo(
     () => (isVersionPage ? undefined : tag.style?.color),
@@ -110,16 +111,20 @@ const TagsV1 = ({
       <div className="d-flex w-full h-full">
         {tagColorBar}
         <div className="d-flex items-center p-x-xs w-full">
-          {tag.style?.iconURL ? (
-            <img
-              className="m-r-xss"
-              data-testid="icon"
-              height={12}
-              src={tag.style.iconURL}
-              width={12}
-            />
-          ) : (
-            startIcon
+          {!isNewDesign && (
+            <>
+              {tag.style?.iconURL ? (
+                <img
+                  className="m-r-xss"
+                  data-testid="icon"
+                  height={12}
+                  src={tag.style.iconURL}
+                  width={12}
+                />
+              ) : (
+                startIcon
+              )}
+            </>
           )}
           <Typography.Paragraph
             ellipsis
@@ -173,7 +178,7 @@ const TagsV1 = ({
         className="tag-chip tag-chip-add-button"
         icon={<PlusIcon height={16} name="plus" width={16} />}>
         <Typography.Paragraph
-          className="m-0 text-xs font-medium text-primary"
+          className="m-0 text-sm font-medium text-primary"
           data-testid="add-tag">
           {getTagDisplay(tagName)}
         </Typography.Paragraph>

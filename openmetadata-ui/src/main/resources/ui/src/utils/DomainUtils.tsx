@@ -220,7 +220,7 @@ export const renderDomainLink = (
       textClassName
     )}
     data-testid="domain-link"
-    style={{ color: '#535862', marginBottom: '8px' }}
+    style={{ color: '#535862' }}
     to={getDomainPath(domain?.fullyQualifiedName)}>
     {isUndefined(domainDisplayName) ? getEntityName(domain) : domainDisplayName}
   </Link>

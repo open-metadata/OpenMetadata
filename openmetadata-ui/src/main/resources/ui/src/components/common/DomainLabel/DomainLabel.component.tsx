@@ -33,6 +33,7 @@ import { showErrorToast } from '../../../utils/ToastUtils';
 import { AssetsUnion } from '../../DataAssets/AssetsSelectionModal/AssetSelectionModal.interface';
 import { DataAssetWithDomains } from '../../DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
 import DomainSelectableList from '../DomainSelectableList/DomainSelectableList.component';
+import './domain-label.less';
 import { DomainLabelProps } from './DomainLabel.interface';
 
 export const DomainLabel = ({
@@ -46,6 +47,7 @@ export const DomainLabel = ({
   textClassName,
   showDomainHeading = false,
   multiple = false,
+  isNewDesign = false,
   onUpdate,
 }: DomainLabelProps) => {
   const { t } = useTranslation();
@@ -119,16 +121,18 @@ export const DomainLabel = ({
         ) : null;
 
         return (
-          <div className="d-flex items-center gap-1" key={domain.id}>
-            <Typography.Text className="self-center text-xs whitespace-nowrap">
-              <DomainIcon
-                className="d-flex"
-                color={DE_ACTIVE_COLOR}
-                height={16}
-                name="folder"
-                width={16}
-              />
-            </Typography.Text>
+          <div className="d-flex items-center gap-2" key={domain.id}>
+            {!isNewDesign && (
+              <Typography.Text className="self-center text-xs whitespace-nowrap">
+                <DomainIcon
+                  className="d-flex"
+                  color={DE_ACTIVE_COLOR}
+                  height={16}
+                  name="folder"
+                  width={16}
+                />
+              </Typography.Text>
+            )}
             {renderDomainLink(
               domain,
               domainDisplayName,
@@ -144,7 +148,7 @@ export const DomainLabel = ({
         <Typography.Text
           className={classNames(
             'domain-link',
-            { 'font-medium text-xs': !showDomainHeading },
+            { 'text-sm font-medium': !showDomainHeading },
             textClassName
           )}
           data-testid="no-domain-text">
@@ -171,14 +175,22 @@ export const DomainLabel = ({
     if (showDomainHeading) {
       return (
         <>
-          <div className="d-flex items-center m-b-xs">
-            <Typography.Text className="right-panel-label m-r-xss">
-              {t('label.domain')}
-            </Typography.Text>
+          <div className="d-flex text-sm  font-medium items-center m-b-xs">
+            {!isNewDesign ? (
+              <Typography.Text className="right-panel-label m-r-xss">
+                {t('label.domain')}
+              </Typography.Text>
+            ) : (
+              <Typography.Text className="domain-link right-panel-label m-r-xss">
+                {activeDomain.length > 0
+                  ? t('label.domain')
+                  : t('label.no-entity', { entity: t('label.domain') })}
+              </Typography.Text>
+            )}
             {selectableList}
           </div>
 
-          <div className="d-flex items-center gap-1 flex-wrap">
+          <div className="d-flex  text-sm font-medium items-center gap-2 flex-wrap">
             {domainLink}
           </div>
         </>
@@ -186,11 +198,23 @@ export const DomainLabel = ({
     }
 
     return (
-      <div
-        className="d-flex items-center gap-1 flex-wrap"
-        data-testid="header-domain-container">
-        {domainLink}
-        {selectableList}
+      <div className={`d-flex   flex-col ${!isNewDesign && 'justify-center'}`}>
+        {isNewDesign && (
+          <div className="d-flex text-sm font-medium  m-b-xs">
+            <Typography.Text className="domain-link right-panel-label m-r-xss">
+              {t('label.domain')}
+            </Typography.Text>
+            {selectableList}
+          </div>
+        )}
+        {(!isNewDesign || (activeDomain.length > 0 && isNewDesign)) && (
+          <div
+            className="d-flex items-center gap-2 flex-wrap"
+            data-testid="header-domain-container">
+            {domainLink}
+            {!isNewDesign && selectableList}
+          </div>
+        )}
       </div>
     );
   }, [activeDomain, hasPermission, selectableList]);

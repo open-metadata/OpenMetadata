@@ -55,15 +55,21 @@ const EntityHeaderTitle = ({
       data-testid={`${serviceName}-${name}`}
       gutter={12}
       wrap={false}>
-      {icon && <Col className="flex-center">{icon}</Col>}
+      {icon && (
+        <Col
+          className="flex-center "
+          style={{ width: '44px', height: '48px', objectFit: 'contain' }}>
+          {icon}
+        </Col>
+      )}
       <Col
-        className={
+        className={`d-flex flex-col gap-2 ${
           deleted || badge ? 'w-max-full-140' : 'entity-header-content'
-        }>
+        }`}>
         {/* If we do not have displayName name only be shown in the bold from the below code */}
         {!isEmpty(displayName) && showName ? (
           <Typography.Text
-            className="m-b-0 d-block text-grey-muted"
+            className="m-b-0 d-block display-sm font-semibold heading"
             data-testid="entity-header-name">
             {stringToHTML(name)}
           </Typography.Text>
@@ -71,7 +77,7 @@ const EntityHeaderTitle = ({
 
         {/* It will render displayName fallback to name */}
         <Typography.Text
-          className="m-b-0 d-block entity-header-display-name text-lg font-semibold"
+          className="m-b-0 d-block entity-header-display-name text-md font-regular"
           data-testid="entity-header-display-name"
           ellipsis={{ tooltip: true }}
           style={{ color: color ?? TEXT_COLOR }}>

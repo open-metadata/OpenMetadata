@@ -11,7 +11,15 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Button, List, Popover, Space, Tooltip, Typography } from 'antd';
+import {
+  Button,
+  Divider,
+  List,
+  Popover,
+  Space,
+  Tooltip,
+  Typography,
+} from 'antd';
 import classNames from 'classnames';
 import { startCase } from 'lodash';
 import React, { FC, useMemo, useState } from 'react';
@@ -142,8 +150,9 @@ const MetricInfoItem: FC<MetricInfoItemProps> = ({
   );
 
   return (
-    <Space data-testid={modiFiedLabel}>
+    <Space className="d-flex align-start" data-testid={modiFiedLabel}>
       <ExtraInfoLabel
+        isNewDesign
         dataTestId={modiFiedLabel}
         label={label}
         value={value ?? NO_DATA_PLACEHOLDER}
@@ -187,6 +196,7 @@ const MetricHeaderInfo: FC<MetricHeaderInfoProps> = ({
 
   return (
     <>
+      <Divider className="self-center h-15 " type="vertical" />
       <MetricInfoItem
         hasPermission={hasPermission}
         label={t('label.metric-type')}
@@ -200,6 +210,8 @@ const MetricHeaderInfo: FC<MetricHeaderInfoProps> = ({
         valueKey="metricType"
         onUpdateMetricDetails={onUpdateMetricDetails}
       />
+      <Divider className="self-center h-15 " type="vertical" />
+
       <MetricInfoItem
         hasPermission={hasPermission}
         label={t('label.unit-of-measurement')}
@@ -213,6 +225,8 @@ const MetricHeaderInfo: FC<MetricHeaderInfoProps> = ({
         valueKey="unitOfMeasurement"
         onUpdateMetricDetails={onUpdateMetricDetails}
       />
+      <Divider className="self-center h-15 " type="vertical" />
+
       <MetricInfoItem
         hasPermission={hasPermission}
         label={t('label.granularity')}

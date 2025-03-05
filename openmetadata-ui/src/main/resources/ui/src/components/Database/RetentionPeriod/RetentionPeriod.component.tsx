@@ -33,8 +33,8 @@ import {
 } from '../../../constants/constants';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { ExtraInfoLabel } from '../../DataAssets/DataAssetsHeader/DataAssetsHeader.component';
+import './retention-period.less';
 import { RetentionPeriodProps } from './RetentionPeriod.interface';
-
 // Helper function to detect and format ISO 8601 duration
 const formatRetentionPeriod = (retentionPeriod: string | undefined) => {
   if (!retentionPeriod) {
@@ -116,9 +116,12 @@ const RetentionPeriod = ({
   }, [retentionPeriod]);
 
   return (
-    <div>
-      <Space data-testid="retention-period-container">
+    <div className="d-flex items-start gap-1">
+      <Space
+        className="d-flex align-start"
+        data-testid="retention-period-container">
         <ExtraInfoLabel
+          isNewDesign
           label={t('label.retention-period')}
           value={formatRetentionPeriod(retentionPeriod) ?? NO_DATA_PLACEHOLDER}
         />
@@ -129,7 +132,7 @@ const RetentionPeriod = ({
               entity: t('label.retention-period'),
             })}>
             <Button
-              className="flex-center p-0"
+              className="edit-retention-period-button p-0"
               data-testid="edit-retention-period-button"
               icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
               size="small"

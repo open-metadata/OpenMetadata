@@ -12,6 +12,7 @@
  *  limitations under the License.
  */
 
+import { Divider } from 'antd';
 import { t } from 'i18next';
 import { isObject, isUndefined } from 'lodash';
 import React from 'react';
@@ -84,16 +85,24 @@ export const getDataAssetsHeaderInfo = (
       returnData.extraInfo = (
         <>
           {topicDetails?.partitions ? (
-            <ExtraInfoLabel
-              label={t('label.partition-plural')}
-              value={topicDetails.partitions}
-            />
+            <>
+              <Divider className="self-center h-15 " type="vertical" />
+              <ExtraInfoLabel
+                isNewDesign
+                label={t('label.partition-plural')}
+                value={topicDetails.partitions}
+              />
+            </>
           ) : null}
           {topicDetails?.replicationFactor && (
-            <ExtraInfoLabel
-              label={t('label.replication-factor')}
-              value={topicDetails.replicationFactor}
-            />
+            <>
+              <Divider className="self-center h-15 " type="vertical" />
+              <ExtraInfoLabel
+                isNewDesign
+                label={t('label.replication-factor')}
+                value={topicDetails.replicationFactor}
+              />
+            </>
           )}
         </>
       );
@@ -106,27 +115,40 @@ export const getDataAssetsHeaderInfo = (
       returnData.extraInfo = (
         <>
           {dashboardDetails.dashboardType && (
-            <ExtraInfoLabel
-              label={t('label.entity-type-plural', {
-                entity: t('label.dashboard'),
-              })}
-              value={dashboardDetails.dashboardType}
-            />
+            <>
+              <Divider className="self-center h-15 " type="vertical" />
+              <ExtraInfoLabel
+                isNewDesign
+                label={t('label.entity-type-plural', {
+                  entity: t('label.dashboard'),
+                })}
+                value={dashboardDetails.dashboardType}
+              />
+            </>
           )}
           {dashboardDetails.project && (
-            <ExtraInfoLabel
-              label={t('label.project')}
-              value={dashboardDetails.project}
-            />
+            <>
+              <Divider className="self-center h-15 " type="vertical" />
+              <ExtraInfoLabel
+                isNewDesign
+                label={t('label.project')}
+                value={dashboardDetails.project}
+              />
+            </>
           )}
           {dashboardDetails?.usageSummary && (
-            <ExtraInfoLabel
-              label={t('label.usage')}
-              value={getUsagePercentile(
-                dashboardDetails.usageSummary?.weeklyStats?.percentileRank || 0,
-                false
-              )}
-            />
+            <>
+              <Divider className="self-center h-15 " type="vertical" />
+              <ExtraInfoLabel
+                isNewDesign
+                label={t('label.usage')}
+                value={getUsagePercentile(
+                  dashboardDetails.usageSummary?.weeklyStats?.percentileRank ||
+                    0,
+                  false
+                )}
+              />
+            </>
           )}
         </>
       );
@@ -148,13 +170,18 @@ export const getDataAssetsHeaderInfo = (
       returnData.extraInfo = (
         <>
           {mlModelDetail.algorithm && (
-            <ExtraInfoLabel
-              label={t('label.algorithm')}
-              value={mlModelDetail.algorithm}
-            />
+            <>
+              <Divider className="self-center h-15 " type="vertical" />
+              <ExtraInfoLabel
+                isNewDesign
+                label={t('label.algorithm')}
+                value={mlModelDetail.algorithm}
+              />
+            </>
           )}
           {mlModelDetail.target && (
             <ExtraInfoLabel
+              isNewDesign
               label={t('label.target')}
               value={mlModelDetail.target}
             />
@@ -178,13 +205,17 @@ export const getDataAssetsHeaderInfo = (
             />
           )}
           {mlModelDetail?.usageSummary && (
-            <ExtraInfoLabel
-              label={t('label.usage')}
-              value={getUsagePercentile(
-                mlModelDetail.usageSummary?.weeklyStats?.percentileRank || 0,
-                false
-              )}
-            />
+            <>
+              <Divider className="self-center h-15 " type="vertical" />
+              <ExtraInfoLabel
+                isNewDesign
+                label={t('label.usage')}
+                value={getUsagePercentile(
+                  mlModelDetail.usageSummary?.weeklyStats?.percentileRank || 0,
+                  false
+                )}
+              />
+            </>
           )}
         </>
       );
@@ -199,26 +230,38 @@ export const getDataAssetsHeaderInfo = (
       returnData.extraInfo = (
         <>
           {!isUndefined(containerDetails?.dataModel?.isPartitioned) && (
-            <ExtraInfoLabel
-              label=""
-              value={
-                containerDetails?.dataModel?.isPartitioned
-                  ? (t('label.partitioned') as string)
-                  : (t('label.non-partitioned') as string)
-              }
-            />
+            <>
+              <Divider className="self-center h-15 " type="vertical" />
+              <ExtraInfoLabel
+                isNewDesign
+                label=""
+                value={
+                  containerDetails?.dataModel?.isPartitioned
+                    ? (t('label.partitioned') as string)
+                    : (t('label.non-partitioned') as string)
+                }
+              />
+            </>
           )}
           {!isUndefined(containerDetails.numberOfObjects) && (
-            <ExtraInfoLabel
-              label={t('label.number-of-object-plural')}
-              value={containerDetails.numberOfObjects}
-            />
+            <>
+              <Divider className="self-center h-15 " type="vertical" />
+              <ExtraInfoLabel
+                isNewDesign
+                label={t('label.number-of-object-plural')}
+                value={containerDetails.numberOfObjects}
+              />
+            </>
           )}
           {!isUndefined(containerDetails.size) && (
-            <ExtraInfoLabel
-              label={t('label.size')}
-              value={bytesToSize(containerDetails.size)}
-            />
+            <>
+              <Divider className="self-center h-15 " type="vertical" />
+              <ExtraInfoLabel
+                isNewDesign
+                label={t('label.size')}
+                value={bytesToSize(containerDetails.size)}
+              />
+            </>
           )}
         </>
       );
@@ -236,16 +279,24 @@ export const getDataAssetsHeaderInfo = (
       returnData.extraInfo = (
         <>
           {dataModelDetails.dataModelType && (
-            <ExtraInfoLabel
-              label={t('label.data-model-type')}
-              value={dataModelDetails.dataModelType}
-            />
+            <>
+              <Divider className="self-center h-15 " type="vertical" />
+              <ExtraInfoLabel
+                isNewDesign
+                label={t('label.data-model-type')}
+                value={dataModelDetails.dataModelType}
+              />
+            </>
           )}
           {dataModelDetails.project && (
-            <ExtraInfoLabel
-              label={t('label.project')}
-              value={dataModelDetails.project}
-            />
+            <>
+              <Divider className="self-center h-15 " type="vertical" />
+              <ExtraInfoLabel
+                isNewDesign
+                label={t('label.project')}
+                value={dataModelDetails.project}
+              />
+            </>
           )}
         </>
       );
@@ -377,14 +428,18 @@ export const getDataAssetsHeaderInfo = (
       returnData.extraInfo = (
         <>
           {isObject(storedProcedureDetails.storedProcedureCode) && (
-            <ExtraInfoLabel
-              label={t('label.language')}
-              value={
-                (
-                  storedProcedureDetails.storedProcedureCode as StoredProcedureCodeObject
-                ).language ?? NO_DATA_PLACEHOLDER
-              }
-            />
+            <>
+              <Divider className="self-center h-15 " type="vertical" />
+              <ExtraInfoLabel
+                isNewDesign
+                label={t('label.language')}
+                value={
+                  (
+                    storedProcedureDetails.storedProcedureCode as StoredProcedureCodeObject
+                  ).language ?? NO_DATA_PLACEHOLDER
+                }
+              />
+            </>
           )}
         </>
       );
@@ -427,11 +482,15 @@ export const getDataAssetsHeaderInfo = (
       returnData.extraInfo = (
         <>
           {apiEndpoint.requestMethod && (
-            <ExtraInfoLabel
-              dataTestId="api-endpoint-request-method"
-              label={t('label.request-method')}
-              value={apiEndpoint.requestMethod}
-            />
+            <>
+              <Divider className="self-center h-15 " type="vertical" />
+              <ExtraInfoLabel
+                isNewDesign
+                dataTestId="api-endpoint-request-method"
+                label={t('label.request-method')}
+                value={apiEndpoint.requestMethod}
+              />
+            </>
           )}
           {apiEndpoint.endpointURL && (
             <ExtraInfoLink
@@ -461,31 +520,48 @@ export const getDataAssetsHeaderInfo = (
       returnData.extraInfo = (
         <>
           {tableDetails.tableType && (
-            <ExtraInfoLabel
-              label={t('label.type')}
-              value={tableDetails.tableType}
-            />
+            <>
+              <Divider className="self-center h-15 " type="vertical" />
+              <ExtraInfoLabel
+                isNewDesign
+                showAsATag
+                label={t('label.type')}
+                value={tableDetails.tableType}
+              />
+            </>
           )}
           {tableDetails?.usageSummary && (
-            <ExtraInfoLabel
-              label={t('label.usage')}
-              value={getUsagePercentile(
-                tableDetails.usageSummary?.weeklyStats?.percentileRank || 0,
-                false
-              )}
-            />
+            <>
+              <Divider className="self-center h-15 " type="vertical" />
+              <ExtraInfoLabel
+                isNewDesign
+                label={t('label.usage')}
+                value={getUsagePercentile(
+                  tableDetails.usageSummary?.weeklyStats?.percentileRank || 0,
+                  false
+                )}
+              />
+            </>
           )}
           {tableDetails?.profile?.columnCount && (
-            <ExtraInfoLabel
-              label={t('label.column-plural')}
-              value={tableDetails.profile?.columnCount}
-            />
+            <>
+              <Divider className="self-center h-15 " type="vertical" />
+              <ExtraInfoLabel
+                isNewDesign
+                label={t('label.column-plural')}
+                value={tableDetails.profile?.columnCount}
+              />
+            </>
           )}
           {tableDetails?.profile?.rowCount && (
-            <ExtraInfoLabel
-              label={t('label.row-plural')}
-              value={tableDetails.profile?.rowCount}
-            />
+            <>
+              <Divider className="self-center h-15 " type="vertical" />
+              <ExtraInfoLabel
+                isNewDesign
+                label={t('label.row-plural')}
+                value={tableDetails.profile?.rowCount}
+              />
+            </>
           )}
         </>
       );

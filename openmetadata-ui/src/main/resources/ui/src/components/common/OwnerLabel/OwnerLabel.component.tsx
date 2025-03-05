@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Button, Tooltip, Typography } from 'antd';
+import { Button, Dropdown, Tooltip, Typography } from 'antd';
 import classNames from 'classnames';
 import React, { ReactNode, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -44,6 +44,7 @@ export const OwnerLabel = ({
     team: false,
   },
   tooltipText,
+  isNewDesign = false,
 }: {
   owners?: EntityReference[];
   className?: string;
@@ -57,9 +58,11 @@ export const OwnerLabel = ({
     team: boolean;
   };
   tooltipText?: string;
+  isNewDesign?: boolean;
 }) => {
   const { t } = useTranslation();
   const [showAllOwners, setShowAllOwners] = useState(false);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
   const ownerElements = useMemo(() => {
     const hasOwners = owners && owners.length > 0;
@@ -67,111 +70,218 @@ export const OwnerLabel = ({
       ? owners
       : owners.slice(0, maxVisibleOwners);
     const remainingOwnersCount = owners.length - maxVisibleOwners;
-    const remainingCountLabel = `+ ${remainingOwnersCount}`;
+    const remainingCountLabel = `+${remainingOwnersCount}`;
 
     return (
-      <div className="d-flex items-center gap-1" data-testid="owner-label">
+      <div
+        className={`d-flex   gap-2 ${
+          isNewDesign ? 'items-start' : 'items-center'
+        }`}
+        data-testid="owner-label">
         {hasOwners ? (
           <div
             className={classNames(
-              'd-inline-flex items-center flex-wrap gap-2',
+              `d-inline-flex ${isNewDesign ? 'flex-col' : 'flex-wrap'} gap-2`,
               { inherited: Boolean(owners.some((owner) => owner?.inherited)) },
               className
             )}>
-            {visibleOwners.map((owner, index) => {
-              const displayName = getEntityName(owner);
-              const profilePicture =
-                owner.type === OwnerType.TEAM ? (
-                  <Icon
-                    component={IconTeamsGrey}
-                    data-testid="team-owner-icon"
-                    style={{ fontSize: '18px' }}
-                  />
-                ) : (
-                  <div key={owner.id} style={{ flexBasis: '18px' }}>
-                    <ProfilePicture
-                      displayName={displayName}
-                      key="profile-picture"
-                      name={owner.name ?? ''}
-                      type="circle"
-                      width="18"
-                    />
-                  </div>
-                );
-
-              const ownerLink = (
-                <Link
+            {isNewDesign && (
+              <div className="d-flex items-center gap-2">
+                <Typography.Text
                   className={classNames(
-                    'no-underline font-medium text-xs text-primary',
+                    'no-owner font-medium text-sm',
                     className
                   )}
-                  data-testid="owner-link"
-                  key={owner.id}
-                  to={
-                    owner.type === OwnerType.TEAM
-                      ? getTeamAndUserDetailsPath(
-                          owner.fullyQualifiedName ?? ''
-                        )
-                      : getUserPath(owner.name ?? '')
-                  }>
-                  {ownerDisplayName?.[index] ?? displayName}
-                </Link>
-              );
-
-              const inheritedIcon = owner?.inherited ? (
-                <Tooltip
-                  title={t('label.inherited-entity', {
-                    entity: t('label.owner-plural'),
-                  })}>
-                  <InheritIcon
-                    className="inherit-icon cursor-pointer"
-                    width={14}
+                  data-testid="owner-link">
+                  {placeHolder ?? t('label.owner-plural')}
+                </Typography.Text>
+                {onUpdate && (
+                  <UserTeamSelectableList
+                    hasPermission={Boolean(hasPermission)}
+                    multiple={multiple}
+                    owner={owners}
+                    tooltipText={tooltipText}
+                    onUpdate={(updatedUsers) => {
+                      onUpdate(updatedUsers);
+                    }}
                   />
-                </Tooltip>
-              ) : null;
+                )}
+              </div>
+            )}
+            <div className={`d-flex items-center ${!isNewDesign && 'gap-2'}`}>
+              {visibleOwners.map((owner, index) => {
+                const displayName = getEntityName(owner);
+                const profilePicture =
+                  owner.type === OwnerType.TEAM ? (
+                    <Icon
+                      component={IconTeamsGrey}
+                      data-testid="team-owner-icon"
+                      style={{ fontSize: '32px' }}
+                    />
+                  ) : (
+                    <div
+                      className="owner-avatar-icon"
+                      key={owner.id}
+                      style={{ flexBasis: '32px' }}>
+                      <ProfilePicture
+                        displayName={displayName}
+                        key="profile-picture"
+                        name={owner.name ?? ''}
+                        type="circle"
+                        width="32"
+                      />
+                    </div>
+                  );
 
-              return (
-                <div
-                  className="d-inline-flex items-center gap-1"
-                  key={owner.id}>
-                  <div className="owner-avatar-icon d-flex">
-                    {profilePicture}
+                const ownerLink = (
+                  <Link
+                    className={classNames(
+                      'no-underline font-medium text-xs text-primary',
+                      className
+                    )}
+                    data-testid="owner-link"
+                    key={owner.id}
+                    to={
+                      owner.type === OwnerType.TEAM
+                        ? getTeamAndUserDetailsPath(
+                            owner.fullyQualifiedName ?? ''
+                          )
+                        : getUserPath(owner.name ?? '')
+                    }>
+                    {ownerDisplayName?.[index] ?? displayName}
+                  </Link>
+                );
+
+                const inheritedIcon = owner?.inherited ? (
+                  <Tooltip
+                    title={t('label.inherited-entity', {
+                      entity: t('label.owner-plural'),
+                    })}>
+                    <InheritIcon
+                      className="inherit-icon cursor-pointer"
+                      width={14}
+                    />
+                  </Tooltip>
+                ) : null;
+
+                return (
+                  <div
+                    className="d-inline-flex items-center owner-avatar-container gap-1"
+                    key={owner.id}
+                    style={{
+                      marginLeft: index === 0 || !isNewDesign ? 0 : '-4px',
+                    }}>
+                    {isNewDesign ? (
+                      <Tooltip title={displayName}>
+                        <Link
+                          className=" d-flex"
+                          data-testid="owner-link"
+                          to={
+                            owner.type === OwnerType.TEAM
+                              ? getTeamAndUserDetailsPath(
+                                  owner.fullyQualifiedName ?? ''
+                                )
+                              : getUserPath(owner.name ?? '')
+                          }>
+                          {profilePicture}
+                        </Link>
+                      </Tooltip>
+                    ) : (
+                      <>
+                        <div className="owner-avatar-icon d-flex">
+                          {profilePicture}
+                        </div>
+                        {ownerLink}
+                      </>
+                    )}
+                    {inheritedIcon && (
+                      <div className="d-flex">{inheritedIcon}</div>
+                    )}
                   </div>
-                  {ownerLink}
-                  {inheritedIcon && (
-                    <div className="d-flex">{inheritedIcon}</div>
+                );
+              })}
+              {remainingOwnersCount > 0 && (
+                <div className="relative">
+                  {!isNewDesign ? (
+                    <Button
+                      className={`${
+                        !showAllOwners ? 'more-owners-button' : ''
+                      } text-sm font-medium h-auto`}
+                      size="small"
+                      type="link"
+                      onClick={() => {
+                        if (!isNewDesign) {
+                          setShowAllOwners((prev) => !prev);
+                        }
+                      }}>
+                      {showAllOwners ? t('label.less') : remainingCountLabel}
+                    </Button>
+                  ) : (
+                    <Dropdown
+                      menu={{
+                        items: owners.slice(maxVisibleOwners).map((owner) => ({
+                          key: owner.id,
+                          label: (
+                            <div className="flex items-center gap-2">
+                              <div className="relative">
+                                <ProfilePicture
+                                  displayName={getEntityName(owner)}
+                                  key="profile-picture"
+                                  name={owner.name ?? ''}
+                                  type="circle"
+                                  width="32"
+                                />
+                              </div>
+                              <span>{getEntityName(owner)}</span>
+                            </div>
+                          ),
+                        })),
+                        className: 'owner-dropdown-container',
+                      }}
+                      open={isDropdownOpen}
+                      onOpenChange={setIsDropdownOpen}>
+                      <Button
+                        className={`${
+                          !showAllOwners ? 'more-owners-button' : ''
+                        } text-sm font-medium h-auto`}
+                        size="small"
+                        type="link"
+                        onClick={() => {
+                          if (!isNewDesign) {
+                            setShowAllOwners((prev) => !prev);
+                          }
+                        }}>
+                        {showAllOwners ? t('label.less') : remainingCountLabel}
+                      </Button>
+                    </Dropdown>
                   )}
                 </div>
-              );
-            })}
-            {remainingOwnersCount > 0 && (
-              <Button
-                className="more-owners-button text-xs h-auto"
-                size="small"
-                type="link"
-                onClick={() => setShowAllOwners(!showAllOwners)}>
-                {showAllOwners ? t('label.less') : remainingCountLabel}
-              </Button>
-            )}
+              )}
+            </div>
           </div>
         ) : (
           <div className="d-inline-flex items-center gap-1">
             <div className="owner-avatar-icon d-flex">
-              <Icon
-                component={IconUser}
-                data-testid="no-owner-icon"
-                style={{ fontSize: '18px' }}
-              />
+              {!isNewDesign && (
+                <Icon
+                  component={IconUser}
+                  data-testid="no-owner-icon"
+                  style={{ fontSize: '18px' }}
+                />
+              )}
             </div>
             <Typography.Text
-              className={classNames('no-owner font-medium text-xs', className)}
+              className={classNames('no-owner font-medium text-sm', className)}
               data-testid="owner-link">
               {placeHolder ??
-                t('label.no-entity', { entity: t('label.owner-plural') })}
+                (isNewDesign
+                  ? t('label.owner-plural')
+                  : t('label.no-entity', { entity: t('label.owner-plural') }))}
             </Typography.Text>
           </div>
         )}
-        {onUpdate && (
+
+        {(!isNewDesign || (isNewDesign && !hasOwners)) && onUpdate && (
           <UserTeamSelectableList
             hasPermission={Boolean(hasPermission)}
             multiple={multiple}
@@ -194,6 +304,8 @@ export const OwnerLabel = ({
     placeHolder,
     t,
     ownerDisplayName,
+    isNewDesign,
+    isDropdownOpen,
   ]);
 
   return ownerElements;

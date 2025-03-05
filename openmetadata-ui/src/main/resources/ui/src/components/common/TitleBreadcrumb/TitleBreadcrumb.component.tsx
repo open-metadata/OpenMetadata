@@ -81,7 +81,7 @@ const TitleBreadcrumb: FunctionComponent<TitleBreadcrumbProps> = ({
         </span>
         {noLink && index < titleLinks.length - 1 && (
           <span className="text-xss text-grey-muted">
-            {t('label.slash-symbol')}
+            {t('label.arrow-symbol')}
           </span>
         )}
       </>
@@ -99,7 +99,7 @@ const TitleBreadcrumb: FunctionComponent<TitleBreadcrumbProps> = ({
   return (
     <TitleBreadcrumbSkeleton loading={loading}>
       <nav className={className} data-testid="breadcrumb">
-        <ol className="rounded-4 d-flex flex-wrap">
+        <ol className="rounded-4 text-sm font-regular d-flex flex-wrap">
           {titleLinks.map((link, index) => {
             const classes =
               'link-title truncate' + (link.activeTitle ? ' font-medium' : '');
@@ -114,17 +114,11 @@ const TitleBreadcrumb: FunctionComponent<TitleBreadcrumbProps> = ({
                 ) : null}
                 {index < titleLinks.length - 1 && !noLink ? (
                   <>
-                    <Link
-                      className={classes}
-                      style={{
-                        maxWidth,
-                        fontSize: '16px',
-                      }}
-                      to={link.url}>
+                    <Link className={classes} to={link.url}>
                       {link.name}
                     </Link>
-                    <span className="text-xss p-x-xs text-grey-muted">
-                      {t('label.slash-symbol')}
+                    <span className="text-sm font-regular p-x-xs text-grey-muted">
+                      {t('label.arrow-symbol')}
                     </span>
                   </>
                 ) : (
