@@ -606,6 +606,7 @@
     "help": "Axuda",
     "here-lowercase": "aquí",
     "hide": "Ocultar",
+    "hide-all": "Ocultar todo",
     "hide-deleted-entity": "Ocultar {{entity}} eliminado",
     "history": "Historial",
     "home": "Inicio",
