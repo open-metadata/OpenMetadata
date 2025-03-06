@@ -56,6 +56,8 @@ public interface EntityInterface {
 
   ChangeDescription getIncrementalChangeDescription();
 
+  UsageDetails getUsageSummary();
+
   default List<EntityReference> getOwners() {
     return null;
   }
@@ -127,6 +129,8 @@ public interface EntityInterface {
   void setChangeDescription(ChangeDescription changeDescription);
 
   void setIncrementalChangeDescription(ChangeDescription incrementalChangeDescription);
+
+  void setUsageSummary(UsageDetails usageSummary);
 
   void setFullyQualifiedName(String fullyQualifiedName);
 
