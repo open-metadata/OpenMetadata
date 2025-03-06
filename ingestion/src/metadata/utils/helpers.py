@@ -15,6 +15,7 @@ Helpers module for ingestion related methods
 
 from __future__ import annotations
 
+import hashlib
 import itertools
 import re
 import shutil
@@ -521,3 +522,8 @@ def retry_with_docker_host(config: Optional[WorkflowSource] = None):
         return wrapper
 
     return decorator
+
+
+def get_query_hash(query: str) -> str:
+    result = hashlib.md5(query.encode())
+    return str(result.hexdigest())

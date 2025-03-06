@@ -24,6 +24,7 @@ import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.entity.services.connections.TestConnectionResult;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.util.EntityUtil;
@@ -117,7 +118,8 @@ public abstract class ServiceEntityRepository<
   }
 
   @Override
-  public ServiceUpdater getUpdater(T original, T updated, Operation operation) {
+  public EntityRepository<T>.EntityUpdater getUpdater(
+      T original, T updated, Operation operation, ChangeSource changeSource) {
     return new ServiceUpdater(original, updated, operation);
   }
 

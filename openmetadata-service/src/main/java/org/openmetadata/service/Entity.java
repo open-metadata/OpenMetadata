@@ -44,6 +44,7 @@ import lombok.Getter;
 import lombok.NonNull;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.collections4.CollectionUtils;
 import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.EntityTimeSeriesInterface;
@@ -174,6 +175,7 @@ public final class Entity {
   public static final String MLMODEL = "mlmodel";
   public static final String CONTAINER = "container";
   public static final String QUERY = "query";
+  public static final String QUERY_COST_RECORD = "queryCostRecord";
 
   public static final String GLOSSARY = "glossary";
   public static final String GLOSSARY_TERM = "glossaryTerm";
@@ -397,6 +399,13 @@ public final class Entity {
     return repository.getReference(id, include);
   }
 
+  public static List<EntityReference> getEntityReferencesByIds(
+      @NonNull String entityType, @NonNull List<UUID> ids, Include include) {
+    EntityRepository<? extends EntityInterface> repository = getEntityRepository(entityType);
+    include = repository.supportsSoftDelete ? Include.ALL : include;
+    return repository.getReferences(ids, include);
+  }
+
   public static EntityReference getEntityReferenceByName(
       @NonNull String entityType, String fqn, Include include) {
     if (fqn == null) {
@@ -435,6 +444,23 @@ public final class Entity {
     return ref.getId() != null
         ? getEntity(ref.getType(), ref.getId(), fields, include)
         : getEntityByName(ref.getType(), ref.getFullyQualifiedName(), fields, include);
+  }
+
+  public static <T> List<T> getEntities(
+      List<EntityReference> refs, String fields, Include include) {
+    if (CollectionUtils.isEmpty(refs)) {
+      return new ArrayList<>();
+    }
+    EntityRepository<?> entityRepository = Entity.getEntityRepository(refs.get(0).getType());
+    @SuppressWarnings("unchecked")
+    List<T> entities =
+        (List<T>)
+            entityRepository.get(
+                null,
+                refs.stream().map(EntityReference::getId).toList(),
+                entityRepository.getFields(fields),
+                include);
+    return entities;
   }
 
   public static <T> T getEntityOrNull(
@@ -476,6 +502,16 @@ public final class Entity {
   public static <T> T getEntityByName(
       String entityType, String fqn, String fields, Include include) {
     return getEntityByName(entityType, fqn, fields, include, true);
+  }
+
+  public static <T> List<T> getEntityByNames(
+      String entityType, List<String> tagFQNs, String fields, Include include) {
+    EntityRepository<?> entityRepository = Entity.getEntityRepository(entityType);
+    @SuppressWarnings("unchecked")
+    List<T> entities =
+        (List<T>)
+            entityRepository.getByNames(null, tagFQNs, entityRepository.getFields(fields), include);
+    return entities;
   }
 
   /** Retrieve the corresponding entity repository for a given entity name. */

@@ -10,4 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-type Basic = any;
+export interface DraggableMenuItemProps {
+  currentItem: { value: string; label: string };
+  index: number;
+  itemList: { value: string; label: string }[];
+  onMoveItem: (updatedList: { value: string; label: string }[]) => void;
+  selectedOptions: string[];
+  onSelect: (key: string, checked: boolean) => void;
+}

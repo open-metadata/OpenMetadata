@@ -47,6 +47,7 @@ import org.openmetadata.schema.type.Status;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.Task;
 import org.openmetadata.schema.type.TaskType;
+import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
@@ -148,6 +149,12 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
         fields.contains("pipelineStatus")
             ? getPipelineStatus(pipeline)
             : pipeline.getPipelineStatus());
+    if (pipeline.getUsageSummary() == null) {
+      pipeline.withUsageSummary(
+          fields.contains("usageSummary")
+              ? EntityUtil.getLatestUsage(daoCollection.usageDAO(), pipeline.getId())
+              : null);
+    }
   }
 
   @Override
@@ -155,6 +162,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     pipeline.withTasks(fields.contains(TASKS_FIELD) ? pipeline.getTasks() : null);
     pipeline.withPipelineStatus(
         fields.contains("pipelineStatus") ? pipeline.getPipelineStatus() : null);
+    pipeline.withUsageSummary(fields.contains("usageSummary") ? pipeline.getUsageSummary() : null);
   }
 
   @Override
@@ -413,7 +421,8 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   }
 
   @Override
-  public EntityUpdater getUpdater(Pipeline original, Pipeline updated, Operation operation) {
+  public EntityRepository<Pipeline>.EntityUpdater getUpdater(
+      Pipeline original, Pipeline updated, Operation operation, ChangeSource changeSource) {
     return new PipelineUpdater(original, updated, operation);
   }
 
@@ -483,6 +492,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
       updateTasks(original, updated);
+      recordChange("state", original.getState(), updated.getState());
       recordChange("sourceUrl", original.getSourceUrl(), updated.getSourceUrl());
       recordChange("concurrency", original.getConcurrency(), updated.getConcurrency());
       recordChange(

@@ -10,4 +10,28 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-type Filters = any;
+import { isEmpty } from 'lodash';
+
+type ParsedDataType<T> = Array<T>;
+
+export const parseCSV = <T extends Record<string, unknown>>(
+  csvData: string[][]
+): ParsedDataType<T> => {
+  const recordList: ParsedDataType<T> = [];
+
+  if (!isEmpty(csvData)) {
+    const [headers, ...data] = csvData;
+
+    data.forEach((line) => {
+      const record: Record<string, unknown> = {};
+
+      headers.forEach((header, index) => {
+        record[header] = line[index] as unknown;
+      });
+
+      recordList.push(record as T);
+    });
+  }
+
+  return recordList;
+};

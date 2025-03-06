@@ -105,6 +105,7 @@ export interface StorageService {
  * Description of the change.
  */
 export interface ChangeDescription {
+    changeSummary?: { [key: string]: ChangeSummary };
     /**
      * Names of fields added during the version changes.
      */
@@ -121,6 +122,29 @@ export interface ChangeDescription {
      * When a change did not result in change, this could be same as the current version.
      */
     previousVersion?: number;
+}
+
+export interface ChangeSummary {
+    changedAt?: number;
+    /**
+     * Name of the user or bot who made this change
+     */
+    changedBy?:    string;
+    changeSource?: ChangeSource;
+    [property: string]: any;
+}
+
+/**
+ * The source of the change. This will change based on the context of the change (example:
+ * manual vs programmatic)
+ */
+export enum ChangeSource {
+    Automated = "Automated",
+    Derived = "Derived",
+    Ingested = "Ingested",
+    Manual = "Manual",
+    Propagated = "Propagated",
+    Suggested = "Suggested",
 }
 
 export interface FieldChange {
@@ -325,7 +349,7 @@ export interface GCPCredentialsConfiguration {
     /**
      * Google Cloud Platform account type.
      */
-    type?: TypeEnum;
+    type?: string;
     /**
      * Path of the file containing the GCP credentials info
      */
@@ -343,7 +367,7 @@ export interface GCPCredentialsConfiguration {
     /**
      * Google Cloud Platform account type.
      */
-    externalType?: ExternalTypeEnum;
+    externalType?: string;
     /**
      * Google Security Token Service subject token type based on the OAuth 2.0 token exchange
      * spec.
@@ -354,16 +378,6 @@ export interface GCPCredentialsConfiguration {
      */
     tokenURL?: string;
     [property: string]: any;
-}
-
-export enum ExternalTypeEnum {
-    ExternalAccount = "external_account",
-}
-
-export enum TypeEnum {
-    ExternalAccount = "external_account",
-    GcpCredentialPath = "gcp_credential_path",
-    ServiceAccount = "service_account",
 }
 
 /**

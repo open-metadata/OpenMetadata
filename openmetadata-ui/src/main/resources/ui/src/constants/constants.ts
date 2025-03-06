@@ -131,6 +131,7 @@ export const ROUTES = {
   NOT_FOUND: '/404',
   FORBIDDEN: '/403',
   UNAUTHORISED: '/unauthorised',
+  LOGOUT: '/logout',
   MY_DATA: '/my-data',
   TOUR: '/tour',
   REPORTS: '/reports',
@@ -283,6 +284,9 @@ export const ROUTES = {
   // Metric Entity
   METRICS: '/metrics',
   ADD_METRIC: '/metrics/add-metric',
+
+  // Entity Import
+  ENTITY_IMPORT: `/bulk/import/${PLACEHOLDER_ROUTE_ENTITY_TYPE}/${PLACEHOLDER_ROUTE_FQN}`,
 };
 
 export const SOCKET_EVENTS = {

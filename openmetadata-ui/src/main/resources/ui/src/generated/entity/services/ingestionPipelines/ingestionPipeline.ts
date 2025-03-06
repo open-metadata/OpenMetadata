@@ -1335,6 +1335,10 @@ export interface CollateAIAppConfig {
  *
  * Remove Custom Properties Action Type
  *
+ * Add a Data Product to the selected assets.
+ *
+ * Remove a Data Product to the selected assets.
+ *
  * Propagate description, tags and glossary terms via lineage
  *
  * ML Tagging action configuration for external automator.
@@ -1420,6 +1424,12 @@ export interface Action {
      * Owners to apply
      */
     owners?: EntityReference[];
+    /**
+     * Data Products to apply
+     *
+     * Data Products to remove
+     */
+    dataProducts?: EntityReference[];
     /**
      * Propagate the metadata to columns via column-level lineage.
      */
@@ -1573,12 +1583,17 @@ export interface Style {
  *
  * Remove Custom Properties Action Type.
  *
+ * Add Data Products Action Type.
+ *
+ * Remove Data Products Action Type.
+ *
  * Lineage propagation action type.
  *
  * ML PII Tagging action type.
  */
 export enum ActionType {
     AddCustomPropertiesAction = "AddCustomPropertiesAction",
+    AddDataProductAction = "AddDataProductAction",
     AddDescriptionAction = "AddDescriptionAction",
     AddDomainAction = "AddDomainAction",
     AddOwnerAction = "AddOwnerAction",
@@ -1587,6 +1602,7 @@ export enum ActionType {
     LineagePropagationAction = "LineagePropagationAction",
     MLTaggingAction = "MLTaggingAction",
     RemoveCustomPropertiesAction = "RemoveCustomPropertiesAction",
+    RemoveDataProductAction = "RemoveDataProductAction",
     RemoveDescriptionAction = "RemoveDescriptionAction",
     RemoveDomainAction = "RemoveDomainAction",
     RemoveOwnerAction = "RemoveOwnerAction",
@@ -2023,7 +2039,7 @@ export interface GCPCredentialsConfiguration {
     /**
      * Google Cloud Platform account type.
      */
-    type?: TypeEnum;
+    type?: string;
     /**
      * Path of the file containing the GCP credentials info
      */
@@ -2041,7 +2057,7 @@ export interface GCPCredentialsConfiguration {
     /**
      * Google Cloud Platform account type.
      */
-    externalType?: ExternalTypeEnum;
+    externalType?: string;
     /**
      * Google Security Token Service subject token type based on the OAuth 2.0 token exchange
      * spec.
@@ -2052,16 +2068,6 @@ export interface GCPCredentialsConfiguration {
      */
     tokenURL?: string;
     [property: string]: any;
-}
-
-export enum ExternalTypeEnum {
-    ExternalAccount = "external_account",
-}
-
-export enum TypeEnum {
-    ExternalAccount = "external_account",
-    GcpCredentialPath = "gcp_credential_path",
-    ServiceAccount = "service_account",
 }
 
 /**
