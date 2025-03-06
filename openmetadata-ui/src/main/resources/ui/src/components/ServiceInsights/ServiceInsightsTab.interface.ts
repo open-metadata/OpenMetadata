@@ -16,3 +16,7 @@ import { ServicesType } from '../../interface/service.interface';
 export interface ServiceInsightsTabProps {
   serviceDetails: ServicesType;
 }
+
+export interface ServiceInsightWidgetCommonProps {
+  serviceName: string;
+}

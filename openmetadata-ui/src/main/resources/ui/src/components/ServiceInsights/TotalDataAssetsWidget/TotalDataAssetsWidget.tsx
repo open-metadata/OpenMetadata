@@ -23,36 +23,34 @@ import { WHITE_SMOKE } from '../../../constants/Color.constants';
 import { totalDataAssetsWidgetColors } from '../../../constants/TotalDataAssetsWidget.constants';
 import { SIZE } from '../../../enums/common.enum';
 import { SearchIndex } from '../../../enums/search.enum';
-import { useFqn } from '../../../hooks/useFqn';
 import { searchQuery } from '../../../rest/searchAPI';
 import { getEntityNameLabel } from '../../../utils/EntityUtils';
-import Fqn from '../../../utils/Fqn';
 import { getAssetsByServiceType } from '../../../utils/ServiceInsightsTabUtils';
 import { getServiceNameQueryFilter } from '../../../utils/ServiceUtils';
 import { getEntityIcon } from '../../../utils/TableUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import { ServiceInsightWidgetCommonProps } from '../ServiceInsightsTab.interface';
 import './total-data-assets-widget.less';
 
-function TotalDataAssetsWidget() {
+function TotalDataAssetsWidget({
+  serviceName,
+}: ServiceInsightWidgetCommonProps) {
   const { t } = useTranslation();
   const { serviceCategory } = useParams<{
     serviceCategory: ServiceTypes;
     tab: string;
   }>();
-  const { fqn: serviceName } = useFqn();
   const [loadingCount, setLoadingCount] = useState<number>(0);
   const [entityCounts, setEntityCounts] =
     useState<
       Array<{ name: string; value: number; fill: string; icon: JSX.Element }>
     >();
 
-  const nameWithoutQuotes = Fqn.getNameWithoutQuotes(serviceName);
-
   const getDataAssetsCount = useCallback(async () => {
     try {
       setLoadingCount((count) => count + 1);
       const response = await searchQuery({
-        queryFilter: getServiceNameQueryFilter(nameWithoutQuotes),
+        queryFilter: getServiceNameQueryFilter(serviceName),
         searchIndex: SearchIndex.ALL,
       });
 

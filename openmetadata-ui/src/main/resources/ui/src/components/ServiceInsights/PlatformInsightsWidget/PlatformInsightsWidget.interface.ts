@@ -12,6 +12,7 @@
  */
 
 import { SystemChartType } from '../../../enums/DataInsight.enum';
+import { ServiceInsightWidgetCommonProps } from '../ServiceInsightsTab.interface';
 
 export interface ChartData {
   day: number;
@@ -26,7 +27,8 @@ export interface ChartSeriesData {
   isIncreased: boolean;
 }
 
-export interface PlatformInsightsWidgetProps {
+export interface PlatformInsightsWidgetProps
+  extends ServiceInsightWidgetCommonProps {
   chartsData: ChartSeriesData[];
   isLoading: boolean;
 }

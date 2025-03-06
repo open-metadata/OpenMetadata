@@ -66,11 +66,4 @@ export default class Fqn {
 
     throw new Error(`${i18next.t('label.invalid-name')} ${name}`);
   }
-
-  // Get the name without quotes
-  // Useful for getting the service name from the fqn in the url
-  // Example: "service.Name/example" -> service.Name/example
-  static getNameWithoutQuotes(fqn: string) {
-    return fqn.replace(/(?:^")|(?:"$)/g, '');
-  }
 }

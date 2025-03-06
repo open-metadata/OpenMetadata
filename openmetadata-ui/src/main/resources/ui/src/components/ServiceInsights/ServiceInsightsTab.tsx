@@ -22,13 +22,11 @@ import {
   SERVICE_INSIGHTS_CHART,
 } from '../../constants/ServiceInsightsTab.constants';
 import { SystemChartType } from '../../enums/DataInsight.enum';
-import { useFqn } from '../../hooks/useFqn';
 import { getMultiChartsPreviewByName } from '../../rest/DataInsightAPI';
 import {
   getCurrentMillis,
   getEpochMillisForPastDays,
 } from '../../utils/date-time/DateTimeUtils';
-import Fqn from '../../utils/Fqn';
 import serviceUtilClassBase from '../../utils/ServiceUtilClassBase';
 import { showErrorToast } from '../../utils/ToastUtils';
 import {
@@ -38,8 +36,7 @@ import {
 import './service-insights-tab.less';
 import { ServiceInsightsTabProps } from './ServiceInsightsTab.interface';
 
-const ServiceInsightsTab: React.FC<ServiceInsightsTabProps> = () => {
-  const { fqn: serviceName } = useFqn();
+const ServiceInsightsTab = ({ serviceDetails }: ServiceInsightsTabProps) => {
   const { serviceCategory } = useParams<{
     serviceCategory: ServiceTypes;
     tab: string;
@@ -51,7 +48,7 @@ const ServiceInsightsTab: React.FC<ServiceInsightsTabProps> = () => {
   }>();
   const [isLoading, setIsLoading] = useState(false);
 
-  const nameWithoutQuotes = Fqn.getNameWithoutQuotes(serviceName);
+  const serviceName = serviceDetails.name;
 
   const fetchChartsData = async () => {
     try {
@@ -64,7 +61,7 @@ const ServiceInsightsTab: React.FC<ServiceInsightsTabProps> = () => {
         {
           start: sevenDaysAgoTimestampInMs,
           end: currentTimestampInMs,
-          filter: `{"query":{"bool":{"must":[{"term":{"service.name.keyword":"${nameWithoutQuotes}"}}]}}}`,
+          filter: `{"query":{"match":{"service.name.keyword":"${serviceName}"}}}`,
         }
       );
 
@@ -160,6 +157,7 @@ const ServiceInsightsTab: React.FC<ServiceInsightsTabProps> = () => {
               <Widget
                 chartsData={getChartsDataFromWidgetName(name)}
                 isLoading={isLoading}
+                serviceName={serviceName}
               />
             </Col>
           )

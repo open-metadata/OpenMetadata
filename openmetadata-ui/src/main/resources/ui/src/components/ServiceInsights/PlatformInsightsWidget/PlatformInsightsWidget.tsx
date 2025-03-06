@@ -26,6 +26,7 @@ import { PlatformInsightsWidgetProps } from './PlatformInsightsWidget.interface'
 function PlatformInsightsWidget({
   chartsData,
   isLoading,
+  serviceName,
 }: Readonly<PlatformInsightsWidgetProps>) {
   const { t } = useTranslation();
 
@@ -40,7 +41,7 @@ function PlatformInsightsWidget({
 
       <Row className="m-t-sm" gutter={16}>
         <Col span={12}>
-          <TotalDataAssetsWidget />
+          <TotalDataAssetsWidget serviceName={serviceName} />
         </Col>
         <Col className="other-charts-container" span={12}>
           {isLoading
