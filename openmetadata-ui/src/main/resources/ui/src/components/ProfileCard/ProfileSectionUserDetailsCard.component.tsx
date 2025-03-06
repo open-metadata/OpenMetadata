@@ -33,6 +33,7 @@ import { useAuth } from '../../hooks/authHooks';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useFqn } from '../../hooks/useFqn';
 import { changePassword } from '../../rest/auth-API';
+import { getEntityName } from '../../utils/EntityUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import DeleteWidgetModal from '../common/DeleteWidget/DeleteWidgetModal';
 import { ProfileEditModal } from '../Modals/ProfileEditModal/ProfileEditModal';
@@ -228,13 +229,13 @@ const ProfileSectionUserDetailsCard = ({
         <ProfilePicture
           avatarType="outlined"
           data-testid="replied-user"
-          name={userData.displayName || userData.name}
+          name={getEntityName(userData)}
           width="80"
         />
       </div>
       <div>
         <p className="profile-details-title" data-testid="user-display-name">
-          {userData?.displayName || userData.name}
+          {getEntityName(userData)}
         </p>
         {userEmailRender}
       </div>

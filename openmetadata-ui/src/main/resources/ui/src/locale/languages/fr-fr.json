@@ -2085,7 +2085,6 @@
     "unauthorized-user": "Utilisateur non autorisé ! Veuillez vérifier votre e-mail ou votre mot de passe",
     "unexpected-error": "Une erreur inattendue est survenue.",
     "unexpected-response": "Réponse inattendue du serveur !",
-    "update-entity-success": "{{entity}} mis à jour avec succès.",
-    "you-have-not-action-anything-yet": "Vous n'avez encore rien {{action}}."
+    "update-entity-success": "{{entity}} mis à jour avec succès."
   }
 }

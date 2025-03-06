@@ -2085,7 +2085,6 @@
     "unauthorized-user": "Неавторизованный пользователь! пожалуйста, проверьте электронную почту или пароль",
     "unexpected-error": "Произошла непредвиденная ошибка.",
     "unexpected-response": "Неожиданный ответ от сервера.",
-    "update-entity-success": "{{entity}} успешно обновлен.",
-    "you-have-not-action-anything-yet": "У вас еще нет {{action}}."
+    "update-entity-success": "{{entity}} успешно обновлен."
   }
 }

@@ -2085,7 +2085,6 @@
     "unauthorized-user": "未经授权的用户！ 请检查电子邮箱或密码",
     "unexpected-error": "发生意外错误",
     "unexpected-response": "服务器返回意外响应！",
-    "update-entity-success": "{{entity}}已成功更新",
-    "you-have-not-action-anything-yet": "您还没有{{action}}任何内容"
+    "update-entity-success": "{{entity}}已成功更新"
   }
 }

@@ -2085,7 +2085,6 @@
     "unauthorized-user": "Usuario non autorizado! Comproba o correo electrónico ou o contrasinal",
     "unexpected-error": "Produciuse un erro inesperado.",
     "unexpected-response": "Resposta inesperada do servidor.",
-    "update-entity-success": "{{entity}} actualizado correctamente.",
-    "you-have-not-action-anything-yet": "Aínda non {{action}} nada."
+    "update-entity-success": "{{entity}} actualizado correctamente."
   }
 }

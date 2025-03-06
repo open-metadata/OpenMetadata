@@ -2085,7 +2085,6 @@
     "unauthorized-user": "Unbefugter Benutzer! Bitte überprüfen Sie E-Mail oder Passwort.",
     "unexpected-error": "Ein unerwarteter Fehler ist aufgetreten.",
     "unexpected-response": "Unerwartete Antwort vom Server.",
-    "update-entity-success": "{{entity}} erfolgreich aktualisiert.",
-    "you-have-not-action-anything-yet": "Sie haben noch nichts {{action}}."
+    "update-entity-success": "{{entity}} erfolgreich aktualisiert."
   }
 }

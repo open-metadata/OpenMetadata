@@ -2085,7 +2085,6 @@
     "unauthorized-user": "משתמש לא מורשה! יש לבדוק את כתובת האימייל או הסיסמה",
     "unexpected-error": "אירעה שגיאה לא צפויה.",
     "unexpected-response": "תגובה לא צפויה מהשרת.",
-    "update-entity-success": "{{entity}} עודכן בהצלחה.",
-    "you-have-not-action-anything-yet": "לא ביצעת עדיין {{action}} כלשהו."
+    "update-entity-success": "{{entity}} עודכן בהצלחה."
   }
 }

@@ -2085,7 +2085,6 @@
     "unauthorized-user": "ผู้ใช้ที่ไม่ได้รับอนุญาต! โปรดตรวจสอบอีเมลหรือรหัสผ่าน",
     "unexpected-error": "เกิดข้อผิดพลาดที่ไม่คาดคิดขึ้น",
     "unexpected-response": "การตอบสนองที่ไม่คาดคิดจากเซิร์ฟเวอร์",
-    "update-entity-success": "{{entity}} อัปเดตสำเร็จ",
-    "you-have-not-action-anything-yet": "คุณยังไม่ได้ {{action}} สิ่งใดเลย"
+    "update-entity-success": "{{entity}} อัปเดตสำเร็จ"
   }
 }

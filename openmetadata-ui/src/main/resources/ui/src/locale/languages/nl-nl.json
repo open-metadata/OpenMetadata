@@ -2085,7 +2085,6 @@
     "unauthorized-user": "Ongeautoriseerde gebruiker! controleer e-mail of wachtwoord",
     "unexpected-error": "Er is een onverwachte fout opgetreden.",
     "unexpected-response": "Onverwachte respons van de server.",
-    "update-entity-success": "{{entity}} succesvol bijgewerkt.",
-    "you-have-not-action-anything-yet": "Je hebt nog niet {{action}}."
+    "update-entity-success": "{{entity}} succesvol bijgewerkt."
   }
 }

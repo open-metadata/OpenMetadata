@@ -2085,7 +2085,6 @@
     "unauthorized-user": "अनधिकृत वापरकर्ता! कृपया ईमेल किंवा पासवर्ड तपासा",
     "unexpected-error": "अप्रत्याशित त्रुटी आली.",
     "unexpected-response": "सर्व्हरकडून अप्रत्याशित प्रतिसाद.",
-    "update-entity-success": "{{entity}} यशस्वीरित्या अद्यतनित केले.",
-    "you-have-not-action-anything-yet": "तुम्ही अद्याप {{action}} काहीही केलेले नाही."
+    "update-entity-success": "{{entity}} यशस्वीरित्या अद्यतनित केले."
   }
 }

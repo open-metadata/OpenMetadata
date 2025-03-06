@@ -2085,7 +2085,6 @@
     "unauthorized-user": "権限がないユーザーです！メールかパスワードを確認してください。",
     "unexpected-error": "予期しないエラーが発生しました。",
     "unexpected-response": "サーバから予期しない応答が返りました。",
-    "update-entity-success": "{{entity}}は正常に更新されました。",
-    "you-have-not-action-anything-yet": "あなたが{{action}}のデータはありません。"
+    "update-entity-success": "{{entity}}は正常に更新されました。"
   }
 }

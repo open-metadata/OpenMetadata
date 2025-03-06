@@ -2085,7 +2085,6 @@
     "unauthorized-user": "권한이 없는 사용자입니다! 이메일 또는 비밀번호를 확인하세요.",
     "unexpected-error": "예기치 않은 오류가 발생했습니다.",
     "unexpected-response": "서버로부터 예기치 않은 응답이 있었습니다.",
-    "update-entity-success": "{{entity}}이(가) 성공적으로 업데이트되었습니다.",
-    "you-have-not-action-anything-yet": "아직 아무 것도 {{action}}하지 않았습니다."
+    "update-entity-success": "{{entity}}이(가) 성공적으로 업데이트되었습니다."
   }
 }

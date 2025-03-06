@@ -2085,7 +2085,6 @@
     "unauthorized-user": "کاربر غیرمجاز! لطفاً ایمیل یا رمز عبور را بررسی کنید.",
     "unexpected-error": "یک خطای غیرمنتظره رخ داده است.",
     "unexpected-response": "پاسخ غیرمنتظره‌ای از سرور.",
-    "update-entity-success": "{{entity}} با موفقیت به‌روزرسانی شد.",
-    "you-have-not-action-anything-yet": "شما هنوز هیچ چیزی را {{action}} نکرده‌اید."
+    "update-entity-success": "{{entity}} با موفقیت به‌روزرسانی شد."
   }
 }
