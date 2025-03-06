@@ -76,6 +76,10 @@ export interface CreatePipeline {
      */
     startDate?: Date;
     /**
+     * State of the pipeline.
+     */
+    state?: PipelineState;
+    /**
      * Tags for this Pipeline.
      */
     tags?: TagLabel[];
@@ -185,6 +189,16 @@ export interface EntityReference {
      * `dashboardService`...
      */
     type: string;
+}
+
+/**
+ * State of the pipeline.
+ *
+ * Enum defining the possible Pipeline State.
+ */
+export enum PipelineState {
+    Active = "Active",
+    Inactive = "Inactive",
 }
 
 /**

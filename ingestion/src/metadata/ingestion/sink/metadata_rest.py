@@ -34,7 +34,7 @@ from metadata.generated.schema.api.tests.createTestSuite import CreateTestSuiteR
 from metadata.generated.schema.dataInsight.kpi.basic import KpiResult
 from metadata.generated.schema.entity.classification.tag import Tag
 from metadata.generated.schema.entity.data.dashboard import Dashboard
-from metadata.generated.schema.entity.data.pipeline import PipelineStatus
+from metadata.generated.schema.entity.data.pipeline import Pipeline, PipelineStatus
 from metadata.generated.schema.entity.data.searchIndex import (
     SearchIndex,
     SearchIndexSampleData,
@@ -83,6 +83,7 @@ from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardUsage
 from metadata.ingestion.source.database.database_service import DataModelLink
+from metadata.ingestion.source.pipeline.pipeline_service import PipelineUsage
 from metadata.profiler.api.models import ProfilerResponse
 from metadata.sampler.models import SamplerResponse
 from metadata.utils.execution_time_tracker import calculate_execution_time
@@ -624,6 +625,18 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
             self.status.scanned(result)
 
         return Either(right=record)
+
+    @_run_dispatch.register
+    def write_pipeline_usage(self, pipeline_usage: PipelineUsage) -> Either[Pipeline]:
+        """
+        Send a UsageRequest update to a pipeline entity
+        :param pipeline_usage: pipeline entity and usage request
+        """
+        self.metadata.publish_pipeline_usage(
+            pipeline=pipeline_usage.pipeline,
+            pipeline_usage_request=pipeline_usage.usage,
+        )
+        return Either(right=pipeline_usage.pipeline)
 
     def close(self):
         """

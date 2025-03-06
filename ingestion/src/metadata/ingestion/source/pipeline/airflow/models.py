@@ -68,4 +68,5 @@ class AirflowDagDetails(AirflowBaseModel):
     start_date: Optional[datetime] = None
     tasks: List[AirflowTask]
     owner: Optional[str] = None
+    state: Optional[str] = None
     schedule_interval: Optional[str] = None
