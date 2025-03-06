@@ -239,7 +239,14 @@ const TaskFeedCard = ({
           active: isActive,
         })}
         data-testid="task-feed-card">
-        <Row gutter={isTaskDescription ? undefined : [0, 14]}>
+        <Row
+          gutter={
+            isTaskTestCaseResult
+              ? [0, 8]
+              : isTaskDescription
+              ? undefined
+              : [0, 14]
+          }>
           <Col className="d-flex flex-col align-start">
             <Col>
               <Icon
