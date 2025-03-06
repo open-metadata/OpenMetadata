@@ -28,6 +28,7 @@ import { searchQuery } from '../../../rest/searchAPI';
 import { getEntityNameLabel } from '../../../utils/EntityUtils';
 import Fqn from '../../../utils/Fqn';
 import { getAssetsByServiceType } from '../../../utils/ServiceInsightsTabUtils';
+import { getServiceNameQueryFilter } from '../../../utils/ServiceUtils';
 import { getEntityIcon } from '../../../utils/TableUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import './total-data-assets-widget.less';
@@ -51,19 +52,7 @@ function TotalDataAssetsWidget() {
     try {
       setLoadingCount((count) => count + 1);
       const response = await searchQuery({
-        queryFilter: {
-          query: {
-            bool: {
-              must: [
-                {
-                  term: {
-                    'service.name.keyword': nameWithoutQuotes,
-                  },
-                },
-              ],
-            },
-          },
-        },
+        queryFilter: getServiceNameQueryFilter(nameWithoutQuotes),
         searchIndex: SearchIndex.ALL,
       });
 

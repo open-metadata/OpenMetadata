@@ -115,59 +115,54 @@ const ServiceInsightsTab: React.FC<ServiceInsightsTabProps> = () => {
     fetchChartsData();
   }, []);
 
-  const {
-    PlatformInsightsWidget,
-    PIIDistributionWidget,
-    TierDistributionWidget,
-    MostUsedAssetsWidget,
-    MostExpensiveQueriesWidget,
-    DataQualityWidget,
-    CollateAIWidget,
-  } = serviceUtilClassBase.getInsightsTabWidgets(serviceCategory);
+  const widgets = serviceUtilClassBase.getInsightsTabWidgets(serviceCategory);
+
+  const arrayOfWidgets = [
+    { Widget: widgets.PlatformInsightsWidget, name: 'PlatformInsightsWidget' },
+    { Widget: widgets.CollateAIWidget, name: 'CollateAIWidget' },
+    { Widget: widgets.PIIDistributionWidget, name: 'PIIDistributionWidget' },
+    { Widget: widgets.TierDistributionWidget, name: 'TierDistributionWidget' },
+    { Widget: widgets.MostUsedAssetsWidget, name: 'MostUsedAssetsWidget' },
+    {
+      Widget: widgets.MostExpensiveQueriesWidget,
+      name: 'MostExpensiveQueriesWidget',
+    },
+    { Widget: widgets.DataQualityWidget, name: 'DataQualityWidget' },
+  ];
+
+  const getChartsDataFromWidgetName = (widgetName: string) => {
+    switch (widgetName) {
+      case 'PlatformInsightsWidget':
+        return chartsResults?.platformInsightsChart ?? [];
+      case 'PIIDistributionWidget':
+        return chartsResults?.piiDistributionChart ?? [];
+      case 'TierDistributionWidget':
+        return chartsResults?.tierDistributionChart ?? [];
+      default:
+        return [];
+    }
+  };
 
   return (
     <Row className="service-insights-tab" gutter={[16, 16]}>
-      <Col span={24}>
-        <PlatformInsightsWidget
-          chartsData={chartsResults?.platformInsightsChart ?? []}
-          isLoading={isLoading}
-        />
-      </Col>
-      {!isUndefined(CollateAIWidget) && (
-        <Col span={24}>
-          <CollateAIWidget />
-        </Col>
-      )}
-      {!isUndefined(PIIDistributionWidget) && (
-        <Col span={12}>
-          <PIIDistributionWidget
-            chartsData={chartsResults?.piiDistributionChart ?? []}
-            isLoading={isLoading}
-          />
-        </Col>
-      )}
-      {!isUndefined(TierDistributionWidget) && (
-        <Col span={12}>
-          <TierDistributionWidget
-            chartsData={chartsResults?.tierDistributionChart ?? []}
-            isLoading={isLoading}
-          />
-        </Col>
-      )}
-      {!isUndefined(MostUsedAssetsWidget) && (
-        <Col span={24}>
-          <MostUsedAssetsWidget />
-        </Col>
-      )}
-      {!isUndefined(MostExpensiveQueriesWidget) && (
-        <Col span={24}>
-          <MostExpensiveQueriesWidget />
-        </Col>
-      )}
-      {!isUndefined(DataQualityWidget) && (
-        <Col span={24}>
-          <DataQualityWidget />
-        </Col>
+      {arrayOfWidgets.map(
+        ({ Widget, name }) =>
+          !isUndefined(Widget) && (
+            <Col
+              key={name}
+              span={
+                ['PIIDistributionWidget', 'TierDistributionWidget'].includes(
+                  name
+                )
+                  ? 12
+                  : 24
+              }>
+              <Widget
+                chartsData={getChartsDataFromWidgetName(name)}
+                isLoading={isLoading}
+              />
+            </Col>
+          )
       )}
     </Row>
   );
