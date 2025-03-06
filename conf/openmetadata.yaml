@@ -1,3 +1,4 @@
+
 #  Copyright 2021 Collate
 #  Licensed under the Apache License, Version 2.0 (the "License");
 #  you may not use this file except in compliance with the License.
@@ -26,12 +27,12 @@ server:
       bindHost: ${SERVER_HOST:-0.0.0.0}
       port: ${SERVER_ADMIN_PORT:-8586}
 
-# Above configuration for running http is fine for dev and testing.
-# For production setup, where UI app will hit apis through DPS it
-# is strongly recommended to run https instead. Note that only
-# keyStorePath and keyStorePassword are mandatory properties. Values
-# for other properties are defaults
-#server:
+  # Above configuration for running http is fine for dev and testing.
+  # For production setup, where UI app will hit apis through DPS it
+  # is strongly recommended to run https instead. Note that only
+  # keyStorePath and keyStorePassword are mandatory properties. Values
+  # for other properties are defaults
+  #server:
   #applicationConnectors:
   #  - type: https
   #    port: 8585
@@ -159,7 +160,7 @@ database:
 migrationConfiguration:
   flywayPath: "./bootstrap/sql/migrations/flyway"
   nativePath: "./bootstrap/sql/migrations/native"
-  extensionPath: ""
+  extensionPath: "./bootstrap/sql/migrations/extension"
 
 # Authorizer Configuration
 authorizerConfiguration:
@@ -345,7 +346,7 @@ secretsManagerConfiguration:
   secretsManager: ${SECRET_MANAGER:-db} # Possible values are "db", "managed-aws","aws", "managed-aws-ssm", "aws-ssm", "managed-azure-kv", "azure-kv", "in-memory", "gcp"
   prefix: ${SECRET_MANAGER_PREFIX:-""} # Define the secret key ID as /<prefix>/<clusterName>/<key>
   tags: ${SECRET_MANAGER_TAGS:-[]} # Add tags to the created resource. Format is `[key1:value1,key2:value2,...]`
-# it will use the default auth provider for the secrets' manager service if parameters are not set
+  # it will use the default auth provider for the secrets' manager service if parameters are not set
   parameters:
     ## For AWS
     region: ${OM_SM_REGION:-""}
@@ -405,4 +406,3 @@ web:
     option: ${WEB_CONF_PERMISSION_POLICY_OPTION:-""}
   cache-control: ${WEB_CONF_CACHE_CONTROL:-""}
   pragma: ${WEB_CONF_PRAGMA:-""}
-  

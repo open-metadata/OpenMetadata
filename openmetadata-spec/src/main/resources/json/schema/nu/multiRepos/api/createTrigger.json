@@ -1,0 +1,83 @@
+{
+  "$id": "https://open-metadata.org/schema/api/createBot.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "createTrigger",
+  "description": "Create Trigger entity request",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.nu.multirepos.api.CreateTrigger",
+  "javaInterfaces": ["org.openmetadata.schema.CreateEntity"],
+  "properties": {
+    "name": {
+      "description": "triggerNurn",
+      "$ref": "../../../type/basic.json#/definitions/entityName"
+    },
+    "displayName": {
+      "description": "Display Name of the trigger",
+      "type": "string"
+    },
+    "description": {
+      "description": "Description of this trigger.",
+      "$ref": "../../../type/basic.json#/definitions/markdown"
+    },
+    "dagNurn": {
+      "description": "All the jobs that are part of DAG.",
+      "type": "array",
+      "items": {
+        "$ref": "../../../entity/data/pipeline.json#/properties/name"
+      },
+      "default": null
+    },
+    "dagVersion": {
+      "description": "The version of the DAG",
+      "type": "string"
+    },
+    "mode": {
+      "description": "Mode of the trigger",
+      "type": "string"
+    },
+    "tags": {
+      "description": "Tags for this trigger.",
+      "type": "array",
+      "items": {
+        "$ref": "../../../type/tagLabel.json"
+      },
+      "default": null
+    },
+    "owners": {
+      "description": "Owners of this dag.",
+      "$ref": "../../../type/entityReferenceList.json",
+      "default": null
+    },
+    "service": {
+      "description": "Link to service where this pipeline is hosted in.",
+      "$ref": "../../../type/entityReference.json"
+    },
+    "extension": {
+      "description": "Entity extension data with custom attributes added to the entity.",
+      "$ref": "../../../type/basic.json#/definitions/entityExtension"
+    },
+    "scheduleType": {
+      "description": "Mode of the trigger",
+      "type": "string",
+      "default": null
+    },
+    "scheduleInterval": {
+      "description": "Mode parameter in cron format.",
+      "type": "string",
+      "default": null
+    },
+    "executionConfiguration": {
+      "type": "string",
+      "$ref": "../entity/trigger.json#/definitions/executionConfiguration"
+    },
+    "periodic": {
+      "$ref": "../entity/trigger.json#/definitions/periodic"
+    },
+    "domain": {
+      "description": "Domain the Pipeline belongs to. When not set, the pipeline inherits the domain from the Pipeline service it belongs to.",
+      "type": "string"
+    }
+  },
+  "required": ["name"],
+  "additionalProperties": false
+}

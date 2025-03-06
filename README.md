@@ -1,3 +1,4 @@
+
 <br /><br />
 <p align="center">
     <a href="https://open-metadata.org">
@@ -7,95 +8,191 @@
 
 <p align="center"><b>Empower your Data Journey with OpenMetadata</b></p>
 
-<div align="center">
-    
-![Commit Activity](https://img.shields.io/github/commit-activity/m/open-metadata/OpenMetadata?style=for-the-badge)
-[![Release](https://img.shields.io/github/release/open-metadata/OpenMetadata/all.svg?style=for-the-badge)](https://github.com/open-metadata/OpenMetadata/releases)
 
-</div>
+# 📘 **Instructions**
 
-## What is OpenMetadata?
-[OpenMetadata](https://open-metadata.org/)  is a unified metadata platform for data discovery, data observability, and data governance powered by a central metadata repository, in-depth column level lineage, and seamless team collaboration. It is one of the fastest-growing open-source projects with a vibrant community and adoption by a diverse set of companies in a variety of industry verticals. Based on Open Metadata Standards and APIs, supporting connectors to a wide range of data services, OpenMetadata enables end-to-end metadata management, giving you the freedom to unlock the value of your data assets.
-<div align="center">
-    <img src="https://github.com/open-metadata/OpenMetadata/assets/40225091/ebfb4ec5-f0a2-4d58-8ce5-a082b5cf0f76" width=800>
-</div>
+---
 
-<br />
 Contents:
 
-- [Features](#key-features-of-openmetadata)
-- [Try our Sandbox](#try-our-sandbox)
-- [Install & Run](#install-and-run-openmetadata)
-- [Roadmap](https://docs.open-metadata.org/v1.3.x/roadmap)
-- [Documentation and Support](#documentation-and-support)
-- [Contributors](#contributors)
+- [Create entity](#create-entity)
+---
+## Create entity:
 
-OpenMetadata Consists of Four Main Components:
-- **Metadata Schemas**: These are the core definitions and vocabulary for metadata based on common abstractions and types. They also allow for custom extensions and properties to suit different use cases and domains.
-- **Metadata Store**: This is the central repository for storing and managing the metadata graph, which connects data assets, users, and tool-generated metadata in a unified way.
-- **Metadata APIs**: These are the interfaces for producing and consuming metadata, built on top of the metadata schemas. They enable seamless integration of user interfaces and tools, systems, and services with the metadata store.
-- **Ingestion Framework**: This is a pluggable framework for ingesting metadata from various sources and tools to the metadata store. It supports about 75+ connectors for data warehouses, databases, dashboard services, messaging services, pipeline services, and more.
+Follow these steps to create and integrate a new entity into **OpenMetadata**.
 
-## Key Features of OpenMetadata
-**Data Discovery**: Find and explore all your data assets in a single place using various strategies, such as keyword search, data associations, and advanced queries. You can search across tables, topics, dashboards, pipelines, and services.
+## **Step 1: Database Bootstrap**
 
-![12](https://github.com/open-metadata/OpenMetadata/assets/40225091/0dbd2746-c93d-4a47-8d3e-ceb3ae01436f)
-<br><br><br>
-**Data Collaboration**: Communicate, converse, and cooperate with other users and teams on data assets. You can get event notifications, send alerts, add announcements, create tasks, and use conversation threads.
-
-![11](https://github.com/open-metadata/OpenMetadata/assets/40225091/7df29e12-8a29-44b7-9466-42474823783f)
-<br><br><br>
-**Data Quality and Profiler**: Measure and monitor the quality with **no-code** to build trust in your data. You can define and run data quality tests, group them into test suites, and view the results in an interactive dashboard. With powerful collaboration, make data quality a shared responsibility in your organization.
-
-![8](https://github.com/open-metadata/OpenMetadata/assets/40225091/6b330827-cc2d-4d06-abf0-a4d42ce532ba)
-<br><br><br>
-**Data Governance**: Enforce data policies and standards across your organization. You can define data domains and data products, assign owners and stakeholders, and classify data assets using tags and terms. Use powerful automation features to auto-classify your data.
-
-![10](https://github.com/open-metadata/OpenMetadata/assets/40225091/f7384a71-6b58-44ad-983f-e302718ee3f1)
-<br><br><br>
-**Data Insights and KPIs**: Use reports and platform analytics to understand how your organization's data is doing. Data Insights provides a single-pane view of all the key metrics to reflect the state of your data best. Define the Key Performance Indicators (KPIs) and set goals within OpenMetadata to work towards better documentation, ownership, and tiering. Alerts can be set against the KPIs to be received on a specified schedule.
-
-![9](https://github.com/open-metadata/OpenMetadata/assets/40225091/61fc2f65-2436-4fc9-9434-c27ee9b25183)
-<br><br><br>
-**Data Lineage**: Track and visualize the origin and transformation of your data assets end-to-end. You can view column-level lineage, filter queries, and edit lineage manually using a no-code editor.
-  
-**Data Documentation**: Document your data assets and metadata entities using rich text, images, and links. You can also add comments and annotations and generate data dictionaries and data catalogs.
-  
-**Data Observability**: Monitor the health and performance of your data assets and pipelines. You can view metrics such as data freshness, data volume, data quality, and data latency. You can also set up alerts and notifications for any anomalies or failures.
-  
-**Data Security**: Secure your data and metadata using various authentication and authorization mechanisms. You can integrate with different identity providers for single sign-on and define roles and policies for access control.
-  
-**Webhooks**: Integrate with external applications and services using webhooks. You can register URLs to receive metadata event notifications and integrate with Slack, Microsoft Teams, and Google Chat.
-  
-**Connectors**: Ingest metadata from various sources and tools using connectors. OpenMetadata supports about 75+ connectors for data warehouses, databases, dashboard services, messaging services, pipeline services, and more.
-
-## Try our Sandbox
-
-Take a look and play with sample data at [http://sandbox.open-metadata.org](http://sandbox.open-metadata.org)
-
-## Install and Run OpenMetadata
-Get up and running in a few minutes. See the OpenMetadata documentation for [installation instructions](https://docs.open-metadata.org/quick-start/local-docker-deployment).
-
-## Documentation and Support
-
-We're here to help and make OpenMetadata even better! Check out [OpenMetadata documentation](https://docs.open-metadata.org/) for a complete description of OpenMetadata's features. Join our [Slack Community](https://slack.open-metadata.org/) to get in touch with us if you want to chat, need help, or discuss new feature requirements.
+### **SQL Query**
+Define the **table structure** with **primary** and **unique** keys. Add the query to the file:
+```      
+bootstrap/sql/migrations/extension/1.7.0-extension/mysql/schemaChanges.sql
+```
+### **Configure the Migration Path**
+Ensure that in `conf/openmetadata.yaml`, under the `migrationConfiguration` section, the variable `extensionPath` points to the `./bootstrap/sql/migrations/extension` directory.
 
 
-## Contributors
+## **Step 2: Specifications**
 
-We ❤️ all contributions, big and small! Check out our [CONTRIBUTING](./CONTRIBUTING.md) guide to get started, and let us know how we can help.
+### **Entity Spec (JSON Schema)**
+Create the **JSON Schema** for the entity at:
+```
+openmetadata-spec/src/main/resources/json/schema/nu/<initiative>/yourEntity.json
+```
+### **API Spec**
+Create the **JSON Schema** for the API at:
+```
+openmetadata-spec/src/main/resources/json/schema/api/nu/<initiative>/createYourEntity.json
+```
 
-Don't want to miss anything? Give the project a ⭐ 🚀 
+📌 **Note:**
+- Use **camelCase** for directories and filenames.
+- Ensure **naming consistency** between the entity spec and the API spec.
+- Use folders based on the initiative (e.g., `referenceData/`, `frozenSuite/`).
 
-A HUGE THANK YOU to all our supporters!
+## **Step 3: Build the Server**
 
-<a href="https://github.com/open-metadata/OpenMetadata/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=open-metadata/OpenMetadata&max=4000&columns=30" />
-</a>
+After creating the SQL files and specs, **build the server**:
 
-## Stargazers
+### **Follow the official guide:**
+[OpenMetadata Server Build Guide](https://docs.open-metadata.org/v1.5.x/developers/contribute/build-code-and-run-tests/openmetadata-server)
 
-[![Stargazers of @open-metadata/OpenMetadata repo](http://reporoster.com/stars/open-metadata/OpenMetadata)](https://github.com/open-metadata/OpenMetadata/stargazers)
+### 📌 **Useful Commands:**
+- `mvn clean install -DskipTests` → Build without running tests.
+- `./bootstrap/openmetadata-ops.sh migrate --force` → Apply database migrations.
+- `./bootstrap/openmetadata-ops.sh drop-create` → Recreate the database from scratch.
 
-## License
-OpenMetadata is released under [Apache License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0)
+## **Step 4: Declare the Entity**
+In the `openmetadata-service/src/main/java/org/openmetadata/service/Entity.java` file, declare the new entity:
+  ```java
+  public static final String <YOURENTITY> = "<yourEntity>";
+  ```
+---
+## 🛠️ **The Service**
+
+- In a typical Java project following a layered architecture, the **Repository**, **Mapper**, and **Resource** play distinct roles in handling data flow and business logic.
+--- 
+
+## **Step 5: Create the Repository - Data Access Layer**
+The **repository** extends the `EntityRepository` class for communication with the database.
+
+**Purpose:** Handles direct interaction with the database.
+### **Location:**
+  ```
+  openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/nu/<initiative>/YourEntityRepository.java
+  ```
+
+### **Example:**
+  ```java
+  public class YourEntityRepository extends EntityRepository<YourEntity> {
+    public YourEntityRepository() {
+        super(
+                YourEntityResource.COLLECTION_PATH,
+                Entity.YOURENTITY,
+                YourEntity.class,
+                Entity.getCollectionDAO().geoDAO(),
+                UPDATE_FIELDS,
+                UPDATE_FIELDS);
+        supportsSearch = true;
+    }
+  }
+  ```
+### 📌 **Key Features:**
+- Abstracts database access logic.
+- Uses ORM frameworks like JPA/Hibernate.
+- Provides methods for querying the database.
+
+
+## **Step 6: Create the Mapper - Data Access Layer**
+The **mapper** converts the `create<Entity>` request into the entity object.
+
+**Purpose:** Handles direct interaction with the database.
+### **Location:**
+  ```
+  openmetadata-service/src/main/java/org/openmetadata/service/resources/nu/<initiative>/YourEntityMapper.java
+  ```
+### **Example:**
+  ```java
+  public class YourEntityMapper implements EntityMapper<YourEntity, CreateYourEntity> {
+
+    @Override
+    public YourEntity createToEntity(CreateYourEntity create, String user) {
+
+        return copy(new YourEntity(), create, user)
+                .withFullyQualifiedName(create.getName());
+    }
+  }
+  ```
+### 📌 **Key Features:**
+- Separates the domain model from external data representations.
+- Enhances code readability and maintainability.
+
+
+
+## **Step 7: Create the Resource - Controller Layer**
+The **resource** manages **CRUD** operations following REST standards.
+
+**Purpose:** Handles HTTP requests and responses.
+
+### **Location:**
+  ```
+  openmetadata-service/src/main/java/org/openmetadata/service/resources/nu/<initiative>/YourEntityResource.java
+  ```
+
+### **Example:**
+```java
+@Path("/v1/yourentities")
+@Tag(
+        name = "YourEntities",
+        description = "your description ")
+@Produces(MediaType.APPLICATION_JSON)
+@Consumes(MediaType.APPLICATION_JSON)
+@Collection(name = "gyourentities")
+public class YourEntityResource extends EntityResource<YourEntity, YourEntityRepository> {
+    @GET
+    @Path("/nurn/{nurn}")
+    @Operation(
+            operationId = "getYourEntityByFQN",
+            summary = "Get your entity by nurn",
+            description = "Get your entity by `nurn`.",
+            responses = {
+                    @ApiResponse(
+                            responseCode = "200",
+                            description = "your description",
+                            content =
+                            @Content(
+                                    mediaType = "application/json",
+                                    schema = @Schema(implementation = YourEntity.class))),
+                    @ApiResponse(responseCode = "404", description = "{nurn} is not found")
+            })
+    public YourEntity getByNuRN(
+            @Context UriInfo uriInfo,
+            @Context SecurityContext securityContext,
+            @Parameter(description = "NuRN of your entity", schema = @Schema(type = "string"))
+            @PathParam("nurn")
+            String nurn,
+            @Parameter(
+                    description = "Include all, deleted, or non-deleted entities.",
+                    schema = @Schema(implementation = Include.class))
+            @QueryParam("include")
+            @DefaultValue("non-deleted")
+            Include include) {
+        return getByNameInternal(
+                uriInfo, securityContext, EntityInterfaceUtil.quoteName(nurn), "", include);
+    }   
+} 
+```
+### 📌 **Key Features:**
+- Exposes RESTful APIs.
+- Handles request validation and response formatting.
+- Uses ResponseEntity for proper HTTP status codes.
+
+---
+
+## ✅ **Best Practices**
+- Use **camelCase** for JSON files and **PascalCase** for Java classes.
+- Keep the folder structure consistent across initiatives.
+- Refer to existing entities when in doubt.
+
+---
+___

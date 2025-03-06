@@ -1,0 +1,15 @@
+{
+  "$id": "https://open-metadata.org/schema/type/nu.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Nu basic",
+  "description": "This schema defines nu basic types that are used by other schemas.",
+  "definitions": {
+    "nurn": {
+      "description": "This is the Nubank Resource Name identifier across all systems.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256,
+      "pattern": "^nurn:nu:((?!::).)*$"
+    }
+  }
+}

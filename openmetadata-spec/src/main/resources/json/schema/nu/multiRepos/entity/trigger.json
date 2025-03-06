@@ -1,0 +1,142 @@
+{
+  "$id": "https://open-metadata.org/schema/nu/multiRepos/entity/trigger.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Trigger",
+  "description": " Trigger is the mechanism that creates a DAG Run from a DAG. It declares when a DAG will be executed and its environment.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.nu.multirepos.entity.Trigger",
+  "javaInterfaces": [
+    "org.openmetadata.schema.EntityInterface"
+  ],
+  "definitions": {
+    "periodic": {
+      "description": "Scheduler Interval for the dag in cron format.",
+      "type": "string",
+      "default": null
+    },
+    "executionConfiguration": {
+      "type": "object",
+      "required": ["runType", "runtimeConfig"],
+      "properties": {
+        "runType": {
+          "type": "string",
+          "description": "What type of run either staging or production"
+        },
+        "runtimeConfig": {
+          "type": "string",
+          "description": "The Runtime Configuration to use when runnning a DAG with Spark Jobs"
+        }
+      }
+    }
+  },
+  "properties": {
+    "id": {
+      "description": "OM UUID of the trigger",
+      "$ref": "../../../type/basic.json#/definitions/uuid"
+    },
+    "name": {
+      "description": "NuRN of the trigger.",
+      "$ref": "../../../type/basic.json#/definitions/entityName"
+    },
+    "displayName": {
+      "description": "Display Name of the trigger",
+      "type": "string"
+    },
+    "fullyQualifiedName": {
+      "description": "the full name of the trigger",
+      "$ref": "../../../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
+    "description": {
+      "description": "Description of this trigger.",
+      "$ref": "../../../type/basic.json#/definitions/markdown"
+    },
+    "version": {
+      "description": "Metadata version of the entity.",
+      "$ref": "../../../type/entityHistory.json#/definitions/entityVersion"
+    },
+    "updatedAt": {
+      "description": "Last update time corresponding to the new version of the entity in Unix epoch time milliseconds.",
+      "$ref": "../../../type/basic.json#/definitions/timestamp"
+    },
+    "updatedBy": {
+      "description": "User who made the update.",
+      "type": "string"
+    },
+    "dagNurn": {
+      "type": "array",
+      "items": {
+        "$ref": "../../../entity/data/pipeline.json#/properties/name"
+      },
+      "default": null
+    },
+    "dagVersion": {
+      "description": "The version of the DAG",
+      "type": "string"
+    },
+    "mode": {
+      "description": "Mode of the trigger",
+      "type": "string"
+    },
+    "tags": {
+      "description": "Tags for this trigger.",
+      "type": "array",
+      "items": {
+        "$ref": "../../../type/tagLabel.json"
+      },
+      "default": null
+    },
+    "href": {
+      "description": "Link to the resource corresponding to this entity.",
+      "$ref": "../../../type/basic.json#/definitions/href"
+    },
+    "owners": {
+      "description": "Owners of this dag.",
+      "$ref": "../../../type/entityReferenceList.json"
+    },
+    "service": {
+      "description": "Link to service where this pipeline is hosted in.",
+      "$ref": "../../../type/entityReference.json"
+    },
+    "serviceType": {
+      "description": "Service type where this pipeline is hosted in.",
+      "$ref": "../../../entity/services/pipelineService.json#/definitions/pipelineServiceType"
+    },
+    "changeDescription": {
+      "description": "Change that lead to this version of the entity.",
+      "$ref": "../../../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "deleted": {
+      "description": "When `true` indicates the entity has been soft deleted.",
+      "type": "boolean",
+      "default": false
+    },
+    "extension": {
+      "description": "Entity extension data with custom attributes added to the entity.",
+      "$ref": "../../../type/basic.json#/definitions/entityExtension"
+    },
+    "scheduleType": {
+      "description": "mode of the trigger",
+      "type": "string",
+      "default": null
+    },
+    "scheduleInterval": {
+      "description": "Mode parameter in cron format.",
+      "type": "string",
+      "default": null
+    },
+    "executionConfiguration": {
+      "type": "object",
+      "$ref": "#/definitions/executionConfiguration"
+    },
+    "periodic": {
+      "type": "string",
+      "$ref": "#/definitions/periodic"
+    },
+    "domain": {
+      "description": "Domain the Pipeline belongs to. When not set, the pipeline inherits the domain from the Pipeline service it belongs to.",
+      "$ref": "../../../type/entityReference.json"
+    }
+  },
+    "required":["id", "name"],
+    "additionalProperties": false
+}
