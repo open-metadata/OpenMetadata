@@ -129,26 +129,27 @@
         width: inherit;
       }
     }
-    .is-active {
-      background: #eff8ff;
-      border: 1px solid #84caff;
-    }
+  }
 
-    .activity-feed-card-message {
-      padding: 12px;
-      background-color: @white;
-      width: inherit;
-      margin-top: 2px;
-      .ant-card-body {
-        padding: 0px;
-        border: 0.5px solid #eaecf5;
-        border-radius: 8px;
-      }
+  .activity-feed-card-new.is-active {
+    background: #eff8ff;
+    border: 1px solid #84caff;
+  }
+
+  .activity-feed-card-message {
+    padding: 12px;
+    background-color: @white;
+    width: inherit;
+    margin-top: 2px;
+    .ant-card-body {
+      padding: 0px;
+      border: 0.5px solid #eaecf5;
+      border-radius: 8px;
     }
-    .activity-feed-card-message-right-panel {
-      background: rgba(239, 244, 250, 0.25);
-      margin-top: 10px;
-    }
+  }
+  .activity-feed-card-message-right-panel {
+    background: rgba(239, 244, 250, 0.25);
+    margin-top: 10px;
   }
   .activity-feed-reply-card {
     border-radius: 8px;
@@ -354,6 +355,8 @@
 .header-link {
   word-wrap: break-word;
   white-space: normal;
+  color: @blue-9;
+  font-weight: 600;
 }
 .header-container-card {
   margin-top: -2px;
@@ -381,6 +384,14 @@
   background-color: inherit !important;
   color: inherit !important;
   border-radius: 12px !important;
+}
+
+.activity-feed-comments-title {
+  font-size: 14px;
+  font-style: normal;
+  font-weight: 600;
+  line-height: 20px;
+  color: #414651;
 }
 .card-style-feed-header {
   color: #535862;

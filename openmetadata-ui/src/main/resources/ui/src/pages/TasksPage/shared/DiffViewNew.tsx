@@ -110,7 +110,6 @@ export const DiffViewNew = ({
           ? {
               background: 'rgba(239, 244, 250, 0.25)',
               borderRadius: '12px',
-              border: '0.8px solid #DFDFDF',
             }
           : {
               padding: '20px',
@@ -127,7 +126,9 @@ export const DiffViewNew = ({
         }),
       }}>
       {showDescTitle && (
-        <span style={{ marginBottom: '14px' }}>{t('label.description')}</span>
+        <span className="task-tab-description-header">
+          {t('label.description')}
+        </span>
       )}
       <pre
         className="whitespace-pre-wrap m-b-0"

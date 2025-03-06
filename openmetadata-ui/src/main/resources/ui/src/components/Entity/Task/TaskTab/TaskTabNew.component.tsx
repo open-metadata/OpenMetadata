@@ -835,12 +835,16 @@ export const TaskTabNew = ({
         <Row className="m-l-0" gutter={[16, 16]}>
           <Col className="flex items-center gap-2 text-grey-muted" span={12}>
             <UserIcon height={16} />
-            <Typography.Text className="incident-manager-details-label @grey-8">
+            <Typography.Text className="incident-manager-details-label">
               {t('label.created-by')}:{' '}
             </Typography.Text>
           </Col>
           <Col className="flex items-center gap-2" span={12}>
-            <ProfilePicture name={taskThread.createdBy ?? ''} width="24" />
+            <ProfilePicture
+              avatarType="outlined"
+              name={taskThread.createdBy ?? ''}
+              width="24"
+            />
             <Typography.Text>{taskThread.createdBy}</Typography.Text>
           </Col>
 
@@ -903,6 +907,7 @@ export const TaskTabNew = ({
                 {taskThread?.task?.assignees?.length === 1 ? (
                   <div className="d-flex items-center gap-2">
                     <ProfilePicture
+                      avatarType="outlined"
                       name={taskThread?.task?.assignees[0].displayName ?? ''}
                       width="24"
                     />
@@ -1040,7 +1045,7 @@ export const TaskTabNew = ({
                   taskThread?.task?.status === ThreadTaskStatus.Open &&
                   !showFeedEditor,
               })}>
-              {t('label.comment')}
+              {t('label.comment-plural')}
             </Typography.Text>
 
             {showFeedEditor ? (

@@ -142,7 +142,7 @@ const TaskFeedCard = ({
             {taskColumnName}
 
             <Typography.Text
-              className="break-all text-primary text-sm"
+              className="break-all header-link text-sm"
               data-testid="entity-link">
               {getNameFromFQN(entityFQN)}
             </Typography.Text>
@@ -302,7 +302,7 @@ const TaskFeedCard = ({
             />
           )}
           <Col
-            className="task-feed-card-footer  d-flex align-center justify-between"
+            className="task-feed-card-footer  d-flex flex-wrap align-center justify-between"
             span={24}>
             <Col className="d-flex">
               <Col className="d-flex flex-center">

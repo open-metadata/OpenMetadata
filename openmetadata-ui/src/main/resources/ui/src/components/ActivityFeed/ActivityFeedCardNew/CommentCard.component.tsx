@@ -82,7 +82,7 @@ const CommentCard = ({ feed, post, isLastReply }: CommentCardInterface) => {
 
     return (
       <RichTextEditorPreviewerV1
-        className="text-wrap"
+        className="text-wrap text-xs"
         markdown={getFrontEndFormat(post.message)}
       />
     );

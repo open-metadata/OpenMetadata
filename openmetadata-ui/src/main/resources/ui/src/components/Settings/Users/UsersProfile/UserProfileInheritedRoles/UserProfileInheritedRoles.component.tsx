@@ -26,7 +26,7 @@ const UserProfileInheritedRoles = ({
 
   return (
     <div
-      className="d-flex flex-col  w-full  p-[20px] user-profile-card p-0 m-b-0"
+      className="d-flex flex-col  w-full  p-[20px]  p-0 m-b-0"
       data-testid="user-profile-inherited-roles">
       <div className="user-profile-card-header d-flex items-center justify-start gap-2 w-full">
         <div className="d-flex flex-center user-page-icon">
