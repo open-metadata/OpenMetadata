@@ -185,7 +185,7 @@ class LookerSource(DashboardServiceSource):
     Its client uses Looker 40 from the SDK: client = looker_sdk.init40()
     """
 
-    # pylint: disable=too-many-instance-attributes
+    # pylint: disable=too-many-instance-attributes, too-many-public-methods
 
     config: WorkflowSource
     metadata: OpenMetadata
@@ -1196,3 +1196,7 @@ class LookerSource(DashboardServiceSource):
                     stackTrace=traceback.format_exc(),
                 )
             )
+
+    def close(self):
+        self.metadata.compute_percentile(Dashboard, self.today)
+        self.metadata.close()

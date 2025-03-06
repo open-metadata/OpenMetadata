@@ -1,12 +1,15 @@
 """
 Test Tableau Dashboard
 """
-
+import uuid
+from datetime import datetime, timedelta
+from types import SimpleNamespace
 from unittest import TestCase
 from unittest.mock import patch
 
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
+from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.services.dashboardService import (
     DashboardConnection,
     DashboardService,
@@ -16,6 +19,11 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
 from metadata.generated.schema.type.basic import FullyQualifiedEntityName
+from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.generated.schema.type.usageDetails import UsageDetails, UsageStats
+from metadata.generated.schema.type.usageRequest import UsageRequest
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.source.dashboard.dashboard_service import DashboardUsage
 from metadata.ingestion.source.dashboard.tableau.metadata import (
     TableauDashboard,
     TableauSource,
@@ -179,9 +187,12 @@ class TableauUnitTest(TestCase):
         self.config = OpenMetadataWorkflowConfig.model_validate(mock_tableau_config)
         self.tableau = TableauSource.create(
             mock_tableau_config["source"],
-            self.config.workflowConfig.openMetadataServerConfig,
+            OpenMetadata(self.config.workflowConfig.openMetadataServerConfig),
         )
-        self.tableau.context.__dict__["dashboard_service"] = MOCK_DASHBOARD_SERVICE
+        self.tableau.client = SimpleNamespace()
+        self.tableau.context.get().__dict__[
+            "dashboard_service"
+        ] = MOCK_DASHBOARD_SERVICE.fullyQualifiedName.root
 
     def test_dashboard_name(self):
         assert self.tableau.get_dashboard_name(MOCK_DASHBOARD) == MOCK_DASHBOARD.name
@@ -198,3 +209,104 @@ class TableauUnitTest(TestCase):
 
         for _, (exptected, original) in enumerate(zip(EXPECTED_CHARTS, chart_list)):
             self.assertEqual(exptected, original)
+
+    def test_yield_dashboard_usage(self):
+        """
+        Validate the logic for existing or new usage
+        """
+        self.tableau.context.get().__dict__["dashboard"] = "dashboard_name"
+        self.tableau.client.get_workbook_view_count_by_id = lambda workbook_id: 10
+
+        # Start checking dashboard without usage
+        # and a view count
+        return_value = Dashboard(
+            id=uuid.uuid4(),
+            name="dashboard_name",
+            fullyQualifiedName="dashboard_service.dashboard_name",
+            service=EntityReference(id=uuid.uuid4(), type="dashboardService"),
+        )
+        with patch.object(OpenMetadata, "get_by_name", return_value=return_value):
+            got_usage = next(self.tableau.yield_dashboard_usage(MOCK_DASHBOARD))
+            self.assertEqual(
+                got_usage.right,
+                DashboardUsage(
+                    dashboard=return_value,
+                    usage=UsageRequest(date=self.tableau.today, count=10),
+                ),
+            )
+
+        # Now check what happens if we already have some summary data for today
+        return_value = Dashboard(
+            id=uuid.uuid4(),
+            name="dashboard_name",
+            fullyQualifiedName="dashboard_service.dashboard_name",
+            service=EntityReference(id=uuid.uuid4(), type="dashboardService"),
+            usageSummary=UsageDetails(
+                dailyStats=UsageStats(count=10), date=self.tableau.today
+            ),
+        )
+        with patch.object(OpenMetadata, "get_by_name", return_value=return_value):
+            # Nothing is returned
+            self.assertEqual(
+                len(list(self.tableau.yield_dashboard_usage(MOCK_DASHBOARD))), 0
+            )
+
+        # But if we have usage for today but the count is 0, we'll return the details
+        return_value = Dashboard(
+            id=uuid.uuid4(),
+            name="dashboard_name",
+            fullyQualifiedName="dashboard_service.dashboard_name",
+            service=EntityReference(id=uuid.uuid4(), type="dashboardService"),
+            usageSummary=UsageDetails(
+                dailyStats=UsageStats(count=0), date=self.tableau.today
+            ),
+        )
+        with patch.object(OpenMetadata, "get_by_name", return_value=return_value):
+            self.assertEqual(
+                next(self.tableau.yield_dashboard_usage(MOCK_DASHBOARD)).right,
+                DashboardUsage(
+                    dashboard=return_value,
+                    usage=UsageRequest(date=self.tableau.today, count=10),
+                ),
+            )
+
+        # But if we have usage for another day, then we do the difference
+        return_value = Dashboard(
+            id=uuid.uuid4(),
+            name="dashboard_name",
+            fullyQualifiedName="dashboard_service.dashboard_name",
+            service=EntityReference(id=uuid.uuid4(), type="dashboardService"),
+            usageSummary=UsageDetails(
+                dailyStats=UsageStats(count=5),
+                date=datetime.strftime(datetime.now() - timedelta(1), "%Y-%m-%d"),
+            ),
+        )
+        with patch.object(OpenMetadata, "get_by_name", return_value=return_value):
+            self.assertEqual(
+                next(self.tableau.yield_dashboard_usage(MOCK_DASHBOARD)).right,
+                DashboardUsage(
+                    dashboard=return_value,
+                    usage=UsageRequest(date=self.tableau.today, count=5),
+                ),
+            )
+
+        # If the past usage is higher than what we have today, something weird is going on
+        # we don't return usage but don't explode
+        return_value = Dashboard(
+            id=uuid.uuid4(),
+            name="dashboard_name",
+            fullyQualifiedName="dashboard_service.dashboard_name",
+            service=EntityReference(id=uuid.uuid4(), type="dashboardService"),
+            usageSummary=UsageDetails(
+                dailyStats=UsageStats(count=1000),
+                date=datetime.strftime(datetime.now() - timedelta(1), "%Y-%m-%d"),
+            ),
+        )
+        with patch.object(OpenMetadata, "get_by_name", return_value=return_value):
+            self.assertEqual(
+                len(list(self.tableau.yield_dashboard_usage(MOCK_DASHBOARD))), 1
+            )
+
+            self.assertIsNotNone(
+                list(self.tableau.yield_dashboard_usage(MOCK_DASHBOARD))[0].left
+            )
