@@ -9,7 +9,7 @@ GENERATED ALWAYS AS (json ->> 'status') STORED;
 
 ALTER TABLE workflow_instance_time_series
 ADD COLUMN entityLink VARCHAR(255) GENERATED ALWAYS AS
-((jsonb -> 'variables' ->> 'global_relatedEntity')) STORED;
+((json -> 'variables' ->> 'global_relatedEntity')) STORED;
 
 
 ALTER TABLE workflow_instance_state_time_series
