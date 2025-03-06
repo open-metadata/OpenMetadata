@@ -27,6 +27,7 @@ import { isEmpty, lowerCase } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { ReactComponent as IconDelete } from '../../../assets/svg/ic-delete.svg';
 import { ReactComponent as IconDropdown } from '../../../assets/svg/menu.svg';
+import { AUTO_CLASSIFICATION_DOCS } from '../../../constants/docs.constants';
 import { mockDatasetData } from '../../../constants/mockTourData.constants';
 import { useTourProvider } from '../../../context/TourProvider/TourProvider';
 import { EntityType } from '../../../enums/entity.enum';
