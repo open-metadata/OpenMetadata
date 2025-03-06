@@ -34,7 +34,7 @@ import './total-data-assets-widget.less';
 
 function TotalDataAssetsWidget({
   serviceName,
-}: ServiceInsightWidgetCommonProps) {
+}: Readonly<ServiceInsightWidgetCommonProps>) {
   const { t } = useTranslation();
   const { serviceCategory } = useParams<{
     serviceCategory: ServiceTypes;
