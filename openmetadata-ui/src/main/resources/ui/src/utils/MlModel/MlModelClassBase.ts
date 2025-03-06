@@ -65,9 +65,9 @@ class MlModelDetailsClassBase {
 
   public getMlModelDetailPageTabsIds(): Tab[] {
     return [
-      EntityTabs.OVERVIEW,
-      EntityTabs.EXPRESSION,
+      EntityTabs.FEATURES,
       EntityTabs.ACTIVITY_FEED,
+      EntityTabs.DETAILS,
       EntityTabs.LINEAGE,
       EntityTabs.CUSTOM_PROPERTIES,
     ].map((tab: EntityTabs) => ({
@@ -75,12 +75,12 @@ class MlModelDetailsClassBase {
       name: tab,
       displayName: getTabLabelFromId(tab),
       layout: this.getDefaultLayout(tab),
-      editable: tab === EntityTabs.OVERVIEW,
+      editable: tab === EntityTabs.FEATURES,
     }));
   }
 
   public getDefaultLayout(tab?: EntityTabs): Layout[] {
-    if (tab && tab !== EntityTabs.OVERVIEW) {
+    if (tab && tab !== EntityTabs.FEATURES) {
       return [];
     }
 
