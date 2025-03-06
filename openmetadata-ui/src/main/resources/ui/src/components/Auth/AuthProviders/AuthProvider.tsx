@@ -38,6 +38,7 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
+import { UN_AUTHORIZED_EXCLUDED_PATHS } from '../../../constants/Auth.constants';
 import {
   DEFAULT_DOMAIN_VALUE,
   ES_MAX_PAGE_SIZE,
@@ -524,7 +525,7 @@ export const AuthProvider = ({
           if (status === ClientErrors.UNAUTHORIZED) {
             // For login or refresh we don't want to fire another refresh req
             // Hence rejecting it
-            if (['/users/refresh', '/users/login'].includes(error.config.url)) {
+            if (UN_AUTHORIZED_EXCLUDED_PATHS.includes(error.config.url)) {
               return Promise.reject(error as Error);
             }
             handleStoreProtectedRedirectPath();
