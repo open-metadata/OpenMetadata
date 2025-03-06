@@ -2993,6 +2993,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       ChangeSummaryMap current =
           Optional.ofNullable(original.getChangeDescription())
               .map(ChangeDescription::getChangeSummary)
+              .map(changeSummaryMap -> JsonUtils.deepCopy(changeSummaryMap, ChangeSummaryMap.class))
               .orElse(new ChangeSummaryMap());
 
       Map<String, ChangeSummary> addedSummaries =
@@ -3849,7 +3850,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
           continue;
         }
 
-        updateColumnDescription(stored, updated);
+        updateColumnDescription(fieldName, stored, updated);
         updateColumnDisplayName(stored, updated);
         updateColumnDataLength(stored, updated);
         updateColumnPrecision(stored, updated);
@@ -3871,13 +3872,15 @@ public abstract class EntityRepository<T extends EntityInterface> {
       majorVersionChange = majorVersionChange || !deletedColumns.isEmpty();
     }
 
-    private void updateColumnDescription(Column origColumn, Column updatedColumn) {
+    private void updateColumnDescription(
+        String fieldName, Column origColumn, Column updatedColumn) {
       if (operation.isPut() && !nullOrEmpty(origColumn.getDescription()) && updatedByBot()) {
         // Revert the non-empty task description if being updated by a bot
         updatedColumn.setDescription(origColumn.getDescription());
         return;
       }
-      String columnField = getColumnField(origColumn, FIELD_DESCRIPTION);
+      String columnField =
+          EntityUtil.getFieldName(fieldName, origColumn.getName(), FIELD_DESCRIPTION);
       recordChange(columnField, origColumn.getDescription(), updatedColumn.getDescription());
     }
 
