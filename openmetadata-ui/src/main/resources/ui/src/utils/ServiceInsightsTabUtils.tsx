@@ -10,10 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { t } from 'i18next';
 import { ServiceTypes } from 'Models';
 import { SystemChartType } from '../enums/DataInsight.enum';
 import { EntityType } from '../enums/entity.enum';
+import i18n from '../utils/i18next/LocalUtil';
+
+const { t } = i18n;
 
 export const getAssetsByServiceType = (serviceType: ServiceTypes): string[] => {
   switch (serviceType) {
