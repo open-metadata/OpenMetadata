@@ -23,14 +23,14 @@
 .data-asset-header-metadata {
   height: 102px;
   border-radius: 12px;
-  border: 0.5px solid #d5d7da;
+  border: 0.5px solid @grey-300;
   padding: 24px 20px 24px 20px;
   gap: 50px;
-  background-color: white;
+  background-color: @background-color;
 }
 .ant-space-item {
   .entity-no-tier {
-    color: #175cd3;
+    color: @blue-heading;
     font-weight: 500;
     font-size: 14px;
     line-height: 20px;
@@ -38,20 +38,35 @@
 }
 
 .ant-btn-icon-only.edit-tier-button {
-  border: 1px solid @border-color-new;
+  border: 1px solid @border-light;
   svg {
     color: #535862;
   }
 }
+
 .ant-typography > .extra-info-label-heading {
-  color: #175cd3;
+  color: @blue-heading;
   font-weight: 500;
+}
+
+.ant-typography > .extra-info-value {
+  color: @grey-700;
 }
 .ant-typography {
   .showAsATag {
-    background-color: #f0f5ff;
+    background-color: @background-primary;
     padding: 4px 8px;
     border-radius: 8px;
     font-weight: 400;
+    color: @tag-text;
   }
+}
+.header-icon {
+  height: 72px;
+  width: 60px;
+  object-fit: contain;
+}
+
+.no-tier-text {
+  color: @grey-700;
 }

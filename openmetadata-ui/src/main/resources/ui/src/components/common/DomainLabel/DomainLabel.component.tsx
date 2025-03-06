@@ -47,7 +47,7 @@ export const DomainLabel = ({
   textClassName,
   showDomainHeading = false,
   multiple = false,
-  isNewDesign = false,
+  headerLayout = false,
   onUpdate,
 }: DomainLabelProps) => {
   const { t } = useTranslation();
@@ -122,7 +122,7 @@ export const DomainLabel = ({
 
         return (
           <div className="d-flex items-center gap-2" key={domain.id}>
-            {!isNewDesign && (
+            {!headerLayout && (
               <Typography.Text className="self-center text-xs whitespace-nowrap">
                 <DomainIcon
                   className="d-flex"
@@ -147,7 +147,7 @@ export const DomainLabel = ({
       return (
         <Typography.Text
           className={classNames(
-            'domain-link',
+            'domain-link-text',
             { 'text-sm font-medium': !showDomainHeading },
             textClassName
           )}
@@ -176,7 +176,7 @@ export const DomainLabel = ({
       return (
         <>
           <div className="d-flex text-sm  font-medium items-center m-b-xs">
-            {!isNewDesign ? (
+            {!headerLayout ? (
               <Typography.Text className="right-panel-label m-r-xss">
                 {t('label.domain')}
               </Typography.Text>
@@ -198,23 +198,25 @@ export const DomainLabel = ({
     }
 
     return (
-      <div className={`d-flex   flex-col ${!isNewDesign && 'justify-center'}`}>
-        {isNewDesign && (
-          <div className="d-flex text-sm font-medium  m-b-xs">
+      <div
+        className={`d-flex   flex-col gap-1 ${
+          !headerLayout && 'justify-center'
+        }`}>
+        {headerLayout && (
+          <div className="d-flex text-sm font-medium items-center ">
             <Typography.Text className="domain-link right-panel-label m-r-xss">
               {t('label.domain')}
             </Typography.Text>
             {selectableList}
           </div>
         )}
-        {(!isNewDesign || (activeDomain.length > 0 && isNewDesign)) && (
-          <div
-            className="d-flex items-center gap-2 flex-wrap"
-            data-testid="header-domain-container">
-            {domainLink}
-            {!isNewDesign && selectableList}
-          </div>
-        )}
+
+        <div
+          className="d-flex no-underline items-center gap-2 flex-wrap"
+          data-testid="header-domain-container">
+          {domainLink}
+          {!headerLayout && selectableList}
+        </div>
       </div>
     );
   }, [activeDomain, hasPermission, selectableList]);

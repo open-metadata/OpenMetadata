@@ -111,7 +111,10 @@ export const ExtraInfoLabel = ({
       {!isEmpty(label) && (
         <span className="extra-info-label-heading">{`${label}: `}</span>
       )}
-      <span className={`font-medium ${showAsATag ? 'showAsATag' : ''}`}>
+      <span
+        className={`font-medium extra-info-value ${
+          showAsATag ? 'showAsATag' : ''
+        }`}>
         {value}
       </span>
     </Typography.Text>
@@ -205,7 +208,7 @@ export const DataAssetsHeader = ({
 
     return serviceType ? (
       <img
-        className="h-9"
+        className="header-icon"
         src={serviceUtilClassBase.getServiceTypeLogo(
           dataAsset as SearchSourceAlias
         )}
@@ -455,7 +458,13 @@ export const DataAssetsHeader = ({
                 certification={(dataAsset as Table)?.certification}
                 deleted={dataAsset?.deleted}
                 displayName={dataAsset.displayName}
+                entityType={entityType}
+                excludeEntityService={excludeEntityService}
+                followers={followers}
+                handleFollowingClick={handleFollowingClick}
                 icon={icon}
+                isFollowing={isFollowing}
+                isFollowingLoading={isFollowingLoading}
                 name={dataAsset?.name}
                 serviceName={dataAssetServiceName}
               />
@@ -560,7 +569,7 @@ export const DataAssetsHeader = ({
             {showDomain && (
               <>
                 <DomainLabel
-                  isNewDesign
+                  headerLayout
                   afterDomainUpdateAction={afterDomainUpdateAction}
                   domain={(dataAsset as EntitiesWithDomainField).domain}
                   entityFqn={dataAsset.fullyQualifiedName ?? ''}
@@ -572,7 +581,7 @@ export const DataAssetsHeader = ({
               </>
             )}
             <OwnerLabel
-              isNewDesign
+              isCompactView
               hasPermission={editOwnerPermission}
               maxVisibleOwners={4}
               owners={dataAsset?.owners}
@@ -618,27 +627,34 @@ export const DataAssetsHeader = ({
                     />
                   </div>
                 ) : (
-                  <>
-                    <span className="entity-no-tier " data-testid="Tier">
-                      {t('label.tier')}
+                  <div className="">
+                    <div className="d-flex items-center gap-1">
+                      <span className="entity-no-tier">{t('label.tier')}</span>
+                      {editTierPermission && (
+                        <Tooltip
+                          title={t('label.edit-entity', {
+                            entity: t('label.tier'),
+                          })}>
+                          <Button
+                            className="flex-center edit-tier-button"
+                            data-testid="edit-tier"
+                            icon={
+                              <EditIcon color={DE_ACTIVE_COLOR} width="14px" />
+                            }
+                            size="small"
+                            type="text"
+                          />
+                        </Tooltip>
+                      )}
+                    </div>
+                    <span
+                      className="font-medium no-tier-text text-sm"
+                      data-testid="Tier">
+                      {t('label.no-entity', {
+                        entity: t('label.tier'),
+                      })}
                     </span>
-                    {editTierPermission && (
-                      <Tooltip
-                        title={t('label.edit-entity', {
-                          entity: t('label.tier'),
-                        })}>
-                        <Button
-                          className="flex-center edit-tier-button"
-                          data-testid="edit-tier"
-                          icon={
-                            <EditIcon color={DE_ACTIVE_COLOR} width="14px" />
-                          }
-                          size="small"
-                          type="text"
-                        />
-                      </Tooltip>
-                    )}
-                  </>
+                  </div>
                 )}
               </Space>
             </TierCard>

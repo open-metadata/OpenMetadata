@@ -10,13 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ExclamationCircleFilled } from '@ant-design/icons';
-import { Badge, Col, Divider, Row, Typography } from 'antd';
-import { isEmpty } from 'lodash';
+import Icon, { ExclamationCircleFilled } from '@ant-design/icons';
+import { Badge, Button, Col, Divider, Row, Tooltip, Typography } from 'antd';
+import { capitalize, isEmpty } from 'lodash';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as IconExternalLink } from '../../../assets/svg/external-link-grey.svg';
+import { ReactComponent as StarFilledIcon } from '../../../assets/svg/ic-star-filled.svg';
 import { TEXT_COLOR } from '../../../constants/Color.constants';
 import { ROUTES } from '../../../constants/constants';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
@@ -24,7 +25,6 @@ import { stringToHTML } from '../../../utils/StringsUtils';
 import CertificationTag from '../../common/CertificationTag/CertificationTag';
 import './entity-header-title.less';
 import { EntityHeaderTitleProps } from './EntityHeaderTitle.interface';
-
 const EntityHeaderTitle = ({
   icon,
   name,
@@ -39,6 +39,11 @@ const EntityHeaderTitle = ({
   color,
   showName = true,
   certification,
+  excludeEntityService,
+  isFollowing,
+  isFollowingLoading,
+  handleFollowingClick,
+  entityType,
 }: EntityHeaderTitleProps) => {
   const { t } = useTranslation();
   const location = useCustomLocation();
@@ -55,13 +60,7 @@ const EntityHeaderTitle = ({
       data-testid={`${serviceName}-${name}`}
       gutter={12}
       wrap={false}>
-      {icon && (
-        <Col
-          className="flex-center "
-          style={{ width: '44px', height: '48px', objectFit: 'contain' }}>
-          {icon}
-        </Col>
-      )}
+      {icon && <Col className="flex-center ">{icon}</Col>}
       <Col
         className={`d-flex flex-col gap-2 ${
           deleted || badge ? 'w-max-full-140' : 'entity-header-content'
@@ -75,21 +74,42 @@ const EntityHeaderTitle = ({
           </Typography.Text>
         ) : null}
 
-        {/* It will render displayName fallback to name */}
-        <Typography.Text
-          className="m-b-0 d-block entity-header-display-name text-md font-regular"
-          data-testid="entity-header-display-name"
-          ellipsis={{ tooltip: true }}
-          style={{ color: color ?? TEXT_COLOR }}>
-          {stringToHTML(displayName || name)}
-          {openEntityInNewPage && (
-            <IconExternalLink
-              className="anticon vertical-baseline m-l-xss"
-              height={14}
-              width={14}
-            />
+        <div className="d-flex gap-2 align-center">
+          <Typography.Text
+            className="m-b-0 subheading text-md font-medium"
+            data-testid="entity-header-display-name"
+            ellipsis={{ tooltip: true }}
+            style={{ color: color ?? TEXT_COLOR }}>
+            {stringToHTML(displayName || name)}
+            {openEntityInNewPage && (
+              <IconExternalLink
+                className="anticon vertical-baseline m-l-xss"
+                height={14}
+                width={14}
+              />
+            )}
+          </Typography.Text>
+
+          {!excludeEntityService && (
+            <Tooltip
+              title={t('label.field-entity', {
+                field: t(`label.${isFollowing ? 'un-follow' : 'follow'}`),
+                entity: capitalize(entityType),
+              })}>
+              <Button
+                className="entity-follow-button text-sm "
+                data-testid="entity-follow-button"
+                disabled={deleted}
+                icon={<Icon component={StarFilledIcon} />}
+                loading={isFollowingLoading}
+                onClick={handleFollowingClick}>
+                <Typography.Text>
+                  {isFollowing ? 'Following' : 'Follow'}
+                </Typography.Text>
+              </Button>
+            </Tooltip>
           )}
-        </Typography.Text>
+        </div>
       </Col>
       {certification && (
         <Col className="text-xs">

@@ -42,7 +42,6 @@ const TagsV1 = ({
   tagType,
   size,
   isEditTags,
-  isNewDesign = false,
 }: TagsV1Props) => {
   const color = useMemo(
     () => (isVersionPage ? undefined : tag.style?.color),
@@ -111,21 +110,20 @@ const TagsV1 = ({
       <div className="d-flex w-full h-full">
         {tagColorBar}
         <div className="d-flex items-center p-x-xs w-full">
-          {!isNewDesign && (
-            <>
-              {tag.style?.iconURL ? (
-                <img
-                  className="m-r-xss"
-                  data-testid="icon"
-                  height={12}
-                  src={tag.style.iconURL}
-                  width={12}
-                />
-              ) : (
-                startIcon
-              )}
-            </>
-          )}
+          <>
+            {tag.style?.iconURL ? (
+              <img
+                className="m-r-xss"
+                data-testid="icon"
+                height={12}
+                src={tag.style.iconURL}
+                width={12}
+              />
+            ) : (
+              startIcon
+            )}
+          </>
+
           <Typography.Paragraph
             ellipsis
             className="m-0 tags-label"

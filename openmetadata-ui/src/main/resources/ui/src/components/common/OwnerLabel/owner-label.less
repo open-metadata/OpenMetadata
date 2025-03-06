@@ -34,7 +34,7 @@
 }
 
 .ant-btn.more-owners-button {
-  background-color: #f9f5ff;
+  background-color: @background-tertiary;
   height: 32px;
   width: 32px;
   border-radius: 200px;
@@ -42,7 +42,7 @@
   text-decoration: none;
   margin-left: -4px;
   &:hover {
-    background-color: #f9f5ff;
+    background-color: @background-quinary;
   }
 }
 .extra-avatar {
@@ -55,7 +55,7 @@
 }
 .no-owner.ant-typography,
 .more-owners-button.ant-typography {
-  color: #175cd3;
+  color: @blue-heading;
 }
 
 .owner-avatar-container {
@@ -74,11 +74,16 @@
 
 .owner-dropdown-container {
   background-color: @background-color;
-  z-index: 1;
   position: absolute;
   width: 200px;
   border-radius: 8px;
   border: 1px solid @border-color;
-  height: 250px;
+  max-height: 250px;
   overflow-y: auto;
+}
+.owner-label-heading {
+  height: fit-content;
+}
+.no-owner-text {
+  color: @grey-700;
 }

@@ -30,6 +30,7 @@ import { UserTeamSelectableList } from '../UserTeamSelectableList/UserTeamSelect
 import './owner-label.less';
 
 import { ReactComponent as InheritIcon } from '../../../assets/svg/ic-inherit.svg';
+import UserPopOverCard from '../PopOverCard/UserPopOverCard';
 
 export const OwnerLabel = ({
   owners = [],
@@ -44,7 +45,7 @@ export const OwnerLabel = ({
     team: false,
   },
   tooltipText,
-  isNewDesign = false,
+  isCompactView = false,
 }: {
   owners?: EntityReference[];
   className?: string;
@@ -58,7 +59,7 @@ export const OwnerLabel = ({
     team: boolean;
   };
   tooltipText?: string;
-  isNewDesign?: boolean;
+  isCompactView?: boolean;
 }) => {
   const { t } = useTranslation();
   const [showAllOwners, setShowAllOwners] = useState(false);
@@ -74,18 +75,18 @@ export const OwnerLabel = ({
 
     return (
       <div
-        className={`d-flex   gap-2 ${
-          isNewDesign ? 'items-start' : 'items-center'
+        className={`d-flex  owner-label-heading gap-2 ${
+          isCompactView ? 'items-center' : 'items-center'
         }`}
         data-testid="owner-label">
         {hasOwners ? (
           <div
             className={classNames(
-              `d-inline-flex ${isNewDesign ? 'flex-col' : 'flex-wrap'} gap-2`,
+              `d-inline-flex ${isCompactView ? 'flex-col' : 'flex-wrap'} gap-2`,
               { inherited: Boolean(owners.some((owner) => owner?.inherited)) },
               className
             )}>
-            {isNewDesign && (
+            {isCompactView && (
               <div className="d-flex items-center gap-2">
                 <Typography.Text
                   className={classNames(
@@ -108,7 +109,7 @@ export const OwnerLabel = ({
                 )}
               </div>
             )}
-            <div className={`d-flex items-center ${!isNewDesign && 'gap-2'}`}>
+            <div className={`d-flex items-center ${!isCompactView && 'gap-2'}`}>
               {visibleOwners.map((owner, index) => {
                 const displayName = getEntityName(owner);
                 const profilePicture =
@@ -169,12 +170,12 @@ export const OwnerLabel = ({
                     className="d-inline-flex items-center owner-avatar-container gap-1"
                     key={owner.id}
                     style={{
-                      marginLeft: index === 0 || !isNewDesign ? 0 : '-4px',
+                      marginLeft: index === 0 || !isCompactView ? 0 : '-4px',
                     }}>
-                    {isNewDesign ? (
-                      <Tooltip title={displayName}>
+                    {isCompactView ? (
+                      <UserPopOverCard userName={owner.name ?? ''}>
                         <Link
-                          className=" d-flex"
+                          className="d-flex"
                           data-testid="owner-link"
                           to={
                             owner.type === OwnerType.TEAM
@@ -185,7 +186,7 @@ export const OwnerLabel = ({
                           }>
                           {profilePicture}
                         </Link>
-                      </Tooltip>
+                      </UserPopOverCard>
                     ) : (
                       <>
                         <div className="owner-avatar-icon d-flex">
@@ -202,7 +203,7 @@ export const OwnerLabel = ({
               })}
               {remainingOwnersCount > 0 && (
                 <div className="relative">
-                  {!isNewDesign ? (
+                  {!isCompactView ? (
                     <Button
                       className={`${
                         !showAllOwners ? 'more-owners-button' : ''
@@ -210,7 +211,7 @@ export const OwnerLabel = ({
                       size="small"
                       type="link"
                       onClick={() => {
-                        if (!isNewDesign) {
+                        if (!isCompactView) {
                           setShowAllOwners((prev) => !prev);
                         }
                       }}>
@@ -222,18 +223,20 @@ export const OwnerLabel = ({
                         items: owners.slice(maxVisibleOwners).map((owner) => ({
                           key: owner.id,
                           label: (
-                            <div className="flex items-center gap-2">
-                              <div className="relative">
-                                <ProfilePicture
-                                  displayName={getEntityName(owner)}
-                                  key="profile-picture"
-                                  name={owner.name ?? ''}
-                                  type="circle"
-                                  width="32"
-                                />
+                            <UserPopOverCard userName={owner.name ?? ''}>
+                              <div className="flex items-center gap-2">
+                                <div className="relative">
+                                  <ProfilePicture
+                                    displayName={getEntityName(owner)}
+                                    key="profile-picture"
+                                    name={owner.name ?? ''}
+                                    type="circle"
+                                    width="32"
+                                  />
+                                </div>
+                                <span>{getEntityName(owner)}</span>
                               </div>
-                              <span>{getEntityName(owner)}</span>
-                            </div>
+                            </UserPopOverCard>
                           ),
                         })),
                         className: 'owner-dropdown-container',
@@ -247,7 +250,7 @@ export const OwnerLabel = ({
                         size="small"
                         type="link"
                         onClick={() => {
-                          if (!isNewDesign) {
+                          if (!isCompactView) {
                             setShowAllOwners((prev) => !prev);
                           }
                         }}>
@@ -260,28 +263,51 @@ export const OwnerLabel = ({
             </div>
           </div>
         ) : (
-          <div className="d-inline-flex items-center gap-1">
-            <div className="owner-avatar-icon d-flex">
-              {!isNewDesign && (
-                <Icon
-                  component={IconUser}
-                  data-testid="no-owner-icon"
-                  style={{ fontSize: '18px' }}
+          <div className="flex flex-col gap-1">
+            <div className="d-flex items-center gap-1">
+              {!isCompactView && (
+                <div className="owner-avatar-icon d-flex">
+                  <Icon
+                    component={IconUser}
+                    data-testid="no-owner-icon"
+                    style={{ fontSize: '18px' }}
+                  />
+                </div>
+              )}
+              <Typography.Text
+                className={classNames(
+                  'no-owner font-medium text-sm',
+                  className
+                )}
+                data-testid="owner-link">
+                {placeHolder ??
+                  (isCompactView
+                    ? t('label.owner-plural')
+                    : t('label.no-entity', {
+                        entity: t('label.owner-plural'),
+                      }))}
+              </Typography.Text>
+              {isCompactView && !hasOwners && onUpdate && (
+                <UserTeamSelectableList
+                  hasPermission={Boolean(hasPermission)}
+                  multiple={multiple}
+                  owner={owners}
+                  tooltipText={tooltipText}
+                  onUpdate={(updatedUsers) => {
+                    onUpdate(updatedUsers);
+                  }}
                 />
               )}
             </div>
-            <Typography.Text
-              className={classNames('no-owner font-medium text-sm', className)}
-              data-testid="owner-link">
-              {placeHolder ??
-                (isNewDesign
-                  ? t('label.owner-plural')
-                  : t('label.no-entity', { entity: t('label.owner-plural') }))}
-            </Typography.Text>
+
+            <div className="no-owner-text text-sm font-medium">
+              {isCompactView &&
+                t('label.no-entity', { entity: t('label.owner-plural') })}
+            </div>
           </div>
         )}
 
-        {(!isNewDesign || (isNewDesign && !hasOwners)) && onUpdate && (
+        {!isCompactView && onUpdate && (
           <UserTeamSelectableList
             hasPermission={Boolean(hasPermission)}
             multiple={multiple}
@@ -304,7 +330,7 @@ export const OwnerLabel = ({
     placeHolder,
     t,
     ownerDisplayName,
-    isNewDesign,
+    isCompactView,
     isDropdownOpen,
   ]);
 
