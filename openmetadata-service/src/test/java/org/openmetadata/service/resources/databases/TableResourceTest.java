@@ -1988,9 +1988,14 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
 
   @Test
   void patch_withChangeSource(TestInfo test) throws IOException {
+    Column nestedColumns = getColumn("testNested", INT, null);
     CreateTable create =
         createRequest(test)
-            .withColumns(List.of(getColumn(C1, INT, null), getColumn(C2, BIGINT, null)));
+            .withColumns(
+                List.of(
+                    getColumn(C1, INT, null),
+                    getColumn(C2, BIGINT, null),
+                    getColumn("withNested", STRUCT, null).withChildren(List.of(nestedColumns))));
     Table table = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
 
     Table updated = JsonUtils.deepCopy(table, Table.class);
@@ -2074,6 +2079,35 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
             .get(
                 FullyQualifiedName.build(
                     "columns", automatedUpdate.getColumns().get(0).getName(), "description")));
+
+    Table nestedColumnUpdate = JsonUtils.deepCopy(columnDelete, Table.class);
+    nestedColumnUpdate
+        .getColumns()
+        .get(1)
+        .getChildren()
+        .get(0)
+        .setDescription("nested description");
+    nestedColumnUpdate =
+        patchEntity(
+            table.getId(),
+            JsonUtils.pojoToJson(columnDelete),
+            nestedColumnUpdate,
+            ADMIN_AUTH_HEADERS,
+            ChangeSource.AUTOMATED);
+
+    assertEquals(
+        nestedColumnUpdate
+            .getChangeDescription()
+            .getChangeSummary()
+            .getAdditionalProperties()
+            .get(
+                FullyQualifiedName.build(
+                    "columns",
+                    nestedColumnUpdate.getColumns().get(1).getName(),
+                    nestedColumnUpdate.getColumns().get(1).getChildren().get(0).getName(),
+                    "description"))
+            .getChangeSource(),
+        ChangeSource.AUTOMATED);
   }
 
   private void assertChangeSummaryInSearch(EntityInterface entity) throws IOException {
