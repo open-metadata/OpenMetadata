@@ -989,7 +989,8 @@ public class AppResource extends EntityResource<App, AppRepository> {
           @PathParam("name")
           String name,
       @RequestBody(
-              description = "Configuration payload. Keys will be added to the current configuration. Delete keys by setting them to null.",
+              description =
+                  "Configuration payload. Keys will be added to the current configuration. Delete keys by setting them to null.",
               content = @Content(mediaType = MediaType.APPLICATION_JSON))
           Map<String, Object> configPayload) {
     EntityUtil.Fields fields = getFields(String.format("%s,bot,pipelines", FIELD_OWNERS));
