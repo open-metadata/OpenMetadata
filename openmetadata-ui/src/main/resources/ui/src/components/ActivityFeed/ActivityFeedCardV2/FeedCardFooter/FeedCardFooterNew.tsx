@@ -62,8 +62,8 @@ function FeedCardFooterNew({
         <div>
           <div className="flex items-center gap-2  w-full rounded-8">
             {postLength > 0 && !isPost && (
-              <Avatar.Group>
-                {repliedUniqueUsersList.slice(0, 2).map((user) => (
+              <Avatar.Group maxCount={3}>
+                {repliedUniqueUsersList.map((user) => (
                   <ProfilePicture
                     avatarType="outlined"
                     key={user}

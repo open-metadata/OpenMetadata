@@ -28,7 +28,7 @@ export const UserAvatarGroup = ({
   hasPermission,
   ownerDisplayName,
   placeHolder,
-  maxVisibleOwners = 3,
+  maxVisibleOwners = 2,
   avatarSize = 24,
 }: {
   owners?: EntityReference[];
@@ -76,10 +76,7 @@ export const UserAvatarGroup = ({
             { inherited: Boolean(owners.some((owner) => owner?.inherited)) },
             className
           )}>
-          <Avatar.Group
-            className="avatar-group"
-            maxCount={maxVisibleOwners}
-            maxPopoverTrigger="click">
+          <Avatar.Group className="avatar-group">
             {visibleOwners.map((owner) => (
               <div className="avatar-overlap" key={owner.id}>
                 <ProfilePicture
