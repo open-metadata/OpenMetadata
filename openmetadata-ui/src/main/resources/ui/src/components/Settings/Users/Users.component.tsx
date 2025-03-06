@@ -34,6 +34,7 @@ import ActivityFeedProvider from '../../ActivityFeed/ActivityFeedProvider/Activi
 import { ActivityFeedTab } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import Chip from '../../common/Chip/Chip.component';
 import DescriptionV1 from '../../common/EntityDescription/DescriptionV1';
+import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import TabsLabel from '../../common/TabsLabel/TabsLabel.component';
 import EntitySummaryPanel from '../../Explore/EntitySummaryPanel/EntitySummaryPanel.component';
 import { EntityDetailsObjectInterface } from '../../Explore/ExplorePage.interface';
@@ -282,11 +283,15 @@ const Users = ({
             {t('label.description')}
           </Typography.Text>
           <Typography.Paragraph className="m-b-0">
-            {isEmpty(userData.description)
-              ? t('label.no-entity', {
-                  entity: t('label.description'),
-                })
-              : userData.description}
+            {isEmpty(userData.description) ? (
+              t('label.no-entity', {
+                entity: t('label.description'),
+              })
+            ) : (
+              <RichTextEditorPreviewerV1
+                markdown={userData.description ?? ''}
+              />
+            )}
           </Typography.Paragraph>
         </Space>
       ),
