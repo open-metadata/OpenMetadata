@@ -1026,12 +1026,14 @@ export const TaskTabNew = ({
         )}
 
         {isTaskTags && (
-          <TagsTask
-            hasEditAccess={hasEditAccess}
-            isTaskActionEdit={false}
-            task={taskDetails}
-            onChange={(value) => form.setFieldValue('updatedTags', value)}
-          />
+          <div className="tags-details-contianer">
+            <TagsTask
+              hasEditAccess={hasEditAccess}
+              isTaskActionEdit={false}
+              task={taskDetails}
+              onChange={(value) => form.setFieldValue('updatedTags', value)}
+            />
+          </div>
         )}
         {taskThread.task?.status === ThreadTaskStatus.Open && ActionRequired()}
 
