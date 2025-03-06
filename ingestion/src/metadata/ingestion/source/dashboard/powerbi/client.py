@@ -23,6 +23,7 @@ from pydantic import BaseModel, ConfigDict
 from metadata.generated.schema.entity.services.connections.dashboard.powerBIConnection import (
     PowerBIConnection,
 )
+from metadata.generated.schema.type.filterPattern import FilterPattern
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.ometa.client import REST, ClientConfig
 from metadata.ingestion.source.dashboard.powerbi.file_client import PowerBiFileClient
@@ -43,6 +44,7 @@ from metadata.ingestion.source.dashboard.powerbi.models import (
     Workspaces,
     WorkSpaceScanResponse,
 )
+from metadata.utils.filters import validate_regex
 from metadata.utils.logger import utils_logger
 
 logger = utils_logger()
@@ -253,8 +255,91 @@ class PowerBiApiClient:
 
         return None
 
+    def regex_to_odata_condition(self, regex: str) -> str:
+        """
+        Convert a regex pattern to an OData filter condition
+        """
+        try:
+            # Handle empty pattern
+            if not regex:
+                return ""
+
+            # Exact match
+            if regex.startswith("^") and regex.endswith("$"):
+                literal = regex[1:-1]
+                return f"trim(name) eq '{literal}'"
+
+            # Starts with
+            if regex.startswith("^"):
+                remaining = regex[1:]
+                parts = remaining.split(".*", 1)
+                literal = parts[0] if parts else ""
+                return f"startswith(name, '{literal}')"
+
+            # Ends with
+            if regex.endswith("$"):
+                remaining = regex[:-1]
+                parts = remaining.split(".*")
+                literal = parts[-1] if parts else ""
+                return f"endswith(name, '{literal}')"
+
+            # Contains
+            if regex.startswith(".*") and regex.endswith(".*"):
+                parts = regex.split(".*")
+                literal = parts[1] if len(parts) > 1 else ""
+            else:
+                literal = regex
+            return f"contains(name, '{literal}')"
+        except Exception as exc:
+            logger.warning(
+                f"Error converting regex '{regex}' to OData condition: {exc}"
+            )
+            return ""
+
+    def create_filter_query(self, filter_pattern) -> Optional[str]:
+        """
+        Create a complete filter query for workspaces from filter_pattern
+        """
+        try:
+
+            validate_regex(filter_pattern.includes)
+            validate_regex(filter_pattern.excludes)
+            project_to_include = filter_pattern.includes
+            project_to_exclude = filter_pattern.excludes
+            filter_conditions = []
+            if project_to_include:
+                include_conditions = []
+                for pattern in project_to_include:
+                    condition = self.regex_to_odata_condition(pattern)
+                    if condition:
+                        include_conditions.append(f"{condition}")
+
+                if include_conditions:
+                    filter_conditions.append(f"{' or '.join(include_conditions)}")
+
+            if project_to_exclude:
+                exclude_conditions = []
+                for pattern in project_to_exclude:
+                    condition = self.regex_to_odata_condition(pattern)
+                    if condition:
+                        exclude_conditions.append(f"not({condition})")
+
+                if exclude_conditions:
+                    filter_conditions.append(f"{' and '.join(exclude_conditions)}")
+
+            filter_query = " and ".join(filter_conditions) if filter_conditions else ""
+            return filter_query if filter_query else None
+        except Exception as exc:
+            logger.warning(
+                f"Creating filter query from the project filter pattern failed: {exc}. "
+                "The projects will be filtered further inside OpenMetadata."
+            )
+            return None
+
     # pylint: disable=too-many-branches,too-many-statements
-    def fetch_all_workspaces(self) -> Optional[List[Group]]:
+    def fetch_all_workspaces(
+        self, filter_pattern: Optional[FilterPattern] = None
+    ) -> Optional[List[Group]]:
         """Method to fetch all powerbi workspace details
         Returns:
             Group
@@ -293,6 +378,9 @@ class PowerBiApiClient:
                     "$top": str(entities_per_page),
                     "$skip": str(index * entities_per_page),
                 }
+                if filter_pattern:
+                    params_data["$filter"] = self.create_filter_query(filter_pattern)
+
                 response = self.client.get(api_url, data=params_data)
                 if (
                     not response
