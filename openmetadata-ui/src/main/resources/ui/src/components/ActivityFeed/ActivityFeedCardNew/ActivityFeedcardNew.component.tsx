@@ -65,7 +65,6 @@ const ActivityFeedCardNew = ({
   showThread,
   isActive,
   handlePanelResize,
-  isFullWidth,
 }: ActivityFeedCardNewProps) => {
   const { entityFQN, entityType } = useMemo(() => {
     const entityFQN = getEntityFQN(feed.about) ?? '';
@@ -203,8 +202,7 @@ const ActivityFeedCardNew = ({
           'activity-feed-card-new-right-panel m-0 gap-0': showThread || isPost,
         },
         { 'activity-feed-reply-card': isPost },
-        { 'active-card is-active': isActive },
-        { 'max-width-500': !isFullWidth }
+        { 'active-card is-active': isActive }
       )}
       data-testid="feed-card-v2-sidebar">
       <Space align="start" className="w-full">
