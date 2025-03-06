@@ -12,7 +12,6 @@
  */
 import { Button, Col, Row, Skeleton, Space } from 'antd';
 import Card from 'antd/lib/card/Card';
-import { t } from 'i18next';
 import { isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -34,6 +33,7 @@ import { useAuth } from '../../../hooks/authHooks';
 import { usePaging } from '../../../hooks/paging/usePaging';
 import { getAllPersonas } from '../../../rest/PersonaAPI';
 import { getSettingPageEntityBreadCrumb } from '../../../utils/GlobalSettingsUtils';
+import i18n from '../../../utils/i18next/LocalUtil';
 
 const PersonaPageLayout = () => {
   const { isAdminUser } = useAuth();
@@ -90,7 +90,7 @@ const PersonaPageLayout = () => {
       <Col className="h-full text-center" span={24}>
         <ErrorPlaceHolder
           buttonId="add-persona-button"
-          heading={t('label.persona')}
+          heading={i18n.t('label.persona')}
           permission={isAdminUser}
           type={ERROR_PLACEHOLDER_TYPE.CREATE}
           onClick={handleAddNewPersona}
@@ -148,7 +148,7 @@ const PersonaPageLayout = () => {
             data-testid="add-persona-button"
             type="primary"
             onClick={handleAddNewPersona}>
-            {t('label.add-entity', { entity: t('label.persona') })}
+            {i18n.t('label.add-entity', { entity: i18n.t('label.persona') })}
           </Button>
         </Space>
       </Col>
@@ -190,6 +190,6 @@ const PersonaPageLayout = () => {
   );
 };
 
-export const PersonaPage = withPageLayout(t('label.persona-plural'))(
+export const PersonaPage = withPageLayout(i18n.t('label.persona-plural'))(
   PersonaPageLayout
 );

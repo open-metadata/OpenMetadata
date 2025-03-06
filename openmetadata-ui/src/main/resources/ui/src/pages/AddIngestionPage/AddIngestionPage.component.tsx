@@ -12,7 +12,6 @@
  */
 
 import { AxiosError } from 'axios';
-import { t } from 'i18next';
 import { isEmpty } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
@@ -46,6 +45,7 @@ import {
 } from '../../rest/ingestionPipelineAPI';
 import { getServiceByFQN } from '../../rest/serviceAPI';
 import { getEntityMissingError } from '../../utils/CommonUtils';
+import i18n from '../../utils/i18next/LocalUtil';
 import {
   getBreadCrumbsArray,
   getIngestionHeadingName,
@@ -93,8 +93,8 @@ const AddIngestionPage = () => {
           setServiceData(resService as DataObj);
         } else {
           showErrorToast(
-            t('server.entity-fetch-error', {
-              entity: t('label.service-detail-lowercase-plural'),
+            i18n.t('server.entity-fetch-error', {
+              entity: i18n.t('label.service-detail-lowercase-plural'),
             })
           );
         }
@@ -105,8 +105,8 @@ const AddIngestionPage = () => {
         } else {
           showErrorToast(
             error,
-            t('server.entity-fetch-error', {
-              entity: t('label.service-detail-lowercase-plural'),
+            i18n.t('server.entity-fetch-error', {
+              entity: i18n.t('label.service-detail-lowercase-plural'),
             })
           );
         }
@@ -132,8 +132,8 @@ const AddIngestionPage = () => {
           setIngestionAction(IngestionActionMessage.DEPLOYING_ERROR);
           showErrorToast(
             err,
-            t('server.deploy-entity-error', {
-              entity: t('label.ingestion-workflow-lowercase'),
+            i18n.t('server.deploy-entity-error', {
+              entity: i18n.t('label.ingestion-workflow-lowercase'),
             })
           );
         })
@@ -152,8 +152,8 @@ const AddIngestionPage = () => {
             onIngestionDeploy(res.id).finally(() => resolve());
           } else {
             showErrorToast(
-              t('server.create-entity-error', {
-                entity: t('label.ingestion-workflow'),
+              i18n.t('server.create-entity-error', {
+                entity: i18n.t('label.ingestion-workflow'),
               })
             );
             reject();
@@ -163,8 +163,8 @@ const AddIngestionPage = () => {
           if (err.response?.status === 409) {
             showErrorToast(
               err,
-              t('message.entity-already-exists', {
-                entity: t('label.data-asset'),
+              i18n.t('message.entity-already-exists', {
+                entity: i18n.t('label.data-asset'),
               })
             );
             reject();
@@ -175,19 +175,19 @@ const AddIngestionPage = () => {
                   resolve();
                   showErrorToast(
                     err,
-                    t('server.deploy-entity-error', {
-                      entity: t('label.ingestion-workflow'),
+                    i18n.t('server.deploy-entity-error', {
+                      entity: i18n.t('label.ingestion-workflow'),
                     })
                   );
                 } else {
-                  throw t('server.unexpected-response');
+                  throw i18n.t('server.unexpected-response');
                 }
               })
               .catch(() => {
                 showErrorToast(
                   err,
-                  t('server.create-entity-error', {
-                    entity: t('label.ingestion-workflow'),
+                  i18n.t('server.create-entity-error', {
+                    entity: i18n.t('label.ingestion-workflow'),
                   })
                 );
                 reject();
@@ -297,7 +297,9 @@ const AddIngestionPage = () => {
         flex: 0.7,
         className: 'content-resizable-panel-container',
       }}
-      pageTitle={t('label.add-entity', { entity: t('label.ingestion') })}
+      pageTitle={i18n.t('label.add-entity', {
+        entity: i18n.t('label.ingestion'),
+      })}
       secondPanel={{
         children: secondPanelChildren,
         className: 'service-doc-panel content-resizable-panel-container',
@@ -309,7 +311,7 @@ const AddIngestionPage = () => {
 };
 
 export default withPageLayout(
-  t('label.add-entity', {
-    entity: t('label.ingestion'),
+  i18n.t('label.add-entity', {
+    entity: i18n.t('label.ingestion'),
   })
 )(AddIngestionPage);

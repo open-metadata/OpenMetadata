@@ -85,7 +85,11 @@ const BasicSignUp = () => {
 
             {alert && (
               <div className="m-t-lg" style={{ width: '334px' }}>
-                <AlertBar message={alert?.message} type={alert?.type} />
+                <AlertBar
+                  isUnauthenticated
+                  message={alert?.message}
+                  type={alert?.type}
+                />
               </div>
             )}
 

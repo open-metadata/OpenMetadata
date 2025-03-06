@@ -13,7 +13,6 @@
 
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import { t } from 'i18next';
 import { isEmpty } from 'lodash';
 import React, {
   RefObject,
@@ -61,6 +60,7 @@ import {
   updateGlossaryVotes,
 } from '../../../rest/glossaryAPI';
 import Fqn from '../../../utils/Fqn';
+import i18n from '../../../utils/i18next/LocalUtil';
 import { checkPermission } from '../../../utils/PermissionsUtils';
 import { getGlossaryPath } from '../../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
@@ -327,8 +327,8 @@ const GlossaryPage = () => {
       try {
         await deleteGlossary(id);
         showSuccessToast(
-          t('server.entity-deleted-successfully', {
-            entity: t('label.glossary'),
+          i18n.t('server.entity-deleted-successfully', {
+            entity: i18n.t('label.glossary'),
           })
         );
         setIsLoading(true);
@@ -344,8 +344,8 @@ const GlossaryPage = () => {
       } catch (error) {
         showErrorToast(
           error as AxiosError,
-          t('server.delete-entity-error', {
-            entity: t('label.glossary'),
+          i18n.t('server.delete-entity-error', {
+            entity: i18n.t('label.glossary'),
           })
         );
       } finally {
@@ -376,8 +376,8 @@ const GlossaryPage = () => {
           }
           shouldRefreshTerms && fetchGlossaryTermDetails();
         } else {
-          throw t('server.entity-updating-error', {
-            entity: t('label.glossary-term'),
+          throw i18n.t('server.entity-updating-error', {
+            entity: i18n.t('label.glossary-term'),
           });
         }
       } catch (error) {
@@ -393,8 +393,8 @@ const GlossaryPage = () => {
         await deleteGlossaryTerm(id);
 
         showSuccessToast(
-          t('server.entity-deleted-successfully', {
-            entity: t('label.glossary-term'),
+          i18n.t('server.entity-deleted-successfully', {
+            entity: i18n.t('label.glossary-term'),
           })
         );
 
@@ -411,8 +411,8 @@ const GlossaryPage = () => {
       } catch (err) {
         showErrorToast(
           err as AxiosError,
-          t('server.delete-entity-error', {
-            entity: t('label.glossary-term'),
+          i18n.t('server.delete-entity-error', {
+            entity: i18n.t('label.glossary-term'),
           })
         );
       }
@@ -446,7 +446,7 @@ const GlossaryPage = () => {
           buttonId="add-glossary"
           className="mt-0-important"
           doc={GLOSSARIES_DOCS}
-          heading={t('label.glossary')}
+          heading={i18n.t('label.glossary')}
           permission={createGlossaryPermission}
           type={
             createGlossaryPermission
@@ -498,7 +498,7 @@ const GlossaryPage = () => {
         ),
       }}
       hideFirstPanel={isImportAction}
-      pageTitle={t('label.glossary')}
+      pageTitle={i18n.t('label.glossary')}
       secondPanel={{
         children: glossaryElement,
         className: 'content-resizable-panel-container',
@@ -516,7 +516,7 @@ const GlossaryPage = () => {
         flex: 0.7,
       }}
       hideSecondPanel={!previewAsset}
-      pageTitle={t('label.glossary')}
+      pageTitle={i18n.t('label.glossary')}
       secondPanel={{
         children: previewAsset && (
           <EntitySummaryPanel
@@ -536,4 +536,4 @@ const GlossaryPage = () => {
   return <div className="m--t-sm">{resizableLayout}</div>;
 };
 
-export default withPageLayout(t('label.glossary'))(GlossaryPage);
+export default withPageLayout(i18n.t('label.glossary'))(GlossaryPage);

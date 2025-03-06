@@ -22,7 +22,6 @@ import {
   Typography,
 } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
-import { t } from 'i18next';
 import { isEmpty, isUndefined } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useHistory } from 'react-router-dom';
@@ -61,6 +60,7 @@ import {
   handleAlertSave,
 } from '../../utils/Alerts/AlertsUtil';
 import { getEntityName } from '../../utils/EntityUtils';
+import i18n from '../../utils/i18next/LocalUtil';
 import {
   getNotificationAlertDetailsPath,
   getSettingPath,
@@ -95,17 +95,17 @@ const AddNotificationPage = () => {
   const breadcrumb = useMemo(
     () => [
       {
-        name: t('label.setting-plural'),
+        name: i18n.t('label.setting-plural'),
         url: ROUTES.SETTINGS,
       },
       {
-        name: t('label.notification-plural'),
+        name: i18n.t('label.notification-plural'),
         url: getSettingPath(GlobalSettingsMenuCategory.NOTIFICATIONS),
       },
       {
         name: fqn
-          ? t('label.edit-entity', { entity: t('label.alert') })
-          : t('label.create-entity', { entity: t('label.alert') }),
+          ? i18n.t('label.edit-entity', { entity: i18n.t('label.alert') })
+          : i18n.t('label.create-entity', { entity: i18n.t('label.alert') }),
         url: '',
       },
     ],
@@ -124,7 +124,7 @@ const AddNotificationPage = () => {
       setAlert(modifiedAlertData);
     } catch {
       showErrorToast(
-        t('server.entity-fetch-error', { entity: t('label.alert') }),
+        i18n.t('server.entity-fetch-error', { entity: i18n.t('label.alert') }),
         fqn
       );
     } finally {
@@ -141,7 +141,7 @@ const AddNotificationPage = () => {
       setEntityFunctions(entityFunctions.data);
     } catch {
       showErrorToast(
-        t('server.entity-fetch-error', { entity: t('label.config') })
+        i18n.t('server.entity-fetch-error', { entity: i18n.t('label.config') })
       );
     } finally {
       setLoadingCount((count) => count - 1);
@@ -211,7 +211,7 @@ const AddNotificationPage = () => {
         <Typography.Paragraph
           className="tw-max-w-md"
           style={{ marginBottom: '0' }}>
-          {t('message.system-alert-edit-message')}
+          {i18n.t('message.system-alert-edit-message')}
         </Typography.Paragraph>
       </ErrorPlaceHolder>
     );
@@ -232,12 +232,12 @@ const AddNotificationPage = () => {
 
               <Col span={24}>
                 <Typography.Title level={5}>
-                  {t(`label.${isEditMode ? 'edit' : 'add'}-entity`, {
-                    entity: t('label.alert'),
+                  {i18n.t(`label.${isEditMode ? 'edit' : 'add'}-entity`, {
+                    entity: i18n.t('label.alert'),
                   })}
                 </Typography.Title>
                 <Typography.Text>
-                  {t('message.alerts-description')}
+                  {i18n.t('message.alerts-description')}
                 </Typography.Text>
               </Col>
               <Col span={24}>
@@ -257,16 +257,16 @@ const AddNotificationPage = () => {
                     <Row gutter={[20, 20]}>
                       <Col span={24}>
                         <Form.Item
-                          label={t('label.name')}
+                          label={i18n.t('label.name')}
                           labelCol={{ span: 24 }}
                           name="displayName"
                           rules={NAME_FIELD_RULES}>
-                          <Input placeholder={t('label.name')} />
+                          <Input placeholder={i18n.t('label.name')} />
                         </Form.Item>
                       </Col>
                       <Col span={24}>
                         <Form.Item
-                          label={t('label.description')}
+                          label={i18n.t('label.description')}
                           labelCol={{ span: 24 }}
                           name="description"
                           trigger="onTextChange">
@@ -328,13 +328,13 @@ const AddNotificationPage = () => {
                           htmlType="submit"
                           loading={isButtonLoading}
                           type="primary">
-                          {t('label.save')}
+                          {i18n.t('label.save')}
                         </Button>
                         <Button
                           className="float-right"
                           data-testid="cancel-button"
                           onClick={() => history.goBack()}>
-                          {t('label.cancel')}
+                          {i18n.t('label.cancel')}
                         </Button>
                       </Col>
                     </Row>
@@ -347,7 +347,9 @@ const AddNotificationPage = () => {
         minWidth: 700,
         flex: 0.7,
       }}
-      pageTitle={t('label.entity-detail-plural', { entity: t('label.alert') })}
+      pageTitle={i18n.t('label.entity-detail-plural', {
+        entity: i18n.t('label.alert'),
+      })}
       secondPanel={{
         children: <></>,
         minWidth: 0,
@@ -358,7 +360,7 @@ const AddNotificationPage = () => {
 };
 
 export default withPageLayout(
-  t('label.entity-detail-plural', {
-    entity: t('label.alert'),
+  i18n.t('label.entity-detail-plural', {
+    entity: i18n.t('label.alert'),
   })
 )(AddNotificationPage);

@@ -13,7 +13,6 @@
 
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import { t } from 'i18next';
 import { isEmpty } from 'lodash';
 import { ServicesUpdateRequest } from 'Models';
 import React, { useEffect, useMemo, useState } from 'react';
@@ -51,6 +50,7 @@ import {
 } from '../../rest/ingestionPipelineAPI';
 import { getServiceByFQN } from '../../rest/serviceAPI';
 import { getEntityMissingError } from '../../utils/CommonUtils';
+import i18n from '../../utils/i18next/LocalUtil';
 import {
   getBreadCrumbsArray,
   getIngestionHeadingName,
@@ -102,8 +102,8 @@ const EditIngestionPage = () => {
             resolve();
           } else {
             showErrorToast(
-              t('server.entity-fetch-error', {
-                entity: t('label.service-detail-lowercase-plural'),
+              i18n.t('server.entity-fetch-error', {
+                entity: i18n.t('label.service-detail-lowercase-plural'),
               })
             );
           }
@@ -112,8 +112,8 @@ const EditIngestionPage = () => {
           if (error.response?.status === 404) {
             setErrorMsg(getEntityMissingError(serviceCategory, serviceFQN));
           } else {
-            const errTextService = t('server.entity-fetch-error', {
-              entity: t('label.service-detail-lowercase-plural'),
+            const errTextService = i18n.t('server.entity-fetch-error', {
+              entity: i18n.t('label.service-detail-lowercase-plural'),
             });
             showErrorToast(error, errTextService);
             setErrorMsg(errTextService);
@@ -133,15 +133,15 @@ const EditIngestionPage = () => {
             setIngestionData(res);
             resolve();
           } else {
-            throw t('server.unexpected-error');
+            throw i18n.t('server.unexpected-error');
           }
         })
         .catch((error: AxiosError) => {
           if (error.response?.status === 404) {
             setErrorMsg(getEntityMissingError('Ingestion', ingestionFQN));
           } else {
-            const errTextIngestion = t('server.entity-fetch-error', {
-              entity: t('label.ingestion-workflow'),
+            const errTextIngestion = i18n.t('server.entity-fetch-error', {
+              entity: i18n.t('label.ingestion-workflow'),
             });
             showErrorToast(error, errTextIngestion);
             setErrorMsg(errTextIngestion);
@@ -174,8 +174,8 @@ const EditIngestionPage = () => {
           setIngestionAction(IngestionActionMessage.DEPLOYING_ERROR);
           showErrorToast(
             err,
-            t('server.deploy-entity-error', {
-              entity: t('label.ingestion-workflow'),
+            i18n.t('server.deploy-entity-error', {
+              entity: i18n.t('label.ingestion-workflow'),
             })
           );
         })
@@ -198,15 +198,15 @@ const EditIngestionPage = () => {
       if (res) {
         onIngestionDeploy();
       } else {
-        throw t('server.entity-updating-error', {
-          entity: t('label.ingestion-workflow-lowercase'),
+        throw i18n.t('server.entity-updating-error', {
+          entity: i18n.t('label.ingestion-workflow-lowercase'),
         });
       }
     } catch (err) {
       showErrorToast(
         err as AxiosError,
-        t('server.entity-updating-error', {
-          entity: t('label.ingestion-workflow-lowercase'),
+        i18n.t('server.entity-updating-error', {
+          entity: i18n.t('label.ingestion-workflow-lowercase'),
         })
       );
     }
@@ -309,8 +309,8 @@ const EditIngestionPage = () => {
         flex: 0.7,
         className: 'content-resizable-panel-container',
       }}
-      pageTitle={t('label.edit-entity', {
-        entity: t('label.ingestion'),
+      pageTitle={i18n.t('label.edit-entity', {
+        entity: i18n.t('label.ingestion'),
       })}
       secondPanel={{
         children: secondPanelChildren,
@@ -323,7 +323,7 @@ const EditIngestionPage = () => {
 };
 
 export default withPageLayout(
-  t('label.edit-entity', {
-    entity: t('label.ingestion'),
+  i18n.t('label.edit-entity', {
+    entity: i18n.t('label.ingestion'),
   })
 )(EditIngestionPage);

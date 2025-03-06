@@ -14,7 +14,6 @@
 import { Card, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import { t } from 'i18next';
 import { isEmpty, isUndefined, startCase } from 'lodash';
 import { ServicesData, ServicesUpdateRequest, ServiceTypes } from 'Models';
 import React, { useEffect, useMemo, useState } from 'react';
@@ -37,6 +36,7 @@ import { ConfigData, ServicesType } from '../../interface/service.interface';
 import { getServiceByFQN, patchService } from '../../rest/serviceAPI';
 import { getEntityMissingError } from '../../utils/CommonUtils';
 import { getEntityName } from '../../utils/EntityUtils';
+import i18n from '../../utils/i18next/LocalUtil';
 import { getPathByServiceFQN, getSettingPath } from '../../utils/RouterUtils';
 import serviceUtilClassBase from '../../utils/ServiceUtilClassBase';
 import {
@@ -120,7 +120,9 @@ function EditConnectionFormPage() {
           url: getPathByServiceFQN(serviceCategory, serviceFQN),
         },
         {
-          name: t('label.edit-entity', { entity: t('label.connection') }),
+          name: i18n.t('label.edit-entity', {
+            entity: i18n.t('label.connection'),
+          }),
           url: '',
           activeTitle: true,
         },
@@ -166,7 +168,7 @@ function EditConnectionFormPage() {
       <TitleBreadcrumb titleLinks={slashedBreadcrumb} />
       <Card className="p-lg m-t-md">
         <Typography.Title level={5}>
-          {t('message.edit-service-entity-connection', {
+          {i18n.t('message.edit-service-entity-connection', {
             entity: serviceFQN,
           })}
         </Typography.Title>
@@ -196,7 +198,9 @@ function EditConnectionFormPage() {
         className: 'content-resizable-panel-container',
       }}
       hideSecondPanel={!serviceDetails?.serviceType ?? ''}
-      pageTitle={t('label.edit-entity', { entity: t('label.connection') })}
+      pageTitle={i18n.t('label.edit-entity', {
+        entity: i18n.t('label.connection'),
+      })}
       secondPanel={{
         children: (
           <ServiceDocPanel
@@ -214,7 +218,7 @@ function EditConnectionFormPage() {
 }
 
 export default withPageLayout(
-  t('label.edit-entity', {
-    entity: t('label.connection'),
+  i18n.t('label.edit-entity', {
+    entity: i18n.t('label.connection'),
   })
 )(EditConnectionFormPage);

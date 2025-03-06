@@ -13,7 +13,6 @@
 
 import { Skeleton } from 'antd';
 import { AxiosError } from 'axios';
-import { t } from 'i18next';
 import React, {
   FocusEvent,
   useCallback,
@@ -42,6 +41,7 @@ import {
   getSettingsConfigFromConfigType,
   updateSettingsConfig,
 } from '../../rest/settingConfigAPI';
+import i18n from '../../utils/i18next/LocalUtil';
 import { getSettingPath } from '../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 
@@ -55,19 +55,19 @@ function EditEmailConfigPage() {
   const slashedBreadcrumb = useMemo(
     () => [
       {
-        name: t('label.setting-plural'),
+        name: i18n.t('label.setting-plural'),
         url: getSettingPath(),
       },
       {
-        name: t('label.email'),
+        name: i18n.t('label.email'),
         url: getSettingPath(
           GlobalSettingsMenuCategory.PREFERENCES,
           GlobalSettingOptions.EMAIL
         ),
       },
       {
-        name: t('label.edit-entity', {
-          entity: t('label.email-configuration'),
+        name: i18n.t('label.edit-entity', {
+          entity: i18n.t('label.email-configuration'),
         }),
         url: '',
       },
@@ -87,8 +87,8 @@ function EditEmailConfigPage() {
     } catch (error) {
       showErrorToast(
         error as AxiosError,
-        t('server.entity-fetch-error', {
-          entity: t('label.email-configuration-lowercase'),
+        i18n.t('server.entity-fetch-error', {
+          entity: i18n.t('label.email-configuration-lowercase'),
         })
       );
     } finally {
@@ -116,16 +116,16 @@ function EditEmailConfigPage() {
         await updateSettingsConfig(settingsConfigData);
 
         showSuccessToast(
-          t('server.update-entity-success', {
-            entity: t('label.email-configuration'),
+          i18n.t('server.update-entity-success', {
+            entity: i18n.t('label.email-configuration'),
           })
         );
         handleRedirectionToSettingsPage();
       } catch (error) {
         showErrorToast(
           error as AxiosError,
-          t('server.entity-updating-error', {
-            entity: t('label.email-configuration-lowercase'),
+          i18n.t('server.entity-updating-error', {
+            entity: i18n.t('label.email-configuration-lowercase'),
           })
         );
       } finally {
@@ -179,7 +179,9 @@ function EditEmailConfigPage() {
         flex: 0.7,
         className: 'content-resizable-panel-container',
       }}
-      pageTitle={t('label.add-entity', { entity: t('label.service') })}
+      pageTitle={i18n.t('label.add-entity', {
+        entity: i18n.t('label.service'),
+      })}
       secondPanel={{
         children: secondPanelChildren,
         className: 'service-doc-panel content-resizable-panel-container',
@@ -191,7 +193,7 @@ function EditEmailConfigPage() {
 }
 
 export default withPageLayout(
-  t('label.add-entity', {
-    entity: t('label.service'),
+  i18n.t('label.add-entity', {
+    entity: i18n.t('label.service'),
   })
 )(EditEmailConfigPage);

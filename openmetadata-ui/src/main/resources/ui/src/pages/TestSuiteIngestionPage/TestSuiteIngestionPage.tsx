@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { AxiosError } from 'axios';
-import { t } from 'i18next';
 import { isUndefined } from 'lodash';
 import React, { useEffect, useState } from 'react';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -30,6 +29,7 @@ import { useFqn } from '../../hooks/useFqn';
 import { getIngestionPipelineByFqn } from '../../rest/ingestionPipelineAPI';
 import { getTestSuiteByName } from '../../rest/testAPI';
 import { getEntityName } from '../../utils/EntityUtils';
+import i18n from '../../utils/i18next/LocalUtil';
 import { getDataQualityPagePath } from '../../utils/RouterUtils';
 import { getTestSuiteDetailsPath } from '../../utils/TestSuiteUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -53,8 +53,8 @@ const TestSuiteIngestionPage = () => {
     } catch (error) {
       showErrorToast(
         error as AxiosError,
-        t('server.entity-fetch-error', {
-          entity: t('label.ingestion-workflow-lowercase'),
+        i18n.t('server.entity-fetch-error', {
+          entity: i18n.t('label.ingestion-workflow-lowercase'),
         })
       );
     } finally {
@@ -70,7 +70,7 @@ const TestSuiteIngestionPage = () => {
       });
       setSlashedBreadCrumb([
         {
-          name: t('label.test-suite-plural'),
+          name: i18n.t('label.test-suite-plural'),
           url: getDataQualityPagePath(),
         },
         {
@@ -85,9 +85,9 @@ const TestSuiteIngestionPage = () => {
           }),
         },
         {
-          name: `${ingestionFQN ? t('label.edit') : t('label.add')} ${t(
-            'label.ingestion'
-          )}`,
+          name: `${
+            ingestionFQN ? i18n.t('label.edit') : i18n.t('label.add')
+          } ${i18n.t('label.ingestion')}`,
           url: '',
         },
       ]);
@@ -100,8 +100,8 @@ const TestSuiteIngestionPage = () => {
       setTestSuite(undefined);
       showErrorToast(
         error as AxiosError,
-        t('server.entity-fetch-error', {
-          entity: t('label.test-suite'),
+        i18n.t('server.entity-fetch-error', {
+          entity: i18n.t('label.test-suite'),
         })
       );
     } finally {
@@ -140,8 +140,8 @@ const TestSuiteIngestionPage = () => {
         minWidth: 700,
         flex: 0.7,
       }}
-      pageTitle={t('label.add-entity', {
-        entity: t('label.test-suite'),
+      pageTitle={i18n.t('label.add-entity', {
+        entity: i18n.t('label.test-suite'),
       })}
       secondPanel={{
         children: <RightPanel data={TEST_SUITE_INGESTION_PAGE_DATA} />,
@@ -154,7 +154,7 @@ const TestSuiteIngestionPage = () => {
 };
 
 export default withPageLayout(
-  t('label.add-entity', {
-    entity: t('label.test-suite'),
+  i18n.t('label.add-entity', {
+    entity: i18n.t('label.test-suite'),
   })
 )(TestSuiteIngestionPage);

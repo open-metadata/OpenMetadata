@@ -12,7 +12,6 @@
  */
 
 import { Col, Row } from 'antd';
-import { t } from 'i18next';
 import React, { useCallback, useLayoutEffect, useMemo, useState } from 'react';
 import {
   Redirect,
@@ -34,6 +33,7 @@ import { withPageLayout } from '../../hoc/withPageLayout';
 import { DataInsightTabs } from '../../interface/data-insight.interface';
 import { SystemChartType } from '../../rest/DataInsightAPI';
 import { getDataInsightPathWithFqn } from '../../utils/DataInsightUtils';
+import i18n from '../../utils/i18next/LocalUtil';
 import { checkPermission } from '../../utils/PermissionsUtils';
 import './data-insight.less';
 import { default as dataInsightClassBase } from './DataInsightClassBase';
@@ -136,7 +136,7 @@ const DataInsightPage = () => {
           flex: 0.13,
           children: <LeftPanel />,
         }}
-        pageTitle={t('label.data-insight')}
+        pageTitle={i18n.t('label.data-insight')}
         secondPanel={{
           children: (
             <DataInsightProvider>
@@ -176,4 +176,4 @@ const DataInsightPage = () => {
   );
 };
 
-export default withPageLayout(t('label.data-insight'))(DataInsightPage);
+export default withPageLayout(i18n.t('label.data-insight'))(DataInsightPage);

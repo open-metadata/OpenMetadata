@@ -10,14 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { t } from 'i18next';
 import React from 'react';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { withPageLayout } from '../../hoc/withPageLayout';
+import i18n from '../../utils/i18next/LocalUtil';
 
 const ForbiddenPage = () => {
   return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
 };
 
-export default withPageLayout(t('label.no-access'))(ForbiddenPage);
+export default withPageLayout(i18n.t('label.no-access'))(ForbiddenPage);

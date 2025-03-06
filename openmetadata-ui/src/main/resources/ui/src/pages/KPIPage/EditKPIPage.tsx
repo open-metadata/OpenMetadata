@@ -29,7 +29,6 @@ import {
 import { useForm, useWatch } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import { t } from 'i18next';
 import { isUndefined } from 'lodash';
 import moment from 'moment';
 import React, { useEffect, useMemo, useState } from 'react';
@@ -52,6 +51,7 @@ import {
   getDisabledDates,
 } from '../../utils/DataInsightUtils';
 import { getField } from '../../utils/formUtils';
+import i18n from '../../utils/i18next/LocalUtil';
 import {
   getKPIChartType,
   KPIChartOptions,
@@ -76,11 +76,11 @@ const EditKPIPage = () => {
   const breadcrumb = useMemo(
     () => [
       {
-        name: t('label.data-insight'),
+        name: i18n.t('label.data-insight'),
         url: getDataInsightPathWithFqn(),
       },
       {
-        name: t('label.kpi-list'),
+        name: i18n.t('label.kpi-list'),
         url: ROUTES.KPI_LIST,
       },
       {
@@ -197,7 +197,7 @@ const EditKPIPage = () => {
     () => ({
       name: 'description',
       required: false,
-      label: t('label.description'),
+      label: i18n.t('label.description'),
       id: 'root/description',
       type: FieldTypes.DESCRIPTION,
       props: {
@@ -206,7 +206,7 @@ const EditKPIPage = () => {
         style: {
           margin: 0,
         },
-        placeHolder: t('message.write-your-description'),
+        placeHolder: i18n.t('message.write-your-description'),
       },
     }),
     [kpiData?.description]
@@ -233,7 +233,9 @@ const EditKPIPage = () => {
             <Typography.Paragraph
               className="text-base"
               data-testid="form-title">
-              {t('label.edit-entity', { entity: t('label.kpi-uppercase') })}
+              {i18n.t('label.edit-entity', {
+                entity: i18n.t('label.kpi-uppercase'),
+              })}
             </Typography.Paragraph>
             <Form
               data-testid="kpi-form"
@@ -245,36 +247,38 @@ const EditKPIPage = () => {
               onFinish={handleSubmit}
               onValuesChange={handleFormValuesChange}>
               <Form.Item
-                label={t('label.select-a-chart')}
+                label={i18n.t('label.select-a-chart')}
                 name="chartType"
                 rules={[
                   {
                     required: true,
-                    message: t('message.field-text-is-required', {
-                      fieldText: t('label.data-insight-chart'),
+                    message: i18n.t('message.field-text-is-required', {
+                      fieldText: i18n.t('label.data-insight-chart'),
                     }),
                   },
                 ]}>
                 <Select
                   disabled
                   data-testid="chartType"
-                  notFoundContent={t('message.all-charts-are-mapped')}
+                  notFoundContent={i18n.t('message.all-charts-are-mapped')}
                   options={KPIChartOptions}
-                  placeholder={t('label.select-a-chart')}
+                  placeholder={i18n.t('label.select-a-chart')}
                 />
               </Form.Item>
 
-              <Form.Item label={t('label.display-name')} name="displayName">
+              <Form.Item
+                label={i18n.t('label.display-name')}
+                name="displayName">
                 <Input
                   data-testid="displayName"
-                  placeholder={t('label.kpi-display-name')}
+                  placeholder={i18n.t('label.kpi-display-name')}
                   type="text"
                 />
               </Form.Item>
 
               <Form.Item
                 initialValue={KpiTargetType.Percentage}
-                label={t('label.metric-type')}
+                label={i18n.t('label.metric-type')}
                 name="metricType">
                 <Select
                   disabled
@@ -286,7 +290,7 @@ const EditKPIPage = () => {
               {!isUndefined(metricType) && (
                 <Form.Item
                   initialValue={0}
-                  label={t('label.metric-value')}
+                  label={i18n.t('label.metric-value')}
                   name="targetValue"
                   rules={[
                     {
@@ -297,8 +301,8 @@ const EditKPIPage = () => {
                         }
 
                         return Promise.reject(
-                          t('message.field-text-is-required', {
-                            fieldText: t('label.metric-value'),
+                          i18n.t('message.field-text-is-required', {
+                            fieldText: i18n.t('label.metric-value'),
                           })
                         );
                       },
@@ -359,17 +363,17 @@ const EditKPIPage = () => {
               <Row gutter={[8, 8]}>
                 <Col span={12}>
                   <Form.Item
-                    label={t('label.start-entity', {
-                      entity: t('label.date'),
+                    label={i18n.t('label.start-entity', {
+                      entity: i18n.t('label.date'),
                     })}
                     messageVariables={{ fieldName: 'startDate' }}
                     name="startDate"
                     rules={[
                       {
                         required: true,
-                        message: t('label.field-required', {
-                          field: t('label.start-entity', {
-                            entity: t('label.date'),
+                        message: i18n.t('label.field-required', {
+                          field: i18n.t('label.start-entity', {
+                            entity: i18n.t('label.date'),
                           }),
                         }),
                       },
@@ -384,14 +388,14 @@ const EditKPIPage = () => {
                 </Col>
                 <Col span={12}>
                   <Form.Item
-                    label={t('label.end-date')}
+                    label={i18n.t('label.end-date')}
                     messageVariables={{ fieldName: 'endDate' }}
                     name="endDate"
                     rules={[
                       {
                         required: true,
-                        message: t('label.field-required', {
-                          field: t('label.end-date'),
+                        message: i18n.t('label.field-required', {
+                          field: i18n.t('label.end-date'),
                         }),
                       },
                     ]}>
@@ -412,16 +416,16 @@ const EditKPIPage = () => {
                   data-testid="cancel-btn"
                   type="link"
                   onClick={handleCancel}>
-                  {t('label.go-back')}
+                  {i18n.t('label.go-back')}
                 </Button>
                 {isAdminUser ? (
-                  <Tooltip title={t('label.save')}>
+                  <Tooltip title={i18n.t('label.save')}>
                     <Button
                       data-testid="submit-btn"
                       htmlType="submit"
                       loading={isUpdatingKPI}
                       type="primary">
-                      {t('label.save')}
+                      {i18n.t('label.save')}
                     </Button>
                   </Tooltip>
                 ) : null}
@@ -432,14 +436,20 @@ const EditKPIPage = () => {
         minWidth: 700,
         flex: 0.7,
       }}
-      pageTitle={t('label.edit-entity', { entity: t('label.kpi-uppercase') })}
+      pageTitle={i18n.t('label.edit-entity', {
+        entity: i18n.t('label.kpi-uppercase'),
+      })}
       secondPanel={{
         children: (
           <div data-testid="right-panel">
             <Typography.Paragraph className="text-base font-medium">
-              {t('label.edit-entity', { entity: t('label.kpi-uppercase') })}
+              {i18n.t('label.edit-entity', {
+                entity: i18n.t('label.kpi-uppercase'),
+              })}
             </Typography.Paragraph>
-            <Typography.Text>{t('message.add-kpi-message')}</Typography.Text>
+            <Typography.Text>
+              {i18n.t('message.add-kpi-message')}
+            </Typography.Text>
           </div>
         ),
         className: 'p-md p-t-xl content-resizable-panel-container',
@@ -451,7 +461,7 @@ const EditKPIPage = () => {
 };
 
 export default withPageLayout(
-  t('label.edit-entity', {
-    entity: t('label.kpi-uppercase'),
+  i18n.t('label.edit-entity', {
+    entity: i18n.t('label.kpi-uppercase'),
   })
 )(EditKPIPage);

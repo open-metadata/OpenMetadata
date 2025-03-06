@@ -12,7 +12,6 @@
  */
 
 import { Card } from 'antd';
-import { t } from 'i18next';
 import { noop, trim } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import Loader from '../../components/common/Loader/Loader';
@@ -25,6 +24,7 @@ import {
 import { withPageLayout } from '../../hoc/withPageLayout';
 import { getAlertsFromName } from '../../rest/alertsAPI';
 import { getEntityName } from '../../utils/EntityUtils';
+import i18n from '../../utils/i18next/LocalUtil';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const AlertsActivityFeedPage = () => {
@@ -60,8 +60,8 @@ const AlertsActivityFeedPage = () => {
       });
     } catch (error) {
       showErrorToast(
-        t('server.entity-fetch-error', {
-          entity: t('label.activity-feed-plural'),
+        i18n.t('server.entity-fetch-error', {
+          entity: i18n.t('label.activity-feed-plural'),
         })
       );
     } finally {
@@ -97,4 +97,6 @@ const AlertsActivityFeedPage = () => {
   );
 };
 
-export default withPageLayout(t('label.alert-details'))(AlertsActivityFeedPage);
+export default withPageLayout(i18n.t('label.alert-details'))(
+  AlertsActivityFeedPage
+);

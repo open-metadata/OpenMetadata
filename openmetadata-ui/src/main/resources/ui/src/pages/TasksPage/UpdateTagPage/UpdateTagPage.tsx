@@ -14,7 +14,6 @@
 import { Button, Form, FormProps, Input, Space, Typography } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
-import { t } from 'i18next';
 import { isEmpty, isUndefined } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
@@ -46,6 +45,7 @@ import {
   ENTITY_LINK_SEPARATOR,
   getEntityFeedLink,
 } from '../../../utils/EntityUtils';
+import i18n from '../../../utils/i18next/LocalUtil';
 import {
   fetchEntityDetail,
   fetchOptions,
@@ -164,8 +164,8 @@ const UpdateTag = () => {
     postThread(data)
       .then(() => {
         showSuccessToast(
-          t('server.create-entity-success', {
-            entity: t('label.task'),
+          i18n.t('server.create-entity-success', {
+            entity: i18n.t('label.task'),
           })
         );
         history.push(
@@ -226,8 +226,8 @@ const UpdateTag = () => {
               titleLinks={[
                 ...getBreadCrumbList(entityData, entityType),
                 {
-                  name: t('label.create-entity', {
-                    entity: t('label.task'),
+                  name: i18n.t('label.create-entity', {
+                    entity: i18n.t('label.task'),
                   }),
                   activeTitle: true,
                   url: '',
@@ -238,8 +238,8 @@ const UpdateTag = () => {
               <Typography.Paragraph
                 className="text-base"
                 data-testid="form-title">
-                {t('label.create-entity', {
-                  entity: t('label.task'),
+                {i18n.t('label.create-entity', {
+                  entity: i18n.t('label.task'),
                 })}
               </Typography.Paragraph>
               <Form
@@ -249,24 +249,24 @@ const UpdateTag = () => {
                 onFinish={onCreateTask}>
                 <Form.Item
                   data-testid="title"
-                  label={`${t('label.title')}:`}
+                  label={`${i18n.t('label.title')}:`}
                   name="title">
                   <Input
                     disabled
-                    placeholder={t('label.task-entity', {
-                      entity: t('label.title'),
+                    placeholder={i18n.t('label.task-entity', {
+                      entity: i18n.t('label.title'),
                     })}
                   />
                 </Form.Item>
                 <Form.Item
                   data-testid="assignees"
-                  label={`${t('label.assignee-plural')}:`}
+                  label={`${i18n.t('label.assignee-plural')}:`}
                   name="assignees"
                   rules={[
                     {
                       required: true,
-                      message: t('message.field-text-is-required', {
-                        fieldText: t('label.assignee-plural'),
+                      message: i18n.t('message.field-text-is-required', {
+                        fieldText: i18n.t('label.assignee-plural'),
                       }),
                     },
                   ]}>
@@ -281,15 +281,15 @@ const UpdateTag = () => {
                 {currentTags.length ? (
                   <Form.Item
                     data-testid="tags-label"
-                    label={t('label.update-entity', {
-                      entity: t('label.tag-plural'),
+                    label={i18n.t('label.update-entity', {
+                      entity: i18n.t('label.tag-plural'),
                     })}
                     name="updatedTags"
                     rules={[
                       {
                         required: true,
-                        message: t('message.field-text-is-required', {
-                          fieldText: t('label.tag-plural'),
+                        message: i18n.t('message.field-text-is-required', {
+                          fieldText: i18n.t('label.tag-plural'),
                         }),
                       },
                     ]}>
@@ -307,14 +307,14 @@ const UpdateTag = () => {
                     data-testid="cta-buttons"
                     size={16}>
                     <Button data-testid="cancel-btn" type="link" onClick={back}>
-                      {t('label.back')}
+                      {i18n.t('label.back')}
                     </Button>
                     <Button
                       data-testid="submit-tag-request"
                       htmlType="submit"
                       loading={isLoading}
                       type="primary">
-                      {t('label.submit')}
+                      {i18n.t('label.submit')}
                     </Button>
                   </Space>
                 </Form.Item>
@@ -323,7 +323,7 @@ const UpdateTag = () => {
           </div>
         ),
       }}
-      pageTitle={t('label.task')}
+      pageTitle={i18n.t('label.task')}
       secondPanel={{
         className: 'content-resizable-panel-container',
         minWidth: 60,
@@ -346,4 +346,4 @@ const UpdateTag = () => {
   );
 };
 
-export default withPageLayout(t('label.task'))(UpdateTag);
+export default withPageLayout(i18n.t('label.task'))(UpdateTag);

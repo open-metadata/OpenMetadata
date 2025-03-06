@@ -15,7 +15,6 @@ import { Badge, Button, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
-import { t } from 'i18next';
 import { isUndefined, omit } from 'lodash';
 import React, {
   useCallback,
@@ -63,6 +62,7 @@ import {
 } from '../../rest/tagAPI';
 import { getCountBadge, getEntityDeleteMessage } from '../../utils/CommonUtils';
 import { getEntityName } from '../../utils/EntityUtils';
+import i18n from '../../utils/i18next/LocalUtil';
 import {
   checkPermission,
   DEFAULT_ENTITY_PERMISSION,
@@ -152,8 +152,8 @@ const TagsPage = () => {
     } catch (error) {
       const errMsg = getErrorText(
         error as AxiosError,
-        t('server.entity-fetch-error', {
-          entity: t('label.tag-category-lowercase'),
+        i18n.t('server.entity-fetch-error', {
+          entity: i18n.t('label.tag-category-lowercase'),
         })
       );
       showErrorToast(errMsg);
@@ -187,13 +187,13 @@ const TagsPage = () => {
 
           setIsLoading(false);
         } else {
-          showErrorToast(t('server.unexpected-response'));
+          showErrorToast(i18n.t('server.unexpected-response'));
         }
       } catch (err) {
         const errMsg = getErrorText(
           err as AxiosError,
-          t('server.entity-fetch-error', {
-            entity: t('label.tag-category-lowercase'),
+          i18n.t('server.entity-fetch-error', {
+            entity: i18n.t('label.tag-category-lowercase'),
           })
         );
         showErrorToast(errMsg);
@@ -215,17 +215,17 @@ const TagsPage = () => {
         (error as AxiosError).response?.status === HTTP_STATUS_CODE.CONFLICT
       ) {
         showErrorToast(
-          t('server.entity-already-exist', {
-            entity: t('label.classification'),
-            entityPlural: t('label.classification-lowercase-plural'),
+          i18n.t('server.entity-already-exist', {
+            entity: i18n.t('label.classification'),
+            entityPlural: i18n.t('label.classification-lowercase-plural'),
             name: data.name,
           })
         );
       } else {
         showErrorToast(
           error as AxiosError,
-          t('server.create-entity-error', {
-            entity: t('label.classification-lowercase'),
+          i18n.t('server.create-entity-error', {
+            entity: i18n.t('label.classification-lowercase'),
           })
         );
       }
@@ -287,15 +287,17 @@ const TagsPage = () => {
         classificationDetailsRef.current?.refreshClassificationTags();
       } else {
         showErrorToast(
-          t('server.delete-entity-error', {
-            entity: t('label.tag-lowercase'),
+          i18n.t('server.delete-entity-error', {
+            entity: i18n.t('label.tag-lowercase'),
           })
         );
       }
     } catch (err) {
       showErrorToast(
         err as AxiosError,
-        t('server.delete-entity-error', { entity: t('label.tag-lowercase') })
+        i18n.t('server.delete-entity-error', {
+          entity: i18n.t('label.tag-lowercase'),
+        })
       );
     } finally {
       setDeleteTags({ data: undefined, state: false });
@@ -352,17 +354,17 @@ const TagsPage = () => {
             (error as AxiosError).response?.status === HTTP_STATUS_CODE.CONFLICT
           ) {
             showErrorToast(
-              t('server.entity-already-exist', {
-                entity: t('label.classification'),
-                entityPlural: t('label.classification-lowercase-plural'),
+              i18n.t('server.entity-already-exist', {
+                entity: i18n.t('label.classification'),
+                entityPlural: i18n.t('label.classification-lowercase-plural'),
                 name: updatedClassification.name,
               })
             );
           } else {
             showErrorToast(
               error as AxiosError,
-              t('server.entity-updating-error', {
-                entity: t('label.classification-lowercase'),
+              i18n.t('server.entity-updating-error', {
+                entity: i18n.t('label.classification-lowercase'),
               })
             );
           }
@@ -402,17 +404,17 @@ const TagsPage = () => {
         (error as AxiosError).response?.status === HTTP_STATUS_CODE.CONFLICT
       ) {
         showErrorToast(
-          t('server.entity-already-exist', {
-            entity: t('label.tag'),
-            entityPlural: t('label.tag-lowercase-plural'),
+          i18n.t('server.entity-already-exist', {
+            entity: i18n.t('label.tag'),
+            entityPlural: i18n.t('label.tag-lowercase-plural'),
             name: data.name,
           })
         );
       } else {
         showErrorToast(
           error as AxiosError,
-          t('server.create-entity-error', {
-            entity: t('label.tag-lowercase'),
+          i18n.t('server.create-entity-error', {
+            entity: i18n.t('label.tag-lowercase'),
           })
         );
       }
@@ -433,17 +435,17 @@ const TagsPage = () => {
           (error as AxiosError).response?.status === HTTP_STATUS_CODE.CONFLICT
         ) {
           showErrorToast(
-            t('server.entity-already-exist', {
-              entity: t('label.tag'),
-              entityPlural: t('label.tag-lowercase-plural'),
+            i18n.t('server.entity-already-exist', {
+              entity: i18n.t('label.tag'),
+              entityPlural: i18n.t('label.tag-lowercase-plural'),
               name: updatedData.name,
             })
           );
         } else {
           showErrorToast(
             error as AxiosError,
-            t('server.entity-updating-error', {
-              entity: t('label.tag-lowercase'),
+            i18n.t('server.entity-updating-error', {
+              entity: i18n.t('label.tag-lowercase'),
             })
           );
         }
@@ -542,7 +544,7 @@ const TagsPage = () => {
               direction="vertical"
               size="middle">
               <Typography.Text className="text-sm font-semibold">
-                {t('label.classification-plural')}
+                {i18n.t('label.classification-plural')}
               </Typography.Text>
               {createClassificationPermission && (
                 <Button
@@ -556,8 +558,8 @@ const TagsPage = () => {
                   <Typography.Text
                     className="p-l-xss"
                     ellipsis={{ tooltip: true }}>
-                    {t('label.add-entity', {
-                      entity: t('label.classification'),
+                    {i18n.t('label.add-entity', {
+                      entity: i18n.t('label.classification'),
                     })}
                   </Typography.Text>
                 </Button>
@@ -584,7 +586,7 @@ const TagsPage = () => {
                   {category.disabled && (
                     <Badge
                       className="m-l-xs badge-grey opacity-60"
-                      count={t('label.disabled')}
+                      count={i18n.t('label.disabled')}
                       data-testid="disabled"
                       size="small"
                     />
@@ -678,10 +680,10 @@ const TagsPage = () => {
   const tagsFormHeader = useMemo(
     () =>
       editTag
-        ? t('label.edit-entity', {
-            entity: t('label.tag'),
+        ? i18n.t('label.edit-entity', {
+            entity: i18n.t('label.tag'),
           })
-        : t('message.adding-new-tag', {
+        : i18n.t('message.adding-new-tag', {
             categoryName: getEntityName(currentClassification),
           }),
     [editTag, currentClassification]
@@ -710,7 +712,7 @@ const TagsPage = () => {
           flex: 0.13,
           children: leftPanelLayout,
         }}
-        pageTitle={t('label.tag-plural')}
+        pageTitle={i18n.t('label.tag-plural')}
         secondPanel={{
           children: (
             <>
@@ -738,7 +740,7 @@ const TagsPage = () => {
                   isClassification
                   showMutuallyExclusive
                   data={classifications}
-                  header={t('label.adding-new-classification')}
+                  header={i18n.t('label.adding-new-classification')}
                   isEditing={false}
                   isLoading={isButtonLoading}
                   isTier={isTier}
@@ -770,7 +772,7 @@ const TagsPage = () => {
                   ''
                 )}
                 entityName={deleteTags.data?.name ?? ''}
-                entityType={t('label.classification')}
+                entityType={i18n.t('label.classification')}
                 visible={deleteTags.state}
                 onCancel={handleCancelClassificationDelete}
                 onConfirm={handleConfirmClick}
@@ -786,4 +788,4 @@ const TagsPage = () => {
   );
 };
 
-export default withPageLayout(t('label.tag-plural'))(TagsPage);
+export default withPageLayout(i18n.t('label.tag-plural'))(TagsPage);

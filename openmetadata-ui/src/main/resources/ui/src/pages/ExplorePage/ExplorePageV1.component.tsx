@@ -12,7 +12,6 @@
  */
 
 import { Typography } from 'antd';
-import { t } from 'i18next';
 import { get, isEmpty, isNil, isString, lowerCase } from 'lodash';
 import Qs from 'qs';
 import React, {
@@ -58,6 +57,7 @@ import {
   extractTermKeys,
   findActiveSearchIndex,
 } from '../../utils/ExploreUtils';
+import i18n from '../../utils/i18next/LocalUtil';
 import searchClassBase from '../../utils/SearchClassBase';
 import { escapeESReservedCharacters } from '../../utils/StringsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -480,6 +480,6 @@ const ExplorePageV1: FunctionComponent = () => {
   );
 };
 
-export default withPageLayout(t('label.explore'))(
+export default withPageLayout(i18n.t('label.explore'))(
   withAdvanceSearch(ExplorePageV1)
 );

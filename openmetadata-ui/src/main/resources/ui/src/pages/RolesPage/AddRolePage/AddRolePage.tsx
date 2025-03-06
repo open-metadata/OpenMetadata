@@ -13,7 +13,6 @@
 
 import { Button, Form, Input, Select, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { t } from 'i18next';
 import { trim } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useHistory } from 'react-router-dom';
@@ -29,6 +28,7 @@ import { FieldProp, FieldTypes } from '../../../interface/FormUtils.interface';
 import { addRole, getPolicies } from '../../../rest/rolesAPIV1';
 import { getIsErrorMatch } from '../../../utils/CommonUtils';
 import { getField } from '../../../utils/formUtils';
+import i18n from '../../../utils/i18next/LocalUtil';
 import {
   getPath,
   getRoleWithFqnPath,
@@ -40,15 +40,15 @@ const rolesPath = getPath(GlobalSettingOptions.ROLES);
 
 const breadcrumb = [
   {
-    name: t('label.setting-plural'),
+    name: i18n.t('label.setting-plural'),
     url: getSettingPath(),
   },
   {
-    name: t('label.role-plural'),
+    name: i18n.t('label.role-plural'),
     url: rolesPath,
   },
   {
-    name: t('label.add-new-entity', { entity: t('label.role') }),
+    name: i18n.t('label.add-new-entity', { entity: i18n.t('label.role') }),
     url: '',
   },
 ];
@@ -97,9 +97,9 @@ const AddRolePage = () => {
     } catch (error) {
       showErrorToast(
         getIsErrorMatch(error as AxiosError, ERROR_MESSAGE.alreadyExist)
-          ? t('server.entity-already-exist', {
-              entity: t('label.role'),
-              entityPlural: t('label.role-lowercase-plural'),
+          ? i18n.t('server.entity-already-exist', {
+              entity: i18n.t('label.role'),
+              entityPlural: i18n.t('label.role-lowercase-plural'),
               name: data.name,
             })
           : (error as AxiosError)
@@ -113,7 +113,7 @@ const AddRolePage = () => {
     () => ({
       name: 'description',
       required: false,
-      label: `${t('label.description')}:`,
+      label: `${i18n.t('label.description')}:`,
       id: 'root/description',
       type: FieldTypes.DESCRIPTION,
       props: {
@@ -122,7 +122,7 @@ const AddRolePage = () => {
         style: {
           margin: 0,
         },
-        placeHolder: t('message.write-your-description'),
+        placeHolder: i18n.t('message.write-your-description'),
         onTextChange: (value: string) => setDescription(value),
       },
     }),
@@ -147,7 +147,9 @@ const AddRolePage = () => {
               <Typography.Paragraph
                 className="text-base"
                 data-testid="form-title">
-                {t('label.add-new-entity', { entity: t('label.role') })}
+                {i18n.t('label.add-new-entity', {
+                  entity: i18n.t('label.role'),
+                })}
               </Typography.Paragraph>
               <Form
                 data-testid="role-form"
@@ -155,12 +157,12 @@ const AddRolePage = () => {
                 layout="vertical"
                 onFinish={handleSubmit}>
                 <Form.Item
-                  label={`${t('label.name')}:`}
+                  label={`${i18n.t('label.name')}:`}
                   name="name"
                   rules={NAME_FIELD_RULES}>
                   <Input
                     data-testid="name"
-                    placeholder={t('label.role-name')}
+                    placeholder={i18n.t('label.role-name')}
                     type="text"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
@@ -169,18 +171,18 @@ const AddRolePage = () => {
                 {getField(descriptionField)}
 
                 <Form.Item
-                  label={`${t('label.select-a-policy')}:`}
+                  label={`${i18n.t('label.select-a-policy')}:`}
                   name="policies"
                   rules={[
                     {
                       required: true,
-                      message: t('message.at-least-one-policy'),
+                      message: i18n.t('message.at-least-one-policy'),
                     },
                   ]}>
                   <Select
                     data-testid="policies"
                     mode="multiple"
-                    placeholder={t('label.select-a-policy')}
+                    placeholder={i18n.t('label.select-a-policy')}
                     value={selectedPolicies}
                     onChange={(values) => setSelectedPolicies(values)}>
                     {policies.map((policy) => (
@@ -196,7 +198,7 @@ const AddRolePage = () => {
                     data-testid="cancel-btn"
                     type="link"
                     onClick={handleCancel}>
-                    {t('label.cancel')}
+                    {i18n.t('label.cancel')}
                   </Button>
                   <Button
                     data-testid="submit-btn"
@@ -204,7 +206,7 @@ const AddRolePage = () => {
                     htmlType="submit"
                     loading={isSaveLoading}
                     type="primary">
-                    {t('label.submit')}
+                    {i18n.t('label.submit')}
                   </Button>
                 </Space>
               </Form>
@@ -214,18 +216,20 @@ const AddRolePage = () => {
         minWidth: 700,
         flex: 0.7,
       }}
-      pageTitle={t('label.add-new-entity', {
-        entity: t('label.role'),
+      pageTitle={i18n.t('label.add-new-entity', {
+        entity: i18n.t('label.role'),
       })}
       secondPanel={{
         children: (
           <>
             <Typography.Paragraph className="text-base font-medium">
-              {t('label.add-entity', {
-                entity: t('label.role'),
+              {i18n.t('label.add-entity', {
+                entity: i18n.t('label.role'),
               })}
             </Typography.Paragraph>
-            <Typography.Text>{t('message.add-role-message')}</Typography.Text>
+            <Typography.Text>
+              {i18n.t('message.add-role-message')}
+            </Typography.Text>
           </>
         ),
         className: 'p-md p-t-xl content-resizable-panel-container',
@@ -237,7 +241,7 @@ const AddRolePage = () => {
 };
 
 export default withPageLayout(
-  t('label.add-new-entity', {
-    entity: t('label.role'),
+  i18n.t('label.add-new-entity', {
+    entity: i18n.t('label.role'),
   })
 )(AddRolePage);

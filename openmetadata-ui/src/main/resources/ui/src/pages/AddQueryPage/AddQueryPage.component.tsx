@@ -16,7 +16,6 @@ import { AxiosError } from 'axios';
 import { filter, isEmpty } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 
-import { t } from 'i18next';
 import { AsyncSelect } from '../../components/common/AsyncSelect/AsyncSelect';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
@@ -51,6 +50,7 @@ import {
   getEntityName,
 } from '../../utils/EntityUtils';
 import { getField } from '../../utils/formUtils';
+import i18n from '../../utils/i18next/LocalUtil';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 
 const AddQueryPage = () => {
@@ -81,8 +81,8 @@ const AddQueryPage = () => {
           ),
         },
         {
-          name: t('label.add-entity', {
-            entity: t('label.query'),
+          name: i18n.t('label.add-entity', {
+            entity: i18n.t('label.query'),
           }),
           url: '',
           activeTitle: true,
@@ -173,7 +173,9 @@ const AddQueryPage = () => {
     try {
       await postQuery(updatedValues);
       showSuccessToast(
-        t('server.create-entity-success', { entity: t('label.query') })
+        i18n.t('server.create-entity-success', {
+          entity: i18n.t('label.query'),
+        })
       );
       handleCancelClick();
     } catch (error) {
@@ -181,15 +183,15 @@ const AddQueryPage = () => {
         (error as AxiosError).response?.status === HTTP_STATUS_CODE.CONFLICT
       ) {
         showErrorToast(
-          t('server.entity-already-exist-message-without-name', {
-            entity: t('label.query'),
-            entityPlural: t('label.query-lowercase-plural'),
+          i18n.t('server.entity-already-exist-message-without-name', {
+            entity: i18n.t('label.query'),
+            entityPlural: i18n.t('label.query-lowercase-plural'),
           })
         );
       } else {
         showErrorToast(
-          t('server.create-entity-error', {
-            entity: t('label.query-plural'),
+          i18n.t('server.create-entity-error', {
+            entity: i18n.t('label.query-plural'),
           })
         );
       }
@@ -202,7 +204,7 @@ const AddQueryPage = () => {
     () => ({
       name: 'description',
       required: false,
-      label: `${t('label.description')}:`,
+      label: `${i18n.t('label.description')}:`,
       id: 'root/description',
       type: FieldTypes.DESCRIPTION,
       props: {
@@ -211,7 +213,7 @@ const AddQueryPage = () => {
         style: {
           margin: 0,
         },
-        placeHolder: t('message.write-your-description'),
+        placeHolder: i18n.t('message.write-your-description'),
         onTextChange: (value: string) => setDescription(value),
       },
     }),
@@ -230,7 +232,9 @@ const AddQueryPage = () => {
               <Typography.Paragraph
                 className="text-base"
                 data-testid="form-title">
-                {t('label.add-new-entity', { entity: t('label.query') })}
+                {i18n.t('label.add-new-entity', {
+                  entity: i18n.t('label.query'),
+                })}
               </Typography.Paragraph>
               <Form
                 data-testid="query-form"
@@ -243,13 +247,13 @@ const AddQueryPage = () => {
                 onFinish={handleSubmit}>
                 <Form.Item
                   data-testid="sql-editor-container"
-                  label={t('label.sql-uppercase-query')}
+                  label={i18n.t('label.sql-uppercase-query')}
                   name="query"
                   rules={[
                     {
                       required: true,
-                      message: t('label.field-required', {
-                        field: t('label.sql-uppercase-query'),
+                      message: i18n.t('label.field-required', {
+                        field: i18n.t('label.sql-uppercase-query'),
                       }),
                     },
                   ]}
@@ -262,7 +266,7 @@ const AddQueryPage = () => {
                 </Form.Item>
                 {getField(descriptionField)}
                 <Form.Item
-                  label={`${t('label.query-used-in')}:`}
+                  label={`${i18n.t('label.query-used-in')}:`}
                   name="queryUsedIn">
                   <AsyncSelect
                     api={fetchTableEntity}
@@ -270,8 +274,8 @@ const AddQueryPage = () => {
                     mode="multiple"
                     optionLabelProp="labelName"
                     options={initialOptions}
-                    placeholder={t('label.please-select-entity', {
-                      entity: t('label.query-used-in'),
+                    placeholder={i18n.t('label.please-select-entity', {
+                      entity: i18n.t('label.query-used-in'),
                     })}
                   />
                 </Form.Item>
@@ -281,7 +285,7 @@ const AddQueryPage = () => {
                       data-testid="cancel-btn"
                       type="default"
                       onClick={handleCancelClick}>
-                      {t('label.cancel')}
+                      {i18n.t('label.cancel')}
                     </Button>
                     <Tooltip
                       placement="top"
@@ -294,7 +298,7 @@ const AddQueryPage = () => {
                         htmlType="submit"
                         loading={isSaving}
                         type="primary">
-                        {t('label.save')}
+                        {i18n.t('label.save')}
                       </Button>
                     </Tooltip>
                   </Space>
@@ -306,17 +310,17 @@ const AddQueryPage = () => {
         minWidth: 700,
         flex: 0.7,
       }}
-      pageTitle={t('label.add-entity', { entity: t('label.query') })}
+      pageTitle={i18n.t('label.add-entity', { entity: i18n.t('label.query') })}
       secondPanel={{
         children: (
           <>
             <Typography.Paragraph className="text-base font-medium">
-              {t('label.add-entity', {
-                entity: t('label.query'),
+              {i18n.t('label.add-entity', {
+                entity: i18n.t('label.query'),
               })}
             </Typography.Paragraph>
             <Typography.Text>
-              {t('message.add-query-helper-message')}
+              {i18n.t('message.add-query-helper-message')}
             </Typography.Text>
           </>
         ),
@@ -329,7 +333,7 @@ const AddQueryPage = () => {
 };
 
 export default withPageLayout(
-  t('label.add-entity', {
-    entity: t('label.query'),
+  i18n.t('label.add-entity', {
+    entity: i18n.t('label.query'),
   })
 )(AddQueryPage);

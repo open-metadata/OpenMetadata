@@ -12,7 +12,6 @@
  */
 
 import { AxiosError } from 'axios';
-import { t } from 'i18next';
 import { startCase } from 'lodash';
 import { ServicesUpdateRequest, ServiceTypes } from 'Models';
 import React, { useEffect, useState } from 'react';
@@ -36,6 +35,7 @@ import {
   getIngestionPipelineByFqn,
 } from '../../rest/ingestionPipelineAPI';
 import { postService } from '../../rest/serviceAPI';
+import i18n from '../../utils/i18next/LocalUtil';
 import { getSettingPath } from '../../utils/RouterUtils';
 import { getServiceRouteFromServiceType } from '../../utils/ServiceUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -83,8 +83,8 @@ const AddServicePage = () => {
           setIngestionAction(IngestionActionMessage.DEPLOYING_ERROR);
           showErrorToast(
             err ||
-              t('server.deploy-entity-error', {
-                entity: t('label.ingestion-workflow-lowercase'),
+              i18n.t('server.deploy-entity-error', {
+                entity: i18n.t('label.ingestion-workflow-lowercase'),
               })
           );
         })
@@ -103,8 +103,8 @@ const AddServicePage = () => {
             onIngestionDeploy(res.id).finally(() => resolve());
           } else {
             showErrorToast(
-              t('server.create-entity-error', {
-                entity: t('label.ingestion-workflow-lowercase'),
+              i18n.t('server.create-entity-error', {
+                entity: i18n.t('label.ingestion-workflow-lowercase'),
               })
             );
             reject();
@@ -117,19 +117,19 @@ const AddServicePage = () => {
                 resolve();
                 showErrorToast(
                   err,
-                  t('server.deploy-entity-error', {
-                    entity: t('label.ingestion-workflow-lowercase'),
+                  i18n.t('server.deploy-entity-error', {
+                    entity: i18n.t('label.ingestion-workflow-lowercase'),
                   })
                 );
               } else {
-                throw t('server.unexpected-response');
+                throw i18n.t('server.unexpected-response');
               }
             })
             .catch(() => {
               showErrorToast(
                 err,
-                t('server.create-entity-error', {
-                  entity: t('label.ingestion-workflow-lowercase'),
+                i18n.t('server.create-entity-error', {
+                  entity: i18n.t('label.ingestion-workflow-lowercase'),
                 })
               );
               reject();
@@ -148,8 +148,8 @@ const AddServicePage = () => {
         ),
       },
       {
-        name: t('label.add-new-entity', {
-          entity: t(addIngestion ? 'label.ingestion' : 'label.service'),
+        name: i18n.t('label.add-new-entity', {
+          entity: i18n.t(addIngestion ? 'label.ingestion' : 'label.service'),
         }),
         url: '',
         activeTitle: true,
@@ -177,7 +177,7 @@ const AddServicePage = () => {
 };
 
 export default withPageLayout(
-  t('label.add-entity', {
-    entity: t('label.service'),
+  i18n.t('label.add-entity', {
+    entity: i18n.t('label.service'),
   })
 )(AddServicePage);

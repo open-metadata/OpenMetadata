@@ -12,7 +12,6 @@
  */
 
 import { Col, Menu, MenuProps, Row, Typography } from 'antd';
-import { t } from 'i18next';
 import React, { useMemo } from 'react';
 import {
   Redirect,
@@ -26,6 +25,7 @@ import ResizableLeftPanels from '../../components/common/ResizablePanels/Resizab
 import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
 import { ROUTES } from '../../constants/constants';
 import { withPageLayout } from '../../hoc/withPageLayout';
+import i18n from '../../utils/i18next/LocalUtil';
 import { getDataQualityPagePath } from '../../utils/RouterUtils';
 import './data-quality-page.less';
 import DataQualityClassBase from './DataQualityClassBase';
@@ -103,12 +103,12 @@ const DataQualityPage = () => {
                     className="m-b-md p-x-md"
                     data-testid="page-title"
                     level={5}>
-                    {t('label.data-quality')}
+                    {i18n.t('label.data-quality')}
                   </Typography.Title>
                   <Typography.Paragraph
                     className="text-grey-muted p-x-md"
                     data-testid="page-sub-title">
-                    {t('message.page-sub-header-for-data-quality')}
+                    {i18n.t('message.page-sub-header-for-data-quality')}
                   </Typography.Paragraph>
                 </Col>
                 <Col span={24}>
@@ -143,4 +143,4 @@ const DataQualityPage = () => {
   );
 };
 
-export default withPageLayout(t('label.quality'))(DataQualityPage);
+export default withPageLayout(i18n.t('label.quality'))(DataQualityPage);
