@@ -1,8 +1,8 @@
 package org.openmetadata.service.apps.scheduler;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
-import static org.openmetadata.service.apps.scheduler.AppScheduler.APP_NAME;
 import static org.openmetadata.service.apps.scheduler.AppScheduler.APP_CONFIG_KEY;
+import static org.openmetadata.service.apps.scheduler.AppScheduler.APP_NAME;
 
 import java.util.HashMap;
 import java.util.Map;
