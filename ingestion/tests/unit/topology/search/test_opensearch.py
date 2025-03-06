@@ -203,7 +203,7 @@ class OpenSearchUnitTest(TestCase):
         # Manually set the search_service context to our mock search service name.
         self.os_source.context.get().__dict__[
             "search_service"
-        ] = MOCK_SEARCH_SERVICE.name
+        ] = MOCK_SEARCH_SERVICE.name.root
 
     def test_partition_parse_columns(self):
         actual_index = next(self.os_source.yield_search_index(MOCK_DETAILS)).right

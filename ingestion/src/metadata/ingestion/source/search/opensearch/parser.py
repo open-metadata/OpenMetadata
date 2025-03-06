@@ -23,6 +23,7 @@ logger = ingestion_logger()
 
 
 # If any type of OpenSearch field is not recognized mark it as unknown
+# pylint: disable=no-member,unused-argument,protected-access
 @classmethod
 def _missing_(cls, value):
     return cls.UNKNOWN
