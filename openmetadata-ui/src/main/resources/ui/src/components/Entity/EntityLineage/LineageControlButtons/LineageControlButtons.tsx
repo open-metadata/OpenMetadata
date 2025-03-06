@@ -65,7 +65,7 @@ const LineageControlButtons: FC<LineageControlButtonsProps> = ({
 
   const editIcon = (
     <span className="anticon">
-      <EditIcon className={isEditMode ? 'active' : ''} />
+      <EditIcon className={isEditMode ? 'active' : ''} height={18} width={18} />
     </span>
   );
 
@@ -133,7 +133,7 @@ const LineageControlButtons: FC<LineageControlButtonsProps> = ({
           disabled={isEditMode}
           icon={
             <span className="anticon">
-              <ExportIcon />
+              <ExportIcon height={18} width={18} />
             </span>
           }
           title={t('label.export-entity', { entity: t('label.lineage') })}
