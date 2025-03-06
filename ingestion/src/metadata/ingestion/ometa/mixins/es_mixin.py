@@ -480,24 +480,27 @@ class ESMixin(Generic[T]):
                         table_name=table_name,
                     )
 
-    def get_table_entities_from_es(
-        self, fqn_search_string: str, fetch_multiple_entities: bool = False
+    def search_in_any_service(
+        self,
+        entity_type: Type[T],
+        fqn_search_string: str,
+        fetch_multiple_entities: bool = False,
     ) -> Optional[Union[List[Table], Table]]:
         """
         fetch table from es when with/without `db_service_name`
         """
         try:
-            table_entity = get_entity_from_es_result(
+            entity_result = get_entity_from_es_result(
                 entity_list=self.es_search_from_fqn(
-                    entity_type=Table,
+                    entity_type=entity_type,
                     fqn_search_string=fqn_search_string,
                 ),
                 fetch_multiple_entities=fetch_multiple_entities,
             )
-            return table_entity
+            return entity_result
         except Exception as exc:
             logger.debug(
-                f"Error to fetch for table fqn={fqn_search_string} from es: {exc}"
+                f"Error to fetch entity: fqn={fqn_search_string} from es: {exc}"
             )
             logger.debug(traceback.format_exc())
         return None

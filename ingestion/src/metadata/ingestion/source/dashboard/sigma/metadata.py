@@ -210,7 +210,8 @@ class SigmaSource(DashboardServiceSource):
                     service_name=db_service_name or "*",
                     table_name=node.name,
                 )
-                return self.metadata.get_table_entities_from_es(
+                return self.metadata.search_in_any_service(
+                    entity_type=Table,
                     fqn_search_string=fqn_search_string,
                 )
             except Exception as exc:

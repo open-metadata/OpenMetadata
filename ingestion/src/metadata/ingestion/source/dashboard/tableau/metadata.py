@@ -738,7 +738,8 @@ class TableauSource(DashboardServiceSource):
                 service_name=db_service_name or "*",
                 table_name=table_name,
             )
-            table_entity = self.metadata.get_table_entities_from_es(
+            table_entity = self.metadata.search_in_any_service(
+                entity_type=Table,
                 fqn_search_string=fqn_search_string,
             )
             if table_entity:
@@ -791,7 +792,8 @@ class TableauSource(DashboardServiceSource):
                         service_name=db_service_name or "*",
                         table_name=table_name,
                     )
-                    from_entities = self.metadata.get_table_entities_from_es(
+                    from_entities = self.metadata.search_in_any_service(
+                        entity_type=Table,
                         fqn_search_string=fqn_search_string,
                         fetch_multiple_entities=True,
                     )

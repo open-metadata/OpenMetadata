@@ -20,6 +20,7 @@ from metadata.generated.schema.entity.data.chart import Chart, ChartType
 from metadata.generated.schema.entity.data.dashboard import (
     Dashboard as Lineage_Dashboard,
 )
+from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.connections.dashboard.modeConnection import (
     ModeConnection,
 )
@@ -159,7 +160,8 @@ class ModeSource(DashboardServiceSource):
                         service_name=db_service_name or "*",
                         table_name=table,
                     )
-                    from_entities = self.metadata.get_table_entities_from_es(
+                    from_entities = self.metadata.search_in_any_service(
+                        entity_type=Table,
                         fqn_search_string=fqn_search_string,
                         fetch_multiple_entities=True,
                     )

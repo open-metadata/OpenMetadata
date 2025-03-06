@@ -202,7 +202,8 @@ class QlikcloudSource(QliksenseSource):
                         service_name=db_service_name or "*",
                         table_name=data_model_entity.displayName,
                     )
-                    om_table = self.metadata.get_table_entities_from_es(
+                    om_table = self.metadata.search_in_any_service(
+                        entity_type=Table,
                         fqn_search_string=fqn_search_string,
                     )
                     if om_table:

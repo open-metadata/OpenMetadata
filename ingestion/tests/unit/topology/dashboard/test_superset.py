@@ -16,6 +16,7 @@ import json
 import uuid
 from pathlib import Path
 from unittest import TestCase
+from unittest.mock import patch
 
 import sqlalchemy
 from collate_sqllineage.core.models import Column, Schema, SubQuery, Table
@@ -224,7 +225,7 @@ MOCK_DATASOURCE = [
 EXPECTED_ALL_CHARTS_DB = {1: MOCK_CHART_DB_2}
 
 NOT_FOUND_RESP = {"message": "Not found"}
-EXPECTED_API_DATASET_FQN = None
+EXPECTED_API_DATASET_FQN = "test_postgres.*.main.wb_health_population"
 EXPECTED_DATASET_FQN = "test_postgres.examples.main.wb_health_population"
 
 
@@ -577,19 +578,25 @@ class SupersetUnitTest(TestCase):
         self.assertEqual(dashboard_charts, EXPECTED_CHART)
 
     def test_api_get_datasource_fqn(self):
-        """
-        Test generated datasource fqn for api source
-        """
-        fqn = self.superset_api._get_datasource_fqn(  # pylint: disable=protected-access
-            1, MOCK_DB_POSTGRES_SERVICE
-        )
-        self.assertEqual(fqn, EXPECTED_API_DATASET_FQN)
+        with patch.object(
+            OpenMetadata, "get_by_name", return_value=MOCK_DB_POSTGRES_SERVICE
+        ):
+            """
+            Test generated datasource fqn for api source
+            """
+            fqn = self.superset_api._get_datasource_fqn(  # pylint: disable=protected-access
+                1, MOCK_DB_POSTGRES_SERVICE.name.root
+            )
+            self.assertEqual(fqn, EXPECTED_API_DATASET_FQN)
 
     def test_db_get_datasource_fqn_for_lineage(self):
-        fqn = self.superset_db._get_datasource_fqn_for_lineage(  # pylint: disable=protected-access
-            MOCK_CHART_DB, MOCK_DB_POSTGRES_SERVICE
-        )
-        self.assertEqual(fqn, EXPECTED_DATASET_FQN)
+        with patch.object(
+            OpenMetadata, "get_by_name", return_value=MOCK_DB_POSTGRES_SERVICE
+        ):
+            fqn = self.superset_db._get_datasource_fqn_for_lineage(  # pylint: disable=protected-access
+                MOCK_CHART_DB, MOCK_DB_POSTGRES_SERVICE.name.root
+            )
+            self.assertEqual(fqn, EXPECTED_DATASET_FQN)
 
     def test_db_get_database_name(self):
         sqa_str1 = "postgres://user:pass@localhost:8888/database"

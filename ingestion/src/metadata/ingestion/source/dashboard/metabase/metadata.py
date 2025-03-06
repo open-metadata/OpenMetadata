@@ -20,6 +20,7 @@ from metadata.generated.schema.entity.data.chart import Chart
 from metadata.generated.schema.entity.data.dashboard import (
     Dashboard as LineageDashboard,
 )
+from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.connections.dashboard.metabaseConnection import (
     MetabaseConnection,
 )
@@ -376,8 +377,10 @@ class MetabaseSource(DashboardServiceSource):
                 service_name=db_service_name or "*",
                 table_name=table,
             )
-            from_entities = self.metadata.get_table_entities_from_es(
-                fqn_search_string=fqn_search_string, fetch_multiple_entities=True
+            from_entities = self.metadata.search_in_any_service(
+                entity_type=Table,
+                fqn_search_string=fqn_search_string,
+                fetch_multiple_entities=True,
             )
             to_fqn = fqn.build(
                 self.metadata,
@@ -414,8 +417,10 @@ class MetabaseSource(DashboardServiceSource):
             service_name=db_service_name or "*",
             table_name=table_name,
         )
-        from_entities = self.metadata.get_table_entities_from_es(
-            fqn_search_string=fqn_search_string, fetch_multiple_entities=True
+        from_entities = self.metadata.search_in_any_service(
+            entity_type=Table,
+            fqn_search_string=fqn_search_string,
+            fetch_multiple_entities=True,
         )
         to_fqn = fqn.build(
             self.metadata,

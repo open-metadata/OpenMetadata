@@ -20,7 +20,7 @@ from collate_sqllineage.core.models import Table as LineageTable
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.dashboardDataModel import DashboardDataModel
-from metadata.generated.schema.entity.data.table import Column, DataType
+from metadata.generated.schema.entity.data.table import Column, DataType, Table
 from metadata.generated.schema.entity.services.connections.dashboard.supersetConnection import (
     SupersetConnection,
 )
@@ -253,7 +253,8 @@ class SupersetSourceMixin(DashboardServiceSource):
             datasource_fqn = self._get_datasource_fqn_for_lineage(
                 input_table, db_service_name
             )
-            from_entity = self.metadata.get_table_entities_from_es(
+            from_entity = self.metadata.search_in_any_service(
+                entity_type=Table,
                 fqn_search_string=datasource_fqn,
             )
             if not from_entity:

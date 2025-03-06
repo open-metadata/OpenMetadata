@@ -25,7 +25,7 @@ from metadata.generated.schema.entity.data.dashboardDataModel import (
     DashboardDataModel,
     DataModelType,
 )
-from metadata.generated.schema.entity.data.table import Column, DataType
+from metadata.generated.schema.entity.data.table import Column, DataType, Table
 from metadata.generated.schema.entity.services.connections.dashboard.powerBIConnection import (
     PowerBIConnection,
 )
@@ -630,7 +630,8 @@ class PowerbiSource(DashboardServiceSource):
                 service_name=db_service_name or "*",
                 table_name=table.name,
             )
-            table_entity = self.metadata.get_table_entities_from_es(
+            table_entity = self.metadata.search_in_any_service(
+                entity_type=Table,
                 fqn_search_string=fqn_search_string,
             )
             if table_entity and datamodel_entity:

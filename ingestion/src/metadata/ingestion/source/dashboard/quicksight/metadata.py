@@ -26,7 +26,7 @@ from metadata.generated.schema.entity.data.dashboardDataModel import (
     DashboardDataModel,
     DataModelType,
 )
-from metadata.generated.schema.entity.data.table import Column
+from metadata.generated.schema.entity.data.table import Column, Table
 from metadata.generated.schema.entity.services.connections.dashboard.quickSightConnection import (
     QuickSightConnection,
 )
@@ -297,7 +297,8 @@ class QuicksightSource(DashboardServiceSource):
                         service_name=db_service_name or "*",
                         table_name=table,
                     )
-                    from_entities = self.metadata.get_table_entities_from_es(
+                    from_entities = self.metadata.search_in_any_service(
+                        entity_type=Table,
                         fqn_search_string=fqn_search_string,
                         fetch_multiple_entities=True,
                     )
@@ -405,7 +406,8 @@ class QuicksightSource(DashboardServiceSource):
                         service_name=db_service_name or "*",
                         table_name=table_name,
                     )
-                    from_entity = self.metadata.get_table_entities_from_es(
+                    from_entity = self.metadata.search_in_any_service(
+                        entity_type=Table,
                         fqn_search_string=fqn_search_string,
                     )
                     if from_entity is not None and data_model_entity is not None:
