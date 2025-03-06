@@ -21,15 +21,12 @@ import { PLATFORM_INSIGHTS_CHART } from '../../../constants/ServiceInsightsTab.c
 import { getTitleByChartType } from '../../../utils/ServiceInsightsTabUtils';
 import TotalDataAssetsWidget from '../TotalDataAssetsWidget/TotalDataAssetsWidget';
 import './platform-insights-widget.less';
-import { ChartSeriesData } from './PlatformInsightsWidget.interface';
+import { PlatformInsightsWidgetProps } from './PlatformInsightsWidget.interface';
 
 function PlatformInsightsWidget({
   chartsData,
   isLoading,
-}: {
-  chartsData: ChartSeriesData[];
-  isLoading: boolean;
-}) {
+}: Readonly<PlatformInsightsWidgetProps>) {
   const { t } = useTranslation();
 
   return (

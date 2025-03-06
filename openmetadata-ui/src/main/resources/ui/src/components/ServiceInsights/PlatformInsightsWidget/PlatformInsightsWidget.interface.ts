@@ -25,3 +25,8 @@ export interface ChartSeriesData {
   currentCount: number;
   isIncreased: boolean;
 }
+
+export interface PlatformInsightsWidgetProps {
+  chartsData: ChartSeriesData[];
+  isLoading: boolean;
+}

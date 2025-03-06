@@ -101,60 +101,58 @@ function TotalDataAssetsWidget() {
             size={SIZE.MEDIUM}
           />
         ) : (
-          <>
-            <div className="total-data-assets-info">
-              <div className="assets-list-container">
-                {entityCounts?.map((entity) => (
-                  <div
-                    className="flex items-center justify-between"
-                    key={entity.name}>
-                    <div className="flex items-center gap-3">
-                      <div
-                        className="bullet"
-                        style={{
-                          backgroundColor: entity.fill,
-                        }}
-                      />
-                      <div className="p-0 icon-container">{entity.icon}</div>
-
-                      <Typography.Text>{entity.name}</Typography.Text>
-                    </div>
-
-                    <Typography.Text className="font-semibold">
-                      {entity.value}
-                    </Typography.Text>
-                  </div>
-                ))}
-              </div>
-              <div className="h-full flex-center flex-half">
-                <ResponsiveContainer height="100%" width="100%">
-                  <PieChart>
-                    <Pie
-                      cx="50%"
-                      cy="50%"
-                      data={[{ value: 1 }]}
-                      dataKey="value"
-                      fill={WHITE_SMOKE}
-                      innerRadius="75%"
-                      outerRadius="98%">
-                      <Cell fill={WHITE_SMOKE} />
-                    </Pie>
-                    <Pie
-                      cx="50%"
-                      cy="50%"
-                      data={entityCounts}
-                      dataKey="value"
-                      innerRadius="80%"
-                      isAnimationActive={false}
-                      nameKey="name"
-                      outerRadius="93%"
+          <div className="total-data-assets-info">
+            <div className="assets-list-container">
+              {entityCounts?.map((entity) => (
+                <div
+                  className="flex items-center justify-between"
+                  key={entity.name}>
+                  <div className="flex items-center gap-3">
+                    <div
+                      className="bullet"
+                      style={{
+                        backgroundColor: entity.fill,
+                      }}
                     />
-                    <Tooltip />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
+                    <div className="p-0 icon-container">{entity.icon}</div>
+
+                    <Typography.Text>{entity.name}</Typography.Text>
+                  </div>
+
+                  <Typography.Text className="font-semibold">
+                    {entity.value}
+                  </Typography.Text>
+                </div>
+              ))}
             </div>
-          </>
+            <div className="h-full flex-center flex-half">
+              <ResponsiveContainer height="100%" width="100%">
+                <PieChart>
+                  <Pie
+                    cx="50%"
+                    cy="50%"
+                    data={[{ value: 1 }]}
+                    dataKey="value"
+                    fill={WHITE_SMOKE}
+                    innerRadius="75%"
+                    outerRadius="98%">
+                    <Cell fill={WHITE_SMOKE} />
+                  </Pie>
+                  <Pie
+                    cx="50%"
+                    cy="50%"
+                    data={entityCounts}
+                    dataKey="value"
+                    innerRadius="80%"
+                    isAnimationActive={false}
+                    nameKey="name"
+                    outerRadius="93%"
+                  />
+                  <Tooltip />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
         )}
       </Skeleton>
     </Card>

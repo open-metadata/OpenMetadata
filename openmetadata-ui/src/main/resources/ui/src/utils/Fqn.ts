@@ -71,6 +71,6 @@ export default class Fqn {
   // Useful for getting the service name from the fqn in the url
   // Example: "service.Name/example" -> service.Name/example
   static getNameWithoutQuotes(fqn: string) {
-    return fqn.replace(/^"|"$/g, '');
+    return fqn.replace(/(?:^")|(?:"$)/g, '');
   }
 }
