@@ -17,6 +17,10 @@ import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as GridIcon } from '../../../assets/svg/ic-grid.svg';
 import { ReactComponent as ListIcon } from '../../../assets/svg/ic-list.svg';
+import {
+  COMMON_STATIC_TABLE_VISIBLE_COLUMNS,
+  DEFAULT_SERVICE_VISIBLE_COLUMNS,
+} from '../../../constants/TableKeys.constants';
 import Searchbar from '../SearchBarComponent/SearchBar.component';
 import Table from '../Table/Table';
 import { ListViewOptions, ListViewProps } from './ListView.interface';
@@ -89,7 +93,11 @@ export const ListView = <T extends object = any>({
       </Col>
       <Col span={24}>
         {currentView === ListViewOptions.TABLE ? (
-          <Table {...tableProps} />
+          <Table
+            defaultVisibleColumns={DEFAULT_SERVICE_VISIBLE_COLUMNS}
+            staticVisibleColumns={COMMON_STATIC_TABLE_VISIBLE_COLUMNS}
+            {...tableProps}
+          />
         ) : (
           cardRender
         )}
