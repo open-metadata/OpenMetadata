@@ -1604,7 +1604,7 @@
     "enter-your-registered-email": "Entrer votre email enregistré pour recevoir le lien de réinitialisation du mot de passe",
     "entity-already-exists": "{{entity}} existe déjà.",
     "entity-are-not-available": "{{entity}} n'est pas valide",
-    "entity-customize-description": "Personnalisez les onglets et leur ordre pour {{entity}}",
+    "entity-customize-description": "Personnalisez la page de détails {{entity}} avec les widgets et les onglets les plus utiles pour votre cas d'utilisation.",
     "entity-delimiters-not-allowed": "Nom avec des délimiteurs ne sont pas autorisés",
     "entity-details-updated": "{{entityType}} {{fqn}} details updated successfully",
     "entity-does-not-have-followers": "{{entityName}} n'a pas de followers pour l'instant",

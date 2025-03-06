@@ -1604,7 +1604,7 @@
     "enter-your-registered-email": "비밀번호 재설정 링크를 받기 위해 등록된 이메일을 입력하세요.",
     "entity-already-exists": "{{entity}}이(가) 이미 존재합니다.",
     "entity-are-not-available": "{{entity}}이(가) 사용 가능하지 않습니다.",
-    "entity-customize-description": "{{entity}}에 대한 탭과 순서를 사용자 정의하세요",
+    "entity-customize-description": "사용 사례에 가장 유용한 위젯과 탭으로 {{entity}} 상세 페이지를 사용자 정의하세요.",
     "entity-delimiters-not-allowed": "구분 기호가 있는 이름은 허용되지 않습니다.",
     "entity-details-updated": "{{entityType}} {{fqn}} details updated successfully",
     "entity-does-not-have-followers": "{{entityName}}에는 아직 팔로워가 없습니다.",

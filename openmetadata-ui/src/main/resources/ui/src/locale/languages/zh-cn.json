@@ -1604,7 +1604,7 @@
     "enter-your-registered-email": "输入您注册的电子邮箱以接收密码重置链接",
     "entity-already-exists": "{{entity}}已存在",
     "entity-are-not-available": "{{entity}}不可用",
-    "entity-customize-description": "自定义{{entity}}的选项卡及其顺序",
+    "entity-customize-description": "使用更适合您用例的小部件和标签来自定义{{entity}}详情页面。",
     "entity-delimiters-not-allowed": "不允许使用带有分隔符的名称",
     "entity-details-updated": "{{entityType}} {{fqn}} details updated successfully",
     "entity-does-not-have-followers": "{{entityName}}尚无任何关注者",

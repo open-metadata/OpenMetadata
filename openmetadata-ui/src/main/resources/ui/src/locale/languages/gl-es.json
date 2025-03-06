@@ -1604,7 +1604,7 @@
     "enter-your-registered-email": "Introduce o teu correo electrónico rexistrado para recibir unha ligazón de restablecemento de contrasinal",
     "entity-already-exists": "{{entity}} xa existe.",
     "entity-are-not-available": "{{entity}} non están dispoñibles",
-    "entity-customize-description": "Personaliza as pestanas e a súa orde para {{entity}}",
+    "entity-customize-description": "Personaliza a páxina de detalles de {{entity}} coa elección dos widgets e pestanas que sexan máis útiles para o teu caso de uso.",
     "entity-delimiters-not-allowed": "Non se permiten nomes con delimitadores",
     "entity-details-updated": "Detalles de {{entityType}} {{fqn}} actualizados correctamente",
     "entity-does-not-have-followers": "{{entityName}} aínda non ten seguidores",

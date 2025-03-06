@@ -1604,7 +1604,7 @@
     "enter-your-registered-email": "Insira seu -mail registrado para receber o link de redefinição de senha",
     "entity-already-exists": "{{entity}} já existe.",
     "entity-are-not-available": "{{entity}} não estão disponíveis",
-    "entity-customize-description": "Customize {{entity}} detail page with choice of your widget and tabs which is more useful for your use case.",
+    "entity-customize-description": "Personalize a página de detalhes do {{entity}} com widgets e abas mais úteis para seu caso de uso.",
     "entity-delimiters-not-allowed": "Nomes com delimitadores não são permitidos",
     "entity-details-updated": "{{entityType}} {{fqn}} details updated successfully",
     "entity-does-not-have-followers": "{{entityName}} ainda não tem seguidores",

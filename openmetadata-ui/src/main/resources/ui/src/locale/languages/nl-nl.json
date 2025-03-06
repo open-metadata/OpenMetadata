@@ -1604,7 +1604,7 @@
     "enter-your-registered-email": "Voer je geregistreerde e-mailadres in om een wachtwoordresetlink te ontvangen",
     "entity-already-exists": "{{entity}} bestaat al.",
     "entity-are-not-available": "{{entity}} zijn niet beschikbaar",
-    "entity-customize-description": "Pas de tabbladen en hun volgorde aan voor {{entity}}",
+    "entity-customize-description": "Pas de {{entity}} detailpagina aan met widgets en tabbladen die het meest nuttig zijn voor uw gebruikssituatie.",
     "entity-delimiters-not-allowed": "Naam met scheidingstekens is niet toegestaan",
     "entity-details-updated": "{{entityType}} {{fqn}} details updated successfully",
     "entity-does-not-have-followers": "{{entityName}} heeft nog geen volgers",

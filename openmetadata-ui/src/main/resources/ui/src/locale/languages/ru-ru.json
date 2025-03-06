@@ -1604,7 +1604,7 @@
     "enter-your-registered-email": "Введите свой зарегистрированный адрес электронной почты, чтобы получить ссылку для сброса пароля",
     "entity-already-exists": "{{entity}} уже существует.",
     "entity-are-not-available": "{{entity}} недоступно",
-    "entity-customize-description": "Настройте вкладки и их порядок для {{entity}}",
+    "entity-customize-description": "Настройте страницу сведений {{entity}} с помощью виджетов и вкладок, которые наиболее полезны для вашего случая использования.",
     "entity-delimiters-not-allowed": "Имя с разделителями не допускается",
     "entity-details-updated": "{{entityType}} {{fqn}} details updated successfully",
     "entity-does-not-have-followers": "У {{entityName}} еще нет подписчиков",

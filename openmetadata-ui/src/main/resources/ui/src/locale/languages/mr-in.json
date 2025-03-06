@@ -1604,7 +1604,7 @@
     "enter-your-registered-email": "पासवर्ड रीसेट लिंक प्राप्त करण्यासाठी तुमचा नोंदणीकृत ईमेल प्रविष्ट करा",
     "entity-already-exists": "{{entity}} आधीच अस्तित्वात आहे.",
     "entity-are-not-available": "{{entity}} उपलब्ध नाहीत",
-    "entity-customize-description": "{{entity}} साठी टॅब आणि त्यांचा क्रम सानुकूलित करा",
+    "entity-customize-description": "आपल्या वापर केससाठी अधिक उपयुक्त असलेल्या विजेट आणि टॅबच्या निवडीसह {{entity}} तपशील पृष्ठ सानुकूलित करा.",
     "entity-delimiters-not-allowed": "नावात सीमारेषा अनुमत नाहीत",
     "entity-details-updated": "{{entityType}} {{fqn}} details updated successfully",
     "entity-does-not-have-followers": "{{entityName}} कडे अद्याप कोणतेही अनुयायी नाहीत",
