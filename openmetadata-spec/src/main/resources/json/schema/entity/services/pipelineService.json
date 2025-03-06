@@ -248,6 +248,10 @@
     "domain" : {
       "description": "Domain the Pipeline service belongs to.",
       "$ref": "../../type/entityReference.json"
+    },
+    "ingestionAgent" : {
+      "description": "The ingestion agent responsible for executing the ingestion pipeline.",
+      "$ref": "../../type/entityReference.json"
     }
   },
   "required": [
