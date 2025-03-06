@@ -144,6 +144,7 @@
     "browse": "เรียกดู",
     "browse-app-plural": "เรียกดูแอปพลิเคชัน",
     "browse-csv-file": "เรียกดูไฟล์ CSV",
+    "bulk-edit": "แก้ไขเป็นกลุ่ม",
     "by-entity": "โดย {{entity}}",
     "by-lowercase": "โดย",
     "ca-certs": "ใบรับรอง CA",

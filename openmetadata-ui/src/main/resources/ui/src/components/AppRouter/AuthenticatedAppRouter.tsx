@@ -286,7 +286,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       <Route
         exact
         component={BulkEntityImportPage}
-        path={ROUTES.ENTITY_IMPORT}
+        path={[ROUTES.ENTITY_IMPORT, ROUTES.BULK_EDIT_ENTITY_WITH_FQN]}
       />
 
       <Route exact component={MyDataPage} path={ROUTES.MY_DATA} />

@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import Icon from '@ant-design/icons';
 import { Button, Col, Form, Row, Select, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { ExpandableConfig } from 'antd/lib/table/interface';
@@ -27,6 +28,7 @@ import {
 import { EntityTags, TagFilterOptions } from 'Models';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useHistory } from 'react-router-dom';
 import { ReactComponent as IconEdit } from '../../../assets/svg/edit-new.svg';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import {
@@ -56,6 +58,7 @@ import { getTestCaseExecutionSummary } from '../../../rest/testAPI';
 import { getPartialNameFromTableFQN } from '../../../utils/CommonUtils';
 import {
   getColumnSorter,
+  getEntityBulkEditPath,
   getEntityName,
   getFrequentlyJoinedColumns,
   highlightSearchArrayElement,
@@ -97,6 +100,7 @@ import {
 
 const SchemaTable = () => {
   const { t } = useTranslation();
+  const history = useHistory();
   const [testCaseSummary, setTestCaseSummary] = useState<TestSummary>();
   const [searchedColumns, setSearchedColumns] = useState<Column[]>([]);
   const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
@@ -572,6 +576,13 @@ const SchemaTable = () => {
     </Form.Item>
   );
 
+  const handleEditTable = () => {
+    history.push({
+      pathname: getEntityBulkEditPath(EntityType.TABLE, decodedEntityFqn),
+      state: { isBulkEdit: true },
+    });
+  };
+
   useEffect(() => {
     setExpandedRowKeys(nestedTableFqnKeys);
   }, [searchText]);
@@ -595,6 +606,15 @@ const SchemaTable = () => {
 
   return (
     <Row gutter={[16, 16]}>
+      <Col span={8}>
+        <Searchbar
+          removeMargin
+          placeholder={t('message.find-in-table')}
+          searchValue={searchText}
+          typingInterval={500}
+          onSearch={handleSearchAction}
+        />
+      </Col>
       <Col id="schemaDetails" span={24}>
         <Table
           bordered
@@ -605,15 +625,17 @@ const SchemaTable = () => {
           defaultVisibleColumns={DEFAULT_SCHEMA_TABLE_VISIBLE_COLUMNS}
           expandable={expandableConfig}
           extraTableFilters={
-            <Searchbar
-              removeMargin
-              placeholder={t('message.find-in-table')}
-              searchValue={searchText}
-              typingInterval={500}
-              onSearch={handleSearchAction}
-            />
+            <Button
+              className="text-primary p-0"
+              data-testid="bulk-edit-table"
+              icon={<Icon component={IconEdit} />}
+              type="text"
+              onClick={handleEditTable}>
+              {t('label.edit-entity', {
+                entity: t('label.table'),
+              })}
+            </Button>
           }
-          extraTableFiltersClassName="justify-between"
           locale={{
             emptyText: <FilterTablePlaceHolder />,
           }}
