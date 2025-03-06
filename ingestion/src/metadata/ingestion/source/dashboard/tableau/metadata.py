@@ -12,6 +12,7 @@
 Tableau source module
 """
 import traceback
+from datetime import datetime
 from typing import Any, Iterable, List, Optional, Set
 
 from requests.utils import urlparse
@@ -56,6 +57,7 @@ from metadata.generated.schema.type.basic import (
 )
 from metadata.generated.schema.type.entityLineage import ColumnLineage
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
+from metadata.generated.schema.type.usageRequest import UsageRequest
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper
@@ -63,7 +65,10 @@ from metadata.ingestion.lineage.parser import LineageParser
 from metadata.ingestion.lineage.sql_lineage import get_column_fqn, search_table_entities
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
+from metadata.ingestion.source.dashboard.dashboard_service import (
+    DashboardServiceSource,
+    DashboardUsage,
+)
 from metadata.ingestion.source.dashboard.tableau.client import TableauClient
 from metadata.ingestion.source.dashboard.tableau.models import (
     ChartUrl,
@@ -98,6 +103,14 @@ class TableauSource(DashboardServiceSource):
     config: WorkflowSource
     metadata_config: OpenMetadataConnection
     client: TableauClient
+
+    def __init__(
+        self,
+        config: WorkflowSource,
+        metadata: OpenMetadata,
+    ):
+        super().__init__(config, metadata)
+        self.today = datetime.now().strftime("%Y-%m-%d")
 
     @classmethod
     def create(
@@ -705,6 +718,9 @@ class TableauSource(DashboardServiceSource):
         except ConnectionError as err:
             logger.debug(f"Error closing connection - {err}")
 
+        self.metadata.compute_percentile(Dashboard, self.today)
+        self.metadata.close()
+
     def _get_table_entities_from_api(
         self, db_service_entity: DatabaseService, table: UpstreamTable
     ) -> Optional[List[TableAndQuery]]:
@@ -901,3 +917,82 @@ class TableauSource(DashboardServiceSource):
                 f"Error fetching project name for {dashboard_details.id}: {exc}"
             )
         return None
+
+    def yield_dashboard_usage(  # pylint: disable=W0221
+        self, dashboard_details: TableauDashboard
+    ) -> Iterable[Either[DashboardUsage]]:
+        """
+        Yield the usage of the dashboard
+        """
+        try:
+            dashboard_fqn = fqn.build(
+                metadata=self.metadata,
+                entity_type=Dashboard,
+                service_name=self.context.get().dashboard_service,
+                dashboard_name=dashboard_details.id,
+            )
+
+            dashboard: Dashboard = self.metadata.get_by_name(
+                entity=Dashboard,
+                fqn=dashboard_fqn,
+                fields=["usageSummary"],
+            )
+
+            current_views = self.client.get_workbook_view_count_by_id(
+                workbook_id=dashboard_details.id
+            )
+
+            if not current_views:
+                logger.debug(f"No usage to report for {dashboard_details.name}")
+
+            if not dashboard.usageSummary:
+                logger.info(
+                    f"Yielding fresh usage for {dashboard.fullyQualifiedName.root}"
+                )
+                yield Either(
+                    right=DashboardUsage(
+                        dashboard=dashboard,
+                        usage=UsageRequest(date=self.today, count=current_views),
+                    )
+                )
+
+            elif (
+                str(dashboard.usageSummary.date.root) != self.today
+                or not dashboard.usageSummary.dailyStats.count
+            ):
+                latest_usage = dashboard.usageSummary.dailyStats.count
+
+                new_usage = current_views - latest_usage
+                if new_usage < 0:
+                    raise ValueError(
+                        f"Wrong computation of usage difference. Got new_usage={new_usage}."
+                    )
+
+                logger.info(
+                    f"Yielding new usage for {dashboard.fullyQualifiedName.root}"
+                )
+                yield Either(
+                    right=DashboardUsage(
+                        dashboard=dashboard,
+                        usage=UsageRequest(
+                            date=self.today, count=current_views - latest_usage
+                        ),
+                    )
+                )
+
+            else:
+                logger.debug(
+                    f"Latest usage {dashboard.usageSummary} vs. today {self.today}. Nothing to compute."
+                )
+                logger.info(
+                    f"Usage already informed for {dashboard.fullyQualifiedName.root}"
+                )
+
+        except Exception as exc:
+            yield Either(
+                left=StackTraceError(
+                    name=f"{dashboard_details.name} Usage",
+                    error=f"Exception computing dashboard usage for {dashboard_details.name}: {exc}",
+                    stackTrace=traceback.format_exc(),
+                )
+            )
