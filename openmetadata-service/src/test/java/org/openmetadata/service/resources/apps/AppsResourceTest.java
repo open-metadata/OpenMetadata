@@ -349,7 +349,7 @@ public class AppsResourceTest extends EntityResourceTest<App, CreateApp> {
   }
 
   @Test
-  void post_trigger_app_200() throws HttpResponseException, InterruptedException {
+  void post_trigger_app_200() throws HttpResponseException {
     String appName = "SearchIndexingApplication";
     postTriggerApp(appName, ADMIN_AUTH_HEADERS);
     assertAppStatusAvailableAfterTrigger(appName);
@@ -366,7 +366,7 @@ public class AppsResourceTest extends EntityResourceTest<App, CreateApp> {
   }
 
   @Test
-  void post_trigger_app_400() throws HttpResponseException {
+  void post_trigger_app_400() {
     String appName = "SearchIndexingApplication";
     assertResponseContains(
         () -> postTriggerApp(appName, ADMIN_AUTH_HEADERS, Map.of("thisShouldFail", "but will it?")),

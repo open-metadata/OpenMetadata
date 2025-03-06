@@ -71,7 +71,7 @@ public class AppScheduler {
   public static final String APPS_TRIGGER_GROUP = "OMAppsJobGroup";
   public static final String APP_INFO_KEY = "applicationInfoKey";
   public static final String APP_NAME = "appName";
-  public static String CONFIG_OVERRIDE_KEY = "configOverride";
+  public static String APP_CONFIG_KEY = "configOverride";
 
   private static AppScheduler instance;
   private static volatile boolean initialized = false;
@@ -283,7 +283,7 @@ public class AppScheduler {
           jobBuilder(application, String.format("%s-%s", application.getName(), ON_DEMAND_JOB));
       newJobDetail.getJobDataMap().put("triggerType", ON_DEMAND_JOB);
       newJobDetail.getJobDataMap().put(APP_NAME, application.getFullyQualifiedName());
-      newJobDetail.getJobDataMap().put("overrideConfig", config);
+      newJobDetail.getJobDataMap().put(APP_CONFIG_KEY, config);
       Trigger trigger =
           TriggerBuilder.newTrigger()
               .withIdentity(

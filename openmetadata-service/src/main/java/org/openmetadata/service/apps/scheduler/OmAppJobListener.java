@@ -2,7 +2,7 @@ package org.openmetadata.service.apps.scheduler;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.apps.scheduler.AppScheduler.APP_NAME;
-import static org.openmetadata.service.apps.scheduler.AppScheduler.CONFIG_OVERRIDE_KEY;
+import static org.openmetadata.service.apps.scheduler.AppScheduler.APP_CONFIG_KEY;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -52,7 +52,7 @@ public class OmAppJobListener implements JobListener {
       App jobApp = repository.findByName(appName, Include.NON_DELETED);
 
       Object overrideConfig =
-          jobExecutionContext.getMergedJobDataMap().getWrappedMap().get(CONFIG_OVERRIDE_KEY);
+          jobExecutionContext.getMergedJobDataMap().getWrappedMap().get(APP_CONFIG_KEY);
       if (overrideConfig != null) {
         jobApp.getAppConfiguration().putAll((Map<String, Object>) overrideConfig);
       }
