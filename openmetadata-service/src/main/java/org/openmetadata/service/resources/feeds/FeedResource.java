@@ -73,6 +73,7 @@ import org.openmetadata.service.security.policyevaluator.PostResourceContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.security.policyevaluator.ThreadResourceContext;
+import org.openmetadata.service.transaction.JdbiUnitOfWork;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.RestUtil.PatchResponse;
 import org.openmetadata.service.util.ResultList;
@@ -503,6 +504,7 @@ public class FeedResource {
   }
 
   @DELETE
+  @JdbiUnitOfWork
   @Path("/{threadId}")
   @Operation(
       operationId = "deleteThread",
@@ -531,6 +533,7 @@ public class FeedResource {
   }
 
   @DELETE
+  @JdbiUnitOfWork
   @Path("/{threadId}/posts/{postId}")
   @Operation(
       operationId = "deletePostFromThread",

@@ -34,6 +34,7 @@ import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ReportDataContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
+import org.openmetadata.service.transaction.JdbiUnitOfWork;
 import org.openmetadata.service.util.ResultList;
 
 @Slf4j
@@ -127,6 +128,7 @@ public class ReportDataResource extends EntityTimeSeriesResource<ReportData, Rep
   }
 
   @DELETE
+  @JdbiUnitOfWork
   @Path("/{reportDataType}/{date}")
   @Operation(
       operationId = "deleteReportData",
@@ -163,6 +165,7 @@ public class ReportDataResource extends EntityTimeSeriesResource<ReportData, Rep
   }
 
   @DELETE
+  @JdbiUnitOfWork
   @Path("/{reportDataType}")
   @Operation(
       operationId = "deletePreviousReportData",

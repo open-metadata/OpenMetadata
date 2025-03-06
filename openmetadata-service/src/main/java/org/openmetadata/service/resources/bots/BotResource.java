@@ -66,6 +66,7 @@ import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.SecurityUtil;
+import org.openmetadata.service.transaction.JdbiUnitOfWork;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.UserUtil;
 
@@ -388,6 +389,7 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
   }
 
   @DELETE
+  @JdbiUnitOfWork
   @Path("/{id}")
   @Operation(
       operationId = "deleteBot",
@@ -410,6 +412,7 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
   }
 
   @DELETE
+  @JdbiUnitOfWork
   @Path("/name/{name}")
   @Operation(
       operationId = "deleteBotByFQN",

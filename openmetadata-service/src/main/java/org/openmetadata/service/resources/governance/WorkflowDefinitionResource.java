@@ -46,6 +46,7 @@ import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.transaction.JdbiUnitOfWork;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.ResultList;
 
@@ -400,6 +401,7 @@ public class WorkflowDefinitionResource
   }
 
   @DELETE
+  @JdbiUnitOfWork
   @Path("/{id}")
   @Operation(
       operationId = "deleteWorkflowDefinition",
@@ -430,6 +432,7 @@ public class WorkflowDefinitionResource
   }
 
   @DELETE
+  @JdbiUnitOfWork
   @Path("/name/{fqn}")
   @Operation(
       operationId = "deleteWorkflowDefinitionByFQN",

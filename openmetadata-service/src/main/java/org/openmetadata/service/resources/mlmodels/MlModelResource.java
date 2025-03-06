@@ -61,6 +61,7 @@ import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.transaction.JdbiUnitOfWork;
 import org.openmetadata.service.util.ResultList;
 
 @Path("/v1/mlmodels")
@@ -368,6 +369,7 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
   }
 
   @DELETE
+  @JdbiUnitOfWork
   @Path("/{id}/followers/{userId}")
   @Operation(
       operationId = "deleteFollower",
@@ -482,6 +484,7 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
   }
 
   @DELETE
+  @JdbiUnitOfWork
   @Path("/{id}")
   @Operation(
       operationId = "deleteMlModel",
@@ -505,6 +508,7 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
   }
 
   @DELETE
+  @JdbiUnitOfWork
   @Path("/name/{fqn}")
   @Operation(
       operationId = "deleteMlModelByFQN",

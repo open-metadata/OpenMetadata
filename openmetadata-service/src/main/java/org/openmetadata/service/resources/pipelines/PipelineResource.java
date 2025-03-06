@@ -64,6 +64,7 @@ import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.transaction.JdbiUnitOfWork;
 import org.openmetadata.service.util.ResultList;
 
 @Path("/v1/pipelines")
@@ -470,6 +471,7 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
   }
 
   @DELETE
+  @JdbiUnitOfWork
   @Path("/{fqn}/status/{timestamp}")
   @Operation(
       operationId = "DeletePipelineStatus",
@@ -534,6 +536,7 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
   }
 
   @DELETE
+  @JdbiUnitOfWork
   @Path("/{id}/followers/{userId}")
   @Operation(
       operationId = "deleteFollower",
@@ -592,6 +595,7 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
   }
 
   @DELETE
+  @JdbiUnitOfWork
   @Path("/{id}")
   @Operation(
       operationId = "deletePipeline",
@@ -620,6 +624,7 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
   }
 
   @DELETE
+  @JdbiUnitOfWork
   @Path("/name/{fqn}")
   @Operation(
       operationId = "deletePipelineByFQN",

@@ -61,6 +61,7 @@ import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.PostResourceContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
+import org.openmetadata.service.transaction.JdbiUnitOfWork;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 
@@ -415,6 +416,7 @@ public class SuggestionsResource {
   }
 
   @DELETE
+  @JdbiUnitOfWork
   @Path("/{suggestionId}")
   @Operation(
       operationId = "deleteSuggestion",
@@ -445,6 +447,7 @@ public class SuggestionsResource {
   }
 
   @DELETE
+  @JdbiUnitOfWork
   @Path("/{entityType}/name/{entityFQN}")
   @Operation(
       operationId = "deleteSuggestions",

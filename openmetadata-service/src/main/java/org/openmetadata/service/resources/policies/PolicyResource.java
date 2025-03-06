@@ -68,6 +68,7 @@ import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.CompiledRule;
 import org.openmetadata.service.security.policyevaluator.RuleEvaluator;
+import org.openmetadata.service.transaction.JdbiUnitOfWork;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 
@@ -444,6 +445,7 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
   }
 
   @DELETE
+  @JdbiUnitOfWork
   @Path("/{id}")
   @Operation(
       operationId = "deletePolicy",
@@ -466,6 +468,7 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
   }
 
   @DELETE
+  @JdbiUnitOfWork
   @Path("/name/{fqn}")
   @Operation(
       operationId = "deletePolicyByFQN",

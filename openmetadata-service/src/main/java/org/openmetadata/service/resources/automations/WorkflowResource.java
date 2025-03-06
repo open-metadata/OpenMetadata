@@ -67,6 +67,7 @@ import org.openmetadata.service.secrets.masker.EntityMaskerFactory;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.transaction.JdbiUnitOfWork;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
 import org.openmetadata.service.util.ResultList;
@@ -460,6 +461,7 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
   }
 
   @DELETE
+  @JdbiUnitOfWork
   @Path("/{id}")
   @Operation(
       operationId = "deleteWorkflow",
@@ -486,6 +488,7 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
   }
 
   @DELETE
+  @JdbiUnitOfWork
   @Path("/name/{name}")
   @Operation(
       operationId = "deleteWorkflowByName",

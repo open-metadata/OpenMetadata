@@ -82,6 +82,7 @@ import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.CreateResourceContext;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.transaction.JdbiUnitOfWork;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
 import org.openmetadata.service.util.ResultList;
@@ -705,6 +706,7 @@ public class IngestionPipelineResource
   }
 
   @DELETE
+  @JdbiUnitOfWork
   @Path("/{id}")
   @Operation(
       operationId = "deleteIngestionPipeline",
@@ -728,6 +730,7 @@ public class IngestionPipelineResource
   }
 
   @DELETE
+  @JdbiUnitOfWork
   @Path("/name/{fqn}")
   @Operation(
       operationId = "deleteIngestionPipelineByFQN",
@@ -910,6 +913,7 @@ public class IngestionPipelineResource
   }
 
   @DELETE
+  @JdbiUnitOfWork
   @Path("/{id}/pipelineStatus")
   @Operation(
       operationId = "deletePipelineStatus",

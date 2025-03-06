@@ -66,6 +66,7 @@ import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.transaction.JdbiUnitOfWork;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.RestUtil.PutResponse;
@@ -411,6 +412,7 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
   }
 
   @DELETE
+  @JdbiUnitOfWork
   @Path("/{id}")
   @Operation(
       operationId = "deleteType",
@@ -429,6 +431,7 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
   }
 
   @DELETE
+  @JdbiUnitOfWork
   @Path("/name/{name}")
   @Operation(
       operationId = "deleteTypeByName",

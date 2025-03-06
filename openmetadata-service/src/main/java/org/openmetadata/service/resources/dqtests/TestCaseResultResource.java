@@ -59,6 +59,7 @@ import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
 import org.openmetadata.service.security.policyevaluator.TestCaseResourceContext;
+import org.openmetadata.service.transaction.JdbiUnitOfWork;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
@@ -465,6 +466,7 @@ public class TestCaseResultResource
   }
 
   @DELETE
+  @JdbiUnitOfWork
   @Path("/{fqn}/{timestamp}")
   @Operation(
       operationId = "DeleteTestCaseResult",

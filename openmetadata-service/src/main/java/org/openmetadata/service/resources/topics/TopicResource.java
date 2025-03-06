@@ -64,6 +64,7 @@ import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
+import org.openmetadata.service.transaction.JdbiUnitOfWork;
 import org.openmetadata.service.util.ResultList;
 
 @Path("/v1/topics")
@@ -475,6 +476,7 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
   }
 
   @DELETE
+  @JdbiUnitOfWork
   @Path("/{id}/followers/{userId}")
   @Operation(
       summary = "Remove a follower",
@@ -531,6 +533,7 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
   }
 
   @DELETE
+  @JdbiUnitOfWork
   @Path("/{id}")
   @Operation(
       operationId = "deleteTopic",
@@ -553,6 +556,7 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
   }
 
   @DELETE
+  @JdbiUnitOfWork
   @Path("/name/{fqn}")
   @Operation(
       operationId = "deleteTopicByFQN",

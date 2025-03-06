@@ -74,6 +74,7 @@ import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
 import org.openmetadata.service.security.policyevaluator.TestCaseResourceContext;
+import org.openmetadata.service.transaction.JdbiUnitOfWork;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.RestUtil;
@@ -876,6 +877,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
   }
 
   @DELETE
+  @JdbiUnitOfWork
   @Path("/{id}")
   @Operation(
       operationId = "deleteTestCase",
@@ -904,6 +906,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
   }
 
   @DELETE
+  @JdbiUnitOfWork
   @Path("/name/{fqn}")
   @Operation(
       operationId = "deleteTestCaseByName",
@@ -938,6 +941,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
   }
 
   @DELETE
+  @JdbiUnitOfWork
   @Path("/logicalTestCases/{testSuiteId}/{id}")
   @Operation(
       operationId = "deleteLogicalTestCase",
@@ -1093,6 +1097,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
   }
 
   @DELETE
+  @JdbiUnitOfWork
   @Path("/{fqn}/testCaseResult/{timestamp}")
   @Operation(
       operationId = "DeleteTestCaseResult",
@@ -1223,6 +1228,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
   }
 
   @DELETE
+  @JdbiUnitOfWork
   @Path("/{id}/failedRowsSample")
   @Operation(
       operationId = "deleteFailedRowsSample",

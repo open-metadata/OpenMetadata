@@ -61,6 +61,7 @@ import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
+import org.openmetadata.service.transaction.JdbiUnitOfWork;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.RestUtil;
@@ -743,6 +744,7 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
   }
 
   @DELETE
+  @JdbiUnitOfWork
   @Path("/{id}")
   @Operation(
       operationId = "deleteLogicalTestSuite",
@@ -779,6 +781,7 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
   }
 
   @DELETE
+  @JdbiUnitOfWork
   @Path("/name/{name}")
   @Operation(
       operationId = "deleteLogicalTestSuite",
@@ -814,6 +817,7 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
   }
 
   @DELETE
+  @JdbiUnitOfWork
   @Path("/executable/name/{name}")
   @Operation(
       operationId = "deleteTestSuiteByName",
@@ -855,6 +859,7 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
   }
 
   @DELETE
+  @JdbiUnitOfWork
   @Path("/basic/name/{name}")
   @Operation(
       operationId = "deleteTestSuiteByName",
@@ -891,6 +896,7 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
   }
 
   @DELETE
+  @JdbiUnitOfWork
   @Path("/executable/{id}")
   @Operation(
       operationId = "deleteTestSuite",
@@ -932,6 +938,7 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
   }
 
   @DELETE
+  @JdbiUnitOfWork
   @Path("/basic/{id}")
   @Operation(
       operationId = "deleteTestSuite",

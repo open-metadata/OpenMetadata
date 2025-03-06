@@ -150,6 +150,7 @@ import org.openmetadata.service.security.mask.PIIMasker;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.saml.JwtTokenCacheManager;
+import org.openmetadata.service.transaction.JdbiUnitOfWork;
 import org.openmetadata.service.util.CSVExportResponse;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -915,6 +916,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
   }
 
   @DELETE
+  @JdbiUnitOfWork
   @Path("/{id}")
   @Operation(
       operationId = "deleteUser",
@@ -939,6 +941,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
   }
 
   @DELETE
+  @JdbiUnitOfWork
   @Path("/name/{name}")
   @Operation(
       operationId = "deleteUserByName",

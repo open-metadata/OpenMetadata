@@ -89,6 +89,7 @@ import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.transaction.JdbiUnitOfWork;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
@@ -456,6 +457,7 @@ public class EventSubscriptionResource
   }
 
   @DELETE
+  @JdbiUnitOfWork
   @Path("/{id}")
   @Valid
   @Operation(
@@ -486,6 +488,7 @@ public class EventSubscriptionResource
   }
 
   @DELETE
+  @JdbiUnitOfWork
   @Path("/name/{name}")
   @Operation(
       operationId = "deleteEventSubscriptionByName",

@@ -562,8 +562,8 @@ public class DatabaseServiceResource
   }
 
   @DELETE
-  @Path("/{id}")
   @JdbiUnitOfWork
+  @Path("/{id}")
   @Operation(
       operationId = "deleteDatabaseService",
       summary = "Delete a database service by Id",

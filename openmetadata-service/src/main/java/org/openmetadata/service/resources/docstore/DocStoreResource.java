@@ -63,6 +63,7 @@ import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.transaction.JdbiUnitOfWork;
 import org.openmetadata.service.util.ResultList;
 
 @Slf4j
@@ -415,6 +416,7 @@ public class DocStoreResource extends EntityResource<Document, DocumentRepositor
   }
 
   @DELETE
+  @JdbiUnitOfWork
   @Path("/{id}")
   @Operation(
       operationId = "deleteDocument",
@@ -434,6 +436,7 @@ public class DocStoreResource extends EntityResource<Document, DocumentRepositor
   }
 
   @DELETE
+  @JdbiUnitOfWork
   @Path("/name/{name}")
   @Operation(
       operationId = "deleteDocumentByName",

@@ -62,6 +62,7 @@ import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
+import org.openmetadata.service.transaction.JdbiUnitOfWork;
 import org.openmetadata.service.util.AsyncService;
 import org.openmetadata.service.util.CSVExportMessage;
 import org.openmetadata.service.util.CSVExportResponse;
@@ -449,6 +450,7 @@ public class LineageResource {
   }
 
   @DELETE
+  @JdbiUnitOfWork
   @Path("/{fromEntity}/{fromId}/{toEntity}/{toId}")
   @Operation(
       operationId = "deleteLineageEdge",
@@ -501,6 +503,7 @@ public class LineageResource {
   }
 
   @DELETE
+  @JdbiUnitOfWork
   @Path("/{fromEntity}/name/{fromFQN}/{toEntity}/name/{toFQN}")
   @Operation(
       operationId = "deleteLineageEdgeByName",
@@ -548,6 +551,7 @@ public class LineageResource {
   }
 
   @DELETE
+  @JdbiUnitOfWork
   @Path("/{entityType}/{entityId}/type/{lineageSource}")
   @Operation(
       operationId = "deleteLineageEdgeByType",

@@ -60,6 +60,7 @@ import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.transaction.JdbiUnitOfWork;
 import org.openmetadata.service.util.ResultList;
 
 @Path("/v1/metrics")
@@ -397,6 +398,7 @@ public class MetricResource extends EntityResource<Metric, MetricRepository> {
   }
 
   @DELETE
+  @JdbiUnitOfWork
   @Path("/{id}/followers/{userId}")
   @Operation(
       summary = "Remove a follower",
@@ -453,6 +455,7 @@ public class MetricResource extends EntityResource<Metric, MetricRepository> {
   }
 
   @DELETE
+  @JdbiUnitOfWork
   @Path("/{id}")
   @Operation(
       operationId = "deleteMetric",
@@ -475,6 +478,7 @@ public class MetricResource extends EntityResource<Metric, MetricRepository> {
   }
 
   @DELETE
+  @JdbiUnitOfWork
   @Path("/name/{fqn}")
   @Operation(
       operationId = "deleteAPIEndpointByFQN",

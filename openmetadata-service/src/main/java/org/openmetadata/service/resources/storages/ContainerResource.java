@@ -46,6 +46,7 @@ import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.transaction.JdbiUnitOfWork;
 import org.openmetadata.service.util.ResultList;
 
 @Path("/v1/containers")
@@ -359,6 +360,7 @@ public class ContainerResource extends EntityResource<Container, ContainerReposi
   }
 
   @DELETE
+  @JdbiUnitOfWork
   @Path("/{id}/followers/{userId}")
   @Operation(
       operationId = "deleteFollower",
@@ -447,6 +449,7 @@ public class ContainerResource extends EntityResource<Container, ContainerReposi
   }
 
   @DELETE
+  @JdbiUnitOfWork
   @Path("/{id}")
   @Operation(
       operationId = "deleteContainer",
@@ -501,6 +504,7 @@ public class ContainerResource extends EntityResource<Container, ContainerReposi
   }
 
   @DELETE
+  @JdbiUnitOfWork
   @Path("/name/{fqn}")
   @Operation(
       operationId = "deleteContainerByFQN",

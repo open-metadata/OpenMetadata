@@ -51,6 +51,7 @@ import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.transaction.JdbiUnitOfWork;
 import org.openmetadata.service.util.ResultList;
 
 @Slf4j
@@ -371,6 +372,7 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
   }
 
   @DELETE
+  @JdbiUnitOfWork
   @Path("/name/{name}")
   @Operation(
       operationId = "deleteKpiByName",
@@ -394,6 +396,7 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
   }
 
   @DELETE
+  @JdbiUnitOfWork
   @Path("/{id}")
   @Operation(
       operationId = "deleteKpi",

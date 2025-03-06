@@ -1146,7 +1146,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return patch(uriInfo, id, user, patch, null);
   }
 
-  @Transaction
   public final PatchResponse<T> patch(
       UriInfo uriInfo, UUID id, String user, JsonPatch patch, ChangeSource changeSource) {
     // Get all the fields in the original entity that can be updated during PATCH operation
@@ -4236,6 +4235,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
           return Either.right(entityError);
         }
       }
-    }
+    };
   }
 }

@@ -78,6 +78,7 @@ import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
+import org.openmetadata.service.transaction.JdbiUnitOfWork;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
@@ -580,6 +581,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
   }
 
   @DELETE
+  @JdbiUnitOfWork
   @Path("/{id}")
   @Operation(
       operationId = "deleteTable",
@@ -607,6 +609,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
   }
 
   @DELETE
+  @JdbiUnitOfWork
   @Path("/name/{fqn}")
   @Operation(
       operationId = "deleteTable",
@@ -780,6 +783,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
   }
 
   @DELETE
+  @JdbiUnitOfWork
   @Path("/{id}/sampleData")
   @Operation(
       operationId = "deleteSampleData",
@@ -863,6 +867,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
   }
 
   @DELETE
+  @JdbiUnitOfWork
   @Path("/{id}/tableProfilerConfig")
   @Operation(
       operationId = "delete DataProfilerConfig",
@@ -1076,6 +1081,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
   }
 
   @DELETE
+  @JdbiUnitOfWork
   @Path("/{fqn}/{entityType}/{timestamp}/profile")
   @Operation(
       operationId = "deleteDataProfiler",
@@ -1200,6 +1206,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
   }
 
   @DELETE
+  @JdbiUnitOfWork
   @Path("/{id}/customMetric/{customMetricName}")
   @Operation(
       operationId = "deleteCustomMetric",
@@ -1230,6 +1237,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
   }
 
   @DELETE
+  @JdbiUnitOfWork
   @Path("/{id}/customMetric/{columnName}/{customMetricName}")
   @Operation(
       operationId = "deleteCustomMetric",
@@ -1263,6 +1271,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
   }
 
   @DELETE
+  @JdbiUnitOfWork
   @Path("/{id}/followers/{userId}")
   @Operation(
       operationId = "deleteFollower",

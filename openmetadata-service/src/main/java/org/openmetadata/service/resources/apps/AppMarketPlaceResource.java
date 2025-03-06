@@ -48,6 +48,7 @@ import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.transaction.JdbiUnitOfWork;
 import org.openmetadata.service.util.AppMarketPlaceUtil;
 import org.openmetadata.service.util.ResultList;
 
@@ -375,6 +376,7 @@ public class AppMarketPlaceResource
   }
 
   @DELETE
+  @JdbiUnitOfWork
   @Path("/name/{name}")
   @Operation(
       operationId = "deleteAppByName",
@@ -398,6 +400,7 @@ public class AppMarketPlaceResource
   }
 
   @DELETE
+  @JdbiUnitOfWork
   @Path("/{id}")
   @Operation(
       operationId = "deleteApp",

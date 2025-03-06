@@ -64,6 +64,7 @@ import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
+import org.openmetadata.service.transaction.JdbiUnitOfWork;
 import org.openmetadata.service.util.ResultList;
 
 @Path("/v1/searchIndexes")
@@ -490,6 +491,7 @@ public class SearchIndexResource extends EntityResource<SearchIndex, SearchIndex
   }
 
   @DELETE
+  @JdbiUnitOfWork
   @Path("/{id}/followers/{userId}")
   @Operation(
       summary = "Remove a follower",
@@ -547,6 +549,7 @@ public class SearchIndexResource extends EntityResource<SearchIndex, SearchIndex
   }
 
   @DELETE
+  @JdbiUnitOfWork
   @Path("/{id}")
   @Operation(
       operationId = "deleteSearchIndex",
@@ -577,6 +580,7 @@ public class SearchIndexResource extends EntityResource<SearchIndex, SearchIndex
   }
 
   @DELETE
+  @JdbiUnitOfWork
   @Path("/name/{fqn}")
   @Operation(
       operationId = "deleteSearchIndexByFQN",

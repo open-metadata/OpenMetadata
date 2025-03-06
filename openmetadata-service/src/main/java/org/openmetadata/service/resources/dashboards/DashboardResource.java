@@ -61,6 +61,7 @@ import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.transaction.JdbiUnitOfWork;
 import org.openmetadata.service.util.ResultList;
 
 @Path("/v1/dashboards")
@@ -424,6 +425,7 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
   }
 
   @DELETE
+  @JdbiUnitOfWork
   @Path("/{id}/followers/{userId}")
   @Operation(
       operationId = "removeFollowerFromDashboard",
@@ -473,6 +475,7 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
   }
 
   @DELETE
+  @JdbiUnitOfWork
   @Path("/{id}")
   @Operation(
       operationId = "deleteDashboard",
@@ -496,6 +499,7 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
   }
 
   @DELETE
+  @JdbiUnitOfWork
   @Path("/name/{fqn}")
   @Operation(
       operationId = "deleteDashboardByFQN",

@@ -49,6 +49,7 @@ import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.mask.PIIMasker;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.transaction.JdbiUnitOfWork;
 import org.openmetadata.service.util.ResultList;
 
 @Path("/v1/queries")
@@ -425,6 +426,7 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
   }
 
   @DELETE
+  @JdbiUnitOfWork
   @Path("/{id}/followers/{userId}")
   @Operation(
       operationId = "deleteFollower",
@@ -542,6 +544,7 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
   }
 
   @DELETE
+  @JdbiUnitOfWork
   @Path("/{id}/usage")
   @Operation(
       operationId = "removeQueryUsedIn",
@@ -593,6 +596,7 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
   }
 
   @DELETE
+  @JdbiUnitOfWork
   @Path("/{id}")
   @Operation(
       operationId = "deleteQuery",
@@ -611,6 +615,7 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
   }
 
   @DELETE
+  @JdbiUnitOfWork
   @Path("/name/{fqn}")
   @Operation(
       operationId = "deleteQueryByFQN",
