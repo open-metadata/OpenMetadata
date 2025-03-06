@@ -114,7 +114,7 @@ const UserProfilePersonas = ({
 
   return (
     <div
-      className="d-flex flex-col mb-4 w-full h-full p-[20px] user-profile-card"
+      className="d-flex flex-col mb-4 w-full  p-[20px] user-profile-card"
       data-testid="persona-details-card">
       <div className="user-profile-card-header d-flex items-center justify-start gap-2 w-full">
         <div className="d-flex flex-center user-page-icon cursor-pointer">

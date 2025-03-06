@@ -113,7 +113,7 @@ const UserProfileTeams = ({
 
   return (
     <div
-      className="d-flex flex-col w-full h-full p-[20px] user-profile-card"
+      className="d-flex flex-col w-full  p-[20px] user-profile-card"
       data-testid="user-profile-teams">
       <div className="user-profile-card-header d-flex items-center justify-start gap-2 w-full">
         <div>

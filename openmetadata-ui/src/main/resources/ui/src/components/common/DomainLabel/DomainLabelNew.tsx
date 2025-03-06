@@ -227,7 +227,7 @@ export const DomainLabelNew = ({
   }, [activeDomain, hasPermission, selectableList]);
 
   return (
-    <div className="d-flex flex-col mb-4 w-full h-full p-[20px] user-profile-card">
+    <div className="d-flex flex-col mb-4 w-full p-[20px] user-profile-card">
       <div className="user-profile-card-header d-flex items-center justify-start gap-2 w-full">
         <div style={{ width: '16px' }}>
           <DomainIcon height={16} style={{ marginLeft: '2px' }} />

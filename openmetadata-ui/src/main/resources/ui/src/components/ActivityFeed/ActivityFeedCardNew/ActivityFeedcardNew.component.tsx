@@ -197,7 +197,6 @@ const ActivityFeedCardNew = ({
 
   return (
     <Card
-      bordered={showThread ? false : true}
       className={classNames(
         'relative activity-feed-card-new',
         {

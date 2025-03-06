@@ -109,7 +109,7 @@ export const DiffViewNew = ({
         ...(showDescTitle
           ? {
               background: 'rgba(239, 244, 250, 0.25)',
-              borderRadius: '8px',
+              borderRadius: '12px',
               border: '0.8px solid #DFDFDF',
             }
           : {

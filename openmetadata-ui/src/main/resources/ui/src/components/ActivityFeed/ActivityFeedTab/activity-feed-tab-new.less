@@ -39,6 +39,7 @@
     margin-right: 20px;
     display: flex;
     flex-direction: column;
+    border: 1px solid #eaecf5;
     .full-width {
       flex: 10;
       margin-right: 0px;
@@ -52,6 +53,7 @@
     overflow-y: scroll;
     background-color: @white;
     border-radius: 12px;
+    border: 1px solid #eaecf5;
     .full-width {
       flex: 0;
     }
@@ -64,8 +66,8 @@
       border-radius: 12px;
       padding: 16px;
       margin: 20px 0px 0px 0px;
-      border: 0.8px solid #dfdfdf;
-      background: rgba(239, 244, 250, 0.25);
+      border: 0.5px solid #eaecf5;
+      background: #f8f9fc;
     }
 
     .activity-feed-reply-button {
@@ -77,10 +79,17 @@
     .comments-input-field {
       background-color: #f4f5f7;
       border-radius: 20px;
-      border: 1px solid #d4d4d8;
+      border: 1px solid #eaecf5;
       height: 36px;
       font-size: 12px;
       line-height: 14.52px;
+      &::placeholder {
+        color: #a4a7ae;
+        font-size: 12px;
+        font-style: normal;
+        font-weight: 400;
+        line-height: normal;
+      }
     }
   }
   .max-width-500 {
@@ -106,14 +115,15 @@
     border-right: @global-border !important;
   }
   .activity-feed-card-new {
-    border-radius: 8px;
+    border-radius: 12px;
     margin: 10px 0px;
-    background: @grey-9;
+    background: #f8f9fc;
     display: flex;
     flex-direction: column;
     flex-wrap: wrap;
     width: inherit;
-    border: none;
+    border: 0.5px solid #eaecf5;
+
     .ant-card-body {
       width: inherit;
       padding: 20px;
@@ -123,7 +133,8 @@
       }
     }
     .is-active {
-      background: #e6f1fe;
+      background: #eff8ff;
+      border: 1px solid #84caff;
     }
 
     .activity-feed-card-message {
@@ -131,12 +142,10 @@
       background-color: @white;
       width: inherit;
       margin-top: 2px;
-      border-radius: 12px;
-      border: none;
       .ant-card-body {
         padding: 0px;
-        border: none;
-        border-radius: 12px;
+        border: 0.5px solid #eaecf5;
+        border-radius: 8px;
       }
     }
     .activity-feed-card-message-right-panel {
@@ -388,7 +397,7 @@
 }
 .close-tab-icon {
   position: absolute;
-  top: 20px;
+  top: 24px;
   right: 20px;
 }
 .full-width {

@@ -190,7 +190,7 @@ const UserProfileRoles = ({
 
   return (
     <div
-      className="d-flex flex-col m-b-0 w-full h-full p-[20px] user-profile-card"
+      className="d-flex flex-col m-b-0 w-full p-[20px] user-profile-card"
       data-testid="user-profile-roles">
       <div className="user-profile-card-header d-flex items-center justify-start gap-2 w-full">
         <div className="d-flex flex-center user-page-icon">
