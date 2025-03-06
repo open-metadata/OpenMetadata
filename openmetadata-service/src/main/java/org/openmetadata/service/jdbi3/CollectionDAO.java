@@ -1112,12 +1112,6 @@ public interface CollectionDAO {
         @BindList("toIds") List<String> toIds, @Bind("relation") int relation);
 
     @SqlQuery(
-        "SELECT * FROM ( SELECT *, ROW_NUMBER() OVER (ORDER BY fromId) AS row_num FROM entity_relationship WHERE relation = :relation) AS rec WHERE row_num > :after ORDER BY row_num LIMIT :limit;")
-    @UseRowMapper(RelationshipObjectMapper.class)
-    List<EntityRelationshipObject> listWithRelation(
-        @Bind("relation") int relation, @Bind("after") int after, @Bind("limit") int limit);
-
-    @SqlQuery(
         "SELECT fromId, toId, fromEntity, toEntity, relation, json, jsonSchema "
             + "FROM entity_relationship "
             + "WHERE toId IN (<toIds>) "

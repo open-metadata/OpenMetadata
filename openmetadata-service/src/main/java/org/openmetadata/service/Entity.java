@@ -104,6 +104,7 @@ public final class Entity {
   private static final Set<String> ENTITY_LIST = new TreeSet<>();
 
   // Common field names
+  public static final String FIELD_SERVICE = "service";
   public static final String FIELD_OWNERS = "owners";
   public static final String FIELD_NAME = "name";
   public static final String FIELD_DESCRIPTION = "description";

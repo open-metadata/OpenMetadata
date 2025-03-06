@@ -23,6 +23,14 @@ import static org.openmetadata.service.Entity.API_ENDPOINT;
 import static org.openmetadata.service.Entity.CONTAINER;
 import static org.openmetadata.service.Entity.DASHBOARD;
 import static org.openmetadata.service.Entity.DASHBOARD_DATA_MODEL;
+import static org.openmetadata.service.Entity.FIELD_DATA_PRODUCTS;
+import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
+import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
+import static org.openmetadata.service.Entity.FIELD_DOMAIN;
+import static org.openmetadata.service.Entity.FIELD_FULLY_QUALIFIED_NAME;
+import static org.openmetadata.service.Entity.FIELD_NAME;
+import static org.openmetadata.service.Entity.FIELD_OWNERS;
+import static org.openmetadata.service.Entity.FIELD_SERVICE;
 import static org.openmetadata.service.Entity.METRIC;
 import static org.openmetadata.service.Entity.MLMODEL;
 import static org.openmetadata.service.Entity.PIPELINE;
@@ -172,14 +180,14 @@ public class LineageRepository {
       LineageDetails lineageDetails,
       boolean childRelationExists) {
     boolean addService =
-        Entity.entityHasField(from.getType(), "service")
-            && Entity.entityHasField(to.getType(), "service");
+        Entity.entityHasField(from.getType(), FIELD_SERVICE)
+            && Entity.entityHasField(to.getType(), FIELD_SERVICE);
     boolean addDomain =
-        Entity.entityHasField(from.getType(), "domain")
-            && Entity.entityHasField(to.getType(), "domain");
+        Entity.entityHasField(from.getType(), FIELD_DOMAIN)
+            && Entity.entityHasField(to.getType(), FIELD_DOMAIN);
     boolean addDataProduct =
-        Entity.entityHasField(from.getType(), "dataProducts")
-            && Entity.entityHasField(to.getType(), "dataProducts");
+        Entity.entityHasField(from.getType(), FIELD_DATA_PRODUCTS)
+            && Entity.entityHasField(to.getType(), FIELD_DATA_PRODUCTS);
 
     String fields = getExtendedLineageFields(addService, addDomain, addDataProduct);
     EntityInterface fromEntity =
@@ -196,8 +204,8 @@ public class LineageRepository {
       LineageDetails entityLineageDetails,
       boolean childRelationExists) {
     boolean addService =
-        Entity.entityHasField(fromEntity.getEntityReference().getType(), "service")
-            && Entity.entityHasField(toEntity.getEntityReference().getType(), "service");
+        Entity.entityHasField(fromEntity.getEntityReference().getType(), FIELD_SERVICE)
+            && Entity.entityHasField(toEntity.getEntityReference().getType(), FIELD_SERVICE);
     // Add Service Level Lineage
     if (addService && fromEntity.getService() != null && toEntity.getService() != null) {
       EntityReference fromService = fromEntity.getService();
@@ -242,8 +250,8 @@ public class LineageRepository {
       LineageDetails entityLineageDetails,
       boolean childRelationExists) {
     boolean addDomain =
-        Entity.entityHasField(fromEntity.getEntityReference().getType(), "domain")
-            && Entity.entityHasField(toEntity.getEntityReference().getType(), "domain");
+        Entity.entityHasField(fromEntity.getEntityReference().getType(), FIELD_DOMAIN)
+            && Entity.entityHasField(toEntity.getEntityReference().getType(), FIELD_DOMAIN);
     // Add Service Level Lineage
     if (addDomain && fromEntity.getDomain() != null && toEntity.getDomain() != null) {
       EntityReference fromDomain = fromEntity.getDomain();
@@ -286,15 +294,15 @@ public class LineageRepository {
     StringBuilder fieldsBuilder = new StringBuilder();
 
     if (service) {
-      fieldsBuilder.append("service");
+      fieldsBuilder.append(FIELD_SERVICE);
       fieldsBuilder.append(",");
     }
     if (domain) {
-      fieldsBuilder.append("domain");
+      fieldsBuilder.append(FIELD_DOMAIN);
       fieldsBuilder.append(",");
     }
     if (dataProducts) {
-      fieldsBuilder.append("dataProducts");
+      fieldsBuilder.append(FIELD_DATA_PRODUCTS);
     }
     return fieldsBuilder.toString();
   }
@@ -515,22 +523,22 @@ public class LineageRepository {
       JsonNode toEntity = entityMap.getOrDefault(toEntityId, null);
 
       Map<String, String> baseRow = new HashMap<>();
-      baseRow.put("fromEntityFQN", getText(fromEntity, "fullyQualifiedName"));
-      baseRow.put("fromServiceName", getText(fromEntity.path("service"), "name"));
+      baseRow.put("fromEntityFQN", getText(fromEntity, FIELD_FULLY_QUALIFIED_NAME));
+      baseRow.put("fromServiceName", getText(fromEntity.path(""), FIELD_NAME));
       baseRow.put("fromServiceType", getText(fromEntity, "serviceType"));
-      baseRow.put("fromOwners", getOwners(fromEntity.path("owners")));
-      baseRow.put("fromDomain", getDomainFQN(fromEntity.path("domain")));
+      baseRow.put("fromOwners", getOwners(fromEntity.path(FIELD_OWNERS)));
+      baseRow.put("fromDomain", getDomainFQN(fromEntity.path(FIELD_DOMAIN)));
 
-      baseRow.put("toEntityFQN", getText(toEntity, "fullyQualifiedName"));
-      baseRow.put("toServiceName", getText(toEntity.path("service"), "name"));
+      baseRow.put("toEntityFQN", getText(toEntity, FIELD_FULLY_QUALIFIED_NAME));
+      baseRow.put("toServiceName", getText(toEntity.path(FIELD_SERVICE), FIELD_NAME));
       baseRow.put("toServiceType", getText(toEntity, "serviceType"));
-      baseRow.put("toOwners", getOwners(toEntity.path("owners")));
-      baseRow.put("toDomain", getDomainFQN(toEntity.path("domain")));
+      baseRow.put("toOwners", getOwners(toEntity.path(FIELD_OWNERS)));
+      baseRow.put("toDomain", getDomainFQN(toEntity.path(FIELD_DOMAIN)));
 
       JsonNode columns = edge.path("columns");
       JsonNode pipeline = edge.path("pipeline");
 
-      if (columns.isArray() && columns.size() > 0) {
+      if (columns.isArray() && !columns.isEmpty()) {
         // Process column mappings
         List<ColumnMapping> columnMappings = extractColumnMappingsFromEdge(columns);
         for (ColumnMapping mapping : columnMappings) {
@@ -562,14 +570,14 @@ public class LineageRepository {
 
   private void writePipelineRow(
       CSVWriter csvWriter, Map<String, String> baseRow, JsonNode pipeline) {
-    String pipelineName = getText(pipeline, "name");
-    String pipelineDisplayName = getText(pipeline, "displayName");
+    String pipelineName = getText(pipeline, FIELD_NAME);
+    String pipelineDisplayName = getText(pipeline, FIELD_DISPLAY_NAME);
     String pipelineType = getText(pipeline, "serviceType");
-    String pipelineDescription = getText(pipeline, "description");
-    String pipelineOwners = getOwners(pipeline.path("owners"));
-    String pipelineServiceName = getText(pipeline.path("service"), "name");
+    String pipelineDescription = getText(pipeline, FIELD_DESCRIPTION);
+    String pipelineOwners = getOwners(pipeline.path(FIELD_OWNERS));
+    String pipelineServiceName = getText(pipeline.path(FIELD_SERVICE), FIELD_NAME);
     String pipelineServiceType = getText(pipeline, "serviceType");
-    String pipelineDomain = getDomainFQN(pipeline.path("domain"));
+    String pipelineDomain = getDomainFQN(pipeline.path(FIELD_DOMAIN));
 
     writeCsvRow(
         csvWriter,
@@ -879,14 +887,14 @@ public class LineageRepository {
 
   private void cleanUpExtendedLineage(EntityReference from, EntityReference to) {
     boolean addService =
-        Entity.entityHasField(from.getType(), "service")
-            && Entity.entityHasField(to.getType(), "service");
+        Entity.entityHasField(from.getType(), FIELD_SERVICE)
+            && Entity.entityHasField(to.getType(), FIELD_SERVICE);
     boolean addDomain =
-        Entity.entityHasField(from.getType(), "domain")
-            && Entity.entityHasField(to.getType(), "domain");
+        Entity.entityHasField(from.getType(), FIELD_DOMAIN)
+            && Entity.entityHasField(to.getType(), FIELD_DOMAIN);
     boolean addDataProduct =
-        Entity.entityHasField(from.getType(), "dataProducts")
-            && Entity.entityHasField(to.getType(), "dataProducts");
+        Entity.entityHasField(from.getType(), FIELD_DATA_PRODUCTS)
+            && Entity.entityHasField(to.getType(), FIELD_DATA_PRODUCTS);
 
     String fields = getExtendedLineageFields(addService, addDomain, addDataProduct);
     EntityInterface fromEntity =
@@ -899,8 +907,8 @@ public class LineageRepository {
 
   private void cleanUpServiceLineage(EntityInterface fromEntity, EntityInterface toEntity) {
     boolean hasServiceField =
-        Entity.entityHasField(fromEntity.getEntityReference().getType(), "service")
-            && Entity.entityHasField(toEntity.getEntityReference().getType(), "service");
+        Entity.entityHasField(fromEntity.getEntityReference().getType(), FIELD_SERVICE)
+            && Entity.entityHasField(toEntity.getEntityReference().getType(), FIELD_SERVICE);
     if (hasServiceField && fromEntity.getService() != null && toEntity.getService() != null) {
       EntityReference fromService = fromEntity.getService();
       EntityReference toService = toEntity.getService();
@@ -938,8 +946,8 @@ public class LineageRepository {
 
   private void cleanUpDomainLineage(EntityInterface fromEntity, EntityInterface toEntity) {
     boolean hasDomainField =
-        Entity.entityHasField(fromEntity.getEntityReference().getType(), "domain")
-            && Entity.entityHasField(toEntity.getEntityReference().getType(), "domain");
+        Entity.entityHasField(fromEntity.getEntityReference().getType(), FIELD_DOMAIN)
+            && Entity.entityHasField(toEntity.getEntityReference().getType(), FIELD_DOMAIN);
     if (hasDomainField && fromEntity.getDomain() != null && toEntity.getDomain() != null) {
       EntityReference fromDomain = fromEntity.getDomain();
       EntityReference toDomain = toEntity.getDomain();
