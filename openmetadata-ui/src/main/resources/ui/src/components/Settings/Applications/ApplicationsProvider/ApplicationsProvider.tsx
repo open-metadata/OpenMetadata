@@ -58,7 +58,7 @@ export const ApplicationsProvider = ({ children }: { children: ReactNode }) => {
     } else {
       setLoading(false);
     }
-  }, [permissions]);
+  }, []);
 
   const appContext = useMemo(() => {
     return { applications };
