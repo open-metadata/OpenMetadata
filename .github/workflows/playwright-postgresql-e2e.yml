@@ -38,7 +38,7 @@ concurrency:
 
 jobs:
   playwright-ci-postgresql:
-    runs-on: ubuntu-22.04
+    runs-on: large-x86
     environment: test
     strategy:
       fail-fast: false
