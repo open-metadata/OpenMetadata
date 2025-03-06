@@ -28,8 +28,8 @@ Configure and schedule ADLS Datalake metadata and profiler workflows from the Op
 
 To extract metadata from Azure ADLS (Storage Account - StorageV2), you will need an **App Registration** with the following
 permissions on the Storage Account:
-- Storage Blob Data Contributor
-- Storage Queue Data Contributor
+- Storage Blob Data Reader
+- Storage Queue Data Reader
 
 ### Python Requirements
 
