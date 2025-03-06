@@ -339,7 +339,8 @@ export const getNewLineageConnectionDetails = (
         id: toEntity.id,
         type: toEntity.type,
       },
-      lineageDetails: updatedLineageDetails,
+      lineageDetails:
+        updatedLineageDetails as AddLineage['edge']['lineageDetails'],
     },
   };
 
@@ -1140,8 +1141,11 @@ export const createNewEdge = (edge: Edge) => {
   };
 
   const updatedCols = getColumnLineageData(data.edge.columns, edge);
-  selectedEdge.edge.lineageDetails = getLineageDetailsObject(edge);
-  selectedEdge.edge.lineageDetails.columnsLineage = updatedCols;
+  selectedEdge.edge.lineageDetails = getLineageDetailsObject(
+    edge
+  ) as AddLineage['edge']['lineageDetails'];
+  (selectedEdge.edge.lineageDetails as LineageDetails).columnsLineage =
+    updatedCols;
 
   return selectedEdge;
 };

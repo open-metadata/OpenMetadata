@@ -923,7 +923,8 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
             sqlQuery: currentEdge?.sqlQuery,
           };
           lineageDetails.columnsLineage = updatedColumns;
-          newEdgeWithoutFqn.edge.lineageDetails = lineageDetails;
+          newEdgeWithoutFqn.edge.lineageDetails =
+            lineageDetails as AddLineage['edge']['lineageDetails'];
         }
 
         addLineageHandler(newEdgeWithoutFqn)
