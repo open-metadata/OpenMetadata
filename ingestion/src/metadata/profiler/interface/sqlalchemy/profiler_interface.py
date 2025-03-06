@@ -297,7 +297,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
             column: the column to compute the metrics against
             metrics: list of metrics to compute
         Returns:
-            dictionnary of results
+            dictionary of results
         """
 
         if not metrics:

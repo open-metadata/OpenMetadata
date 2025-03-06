@@ -1,6 +1,10 @@
 {
   "template": {
-    "settings": {},
+    "settings": {
+      "index": {
+        "max_ngram_diff": 17
+      }
+    },
     "mappings": {
       "properties": {
         "@timestamp": {

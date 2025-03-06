@@ -15,7 +15,7 @@ import Icon from '@ant-design/icons';
 import { Button, Col, Row, Tree, TreeDataNode, TreeProps } from 'antd';
 import { DataNode } from 'antd/lib/tree';
 import { AxiosError } from 'axios';
-import { cloneDeep, isNil } from 'lodash';
+import { cloneDeep, isEmpty, isNil } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as DeleteIcon } from '../../assets/svg/delete-white.svg';
@@ -57,9 +57,9 @@ export const SettingsNavigationPage = ({
   const { t } = useTranslation();
   const [saving, setSaving] = useState(false);
   const [targetKeys, setTargetKeys] = useState<string[]>(
-    currentNavigation
-      ? getNestedKeysFromNavigationItems(currentNavigation)
-      : getNestedKeys(sidebarOptions)
+    isEmpty(currentNavigation)
+      ? getNestedKeys(sidebarOptions)
+      : getNestedKeysFromNavigationItems(currentNavigation ?? [])
   );
 
   const treeData = filterAndArrangeTreeByKeys<DataNode>(
