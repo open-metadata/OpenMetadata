@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { Tooltip, Typography } from 'antd';
-import Table, { ColumnsType } from 'antd/lib/table';
+import { ColumnsType } from 'antd/lib/table';
 import {
   cloneDeep,
   groupBy,
@@ -24,6 +24,11 @@ import { EntityTags, TagFilterOptions } from 'Models';
 import React, { FC, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { TABLE_SCROLL_VALUE } from '../../../constants/Table.constants';
+import {
+  COMMON_STATIC_TABLE_VISIBLE_COLUMNS,
+  DEFAULT_CONTAINER_DATA_MODEL_VISIBLE_COLUMNS,
+  TABLE_COLUMNS_KEYS,
+} from '../../../constants/TableKeys.constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { Column, TagLabel } from '../../../generated/entity/data/container';
 import { TagSource } from '../../../generated/type/tagLabel';
@@ -39,6 +44,7 @@ import {
 } from '../../../utils/TableTags/TableTags.utils';
 import { getTableExpandableConfig } from '../../../utils/TableUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import Table from '../../common/Table/Table';
 import { ColumnFilter } from '../../Database/ColumnFilter/ColumnFilter.component';
 import TableDescription from '../../Database/TableDescription/TableDescription.component';
 import TableTags from '../../Database/TableTags/TableTags.component';
@@ -104,9 +110,9 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
     () => [
       {
         title: t('label.name'),
-        dataIndex: 'name',
-        key: 'name',
-        accessor: 'name',
+        dataIndex: TABLE_COLUMNS_KEYS.NAME,
+        key: TABLE_COLUMNS_KEYS.NAME,
+        accessor: TABLE_COLUMNS_KEYS.NAME,
         fixed: 'left',
         width: 300,
         render: (_, record: Column) => (
@@ -117,9 +123,9 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
       },
       {
         title: t('label.type'),
-        dataIndex: 'dataTypeDisplay',
-        key: 'dataTypeDisplay',
-        accessor: 'dataTypeDisplay',
+        dataIndex: TABLE_COLUMNS_KEYS.DATA_TYPE_DISPLAY,
+        key: TABLE_COLUMNS_KEYS.DATA_TYPE_DISPLAY,
+        accessor: TABLE_COLUMNS_KEYS.DATA_TYPE_DISPLAY,
         ellipsis: true,
         width: 220,
         render: (
@@ -144,9 +150,9 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
       },
       {
         title: t('label.description'),
-        dataIndex: 'description',
-        key: 'description',
-        accessor: 'description',
+        dataIndex: TABLE_COLUMNS_KEYS.DESCRIPTION,
+        key: TABLE_COLUMNS_KEYS.DESCRIPTION,
+        accessor: TABLE_COLUMNS_KEYS.DESCRIPTION,
         width: 350,
         render: (_, record, index) => (
           <TableDescription
@@ -165,9 +171,9 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
       },
       {
         title: t('label.tag-plural'),
-        dataIndex: 'tags',
-        key: 'tags',
-        accessor: 'tags',
+        dataIndex: TABLE_COLUMNS_KEYS.TAGS,
+        key: TABLE_COLUMNS_KEYS.TAGS,
+        accessor: TABLE_COLUMNS_KEYS.TAGS,
         width: 300,
         filterIcon: columnFilterIcon,
         filters: tagFilter.Classification,
@@ -189,9 +195,9 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
       },
       {
         title: t('label.glossary-term-plural'),
-        dataIndex: 'tags',
-        key: 'glossary',
-        accessor: 'tags',
+        dataIndex: TABLE_COLUMNS_KEYS.TAGS,
+        key: TABLE_COLUMNS_KEYS.GLOSSARY,
+        accessor: TABLE_COLUMNS_KEYS.TAGS,
         width: 300,
         filterIcon: columnFilterIcon,
         filters: tagFilter.Glossary,
@@ -236,6 +242,7 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
         columns={columns}
         data-testid="container-data-model-table"
         dataSource={dataModel?.columns}
+        defaultVisibleColumns={DEFAULT_CONTAINER_DATA_MODEL_VISIBLE_COLUMNS}
         expandable={{
           ...getTableExpandableConfig<Column>(),
           rowExpandable: (record) => !isEmpty(record.children),
@@ -244,6 +251,7 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
         rowKey="name"
         scroll={TABLE_SCROLL_VALUE}
         size="small"
+        staticVisibleColumns={COMMON_STATIC_TABLE_VISIBLE_COLUMNS}
       />
       {editContainerColumnDescription && (
         <ModalWithMarkdownEditor
