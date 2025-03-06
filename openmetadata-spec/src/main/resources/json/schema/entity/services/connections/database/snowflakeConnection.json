@@ -146,6 +146,12 @@
     "supportsDataDiff": {
         "title": "Supports Data Diff Extraction.",
         "$ref": "../connectionBasicType.json#/definitions/supportsDataDiff"
+    },
+    "creditCost": {
+      "title": "Cost of Credit",
+      "description": "Cost of credit for the Snowflake account.",
+      "type": "number",
+      "default": 3.30
     }
   },
   "additionalProperties": false,

@@ -46,6 +46,9 @@ from metadata.generated.schema.api.data.createMetric import CreateMetricRequest
 from metadata.generated.schema.api.data.createMlModel import CreateMlModelRequest
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.data.createQuery import CreateQueryRequest
+from metadata.generated.schema.api.data.createQueryCostRecord import (
+    CreateQueryCostRecordRequest,
+)
 from metadata.generated.schema.api.data.createSearchIndex import (
     CreateSearchIndexRequest,
 )
@@ -133,6 +136,7 @@ from metadata.generated.schema.entity.data.metric import Metric
 from metadata.generated.schema.entity.data.mlmodel import MlModel
 from metadata.generated.schema.entity.data.pipeline import Pipeline
 from metadata.generated.schema.entity.data.query import Query
+from metadata.generated.schema.entity.data.queryCostRecord import QueryCostRecord
 from metadata.generated.schema.entity.data.report import Report
 from metadata.generated.schema.entity.data.searchIndex import SearchIndex
 from metadata.generated.schema.entity.data.storedProcedure import StoredProcedure
@@ -280,4 +284,7 @@ ROUTES = {
     CreateAppMarketPlaceDefinitionRequest.__name__: "/apps/marketplace",
     # Settings
     Settings.__name__: "/system/settings",
+    # Query Cost
+    QueryCostRecord.__name__: "/queryCostRecord",
+    CreateQueryCostRecordRequest.__name__: "/queryCostRecord",
 }

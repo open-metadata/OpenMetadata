@@ -31,6 +31,10 @@ export interface SnowflakeConnection {
     connectionArguments?:    { [key: string]: any };
     connectionOptions?:      { [key: string]: string };
     /**
+     * Cost of credit for the Snowflake account.
+     */
+    creditCost?: number;
+    /**
      * Database of the data source. This is optional parameter, if you would like to restrict
      * the metadata reading to a single database. When left blank, OpenMetadata Ingestion
      * attempts to scan all the databases.

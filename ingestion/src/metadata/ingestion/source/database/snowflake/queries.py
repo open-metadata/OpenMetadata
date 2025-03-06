@@ -24,7 +24,8 @@ SNOWFLAKE_SQL_STATEMENT = textwrap.dedent(
       schema_name "schema_name",
       start_time "start_time",
       end_time "end_time",
-      total_elapsed_time "duration"
+      total_elapsed_time "duration",
+      CREDITS_USED_CLOUD_SERVICES * {credit_cost} as "cost"
     from {account_usage}.query_history
     WHERE query_text NOT LIKE '/* {{"app": "OpenMetadata", %%}} */%%'
     AND query_text NOT LIKE '/* {{"app": "dbt", %%}} */%%'

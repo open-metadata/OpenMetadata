@@ -72,6 +72,7 @@ class UsageSource(QueryParserSource, ABC):
                                 startTime=query_dict.get("start_time", ""),
                                 endTime=query_dict.get("end_time", ""),
                                 duration=query_dict.get("duration"),
+                                cost=query_dict.get("cost"),
                                 analysisDate=DateTime(analysis_date),
                                 aborted=self.get_aborted_status(query_dict),
                                 databaseName=self.get_database_name(query_dict),
@@ -142,6 +143,7 @@ class UsageSource(QueryParserSource, ABC):
                                         duration=row.get("duration"),
                                         serviceName=self.config.serviceName,
                                         databaseSchema=self.get_schema_name(row),
+                                        cost=row.get("cost"),
                                     )
                                 )
                             except Exception as exc:

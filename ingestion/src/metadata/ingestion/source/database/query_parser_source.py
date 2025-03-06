@@ -23,6 +23,7 @@ from metadata.ingestion.api.steps import Source
 from metadata.ingestion.connections.test_connections import (
     raise_test_connection_exception,
 )
+from metadata.ingestion.lineage.masker import masked_query_cache
 from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import get_test_connection_fn
@@ -129,7 +130,8 @@ class QueryParserSource(Source, ABC):
         yield self.engine
 
     def close(self):
-        """By default, there is nothing to close"""
+        # Clear the cache
+        masked_query_cache.clear()
 
     def test_connection(self) -> None:
         test_connection_fn = get_test_connection_fn(self.service_connection)

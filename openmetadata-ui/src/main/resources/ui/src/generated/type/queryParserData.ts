@@ -19,6 +19,10 @@ export interface QueryParserData {
 
 export interface ParsedDataObject {
     /**
+     * Cost of the query execution
+     */
+    cost?: number;
+    /**
      * Database associated with the table in the query
      */
     databaseName?: string;
