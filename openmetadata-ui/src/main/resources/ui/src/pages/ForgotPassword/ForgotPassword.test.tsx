@@ -38,6 +38,10 @@ jest.mock('../../components/common/DocumentTitle/DocumentTitle', () => {
   return jest.fn().mockReturnValue(<p>DocumentTitle</p>);
 });
 
+jest.mock('../../components/AlertBar/AlertBar', () => {
+  return jest.fn().mockReturnValue(<p data-testid="alert-bar">Alert Bar</p>);
+});
+
 jest.mock('../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
 }));
@@ -109,8 +113,6 @@ describe('ForgotPassword', () => {
 
     expect(mockHandleForgotPassword).toHaveBeenCalledWith('test@example.com');
     expect(getByTestId('alert-bar')).toBeInTheDocument();
-    expect(getByTestId('alert-icon')).toBeInTheDocument();
-    expect(getByTestId('alert-message')).toBeInTheDocument();
   });
 
   it('show call push back to login', async () => {
