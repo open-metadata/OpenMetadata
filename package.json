@@ -16,5 +16,6 @@
   "scripts": {
     "preinstall": "yarn global add node-gyp@10.0.1",
     "test": "echo \"Error: no test specified\" && exit 1"
-  }
+  },
+  "packageManager": "yarn@4.7.0"
 }
