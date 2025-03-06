@@ -65,6 +65,7 @@ class TableUsageStage(Stage):
         self.query_cost = {}
         init_staging_dir(self.config.filename)
         self.wrote_something = False
+        self.service_name = ""
 
     @property
     def name(self) -> str:
@@ -217,6 +218,9 @@ class TableUsageStage(Stage):
         self.dump_data_to_file()
 
     def dump_data_to_file(self):
+        """
+        Dump the table usage data to a file.
+        """
         for key, value in self.table_usage.items():
             if value:
                 value.sqlQueries = self.table_queries.get(key, [])

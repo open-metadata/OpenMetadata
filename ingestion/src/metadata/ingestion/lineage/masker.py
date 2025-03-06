@@ -20,12 +20,11 @@ from sqlparse.sql import Comparison
 from sqlparse.tokens import Literal, Number, String
 
 from metadata.ingestion.lineage.models import Dialect
-from metadata.utils.lru_cache import LRU_CACHE_SIZE
 
 MASK_TOKEN = "?"
 
-
-masked_query_cache = LRUCache(maxsize=LRU_CACHE_SIZE)
+# Cache size is 128 to avoid memory issues
+masked_query_cache = LRUCache(maxsize=128)
 
 # pylint: disable=protected-access
 def get_logger():
@@ -116,6 +115,9 @@ def mask_literals_with_sqlfluff(query: str, parser: LineageRunner) -> str:
 def mask_query(
     query: str, dialect: str = Dialect.ANSI.value, parser: LineageRunner = None
 ) -> str:
+    """
+    Mask a query using sqlparse or sqlfluff.
+    """
     logger = get_logger()
     try:
         if masked_query_cache.get((query, dialect)):

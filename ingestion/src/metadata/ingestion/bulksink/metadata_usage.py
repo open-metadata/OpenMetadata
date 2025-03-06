@@ -184,6 +184,9 @@ class MetadataUsageBulkSink(BulkSink):
                         yield file
 
     def handle_table_usage(self) -> None:
+        """
+        Handle table usage.
+        """
         for file_handler in self.iterate_files():
             self.table_usage_map = {}
             for usage_record in file_handler.readlines():
