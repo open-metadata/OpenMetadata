@@ -48,6 +48,7 @@ class DocumentationLinksClassBase {
       CUSTOM_PROPERTIES_DOCS: `${this.docsBaseURL}how-to-guides/guide-for-data-users/custom`,
       DATA_DISCOVERY_DOCS: `${this.docsBaseURL}how-to-guides/data-discovery`,
       HOW_TO_GUIDE_DOCS: `${this.docsBaseURL}how-to-guides`,
+      AUTO_CLASSIFICATION_DOCS: `${this.docsBaseURL}how-to-guides/data-governance/classification/auto`,
       OMD_SLACK_LINK:
         'https://join.slack.com/t/openmetadata/shared_invite/zt-1r1kv175f-9qM5eTB39MF6U2DBhZhWow',
       OMD_REPOSITORY_LINK: 'https://star-us.open-metadata.org/',
