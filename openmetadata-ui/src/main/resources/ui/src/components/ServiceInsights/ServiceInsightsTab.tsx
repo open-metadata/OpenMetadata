@@ -24,6 +24,10 @@ import {
 import { SystemChartType } from '../../enums/DataInsight.enum';
 import { useFqn } from '../../hooks/useFqn';
 import { getMultiChartsPreviewByName } from '../../rest/DataInsightAPI';
+import {
+  getCurrentMillis,
+  getEpochMillisForPastDays,
+} from '../../utils/date-time/DateTimeUtils';
 import Fqn from '../../utils/Fqn';
 import serviceUtilClassBase from '../../utils/ServiceUtilClassBase';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -52,9 +56,8 @@ const ServiceInsightsTab: React.FC<ServiceInsightsTabProps> = () => {
   const fetchChartsData = async () => {
     try {
       setIsLoading(true);
-      const currentTimestampInMs = Date.now();
-      const sevenDaysAgoTimestampInMs =
-        currentTimestampInMs - 7 * 24 * 60 * 60 * 1000;
+      const currentTimestampInMs = getCurrentMillis();
+      const sevenDaysAgoTimestampInMs = getEpochMillisForPastDays(7);
 
       const chartsData = await getMultiChartsPreviewByName(
         SERVICE_INSIGHTS_CHART,
