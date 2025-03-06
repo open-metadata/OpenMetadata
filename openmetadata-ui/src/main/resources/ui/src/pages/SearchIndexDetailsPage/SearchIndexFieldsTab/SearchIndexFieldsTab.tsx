@@ -17,7 +17,6 @@ import { isEmpty, sortBy } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import Searchbar from '../../../components/common/SearchBarComponent/SearchBar.component';
-import ToggleExpandButton from '../../../components/common/ToggleExpandButton/ToggleExpandButton';
 import { useGenericContext } from '../../../components/Customization/GenericProvider/GenericProvider';
 import {
   SearchIndex,
@@ -134,17 +133,12 @@ function SearchIndexFieldsTab() {
         />
       </Col>
 
-      <Col>
-        <ToggleExpandButton
-          allRowKeys={fieldAllRowKeys}
-          expandedRowKeys={expandedRowKeys}
-          toggleExpandAll={toggleExpandAll}
-        />
-      </Col>
       <Col span={24}>
         <SearchIndexFieldsTable
           entityFqn={entityFqn}
           expandableConfig={expandableConfig}
+          expandedRowKeys={expandedRowKeys}
+          fieldAllRowKeys={fieldAllRowKeys}
           hasDescriptionEditAccess={hasDescriptionEditAccess}
           hasGlossaryTermEditAccess={hasGlossaryTermEditAccess}
           hasTagEditAccess={hasTagEditAccess}
@@ -152,6 +146,7 @@ function SearchIndexFieldsTab() {
           searchIndexFields={fields}
           searchText={searchText}
           searchedFields={searchedFields}
+          toggleExpandAll={toggleExpandAll}
           onUpdate={handleSearchIndexFieldsUpdate}
         />
       </Col>

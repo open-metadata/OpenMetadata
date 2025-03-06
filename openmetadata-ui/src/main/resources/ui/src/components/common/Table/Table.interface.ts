@@ -16,6 +16,7 @@ export interface TableComponentProps<T> extends TableProps<T> {
   resizableColumns?: boolean;
   /** Filter's in ReactNode that will be aligned with TableColumnFilter. Example: GlossaryTableFilter */
   extraTableFilters?: React.ReactNode;
+  extraTableFiltersClassName?: string;
   /** Columns that will be visible by default in the Table */
   defaultVisibleColumns?: string[];
   /** Columns that will be statically visible in the Table and will not be Filtered */

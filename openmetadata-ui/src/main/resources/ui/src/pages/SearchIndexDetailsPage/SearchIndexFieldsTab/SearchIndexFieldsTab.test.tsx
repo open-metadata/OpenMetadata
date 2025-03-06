@@ -29,24 +29,26 @@ jest.mock(
       ))
 );
 
-jest.mock(
-  '../../../components/common/ToggleExpandButton/ToggleExpandButton',
-  () =>
-    jest
-      .fn()
-      .mockImplementation(({ toggleExpandAll }) => (
-        <div onClick={toggleExpandAll}>testToggleExpandButton</div>
-      ))
-);
+// jest.mock(
+//   '../../../components/common/ToggleExpandButton/ToggleExpandButton',
+//   () =>
+//     jest
+//       .fn()
+//       .mockImplementation(({ toggleExpandAll }) => (
+//         <div onClick={toggleExpandAll}>testToggleExpandButton</div>
+//       ))
+// );
 
 jest.mock('../SearchIndexFieldsTable/SearchIndexFieldsTable', () =>
   jest
     .fn()
     .mockImplementation(
       ({
+        toggleExpandAll,
         searchedFields,
         expandableConfig,
       }: {
+        toggleExpandAll: () => void;
         searchedFields: SearchIndexField[];
         expandableConfig: ExpandableConfig<SearchIndexField>;
       }) => (
@@ -58,6 +60,7 @@ jest.mock('../SearchIndexFieldsTable/SearchIndexFieldsTable', () =>
           <p data-testid="expanded-rows">
             {expandableConfig.expandedRowKeys?.length}
           </p>
+          <button onClick={toggleExpandAll}>testToggleExpandButton</button>
         </>
       )
     )

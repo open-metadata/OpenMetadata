@@ -16,6 +16,11 @@ import { cloneDeep, groupBy, isUndefined, uniqBy } from 'lodash';
 import { EntityTags, TagFilterOptions } from 'Models';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import {
+  COMMON_STATIC_TABLE_VISIBLE_COLUMNS,
+  DEFAULT_DASHBOARD_DATA_MODEL_VISIBLE_COLUMNS,
+  TABLE_COLUMNS_KEYS,
+} from '../../../../../constants/TableKeys.constants';
 import { EntityType } from '../../../../../enums/entity.enum';
 import {
   Column,
@@ -115,8 +120,8 @@ const ModelTab = () => {
     () => [
       {
         title: t('label.name'),
-        dataIndex: 'name',
-        key: 'name',
+        dataIndex: TABLE_COLUMNS_KEYS.NAME,
+        key: TABLE_COLUMNS_KEYS.NAME,
         width: 250,
         fixed: 'left',
         sorter: getColumnSorter<Column, 'name'>('name'),
@@ -126,8 +131,8 @@ const ModelTab = () => {
       },
       {
         title: t('label.type'),
-        dataIndex: 'dataType',
-        key: 'dataType',
+        dataIndex: TABLE_COLUMNS_KEYS.DATA_TYPE,
+        key: TABLE_COLUMNS_KEYS.DATA_TYPE,
         width: 100,
         render: (dataType, record) => (
           <Typography.Text>
@@ -137,9 +142,9 @@ const ModelTab = () => {
       },
       {
         title: t('label.description'),
-        dataIndex: 'description',
-        key: 'description',
-        accessor: 'description',
+        dataIndex: TABLE_COLUMNS_KEYS.DESCRIPTION,
+        key: TABLE_COLUMNS_KEYS.DESCRIPTION,
+        accessor: TABLE_COLUMNS_KEYS.DESCRIPTION,
         width: 350,
         render: (_, record, index) => (
           <TableDescription
@@ -158,9 +163,9 @@ const ModelTab = () => {
       },
       {
         title: t('label.tag-plural'),
-        dataIndex: 'tags',
-        key: 'tags',
-        accessor: 'tags',
+        dataIndex: TABLE_COLUMNS_KEYS.TAGS,
+        key: TABLE_COLUMNS_KEYS.TAGS,
+        accessor: TABLE_COLUMNS_KEYS.TAGS,
         width: 250,
         filters: tagFilter.Classification,
         filterIcon: columnFilterIcon,
@@ -182,9 +187,9 @@ const ModelTab = () => {
       },
       {
         title: t('label.glossary-term-plural'),
-        dataIndex: 'tags',
-        key: 'glossary',
-        accessor: 'tags',
+        dataIndex: TABLE_COLUMNS_KEYS.TAGS,
+        key: TABLE_COLUMNS_KEYS.GLOSSARY,
+        accessor: TABLE_COLUMNS_KEYS.TAGS,
         width: 250,
         filterIcon: columnFilterIcon,
         filters: tagFilter.Glossary,
@@ -225,10 +230,12 @@ const ModelTab = () => {
         columns={tableColumn}
         data-testid="data-model-column-table"
         dataSource={data}
+        defaultVisibleColumns={DEFAULT_DASHBOARD_DATA_MODEL_VISIBLE_COLUMNS}
         pagination={false}
         rowKey="name"
         scroll={{ x: 1200 }}
         size="small"
+        staticVisibleColumns={COMMON_STATIC_TABLE_VISIBLE_COLUMNS}
       />
 
       {editColumnDescription && (

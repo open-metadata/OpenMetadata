@@ -26,6 +26,9 @@ export interface SearchIndexFieldsTableProps {
   entityFqn: string;
   onUpdate: (fields: Array<SearchIndexField>) => Promise<void>;
   searchText?: string;
+  fieldAllRowKeys: string[];
+  expandedRowKeys: string[];
+  toggleExpandAll: () => void;
 }
 
 export type SearchIndexCellRendered<T, K extends keyof T> = (
