@@ -19,6 +19,7 @@ import { createTableSuggestions } from '../../utils/suggestions';
 import { performUserLogin } from '../../utils/user';
 
 const table = new TableClass();
+const table2 = new TableClass();
 const user1 = new UserClass();
 const user2 = new UserClass();
 let entityLinkList: string[];
@@ -29,6 +30,7 @@ test.describe('Description Suggestions Table Entity', () => {
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
     const { afterAction, apiContext } = await performAdminLogin(browser);
     await table.create(apiContext);
+    await table2.create(apiContext);
 
     entityLinkList = table.entityLinkColumnsName.map(
       (entityLinkName) =>
@@ -48,6 +50,7 @@ test.describe('Description Suggestions Table Entity', () => {
   test.afterAll('Cleanup', async ({ browser }) => {
     const { afterAction, apiContext } = await performAdminLogin(browser);
     await table.delete(apiContext);
+    await table2.delete(apiContext);
     await user1.delete(apiContext);
     await user2.delete(apiContext);
     await afterAction();
@@ -247,5 +250,30 @@ test.describe('Description Suggestions Table Entity', () => {
     await afterAction();
     await afterAction2();
     await afterAction3();
+  });
+
+  test('Should fetch initial 10 suggestions on entity change from table1 to table2', async ({
+    browser,
+  }) => {
+    // Jumping from one table to another table to check if the suggestions are fetched correctly
+    // due to provider boundary on entity.
+
+    const { page, afterAction } = await performAdminLogin(browser);
+
+    await redirectToHomePage(page);
+
+    const suggestionFetchCallResponse = page.waitForResponse(
+      '/api/v1/suggestions?entityFQN=*&limit=10'
+    );
+    await table2.visitEntityPage(page);
+    await suggestionFetchCallResponse;
+
+    const suggestionFetchCallResponse2 = page.waitForResponse(
+      '/api/v1/suggestions?entityFQN=*&limit=10'
+    );
+    await table.visitEntityPage(page);
+    await suggestionFetchCallResponse2;
+
+    await afterAction();
   });
 });
