@@ -15,7 +15,7 @@ import { Button, Col, Divider, Row, Space, Tooltip, Typography } from 'antd';
 import ButtonGroup from 'antd/lib/button/button-group';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { capitalize, get, isEmpty } from 'lodash';
+import { get, isEmpty } from 'lodash';
 import QueryString from 'qs';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -25,8 +25,6 @@ import { ReactComponent as IconExternalLink } from '../../../assets/svg/external
 import { ReactComponent as RedAlertIcon } from '../../../assets/svg/ic-alert-red.svg';
 import { ReactComponent as TaskOpenIcon } from '../../../assets/svg/ic-open-task.svg';
 import { ReactComponent as ShareIcon } from '../../../assets/svg/ic-share.svg';
-import { ReactComponent as StarFilledIcon } from '../../../assets/svg/ic-star-filled.svg';
-import { ReactComponent as StarIcon } from '../../../assets/svg/ic-star.svg';
 import { ReactComponent as VersionIcon } from '../../../assets/svg/ic-version.svg';
 import { ActivityFeedTabs } from '../../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import { DomainLabel } from '../../../components/common/DomainLabel/DomainLabel.component';
@@ -501,29 +499,6 @@ export const DataAssetsHeader = ({
                       <Typography.Text>{version}</Typography.Text>
                     </Button>
                   </Tooltip>
-
-                  {!excludeEntityService && (
-                    <Tooltip
-                      title={t('label.field-entity', {
-                        field: t(
-                          `label.${isFollowing ? 'un-follow' : 'follow'}`
-                        ),
-                        entity: capitalize(entityType),
-                      })}>
-                      <Button
-                        data-testid="entity-follow-button"
-                        disabled={deleted}
-                        icon={
-                          <Icon
-                            component={isFollowing ? StarFilledIcon : StarIcon}
-                          />
-                        }
-                        loading={isFollowingLoading}
-                        onClick={handleFollowingClick}>
-                        <Typography.Text>{followers}</Typography.Text>
-                      </Button>
-                    </Tooltip>
-                  )}
 
                   <Tooltip
                     placement="topRight"
