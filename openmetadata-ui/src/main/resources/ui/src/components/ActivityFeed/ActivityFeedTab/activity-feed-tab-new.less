@@ -37,8 +37,12 @@
     background-color: @white;
     padding: 14px 20px 20px 20px;
     margin-right: 20px;
+    display: flex;
+    flex-direction: column;
+    border: 1px solid #eaecf5;
     .full-width {
       flex: 10;
+      margin-right: 0px;
     }
   }
   .right-container {
@@ -49,6 +53,7 @@
     overflow-y: scroll;
     background-color: @white;
     border-radius: 12px;
+    border: 1px solid #eaecf5;
     .full-width {
       flex: 0;
     }
@@ -60,9 +65,9 @@
     .activity-feed-comments-container {
       border-radius: 12px;
       padding: 16px;
-      margin: 20px 0px;
-      border: 0.8px solid #dfdfdf;
-      background: rgba(239, 244, 250, 0.25);
+      margin: 20px 0px 0px 0px;
+      border: 0.5px solid #eaecf5;
+      background: #f8f9fc;
     }
 
     .activity-feed-reply-button {
@@ -74,11 +79,32 @@
     .comments-input-field {
       background-color: #f4f5f7;
       border-radius: 20px;
-      border: 1px solid #d4d4d8;
+      border: 1px solid #eaecf5;
       height: 36px;
       font-size: 12px;
       line-height: 14.52px;
+      &::placeholder {
+        color: #a4a7ae;
+        font-size: 12px;
+        font-style: normal;
+        font-weight: 400;
+        line-height: normal;
+      }
     }
+  }
+
+  .hide-panel {
+    flex: 0;
+    margin-right: 0px;
+  }
+  .placeholder-text {
+    color: #666;
+    font-size: 16px;
+    font-style: normal;
+    font-weight: 400;
+    line-height: 23px; /* 143.75% */
+
+    width: 350px;
   }
 
   .left-container {
@@ -86,14 +112,14 @@
     border-right: @global-border !important;
   }
   .activity-feed-card-new {
-    border-radius: 8px;
+    border-radius: 12px;
     margin: 10px 0px;
-    background: @grey-9;
+    background: #f8f9fc;
     display: flex;
     flex-direction: column;
     flex-wrap: wrap;
     width: inherit;
-    border: none;
+    border: 0.5px solid #eaecf5;
 
     .ant-card-body {
       width: inherit;
@@ -103,28 +129,27 @@
         width: inherit;
       }
     }
+  }
 
-    .is-active {
-      background: #e6f1fe;
-    }
+  .activity-feed-card-new.is-active {
+    background: #eff8ff;
+    border: 1px solid #84caff;
+  }
 
-    .activity-feed-card-message {
-      padding: 12px;
-      background-color: @white;
-      width: inherit;
-      margin-top: 2px;
-      border-radius: 12px;
-      border: none;
-      .ant-card-body {
-        padding: 0px;
-        border: none;
-        border-radius: 12px;
-      }
+  .activity-feed-card-message {
+    padding: 20px;
+    background-color: @white;
+    width: inherit;
+    margin-top: 2px;
+    border: 0.5px solid #eaecf5;
+    .ant-card-body {
+      padding: 0px;
+      border-radius: 8px;
     }
-    .activity-feed-card-message-right-panel {
-      background: rgba(239, 244, 250, 0.25);
-      margin-top: 10px;
-    }
+  }
+  .activity-feed-card-message-right-panel {
+    background: rgba(239, 244, 250, 0.25);
+    margin-top: 10px;
   }
   .activity-feed-reply-card {
     border-radius: 8px;
@@ -215,6 +240,10 @@
   line-height: 20px;
   letter-spacing: 0.03em;
   color: #181d27;
+}
+.activity-feed-user-name.ant-typography a {
+  color: #181d27;
+  font-weight: 600;
 }
 .reply-card-user-name {
   font-size: 14px;
@@ -326,12 +355,11 @@
 .header-link {
   word-wrap: break-word;
   white-space: normal;
+  color: @blue-9;
+  font-weight: 600;
 }
 .header-container-card {
-  margin-top: -6px;
-}
-.header-container-right-panel {
-  margin-top: -4px;
+  margin-top: -2px;
 }
 .toggle-item {
   display: flex;
@@ -357,6 +385,14 @@
   color: inherit !important;
   border-radius: 12px !important;
 }
+
+.activity-feed-comments-title {
+  font-size: 14px;
+  font-style: normal;
+  font-weight: 600;
+  line-height: 20px;
+  color: #414651;
+}
 .card-style-feed-header {
   color: #535862;
   font-size: 14px;
@@ -369,7 +405,7 @@
 }
 .close-tab-icon {
   position: absolute;
-  top: 20px;
+  top: 24px;
   right: 20px;
 }
 .full-width {
@@ -407,4 +443,16 @@
   margin: auto 0px;
   color: #a1a1aa;
   margin-bottom: 8px;
+}
+
+.reply-card-user-name.activity-feed-user-name.ant-typography a {
+  color: #373e44;
+  font-style: normal;
+  font-weight: 500;
+  line-height: 24px;
+}
+
+.feed-footer-avatar-group .ant-avatar {
+  margin-inline-end: -8px !important;
+  border: 1px solid #fff;
 }

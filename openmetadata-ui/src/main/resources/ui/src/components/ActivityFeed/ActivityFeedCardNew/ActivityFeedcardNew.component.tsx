@@ -13,11 +13,16 @@
 import { Card, Col, Input, Space, Tooltip, Typography } from 'antd';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
+import { isUndefined } from 'lodash';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as CloseTabIcon } from '../../../assets/svg/ic-close-tab.svg';
-import { Post, Thread } from '../../../generated/entity/feed/thread';
+import { getUserPath } from '../../../constants/constants';
+import { ASSET_CARD_STYLES } from '../../../constants/Feeds.constants';
+import { EntityType } from '../../../enums/entity.enum';
+import { CardStyle, Post, Thread } from '../../../generated/entity/feed/thread';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import {
   formatDateTime,
   getRelativeTime,
@@ -30,7 +35,10 @@ import {
   getEntityType,
   getFeedHeaderTextFromCardStyle,
 } from '../../../utils/FeedUtils';
-import ProfilePicture from '../../common/ProfilePicture/ProfilePicture';
+import searchClassBase from '../../../utils/SearchClassBase';
+import EntityPopOverCard from '../../common/PopOverCard/EntityPopOverCard';
+import UserPopOverCard from '../../common/PopOverCard/UserPopOverCard';
+import ProfilePictureNew from '../../common/ProfilePicture/ProfilePictureNew';
 import FeedCardBodyNew from '../ActivityFeedCard/FeedCardBody/FeedCardBodyNew';
 import FeedCardFooterNew from '../ActivityFeedCardV2/FeedCardFooter/FeedCardFooterNew';
 import ActivityFeedEditorNew from '../ActivityFeedEditor/ActivityFeedEditorNew';
@@ -45,7 +53,8 @@ interface ActivityFeedCardNewProps {
   post: Post;
   showActivityFeedEditor?: boolean;
   showThread?: boolean;
-  handlePanelResize?: () => void;
+  handlePanelResize?: (isFullWidth: boolean) => void;
+  isFullWidth?: boolean;
 }
 
 const ActivityFeedCardNew = ({
@@ -64,6 +73,7 @@ const ActivityFeedCardNew = ({
     return { entityFQN, entityType };
   }, [feed.about]);
   const { t } = useTranslation();
+  const { currentUser } = useApplicationStore();
   const { selectedThread, postFeed } = useActivityFeedProvider();
   const [showFeedEditor, setShowFeedEditor] = useState<boolean>(false);
   const [isEditPost, setIsEditPost] = useState<boolean>(false);
@@ -82,9 +92,89 @@ const ActivityFeedCardNew = ({
     updateFeed(feed.id, post?.id, !isPost, patch);
     setIsEditPost(!isEditPost);
   };
-  const entityName = feed?.entityRef
-    ? getEntityName(feed.entityRef)
-    : entityDisplayName(entityType, entityFQN);
+
+  const { isUserOrTeam, showEntityLink } = useMemo(() => {
+    return {
+      entityCheck: !isUndefined(entityFQN) && !isUndefined(entityType),
+      isUserOrTeam: [EntityType.USER, EntityType.TEAM].includes(entityType),
+      showEntityLink: ![
+        CardStyle.EntityCreated,
+        CardStyle.EntityDeleted,
+      ].includes(feed.cardStyle ?? CardStyle.Default),
+    };
+  }, [entityFQN, entityType, feed.cardStyle]);
+  const renderEntityLink = useMemo(() => {
+    if (
+      isUserOrTeam &&
+      !ASSET_CARD_STYLES.includes(feed.cardStyle as CardStyle)
+    ) {
+      return (
+        <UserPopOverCard
+          showUserName
+          showUserProfile={false}
+          userName={feed.createdBy as string}>
+          <Link
+            className="break-all text-body header-link"
+            data-testid="entity-link"
+            to={entityUtilClassBase.getEntityLink(entityType, entityFQN)}>
+            <span
+              className={classNames('text-sm', {
+                'max-one-line': !showThread,
+              })}>
+              {feed?.entityRef
+                ? getEntityName(feed.entityRef)
+                : entityDisplayName(entityType, entityFQN)}
+            </span>
+          </Link>
+        </UserPopOverCard>
+      );
+    } else if (showEntityLink) {
+      return (
+        <EntityPopOverCard entityFQN={entityFQN} entityType={entityType}>
+          <div
+            className={classNames('text-sm', {
+              'max-one-line': !showThread,
+            })}>
+            <span className="w-4 h-4 m-r-xss d-inline-flex  align-middle">
+              {searchClassBase.getEntityIcon(entityType ?? '')}
+            </span>
+            <Link
+              className="break-word text-sm header-link"
+              data-testid="entity-link"
+              to={entityUtilClassBase.getEntityLink(entityType, entityFQN)}>
+              <span>
+                {feed?.entityRef
+                  ? getEntityName(feed.entityRef)
+                  : entityDisplayName(entityType, entityFQN)}
+              </span>
+            </Link>
+          </div>
+        </EntityPopOverCard>
+      );
+    } else {
+      return (
+        <div
+          className={classNames('break-word header-link d-flex', {
+            'items-start': showThread,
+            'items-center': !showThread,
+            ' m-t-xss':
+              showThread && feed.entityRef?.type === EntityType.CONTAINER,
+          })}>
+          <span className="w-4 h-4 m-r-xss d-inline-flex  align-middle">
+            {searchClassBase.getEntityIcon(entityType ?? '')}
+          </span>
+          <Typography.Text
+            className={classNames('text-sm', {
+              'max-one-line': !showThread,
+            })}>
+            {feed?.entityRef
+              ? getEntityName(feed.entityRef)
+              : entityDisplayName(entityType, entityFQN)}
+          </Typography.Text>
+        </div>
+      );
+    }
+  }, [feed.cardStyle, entityType, entityFQN, showEntityLink, isUserOrTeam]);
   const feedHeaderText = getFeedHeaderTextFromCardStyle(
     feed.fieldOperation,
     feed.cardStyle,
@@ -106,7 +196,6 @@ const ActivityFeedCardNew = ({
 
   return (
     <Card
-      bordered={showThread ? false : true}
       className={classNames(
         'relative activity-feed-card-new',
         {
@@ -119,13 +208,15 @@ const ActivityFeedCardNew = ({
       <Space align="start" className="w-full">
         <Space className="d-flex" direction="vertical">
           <Space
-            className={classNames('d-inline-flex justify-start items-start', {
-              'items-center': showThread,
+            className={classNames('d-inline-flex justify-start', {
+              'items-center': !showThread,
+              'items-start':
+                showThread && feed.entityRef?.type === EntityType.CONTAINER,
             })}>
-            <ProfilePicture
+            <ProfilePictureNew
               avatarType="outlined"
               key={feed.id}
-              name={feed.updatedBy!}
+              name={feed.createdBy ?? ''}
               size={showThread ? 40 : 32}
             />
             <Space className="d-flex flex-col align-start gap-2" size={0}>
@@ -140,39 +231,46 @@ const ActivityFeedCardNew = ({
                     'activity-feed-user-name': !isPost,
                     'reply-card-user-name': isPost,
                   })}>
-                  {feed.updatedBy}
+                  <UserPopOverCard
+                    className={classNames('mr-2', {
+                      'activity-feed-user-name': !isPost,
+                      'reply-card-user-name': isPost,
+                    })}
+                    userName={feed.createdBy ?? ''}>
+                    <Link to={getUserPath(feed.createdBy ?? '')}>
+                      {feed.createdBy}
+                    </Link>
+                  </UserPopOverCard>
                 </Typography.Text>
                 {timestamp}
               </Space>
               {!isPost && (
                 <Space
-                  className={classNames('d-flex align-center gap-1', {
+                  className={classNames('d-flex gap-1', {
                     'header-container-card': !showThread,
-                    'header-container-card align-start': showThread,
+                    'flex-wrap':
+                      showThread &&
+                      feed.entityRef?.type !== EntityType.CONTAINER,
+                    'items-start':
+                      showThread &&
+                      feed.entityRef?.type === EntityType.CONTAINER,
+                    ' items-center':
+                      showThread &&
+                      feed.entityRef?.type !== EntityType.CONTAINER,
                   })}>
                   <Typography.Text className="card-style-feed-header text-sm">
                     {feedHeaderText}
                   </Typography.Text>
 
-                  <Link
-                    className="break-word header-link"
-                    data-testid="entity-link"
-                    to={entityUtilClassBase.getEntityLink(
-                      entityType,
-                      entityFQN
-                    )}>
-                    <span
-                      className={classNames('text-sm', {
-                        'max-one-line': !showThread,
-                      })}>
-                      {entityName}
-                    </span>
-                  </Link>
+                  {renderEntityLink}
+
                   {showThread && (
                     <CloseTabIcon
                       className="close-tab-icon"
                       height={16}
-                      onClick={handlePanelResize}
+                      onClick={() => {
+                        handlePanelResize?.(true);
+                      }}
                     />
                   )}
                 </Space>
@@ -214,10 +312,10 @@ const ActivityFeedCardNew = ({
           ) : (
             <div className="d-flex gap-2">
               <div>
-                <ProfilePicture
+                <ProfilePictureNew
                   avatarType="outlined"
                   key={feed.id}
-                  name="admin"
+                  name={currentUser?.displayName || currentUser?.name || ''}
                   size={32}
                 />
               </div>

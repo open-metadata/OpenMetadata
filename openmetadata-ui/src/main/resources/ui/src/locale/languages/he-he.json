@@ -1730,7 +1730,9 @@
     "new-conversation": "אתה מתחיל שיחה חדשה",
     "new-to-the-platform": "חדש בפלטפורמה?",
     "no-access-placeholder": "אין לך גישה, אנא בדוק עם המנהל לקבלת הרשאות.",
-    "no-activity-feed": "לא נמצאה פעילות בתוך נכסי הנתונים שאתה מחזיק או באלה שאתה עוקב כרגע.",
+    "no-activity-feed": "כרגע, אין עדכונים בנכסי הנתונים שבבעלותך או שאתה עוקב אחריהם. <0>{{explored}}</0> צלול פנימה ותבע בעלות או עקוב אחר נכסי הנתונים שמעניינים אותך כדי להישאר מעודכן בפעילויות האחרונות שלהם!",
+    "no-activity-feed-description": "אין פעילות עדיין! ברגע שהדברים יתחילו לזוז, תראה עדכונים כאן.",
+    "no-activity-feed-title": "הפיד שלך ריק",
     "no-announcement-message": "אין הודעות, לחץ על הוספת הודעה כדי להוסיף אחת.",
     "no-asset-available": "אין נכסים זמינים.",
     "no-closed-task": "אין משימות סגורות",
@@ -1771,6 +1773,8 @@
     "no-notification-found": "לא נמצאו הודעות",
     "no-open-task": "אין משימות פתוחות",
     "no-open-tasks": "אין משימות פתוחות.",
+    "no-open-tasks-description": "אין לך משימות פתוחות כרגע. תהנה מרגע חופשי ממשימות!",
+    "no-open-tasks-title": "חדשות טובות",
     "no-owned-data": "נראה שאתה או הצוות שלך לא בעלי נכסי נתונים כרגע. כדי להתחיל לבעוט בנכסי נתונים, לחץ על אפשרות <0>גלוש</0> כדי לגלוש נכסים.",
     "no-permission-for-action": "אין לך את ההרשאות הדרושות לביצוע פעולה זו.",
     "no-permission-to-view": "אין לך את הרשאות הדרושות להציג את הנתונים האלו.",
@@ -2062,6 +2066,7 @@
     "no-application-schema-found": "לא נמצאה סכמת יישום עבור {{appName}}",
     "no-owned-entities": "אין לך פריטים שבבעלותך עד כה.",
     "no-query-available": "אין שאילתות זמינות.",
+    "no-records-found": "לא נמצאו רשומות",
     "no-task-available": "אין נתוני משימה זמינים.",
     "no-task-creation-without-assignee": "אין אפשרות ליצור משימה בלעדי עמית",
     "page-layout-operation-error": "שגיאה במהלך {{operation}} של פריסת הדף.",
@@ -2081,7 +2086,6 @@
     "unauthorized-user": "משתמש לא מורשה! יש לבדוק את כתובת האימייל או הסיסמה",
     "unexpected-error": "אירעה שגיאה לא צפויה.",
     "unexpected-response": "תגובה לא צפויה מהשרת.",
-    "update-entity-success": "{{entity}} עודכן בהצלחה.",
-    "you-have-not-action-anything-yet": "לא ביצעת עדיין {{action}} כלשהו."
+    "update-entity-success": "{{entity}} עודכן בהצלחה."
   }
 }

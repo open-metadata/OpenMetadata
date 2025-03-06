@@ -46,3 +46,43 @@
   font-weight: 500;
   line-height: 18px;
 }
+
+.owner-count-avatar {
+  background: #f9f5ff !important;
+  color: #7f56d9 !important;
+  border: 1px solid #7f56d9 !important;
+  cursor: pointer;
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+}
+.owner-avatar-group {
+  .ant-avatar {
+    border: 2px solid @white;
+    margin-inline-end: -8px !important;
+  }
+}
+
+.ant-avatar-group {
+  .ant-avatar:last-child {
+    margin-inline-end: 0 !important;
+  }
+}
+
+.no-underline {
+  text-decoration: none !important;
+
+  &:hover {
+    text-decoration: none !important;
+  }
+}
+
+.avatar-group {
+  .avatar-overlap {
+    margin-left: -8px;
+
+    &:first-child {
+      margin-left: 0;
+    }
+  }
+}

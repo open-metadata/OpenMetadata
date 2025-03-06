@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Avatar, Button, Col, Row } from 'antd';
+import { Avatar, Col, Row } from 'antd';
 import classNames from 'classnames';
 import { min, noop, sortBy } from 'lodash';
 import React, { useCallback, useMemo } from 'react';
@@ -28,8 +28,7 @@ function FeedCardFooterNew({
   post,
   isPost = false,
 }: Readonly<FeedCardFooterProps>) {
-  const { showDrawer, updateReactions, fetchUpdatedThread } =
-    useActivityFeedProvider();
+  const { updateReactions, fetchUpdatedThread } = useActivityFeedProvider();
 
   // The number of posts in the thread
   const postLength = useMemo(() => feed?.postsCount ?? 0, [feed?.postsCount]);
@@ -57,41 +56,40 @@ function FeedCardFooterNew({
     [updateReactions, post, feed.id, isPost, fetchUpdatedThread]
   );
 
-  const showReplies = useCallback(() => {
-    showDrawer?.(feed);
-  }, [showDrawer, feed]);
-
   return (
     <Row align="top" className={classNames({ 'm-y-md': isPost })}>
       <Col className="footer-container" span={24}>
         <div>
-          <div className="flex items-center gap-2  w-full rounded-8">
+          <div className="flex items-center gap-2 w-full rounded-8">
             {postLength > 0 && !isPost && (
-              <Avatar.Group>
-                {repliedUniqueUsersList.slice(0, 2).map((user) => (
-                  <ProfilePicture
-                    avatarType="outlined"
+              <Avatar.Group
+                className="feed-avatar-group"
+                maxCount={3}
+                maxPopoverPlacement="top"
+                maxStyle={{
+                  color: '#f56a00',
+                  backgroundColor: '#fde3cf',
+                }}>
+                {repliedUniqueUsersList.map((user, index) => (
+                  <div
                     key={user}
-                    name={user}
-                    size={20}
-                  />
+                    style={{
+                      marginLeft: index === 0 ? '0px' : '-8px',
+                      zIndex: repliedUniqueUsersList.length - index,
+                    }}>
+                    <ProfilePicture
+                      avatarType="outlined"
+                      name={user}
+                      size={20}
+                    />
+                  </div>
                 ))}
               </Avatar.Group>
             )}
 
             {!isPost && (
-              <Button
-                className="flex-center p-0"
-                data-testid="thread-count"
-                icon={<ThreadIcon height={20} />}
-                shape="circle"
-                size="small"
-                style={{ marginTop: '2px' }}
-                type="text"
-                onClick={showReplies}
-              />
+              <ThreadIcon data-testid="thread-count" height={18} width={18} />
             )}
-
             <Reactions
               reactions={post.reactions ?? []}
               onReactionSelect={onReactionUpdate ?? noop}

@@ -23,7 +23,7 @@ import {
   MarkdownToHTMLConverter,
 } from '../../../../utils/FeedUtils';
 import RichTextEditorPreviewerNew from '../../../common/RichTextEditor/RichTextEditorPreviewNew';
-import DescriptionFeed from '../../ActivityFeedCardV2/FeedCardBody/DescriptionFeed/DescriptionFeed';
+import DescriptionFeedNew from '../../ActivityFeedCardV2/FeedCardBody/DescriptionFeed/DescriptionFeedNew';
 import TagsFeed from '../../ActivityFeedCardV2/FeedCardBody/TagsFeed/TagsFeed';
 import ActivityFeedEditor from '../../ActivityFeedEditor/ActivityFeedEditor';
 import './feed-card-body-v1.less';
@@ -60,7 +60,7 @@ const FeedCardBodyNew = ({
   const feedBodyStyleCardsRender = useMemo(() => {
     if (!isPost) {
       if (cardStyle === CardStyle.Description) {
-        return <DescriptionFeed feed={feed} />;
+        return <DescriptionFeedNew feed={feed} />;
       }
 
       if (cardStyle === CardStyle.Tags) {

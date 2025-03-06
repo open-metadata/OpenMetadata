@@ -19,7 +19,6 @@ import { ReactComponent as MenuDots } from '../../assets/svg/ic-menu-dots.svg';
 import { ReactComponent as DeleteIcon } from '../../assets/svg/ic-trash.svg';
 import { User } from '../../generated/entity/teams/user';
 import { isMaskedEmail } from '../../utils/Users.util';
-import ProfilePicture from '../common/ProfilePicture/ProfilePicture';
 
 import { AxiosError } from 'axios';
 import { ICON_DIMENSION_USER_PAGE } from '../../constants/constants';
@@ -33,8 +32,10 @@ import { useAuth } from '../../hooks/authHooks';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useFqn } from '../../hooks/useFqn';
 import { changePassword } from '../../rest/auth-API';
+import { getEntityName } from '../../utils/EntityUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import DeleteWidgetModal from '../common/DeleteWidget/DeleteWidgetModal';
+import ProfilePictureNew from '../common/ProfilePicture/ProfilePictureNew';
 import { ProfileEditModal } from '../Modals/ProfileEditModal/ProfileEditModal';
 import ChangePasswordForm from '../Settings/Users/ChangePasswordForm';
 import './profile-details.less';
@@ -225,16 +226,16 @@ const ProfileSectionUserDetailsCard = ({
       </Popover>
 
       <div className="m-t-sm">
-        <ProfilePicture
+        <ProfilePictureNew
           avatarType="outlined"
           data-testid="replied-user"
-          name="admin"
+          name={getEntityName(userData)}
           width="80"
         />
       </div>
       <div>
         <p className="profile-details-title" data-testid="user-display-name">
-          {userData?.displayName}
+          {getEntityName(userData)}
         </p>
         {userEmailRender}
       </div>

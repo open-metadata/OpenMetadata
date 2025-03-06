@@ -168,3 +168,25 @@ export const checkTaskCount = async (
 
   expect(closedTaskElement).toContain(`${closedTask} Closed`);
 };
+
+export const checkTaskCountInProfilePage = async (
+  page: Page,
+  openTask = 0,
+  closedTask = 0
+) => {
+  await page.waitForSelector('.ant-skeleton-element ', {
+    state: 'detached',
+  });
+  await page.getByTestId('user-profile-page-task-filter-icon').click();
+  const openTaskItem = page
+    .locator('.task-tab-custom-dropdown .task-count-text')
+    .first();
+
+  expect(await openTaskItem.textContent()).toBe(String(openTask));
+
+  const closedTaskItem = page
+    .locator('.task-tab-custom-dropdown .task-count-text')
+    .last();
+
+  expect(await closedTaskItem.textContent()).toBe(String(closedTask));
+};

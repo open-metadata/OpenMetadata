@@ -190,6 +190,7 @@ const Users = ({
       {
         label: (
           <TabsLabel
+            data-testid="user-profile-page-task-tab"
             id={UserPageTabs.TASK}
             isActive={currentTab === UserPageTabs.TASK}
             name={t('label.task-plural')}
@@ -220,9 +221,7 @@ const Users = ({
           queryFilter: queryFilters.myData,
           type: AssetsOfEntity.MY_DATA,
           noDataPlaceholder: {
-            message: t('server.you-have-not-action-anything-yet', {
-              action: t('label.owned-lowercase'),
-            }),
+            message: t('server.no-records-found'),
           },
         }),
       },
@@ -239,9 +238,7 @@ const Users = ({
           queryFilter: queryFilters.following,
           type: AssetsOfEntity.FOLLOWING,
           noDataPlaceholder: {
-            message: t('server.you-have-not-action-anything-yet', {
-              action: t('label.followed-lowercase'),
-            }),
+            message: t('server.no-records-found'),
           },
         }),
       },
@@ -303,7 +300,7 @@ const Users = ({
   return (
     <div className="p-t-xs bg-grey p-x-box" data-testid="user-profile">
       <Row gutter={[20, 0]} wrap={false}>
-        <Col flex="312px">
+        <Col flex="250px">
           <div className="profile-section">
             <ProfileSectionUserDetailsCard
               afterDeleteAction={afterDeleteAction}

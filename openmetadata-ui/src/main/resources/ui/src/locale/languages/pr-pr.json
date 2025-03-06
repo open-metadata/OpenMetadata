@@ -1731,6 +1731,8 @@
     "new-to-the-platform": "جدید در این پلتفرم هستید؟",
     "no-access-placeholder": "شما دسترسی ندارید، لطفاً با مدیر تماس بگیرید تا مجوز دریافت کنید.",
     "no-activity-feed": "در حال حاضر هیچ به‌روزرسانی‌ای در دارایی‌های داده‌ای که شما مالک یا دنبال کرده‌اید وجود ندارد. <0>{{explored}}</0> به داده‌ها سر بزنید و مالکیت یا دنبال کردن دارایی‌های داده‌ای که شما را علاقه‌مند می‌کند را برعهده بگیرید تا از آخرین فعالیت‌های آنها مطلع شوید!",
+    "no-activity-feed-description": "¡Aún no hay actividad! Una vez que todo comience, verás actualizaciones aquí.",
+    "no-activity-feed-title": "Tu feed está vacío",
     "no-announcement-message": "هیچ اعلامیه‌ای وجود ندارد، برای افزودن یک اعلامیه کلیک کنید.",
     "no-asset-available": "هیچ دارایی‌ای در دسترس نیست.",
     "no-closed-task": "هیچ وظیفه بسته‌ای وجود ندارد.",
@@ -1771,6 +1773,8 @@
     "no-notification-found": "هیچ اعلانی یافت نشد.",
     "no-open-task": "هیچ وظیفه باز وجود ندارد.",
     "no-open-tasks": "خبر خوب! در حال حاضر هیچ وظیفه بازی ندارید. از لحظه‌ای بدون وظیفه لذت ببرید!",
+    "no-open-tasks-description": "No tienes tareas abiertas en este momento. ¡Disfruta de un momento sin tareas!",
+    "no-open-tasks-title": "Buenas noticias",
     "no-owned-data": "داده زمانی بهتر عمل می‌کند که مالکیت داشته باشد. به نظر می‌رسد شما یا تیمتان هنوز مالکیت هیچ دارایی داده‌ای را بر عهده نگرفته‌اید. برای شروع مالکیت دارایی‌های داده‌ای، روی گزینه <0>Explore</0> کلیک کنید تا دارایی‌ها را کشف کرده و مالکیت آنها را بر عهده بگیرید.",
     "no-permission-for-action": "شما مجوزهای لازم برای انجام این عملیات را ندارید.",
     "no-permission-to-view": "شما مجوزهای لازم برای مشاهده این داده‌ها را ندارید.",
@@ -2062,6 +2066,7 @@
     "no-application-schema-found": "هیچ طرح برنامه‌ای برای {{appName}} یافت نشد",
     "no-owned-entities": "شما هنوز هیچ چیزی را مالک نشده‌اید.",
     "no-query-available": "هیچ پرس‌و‌جویی در دسترس نیست.",
+    "no-records-found": "No se encontraron registros",
     "no-task-available": "داده‌ای از وظایف در دسترس نیست.",
     "no-task-creation-without-assignee": "امکان ایجاد وظیفه بدون تعیین کننده وجود ندارد.",
     "page-layout-operation-error": "خطا در {{operation}} طرح صفحه.",
@@ -2081,7 +2086,6 @@
     "unauthorized-user": "کاربر غیرمجاز! لطفاً ایمیل یا رمز عبور را بررسی کنید.",
     "unexpected-error": "یک خطای غیرمنتظره رخ داده است.",
     "unexpected-response": "پاسخ غیرمنتظره‌ای از سرور.",
-    "update-entity-success": "{{entity}} با موفقیت به‌روزرسانی شد.",
-    "you-have-not-action-anything-yet": "شما هنوز هیچ چیزی را {{action}} نکرده‌اید."
+    "update-entity-success": "{{entity}} با موفقیت به‌روزرسانی شد."
   }
 }

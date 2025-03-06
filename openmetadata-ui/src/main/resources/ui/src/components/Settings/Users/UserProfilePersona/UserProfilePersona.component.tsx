@@ -93,7 +93,7 @@ const UserProfilePersonas = ({
         </div>
         <div className="user-profile-card-body d-flex justify-start gap-2">
           {defaultPersona?.displayName ? (
-            <Typography.Text className="default-persona-text text-primary">
+            <Typography.Text className="default-persona-text  cursor-pointer">
               {defaultPersona?.displayName}
             </Typography.Text>
           ) : (
@@ -114,7 +114,7 @@ const UserProfilePersonas = ({
 
   return (
     <div
-      className="d-flex flex-col mb-4 w-full h-full p-[20px] user-profile-card"
+      className="d-flex flex-col mb-4 w-full  p-[20px] user-profile-card"
       data-testid="persona-details-card">
       <div className="user-profile-card-header d-flex items-center justify-start gap-2 w-full">
         <div className="d-flex flex-center user-page-icon cursor-pointer">

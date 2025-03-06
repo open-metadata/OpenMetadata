@@ -83,9 +83,8 @@ function GlossaryTermSummary({
     <SummaryPanelSkeleton loading={Boolean(isLoading)}>
       <Space className="w-full" direction="vertical" size={20}>
         <Row
-          className="p-md border-radius-card"
-          gutter={[0, 8]}
-          style={{ background: '#f5f5f5' }}>
+          className="p-md border-radius-card summary-panel-card"
+          gutter={[0, 8]}>
           <Col span={24}>
             <Typography.Text
               className="summary-panel-section-title"
@@ -109,9 +108,8 @@ function GlossaryTermSummary({
         </Row>
 
         <Row
-          className="p-md border-radius-card"
-          gutter={[0, 8]}
-          style={{ background: '#f5f5f5' }}>
+          className="p-md border-radius-card summary-panel-card"
+          gutter={[0, 8]}>
           <Col span={24}>
             <Typography.Text
               className="summary-panel-section-title"
@@ -141,9 +139,8 @@ function GlossaryTermSummary({
         </Row>
 
         <Row
-          className="p-md border-radius-card"
-          gutter={[0, 8]}
-          style={{ background: '#f5f5f5' }}>
+          className="p-md border-radius-card summary-panel-card"
+          gutter={[0, 8]}>
           <Col span={24}>
             <Typography.Text
               className="summary-panel-section-title"

@@ -42,10 +42,11 @@
         padding-bottom: 8px;
         position: relative;
         color: #71717a;
-        font-size: 16px;
+        font-size: 14px;
 
         &.ant-tabs-tab-active {
-          color: @primary-color;
+          color: #1570ef;
+          font-weight: 600;
         }
       }
     }
@@ -53,7 +54,7 @@
   .ant-tabs-ink-bar {
     bottom: 6px;
     height: 2px;
-    background-color: @primary-color;
+    background-color: #1570ef;
   }
 }
 
@@ -114,6 +115,7 @@
 .summary-panel-container {
   height: @profile-entity-details-tab-height;
   border-radius: 12px;
+  border: 1px solid #eaecf5;
   background-color: @white;
 
   .ant-card-head {
@@ -133,22 +135,23 @@
   }
 }
 .profile-section {
-  padding: 20px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: flex-start;
-  background-color: @white;
-  border-radius: 8px;
+  //padding: 20px;
+  // display: flex;
+  // flex-direction: column;
+  // align-items: center;
+  // justify-content: flex-start;
+  // background-color: @white;
+  // border-radius: 12px;
   height: @profile-page-sidebar;
   overflow-y: scroll;
   .profile-section-user-details-card {
     padding: 20px;
     margin-bottom: 20px;
-    background: @grey-9;
+    background: @white;
     justify-content: center;
     align-items: center;
     border-radius: 12px;
+    border: 1px solid #eaecf5;
 
     .user-details-menu-icon {
       position: absolute;
@@ -164,12 +167,14 @@
       line-height: 28px;
       color: #181d27;
       text-align: center;
+      word-break: break-word;
     }
     .profile-details-email {
       color: #175cd3;
       text-align: center;
       font-size: 14px;
       line-height: 20px;
+      word-break: break-word;
     }
     .profile-details-desc {
       font-size: 14px;
@@ -188,7 +193,7 @@
   box-shadow: '0 2px 8px rgba(0, 0, 0, 0.1)';
   margin-bottom: 16px;
   padding: 20px;
-  background-color: @grey-9;
+  background-color: @white;
   margin: 8px 0px;
   width: 100%;
   gap: 10px;
@@ -204,6 +209,10 @@
   font-size: 14px;
   line-height: 20px;
   color: #535862;
+  text-decoration: none;
+  &:hover {
+    color: #175cd3;
+  }
 }
 .tabs-container {
   background-color: @white;
@@ -212,8 +221,9 @@
   align-items: center;
   height: 48px;
   width: 100%;
-  border-radius: 8px;
+  border-radius: 12px;
   margin-bottom: 20px;
+  border: 1px solid #eaecf5;
   .ant-tabs-nav::before {
     border-bottom: none !important;
   }
@@ -233,10 +243,11 @@
 }
 
 .user-profile-card {
-  background: @grey-9;
+  background: white;
   padding: 20px 20px 10px 20px;
   border-radius: 12px;
   margin-bottom: 20px;
+  border: 1px solid #eaecf5;
   .user-profile-card-header {
     margin-bottom: @margin-xs;
   }
@@ -264,7 +275,7 @@
 }
 .default-persona-text {
   padding-left: 26px;
-  color: #535862;
+  color: @blue-9;
   font-size: 14px;
 }
 .no-default-persona-text {
@@ -390,15 +401,20 @@
   box-shadow: none !important;
 }
 
-.page-layout-v1-vertical-scroll {
-  background: @grey-9;
-}
 .domain-custom-dropdown-class {
   width: 339px;
+  max-height: 200px;
+  overflow: scroll;
 }
 .custom-domain-edit-select {
   .ant-select-selector {
     border: 1px solid #dde3ea !important;
   }
   width: 339px;
+}
+.persona-custom-dropdown-class,
+.roles-custom-dropdown-class {
+  .ant-select-item-option-selected {
+    font-weight: 400 !important;
+  }
 }

@@ -11,24 +11,24 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Avatar, Typography } from 'antd';
+import { Avatar, Dropdown, Typography } from 'antd';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import React, { ReactNode, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconUser } from '../../../assets/svg/user.svg';
 import { EntityReference } from '../../../generated/entity/data/table';
-import ProfilePicture from '../ProfilePicture/ProfilePicture';
+import ProfilePictureNew from '../ProfilePicture/ProfilePictureNew';
 import './owner-label.less';
 
-export const OwnerLabelNew = ({
+export const UserAvatarGroup = ({
   owners = [],
   className,
   onUpdate,
   hasPermission,
   ownerDisplayName,
   placeHolder,
-  maxVisibleOwners = 3,
+  maxVisibleOwners = 2,
   avatarSize = 24,
 }: {
   owners?: EntityReference[];
@@ -49,7 +49,24 @@ export const OwnerLabelNew = ({
 
   const ownerElements = useMemo(() => {
     const visibleOwners = owners.slice(0, maxVisibleOwners);
+    const remainingOwners = owners.slice(maxVisibleOwners);
     const remainingOwnersCount = owners.length - maxVisibleOwners;
+
+    const remainingOwnersMenu = {
+      items: remainingOwners.map((owner) => ({
+        key: owner.id,
+        label: (
+          <div className="d-flex items-center gap-2">
+            <ProfilePictureNew
+              avatarType="outlined"
+              name={owner.displayName ?? ''}
+              size={avatarSize}
+            />
+            <Typography.Text>{owner.displayName}</Typography.Text>
+          </div>
+        ),
+      })),
+    };
 
     return (
       <div className="d-flex items-center gap-1" data-testid="owner-label">
@@ -59,26 +76,28 @@ export const OwnerLabelNew = ({
             { inherited: Boolean(owners.some((owner) => owner?.inherited)) },
             className
           )}>
-          <Avatar.Group>
+          <Avatar.Group className="avatar-group">
             {visibleOwners.map((owner) => (
-              <ProfilePicture
-                avatarType="outlined"
-                key={owner.id}
-                name={owner.name ?? ''}
-                size={avatarSize}
-              />
+              <div className="avatar-overlap" key={owner.id}>
+                <ProfilePictureNew
+                  avatarType="outlined"
+                  displayName={owner.displayName ?? ''}
+                  name={owner.name ?? ''}
+                  size={avatarSize}
+                />
+              </div>
             ))}
             {remainingOwnersCount > 0 && (
-              <Avatar
-                size={avatarSize}
-                style={{
-                  background: '#f9f5ff',
-                  color: '#7f56d9',
-                  border: '1px solid #7f56d9',
-                }}>
-                {t('label.plus-symbol')}
-                {remainingOwnersCount}
-              </Avatar>
+              <Dropdown menu={remainingOwnersMenu} trigger={['click']}>
+                <Avatar
+                  className="owner-count-avatar avatar-overlap"
+                  size={avatarSize}>
+                  <span>
+                    {t('label.plus-symbol')}
+                    {remainingOwnersCount}
+                  </span>
+                </Avatar>
+              </Dropdown>
             )}
           </Avatar.Group>
         </div>
@@ -111,6 +130,7 @@ export const OwnerLabelNew = ({
     placeHolder,
     t,
     ownerDisplayName,
+    avatarSize,
   ]);
 
   return ownerElements;

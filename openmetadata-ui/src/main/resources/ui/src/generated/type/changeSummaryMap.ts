@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,17 +10,25 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-.access-token-card {
-  border: none;
-  border-radius: 12px;
-  border: 1px solid #eaecf5;
-  &.disabled {
-    opacity: 0.5;
-    user-select: none;
-    cursor: not-allowed;
+export interface ChangeSummaryMap {
+    changedAt?: number;
+    /**
+     * Name of the user or bot who made this change
+     */
+    changedBy?:    string;
+    changeSource?: ChangeSource;
+    [property: string]: any;
+}
 
-    .ant-card-body {
-      pointer-events: none;
-    }
-  }
+/**
+ * The source of the change. This will change based on the context of the change (example:
+ * manual vs programmatic)
+ */
+export enum ChangeSource {
+    Automated = "Automated",
+    Derived = "Derived",
+    Ingested = "Ingested",
+    Manual = "Manual",
+    Propagated = "Propagated",
+    Suggested = "Suggested",
 }

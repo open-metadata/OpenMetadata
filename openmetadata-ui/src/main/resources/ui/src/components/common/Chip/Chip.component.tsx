@@ -48,7 +48,7 @@ const Chip = ({
           item.fullyQualifiedName ?? ''
         )}>
         {icon}
-        <Typography.Text className="text-left profile-section-card-list">
+        <Typography.Text className="text-left chip-tag-link">
           {getEntityName(item)}
         </Typography.Text>
       </Link>
@@ -70,9 +70,9 @@ const Chip = ({
   return (
     <Row
       wrap
-      className="align-middle d-flex flex-col flex-center"
+      className="align-middle d-flex flex-col flex-start justify-center"
       data-testid="chip-container"
-      gutter={[20, 6]}>
+      gutter={[20, 0]}>
       {data.slice(0, USER_DATA_SIZE).map(getChipElement)}
       {hasMoreElement && (
         <Popover
