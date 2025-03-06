@@ -37,6 +37,7 @@ concurrency:
 
 jobs:
   py-run-tests:
+    timeout-minutes: 180
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
