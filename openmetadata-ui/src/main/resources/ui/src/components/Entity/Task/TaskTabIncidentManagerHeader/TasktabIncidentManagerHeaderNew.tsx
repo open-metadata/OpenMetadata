@@ -121,26 +121,31 @@ const TaskTabIncidentManagerHeaderNew = ({ thread }: { thread: Thread }) => {
   return (
     <Row data-testid="incident-manager-task-header-container" gutter={[8, 16]}>
       <Row className="m-l-0" gutter={[16, 16]}>
-        <Col className="flex items-center gap-2 text-grey-muted" span={12}>
+        <Col className="flex items-center gap-2 text-grey-muted" span={8}>
           <UserIcon height={16} />
           <Typography.Text className="incident-manager-details-label @grey-8">
             {t('label.created-by')}
           </Typography.Text>
         </Col>
-        <Col className="flex items-center gap-2" span={12}>
-          <ProfilePicture name={thread.createdBy ?? ''} width="24" />
+        <Col className="flex items-center gap-2" span={16}>
+          <ProfilePicture
+            avatarType="outlined"
+            name={thread.createdBy ?? ''}
+            width="24"
+          />
           <Typography.Text>{thread.createdBy}</Typography.Text>
         </Col>
-        <Col className="flex items-center gap-2 text-grey-muted" span={12}>
+        <Col className="flex items-center gap-2 text-grey-muted" span={8}>
           <AssigneesIcon height={16} />
           <Typography.Text className="incident-manager-details-label @grey-8">
             {`${t('label.assignee-plural')} `}
           </Typography.Text>
         </Col>
-        <Col className="flex items-center gap-2" span={12}>
+        <Col className="flex items-center gap-2" span={16}>
           {thread?.task?.assignees?.length === 1 ? (
             <div className="d-flex items-center gap-2">
               <ProfilePicture
+                avatarType="outlined"
                 name={thread?.task?.assignees[0].displayName ?? ''}
                 width="24"
               />
@@ -157,19 +162,19 @@ const TaskTabIncidentManagerHeaderNew = ({ thread }: { thread: Thread }) => {
           )}
         </Col>
 
-        <Col className="flex items-center gap-2 text-grey-muted" span={12}>
+        <Col className="flex items-center gap-2 text-grey-muted" span={8}>
           <SeverityIcon height={16} />
           <Typography.Text className="incident-manager-details-label">
             {' '}
             {`${t('label.severity')} `}
           </Typography.Text>
         </Col>
-        <Col className="flex items-center gap-2" span={12}>
+        <Col className="flex items-center gap-2" span={16}>
           <Severity severity={latestTestCaseResolutionStatus?.severity} />
         </Col>
 
         {isResolved && (
-          <Col className="flex items-center gap-2 text-grey-muted" span={12}>
+          <Col className="flex items-center gap-2 text-grey-muted" span={8}>
             <FailureReasonIcon height={16} />
             <Typography.Text className="incident-manager-details-label">{`${t(
               'label.failure-reason'
@@ -177,7 +182,7 @@ const TaskTabIncidentManagerHeaderNew = ({ thread }: { thread: Thread }) => {
           </Col>
         )}
         {isResolved && (
-          <Col className="flex items-center gap-2" span={12}>
+          <Col className="flex items-center gap-2" span={16}>
             <Typography.Text className="text-sm incident-manager-text">
               {latestTestCaseResolutionStatus?.testCaseResolutionStatusDetails
                 ?.testCaseFailureReason ?? NO_DATA_PLACEHOLDER}
@@ -185,7 +190,7 @@ const TaskTabIncidentManagerHeaderNew = ({ thread }: { thread: Thread }) => {
           </Col>
         )}
         {isResolved && (
-          <Col className="flex items-center gap-2 text-grey-muted" span={12}>
+          <Col className="flex items-center gap-2 text-grey-muted" span={8}>
             <FailureCommentIcon height={16} />
             <Typography.Text className="incident-manager-details-label">
               {' '}
@@ -194,7 +199,7 @@ const TaskTabIncidentManagerHeaderNew = ({ thread }: { thread: Thread }) => {
           </Col>
         )}
         {isResolved && (
-          <Col className="flex items-center gap-2 " span={12}>
+          <Col className="flex items-center gap-2 " span={16}>
             <RichTextEditorPreviewerV1
               markdown={
                 latestTestCaseResolutionStatus?.testCaseResolutionStatusDetails
