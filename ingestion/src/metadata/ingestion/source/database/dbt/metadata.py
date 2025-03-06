@@ -367,7 +367,11 @@ class DbtSource(DbtServiceSource):
             logger.debug(
                 f"Found table entities from {fqn_search_string}: {table_entities}"
             )
-            return next(iter(filter(None, table_entities)), None)
+            return (
+                next(iter(filter(None, table_entities)), None)
+                if table_entities
+                else None
+            )
 
         try:
             table_entity = search_table(table_fqn)
