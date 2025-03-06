@@ -38,6 +38,7 @@ const creationConfig: EntityDataClassCreationConfig = {
   apiCollection: true,
   searchIndex: true,
   container: true,
+  entityDetails: true,
 };
 
 const user = new UserClass();
