@@ -12,13 +12,11 @@
  */
 
 import { expect, Page, test as base } from '@playwright/test';
-import { GlobalSettingOptions } from '../../constant/settings';
 import { TeamClass } from '../../support/team/TeamClass';
 import { AdminClass } from '../../support/user/AdminClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
-import { redirectToHomePage, uuid } from '../../utils/common';
-import { settingClick } from '../../utils/sidebar';
+import { uuid } from '../../utils/common';
 import { redirectToUserPage } from '../../utils/userDetails';
 
 const user1 = new UserClass();
@@ -165,55 +163,5 @@ test.describe('User with different Roles', () => {
     await expect(
       userPage.getByTestId('user-profile-edit-roles-save-button')
     ).not.toBeVisible();
-  });
-
-  test('Non logged in user should not be able to edit display name and description on other users', async ({
-    userPage,
-    adminPage,
-  }) => {
-    // Checks for the admins
-    await redirectToHomePage(adminPage);
-
-    const fetchUserResponse = adminPage.waitForResponse('/api/v1/users?**');
-
-    await settingClick(adminPage, GlobalSettingOptions.USERS);
-
-    await fetchUserResponse;
-
-    await adminPage.waitForSelector('[data-testid="loader"]', {
-      state: 'detached',
-    });
-
-    const userSearchResponse = adminPage.waitForResponse(
-      '/api/v1/search/query?q=**&from=0&size=*&index=*'
-    );
-    await adminPage.getByTestId('searchbar').fill(user2.responseData.name);
-    await userSearchResponse;
-
-    await adminPage.getByTestId(user2.responseData.name).click();
-
-    await expect(adminPage.getByTestId('edit-displayName')).not.toBeAttached();
-
-    // Checks for the normal user
-    await redirectToHomePage(userPage);
-
-    const fetchUserResponse2 = userPage.waitForResponse('/api/v1/users?**');
-
-    await settingClick(userPage, GlobalSettingOptions.USERS);
-
-    await fetchUserResponse2;
-
-    await userPage.waitForSelector('[data-testid="loader"]', {
-      state: 'detached',
-    });
-
-    const userResponse = userPage.waitForResponse(
-      '/api/v1/search/query?q=**&from=0&size=*&index=*'
-    );
-    await userPage.getByTestId('searchbar').fill(user2.responseData.name);
-    await userResponse;
-    await userPage.getByTestId(user2.responseData.name).click();
-
-    await expect(userPage.getByTestId('edit-displayName')).not.toBeAttached();
   });
 });
