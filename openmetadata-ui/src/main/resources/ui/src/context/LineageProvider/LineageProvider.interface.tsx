@@ -43,6 +43,12 @@ export type UpstreamDownstreamData = {
   upstreamNodes: EntityReference[];
 };
 
+export enum LineagePlatformView {
+  None = 'None',
+  Service = 'Service',
+  Domain = 'Domain',
+}
+
 export interface LineageContextType {
   reactFlowInstance?: ReactFlowInstance;
   dataQualityLineage?: EntityLineageResponse;
@@ -63,6 +69,7 @@ export interface LineageContextType {
   upstreamDownstreamData: UpstreamDownstreamData;
   selectedColumn: string;
   activeLayer: LineageLayer[];
+  platformView: LineagePlatformView;
   expandAllColumns: boolean;
   toggleColumnView: () => void;
   onInitReactFlow: (reactFlowInstance: ReactFlowInstance) => void;
@@ -89,11 +96,12 @@ export interface LineageContextType {
     lineageConfig: LineageConfig
   ) => void;
   onExportClick: () => void;
+  onPlatformViewChange: (view: LineagePlatformView) => void;
   removeNodeHandler: (node: Node | NodeProps) => void;
   onColumnEdgeRemove: () => void;
   onAddPipelineClick: () => void;
   onConnect: (connection: Edge | Connection) => void;
-  updateEntityType: (entityType: EntityType) => void;
+  updateEntityData: (entityType: EntityType, entity?: SourceType) => void;
   onUpdateLayerView: (layers: LineageLayer[]) => void;
   redraw: () => Promise<void>;
 }

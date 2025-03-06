@@ -29,6 +29,7 @@ import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg'
 import { ReactComponent as ExportIcon } from '../../../../assets/svg/ic-export.svg';
 import { NO_PERMISSION_FOR_ACTION } from '../../../../constants/HelperTextUtil';
 import { useLineageProvider } from '../../../../context/LineageProvider/LineageProvider';
+import { LineagePlatformView } from '../../../../context/LineageProvider/LineageProvider.interface';
 import { LineageLayer } from '../../../../generated/configuration/lineageSettings';
 import { getLoadingStatusValue } from '../../../../utils/EntityLineageUtils';
 import { LineageConfig } from '../EntityLineage.interface';
@@ -49,6 +50,7 @@ const LineageControlButtons: FC<LineageControlButtonsProps> = ({
     isEditMode,
     expandAllColumns,
     lineageConfig,
+    platformView,
     toggleColumnView,
     onExportClick,
     loading,
@@ -96,7 +98,7 @@ const LineageControlButtons: FC<LineageControlButtonsProps> = ({
   return (
     <>
       <div className="lineage-control-buttons">
-        {!deleted && (
+        {!deleted && platformView === LineagePlatformView.None && (
           <Button
             className={classNames('lineage-button', {
               active: isEditMode,

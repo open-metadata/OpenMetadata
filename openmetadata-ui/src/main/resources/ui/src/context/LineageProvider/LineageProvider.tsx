@@ -114,6 +114,7 @@ import { showErrorToast } from '../../utils/ToastUtils';
 import { useTourProvider } from '../TourProvider/TourProvider';
 import {
   LineageContextType,
+  LineagePlatformView,
   LineageProviderProps,
   UpstreamDownstreamData,
 } from './LineageProvider.interface';
@@ -147,6 +148,10 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     entity: {} as EntityReference,
   });
   const [lineageData, setLineageData] = useState<LineageData>();
+  const [platformView, setPlatformView] = useState<LineagePlatformView>(
+    LineagePlatformView.None
+  );
+  const [entity, setEntity] = useState<SourceType>();
 
   const [dataQualityLineage, setDataQualityLineage] =
     useState<EntityLineageResponse>();
@@ -375,6 +380,10 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     [queryFilter, decodedFqn]
   );
 
+  const onPlatformViewChange = useCallback((view: LineagePlatformView) => {
+    setPlatformView(view);
+  }, []);
+
   const exportLineageData = useCallback(
     async (_: string) => {
       return exportLineageAsync(
@@ -489,9 +498,13 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     setActiveLayer(layers);
   }, []);
 
-  const updateEntityType = useCallback((entityType: EntityType) => {
-    setEntityType(entityType);
-  }, []);
+  const updateEntityData = useCallback(
+    (entityType: EntityType, entity?: SourceType) => {
+      setEntity(entity);
+      setEntityType(entityType);
+    },
+    []
+  );
 
   const onColumnClick = useCallback(
     (column: string) => {
@@ -1318,6 +1331,20 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     }
   }, [reactFlowInstance?.viewportInitialized]);
 
+  useEffect(() => {
+    if (platformView === LineagePlatformView.Service) {
+      if (entity?.service) {
+        fetchLineageData(
+          entity?.service.fullyQualifiedName ?? '',
+          entity?.service.type,
+          lineageConfig
+        );
+      }
+    } else if (platformView === LineagePlatformView.None) {
+      fetchLineageData(decodedFqn, entityType, lineageConfig);
+    }
+  }, [platformView, entity]);
+
   const activityFeedContextValues = useMemo(() => {
     return {
       isDrawerOpen,
@@ -1339,6 +1366,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
       activeLayer,
       columnsHavingLineage,
       expandAllColumns,
+      platformView,
       toggleColumnView,
       onInitReactFlow,
       onPaneClick,
@@ -1350,7 +1378,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
       onEdgesChange,
       onQueryFilterUpdate,
       onZoomUpdate,
-      updateEntityType,
+      updateEntityData,
       onDrawerClose,
       loadChildNodesHandler,
       fetchLineageData,
@@ -1365,6 +1393,8 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
       onExportClick,
       dataQualityLineage,
       redraw,
+
+      onPlatformViewChange,
     };
   }, [
     dataQualityLineage,
@@ -1399,7 +1429,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     onEdgesChange,
     onZoomUpdate,
     onDrawerClose,
-    updateEntityType,
+    updateEntityData,
     loadChildNodesHandler,
     fetchLineageData,
     removeNodeHandler,
@@ -1412,6 +1442,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     onUpdateLayerView,
     onExportClick,
     redraw,
+    onPlatformViewChange,
   ]);
 
   useEffect(() => {

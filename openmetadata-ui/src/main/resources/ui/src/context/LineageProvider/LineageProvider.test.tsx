@@ -46,7 +46,7 @@ const DummyChildrenComponent = () => {
     loadChildNodesHandler,
     onEdgeClick,
     onColumnClick,
-    updateEntityType,
+    updateEntityData,
     onLineageEditClick,
   } = useLineageProvider();
 
@@ -82,7 +82,7 @@ const DummyChildrenComponent = () => {
   };
 
   useEffect(() => {
-    updateEntityType(EntityType.TABLE);
+    updateEntityData(EntityType.TABLE, undefined);
   }, []);
 
   return (

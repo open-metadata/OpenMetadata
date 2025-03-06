@@ -48,6 +48,7 @@ import TitleBreadcrumb from '../common/TitleBreadcrumb/TitleBreadcrumb.component
 import CustomControlsComponent from '../Entity/EntityLineage/CustomControls.component';
 import LineageControlButtons from '../Entity/EntityLineage/LineageControlButtons/LineageControlButtons';
 import LineageLayers from '../Entity/EntityLineage/LineageLayers/LineageLayers';
+import { SourceType } from '../SearchedData/SearchedData.interface';
 import { LineageProps } from './Lineage.interface';
 
 const Lineage = ({
@@ -75,7 +76,7 @@ const Lineage = ({
     onPaneClick,
     onConnect,
     onInitReactFlow,
-    updateEntityType,
+    updateEntityData,
   } = useLineageProvider();
 
   const queryParams = new URLSearchParams(location.search);
@@ -114,8 +115,8 @@ const Lineage = ({
   );
 
   useEffect(() => {
-    updateEntityType(entityType);
-  }, [entityType]);
+    updateEntityData(entityType, entity as SourceType);
+  }, [entity, entityType]);
 
   // Loading the react flow component after the nodes and edges are initialised improves performance
   // considerably. So added an init state for showing loader.
