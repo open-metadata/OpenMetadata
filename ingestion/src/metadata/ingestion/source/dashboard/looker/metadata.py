@@ -185,7 +185,7 @@ class LookerSource(DashboardServiceSource):
     Its client uses Looker 40 from the SDK: client = looker_sdk.init40()
     """
 
-    # pylint: disable=too-many-instance-attributes
+    # pylint: disable=too-many-instance-attributes, too-many-public-methods
 
     config: WorkflowSource
     metadata: OpenMetadata
@@ -780,8 +780,10 @@ class LookerSource(DashboardServiceSource):
         try:
             if dashboard_details.user_id is not None:
                 dashboard_owner = self.client.user(dashboard_details.user_id)
-                return self.metadata.get_reference_by_email(dashboard_owner.email)
-
+                if dashboard_owner.email:
+                    return self.metadata.get_reference_by_email(
+                        dashboard_owner.email.lower()
+                    )
         except Exception as err:
             logger.debug(traceback.format_exc())
             logger.warning(f"Could not fetch owner data due to {err}")
@@ -1040,17 +1042,19 @@ class LookerSource(DashboardServiceSource):
                     continue
 
                 description = self.build_chart_description(chart)
+                if chart.query is not None:
+                    source_url = chart.query.share_url
+                elif getattr(chart.result_maker, "query", None) is not None:
+                    source_url = chart.result_maker.query.share_url
+                else:
+                    source_url = f"{clean_uri(self.service_connection.hostPort)}/merge?mid={chart.merge_result_id}"
                 yield Either(
                     right=CreateChartRequest(
                         name=EntityName(chart.id),
                         displayName=chart.title or chart.id,
                         description=Markdown(description) if description else None,
                         chartType=get_standard_chart_type(chart.type).value,
-                        sourceUrl=SourceUrl(chart.query.share_url)
-                        if chart.query is not None
-                        else SourceUrl(
-                            f"{clean_uri(self.service_connection.hostPort)}/merge?mid={chart.merge_result_id}"
-                        ),
+                        sourceUrl=SourceUrl(source_url),
                         service=self.context.get().dashboard_service,
                     )
                 )
@@ -1192,3 +1196,7 @@ class LookerSource(DashboardServiceSource):
                     stackTrace=traceback.format_exc(),
                 )
             )
+
+    def close(self):
+        self.metadata.compute_percentile(Dashboard, self.today)
+        self.metadata.close()
