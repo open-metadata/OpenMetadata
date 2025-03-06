@@ -11,11 +11,13 @@
  *  limitations under the License.
  */
 
-import { Avatar } from 'antd';
+import { Avatar, Tooltip } from 'antd';
 import classNames from 'classnames';
 import { parseInt } from 'lodash';
 import { ImageShape } from 'Models';
 import React, { useMemo } from 'react';
+import { Link } from 'react-router-dom';
+import { getUserPath } from '../../../constants/constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { User } from '../../../generated/entity/teams/user';
@@ -23,6 +25,7 @@ import { useUserProfile } from '../../../hooks/user-profile/useUserProfile';
 import { getRandomColor } from '../../../utils/CommonUtils';
 import { userPermissions } from '../../../utils/PermissionsUtils';
 import Loader from '../Loader/Loader';
+import UserPopOverCard from '../PopOverCard/UserPopOverCard';
 
 type UserData = Pick<User, 'name' | 'displayName'>;
 
@@ -36,7 +39,7 @@ interface Props extends UserData {
   avatarType?: 'solid' | 'outlined';
 }
 
-const ProfilePicture = ({
+const ProfilePictureNew = ({
   name,
   displayName,
   className = '',
@@ -63,7 +66,7 @@ const ProfilePicture = ({
   });
 
   const getAvatarByName = () => {
-    return (
+    const avatar = (
       <Avatar
         className={classNames('flex-center', className)}
         data-testid="profile-avatar"
@@ -78,6 +81,14 @@ const ProfilePicture = ({
         }}
       />
     );
+
+    return (
+      <UserPopOverCard userName={name ?? ''}>
+        <Link className="no-underline" to={getUserPath(name ?? '')}>
+          {avatar}
+        </Link>
+      </UserPopOverCard>
+    );
   };
 
   const getAvatarElement = () => {
@@ -85,8 +96,8 @@ const ProfilePicture = ({
       <div
         className="d-inline-block relative"
         style={{
-          height: `${height || width}px`,
-          width: `${width}px`,
+          height: typeof size === 'number' ? `${size}px` : height,
+          width: typeof size === 'number' ? `${size}px` : width,
         }}>
         {getAvatarByName()}
         <div
@@ -95,7 +106,10 @@ const ProfilePicture = ({
           <Loader
             className="absolute inset-0"
             size="small"
-            style={{ height: `${+width - 2}px`, width: `${+width - 2}px` }}
+            style={{
+              height: typeof size === 'number' ? `${size}px` : `${+width}px`,
+              width: typeof size === 'number' ? `${size}px` : `${+width}px`,
+            }}
             type="white"
           />
         </div>
@@ -106,16 +120,18 @@ const ProfilePicture = ({
   };
 
   return profileURL ? (
-    <Avatar
-      className={className}
-      data-testid="profile-image"
-      shape={type}
-      size={size ?? parseInt(width)}
-      src={profileURL}
-    />
+    <Tooltip placement="top" title={displayName ?? name}>
+      <Avatar
+        className={className}
+        data-testid="profile-image"
+        shape={type}
+        size={size ?? parseInt(width)}
+        src={profileURL}
+      />
+    </Tooltip>
   ) : (
     getAvatarElement()
   );
 };
 
-export default ProfilePicture;
+export default ProfilePictureNew;

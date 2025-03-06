@@ -60,16 +60,29 @@ function FeedCardFooterNew({
     <Row align="top" className={classNames({ 'm-y-md': isPost })}>
       <Col className="footer-container" span={24}>
         <div>
-          <div className="flex items-center gap-2  w-full rounded-8">
+          <div className="flex items-center gap-2 w-full rounded-8">
             {postLength > 0 && !isPost && (
-              <Avatar.Group maxCount={3}>
-                {repliedUniqueUsersList.map((user) => (
-                  <ProfilePicture
-                    avatarType="outlined"
+              <Avatar.Group
+                className="feed-avatar-group"
+                maxCount={3}
+                maxPopoverPlacement="top"
+                maxStyle={{
+                  color: '#f56a00',
+                  backgroundColor: '#fde3cf',
+                }}>
+                {repliedUniqueUsersList.map((user, index) => (
+                  <div
                     key={user}
-                    name={user}
-                    size={20}
-                  />
+                    style={{
+                      marginLeft: index === 0 ? '0px' : '-8px',
+                      zIndex: repliedUniqueUsersList.length - index,
+                    }}>
+                    <ProfilePicture
+                      avatarType="outlined"
+                      name={user}
+                      size={20}
+                    />
+                  </div>
                 ))}
               </Avatar.Group>
             )}

@@ -28,7 +28,7 @@ import { getEntityName } from '../../../../utils/EntityUtils';
 import { useActivityFeedProvider } from '../../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 
 import { UserAvatarGroup } from '../../../common/OwnerLabel/UserAvatarGroup.component';
-import ProfilePicture from '../../../common/ProfilePicture/ProfilePicture';
+import ProfilePictureNew from '../../../common/ProfilePicture/ProfilePictureNew';
 import RichTextEditorPreviewerV1 from '../../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import Severity from '../../../DataQuality/IncidentManager/Severity/Severity.component';
 import './task-tab-incident-manager-header.style.less';
@@ -128,7 +128,7 @@ const TaskTabIncidentManagerHeaderNew = ({ thread }: { thread: Thread }) => {
           </Typography.Text>
         </Col>
         <Col className="flex items-center gap-2" span={16}>
-          <ProfilePicture
+          <ProfilePictureNew
             avatarType="outlined"
             name={thread.createdBy ?? ''}
             width="24"
@@ -144,7 +144,7 @@ const TaskTabIncidentManagerHeaderNew = ({ thread }: { thread: Thread }) => {
         <Col className="flex items-center gap-2" span={16}>
           {thread?.task?.assignees?.length === 1 ? (
             <div className="d-flex items-center gap-2">
-              <ProfilePicture
+              <ProfilePictureNew
                 avatarType="outlined"
                 name={thread?.task?.assignees[0].displayName ?? ''}
                 width="24"

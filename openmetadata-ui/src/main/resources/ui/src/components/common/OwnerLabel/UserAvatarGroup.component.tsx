@@ -18,7 +18,7 @@ import React, { ReactNode, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconUser } from '../../../assets/svg/user.svg';
 import { EntityReference } from '../../../generated/entity/data/table';
-import ProfilePicture from '../ProfilePicture/ProfilePicture';
+import ProfilePictureNew from '../ProfilePicture/ProfilePictureNew';
 import './owner-label.less';
 
 export const UserAvatarGroup = ({
@@ -57,7 +57,7 @@ export const UserAvatarGroup = ({
         key: owner.id,
         label: (
           <div className="d-flex items-center gap-2">
-            <ProfilePicture
+            <ProfilePictureNew
               avatarType="outlined"
               name={owner.displayName ?? ''}
               size={avatarSize}
@@ -79,7 +79,7 @@ export const UserAvatarGroup = ({
           <Avatar.Group className="avatar-group">
             {visibleOwners.map((owner) => (
               <div className="avatar-overlap" key={owner.id}>
-                <ProfilePicture
+                <ProfilePictureNew
                   avatarType="outlined"
                   displayName={owner.displayName ?? ''}
                   name={owner.name ?? ''}

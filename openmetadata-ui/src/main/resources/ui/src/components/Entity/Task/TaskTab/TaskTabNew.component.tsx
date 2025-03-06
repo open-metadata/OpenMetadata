@@ -117,7 +117,7 @@ import InlineEdit from '../../../common/InlineEdit/InlineEdit.component';
 
 import { UserAvatarGroup } from '../../../common/OwnerLabel/UserAvatarGroup.component';
 import EntityPopOverCard from '../../../common/PopOverCard/EntityPopOverCard';
-import ProfilePicture from '../../../common/ProfilePicture/ProfilePicture';
+import ProfilePictureNew from '../../../common/ProfilePicture/ProfilePictureNew';
 import TaskTabIncidentManagerHeaderNew from '../TaskTabIncidentManagerHeader/TasktabIncidentManagerHeaderNew';
 import './task-tab-new.less';
 import { TaskTabProps } from './TaskTab.interface';
@@ -840,7 +840,7 @@ export const TaskTabNew = ({
             </Typography.Text>
           </Col>
           <Col className="flex items-center gap-2" span={16}>
-            <ProfilePicture
+            <ProfilePictureNew
               avatarType="outlined"
               name={taskThread.createdBy ?? ''}
               width="24"
@@ -904,7 +904,7 @@ export const TaskTabNew = ({
               <Col className="flex items-center gap-2" span={16}>
                 {taskThread?.task?.assignees?.length === 1 ? (
                   <div className="d-flex items-center gap-2">
-                    <ProfilePicture
+                    <ProfilePictureNew
                       avatarType="outlined"
                       name={taskThread?.task?.assignees[0].displayName ?? ''}
                       width="24"
@@ -1058,7 +1058,7 @@ export const TaskTabNew = ({
               taskThread?.task?.status === ThreadTaskStatus.Open && (
                 <div className="d-flex gap-2">
                   <div className="profile-picture">
-                    <ProfilePicture
+                    <ProfilePictureNew
                       avatarType="outlined"
                       key={taskThread.id}
                       name={currentUser?.displayName || currentUser?.name || ''}

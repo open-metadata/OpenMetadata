@@ -38,7 +38,7 @@ import {
 import searchClassBase from '../../../utils/SearchClassBase';
 import EntityPopOverCard from '../../common/PopOverCard/EntityPopOverCard';
 import UserPopOverCard from '../../common/PopOverCard/UserPopOverCard';
-import ProfilePicture from '../../common/ProfilePicture/ProfilePicture';
+import ProfilePictureNew from '../../common/ProfilePicture/ProfilePictureNew';
 import FeedCardBodyNew from '../ActivityFeedCard/FeedCardBody/FeedCardBodyNew';
 import FeedCardFooterNew from '../ActivityFeedCardV2/FeedCardFooter/FeedCardFooterNew';
 import ActivityFeedEditorNew from '../ActivityFeedEditor/ActivityFeedEditorNew';
@@ -213,7 +213,7 @@ const ActivityFeedCardNew = ({
               'items-start':
                 showThread && feed.entityRef?.type === EntityType.CONTAINER,
             })}>
-            <ProfilePicture
+            <ProfilePictureNew
               avatarType="outlined"
               key={feed.id}
               name={feed.createdBy ?? ''}
@@ -312,7 +312,7 @@ const ActivityFeedCardNew = ({
           ) : (
             <div className="d-flex gap-2">
               <div>
-                <ProfilePicture
+                <ProfilePictureNew
                   avatarType="outlined"
                   key={feed.id}
                   name={currentUser?.displayName || currentUser?.name || ''}

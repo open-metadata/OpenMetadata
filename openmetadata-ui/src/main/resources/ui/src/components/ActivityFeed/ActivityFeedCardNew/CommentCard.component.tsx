@@ -26,7 +26,7 @@ import {
   MarkdownToHTMLConverter,
 } from '../../../utils/FeedUtils';
 import UserPopOverCard from '../../common/PopOverCard/UserPopOverCard';
-import ProfilePicture from '../../common/ProfilePicture/ProfilePicture';
+import ProfilePictureNew from '../../common/ProfilePicture/ProfilePictureNew';
 import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import FeedCardFooterNew from '../ActivityFeedCardV2/FeedCardFooter/FeedCardFooterNew';
 import ActivityFeedEditor from '../ActivityFeedEditor/ActivityFeedEditorNew';
@@ -96,7 +96,7 @@ const CommentCard = ({ feed, post, isLastReply }: CommentCardInterface) => {
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}>
       <div className="profile-picture m-r-xs">
-        <ProfilePicture
+        <ProfilePictureNew
           avatarType="outlined"
           key={feed.id}
           name={feed.updatedBy!}
