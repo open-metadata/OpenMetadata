@@ -129,12 +129,13 @@ class PIIProcessor(Processor):
         if column_has_pii_tag is True:
             return None
 
-        # Scan by column name. If no results there, check the sample data, if any
-        tag_and_confidence = self.name_scanner.scan(column.name.root) or (
+        # We'll scan first by sample data to prioritize the NER scanner
+        # If we find nothing, we'll check the column name
+        tag_and_confidence = (
             self.ner_scanner.scan([row[idx] for row in table_data.rows])
             if table_data
             else None
-        )
+        ) or self.name_scanner.scan(column.name.root)
 
         if (
             tag_and_confidence

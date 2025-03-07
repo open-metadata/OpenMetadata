@@ -22,16 +22,14 @@ from metadata.utils import fqn
 
 
 class ColumnNameScanner(BaseScanner):
-    """
-    Column Name Scanner to scan column name
-    """
+    """Column Name Scanner to scan column name"""
 
     sensitive_regex = {
         "PASSWORD": re.compile("^.*password.*$", re.IGNORECASE),
         "US_SSN": re.compile("^.*(ssn|social).*$", re.IGNORECASE),
         "CREDIT_CARD": re.compile("^.*(credit).*(card).*$", re.IGNORECASE),
         "BANK_ACCOUNT": re.compile("^.*bank.*(acc|num).*$", re.IGNORECASE),
-        "EMAIL_ADDRESS": re.compile("^.*(email|e-mail|mail).*$", re.IGNORECASE),
+        "EMAIL_ADDRESS": re.compile("^(email|e-mail|mail)(.*address)?$", re.IGNORECASE),
         "USER_NAME": re.compile("^.*(user|client|person).*(name).*$", re.IGNORECASE),
         "PERSON": re.compile(
             "^.*(firstname|lastname|fullname|maidenname|nickname|name_suffix).*$",
