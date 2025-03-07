@@ -174,28 +174,37 @@ export const getDataAssetsHeaderInfo = (
             </>
           )}
           {mlModelDetail.target && (
-            <ExtraInfoLabel
-              label={t('label.target')}
-              value={mlModelDetail.target}
-            />
+            <>
+              <Divider className="self-center h-15 " type="vertical" />
+              <ExtraInfoLabel
+                label={t('label.target')}
+                value={mlModelDetail.target}
+              />
+            </>
           )}
           {mlModelDetail.server && (
-            <ExtraInfoLink
-              newTab
-              href={mlModelDetail.server}
-              label={t('label.server')}
-              value={mlModelDetail.server}
-            />
+            <>
+              <Divider className="self-center h-15 " type="vertical" />
+              <ExtraInfoLink
+                newTab
+                href={mlModelDetail.server}
+                label={t('label.server')}
+                value={mlModelDetail.server}
+              />
+            </>
           )}
           {mlModelDetail.dashboard && (
-            <ExtraInfoLink
-              href={getEntityDetailsPath(
-                EntityType.DASHBOARD,
-                mlModelDetail.dashboard?.fullyQualifiedName as string
-              )}
-              label={t('label.dashboard')}
-              value={entityName}
-            />
+            <>
+              <Divider className="self-center h-15 " type="vertical" />
+              <ExtraInfoLink
+                href={getEntityDetailsPath(
+                  EntityType.DASHBOARD,
+                  mlModelDetail.dashboard?.fullyQualifiedName as string
+                )}
+                label={t('label.dashboard')}
+                value={entityName}
+              />
+            </>
           )}
           {mlModelDetail?.usageSummary && (
             <>
@@ -445,12 +454,15 @@ export const getDataAssetsHeaderInfo = (
       returnData.extraInfo = (
         <>
           {apiCollection.endpointURL && (
-            <ExtraInfoLink
-              newTab
-              href={apiCollection.endpointURL}
-              label={t('label.endpoint-url')}
-              value={apiCollection.endpointURL}
-            />
+            <>
+              <Divider className="self-center h-15 " type="vertical" />
+              <ExtraInfoLink
+                newTab
+                href={apiCollection.endpointURL}
+                label={t('label.source-url')}
+                value={apiCollection.endpointURL}
+              />
+            </>
           )}
         </>
       );
@@ -478,12 +490,15 @@ export const getDataAssetsHeaderInfo = (
             </>
           )}
           {apiEndpoint.endpointURL && (
-            <ExtraInfoLink
-              newTab
-              href={apiEndpoint.endpointURL}
-              label={t('label.endpoint-url')}
-              value={apiEndpoint.endpointURL}
-            />
+            <>
+              <Divider className="self-center h-15 " type="vertical" />
+              <ExtraInfoLink
+                newTab
+                href={apiEndpoint.endpointURL}
+                label={t('label.source-url')}
+                value={apiEndpoint.endpointURL}
+              />
+            </>
           )}
         </>
       );
@@ -555,12 +570,13 @@ export const getDataAssetsHeaderInfo = (
   if ('sourceUrl' in dataAsset && dataAsset.sourceUrl) {
     returnData.extraInfo = (
       <>
+        <Divider className="self-center h-15 " type="vertical" />
         {returnData.extraInfo}
         <ExtraInfoLink
           ellipsis
           newTab
           href={dataAsset.sourceUrl}
-          label=""
+          label={t('label.source-url')}
           value={getEntityName(dataAsset)}
         />
       </>

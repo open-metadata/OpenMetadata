@@ -219,7 +219,7 @@ export const renderDomainLink = (
     }>
     <Link
       className={classNames(
-        'no-underline domain-link domain-link-text',
+        'no-underline domain-link domain-link-text font-medium',
         { 'text-sm': !showDomainHeading },
         textClassName
       )}

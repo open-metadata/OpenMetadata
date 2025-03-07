@@ -118,43 +118,41 @@ export const ExtraInfoLink = ({
   href,
   newTab = false,
   ellipsis = false,
-  isNewDesign = false,
 }: {
   label: string;
   value: string | number;
   href: string;
   newTab?: boolean;
   ellipsis?: boolean;
-  isNewDesign?: boolean;
 }) => (
   <>
-    {!isNewDesign && <Divider className="self-center h-15 " type="vertical" />}
     <div
-      className={classNames(
-        'd-flex items-center',
-        {
-          'flex-col gap-2': isNewDesign,
-          'flex-row self-center': !isNewDesign,
-          'w-48': ellipsis,
-        },
-        'text-xs'
-      )}>
+      className={classNames('d-flex  text-sm  flex-col gap-2', {
+        'w-48': ellipsis,
+      })}>
       {!isEmpty(label) && (
-        <span className="text-grey-muted m-r-xss">{`${label}: `}</span>
+        <span className="extra-info-label-heading  m-r-xss">{`${label}: `}</span>
       )}
-      <Typography.Link
-        ellipsis
-        href={href}
-        rel={newTab ? 'noopener noreferrer' : undefined}
-        style={{ fontSize: '12px' }}
-        target={newTab ? '_blank' : undefined}>
-        {value}{' '}
-      </Typography.Link>
-      <Icon
-        className="m-l-xs"
-        component={IconExternalLink}
-        style={DATA_ASSET_ICON_DIMENSION}
-      />
+      <div className="d-flex items-center gap-1">
+        <Tooltip title={value}>
+          <Typography.Link
+            ellipsis
+            className="extra-info-link"
+            href={href}
+            rel={newTab ? 'noopener noreferrer' : undefined}
+            style={{
+              maxWidth: '200px',
+            }}
+            target={newTab ? '_blank' : undefined}>
+            {value}
+          </Typography.Link>
+        </Tooltip>
+        <Icon
+          className="m-l-xs"
+          component={IconExternalLink}
+          style={DATA_ASSET_ICON_DIMENSION}
+        />
+      </div>
     </div>
   </>
 );
@@ -423,17 +421,12 @@ export const DataAssetsHeader = ({
 
   return (
     <>
-      <Row data-testid="data-assets-header" gutter={[0, 16]}>
-        {/* Column 1 - Full width breadcrumb */}
-        <Col>
+      <Row data-testid="data-assets-header" gutter={[0, 20]}>
+        <Col className="d-flex flex-col gap-3" span={24}>
           <TitleBreadcrumb
             loading={isBreadcrumbLoading}
             titleLinks={breadcrumbs}
           />
-        </Col>
-
-        {/* Column 2 - Title and buttons */}
-        <Col span={24}>
           <Row>
             <Col flex="auto">
               <EntityHeaderTitle
@@ -515,7 +508,6 @@ export const DataAssetsHeader = ({
           </Row>
         </Col>
 
-        {/* Column 3 - Full width metadata */}
         <Col span={24}>
           <div className="d-flex data-asset-header-metadata  flex-wrap ">
             {showDomain && (
