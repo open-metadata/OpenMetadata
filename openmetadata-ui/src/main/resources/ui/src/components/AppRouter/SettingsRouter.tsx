@@ -51,7 +51,7 @@ import ProfilerConfigurationPage from '../../pages/ProfilerConfigurationPage/Pro
 import AddRolePage from '../../pages/RolesPage/AddRolePage/AddRolePage';
 import RolesDetailPage from '../../pages/RolesPage/RolesDetailPage/RolesDetailPage';
 import RolesListPage from '../../pages/RolesPage/RolesListPage/RolesListPage';
-import SearchRBACSettingsPage from '../../pages/SearchRBACSettingsPage/SearchRBACSettingsPage';
+import SearchSettingsPage from '../../pages/SearchSettingsPage/SearchSettingsPage';
 import ServicesPage from '../../pages/ServicesPage/ServicesPage';
 import ImportTeamsPage from '../../pages/TeamsPage/ImportTeamsPage/ImportTeamsPage';
 import TeamsPage from '../../pages/TeamsPage/TeamsPage';
@@ -62,6 +62,7 @@ import {
   getSettingPath,
   getTeamsWithFqnPath,
 } from '../../utils/RouterUtils';
+import EntitySearchSettings from '../SearchSettings/EntitySeachSettings/EntitySearchSettings';
 import AppDetails from '../Settings/Applications/AppDetails/AppDetails.component';
 import AdminProtectedRoute from './AdminProtectedRoute';
 
@@ -262,11 +263,20 @@ const SettingsRouter = () => {
 
       <AdminProtectedRoute
         exact
-        component={SearchRBACSettingsPage}
+        component={SearchSettingsPage}
         path={getSettingPath(
           GlobalSettingsMenuCategory.PREFERENCES,
-          GlobalSettingOptions.SEARCH_RBAC
+          GlobalSettingOptions.SEARCH_SETTINGS
         )}
+      />
+
+      <AdminProtectedRoute
+        exact
+        component={EntitySearchSettings}
+        path={`${getSettingPath(
+          GlobalSettingsMenuCategory.PREFERENCES,
+          GlobalSettingOptions.SEARCH_SETTINGS
+        )}/:entityType`}
       />
 
       <AdminProtectedRoute

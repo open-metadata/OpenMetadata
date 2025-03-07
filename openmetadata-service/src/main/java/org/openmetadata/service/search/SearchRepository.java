@@ -67,6 +67,7 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.EntityTimeSeriesInterface;
 import org.openmetadata.schema.analytics.ReportData;
+import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
@@ -1004,6 +1005,14 @@ public class SearchRepository {
     return searchClient.search(request, subjectContext);
   }
 
+  public Response previewSearch(SearchRequest request, SubjectContext subjectContext, SearchSettings searchSettings) throws IOException {
+    return searchClient.previewSearch(request, subjectContext, searchSettings);
+  }
+
+  public Response searchWithNLQ(SearchRequest request, SubjectContext subjectContext) throws IOException {
+    return searchClient.searchWithNLQ(request, subjectContext);
+  }
+
   public Response getDocument(String indexName, UUID entityId) throws IOException {
     return searchClient.getDocByID(indexName, entityId.toString());
   }
@@ -1144,7 +1153,7 @@ public class SearchRepository {
 
       SearchRequest searchRequest =
           new SearchRequest.ElasticSearchRequestBuilder(
-                  "*", size, Entity.getSearchRepository().getIndexOrAliasName(indexName))
+                  "", size, Entity.getSearchRepository().getIndexOrAliasName(indexName))
               .from(0)
               .queryFilter(queryFilter)
               .fetchSource(true)

@@ -50,6 +50,7 @@ import java.util.UUID;
 import javax.json.JsonObject;
 import javax.validation.constraints.Size;
 import javax.ws.rs.client.Entity;
+import javax.ws.rs.client.Invocation;
 import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
@@ -368,6 +369,13 @@ public final class TestUtils {
     Response response =
         SecurityUtil.addHeaders(target, headers)
             .method("PUT", Entity.entity(request, MediaType.APPLICATION_JSON));
+    readResponse(response, expectedStatus.getStatusCode());
+  }
+
+  public static void put(WebTarget target, Status expectedStatus, Map<String, String> headers)
+      throws HttpResponseException {
+    Invocation.Builder builder = SecurityUtil.addHeaders(target, headers);
+    Response response = builder.method("PUT");
     readResponse(response, expectedStatus.getStatusCode());
   }
 

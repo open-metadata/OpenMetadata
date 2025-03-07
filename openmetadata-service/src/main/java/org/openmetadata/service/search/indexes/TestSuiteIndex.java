@@ -25,8 +25,7 @@ public record TestSuiteIndex(TestSuite testSuite) implements SearchIndex {
     doc.put(
         "fqnParts",
         getFQNParts(
-            testSuite.getFullyQualifiedName(),
-            suggest.stream().map(SearchSuggest::getInput).toList()));
+            testSuite.getFullyQualifiedName()));
     doc.put("suggest", suggest);
     doc.put("entityType", Entity.TEST_SUITE);
     doc.put("owners", getEntitiesWithDisplayName(testSuite.getOwners()));

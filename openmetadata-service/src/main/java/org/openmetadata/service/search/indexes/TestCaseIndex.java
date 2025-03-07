@@ -45,9 +45,7 @@ public record TestCaseIndex(TestCase testCase) implements SearchIndex {
     suggest.add(SearchSuggest.builder().input(testCase.getName()).weight(10).build());
     doc.put(
         "fqnParts",
-        getFQNParts(
-            testCase.getFullyQualifiedName(),
-            suggest.stream().map(SearchSuggest::getInput).toList()));
+        getFQNParts(testCase.getFullyQualifiedName()));
     doc.put("suggest", suggest);
     doc.put("entityType", Entity.TEST_CASE);
     doc.put("owners", getEntitiesWithDisplayName(testCase.getOwners()));
