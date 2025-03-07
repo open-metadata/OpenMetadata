@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,17 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-@import (reference) url('../../../styles/variables.less');
 
-.ant-col.entity-header-content {
-  max-width: calc(100% - 100px);
-  .ant-typography-ellipsis.entity-header-name {
-    margin-bottom: 0px;
-    display: block;
-    color: @text-grey-muted;
-  }
-  .ant-typography-ellipsis.entity-header-display-name {
-    font-weight: 600;
-    font-size: 16px;
-  }
+import { ServicesType } from '../../interface/service.interface';
+
+export interface ServiceInsightsTabProps {
+  serviceDetails: ServicesType;
+}
+
+export interface ServiceInsightWidgetCommonProps {
+  serviceName: string;
 }

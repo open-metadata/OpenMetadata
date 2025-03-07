@@ -27,4 +27,6 @@ export interface EntityHeaderTitleProps {
   isDisabled?: boolean;
   showName?: boolean;
   certification?: AssetCertification;
+  nameClassName?: string;
+  displayNameClassName?: string;
 }

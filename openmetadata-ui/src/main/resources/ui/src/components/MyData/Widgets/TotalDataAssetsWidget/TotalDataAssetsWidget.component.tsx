@@ -38,10 +38,10 @@ import { ReactComponent as TotalDataAssetsEmptyIcon } from '../../../../assets/s
 import { CHART_WIDGET_DAYS_DURATION } from '../../../../constants/constants';
 import { SIZE } from '../../../../enums/common.enum';
 import { WidgetWidths } from '../../../../enums/CustomizablePage.enum';
+import { SystemChartType } from '../../../../enums/DataInsight.enum';
 import {
   DataInsightCustomChartResult,
   getChartPreviewByName,
-  SystemChartType,
 } from '../../../../rest/DataInsightAPI';
 import { entityChartColor } from '../../../../utils/CommonUtils';
 import {

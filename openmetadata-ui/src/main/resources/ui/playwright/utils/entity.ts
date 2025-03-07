@@ -1099,9 +1099,6 @@ export const deletedEntityCommonChecks = async ({
 }) => {
   const isTableEntity = endPoint === EntityTypeEndpoint.Table;
 
-  // Go to first tab before starts validating
-  await page.click('.ant-tabs-tab:nth-child(1)');
-
   // Check if all the edit actions are available for the entity
   await checkForEditActions({
     page,

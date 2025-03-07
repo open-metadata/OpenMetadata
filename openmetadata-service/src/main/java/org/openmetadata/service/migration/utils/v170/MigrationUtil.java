@@ -5,9 +5,13 @@ import static org.openmetadata.service.governance.workflows.Workflow.UPDATED_BY_
 import java.lang.reflect.Field;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.statement.UnableToExecuteStatementException;
+import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
+import org.openmetadata.schema.dataInsight.custom.LineChart;
+import org.openmetadata.schema.dataInsight.custom.LineChartMetric;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.governance.workflows.elements.WorkflowNodeDefinitionInterface;
 import org.openmetadata.service.Entity;
@@ -15,6 +19,7 @@ import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.governance.workflows.flowable.MainWorkflow;
 import org.openmetadata.service.jdbi3.AppMarketPlaceRepository;
 import org.openmetadata.service.jdbi3.AppRepository;
+import org.openmetadata.service.jdbi3.DataInsightSystemChartRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.WorkflowDefinitionRepository;
 import org.openmetadata.service.util.EntityUtil;
@@ -136,5 +141,83 @@ public class MigrationUtil {
       }
       repository.createOrUpdate(null, workflowDefinition);
     }
+  }
+
+  static DataInsightSystemChartRepository dataInsightSystemChartRepository;
+
+  public static void createChart(String chartName, Object chartObject) {
+    createChart(chartName, chartObject, DataInsightCustomChart.ChartType.LINE_CHART);
+  }
+
+  public static void createChart(
+      String chartName, Object chartObject, DataInsightCustomChart.ChartType chartType) {
+    DataInsightCustomChart chart =
+        new DataInsightCustomChart()
+            .withId(UUID.randomUUID())
+            .withName(chartName)
+            .withChartDetails(chartObject)
+            .withUpdatedAt(System.currentTimeMillis())
+            .withUpdatedBy("ingestion-bot")
+            .withDeleted(false)
+            .withChartType(chartType)
+            .withIsSystemChart(true);
+    dataInsightSystemChartRepository.prepareInternal(chart, false);
+    try {
+      dataInsightSystemChartRepository
+          .getDao()
+          .insert("fqnHash", chart, chart.getFullyQualifiedName());
+    } catch (Exception ex) {
+      LOG.warn(ex.toString());
+      LOG.warn(String.format("Chart %s exists", chart));
+    }
+  }
+
+  public static void createServiceCharts() {
+    dataInsightSystemChartRepository = new DataInsightSystemChartRepository();
+    createChart(
+        "assets_with_pii_bar",
+        new LineChart()
+            .withMetrics(List.of(new LineChartMetric().withFormula("count(k='id.keyword')")))
+            .withxAxisField("tags.tagFQN")
+            .withIncludeXAxisFiled("pii.*"),
+        DataInsightCustomChart.ChartType.BAR_CHART);
+
+    createChart(
+        "assets_with_tier_bar",
+        new LineChart()
+            .withMetrics(List.of(new LineChartMetric().withFormula("count(k='id.keyword')")))
+            .withxAxisField("tags.tagFQN")
+            .withIncludeXAxisFiled("tier.*"),
+        DataInsightCustomChart.ChartType.BAR_CHART);
+
+    createChart(
+        "assets_with_description",
+        new LineChart()
+            .withMetrics(
+                List.of(
+                    new LineChartMetric()
+                        .withFormula("count(k='id.keyword',q='hasDescription: 1')"))));
+
+    createChart(
+        "assets_with_owners",
+        new LineChart()
+            .withMetrics(
+                List.of(new LineChartMetric().withFormula("count(k='id.keyword',q='owners: *')"))));
+
+    createChart(
+        "assets_with_pii",
+        new LineChart()
+            .withMetrics(
+                List.of(
+                    new LineChartMetric()
+                        .withFormula(
+                            "count(q='tags.tagFQN: pii.sensitive OR tags.tagFQN:"
+                                + " pii.nonsensitive OR tags.tagFQN: pii.none')"))));
+
+    createChart(
+        "assets_with_tier",
+        new LineChart()
+            .withMetrics(
+                List.of(new LineChartMetric().withFormula("count(q='tags.tagFQN: tier.*')"))));
   }
 }

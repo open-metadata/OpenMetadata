@@ -14,10 +14,10 @@
 import { RowProps } from 'antd/lib/grid/row';
 import i18n from 'i18next';
 import { Margin } from 'recharts/types/util/types';
+import { SystemChartType } from '../enums/DataInsight.enum';
 import { DataReportIndex } from '../generated/dataInsight/dataInsightChart';
 import { DataInsightChartType } from '../generated/dataInsight/dataInsightChartResult';
 import { ChartFilter } from '../interface/data-insight.interface';
-import { SystemChartType } from '../rest/DataInsightAPI';
 import {
   getCurrentMillis,
   getEpochMillisForPastDays,

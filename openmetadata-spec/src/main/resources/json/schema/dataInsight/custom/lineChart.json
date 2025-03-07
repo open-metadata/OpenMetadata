@@ -86,6 +86,14 @@
             "description": "X-axis field for the data insight chart.",
             "type": "string",
             "default": "@timestamp"
+        },
+        "includeXAxisFiled": {
+            "description": "Regex to include fields in the data insight chart when xAxisField is specified.",
+            "type": "string"
+        },
+        "excludeXAxisField": {
+            "description": "Regex to exclude fields from the data insight chart when xAxisField is specified.",
+            "type": "string"
         }
     },
     "additionalProperties": false
