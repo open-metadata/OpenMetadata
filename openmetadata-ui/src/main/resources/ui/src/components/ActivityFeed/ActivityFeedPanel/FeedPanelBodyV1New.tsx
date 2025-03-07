@@ -31,7 +31,6 @@ const FeedPanelBodyV1: FC<FeedPanelBodyPropV1> = ({
   showActivityFeedEditor = false,
   onAfterClose,
   onUpdateEntityDetails,
-  handlePanelResize,
   isFullWidth = false,
 }) => {
   const mainFeed = useMemo(
@@ -73,7 +72,6 @@ const FeedPanelBodyV1: FC<FeedPanelBodyPropV1> = ({
       ) : (
         <ActivityFeedCardNew
           feed={feed}
-          handlePanelResize={handlePanelResize}
           isActive={isActive}
           isFullWidth={isFullWidth}
           isPost={false}

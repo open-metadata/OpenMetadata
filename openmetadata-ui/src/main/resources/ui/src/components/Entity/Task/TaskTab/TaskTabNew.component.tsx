@@ -50,7 +50,6 @@ import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
 import { ReactComponent as AssigneesIcon } from '../../../../assets/svg/ic-assignees.svg';
-import { ReactComponent as CloseTabIcon } from '../../../../assets/svg/ic-close-tab.svg';
 import { ReactComponent as TaskCloseIcon } from '../../../../assets/svg/ic-close-task.svg';
 import { ReactComponent as TaskOpenIcon } from '../../../../assets/svg/ic-open-task.svg';
 import { ReactComponent as UserIcon } from '../../../../assets/svg/ic-user-profile.svg';
@@ -1256,11 +1255,6 @@ export const TaskTabNew = ({
           </Form>
         </Modal>
       )}
-      <CloseTabIcon
-        className="close-tab-icon cursor-pointer"
-        height={16}
-        onClick={() => rest.handlePanelResize?.(true)}
-      />
     </Row>
   );
 };

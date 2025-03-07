@@ -17,7 +17,6 @@ import { isUndefined } from 'lodash';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { ReactComponent as CloseTabIcon } from '../../../assets/svg/ic-close-tab.svg';
 import { getUserPath } from '../../../constants/constants';
 import { ASSET_CARD_STYLES } from '../../../constants/Feeds.constants';
 import { EntityType } from '../../../enums/entity.enum';
@@ -53,7 +52,6 @@ interface ActivityFeedCardNewProps {
   post: Post;
   showActivityFeedEditor?: boolean;
   showThread?: boolean;
-  handlePanelResize?: (isFullWidth: boolean) => void;
   isFullWidth?: boolean;
 }
 
@@ -64,7 +62,6 @@ const ActivityFeedCardNew = ({
   showActivityFeedEditor,
   showThread,
   isActive,
-  handlePanelResize,
 }: ActivityFeedCardNewProps) => {
   const { entityFQN, entityType } = useMemo(() => {
     const entityFQN = getEntityFQN(feed.about) ?? '';
@@ -263,16 +260,6 @@ const ActivityFeedCardNew = ({
                   </Typography.Text>
 
                   {renderEntityLink}
-
-                  {showThread && (
-                    <CloseTabIcon
-                      className="close-tab-icon"
-                      height={16}
-                      onClick={() => {
-                        handlePanelResize?.(true);
-                      }}
-                    />
-                  )}
                 </Space>
               )}
             </Space>
