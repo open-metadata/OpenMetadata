@@ -16,7 +16,7 @@ import { AxiosError } from 'axios';
 import { t } from 'i18next';
 import { capitalize, isEmpty, isUndefined } from 'lodash';
 import { LoadingState } from 'Models';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useHistory } from 'react-router-dom';
 import { getServiceDetailsPath } from '../../../../constants/constants';
 import { GlobalSettingsMenuCategory } from '../../../../constants/GlobalSettings.constants';
@@ -304,6 +304,15 @@ const AddService = ({
     setActiveField('');
   }, [activeIngestionStep, activeServiceStep]);
 
+  const hideSecondPanel = useMemo(
+    () =>
+      !(
+        serviceConfig.serviceType &&
+        (activeServiceStep === 3 || activeServiceStep === 4)
+      ) && !addIngestion,
+    [activeServiceStep, addIngestion, serviceConfig.serviceType]
+  );
+
   const firstPanelChildren = (
     <div className="max-width-md w-9/10 service-form-container">
       <TitleBreadcrumb titleLinks={slashedBreadcrumb} />
@@ -346,9 +355,7 @@ const AddService = ({
         flex: 0.7,
         className: 'content-resizable-panel-container',
       }}
-      hideSecondPanel={
-        !(serviceConfig.serviceType && activeServiceStep === 3) && !addIngestion
-      }
+      hideSecondPanel={hideSecondPanel}
       pageTitle={t('label.add-entity', { entity: t('label.service') })}
       secondPanel={{
         children: (

@@ -355,6 +355,19 @@ export const STEPS_FOR_ADD_SERVICE: Array<StepperStepType> = [
   },
 ];
 
+export const STEPS_FOR_EDIT_SERVICE: Array<StepperStepType> = [
+  {
+    name: i18n.t('label.connection-entity', {
+      entity: i18n.t('label.detail-plural'),
+    }),
+    step: 1,
+  },
+  {
+    name: i18n.t('label.set-default-filters'),
+    step: 2,
+  },
+];
+
 export const SERVICE_DEFAULT_ERROR_MAP = {
   serviceType: false,
 };
