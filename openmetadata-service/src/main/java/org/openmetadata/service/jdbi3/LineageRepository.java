@@ -593,8 +593,15 @@ public class LineageRepository {
       case API_ENDPOINT -> {
         APIEndpoint apiEndpoint =
             Entity.getEntity(
-                API_ENDPOINT, entityReference.getId(), "responseSchema", Include.NON_DELETED);
-        ColumnUtil.validateFieldFQN(apiEndpoint.getResponseSchema().getSchemaFields(), columnFQN);
+                API_ENDPOINT,
+                entityReference.getId(),
+                "responseSchema,requestSchema",
+                Include.NON_DELETED);
+        if (apiEndpoint.getResponseSchema() != null) {
+          ColumnUtil.validateFieldFQN(apiEndpoint.getResponseSchema().getSchemaFields(), columnFQN);
+        } else {
+          ColumnUtil.validateFieldFQN(apiEndpoint.getRequestSchema().getSchemaFields(), columnFQN);
+        }
       }
       case METRIC -> {
         LOG.info("Metric column level lineage is not supported");
