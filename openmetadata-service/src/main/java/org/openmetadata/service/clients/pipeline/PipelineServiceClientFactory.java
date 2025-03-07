@@ -35,6 +35,11 @@ public final class PipelineServiceClientFactory {
       return pipelineServiceClient;
     }
 
+    if (Boolean.FALSE.equals(config.getEnabled())) {
+      LOG.debug("Pipeline Service Client is disabled. Skipping initialization.");
+      return null;
+    }
+
     String pipelineServiceClientClass = config.getClassName();
     LOG.debug("Registering PipelineServiceClient: {}", pipelineServiceClientClass);
 
