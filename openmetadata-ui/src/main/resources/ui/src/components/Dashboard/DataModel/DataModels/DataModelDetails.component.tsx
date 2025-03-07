@@ -34,7 +34,7 @@ import {
   getDetailsTabWithNewLabel,
   getTabLabelMapFromTabs,
 } from '../../../../utils/CustomizePage/CustomizePageUtils';
-import { getDashboardDataModelDetailPageTabs } from '../../../../utils/DashboardDataModelUtils';
+import dashboardDataModelClassBase from '../../../../utils/DashboardDataModelClassBase';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import { withActivityFeed } from '../../../AppRouter/withActivityFeed';
 import { GenericProvider } from '../../../Customization/GenericProvider/GenericProvider';
@@ -161,23 +161,24 @@ const DataModelDetails = ({
 
   const tabs = useMemo(() => {
     const tabLabelMap = getTabLabelMapFromTabs(customizedPage?.tabs);
-    const allTabs = getDashboardDataModelDetailPageTabs({
-      feedCount,
-      activeTab,
-      handleFeedCount,
-      editLineagePermission,
-      dataModelData,
-      dataModelPermissions,
-      deleted: deleted ?? false,
-      getEntityFeedCount,
-      fetchDataModel,
-      labelMap: tabLabelMap,
-    });
+    const allTabs =
+      dashboardDataModelClassBase.getDashboardDataModelDetailPageTabs({
+        feedCount,
+        activeTab,
+        handleFeedCount,
+        editLineagePermission,
+        dataModelData,
+        dataModelPermissions,
+        deleted: deleted ?? false,
+        getEntityFeedCount,
+        fetchDataModel,
+        labelMap: tabLabelMap,
+      });
 
     return getDetailsTabWithNewLabel(
       allTabs,
       customizedPage?.tabs,
-      EntityTabs.TASKS
+      EntityTabs.MODEL
     );
   }, [
     feedCount.conversationCount,
@@ -185,6 +186,7 @@ const DataModelDetails = ({
     dataModelData?.sql,
     deleted,
     handleFeedCount,
+    customizedPage?.tabs,
     editLineagePermission,
   ]);
 

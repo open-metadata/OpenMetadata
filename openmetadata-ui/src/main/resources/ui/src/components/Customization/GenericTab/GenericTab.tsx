@@ -43,7 +43,9 @@ export const GenericTab = ({ type }: GenericTabProps) => {
     );
 
     if (page) {
-      return page.tabs.find((t: Tab) => t.id === tab)?.layout;
+      return tab
+        ? page.tabs.find((t: Tab) => t.id === tab)?.layout
+        : page.tabs[0].layout;
     } else {
       return getDefaultWidgetForTab(type, tab);
     }

@@ -58,7 +58,7 @@ function AddWidgetTabContent({
   }, []);
 
   return (
-    <Row>
+    <Row data-testid={widget.id}>
       <Col span={24}>
         <Space>
           <Typography.Text>{`${t('label.size')}:`}</Typography.Text>

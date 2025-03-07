@@ -42,7 +42,6 @@ interface EntityRightPanelProps<T extends ExtentionEntitiesKeys> {
   viewAllPermission?: boolean;
   customProperties?: ExtentionEntities[T];
   editCustomAttributePermission?: boolean;
-  onExtensionUpdate?: (updatedTable: ExtentionEntities[T]) => Promise<void>;
 }
 
 const EntityRightPanel = <T extends ExtentionEntitiesKeys>({
