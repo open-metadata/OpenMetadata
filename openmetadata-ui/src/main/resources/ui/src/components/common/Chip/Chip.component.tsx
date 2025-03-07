@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Col, Popover, Row, Space, Tag, Typography } from 'antd';
+import { Col, Row, Tag, Typography } from 'antd';
 import { isEmpty } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -32,6 +32,7 @@ const Chip = ({
   showNoDataPlaceholder = true,
 }: ChipProps) => {
   const [listLength, setListLength] = useState<number>(0);
+  const [isExpanded, setIsExpanded] = useState<boolean>(false);
 
   const hasMoreElement = useMemo(
     () => listLength > USER_DATA_SIZE,
@@ -73,21 +74,14 @@ const Chip = ({
       className="align-middle d-flex flex-col flex-start justify-center"
       data-testid="chip-container"
       gutter={[20, 0]}>
-      {data.slice(0, USER_DATA_SIZE).map(getChipElement)}
+      {(isExpanded ? data : data.slice(0, USER_DATA_SIZE)).map(getChipElement)}
       {hasMoreElement && (
-        <Popover
-          className="cursor-pointer"
-          content={
-            <Space wrap size={6}>
-              {data.slice(USER_DATA_SIZE).map(getChipElement)}
-            </Space>
-          }
-          overlayClassName="w-56"
-          trigger="click">
-          <Tag className="m-l-xss chip-text" data-testid="plus-more-count">{`+${
-            listLength - USER_DATA_SIZE
-          } more`}</Tag>
-        </Popover>
+        <Tag
+          className="m-l-xss chip-text cursor-pointer"
+          data-testid="plus-more-count"
+          onClick={() => setIsExpanded(!isExpanded)}>
+          {isExpanded ? 'Show less' : `+${listLength - USER_DATA_SIZE} more`}
+        </Tag>
       )}
     </Row>
   );
