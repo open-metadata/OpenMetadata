@@ -1474,41 +1474,55 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
-  @Transaction
-  protected void cleanup(T entityInterface) {
-    UUID id = entityInterface.getId();
+  protected final void cleanup(T entityInterface) {
+    Entity.getJdbi()
+        .inTransaction(
+            handle -> {
+              // Perform Entity Specific Cleanup
+              entitySpecificCleanup(entityInterface);
 
-    // Delete all the relationships to other entities
-    daoCollection.relationshipDAO().deleteAll(id, entityType);
+              UUID id = entityInterface.getId();
 
-    // Delete all the field relationships to other entities
-    daoCollection.fieldRelationshipDAO().deleteAllByPrefix(entityInterface.getFullyQualifiedName());
+              // Delete all the relationships to other entities
+              daoCollection.relationshipDAO().deleteAll(id, entityType);
 
-    // Delete all the extensions of entity
-    daoCollection.entityExtensionDAO().deleteAll(id);
+              // Delete all the field relationships to other entities
+              daoCollection
+                  .fieldRelationshipDAO()
+                  .deleteAllByPrefix(entityInterface.getFullyQualifiedName());
 
-    // Delete all the tag labels
-    daoCollection
-        .tagUsageDAO()
-        .deleteTagLabelsByTargetPrefix(entityInterface.getFullyQualifiedName());
+              // Delete all the extensions of entity
+              daoCollection.entityExtensionDAO().deleteAll(id);
 
-    // when the glossary and tag is deleted, delete its usage
-    daoCollection.tagUsageDAO().deleteTagLabelsByFqn(entityInterface.getFullyQualifiedName());
-    // Delete all the usage data
-    daoCollection.usageDAO().delete(id);
+              // Delete all the tag labels
+              daoCollection
+                  .tagUsageDAO()
+                  .deleteTagLabelsByTargetPrefix(entityInterface.getFullyQualifiedName());
 
-    // Delete the extension data storing custom properties
-    removeExtension(entityInterface);
+              // when the glossary and tag is deleted, delete its usage
+              daoCollection
+                  .tagUsageDAO()
+                  .deleteTagLabelsByFqn(entityInterface.getFullyQualifiedName());
+              // Delete all the usage data
+              daoCollection.usageDAO().delete(id);
 
-    // Delete all the threads that are about this entity
-    Entity.getFeedRepository().deleteByAbout(entityInterface.getId());
+              // Delete the extension data storing custom properties
+              removeExtension(entityInterface);
 
-    // Remove entity from the cache
-    invalidate(entityInterface);
+              // Delete all the threads that are about this entity
+              Entity.getFeedRepository().deleteByAbout(entityInterface.getId());
 
-    // Finally, delete the entity
-    dao.delete(id);
+              // Remove entity from the cache
+              invalidate(entityInterface);
+
+              // Finally, delete the entity
+              dao.delete(id);
+
+              return null;
+            });
   }
+
+  protected void entitySpecificCleanup(T entityInterface) {}
 
   private void invalidate(T entity) {
     CACHE_WITH_ID.invalidate(new ImmutablePair<>(entityType, entity.getId()));
@@ -2993,6 +3007,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       ChangeSummaryMap current =
           Optional.ofNullable(original.getChangeDescription())
               .map(ChangeDescription::getChangeSummary)
+              .map(changeSummaryMap -> JsonUtils.deepCopy(changeSummaryMap, ChangeSummaryMap.class))
               .orElse(new ChangeSummaryMap());
 
       Map<String, ChangeSummary> addedSummaries =
@@ -3849,7 +3864,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
           continue;
         }
 
-        updateColumnDescription(stored, updated);
+        updateColumnDescription(fieldName, stored, updated);
         updateColumnDisplayName(stored, updated);
         updateColumnDataLength(stored, updated);
         updateColumnPrecision(stored, updated);
@@ -3871,13 +3886,15 @@ public abstract class EntityRepository<T extends EntityInterface> {
       majorVersionChange = majorVersionChange || !deletedColumns.isEmpty();
     }
 
-    private void updateColumnDescription(Column origColumn, Column updatedColumn) {
+    private void updateColumnDescription(
+        String fieldName, Column origColumn, Column updatedColumn) {
       if (operation.isPut() && !nullOrEmpty(origColumn.getDescription()) && updatedByBot()) {
         // Revert the non-empty task description if being updated by a bot
         updatedColumn.setDescription(origColumn.getDescription());
         return;
       }
-      String columnField = getColumnField(origColumn, FIELD_DESCRIPTION);
+      String columnField =
+          EntityUtil.getFieldName(fieldName, origColumn.getName(), FIELD_DESCRIPTION);
       recordChange(columnField, origColumn.getDescription(), updatedColumn.getDescription());
     }
 

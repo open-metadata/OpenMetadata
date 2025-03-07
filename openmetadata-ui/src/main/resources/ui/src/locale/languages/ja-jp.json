@@ -1731,6 +1731,8 @@
     "new-to-the-platform": "新規利用者の場合",
     "no-access-placeholder": "You don't have access, please check with the admin to get permissions",
     "no-activity-feed": "We have not found any activity within the data assets you own or the ones you are currently following.",
+    "no-activity-feed-description": "まだアクティビティがありません！動きが出たら、ここに更新が表示されます。",
+    "no-activity-feed-title": "フィードは空です",
     "no-announcement-message": "お知らせはありません。「お知らせを追加」で追加してください。",
     "no-asset-available": "アセットはありません。",
     "no-closed-task": "終了したタスクはありません",
@@ -1771,6 +1773,8 @@
     "no-notification-found": "No notifications found",
     "no-open-task": "開いているタスクはありません",
     "no-open-tasks": "There aren't any open tasks.",
+    "no-open-tasks-description": "現在、開いているタスクはありません。タスクのないひとときを楽しんでください！",
+    "no-open-tasks-title": "朗報です",
     "no-owned-data": "It appears that you or your team are not currently data asset owners. To start owning data assets, click on the <0>Explore</0> option to discover and claim assets.",
     "no-permission-for-action": "あなたはこのアクションを実行する権限を持っていません。",
     "no-permission-to-view": "あなたはこのデータを閲覧する権限を持っていません。",
@@ -2062,6 +2066,7 @@
     "no-application-schema-found": "{{appName}}のアプリケーションスキーマが見つかりません",
     "no-owned-entities": "あなたはまだ何も所有していません。",
     "no-query-available": "利用可能なクエリはありません。",
+    "no-records-found": "記録が見つかりません",
     "no-task-available": "タスク情報はありません。",
     "no-task-creation-without-assignee": "担当者のいないタスクは作成できません",
     "page-layout-operation-error": "Error while {{operation}} the page layout.",
@@ -2081,7 +2086,6 @@
     "unauthorized-user": "権限がないユーザーです！メールかパスワードを確認してください。",
     "unexpected-error": "予期しないエラーが発生しました。",
     "unexpected-response": "サーバから予期しない応答が返りました。",
-    "update-entity-success": "{{entity}}は正常に更新されました。",
-    "you-have-not-action-anything-yet": "あなたが{{action}}のデータはありません。"
+    "update-entity-success": "{{entity}}は正常に更新されました。"
   }
 }

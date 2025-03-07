@@ -43,6 +43,26 @@ public class ChangeSummarizerTest {
   }
 
   @Test
+  public void test_duplicateEntriesConsolidation() {
+    String fieldName = "description";
+    ChangeSource changeSource = ChangeSource.MANUAL;
+    long updatedAt = System.currentTimeMillis();
+    String updatedBy = "testUser";
+    List<FieldChange> changes =
+        List.of(new FieldChange().withName(fieldName), new FieldChange().withName(fieldName));
+
+    Map<String, ChangeSummary> result =
+        changeSummarizer.summarizeChanges(Map.of(), changes, changeSource, updatedBy, updatedAt);
+    assert result.size() == 1;
+    Assertions.assertTrue(result.containsKey(fieldName));
+
+    result =
+        changeSummarizer.summarizeChanges(
+            result, changes, ChangeSource.AUTOMATED, "older-change", updatedAt - 100);
+    assert result.size() == 0;
+  }
+
+  @Test
   public void test_columnDescription() {
     String fieldName = "columns.column1.description";
     ChangeSource changeSource = ChangeSource.MANUAL;
