@@ -11,27 +11,34 @@
  *  limitations under the License.
  */
 import { Col, Row, Space, Typography } from 'antd';
-import React from 'react';
+import { isEmpty } from 'lodash';
+import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
+import { useGenericContext } from '../../../components/Customization/GenericProvider/GenericProvider';
 import { getEntityDetailsPath } from '../../../constants/constants';
 import { EntityType } from '../../../enums/entity.enum';
-import { JoinedWith } from '../../../generated/entity/data/table';
+import { JoinedWith, Table } from '../../../generated/entity/data/table';
 import { getCountBadge } from '../../../utils/CommonUtils';
+import { getJoinsFromTableJoins } from '../../../utils/TableUtils';
 import './frequently-joined-tables.style.less';
 
 export type Joined = JoinedWith & {
   name: string;
 };
 
-interface FrequentlyJoinedTablesProps {
-  joinedTables: Joined[];
-}
-
-export const FrequentlyJoinedTables = ({
-  joinedTables,
-}: FrequentlyJoinedTablesProps) => {
+export const FrequentlyJoinedTables = () => {
   const { t } = useTranslation();
+  const { data } = useGenericContext<Table>();
+
+  const joinedTables = useMemo(
+    () => getJoinsFromTableJoins(data?.joins),
+    [data?.joins]
+  );
+
+  if (isEmpty(joinedTables)) {
+    return null;
+  }
 
   return (
     <Row

@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * Test case is a test definition to capture data quality tests against tables, columns, and
  * other data assets.
  */
@@ -67,6 +65,10 @@ export interface TestCase {
      * Reference to an ongoing Incident ID (stateId) for this test case.
      */
     incidentId?: string;
+    /**
+     * Change that lead to this version of the entity.
+     */
+    incrementalChangeDescription?: ChangeDescription;
     /**
      * SQL query to retrieve the failed rows for this test case.
      */
@@ -521,6 +523,10 @@ export interface TestSuite {
      * Unique identifier of this test suite instance.
      */
     id?: string;
+    /**
+     * Change that lead to this version of the entity.
+     */
+    incrementalChangeDescription?: ChangeDescription;
     /**
      * Indicates if the test suite is inherited from a parent entity.
      */

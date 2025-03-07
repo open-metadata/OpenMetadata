@@ -7,7 +7,7 @@ slug: /connectors/database/mongodb
 name="MongoDB"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=["Metadata", "Data Profiler",]
+availableFeatures=["Metadata", "Data Profiler", "Sample Data"]
 unavailableFeatures=["Query Usage", "Data Quality", "dbt", "Owners", "Lineage", "Column-level Lineage", "Tags", "Stored Procedures"]
 / %}
 

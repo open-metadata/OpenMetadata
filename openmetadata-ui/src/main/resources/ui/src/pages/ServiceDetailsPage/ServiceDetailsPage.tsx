@@ -44,7 +44,7 @@ import ServiceConnectionDetails from '../../components/Settings/Services/Service
 import {
   getServiceDetailsPath,
   INITIAL_PAGING_VALUE,
-  PAGE_SIZE,
+  PAGE_SIZE_BASE,
   pagingObject,
   ROUTES,
 } from '../../constants/constants';
@@ -104,10 +104,7 @@ import {
 } from '../../rest/serviceAPI';
 import { getContainers } from '../../rest/storageAPI';
 import { getTopics } from '../../rest/topicsAPI';
-import {
-  getEntityMissingError,
-  sortTagsCaseInsensitive,
-} from '../../utils/CommonUtils';
+import { getEntityMissingError } from '../../utils/CommonUtils';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
@@ -168,13 +165,14 @@ const ServiceDetailsPage: FunctionComponent = () => {
   const { getEntityPermissionByFqn } = usePermissionProvider();
   const history = useHistory();
   const { isAdminUser } = useAuth();
-  const ingestionPagingInfo = usePaging(PAGE_SIZE);
-  const pagingInfo = usePaging(PAGE_SIZE);
+  const ingestionPagingInfo = usePaging(PAGE_SIZE_BASE);
+  const pagingInfo = usePaging(PAGE_SIZE_BASE);
 
   const {
     paging: ingestionPaging,
     currentPage: currentIngestionPage,
     pageSize: ingestionPageSize,
+    pagingCursor: ingestionPagingCursor,
     handlePageChange: handleIngestionPageChange,
     handlePagingChange: handleIngestionPagingChange,
   } = ingestionPagingInfo;
@@ -439,7 +437,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
     async (paging?: PagingWithoutTotal) => {
       const { data, paging: resPaging } = await getPipelines(
         decodedServiceFQN,
-        `${TabSpecificField.OWNERS},${TabSpecificField.TAGS}`,
+        `${TabSpecificField.OWNERS},${TabSpecificField.TAGS},${TabSpecificField.STATE},${TabSpecificField.USAGE_SUMMARY}`,
         paging,
         include
       );
@@ -704,10 +702,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
           jsonPatch
         );
 
-        setServiceDetails({
-          ...response,
-          tags: sortTagsCaseInsensitive(response.tags ?? []),
-        });
+        setServiceDetails(response);
       } catch (err) {
         showErrorToast(err as AxiosError);
       }
@@ -744,10 +739,19 @@ const ServiceDetailsPage: FunctionComponent = () => {
           { [cursorType]: ingestionPaging[cursorType] },
           ingestionPageSize
         );
+
+        handleIngestionPageChange(
+          currentPage,
+          {
+            cursorType: cursorType,
+            cursorValue: paging[cursorType]!,
+          },
+          ingestionPageSize
+        );
       } else if (!isEmpty(searchText)) {
         searchPipelines(searchText, currentPage);
+        handleIngestionPageChange(currentPage);
       }
-      handleIngestionPageChange(currentPage);
     },
     [
       ingestionPaging,
@@ -880,7 +884,10 @@ const ServiceDetailsPage: FunctionComponent = () => {
   useEffect(() => {
     if (isAirflowAvailable && !isOpenMetadataService) {
       isEmpty(searchText)
-        ? getAllIngestionWorkflows({}, ingestionPageSize)
+        ? getAllIngestionWorkflows(
+            {},
+            ingestionPagingCursor?.pageSize ?? ingestionPageSize
+          )
         : searchPipelines(searchText, currentIngestionPage);
     }
   }, [isAirflowAvailable, searchText, ingestionPageSize]);

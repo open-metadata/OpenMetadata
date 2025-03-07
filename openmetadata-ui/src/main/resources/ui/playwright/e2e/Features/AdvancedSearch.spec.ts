@@ -13,6 +13,7 @@
 import test from '@playwright/test';
 import { SidebarItem } from '../../constant/sidebar';
 import { EntityDataClass } from '../../support/entity/EntityDataClass';
+import { EntityDataClassCreationConfig } from '../../support/entity/EntityDataClass.interface';
 import { TableClass } from '../../support/entity/TableClass';
 import { Glossary } from '../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
@@ -27,10 +28,17 @@ import { createNewPage, redirectToHomePage } from '../../utils/common';
 import { assignTier } from '../../utils/entity';
 import { sidebarClick } from '../../utils/sidebar';
 
-test.describe.configure({
-  // 4 minutes to avoid test timeout happening some times in AUTs
-  timeout: 4 * 60 * 1000,
-});
+const creationConfig: EntityDataClassCreationConfig = {
+  table: true,
+  topic: true,
+  dashboard: true,
+  mlModel: true,
+  pipeline: true,
+  dashboardDataModel: true,
+  apiCollection: true,
+  searchIndex: true,
+  container: true,
+};
 
 const user = new UserClass();
 const table = new TableClass(undefined, 'Regular');
@@ -44,7 +52,7 @@ test.describe('Advanced Search', { tag: '@advanced-search' }, () => {
 
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
     const { page, apiContext, afterAction } = await createNewPage(browser);
-    await EntityDataClass.preRequisitesForTests(apiContext);
+    await EntityDataClass.preRequisitesForTests(apiContext, creationConfig);
     await user.create(apiContext);
     glossaryEntity = new Glossary(undefined, [
       {
@@ -234,7 +242,7 @@ test.describe('Advanced Search', { tag: '@advanced-search' }, () => {
 
   test.afterAll('Cleanup', async ({ browser }) => {
     const { apiContext, afterAction } = await createNewPage(browser);
-    await EntityDataClass.postRequisitesForTests(apiContext);
+    await EntityDataClass.postRequisitesForTests(apiContext, creationConfig);
     await glossaryEntity.delete(apiContext);
     await user.delete(apiContext);
     await table.delete(apiContext);

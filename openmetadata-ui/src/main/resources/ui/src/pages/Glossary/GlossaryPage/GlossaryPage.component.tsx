@@ -79,7 +79,8 @@ const GlossaryPage = () => {
     useState<boolean>(false);
   const [elementRef, isInView] = useElementInView({
     ...observerOptions,
-    rootMargin: '10px',
+    root: document.querySelector('#panel-container'),
+    rootMargin: '0px 0px 2px 0px',
   });
   const { paging, pageSize, handlePagingChange } = usePaging();
 
@@ -459,26 +460,22 @@ const GlossaryPage = () => {
     );
   }
 
-  const glossaryElement = (
-    <div className="p-t-sm">
-      {isRightPanelLoading ? (
-        <Loader />
-      ) : (
-        <GlossaryV1
-          isGlossaryActive={isGlossaryActive}
-          isSummaryPanelOpen={Boolean(previewAsset)}
-          isVersionsView={false}
-          refreshActiveGlossaryTerm={fetchGlossaryTermDetails}
-          selectedData={activeGlossary as Glossary}
-          updateGlossary={updateGlossary}
-          updateVote={updateVote}
-          onAssetClick={handleAssetClick}
-          onGlossaryDelete={handleGlossaryDelete}
-          onGlossaryTermDelete={handleGlossaryTermDelete}
-          onGlossaryTermUpdate={handleGlossaryTermUpdate}
-        />
-      )}
-    </div>
+  const glossaryElement = isRightPanelLoading ? (
+    <Loader />
+  ) : (
+    <GlossaryV1
+      isGlossaryActive={isGlossaryActive}
+      isSummaryPanelOpen={Boolean(previewAsset)}
+      isVersionsView={false}
+      refreshActiveGlossaryTerm={fetchGlossaryTermDetails}
+      selectedData={activeGlossary as Glossary}
+      updateGlossary={updateGlossary}
+      updateVote={updateVote}
+      onAssetClick={handleAssetClick}
+      onGlossaryDelete={handleGlossaryDelete}
+      onGlossaryTermDelete={handleGlossaryTermDelete}
+      onGlossaryTermUpdate={handleGlossaryTermUpdate}
+    />
   );
 
   const resizableLayout = isGlossaryActive ? (
@@ -492,8 +489,9 @@ const GlossaryPage = () => {
           <>
             <GlossaryLeftPanel glossaries={glossaries} />
             <div
-              className="h-[1px] w-full"
+              className="w-full"
               data-testid="glossary-left-panel-scroller"
+              id="observer-element"
               ref={elementRef as RefObject<HTMLDivElement>}
             />
             {isMoreGlossaryLoading && <Loader />}

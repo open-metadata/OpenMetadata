@@ -20,6 +20,8 @@ export interface DomainSelectableTreeProps {
   onCancel: () => void;
   isMultiple?: boolean;
   initialDomains?: EntityReference[];
+  dropdownRef?: React.RefObject<HTMLDivElement>;
+  handleDropdownChange?: (open: boolean) => void;
 }
 
 export type TreeListItem = Omit<DefaultOptionType, 'label'>;

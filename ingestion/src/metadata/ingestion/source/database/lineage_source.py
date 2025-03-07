@@ -185,6 +185,7 @@ class LineageSource(QueryParserSource, ABC):
                 for row in rows:
                     query_dict = dict(row)
                     try:
+                        query_dict.update({k.lower(): v for k, v in query_dict.items()})
                         yield TableQuery(
                             dialect=self.dialect.value,
                             query=query_dict["query_text"],
@@ -377,7 +378,9 @@ class LineageSource(QueryParserSource, ABC):
         if self.source_config.processQueryLineage:
             if hasattr(self.service_connection, "supportsLineageExtraction"):
                 yield from self.yield_query_lineage() or []
-                yield from get_lineage_by_graph(graph=self.graph)
+                yield from get_lineage_by_graph(
+                    graph=self.graph, metadata=self.metadata
+                )
             else:
                 logger.warning(
                     f"Lineage extraction is not supported for {str(self.service_connection.type.value)} connection"
