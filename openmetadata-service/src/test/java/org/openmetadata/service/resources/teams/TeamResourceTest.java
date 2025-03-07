@@ -510,8 +510,10 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
         "dep",
         DEPARTMENT,
         div12.getEntityReference(),
-        div21.getEntityReference(),
-        ORG_TEAM.getEntityReference());
+        div21.getEntityReference());
+
+    ORG_TEAM = getEntity(ORG_TEAM.getId(), "children", ADMIN_AUTH_HEADERS);
+    assertEquals(5, ORG_TEAM.getChildrenCount());
 
     //
     // Deletion tests to ensure no dangling parent/children relationship
@@ -520,6 +522,7 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     deleteEntity(bu1.getId(), true, true, ADMIN_AUTH_HEADERS);
     ORG_TEAM = getEntity(ORG_TEAM.getId(), "children", ADMIN_AUTH_HEADERS);
     assertEntityReferencesDoesNotContain(ORG_TEAM.getChildren(), bu1.getEntityReference());
+    assertEquals(4, ORG_TEAM.getChildrenCount());
   }
 
   @Test
