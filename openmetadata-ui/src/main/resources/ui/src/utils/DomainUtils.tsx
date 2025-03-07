@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Divider, Space, Typography } from 'antd';
+import { Divider, Space, Tooltip, Typography } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import classNames from 'classnames';
 import { get, isEmpty, isUndefined } from 'lodash';
@@ -213,17 +213,30 @@ export const renderDomainLink = (
   showDomainHeading: boolean,
   textClassName?: string
 ) => (
-  <Link
-    className={classNames(
-      'no-underline domain-link domain-link-text',
-      { 'text-sm': !showDomainHeading },
-      textClassName
-    )}
-    data-testid="domain-link"
-    style={{ color: '#414651' }}
-    to={getDomainPath(domain?.fullyQualifiedName)}>
-    {isUndefined(domainDisplayName) ? getEntityName(domain) : domainDisplayName}
-  </Link>
+  <Tooltip
+    title={
+      isUndefined(domainDisplayName) ? getEntityName(domain) : domainDisplayName
+    }>
+    <Link
+      className={classNames(
+        'no-underline domain-link domain-link-text',
+        { 'text-sm': !showDomainHeading },
+        textClassName
+      )}
+      data-testid="domain-link"
+      style={{
+        color: '#414651',
+        display: 'inline-block',
+        overflow: 'hidden',
+        textOverflow: 'ellipsis',
+        whiteSpace: 'nowrap',
+      }}
+      to={getDomainPath(domain?.fullyQualifiedName)}>
+      {isUndefined(domainDisplayName)
+        ? getEntityName(domain)
+        : domainDisplayName}
+    </Link>
+  </Tooltip>
 );
 
 export const initializeDomainEntityRef = (

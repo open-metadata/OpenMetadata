@@ -121,7 +121,9 @@ export const DomainLabel = ({
         ) : null;
 
         return (
-          <div className="d-flex items-center gap-2" key={domain.id}>
+          <div
+            className="d-flex items-center domain-link-container"
+            key={domain.id}>
             {!headerLayout && (
               <Typography.Text className="self-center text-xs whitespace-nowrap">
                 <DomainIcon
