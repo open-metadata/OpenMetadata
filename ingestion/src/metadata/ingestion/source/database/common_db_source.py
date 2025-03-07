@@ -252,7 +252,11 @@ class CommonDbSourceService(
         )
         source_url = (
             SourceUrl(source_url)
-            if (source_url := self.get_source_url(database_name=schema_name))
+            if (
+                source_url := self.get_source_url(
+                    database_name=self.context.get().database, schema_name=schema_name
+                )
+            )
             else None
         )
 
