@@ -47,6 +47,7 @@ from metadata.ingestion.source.dashboard.qliksense.metadata import QliksenseSour
 from metadata.ingestion.source.dashboard.qliksense.models import QlikTable
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_chart
+from metadata.utils.fqn import build_es_fqn_search_string
 from metadata.utils.helpers import clean_uri
 from metadata.utils.logger import ingestion_logger
 
@@ -188,18 +189,22 @@ class QlikcloudSource(QliksenseSource):
     def yield_dashboard_lineage_details(
         self,
         dashboard_details: QlikApp,
-        db_service_name: Optional[str],
+        db_service_name: Optional[str] = None,
     ) -> Iterable[Either[AddLineageRequest]]:
         """Get lineage method"""
-        db_service_entity = self.metadata.get_by_name(
-            entity=DatabaseService, fqn=db_service_name
-        )
         for datamodel in self.data_models or []:
             try:
                 data_model_entity = self._get_datamodel(datamodel_id=datamodel.id)
                 if data_model_entity:
-                    om_table = self._get_database_table(
-                        db_service_entity, data_model_entity
+                    fqn_search_string = build_es_fqn_search_string(
+                        database_name=None,
+                        schema_name=None,
+                        service_name=db_service_name or "*",
+                        table_name=data_model_entity.displayName,
+                    )
+                    om_table = self.metadata.search_in_any_service(
+                        entity_type=Table,
+                        fqn_search_string=fqn_search_string,
                     )
                     if om_table:
                         columns_list = [col.name for col in datamodel.fields]

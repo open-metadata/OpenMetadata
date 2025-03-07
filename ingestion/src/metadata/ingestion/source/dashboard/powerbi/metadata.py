@@ -67,6 +67,7 @@ from metadata.utils.filters import (
     filter_by_datamodel,
     filter_by_project,
 )
+from metadata.utils.fqn import build_es_fqn_search_string
 from metadata.utils.helpers import clean_uri
 from metadata.utils.logger import ingestion_logger
 
@@ -534,7 +535,9 @@ class PowerbiSource(DashboardServiceSource):
             )
 
     def create_datamodel_report_lineage(
-        self, db_service_name: str, dashboard_details: PowerBIReport
+        self,
+        db_service_name: Optional[str],
+        dashboard_details: PowerBIReport,
     ) -> Iterable[Either[CreateDashboardRequest]]:
         """
         create the lineage between datamodel and report
@@ -615,7 +618,7 @@ class PowerbiSource(DashboardServiceSource):
 
     def _get_table_and_datamodel_lineage(
         self,
-        db_service_name: str,
+        db_service_name: Optional[str],
         table: PowerBiTable,
         datamodel_entity: DashboardDataModel,
     ) -> Optional[Either[AddLineageRequest]]:
@@ -623,19 +626,16 @@ class PowerbiSource(DashboardServiceSource):
         Method to create lineage between table and datamodels
         """
         try:
-            table_fqn = fqn.build(
-                self.metadata,
-                entity_type=Table,
-                service_name=db_service_name,
+            fqn_search_string = build_es_fqn_search_string(
                 database_name=None,
                 schema_name=None,
+                service_name=db_service_name or "*",
                 table_name=table.name,
             )
-            table_entity = self.metadata.get_by_name(
-                entity=Table,
-                fqn=table_fqn,
+            table_entity = self.metadata.search_in_any_service(
+                entity_type=Table,
+                fqn_search_string=fqn_search_string,
             )
-
             if table_entity and datamodel_entity:
                 columns_list = [column.name for column in table.columns]
                 column_lineage = self._get_column_lineage(
@@ -661,7 +661,7 @@ class PowerbiSource(DashboardServiceSource):
 
     def create_table_datamodel_lineage_from_files(
         self,
-        db_service_name: str,
+        db_service_name: Optional[str],
         datamodel_entity: Optional[DashboardDataModel],
     ) -> Iterable[Either[AddLineageRequest]]:
         """
@@ -706,7 +706,7 @@ class PowerbiSource(DashboardServiceSource):
     def yield_dashboard_lineage_details(
         self,
         dashboard_details: Union[PowerBIDashboard, PowerBIReport],
-        db_service_name: str,
+        db_service_name: Optional[str] = None,
     ) -> Iterable[Either[AddLineageRequest]]:
         """
         We will build the logic to build the logic as below
@@ -715,7 +715,8 @@ class PowerbiSource(DashboardServiceSource):
         try:
             if isinstance(dashboard_details, PowerBIReport):
                 yield from self.create_datamodel_report_lineage(
-                    db_service_name=db_service_name, dashboard_details=dashboard_details
+                    db_service_name=db_service_name,
+                    dashboard_details=dashboard_details,
                 )
 
             if isinstance(dashboard_details, PowerBIDashboard):
