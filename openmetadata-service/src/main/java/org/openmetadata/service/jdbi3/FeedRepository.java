@@ -552,7 +552,6 @@ public class FeedRepository {
     dao.feedDAO().delete(id);
   }
 
-  @Transaction
   public void deleteByAbout(UUID entityId) {
     List<String> threadIds = listOrEmpty(dao.feedDAO().findByEntityId(entityId.toString()));
     for (String threadId : threadIds) {
