@@ -21,7 +21,6 @@ import org.openmetadata.service.util.JsonUtils;
 @Slf4j
 public class DayOneExperienceApp extends AbstractNativeApplication {
   private static final String WORKFLOW_NAME = "DayOneExperienceWorkflow";
-  private static final String APP_BOT = "governance-bot";
   protected DayOneExperienceAppConfig config;
 
   public DayOneExperienceApp(CollectionDAO collectionDAO, SearchRepository searchRepository) {
@@ -69,10 +68,15 @@ public class DayOneExperienceApp extends AbstractNativeApplication {
     return getClass().getResource(resourceFile) != null;
   }
 
+  private String getAppBot() {
+    return getApp().getBot().getName();
+    //    return String.format("%sBot", getApp().getName());
+  }
+
   private WorkflowDefinition loadWorkflow() {
     UserRepository userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
     EntityReference adminReference =
-        userRepository.findByName(APP_BOT, Include.NON_DELETED).getEntityReference();
+        userRepository.findByName(getAppBot(), Include.NON_DELETED).getEntityReference();
 
     String resourceFile =
         "/applications/DayOneExperienceApplication/collate/DayOneExperienceWorkflow.json";
@@ -84,7 +88,7 @@ public class DayOneExperienceApp extends AbstractNativeApplication {
     return JsonUtils.readOrConvertValue(readResource(resourceFile), WorkflowDefinition.class)
         .withOwners(List.of(adminReference))
         .withUpdatedAt(System.currentTimeMillis())
-        .withUpdatedBy(APP_BOT);
+        .withUpdatedBy(getAppBot());
   }
 
   private void createWorkflow() {
@@ -96,7 +100,7 @@ public class DayOneExperienceApp extends AbstractNativeApplication {
   private void deleteWorkflow() {
     WorkflowDefinitionRepository repository =
         (WorkflowDefinitionRepository) Entity.getEntityRepository(Entity.WORKFLOW_DEFINITION);
-    repository.deleteByName(APP_BOT, WORKFLOW_NAME, true, true);
+    repository.deleteByName(getAppBot(), WORKFLOW_NAME, true, true);
   }
 
   private void suspendWorkflow() {
