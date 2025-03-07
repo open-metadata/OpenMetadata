@@ -118,7 +118,7 @@ function InlineAlert({
                 data-testid={`read-${showMore ? 'less' : 'more'}-button`}
                 type="link"
                 onClick={handleToggleShowMore}>
-                {t(`label.${showMore ? 'less' : 'more'}-lowercase`)}
+                {t(`label.show-${showMore ? 'less' : 'more'}-lowercase`)}
               </Button>
             )}
           </div>
