@@ -27,7 +27,6 @@ export interface BulkEditEntityProps {
     columns: TypeColumn[];
     dataSource: Record<string, string>[];
   };
-  handleAddRow: () => void;
   handleBack: () => void;
   handleValidate: () => Promise<void>;
   setGridRef: React.Dispatch<

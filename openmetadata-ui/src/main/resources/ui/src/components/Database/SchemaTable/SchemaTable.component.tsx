@@ -631,9 +631,7 @@ const SchemaTable = () => {
               icon={<Icon component={IconEdit} />}
               type="text"
               onClick={handleEditTable}>
-              {t('label.edit-entity', {
-                entity: t('label.table'),
-              })}
+              {t('label.edit')}
             </Button>
           }
           locale={{

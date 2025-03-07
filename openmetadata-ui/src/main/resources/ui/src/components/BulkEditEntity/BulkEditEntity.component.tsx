@@ -20,6 +20,11 @@ import { useParams } from 'react-router-dom';
 import { ENTITY_BULK_EDIT_STEPS } from '../../constants/BulkEdit.constants';
 import { EntityType } from '../../enums/entity.enum';
 import { useFqn } from '../../hooks/useFqn';
+import {
+  exportDatabaseDetailsInCSV,
+  exportDatabaseSchemaDetailsInCSV,
+} from '../../rest/databaseAPI';
+import { exportDatabaseServiceDetailsInCSV } from '../../rest/serviceAPI';
 import { exportTableDetailsInCSV } from '../../rest/tableAPI';
 import { getBulkEntityEditBreadcrumbList } from '../../utils/EntityBulkEdit/EntityBulkEditUtils';
 import { ImportStatus } from '../common/EntityImport/ImportStatus/ImportStatus.component';
@@ -39,7 +44,6 @@ const BulkEditEntity = ({
   columns,
   setGridRef,
   activeStep,
-  handleAddRow,
   handleBack,
   handleValidate,
   isValidating,
@@ -58,10 +62,28 @@ const BulkEditEntity = ({
     [entityType, fqn]
   );
 
+  const getCSVExportEntityApi = () => {
+    switch (entityType) {
+      case EntityType.DATABASE_SERVICE:
+        return exportDatabaseServiceDetailsInCSV;
+
+      case EntityType.DATABASE:
+        return exportDatabaseDetailsInCSV;
+
+      case EntityType.DATABASE_SCHEMA:
+        return exportDatabaseSchemaDetailsInCSV;
+
+      case EntityType.TABLE:
+        return exportTableDetailsInCSV;
+
+      default:
+        return exportTableDetailsInCSV;
+    }
+  };
   useEffect(() => {
     triggerExportForBulkEdit({
       name: fqn,
-      onExport: exportTableDetailsInCSV,
+      onExport: getCSVExportEntityApi(),
     });
   }, []);
 
@@ -139,11 +161,6 @@ const BulkEditEntity = ({
           </Col>
           {activeStep > 0 && (
             <Col span={24}>
-              {activeStep === 1 && (
-                <Button data-testid="add-row-btn" onClick={handleAddRow}>
-                  {`+ ${t('label.add-row')}`}
-                </Button>
-              )}
               <div className="float-right import-footer">
                 {activeStep > 1 && (
                   <Button disabled={isValidating} onClick={handleBack}>

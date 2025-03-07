@@ -468,7 +468,6 @@ const BulkEntityImportPage = () => {
             activeStep={activeStep}
             columns={columns}
             dataSource={dataSource}
-            handleAddRow={handleAddRow}
             handleBack={handleBack}
             handleValidate={handleValidate}
             isValidating={isValidating}

@@ -11,13 +11,16 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Switch, Typography } from 'antd';
+import Icon from '@ant-design/icons';
+import { Button, Col, Row, Switch, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isUndefined } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useHistory } from 'react-router-dom';
+import { ReactComponent as IconEdit } from '../../assets/svg/edit-new.svg';
 import DisplayName from '../../components/common/DisplayName/DisplayName';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import NextPrevious from '../../components/common/NextPrevious/NextPrevious';
@@ -46,6 +49,7 @@ import {
   TableListParams,
 } from '../../rest/tableAPI';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
+import { getEntityBulkEditPath } from '../../utils/EntityUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 interface SchemaTablesTabProps {
@@ -56,6 +60,7 @@ function SchemaTablesTab({
   isVersionView = false,
 }: Readonly<SchemaTablesTabProps>) {
   const { t } = useTranslation();
+  const history = useHistory();
   const [tableData, setTableData] = useState<Array<Table>>([]);
   const [tableDataLoading, setTableDataLoading] = useState<boolean>(true);
   const { permissions } = usePermissionProvider();
@@ -201,6 +206,15 @@ function SchemaTablesTab({
     [handleDisplayNameUpdate, allowEditDisplayNamePermission]
   );
 
+  const handleEditTable = () => {
+    history.push({
+      pathname: getEntityBulkEditPath(
+        EntityType.DATABASE_SCHEMA,
+        decodedDatabaseSchemaFQN
+      ),
+    });
+  };
+
   useEffect(() => {
     if (viewDatabaseSchemaPermission && decodedDatabaseSchemaFQN) {
       if (pagingCursor?.cursorData?.cursorType) {
@@ -230,7 +244,17 @@ function SchemaTablesTab({
     <Row gutter={[16, 16]}>
       {!isVersionView && (
         <Col span={24}>
-          <Row justify="end">
+          <Row gutter={[16, 16]} justify="end">
+            <Col>
+              <Button
+                className="text-primary p-0"
+                data-testid="bulk-edit-table"
+                icon={<Icon component={IconEdit} />}
+                type="text"
+                onClick={handleEditTable}>
+                {t('label.edit')}
+              </Button>
+            </Col>
             <Col>
               <Switch
                 checked={tableFilters.showDeletedTables}
