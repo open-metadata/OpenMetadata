@@ -14,7 +14,7 @@ import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
-public class EnumCleanupHandler implements JobHandler {
+public class EnumCleanupHandler implements BackgroundJobHandler {
   private final CollectionDAO daoCollection;
 
   public EnumCleanupHandler(CollectionDAO daoCollection) {
@@ -69,8 +69,7 @@ public class EnumCleanupHandler implements JobHandler {
           entityType,
           propertyName);
     } catch (Exception e) {
-      throw new BackgroundJobException(
-          job.getId(), "Failed to run EnumCleanupHandler job. Error:" + e.getMessage(), e);
+      throw new BackgroundJobException(job.getId(), e.getMessage(), e);
     }
   }
 

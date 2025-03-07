@@ -29,6 +29,7 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.Base64;
+import java.util.Map;
 import java.util.TimeZone;
 import java.util.UUID;
 import javax.ws.rs.BadRequestException;
@@ -165,8 +166,27 @@ public final class RestUtil {
     }
   }
 
-  public record DeleteResponse<T>(T entity, EventType changeType) {
+  public record DeleteResponse<T>(T entity, EventType changeType, Long jobId, String message) {
+    // Constructor for synchronous delete operations (backward compatibility)
+    public DeleteResponse(T entity, EventType changeType) {
+      this(entity, changeType, null, null);
+    }
+
+    // Constructor for asynchronous delete operations
+    public DeleteResponse(T entity, Long jobId, String message) {
+      this(entity, EventType.ENTITY_DELETED, jobId, message);
+    }
+
     public Response toResponse() {
+      if (jobId != null) {
+        return Response.status(Response.Status.ACCEPTED)
+            .entity(
+                Map.of(
+                    "entity", entity,
+                    "jobId", jobId,
+                    "message", message))
+            .build();
+      }
       ResponseBuilder responseBuilder =
           Response.status(Status.OK).header(CHANGE_CUSTOM_HEADER, changeType.value());
       return responseBuilder.entity(entity).build();

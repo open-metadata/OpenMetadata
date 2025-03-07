@@ -68,7 +68,12 @@ public class GenericBackgroundWorker implements Managed {
   private void processJob(BackgroundJob job) {
     try {
       jobDao.updateJobStatus(job.getId(), BackgroundJob.Status.RUNNING);
-      JobHandler handler = handlerRegistry.getHandler(job);
+      BackgroundJobHandler handler = handlerRegistry.getHandler(job);
+      LOG.debug(
+          "Processing Background Job {}. Type: {}, Method: {}",
+          job.getId(),
+          job.getJobType(),
+          job.getMethodName());
       handler.runJob(job);
       markJobAsCompleted(job);
 
@@ -83,6 +88,9 @@ public class GenericBackgroundWorker implements Managed {
 
   private void markJobAsCompleted(BackgroundJob job) {
     job.setStatus(BackgroundJob.Status.COMPLETED);
+    String successMessage =
+        String.format("Successfully completed %s operation", job.getJobType().value());
+    job.setMessage(successMessage);
     jobDao.updateJobStatus(job.getId(), BackgroundJob.Status.COMPLETED);
     LOG.info(
         "Background Job {} completed successfully. Type: {}, Method: {}",
@@ -93,13 +101,18 @@ public class GenericBackgroundWorker implements Managed {
 
   private void markJobAsFailed(BackgroundJob job, Exception e) {
     job.setStatus(BackgroundJob.Status.FAILED);
+    String errorMessage = e.getMessage();
+    if (e instanceof BackgroundJobException) {
+      errorMessage = ((BackgroundJobException) e).getMessage();
+    }
+    job.setMessage(errorMessage);
     jobDao.updateJobStatus(job.getId(), BackgroundJob.Status.FAILED);
     LOG.error(
         "Background Job {} failed. Type: {}, Method: {}. Error: {}",
         job.getId(),
         job.getJobType(),
         job.getMethodName(),
-        e.getMessage(),
+        errorMessage,
         e);
   }
 

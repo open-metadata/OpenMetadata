@@ -30,9 +30,9 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationTest;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jobs.BackgroundJobException;
+import org.openmetadata.service.jobs.BackgroundJobHandler;
 import org.openmetadata.service.jobs.EnumCleanupHandler;
 import org.openmetadata.service.jobs.JobDAO;
-import org.openmetadata.service.jobs.JobHandler;
 import org.openmetadata.service.jobs.JobHandlerRegistry;
 import org.openmetadata.service.resources.databases.TableResourceTest;
 import org.openmetadata.service.resources.metadata.TypeResourceTest;
@@ -127,7 +127,7 @@ public class BackgroundJobWorkerTest extends OpenMetadataApplicationTest {
     BackgroundJob job = createBackgroundJob(enumCleanupArgs);
 
     // Verify that the handler is registered
-    JobHandler handler = registry.getHandler(job);
+    BackgroundJobHandler handler = registry.getHandler(job);
     assertNotNull(handler);
     assertInstanceOf(EnumCleanupHandler.class, handler);
 

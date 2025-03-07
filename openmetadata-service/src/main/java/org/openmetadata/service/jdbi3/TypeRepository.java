@@ -51,7 +51,7 @@ import org.openmetadata.schema.type.customProperties.TableConfig;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.TypeRegistry;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
-import org.openmetadata.service.jobs.EnumCleanupHandler;
+import org.openmetadata.service.jobs.JobHandlerRegistry;
 import org.openmetadata.service.resources.types.TypeResource;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -510,7 +510,7 @@ public class TypeRepository extends EntityRepository<Type> {
             long jobId =
                 jobDao.insertJob(
                     BackgroundJob.JobType.CUSTOM_PROPERTY_ENUM_CLEANUP,
-                    new EnumCleanupHandler(daoCollection),
+                    JobHandlerRegistry.getInstance().getHandler("EnumCleanupHandler"),
                     jobArgs,
                     updatedBy);
 

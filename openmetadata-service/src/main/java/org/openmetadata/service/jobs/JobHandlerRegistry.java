@@ -7,19 +7,32 @@ import org.openmetadata.schema.jobs.BackgroundJob;
 
 @Slf4j
 public class JobHandlerRegistry {
-  private final Map<String, JobHandler> handlers = new HashMap<>();
+  private static final JobHandlerRegistry INSTANCE = new JobHandlerRegistry();
+  private final Map<String, BackgroundJobHandler> handlers = new HashMap<>();
 
-  public void register(String methodName, JobHandler handler) {
+  public static JobHandlerRegistry getInstance() {
+    return INSTANCE;
+  }
+
+  public void register(String methodName, BackgroundJobHandler handler) {
     LOG.info("Registering background job handler for: {}", handler.getClass().getSimpleName());
     handlers.put(methodName, handler);
   }
 
-  public JobHandler getHandler(BackgroundJob job) {
+  public BackgroundJobHandler getHandler(BackgroundJob job) {
     String methodName = job.getMethodName();
     Long jobId = job.getId();
-    JobHandler handler = handlers.get(methodName);
+    BackgroundJobHandler handler = handlers.get(methodName);
     if (handler == null) {
       throw new BackgroundJobException(jobId, "No handler registered for " + methodName);
+    }
+    return handler;
+  }
+
+  public BackgroundJobHandler getHandler(String handlerName) {
+    BackgroundJobHandler handler = handlers.get(handlerName);
+    if (handler == null) {
+      throw new IllegalArgumentException("Handler not found for " + handlerName);
     }
     return handler;
   }

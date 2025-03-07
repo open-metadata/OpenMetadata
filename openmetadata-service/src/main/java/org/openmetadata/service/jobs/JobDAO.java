@@ -25,7 +25,10 @@ public interface JobDAO {
   Logger LOG = LoggerFactory.getLogger(JobDAO.class);
 
   default long insertJob(
-      BackgroundJob.JobType jobType, JobHandler handler, String jobArgs, String createdBy) {
+      BackgroundJob.JobType jobType,
+      BackgroundJobHandler handler,
+      String jobArgs,
+      String createdBy) {
     try {
       JsonUtils.readTree(jobArgs);
     } catch (Exception e) {

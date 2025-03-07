@@ -139,6 +139,8 @@ import org.openmetadata.schema.entity.feed.Suggestion;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.entity.type.Style;
+import org.openmetadata.schema.jobs.BackgroundJob;
+import org.openmetadata.schema.jobs.DeleteEntityArgs;
 import org.openmetadata.schema.system.EntityError;
 import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.AssetCertification;
@@ -178,6 +180,7 @@ import org.openmetadata.service.jdbi3.CollectionDAO.EntityVersionPair;
 import org.openmetadata.service.jdbi3.CollectionDAO.ExtensionRecord;
 import org.openmetadata.service.jdbi3.FeedRepository.TaskWorkflow;
 import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
+import org.openmetadata.service.jobs.DeleteEntityHandler;
 import org.openmetadata.service.jobs.JobDAO;
 import org.openmetadata.service.resources.tags.TagLabelUtil;
 import org.openmetadata.service.resources.teams.RoleResource;
@@ -1299,6 +1302,44 @@ public abstract class EntityRepository<T extends EntityInterface> {
     postDelete(response.entity());
     deleteFromSearch(response.entity(), hardDelete);
     return response;
+  }
+
+  @Transaction
+  public final DeleteResponse<T> deleteAsync(
+      String updatedBy, UUID id, boolean recursive, boolean hardDelete) {
+    try {
+      // Get entity before deletion for response
+      T entity = dao.findEntityById(id);
+
+      DeleteEntityArgs deleteEntityArgs =
+          new DeleteEntityArgs()
+              .withEntityId(id)
+              .withUpdatedBy(updatedBy)
+              .withRecursive(recursive)
+              .withHardDelete(hardDelete)
+              .withEntityType(entityType)
+              .withEntityName(entity.getName());
+
+      EntityRepository<? extends EntityInterface> repository =
+          Entity.getEntityRepository(entityType);
+      String jobArgs = JsonUtils.pojoToJson(deleteEntityArgs);
+      long jobId =
+          jobDao.insertJob(
+              BackgroundJob.JobType.DELETE_ENTITY,
+              new DeleteEntityHandler(daoCollection),
+              jobArgs,
+              updatedBy);
+      return new DeleteResponse<>(entity, jobId, "Delete job triggered successfully");
+    } catch (EntityNotFoundException e) {
+      LOG.warn("Failed to delete entity with id [{}]: {}", id, e.getMessage());
+      throw e;
+    } catch (IllegalArgumentException e) {
+      LOG.warn("Invalid delete request for entity id [{}]: {}", id, e.getMessage());
+      throw e;
+    } catch (Exception e) {
+      LOG.error("Failed to process delete request for entity id [{}]", id, e);
+      throw new RuntimeException("Failed to process delete request: " + e.getMessage(), e);
+    }
   }
 
   @SuppressWarnings("unused")
