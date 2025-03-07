@@ -1745,6 +1745,8 @@
     "new-to-the-platform": "New to the platform?",
     "no-access-placeholder": "You don’t have access, please check with the admin to get permissions",
     "no-activity-feed": "Right now, there are no updates in the data assets you own or follow. <0>{{explored}}</0> Dive in and claim ownership or follow the data assets that interest you to stay informed about their latest activities!",
+    "no-activity-feed-description": "No activity yet! Once things get rolling, you’ll see updates here.",
+    "no-activity-feed-title": "Your feed is empty",
     "no-announcement-message": "No Announcements, Click on add announcement to add one.",
     "no-asset-available": "No assets available.",
     "no-closed-task": "No Closed Tasks",
@@ -1785,6 +1787,8 @@
     "no-notification-found": "No notifications found",
     "no-open-task": "No Open Tasks",
     "no-open-tasks": "Great news! You have no open tasks right now. Enjoy a task-free moment!",
+    "no-open-tasks-description": "You have no open tasks right now. Enjoy a task-free moment!",
+    "no-open-tasks-title": "Great News",
     "no-owned-data": "Data is better when it's owned. It looks like you or your team haven't claimed ownership of any data assets yet. To begin owning data assets, click on the <0>Explore</0> option to discover and claim the assets",
     "no-permission-for-action": "You do not have the necessary permissions to perform this action.",
     "no-permission-to-view": "You do not have the necessary permissions to view this data.",
@@ -2080,6 +2084,7 @@
     "no-application-schema-found": "No application schema found for {{appName}}",
     "no-owned-entities": "You have not owned anything yet.",
     "no-query-available": "No query available.",
+    "no-records-found": "No records found",
     "no-task-available": "No task data is available.",
     "no-task-creation-without-assignee": "Cannot create a task without assignee",
     "page-layout-operation-error": "Error while {{operation}} the page layout.",
@@ -2099,7 +2104,6 @@
     "unauthorized-user": "UnAuthorized user! please check email or password",
     "unexpected-error": "An unexpected error occurred.",
     "unexpected-response": "Unexpected response from server.",
-    "update-entity-success": "{{entity}} updated successfully.",
-    "you-have-not-action-anything-yet": "You have not {{action}} anything yet."
+    "update-entity-success": "{{entity}} updated successfully."
   }
 }

@@ -1745,6 +1745,8 @@
     "new-to-the-platform": "Es novo na plataforma?",
     "no-access-placeholder": "Non tes acceso, consulta co administrador para obter permisos",
     "no-activity-feed": "Agora mesmo non hai actualizacións nos activos de datos que posúes ou segues. <0>{{explored}}</0> Mergúllate e reclama a propiedade ou segue os activos de datos que che interesen para manterte informado sobre as súas últimas actividades!",
+    "no-activity-feed-description": "Aínda non hai actividade! Unha vez que comece, verás actualizacións aquí.",
+    "no-activity-feed-title": "O teu feed está baleiro",
     "no-announcement-message": "Non hai anuncios, fai clic en engadir anuncio para engadir un.",
     "no-asset-available": "Non hai activos dispoñibles.",
     "no-closed-task": "Non hai tarefas pechadas",
@@ -1785,6 +1787,8 @@
     "no-notification-found": "Non se atoparon notificacións",
     "no-open-task": "Non hai tarefas abertas",
     "no-open-tasks": "Boas novas! Agora mesmo non tes tarefas abertas. Goza deste momento libre de tarefas!",
+    "no-open-tasks-description": "Non tes tarefas abertas neste momento. Goza dun momento sen tarefas!",
+    "no-open-tasks-title": "Boas novas",
     "no-owned-data": "Os datos son mellores cando teñen propietario. Parece que ti ou o teu equipo aínda non reclamastes a propiedade de ningún activo de datos. Para comezar a reclamar activos de datos, fai clic en <0>Explorar</0> para descubrir e reclamar os activos.",
     "no-permission-for-action": "Non tes os permisos necesarios para realizar esta acción.",
     "no-permission-to-view": "Non tes os permisos necesarios para ver estes datos.",
@@ -2080,6 +2084,7 @@
     "no-application-schema-found": "Non se atopou esquema de aplicación para {{appName}}",
     "no-owned-entities": "Aínda non posúes nada.",
     "no-query-available": "Non hai consultas dispoñibles.",
+    "no-records-found": "Non se atoparon rexistros",
     "no-task-available": "Non hai datos de tarefas dispoñibles.",
     "no-task-creation-without-assignee": "Non se pode crear unha tarefa sen asignado",
     "page-layout-operation-error": "Erro ao {{operation}} o deseño da páxina.",
@@ -2099,7 +2104,6 @@
     "unauthorized-user": "Usuario non autorizado! Comproba o correo electrónico ou o contrasinal",
     "unexpected-error": "Produciuse un erro inesperado.",
     "unexpected-response": "Resposta inesperada do servidor.",
-    "update-entity-success": "{{entity}} actualizado correctamente.",
-    "you-have-not-action-anything-yet": "Aínda non {{action}} nada."
+    "update-entity-success": "{{entity}} actualizado correctamente."
   }
 }

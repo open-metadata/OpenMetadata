@@ -17,6 +17,7 @@ public class Migration extends MigrationProcessImpl {
   @Override
   @SneakyThrows
   public void runDataMigration() {
+    initializeWorkflowHandler();
     updateGovernanceWorkflowDefinitions();
     updateDataInsightsApplication();
     createServiceCharts();

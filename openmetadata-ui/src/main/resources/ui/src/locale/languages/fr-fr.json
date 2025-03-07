@@ -1745,6 +1745,8 @@
     "new-to-the-platform": "Nouveau sur la plateforme ?",
     "no-access-placeholder": "Vous n'avez pas accès, veuillez vérifier vos autorisations auprès de l'administrateur.",
     "no-activity-feed": "Nous n'avons trouvé aucune activité dans les actifs de données que vous possédez ou ceux que vous suivez actuellement.",
+    "no-activity-feed-description": "Aucune activité pour le moment ! Une fois que cela commencera, vous verrez des mises à jour ici.",
+    "no-activity-feed-title": "Votre fil est vide",
     "no-announcement-message": "Aucune annonce, cliquez sur Ajouter une annonce pour en ajouter une.",
     "no-asset-available": "Aucun actif disponible",
     "no-closed-task": "Aucune tâche à effectuer",
@@ -1785,6 +1787,8 @@
     "no-notification-found": "Aucune notification trouvée",
     "no-open-task": "Aucune tâche ouverte",
     "no-open-tasks": "Il n'y a pas de tâches ouvertes.",
+    "no-open-tasks-description": "Vous n'avez aucune tâche en cours. Profitez d'un moment sans tâche !",
+    "no-open-tasks-title": "Bonne nouvelle",
     "no-owned-data": "Il semble que vous ou votre équipe ne soyez pas actuellement propriétaires d'actifs de données. Pour commencer à posséder des actifs de données, cliquez sur l'option <0>Découvrir</0> pour découvrir et revendiquer des actifs.",
     "no-permission-for-action": "Vous n'avez pas les autorisations nécessaires pour effectuer cette action.",
     "no-permission-to-view": "Vous n'avez pas les autorisations nécessaires pour afficher ces données.",
@@ -2080,6 +2084,7 @@
     "no-application-schema-found": "Aucun schéma d'application trouvé pour {{appName}}",
     "no-owned-entities": "Vous n'êtes actuellement propriétaire d'aucun actif.",
     "no-query-available": "Aucune requête disponible",
+    "no-records-found": "Aucun enregistrement trouvé",
     "no-task-available": "Aucune donnée n'est disponible pour les tâches",
     "no-task-creation-without-assignee": "Impossible de créer une tâche sans destinataire",
     "page-layout-operation-error": "Erreur pendant {{operation}} de la mise en page.",
@@ -2099,7 +2104,6 @@
     "unauthorized-user": "Utilisateur non autorisé ! Veuillez vérifier votre e-mail ou votre mot de passe",
     "unexpected-error": "Une erreur inattendue est survenue.",
     "unexpected-response": "Réponse inattendue du serveur !",
-    "update-entity-success": "{{entity}} mis à jour avec succès.",
-    "you-have-not-action-anything-yet": "Vous n'avez encore rien {{action}}."
+    "update-entity-success": "{{entity}} mis à jour avec succès."
   }
 }

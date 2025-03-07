@@ -1745,6 +1745,8 @@
     "new-to-the-platform": "Novo na plataforma?",
     "no-access-placeholder": "Você não tem acesso, por favor, verifique com o administrador para obter permissões",
     "no-activity-feed": "Não encontramos nenhuma atividade nos ativos de dados que você possui ou nos que está seguindo atualmente.",
+    "no-activity-feed-description": "Ainda sem atividade! Assim que começar, você verá atualizações aqui.",
+    "no-activity-feed-title": "Seu feed está vazio",
     "no-announcement-message": "Nenhum Anúncio, Clique em adicionar anúncio para adicionar um.",
     "no-asset-available": "Nenhum ativo disponível.",
     "no-closed-task": "Nenhuma Tarefa Concluída",
@@ -1785,6 +1787,8 @@
     "no-notification-found": "Nenhuma notificação encontrada",
     "no-open-task": "Nenhuma tarefa em aberto",
     "no-open-tasks": "Não há tarefas em aberto.",
+    "no-open-tasks-description": "Você não tem tarefas abertas no momento. Aproveite um momento sem tarefas!",
+    "no-open-tasks-title": "Boas notícias",
     "no-owned-data": "Parece que você ou sua equipe não são proprietários de ativos de dados atualmente. Para começar a ser proprietário de ativos de dados, clique na opção <0>Explorar</0> para descobrir e reivindicar ativos.",
     "no-permission-for-action": "Você não possui as permissões necessárias para realizar esta ação.",
     "no-permission-to-view": "Você não possui as permissões necessárias para visualizar esses dados.",
@@ -2080,6 +2084,7 @@
     "no-application-schema-found": "Nenhum esquema de aplicação encontrado para {{appName}}",
     "no-owned-entities": "Você ainda não possui nada.",
     "no-query-available": "Nenhuma consulta disponível.",
+    "no-records-found": "Nenhum registro encontrado",
     "no-task-available": "Não há dados de tarefas disponíveis.",
     "no-task-creation-without-assignee": "Não é possível criar uma tarefa sem um responsável",
     "page-layout-operation-error": "Erro durante a operação de {{operation}} no layout da página.",
@@ -2099,7 +2104,6 @@
     "unauthorized-user": "Usuário não autorizado! Por favor, verifique o e-mail ou a senha",
     "unexpected-error": "Ocorreu um erro inesperado.",
     "unexpected-response": "Resposta inesperada do servidor.",
-    "update-entity-success": "{{entity}} atualizado com sucesso.",
-    "you-have-not-action-anything-yet": "Você ainda não {{action}} nada."
+    "update-entity-success": "{{entity}} atualizado com sucesso."
   }
 }
