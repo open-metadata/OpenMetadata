@@ -1158,6 +1158,7 @@
     "service-sso": "{{serviceType}} SSO",
     "service-type": "Service Type",
     "session-plural": "Sessions",
+    "set-default-filters": "Set Default Filters",
     "setting-plural": "Settings",
     "setup-guide": "Setup Guide",
     "severity": "Severity",

@@ -1158,6 +1158,7 @@
     "service-sso": "{{typ des Dienstes}} SSO",
     "service-type": "Diensttyp",
     "session-plural": "Sitzungen",
+    "set-default-filters": "Standardfilter setzen",
     "setting-plural": "Einstellungen",
     "setup-guide": "Installationsanleitung",
     "severity": "Severity",

@@ -1158,6 +1158,7 @@
     "service-sso": "{{serviceType}} SSO",
     "service-type": "सेवा प्रकार",
     "session-plural": "सत्रे",
+    "set-default-filters": "मूलभूत फ़िल्टर्स सेट करा",
     "setting-plural": "सेटिंग्ज",
     "setup-guide": "सेटअप मार्गदर्शक",
     "severity": "तीव्रता",

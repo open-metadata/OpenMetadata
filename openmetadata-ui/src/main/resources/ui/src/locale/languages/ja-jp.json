@@ -1158,6 +1158,7 @@
     "service-sso": "{{serviceType}} SSO",
     "service-type": "サービスタイプ",
     "session-plural": "セッション",
+    "set-default-filters": "デフォルトのフィルターを設定",
     "setting-plural": "設定",
     "setup-guide": "Setup Guide",
     "severity": "Severity",
