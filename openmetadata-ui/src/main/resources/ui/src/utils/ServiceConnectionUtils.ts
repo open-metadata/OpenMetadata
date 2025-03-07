@@ -131,11 +131,11 @@ export const getConnectionSchemas = ({
  * @returns The filtered schema
  */
 export const getFilteredSchema = (
-  schema: Record<string, any>,
+  schema?: Record<string, any>,
   removeDefaultFilters = true
 ) =>
   Object.fromEntries(
-    Object.entries(schema).filter(([key]) => {
+    Object.entries(schema ?? {}).filter(([key]) => {
       const isFiltersField = SERVICE_FILTER_PATTERN_FIELDS.includes(
         key as ServiceConnectionFilterPatternFields
       );
