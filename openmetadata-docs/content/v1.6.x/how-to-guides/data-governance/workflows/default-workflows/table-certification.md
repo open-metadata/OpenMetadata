@@ -9,7 +9,7 @@ collate: true
 The **Table Certification Workflow** is a periodic batch workflow designed to automatically manage the certification process for tables within Collate.
 It is triggered periodically based on the configured scheduled, it fetches the assets based on the filters and it certifies tables based on their attributes.
 
-{% image src="/images/v1.6/how-to-guides/governance/workflows-table-certification" alt="table-certification" /%}
+{% image src="/images/v1.6/how-to-guides/governance/workflows-table-certification.png" alt="table-certification" /%}
 
 ## Workflow Elements
 
