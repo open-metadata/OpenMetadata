@@ -114,9 +114,10 @@ import { EditorContentRef } from '../../../ActivityFeed/ActivityFeedEditor/Activ
 import ActivityFeedEditorNew from '../../../ActivityFeed/ActivityFeedEditor/ActivityFeedEditorNew';
 import { useActivityFeedProvider } from '../../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import InlineEdit from '../../../common/InlineEdit/InlineEdit.component';
-import { OwnerLabelNew } from '../../../common/OwnerLabel/OwnerLabelNew.component';
+
+import { UserAvatarGroup } from '../../../common/OwnerLabel/UserAvatarGroup.component';
 import EntityPopOverCard from '../../../common/PopOverCard/EntityPopOverCard';
-import ProfilePicture from '../../../common/ProfilePicture/ProfilePicture';
+import ProfilePictureNew from '../../../common/ProfilePicture/ProfilePictureNew';
 import TaskTabIncidentManagerHeaderNew from '../TaskTabIncidentManagerHeader/TasktabIncidentManagerHeaderNew';
 import './task-tab-new.less';
 import { TaskTabProps } from './TaskTab.interface';
@@ -622,7 +623,7 @@ export const TaskTabNew = ({
 
     return (
       <Space
-        className="items-end w-full justify-end task-cta-buttons"
+        className="items-end  justify-end task-cta-buttons"
         data-testid="task-cta-buttons"
         size="small">
         <Tooltip
@@ -706,7 +707,7 @@ export const TaskTabNew = ({
 
     return (
       <Space
-        className="items-end w-full justify-end task-cta-buttons"
+        className="items-end  justify-end task-cta-buttons"
         data-testid="task-cta-buttons"
         size="small">
         {isCreator && !hasEditAccess && (
@@ -832,14 +833,18 @@ export const TaskTabNew = ({
       })}>
       <div className="d-flex gap-2" data-testid="task-assignees">
         <Row className="m-l-0" gutter={[16, 16]}>
-          <Col className="flex items-center gap-2 text-grey-muted" span={12}>
+          <Col className="flex items-center gap-2 text-grey-muted" span={8}>
             <UserIcon height={16} />
-            <Typography.Text className="incident-manager-details-label @grey-8">
+            <Typography.Text className="incident-manager-details-label">
               {t('label.created-by')}:{' '}
             </Typography.Text>
           </Col>
-          <Col className="flex items-center gap-2" span={12}>
-            <ProfilePicture name={taskThread.createdBy ?? ''} width="24" />
+          <Col className="flex items-center gap-2" span={16}>
+            <ProfilePictureNew
+              avatarType="outlined"
+              name={taskThread.createdBy ?? ''}
+              width="24"
+            />
             <Typography.Text>{taskThread.createdBy}</Typography.Text>
           </Col>
 
@@ -890,27 +895,26 @@ export const TaskTabNew = ({
             </Form>
           ) : (
             <>
-              <Col
-                className="flex items-center gap-2 text-grey-muted"
-                span={12}>
+              <Col className="flex items-center gap-2 text-grey-muted" span={8}>
                 <AssigneesIcon height={16} />
                 <Typography.Text className="incident-manager-details-label @grey-8">
                   {t('label.assignee-plural')}:{' '}
                 </Typography.Text>
               </Col>
-              <Col className="flex items-center gap-2" span={12}>
+              <Col className="flex items-center gap-2" span={16}>
                 {taskThread?.task?.assignees?.length === 1 ? (
                   <div className="d-flex items-center gap-2">
-                    <ProfilePicture
+                    <ProfilePictureNew
+                      avatarType="outlined"
                       name={taskThread?.task?.assignees[0].displayName ?? ''}
                       width="24"
                     />
-                    <Typography.Text className="text-md text-grey-body">
+                    <Typography.Text className="text-grey-body">
                       {taskThread?.task?.assignees[0].displayName}
                     </Typography.Text>
                   </div>
                 ) : (
-                  <OwnerLabelNew
+                  <UserAvatarGroup
                     avatarSize={24}
                     className="p-t-05"
                     owners={taskThread?.task?.assignees}
@@ -962,9 +966,25 @@ export const TaskTabNew = ({
     []
   );
   const ActionRequired = () => {
+    if (!actionButtons) {
+      return null;
+    }
+
+    if (React.isValidElement(actionButtons)) {
+      const childrenProps = actionButtons.props as {
+        children: React.ReactNode;
+      };
+      const childrenCount = React.Children.toArray(
+        childrenProps.children
+      ).length;
+      if (childrenCount === 0) {
+        return null;
+      }
+    }
+
     return (
-      <div className="action-required-card d-flex justify-between items-center">
-        <Col span={12}>
+      <div className="action-required-card d-flex flex-wrap justify-between items-center">
+        <Col>
           <Typography.Text className="action-required-text">
             {t('label.action-required')}
           </Typography.Text>
@@ -1006,24 +1026,26 @@ export const TaskTabNew = ({
         )}
 
         {isTaskTags && (
-          <TagsTask
-            hasEditAccess={hasEditAccess}
-            isTaskActionEdit={false}
-            task={taskDetails}
-            onChange={(value) => form.setFieldValue('updatedTags', value)}
-          />
+          <div className="tags-details-contianer">
+            <TagsTask
+              hasEditAccess={hasEditAccess}
+              isTaskActionEdit={false}
+              task={taskDetails}
+              onChange={(value) => form.setFieldValue('updatedTags', value)}
+            />
+          </div>
         )}
         {taskThread.task?.status === ThreadTaskStatus.Open && ActionRequired()}
 
         <Col span={24}>
           <div className="activity-feed-comments-container d-flex flex-col">
             <Typography.Text
-              className={`activity-feed-comments-title ${
-                taskThread?.task?.status === ThreadTaskStatus.Open
-                  ? 'm-b-md'
-                  : ''
-              }`}>
-              {t('label.comment')}
+              className={classNames('activity-feed-comments-title', {
+                'm-b-md':
+                  taskThread?.task?.status === ThreadTaskStatus.Open &&
+                  !showFeedEditor,
+              })}>
+              {t('label.comment-plural')}
             </Typography.Text>
 
             {showFeedEditor ? (
@@ -1036,10 +1058,10 @@ export const TaskTabNew = ({
               taskThread?.task?.status === ThreadTaskStatus.Open && (
                 <div className="d-flex gap-2">
                   <div className="profile-picture">
-                    <ProfilePicture
+                    <ProfilePictureNew
                       avatarType="outlined"
                       key={taskThread.id}
-                      name="admin"
+                      name={currentUser?.displayName || currentUser?.name || ''}
                       size={32}
                     />
                   </div>
@@ -1120,6 +1142,7 @@ export const TaskTabNew = ({
           destroyOnClose
           closable={false}
           closeIcon={null}
+          data-testid="suggestion-edit-task-modal"
           maskClosable={false}
           open={showEditTaskModel}
           title={`${t('label.edit-entity', {
@@ -1236,7 +1259,7 @@ export const TaskTabNew = ({
       <CloseTabIcon
         className="close-tab-icon cursor-pointer"
         height={16}
-        onClick={rest.handlePanelResize}
+        onClick={() => rest.handlePanelResize?.(true)}
       />
     </Row>
   );

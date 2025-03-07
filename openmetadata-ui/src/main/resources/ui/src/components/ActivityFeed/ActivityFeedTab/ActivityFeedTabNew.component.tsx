@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Dropdown, Segmented } from 'antd';
+import { Dropdown, Segmented, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import {
@@ -23,7 +23,7 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useHistory, useParams } from 'react-router-dom';
+import { useHistory, useParams } from 'react-router-dom';
 import { ReactComponent as TaskCloseIcon } from '../../../assets/svg/ic-check-circle-new.svg';
 import { ReactComponent as TaskCloseIconBlue } from '../../../assets/svg/ic-close-task.svg';
 import { ReactComponent as MentionIcon } from '../../../assets/svg/ic-mention.svg';
@@ -32,7 +32,7 @@ import { ReactComponent as TaskFilterIcon } from '../../../assets/svg/ic-task-fi
 import { ReactComponent as TaskIcon } from '../../../assets/svg/ic-task-new.svg';
 import { ReactComponent as MyTaskIcon } from '../../../assets/svg/task.svg';
 
-import { ICON_DIMENSION_USER_PAGE, ROUTES } from '../../../constants/constants';
+import { ICON_DIMENSION_USER_PAGE } from '../../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
 import { observerOptions } from '../../../constants/Mydata.constants';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
@@ -48,7 +48,7 @@ import { useElementInView } from '../../../hooks/useElementInView';
 import { useFqn } from '../../../hooks/useFqn';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { getFeedCount } from '../../../rest/feedsAPI';
-import { getFeedCounts, Transi18next } from '../../../utils/CommonUtils';
+import { getFeedCounts } from '../../../utils/CommonUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import {
   ENTITY_LINK_SEPARATOR,
@@ -154,23 +154,38 @@ export const ActivityFeedTabNew = ({
       )
     );
     setActiveThread();
+    setIsFullWidth(false);
   };
 
   const placeholderText = useMemo(() => {
     if (activeTab === ActivityFeedTabs.ALL) {
       return (
-        <Transi18next
-          i18nKey="message.no-activity-feed"
-          renderElement={<Link to={ROUTES.EXPLORE} />}
-          values={{
-            explored: t('message.have-not-explored-yet'),
-          }}
-        />
+        <div className="d-flex flex-col gap-4">
+          <Typography.Text className="placeholder-title">
+            {t('message.no-activity-feed-title')}
+          </Typography.Text>
+          <Typography.Text className="placeholder-text">
+            {t('message.no-activity-feed-description')}
+          </Typography.Text>
+        </div>
       );
     } else if (activeTab === ActivityFeedTabs.MENTIONS) {
-      return t('message.no-mentions');
+      return (
+        <Typography.Text className="placeholder-text">
+          {t('message.no-mentions')}
+        </Typography.Text>
+      );
     } else {
-      return t('message.no-open-tasks');
+      return (
+        <div className="d-flex flex-col gap-4">
+          <Typography.Text className="placeholder-title">
+            {t('message.no-open-tasks-title')}
+          </Typography.Text>
+          <Typography.Text className="placeholder-text">
+            {t('message.no-open-tasks-description')}
+          </Typography.Text>
+        </div>
+      );
     }
   }, [activeTab]);
 
@@ -310,7 +325,10 @@ export const ActivityFeedTabNew = ({
     }
   }, [entityPaging, loading, isInView, fqn]);
 
-  const loader = useMemo(() => (loading ? <Loader /> : null), [loading]);
+  const loader = useMemo(
+    () => (loading ? <Loader className="aspect-square" /> : null),
+    [loading]
+  );
 
   const handleUpdateTaskFilter = (filter: ThreadTaskStatus) => {
     setTaskFilter(filter);
@@ -331,7 +349,8 @@ export const ActivityFeedTabNew = ({
             className={classNames(
               'flex items-center justify-between px-4 py-2 gap-2',
               { active: taskFilter === ThreadTaskStatus.Open }
-            )}>
+            )}
+            data-testid="open-tasks">
             <div className="flex items-center space-x-2">
               {taskFilter === ThreadTaskStatus.Open ? (
                 <TaskOpenIcon
@@ -370,7 +389,8 @@ export const ActivityFeedTabNew = ({
             className={classNames(
               'flex items-center justify-between px-4 py-2 gap-2',
               { active: taskFilter === ThreadTaskStatus.Closed }
-            )}>
+            )}
+            data-testid="closed-tasks">
             <div className="flex items-center space-x-2">
               {taskFilter === ThreadTaskStatus.Closed ? (
                 <TaskCloseIconBlue
@@ -439,27 +459,33 @@ export const ActivityFeedTabNew = ({
     );
   }, [t, handleTabChange]);
 
-  const handlePanelResize = () => {
-    setIsFullWidth(true);
+  const handlePanelResize = (isFullWidth: boolean) => {
+    setIsFullWidth(isFullWidth);
   };
 
   return (
     <div className="activity-feed-tab">
       <div
-        className={`center-container ${isFullWidth ? 'full-width' : ''}`}
+        className={`center-container  ${isFullWidth ? 'full-width' : ''}`}
         id="center-container">
         {(isTaskActiveTab || isMentionTabSelected) && (
           <div
             className="d-flex gap-4  p-b-xs justify-between items-center"
             style={{ marginTop: '6px' }}>
             <Dropdown
+              disabled={isMentionTabSelected}
               menu={{
                 items: taskFilterOptions,
                 selectedKeys: [...taskFilter],
               }}
               overlayClassName="task-tab-custom-dropdown"
               trigger={['click']}>
-              <TaskFilterIcon className="cursor-pointer task-filter-icon" />
+              <TaskFilterIcon
+                className={`task-filter-icon ${
+                  isMentionTabSelected ? 'cursor-not-allowed' : 'cursor-pointer'
+                }`}
+                data-testid="user-profile-page-task-filter-icon"
+              />
             </Dropdown>
             {TaskToggle()}
           </div>
@@ -470,8 +496,10 @@ export const ActivityFeedTabNew = ({
           componentsVisibility={componentsVisibility}
           emptyPlaceholderText={placeholderText}
           feedList={entityThread}
+          handlePanelResize={handlePanelResize}
           isForFeedTab={isForFeedTab}
-          isLoading={false}
+          isFullWidth={isFullWidth}
+          isLoading={loading}
           selectedThread={selectedThread}
           showThread={false}
           onAfterClose={handleAfterTaskClose}
@@ -487,7 +515,7 @@ export const ActivityFeedTabNew = ({
         />
       </div>
 
-      <div className="right-container">
+      <div className={`right-container ${isFullWidth ? 'hide-panel' : ''}`}>
         {loader}
         {selectedThread &&
           !loading &&
@@ -506,6 +534,7 @@ export const ActivityFeedTabNew = ({
                   handlePanelResize={handlePanelResize}
                   hidePopover={false}
                   isForFeedTab={isForFeedTab}
+                  isFullWidth={isFullWidth}
                   onAfterClose={handleAfterTaskClose}
                   onUpdateEntityDetails={onUpdateEntityDetails}
                 />
