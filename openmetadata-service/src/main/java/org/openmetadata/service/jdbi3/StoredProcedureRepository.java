@@ -71,7 +71,7 @@ public class StoredProcedureRepository extends EntityRepository<StoredProcedure>
   }
 
   @Override
-  protected void cleanup(StoredProcedure storedProcedure) {
+  protected void entitySpecificCleanup(StoredProcedure storedProcedure) {
     // When a pipeline is removed , the linege needs to be removed
     daoCollection
         .relationshipDAO()
@@ -79,7 +79,6 @@ public class StoredProcedureRepository extends EntityRepository<StoredProcedure>
             storedProcedure.getId(),
             LineageDetails.Source.QUERY_LINEAGE.value(),
             Relationship.UPSTREAM.ordinal());
-    super.cleanup(storedProcedure);
   }
 
   @Override

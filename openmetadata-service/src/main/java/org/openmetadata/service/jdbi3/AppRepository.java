@@ -366,13 +366,12 @@ public class AppRepository extends EntityRepository<App> {
   }
 
   @Override
-  protected void cleanup(App app) {
+  protected void entitySpecificCleanup(App app) {
     // Remove the Pipelines for Application
     List<EntityReference> pipelineRef = getIngestionPipelines(app);
     pipelineRef.forEach(
         reference ->
             Entity.deleteEntity("admin", reference.getType(), reference.getId(), true, true));
-    super.cleanup(app);
   }
 
   @Override

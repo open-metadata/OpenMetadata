@@ -1329,41 +1329,55 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
-  @Transaction
-  protected void cleanup(T entityInterface) {
-    UUID id = entityInterface.getId();
+  protected final void cleanup(T entityInterface) {
+    Entity.getJdbi()
+        .inTransaction(
+            handle -> {
+              // Perform Entity Specific Cleanup
+              entitySpecificCleanup(entityInterface);
 
-    // Delete all the relationships to other entities
-    daoCollection.relationshipDAO().deleteAll(id, entityType);
+              UUID id = entityInterface.getId();
 
-    // Delete all the field relationships to other entities
-    daoCollection.fieldRelationshipDAO().deleteAllByPrefix(entityInterface.getFullyQualifiedName());
+              // Delete all the relationships to other entities
+              daoCollection.relationshipDAO().deleteAll(id, entityType);
 
-    // Delete all the extensions of entity
-    daoCollection.entityExtensionDAO().deleteAll(id);
+              // Delete all the field relationships to other entities
+              daoCollection
+                  .fieldRelationshipDAO()
+                  .deleteAllByPrefix(entityInterface.getFullyQualifiedName());
 
-    // Delete all the tag labels
-    daoCollection
-        .tagUsageDAO()
-        .deleteTagLabelsByTargetPrefix(entityInterface.getFullyQualifiedName());
+              // Delete all the extensions of entity
+              daoCollection.entityExtensionDAO().deleteAll(id);
 
-    // when the glossary and tag is deleted, delete its usage
-    daoCollection.tagUsageDAO().deleteTagLabelsByFqn(entityInterface.getFullyQualifiedName());
-    // Delete all the usage data
-    daoCollection.usageDAO().delete(id);
+              // Delete all the tag labels
+              daoCollection
+                  .tagUsageDAO()
+                  .deleteTagLabelsByTargetPrefix(entityInterface.getFullyQualifiedName());
 
-    // Delete the extension data storing custom properties
-    removeExtension(entityInterface);
+              // when the glossary and tag is deleted, delete its usage
+              daoCollection
+                  .tagUsageDAO()
+                  .deleteTagLabelsByFqn(entityInterface.getFullyQualifiedName());
+              // Delete all the usage data
+              daoCollection.usageDAO().delete(id);
 
-    // Delete all the threads that are about this entity
-    Entity.getFeedRepository().deleteByAbout(entityInterface.getId());
+              // Delete the extension data storing custom properties
+              removeExtension(entityInterface);
 
-    // Remove entity from the cache
-    invalidate(entityInterface);
+              // Delete all the threads that are about this entity
+              Entity.getFeedRepository().deleteByAbout(entityInterface.getId());
 
-    // Finally, delete the entity
-    dao.delete(id);
+              // Remove entity from the cache
+              invalidate(entityInterface);
+
+              // Finally, delete the entity
+              dao.delete(id);
+
+              return null;
+            });
   }
+
+  protected void entitySpecificCleanup(T entityInterface) {}
 
   private void invalidate(T entity) {
     CACHE_WITH_ID.invalidate(new ImmutablePair<>(entityType, entity.getId()));

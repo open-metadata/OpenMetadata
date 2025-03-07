@@ -337,10 +337,8 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     }
   }
 
-  @Transaction
   @Override
-  protected void cleanup(TestCase entityInterface) {
-    super.cleanup(entityInterface);
+  protected void entitySpecificCleanup(TestCase entityInterface) {
     deleteAllTestCaseResults(entityInterface.getFullyQualifiedName());
   }
 
