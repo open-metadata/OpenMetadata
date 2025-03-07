@@ -115,6 +115,7 @@ import { PipelineServiceType } from '../generated/entity/services/pipelineServic
 import { SearchServiceType } from '../generated/entity/services/searchService';
 import { ServiceType } from '../generated/entity/services/serviceType';
 import i18n from '../utils/i18next/LocalUtil';
+import { SERVICE_FILTER_PATTERN_FIELDS } from './ServiceConnection.constants';
 
 export const MYSQL = mysql;
 export const SQLITE = sqlite;
@@ -298,10 +299,7 @@ export const INGESTION_WORKFLOW_UI_SCHEMA = {
   'ui:order': [
     'name',
     'displayName',
-    'databaseFilterPattern',
-    'schemaFilterPattern',
-    'tableFilterPattern',
-    'classificationFilterPattern',
+    ...SERVICE_FILTER_PATTERN_FIELDS,
     'enableDebugLog',
     '*',
   ],
@@ -350,6 +348,10 @@ export const STEPS_FOR_ADD_SERVICE: Array<StepperStepType> = [
       entity: i18n.t('label.detail-plural'),
     }),
     step: 3,
+  },
+  {
+    name: i18n.t('label.set-default-filters'),
+    step: 4,
   },
 ];
 

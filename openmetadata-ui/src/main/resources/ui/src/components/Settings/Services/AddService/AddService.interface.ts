@@ -13,7 +13,7 @@
 
 import { ServiceCategory } from '../../../../enums/service.enum';
 import { CreateIngestionPipeline } from '../../../../generated/api/services/ingestionPipelines/createIngestionPipeline';
-import { DataObj } from '../../../../interface/service.interface';
+import { ConfigData, DataObj } from '../../../../interface/service.interface';
 import { TitleBreadcrumbProps } from '../../../common/TitleBreadcrumb/TitleBreadcrumb.interface';
 
 export interface AddServiceProps {
@@ -33,6 +33,10 @@ export interface AddServiceProps {
 }
 
 export interface ServiceConfig {
-  serviceName: string;
+  name: string;
   description: string;
+  serviceType: string;
+  connection: {
+    config: ConfigData;
+  };
 }

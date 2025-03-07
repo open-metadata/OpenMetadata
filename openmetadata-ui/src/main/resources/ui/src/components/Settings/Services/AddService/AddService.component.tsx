@@ -48,6 +48,7 @@ import TitleBreadcrumb from '../../../common/TitleBreadcrumb/TitleBreadcrumb.com
 import AddIngestion from '../AddIngestion/AddIngestion.component';
 import IngestionStepper from '../Ingestion/IngestionStepper/IngestionStepper.component';
 import ConnectionConfigForm from '../ServiceConfig/ConnectionConfigForm';
+import FiltersConfigForm from '../ServiceConfig/FiltersConfigForm';
 import { AddServiceProps, ServiceConfig } from './AddService.interface';
 import ConfigureService from './Steps/ConfigureService';
 import SelectServiceType from './Steps/SelectServiceType';
@@ -76,10 +77,13 @@ const AddService = ({
   );
   const [activeServiceStep, setActiveServiceStep] = useState(1);
   const [activeIngestionStep, setActiveIngestionStep] = useState(1);
-  const [selectServiceType, setSelectServiceType] = useState('');
   const [serviceConfig, setServiceConfig] = useState<ServiceConfig>({
-    serviceName: '',
+    name: '',
     description: '',
+    serviceType: '',
+    connection: {
+      config: {} as ConfigData,
+    },
   });
 
   const [saveServiceState, setSaveServiceState] =
@@ -89,15 +93,21 @@ const AddService = ({
   const handleServiceTypeClick = (type: string) => {
     setShowErrorMessage({ ...showErrorMessage, serviceType: false });
     setServiceConfig({
-      serviceName: '',
+      name: '',
       description: '',
+      serviceType: type,
+      connection: {
+        config: {} as ConfigData,
+      },
     });
-    setSelectServiceType(type);
   };
 
   const handleServiceCategoryChange = (category: ServiceCategory) => {
     setShowErrorMessage({ ...showErrorMessage, serviceType: false });
-    setSelectServiceType('');
+    setServiceConfig((prev) => ({
+      ...prev,
+      serviceType: '',
+    }));
     history.push(getAddServicePath(category));
   };
 
@@ -112,7 +122,7 @@ const AddService = ({
   };
 
   const handleSelectServiceNextClick = () => {
-    if (selectServiceType) {
+    if (serviceConfig.serviceType) {
       setActiveServiceStep(2);
     } else {
       setShowErrorMessage({ ...showErrorMessage, serviceType: true });
@@ -121,36 +131,56 @@ const AddService = ({
 
   // Configure service name
   const handleConfigureServiceBackClick = () => setActiveServiceStep(1);
-  const handleConfigureServiceNextClick = (value: ServiceConfig) => {
-    setServiceConfig(value);
+  const handleConfigureServiceNextClick = (
+    value: Pick<ServiceConfig, 'name' | 'description'>
+  ) => {
+    setServiceConfig((prev) => ({
+      ...prev,
+      ...value,
+    }));
     setActiveServiceStep(3);
   };
 
   // Service connection
   const handleConnectionDetailsBackClick = () => setActiveServiceStep(2);
-  const handleConfigUpdate = async (newConfigData: ConfigData) => {
+  const handleConfigUpdate = (newConfigData: ConfigData) => {
     const data = {
-      name: serviceConfig.serviceName,
-      serviceType: selectServiceType,
-      description: serviceConfig.description,
+      serviceType: serviceConfig.serviceType,
       owners: [
         {
           id: currentUser?.id ?? '',
           type: 'user',
         },
       ],
-    };
-    const configData = {
-      ...data,
       connection: {
         config: newConfigData,
+      },
+    };
+
+    setServiceConfig((prev) => ({
+      ...prev,
+      ...data,
+    }));
+    setActiveServiceStep(4);
+  };
+
+  // Filters Input step
+  const handleFiltersInputBackClick = () => setActiveServiceStep(3);
+  const handleFiltersInputNextClick = async (config: ConfigData) => {
+    const configData = {
+      ...serviceConfig,
+      connection: {
+        config: {
+          ...serviceConfig.connection.config,
+          ...config,
+        },
       },
     };
     setSaveServiceState('waiting');
     try {
       await onAddServiceSave(configData);
 
-      setActiveServiceStep(4);
+      setActiveServiceStep(5);
 
       await fetchAirflowStatus();
     } catch (error) {
@@ -160,7 +190,7 @@ const AddService = ({
         entityLowercase: t('label.service-lowercase'),
         entityLowercasePlural: t('label.service-lowercase-plural'),
         setInlineAlertDetails,
-        name: serviceConfig.serviceName,
+        name: serviceConfig.name,
         defaultErrorType: 'create',
       });
     } finally {
@@ -189,11 +219,11 @@ const AddService = ({
 
   const addNewServiceElement = (
     <div data-testid="add-new-service-container">
-      {selectServiceType ? (
+      {serviceConfig.serviceType ? (
         <Space className="p-b-xs">
-          {getServiceLogo(selectServiceType || '', 'h-6')}{' '}
+          {getServiceLogo(serviceConfig.serviceType || '', 'h-6')}{' '}
           <Typography className="text-base" data-testid="header">
-            {`${selectServiceType} ${t('label.service')}`}
+            {`${serviceConfig.serviceType} ${t('label.service')}`}
           </Typography>
         </Space>
       ) : (
@@ -210,7 +240,7 @@ const AddService = ({
         {activeServiceStep === 1 && (
           <SelectServiceType
             handleServiceTypeClick={handleServiceTypeClick}
-            selectServiceType={selectServiceType}
+            selectServiceType={serviceConfig.serviceType}
             serviceCategory={serviceCategory}
             serviceCategoryHandler={handleServiceCategoryChange}
             showError={showErrorMessage.serviceType}
@@ -221,7 +251,7 @@ const AddService = ({
 
         {activeServiceStep === 2 && (
           <ConfigureService
-            serviceName={serviceConfig.serviceName}
+            serviceName={serviceConfig.name}
             onBack={handleConfigureServiceBackClick}
             onNext={handleConfigureServiceNextClick}
           />
@@ -230,23 +260,38 @@ const AddService = ({
         {activeServiceStep === 3 && (
           <ConnectionConfigForm
             cancelText={t('label.back')}
+            okText={t('label.next')}
             serviceCategory={serviceCategory}
-            serviceType={selectServiceType}
+            serviceType={serviceConfig.serviceType}
             status={saveServiceState}
             onCancel={handleConnectionDetailsBackClick}
             onFocus={handleFieldFocus}
             onSave={async (e) => {
-              e.formData && (await handleConfigUpdate(e.formData));
+              e.formData && handleConfigUpdate(e.formData);
             }}
           />
         )}
 
-        {activeServiceStep > 3 && (
+        {activeServiceStep === 4 && (
+          <FiltersConfigForm
+            cancelText={t('label.back')}
+            serviceCategory={serviceCategory}
+            serviceType={serviceConfig.serviceType}
+            status={saveServiceState}
+            onCancel={handleFiltersInputBackClick}
+            onFocus={handleFieldFocus}
+            onSave={async (e) => {
+              e.formData && handleFiltersInputNextClick(e.formData);
+            }}
+          />
+        )}
+
+        {activeServiceStep > 4 && (
           <SuccessScreen
             showIngestionButton
             handleIngestionClick={() => handleAddIngestion(true)}
             handleViewServiceClick={handleViewServiceClick}
-            name={serviceConfig.serviceName}
+            name={serviceConfig.name}
             state={FormSubmitType.ADD}
             suffix={getServiceCreatedLabel(serviceCategory)}
           />
@@ -302,7 +347,7 @@ const AddService = ({
         className: 'content-resizable-panel-container',
       }}
       hideSecondPanel={
-        !(selectServiceType && activeServiceStep === 3) && !addIngestion
+        !(serviceConfig.serviceType && activeServiceStep === 3) && !addIngestion
       }
       pageTitle={t('label.add-entity', { entity: t('label.service') })}
       secondPanel={{
@@ -310,7 +355,7 @@ const AddService = ({
           <ServiceDocPanel
             activeField={activeField}
             isWorkflow={addIngestion}
-            serviceName={selectServiceType}
+            serviceName={serviceConfig.serviceType}
             serviceType={getServiceType(serviceCategory)}
             workflowType={PipelineType.Metadata}
           />

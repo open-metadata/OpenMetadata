@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,22 +10,21 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { ConfigData } from '../../../../interface/service.interface';
 
-import { ServiceCategory } from '../../../../../enums/service.enum';
-import { ServiceConfig } from '../AddService.interface';
+import { IChangeEvent } from '@rjsf/core';
+import { LoadingState } from 'Models';
+import { ServiceCategory } from '../../../../enums/service.enum';
+import { ServicesType } from '../../../../interface/service.interface';
 
-export type SelectServiceTypeProps = {
-  showError: boolean;
+export interface FiltersConfigFormProps {
+  data?: ServicesType;
+  okText?: string;
+  cancelText?: string;
+  serviceType: string;
   serviceCategory: ServiceCategory;
-  serviceCategoryHandler: (category: ServiceCategory) => void;
-  selectServiceType: string;
-  handleServiceTypeClick: (type: string) => void;
-  onCancel: () => void;
-  onNext: () => void;
-};
-
-export type ConfigureServiceProps = {
-  serviceName: string;
-  onBack: () => void;
-  onNext: (data: Pick<ServiceConfig, 'name' | 'description'>) => void;
-};
+  status: LoadingState;
+  onFocus: (id: string) => void;
+  onSave: (data: IChangeEvent<ConfigData>) => Promise<void>;
+  onCancel?: () => void;
+}

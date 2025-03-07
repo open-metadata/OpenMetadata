@@ -12,10 +12,11 @@
  */
 
 import Form, { IChangeEvent } from '@rjsf/core';
+import { RegistryFieldsType } from '@rjsf/utils';
 import validator from '@rjsf/validator-ajv8';
 import { Alert } from 'antd';
 import { t } from 'i18next';
-import { cloneDeep, isEmpty, isNil, isUndefined } from 'lodash';
+import { isEmpty, isUndefined } from 'lodash';
 import { LoadingState } from 'Models';
 import React, {
   Fragment,
@@ -25,15 +26,6 @@ import React, {
   useState,
 } from 'react';
 import { ServiceCategory } from '../../../../enums/service.enum';
-import { MetadataServiceType } from '../../../../generated/api/services/createMetadataService';
-import { MlModelServiceType } from '../../../../generated/api/services/createMlModelService';
-import { StorageServiceType } from '../../../../generated/entity/data/container';
-import { APIServiceType } from '../../../../generated/entity/services/apiService';
-import { DashboardServiceType } from '../../../../generated/entity/services/dashboardService';
-import { DatabaseServiceType } from '../../../../generated/entity/services/databaseService';
-import { MessagingServiceType } from '../../../../generated/entity/services/messagingService';
-import { PipelineServiceType } from '../../../../generated/entity/services/pipelineService';
-import { SearchServiceType } from '../../../../generated/entity/services/searchService';
 import { useAirflowStatus } from '../../../../hooks/useAirflowStatus';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import {
@@ -43,8 +35,13 @@ import {
 import { getPipelineServiceHostIp } from '../../../../rest/ingestionPipelineAPI';
 import { Transi18next } from '../../../../utils/CommonUtils';
 import { formatFormDataForSubmit } from '../../../../utils/JSONSchemaFormUtils';
-import serviceUtilClassBase from '../../../../utils/ServiceUtilClassBase';
+import {
+  getConnectionSchemas,
+  getFilteredSchema,
+} from '../../../../utils/ServiceConnectionUtils';
 import AirflowMessageBanner from '../../../common/AirflowMessageBanner/AirflowMessageBanner';
+import BooleanFieldTemplate from '../../../common/Form/JSONSchema/JSONSchemaTemplate/BooleanFieldTemplate';
+import WorkflowArrayFieldTemplate from '../../../common/Form/JSONSchema/JSONSchemaTemplate/WorkflowArrayFieldTemplate';
 import FormBuilder from '../../../common/FormBuilder/FormBuilder';
 import InlineAlert from '../../../common/InlineAlert/InlineAlert';
 import TestConnection from '../../../common/TestConnection/TestConnection';
@@ -64,8 +61,8 @@ interface Props {
 
 const ConnectionConfigForm: FunctionComponent<Props> = ({
   data,
-  okText = 'Save',
-  cancelText = 'Cancel',
+  okText = t('label.save'),
+  cancelText = t('label.cancel'),
   serviceType,
   serviceCategory,
   status,
@@ -74,9 +71,6 @@ const ConnectionConfigForm: FunctionComponent<Props> = ({
   onFocus,
   disableTestConnection = false,
 }: Props) => {
-  const config = !isNil(data)
-    ? ((data as ServicesType).connection?.config as ConfigData)
-    : ({} as ConfigData);
   const { inlineAlertDetails } = useApplicationStore();
 
   const formRef = useRef<Form<ConfigData>>(null);
@@ -113,94 +107,38 @@ const ConnectionConfigForm: FunctionComponent<Props> = ({
     await onSave({ ...data, formData: updatedFormData });
   };
 
+  const customFields: RegistryFieldsType = {
+    BooleanField: BooleanFieldTemplate,
+    ArrayField: WorkflowArrayFieldTemplate,
+  };
+
   const getConfigFields = () => {
-    let connSch = {
-      schema: {},
-      uiSchema: {},
+    const { connSch, validConfig } = getConnectionSchemas({
+      data,
+      serviceCategory,
+      serviceType,
+    });
+
+    // Remove the filters property from the schema
+    // Since it'll have a separate form in the next step
+
+    const propertiesWithoutFilters = getFilteredSchema(
+      connSch.schema.properties
+    );
+
+    const filteredSchema = {
+      ...connSch.schema,
+      properties: propertiesWithoutFilters,
     };
-
-    const validConfig = cloneDeep(config || {});
-
-    for (const [key, value] of Object.entries(validConfig)) {
-      if (isNil(value)) {
-        delete validConfig[key as keyof ConfigData];
-      }
-    }
-
-    switch (serviceCategory) {
-      case ServiceCategory.DATABASE_SERVICES: {
-        connSch = serviceUtilClassBase.getDatabaseServiceConfig(
-          serviceType as DatabaseServiceType
-        );
-
-        break;
-      }
-      case ServiceCategory.MESSAGING_SERVICES: {
-        connSch = serviceUtilClassBase.getMessagingServiceConfig(
-          serviceType as MessagingServiceType
-        );
-
-        break;
-      }
-      case ServiceCategory.DASHBOARD_SERVICES: {
-        connSch = serviceUtilClassBase.getDashboardServiceConfig(
-          serviceType as DashboardServiceType
-        );
-
-        break;
-      }
-      case ServiceCategory.PIPELINE_SERVICES: {
-        connSch = serviceUtilClassBase.getPipelineServiceConfig(
-          serviceType as PipelineServiceType
-        );
-
-        break;
-      }
-      case ServiceCategory.ML_MODEL_SERVICES: {
-        connSch = serviceUtilClassBase.getMlModelServiceConfig(
-          serviceType as MlModelServiceType
-        );
-
-        break;
-      }
-      case ServiceCategory.METADATA_SERVICES: {
-        connSch = serviceUtilClassBase.getMetadataServiceConfig(
-          serviceType as MetadataServiceType
-        );
-
-        break;
-      }
-      case ServiceCategory.STORAGE_SERVICES: {
-        connSch = serviceUtilClassBase.getStorageServiceConfig(
-          serviceType as StorageServiceType
-        );
-
-        break;
-      }
-      case ServiceCategory.SEARCH_SERVICES: {
-        connSch = serviceUtilClassBase.getSearchServiceConfig(
-          serviceType as SearchServiceType
-        );
-
-        break;
-      }
-
-      case ServiceCategory.API_SERVICES: {
-        connSch = serviceUtilClassBase.getAPIServiceConfig(
-          serviceType as APIServiceType
-        );
-
-        break;
-      }
-    }
 
     return (
       <FormBuilder
-        cancelText={cancelText}
+        cancelText={cancelText ?? ''}
+        fields={customFields}
         formData={validConfig}
-        okText={okText}
+        okText={okText ?? ''}
         ref={formRef}
-        schema={connSch.schema}
+        schema={filteredSchema}
         serviceCategory={serviceCategory}
         status={status}
         uiSchema={connSch.uiSchema}

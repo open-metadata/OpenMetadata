@@ -195,7 +195,7 @@ function EditConnectionFormPage() {
         flex: 0.7,
         className: 'content-resizable-panel-container',
       }}
-      hideSecondPanel={!serviceDetails?.serviceType ?? ''}
+      hideSecondPanel={!serviceDetails?.serviceType}
       pageTitle={t('label.edit-entity', { entity: t('label.connection') })}
       secondPanel={{
         children: (
