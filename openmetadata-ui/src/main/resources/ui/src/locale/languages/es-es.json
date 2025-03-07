@@ -1732,6 +1732,8 @@
     "new-to-the-platform": "¿Nuevo en la plataforma?",
     "no-access-placeholder": "No tienes acceso, por favor verifica con el administrador para obtener permisos",
     "no-activity-feed": "No hemos encontrado ninguna actividad dentro de los activos de datos que posees o los que estás siguiendo actualmente.",
+    "no-activity-feed-description": "¡Aún no hay actividad! Una vez que todo comience, verás actualizaciones aquí.",
+    "no-activity-feed-title": "Tu feed está vacío",
     "no-announcement-message": "No hay anuncios. Haz clic en agregar anuncio para agregar uno.",
     "no-asset-available": "No hay activos disponibles.",
     "no-closed-task": "No hay tareas cerradas",
@@ -1772,6 +1774,8 @@
     "no-notification-found": "No se encontraron notificaciones",
     "no-open-task": "No hay tareas abiertas",
     "no-open-tasks": "No hay tareas abiertas.",
+    "no-open-tasks-description": "No tienes tareas abiertas en este momento. ¡Disfruta de un momento sin tareas!",
+    "no-open-tasks-title": "Buenas noticias",
     "no-owned-data": "Parece que tú o tu equipo actualmente no son propietarios de activos de datos. Para comenzar a ser propietario de activos de datos, haz clic en la opción <0>Explorar</0> para descubrir y reclamar activos.",
     "no-permission-for-action": "No tienes permisos para realizar esta acción.",
     "no-permission-to-view": "No tienes permisos para ver estos datos.",
@@ -2063,6 +2067,7 @@
     "no-application-schema-found": "No se encontró esquema de aplicación para {{appName}}",
     "no-owned-entities": "No tienes nada que te pertenezca todavía.",
     "no-query-available": "No hay consulta disponible.",
+    "no-records-found": "No se encontraron registros",
     "no-task-available": "No hay datos de tarea disponibles.",
     "no-task-creation-without-assignee": "No se puede crear una tarea sin destinatario",
     "page-layout-operation-error": "Error al {{operation}} el diseño de la página.",
@@ -2082,7 +2087,6 @@
     "unauthorized-user": "¡Usuario no autorizado! Por favor revise el correo electrónico o la contraseña.",
     "unexpected-error": "Se produjo un error inesperado.",
     "unexpected-response": "Respuesta inesperada del servidor.",
-    "update-entity-success": "{{entity}} actualizado exitosamente.",
-    "you-have-not-action-anything-yet": "Todavía no has {{action}} nada."
+    "update-entity-success": "{{entity}} actualizado exitosamente."
   }
 }

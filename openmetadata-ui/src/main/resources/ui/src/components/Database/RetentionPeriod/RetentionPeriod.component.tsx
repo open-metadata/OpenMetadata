@@ -19,6 +19,7 @@ import {
   Modal,
   Space,
   Tooltip,
+  Typography,
 } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
@@ -32,7 +33,6 @@ import {
   VALIDATION_MESSAGES,
 } from '../../../constants/constants';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import { ExtraInfoLabel } from '../../DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import './retention-period.less';
 import { RetentionPeriodProps } from './RetentionPeriod.interface';
 // Helper function to detect and format ISO 8601 duration
@@ -120,27 +120,34 @@ const RetentionPeriod = ({
       <Space
         className="d-flex align-start"
         data-testid="retention-period-container">
-        <ExtraInfoLabel
-          isNewDesign
-          label={t('label.retention-period')}
-          value={formatRetentionPeriod(retentionPeriod) ?? NO_DATA_PLACEHOLDER}
-        />
+        <div className="d-flex ">
+          <Typography.Text className="text-sm d-flex flex-col gap-2">
+            <div className="d-flex items-center gap-1">
+              <span className="extra-info-label-heading">
+                {t('label.retention-period')}
+              </span>
+              {hasPermission && (
+                <Tooltip
+                  title={t('label.edit-entity', {
+                    entity: t('label.retention-period'),
+                  })}>
+                  <Button
+                    className="edit-retention-period-button p-0"
+                    data-testid="edit-retention-period-button"
+                    icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
+                    size="small"
+                    type="text"
+                    onClick={() => setIsEdit(true)}
+                  />
+                </Tooltip>
+              )}
+            </div>
 
-        {hasPermission && (
-          <Tooltip
-            title={t('label.edit-entity', {
-              entity: t('label.retention-period'),
-            })}>
-            <Button
-              className="edit-retention-period-button p-0"
-              data-testid="edit-retention-period-button"
-              icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
-              size="small"
-              type="text"
-              onClick={() => setIsEdit(true)}
-            />
-          </Tooltip>
-        )}
+            <span className={`font-medium extra-info-value `}>
+              {formatRetentionPeriod(retentionPeriod) ?? NO_DATA_PLACEHOLDER}
+            </span>
+          </Typography.Text>
+        </div>
       </Space>
 
       <Modal

@@ -152,7 +152,6 @@ const MetricInfoItem: FC<MetricInfoItemProps> = ({
   return (
     <Space className="d-flex align-start" data-testid={modiFiedLabel}>
       <ExtraInfoLabel
-        isNewDesign
         dataTestId={modiFiedLabel}
         label={label}
         value={value ?? NO_DATA_PLACEHOLDER}

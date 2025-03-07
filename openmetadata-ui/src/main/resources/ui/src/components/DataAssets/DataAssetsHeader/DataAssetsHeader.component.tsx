@@ -24,7 +24,6 @@ import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as IconExternalLink } from '../../../assets/svg/external-links.svg';
 import { ReactComponent as RedAlertIcon } from '../../../assets/svg/ic-alert-red.svg';
 import { ReactComponent as TaskOpenIcon } from '../../../assets/svg/ic-open-task.svg';
-import { ReactComponent as ShareIcon } from '../../../assets/svg/ic-share.svg';
 import { ReactComponent as VersionIcon } from '../../../assets/svg/ic-version.svg';
 import { ActivityFeedTabs } from '../../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import { DomainLabel } from '../../../components/common/DomainLabel/DomainLabel.component';
@@ -50,7 +49,6 @@ import { Metric } from '../../../generated/entity/data/metric';
 import { Table } from '../../../generated/entity/data/table';
 import { Thread } from '../../../generated/entity/feed/thread';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
-import { useClipboard } from '../../../hooks/useClipBoard';
 import { SearchSourceAlias } from '../../../interface/search.interface';
 import { getActiveAnnouncement } from '../../../rest/feedsAPI';
 import { getDataQualityLineage } from '../../../rest/lineageAPI';
@@ -90,21 +88,16 @@ export const ExtraInfoLabel = ({
   label,
   value,
   dataTestId,
-  isNewDesign = false,
   showAsATag = false,
 }: {
   label: string;
   value: string | number;
   dataTestId?: string;
-  isNewDesign?: boolean;
   showAsATag?: boolean;
 }) => (
   <div className="d-flex align-start ">
-    {!isNewDesign && <Divider className="self-center h-15 " type="vertical" />}
     <Typography.Text
-      className={`text-sm d-flex ${
-        isNewDesign ? 'flex-col gap-2' : 'flex-row self-center'
-      }`}
+      className="text-sm d-flex flex-col gap-2"
       data-testid={dataTestId}>
       {!isEmpty(label) && (
         <span className="extra-info-label-heading">{`${label}: `}</span>
@@ -195,7 +188,6 @@ export const DataAssetsHeader = ({
   const USER_ID = currentUser?.id ?? '';
   const { t } = useTranslation();
   const { isTourPage } = useTourProvider();
-  const { onCopyToClipBoard } = useClipboard(window.location.href);
   const [parentContainers, setParentContainers] = useState<Container[]>([]);
   const [isBreadcrumbLoading, setIsBreadcrumbLoading] = useState(false);
   const [dqFailureCount, setDqFailureCount] = useState(0);
@@ -213,7 +205,6 @@ export const DataAssetsHeader = ({
       />
     ) : null;
   }, [dataAsset]);
-  const [copyTooltip, setCopyTooltip] = useState<string>();
 
   const excludeEntityService = useMemo(
     () =>
@@ -391,12 +382,6 @@ export const DataAssetsHeader = ({
     );
   };
 
-  const handleShareButtonClick = async () => {
-    await onCopyToClipBoard();
-    setCopyTooltip(t('message.link-copy-to-clipboard'));
-    setTimeout(() => setCopyTooltip(''), 2000);
-  };
-
   const dataAssetServiceName = useMemo(() => {
     if (isDataAssetsWithServiceField(dataAsset)) {
       return dataAsset.service?.name ?? '';
@@ -500,14 +485,6 @@ export const DataAssetsHeader = ({
                     </Button>
                   </Tooltip>
 
-                  <Tooltip
-                    placement="topRight"
-                    title={copyTooltip ?? t('message.copy-to-clipboard')}>
-                    <Button
-                      icon={<Icon component={ShareIcon} />}
-                      onClick={handleShareButtonClick}
-                    />
-                  </Tooltip>
                   <ManageButton
                     afterDeleteAction={afterDeleteAction}
                     allowSoftDelete={!dataAsset.deleted && allowSoftDelete}
@@ -602,7 +579,7 @@ export const DataAssetsHeader = ({
                     />
                   </div>
                 ) : (
-                  <div className="">
+                  <div className="flex flex-col gap-2">
                     <div className="d-flex items-center gap-1">
                       <span className="entity-no-tier">{t('label.tier')}</span>
                       {editTierPermission && (

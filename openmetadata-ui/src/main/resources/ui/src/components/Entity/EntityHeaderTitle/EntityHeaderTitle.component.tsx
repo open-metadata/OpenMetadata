@@ -13,13 +13,15 @@
 import Icon, { ExclamationCircleFilled } from '@ant-design/icons';
 import { Badge, Button, Col, Divider, Row, Tooltip, Typography } from 'antd';
 import { capitalize, isEmpty } from 'lodash';
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
+import { ReactComponent as ShareIcon } from '../../../assets/svg/copy-right.svg';
 import { ReactComponent as IconExternalLink } from '../../../assets/svg/external-link-grey.svg';
 import { ReactComponent as StarFilledIcon } from '../../../assets/svg/ic-star-filled.svg';
 import { TEXT_COLOR } from '../../../constants/Color.constants';
 import { ROUTES } from '../../../constants/constants';
+import { useClipboard } from '../../../hooks/useClipBoard';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { stringToHTML } from '../../../utils/StringsUtils';
 import CertificationTag from '../../common/CertificationTag/CertificationTag';
@@ -47,6 +49,14 @@ const EntityHeaderTitle = ({
 }: EntityHeaderTitleProps) => {
   const { t } = useTranslation();
   const location = useCustomLocation();
+  const [copyTooltip, setCopyTooltip] = useState<string>();
+  const { onCopyToClipBoard } = useClipboard(window.location.href);
+
+  const handleShareButtonClick = async () => {
+    await onCopyToClipBoard();
+    setCopyTooltip(t('message.link-copy-to-clipboard'));
+    setTimeout(() => setCopyTooltip(''), 2000);
+  };
 
   const isTourRoute = useMemo(
     () => location.pathname.includes(ROUTES.TOUR),
@@ -74,7 +84,7 @@ const EntityHeaderTitle = ({
           </Typography.Text>
         ) : null}
 
-        <div className="d-flex gap-2 align-center">
+        <div className="d-flex gap-2 items-center">
           <Typography.Text
             className="m-b-0 subheading text-md font-medium"
             data-testid="entity-header-display-name"
@@ -90,6 +100,15 @@ const EntityHeaderTitle = ({
             )}
           </Typography.Text>
 
+          <Tooltip
+            placement="topRight"
+            title={copyTooltip ?? t('message.copy-to-clipboard')}>
+            <Button
+              className="remove-button-default-styling copy-button"
+              icon={<Icon component={ShareIcon} />}
+              onClick={handleShareButtonClick}
+            />
+          </Tooltip>
           {!excludeEntityService && (
             <Tooltip
               title={t('label.field-entity', {

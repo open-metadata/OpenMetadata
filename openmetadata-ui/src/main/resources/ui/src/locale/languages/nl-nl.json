@@ -1732,6 +1732,8 @@
     "new-to-the-platform": "Nieuw op het platform?",
     "no-access-placeholder": "Je hebt geen toegang, controleer bij de beheerder om machtigingen te krijgen",
     "no-activity-feed": "We hebben geen activiteit gevonden binnen de data-assets waar je eigenaar van bent of momenteel volgt.",
+    "no-activity-feed-description": "Nog geen activiteit! Zodra het begint, zie je hier updates.",
+    "no-activity-feed-title": "Je feed is leeg",
     "no-announcement-message": "Geen aankondigingen gevonden, klik op aankondiging toevoegen om er een toe te voegen.",
     "no-asset-available": "Geen assets beschikbaar.",
     "no-closed-task": "Geen gesloten taken",
@@ -1772,6 +1774,8 @@
     "no-notification-found": "Geen meldingen gevonden",
     "no-open-task": "Geen openstaande taken",
     "no-open-tasks": "Er zijn geen openstaande taken.",
+    "no-open-tasks-description": "Je hebt op dit moment geen openstaande taken. Geniet van een taakvrij moment!",
+    "no-open-tasks-title": "Goed nieuws",
     "no-owned-data": "Het lijkt erop dat jij of jouw team momenteel geen eigenaren zijn van data-assets. Om eigenaar te worden van data-assets, klik je op de <0>Ontdek</0>-optie om assets te bekijken en eigenaarschap op te vragen.",
     "no-permission-for-action": "Je hebt niet de vereiste rechten om deze actie uit te voeren.",
     "no-permission-to-view": "Je hebt niet de vereiste rechten om deze data te bekijken.",
@@ -2063,6 +2067,7 @@
     "no-application-schema-found": "Geen applicatieschema gevonden voor {{appName}}",
     "no-owned-entities": "Je bent nog geen eigenaar van assets.",
     "no-query-available": "Geen query beschikbaar.",
+    "no-records-found": "Geen records gevonden",
     "no-task-available": "Geen taakdata beschikbaar.",
     "no-task-creation-without-assignee": "Kan geen taak aanmaken zonder toegewezen persoon",
     "page-layout-operation-error": "Fout bij {{operation}} van de paginalay-out.",
@@ -2082,7 +2087,6 @@
     "unauthorized-user": "Ongeautoriseerde gebruiker! controleer e-mail of wachtwoord",
     "unexpected-error": "Er is een onverwachte fout opgetreden.",
     "unexpected-response": "Onverwachte respons van de server.",
-    "update-entity-success": "{{entity}} succesvol bijgewerkt.",
-    "you-have-not-action-anything-yet": "Je hebt nog niet {{action}}."
+    "update-entity-success": "{{entity}} succesvol bijgewerkt."
   }
 }

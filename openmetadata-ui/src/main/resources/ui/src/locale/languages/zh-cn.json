@@ -1732,6 +1732,8 @@
     "new-to-the-platform": "您是平台新用户？",
     "no-access-placeholder": "您还没有权限访问, 请联系系统管理员",
     "no-activity-feed": "您拥有或者跟进的数据集近期没有活动信息",
+    "no-activity-feed-description": "暂无活动！一旦有更新，您将在这里看到。",
+    "no-activity-feed-title": "您的动态为空",
     "no-announcement-message": "没有公告, 请单击添加公告以新增一个",
     "no-asset-available": "没有可用的资产",
     "no-closed-task": "没有关闭的任务",
@@ -1772,6 +1774,8 @@
     "no-notification-found": "未找到通知",
     "no-open-task": "无未完成任务",
     "no-open-tasks": "目前没有任何开放的任务",
+    "no-open-tasks-description": "您当前没有未完成的任务。享受一个无任务的时刻吧！",
+    "no-open-tasks-title": "好消息",
     "no-owned-data": "您或您的团队暂时还不拥有任何数据集。 点击<0>探索</0>链接去发现和声明您的数据集",
     "no-permission-for-action": "您没有执行此操作所需的必要权限",
     "no-permission-to-view": "您没有查看此数据所需的必要权限",
@@ -2063,6 +2067,7 @@
     "no-application-schema-found": "未找到{{appName}}的应用程序模式",
     "no-owned-entities": "暂不拥有数据条目",
     "no-query-available": "没有可用的查询",
+    "no-records-found": "未找到记录",
     "no-task-available": "没有任务数据可用",
     "no-task-creation-without-assignee": "无法创建没有受理人的任务",
     "page-layout-operation-error": "在{{operation}}页面布局时出错",
@@ -2082,7 +2087,6 @@
     "unauthorized-user": "未经授权的用户！ 请检查电子邮箱或密码",
     "unexpected-error": "发生意外错误",
     "unexpected-response": "服务器返回意外响应！",
-    "update-entity-success": "{{entity}}已成功更新",
-    "you-have-not-action-anything-yet": "您还没有{{action}}任何内容"
+    "update-entity-success": "{{entity}}已成功更新"
   }
 }

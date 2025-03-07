@@ -88,7 +88,6 @@ export const getDataAssetsHeaderInfo = (
             <>
               <Divider className="self-center h-15 " type="vertical" />
               <ExtraInfoLabel
-                isNewDesign
                 label={t('label.partition-plural')}
                 value={topicDetails.partitions}
               />
@@ -98,7 +97,6 @@ export const getDataAssetsHeaderInfo = (
             <>
               <Divider className="self-center h-15 " type="vertical" />
               <ExtraInfoLabel
-                isNewDesign
                 label={t('label.replication-factor')}
                 value={topicDetails.replicationFactor}
               />
@@ -118,7 +116,6 @@ export const getDataAssetsHeaderInfo = (
             <>
               <Divider className="self-center h-15 " type="vertical" />
               <ExtraInfoLabel
-                isNewDesign
                 label={t('label.entity-type-plural', {
                   entity: t('label.dashboard'),
                 })}
@@ -130,7 +127,6 @@ export const getDataAssetsHeaderInfo = (
             <>
               <Divider className="self-center h-15 " type="vertical" />
               <ExtraInfoLabel
-                isNewDesign
                 label={t('label.project')}
                 value={dashboardDetails.project}
               />
@@ -140,7 +136,6 @@ export const getDataAssetsHeaderInfo = (
             <>
               <Divider className="self-center h-15 " type="vertical" />
               <ExtraInfoLabel
-                isNewDesign
                 label={t('label.usage')}
                 value={getUsagePercentile(
                   dashboardDetails.usageSummary?.weeklyStats?.percentileRank ||
@@ -173,7 +168,6 @@ export const getDataAssetsHeaderInfo = (
             <>
               <Divider className="self-center h-15 " type="vertical" />
               <ExtraInfoLabel
-                isNewDesign
                 label={t('label.algorithm')}
                 value={mlModelDetail.algorithm}
               />
@@ -181,7 +175,6 @@ export const getDataAssetsHeaderInfo = (
           )}
           {mlModelDetail.target && (
             <ExtraInfoLabel
-              isNewDesign
               label={t('label.target')}
               value={mlModelDetail.target}
             />
@@ -208,7 +201,6 @@ export const getDataAssetsHeaderInfo = (
             <>
               <Divider className="self-center h-15 " type="vertical" />
               <ExtraInfoLabel
-                isNewDesign
                 label={t('label.usage')}
                 value={getUsagePercentile(
                   mlModelDetail.usageSummary?.weeklyStats?.percentileRank || 0,
@@ -233,7 +225,6 @@ export const getDataAssetsHeaderInfo = (
             <>
               <Divider className="self-center h-15 " type="vertical" />
               <ExtraInfoLabel
-                isNewDesign
                 label=""
                 value={
                   containerDetails?.dataModel?.isPartitioned
@@ -247,7 +238,6 @@ export const getDataAssetsHeaderInfo = (
             <>
               <Divider className="self-center h-15 " type="vertical" />
               <ExtraInfoLabel
-                isNewDesign
                 label={t('label.number-of-object-plural')}
                 value={containerDetails.numberOfObjects}
               />
@@ -257,7 +247,6 @@ export const getDataAssetsHeaderInfo = (
             <>
               <Divider className="self-center h-15 " type="vertical" />
               <ExtraInfoLabel
-                isNewDesign
                 label={t('label.size')}
                 value={bytesToSize(containerDetails.size)}
               />
@@ -282,7 +271,6 @@ export const getDataAssetsHeaderInfo = (
             <>
               <Divider className="self-center h-15 " type="vertical" />
               <ExtraInfoLabel
-                isNewDesign
                 label={t('label.data-model-type')}
                 value={dataModelDetails.dataModelType}
               />
@@ -292,7 +280,6 @@ export const getDataAssetsHeaderInfo = (
             <>
               <Divider className="self-center h-15 " type="vertical" />
               <ExtraInfoLabel
-                isNewDesign
                 label={t('label.project')}
                 value={dataModelDetails.project}
               />
@@ -431,7 +418,6 @@ export const getDataAssetsHeaderInfo = (
             <>
               <Divider className="self-center h-15 " type="vertical" />
               <ExtraInfoLabel
-                isNewDesign
                 label={t('label.language')}
                 value={
                   (
@@ -485,7 +471,6 @@ export const getDataAssetsHeaderInfo = (
             <>
               <Divider className="self-center h-15 " type="vertical" />
               <ExtraInfoLabel
-                isNewDesign
                 dataTestId="api-endpoint-request-method"
                 label={t('label.request-method')}
                 value={apiEndpoint.requestMethod}
@@ -523,7 +508,6 @@ export const getDataAssetsHeaderInfo = (
             <>
               <Divider className="self-center h-15 " type="vertical" />
               <ExtraInfoLabel
-                isNewDesign
                 showAsATag
                 label={t('label.type')}
                 value={tableDetails.tableType}
@@ -534,7 +518,6 @@ export const getDataAssetsHeaderInfo = (
             <>
               <Divider className="self-center h-15 " type="vertical" />
               <ExtraInfoLabel
-                isNewDesign
                 label={t('label.usage')}
                 value={getUsagePercentile(
                   tableDetails.usageSummary?.weeklyStats?.percentileRank || 0,
@@ -547,7 +530,6 @@ export const getDataAssetsHeaderInfo = (
             <>
               <Divider className="self-center h-15 " type="vertical" />
               <ExtraInfoLabel
-                isNewDesign
                 label={t('label.column-plural')}
                 value={tableDetails.profile?.columnCount}
               />
@@ -557,7 +539,6 @@ export const getDataAssetsHeaderInfo = (
             <>
               <Divider className="self-center h-15 " type="vertical" />
               <ExtraInfoLabel
-                isNewDesign
                 label={t('label.row-plural')}
                 value={tableDetails.profile?.rowCount}
               />

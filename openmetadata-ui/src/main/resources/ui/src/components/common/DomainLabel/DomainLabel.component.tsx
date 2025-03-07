@@ -199,7 +199,7 @@ export const DomainLabel = ({
 
     return (
       <div
-        className={`d-flex   flex-col gap-1 ${
+        className={`d-flex   flex-col gap-2 ${
           !headerLayout && 'justify-center'
         }`}>
         {headerLayout && (

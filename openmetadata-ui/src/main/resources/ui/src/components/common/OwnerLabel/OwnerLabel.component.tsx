@@ -263,7 +263,7 @@ export const OwnerLabel = ({
             </div>
           </div>
         ) : (
-          <div className="flex flex-col gap-1">
+          <div className="flex flex-col gap-2">
             <div className="d-flex items-center gap-1">
               {!isCompactView && (
                 <div className="owner-avatar-icon d-flex">
