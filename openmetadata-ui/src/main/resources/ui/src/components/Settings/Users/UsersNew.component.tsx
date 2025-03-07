@@ -135,7 +135,7 @@ const Users = ({
         gutter={[20, 0]}
         key={currentTab}
         wrap={false}>
-        <Col span={12}>
+        <Col flex="auto">
           <div className="user-layout-scroll">
             <AssetsTabs
               assetCount={assetCount}
@@ -149,7 +149,7 @@ const Users = ({
         </Col>
 
         {previewAsset && (
-          <Col className="user-page-layout-right-panel" span={12}>
+          <Col className="user-page-layout-right-panel" flex="400px">
             <EntitySummaryPanel
               entityDetails={previewAsset}
               handleClosePanel={() => setPreviewAsset(undefined)}
