@@ -30,7 +30,10 @@
       "default": null
     },
     "appConfiguration": {
-      "description": "Application Configuration object."
+      "existingJavaType": "java.util.Map<String, Object>",
+      "description": "Application Configuration object.",
+      "type": "object",
+      "additionalProperties": true
     },
     "appSchedule": {
       "$ref": "./app.json#/definitions/appSchedule"

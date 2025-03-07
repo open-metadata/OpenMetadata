@@ -4,6 +4,7 @@ import static org.openmetadata.schema.entity.events.SubscriptionDestination.Subs
 import static org.openmetadata.service.Entity.KPI;
 import static org.openmetadata.service.Entity.TEAM;
 import static org.openmetadata.service.apps.scheduler.AppScheduler.APP_NAME;
+import static org.openmetadata.service.apps.scheduler.OmAppJobListener.APP_CONFIG;
 import static org.openmetadata.service.util.SubscriptionUtil.getAdminsData;
 import static org.openmetadata.service.util.Utilities.getMonthAndDateFromEpoch;
 import static org.openmetadata.service.util.email.TemplateConstants.DATA_INSIGHT_REPORT_TEMPLATE;
@@ -17,6 +18,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
+import javax.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.Pair;
 import org.openmetadata.common.utils.CommonUtil;
@@ -34,6 +36,7 @@ import org.openmetadata.service.apps.AbstractNativeApplication;
 import org.openmetadata.service.apps.bundles.insights.utils.TimestampUtils;
 import org.openmetadata.service.events.scheduled.template.DataInsightDescriptionAndOwnerTemplate;
 import org.openmetadata.service.events.scheduled.template.DataInsightTotalAssetTemplate;
+import org.openmetadata.service.exception.AppException;
 import org.openmetadata.service.exception.EventSubscriptionJobException;
 import org.openmetadata.service.exception.SearchIndexException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
@@ -69,6 +72,9 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
   public void execute(JobExecutionContext jobExecutionContext) {
     String appName = (String) jobExecutionContext.getJobDetail().getJobDataMap().get(APP_NAME);
     App app = collectionDAO.applicationDAO().findEntityByName(appName);
+    app.setAppConfiguration(
+        JsonUtils.getMapFromJson(
+            (String) jobExecutionContext.getJobDetail().getJobDataMap().get(APP_CONFIG)));
 
     // Calculate time config
     long currentTime = System.currentTimeMillis();
@@ -98,6 +104,17 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
     } catch (Exception e) {
       LOG.error("[DIReport] Failed in sending report due to", e);
       throw new EventSubscriptionJobException(e);
+    }
+  }
+
+  @Override
+  protected void validateConfig(Map<String, Object> config) {
+    try {
+      JsonUtils.convertValue(config, DataInsightsReportAppConfig.class);
+    } catch (IllegalArgumentException e) {
+      throw AppException.byMessage(
+          Response.Status.BAD_REQUEST,
+          "Invalid DataInsightsReportAppConfig configuration: " + e.getMessage());
     }
   }
 

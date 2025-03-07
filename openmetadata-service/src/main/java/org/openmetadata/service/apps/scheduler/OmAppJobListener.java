@@ -1,6 +1,7 @@
 package org.openmetadata.service.apps.scheduler;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.service.apps.scheduler.AppScheduler.APP_CONFIG_KEY;
 import static org.openmetadata.service.apps.scheduler.AppScheduler.APP_NAME;
 
 import java.util.HashMap;
@@ -25,6 +26,7 @@ import org.quartz.JobListener;
 
 @Slf4j
 public class OmAppJobListener implements JobListener {
+  public static final String APP_CONFIG = "appConfig";
   private final AppRepository repository;
   private static final String SCHEDULED_APP_RUN_EXTENSION = "AppScheduleRun";
   public static final String WEBSOCKET_STATUS_CHANNEL = "WebsocketStatusUpdateExtension";
@@ -48,6 +50,13 @@ public class OmAppJobListener implements JobListener {
           (String) jobExecutionContext.getJobDetail().getJobDataMap().get("triggerType");
       String appName = (String) jobExecutionContext.getJobDetail().getJobDataMap().get(APP_NAME);
       App jobApp = repository.findByName(appName, Include.NON_DELETED);
+
+      Object overrideConfig =
+          jobExecutionContext.getMergedJobDataMap().getWrappedMap().get(APP_CONFIG_KEY);
+      if (overrideConfig != null) {
+        jobApp.getAppConfiguration().putAll((Map<String, Object>) overrideConfig);
+      }
+
       ApplicationHandler.getInstance().setAppRuntimeProperties(jobApp);
       JobDataMap dataMap = jobExecutionContext.getJobDetail().getJobDataMap();
       long jobStartTime = System.currentTimeMillis();
@@ -74,6 +83,7 @@ public class OmAppJobListener implements JobListener {
       }
       // Put the Context in the Job Data Map
       dataMap.put(SCHEDULED_APP_RUN_EXTENSION, JsonUtils.pojoToJson(runRecord));
+      dataMap.put(APP_CONFIG, JsonUtils.pojoToJson(jobApp.getAppConfiguration()));
 
       // Insert new Record Run
       pushApplicationStatusUpdates(jobExecutionContext, runRecord, update);
