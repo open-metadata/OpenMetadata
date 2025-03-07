@@ -56,7 +56,10 @@ public class ChangeSummarizer<T extends EntityInterface> {
                     new ChangeSummary()
                         .withChangeSource(changeSource)
                         .withChangedAt(changedAt)
-                        .withChangedBy(changedBy)));
+                        .withChangedBy(changedBy),
+                // If its a consolidation, we might have multiple changes for the same field.
+                // Since we are only interested in the field name, we can just take whichever.
+                (existing, replacement) -> existing));
   }
 
   private boolean isFieldTracked(String fieldName) {

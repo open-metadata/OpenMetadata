@@ -1732,6 +1732,8 @@
     "new-to-the-platform": "플랫폼이 처음이신가요?",
     "no-access-placeholder": "접근 권한이 없습니다. 관리자에게 문의하세요.",
     "no-activity-feed": "현재 소유하거나 팔로우하는 데이터 자산에 업데이트가 없습니다. <0>{{explored}}</0>를 확인하고, 관심 있는 데이터 자산의 소유권을 주장하거나 팔로우하세요.",
+    "no-activity-feed-description": "No activity yet! Once things get rolling, you’ll see updates here.",
+    "no-activity-feed-title": "Your feed is empty",
     "no-announcement-message": "공지사항이 없습니다. 공지 추가 버튼을 클릭하여 추가하세요.",
     "no-asset-available": "사용 가능한 자산이 없습니다.",
     "no-closed-task": "닫힌 작업이 없습니다.",
@@ -1772,6 +1774,8 @@
     "no-notification-found": "알림을 찾을 수 없습니다.",
     "no-open-task": "열린 작업이 없습니다.",
     "no-open-tasks": "좋은 소식입니다! 현재 열린 작업이 없습니다. 잠시 여유를 즐기세요!",
+    "no-open-tasks-description": "You have no open tasks right now. Enjoy a task-free moment!",
+    "no-open-tasks-title": "Great News",
     "no-owned-data": "데이터는 소유될 때 더 가치가 있습니다. 아직 귀하나 팀이 데이터 자산의 소유권을 주장하지 않은 것 같습니다. 데이터 자산을 소유하기 시작하려면 <0>탐색</0> 옵션을 클릭하세요.",
     "no-permission-for-action": "이 작업을 수행할 권한이 없습니다.",
     "no-permission-to-view": "이 데이터를 볼 권한이 없습니다.",
@@ -2063,6 +2067,7 @@
     "no-application-schema-found": "No application schema found for {{appName}}",
     "no-owned-entities": "아직 소유한 항목이 없습니다.",
     "no-query-available": "사용 가능한 쿼리가 없습니다.",
+    "no-records-found": "No records found",
     "no-task-available": "작업 데이터가 없습니다.",
     "no-task-creation-without-assignee": "담당자 없이 작업을 생성할 수 없습니다",
     "page-layout-operation-error": "페이지 레이아웃 {{operation}} 중 오류 발생.",
@@ -2082,7 +2087,6 @@
     "unauthorized-user": "권한이 없는 사용자입니다! 이메일 또는 비밀번호를 확인하세요.",
     "unexpected-error": "예기치 않은 오류가 발생했습니다.",
     "unexpected-response": "서버로부터 예기치 않은 응답이 있었습니다.",
-    "update-entity-success": "{{entity}}이(가) 성공적으로 업데이트되었습니다.",
-    "you-have-not-action-anything-yet": "아직 아무 것도 {{action}}하지 않았습니다."
+    "update-entity-success": "{{entity}}이(가) 성공적으로 업데이트되었습니다."
   }
 }

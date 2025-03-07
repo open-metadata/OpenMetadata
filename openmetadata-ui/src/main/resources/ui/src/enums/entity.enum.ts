@@ -99,6 +99,7 @@ export enum TabSpecificField {
   FOLLOWERS = 'followers',
   JOINS = 'joins',
   TAGS = 'tags',
+  STATE = 'state',
   OWNERS = 'owners',
   DATAMODEL = 'dataModel',
   CHARTS = 'charts',
