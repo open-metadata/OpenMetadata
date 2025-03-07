@@ -36,6 +36,7 @@ import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.schema.entity.app.FailureContext;
 import org.openmetadata.schema.entity.app.SuccessContext;
+import org.openmetadata.schema.entity.applications.configuration.ApplicationConfig;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.system.EventPublisherJob;
 import org.openmetadata.schema.system.IndexingError;
@@ -472,7 +473,7 @@ public class SearchIndexApp extends AbstractNativeApplication {
   }
 
   @Override
-  protected void validateConfig(Map<String, Object> appConfig) {
+  protected void validateConfig(ApplicationConfig appConfig) {
     try {
       JsonUtils.convertValue(appConfig, EventPublisherJob.class);
     } catch (IllegalArgumentException e) {

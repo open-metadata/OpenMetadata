@@ -14,6 +14,7 @@ import org.openmetadata.schema.entity.app.AppExtension;
 import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.schema.entity.app.FailureContext;
 import org.openmetadata.schema.entity.app.SuccessContext;
+import org.openmetadata.schema.entity.applications.configuration.ApplicationConfig;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.apps.ApplicationHandler;
 import org.openmetadata.service.jdbi3.AppRepository;
@@ -51,10 +52,14 @@ public class OmAppJobListener implements JobListener {
       String appName = (String) jobExecutionContext.getJobDetail().getJobDataMap().get(APP_NAME);
       App jobApp = repository.findByName(appName, Include.NON_DELETED);
 
-      Object overrideConfig =
-          jobExecutionContext.getMergedJobDataMap().getWrappedMap().get(APP_CONFIG_KEY);
+      ApplicationConfig overrideConfig =
+          JsonUtils.convertValue(
+              jobExecutionContext.getMergedJobDataMap().getWrappedMap().get(APP_CONFIG_KEY),
+              ApplicationConfig.class);
+      ApplicationConfig jobConfig =
+          JsonUtils.convertValue(jobApp.getAppConfiguration(), ApplicationConfig.class);
       if (overrideConfig != null) {
-        jobApp.getAppConfiguration().putAll((Map<String, Object>) overrideConfig);
+        jobConfig.getAdditionalProperties().putAll(overrideConfig.getAdditionalProperties());
       }
 
       ApplicationHandler.getInstance().setAppRuntimeProperties(jobApp);

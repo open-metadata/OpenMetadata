@@ -18,6 +18,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.configuration.apps.AppPrivateConfig;
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppMarketPlaceDefinition;
+import org.openmetadata.schema.entity.applications.configuration.ApplicationConfig;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
@@ -98,7 +99,7 @@ public class ApplicationHandler {
       App app,
       CollectionDAO daoCollection,
       SearchRepository searchRepository,
-      Map<String, Object> configPayload) {
+      ApplicationConfig configPayload) {
     try {
       runAppInit(app, daoCollection, searchRepository).triggerOnDemand(configPayload);
     } catch (ClassNotFoundException

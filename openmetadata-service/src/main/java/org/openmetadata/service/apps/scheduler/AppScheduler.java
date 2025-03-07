@@ -22,12 +22,14 @@ import org.openmetadata.schema.AppRuntime;
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppSchedule;
 import org.openmetadata.schema.entity.app.ScheduleTimeline;
+import org.openmetadata.schema.entity.applications.configuration.ApplicationConfig;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.apps.NativeApplication;
 import org.openmetadata.service.exception.UnhandledServerException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.util.JsonUtils;
 import org.quartz.CronScheduleBuilder;
 import org.quartz.JobBuilder;
 import org.quartz.JobDataMap;
@@ -251,7 +253,7 @@ public class AppScheduler {
     throw new IllegalArgumentException("Invalid Trigger Info for the scheduled application.");
   }
 
-  public void triggerOnDemandApplication(App application, Map<String, Object> config) {
+  public void triggerOnDemandApplication(App application, ApplicationConfig config) {
     if (application.getFullyQualifiedName() == null) {
       throw new IllegalArgumentException("Application's fullyQualifiedName is null.");
     }
@@ -283,7 +285,7 @@ public class AppScheduler {
           jobBuilder(application, String.format("%s-%s", application.getName(), ON_DEMAND_JOB));
       newJobDetail.getJobDataMap().put("triggerType", ON_DEMAND_JOB);
       newJobDetail.getJobDataMap().put(APP_NAME, application.getFullyQualifiedName());
-      newJobDetail.getJobDataMap().put(APP_CONFIG_KEY, config);
+      newJobDetail.getJobDataMap().put(APP_CONFIG_KEY, JsonUtils.pojoToJson(config));
       Trigger trigger =
           TriggerBuilder.newTrigger()
               .withIdentity(
