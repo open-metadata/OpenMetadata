@@ -32,7 +32,6 @@ import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ReportDataContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
-import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.ResultList;
 
 @Slf4j
@@ -173,13 +172,8 @@ public class WorkflowInstanceStateResource
         new OperationContext(Entity.WORKFLOW_DEFINITION, MetadataOperation.VIEW_ALL);
     ResourceContextInterface resourceContext = ReportDataContext.builder().build();
     authorizer.authorize(securityContext, operationContext, resourceContext);
-
-    ListFilter filter = new ListFilter(null);
-    filter.addQueryParam(
-        "entityFQNHash",
-        FullyQualifiedName.buildHash(workflowDefinitionName, workflowInstanceId.toString()));
-
-    return repository.list(offset, startTs, endTs, limitParam, filter, latest);
+    return repository.listWorkflowInstanceStateForInstance(
+        workflowDefinitionName, workflowInstanceId, offset, startTs, endTs, limitParam, latest);
   }
 
   @GET

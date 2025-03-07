@@ -124,7 +124,15 @@ public class CreateIngestionPipelineImpl implements JavaDelegate {
         wasSuccessful = deployPipeline(pipelineServiceClient, ingestionPipeline, service);
       }
       // TODO: Use this variable to either continue the flow or send some kind of notification
-      varHandler.setNodeVariable(RESULT_VARIABLE, wasSuccessful);
+      varHandler.setNodeVariable(RESULT_VARIABLE, getResultValue(wasSuccessful));
+    }
+  }
+
+  private String getResultValue(boolean result) {
+    if (result) {
+      return "success";
+    } else {
+      return "failure";
     }
   }
 

@@ -1,0 +1,303 @@
+{
+  "id": "281f3b16-ed2f-4302-b3e0-b333c3002a83",
+  "name": "DayOneExperienceWorkflow",
+  "fullyQualifiedName": "DayOneExperienceWorkflow",
+  "displayName": "Day One Experience Workflow",
+  "description": "Whenever a new Service is created, the relevant pipelines will automatically be created, deployed and run.",
+  "config": {
+    "storeStageStatus": true
+  },
+  "trigger": {
+    "type": "eventBasedEntity",
+    "config": {
+      "entityType": "databaseService",
+      "events": ["Created"]
+    }
+  },
+  "nodes": [
+    {
+      "type": "startEvent",
+      "subType": "startEvent",
+      "name": "ServiceCreated",
+      "displayName": "Service Created"
+    },
+    {
+      "type": "automatedTask",
+      "subType": "createIngestionPipelineTask",
+      "name": "CreateMetadataIngestion",
+      "displayName": "Create Metadata Ingestion Pipeline",
+      "config": {
+        "pipelineType": "metadata",
+        "deploy": true
+      },
+      "inputNamespaceMap": {
+        "relatedEntity": "global"
+      }
+    },
+    {
+      "type": "automatedTask",
+      "subType": "runIngestionPipelineTask",
+      "name": "RunMetadataIngestion",
+      "displayName": "Run Metadata Ingestion Pipeline",
+      "config": {
+        "waitForCompletion": true,
+        "timeoutSeconds": 3600
+      },
+      "inputNamespaceMap": {
+        "ingestionPipelineId": "CreateMetadataIngestion"
+      }
+    },
+    {
+      "type": "gateway",
+      "subType": "parallelGateway",
+      "name": "FirstGateway",
+      "displayName": "First Gateway"
+    },
+    {
+      "type": "automatedTask",
+      "subType": "runAppTask",
+      "name": "RunDataInsightsApplication",
+      "displayName": "Run Data Insights Application",
+      "config": {
+        "appName": "DataInsightsApplication",
+        "waitForCompletion": true,
+        "timeoutSeconds": 3600
+      },
+      "inputNamespaceMap": {
+        "relatedEntity": "global"
+      }
+    },
+    {
+      "type": "automatedTask",
+      "subType": "createIngestionPipelineTask",
+      "name": "CreateLineageIngestion",
+      "displayName": "Create Lineage Ingestion Pipeline",
+      "config": {
+        "pipelineType": "lineage",
+        "deploy": true
+      },
+      "inputNamespaceMap": {
+        "relatedEntity": "global"
+      }
+    },
+    {
+      "type": "automatedTask",
+      "subType": "createIngestionPipelineTask",
+      "name": "CreateUsageIngestion",
+      "displayName": "Create Usage Ingestion Pipeline",
+      "config": {
+        "pipelineType": "usage",
+        "deploy": true
+      },
+      "inputNamespaceMap": {
+        "relatedEntity": "global"
+      }
+    },
+    {
+      "type": "automatedTask",
+      "subType": "runIngestionPipelineTask",
+      "name": "RunUsageIngestion",
+      "displayName": "Run Usage Ingestion Pipeline",
+      "config": {
+        "waitForCompletion": true,
+        "timeoutSeconds": 3600
+      },
+      "inputNamespaceMap": {
+        "ingestionPipelineId": "CreateUsageIngestion"
+      }
+    },
+    {
+      "type": "automatedTask",
+      "subType": "runIngestionPipelineTask",
+      "name": "RunLineageIngestion",
+      "displayName": "Run Lineage Ingestion Pipeline",
+      "config": {
+        "waitForCompletion": true,
+        "timeoutSeconds": 3600
+      },
+      "inputNamespaceMap": {
+        "ingestionPipelineId": "CreateLineageIngestion"
+      }
+    },
+    {
+      "type": "gateway",
+      "subType": "parallelGateway",
+      "name": "SecondGateway",
+      "displayName": "Second Gateway"
+    },
+    {
+      "type": "automatedTask",
+      "subType": "createIngestionPipelineTask",
+      "name": "CreateProfilerIngestion",
+      "displayName": "Create Profiler Ingestion Pipeline",
+      "config": {
+        "pipelineType": "profiler",
+        "deploy": true
+      },
+      "inputNamespaceMap": {
+        "relatedEntity": "global"
+      }
+    },
+    {
+      "type": "automatedTask",
+      "subType": "runIngestionPipelineTask",
+      "name": "RunProfilerIngestion",
+      "displayName": "Run Profiler Ingestion Pipeline",
+      "config": {
+        "waitForCompletion": true,
+        "timeoutSeconds": 3600
+      },
+      "inputNamespaceMap": {
+        "ingestionPipelineId": "CreateProfilerIngestion"
+      }
+    },
+    {
+      "type": "automatedTask",
+      "subType": "createIngestionPipelineTask",
+      "name": "CreateAutoClassificationIngestion",
+      "displayName": "Create AutoClassification Ingestion Pipeline",
+      "config": {
+        "pipelineType": "autoClassification",
+        "deploy": true
+      },
+      "inputNamespaceMap": {
+        "relatedEntity": "global"
+      }
+    },
+    {
+      "type": "automatedTask",
+      "subType": "runIngestionPipelineTask",
+      "name": "RunAutoClassificationIngestion",
+      "displayName": "Run AutoClassification Ingestion Pipeline",
+      "config": {
+        "waitForCompletion": true,
+        "timeoutSeconds": 3600
+      },
+      "inputNamespaceMap": {
+        "ingestionPipelineId": "CreateAutoClassificationIngestion"
+      }
+    },
+    {
+      "type": "gateway",
+      "subType": "parallelGateway",
+      "name": "SyncGateway",
+      "displayName": "Sync Gateway"
+    },
+    {
+      "type": "automatedTask",
+      "subType": "runAppTask",
+      "name": "RunFinalDataInsightsApplication",
+      "displayName": "Run Data Insights Application",
+      "config": {
+        "appName": "DataInsightsApplication",
+        "waitForCompletion": true,
+        "timeoutSeconds": 3600
+      },
+      "inputNamespaceMap": {
+        "relatedEntity": "global"
+      }
+    },
+    {
+      "type": "endEvent",
+      "subType": "endEvent",
+      "name": "WorkflowEnded",
+      "displayName": "Workflow Ended"
+    },
+    {
+      "type": "endEvent",
+      "subType": "endEvent",
+      "name": "WorkflowFailure",
+      "displayName": "Workflow Failure"
+    }
+  ],
+  "edges": [
+    {
+      "from": "ServiceCreated",
+      "to": "CreateMetadataIngestion"
+    },
+    {
+      "from": "CreateMetadataIngestion",
+      "to": "RunMetadataIngestion"
+    },
+    {
+      "from": "RunMetadataIngestion",
+      "to": "WorkflowFailure",
+      "condition": "failure"
+    },
+    {
+      "from": "RunMetadataIngestion",
+      "to": "FirstGateway",
+      "condition": "success"
+    },
+    {
+      "from": "FirstGateway",
+      "to": "RunDataInsightsApplication"
+    },
+    {
+      "from": "RunDataInsightsApplication",
+      "to": "SyncGateway"
+    },
+    {
+      "from": "FirstGateway",
+      "to": "CreateLineageIngestion"
+    },
+    {
+      "from": "CreateLineageIngestion",
+      "to": "RunLineageIngestion"
+    },
+    {
+      "from": "RunLineageIngestion",
+      "to": "SyncGateway"
+    },
+    {
+      "from": "FirstGateway",
+      "to": "CreateUsageIngestion"
+    },
+    {
+      "from": "CreateUsageIngestion",
+      "to": "RunUsageIngestion"
+    },
+    {
+      "from": "RunUsageIngestion",
+      "to": "WorkflowFailure",
+      "condition": "failure"
+    },
+    {
+      "from": "RunUsageIngestion",
+      "to": "SecondGateway",
+      "condition": "success"
+    },
+    {
+      "from": "SecondGateway",
+      "to": "CreateAutoClassificationIngestion"
+    },
+    {
+      "from": "CreateAutoClassificationIngestion",
+      "to": "RunAutoClassificationIngestion"
+    },
+    {
+      "from": "RunAutoClassificationIngestion",
+      "to": "SyncGateway"
+    },
+    {
+      "from": "SecondGateway",
+      "to": "CreateProfilerIngestion"
+    },
+    {
+      "from": "CreateProfilerIngestion",
+      "to": "RunProfilerIngestion"
+    },
+    {
+      "from": "RunProfilerIngestion",
+      "to": "SyncGateway"
+    },
+    {
+      "from": "SyncGateway",
+      "to": "RunFinalDataInsightsApplication"
+    },
+    {
+      "from": "RunFinalDataInsightsApplication",
+      "to": "WorkflowEnded"
+    }
+  ]
+}

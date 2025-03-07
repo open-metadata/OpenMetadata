@@ -1,5 +1,6 @@
 package org.openmetadata.service.governance.workflows.elements;
 
+import org.openmetadata.schema.governance.workflows.WorkflowConfiguration;
 import org.openmetadata.schema.governance.workflows.elements.NodeSubType;
 import org.openmetadata.schema.governance.workflows.elements.WorkflowNodeDefinitionInterface;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.CheckEntityAttributesTaskDefinition;
@@ -24,23 +25,26 @@ import org.openmetadata.service.governance.workflows.elements.nodes.startEvent.S
 import org.openmetadata.service.governance.workflows.elements.nodes.userTask.UserApprovalTask;
 
 public class NodeFactory {
-  public static NodeInterface createNode(WorkflowNodeDefinitionInterface nodeDefinition) {
+  public static NodeInterface createNode(
+      WorkflowNodeDefinitionInterface nodeDefinition, WorkflowConfiguration config) {
     return switch (NodeSubType.fromValue(nodeDefinition.getSubType())) {
-      case START_EVENT -> new StartEvent((StartEventDefinition) nodeDefinition);
-      case END_EVENT -> new EndEvent((EndEventDefinition) nodeDefinition);
+      case START_EVENT -> new StartEvent((StartEventDefinition) nodeDefinition, config);
+      case END_EVENT -> new EndEvent((EndEventDefinition) nodeDefinition, config);
       case CHECK_ENTITY_ATTRIBUTES_TASK -> new CheckEntityAttributesTask(
-          (CheckEntityAttributesTaskDefinition) nodeDefinition);
+          (CheckEntityAttributesTaskDefinition) nodeDefinition, config);
       case SET_ENTITY_CERTIFICATION_TASK -> new SetEntityCertificationTask(
-          (SetEntityCertificationTaskDefinition) nodeDefinition);
+          (SetEntityCertificationTaskDefinition) nodeDefinition, config);
       case SET_GLOSSARY_TERM_STATUS_TASK -> new SetGlossaryTermStatusTask(
-          (SetGlossaryTermStatusTaskDefinition) nodeDefinition);
-      case USER_APPROVAL_TASK -> new UserApprovalTask((UserApprovalTaskDefinition) nodeDefinition);
+          (SetGlossaryTermStatusTaskDefinition) nodeDefinition, config);
+      case USER_APPROVAL_TASK -> new UserApprovalTask(
+          (UserApprovalTaskDefinition) nodeDefinition, config);
       case CREATE_INGESTION_PIPELINE_TASK -> new CreateIngestionPipelineTask(
-          (CreateIngestionPipelineTaskDefinition) nodeDefinition);
+          (CreateIngestionPipelineTaskDefinition) nodeDefinition, config);
       case RUN_INGESTION_PIPELINE_TASK -> new RunIngestionPipelineTask(
-          (RunIngestionPipelineTaskDefinition) nodeDefinition);
-      case RUN_APP_TASK -> new RunAppTask((RunAppTaskDefinition) nodeDefinition);
-      case PARALLEL_GATEWAY -> new ParallelGateway((ParallelGatewayDefinition) nodeDefinition);
+          (RunIngestionPipelineTaskDefinition) nodeDefinition, config);
+      case RUN_APP_TASK -> new RunAppTask((RunAppTaskDefinition) nodeDefinition, config);
+      case PARALLEL_GATEWAY -> new ParallelGateway(
+          (ParallelGatewayDefinition) nodeDefinition, config);
     };
   }
 }

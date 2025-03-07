@@ -12,6 +12,7 @@ import org.jdbi.v3.core.statement.UnableToExecuteStatementException;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
 import org.openmetadata.schema.dataInsight.custom.LineChart;
 import org.openmetadata.schema.dataInsight.custom.LineChartMetric;
+import org.openmetadata.schema.governance.workflows.WorkflowConfiguration;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.governance.workflows.elements.WorkflowNodeDefinitionInterface;
 import org.openmetadata.service.Entity;
@@ -139,6 +140,7 @@ public class MigrationUtil {
           }
         }
       }
+      workflowDefinition.withConfig(new WorkflowConfiguration());
       repository.createOrUpdate(null, workflowDefinition);
     }
   }

@@ -58,6 +58,9 @@
     "exception": {
       "description": "If the Workflow Instance has errors, 'True'. Else, 'False'.",
       "type": "boolean"
+    },
+    "status": {
+      "$ref": "workflowInstance.json#/definitions/workflowStatus"
     }
   },
   "required": [],
