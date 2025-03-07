@@ -259,7 +259,8 @@ const UserPopOverCard: FC<Props> = ({
           userName={userName}
         />
       }
-      trigger="hover">
+      trigger="hover"
+      zIndex={9999}>
       {children ?? (
         <Link
           className={classNames(
