@@ -570,8 +570,8 @@ export const getDataAssetsHeaderInfo = (
   if ('sourceUrl' in dataAsset && dataAsset.sourceUrl) {
     returnData.extraInfo = (
       <>
-        <Divider className="self-center h-15 " type="vertical" />
         {returnData.extraInfo}
+        <Divider className="self-center h-15 " type="vertical" />
         <ExtraInfoLink
           ellipsis
           newTab
