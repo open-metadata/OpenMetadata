@@ -132,7 +132,6 @@ export default function EntitySummaryPanel({
           onClick={handleClosePanel}
         />
       }
-      style={{ border: 'none' }}
       title={
         viewPermission && (
           <Link
