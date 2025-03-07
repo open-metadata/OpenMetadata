@@ -154,7 +154,7 @@ class StoredProcedureClassBase {
       DESCRIPTION_WIDGET,
       {
         fullyQualifiedName: DetailPageWidgetKeys.STORED_PROCEDURE_CODE,
-        name: i18n.t('label.stored_procedure_code'),
+        name: i18n.t('label.code'),
         data: {
           gridSizes: ['large'] as GridSizes[],
         },
