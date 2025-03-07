@@ -622,7 +622,7 @@ export const TaskTabNew = ({
 
     return (
       <Space
-        className="items-end  justify-end task-cta-buttons"
+        className="items-end  justify-end"
         data-testid="task-cta-buttons"
         size="small">
         <Tooltip
@@ -668,7 +668,7 @@ export const TaskTabNew = ({
     const hasApprovalAccess = isAssignee || isCreator || editPermission;
 
     return (
-      <div className=" d-flex justify-end items-center gap-4 task-cta-buttons">
+      <div className=" d-flex justify-end items-center gap-4">
         <Dropdown.Button
           className="w-auto task-action-button"
           data-testid="task-cta-buttons"
@@ -706,7 +706,7 @@ export const TaskTabNew = ({
 
     return (
       <Space
-        className="items-end  justify-end task-cta-buttons"
+        className="items-end  justify-end"
         data-testid="task-cta-buttons"
         size="small">
         {isCreator && !hasEditAccess && (

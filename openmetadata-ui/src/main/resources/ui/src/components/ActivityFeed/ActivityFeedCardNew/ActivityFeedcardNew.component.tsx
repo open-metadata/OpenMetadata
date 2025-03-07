@@ -132,9 +132,11 @@ const ActivityFeedCardNew = ({
             className={classNames('text-sm', {
               'max-one-line': !showThread,
             })}>
-            <span className="w-4 h-4 m-r-xss d-inline-flex  align-middle">
-              {searchClassBase.getEntityIcon(entityType ?? '')}
-            </span>
+            {searchClassBase.getEntityIcon(entityType ?? '') && (
+              <span className="w-4 h-4 m-r-xss d-inline-flex align-middle">
+                {searchClassBase.getEntityIcon(entityType ?? '')}
+              </span>
+            )}
             <Link
               className="break-word text-sm header-link"
               data-testid="entity-link"
@@ -157,9 +159,11 @@ const ActivityFeedCardNew = ({
             ' m-t-xss':
               showThread && feed.entityRef?.type === EntityType.CONTAINER,
           })}>
-          <span className="w-4 h-4 m-r-xss d-inline-flex  align-middle">
-            {searchClassBase.getEntityIcon(entityType ?? '')}
-          </span>
+          {searchClassBase.getEntityIcon(entityType ?? '') && (
+            <span className="w-4 h-4 m-r-xss d-inline-flex align-middle">
+              {searchClassBase.getEntityIcon(entityType ?? '')}
+            </span>
+          )}
           <Typography.Text
             className={classNames('text-sm', {
               'max-one-line': !showThread,
@@ -293,7 +297,12 @@ const ActivityFeedCardNew = ({
           )}
           {showFeedEditor ? (
             <ActivityFeedEditorNew
-              className="m-t-md feed-editor activity-feed-editor-container-new"
+              className={classNames(
+                'm-t-md feed-editor activity-feed-editor-container-new',
+                {
+                  'm-b-md': showActivityFeedEditor && feed?.posts?.length === 0,
+                }
+              )}
               onSave={onSave}
             />
           ) : (

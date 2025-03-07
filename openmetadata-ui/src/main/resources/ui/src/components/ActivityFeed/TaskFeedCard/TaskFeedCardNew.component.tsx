@@ -241,8 +241,8 @@ const TaskFeedCard = ({
         data-testid="task-feed-card">
         <Row
           gutter={
-            isTaskTestCaseResult
-              ? [0, 8]
+            isTaskTestCaseResult || isTaskGlossaryApproval
+              ? [0, 6]
               : isTaskDescription
               ? undefined
               : [0, 14]
@@ -341,28 +341,31 @@ const TaskFeedCard = ({
               </Col>
             </Col>
 
-            {!isTaskTestCaseResult && hasEditAccess && (
-              <Col className="d-flex gap-2">
-                {feed.task?.status === ThreadTaskStatus.Open && (
-                  <Button
-                    className="approve-btn d-flex items-center"
-                    icon={<CheckCircleFilled />}
-                    type="primary"
-                    onClick={onTaskResolve}>
-                    {t('label.approve')}
-                  </Button>
-                )}
-                {feed.task?.status === ThreadTaskStatus.Open && (
-                  <Button
-                    className="reject-btn  d-flex items-center"
-                    icon={<CloseCircleFilled />}
-                    type="default"
-                    onClick={onTaskReject}>
-                    {t('label.reject')}
-                  </Button>
-                )}
-              </Col>
-            )}
+            {!isTaskTestCaseResult &&
+              hasEditAccess &&
+              taskDetails?.type !== TaskType.RequestDescription &&
+              taskDetails?.type !== TaskType.RequestTag && (
+                <Col className="d-flex gap-2">
+                  {feed.task?.status === ThreadTaskStatus.Open && (
+                    <Button
+                      className="approve-btn d-flex items-center"
+                      icon={<CheckCircleFilled />}
+                      type="primary"
+                      onClick={onTaskResolve}>
+                      {t('label.approve')}
+                    </Button>
+                  )}
+                  {feed.task?.status === ThreadTaskStatus.Open && (
+                    <Button
+                      className="reject-btn  d-flex items-center"
+                      icon={<CloseCircleFilled />}
+                      type="default"
+                      onClick={onTaskReject}>
+                      {t('label.reject')}
+                    </Button>
+                  )}
+                </Col>
+              )}
           </Col>
         </Row>
       </div>
