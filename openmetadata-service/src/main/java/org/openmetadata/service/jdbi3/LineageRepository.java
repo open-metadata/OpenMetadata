@@ -524,7 +524,7 @@ public class LineageRepository {
 
       Map<String, String> baseRow = new HashMap<>();
       baseRow.put("fromEntityFQN", getText(fromEntity, FIELD_FULLY_QUALIFIED_NAME));
-      baseRow.put("fromServiceName", getText(fromEntity.path(""), FIELD_NAME));
+      baseRow.put("fromServiceName", getText(fromEntity.path(FIELD_SERVICE), FIELD_NAME));
       baseRow.put("fromServiceType", getText(fromEntity, "serviceType"));
       baseRow.put("fromOwners", getOwners(fromEntity.path(FIELD_OWNERS)));
       baseRow.put("fromDomain", getDomainFQN(fromEntity.path(FIELD_DOMAIN)));
