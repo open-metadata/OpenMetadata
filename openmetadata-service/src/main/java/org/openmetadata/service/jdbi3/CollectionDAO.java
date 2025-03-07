@@ -5186,8 +5186,8 @@ public interface CollectionDAO {
         value =
             "INSERT INTO <table>(entityFQNHash, jsonSchema, json) "
                 + "VALUES (:entityFQNHash, :jsonSchema, (:json :: jsonb)) "
-                + "ON CONFLICT (entityFQNHash, timestamp)"
-                + "DO UPDATE SET"
+                + "ON CONFLICT (entityFQNHash, timestamp) "
+                + "DO UPDATE SET "
                 + "json = EXCLUDED.json",
         connectionType = POSTGRES)
     void insertWithoutExtension(

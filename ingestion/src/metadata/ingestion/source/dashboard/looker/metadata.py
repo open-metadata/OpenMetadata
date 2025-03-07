@@ -924,7 +924,9 @@ class LookerSource(DashboardServiceSource):
         )
 
     def yield_dashboard_lineage_details(
-        self, dashboard_details: LookerDashboard, _: str
+        self,
+        dashboard_details: LookerDashboard,
+        _: Optional[str] = None,
     ) -> Iterable[Either[AddLineageRequest]]:
         """
         Get lineage between charts and data sources.
