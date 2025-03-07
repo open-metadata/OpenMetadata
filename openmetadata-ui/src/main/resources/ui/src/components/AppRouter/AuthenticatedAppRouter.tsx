@@ -25,6 +25,7 @@ import { CustomizablePage } from '../../pages/CustomizablePage/CustomizablePage'
 import DataQualityPage from '../../pages/DataQuality/DataQualityPage';
 import BulkEntityImportPage from '../../pages/EntityImport/BulkEntityImportPage/BulkEntityImportPage';
 import ForbiddenPage from '../../pages/ForbiddenPage/ForbiddenPage';
+import { PlaygroundPage } from '../../pages/PlaygroundPage/PlaygroundPage';
 import TagPage from '../../pages/TagPage/TagPage';
 import { checkPermission, userPermissions } from '../../utils/PermissionsUtils';
 import AdminProtectedRoute from './AdminProtectedRoute';
@@ -288,6 +289,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         component={BulkEntityImportPage}
         path={ROUTES.ENTITY_IMPORT}
       />
+      <Route exact component={PlaygroundPage} path="/playground" />
 
       <Route exact component={MyDataPage} path={ROUTES.MY_DATA} />
       <Route exact component={TourPageComponent} path={ROUTES.TOUR} />
