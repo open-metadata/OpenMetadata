@@ -465,45 +465,6 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     return response.toResponse();
   }
 
-  //  public Response deleteAsync(
-  //          UriInfo uriInfo,
-  //          SecurityContext securityContext,
-  //          UUID id,
-  //          boolean recursive,
-  //          boolean hardDelete) {
-  //    OperationContext operationContext = new OperationContext(entityType,
-  // MetadataOperation.DELETE);
-  //    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-  //    DeleteEntityArgs jobArgs = new DeleteEntityArgs().withEntityId(id)
-  //            .withUpdatedBy(securityContext.getUserPrincipal().getName())
-  //            .withRecursive(recursive)
-  //            .withHardDelete(hardDelete);
-  //
-  ////    long jobId = jobDao.insertJob(
-  ////            BackgroundJob.JobType.DELETE_ENTITY,
-  ////            new DeleteEntityHandler(daoCollection, repository),
-  ////            jobArgs,
-  ////            securityContext.getUserPrincipal().getName());
-  //    long jobId =
-  //            jobDao.insertJob(
-  //                    BackgroundJob.JobType.DELETE_ENTITY,
-  //                    new EnumCleanupHandler(daoCollection),
-  //                    jobArgs,
-  //                    securityContext.getUserPrincipal().getName());
-  //
-  //    return Response.status(Response.Status.ACCEPTED)
-  //            .entity(new BackgroundJobResponse(jobId))
-  //            .build();
-  //    DeleteResponse<T> response =
-  //            repository.delete(securityContext.getUserPrincipal().getName(), id, recursive,
-  // hardDelete);
-  //    if (hardDelete) {
-  //      limits.invalidateCache(entityType);
-  //    }
-  //    addHref(uriInfo, response.entity());
-  //    return response.toResponse();
-  //  }
-
   public Response deleteByName(
       UriInfo uriInfo,
       SecurityContext securityContext,
