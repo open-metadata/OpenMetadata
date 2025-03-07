@@ -44,16 +44,6 @@ Object.defineProperty(window, 'localStorage', {
   value: mockLocalStorage,
 });
 
-jest.mock(
-  '../../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider',
-  () => {
-    return jest
-      .fn()
-      .mockImplementation(({ children }) => (
-        <div data-testid="activity-feed-provider">{children}</div>
-      ));
-  }
-);
 jest.mock('../../components/common/Loader/Loader', () => {
   return jest.fn().mockImplementation(() => <div>Loader</div>);
 });
@@ -151,6 +141,10 @@ jest.mock('../../hooks/useWelcomeStore', () => ({
   }),
 }));
 
+jest.mock('../../components/AppRouter/withActivityFeed', () => ({
+  withActivityFeed: jest.fn().mockImplementation((Component) => Component),
+}));
+
 jest.mock('../DataInsightPage/DataInsightProvider', () => {
   return {
     __esModule: true,
@@ -177,7 +171,6 @@ describe('MyDataPage component', () => {
     });
 
     expect(screen.getByText('WelcomeScreen')).toBeInTheDocument();
-    expect(screen.queryByTestId('activity-feed-provider')).toBeNull();
   });
 
   it('MyDataPage should display the main content after the WelcomeScreen is closed', async () => {
@@ -189,12 +182,10 @@ describe('MyDataPage component', () => {
     const welcomeScreen = screen.getByText('WelcomeScreen');
 
     expect(welcomeScreen).toBeInTheDocument();
-    expect(screen.queryByTestId('activity-feed-provider')).toBeNull();
 
     await act(async () => userEvent.click(welcomeScreen));
 
     expect(screen.queryByText('WelcomeScreen')).toBeNull();
-    expect(screen.getByTestId('activity-feed-provider')).toBeInTheDocument();
     expect(screen.getByTestId('react-grid-layout')).toBeInTheDocument();
   });
 
@@ -207,10 +198,6 @@ describe('MyDataPage component', () => {
     });
 
     expect(screen.queryByText('WelcomeScreen')).toBeNull();
-
-    expect(
-      await screen.findByTestId('activity-feed-provider')
-    ).toBeInTheDocument();
   });
 
   it('MyDataPage should display all the widgets in the config and the announcements widget if there are announcements', async () => {

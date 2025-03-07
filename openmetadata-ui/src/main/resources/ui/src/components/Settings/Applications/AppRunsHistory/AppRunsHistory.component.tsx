@@ -38,18 +38,11 @@ import {
   AppRunRecord,
   Status,
 } from '../../../../generated/entity/applications/appRunRecord';
-import {
-  PipelineState,
-  PipelineStatus,
-} from '../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { Paging } from '../../../../generated/type/paging';
 import { usePaging } from '../../../../hooks/paging/usePaging';
 import { useFqn } from '../../../../hooks/useFqn';
 import { getApplicationRuns } from '../../../../rest/applicationAPI';
-import {
-  getStatusFromPipelineState,
-  getStatusTypeForApplication,
-} from '../../../../utils/ApplicationUtils';
+import { getStatusTypeForApplication } from '../../../../utils/ApplicationUtils';
 import {
   formatDateTime,
   formatDuration,
@@ -215,7 +208,11 @@ const AppRunsHistory = forwardRef(
           title: t('label.run-at'),
           dataIndex: 'timestamp',
           key: 'timestamp',
-          render: (_, record) => formatDateTime(record.timestamp),
+          render: (_, record) => {
+            return isExternalApp && record.executionTime
+              ? formatDateTime(record.executionTime)
+              : formatDateTime(record.timestamp);
+          },
         },
         {
           title: t('label.run-type'),
@@ -230,6 +227,15 @@ const AppRunsHistory = forwardRef(
           dataIndex: 'executionTime',
           key: 'executionTime',
           render: (_, record: AppRunRecordWithId) => {
+            if (isExternalApp && record.executionTime) {
+              const ms = getIntervalInMilliseconds(
+                record.executionTime,
+                record.endTime ?? Date.now()
+              );
+
+              return formatDuration(ms);
+            }
+
             if (record.startTime) {
               const endTime = record.endTime || Date.now(); // Use current time in epoch milliseconds if endTime is not present
               const ms = getIntervalInMilliseconds(record.startTime, endTime);
@@ -296,11 +302,7 @@ const AppRunsHistory = forwardRef(
               data
                 .map((item) => ({
                   ...item,
-                  status: getStatusFromPipelineState(
-                    (item as PipelineStatus).pipelineState ??
-                      PipelineState.Failed
-                  ),
-                  id: (item as PipelineStatus).runId ?? '',
+                  id: `${item.appId}-${item.runType}-${item.timestamp}`,
                 }))
                 .slice(0, maxRecords)
             );

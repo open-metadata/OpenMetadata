@@ -3,15 +3,8 @@ on:
     pull_request_target:
         types: [labeled, opened, synchronize, reopened]
         paths:
-          - "openmetadata-service/**"
-          - "openmetadata-spec/src/main/resources/json/schema/**"
-          - "openmetadata-dist/**"
-          - "openmetadata-clients/**"
-          - "common/**"
-          - "pom.xml"
-          - "yarn.lock"
-          - "Makefile"
-          - "bootstrap/**"
+          - "**/*.java"
+          - "docker/development/Dockerfile"
 concurrency: 
   group: trivy-server-scan-${{ github.head_ref || github.run_id }}
   cancel-in-progress: true
@@ -22,7 +15,7 @@ jobs:
       pull-requests: write
     steps:
       - name: Wait for the labeler
-        uses: lewagon/wait-on-check-action@v1.3.3
+        uses: lewagon/wait-on-check-action@v1.3.4
         if: ${{ github.event_name == 'pull_request_target' }}
         with:
           ref: ${{ github.event.pull_request.head.sha }}

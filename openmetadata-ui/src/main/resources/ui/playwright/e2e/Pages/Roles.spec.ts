@@ -15,9 +15,9 @@ import { GlobalSettingOptions } from '../../constant/settings';
 import { RolesClass } from '../../support/access-control/RolesClass';
 import {
   descriptionBox,
+  getApiContext,
   redirectToHomePage,
   toastNotification,
-  getApiContext,
   uuid,
 } from '../../utils/common';
 import { removePolicyFromRole } from '../../utils/roles';
