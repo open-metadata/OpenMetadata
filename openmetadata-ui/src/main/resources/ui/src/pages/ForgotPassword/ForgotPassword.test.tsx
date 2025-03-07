@@ -38,6 +38,10 @@ jest.mock('../../components/common/DocumentTitle/DocumentTitle', () => {
   return jest.fn().mockReturnValue(<p>DocumentTitle</p>);
 });
 
+jest.mock('../../components/AlertBar/AlertBar', () => {
+  return jest.fn().mockReturnValue(<p data-testid="alert-bar">Alert Bar</p>);
+});
+
 jest.mock('../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
 }));
@@ -108,9 +112,7 @@ describe('ForgotPassword', () => {
     });
 
     expect(mockHandleForgotPassword).toHaveBeenCalledWith('test@example.com');
-    expect(getByTestId('success-screen-container')).toBeInTheDocument();
-    expect(getByTestId('success-icon')).toBeInTheDocument();
-    expect(getByTestId('success-line')).toBeInTheDocument();
+    expect(getByTestId('alert-bar')).toBeInTheDocument();
   });
 
   it('show call push back to login', async () => {
@@ -142,6 +144,6 @@ describe('ForgotPassword', () => {
 
     expect(showErrorToast).toHaveBeenCalledWith('server.email-not-found');
     expect(mockHandleError).toHaveBeenCalledWith('test@example.com');
-    expect(queryByTestId('success-screen-container')).not.toBeInTheDocument();
+    expect(queryByTestId('alert-bar')).not.toBeInTheDocument();
   });
 });

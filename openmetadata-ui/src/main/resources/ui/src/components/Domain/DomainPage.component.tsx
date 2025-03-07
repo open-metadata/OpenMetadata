@@ -15,7 +15,6 @@ import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { ES_MAX_PAGE_SIZE, ROUTES } from '../../constants/constants';
@@ -33,6 +32,7 @@ import {
   getDomainList,
   patchDomains,
 } from '../../rest/domainAPI';
+import i18n from '../../utils/i18next/LocalUtil';
 import { checkPermission } from '../../utils/PermissionsUtils';
 import { getDomainPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -43,7 +43,6 @@ import DomainDetailsPage from './DomainDetailsPage/DomainDetailsPage.component';
 import DomainsLeftPanel from './DomainLeftPanel/DomainLeftPanel.component';
 
 const DomainPage = () => {
-  const { t } = useTranslation();
   const { fqn: domainFqn } = useFqn();
   const history = useHistory();
   const { permissions } = usePermissionProvider();
@@ -199,7 +198,7 @@ const DomainPage = () => {
         <ErrorPlaceHolder
           buttonId="add-domain"
           className="mt-0-important"
-          heading={t('label.domain')}
+          heading={i18n.t('label.domain')}
           permission={createDomainPermission}
           type={
             createDomainPermission
@@ -207,7 +206,7 @@ const DomainPage = () => {
               : ERROR_PLACEHOLDER_TYPE.CUSTOM
           }
           onClick={handleAddDomainClick}>
-          {t('message.domains-not-configured')}
+          {i18n.t('message.domains-not-configured')}
         </ErrorPlaceHolder>
       </div>
     );
@@ -223,7 +222,7 @@ const DomainPage = () => {
           flex: 0.13,
           children: <DomainsLeftPanel domains={rootDomains} />,
         }}
-        pageTitle={t('label.domain')}
+        pageTitle={i18n.t('label.domain')}
         secondPanel={{
           children: domainPageRender,
           className: 'content-resizable-panel-container p-t-sm',
@@ -235,4 +234,4 @@ const DomainPage = () => {
   );
 };
 
-export default withPageLayout('domain')(DomainPage);
+export default withPageLayout(i18n.t('label.domain'))(DomainPage);

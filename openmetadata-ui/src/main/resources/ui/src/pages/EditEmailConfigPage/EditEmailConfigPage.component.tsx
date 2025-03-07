@@ -20,7 +20,6 @@ import React, {
   useMemo,
   useState,
 } from 'react';
-import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
 import ServiceDocPanel from '../../components/common/ServiceDocPanel/ServiceDocPanel';
@@ -37,15 +36,16 @@ import {
 import { ServiceCategory } from '../../enums/service.enum';
 import { SMTPSettings } from '../../generated/email/smtpSettings';
 import { Settings, SettingType } from '../../generated/settings/settings';
+import { withPageLayout } from '../../hoc/withPageLayout';
 import {
   getSettingsConfigFromConfigType,
   updateSettingsConfig,
 } from '../../rest/settingConfigAPI';
+import i18n from '../../utils/i18next/LocalUtil';
 import { getSettingPath } from '../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 
 function EditEmailConfigPage() {
-  const { t } = useTranslation();
   const history = useHistory();
   const [emailConfigValues, setEmailConfigValues] = useState<SMTPSettings>();
   const [loading, setLoading] = useState<boolean>(false);
@@ -55,19 +55,19 @@ function EditEmailConfigPage() {
   const slashedBreadcrumb = useMemo(
     () => [
       {
-        name: t('label.setting-plural'),
+        name: i18n.t('label.setting-plural'),
         url: getSettingPath(),
       },
       {
-        name: t('label.email'),
+        name: i18n.t('label.email'),
         url: getSettingPath(
           GlobalSettingsMenuCategory.PREFERENCES,
           GlobalSettingOptions.EMAIL
         ),
       },
       {
-        name: t('label.edit-entity', {
-          entity: t('label.email-configuration'),
+        name: i18n.t('label.edit-entity', {
+          entity: i18n.t('label.email-configuration'),
         }),
         url: '',
       },
@@ -87,8 +87,8 @@ function EditEmailConfigPage() {
     } catch (error) {
       showErrorToast(
         error as AxiosError,
-        t('server.entity-fetch-error', {
-          entity: t('label.email-configuration-lowercase'),
+        i18n.t('server.entity-fetch-error', {
+          entity: i18n.t('label.email-configuration-lowercase'),
         })
       );
     } finally {
@@ -116,16 +116,16 @@ function EditEmailConfigPage() {
         await updateSettingsConfig(settingsConfigData);
 
         showSuccessToast(
-          t('server.update-entity-success', {
-            entity: t('label.email-configuration'),
+          i18n.t('server.update-entity-success', {
+            entity: i18n.t('label.email-configuration'),
           })
         );
         handleRedirectionToSettingsPage();
       } catch (error) {
         showErrorToast(
           error as AxiosError,
-          t('server.entity-updating-error', {
-            entity: t('label.email-configuration-lowercase'),
+          i18n.t('server.entity-updating-error', {
+            entity: i18n.t('label.email-configuration-lowercase'),
           })
         );
       } finally {
@@ -172,14 +172,16 @@ function EditEmailConfigPage() {
 
   return (
     <ResizablePanels
-      className="content-height-with-resizable-panel"
+      className="content-height-with-resizable-panel m--t-sm"
       firstPanel={{
         children: firstPanelChildren,
         minWidth: 700,
         flex: 0.7,
         className: 'content-resizable-panel-container',
       }}
-      pageTitle={t('label.add-entity', { entity: t('label.service') })}
+      pageTitle={i18n.t('label.add-entity', {
+        entity: i18n.t('label.service'),
+      })}
       secondPanel={{
         children: secondPanelChildren,
         className: 'service-doc-panel content-resizable-panel-container',
@@ -190,4 +192,8 @@ function EditEmailConfigPage() {
   );
 }
 
-export default EditEmailConfigPage;
+export default withPageLayout(
+  i18n.t('label.add-entity', {
+    entity: i18n.t('label.service'),
+  })
+)(EditEmailConfigPage);

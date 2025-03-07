@@ -16,7 +16,6 @@ import { useForm } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { ActivityFeedTabs } from '../../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import Loader from '../../../components/common/Loader/Loader';
@@ -35,6 +34,7 @@ import {
   ThreadType,
 } from '../../../generated/api/feed/createThread';
 import { Glossary } from '../../../generated/entity/data/glossary';
+import { withPageLayout } from '../../../hoc/withPageLayout';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../../hooks/useFqn';
@@ -45,6 +45,7 @@ import {
   ENTITY_LINK_SEPARATOR,
   getEntityFeedLink,
 } from '../../../utils/EntityUtils';
+import i18n from '../../../utils/i18next/LocalUtil';
 import {
   fetchEntityDetail,
   fetchOptions,
@@ -62,7 +63,6 @@ import '../task-page.style.less';
 import { EntityData, Option } from '../TasksPage.interface';
 
 const UpdateDescription = () => {
-  const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
   const location = useCustomLocation();
   const history = useHistory();
@@ -161,8 +161,8 @@ const UpdateDescription = () => {
     postThread(data)
       .then(() => {
         showSuccessToast(
-          t('server.create-entity-success', {
-            entity: t('label.task'),
+          i18n.t('server.create-entity-success', {
+            entity: i18n.t('label.task'),
           })
         );
         history.push(
@@ -206,7 +206,7 @@ const UpdateDescription = () => {
 
   return (
     <ResizablePanels
-      className="content-height-with-resizable-panel"
+      className="content-height-with-resizable-panel m--t-sm"
       firstPanel={{
         className: 'content-resizable-panel-container',
         minWidth: 700,
@@ -217,8 +217,8 @@ const UpdateDescription = () => {
               titleLinks={[
                 ...getBreadCrumbList(entityData, entityType),
                 {
-                  name: t('label.create-entity', {
-                    entity: t('label.task'),
+                  name: i18n.t('label.create-entity', {
+                    entity: i18n.t('label.task'),
                   }),
                   activeTitle: true,
                   url: '',
@@ -230,8 +230,8 @@ const UpdateDescription = () => {
               <Typography.Paragraph
                 className="text-base"
                 data-testid="form-title">
-                {t('label.create-entity', {
-                  entity: t('label.task'),
+                {i18n.t('label.create-entity', {
+                  entity: i18n.t('label.task'),
                 })}
               </Typography.Paragraph>
               <Form
@@ -242,18 +242,18 @@ const UpdateDescription = () => {
                 onFinish={onCreateTask}>
                 <Form.Item
                   data-testid="title"
-                  label={`${t('label.title')}:`}
+                  label={`${i18n.t('label.title')}:`}
                   name="title">
                   <Input
                     disabled
-                    placeholder={t('label.task-entity', {
-                      entity: t('label.title'),
+                    placeholder={i18n.t('label.task-entity', {
+                      entity: i18n.t('label.title'),
                     })}
                   />
                 </Form.Item>
                 <Form.Item
                   data-testid="assignees"
-                  label={`${t('label.assignee-plural')}:`}
+                  label={`${i18n.t('label.assignee-plural')}:`}
                   name="assignees"
                   rules={[{ required: true }]}>
                   <Assignees
@@ -267,7 +267,7 @@ const UpdateDescription = () => {
                 {currentDescription && (
                   <Form.Item
                     data-testid="description-tabs"
-                    label={`${t('label.description')}:`}
+                    label={`${i18n.t('label.description')}:`}
                     name="description"
                     rules={[{ required: true }]}>
                     <DescriptionTabs
@@ -283,14 +283,14 @@ const UpdateDescription = () => {
                     data-testid="cta-buttons"
                     size={16}>
                     <Button data-testid="cancel-btn" type="link" onClick={back}>
-                      {t('label.back')}
+                      {i18n.t('label.back')}
                     </Button>
                     <Button
                       data-testid="submit-btn"
                       htmlType="submit"
                       loading={isLoading}
                       type="primary">
-                      {t('label.submit')}
+                      {i18n.t('label.submit')}
                     </Button>
                   </Space>
                 </Form.Item>
@@ -299,7 +299,7 @@ const UpdateDescription = () => {
           </div>
         ),
       }}
-      pageTitle={t('label.task')}
+      pageTitle={i18n.t('label.task')}
       secondPanel={{
         className: 'content-resizable-panel-container',
         minWidth: 60,
@@ -322,4 +322,4 @@ const UpdateDescription = () => {
   );
 };
 
-export default UpdateDescription;
+export default withPageLayout(i18n.t('label.task'))(UpdateDescription);

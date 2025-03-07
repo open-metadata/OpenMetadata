@@ -13,7 +13,6 @@
 import { Button, Col, Form, Input, Row } from 'antd';
 import { AxiosError } from 'axios';
 import React, { useEffect, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import Loader from '../../../components/common/Loader/Loader';
 import ResizablePanels from '../../../components/common/ResizablePanels/ResizablePanels';
@@ -31,16 +30,17 @@ import {
 import { ServiceCategory } from '../../../enums/service.enum';
 import { OpenMetadataBaseURLConfiguration } from '../../../generated/configuration/openMetadataBaseUrlConfiguration';
 import { Settings, SettingType } from '../../../generated/settings/settings';
+import { withPageLayout } from '../../../hoc/withPageLayout';
 import {
   getSettingsConfigFromConfigType,
   updateSettingsConfig,
 } from '../../../rest/settingConfigAPI';
+import i18n from '../../../utils/i18next/LocalUtil';
 import { getSettingPath } from '../../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 
 const { Item } = Form;
 const EditUrlConfigurationPage = () => {
-  const { t } = useTranslation();
   const history = useHistory();
   const [form] = Form.useForm<OpenMetadataBaseURLConfiguration>();
   const [activeField, setActiveField] = useState<string>('');
@@ -66,12 +66,12 @@ const EditUrlConfigurationPage = () => {
   const breadcrumb = useMemo(
     () => [
       {
-        name: t('label.setting-plural'),
+        name: i18n.t('label.setting-plural'),
         url: getSettingPath(),
       },
       {
-        name: t('label.entity-configuration', {
-          entity: t('label.open-metadata-url'),
+        name: i18n.t('label.entity-configuration', {
+          entity: i18n.t('label.open-metadata-url'),
         }),
         url: getSettingPath(
           GlobalSettingsMenuCategory.PREFERENCES,
@@ -79,9 +79,9 @@ const EditUrlConfigurationPage = () => {
         ),
       },
       {
-        name: t('label.edit-entity', {
-          entity: t('label.entity-configuration', {
-            entity: t('label.open-metadata-url'),
+        name: i18n.t('label.edit-entity', {
+          entity: i18n.t('label.entity-configuration', {
+            entity: i18n.t('label.open-metadata-url'),
           }),
         }),
         url: '',
@@ -103,9 +103,9 @@ const EditUrlConfigurationPage = () => {
       };
       await updateSettingsConfig(configData as Settings);
       showSuccessToast(
-        t('server.update-entity-success', {
-          entity: t('label.entity-configuration', {
-            entity: t('label.open-metadata-url'),
+        i18n.t('server.update-entity-success', {
+          entity: i18n.t('label.entity-configuration', {
+            entity: i18n.t('label.open-metadata-url'),
           }),
         })
       );
@@ -137,7 +137,7 @@ const EditUrlConfigurationPage = () => {
           setActiveField(e.target.id);
         }}>
         <Item
-          label={t('label.open-metadata-url')}
+          label={i18n.t('label.open-metadata-url')}
           name="openMetadataUrl"
           rules={[{ required: true }]}>
           <Input
@@ -151,7 +151,7 @@ const EditUrlConfigurationPage = () => {
               data-testid="cancel-button"
               type="link"
               onClick={handleGoBack}>
-              {t('label.cancel')}
+              {i18n.t('label.cancel')}
             </Button>
           </Col>
           <Col>
@@ -160,7 +160,7 @@ const EditUrlConfigurationPage = () => {
               htmlType="submit"
               loading={updating}
               type="primary">
-              {t('label.save')}
+              {i18n.t('label.save')}
             </Button>
           </Col>
         </Row>
@@ -182,14 +182,16 @@ const EditUrlConfigurationPage = () => {
 
   return (
     <ResizablePanels
-      className="content-height-with-resizable-panel"
+      className="content-height-with-resizable-panel m--t-sm"
       firstPanel={{
         children: firstPanelChildren,
         minWidth: 700,
         flex: 0.7,
         className: 'content-resizable-panel-container',
       }}
-      pageTitle={t('label.edit-entity', { entity: t('label.service') })}
+      pageTitle={i18n.t('label.edit-entity', {
+        entity: i18n.t('label.service'),
+      })}
       secondPanel={{
         children: secondPanelChildren,
         className: 'service-doc-panel content-resizable-panel-container',
@@ -200,4 +202,8 @@ const EditUrlConfigurationPage = () => {
   );
 };
 
-export default EditUrlConfigurationPage;
+export default withPageLayout(
+  i18n.t('label.edit-entity', {
+    entity: i18n.t('label.service'),
+  })
+)(EditUrlConfigurationPage);

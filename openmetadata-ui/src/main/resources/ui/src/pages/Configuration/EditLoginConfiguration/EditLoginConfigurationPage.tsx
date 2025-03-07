@@ -13,7 +13,6 @@
 import { Button, Col, Form, Row } from 'antd';
 import { AxiosError } from 'axios';
 import React, { useEffect, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import Loader from '../../../components/common/Loader/Loader';
 import ResizablePanels from '../../../components/common/ResizablePanels/ResizablePanels';
@@ -31,17 +30,18 @@ import {
 import { ServiceCategory } from '../../../enums/service.enum';
 import { LoginConfiguration } from '../../../generated/configuration/loginConfiguration';
 import { Settings, SettingType } from '../../../generated/settings/settings';
+import { withPageLayout } from '../../../hoc/withPageLayout';
 import { FieldProp, FieldTypes } from '../../../interface/FormUtils.interface';
 import {
   getLoginConfig,
   updateSettingsConfig,
 } from '../../../rest/settingConfigAPI';
 import { generateFormFields } from '../../../utils/formUtils';
+import i18n from '../../../utils/i18next/LocalUtil';
 import { getSettingPath } from '../../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 
 const EditLoginConfiguration = () => {
-  const { t } = useTranslation();
   const history = useHistory();
   const [form] = Form.useForm<LoginConfiguration>();
   const [activeField, setActiveField] = useState<string>('');
@@ -65,19 +65,19 @@ const EditLoginConfiguration = () => {
   const breadcrumb = useMemo(
     () => [
       {
-        name: t('label.setting-plural'),
+        name: i18n.t('label.setting-plural'),
         url: getSettingPath(),
       },
       {
-        name: t('label.login-configuration'),
+        name: i18n.t('label.login-configuration'),
         url: getSettingPath(
           GlobalSettingsMenuCategory.PREFERENCES,
           GlobalSettingOptions.LOGIN_CONFIGURATION
         ),
       },
       {
-        name: t('label.edit-entity', {
-          entity: t('label.login-configuration'),
+        name: i18n.t('label.edit-entity', {
+          entity: i18n.t('label.login-configuration'),
         }),
         url: '',
       },
@@ -88,7 +88,7 @@ const EditLoginConfiguration = () => {
   const formFields: FieldProp[] = [
     {
       name: 'maxLoginFailAttempts',
-      label: t('label.max-login-fail-attempt-plural'),
+      label: i18n.t('label.max-login-fail-attempt-plural'),
       type: FieldTypes.NUMBER,
       required: false,
       id: 'root/maxLoginFailAttempts',
@@ -102,7 +102,7 @@ const EditLoginConfiguration = () => {
     },
     {
       name: 'accessBlockTime',
-      label: t('label.access-block-time'),
+      label: i18n.t('label.access-block-time'),
       type: FieldTypes.NUMBER,
       required: false,
       id: 'root/accessBlockTime',
@@ -115,7 +115,7 @@ const EditLoginConfiguration = () => {
     },
     {
       name: 'jwtTokenExpiryTime',
-      label: t('label.jwt-token-expiry-time'),
+      label: i18n.t('label.jwt-token-expiry-time'),
       type: FieldTypes.NUMBER,
       required: false,
       id: 'root/jwtTokenExpiryTime',
@@ -139,8 +139,8 @@ const EditLoginConfiguration = () => {
       };
       await updateSettingsConfig(configData as Settings);
       showSuccessToast(
-        t('server.update-entity-success', {
-          entity: t('label.login-configuration'),
+        i18n.t('server.update-entity-success', {
+          entity: i18n.t('label.login-configuration'),
         })
       );
       handleGoBack();
@@ -177,7 +177,7 @@ const EditLoginConfiguration = () => {
               data-testid="cancel-button"
               type="link"
               onClick={handleGoBack}>
-              {t('label.cancel')}
+              {i18n.t('label.cancel')}
             </Button>
           </Col>
           <Col>
@@ -186,7 +186,7 @@ const EditLoginConfiguration = () => {
               htmlType="submit"
               loading={updating}
               type="primary">
-              {t('label.save')}
+              {i18n.t('label.save')}
             </Button>
           </Col>
         </Row>
@@ -212,14 +212,16 @@ const EditLoginConfiguration = () => {
 
   return (
     <ResizablePanels
-      className="content-height-with-resizable-panel"
+      className="content-height-with-resizable-panel m--t-sm"
       firstPanel={{
         children: firstPanelChildren,
         minWidth: 700,
         flex: 0.7,
         className: 'content-resizable-panel-container',
       }}
-      pageTitle={t('label.edit-entity', { entity: t('label.service') })}
+      pageTitle={i18n.t('label.edit-entity', {
+        entity: i18n.t('label.service'),
+      })}
       secondPanel={{
         children: secondPanelChildren,
         className: 'service-doc-panel content-resizable-panel-container',
@@ -230,4 +232,8 @@ const EditLoginConfiguration = () => {
   );
 };
 
-export default EditLoginConfiguration;
+export default withPageLayout(
+  i18n.t('label.edit-entity', {
+    entity: i18n.t('label.service'),
+  })
+)(EditLoginConfiguration);

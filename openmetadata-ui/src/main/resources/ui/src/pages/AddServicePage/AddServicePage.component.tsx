@@ -15,7 +15,6 @@ import { AxiosError } from 'axios';
 import { startCase } from 'lodash';
 import { ServicesUpdateRequest, ServiceTypes } from 'Models';
 import React, { useEffect, useState } from 'react';
-import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
 import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import AddService from '../../components/Settings/Services/AddService/AddService.component';
@@ -28,6 +27,7 @@ import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.const
 import { IngestionActionMessage } from '../../enums/ingestion.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { CreateIngestionPipeline } from '../../generated/api/services/ingestionPipelines/createIngestionPipeline';
+import { withPageLayout } from '../../hoc/withPageLayout';
 import { DataObj } from '../../interface/service.interface';
 import {
   addIngestionPipeline,
@@ -35,12 +35,12 @@ import {
   getIngestionPipelineByFqn,
 } from '../../rest/ingestionPipelineAPI';
 import { postService } from '../../rest/serviceAPI';
+import i18n from '../../utils/i18next/LocalUtil';
 import { getSettingPath } from '../../utils/RouterUtils';
 import { getServiceRouteFromServiceType } from '../../utils/ServiceUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const AddServicePage = () => {
-  const { t } = useTranslation();
   const { serviceCategory } = useParams<{ serviceCategory: string }>();
   const [newServiceData, setNewServiceData] = useState<ServicesUpdateRequest>();
   const [ingestionProgress, setIngestionProgress] = useState(0);
@@ -83,8 +83,8 @@ const AddServicePage = () => {
           setIngestionAction(IngestionActionMessage.DEPLOYING_ERROR);
           showErrorToast(
             err ||
-              t('server.deploy-entity-error', {
-                entity: t('label.ingestion-workflow-lowercase'),
+              i18n.t('server.deploy-entity-error', {
+                entity: i18n.t('label.ingestion-workflow-lowercase'),
               })
           );
         })
@@ -103,8 +103,8 @@ const AddServicePage = () => {
             onIngestionDeploy(res.id).finally(() => resolve());
           } else {
             showErrorToast(
-              t('server.create-entity-error', {
-                entity: t('label.ingestion-workflow-lowercase'),
+              i18n.t('server.create-entity-error', {
+                entity: i18n.t('label.ingestion-workflow-lowercase'),
               })
             );
             reject();
@@ -117,19 +117,19 @@ const AddServicePage = () => {
                 resolve();
                 showErrorToast(
                   err,
-                  t('server.deploy-entity-error', {
-                    entity: t('label.ingestion-workflow-lowercase'),
+                  i18n.t('server.deploy-entity-error', {
+                    entity: i18n.t('label.ingestion-workflow-lowercase'),
                   })
                 );
               } else {
-                throw t('server.unexpected-response');
+                throw i18n.t('server.unexpected-response');
               }
             })
             .catch(() => {
               showErrorToast(
                 err,
-                t('server.create-entity-error', {
-                  entity: t('label.ingestion-workflow-lowercase'),
+                i18n.t('server.create-entity-error', {
+                  entity: i18n.t('label.ingestion-workflow-lowercase'),
                 })
               );
               reject();
@@ -148,8 +148,8 @@ const AddServicePage = () => {
         ),
       },
       {
-        name: t('label.add-new-entity', {
-          entity: t(addIngestion ? 'label.ingestion' : 'label.service'),
+        name: i18n.t('label.add-new-entity', {
+          entity: i18n.t(addIngestion ? 'label.ingestion' : 'label.service'),
         }),
         url: '',
         activeTitle: true,
@@ -176,4 +176,8 @@ const AddServicePage = () => {
   );
 };
 
-export default AddServicePage;
+export default withPageLayout(
+  i18n.t('label.add-entity', {
+    entity: i18n.t('label.service'),
+  })
+)(AddServicePage);

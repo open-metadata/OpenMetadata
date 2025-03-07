@@ -27,11 +27,9 @@ import {
 } from 'antd';
 import { useForm, useWatch } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
-import { t } from 'i18next';
 import { isUndefined, kebabCase } from 'lodash';
 import moment from 'moment';
 import React, { useEffect, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
@@ -43,6 +41,7 @@ import {
   KpiTargetType,
 } from '../../generated/api/dataInsight/kpi/createKpiRequest';
 import { Kpi } from '../../generated/dataInsight/kpi/kpi';
+import { withPageLayout } from '../../hoc/withPageLayout';
 import { FieldProp, FieldTypes } from '../../interface/FormUtils.interface';
 import { getListKPIs, postKPI } from '../../rest/KpiAPI';
 import {
@@ -50,6 +49,7 @@ import {
   getDisabledDates,
 } from '../../utils/DataInsightUtils';
 import { getField } from '../../utils/formUtils';
+import i18n from '../../utils/i18next/LocalUtil';
 import {
   filterChartOptions,
   getDataInsightChartForKPI,
@@ -61,22 +61,23 @@ import { KPIFormValues } from './KPIPage.interface';
 
 const breadcrumb = [
   {
-    name: t('label.data-insight'),
+    name: i18n.t('label.data-insight'),
     url: getDataInsightPathWithFqn(),
   },
   {
-    name: t('label.kpi-list'),
+    name: i18n.t('label.kpi-list'),
     url: ROUTES.KPI_LIST,
   },
   {
-    name: t('label.add-new-entity', { entity: t('label.kpi-uppercase') }),
+    name: i18n.t('label.add-new-entity', {
+      entity: i18n.t('label.kpi-uppercase'),
+    }),
     url: '',
     activeTitle: true,
   },
 ];
 
 const AddKPIPage = () => {
-  const { t } = useTranslation();
   const history = useHistory();
   const [form] = useForm<KPIFormValues>();
 
@@ -163,14 +164,14 @@ const AddKPIPage = () => {
     () => ({
       name: 'description',
       required: true,
-      label: t('label.description'),
+      label: i18n.t('label.description'),
       id: 'root/description',
       type: FieldTypes.DESCRIPTION,
       rules: [
         {
           required: true,
-          message: t('label.field-required', {
-            field: t('label.description-kpi'),
+          message: i18n.t('label.field-required', {
+            field: i18n.t('label.description-kpi'),
           }),
         },
       ],
@@ -180,7 +181,7 @@ const AddKPIPage = () => {
         style: {
           margin: 0,
         },
-        placeHolder: t('message.write-your-description'),
+        placeHolder: i18n.t('message.write-your-description'),
       },
     }),
     []
@@ -192,7 +193,7 @@ const AddKPIPage = () => {
 
   return (
     <ResizablePanels
-      className="content-height-with-resizable-panel"
+      className="content-height-with-resizable-panel m--t-sm"
       firstPanel={{
         className: 'content-resizable-panel-container',
         children: (
@@ -203,8 +204,8 @@ const AddKPIPage = () => {
             <Typography.Paragraph
               className="text-base"
               data-testid="form-title">
-              {t('label.add-new-entity', {
-                entity: t('label.kpi-uppercase'),
+              {i18n.t('label.add-new-entity', {
+                entity: i18n.t('label.kpi-uppercase'),
               })}
             </Typography.Paragraph>
             <Form
@@ -216,35 +217,37 @@ const AddKPIPage = () => {
               onFinish={handleSubmit}
               onValuesChange={handleFormValuesChange}>
               <Form.Item
-                label={t('label.select-a-chart')}
+                label={i18n.t('label.select-a-chart')}
                 name="chartType"
                 rules={[
                   {
                     required: true,
-                    message: t('message.field-text-is-required', {
-                      fieldText: t('label.data-insight-chart'),
+                    message: i18n.t('message.field-text-is-required', {
+                      fieldText: i18n.t('label.data-insight-chart'),
                     }),
                   },
                 ]}>
                 <Select
                   data-testid="chartType"
-                  notFoundContent={t('message.all-charts-are-mapped')}
+                  notFoundContent={i18n.t('message.all-charts-are-mapped')}
                   options={chartOptions}
-                  placeholder={t('label.select-a-chart')}
+                  placeholder={i18n.t('label.select-a-chart')}
                 />
               </Form.Item>
 
-              <Form.Item label={t('label.display-name')} name="displayName">
+              <Form.Item
+                label={i18n.t('label.display-name')}
+                name="displayName">
                 <Input
                   data-testid="displayName"
-                  placeholder={t('label.kpi-display-name')}
+                  placeholder={i18n.t('label.kpi-display-name')}
                   type="text"
                 />
               </Form.Item>
 
               <Form.Item
                 initialValue={KpiTargetType.Percentage}
-                label={t('label.metric-type')}
+                label={i18n.t('label.metric-type')}
                 name="metricType">
                 <Select
                   data-testid="metricType"
@@ -255,7 +258,7 @@ const AddKPIPage = () => {
               {!isUndefined(metricType) && (
                 <Form.Item
                   initialValue={0}
-                  label={t('label.metric-value')}
+                  label={i18n.t('label.metric-value')}
                   name="targetValue"
                   rules={[
                     {
@@ -266,8 +269,8 @@ const AddKPIPage = () => {
                         }
 
                         return Promise.reject(
-                          t('message.field-text-is-required', {
-                            fieldText: t('label.metric-value'),
+                          i18n.t('message.field-text-is-required', {
+                            fieldText: i18n.t('label.metric-value'),
                           })
                         );
                       },
@@ -328,17 +331,17 @@ const AddKPIPage = () => {
               <Row gutter={[8, 8]}>
                 <Col span={12}>
                   <Form.Item
-                    label={t('label.start-entity', {
-                      entity: t('label.date'),
+                    label={i18n.t('label.start-entity', {
+                      entity: i18n.t('label.date'),
                     })}
                     messageVariables={{ fieldName: 'startDate' }}
                     name="startDate"
                     rules={[
                       {
                         required: true,
-                        message: t('label.field-required', {
-                          field: t('label.start-entity', {
-                            entity: t('label.date'),
+                        message: i18n.t('label.field-required', {
+                          field: i18n.t('label.start-entity', {
+                            entity: i18n.t('label.date'),
                           }),
                         }),
                       },
@@ -353,14 +356,14 @@ const AddKPIPage = () => {
                 </Col>
                 <Col span={12}>
                   <Form.Item
-                    label={t('label.end-date')}
+                    label={i18n.t('label.end-date')}
                     messageVariables={{ fieldName: 'endDate' }}
                     name="endDate"
                     rules={[
                       {
                         required: true,
-                        message: t('label.field-required', {
-                          field: t('label.end-date'),
+                        message: i18n.t('label.field-required', {
+                          field: i18n.t('label.end-date'),
                         }),
                       },
                     ]}>
@@ -381,7 +384,7 @@ const AddKPIPage = () => {
                   data-testid="cancel-btn"
                   type="link"
                   onClick={handleCancel}>
-                  {t('label.cancel')}
+                  {i18n.t('label.cancel')}
                 </Button>
                 <Button
                   data-testid="submit-btn"
@@ -389,7 +392,7 @@ const AddKPIPage = () => {
                   htmlType="submit"
                   loading={isCreatingKPI}
                   type="primary">
-                  {t('label.submit')}
+                  {i18n.t('label.submit')}
                 </Button>
               </Space>
             </Form>
@@ -398,18 +401,20 @@ const AddKPIPage = () => {
         minWidth: 700,
         flex: 0.7,
       }}
-      pageTitle={t('label.add-new-entity', {
-        entity: t('label.kpi-uppercase'),
+      pageTitle={i18n.t('label.add-new-entity', {
+        entity: i18n.t('label.kpi-uppercase'),
       })}
       secondPanel={{
         children: (
           <div data-testid="right-panel">
             <Typography.Paragraph className="text-base font-medium">
-              {t('label.add-entity', {
-                entity: t('label.kpi-uppercase'),
+              {i18n.t('label.add-entity', {
+                entity: i18n.t('label.kpi-uppercase'),
               })}
             </Typography.Paragraph>
-            <Typography.Text>{t('message.add-kpi-message')}</Typography.Text>
+            <Typography.Text>
+              {i18n.t('message.add-kpi-message')}
+            </Typography.Text>
           </div>
         ),
         className: 'p-md p-t-xl content-resizable-panel-container',
@@ -420,4 +425,8 @@ const AddKPIPage = () => {
   );
 };
 
-export default AddKPIPage;
+export default withPageLayout(
+  i18n.t('label.add-new-entity', {
+    entity: i18n.t('label.kpi-uppercase'),
+  })
+)(AddKPIPage);

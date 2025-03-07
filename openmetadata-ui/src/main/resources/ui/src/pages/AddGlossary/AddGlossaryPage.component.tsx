@@ -19,7 +19,6 @@ import React, {
   useMemo,
   useState,
 } from 'react';
-import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import AddGlossary from '../../components/Glossary/AddGlossary/AddGlossary.component';
@@ -28,8 +27,10 @@ import { usePermissionProvider } from '../../context/PermissionProvider/Permissi
 import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { CreateGlossary } from '../../generated/api/data/createGlossary';
 import { Operation } from '../../generated/entity/policies/policy';
+import { withPageLayout } from '../../hoc/withPageLayout';
 import { addGlossaries } from '../../rest/glossaryAPI';
 import { getIsErrorMatch } from '../../utils/CommonUtils';
+import i18n from '../../utils/i18next/LocalUtil';
 import { checkPermission } from '../../utils/PermissionsUtils';
 import { getGlossaryPath } from '../../utils/RouterUtils';
 import { getClassifications, getTaglist } from '../../utils/TagsUtils';
@@ -45,7 +46,6 @@ const AddGlossaryPage: FunctionComponent = () => {
     TitleBreadcrumbProps['titleLinks']
   >([]);
 
-  const { t } = useTranslation();
   const createPermission = useMemo(
     () =>
       checkPermission(Operation.Create, ResourceEntity.GLOSSARY, permissions),
@@ -75,14 +75,14 @@ const AddGlossaryPage: FunctionComponent = () => {
     } catch (error) {
       handleSaveFailure(
         getIsErrorMatch(error as AxiosError, ERROR_MESSAGE.alreadyExist)
-          ? t('server.entity-already-exist', {
-              entity: t('label.glossary'),
-              entityPlural: t('label.glossary-lowercase-plural'),
+          ? i18n.t('server.entity-already-exist', {
+              entity: i18n.t('label.glossary'),
+              entityPlural: i18n.t('label.glossary-lowercase-plural'),
               name: data.name,
             })
           : (error as AxiosError),
-        t('server.add-entity-error', {
-          entity: t('label.glossary-lowercase'),
+        i18n.t('server.add-entity-error', {
+          entity: i18n.t('label.glossary-lowercase'),
         })
       );
     } finally {
@@ -99,8 +99,8 @@ const AddGlossaryPage: FunctionComponent = () => {
           setTagList(tagList);
         } else {
           showErrorToast(
-            t('server.entity-fetch-error', {
-              entity: t('label.tag-plural'),
+            i18n.t('server.entity-fetch-error', {
+              entity: i18n.t('label.tag-plural'),
             })
           );
         }
@@ -108,8 +108,8 @@ const AddGlossaryPage: FunctionComponent = () => {
       .catch((err: AxiosError) => {
         showErrorToast(
           err,
-          t('server.entity-fetch-error', {
-            entity: t('label.tag-plural'),
+          i18n.t('server.entity-fetch-error', {
+            entity: i18n.t('label.tag-plural'),
           })
         );
       })
@@ -121,12 +121,12 @@ const AddGlossaryPage: FunctionComponent = () => {
   useEffect(() => {
     setSlashedBreadcrumb([
       {
-        name: t('label.glossary'),
+        name: i18n.t('label.glossary'),
         url: getGlossaryPath(),
       },
       {
-        name: t('label.add-entity', {
-          entity: t('label.glossary'),
+        name: i18n.t('label.add-entity', {
+          entity: i18n.t('label.glossary'),
         }),
         url: '',
         activeTitle: true,
@@ -135,12 +135,12 @@ const AddGlossaryPage: FunctionComponent = () => {
   }, []);
 
   return (
-    <div className="self-center">
+    <div className="self-center m--t-sm">
       <AddGlossary
         allowAccess={createPermission}
         fetchTags={fetchTags}
-        header={t('label.add-entity', {
-          entity: t('label.glossary'),
+        header={i18n.t('label.add-entity', {
+          entity: i18n.t('label.glossary'),
         })}
         isLoading={isLoading}
         isTagLoading={isTagLoading}
@@ -153,4 +153,8 @@ const AddGlossaryPage: FunctionComponent = () => {
   );
 };
 
-export default AddGlossaryPage;
+export default withPageLayout(
+  i18n.t('label.add-entity', {
+    entity: i18n.t('label.glossary'),
+  })
+)(AddGlossaryPage);
