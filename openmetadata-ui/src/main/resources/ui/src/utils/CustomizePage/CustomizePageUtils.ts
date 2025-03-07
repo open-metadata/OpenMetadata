@@ -264,6 +264,10 @@ export const getCustomizableWidgetByPage = (
       return metricDetailsClassBase.getCommonWidgetList();
     case PageType.MlModel:
       return mlModelClassBase.getCommonWidgetList();
+    case PageType.DashboardDataModel:
+      return dashboardDataModelClassBase.getCommonWidgetList();
+    case PageType.StoredProcedure:
+      return storedProcedureClassBase.getCommonWidgetList();
     case PageType.LandingPage:
     default:
       return [];
