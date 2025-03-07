@@ -84,7 +84,7 @@ const EntityHeaderTitle = ({
           </Typography.Text>
         ) : null}
 
-        <div className="d-flex gap-2 items-center">
+        <div className="d-flex gap-3 items-center">
           <Typography.Text
             className="m-b-0 subheading text-md font-medium"
             data-testid="entity-header-display-name"
