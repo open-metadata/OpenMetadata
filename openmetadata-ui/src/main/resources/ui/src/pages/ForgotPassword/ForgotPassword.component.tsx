@@ -86,10 +86,9 @@ const ForgotPassword = () => {
               <AlertBar
                 isUnauthenticated
                 message={
-                  (alert?.message || t('message.reset-link-has-been-sent')) ??
-                  ''
+                  alert?.message ?? t('message.reset-link-has-been-sent') ?? ''
                 }
-                type={alert?.type || 'success'}
+                type={alert?.type ?? 'success'}
               />
             </Col>
           )}

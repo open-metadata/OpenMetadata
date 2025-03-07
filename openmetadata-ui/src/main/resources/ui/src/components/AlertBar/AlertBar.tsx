@@ -25,7 +25,7 @@ const AlertBar = ({
   isUnauthenticated,
 }: AlertBarProps): JSX.Element => {
   const { resetAlert, animationClass } = useAlertStore();
-  const [expanded, setExpanded] = useState(isUnauthenticated ? true : false);
+  const [expanded, setExpanded] = useState(isUnauthenticated);
 
   const { icon: AlertIcon, className } = useMemo(() => {
     return getIconAndClassName(type);

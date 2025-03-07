@@ -180,7 +180,7 @@ const SignInPage = () => {
               <div className="m-t-lg" style={{ width: '334px' }}>
                 <AlertBar
                   isUnauthenticated
-                  message={(loginError || alert?.message) ?? ''}
+                  message={loginError ?? alert?.message ?? ''}
                   type={alert?.type}
                 />
               </div>
@@ -233,23 +233,6 @@ const SignInPage = () => {
                     {t('label.login')}
                   </Button>
                 </Form>
-                {/* {loginError && (
-                  <div
-                    className="d-flex flex-col m-y-md"
-                    data-testid="login-error-container">
-                    <div className="flex global-border rounded-4 p-sm error-alert ">
-                      <div className="m-r-xs">
-                        <Icon
-                          component={IconFailBadge}
-                          style={{ fontSize: '20px' }}
-                        />
-                      </div>
-                      <p data-testid="success-line">
-                        <span>{loginError}</span>
-                      </p>
-                    </div>
-                  </div>
-                )} */}
                 {!isAuthProviderLDAP && (
                   <>
                     <div className="mt-8" onClick={onClickForgotPassword}>
