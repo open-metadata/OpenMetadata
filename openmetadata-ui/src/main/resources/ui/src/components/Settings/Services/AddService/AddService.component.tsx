@@ -157,8 +157,10 @@ const AddService = ({
       handleEntityCreationError({
         error: error as AxiosError,
         entity: t('label.service'),
+        entityLowercase: t('label.service-lowercase'),
         entityLowercasePlural: t('label.service-lowercase-plural'),
         setInlineAlertDetails,
+        defaultErrorType: 'create',
         name: serviceConfig.serviceName,
       });
     } finally {

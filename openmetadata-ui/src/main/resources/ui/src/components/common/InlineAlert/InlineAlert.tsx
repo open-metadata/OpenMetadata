@@ -14,10 +14,11 @@ import {
   CheckCircleOutlined,
   ExclamationCircleOutlined,
 } from '@ant-design/icons';
-import { Alert, Typography } from 'antd';
+import { Alert, Button, Typography } from 'antd';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
-import React, { useEffect, useMemo } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ReactComponent as AlertIcon } from '../../../assets/svg/alert.svg';
 import { ReactComponent as ErrorExclamationIcon } from '../../../assets/svg/error-exclamation.svg';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
@@ -29,9 +30,13 @@ function InlineAlert({
   type,
   heading,
   description,
+  subDescription,
   onClose,
 }: Readonly<InlineAlertProps>) {
+  const { t } = useTranslation();
   const { inlineAlertDetails, setInlineAlertDetails } = useApplicationStore();
+  const [showMore, setShowMore] = useState(false);
+
   const { alertContainerClass, alertIconClass } = useMemo(
     () => ({
       alertContainerClass: `${type ?? 'default'}-alert`,
@@ -39,6 +44,10 @@ function InlineAlert({
     }),
     [type]
   );
+
+  const handleToggleShowMore = useCallback(() => {
+    setShowMore((prev) => !prev);
+  }, [setShowMore]);
 
   const alertIcon = useMemo(() => {
     switch (type) {
@@ -96,6 +105,22 @@ function InlineAlert({
             <Typography.Paragraph className="m-b-0 text-sm">
               {description}
             </Typography.Paragraph>
+
+            {subDescription && showMore && (
+              <Typography.Paragraph className="m-b-0 text-sm">
+                {subDescription}
+              </Typography.Paragraph>
+            )}
+
+            {subDescription && (
+              <Button
+                className="text-xs p-0 m-0 w-fit-content"
+                data-testid={`read-${showMore ? 'less' : 'more'}-button`}
+                type="link"
+                onClick={handleToggleShowMore}>
+                {t(`label.${showMore ? 'less' : 'more'}-lowercase`)}
+              </Button>
+            )}
           </div>
         </div>
       }
