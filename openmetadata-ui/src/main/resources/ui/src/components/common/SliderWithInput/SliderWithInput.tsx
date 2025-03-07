@@ -11,20 +11,25 @@
  *  limitations under the License.
  */
 
-import { Col, InputNumber, Row, Slider } from 'antd';
+import { CloseOutlined } from '@ant-design/icons';
+import { Button, Col, InputNumber, Row, Slider, Tooltip } from 'antd';
 import React, { useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { SliderWithInputProps } from './SliderWithInput.interface';
-
 const SliderWithInput = ({
   value,
   onChange,
   className,
 }: SliderWithInputProps) => {
-  const formatter = useCallback((value) => `${value}%`, [value]);
+  const { t } = useTranslation();
+  const formatter = useCallback(
+    (value) => (value ? `${value}%` : value),
+    [value]
+  );
 
   return (
     <Row className={className} data-testid="percentage-input" gutter={20}>
-      <Col span={20}>
+      <Col span={19}>
         <Slider
           marks={{
             0: '0%',
@@ -47,6 +52,13 @@ const SliderWithInput = ({
           value={value}
           onChange={onChange}
         />
+      </Col>
+      <Col span={1}>
+        <Tooltip title={t('label.clear')}>
+          <Button className="p-0" type="text" onClick={() => onChange(null)}>
+            <CloseOutlined />
+          </Button>
+        </Tooltip>
       </Col>
     </Row>
   );

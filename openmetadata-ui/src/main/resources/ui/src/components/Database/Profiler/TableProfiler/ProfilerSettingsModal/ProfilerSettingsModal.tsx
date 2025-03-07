@@ -187,7 +187,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
       profileSamplePercentage:
         profileSample && profileSampleType === ProfileSampleType.Percentage
           ? profileSample
-          : 100,
+          : undefined,
       profileSampleRows:
         profileSample && profileSampleType === ProfileSampleType.Rows
           ? profileSample
@@ -486,7 +486,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                   name="profileSamplePercentage">
                   <SliderWithInput
                     className="p-x-xs"
-                    value={state?.profileSample || 0}
+                    value={state?.profileSample}
                     onChange={handleProfileSample}
                   />
                 </Form.Item>
