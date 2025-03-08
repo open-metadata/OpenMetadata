@@ -7,7 +7,7 @@ changed_files=$(git diff --cached --name-only --diff-filter=ACM | grep 'openmeta
 
 if [ -n "$changed_files" ]; then
     echo "JSON schema files changed. Regenerating TypeScript files..."
-    ./openmetadata-ui/src/main/resources/ui/json2ts.sh $changed_files
+    ./openmetadata-ui/src/main/resources/ui/json2ts.sh
     git add openmetadata-ui/src/main/resources/ui/src/generated
 else
     echo "No changes in JSON schema files. Skipping TypeScript generation."
