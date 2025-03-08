@@ -213,6 +213,7 @@ export enum EntityTabs {
   GLOSSARY_TERMS = 'glossary_terms',
   ASSETS = 'assets',
   EXPRESSION = 'expression',
+  INSIGHTS = 'insights',
   DASHBOARD = 'dashboard',
   DOCUMENTATION = 'documentation',
   DATA_PRODUCTS = 'data_products',
