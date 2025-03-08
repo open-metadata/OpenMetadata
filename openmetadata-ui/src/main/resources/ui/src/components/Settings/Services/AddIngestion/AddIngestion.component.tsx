@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
-import { Form, Input, Typography } from 'antd';
+import { Typography } from 'antd';
 import { isEmpty, isUndefined, omit, trim } from 'lodash';
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { STEPS_FOR_ADD_INGESTION } from '../../../../constants/Ingestions.constant';
 import { DEFAULT_SCHEDULE_CRON_DAILY } from '../../../../constants/Schedular.constants';
@@ -29,6 +29,7 @@ import { IngestionPipeline } from '../../../../generated/entity/services/ingesti
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { useFqn } from '../../../../hooks/useFqn';
 import { IngestionWorkflowData } from '../../../../interface/service.interface';
+import addIngestionClassBase from '../../../../utils/AddIngestionClassBase';
 import { getSuccessMessage } from '../../../../utils/IngestionUtils';
 import { cleanWorkFlowData } from '../../../../utils/IngestionWorkflowUtils';
 import { getScheduleOptionsFromSchedules } from '../../../../utils/SchedularUtils';
@@ -83,6 +84,8 @@ const AddIngestion = ({
   const periodOptions = pipelineSchedules
     ? getScheduleOptionsFromSchedules(pipelineSchedules)
     : undefined;
+
+  const [scheduleItems, setScheduleItems] = useState<React.ReactNode>([]);
 
   // lazy initialization to initialize the data only once
   const [workflowData, setWorkflowData] = useState<IngestionWorkflowData>(
@@ -270,6 +273,12 @@ const AddIngestion = ({
     }
   };
 
+  useEffect(() => {
+    setScheduleItems(
+      addIngestionClassBase.getIngestionFormItems(retries, onFocus)
+    );
+  }, []);
+
   return (
     <div data-testid="add-ingestion-container">
       <Typography.Title className="font-normal" level={5}>
@@ -313,17 +322,7 @@ const AddIngestion = ({
             status={saveState}
             onBack={() => handlePrev(1)}
             onDeploy={handleScheduleIntervalDeployClick}>
-            <Form.Item
-              colon={false}
-              initialValue={retries}
-              label={t('label.number-of-retries')}
-              name="retries">
-              <Input
-                min={0}
-                type="number"
-                onFocus={() => onFocus('root/retries')}
-              />
-            </Form.Item>
+            {scheduleItems}
           </ScheduleInterval>
         )}
 
