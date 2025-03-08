@@ -64,6 +64,10 @@
       "description": "Doc Id for the Lineage.",
       "type": "string"
     },
+    "docUniqueId": {
+      "description": "Doc Unique Id for the Lineage.",
+      "type": "string"
+    },
     "pipelineEntityType": {
       "description": "Pipeline Entity or Stored procedure.",
       "type": "string"

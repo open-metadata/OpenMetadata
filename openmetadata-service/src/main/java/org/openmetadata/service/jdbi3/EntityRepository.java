@@ -1378,7 +1378,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
               searchListFilter, limit, offset, entityType, searchSortFilter, q);
       total = results.getTotal();
       for (Map<String, Object> json : results.getResults()) {
-        T entity = JsonUtils.readOrConvertValue(json, entityClass);
+        T entity = JsonUtils.readOrConvertValueLenient(json, entityClass);
         entityList.add(withHref(uriInfo, entity));
       }
       return new ResultList<>(entityList, offset, limit, total.intValue());

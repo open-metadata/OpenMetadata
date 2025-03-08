@@ -1019,7 +1019,7 @@ public interface CollectionDAO {
         @Bind("toEntityType") String toEntityType);
 
     @SqlQuery(
-        "SELECT fromId, toId, fromEntity, toEntity, relation "
+        "SELECT fromId, toId, fromEntity, toEntity, relation, json, jsonSchema "
             + "FROM entity_relationship "
             + "WHERE fromId IN (<fromIds>) "
             + "AND relation = :relation "

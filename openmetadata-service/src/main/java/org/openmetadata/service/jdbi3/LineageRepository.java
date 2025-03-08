@@ -332,7 +332,8 @@ public class LineageRepository {
       EntityReference fromEntity, EntityReference toEntity, LineageDetails lineageDetails) {
     EsLineageData lineageData =
         new EsLineageData()
-            .withDocId(getDocumentId(fromEntity, toEntity, lineageDetails))
+            .withDocId(getDocumentIdWithFqn(fromEntity, toEntity, lineageDetails))
+            .withDocUniqueId(getDocumentUniqueId(fromEntity, toEntity, lineageDetails))
             .withFromEntity(buildEntityRefLineage(fromEntity));
     if (lineageDetails != null) {
       // Add Pipeline Details
@@ -350,7 +351,7 @@ public class LineageRepository {
     return lineageData;
   }
 
-  private static String getDocumentId(
+  private static String getDocumentIdWithFqn(
       EntityReference fromEntity, EntityReference toEntity, LineageDetails lineageDetails) {
     if (lineageDetails != null && !nullOrEmpty(lineageDetails.getPipeline())) {
       EntityReference ref = lineageDetails.getPipeline();
@@ -363,6 +364,18 @@ public class LineageRepository {
     } else {
       return String.format(
           "%s--->%s", fromEntity.getFullyQualifiedName(), toEntity.getFullyQualifiedName());
+    }
+  }
+
+  private static String getDocumentUniqueId(
+      EntityReference fromEntity, EntityReference toEntity, LineageDetails lineageDetails) {
+    if (lineageDetails != null && !nullOrEmpty(lineageDetails.getPipeline())) {
+      EntityReference ref = lineageDetails.getPipeline();
+      return String.format(
+          "%s--->%s:%s--->%s",
+          fromEntity.getId(), ref.getType(), ref.getId().toString(), toEntity.getId().toString());
+    } else {
+      return String.format("%s--->%s", fromEntity.getId().toString(), toEntity.getId().toString());
     }
   }
 
@@ -994,14 +1007,11 @@ public class LineageRepository {
 
   private void deleteLineageFromSearch(
       EntityReference fromEntity, EntityReference toEntity, LineageDetails lineageDetails) {
+    String uniqueValue = getDocumentUniqueId(fromEntity, toEntity, lineageDetails);
     searchClient.updateChildren(
         GLOBAL_SEARCH_ALIAS,
-        new ImmutablePair<>(
-            "upstreamLineage.docId.keyword", getDocumentId(fromEntity, toEntity, lineageDetails)),
-        new ImmutablePair<>(
-            String.format(
-                REMOVE_LINEAGE_SCRIPT, getDocumentId(fromEntity, toEntity, lineageDetails)),
-            null));
+        new ImmutablePair<>("upstreamLineage.docUniqueId.keyword", uniqueValue),
+        new ImmutablePair<>(String.format(REMOVE_LINEAGE_SCRIPT, uniqueValue), null));
   }
 
   private EntityLineage getLineage(

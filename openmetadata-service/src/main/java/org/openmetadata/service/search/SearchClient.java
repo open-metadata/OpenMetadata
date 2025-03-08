@@ -79,13 +79,13 @@ public interface SearchClient {
       "if (ctx._source.certification != null && ctx._source.certification.tagLabel != null) {ctx._source.certification.tagLabel.style = params.style; ctx._source.certification.tagLabel.description = params.description; ctx._source.certification.tagLabel.tagFQN = params.tagFQN; ctx._source.certification.tagLabel.name = params.name;  }";
 
   String REMOVE_LINEAGE_SCRIPT =
-      "for (int i = 0; i < ctx._source.upstreamLineage.length; i++) { if (ctx._source.upstreamLineage[i].docId == '%s') { ctx._source.upstreamLineage.remove(i) }}";
+      "for (int i = 0; i < ctx._source.upstreamLineage.length; i++) { if (ctx._source.upstreamLineage[i].docUniqueId == '%s') { ctx._source.upstreamLineage.remove(i) }}";
 
   String REMOVE_ENTITY_RELATIONSHIP =
       "for (int i = 0; i < ctx._source.entityRelationship.length; i++) { if (ctx._source.entityRelationship[i].docId == '%s') { ctx._source.entityRelationship.remove(i) }}";
 
   String ADD_UPDATE_LINEAGE =
-      "boolean docIdExists = false; for (int i = 0; i < ctx._source.upstreamLineage.size(); i++) { if (ctx._source.upstreamLineage[i].docId.equalsIgnoreCase(params.lineageData.docId)) { ctx._source.upstreamLineage[i] = params.lineageData; docIdExists = true; break;}}if (!docIdExists) {ctx._source.upstreamLineage.add(params.lineageData);}";
+      "boolean docIdExists = false; for (int i = 0; i < ctx._source.upstreamLineage.size(); i++) { if (ctx._source.upstreamLineage[i].docUniqueId.equalsIgnoreCase(params.lineageData.docUniqueId)) { ctx._source.upstreamLineage[i] = params.lineageData; docIdExists = true; break;}}if (!docIdExists) {ctx._source.upstreamLineage.add(params.lineageData);}";
 
   // The script is used for updating the entityRelationship attribute of the entity in ES
   // It checks if any duplicate entry is present based on the docId and updates only if it is not

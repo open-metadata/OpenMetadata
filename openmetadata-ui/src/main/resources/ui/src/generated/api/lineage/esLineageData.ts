@@ -40,6 +40,10 @@ export interface EsLineageData {
      */
     docId?: string;
     /**
+     * Doc Unique Id for the Lineage.
+     */
+    docUniqueId?: string;
+    /**
      * From Entity.
      */
     fromEntity?: RelationshipRef;
