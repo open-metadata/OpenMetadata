@@ -173,6 +173,8 @@ plugins: Dict[str, Set[str]] = {
         "cachetools",
         "google-cloud-datacatalog>=3.6.2",
         "google-cloud-logging",
+        "google-cloud-resource-manager~=1.14.1",
+        "grpc-google-iam-v1~=0.14.0",
         VERSIONS["pyarrow"],
         VERSIONS["numpy"],
         "sqlalchemy-bigquery>=1.2.2",

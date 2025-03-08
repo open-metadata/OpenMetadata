@@ -22,6 +22,7 @@ from google import auth
 from google.auth import impersonated_credentials
 
 from metadata.generated.schema.security.credentials.gcpCredentials import (
+    GcpADC,
     GCPCredentials,
     GcpCredentialsPath,
 )
@@ -133,6 +134,11 @@ def set_google_credentials(gcp_credentials: GCPCredentials) -> None:
     Set GCP credentials environment variable
     :param gcp_credentials: GCPCredentials
     """
+    if isinstance(gcp_credentials.gcpConfig, GcpADC):
+        logger.info(
+            "Using Application Default Credentials to authenticate with GCP services."
+        )
+        return
     if isinstance(gcp_credentials.gcpConfig, GcpCredentialsPath):
         os.environ[GOOGLE_CREDENTIALS] = str(gcp_credentials.gcpConfig.path)
         return
