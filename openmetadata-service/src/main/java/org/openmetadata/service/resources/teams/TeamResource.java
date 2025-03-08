@@ -14,6 +14,7 @@
 package org.openmetadata.service.resources.teams;
 
 import static org.openmetadata.common.utils.CommonUtil.listOf;
+import static org.openmetadata.service.security.DefaultAuthorizer.getSubjectContext;
 
 import io.dropwizard.jersey.PATCH;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
@@ -57,18 +58,22 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.type.Permission;
 import org.openmetadata.schema.type.api.BulkAssets;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TeamRepository;
 import org.openmetadata.service.jdbi3.TeamRepository.TeamCsv;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
+import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.CSVExportResponse;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
@@ -423,6 +428,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
           @PathParam("name")
           String name,
       @Valid BulkAssets request) {
+    verifyUserPermission(securityContext);
     return Response.ok().entity(repository.bulkAddAssets(name, request)).build();
   }
 
@@ -449,6 +455,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
           @PathParam("name")
           String name,
       @Valid BulkAssets request) {
+    verifyUserPermission(securityContext);
     return Response.ok().entity(repository.bulkRemoveAssets(name, request)).build();
   }
 
@@ -748,5 +755,43 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
           boolean dryRun,
       String csv) {
     return importCsvInternalAsync(securityContext, name, csv, dryRun);
+  }
+
+  public final void verifyUserPermission(SecurityContext securityContext) {
+    SubjectContext subjectContext = getSubjectContext(securityContext);
+    String user = subjectContext.user().getName();
+
+    boolean hasPermission =
+        authorizer.listPermissions(securityContext, user).stream()
+            .anyMatch(
+                permission ->
+                    (permission.getResource().equals(Entity.ALL_RESOURCES)
+                            || permission.getResource().equals(Entity.TEAM)
+                            || permission.getResource().equals(Entity.USER))
+                        && permission.getPermissions().stream()
+                            .anyMatch(
+                                perm ->
+                                    (MetadataOperation.ALL.equals(perm.getOperation())
+                                            || MetadataOperation.EDIT_ALL.equals(
+                                                perm.getOperation())
+                                            || MetadataOperation.EDIT_TEAMS.equals(
+                                                perm.getOperation())
+                                            || MetadataOperation.EDIT_OWNERS.equals(
+                                                perm.getOperation()))
+                                        && Permission.Access.ALLOW.equals(perm.getAccess())));
+
+    boolean isAdminOrBot = subjectContext.isAdmin() || subjectContext.isBot();
+
+    if (!hasPermission && !isAdminOrBot) {
+      throw new AuthorizationException(
+          CatalogExceptionMessage.resourcePermissionNotAllowed(
+              user,
+              List.of(
+                  MetadataOperation.ALL,
+                  MetadataOperation.EDIT_ALL,
+                  MetadataOperation.EDIT_TEAMS,
+                  MetadataOperation.EDIT_OWNERS),
+              List.of(Entity.USER, Entity.TEAM)));
+    }
   }
 }
