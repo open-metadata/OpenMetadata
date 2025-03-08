@@ -592,6 +592,37 @@ public class DatabaseServiceResource
   }
 
   @DELETE
+  @Path("deleteAsync/{id}")
+  @Operation(
+      operationId = "deleteDatabaseService",
+      summary = "Delete a database service by Id",
+      description =
+          "Delete a database services. If databases (and tables) belong the service, it can't be deleted.",
+      responses = {
+        @ApiResponse(responseCode = "202", description = "Accepted"),
+        @ApiResponse(
+            responseCode = "404",
+            description = "DatabaseService service for instance {id} is not found")
+      })
+  public Response deleteAsync(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Recursively delete this entity and it's children. (Default `false`)")
+          @DefaultValue("false")
+          @QueryParam("recursive")
+          boolean recursive,
+      @Parameter(description = "Hard delete the entity. (Default = `false`)")
+          @QueryParam("hardDelete")
+          @DefaultValue("false")
+          boolean hardDelete,
+      @Parameter(description = "Id of the database service", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id) {
+    return deleteAsync(uriInfo, securityContext, id, recursive, hardDelete);
+  }
+
+  @DELETE
   @Path("/name/{name}")
   @Operation(
       operationId = "deleteDatabaseServiceByName",

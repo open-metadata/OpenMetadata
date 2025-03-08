@@ -30,13 +30,17 @@ export interface BackgroundJob {
     /**
      * Object containing job arguments.
      */
-    jobArgs: EnumCleanupArgs;
+    jobArgs: Args;
     /**
      * Type of the job.
      */
     jobType: JobType;
     /**
-     * JobHandler name of the method that will be executed for this job.
+     * Message describing the job status or error details
+     */
+    message?: string;
+    /**
+     * JobHandler name  that will be executed for this job.
      */
     methodName: string;
     /**
@@ -53,20 +57,44 @@ export interface BackgroundJob {
  * Object containing job arguments.
  *
  * Arguments for enum removal job.
+ *
+ * Arguments for delete operation job
  */
-export interface EnumCleanupArgs {
+export interface Args {
     /**
      * Type of the entity.
+     *
+     * Type of entity being deleted
      */
     entityType: string;
     /**
      * Name of the property.
      */
-    propertyName: string;
+    propertyName?: string;
     /**
      * List of removed enum keys.
      */
-    removedEnumKeys: string[];
+    removedEnumKeys?: string[];
+    /**
+     * Identifier of entity that was modified by the operation.
+     */
+    entityId?: string;
+    /**
+     * Unique name that identifies a Type.
+     */
+    entityName?: string;
+    /**
+     * Whether to perform hard delete
+     */
+    hardDelete?: boolean;
+    /**
+     * Whether to recursively delete child entities
+     */
+    recursive?: boolean;
+    /**
+     * User who initiated the delete operation
+     */
+    updatedBy?: string;
 }
 
 /**
@@ -74,6 +102,7 @@ export interface EnumCleanupArgs {
  */
 export enum JobType {
     CustomPropertyEnumCleanup = "CUSTOM_PROPERTY_ENUM_CLEANUP",
+    DeleteEntity = "DELETE_ENTITY",
 }
 
 /**
