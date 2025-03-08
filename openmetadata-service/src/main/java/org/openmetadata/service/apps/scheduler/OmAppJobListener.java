@@ -88,7 +88,7 @@ public class OmAppJobListener implements JobListener {
       }
       // Put the Context in the Job Data Map
       dataMap.put(SCHEDULED_APP_RUN_EXTENSION, JsonUtils.pojoToJson(runRecord));
-      dataMap.put(APP_CONFIG, JsonUtils.pojoToJson(jobApp.getAppConfiguration()));
+      dataMap.put(APP_CONFIG, JsonUtils.pojoToJson(jobConfig));
 
       // Insert new Record Run
       pushApplicationStatusUpdates(jobExecutionContext, runRecord, update);
