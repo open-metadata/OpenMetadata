@@ -66,6 +66,7 @@ class BigqueryQueryParserSource(QueryParserSource, ABC):
             region=self.service_connection.usageLocation,
             filters=self.get_filters(),
             result_limit=self.source_config.resultLimit,
+            cost_per_tib=self.service_connection.costPerTB,
         )
 
     @staticmethod
