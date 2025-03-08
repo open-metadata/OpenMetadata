@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Space, Switch, Typography } from 'antd';
+import Icon from '@ant-design/icons';
+import { Button, Col, Row, Space, Switch, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
@@ -19,7 +20,8 @@ import { isUndefined } from 'lodash';
 import { EntityTags, ServiceTypes } from 'Models';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useParams } from 'react-router-dom';
+import { useHistory, useParams } from 'react-router-dom';
+import { ReactComponent as IconEdit } from '../../assets/svg/edit-new.svg';
 import DescriptionV1 from '../../components/common/EntityDescription/DescriptionV1';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';
@@ -41,6 +43,7 @@ import { EntityType } from '../../enums/entity.enum';
 import { Paging } from '../../generated/type/paging';
 import { UsePagingInterface } from '../../hooks/paging/usePaging';
 import { ServicesType } from '../../interface/service.interface';
+import { getEntityBulkEditPath } from '../../utils/EntityUtils';
 import {
   callServicePatchAPI,
   getServiceMainTabColumns,
@@ -89,6 +92,7 @@ function ServiceMainTabContent({
     serviceCategory: ServiceTypes;
   }>();
   const { permissions } = usePermissionProvider();
+  const history = useHistory();
   const [pageData, setPageData] = useState<ServicePageData[]>([]);
 
   const tier = getTierTags(serviceDetails?.tags ?? []);
@@ -200,6 +204,15 @@ function ServiceMainTabContent({
     [serviceCategory]
   );
 
+  const handleEditTable = () => {
+    history.push({
+      pathname: getEntityBulkEditPath(
+        EntityType.DATABASE_SERVICE,
+        serviceDetails.fullyQualifiedName ?? ''
+      ),
+    });
+  };
+
   const {
     editTagsPermission,
     editGlossaryTermsPermission,
@@ -260,16 +273,29 @@ function ServiceMainTabContent({
                             DEFAULT_SERVICE_TAB_VISIBLE_COLUMNS
                           }
                           extraTableFilters={
-                            <span>
-                              <Switch
-                                checked={showDeleted}
-                                data-testid="show-deleted"
-                                onClick={onShowDeletedChange}
-                              />
-                              <Typography.Text className="m-l-xs">
-                                {t('label.deleted')}
-                              </Typography.Text>
-                            </span>
+                            <>
+                              {entityType === EntityType.DATABASE_SERVICE && (
+                                <Button
+                                  className="text-primary p-0"
+                                  data-testid="bulk-edit-table"
+                                  icon={<Icon component={IconEdit} />}
+                                  type="text"
+                                  onClick={handleEditTable}>
+                                  {t('label.edit')}
+                                </Button>
+                              )}
+
+                              <span>
+                                <Switch
+                                  checked={showDeleted}
+                                  data-testid="show-deleted"
+                                  onClick={onShowDeletedChange}
+                                />
+                                <Typography.Text className="m-l-xs">
+                                  {t('label.deleted')}
+                                </Typography.Text>
+                              </span>
+                            </>
                           }
                           locale={{
                             emptyText: <ErrorPlaceHolder className="m-y-md" />,

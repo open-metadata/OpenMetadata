@@ -33,6 +33,9 @@ export type ExportData = {
   onExport: (name: string) => Promise<CSVExportResponse | string>;
 };
 export interface EntityExportModalContextProps {
+  csvExportData?: string;
+  clearCSVExportData: () => void;
   showModal: (data: ExportData) => void;
+  triggerExportForBulkEdit: (data: ExportData) => void;
   onUpdateCSVExportJob: (data: Partial<CSVExportWebsocketResponse>) => void;
 }
