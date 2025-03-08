@@ -10,6 +10,7 @@
 #  limitations under the License.
 """PowerBI source module"""
 
+import re
 import traceback
 from typing import Any, Iterable, List, Optional, Union
 
@@ -616,6 +617,81 @@ class PowerbiSource(DashboardServiceSource):
             logger.debug(f"Error to get data_model_column_fqn {exc}")
             logger.debug(traceback.format_exc())
 
+    def _parse_redshift_source(self, source_expression: str) -> Optional[dict]:
+        try:
+            db_match = re.search(
+                r'AmazonRedshift\.Database\("[^"]+","([^"]+)"\)', source_expression
+            )
+            schema_table_match = re.findall(r'\[Name="([^"]+)"\]', source_expression)
+
+            database = db_match.group(1) if db_match else None
+            schema = table = None
+            if isinstance(schema_table_match, list):
+                schema = schema_table_match[0] if len(schema_table_match) > 0 else None
+                table = schema_table_match[1] if len(schema_table_match) > 1 else None
+
+            if (
+                schema and table
+            ):  # atlease 2 entities schema and table should be fetched
+                return {"database": database, "schema": schema, "table": table}
+            return None
+        except Exception as exc:
+            logger.debug(f"Error to parse redshift table source: {exc}")
+            logger.debug(traceback.format_exc())
+        return None
+
+    def _parse_snowflake_source(self, source_expression: str) -> Optional[dict]:
+        try:
+            db_match = re.search(
+                r'\[Name="([^"]+)",Kind="Database"\]', source_expression
+            )
+            schema_match = re.search(
+                r'\[Name="([^"]+)",Kind="Schema"\]', source_expression
+            )
+            view_match = re.search(r'\[Name="([^"]+)",Kind="View"\]', source_expression)
+            table_match = re.search(
+                r'\[Name="([^"]+)",Kind="Table"\]', source_expression
+            )
+
+            database = db_match.group(1) if db_match else None
+            schema = schema_match.group(1) if schema_match else None
+            view = view_match.group(1) if view_match else None
+            table = table_match.group(1) if table_match else None
+
+            if schema and (
+                table or view
+            ):  # atlease 2 entities schema and table should be fetched
+                return {
+                    "database": database,
+                    "schema": schema,
+                    "table": table if table else view,
+                }
+            return None
+        except Exception as exc:
+            logger.debug(f"Error to parse snowflake table source: {exc}")
+            logger.debug(traceback.format_exc())
+        return None
+
+    def _parse_table_info_from_source_exp(self, table: PowerBiTable) -> dict:
+        try:
+            if not isinstance(table.source, list):
+                return {}
+            source_expression = table.source[0].expression
+
+            # parse snowflake source
+            table_info = self._parse_snowflake_source(source_expression)
+            if isinstance(table_info, dict):
+                return table_info
+            # parse redshift source
+            table_info = self._parse_redshift_source(source_expression)
+            if isinstance(table_info, dict):
+                return table_info
+            return {}
+        except Exception as exc:
+            logger.debug(f"Error to parse table source: {exc}")
+            logger.debug(traceback.format_exc())
+        return {}
+
     def _get_table_and_datamodel_lineage(
         self,
         db_service_name: Optional[str],
@@ -626,11 +702,12 @@ class PowerbiSource(DashboardServiceSource):
         Method to create lineage between table and datamodels
         """
         try:
+            table_info = self._parse_table_info_from_source_exp(table)
             fqn_search_string = build_es_fqn_search_string(
-                database_name=None,
-                schema_name=None,
+                database_name=table_info.get("database"),
+                schema_name=table_info.get("schema"),
                 service_name=db_service_name or "*",
-                table_name=table.name,
+                table_name=table_info.get("table") or table.name,
             )
             table_entity = self.metadata.search_in_any_service(
                 entity_type=Table,
