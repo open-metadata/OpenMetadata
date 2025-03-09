@@ -114,6 +114,7 @@ import ActivityFeedEditorNew from '../../../ActivityFeed/ActivityFeedEditor/Acti
 import { useActivityFeedProvider } from '../../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import InlineEdit from '../../../common/InlineEdit/InlineEdit.component';
 
+import { getEntityName } from '../../../../utils/EntityUtils';
 import { UserAvatarGroup } from '../../../common/OwnerLabel/UserAvatarGroup.component';
 import EntityPopOverCard from '../../../common/PopOverCard/EntityPopOverCard';
 import ProfilePictureNew from '../../../common/ProfilePicture/ProfilePictureNew';
@@ -1049,7 +1050,12 @@ export const TaskTabNew = ({
 
             {showFeedEditor ? (
               <ActivityFeedEditorNew
-                className="m-t-md feed-editor activity-feed-editor-container-new"
+                className={classNames(
+                  'm-t-md feed-editor activity-feed-editor-container-new',
+                  {
+                    'm-b-md': showFeedEditor && taskThread?.posts?.length === 0,
+                  }
+                )}
                 onSave={onSave}
                 onTextChange={setComment}
               />
@@ -1060,7 +1066,7 @@ export const TaskTabNew = ({
                     <ProfilePictureNew
                       avatarType="outlined"
                       key={taskThread.id}
-                      name={currentUser?.displayName || currentUser?.name || ''}
+                      name={getEntityName(currentUser)}
                       size={32}
                     />
                   </div>

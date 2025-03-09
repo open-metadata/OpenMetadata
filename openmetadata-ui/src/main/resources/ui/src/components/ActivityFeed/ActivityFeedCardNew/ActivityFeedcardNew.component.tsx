@@ -52,7 +52,6 @@ interface ActivityFeedCardNewProps {
   post: Post;
   showActivityFeedEditor?: boolean;
   showThread?: boolean;
-  isFullWidth?: boolean;
 }
 
 const ActivityFeedCardNew = ({
@@ -311,7 +310,7 @@ const ActivityFeedCardNew = ({
                 <ProfilePictureNew
                   avatarType="outlined"
                   key={feed.id}
-                  name={currentUser?.displayName || currentUser?.name || ''}
+                  name={getEntityName(currentUser)}
                   size={32}
                 />
               </div>

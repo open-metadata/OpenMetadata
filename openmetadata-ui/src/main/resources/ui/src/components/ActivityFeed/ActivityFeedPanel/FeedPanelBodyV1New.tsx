@@ -23,15 +23,11 @@ import { FeedPanelBodyPropV1 } from './FeedPanelBodyV1.interface';
 const FeedPanelBodyV1: FC<FeedPanelBodyPropV1> = ({
   feed,
   showThread,
-  isOpenInDrawer = false,
   onFeedClick,
   isActive,
-  hidePopover = false,
-  isForFeedTab = false,
   showActivityFeedEditor = false,
   onAfterClose,
   onUpdateEntityDetails,
-  isFullWidth = false,
 }) => {
   const mainFeed = useMemo(
     () =>
@@ -59,13 +55,8 @@ const FeedPanelBodyV1: FC<FeedPanelBodyPropV1> = ({
       {feed.type === ThreadType.Task ? (
         <TaskFeedCardNew
           feed={feed}
-          hidePopover={hidePopover}
           isActive={isActive}
-          isForFeedTab={isForFeedTab}
-          isOpenInDrawer={isOpenInDrawer}
           key={feed.id}
-          post={mainFeed}
-          showThread={showThread}
           onAfterClose={onAfterClose}
           onUpdateEntityDetails={onUpdateEntityDetails}
         />
@@ -73,7 +64,6 @@ const FeedPanelBodyV1: FC<FeedPanelBodyPropV1> = ({
         <ActivityFeedCardNew
           feed={feed}
           isActive={isActive}
-          isFullWidth={isFullWidth}
           isPost={false}
           post={mainFeed}
           showActivityFeedEditor={showActivityFeedEditor}
