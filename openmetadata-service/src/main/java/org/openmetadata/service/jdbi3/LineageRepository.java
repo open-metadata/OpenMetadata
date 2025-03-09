@@ -168,7 +168,7 @@ public class LineageRepository {
             to.getType(),
             Relationship.UPSTREAM.ordinal(),
             detailsJson);
-    addLineageToSearch(from, to, addLineage.getEdge().getLineageDetails());
+    addLineageToSearch(from, to, lineageDetails);
 
     // build Extended Lineage
     buildExtendedLineage(from, to, lineageDetails, relationAlreadyExists);
