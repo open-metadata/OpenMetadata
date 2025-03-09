@@ -24,6 +24,7 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
+import { PAGE_SIZE } from '../../../constants/constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import {
   Suggestion,
@@ -62,48 +63,51 @@ const SuggestionsProvider = ({ children }: { children?: ReactNode }) => {
   const publish = usePub();
 
   const [loading, setLoading] = useState(false);
-  const [suggestionLimit, setSuggestionLimit] = useState<number>(10);
+  const [suggestionLimit, setSuggestionLimit] = useState<number>(PAGE_SIZE);
   const refreshEntity = useRef<(suggestion: Suggestion) => void>();
   const { permissions } = usePermissionProvider();
 
-  const fetchSuggestions = useCallback(async () => {
-    setLoading(true);
-    try {
-      const { data, paging } = await getSuggestionsList({
-        entityFQN: entityFqn,
-        limit: suggestionLimit,
-      });
-      setSuggestions(data);
-      setSuggestionLimit(paging.total);
+  const fetchSuggestions = useCallback(
+    async (limit?: number) => {
+      setLoading(true);
+      try {
+        const { data, paging } = await getSuggestionsList({
+          entityFQN: entityFqn,
+          limit: limit ?? suggestionLimit,
+        });
+        setSuggestions(data);
+        setSuggestionLimit(paging.total);
 
-      const allUsersData = data.map(
-        (suggestion) => suggestion.createdBy as EntityReference
-      );
-      const uniqueUsers = uniqWith(allUsersData, isEqual);
-      setAllSuggestionsUsers(uniqueUsers);
+        const allUsersData = data.map(
+          (suggestion) => suggestion.createdBy as EntityReference
+        );
+        const uniqueUsers = uniqWith(allUsersData, isEqual);
+        setAllSuggestionsUsers(uniqueUsers);
 
-      const groupedSuggestions = data.reduce((acc, suggestion) => {
-        const createdBy = suggestion?.createdBy?.name ?? '';
-        if (!acc.has(createdBy)) {
-          acc.set(createdBy, []);
-        }
-        acc.get(createdBy)?.push(suggestion);
+        const groupedSuggestions = data.reduce((acc, suggestion) => {
+          const createdBy = suggestion?.createdBy?.name ?? '';
+          if (!acc.has(createdBy)) {
+            acc.set(createdBy, []);
+          }
+          acc.get(createdBy)?.push(suggestion);
 
-        return acc;
-      }, new Map() as Map<string, Suggestion[]>);
+          return acc;
+        }, new Map() as Map<string, Suggestion[]>);
 
-      setSuggestionsByUser(groupedSuggestions);
-    } catch (err) {
-      showErrorToast(
-        err as AxiosError,
-        t('server.entity-fetch-error', {
-          entity: t('label.lineage-data-lowercase'),
-        })
-      );
-    } finally {
-      setLoading(false);
-    }
-  }, [entityFqn, suggestionLimit]);
+        setSuggestionsByUser(groupedSuggestions);
+      } catch (err) {
+        showErrorToast(
+          err as AxiosError,
+          t('server.entity-fetch-error', {
+            entity: t('label.suggestion-lowercase-plural'),
+          })
+        );
+      } finally {
+        setLoading(false);
+      }
+    },
+    [entityFqn, suggestionLimit]
+  );
 
   const acceptRejectSuggestion = useCallback(
     async (suggestion: Suggestion, status: SuggestionAction) => {
@@ -166,7 +170,7 @@ const SuggestionsProvider = ({ children }: { children?: ReactNode }) => {
 
   useEffect(() => {
     if (!isEmpty(permissions) && !isEmpty(entityFqn)) {
-      fetchSuggestions();
+      fetchSuggestions(PAGE_SIZE);
     }
   }, [entityFqn, permissions]);
 

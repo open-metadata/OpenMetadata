@@ -102,7 +102,6 @@ public class AppResource extends EntityResource<App, AppRepository> {
   private SearchRepository searchRepository;
   public static final List<ScheduleType> SCHEDULED_TYPES =
       List.of(ScheduleType.Scheduled, ScheduleType.ScheduledOrManual, ScheduleType.NoSchedule);
-  public static final String SLACK_APPLICATION = "SlackApplication";
   private final AppMapper mapper = new AppMapper();
 
   @Override
@@ -967,6 +966,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
   }
 
   @POST
+  @Consumes(MediaType.APPLICATION_JSON)
   @Path("/trigger/{name}")
   @Operation(
       operationId = "triggerApplicationRun",
@@ -986,18 +986,28 @@ public class AppResource extends EntityResource<App, AppRepository> {
       @Context SecurityContext securityContext,
       @Parameter(description = "Name of the App", schema = @Schema(type = "string"))
           @PathParam("name")
-          String name) {
+          String name,
+      @RequestBody(
+              description =
+                  "Configuration payload. Keys will be added to the current configuration. Delete keys by setting them to null.",
+              content = @Content(mediaType = MediaType.APPLICATION_JSON))
+          Map<String, Object> configPayload) {
     EntityUtil.Fields fields = getFields(String.format("%s,bot,pipelines", FIELD_OWNERS));
     App app = repository.getByName(uriInfo, name, fields);
     if (app.getAppType().equals(AppType.Internal)) {
       ApplicationHandler.getInstance()
-          .triggerApplicationOnDemand(app, Entity.getCollectionDAO(), searchRepository);
-      return Response.status(Response.Status.OK).entity("Application Triggered").build();
+          .triggerApplicationOnDemand(
+              app, Entity.getCollectionDAO(), searchRepository, configPayload);
+      return Response.status(Response.Status.OK).build();
     } else {
       if (!app.getPipelines().isEmpty()) {
         IngestionPipeline ingestionPipeline = getIngestionPipeline(uriInfo, securityContext, app);
         ServiceEntityInterface service =
             Entity.getEntity(ingestionPipeline.getService(), "", Include.NON_DELETED);
+        if (configPayload != null) {
+          throw new BadRequestException(
+              "Overriding app config is not supported for external applications.");
+        }
         PipelineServiceClientResponse response =
             pipelineServiceClient.runPipeline(ingestionPipeline, service);
         return Response.status(response.getCode()).entity(response).build();
