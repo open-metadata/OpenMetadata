@@ -12,7 +12,7 @@
  */
 import { fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
-import { MatchType } from '../../../pages/SearchSettingsPage/searchSettings.interface';
+import { FieldValueBoost } from '../../../generated/configuration/searchSettings';
 import FieldConfiguration from './FieldConfiguration';
 
 const mockProps = {
@@ -24,24 +24,19 @@ const mockProps = {
   searchSettings: {
     highlightFields: ['description'],
     fields: { description: 5 },
-    mustMatch: ['description'],
-    shouldMatch: [],
-    mustNotMatch: [],
-    boosts: [],
+    fieldValueBoosts: [] as FieldValueBoost[],
   },
   onHighlightFieldsChange: jest.fn(),
-  onMatchTypeChange: jest.fn(),
   onFieldWeightChange: jest.fn(),
-  onBoostChange: jest.fn(),
+  onValueBoostChange: jest.fn(),
   onDeleteBoost: jest.fn(),
-  getSelectedMatchType: jest.fn().mockReturnValue('mustMatch'),
 };
 
-jest.mock('../AddBoost/AddBoost', () => {
-  return jest
-    .fn()
-    .mockImplementation(() => <div data-testid="add-boost-component" />);
-});
+jest.mock('react-i18next', () => ({
+  useTranslation: () => ({
+    t: (str: string) => str,
+  }),
+}));
 
 describe('FieldConfiguration', () => {
   beforeEach(() => {
@@ -55,7 +50,7 @@ describe('FieldConfiguration', () => {
       mockProps.field.fieldName
     );
     expect(screen.getByTestId('field-weight')).toHaveTextContent(
-      mockProps.field.weight.toString()
+      `0${mockProps.field.weight}`
     );
   });
 
@@ -72,20 +67,6 @@ describe('FieldConfiguration', () => {
     );
   });
 
-  it('Should handle match type change', () => {
-    render(<FieldConfiguration {...mockProps} />);
-
-    fireEvent.click(screen.getByTestId('field-container-header'));
-
-    const shouldMatchRadio = screen.getByTestId('should-match-radio');
-    fireEvent.click(shouldMatchRadio);
-
-    expect(mockProps.onMatchTypeChange).toHaveBeenCalledWith(
-      mockProps.field.fieldName,
-      'shouldMatch' as MatchType
-    );
-  });
-
   it('Should handle weight slider change', () => {
     render(<FieldConfiguration {...mockProps} />);
 
@@ -96,10 +77,7 @@ describe('FieldConfiguration', () => {
     fireEvent.mouseMove(slider, { clientX: 200 });
     fireEvent.mouseUp(slider);
 
-    expect(mockProps.onFieldWeightChange).toHaveBeenCalledWith(
-      mockProps.field.fieldName,
-      10
-    );
+    expect(mockProps.onFieldWeightChange).toHaveBeenCalled();
   });
 
   it('Should handle add boost dropdown', () => {

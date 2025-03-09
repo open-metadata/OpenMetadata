@@ -12,15 +12,21 @@
  */
 import { fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
+import { Modifier } from '../../../generated/configuration/searchSettings';
 import AddBoost from './AddBoost';
 
 const mockProps = {
-  boosts: [
-    { field: 'name', boost: 5 },
-    { field: 'displayName', boost: 3 },
+  fieldValueBoosts: [
+    {
+      field: 'name',
+      factor: 5,
+      modifier: Modifier.None,
+      missing: 0,
+      condition: { range: {} },
+    },
   ],
   fieldName: 'name',
-  onBoostChange: jest.fn(),
+  onValueBoostChange: jest.fn(),
   onDeleteBoost: jest.fn(),
 };
 
@@ -39,10 +45,13 @@ describe('AddBoost Component', () => {
     render(<AddBoost {...mockProps} />);
 
     expect(screen.getByTestId('boost-label')).toBeInTheDocument();
-
-    expect(screen.getByTestId('field-boost-value')).toHaveTextContent('5');
-
+    expect(screen.getByTestId('field-boost-value')).toBeInTheDocument();
     expect(screen.getByTestId('delete-boost-btn')).toBeInTheDocument();
+
+    expect(screen.getByRole('slider')).toBeInTheDocument();
+    expect(screen.getByTestId('modifier-select')).toBeInTheDocument();
+    expect(screen.getByTestId('missing-value-input')).toBeInTheDocument();
+    expect(screen.getByTestId('range-condition-label')).toBeInTheDocument();
   });
 
   it('Should handle slider value changes', () => {
@@ -54,7 +63,36 @@ describe('AddBoost Component', () => {
     fireEvent.mouseMove(slider, { clientX: 200 });
     fireEvent.mouseUp(slider);
 
-    expect(mockProps.onBoostChange).toHaveBeenCalled();
+    expect(mockProps.onValueBoostChange).toHaveBeenCalled();
+  });
+
+  it('Should handle missing value changes', () => {
+    render(<AddBoost {...mockProps} />);
+
+    const missingInput = screen.getByTestId('missing-value-input');
+    fireEvent.change(missingInput, { target: { value: '2' } });
+
+    expect(mockProps.onValueBoostChange).toHaveBeenCalledWith(
+      'name',
+      expect.objectContaining({
+        missing: 2,
+      })
+    );
+  });
+
+  it('Should handle range condition changes', () => {
+    render(<AddBoost {...mockProps} />);
+
+    const gteInput = screen.getByTestId('gte-input');
+
+    fireEvent.change(gteInput, { target: { value: '1' } });
+
+    expect(mockProps.onValueBoostChange).toHaveBeenCalledWith(
+      'name',
+      expect.objectContaining({
+        condition: { range: { gte: 1 } },
+      })
+    );
   });
 
   it('Should handle delete button click', () => {

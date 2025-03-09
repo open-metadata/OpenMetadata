@@ -58,7 +58,7 @@ export const GlobalSettingItem = ({
       </Typography.Text>
 
       {isEditing ? (
-        <div className="m-l-md d-flex justify-end inline-edit-container">
+        <div className="m-l-md d-flex justify-end flex-wrap inline-edit-container">
           <InlineEdit
             isLoading={isUpdating}
             onCancel={handleCancel}
@@ -75,7 +75,7 @@ export const GlobalSettingItem = ({
           </InlineEdit>
         </div>
       ) : (
-        <div className="d-flex items-center justify-end value-container">
+        <div className="d-flex items-center justify-end flex-wrap value-container">
           <span
             className="m-l-xlg font-semibold p-x-xss global-settings-item-value"
             data-testid={`global-setting-value-${label}`}>

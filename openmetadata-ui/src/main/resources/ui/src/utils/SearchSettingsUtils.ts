@@ -14,13 +14,11 @@ import { GlobalSettingsMenuCategory } from '../constants/GlobalSettings.constant
 import { UIPermission } from '../context/PermissionProvider/PermissionProvider.interface';
 import {
   BoostMode,
+  Modifier,
   ScoreMode,
   SearchSettings,
 } from '../generated/configuration/searchSettings';
-import {
-  MatchFields,
-  SettingCategoryData,
-} from '../pages/SearchSettingsPage/searchSettings.interface';
+import { SettingCategoryData } from '../pages/SearchSettingsPage/searchSettings.interface';
 import globalSettingsClassBase from './GlobalSettingsClassBase';
 
 export const getSearchSettingCategories = (
@@ -29,10 +27,7 @@ export const getSearchSettingCategories = (
 ): SettingCategoryData[] | undefined => {
   let categoryItem = globalSettingsClassBase
     .getGlobalSettingsMenuWithPermission(permissions, isAdminUser)
-    .find(
-      (item) =>
-        item.key === GlobalSettingsMenuCategory.SEARCH_SETTING_CATEGORIES
-    );
+    .find((item) => item.key === GlobalSettingsMenuCategory.SEARCH_SETTINGS);
 
   if (categoryItem) {
     categoryItem = {
@@ -69,16 +64,7 @@ export const scoreModeOptions = Object.values(ScoreMode).map((value) => ({
   value: value,
 }));
 
-export const getSelectedMatchType = (
-  fieldName: string,
-  matchFields: MatchFields
-) => {
-  if (matchFields.mustMatch.includes(fieldName)) {
-    return 'mustMatch';
-  }
-  if (matchFields.shouldMatch.includes(fieldName)) {
-    return 'shouldMatch';
-  }
-
-  return 'mustNotMatch';
-};
+export const modifierOptions = Object.values(Modifier).map((value) => ({
+  label: value,
+  value: value,
+}));

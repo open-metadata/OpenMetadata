@@ -14,50 +14,52 @@ import { t } from 'i18next';
 import { SettingMenuItem } from './GlobalSettingsUtils';
 
 import { ReactComponent as AdminIcon } from '../assets/svg/admin-colored.svg';
+import { ReactComponent as APIEndpointIcon } from '../assets/svg/api-endpoints-colored-new.svg';
 import { ReactComponent as ApplicationIcon } from '../assets/svg/application-colored.svg';
 import { ReactComponent as BotIcon } from '../assets/svg/bot-colored.svg';
 import { ReactComponent as AppearanceIcon } from '../assets/svg/custom-logo-colored.svg';
 import { ReactComponent as DashboardIcon } from '../assets/svg/dashboard-colored-new.svg';
+import { ReactComponent as DashboardDataModelIcon } from '../assets/svg/dashboard-data-models-colored-new.svg';
 import { ReactComponent as DatabaseIcon } from '../assets/svg/database-colored-new.svg';
+import { ReactComponent as SchemaIcon } from '../assets/svg/database-schema-colored-new.svg';
 import { ReactComponent as EmailIcon } from '../assets/svg/email-colored.svg';
 import { ReactComponent as GlossaryIcon } from '../assets/svg/glossary-term-colored-new.svg';
 import { ReactComponent as APICollectionIcon } from '../assets/svg/ic-api-collection.svg';
-import { ReactComponent as APIEndpointIcon } from '../assets/svg/ic-api-endpoint.svg';
 import { ReactComponent as IconAPI } from '../assets/svg/ic-api-service.svg';
-import { ReactComponent as DashboardDataModelIcon } from '../assets/svg/ic-dashboard-data-model-colored.svg';
 import { ReactComponent as DataProductIcon } from '../assets/svg/ic-data-product-colored.svg';
-import { ReactComponent as SchemaIcon } from '../assets/svg/ic-database-schema-colored.svg';
 import { ReactComponent as LineageIcon } from '../assets/svg/ic-lineage-config.svg';
 import { ReactComponent as LinkIcon } from '../assets/svg/ic-url-link.svg';
 
+import { ReactComponent as StorageIcon } from '../assets/svg/containers-colored-new.svg';
+import { ReactComponent as DataAssetsIcon } from '../assets/svg/data-assets-colored-new.svg';
+import { ReactComponent as DataObservability } from '../assets/svg/data-observability-colored-new.svg';
 import { ReactComponent as LoginIcon } from '../assets/svg/login-colored.svg';
 import { ReactComponent as OpenMetadataIcon } from '../assets/svg/logo-monogram.svg';
 import { ReactComponent as MessagingIcon } from '../assets/svg/messaging-colored-new.svg';
 import { ReactComponent as MetricColoredIcon } from '../assets/svg/metric-colored.svg';
-import { ReactComponent as MlModelIcon } from '../assets/svg/ml-model-colored.svg';
+import { ReactComponent as MlModelIcon } from '../assets/svg/ml-models-colored-new.svg';
 import { ReactComponent as OMHealthIcon } from '../assets/svg/om-health-colored.svg';
 import { ReactComponent as PersonasIcon } from '../assets/svg/persona-colored.svg';
 import { ReactComponent as PipelineIcon } from '../assets/svg/pipelines-colored-new.svg';
 import { ReactComponent as PoliciesIcon } from '../assets/svg/policies-colored.svg';
 import { ReactComponent as ProfilerConfigIcon } from '../assets/svg/profiler-configuration-logo.svg';
+import { ReactComponent as QueryIcon } from '../assets/svg/query-colored-new.svg';
 import { ReactComponent as RolesIcon } from '../assets/svg/role-colored.svg';
 import { ReactComponent as SearchIcon } from '../assets/svg/search-colored.svg';
 import { ReactComponent as AccessControlIcon } from '../assets/svg/setting-access-control.svg';
 import { ReactComponent as CustomProperties } from '../assets/svg/setting-custom-properties.svg';
-import { ReactComponent as DataObservability } from '../assets/svg/setting-data-observability.svg';
 import { ReactComponent as ManagementIcon } from '../assets/svg/setting-management.svg';
 import { ReactComponent as NotificationIcon } from '../assets/svg/setting-notification.svg';
 import { ReactComponent as ServiceIcon } from '../assets/svg/setting-services.svg';
-import { ReactComponent as StorageIcon } from '../assets/svg/storage-colored.svg';
-import { ReactComponent as StoredProcedureIcon } from '../assets/svg/stored-procedure-colored.svg';
+import { ReactComponent as StoredProcedureIcon } from '../assets/svg/stored-procedures-colored-new.svg';
 import { ReactComponent as TableIcon } from '../assets/svg/table-colored-new.svg';
 import { ReactComponent as TagIcon } from '../assets/svg/tags-colored-new.svg';
 import { ReactComponent as TeamsIcon } from '../assets/svg/teams-colored.svg';
+import { ReactComponent as TestCaseIcon } from '../assets/svg/test-cases-colored-new.svg';
 import { ReactComponent as UsersIcon } from '../assets/svg/user-colored.svg';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
-  SearchSettingsEntity,
 } from '../constants/GlobalSettings.constants';
 import {
   ResourceEntity,
@@ -538,7 +540,7 @@ class GlobalSettingsClassBase {
       },
       {
         category: t('label.search-setting-plural'),
-        key: GlobalSettingsMenuCategory.SEARCH_SETTING_CATEGORIES,
+        key: GlobalSettingsMenuCategory.SEARCH_SETTINGS,
         icon: SearchIcon,
         description: 't(message.search-settings-description)',
         items: [
@@ -548,7 +550,7 @@ class GlobalSettingsClassBase {
               entity: t('label.table-plural'),
             }),
             isProtected: Boolean(isAdminUser),
-            key: `${GlobalSettingOptions.SEARCH_SETTINGS}/${SearchSettingsEntity.TABLE}`,
+            key: `${GlobalSettingsMenuCategory.SEARCH_SETTINGS}.${GlobalSettingOptions.TABLES}`,
             icon: TableIcon,
           },
           {
@@ -557,7 +559,7 @@ class GlobalSettingsClassBase {
               entity: t('label.dashboard-plural'),
             }),
             isProtected: Boolean(isAdminUser),
-            key: `${GlobalSettingOptions.SEARCH_SETTINGS}/${SearchSettingsEntity.DASHBOARD}`,
+            key: `${GlobalSettingsMenuCategory.SEARCH_SETTINGS}.${GlobalSettingOptions.DASHBOARDS}`,
             icon: DashboardIcon,
           },
           {
@@ -566,7 +568,7 @@ class GlobalSettingsClassBase {
               entity: t('label.pipeline-plural'),
             }),
             isProtected: Boolean(isAdminUser),
-            key: `${GlobalSettingOptions.SEARCH_SETTINGS}/${SearchSettingsEntity.PIPELINE}`,
+            key: `${GlobalSettingsMenuCategory.SEARCH_SETTINGS}.${GlobalSettingOptions.PIPELINES}`,
             icon: PipelineIcon,
           },
           {
@@ -575,7 +577,7 @@ class GlobalSettingsClassBase {
               entity: t('label.topic-plural'),
             }),
             isProtected: Boolean(isAdminUser),
-            key: `${GlobalSettingOptions.SEARCH_SETTINGS}/${SearchSettingsEntity.TOPIC}`,
+            key: `${GlobalSettingsMenuCategory.SEARCH_SETTINGS}.${GlobalSettingOptions.TOPICS}`,
             icon: MessagingIcon,
           },
           {
@@ -584,7 +586,7 @@ class GlobalSettingsClassBase {
               entity: t('label.glossary-term'),
             }),
             isProtected: Boolean(isAdminUser),
-            key: `${GlobalSettingOptions.SEARCH_SETTINGS}/${SearchSettingsEntity.GLOSSARY_TERM}`,
+            key: `${GlobalSettingsMenuCategory.SEARCH_SETTINGS}.${GlobalSettingOptions.GLOSSARY_TERM}`,
             icon: GlossaryIcon,
           },
           {
@@ -593,7 +595,7 @@ class GlobalSettingsClassBase {
               entity: t('label.api-endpoint'),
             }),
             isProtected: Boolean(isAdminUser),
-            key: `${GlobalSettingOptions.SEARCH_SETTINGS}/${SearchSettingsEntity.API_ENDPOINT}`,
+            key: `${GlobalSettingsMenuCategory.SEARCH_SETTINGS}.${GlobalSettingOptions.API_ENDPOINTS}`,
             icon: APIEndpointIcon,
           },
           {
@@ -602,7 +604,7 @@ class GlobalSettingsClassBase {
               entity: t('label.dashboard-data-model-plural'),
             }),
             isProtected: Boolean(isAdminUser),
-            key: `${GlobalSettingOptions.SEARCH_SETTINGS}/${SearchSettingsEntity.DASHBOARD_DATA_MODEL}`,
+            key: `${GlobalSettingsMenuCategory.SEARCH_SETTINGS}.${GlobalSettingOptions.DASHBOARD_DATA_MODEL}`,
             icon: DashboardDataModelIcon,
           },
           {
@@ -611,7 +613,7 @@ class GlobalSettingsClassBase {
               entity: t('label.stored-procedure-plural'),
             }),
             isProtected: Boolean(isAdminUser),
-            key: `${GlobalSettingOptions.SEARCH_SETTINGS}/${SearchSettingsEntity.STORED_PROCEDURE}`,
+            key: `${GlobalSettingsMenuCategory.SEARCH_SETTINGS}.${GlobalSettingOptions.STORED_PROCEDURES}`,
             icon: StoredProcedureIcon,
           },
           {
@@ -620,7 +622,7 @@ class GlobalSettingsClassBase {
               entity: t('label.container-plural'),
             }),
             isProtected: Boolean(isAdminUser),
-            key: `${GlobalSettingOptions.SEARCH_SETTINGS}/${SearchSettingsEntity.CONTAINER}`,
+            key: `${GlobalSettingsMenuCategory.SEARCH_SETTINGS}.${GlobalSettingOptions.CONTAINERS}`,
             icon: StorageIcon,
           },
           {
@@ -629,7 +631,7 @@ class GlobalSettingsClassBase {
               entity: t('label.ml-model-plural'),
             }),
             isProtected: Boolean(isAdminUser),
-            key: `${GlobalSettingOptions.SEARCH_SETTINGS}/${SearchSettingsEntity.ML_MODEL}`,
+            key: `${GlobalSettingsMenuCategory.SEARCH_SETTINGS}.${GlobalSettingOptions.MLMODELS}`,
             icon: MlModelIcon,
           },
           {
@@ -638,8 +640,8 @@ class GlobalSettingsClassBase {
               entity: t('label.data-asset-plural'),
             }),
             isProtected: Boolean(isAdminUser),
-            key: `${GlobalSettingOptions.SEARCH_SETTINGS}/${SearchSettingsEntity.DATA_ASSET}`,
-            icon: DatabaseIcon,
+            key: `${GlobalSettingsMenuCategory.SEARCH_SETTINGS}.${GlobalSettingOptions.DATA_ASSETS}`,
+            icon: DataAssetsIcon,
           },
           {
             label: t('label.query'),
@@ -647,8 +649,8 @@ class GlobalSettingsClassBase {
               entity: t('label.query'),
             }),
             isProtected: Boolean(isAdminUser),
-            key: `${GlobalSettingOptions.SEARCH_SETTINGS}/${SearchSettingsEntity.QUERY}`,
-            icon: DatabaseIcon,
+            key: `${GlobalSettingsMenuCategory.SEARCH_SETTINGS}.${GlobalSettingOptions.QUERY}`,
+            icon: QueryIcon,
           },
           {
             label: t('label.test-case-plural'),
@@ -656,8 +658,8 @@ class GlobalSettingsClassBase {
               entity: t('label.test-case-plural'),
             }),
             isProtected: Boolean(isAdminUser),
-            key: `${GlobalSettingOptions.SEARCH_SETTINGS}/${SearchSettingsEntity.TEST_CASE}`,
-            icon: DatabaseIcon,
+            key: `${GlobalSettingsMenuCategory.SEARCH_SETTINGS}.${GlobalSettingOptions.TEST_CASES}`,
+            icon: TestCaseIcon,
           },
           {
             label: t('label.tag-plural'),
@@ -665,10 +667,28 @@ class GlobalSettingsClassBase {
               entity: t('label.tag-plural'),
             }),
             isProtected: Boolean(isAdminUser),
-            key: `${GlobalSettingOptions.SEARCH_SETTINGS}/${SearchSettingsEntity.TAG}`,
+            key: `${GlobalSettingsMenuCategory.SEARCH_SETTINGS}.${GlobalSettingOptions.TAGS}`,
             icon: TagIcon,
           },
-        ],
+          {
+            label: t('label.database-plural'),
+            description: t('message.define-custom-property-for-entity', {
+              entity: t('label.database-plural'),
+            }),
+            isProtected: Boolean(isAdminUser),
+            key: `${GlobalSettingsMenuCategory.SEARCH_SETTINGS}.${GlobalSettingOptions.DATABASES}`,
+            icon: DatabaseIcon,
+          },
+          {
+            label: t('label.database-schema'),
+            description: t('message.define-custom-property-for-entity', {
+              entity: t('label.database-schema'),
+            }),
+            isProtected: Boolean(isAdminUser),
+            key: `${GlobalSettingsMenuCategory.SEARCH_SETTINGS}.${GlobalSettingOptions.DATABASE_SCHEMA}`,
+            icon: SchemaIcon,
+          },
+        ].sort((a, b) => a.label.localeCompare(b.label)),
       },
       {
         category: t('label.bot-plural'),

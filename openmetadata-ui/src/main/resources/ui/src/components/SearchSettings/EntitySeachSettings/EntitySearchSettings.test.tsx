@@ -30,18 +30,17 @@ const mockSearchConfig = {
   assetTypeConfigurations: [
     {
       assetType: 'table',
-      fields: {
-        description: 5,
-        displayName: 3,
-      },
+      searchFields: [
+        {
+          field: 'description',
+          boost: 5,
+        },
+      ],
       boostMode: BoostMode.Multiply,
       scoreMode: ScoreMode.Avg,
       highlightFields: ['description'],
-      mustMatch: ['displayName'],
-      shouldMatch: [],
-      mustNotMatch: [],
-      boosts: [],
-      tagBoosts: [],
+      fieldValueBoosts: [],
+      termBoosts: [],
     },
   ],
 };
@@ -102,6 +101,29 @@ jest.mock('../../../hooks/authHooks', () => ({
   }),
 }));
 
+jest.mock('antd', () => ({
+  ...jest.requireActual('antd'),
+  Select: ({
+    value,
+    onChange,
+    'data-testid': testId,
+  }: {
+    value: string;
+    onChange?: (value: string) => void;
+    'data-testid'?: string;
+  }) => (
+    <select
+      data-testid={testId}
+      value={value}
+      onChange={(e) => onChange?.(e.target.value)}>
+      <option value="avg">avg</option>
+      <option value="max">max</option>
+      <option value="multiply">multiply</option>
+      <option value="sum">sum</option>
+    </select>
+  ),
+}));
+
 describe('EntitySearchSettings', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -136,7 +158,6 @@ describe('EntitySearchSettings', () => {
       assetTypeConfigurations: [
         {
           ...mockSearchConfig.assetTypeConfigurations[0],
-          scoreMode: ScoreMode.Max,
           boostMode: BoostMode.Sum,
         },
       ],
@@ -145,6 +166,7 @@ describe('EntitySearchSettings', () => {
     (updateSettingsConfig as jest.Mock).mockResolvedValueOnce({
       data: { config_value: mockUpdatedConfig },
     });
+    (useParams as jest.Mock).mockReturnValue({ tab: 'tables' });
 
     render(
       <MemoryRouter>
@@ -152,12 +174,29 @@ describe('EntitySearchSettings', () => {
       </MemoryRouter>
     );
 
+    const boostModeSelect = screen.getByTestId('boost-mode-select');
+    await act(async () => {
+      fireEvent.change(boostModeSelect, { target: { value: 'sum' } });
+    });
+
     const saveButton = screen.getByTestId('save-btn');
+
+    expect(saveButton).not.toBeDisabled();
+
     await act(async () => {
       fireEvent.click(saveButton);
     });
 
-    expect(updateSettingsConfig).toHaveBeenCalled();
+    expect(updateSettingsConfig).toHaveBeenCalledWith({
+      config_type: 'searchSettings',
+      config_value: expect.objectContaining({
+        assetTypeConfigurations: expect.arrayContaining([
+          expect.objectContaining({
+            boostMode: BoostMode.Sum,
+          }),
+        ]),
+      }),
+    });
     expect(showSuccessToast).toHaveBeenCalled();
     expect(mockSetAppPreferences).toHaveBeenCalled();
   });

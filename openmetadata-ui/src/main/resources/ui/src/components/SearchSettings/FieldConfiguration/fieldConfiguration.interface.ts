@@ -10,11 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  EntitySearchSettingsState,
-  MatchFields,
-  MatchType,
-} from '../../../pages/SearchSettingsPage/searchSettings.interface';
+import { FieldValueBoost } from '../../../generated/configuration/searchSettings';
+import { EntitySearchSettingsState } from '../../../pages/SearchSettingsPage/searchSettings.interface';
 
 export interface FieldConfigurationProps {
   field: {
@@ -24,12 +21,7 @@ export interface FieldConfigurationProps {
   searchSettings: EntitySearchSettingsState;
   index: number;
   onHighlightFieldsChange: (fieldName: string) => void;
-  onMatchTypeChange: (fieldName: string, matchType: MatchType) => void;
   onFieldWeightChange: (fieldName: string, value: number) => void;
-  onBoostChange: (fieldName: string, value: number) => void;
+  onValueBoostChange: (fieldName: string, boost: FieldValueBoost) => void;
   onDeleteBoost: (fieldName: string) => void;
-  getSelectedMatchType: (
-    fieldName: string,
-    matchFields: MatchFields
-  ) => MatchType;
 }

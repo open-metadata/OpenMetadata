@@ -22,8 +22,9 @@ import {
 import SearchSettingsPage from './SearchSettingsPage';
 
 const mockSearchSettings: SearchSettings = {
-  enableAccessControl: true,
   globalSettings: {
+    enableAccessControl: true,
+    useNaturalLanguageSearch: false,
     maxAggregateSize: 10000,
     maxResultHits: 10000,
   },
@@ -95,12 +96,14 @@ describe('Test SearchSettingsPage', () => {
     expect(getSettingsByType).toHaveBeenCalled();
   });
 
-  it('Handles enable roles and polices in search toggle', async () => {
-    (updateSettingsConfig as jest.Mock).mockResolvedValueOnce({
+  it('Handles enable roles and polices search toggle', async () => {
+    (updateSettingsConfig as jest.Mock).mockResolvedValue({
       data: {
+        config_type: 'searchSettings',
         config_value: {
-          ...mockSearchSettings,
-          enableAccessControl: false,
+          globalSettings: {
+            ...mockSearchSettings.globalSettings,
+          },
         },
       },
     });
@@ -116,16 +119,58 @@ describe('Test SearchSettingsPage', () => {
     const accessControlSwitch = screen.getByTestId(
       'enable-roles-polices-in-search-switch'
     );
+
     await act(async () => {
       fireEvent.click(accessControlSwitch);
     });
 
-    expect(updateSettingsConfig).toHaveBeenCalledWith(
-      expect.objectContaining({
-        config_value: expect.objectContaining({
+    expect(updateSettingsConfig).toHaveBeenCalledWith({
+      config_type: 'searchSettings',
+      config_value: {
+        globalSettings: {
+          ...mockSearchSettings.globalSettings,
           enableAccessControl: false,
-        }),
-      })
+        },
+      },
+    });
+  });
+
+  it('Handles natural language search toggle', async () => {
+    (updateSettingsConfig as jest.Mock).mockResolvedValue({
+      data: {
+        config_type: 'searchSettings',
+        config_value: {
+          globalSettings: {
+            ...mockSearchSettings.globalSettings,
+          },
+        },
+      },
+    });
+
+    await act(async () => {
+      render(
+        <MemoryRouter>
+          <SearchSettingsPage />
+        </MemoryRouter>
+      );
+    });
+
+    const naturalLanguageSearchSwitch = screen.getByTestId(
+      'use-natural-language-search-switch'
     );
+
+    await act(async () => {
+      fireEvent.click(naturalLanguageSearchSwitch);
+    });
+
+    expect(updateSettingsConfig).toHaveBeenCalledWith({
+      config_type: 'searchSettings',
+      config_value: {
+        globalSettings: {
+          ...mockSearchSettings.globalSettings,
+          useNaturalLanguageSearch: true,
+        },
+      },
+    });
   });
 });

@@ -13,7 +13,6 @@
 import Icon from '@ant-design/icons/lib/components/Icon';
 import {
   Button,
-  Card,
   Checkbox,
   Col,
   Divider,
@@ -35,13 +34,18 @@ import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/Ti
 import PageHeader from '../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { GlobalSettingItem } from '../../components/SearchSettings/GlobalSettingsItem/GlobalSettingsItem';
+import TermBoostComponent from '../../components/SearchSettings/TermBoost/TermBoost';
+import SettingItemCard from '../../components/Settings/SettingItemCard/SettingItemCard.component';
 import { DATA_ASSET_DROPDOWN_ITEMS } from '../../constants/AdvancedSearch.constants';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
 import { globalSettings } from '../../constants/SearchSettings.constant';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { EntityFields } from '../../enums/AdvancedSearch.enum';
-import { SearchSettings } from '../../generated/configuration/searchSettings';
+import {
+  SearchSettings,
+  TermBoost,
+} from '../../generated/configuration/searchSettings';
 import { Settings, SettingType } from '../../generated/settings/settings';
 import { useAuth } from '../../hooks/authHooks';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
@@ -50,6 +54,7 @@ import {
   updateSettingsConfig,
 } from '../../rest/settingConfigAPI';
 import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
+import { getSettingPath } from '../../utils/RouterUtils';
 import { getSearchSettingCategories } from '../../utils/SearchSettingsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import './search-settings.less';
@@ -115,21 +120,16 @@ const SearchSettingsPage = () => {
         return;
       }
 
-      const updatedConfig =
-        enabled !== undefined
-          ? { enableAccessControl: enabled }
-          : {
-              globalSettings: {
-                ...searchConfig.globalSettings,
-                [field as PropertyKey]: value,
-              },
-            };
-
       const configData = {
         config_type: SettingType.SearchSettings,
         config_value: {
           ...searchConfig,
-          ...updatedConfig,
+          globalSettings: {
+            ...searchConfig.globalSettings,
+            ...(enabled !== undefined
+              ? { [field ?? 'enableAccessControl']: enabled }
+              : { [field as PropertyKey]: value }),
+          },
         },
       };
 
@@ -154,12 +154,83 @@ const SearchSettingsPage = () => {
     }
   };
 
+  const handleAddNewTermBoost = () => {
+    if (!searchConfig) {
+      return;
+    }
+
+    const updatedConfig = {
+      ...searchConfig,
+      globalSettings: {
+        ...searchConfig.globalSettings,
+        termBoosts: [
+          { field: '', value: '', boost: 0 },
+          ...(searchConfig.globalSettings?.termBoosts ?? []),
+        ],
+      },
+    };
+
+    setSearchConfig(updatedConfig);
+  };
+
+  const handleTermBoostChange = (newTermBoost: TermBoost) => {
+    if (!searchConfig || !newTermBoost.field || !newTermBoost.boost) {
+      return;
+    }
+
+    const termBoosts = [...(searchConfig.globalSettings?.termBoosts || [])];
+    const existingIndex = termBoosts.findIndex(
+      (tb) => tb.field === '' || tb.field === newTermBoost.field
+    );
+
+    if (existingIndex >= 0) {
+      termBoosts[existingIndex] = newTermBoost;
+    } else {
+      termBoosts.push(newTermBoost);
+    }
+
+    const updatedConfig = {
+      ...searchConfig,
+      globalSettings: {
+        ...searchConfig.globalSettings,
+        termBoosts,
+      },
+    };
+
+    setSearchConfig(updatedConfig);
+    handleUpdateSearchConfig({
+      field: 'termBoosts',
+      value: termBoosts,
+    });
+  };
+
+  const handleDeleteTermBoost = (field: string) => {
+    if (!searchConfig || !field) {
+      return;
+    }
+
+    const termBoosts =
+      searchConfig.globalSettings?.termBoosts?.filter(
+        (tb) => tb.field !== field
+      ) || [];
+
+    handleUpdateSearchConfig({
+      field: 'termBoosts',
+      value: termBoosts,
+    });
+  };
+
   const handleCheckboxChange = (label: string) => {
     setCheckedItems((prev) =>
       prev.includes(label)
         ? prev.filter((item) => item !== label)
         : [...prev, label]
     );
+  };
+
+  const handleViewDetailClick = (key: string) => {
+    const [category, option] = key.split('.');
+    history.push(getSettingPath(category, option));
   };
 
   const menuItems = useMemo(
@@ -207,24 +278,43 @@ const SearchSettingsPage = () => {
           <Row
             className="p-x-xs global-settings-cards-container"
             gutter={[20, 20]}>
-            <Col className="global-setting-card p-y-lg">
+            <Col className="global-setting-card">
               <Typography.Text className="global-setting-card__content">
                 {t('label.enable-roles-polices-in-search')}
               </Typography.Text>
               <Switch
-                checked={searchConfig?.enableAccessControl}
+                checked={searchConfig?.globalSettings?.enableAccessControl}
                 className="m-l-xlg global-setting-card__action"
                 data-testid="enable-roles-polices-in-search-switch"
                 disabled={isUpdating}
                 onChange={() =>
                   handleUpdateSearchConfig({
-                    enabled: !searchConfig?.enableAccessControl,
+                    enabled: !searchConfig?.globalSettings?.enableAccessControl,
+                    field: 'enableAccessControl',
+                  })
+                }
+              />
+            </Col>
+            <Col className="global-setting-card">
+              <Typography.Text className="global-setting-card__content">
+                {t('label.use-natural-language-search')}
+              </Typography.Text>
+              <Switch
+                checked={searchConfig?.globalSettings?.useNaturalLanguageSearch}
+                className="m-l-xlg global-setting-card__action"
+                data-testid="use-natural-language-search-switch"
+                disabled={isUpdating}
+                onChange={() =>
+                  handleUpdateSearchConfig({
+                    enabled:
+                      !searchConfig?.globalSettings?.useNaturalLanguageSearch,
+                    field: 'useNaturalLanguageSearch',
                   })
                 }
               />
             </Col>
             {globalSettings.map(({ key, label }) => (
-              <Col className="global-setting-card p-y-lg" key={key}>
+              <Col className="global-setting-card" key={key}>
                 <GlobalSettingItem
                   label={label}
                   value={searchConfig?.globalSettings?.[key] ?? 0}
@@ -238,8 +328,36 @@ const SearchSettingsPage = () => {
               </Col>
             ))}
           </Row>
+          <Row className="term-boosts-section m-t-md" gutter={[0, 16]}>
+            <Col span={24}>
+              <div className="d-flex items-center justify-between m-b-md">
+                <Typography.Text className="text-md font-medium">
+                  {t('label.configure-term-boost')}
+                </Typography.Text>
+                <Button
+                  data-testid="add-term-boost"
+                  type="primary"
+                  onClick={handleAddNewTermBoost}>
+                  {t('label.add-term-boost')}
+                </Button>
+              </div>
+              <div
+                className="d-flex items-center gap-2 flex-wrap term-boosts-container"
+                data-testid="term-boosts">
+                {searchConfig?.globalSettings?.termBoosts?.map((termBoost) => (
+                  <TermBoostComponent
+                    key={termBoost.field}
+                    termBoost={termBoost}
+                    onDeleteBoost={handleDeleteTermBoost}
+                    onTermBoostChange={handleTermBoostChange}
+                  />
+                ))}
+              </div>
+            </Col>
+          </Row>
         </Col>
       </Row>
+
       <Row className="filters-configuration-row p-y-md p-x-lg" gutter={[0, 16]}>
         <Col span={24}>
           <Typography.Title className="text-md font-semibold" level={5}>
@@ -275,41 +393,16 @@ const SearchSettingsPage = () => {
           ))}
         </Col>
       </Row>
-      <Row
-        className="m-b-lg"
-        gutter={[16, 16]}
-        style={{
-          margin: '20px',
-        }}>
+      <Row className="p-x-lg p-b-md" gutter={[16, 16]}>
         {settingCategoryData?.map((data) => (
           <Col key={data.key} span={6}>
-            <Card
-              className="search-setting-card-item"
-              data-testid={`search-settings-card-${data.key}`}>
-              <div className="search-setting-card-icon-container">
-                <Icon
-                  className="search-setting-card-icon"
-                  component={data.icon}
-                />
-              </div>
-
-              <div className="search-setting-card-item-content">
-                <Typography.Text className="search-setting-card-title">
-                  {data.label}
-                </Typography.Text>
-                <Typography.Paragraph
-                  className="search-setting-card-description"
-                  ellipsis={{ rows: 2 }}>
-                  {data.description}
-                </Typography.Paragraph>
-              </div>
-              <Button
-                className="search-setting-card-action-btn"
-                data-testid="view-detail-button"
-                onClick={() => history.push(data.key)}>
-                {t('label.view-detail-plural')}
-              </Button>
-            </Card>
+            <SettingItemCard
+              isButton
+              className="search-setting-card"
+              data={data}
+              key={data.key}
+              onClick={() => handleViewDetailClick(data.key)}
+            />
           </Col>
         ))}
       </Row>

@@ -21,7 +21,7 @@ export enum GlobalSettingsMenuCategory {
   BOTS = 'bots',
   APPLICATIONS = 'apps',
   PERSONA = 'persona',
-  SEARCH_SETTING_CATEGORIES = 'searchSettingCategories',
+  SEARCH_SETTINGS = 'search-settings',
 }
 
 export enum GlobalSettingOptions {
@@ -80,21 +80,8 @@ export enum GlobalSettingOptions {
   LINEAGE_CONFIG = 'lineageConfig',
   OM_URL_CONFIG = 'om-url-config',
   SEARCH_SETTINGS = 'search-settings',
-}
-
-export enum SearchSettingsEntity {
-  TABLE = 'table',
-  PIPELINE = 'pipeline',
-  ML_MODEL = 'mlmodel',
-  TOPIC = 'topic',
-  DASHBOARD = 'dashboard',
-  DASHBOARD_DATA_MODEL = 'dashboardDataModel',
-  CONTAINER = 'container',
-  STORED_PROCEDURE = 'storedProcedure',
-  API_ENDPOINT = 'apiEndpoint',
+  DATA_ASSETS = 'dataAssets',
   QUERY = 'query',
-  DATA_ASSET = 'dataAsset',
-  TAG = 'tag',
-  TEST_CASE = 'testCase',
-  GLOSSARY_TERM = 'glossaryTerm',
+  TEST_CASES = 'testCases',
+  TAGS = 'tags',
 }

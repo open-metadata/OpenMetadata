@@ -546,6 +546,9 @@ export const ENTITY_PATH = {
   apiEndpoints: 'apiEndpoint',
   dataProducts: 'dataProduct',
   metrics: 'metric',
+  dataAssets: 'dataAsset',
+  query: 'query',
+  testCases: 'testCase',
 };
 
 export const VALIDATION_MESSAGES = {

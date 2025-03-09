@@ -11,26 +11,25 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Button, Col, Row, Select, Tabs, TabsProps, Typography } from 'antd';
+import { Button, Col, Row, Select, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
+import { ENTITY_PATH } from '../../../constants/constants';
 import { GlobalSettingsMenuCategory } from '../../../constants/GlobalSettings.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import {
   BoostMode,
+  FieldValueBoost,
   ScoreMode,
   SearchSettings,
-  TagBoost,
+  TermBoost,
 } from '../../../generated/configuration/searchSettings';
 import { Settings, SettingType } from '../../../generated/settings/settings';
 import { useAuth } from '../../../hooks/authHooks';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
-import {
-  EntitySearchSettingsState,
-  MatchType,
-} from '../../../pages/SearchSettingsPage/searchSettings.interface';
+import { EntitySearchSettingsState } from '../../../pages/SearchSettingsPage/searchSettings.interface';
 import {
   restoreSettingsConfig,
   updateSettingsConfig,
@@ -40,7 +39,6 @@ import {
   boostModeOptions,
   getEntitySearchConfig,
   getSearchSettingCategories,
-  getSelectedMatchType,
   scoreModeOptions,
 } from '../../../utils/SearchSettingsUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
@@ -49,30 +47,33 @@ import { TitleBreadcrumbProps } from '../../common/TitleBreadcrumb/TitleBreadcru
 import PageLayoutV1 from '../../PageLayoutV1/PageLayoutV1';
 import FieldConfiguration from '../FieldConfiguration/FieldConfiguration';
 import SearchPreview from '../SearchPreview/SearchPreview';
-import TagBoostComponent from '../TagBoost/TagBoost';
+import TermBoostComponent from '../TermBoost/TermBoost';
 import './entity-search-settings.less';
 
 const EntitySearchSettings = () => {
   const { t } = useTranslation();
-  const { entityType } = useParams<{ entityType: string }>();
+  const { tab } = useParams<{ tab: keyof typeof ENTITY_PATH }>();
   const { permissions } = usePermissionProvider();
   const { isAdminUser } = useAuth();
-  const { setAppPreferences, appPreferences } = useApplicationStore();
-  const { searchConfig } = appPreferences;
+  const {
+    setAppPreferences,
+    appPreferences: { searchConfig, ...appPreferences },
+  } = useApplicationStore();
 
   const [searchSettings, setSearchSettings] =
     useState<EntitySearchSettingsState>({
-      fields: {},
+      searchFields: [],
+      fieldValueBoosts: [],
       boostMode: BoostMode.Multiply,
       scoreMode: ScoreMode.Avg,
       highlightFields: [],
-      mustMatch: [],
-      shouldMatch: [],
-      mustNotMatch: [],
-      boosts: [],
-      tagBoosts: [],
+      termBoosts: [],
       isUpdated: false,
     });
+  const [previewSearchConfig, setPreviewSearchConfig] =
+    useState<SearchSettings>(searchConfig ?? {});
+
+  const entityType = useMemo(() => ENTITY_PATH[tab], [tab]);
 
   const getEntityConfiguration = useMemo(() => {
     return getEntitySearchConfig(searchConfig, entityType);
@@ -84,22 +85,18 @@ const EntitySearchSettings = () => {
       isAdminUser ?? false
     );
 
-    return settingCategories?.find(
-      (data) => data.key.split('/')[1] === entityType
-    );
-  }, [permissions, isAdminUser, entityType]);
+    return settingCategories?.find((data) => data.key.split('.')[1] === tab);
+  }, [permissions, isAdminUser, tab]);
 
-  const entityFields = useMemo(() => {
-    if (!getEntityConfiguration) {
+  const entitySearchFields = useMemo(() => {
+    if (!getEntityConfiguration?.searchFields) {
       return [];
     }
 
-    return Object.entries(getEntityConfiguration.fields).map(
-      ([fieldName, weight]) => ({
-        fieldName,
-        weight,
-      })
-    );
+    return getEntityConfiguration.searchFields.map((field) => ({
+      fieldName: field.field,
+      weight: field.boost ?? 0,
+    }));
   }, [getEntityConfiguration, entityType]);
 
   const breadcrumbs: TitleBreadcrumbProps['titleLinks'] = useMemo(
@@ -165,13 +162,10 @@ const EntitySearchSettings = () => {
     }
 
     const updates = {
-      fields: searchSettings.fields,
+      searchFields: searchSettings.searchFields,
       highlightFields: searchSettings.highlightFields,
-      mustMatch: searchSettings.mustMatch,
-      shouldMatch: searchSettings.shouldMatch,
-      mustNotMatch: searchSettings.mustNotMatch,
-      boosts: searchSettings.boosts,
-      tagBoosts: searchSettings.tagBoosts,
+      termBoosts: searchSettings.termBoosts,
+      fieldValueBoosts: searchSettings.fieldValueBoosts,
       scoreMode: searchSettings.scoreMode,
       boostMode: searchSettings.boostMode,
     };
@@ -199,11 +193,17 @@ const EntitySearchSettings = () => {
   };
 
   const handleFieldWeightChange = (fieldName: string, value: number) => {
-    setSearchSettings((prev) => ({
-      ...prev,
-      fields: { ...(prev.fields ?? {}), [fieldName]: value },
-      isUpdated: true,
-    }));
+    setSearchSettings((prev) => {
+      const updatedFields = prev.searchFields?.map((field) =>
+        field.field === fieldName ? { ...field, boost: value } : field
+      );
+
+      return {
+        ...prev,
+        searchFields: updatedFields,
+        isUpdated: true,
+      };
+    });
   };
 
   const handleHighlightFieldsChange = (fieldName: string) => {
@@ -222,107 +222,85 @@ const EntitySearchSettings = () => {
     }));
   };
 
-  const handleMatchTypeChange = (
+  const handleValueBoostChange = (
     fieldName: string,
-    newMatchType: MatchType
+    boost: FieldValueBoost
   ) => {
     setSearchSettings((prev) => {
-      const updatedMatchFields = {
-        mustMatch: prev.mustMatch?.filter((field) => field !== fieldName),
-        shouldMatch: prev.shouldMatch?.filter((field) => field !== fieldName),
-        mustNotMatch: prev.mustNotMatch?.filter((field) => field !== fieldName),
-      };
+      const existingBoostIndex = prev.fieldValueBoosts?.findIndex(
+        (b) => b.field === fieldName
+      );
 
-      updatedMatchFields[newMatchType] = [
-        ...(updatedMatchFields[newMatchType] || []),
-        fieldName,
-      ];
+      let updatedBoosts = [...(prev.fieldValueBoosts ?? [])];
+
+      if (existingBoostIndex !== undefined && existingBoostIndex >= 0) {
+        updatedBoosts[existingBoostIndex] = boost;
+      } else {
+        updatedBoosts = [...updatedBoosts, boost];
+      }
 
       return {
         ...prev,
-        ...updatedMatchFields,
+        fieldValueBoosts: updatedBoosts,
         isUpdated: true,
       };
-    });
-  };
-
-  const handleBoostChange = (fieldName: string, boostValue: number) => {
-    setSearchSettings((prev) => {
-      const existingBoostIndex = prev.boosts?.findIndex(
-        (boost) => boost.field === fieldName
-      );
-      if (existingBoostIndex !== undefined && existingBoostIndex >= 0) {
-        const updatedBoosts = [...(prev.boosts ?? [])];
-        updatedBoosts[existingBoostIndex] = {
-          field: fieldName,
-          boost: boostValue,
-        };
-
-        return {
-          ...prev,
-          boosts: updatedBoosts,
-          isUpdated: true,
-        };
-      } else {
-        return {
-          ...prev,
-          boosts: [
-            ...(prev.boosts ?? []),
-            { field: fieldName, boost: boostValue },
-          ],
-          isUpdated: true,
-        };
-      }
     });
   };
 
   const handleDeleteBoost = (fieldName: string) => {
     setSearchSettings((prev) => ({
       ...prev,
-      boosts: (prev.boosts ?? []).filter((boost) => boost.field !== fieldName),
+      fieldValueBoosts: (prev.fieldValueBoosts ?? []).filter(
+        (boost) => boost.field !== fieldName
+      ),
       isUpdated: true,
     }));
   };
 
-  const handleAddNewTagBoost = () => {
+  const handleAddNewTermBoost = () => {
     setSearchSettings((prev) => ({
       ...prev,
-      tagBoosts: [{ tagFQN: '', boost: 0 }, ...(prev.tagBoosts ?? [])],
+      termBoosts: [
+        { field: '', value: '', boost: 0 },
+        ...(prev.termBoosts || []),
+      ],
       isUpdated: true,
     }));
   };
 
-  const handleTagBoostChange = (newTagBoost: TagBoost) => {
-    if (!newTagBoost.tagFQN || !newTagBoost.boost) {
+  const handleTermBoostChange = (newTermBoost: TermBoost) => {
+    if (!newTermBoost.value || !newTermBoost.boost) {
       return;
     }
 
     setSearchSettings((prev) => {
-      const tagBoosts = [...(prev.tagBoosts || [])];
-      const existingIndex = tagBoosts.findIndex(
-        (tb) => tb.tagFQN === '' || tb.tagFQN === newTagBoost.tagFQN
+      const termBoosts = [...(prev.termBoosts || [])];
+      const existingIndex = termBoosts.findIndex(
+        (tb) => tb.value === '' || tb.value === newTermBoost.value
       );
 
       if (existingIndex >= 0) {
-        tagBoosts[existingIndex] = newTagBoost;
+        termBoosts[existingIndex] = newTermBoost;
+      } else {
+        termBoosts.push(newTermBoost);
       }
 
       return {
         ...prev,
-        tagBoosts,
+        termBoosts,
         isUpdated: true,
       };
     });
   };
 
-  const handleDeleteTagBoost = (tagFQN: string) => {
-    if (!tagFQN) {
+  const handleDeleteTermBoost = (value: string) => {
+    if (!value) {
       return;
     }
 
     setSearchSettings((prev) => ({
       ...prev,
-      tagBoosts: prev.tagBoosts?.filter((tb) => tb.tagFQN !== tagFQN) || [],
+      termBoosts: prev.termBoosts?.filter((tb) => tb.value !== value) || [],
       isUpdated: true,
     }));
   };
@@ -356,108 +334,51 @@ const EntitySearchSettings = () => {
   useEffect(() => {
     if (getEntityConfiguration) {
       setSearchSettings({
-        fields: getEntityConfiguration.fields ?? {},
+        searchFields: getEntityConfiguration?.searchFields,
         boostMode: getEntityConfiguration?.boostMode,
         scoreMode: getEntityConfiguration?.scoreMode,
-        highlightFields: getEntityConfiguration?.highlightFields ?? [],
-        mustMatch: getEntityConfiguration.mustMatch || [],
-        shouldMatch: getEntityConfiguration.shouldMatch || [],
-        mustNotMatch: getEntityConfiguration.mustNotMatch || [],
-        boosts: getEntityConfiguration.boosts ?? [],
-        tagBoosts: getEntityConfiguration.tagBoosts ?? [],
+        highlightFields: getEntityConfiguration?.highlightFields,
+        fieldValueBoosts: getEntityConfiguration?.fieldValueBoosts,
+        termBoosts: getEntityConfiguration?.termBoosts,
         isUpdated: false,
       });
     }
   }, [getEntityConfiguration, searchConfig]);
 
-  const items: TabsProps['items'] = [
-    {
-      key: '1',
-      label: t('label.field-plural'),
-      children: (
-        <div className="config-section" data-testid="field-configurations">
-          {entityFields.map((field, index) => (
-            <FieldConfiguration
-              field={field}
-              getSelectedMatchType={getSelectedMatchType}
-              index={index}
-              key={field.fieldName}
-              searchSettings={searchSettings}
-              onBoostChange={handleBoostChange}
-              onDeleteBoost={handleDeleteBoost}
-              onFieldWeightChange={handleFieldWeightChange}
-              onHighlightFieldsChange={handleHighlightFieldsChange}
-              onMatchTypeChange={handleMatchTypeChange}
-            />
-          ))}
-        </div>
-      ),
-    },
-    {
-      key: '2',
-      label: t('label.boost-plural'),
-      children: (
-        <div className="config-section" data-testid="boost-configurations">
-          <div className="p-y-xs p-x-sm border-radius-card m-b-sm bg-white config-section-content">
-            <Typography.Text className="text-grey-muted text-xs font-normal">
-              {t('label.score-mode')}
-            </Typography.Text>
-            <Select
-              bordered={false}
-              className="w-full border-none custom-select"
-              data-testid="score-mode-select"
-              options={scoreModeOptions}
-              value={searchSettings.scoreMode}
-              onChange={(value: ScoreMode) =>
-                handleModeUpdate('scoreMode', value)
+  // Update preview config whenever searchSettings change
+  useEffect(() => {
+    if (!searchConfig || !entityType) {
+      return;
+    }
+
+    // Create updated config for preview
+    const updatedConfig: SearchSettings = {
+      ...searchConfig,
+      assetTypeConfigurations: searchConfig.assetTypeConfigurations?.map(
+        (config) =>
+          config.assetType === entityType
+            ? {
+                ...config,
+                searchFields: searchSettings.searchFields,
+                highlightFields: searchSettings.highlightFields,
+                termBoosts: searchSettings.termBoosts,
+                fieldValueBoosts: searchSettings.fieldValueBoosts,
+                scoreMode: searchSettings.scoreMode,
+                boostMode: searchSettings.boostMode,
               }
-            />
-          </div>
-          <div className="p-y-xs p-x-sm border-radius-card m-b-sm bg-white config-section-content">
-            <Typography.Text className="text-grey-muted text-xs font-normal">
-              {t('label.boost-mode')}
-            </Typography.Text>
-            <Select
-              bordered={false}
-              className="w-full border-none custom-select"
-              data-testid="boost-mode-select"
-              options={boostModeOptions}
-              value={searchSettings.boostMode}
-              onChange={(value: BoostMode) =>
-                handleModeUpdate('boostMode', value)
-              }
-            />
-          </div>
-          <div className="p-y-xs p-x-sm border-radius-card m-b-sm bg-white config-section-content">
-            <div className="d-flex items-center justify-between">
-              <Typography.Text>{t('label.tag-boost-plural')}</Typography.Text>
-              <Button
-                className="add-tag-boost-btn"
-                data-testid="add-tag-boost"
-                onClick={handleAddNewTagBoost}>
-                {t('label.add')}
-              </Button>
-            </div>
-            {searchSettings.tagBoosts?.map((tagBoost) => (
-              <TagBoostComponent
-                key={tagBoost.tagFQN}
-                tagBoost={tagBoost}
-                onDeleteBoost={handleDeleteTagBoost}
-                onTagBoostChange={handleTagBoostChange}
-              />
-            ))}
-          </div>
-        </div>
+            : config
       ),
-    },
-  ];
+    };
+
+    setPreviewSearchConfig(updatedConfig);
+  }, [searchSettings, searchConfig, entityType]);
 
   return (
     <PageLayoutV1
       className="entity-search-settings"
       pageTitle={t('label.search')}>
       <Row
-        className="entity-search-settings-header bg-white m-b-lg p-y-md p-x-lg"
+        className="entity-search-settings-header bg-white m-b-lg p-y-md p-x-sm"
         data-testid="entity-search-settings-header"
         gutter={[0, 16]}>
         <Col span={24}>
@@ -482,8 +403,35 @@ const EntitySearchSettings = () => {
           </div>
         </Col>
       </Row>
+      <Row className="entity-search-settings-header bg-white m-b-lg p-y-md p-x-sm">
+        <Col span={24}>
+          <div className="d-flex items-center justify-between">
+            <Typography.Text className="text-md font-medium">
+              {t('label.configure-term-boost')}
+            </Typography.Text>
+            <Button
+              data-testid="add-term-boost"
+              type="primary"
+              onClick={handleAddNewTermBoost}>
+              {t('label.add-term-boost')}
+            </Button>
+          </div>
+          <div
+            className="m-t-md d-flex items-center gap-2 flex-wrap term-boosts-container"
+            data-testid="term-boosts">
+            {searchSettings.termBoosts?.map((termBoost) => (
+              <TermBoostComponent
+                key={termBoost.value}
+                termBoost={termBoost}
+                onDeleteBoost={handleDeleteTermBoost}
+                onTermBoostChange={handleTermBoostChange}
+              />
+            ))}
+          </div>
+        </Col>
+      </Row>
       <Row
-        className="d-flex gap-5 items-start entity-seach-settings-content"
+        className="d-flex gap-5 items-start entity-search-settings-content"
         gutter={[24, 0]}>
         <Col
           className="bg-white border-radius-card h-full flex-1 p-box configuration-container"
@@ -491,13 +439,63 @@ const EntitySearchSettings = () => {
           <Typography.Title level={5}>
             {t('label.configuration')}
           </Typography.Title>
-          <Tabs defaultActiveKey="1" items={items} />
+          <Row
+            className="p-y-xs config-section"
+            data-testid="field-configurations">
+            {entitySearchFields.map((field, index) => (
+              <Col key={field.fieldName} span={24}>
+                <FieldConfiguration
+                  field={field}
+                  index={index}
+                  key={field.fieldName}
+                  searchSettings={searchSettings}
+                  onDeleteBoost={handleDeleteBoost}
+                  onFieldWeightChange={handleFieldWeightChange}
+                  onHighlightFieldsChange={handleHighlightFieldsChange}
+                  onValueBoostChange={handleValueBoostChange}
+                />
+              </Col>
+            ))}
+            {/* Score Mode and Boost Mode Section */}
+            <Col className="flex flex-col w-full">
+              <div className="p-y-xs p-x-sm border-radius-card m-b-sm bg-white config-section-content">
+                <Typography.Text className="text-grey-muted text-xs font-normal">
+                  {t('label.score-mode')}
+                </Typography.Text>
+                <Select
+                  bordered={false}
+                  className="w-full border-none custom-select"
+                  data-testid="score-mode-select"
+                  options={scoreModeOptions}
+                  value={searchSettings.scoreMode}
+                  onChange={(value: ScoreMode) =>
+                    handleModeUpdate('scoreMode', value)
+                  }
+                />
+              </div>
+              <div className="p-y-xs p-x-sm border-radius-card m-b-sm bg-white config-section-content">
+                <Typography.Text className="text-grey-muted text-xs font-normal">
+                  {t('label.boost-mode')}
+                </Typography.Text>
+                <Select
+                  bordered={false}
+                  className="w-full border-none custom-select"
+                  data-testid="boost-mode-select"
+                  options={boostModeOptions}
+                  value={searchSettings.boostMode}
+                  onChange={(value: BoostMode) =>
+                    handleModeUpdate('boostMode', value)
+                  }
+                />
+              </div>
+            </Col>
+          </Row>
         </Col>
         <Col
           className="bg-white border-radius-card p-box h-full d-flex flex-column preview-section"
           span={16}>
           <div className="preview-content d-flex flex-column flex-1">
-            <SearchPreview />
+            <SearchPreview searchConfig={previewSearchConfig} />
           </div>
           <div className="d-flex justify-end p-t-md">
             <Button

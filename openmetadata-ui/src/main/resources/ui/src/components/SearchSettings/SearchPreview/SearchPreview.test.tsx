@@ -12,15 +12,17 @@
  */
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import React from 'react';
-import { searchQuery } from '../../../rest/searchAPI';
+import { SearchSettings } from '../../../generated/api/search/previewSearchRequest';
+import { searchPreview } from '../../../rest/searchAPI';
 import SearchPreview from './SearchPreview';
 
-const mockHistoryPush = jest.fn();
-const mockLocation = {
-  pathname: '/search',
-  search: '',
-  hash: '',
-  state: {},
+const mockSearchConfig: SearchSettings = {
+  globalSettings: {
+    useNaturalLanguageSearch: false,
+    enableAccessControl: true,
+    highlightFields: ['description'],
+    fieldValueBoosts: [],
+  },
 };
 
 const mockSearchResponse = {
@@ -33,6 +35,7 @@ const mockSearchResponse = {
           displayName: 'Test Table',
           description: 'Test Description',
         },
+        _score: 1.0,
       },
     ],
     total: { value: 1 },
@@ -40,11 +43,16 @@ const mockSearchResponse = {
 };
 
 jest.mock('react-router-dom', () => ({
-  useParams: () => ({ entityType: 'table' }),
+  useParams: () => ({ tab: 'tables' }),
   useHistory: () => ({
-    push: mockHistoryPush,
+    push: jest.fn(),
   }),
-  useLocation: () => mockLocation,
+  useLocation: () => ({
+    pathname: '/search',
+    search: '',
+    hash: '',
+    state: {},
+  }),
 }));
 
 jest.mock('react-i18next', () => ({
@@ -52,7 +60,7 @@ jest.mock('react-i18next', () => ({
 }));
 
 jest.mock('../../../rest/searchAPI', () => ({
-  searchQuery: jest.fn(),
+  searchPreview: jest.fn(),
 }));
 
 jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () => {
@@ -77,7 +85,7 @@ jest.mock('../../common/Loader/Loader', () => {
 
 describe('SearchPreview', () => {
   beforeEach(() => {
-    (searchQuery as jest.Mock).mockResolvedValue(mockSearchResponse);
+    (searchPreview as jest.Mock).mockResolvedValue(mockSearchResponse);
   });
 
   afterEach(() => {
@@ -85,41 +93,47 @@ describe('SearchPreview', () => {
   });
 
   it('Should render search preview component', async () => {
-    render(<SearchPreview />);
+    render(<SearchPreview searchConfig={mockSearchConfig} />);
 
     expect(screen.getByTestId('search-preview')).toBeInTheDocument();
     expect(screen.getByTestId('searchbar')).toBeInTheDocument();
 
-    await waitFor(() => {
-      expect(searchQuery).toHaveBeenCalledTimes(1);
-    });
+    expect(searchPreview).toHaveBeenCalledWith(
+      expect.objectContaining({
+        searchSettings: mockSearchConfig,
+      })
+    );
   });
 
   it('Should display search results', async () => {
-    render(<SearchPreview />);
+    render(<SearchPreview searchConfig={mockSearchConfig} />);
 
     await waitFor(() => {
       expect(screen.getByTestId('searched-data-card')).toBeInTheDocument();
     });
+
+    expect(searchPreview).toHaveBeenCalledWith(
+      expect.objectContaining({
+        searchSettings: mockSearchConfig,
+      })
+    );
   });
 
   it('Should handle search input changes', async () => {
-    render(<SearchPreview />);
+    render(<SearchPreview searchConfig={mockSearchConfig} />);
 
     const searchInput = screen.getByTestId('searchbar');
-
     fireEvent.change(searchInput, { target: { value: 'test search' } });
 
     await waitFor(
       () => {
-        expect(searchQuery).toHaveBeenCalledWith(
+        expect(searchPreview).toHaveBeenCalledWith(
           expect.objectContaining({
-            query: '*test search*',
-            searchIndex: ['table'],
+            query: 'test search',
           })
         );
       },
-      { timeout: 1500 }
+      { timeout: 1000 }
     );
   });
 });

@@ -16,7 +16,6 @@ import {
   Collapse,
   Divider,
   Dropdown,
-  Radio,
   Slider,
   Switch,
   Typography,
@@ -26,7 +25,6 @@ import { useTranslation } from 'react-i18next';
 import { ReactComponent as ArrowDown } from '../../../assets/svg/arrow-down-light.svg';
 import { ReactComponent as Document } from '../../../assets/svg/document.svg';
 import { ReactComponent as FilterIcon } from '../../../assets/svg/filter.svg';
-import { MatchType } from '../../../pages/SearchSettingsPage/searchSettings.interface';
 import AddBoost from '../AddBoost/AddBoost';
 import './field-configuration.less';
 import { FieldConfigurationProps } from './fieldConfiguration.interface';
@@ -36,11 +34,9 @@ const FieldConfiguration: React.FC<FieldConfigurationProps> = ({
   index,
   searchSettings,
   onHighlightFieldsChange,
-  onMatchTypeChange,
   onFieldWeightChange,
-  onBoostChange,
+  onValueBoostChange,
   onDeleteBoost,
-  getSelectedMatchType,
 }) => {
   const { t } = useTranslation();
   const [activeFieldKeys, setActiveFieldKeys] = useState<
@@ -48,12 +44,7 @@ const FieldConfiguration: React.FC<FieldConfigurationProps> = ({
   >({});
   const [boostDropdownOpen, setBoostDropdownOpen] = useState(false);
   const [activeBoostField, setActiveBoostField] = useState<string | null>(null);
-
-  const matchFields = {
-    mustMatch: searchSettings?.mustMatch ?? [],
-    shouldMatch: searchSettings?.shouldMatch ?? [],
-    mustNotMatch: searchSettings?.mustNotMatch ?? [],
-  };
+  const [fieldWeight, setFieldWeight] = useState(field.weight);
 
   const boostMenuItems = useMemo(
     () => [
@@ -93,6 +84,7 @@ const FieldConfiguration: React.FC<FieldConfigurationProps> = ({
   };
 
   const handleWeightChange = (value: number) => {
+    setFieldWeight(value);
     onFieldWeightChange(field.fieldName, value);
   };
 
@@ -155,32 +147,13 @@ const FieldConfiguration: React.FC<FieldConfigurationProps> = ({
           </div>
           <Divider />
 
-          {/* Match Type Section */}
-          <Radio.Group
-            className="d-flex flex-column gap-2"
-            value={getSelectedMatchType(field.fieldName, matchFields)}
-            onChange={(e) =>
-              onMatchTypeChange(field.fieldName, e.target.value as MatchType)
-            }>
-            <Radio data-testid="must-match-radio" value="mustMatch">
-              {t('label.must-match')}
-            </Radio>
-            <Radio data-testid="should-match-radio" value="shouldMatch">
-              {t('label.should-match')}
-            </Radio>
-            <Radio data-testid="must-not-match-radio" value="mustNotMatch">
-              {t('label.must-not-match')}
-            </Radio>
-          </Radio.Group>
-          <Divider />
-
           {/* Weight Section */}
           <div className="m-y-md m-b-lg d-flex items-center justify-between">
             <Typography.Text>{t('label.weight')}</Typography.Text>
             <Typography.Text
               className="font-semibold field-weightage-text"
               data-testid="field-weight-value">
-              {searchSettings?.fields?.[field.fieldName] ?? field.weight}
+              {fieldWeight}
             </Typography.Text>
           </div>
           <div data-testid="field-weight-slider">
@@ -188,7 +161,7 @@ const FieldConfiguration: React.FC<FieldConfigurationProps> = ({
               max={10}
               min={0}
               tooltip={{ open: false }}
-              value={searchSettings?.fields?.[field.fieldName] ?? field.weight}
+              value={fieldWeight}
               onChange={handleWeightChange}
             />
           </div>
@@ -220,10 +193,10 @@ const FieldConfiguration: React.FC<FieldConfigurationProps> = ({
           {/* Add Boost Component */}
           {activeBoostField === field.fieldName && (
             <AddBoost
-              boosts={searchSettings?.boosts ?? []}
               fieldName={field.fieldName}
-              onBoostChange={onBoostChange}
+              fieldValueBoosts={searchSettings?.fieldValueBoosts ?? []}
               onDeleteBoost={handleDeleteBoost}
+              onValueBoostChange={onValueBoostChange}
             />
           )}
         </div>

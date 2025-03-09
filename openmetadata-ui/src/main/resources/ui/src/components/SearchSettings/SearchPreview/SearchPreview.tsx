@@ -14,14 +14,16 @@ import Icon from '@ant-design/icons';
 import { Input, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { debounce } from 'lodash';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
 import { ReactComponent as IconSearchV1 } from '../../../assets/svg/search.svg';
+import { ENTITY_PATH } from '../../../constants/constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { SearchIndex } from '../../../enums/search.enum';
+import { SearchSettings } from '../../../generated/api/search/previewSearchRequest';
 import { usePaging } from '../../../hooks/paging/usePaging';
-import { searchQuery } from '../../../rest/searchAPI';
+import { searchPreview } from '../../../rest/searchAPI';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../common/Loader/Loader';
@@ -31,9 +33,9 @@ import ExploreSearchCard from '../../ExploreV1/ExploreSearchCard/ExploreSearchCa
 import { SearchedDataProps } from '../../SearchedData/SearchedData.interface';
 import './search-preview.less';
 
-const SearchPreview = () => {
+const SearchPreview = ({ searchConfig }: { searchConfig: SearchSettings }) => {
   const { t } = useTranslation();
-  const { entityType } = useParams<{ entityType: string }>();
+  const { tab } = useParams<{ tab: keyof typeof ENTITY_PATH }>();
   const [isLoading, setIsLoading] = useState(true);
   const [data, setData] = useState<SearchedDataProps['data']>([]);
   const [searchValue, setSearchValue] = useState<string>('');
@@ -47,29 +49,38 @@ const SearchPreview = () => {
     showPagination,
   } = usePaging();
 
-  const fetchAssets = useCallback(
-    async ({ page = currentPage }: { page?: number } = {}) => {
-      try {
-        setIsLoading(true);
-        const res = await searchQuery({
-          pageNumber: page,
-          pageSize: pageSize,
-          searchIndex: [entityType as SearchIndex],
-          query: `*${searchValue}*`,
-          queryFilter: {},
-        });
-        const hits = res.hits.hits as unknown as SearchedDataProps['data'];
-        const totalCount = res?.hits?.total.value ?? 0;
+  const entityType = useMemo(() => ENTITY_PATH[tab], [tab]);
 
-        handlePagingChange({ total: totalCount });
-        setData(hits);
-      } catch (error) {
-        showErrorToast(error as AxiosError);
-      } finally {
-        setIsLoading(false);
+  const fetchAssets = useCallback(
+    async ({
+      page = currentPage,
+      searchTerm = searchValue,
+    }: { page?: number; searchTerm?: string } = {}) => {
+      if (searchConfig) {
+        try {
+          setIsLoading(true);
+          const res = await searchPreview({
+            from: (page - 1) * pageSize,
+            size: pageSize,
+            index: entityType as SearchIndex,
+            query: searchTerm,
+            queryFilter: '',
+            searchSettings: searchConfig,
+          });
+
+          const hits = res.hits.hits as unknown as SearchedDataProps['data'];
+          const totalCount = res?.hits?.total.value ?? 0;
+
+          handlePagingChange({ total: totalCount });
+          setData(hits);
+        } catch (error) {
+          showErrorToast(error as AxiosError);
+        } finally {
+          setIsLoading(false);
+        }
       }
     },
-    [currentPage, pageSize, searchValue]
+    [currentPage, pageSize, searchConfig, entityType, handlePagingChange]
   );
 
   const renderSearchResults = () => {
@@ -79,13 +90,15 @@ const SearchPreview = () => {
     if (data.length > 0) {
       return (
         <>
-          {data.map(({ _source, _id = '' }) => (
+          {data.map(({ _score, _source, _id = '' }) => (
             <ExploreSearchCard
               showEntityIcon
               className="search-card"
               data-testid="searched-data-card"
               id={_id}
               key={_source.name}
+              score={_score}
+              searchValue={searchValue}
               showTags={false}
               source={_source}
             />
@@ -109,16 +122,30 @@ const SearchPreview = () => {
     return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.NO_DATA} />;
   };
 
-  const handleSearch = useCallback(
-    debounce((value: string) => {
-      setSearchValue(value);
-    }, 1000),
-    []
+  const debouncedSearch = useMemo(
+    () =>
+      debounce((searchTerm: string) => {
+        fetchAssets({ searchTerm });
+      }, 1000),
+    [fetchAssets]
   );
 
   useEffect(() => {
-    fetchAssets({ page: currentPage });
-  }, [searchValue, currentPage, pageSize]);
+    return () => {
+      debouncedSearch.cancel();
+    };
+  }, [debouncedSearch]);
+
+  const handleSearch = (value: string) => {
+    setSearchValue(value);
+    debouncedSearch(value);
+  };
+
+  useEffect(() => {
+    if (searchConfig) {
+      fetchAssets({ searchTerm: '', page: currentPage });
+    }
+  }, [currentPage]);
 
   return (
     <div className="search-preview">

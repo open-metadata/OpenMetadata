@@ -13,6 +13,7 @@
 import {
   AssetTypeConfiguration,
   GlobalSettings,
+  TermBoost,
 } from '../../generated/configuration/searchSettings';
 
 export interface EntitySearchSettingsState
@@ -40,8 +41,12 @@ export interface SettingCategoryData {
 
 export interface UpdateConfigParams {
   enabled?: boolean;
-  field?: PropertyKey;
-  value?: number;
+  field?:
+    | PropertyKey
+    | 'enableAccessControl'
+    | 'useNaturalLanguageSearch'
+    | 'termBoosts';
+  value?: number | TermBoost[];
 }
 
 export type MatchType = 'mustMatch' | 'shouldMatch' | 'mustNotMatch';

@@ -32,27 +32,34 @@
   margin-bottom: 8px;
 
   .global-setting-card {
-    border: 1px solid @grey-10;
+    border: 1px solid @grey-11;
     border-radius: 12px;
-    background-color: @grey-10;
-    flex: 1 1 300px;
-    max-width: calc(33.33% - 14px);
-    min-width: 270px;
+    background-color: @grey-11;
+    flex: 0 0 calc(25% - 15px);
+    min-width: 250px;
     overflow: hidden;
     display: flex;
     align-items: center;
+    min-height: 60px;
+    padding: 32px 20px;
 
     &__content {
       flex: 1;
       min-width: 0;
       font-size: 14px;
       font-weight: 400;
+      margin-right: 16px;
     }
 
     &__action {
       flex-shrink: 0;
     }
   }
+}
+
+.term-boosts-container {
+  background-color: @grey-11;
+  border-radius: 6px;
 }
 
 .filters-configuration-row {
@@ -66,7 +73,7 @@
     padding: 20px 16px;
     border: 1px solid @border-color-1;
     border-radius: 12px;
-    background-color: @grey-10;
+    background-color: @grey-11;
     display: flex;
     align-items: flex-start;
     gap: 8px;
@@ -74,14 +81,14 @@
     min-height: auto;
 
     .add-filters-btn {
-      color: @blue-10;
+      color: @blue-9;
       border: 1px solid @border-color-2;
       background-color: @blue-11;
       border-radius: 8px;
 
       &:hover,
       &:focus {
-        color: @blue-10;
+        color: @blue-9;
         background-color: @blue-11;
         border-color: @border-color-2;
       }
@@ -105,55 +112,15 @@
   overflow-y: auto;
 }
 
-.search-setting-card-item {
-  height: 100%;
-  border: 1px solid @grey-10;
-  border-radius: 12px;
-  transition: 0.3s ease-in-out;
+.search-setting-card {
+  border: none;
+  transition: none;
 
-  .ant-card-body {
-    padding: 40px 20px;
-    text-align: center;
+  &:hover {
+    border: none;
+  }
 
-    .search-setting-card-icon-container {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      .search-setting-card-icon {
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        svg {
-          // font-size: 50px;
-          font-size: 90px;
-          fill: transparent;
-          display: flex;
-          justify-content: center;
-          align-items: center;
-        }
-      }
-    }
-
-    .search-setting-card-item-content {
-      margin-top: 16px;
-      .search-setting-card-title {
-        font-size: 16px;
-        font-weight: 600;
-      }
-
-      .search-setting-card-description {
-        margin-top: 16px;
-        font-size: 14px;
-        font-weight: 400;
-        color: @grey-8;
-      }
-    }
-
-    .search-setting-card-action-btn {
-      margin-top: 8px;
-      border-radius: 8px;
-      font-weight: 600;
-      font-size: 14px;
-    }
+  .ant-card-body .setting-card-icon-container .setting-card-icon svg {
+    font-size: 90px;
   }
 }
