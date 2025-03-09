@@ -36,6 +36,7 @@ import static org.openmetadata.service.search.EntityBuilderConstant.SCHEMA_FIELD
 import static org.openmetadata.service.search.EntityBuilderConstant.UNIFIED;
 import static org.openmetadata.service.search.SearchUtils.createElasticSearchSSLContext;
 import static org.openmetadata.service.search.SearchUtils.getLineageDirection;
+import static org.openmetadata.service.search.SearchUtils.getRelationshipRef;
 import static org.openmetadata.service.search.SearchUtils.shouldApplyRbacConditions;
 import static org.openmetadata.service.search.UpdateSearchEventsConstant.SENDING_REQUEST_TO_ELASTIC_SEARCH;
 import static org.openmetadata.service.search.elasticsearch.ElasticSearchEntitiesProcessor.getUpdateRequest;
@@ -1032,7 +1033,7 @@ public class ElasticSearchClient implements SearchClient {
   public Response searchDataQualityLineage(
       String fqn, int upstreamDepth, String queryFilter, boolean deleted) throws IOException {
     Map<String, Object> responseMap = new HashMap<>();
-    Set<Map<String, Object>> edges = new HashSet<>();
+    Set<EsLineageData> edges = new HashSet<>();
     Set<Map<String, Object>> nodes = new HashSet<>();
     searchDataQualityLineage(fqn, upstreamDepth, queryFilter, deleted, edges, nodes);
     responseMap.put("edges", edges);
@@ -1119,11 +1120,11 @@ public class ElasticSearchClient implements SearchClient {
       int upstreamDepth,
       String queryFilter,
       boolean deleted,
-      Set<Map<String, Object>> edges,
+      Set<EsLineageData> edges,
       Set<Map<String, Object>> nodes)
       throws IOException {
     Map<String, Map<String, Object>> allNodes = new HashMap<>();
-    Map<String, List<Map<String, Object>>> allEdges = new HashMap<>();
+    Map<String, List<EsLineageData>> allEdges = new HashMap<>();
     Set<String> nodesWithFailures = new HashSet<>();
 
     collectNodesAndEdges(
@@ -1146,7 +1147,7 @@ public class ElasticSearchClient implements SearchClient {
       int upstreamDepth,
       String queryFilter,
       boolean deleted,
-      Map<String, List<Map<String, Object>>> allEdges,
+      Map<String, List<EsLineageData>> allEdges,
       Map<String, Map<String, Object>> allNodes,
       Set<String> nodesWithFailure,
       Set<String> processedNode)
@@ -1168,25 +1169,23 @@ public class ElasticSearchClient implements SearchClient {
         if (testCaseResultRepository.hasTestCaseFailure(doc.get("fullyQualifiedName").toString())) {
           nodesWithFailure.add(nodeId);
         }
-        Optional<List> optionalLineageList =
-            JsonUtils.readJsonAtPath(JsonUtils.pojoToJson(doc), "$.lineage", List.class);
-        if (optionalLineageList.isPresent()) {
-          List<Map<String, Object>> lineageList =
-              (List<Map<String, Object>>) optionalLineageList.get();
-          for (Map<String, Object> lineage : lineageList) {
-            Map<String, String> fromEntity = (Map<String, String>) lineage.get("fromEntity");
-            String fromEntityId = fromEntity.get("id");
-            allEdges.computeIfAbsent(fromEntityId, k -> new ArrayList<>()).add(lineage);
-            collectNodesAndEdges(
-                fromEntity.get("fqn"),
-                upstreamDepth - 1,
-                queryFilter,
-                deleted,
-                allEdges,
-                allNodes,
-                nodesWithFailure,
-                processedNode);
-          }
+
+        List<EsLineageData> lineageDataList =
+            JsonUtils.readOrConvertValues(doc.get("upstreamLineage"), EsLineageData.class);
+        for (EsLineageData lineage : lineageDataList) {
+          // lineage toEntity is the entity itself
+          lineage.withToEntity(getRelationshipRef(doc));
+          String fromEntityId = lineage.getFromEntity().getId().toString();
+          allEdges.computeIfAbsent(fromEntityId, k -> new ArrayList<>()).add(lineage);
+          collectNodesAndEdges(
+              lineage.getFromEntity().getFullyQualifiedName(),
+              upstreamDepth - 1,
+              queryFilter,
+              deleted,
+              allEdges,
+              allNodes,
+              nodesWithFailure,
+              processedNode);
         }
       }
     }
@@ -1195,10 +1194,10 @@ public class ElasticSearchClient implements SearchClient {
   private void traceBackDQLineage(
       String nodeFailureId,
       Set<String> nodesWithFailures,
-      Map<String, List<Map<String, Object>>> allEdges,
+      Map<String, List<EsLineageData>> allEdges,
       Map<String, Map<String, Object>> allNodes,
       Set<Map<String, Object>> nodes,
-      Set<Map<String, Object>> edges,
+      Set<EsLineageData> edges,
       Set<String> processedNodes) {
     if (processedNodes.contains(nodeFailureId)) {
       return;
@@ -1209,20 +1208,18 @@ public class ElasticSearchClient implements SearchClient {
       Map<String, Object> node = allNodes.get(nodeFailureId);
       if (node != null) {
         node.keySet().removeAll(FIELDS_TO_REMOVE);
-        node.remove("lineage");
+        node.remove("upstreamLineage");
         nodes.add(node);
       }
     }
-    List<Map<String, Object>> edgesForNode = allEdges.get(nodeFailureId);
+    List<EsLineageData> edgesForNode = allEdges.get(nodeFailureId);
     if (edgesForNode != null) {
-      for (Map<String, Object> edge : edgesForNode) {
-        Map<String, String> fromEntity = (Map<String, String>) edge.get("fromEntity");
-        String fromEntityId = fromEntity.get("id");
+      for (EsLineageData edge : edgesForNode) {
+        String fromEntityId = edge.getFromEntity().getId().toString();
         if (!fromEntityId.equals(nodeFailureId)) continue;
-        Map<String, String> toEntity = (Map<String, String>) edge.get("toEntity");
         edges.add(edge);
         traceBackDQLineage(
-            toEntity.get("id"),
+            edge.getToEntity().getId().toString(),
             nodesWithFailures,
             allEdges,
             allNodes,
@@ -1241,9 +1238,7 @@ public class ElasticSearchClient implements SearchClient {
     SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
     searchSourceBuilder.query(
         QueryBuilders.boolQuery()
-            .must(
-                QueryBuilders.termQuery(
-                    "lineage.toEntity.fqnHash.keyword", FullyQualifiedName.buildHash(fqn)))
+            .must(QueryBuilders.termQuery("fqnHash.keyword", FullyQualifiedName.buildHash(fqn)))
             .must(QueryBuilders.termQuery("deleted", !nullOrEmpty(deleted) && deleted)));
 
     buildSearchSourceFilter(queryFilter, searchSourceBuilder);

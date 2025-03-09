@@ -55,6 +55,7 @@ import org.openmetadata.schema.api.data.CreateMlModel;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.data.CreateTopic;
 import org.openmetadata.schema.api.lineage.AddLineage;
+import org.openmetadata.schema.api.lineage.SearchLineageResult;
 import org.openmetadata.schema.api.tests.CreateTestCase;
 import org.openmetadata.schema.api.tests.CreateTestCaseResult;
 import org.openmetadata.schema.api.tests.CreateTestSuite;
@@ -78,6 +79,7 @@ import org.openmetadata.schema.type.EntityLineage;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.LineageDetails;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.type.lineage.NodeInformation;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationTest;
 import org.openmetadata.service.resources.dashboards.DashboardResourceTest;
@@ -93,6 +95,7 @@ import org.openmetadata.service.resources.teams.RoleResource;
 import org.openmetadata.service.resources.teams.RoleResourceTest;
 import org.openmetadata.service.resources.teams.UserResourceTest;
 import org.openmetadata.service.resources.topics.TopicResourceTest;
+import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
@@ -595,9 +598,9 @@ public class LineageResourceTest extends OpenMetadataApplicationTest {
     addEdge(TABLES.get(2), TABLES.get(7));
     addEdge(TABLES.get(6), TABLES.get(7));
 
-    Map<String, List<Map<String, Object>>> entity =
+    SearchLineageResult searchLineageResult =
         searchLineage(TABLES.get(5).getEntityReference(), 1, 1);
-    assertSearchLineageResponseFields(entity);
+    assertSearchLineageResponseFields(searchLineageResult);
 
     deleteEdge(TABLES.get(4), TABLES.get(5));
     deleteEdge(TABLES.get(5), TABLES.get(6));
@@ -777,30 +780,31 @@ public class LineageResourceTest extends OpenMetadataApplicationTest {
     assertEquals(lineageById, lineageByName);
   }
 
-  private void assertSearchLineageResponseFields(Map<String, List<Map<String, Object>>> entity) {
-    List<Map<String, Object>> entities = entity.get("nodes");
-    Set<String> nodesFields = Set.of("id", "name", "displayName", "fullyQualifiedName", "lineage");
+  private void assertSearchLineageResponseFields(SearchLineageResult searchLineageResult) {
+    JsonUtils.getMap(searchLineageResult);
+    Map<String, NodeInformation> entities = searchLineageResult.getNodes();
+    Set<String> nodesFields =
+        Set.of("id", "name", "displayName", "fullyQualifiedName", "upstreamLineage");
     Set<String> nodesColumnsFields = Set.of("name", "fullyQualifiedName");
-    entities.forEach(
-        e -> {
-          Set<String> keys = e.keySet();
-          Set<String> missingKeys = new HashSet<>(nodesFields);
-          missingKeys.removeAll(keys);
-          String err = String.format("Nodes keys not found in the response: %s", missingKeys);
-          assertTrue(keys.containsAll(nodesFields), err);
+    for (Map.Entry<String, NodeInformation> entry : entities.entrySet()) {
+      Map<String, Object> entity = entry.getValue().getEntity();
+      Set<String> keys = entity.keySet();
+      Set<String> missingKeys = new HashSet<>(nodesFields);
+      missingKeys.removeAll(keys);
+      String err = String.format("Nodes keys not found in the response: %s", missingKeys);
+      assertTrue(keys.containsAll(nodesFields), err);
 
-          List<Map<String, Object>> columns = (List<Map<String, Object>>) e.get("columns");
-          columns.forEach(
-              c -> {
-                Set<String> columnsKeys = c.keySet();
-                Set<String> missingColumnKeys = new HashSet<>(nodesColumnsFields);
-                missingColumnKeys.removeAll(columnsKeys);
-                String columnErr =
-                    String.format(
-                        "Column nodes keys not found in the response: %s", missingColumnKeys);
-                assertTrue(columnsKeys.containsAll(nodesColumnsFields), columnErr);
-              });
-        });
+      List<Map<String, Object>> columns = (List<Map<String, Object>>) entity.get("columns");
+      columns.forEach(
+          c -> {
+            Set<String> columnsKeys = c.keySet();
+            Set<String> missingColumnKeys = new HashSet<>(nodesColumnsFields);
+            missingColumnKeys.removeAll(columnsKeys);
+            String columnErr =
+                String.format("Column nodes keys not found in the response: %s", missingColumnKeys);
+            assertTrue(columnsKeys.containsAll(nodesColumnsFields), columnErr);
+          });
+    }
   }
 
   public EntityLineage getLineage(
@@ -819,7 +823,7 @@ public class LineageResourceTest extends OpenMetadataApplicationTest {
     return lineage;
   }
 
-  public Map<String, List<Map<String, Object>>> searchLineage(
+  public SearchLineageResult searchLineage(
       @NonNull EntityReference entityReference,
       @NonNull int upstreamDepth,
       @NonNull int downstreamDepth)
@@ -829,9 +833,9 @@ public class LineageResourceTest extends OpenMetadataApplicationTest {
     target = target.queryParam("type", entityReference.getType());
     target = target.queryParam("upstreamDepth", upstreamDepth);
     target = target.queryParam("downstreamDepth", downstreamDepth);
-    Map<String, List<Map<String, Object>>> entity =
-        TestUtils.get(target, Map.class, ADMIN_AUTH_HEADERS);
-    return entity;
+    SearchLineageResult searchLineageResult =
+        TestUtils.get(target, SearchLineageResult.class, ADMIN_AUTH_HEADERS);
+    return searchLineageResult;
   }
 
   public EntityLineage getLineageByName(
