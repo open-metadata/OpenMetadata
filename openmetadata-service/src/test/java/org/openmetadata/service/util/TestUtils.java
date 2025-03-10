@@ -427,6 +427,29 @@ public final class TestUtils {
     assertEquals(Status.OK.getStatusCode(), response.getStatus());
   }
 
+  public static javax.ws.rs.core.Response deleteAsync(WebTarget target, Map<String, String> headers)
+      throws HttpResponseException {
+    try {
+      final javax.ws.rs.core.Response response = SecurityUtil.addHeaders(target, headers).delete();
+      int status = response.getStatus();
+
+      // For async operations, we expect 202 Accepted
+      if (status != Response.Status.ACCEPTED.getStatusCode()) {
+        if (!HttpStatus.isSuccess(status)) {
+          readResponseError(response);
+        }
+        throw new HttpResponseException(
+            status,
+            "Expected status " + Response.Status.ACCEPTED.getStatusCode() + " but got " + status);
+      }
+      return response;
+    } catch (HttpResponseException e) {
+      throw e;
+    } catch (Exception e) {
+      throw new HttpResponseException(500, "Failed to execute delete request: " + e.getMessage());
+    }
+  }
+
   public static void assertDeleted(List<EntityReference> list, Boolean expected) {
     listOrEmpty(list).forEach(e -> assertEquals(expected, e.getDeleted()));
   }

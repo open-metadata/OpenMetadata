@@ -939,6 +939,30 @@ public class UserResource extends EntityResource<User, UserRepository> {
   }
 
   @DELETE
+  @Path("/async/{id}")
+  @Operation(
+      operationId = "deleteUserAsync",
+      summary = "Asynchronously delete a user",
+      description = "Users can't be deleted but are soft-deleted.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "OK"),
+        @ApiResponse(responseCode = "404", description = "User for instance {id} is not found")
+      })
+  public Response deleteByIdAsync(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Hard delete the entity. (Default = `false`)")
+          @QueryParam("hardDelete")
+          @DefaultValue("false")
+          boolean hardDelete,
+      @Parameter(description = "Id of the user", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id) {
+    Response response = deleteByIdAsync(uriInfo, securityContext, id, false, hardDelete);
+    decryptOrNullify(securityContext, (User) response.getEntity());
+    return response;
+  }
+
+  @DELETE
   @Path("/name/{name}")
   @Operation(
       operationId = "deleteUserByName",
