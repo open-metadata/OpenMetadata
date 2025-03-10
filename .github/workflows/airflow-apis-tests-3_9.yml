@@ -12,12 +12,6 @@
 
 name: airflow-apis-tests
 on:
-  push:
-    branches:
-      - main
-      - '0.[0-9]+.[0-9]+'
-    paths:
-      - 'openmetadata-airflow-apis/**'
   pull_request_target:
     types: [labeled, opened, synchronize, reopened]
     paths:
@@ -44,7 +38,7 @@ jobs:
           docker-images: false
           swap-storage: true
     - name: Wait for the labeler
-      uses: lewagon/wait-on-check-action@v1.3.3
+      uses: lewagon/wait-on-check-action@v1.3.4
       if: ${{ github.event_name == 'pull_request_target' }}
       with:
         ref: ${{ github.event.pull_request.head.sha }}
@@ -62,19 +56,19 @@ jobs:
         disable-reviews: true  # To not auto approve changes
 
     - name: Checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
       with:
         ref: ${{ github.event.pull_request.head.sha }}
         fetch-depth: 0
 
     - name: Set up JDK 17
-      uses: actions/setup-java@v3
+      uses: actions/setup-java@v4
       with:
         java-version: '17'
         distribution: 'temurin'
 
     - name: Set up Python 3.9
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: 3.9
 
@@ -98,7 +92,7 @@ jobs:
         make install_all install_test
 
     - name: Start Server and Ingest Sample Data
-      uses: nick-fields/retry@v2.8.3
+      uses: nick-fields/retry@v3.0.2
       env:
         INGESTION_DEPENDENCY: "mysql,elasticsearch,sample-data"
       with:

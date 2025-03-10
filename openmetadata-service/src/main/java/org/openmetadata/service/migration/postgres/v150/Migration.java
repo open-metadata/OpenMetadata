@@ -23,7 +23,7 @@ public class Migration extends MigrationProcessImpl {
     migratePolicies(handle, collectionDAO);
     migrateTestCaseDimension(handle, collectionDAO);
     createSystemDICharts();
-    deleteLegacyDataInsightPipelines(pipelineServiceClient);
+    deleteLegacyDataInsightPipelines(getPipelineServiceClient());
     updateDataInsightsApplication();
     migrateAutomatorOwner(handle, collectionDAO);
   }

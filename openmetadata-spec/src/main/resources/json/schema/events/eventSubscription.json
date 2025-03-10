@@ -279,6 +279,10 @@
       "description": "Change that led to this version of the Event Subscription.",
       "$ref": "../type/entityHistory.json#/definitions/changeDescription"
     },
+    "incrementalChangeDescription": {
+      "description": "Change that lead to this version of the entity.",
+      "$ref": "../type/entityHistory.json#/definitions/changeDescription"
+    },
     "alertType": {
       "description": "Type of Alert",
       "$ref": "#/definitions/alertType"

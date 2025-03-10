@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { SyncOutlined } from '@ant-design/icons';
 import { Button, Col, Row, Skeleton, Space, Tabs, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
@@ -21,6 +22,7 @@ import { useHistory, useParams } from 'react-router-dom';
 import { ReactComponent as EditIcon } from '../../assets/svg/edit-new.svg';
 import { ReactComponent as DeleteIcon } from '../../assets/svg/ic-delete.svg';
 import AlertConfigDetails from '../../components/Alerts/AlertDetails/AlertConfigDetails/AlertConfigDetails';
+import AlertDiagnosticInfoTab from '../../components/Alerts/AlertDetails/AlertDiagnosticInfo/AlertDiagnosticInfoTab';
 import AlertRecentEventsTab from '../../components/Alerts/AlertDetails/AlertRecentEventsTab/AlertRecentEventsTab';
 import DeleteWidgetModal from '../../components/common/DeleteWidget/DeleteWidgetModal';
 import DescriptionV1 from '../../components/common/EntityDescription/DescriptionV1';
@@ -52,6 +54,7 @@ import { updateNotificationAlert } from '../../rest/alertsAPI';
 import {
   getAlertEventsDiagnosticsInfo,
   getObservabilityAlertByFQN,
+  syncOffset,
   updateObservabilityAlert,
 } from '../../rest/observabilityAPI';
 import { getAlertExtraInfo } from '../../utils/Alerts/AlertsUtil';
@@ -65,8 +68,7 @@ import {
   getSettingPath,
 } from '../../utils/RouterUtils';
 import searchClassBase from '../../utils/SearchClassBase';
-import { showErrorToast } from '../../utils/ToastUtils';
-import './alert-details-page.less';
+import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { AlertDetailsPageProps } from './AlertDetailsPage.interface';
 
 function AlertDetailsPage({
@@ -85,12 +87,11 @@ function AlertDetailsPage({
   const [ownerLoading, setOwnerLoading] = useState(false);
   const [alertEventCountsLoading, setAlertEventCountsLoading] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState<boolean>(false);
-  const [showDescriptionModal, setShowDescriptionModal] =
-    useState<boolean>(false);
+
   const [alertPermission, setAlertPermission] = useState<OperationPermission>(
     DEFAULT_ENTITY_PERMISSION
   );
-
+  const [isSyncing, setIsSyncing] = useState(false);
   const {
     viewPermission,
     editOwnersPermission,
@@ -109,14 +110,6 @@ function AlertDetailsPage({
     }),
     [alertPermission]
   );
-
-  const onDescriptionEdit = useCallback(() => {
-    setShowDescriptionModal(true);
-  }, []);
-
-  const onCancel = useCallback(() => {
-    setShowDescriptionModal(false);
-  }, []);
 
   const fetchResourcePermission = useCallback(async () => {
     try {
@@ -217,6 +210,18 @@ function AlertDetailsPage({
     );
   }, [history]);
 
+  const handleAlertSync = useCallback(async () => {
+    try {
+      setIsSyncing(true);
+      await syncOffset(fqn);
+      showSuccessToast(t('message.alert-synced-successfully'));
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setIsSyncing(false);
+    }
+  }, [fqn]);
+
   const onOwnerUpdate = useCallback(
     async (owners?: EntityReference[]) => {
       try {
@@ -255,8 +260,6 @@ function AlertDetailsPage({
         setAlertDetails(updatedAlert);
       } catch (error) {
         showErrorToast(error as AxiosError);
-      } finally {
-        setShowDescriptionModal(false);
       }
     },
     [fqn, history, alertDetails]
@@ -282,6 +285,11 @@ function AlertDetailsPage({
         children: isUndefined(alertDetails) ? null : (
           <AlertRecentEventsTab alertDetails={alertDetails} />
         ),
+      },
+      {
+        label: t('label.diagnostic-info'),
+        key: AlertDetailTabs.DIAGNOSTIC_INFO,
+        children: <AlertDiagnosticInfoTab />,
       },
     ],
     [alertDetails, viewPermission]
@@ -379,6 +387,18 @@ function AlertDetailsPage({
                   </Col>
                   <Col>
                     <Space align="center" size={8}>
+                      <Tooltip
+                        title={t('label.sync-alert-offset', {
+                          entity: t('label.alert'),
+                        })}>
+                        <Button
+                          className="flex flex-center"
+                          data-testid="sync-button"
+                          icon={<SyncOutlined height={16} width={16} />}
+                          loading={isSyncing}
+                          onClick={handleAlertSync}
+                        />
+                      </Tooltip>
                       {editPermission &&
                         alertDetails?.provider !== ProviderType.System && (
                           <Tooltip
@@ -420,10 +440,7 @@ function AlertDetailsPage({
                   description={alertDetails?.description}
                   entityType={EntityType.EVENT_SUBSCRIPTION}
                   hasEditAccess={editDescriptionPermission}
-                  isEdit={showDescriptionModal}
                   showCommentsIcon={false}
-                  onCancel={onCancel}
-                  onDescriptionEdit={onDescriptionEdit}
                   onDescriptionUpdate={onDescriptionUpdate}
                 />
               </Col>

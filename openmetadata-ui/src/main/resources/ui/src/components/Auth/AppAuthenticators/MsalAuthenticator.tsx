@@ -63,8 +63,17 @@ const MsalAuthenticator = forwardRef<AuthenticatorRef, Props>(
 
     const login = async () => {
       try {
-        // Use login with redirect to avoid popup issue with maximized browser window
-        await instance.loginRedirect();
+        const isInIframe = window.self !== window.top;
+
+        if (isInIframe) {
+          // Use popup login when in iframe to avoid redirect issues
+          const response = await instance.loginPopup(msalLoginRequest);
+
+          onLoginSuccess(parseMSALResponse(response));
+        } else {
+          // Use login with redirect for normal window context
+          await instance.loginRedirect(msalLoginRequest);
+        }
       } catch (error) {
         onLoginFailure(error as AxiosError);
       }
