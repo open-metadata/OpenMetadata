@@ -124,7 +124,15 @@ public class CreateIngestionPipelineImpl implements JavaDelegate {
         wasSuccessful = deployPipeline(pipelineServiceClient, ingestionPipeline, service);
       }
       // TODO: Use this variable to either continue the flow or send some kind of notification
-      varHandler.setNodeVariable(RESULT_VARIABLE, wasSuccessful);
+      varHandler.setNodeVariable(RESULT_VARIABLE, getResultValue(wasSuccessful));
+    }
+  }
+
+  private String getResultValue(boolean result) {
+    if (result) {
+      return "success";
+    } else {
+      return "failure";
     }
   }
 
@@ -146,15 +154,27 @@ public class CreateIngestionPipelineImpl implements JavaDelegate {
 
   private IngestionPipeline createIngestionPipeline(
       IngestionPipelineMapper mapper, PipelineType pipelineType, ServiceEntityInterface service) {
+    String displayName = String.format("[%s] %s", service.getName(), pipelineType);
     IngestionPipelineRepository repository =
         (IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
+
+    for (String ingestionPipelineStr :
+        repository.listAllByParentFqn(service.getFullyQualifiedName())) {
+      IngestionPipeline ingestionPipeline =
+          JsonUtils.readOrConvertValue(ingestionPipelineStr, IngestionPipeline.class);
+      if (ingestionPipeline.getPipelineType().equals(pipelineType)
+          && ingestionPipeline.getDisplayName().equals(displayName)) {
+        return ingestionPipeline;
+      }
+    }
+    ;
 
     org.openmetadata.schema.api.services.ingestionPipelines.CreateIngestionPipeline create =
         new org.openmetadata.schema.api.services.ingestionPipelines.CreateIngestionPipeline()
             .withAirflowConfig(new AirflowConfig().withStartDate(getYesterdayDate()))
             .withLoggerLevel(LogLevels.INFO)
             .withName(UUID.randomUUID().toString())
-            .withDisplayName(String.format("[%s] %s", service.getName(), pipelineType))
+            .withDisplayName(displayName)
             .withOwners(service.getOwners())
             .withPipelineType(pipelineType)
             .withService(service.getEntityReference())

@@ -86,6 +86,7 @@ import org.openmetadata.schema.type.TableProfile;
 import org.openmetadata.schema.type.TableProfilerConfig;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TaskType;
+import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.type.csv.CsvDocumentation;
 import org.openmetadata.schema.type.csv.CsvFile;
 import org.openmetadata.schema.type.csv.CsvHeader;
@@ -133,6 +134,8 @@ public class TableRepository extends EntityRepository<Table> {
 
   public static final String COLUMN_FIELD = "columns";
   public static final String CUSTOM_METRICS = "customMetrics";
+  private static final Set<String> CHANGE_SUMMARY_FIELDS =
+      Set.of("description", "owners", "columns.description");
 
   public TableRepository() {
     super(
@@ -141,7 +144,8 @@ public class TableRepository extends EntityRepository<Table> {
         Table.class,
         Entity.getCollectionDAO().tableDAO(),
         PATCH_FIELDS,
-        UPDATE_FIELDS);
+        UPDATE_FIELDS,
+        CHANGE_SUMMARY_FIELDS);
     supportsSearch = true;
   }
 
@@ -712,8 +716,9 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   @Override
-  public EntityUpdater getUpdater(Table original, Table updated, Operation operation) {
-    return new TableUpdater(original, updated, operation);
+  public EntityUpdater getUpdater(
+      Table original, Table updated, Operation operation, ChangeSource changeSource) {
+    return new TableUpdater(original, updated, operation, changeSource);
   }
 
   @Override
@@ -1151,8 +1156,9 @@ public class TableRepository extends EntityRepository<Table> {
 
   /** Handles entity updated from PUT and POST operation. */
   public class TableUpdater extends ColumnEntityUpdater {
-    public TableUpdater(Table original, Table updated, Operation operation) {
-      super(original, updated, operation);
+    public TableUpdater(
+        Table original, Table updated, Operation operation, ChangeSource changeSource) {
+      super(original, updated, operation, changeSource);
     }
 
     @Override
@@ -1256,6 +1262,7 @@ public class TableRepository extends EntityRepository<Table> {
               EntityReference toTable = Entity.getEntityReferenceByName(TABLE, toParent, ALL);
               deleteRelationship(
                   table.getId(), TABLE, toTable.getId(), TABLE, Relationship.RELATED_TO);
+              searchRepository.deleteRelationshipFromSearch(table.getId(), toTable.getId());
             } catch (EntityNotFoundException e) {
               throw EntityNotFoundException.byName(
                   String.format(

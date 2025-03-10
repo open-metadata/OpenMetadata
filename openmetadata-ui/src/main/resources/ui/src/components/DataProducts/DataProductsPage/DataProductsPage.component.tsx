@@ -110,6 +110,7 @@ const DataProductsPage = () => {
           TabSpecificField.EXPERTS,
           TabSpecificField.ASSETS,
           TabSpecificField.EXTENSION,
+          TabSpecificField.TAGS,
         ],
       });
       setDataProduct(data);

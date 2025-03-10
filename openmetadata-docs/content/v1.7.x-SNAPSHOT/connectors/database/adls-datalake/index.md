@@ -7,7 +7,7 @@ slug: /connectors/database/adls-datalake
 name="ADLS Datalake"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=["Metadata", "Data Profiler", "Data Quality"]
+availableFeatures=["Metadata", "Data Profiler", "Data Quality", "Sample Data"]
 unavailableFeatures=["Query Usage", "Lineage", "Column-level Lineage", "Owners", "dbt", "Tags", "Stored Procedures"]
 / %}
 
@@ -31,8 +31,8 @@ The ADLS Datalake connector supports extracting metadata from file types `JSON`,
 
 To extract metadata from Azure ADLS (Storage Account - StorageV2), you will need an **App Registration** with the following
 permissions on the Storage Account:
-- Storage Blob Data Contributor
-- Storage Queue Data Contributor
+- Storage Blob Data Reader
+- Storage Queue Data Reader
 
 ## Metadata Ingestion
 
@@ -61,8 +61,8 @@ permissions on the Storage Account:
 - **Required Roles**
 
   Please make sure the following roles associated with the data storage account.
-   - `Storage Blob Data Contributor`
-   - `Storage Queue Data Contributor`
+   - `Storage Blob Data Reader`
+   - `Storage Queue Data Reader`
 
 The current approach for authentication is based on `app registration`, reach out to us on [slack](https://slack.open-metadata.org/) if you find the need for another auth system
 

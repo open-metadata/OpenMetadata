@@ -14,6 +14,19 @@
         "eventBasedEntity",
         "periodicBatchEntity"
       ]
+    },
+    "workflowConfiguration": {
+      "type": "object",
+      "properties": {
+        "storeStageStatus": {
+          "title": "Storage Workflow Stage Status",
+          "description": "If True, all the stage status will be stored in the database.",
+          "type": "boolean",
+          "default": false
+        }
+      },
+      "additionalProperties": false,
+      "required": ["storeStageStatus"]
     }
   },
   "properties": {
@@ -62,6 +75,10 @@
       "description": "Change that lead to this version of the entity.",
       "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
     },
+    "incrementalChangeDescription": {
+      "description": "Change that lead to this version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
     "deleted": {
       "description": "When `true` indicates the entity has been soft deleted.",
       "type": "boolean",
@@ -70,6 +87,9 @@
     "deployed": {
       "description": "When `true` indicates the workflow is deployed.",
       "type": "boolean"
+    },
+    "config": {
+      "$ref": "#/definitions/workflowConfiguration"
     },
     "trigger": {
       "description": "Workflow Trigger.",
