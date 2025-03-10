@@ -39,6 +39,7 @@ import DataModelTable from '../../components/Dashboard/DataModel/DataModels/Data
 import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
+import ServiceInsightsTab from '../../components/ServiceInsights/ServiceInsightsTab';
 import Ingestion from '../../components/Settings/Services/Ingestion/Ingestion.component';
 import ServiceConnectionDetails from '../../components/Settings/Services/ServiceConnectionDetails/ServiceConnectionDetails.component';
 import {
@@ -127,6 +128,7 @@ import {
 } from '../../utils/StringsUtils';
 import { updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
+import './service-details-page.less';
 import ServiceMainTabContent from './ServiceMainTabContent';
 
 export type ServicePageData =
@@ -1017,28 +1019,35 @@ const ServiceDetailsPage: FunctionComponent = () => {
     const showIngestionTab = userInOwnerTeam || userOwnsService || isAdminUser;
 
     if (!isMetadataService) {
-      tabs.push({
-        name: getCountLabel(serviceCategory),
-        key: getCountLabel(serviceCategory).toLowerCase(),
-        count: paging.total,
-        children: (
-          <ServiceMainTabContent
-            currentPage={currentPage}
-            data={data}
-            isServiceLoading={isServiceLoading}
-            paging={paging}
-            pagingHandler={pagingHandler}
-            pagingInfo={pagingInfo}
-            saveUpdatedServiceData={saveUpdatedServiceData}
-            serviceDetails={serviceDetails}
-            serviceName={serviceCategory}
-            servicePermission={servicePermission}
-            showDeleted={showDeleted}
-            onDescriptionUpdate={handleDescriptionUpdate}
-            onShowDeletedChange={handleShowDeleted}
-          />
-        ),
-      });
+      tabs.push(
+        {
+          name: t('label.insight-plural'),
+          key: EntityTabs.INSIGHTS,
+          children: <ServiceInsightsTab serviceDetails={serviceDetails} />,
+        },
+        {
+          name: getCountLabel(serviceCategory),
+          key: getCountLabel(serviceCategory).toLowerCase(),
+          count: paging.total,
+          children: (
+            <ServiceMainTabContent
+              currentPage={currentPage}
+              data={data}
+              isServiceLoading={isServiceLoading}
+              paging={paging}
+              pagingHandler={pagingHandler}
+              pagingInfo={pagingInfo}
+              saveUpdatedServiceData={saveUpdatedServiceData}
+              serviceDetails={serviceDetails}
+              serviceName={serviceCategory}
+              servicePermission={servicePermission}
+              showDeleted={showDeleted}
+              onDescriptionUpdate={handleDescriptionUpdate}
+              onShowDeletedChange={handleShowDeleted}
+            />
+          ),
+        }
+      );
     }
 
     if (serviceCategory === ServiceCategory.DASHBOARD_SERVICES) {
@@ -1114,6 +1123,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
 
   return (
     <PageLayoutV1
+      className="service-details-page"
       pageTitle={t('label.entity-detail-plural', {
         entity: getEntityName(serviceDetails),
       })}>

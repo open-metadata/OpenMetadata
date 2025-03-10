@@ -9,8 +9,8 @@
     "dayOneExperienceAppType": {
       "description": "Application type.",
       "type": "string",
-      "enum": ["DayOneExperienceWorkflow"],
-      "default": "DayOneExperienceWorkflow"
+      "enum": ["DayOneExperienceApplication"],
+      "default": "DayOneExperienceApplication"
     }
   },
   "properties": {
@@ -18,7 +18,7 @@
       "title": "Application Type",
       "description": "Application Type",
       "$ref": "#/definitions/dayOneExperienceAppType",
-      "default": "DayOneExperienceWorkflow"
+      "default": "DayOneExperienceApplication"
     },
     "active": {
       "title": "Active",
