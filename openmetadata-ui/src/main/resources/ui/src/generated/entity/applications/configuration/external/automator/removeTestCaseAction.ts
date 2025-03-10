@@ -11,9 +11,27 @@
  *  limitations under the License.
  */
 /**
+ * Remove Test Cases Action Type
+ */
+export interface RemoveTestCaseAction {
+    /**
+     * Remove tests to the selected table columns
+     */
+    applyToChildren?: string[];
+    /**
+     * Test Cases to remove
+     */
+    testCases: CreateTestCaseRequest[];
+    /**
+     * Application Type
+     */
+    type: RemoveTestCaseActionType;
+}
+
+/**
  * Test is a test definition to capture data quality tests.
  */
-export interface CreateTestCase {
+export interface CreateTestCaseRequest {
     /**
      * Compute the passed and failed row count for the test case.
      */
@@ -120,4 +138,13 @@ export interface TestCaseParameterValue {
      */
     value?: string;
     [property: string]: any;
+}
+
+/**
+ * Application Type
+ *
+ * Remove Test Case Action Type
+ */
+export enum RemoveTestCaseActionType {
+    RemoveTestCaseAction = "RemoveTestCaseAction",
 }

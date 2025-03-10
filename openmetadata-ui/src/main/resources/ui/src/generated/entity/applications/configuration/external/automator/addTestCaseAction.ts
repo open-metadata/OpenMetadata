@@ -11,9 +11,32 @@
  *  limitations under the License.
  */
 /**
+ * Add Test Cases to the selected assets.
+ */
+export interface AddTestCaseAction {
+    /**
+     * Add tests to the selected table columns
+     */
+    applyToChildren?: string[];
+    /**
+     * Update the test even if it is defined in the asset. By default, we will only apply the
+     * test to assets without the existing test already existing.
+     */
+    overwriteMetadata?: boolean;
+    /**
+     * Test Cases to apply
+     */
+    testCases: CreateTestCaseRequest[];
+    /**
+     * Application Type
+     */
+    type: AddTestCaseActionType;
+}
+
+/**
  * Test is a test definition to capture data quality tests.
  */
-export interface CreateTestCase {
+export interface CreateTestCaseRequest {
     /**
      * Compute the passed and failed row count for the test case.
      */
@@ -120,4 +143,13 @@ export interface TestCaseParameterValue {
      */
     value?: string;
     [property: string]: any;
+}
+
+/**
+ * Application Type
+ *
+ * Add Test Case Action Type.
+ */
+export enum AddTestCaseActionType {
+    AddTestCaseAction = "AddTestCaseAction",
 }
