@@ -177,7 +177,7 @@ const SignInPage = () => {
               {t('message.om-description')}{' '}
             </Typography.Text>
             {(alert || loginError) && (
-              <div className="m-t-lg" style={{ width: '334px' }}>
+              <div className="m-t-lg login-form">
                 <AlertBar
                   isUnauthenticated
                   message={loginError ?? alert?.message ?? ''}
