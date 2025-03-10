@@ -13,16 +13,6 @@ name: Publish Package to Maven Central Repository
 
 on:
   workflow_dispatch:
-          
-  push:
-    branches:
-      - main
-    paths:
-      - "openmetadata-service/**"
-      - "openmetadata-spec/src/main/resources/json/schema/**"
-      - "openmetadata-clients/**"
-      - "pom.xml"
-      - ".github/workflows/publish-maven-package.yml" 
 
 permissions:
   contents: read
@@ -35,19 +25,19 @@ jobs:
       - name: Free Disk Space (Ubuntu)
         uses: jlumbroso/free-disk-space@main
         with:
-            tool-cache: false
-            android: true
-            dotnet: true
-            haskell: true
-            large-packages: false
-            swap-storage: true
+          tool-cache: false
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: false
+          swap-storage: true
       - uses: actions/checkout@v4
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
           java-version: 17
-          distribution: 'temurin'
+          distribution: "temurin"
           server-id: ossrh
           server-username: MAVEN_USERNAME
           server-password: MAVEN_PASSWORD
