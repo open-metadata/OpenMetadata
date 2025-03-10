@@ -541,5 +541,14 @@ export const getServiceNameQueryFilter = (serviceName: string) => ({
  * @returns The field name in dot notation, or undefined if no active field
  */
 export const getActiveFieldNameForAppDocs = (activeField?: string) => {
-  return activeField?.split('/').slice(1).join('.') ?? undefined;
+  if (!activeField) {
+    return undefined;
+  }
+
+  // Split by '/', remove 'root', then filter out array indices and join with '.'
+  return activeField
+    .split('/')
+    .slice(1)
+    .filter((segment) => !/^\d+$/.test(segment))
+    .join('.');
 };

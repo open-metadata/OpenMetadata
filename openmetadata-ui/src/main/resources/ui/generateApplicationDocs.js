@@ -37,11 +37,6 @@ const processProperty = (key, prop, schema) => {
   // End section before processing $ref
   markdown += `$$\n\n`;
 
-  // Handle Array type
-  if (prop.type === 'array') {
-    markdown += processProperty(`${key}.items`, prop.items, schema);
-  }
-
   // Handle $ref
   if (prop.$ref) {
     const resolvedProp = resolveRef(schema, prop.$ref);
@@ -73,7 +68,11 @@ const generateMarkdown = (schema) => {
 
   if (schema.properties) {
     for (const [key, prop] of Object.entries(schema.properties)) {
-      markdown += processProperty(key, prop, schema);
+      if (prop.type === 'array') {
+        markdown += processProperty(key, prop.items, schema);
+      } else {
+        markdown += processProperty(key, prop, schema);
+      }
     }
   }
 
