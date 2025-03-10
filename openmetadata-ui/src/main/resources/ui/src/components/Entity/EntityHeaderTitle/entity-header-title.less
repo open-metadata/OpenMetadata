@@ -24,3 +24,71 @@
     font-size: 16px;
   }
 }
+.ant-typography.heading {
+  color: @grey-900;
+}
+.ant-typography.subheading {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.ant-btn.entity-follow-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 16px;
+  padding: 4px 10px;
+  gap: 4px;
+  background-color: @button-color;
+  border: none;
+  width: fit-content;
+  height: auto;
+  .ant-typography {
+    color: @blue-heading;
+    font-weight: @font-medium;
+  }
+  span.anticon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  span.ant-typography {
+    margin-left: 0px;
+  }
+
+  &:hover {
+    background-color: @button-color;
+  }
+  &:active {
+    background-color: @button-color;
+  }
+  &:focus {
+    background-color: @button-color;
+  }
+}
+
+.ant-btn.copy-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  border-radius: 6px;
+  padding: 4px;
+  border: 1px solid @border-light;
+  background: @background-color;
+  color: @background-color;
+  width: 22px;
+  height: 22px;
+  &:hover {
+    background-color: @background-color;
+    color: @background-color;
+  }
+  &:active {
+    background-color: @background-color;
+    color: @background-color;
+  }
+  &:focus {
+    background-color: @background-color;
+    color: @background-color;
+  }
+}
