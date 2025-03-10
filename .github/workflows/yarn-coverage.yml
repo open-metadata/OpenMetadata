@@ -3,12 +3,6 @@ name: SonarCloud + Jest Coverage
 on:
   # Trigger analysis when pushing in master or pull requests, and when creating
   # a pull request.
-  push:
-    branches:
-      - main
-      - "0.[0-9]+.[0-9]+"
-    paths:
-      - openmetadata-ui/src/main/resources/ui/**
   pull_request_target:
     types: [opened, synchronize, reopened, labeled]
     paths:

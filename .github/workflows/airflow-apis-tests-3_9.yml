@@ -12,12 +12,6 @@
 
 name: airflow-apis-tests
 on:
-  push:
-    branches:
-      - main
-      - '0.[0-9]+.[0-9]+'
-    paths:
-      - 'openmetadata-airflow-apis/**'
   pull_request_target:
     types: [labeled, opened, synchronize, reopened]
     paths:

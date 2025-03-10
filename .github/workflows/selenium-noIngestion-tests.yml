@@ -15,13 +15,6 @@
 name: Selenium No Ingestion Java CI
 
 on:
-  push:
-    branches:
-      - main
-      - '0.[0-9]+.[0-9]+'
-    paths:
-      - 'openmetadata-ui/src/main/resources/ui/**'
-      - 'openmetadata-ui/src/test/java/org/openmetadata/catalog/selenium/pagesWithoutData/**'
   pull_request:
     branches:
       - main
