@@ -18,6 +18,7 @@ export interface WorkflowDefinition {
      * Change that lead to this version of the entity.
      */
     changeDescription?: ChangeDescription;
+    config?:            WorkflowConfiguration;
     /**
      * When `true` indicates the entity has been soft deleted.
      */
@@ -148,6 +149,13 @@ export interface FieldChange {
      * field type to deserialize it.
      */
     oldValue?: any;
+}
+
+export interface WorkflowConfiguration {
+    /**
+     * If True, all the stage status will be stored in the database.
+     */
+    storeStageStatus: boolean;
 }
 
 /**

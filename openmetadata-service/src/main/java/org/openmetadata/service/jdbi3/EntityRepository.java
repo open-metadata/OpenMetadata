@@ -181,9 +181,9 @@ import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
 import org.openmetadata.service.jobs.JobDAO;
 import org.openmetadata.service.resources.tags.TagLabelUtil;
 import org.openmetadata.service.resources.teams.RoleResource;
-import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchListFilter;
 import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.search.SearchResultListMapper;
 import org.openmetadata.service.search.SearchSortFilter;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -1373,17 +1373,17 @@ public abstract class EntityRepository<T extends EntityInterface> {
     Long total;
 
     if (limit > 0) {
-      SearchClient.SearchResultListMapper results =
+      SearchResultListMapper results =
           searchRepository.listWithOffset(
               searchListFilter, limit, offset, entityType, searchSortFilter, q);
       total = results.getTotal();
       for (Map<String, Object> json : results.getResults()) {
-        T entity = JsonUtils.readOrConvertValue(json, entityClass);
+        T entity = JsonUtils.readOrConvertValueLenient(json, entityClass);
         entityList.add(withHref(uriInfo, entity));
       }
       return new ResultList<>(entityList, offset, limit, total.intValue());
     } else {
-      SearchClient.SearchResultListMapper results =
+      SearchResultListMapper results =
           searchRepository.listWithOffset(
               searchListFilter, limit, offset, entityType, searchSortFilter, q);
       total = results.getTotal();
@@ -2698,16 +2698,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   protected final Fields getFields(Set<String> fields) {
     return new Fields(allowedFields, fields);
-  }
-
-  public final Set<String> getCommonFields(Set<String> input) {
-    Set<String> result = new HashSet<>();
-    for (String field : input) {
-      if (allowedFields.contains(field)) {
-        result.add(field);
-      }
-    }
-    return result;
   }
 
   public final Set<String> getAllowedFieldsCopy() {
