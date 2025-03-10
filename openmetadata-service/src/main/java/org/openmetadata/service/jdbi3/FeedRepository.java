@@ -660,6 +660,12 @@ public class FeedRepository {
               } else if (taskStatus.equals("Closed")) {
                 threadCount.setClosedTaskCount(count);
               }
+            } else if (type.equalsIgnoreCase("Announcement")) {
+              // announcements are set at entity level will be called only once
+              threadCount.setTotalAnnouncementCount(count);
+              int activeCount = (count > 0) ? dao.feedDAO().countActiveAnnouncement(eLink) : 0;
+              threadCount.setActiveAnnouncementCount(activeCount);
+              threadCount.setInactiveAnnouncementCount(count - activeCount);
             }
             computeTotalTaskCount(threadCount);
             threadCounts.add(threadCount);
