@@ -98,7 +98,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
       includeCol: DEFAULT_INCLUDE_PROFILE,
       enablePartition: false,
       partitionData: undefined,
-      selectedProfileSampleType: undefined,
+      selectedProfileSampleType: ProfileSampleType.Percentage,
     }),
     []
   );

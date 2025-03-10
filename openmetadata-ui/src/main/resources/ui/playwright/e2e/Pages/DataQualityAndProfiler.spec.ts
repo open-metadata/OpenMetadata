@@ -508,8 +508,7 @@ test(
     await test.step('Update profiler setting', async () => {
       await page.click('[data-testid="profiler-setting-btn"]');
       await page.waitForSelector('.ant-modal-body');
-      await page.locator('[data-testid="profile-sample"]').click();
-      await page.locator('[title="Percentage"]').click();
+
       await page.locator('[data-testid="slider-input"]').clear();
       await page
         .locator('[data-testid="slider-input"]')
@@ -585,13 +584,14 @@ test(
     await test.step('Reset profile sample type', async () => {
       await page.click('[data-testid="profiler-setting-btn"]');
       await page.waitForSelector('.ant-modal-body');
-      await page.locator('[data-testid="profile-sample"]').hover();
-      await page
-        .getByTestId('profile-sample')
-        .getByLabel('close-circle')
-        .click();
 
-      await expect(page.locator('[data-testid="slider-input"]')).toBeHidden();
+      await expect(
+        page.locator('[data-testid="profile-sample"]')
+      ).toBeVisible();
+
+      await page.getByTestId('clear-slider-input').click();
+
+      await expect(page.locator('[data-testid="slider-input"]')).toBeEmpty();
 
       const updateTableProfilerConfigResponse = page.waitForResponse(
         (response) =>
@@ -607,7 +607,8 @@ test(
         JSON.stringify({
           excludeColumns: [table1.entity?.columns[0].name],
           profileQuery: 'select * from table',
-          profileSampleType: null,
+          profileSample: null,
+          profileSampleType: 'PERCENTAGE',
           includeColumns: [{ columnName: table1.entity?.columns[1].name }],
           partitioning: {
             partitionColumnName: table1.entity?.columns[2].name,
@@ -630,10 +631,10 @@ test(
       await expect(
         page.locator('[data-testid="profile-sample"]')
       ).toBeVisible();
-      await expect(page.locator('[data-testid="slider-input"]')).toBeHidden();
+      await expect(page.locator('[data-testid="slider-input"]')).toBeEmpty();
       await expect(
         page.getByTestId('profile-sample').locator('div')
-      ).toBeEmpty();
+      ).toBeVisible();
     });
   }
 );
