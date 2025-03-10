@@ -55,9 +55,9 @@ public class OmAppJobListener implements JobListener {
       ApplicationConfig appConfig =
           JsonUtils.convertValue(jobApp.getAppConfiguration(), ApplicationConfig.class);
       ApplicationConfig overrideConfig =
-              JsonUtils.convertValue(
-                      jobExecutionContext.getMergedJobDataMap().getWrappedMap().get(APP_CONFIG_KEY),
-                      ApplicationConfig.class);
+          JsonUtils.convertValue(
+              jobExecutionContext.getMergedJobDataMap().getWrappedMap().get(APP_CONFIG_KEY),
+              ApplicationConfig.class);
       if (overrideConfig != null) {
         appConfig.getAdditionalProperties().putAll(overrideConfig.getAdditionalProperties());
       }
