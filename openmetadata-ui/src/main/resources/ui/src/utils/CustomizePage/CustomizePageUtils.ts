@@ -12,6 +12,7 @@
  */
 import { TabsProps } from 'antd';
 import { noop } from 'lodash';
+import { TAB_LABEL_MAP } from '../../constants/Customize.constants';
 import { CommonWidgetType } from '../../constants/CustomizeWidgets.constants';
 import { EntityTabs } from '../../enums/entity.enum';
 import { PageType, Tab } from '../../generated/system/ui/page';
@@ -109,50 +110,10 @@ export const getGlossaryDefaultTabs = () => {
   ];
 };
 
-export const getTabLabelFromId = (tab: EntityTabs) => {
-  switch (tab) {
-    case EntityTabs.OVERVIEW:
-      return i18n.t('label.overview');
-    case EntityTabs.GLOSSARY_TERMS:
-      return i18n.t('label.glossary-terms');
-    case EntityTabs.ASSETS:
-      return i18n.t('label.asset-plural');
-    case EntityTabs.ACTIVITY_FEED:
-      return i18n.t('label.activity-feed-and-task-plural');
-    case EntityTabs.CUSTOM_PROPERTIES:
-      return i18n.t('label.custom-property-plural');
-    case EntityTabs.TERMS:
-      return i18n.t('label.terms');
-    case EntityTabs.SCHEMA:
-      return i18n.t('label.schema');
-    case EntityTabs.SAMPLE_DATA:
-      return i18n.t('label.sample-data');
-    case EntityTabs.TABLE_QUERIES:
-      return i18n.t('label.query-plural');
-    case EntityTabs.PROFILER:
-      return i18n.t('label.profiler-amp-data-quality');
-    case EntityTabs.INCIDENTS:
-      return i18n.t('label.incident-plural');
-    case EntityTabs.LINEAGE:
-      return i18n.t('label.lineage');
-    case EntityTabs.VIEW_DEFINITION:
-      return i18n.t('label.view-definition');
-    case EntityTabs.DBT:
-      return i18n.t('label.dbt-lowercase');
-    case EntityTabs.CHILDREN:
-      return i18n.t('label.children');
-    case EntityTabs.DETAILS:
-      return i18n.t('label.detail-plural');
-    case EntityTabs.SUBDOMAINS:
-      return i18n.t('label.sub-domain-plural');
-    case EntityTabs.DATA_PRODUCTS:
-      return i18n.t('label.data-product-plural');
-    case EntityTabs.DOCUMENTATION:
-      return i18n.t('label.documentation');
+export const getTabLabelFromId = (tab: EntityTabs): string => {
+  const labelKey = TAB_LABEL_MAP[tab];
 
-    default:
-      return '';
-  }
+  return labelKey ? i18n.t(labelKey) : '';
 };
 
 export const getDefaultTabs = (pageType?: string): Tab[] => {
@@ -303,6 +264,10 @@ export const getCustomizableWidgetByPage = (
       return metricDetailsClassBase.getCommonWidgetList();
     case PageType.MlModel:
       return mlModelClassBase.getCommonWidgetList();
+    case PageType.DashboardDataModel:
+      return dashboardDataModelClassBase.getCommonWidgetList();
+    case PageType.StoredProcedure:
+      return storedProcedureClassBase.getCommonWidgetList();
     case PageType.LandingPage:
     default:
       return [];
