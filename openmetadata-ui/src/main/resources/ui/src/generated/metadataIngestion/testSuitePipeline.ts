@@ -1126,6 +1126,10 @@ export interface ConfigClass {
      */
     clientSessionKeepAlive?: boolean;
     /**
+     * Cost of credit for the Snowflake account.
+     */
+    creditCost?: number;
+    /**
      * Optional configuration for ingestion of TRANSIENT tables, By default, it will skip the
      * TRANSIENT tables.
      */

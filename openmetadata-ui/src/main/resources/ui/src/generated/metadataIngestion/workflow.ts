@@ -1162,6 +1162,10 @@ export interface ConfigClass {
      */
     clientSessionKeepAlive?: boolean;
     /**
+     * Cost of credit for the Snowflake account.
+     */
+    creditCost?: number;
+    /**
      * Optional configuration for ingestion of TRANSIENT tables, By default, it will skip the
      * TRANSIENT tables.
      */
@@ -3666,6 +3670,10 @@ export interface Pipeline {
      */
     filterCondition?: string;
     /**
+     * Configuration to process query cost
+     */
+    processQueryCostAnalysis?: boolean;
+    /**
      * Configuration to set the file path for query logs
      */
     queryLogFilePath?: string;
@@ -4639,7 +4647,7 @@ export enum CollateAIAppConfigType {
     CollateAIQualityAgent = "CollateAIQualityAgent",
     DataInsights = "DataInsights",
     DataInsightsReport = "DataInsightsReport",
-    DayOneExperienceWorkflow = "DayOneExperienceWorkflow",
+    DayOneExperienceApplication = "DayOneExperienceApplication",
     SearchIndexing = "SearchIndexing",
 }
 
