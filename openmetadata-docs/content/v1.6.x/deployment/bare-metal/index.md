@@ -66,14 +66,6 @@ If you are using AWS OpenSearch Service, OpenMetadata Supports AWS OpenSearch Se
 OpenMetadata performs metadata ingestion using the Ingestion Framework. Learn more about how to deploy and manage
 the ingestion workflows [here](/deployment/ingestion).
 
-## Minimum Sizing Requirements
-
-- Our minimum specs recommendation for the OpenMetadata Deployment (one replica) is 2 vCPUs and 4 Gigs with 20 Gigs of volume size if using persistent volumes for logs.
-- For Elasticsearch, 2 vCPUs and 2 Gigs RAM (per instance) with 30 Gigs of Storage volume attached.
-- For the database, 2 vCPUs and 2 Gigs RAM (per instance) with 30 Gigs of Storage Volume Attached (dynamic expansion up to 100 Gigs).
-
-These settings apply as well when using managed instances, such as RDS or AWS OpenSearch.
-
 # Procedure
 
 ## 1. Download the distribution
