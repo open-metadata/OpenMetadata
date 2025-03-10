@@ -22,16 +22,16 @@ import {
   EventSubscription,
   FilteringRules,
 } from '../../generated/events/eventSubscription';
+import { withPageLayout } from '../../hoc/withPageLayout';
 import { getAlertsFromName } from '../../rest/alertsAPI';
 import { getEntityName } from '../../utils/EntityUtils';
+import i18n from '../../utils/i18next/LocalUtil';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const AlertsActivityFeedPage = () => {
   const [loading, setLoading] = useState(false);
   const [alert, setAlert] = useState<EventSubscription>();
-
   const { t } = useTranslation();
-
   const fetchActivityFeedAlert = useCallback(async () => {
     try {
       setLoading(true);
@@ -98,4 +98,6 @@ const AlertsActivityFeedPage = () => {
   );
 };
 
-export default AlertsActivityFeedPage;
+export default withPageLayout(i18n.t('label.alert-details'))(
+  AlertsActivityFeedPage
+);

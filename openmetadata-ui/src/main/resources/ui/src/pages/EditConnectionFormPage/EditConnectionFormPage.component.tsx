@@ -30,12 +30,14 @@ import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.const
 import { OPEN_METADATA } from '../../constants/Services.constant';
 import { TabSpecificField } from '../../enums/entity.enum';
 import { ServiceCategory } from '../../enums/service.enum';
+import { withPageLayout } from '../../hoc/withPageLayout';
 import { useFqn } from '../../hooks/useFqn';
 import { SearchSourceAlias } from '../../interface/search.interface';
 import { ConfigData, ServicesType } from '../../interface/service.interface';
 import { getServiceByFQN, patchService } from '../../rest/serviceAPI';
 import { getEntityMissingError } from '../../utils/CommonUtils';
 import { getEntityName } from '../../utils/EntityUtils';
+import i18n from '../../utils/i18next/LocalUtil';
 import { getPathByServiceFQN, getSettingPath } from '../../utils/RouterUtils';
 import serviceUtilClassBase from '../../utils/ServiceUtilClassBase';
 import {
@@ -45,12 +47,11 @@ import {
 import { showErrorToast } from '../../utils/ToastUtils';
 
 function EditConnectionFormPage() {
-  const { t } = useTranslation();
   const { serviceCategory } = useParams<{
     serviceCategory: ServiceCategory;
   }>();
   const { fqn: serviceFQN } = useFqn();
-
+  const { t } = useTranslation();
   const isOpenMetadataService = useMemo(
     () => serviceFQN === OPEN_METADATA,
     [serviceFQN]
@@ -120,7 +121,9 @@ function EditConnectionFormPage() {
           url: getPathByServiceFQN(serviceCategory, serviceFQN),
         },
         {
-          name: t('label.edit-entity', { entity: t('label.connection') }),
+          name: t('label.edit-entity', {
+            entity: t('label.connection'),
+          }),
           url: '',
           activeTitle: true,
         },
@@ -188,7 +191,7 @@ function EditConnectionFormPage() {
 
   return (
     <ResizablePanels
-      className="content-height-with-resizable-panel"
+      className="content-height-with-resizable-panel m--t-sm"
       firstPanel={{
         children: firstPanelChildren,
         minWidth: 700,
@@ -196,7 +199,9 @@ function EditConnectionFormPage() {
         className: 'content-resizable-panel-container',
       }}
       hideSecondPanel={!serviceDetails?.serviceType ?? ''}
-      pageTitle={t('label.edit-entity', { entity: t('label.connection') })}
+      pageTitle={t('label.edit-entity', {
+        entity: t('label.connection'),
+      })}
       secondPanel={{
         children: (
           <ServiceDocPanel
@@ -213,4 +218,8 @@ function EditConnectionFormPage() {
   );
 }
 
-export default EditConnectionFormPage;
+export default withPageLayout(
+  i18n.t('label.edit-entity', {
+    entity: i18n.t('label.connection'),
+  })
+)(EditConnectionFormPage);

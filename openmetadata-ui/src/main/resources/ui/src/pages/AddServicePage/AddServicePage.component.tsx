@@ -28,6 +28,7 @@ import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.const
 import { IngestionActionMessage } from '../../enums/ingestion.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { CreateIngestionPipeline } from '../../generated/api/services/ingestionPipelines/createIngestionPipeline';
+import { withPageLayout } from '../../hoc/withPageLayout';
 import { DataObj } from '../../interface/service.interface';
 import {
   addIngestionPipeline,
@@ -35,13 +36,14 @@ import {
   getIngestionPipelineByFqn,
 } from '../../rest/ingestionPipelineAPI';
 import { postService } from '../../rest/serviceAPI';
+import i18n from '../../utils/i18next/LocalUtil';
 import { getSettingPath } from '../../utils/RouterUtils';
 import { getServiceRouteFromServiceType } from '../../utils/ServiceUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const AddServicePage = () => {
-  const { t } = useTranslation();
   const { serviceCategory } = useParams<{ serviceCategory: string }>();
+  const { t } = useTranslation();
   const [newServiceData, setNewServiceData] = useState<ServicesUpdateRequest>();
   const [ingestionProgress, setIngestionProgress] = useState(0);
   const [isIngestionCreated, setIsIngestionCreated] = useState(false);
@@ -176,4 +178,8 @@ const AddServicePage = () => {
   );
 };
 
-export default AddServicePage;
+export default withPageLayout(
+  i18n.t('label.add-entity', {
+    entity: i18n.t('label.service'),
+  })
+)(AddServicePage);
