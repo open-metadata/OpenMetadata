@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Space, Typography } from 'antd';
+import { Button, Col, Modal, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, isNil } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
@@ -276,6 +276,7 @@ function CustomizeMyData({
                     persona: isNil(personaDetails)
                       ? decodedPersonaFQN
                       : getEntityName(personaDetails),
+                    pageName: t('label.landing-page'),
                   }}
                 />
               </Typography.Title>
@@ -338,6 +339,20 @@ function CustomizeMyData({
           open={isWidgetModalOpen}
           placeholderWidgetKey={placeholderWidgetKey}
         />
+      )}
+
+      {isResetModalOpen && (
+        <Modal
+          centered
+          cancelText={t('label.no')}
+          data-testid="reset-layout-modal"
+          okText={t('label.yes')}
+          open={isResetModalOpen}
+          title={t('label.reset-default-layout')}
+          onCancel={handleCloseResetModal}
+          onOk={handleReset}>
+          {t('message.reset-layout-confirmation')}
+        </Modal>
       )}
     </>
   );
