@@ -16,6 +16,7 @@ import { useForm } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { ActivityFeedTabs } from '../../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import Loader from '../../../components/common/Loader/Loader';
@@ -59,6 +60,7 @@ import { EntityData, Option } from '../TasksPage.interface';
 
 const RequestTag = () => {
   const { currentUser } = useApplicationStore();
+  const { t } = useTranslation();
   const location = useCustomLocation();
   const history = useHistory();
   const [form] = useForm();
@@ -130,8 +132,8 @@ const RequestTag = () => {
     postThread(data)
       .then(() => {
         showSuccessToast(
-          i18n.t('server.create-entity-success', {
-            entity: i18n.t('label.task'),
+          t('server.create-entity-success', {
+            entity: t('label.task'),
           })
         );
         history.push(
@@ -181,8 +183,8 @@ const RequestTag = () => {
               titleLinks={[
                 ...getBreadCrumbList(entityData, entityType),
                 {
-                  name: i18n.t('label.create-entity', {
-                    entity: i18n.t('label.task'),
+                  name: t('label.create-entity', {
+                    entity: t('label.task'),
                   }),
                   activeTitle: true,
                   url: '',
@@ -193,8 +195,8 @@ const RequestTag = () => {
               <Typography.Paragraph
                 className="text-base"
                 data-testid="form-title">
-                {i18n.t('label.create-entity', {
-                  entity: i18n.t('label.task'),
+                {t('label.create-entity', {
+                  entity: t('label.task'),
                 })}
               </Typography.Paragraph>
               <Form
@@ -207,26 +209,26 @@ const RequestTag = () => {
                 onFinish={onCreateTask}>
                 <Form.Item
                   data-testid="title"
-                  label={`${i18n.t('label.task-entity', {
-                    entity: i18n.t('label.title'),
+                  label={`${t('label.task-entity', {
+                    entity: t('label.title'),
                   })}:`}
                   name="title">
                   <Input
                     disabled
-                    placeholder={`${i18n.t('label.task-entity', {
-                      entity: i18n.t('label.title'),
+                    placeholder={`${t('label.task-entity', {
+                      entity: t('label.title'),
                     })}`}
                   />
                 </Form.Item>
                 <Form.Item
                   data-testid="assignees"
-                  label={`${i18n.t('label.assignee-plural')}:`}
+                  label={`${t('label.assignee-plural')}:`}
                   name="assignees"
                   rules={[
                     {
                       required: true,
-                      message: i18n.t('message.field-text-is-required', {
-                        fieldText: i18n.t('label.assignee-plural'),
+                      message: t('message.field-text-is-required', {
+                        fieldText: t('label.assignee-plural'),
                       }),
                     },
                   ]}>
@@ -239,8 +241,8 @@ const RequestTag = () => {
                 </Form.Item>
                 <Form.Item
                   data-testid="tags-label"
-                  label={`${i18n.t('label.suggest-entity', {
-                    entity: i18n.t('label.tag-plural'),
+                  label={`${t('label.suggest-entity', {
+                    entity: t('label.tag-plural'),
                   })}:`}
                   name="suggestTags">
                   <TagSuggestion />
@@ -252,16 +254,14 @@ const RequestTag = () => {
                     data-testid="cta-buttons"
                     size={16}>
                     <Button data-testid="cancel-btn" type="link" onClick={back}>
-                      {i18n.t('label.back')}
+                      {t('label.back')}
                     </Button>
                     <Button
                       data-testid="submit-tag-request"
                       htmlType="submit"
                       loading={isLoading}
                       type="primary">
-                      {suggestion
-                        ? i18n.t('label.suggest')
-                        : i18n.t('label.submit')}
+                      {suggestion ? t('label.suggest') : t('label.submit')}
                     </Button>
                   </Space>
                 </Form.Item>
@@ -270,7 +270,7 @@ const RequestTag = () => {
           </div>
         ),
       }}
-      pageTitle={i18n.t('label.task')}
+      pageTitle={t('label.task')}
       secondPanel={{
         className: 'content-resizable-panel-container',
         minWidth: 60,

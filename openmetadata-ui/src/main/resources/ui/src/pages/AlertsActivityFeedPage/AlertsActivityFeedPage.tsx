@@ -14,6 +14,7 @@
 import { Card } from 'antd';
 import { noop, trim } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import Loader from '../../components/common/Loader/Loader';
 import { AlertDetailsComponent } from '../../components/Settings/Alerts/AlertsDetails/AlertDetails.component';
 import { EventFilterRule } from '../../generated/events/eventFilterRule';
@@ -30,7 +31,7 @@ import { showErrorToast } from '../../utils/ToastUtils';
 const AlertsActivityFeedPage = () => {
   const [loading, setLoading] = useState(false);
   const [alert, setAlert] = useState<EventSubscription>();
-
+  const { t } = useTranslation();
   const fetchActivityFeedAlert = useCallback(async () => {
     try {
       setLoading(true);
@@ -60,8 +61,8 @@ const AlertsActivityFeedPage = () => {
       });
     } catch (error) {
       showErrorToast(
-        i18n.t('server.entity-fetch-error', {
-          entity: i18n.t('label.activity-feed-plural'),
+        t('server.entity-fetch-error', {
+          entity: t('label.activity-feed-plural'),
         })
       );
     } finally {

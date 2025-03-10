@@ -14,6 +14,7 @@ import { Button, Col, Row, Skeleton, Space } from 'antd';
 import Card from 'antd/lib/card/Card';
 import { isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import NextPrevious from '../../../components/common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../../components/common/NextPrevious/NextPrevious.interface';
@@ -37,7 +38,7 @@ import i18n from '../../../utils/i18next/LocalUtil';
 
 const PersonaPageLayout = () => {
   const { isAdminUser } = useAuth();
-
+  const { t } = useTranslation();
   const [persona, setPersona] = useState<Persona[]>();
 
   const [addEditPersona, setAddEditPersona] = useState<Persona>();
@@ -90,7 +91,7 @@ const PersonaPageLayout = () => {
       <Col className="h-full text-center" span={24}>
         <ErrorPlaceHolder
           buttonId="add-persona-button"
-          heading={i18n.t('label.persona')}
+          heading={t('label.persona')}
           permission={isAdminUser}
           type={ERROR_PLACEHOLDER_TYPE.CREATE}
           onClick={handleAddNewPersona}
@@ -148,7 +149,7 @@ const PersonaPageLayout = () => {
             data-testid="add-persona-button"
             type="primary"
             onClick={handleAddNewPersona}>
-            {i18n.t('label.add-entity', { entity: i18n.t('label.persona') })}
+            {t('label.add-entity', { entity: t('label.persona') })}
           </Button>
         </Space>
       </Col>

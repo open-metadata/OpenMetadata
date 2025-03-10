@@ -19,6 +19,7 @@ import React, {
   useMemo,
   useState,
 } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import AddGlossary from '../../components/Glossary/AddGlossary/AddGlossary.component';
@@ -39,6 +40,7 @@ import { showErrorToast } from '../../utils/ToastUtils';
 const AddGlossaryPage: FunctionComponent = () => {
   const history = useHistory();
   const { permissions } = usePermissionProvider();
+  const { t } = useTranslation();
   const [tagList, setTagList] = useState<Array<string>>([]);
   const [isTagLoading, setIsTagLoading] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -75,14 +77,14 @@ const AddGlossaryPage: FunctionComponent = () => {
     } catch (error) {
       handleSaveFailure(
         getIsErrorMatch(error as AxiosError, ERROR_MESSAGE.alreadyExist)
-          ? i18n.t('server.entity-already-exist', {
-              entity: i18n.t('label.glossary'),
-              entityPlural: i18n.t('label.glossary-lowercase-plural'),
+          ? t('server.entity-already-exist', {
+              entity: t('label.glossary'),
+              entityPlural: t('label.glossary-lowercase-plural'),
               name: data.name,
             })
           : (error as AxiosError),
-        i18n.t('server.add-entity-error', {
-          entity: i18n.t('label.glossary-lowercase'),
+        t('server.add-entity-error', {
+          entity: t('label.glossary-lowercase'),
         })
       );
     } finally {
@@ -99,8 +101,8 @@ const AddGlossaryPage: FunctionComponent = () => {
           setTagList(tagList);
         } else {
           showErrorToast(
-            i18n.t('server.entity-fetch-error', {
-              entity: i18n.t('label.tag-plural'),
+            t('server.entity-fetch-error', {
+              entity: t('label.tag-plural'),
             })
           );
         }
@@ -108,8 +110,8 @@ const AddGlossaryPage: FunctionComponent = () => {
       .catch((err: AxiosError) => {
         showErrorToast(
           err,
-          i18n.t('server.entity-fetch-error', {
-            entity: i18n.t('label.tag-plural'),
+          t('server.entity-fetch-error', {
+            entity: t('label.tag-plural'),
           })
         );
       })
@@ -121,12 +123,12 @@ const AddGlossaryPage: FunctionComponent = () => {
   useEffect(() => {
     setSlashedBreadcrumb([
       {
-        name: i18n.t('label.glossary'),
+        name: t('label.glossary'),
         url: getGlossaryPath(),
       },
       {
-        name: i18n.t('label.add-entity', {
-          entity: i18n.t('label.glossary'),
+        name: t('label.add-entity', {
+          entity: t('label.glossary'),
         }),
         url: '',
         activeTitle: true,
@@ -139,8 +141,8 @@ const AddGlossaryPage: FunctionComponent = () => {
       <AddGlossary
         allowAccess={createPermission}
         fetchTags={fetchTags}
-        header={i18n.t('label.add-entity', {
-          entity: i18n.t('label.glossary'),
+        header={t('label.add-entity', {
+          entity: t('label.glossary'),
         })}
         isLoading={isLoading}
         isTagLoading={isTagLoading}

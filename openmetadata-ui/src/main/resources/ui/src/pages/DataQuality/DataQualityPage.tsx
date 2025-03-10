@@ -13,6 +13,7 @@
 
 import { Col, Menu, MenuProps, Row, Typography } from 'antd';
 import React, { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Redirect,
   Route,
@@ -35,7 +36,7 @@ import DataQualityProvider from './DataQualityProvider';
 const DataQualityPage = () => {
   const { tab: activeTab } = useParams<{ tab: DataQualityPageTabs }>();
   const history = useHistory();
-
+  const { t } = useTranslation();
   const menuItems: MenuProps['items'] = useMemo(() => {
     const data = DataQualityClassBase.getLeftSideBar();
 
@@ -103,12 +104,12 @@ const DataQualityPage = () => {
                     className="m-b-md p-x-md"
                     data-testid="page-title"
                     level={5}>
-                    {i18n.t('label.data-quality')}
+                    {t('label.data-quality')}
                   </Typography.Title>
                   <Typography.Paragraph
                     className="text-grey-muted p-x-md"
                     data-testid="page-sub-title">
-                    {i18n.t('message.page-sub-header-for-data-quality')}
+                    {t('message.page-sub-header-for-data-quality')}
                   </Typography.Paragraph>
                 </Col>
                 <Col span={24}>

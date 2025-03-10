@@ -15,6 +15,7 @@ import { Button, Col, Divider, Form, Input, Row, Typography } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { isEmpty, isUndefined } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import AlertFormSourceItem from '../../components/Alerts/AlertFormSourceItem/AlertFormSourceItem';
 import DestinationFormItem from '../../components/Alerts/DestinationFormItem/DestinationFormItem.component';
@@ -59,6 +60,7 @@ import {
 
 function AddObservabilityPage() {
   const history = useHistory();
+  const { t } = useTranslation();
   const [form] = useForm<ModifiedCreateEventSubscription>();
   const { fqn } = useFqn();
   const { setInlineAlertDetails, inlineAlertDetails, currentUser } =
@@ -100,7 +102,7 @@ function AddObservabilityPage() {
       setFilterResources(filterResources.data);
     } catch (error) {
       showErrorToast(
-        i18n.t('server.entity-fetch-error', { entity: i18n.t('label.config') })
+        t('server.entity-fetch-error', { entity: t('label.config') })
       );
     } finally {
       setFetching((prev) => prev - 1);
@@ -118,17 +120,17 @@ function AddObservabilityPage() {
   const breadcrumb = useMemo(
     () => [
       {
-        name: i18n.t('label.observability'),
+        name: t('label.observability'),
         url: '',
       },
       {
-        name: i18n.t('label.alert-plural'),
+        name: t('label.alert-plural'),
         url: ROUTES.OBSERVABILITY_ALERTS,
       },
       {
         name: fqn
-          ? i18n.t('label.edit-entity', { entity: i18n.t('label.alert') })
-          : i18n.t('label.create-entity', { entity: i18n.t('label.alert') }),
+          ? t('label.edit-entity', { entity: t('label.alert') })
+          : t('label.create-entity', { entity: t('label.alert') }),
         url: '',
       },
     ],
@@ -209,12 +211,12 @@ function AddObservabilityPage() {
 
               <Col span={24}>
                 <Typography.Title level={5}>
-                  {i18n.t(`label.${isEditMode ? 'edit' : 'add'}-entity`, {
-                    entity: i18n.t('label.alert'),
+                  {t(`label.${isEditMode ? 'edit' : 'add'}-entity`, {
+                    entity: t('label.alert'),
                   })}
                 </Typography.Title>
                 <Typography.Text>
-                  {i18n.t('message.alerts-description')}
+                  {t('message.alerts-description')}
                 </Typography.Text>
               </Col>
 
@@ -231,16 +233,16 @@ function AddObservabilityPage() {
                   <Row gutter={[20, 20]}>
                     <Col span={24}>
                       <Form.Item
-                        label={i18n.t('label.name')}
+                        label={t('label.name')}
                         labelCol={{ span: 24 }}
                         name="displayName"
                         rules={NAME_FIELD_RULES}>
-                        <Input placeholder={i18n.t('label.name')} />
+                        <Input placeholder={t('label.name')} />
                       </Form.Item>
                     </Col>
                     <Col span={24}>
                       <Form.Item
-                        label={i18n.t('label.description')}
+                        label={t('label.description')}
                         labelCol={{ span: 24 }}
                         name="description"
                         trigger="onTextChange">
@@ -314,13 +316,13 @@ function AddObservabilityPage() {
                         htmlType="submit"
                         loading={saving}
                         type="primary">
-                        {i18n.t('label.save')}
+                        {t('label.save')}
                       </Button>
                       <Button
                         className="float-right"
                         data-testid="cancel-button"
                         onClick={() => history.goBack()}>
-                        {i18n.t('label.cancel')}
+                        {t('label.cancel')}
                       </Button>
                     </Col>
                   </Row>
@@ -332,8 +334,8 @@ function AddObservabilityPage() {
         minWidth: 700,
         flex: 0.7,
       }}
-      pageTitle={i18n.t('label.entity-detail-plural', {
-        entity: i18n.t('label.alert'),
+      pageTitle={t('label.entity-detail-plural', {
+        entity: t('label.alert'),
       })}
       secondPanel={{
         children: <></>,

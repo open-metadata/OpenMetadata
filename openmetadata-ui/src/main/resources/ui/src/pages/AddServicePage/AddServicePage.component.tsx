@@ -15,6 +15,7 @@ import { AxiosError } from 'axios';
 import { startCase } from 'lodash';
 import { ServicesUpdateRequest, ServiceTypes } from 'Models';
 import React, { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
 import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import AddService from '../../components/Settings/Services/AddService/AddService.component';
@@ -42,6 +43,7 @@ import { showErrorToast } from '../../utils/ToastUtils';
 
 const AddServicePage = () => {
   const { serviceCategory } = useParams<{ serviceCategory: string }>();
+  const { t } = useTranslation();
   const [newServiceData, setNewServiceData] = useState<ServicesUpdateRequest>();
   const [ingestionProgress, setIngestionProgress] = useState(0);
   const [isIngestionCreated, setIsIngestionCreated] = useState(false);
@@ -83,8 +85,8 @@ const AddServicePage = () => {
           setIngestionAction(IngestionActionMessage.DEPLOYING_ERROR);
           showErrorToast(
             err ||
-              i18n.t('server.deploy-entity-error', {
-                entity: i18n.t('label.ingestion-workflow-lowercase'),
+              t('server.deploy-entity-error', {
+                entity: t('label.ingestion-workflow-lowercase'),
               })
           );
         })
@@ -103,8 +105,8 @@ const AddServicePage = () => {
             onIngestionDeploy(res.id).finally(() => resolve());
           } else {
             showErrorToast(
-              i18n.t('server.create-entity-error', {
-                entity: i18n.t('label.ingestion-workflow-lowercase'),
+              t('server.create-entity-error', {
+                entity: t('label.ingestion-workflow-lowercase'),
               })
             );
             reject();
@@ -117,19 +119,19 @@ const AddServicePage = () => {
                 resolve();
                 showErrorToast(
                   err,
-                  i18n.t('server.deploy-entity-error', {
-                    entity: i18n.t('label.ingestion-workflow-lowercase'),
+                  t('server.deploy-entity-error', {
+                    entity: t('label.ingestion-workflow-lowercase'),
                   })
                 );
               } else {
-                throw i18n.t('server.unexpected-response');
+                throw t('server.unexpected-response');
               }
             })
             .catch(() => {
               showErrorToast(
                 err,
-                i18n.t('server.create-entity-error', {
-                  entity: i18n.t('label.ingestion-workflow-lowercase'),
+                t('server.create-entity-error', {
+                  entity: t('label.ingestion-workflow-lowercase'),
                 })
               );
               reject();
@@ -148,8 +150,8 @@ const AddServicePage = () => {
         ),
       },
       {
-        name: i18n.t('label.add-new-entity', {
-          entity: i18n.t(addIngestion ? 'label.ingestion' : 'label.service'),
+        name: t('label.add-new-entity', {
+          entity: t(addIngestion ? 'label.ingestion' : 'label.service'),
         }),
         url: '',
         activeTitle: true,

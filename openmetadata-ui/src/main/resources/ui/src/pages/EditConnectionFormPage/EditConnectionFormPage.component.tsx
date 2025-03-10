@@ -17,6 +17,7 @@ import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined, startCase } from 'lodash';
 import { ServicesData, ServicesUpdateRequest, ServiceTypes } from 'Models';
 import React, { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';
@@ -50,7 +51,7 @@ function EditConnectionFormPage() {
     serviceCategory: ServiceCategory;
   }>();
   const { fqn: serviceFQN } = useFqn();
-
+  const { t } = useTranslation();
   const isOpenMetadataService = useMemo(
     () => serviceFQN === OPEN_METADATA,
     [serviceFQN]
@@ -120,8 +121,8 @@ function EditConnectionFormPage() {
           url: getPathByServiceFQN(serviceCategory, serviceFQN),
         },
         {
-          name: i18n.t('label.edit-entity', {
-            entity: i18n.t('label.connection'),
+          name: t('label.edit-entity', {
+            entity: t('label.connection'),
           }),
           url: '',
           activeTitle: true,
@@ -168,7 +169,7 @@ function EditConnectionFormPage() {
       <TitleBreadcrumb titleLinks={slashedBreadcrumb} />
       <Card className="p-lg m-t-md">
         <Typography.Title level={5}>
-          {i18n.t('message.edit-service-entity-connection', {
+          {t('message.edit-service-entity-connection', {
             entity: serviceFQN,
           })}
         </Typography.Title>
@@ -198,8 +199,8 @@ function EditConnectionFormPage() {
         className: 'content-resizable-panel-container',
       }}
       hideSecondPanel={!serviceDetails?.serviceType ?? ''}
-      pageTitle={i18n.t('label.edit-entity', {
-        entity: i18n.t('label.connection'),
+      pageTitle={t('label.edit-entity', {
+        entity: t('label.connection'),
       })}
       secondPanel={{
         children: (

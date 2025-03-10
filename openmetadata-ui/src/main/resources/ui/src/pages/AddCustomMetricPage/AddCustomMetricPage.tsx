@@ -14,6 +14,7 @@ import { Button, Col, Form, Row, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import QueryString from 'qs';
 import React, { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import Loader from '../../components/common/Loader/Loader';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
@@ -47,6 +48,7 @@ const AddCustomMetricPage = () => {
   const { dashboardType } =
     useParams<{ dashboardType: ProfilerDashboardType }>();
   const { fqn } = useFqn();
+  const { t } = useTranslation();
 
   const history = useHistory();
   const location = useCustomLocation();
@@ -71,10 +73,8 @@ const AddCustomMetricPage = () => {
             ),
           },
           {
-            name: i18n.t('label.add-entity-metric', {
-              entity: isColumnMetric
-                ? i18n.t('label.column')
-                : i18n.t('label.table'),
+            name: t('label.add-entity-metric', {
+              entity: isColumnMetric ? t('label.column') : t('label.table'),
             }),
             url: '',
             activeTitle: true,
@@ -124,7 +124,7 @@ const AddCustomMetricPage = () => {
       try {
         await putCustomMetric(table.id, values);
         showSuccessToast(
-          i18n.t('server.create-entity-success', {
+          t('server.create-entity-success', {
             entity: values.name,
           })
         );
@@ -175,10 +175,8 @@ const AddCustomMetricPage = () => {
     <>
       <RightPanel
         data={{
-          title: i18n.t('label.add-entity-metric', {
-            entity: isColumnMetric
-              ? i18n.t('label.column')
-              : i18n.t('label.table'),
+          title: t('label.add-entity-metric', {
+            entity: isColumnMetric ? t('label.column') : t('label.table'),
           }),
           body: '',
         }}
@@ -221,10 +219,10 @@ const AddCustomMetricPage = () => {
                   className="m-b-0"
                   data-testid="heading"
                   level={5}>
-                  {i18n.t('label.add-entity-metric', {
+                  {t('label.add-entity-metric', {
                     entity: isColumnMetric
-                      ? i18n.t('label.column')
-                      : i18n.t('label.table'),
+                      ? t('label.column')
+                      : t('label.table'),
                   })}
                 </Typography.Title>
               </Col>
@@ -241,7 +239,7 @@ const AddCustomMetricPage = () => {
                     data-testid="cancel-button"
                     disabled={isActionLoading}
                     onClick={handleBackClick}>
-                    {i18n.t('label.cancel')}
+                    {t('label.cancel')}
                   </Button>
                   <Button
                     data-testid="submit-button"
@@ -249,7 +247,7 @@ const AddCustomMetricPage = () => {
                     loading={isActionLoading}
                     type="primary"
                     onClick={() => form.submit()}>
-                    {i18n.t('label.submit')}
+                    {t('label.submit')}
                   </Button>
                 </Space>
               </Col>
@@ -259,8 +257,8 @@ const AddCustomMetricPage = () => {
         minWidth: 700,
         flex: 0.5,
       }}
-      pageTitle={i18n.t('label.add-entity', {
-        entity: i18n.t('label.custom-metric'),
+      pageTitle={t('label.add-entity', {
+        entity: t('label.custom-metric'),
       })}
       secondPanel={{
         children: secondPanel,

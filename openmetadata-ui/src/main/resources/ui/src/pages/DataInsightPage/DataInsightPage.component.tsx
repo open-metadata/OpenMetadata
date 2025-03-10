@@ -13,6 +13,7 @@
 
 import { Col, Row } from 'antd';
 import React, { useCallback, useLayoutEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Redirect,
   Route,
@@ -42,7 +43,7 @@ import DataInsightProvider from './DataInsightProvider';
 
 const DataInsightPage = () => {
   const { tab } = useParams<{ tab: DataInsightTabs }>();
-
+  const { t } = useTranslation();
   const { permissions } = usePermissionProvider();
   const history = useHistory();
   const LeftPanel = dataInsightClassBase.getLeftPanel();
@@ -136,7 +137,7 @@ const DataInsightPage = () => {
           flex: 0.13,
           children: <LeftPanel />,
         }}
-        pageTitle={i18n.t('label.data-insight')}
+        pageTitle={t('label.data-insight')}
         secondPanel={{
           children: (
             <DataInsightProvider>

@@ -15,6 +15,7 @@ import { Button, Divider, Form, Input, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { trim } from 'lodash';
 import React, { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import ResizablePanels from '../../../components/common/ResizablePanels/ResizablePanels';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
@@ -59,6 +60,7 @@ const breadcrumb = [
 
 const AddPolicyPage = () => {
   const history = useHistory();
+  const { t } = useTranslation();
 
   const [name, setName] = useState<string>('');
   const [description, setDescription] = useState<string>('');
@@ -96,9 +98,9 @@ const AddPolicyPage = () => {
     } catch (error) {
       showErrorToast(
         getIsErrorMatch(error as AxiosError, ERROR_MESSAGE.alreadyExist)
-          ? i18n.t('server.entity-already-exist', {
-              entity: i18n.t('label.policy'),
-              entityPlural: i18n.t('label.policy-lowercase-plural'),
+          ? t('server.entity-already-exist', {
+              entity: t('label.policy'),
+              entityPlural: t('label.policy-lowercase-plural'),
               name: data.name,
             })
           : (error as AxiosError)
@@ -112,7 +114,7 @@ const AddPolicyPage = () => {
     () => ({
       name: 'description',
       required: false,
-      label: `${i18n.t('label.description')}:`,
+      label: `${t('label.description')}:`,
       id: 'root/description',
       type: FieldTypes.DESCRIPTION,
       props: {
@@ -121,7 +123,7 @@ const AddPolicyPage = () => {
         style: {
           margin: 0,
         },
-        placeHolder: i18n.t('message.write-your-description'),
+        placeHolder: t('message.write-your-description'),
         onTextChange: (value: string) => setDescription(value),
       },
     }),
@@ -142,8 +144,8 @@ const AddPolicyPage = () => {
               <Typography.Paragraph
                 className="text-base"
                 data-testid="form-title">
-                {i18n.t('label.add-new-entity', {
-                  entity: i18n.t('label.policy'),
+                {t('label.add-new-entity', {
+                  entity: t('label.policy'),
                 })}
               </Typography.Paragraph>
               <Form
@@ -155,12 +157,12 @@ const AddPolicyPage = () => {
                 layout="vertical"
                 onFinish={handleSubmit}>
                 <Form.Item
-                  label={`${i18n.t('label.name')}:`}
+                  label={`${t('label.name')}:`}
                   name="name"
                   rules={NAME_FIELD_RULES}>
                   <Input
                     data-testid="policy-name"
-                    placeholder={i18n.t('label.policy-name')}
+                    placeholder={t('label.policy-name')}
                     type="text"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
@@ -170,8 +172,8 @@ const AddPolicyPage = () => {
                 {getField(descriptionField)}
 
                 <Divider data-testid="add-rule-divider">
-                  {i18n.t('label.add-entity', {
-                    entity: i18n.t('label.rule'),
+                  {t('label.add-entity', {
+                    entity: t('label.rule'),
                   })}
                 </Divider>
                 <RuleForm ruleData={ruleData} setRuleData={setRuleData} />
@@ -181,7 +183,7 @@ const AddPolicyPage = () => {
                     data-testid="cancel-btn"
                     type="link"
                     onClick={handleCancel}>
-                    {i18n.t('label.cancel')}
+                    {t('label.cancel')}
                   </Button>
                   <Button
                     data-testid="submit-btn"
@@ -189,7 +191,7 @@ const AddPolicyPage = () => {
                     htmlType="submit"
                     loading={isSaveLoading}
                     type="primary">
-                    {i18n.t('label.submit')}
+                    {t('label.submit')}
                   </Button>
                 </Space>
               </Form>
@@ -199,18 +201,16 @@ const AddPolicyPage = () => {
         minWidth: 700,
         flex: 0.7,
       }}
-      pageTitle={i18n.t('label.add-entity', { entity: i18n.t('label.policy') })}
+      pageTitle={t('label.add-entity', { entity: t('label.policy') })}
       secondPanel={{
         children: (
           <>
             <Typography.Paragraph className="text-base font-medium">
-              {i18n.t('label.add-entity', {
-                entity: i18n.t('label.policy'),
+              {t('label.add-entity', {
+                entity: t('label.policy'),
               })}
             </Typography.Paragraph>
-            <Typography.Text>
-              {i18n.t('message.add-policy-message')}
-            </Typography.Text>
+            <Typography.Text>{t('message.add-policy-message')}</Typography.Text>
           </>
         ),
         className: 'p-md p-t-xl content-resizable-panel-container',

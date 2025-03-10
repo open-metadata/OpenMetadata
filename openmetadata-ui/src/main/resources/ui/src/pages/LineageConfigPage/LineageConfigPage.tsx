@@ -19,6 +19,7 @@ import React, {
   useMemo,
   useState,
 } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import Loader from '../../components/common/Loader/Loader';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
@@ -43,6 +44,7 @@ import i18n from '../../utils/i18next/LocalUtil';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 
 const LineageConfigPage = () => {
+  const { t } = useTranslation();
   const [isLoading, setIsLoading] = useState(true);
   const [activeField, setActiveField] = useState<string>('');
   const [lineageConfig, setLineageConfig] = useState<LineageSettings>();
@@ -54,7 +56,7 @@ const LineageConfigPage = () => {
     () =>
       getSettingPageEntityBreadCrumb(
         GlobalSettingsMenuCategory.PREFERENCES,
-        i18n.t('label.lineage')
+        t('label.lineage')
       ),
     []
   );
@@ -91,8 +93,8 @@ const LineageConfigPage = () => {
 
       const { data } = await updateSettingsConfig(configData as Settings);
       showSuccessToast(
-        i18n.t('server.update-entity-success', {
-          entity: i18n.t('label.lineage-config'),
+        t('server.update-entity-success', {
+          entity: t('label.lineage-config'),
         })
       );
 
@@ -136,7 +138,7 @@ const LineageConfigPage = () => {
                     className="m-b-0"
                     data-testid="heading"
                     level={5}>
-                    {i18n.t('label.lineage')}
+                    {t('label.lineage')}
                   </Typography.Title>
                 </Col>
                 <Col span={24}>
@@ -149,12 +151,12 @@ const LineageConfigPage = () => {
                     onFocus={handleFieldFocus}>
                     <Form.Item
                       id="root/upstreamDepth"
-                      label={i18n.t('label.upstream-depth')}
+                      label={t('label.upstream-depth')}
                       name="upstreamDepth"
                       rules={[
                         {
                           required: true,
-                          message: i18n.t('message.upstream-depth-message'),
+                          message: t('message.upstream-depth-message'),
                         },
                       ]}>
                       <Input
@@ -168,12 +170,12 @@ const LineageConfigPage = () => {
                     <Form.Item
                       className="m-t-sm"
                       id="root/downstreamDepth"
-                      label={i18n.t('label.downstream-depth')}
+                      label={t('label.downstream-depth')}
                       name="downstreamDepth"
                       rules={[
                         {
                           required: true,
-                          message: i18n.t('message.downstream-depth-message'),
+                          message: t('message.downstream-depth-message'),
                         },
                       ]}>
                       <Input
@@ -187,17 +189,17 @@ const LineageConfigPage = () => {
                     <Form.Item
                       className="m-t-sm"
                       id="root/lineageLayer"
-                      label={i18n.t('label.lineage-layer')}
+                      label={t('label.lineage-layer')}
                       name="lineageLayer">
                       <Select data-testid="field-lineage-layer">
                         <Select.Option value={LineageLayer.EntityLineage}>
-                          {i18n.t('label.entity-lineage')}
+                          {t('label.entity-lineage')}
                         </Select.Option>
                         <Select.Option value={LineageLayer.ColumnLevelLineage}>
-                          {i18n.t('label.column-level-lineage')}
+                          {t('label.column-level-lineage')}
                         </Select.Option>
                         <Select.Option value={LineageLayer.DataObservability}>
-                          {i18n.t('label.data-observability')}
+                          {t('label.data-observability')}
                         </Select.Option>
                       </Select>
                     </Form.Item>
@@ -207,7 +209,7 @@ const LineageConfigPage = () => {
                       <Button
                         data-testid="cancel-button"
                         onClick={() => history.goBack()}>
-                        {i18n.t('label.cancel')}
+                        {t('label.cancel')}
                       </Button>
                       <Button
                         data-testid="save-button"
@@ -215,7 +217,7 @@ const LineageConfigPage = () => {
                         htmlType="submit"
                         loading={isUpdating}
                         type="primary">
-                        {i18n.t('label.save')}
+                        {t('label.save')}
                       </Button>
                     </Col>
                   </Row>
@@ -226,7 +228,7 @@ const LineageConfigPage = () => {
           minWidth: 700,
           flex: 0.7,
         }}
-        pageTitle={i18n.t('label.lineage-config')}
+        pageTitle={t('label.lineage-config')}
         secondPanel={{
           className: 'service-doc-panel content-resizable-panel-container',
           minWidth: 400,

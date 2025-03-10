@@ -13,6 +13,7 @@
 import { Button, Col, Form, Row } from 'antd';
 import { AxiosError } from 'axios';
 import React, { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import Loader from '../../../components/common/Loader/Loader';
 import ResizablePanels from '../../../components/common/ResizablePanels/ResizablePanels';
@@ -43,6 +44,7 @@ import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 
 const EditLoginConfiguration = () => {
   const history = useHistory();
+  const { t } = useTranslation();
   const [form] = Form.useForm<LoginConfiguration>();
   const [activeField, setActiveField] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(false);
@@ -65,19 +67,19 @@ const EditLoginConfiguration = () => {
   const breadcrumb = useMemo(
     () => [
       {
-        name: i18n.t('label.setting-plural'),
+        name: t('label.setting-plural'),
         url: getSettingPath(),
       },
       {
-        name: i18n.t('label.login-configuration'),
+        name: t('label.login-configuration'),
         url: getSettingPath(
           GlobalSettingsMenuCategory.PREFERENCES,
           GlobalSettingOptions.LOGIN_CONFIGURATION
         ),
       },
       {
-        name: i18n.t('label.edit-entity', {
-          entity: i18n.t('label.login-configuration'),
+        name: t('label.edit-entity', {
+          entity: t('label.login-configuration'),
         }),
         url: '',
       },
@@ -88,7 +90,7 @@ const EditLoginConfiguration = () => {
   const formFields: FieldProp[] = [
     {
       name: 'maxLoginFailAttempts',
-      label: i18n.t('label.max-login-fail-attempt-plural'),
+      label: t('label.max-login-fail-attempt-plural'),
       type: FieldTypes.NUMBER,
       required: false,
       id: 'root/maxLoginFailAttempts',
@@ -102,7 +104,7 @@ const EditLoginConfiguration = () => {
     },
     {
       name: 'accessBlockTime',
-      label: i18n.t('label.access-block-time'),
+      label: t('label.access-block-time'),
       type: FieldTypes.NUMBER,
       required: false,
       id: 'root/accessBlockTime',
@@ -115,7 +117,7 @@ const EditLoginConfiguration = () => {
     },
     {
       name: 'jwtTokenExpiryTime',
-      label: i18n.t('label.jwt-token-expiry-time'),
+      label: t('label.jwt-token-expiry-time'),
       type: FieldTypes.NUMBER,
       required: false,
       id: 'root/jwtTokenExpiryTime',
@@ -139,8 +141,8 @@ const EditLoginConfiguration = () => {
       };
       await updateSettingsConfig(configData as Settings);
       showSuccessToast(
-        i18n.t('server.update-entity-success', {
-          entity: i18n.t('label.login-configuration'),
+        t('server.update-entity-success', {
+          entity: t('label.login-configuration'),
         })
       );
       handleGoBack();
@@ -177,7 +179,7 @@ const EditLoginConfiguration = () => {
               data-testid="cancel-button"
               type="link"
               onClick={handleGoBack}>
-              {i18n.t('label.cancel')}
+              {t('label.cancel')}
             </Button>
           </Col>
           <Col>
@@ -186,7 +188,7 @@ const EditLoginConfiguration = () => {
               htmlType="submit"
               loading={updating}
               type="primary">
-              {i18n.t('label.save')}
+              {t('label.save')}
             </Button>
           </Col>
         </Row>
@@ -219,8 +221,8 @@ const EditLoginConfiguration = () => {
         flex: 0.7,
         className: 'content-resizable-panel-container',
       }}
-      pageTitle={i18n.t('label.edit-entity', {
-        entity: i18n.t('label.service'),
+      pageTitle={t('label.edit-entity', {
+        entity: t('label.service'),
       })}
       secondPanel={{
         children: secondPanelChildren,

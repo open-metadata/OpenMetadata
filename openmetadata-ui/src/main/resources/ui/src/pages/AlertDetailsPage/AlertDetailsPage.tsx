@@ -17,6 +17,7 @@ import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isUndefined, omitBy } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { ReactComponent as EditIcon } from '../../assets/svg/edit-new.svg';
 import { ReactComponent as DeleteIcon } from '../../assets/svg/ic-delete.svg';
@@ -79,7 +80,7 @@ function AlertDetailsPage({
     useParams<{ tab: AlertDetailTabs }>();
   const { fqn } = useFqn();
   const history = useHistory();
-
+  const { t } = useTranslation();
   const [alertDetails, setAlertDetails] = useState<EventSubscription>();
   const [alertEventCounts, setAlertEventCounts] = useState<EventsRecord>();
   const [loadingCount, setLoadingCount] = useState(1);
@@ -166,11 +167,11 @@ function AlertDetailsPage({
       isNotificationAlert
         ? [
             {
-              name: i18n.t('label.setting-plural'),
+              name: t('label.setting-plural'),
               url: ROUTES.SETTINGS,
             },
             {
-              name: i18n.t('label.notification-plural'),
+              name: t('label.notification-plural'),
               url: getSettingPath(GlobalSettingsMenuCategory.NOTIFICATIONS),
             },
             {
@@ -180,11 +181,11 @@ function AlertDetailsPage({
           ]
         : [
             {
-              name: i18n.t('label.observability'),
+              name: t('label.observability'),
               url: '',
             },
             {
-              name: i18n.t('label.alert-plural'),
+              name: t('label.alert-plural'),
               url: ROUTES.OBSERVABILITY_ALERTS,
             },
             {
@@ -213,7 +214,7 @@ function AlertDetailsPage({
     try {
       setIsSyncing(true);
       await syncOffset(fqn);
-      showSuccessToast(i18n.t('message.alert-synced-successfully'));
+      showSuccessToast(t('message.alert-synced-successfully'));
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
@@ -267,7 +268,7 @@ function AlertDetailsPage({
   const tabItems = useMemo(
     () => [
       {
-        label: i18n.t('label.configuration'),
+        label: t('label.configuration'),
         key: AlertDetailTabs.CONFIGURATION,
         children: isUndefined(alertDetails) ? (
           <ErrorPlaceHolder className="m-0" />
@@ -279,14 +280,14 @@ function AlertDetailsPage({
         ),
       },
       {
-        label: i18n.t('label.recent-event-plural'),
+        label: t('label.recent-event-plural'),
         key: AlertDetailTabs.RECENT_EVENTS,
         children: isUndefined(alertDetails) ? null : (
           <AlertRecentEventsTab alertDetails={alertDetails} />
         ),
       },
       {
-        label: i18n.t('label.diagnostic-info'),
+        label: t('label.diagnostic-info'),
         key: AlertDetailTabs.DIAGNOSTIC_INFO,
         children: <AlertDiagnosticInfoTab />,
       },
@@ -387,8 +388,8 @@ function AlertDetailsPage({
                   <Col>
                     <Space align="center" size={8}>
                       <Tooltip
-                        title={i18n.t('label.sync-alert-offset', {
-                          entity: i18n.t('label.alert'),
+                        title={t('label.sync-alert-offset', {
+                          entity: t('label.alert'),
                         })}>
                         <Button
                           className="flex flex-center"
@@ -401,8 +402,8 @@ function AlertDetailsPage({
                       {editPermission &&
                         alertDetails?.provider !== ProviderType.System && (
                           <Tooltip
-                            title={i18n.t('label.edit-entity', {
-                              entity: i18n.t('label.alert'),
+                            title={t('label.edit-entity', {
+                              entity: t('label.alert'),
                             })}>
                             <Button
                               className="flex flex-center"
@@ -415,8 +416,8 @@ function AlertDetailsPage({
                       {deletePermission &&
                         alertDetails?.provider !== ProviderType.System && (
                           <Tooltip
-                            title={i18n.t('label.delete-entity', {
-                              entity: i18n.t('label.alert'),
+                            title={t('label.delete-entity', {
+                              entity: t('label.alert'),
                             })}>
                             <Button
                               className="flex flex-center"
@@ -467,8 +468,8 @@ function AlertDetailsPage({
         minWidth: 700,
         flex: 0.7,
       }}
-      pageTitle={i18n.t('label.entity-detail-plural', {
-        entity: i18n.t('label.alert'),
+      pageTitle={t('label.entity-detail-plural', {
+        entity: t('label.alert'),
       })}
       secondPanel={{
         children: <></>,

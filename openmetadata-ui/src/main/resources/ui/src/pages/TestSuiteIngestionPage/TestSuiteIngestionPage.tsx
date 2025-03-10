@@ -13,6 +13,7 @@
 import { AxiosError } from 'axios';
 import { isUndefined } from 'lodash';
 import React, { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
@@ -36,7 +37,7 @@ import { showErrorToast } from '../../utils/ToastUtils';
 
 const TestSuiteIngestionPage = () => {
   const { fqn: testSuiteFQN, ingestionFQN } = useFqn();
-
+  const { t } = useTranslation();
   const [isLoading, setIsLoading] = useState(true);
   const [testSuite, setTestSuite] = useState<TestSuite>();
   const [ingestionPipeline, setIngestionPipeline] =
@@ -53,8 +54,8 @@ const TestSuiteIngestionPage = () => {
     } catch (error) {
       showErrorToast(
         error as AxiosError,
-        i18n.t('server.entity-fetch-error', {
-          entity: i18n.t('label.ingestion-workflow-lowercase'),
+        t('server.entity-fetch-error', {
+          entity: t('label.ingestion-workflow-lowercase'),
         })
       );
     } finally {
@@ -70,7 +71,7 @@ const TestSuiteIngestionPage = () => {
       });
       setSlashedBreadCrumb([
         {
-          name: i18n.t('label.test-suite-plural'),
+          name: t('label.test-suite-plural'),
           url: getDataQualityPagePath(),
         },
         {
@@ -85,9 +86,9 @@ const TestSuiteIngestionPage = () => {
           }),
         },
         {
-          name: `${
-            ingestionFQN ? i18n.t('label.edit') : i18n.t('label.add')
-          } ${i18n.t('label.ingestion')}`,
+          name: `${ingestionFQN ? t('label.edit') : t('label.add')} ${t(
+            'label.ingestion'
+          )}`,
           url: '',
         },
       ]);
@@ -100,8 +101,8 @@ const TestSuiteIngestionPage = () => {
       setTestSuite(undefined);
       showErrorToast(
         error as AxiosError,
-        i18n.t('server.entity-fetch-error', {
-          entity: i18n.t('label.test-suite'),
+        t('server.entity-fetch-error', {
+          entity: t('label.test-suite'),
         })
       );
     } finally {
@@ -140,8 +141,8 @@ const TestSuiteIngestionPage = () => {
         minWidth: 700,
         flex: 0.7,
       }}
-      pageTitle={i18n.t('label.add-entity', {
-        entity: i18n.t('label.test-suite'),
+      pageTitle={t('label.add-entity', {
+        entity: t('label.test-suite'),
       })}
       secondPanel={{
         children: <RightPanel data={TEST_SUITE_INGESTION_PAGE_DATA} />,

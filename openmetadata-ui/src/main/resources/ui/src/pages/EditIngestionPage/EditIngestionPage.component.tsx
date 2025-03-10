@@ -16,6 +16,7 @@ import { compare } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
 import { ServicesUpdateRequest } from 'Models';
 import React, { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';
@@ -61,6 +62,7 @@ import { showErrorToast } from '../../utils/ToastUtils';
 
 const EditIngestionPage = () => {
   const { fetchAirflowStatus } = useAirflowStatus();
+  const { t } = useTranslation();
   const { ingestionType, serviceCategory } = useParams<{
     ingestionType: string;
     serviceCategory: string;
@@ -102,8 +104,8 @@ const EditIngestionPage = () => {
             resolve();
           } else {
             showErrorToast(
-              i18n.t('server.entity-fetch-error', {
-                entity: i18n.t('label.service-detail-lowercase-plural'),
+              t('server.entity-fetch-error', {
+                entity: t('label.service-detail-lowercase-plural'),
               })
             );
           }
@@ -112,8 +114,8 @@ const EditIngestionPage = () => {
           if (error.response?.status === 404) {
             setErrorMsg(getEntityMissingError(serviceCategory, serviceFQN));
           } else {
-            const errTextService = i18n.t('server.entity-fetch-error', {
-              entity: i18n.t('label.service-detail-lowercase-plural'),
+            const errTextService = t('server.entity-fetch-error', {
+              entity: t('label.service-detail-lowercase-plural'),
             });
             showErrorToast(error, errTextService);
             setErrorMsg(errTextService);
@@ -133,15 +135,15 @@ const EditIngestionPage = () => {
             setIngestionData(res);
             resolve();
           } else {
-            throw i18n.t('server.unexpected-error');
+            throw t('server.unexpected-error');
           }
         })
         .catch((error: AxiosError) => {
           if (error.response?.status === 404) {
             setErrorMsg(getEntityMissingError('Ingestion', ingestionFQN));
           } else {
-            const errTextIngestion = i18n.t('server.entity-fetch-error', {
-              entity: i18n.t('label.ingestion-workflow'),
+            const errTextIngestion = t('server.entity-fetch-error', {
+              entity: t('label.ingestion-workflow'),
             });
             showErrorToast(error, errTextIngestion);
             setErrorMsg(errTextIngestion);
@@ -174,8 +176,8 @@ const EditIngestionPage = () => {
           setIngestionAction(IngestionActionMessage.DEPLOYING_ERROR);
           showErrorToast(
             err,
-            i18n.t('server.deploy-entity-error', {
-              entity: i18n.t('label.ingestion-workflow'),
+            t('server.deploy-entity-error', {
+              entity: t('label.ingestion-workflow'),
             })
           );
         })
@@ -198,15 +200,15 @@ const EditIngestionPage = () => {
       if (res) {
         onIngestionDeploy();
       } else {
-        throw i18n.t('server.entity-updating-error', {
-          entity: i18n.t('label.ingestion-workflow-lowercase'),
+        throw t('server.entity-updating-error', {
+          entity: t('label.ingestion-workflow-lowercase'),
         });
       }
     } catch (err) {
       showErrorToast(
         err as AxiosError,
-        i18n.t('server.entity-updating-error', {
-          entity: i18n.t('label.ingestion-workflow-lowercase'),
+        t('server.entity-updating-error', {
+          entity: t('label.ingestion-workflow-lowercase'),
         })
       );
     }
@@ -309,8 +311,8 @@ const EditIngestionPage = () => {
         flex: 0.7,
         className: 'content-resizable-panel-container',
       }}
-      pageTitle={i18n.t('label.edit-entity', {
-        entity: i18n.t('label.ingestion'),
+      pageTitle={t('label.edit-entity', {
+        entity: t('label.ingestion'),
       })}
       secondPanel={{
         children: secondPanelChildren,

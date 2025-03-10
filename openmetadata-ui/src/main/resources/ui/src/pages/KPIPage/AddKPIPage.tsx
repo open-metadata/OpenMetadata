@@ -30,6 +30,7 @@ import { AxiosError } from 'axios';
 import { isUndefined, kebabCase } from 'lodash';
 import moment from 'moment';
 import React, { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
@@ -79,6 +80,7 @@ const breadcrumb = [
 
 const AddKPIPage = () => {
   const history = useHistory();
+  const { t } = useTranslation();
   const [form] = useForm<KPIFormValues>();
 
   const [isCreatingKPI, setIsCreatingKPI] = useState<boolean>(false);
@@ -164,14 +166,14 @@ const AddKPIPage = () => {
     () => ({
       name: 'description',
       required: true,
-      label: i18n.t('label.description'),
+      label: t('label.description'),
       id: 'root/description',
       type: FieldTypes.DESCRIPTION,
       rules: [
         {
           required: true,
-          message: i18n.t('label.field-required', {
-            field: i18n.t('label.description-kpi'),
+          message: t('label.field-required', {
+            field: t('label.description-kpi'),
           }),
         },
       ],
@@ -181,7 +183,7 @@ const AddKPIPage = () => {
         style: {
           margin: 0,
         },
-        placeHolder: i18n.t('message.write-your-description'),
+        placeHolder: t('message.write-your-description'),
       },
     }),
     []
@@ -204,8 +206,8 @@ const AddKPIPage = () => {
             <Typography.Paragraph
               className="text-base"
               data-testid="form-title">
-              {i18n.t('label.add-new-entity', {
-                entity: i18n.t('label.kpi-uppercase'),
+              {t('label.add-new-entity', {
+                entity: t('label.kpi-uppercase'),
               })}
             </Typography.Paragraph>
             <Form
@@ -217,37 +219,35 @@ const AddKPIPage = () => {
               onFinish={handleSubmit}
               onValuesChange={handleFormValuesChange}>
               <Form.Item
-                label={i18n.t('label.select-a-chart')}
+                label={t('label.select-a-chart')}
                 name="chartType"
                 rules={[
                   {
                     required: true,
-                    message: i18n.t('message.field-text-is-required', {
-                      fieldText: i18n.t('label.data-insight-chart'),
+                    message: t('message.field-text-is-required', {
+                      fieldText: t('label.data-insight-chart'),
                     }),
                   },
                 ]}>
                 <Select
                   data-testid="chartType"
-                  notFoundContent={i18n.t('message.all-charts-are-mapped')}
+                  notFoundContent={t('message.all-charts-are-mapped')}
                   options={chartOptions}
-                  placeholder={i18n.t('label.select-a-chart')}
+                  placeholder={t('label.select-a-chart')}
                 />
               </Form.Item>
 
-              <Form.Item
-                label={i18n.t('label.display-name')}
-                name="displayName">
+              <Form.Item label={t('label.display-name')} name="displayName">
                 <Input
                   data-testid="displayName"
-                  placeholder={i18n.t('label.kpi-display-name')}
+                  placeholder={t('label.kpi-display-name')}
                   type="text"
                 />
               </Form.Item>
 
               <Form.Item
                 initialValue={KpiTargetType.Percentage}
-                label={i18n.t('label.metric-type')}
+                label={t('label.metric-type')}
                 name="metricType">
                 <Select
                   data-testid="metricType"
@@ -258,7 +258,7 @@ const AddKPIPage = () => {
               {!isUndefined(metricType) && (
                 <Form.Item
                   initialValue={0}
-                  label={i18n.t('label.metric-value')}
+                  label={t('label.metric-value')}
                   name="targetValue"
                   rules={[
                     {
@@ -269,8 +269,8 @@ const AddKPIPage = () => {
                         }
 
                         return Promise.reject(
-                          i18n.t('message.field-text-is-required', {
-                            fieldText: i18n.t('label.metric-value'),
+                          t('message.field-text-is-required', {
+                            fieldText: t('label.metric-value'),
                           })
                         );
                       },
@@ -331,17 +331,17 @@ const AddKPIPage = () => {
               <Row gutter={[8, 8]}>
                 <Col span={12}>
                   <Form.Item
-                    label={i18n.t('label.start-entity', {
-                      entity: i18n.t('label.date'),
+                    label={t('label.start-entity', {
+                      entity: t('label.date'),
                     })}
                     messageVariables={{ fieldName: 'startDate' }}
                     name="startDate"
                     rules={[
                       {
                         required: true,
-                        message: i18n.t('label.field-required', {
-                          field: i18n.t('label.start-entity', {
-                            entity: i18n.t('label.date'),
+                        message: t('label.field-required', {
+                          field: t('label.start-entity', {
+                            entity: t('label.date'),
                           }),
                         }),
                       },
@@ -356,14 +356,14 @@ const AddKPIPage = () => {
                 </Col>
                 <Col span={12}>
                   <Form.Item
-                    label={i18n.t('label.end-date')}
+                    label={t('label.end-date')}
                     messageVariables={{ fieldName: 'endDate' }}
                     name="endDate"
                     rules={[
                       {
                         required: true,
-                        message: i18n.t('label.field-required', {
-                          field: i18n.t('label.end-date'),
+                        message: t('label.field-required', {
+                          field: t('label.end-date'),
                         }),
                       },
                     ]}>
@@ -384,7 +384,7 @@ const AddKPIPage = () => {
                   data-testid="cancel-btn"
                   type="link"
                   onClick={handleCancel}>
-                  {i18n.t('label.cancel')}
+                  {t('label.cancel')}
                 </Button>
                 <Button
                   data-testid="submit-btn"
@@ -392,7 +392,7 @@ const AddKPIPage = () => {
                   htmlType="submit"
                   loading={isCreatingKPI}
                   type="primary">
-                  {i18n.t('label.submit')}
+                  {t('label.submit')}
                 </Button>
               </Space>
             </Form>
@@ -401,20 +401,18 @@ const AddKPIPage = () => {
         minWidth: 700,
         flex: 0.7,
       }}
-      pageTitle={i18n.t('label.add-new-entity', {
-        entity: i18n.t('label.kpi-uppercase'),
+      pageTitle={t('label.add-new-entity', {
+        entity: t('label.kpi-uppercase'),
       })}
       secondPanel={{
         children: (
           <div data-testid="right-panel">
             <Typography.Paragraph className="text-base font-medium">
-              {i18n.t('label.add-entity', {
-                entity: i18n.t('label.kpi-uppercase'),
+              {t('label.add-entity', {
+                entity: t('label.kpi-uppercase'),
               })}
             </Typography.Paragraph>
-            <Typography.Text>
-              {i18n.t('message.add-kpi-message')}
-            </Typography.Text>
+            <Typography.Text>{t('message.add-kpi-message')}</Typography.Text>
           </div>
         ),
         className: 'p-md p-t-xl content-resizable-panel-container',

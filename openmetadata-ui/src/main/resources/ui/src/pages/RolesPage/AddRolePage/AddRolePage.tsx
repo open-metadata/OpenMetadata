@@ -15,6 +15,7 @@ import { Button, Form, Input, Select, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { trim } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import ResizablePanels from '../../../components/common/ResizablePanels/ResizablePanels';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
@@ -55,6 +56,7 @@ const breadcrumb = [
 
 const AddRolePage = () => {
   const history = useHistory();
+  const { t } = useTranslation();
   const [policies, setPolicies] = useState<Policy[]>([]);
   const [name, setName] = useState<string>('');
   const [description, setDescription] = useState<string>('');
@@ -97,9 +99,9 @@ const AddRolePage = () => {
     } catch (error) {
       showErrorToast(
         getIsErrorMatch(error as AxiosError, ERROR_MESSAGE.alreadyExist)
-          ? i18n.t('server.entity-already-exist', {
-              entity: i18n.t('label.role'),
-              entityPlural: i18n.t('label.role-lowercase-plural'),
+          ? t('server.entity-already-exist', {
+              entity: t('label.role'),
+              entityPlural: t('label.role-lowercase-plural'),
               name: data.name,
             })
           : (error as AxiosError)
@@ -113,7 +115,7 @@ const AddRolePage = () => {
     () => ({
       name: 'description',
       required: false,
-      label: `${i18n.t('label.description')}:`,
+      label: `${t('label.description')}:`,
       id: 'root/description',
       type: FieldTypes.DESCRIPTION,
       props: {
@@ -122,7 +124,7 @@ const AddRolePage = () => {
         style: {
           margin: 0,
         },
-        placeHolder: i18n.t('message.write-your-description'),
+        placeHolder: t('message.write-your-description'),
         onTextChange: (value: string) => setDescription(value),
       },
     }),
@@ -147,8 +149,8 @@ const AddRolePage = () => {
               <Typography.Paragraph
                 className="text-base"
                 data-testid="form-title">
-                {i18n.t('label.add-new-entity', {
-                  entity: i18n.t('label.role'),
+                {t('label.add-new-entity', {
+                  entity: t('label.role'),
                 })}
               </Typography.Paragraph>
               <Form
@@ -157,12 +159,12 @@ const AddRolePage = () => {
                 layout="vertical"
                 onFinish={handleSubmit}>
                 <Form.Item
-                  label={`${i18n.t('label.name')}:`}
+                  label={`${t('label.name')}:`}
                   name="name"
                   rules={NAME_FIELD_RULES}>
                   <Input
                     data-testid="name"
-                    placeholder={i18n.t('label.role-name')}
+                    placeholder={t('label.role-name')}
                     type="text"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
@@ -171,18 +173,18 @@ const AddRolePage = () => {
                 {getField(descriptionField)}
 
                 <Form.Item
-                  label={`${i18n.t('label.select-a-policy')}:`}
+                  label={`${t('label.select-a-policy')}:`}
                   name="policies"
                   rules={[
                     {
                       required: true,
-                      message: i18n.t('message.at-least-one-policy'),
+                      message: t('message.at-least-one-policy'),
                     },
                   ]}>
                   <Select
                     data-testid="policies"
                     mode="multiple"
-                    placeholder={i18n.t('label.select-a-policy')}
+                    placeholder={t('label.select-a-policy')}
                     value={selectedPolicies}
                     onChange={(values) => setSelectedPolicies(values)}>
                     {policies.map((policy) => (
@@ -198,7 +200,7 @@ const AddRolePage = () => {
                     data-testid="cancel-btn"
                     type="link"
                     onClick={handleCancel}>
-                    {i18n.t('label.cancel')}
+                    {t('label.cancel')}
                   </Button>
                   <Button
                     data-testid="submit-btn"
@@ -206,7 +208,7 @@ const AddRolePage = () => {
                     htmlType="submit"
                     loading={isSaveLoading}
                     type="primary">
-                    {i18n.t('label.submit')}
+                    {t('label.submit')}
                   </Button>
                 </Space>
               </Form>
@@ -216,20 +218,18 @@ const AddRolePage = () => {
         minWidth: 700,
         flex: 0.7,
       }}
-      pageTitle={i18n.t('label.add-new-entity', {
-        entity: i18n.t('label.role'),
+      pageTitle={t('label.add-new-entity', {
+        entity: t('label.role'),
       })}
       secondPanel={{
         children: (
           <>
             <Typography.Paragraph className="text-base font-medium">
-              {i18n.t('label.add-entity', {
-                entity: i18n.t('label.role'),
+              {t('label.add-entity', {
+                entity: t('label.role'),
               })}
             </Typography.Paragraph>
-            <Typography.Text>
-              {i18n.t('message.add-role-message')}
-            </Typography.Text>
+            <Typography.Text>{t('message.add-role-message')}</Typography.Text>
           </>
         ),
         className: 'p-md p-t-xl content-resizable-panel-container',

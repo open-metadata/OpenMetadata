@@ -14,6 +14,7 @@ import { Button, Col, Form, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { omit, startCase } from 'lodash';
 import React, { FocusEvent, useCallback, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import ResizablePanels from '../../../components/common/ResizablePanels/ResizablePanels';
 import ServiceDocPanel from '../../../components/common/ServiceDocPanel/ServiceDocPanel';
@@ -41,19 +42,19 @@ import { showErrorToast } from '../../../utils/ToastUtils';
 const AddMetricPage = () => {
   const history = useHistory();
   const [form] = Form.useForm();
-
+  const { t } = useTranslation();
   const [isCreating, setIsCreating] = useState<boolean>(false);
   const [activeField, setActiveField] = useState<string>('');
 
   const { breadcrumb, title } = useMemo(() => {
-    const title = i18n.t('label.add-new-entity', {
-      entity: i18n.t('label.metric'),
+    const title = t('label.add-new-entity', {
+      entity: t('label.metric'),
     });
 
     return {
       breadcrumb: [
         {
-          name: i18n.t('label.metric-plural'),
+          name: t('label.metric-plural'),
           url: ROUTES.METRICS,
         },
         {
@@ -70,9 +71,9 @@ const AddMetricPage = () => {
       {
         name: 'name',
         id: 'root/name',
-        label: i18n.t('label.name'),
+        label: t('label.name'),
         required: true,
-        placeholder: i18n.t('label.name'),
+        placeholder: t('label.name'),
         type: FieldTypes.TEXT,
         props: {
           'data-testid': 'name',
@@ -82,9 +83,9 @@ const AddMetricPage = () => {
       {
         name: 'displayName',
         id: 'root/displayName',
-        label: i18n.t('label.display-name'),
+        label: t('label.display-name'),
         required: false,
-        placeholder: i18n.t('label.display-name'),
+        placeholder: t('label.display-name'),
         type: FieldTypes.TEXT,
         props: {
           'data-testid': 'display-name',
@@ -93,7 +94,7 @@ const AddMetricPage = () => {
       {
         name: 'description',
         required: false,
-        label: i18n.t('label.description'),
+        label: t('label.description'),
         id: 'root/description',
         type: FieldTypes.DESCRIPTION,
         props: {
@@ -104,8 +105,8 @@ const AddMetricPage = () => {
         rules: [
           {
             whitespace: true,
-            message: i18n.t('label.field-required', {
-              field: i18n.t('label.description'),
+            message: t('label.field-required', {
+              field: t('label.description'),
             }),
           },
         ],
@@ -113,7 +114,7 @@ const AddMetricPage = () => {
       {
         name: 'granularity',
         required: false,
-        label: i18n.t('label.granularity'),
+        label: t('label.granularity'),
         id: 'root/granularity',
         type: FieldTypes.SELECT,
         props: {
@@ -123,8 +124,8 @@ const AddMetricPage = () => {
             label: startCase(granularity.toLowerCase()),
             value: granularity,
           })),
-          placeholder: `${i18n.t('label.select-field', {
-            field: i18n.t('label.granularity'),
+          placeholder: `${t('label.select-field', {
+            field: t('label.granularity'),
           })}`,
           showSearch: true,
           filterOption: (input: string, option: { label: string }) => {
@@ -137,7 +138,7 @@ const AddMetricPage = () => {
       {
         name: 'metricType',
         required: false,
-        label: i18n.t('label.metric-type'),
+        label: t('label.metric-type'),
         id: 'root/metricType',
         type: FieldTypes.SELECT,
         props: {
@@ -147,8 +148,8 @@ const AddMetricPage = () => {
             label: startCase(metricType.toLowerCase()),
             value: metricType,
           })),
-          placeholder: `${i18n.t('label.select-field', {
-            field: i18n.t('label.metric-type'),
+          placeholder: `${t('label.select-field', {
+            field: t('label.metric-type'),
           })}`,
           showSearch: true,
           filterOption: (input: string, option: { label: string }) => {
@@ -161,7 +162,7 @@ const AddMetricPage = () => {
       {
         name: 'unitOfMeasurement',
         required: false,
-        label: i18n.t('label.unit-of-measurement'),
+        label: t('label.unit-of-measurement'),
         id: 'root/unitOfMeasurement',
         type: FieldTypes.SELECT,
         props: {
@@ -173,8 +174,8 @@ const AddMetricPage = () => {
               value: unitOfMeasurement,
             })
           ),
-          placeholder: `${i18n.t('label.select-field', {
-            field: i18n.t('label.unit-of-measurement'),
+          placeholder: `${t('label.select-field', {
+            field: t('label.unit-of-measurement'),
           })}`,
           showSearch: true,
           filterOption: (input: string, option: { label: string }) => {
@@ -187,7 +188,7 @@ const AddMetricPage = () => {
       {
         name: 'language',
         required: false,
-        label: i18n.t('label.language'),
+        label: t('label.language'),
         id: 'root/language',
         type: FieldTypes.SELECT,
         props: {
@@ -197,8 +198,8 @@ const AddMetricPage = () => {
             label: language,
             value: language,
           })),
-          placeholder: `${i18n.t('label.select-field', {
-            field: i18n.t('label.language'),
+          placeholder: `${t('label.select-field', {
+            field: t('label.language'),
           })}`,
           showSearch: true,
           filterOption: (input: string, option: { label: string }) => {
@@ -290,7 +291,7 @@ const AddMetricPage = () => {
                   {generateFormFields(formFields)}
                   <Form.Item
                     data-testid="expression-code-container"
-                    label={i18n.t('label.code')}
+                    label={t('label.code')}
                     name="code"
                     trigger="onChange">
                     <SchemaEditor
@@ -305,7 +306,7 @@ const AddMetricPage = () => {
                         data-testid="back-button"
                         type="link"
                         onClick={() => history.push(ROUTES.METRICS)}>
-                        {i18n.t('label.back')}
+                        {t('label.back')}
                       </Button>
                     </Col>
                     <Col>
@@ -314,7 +315,7 @@ const AddMetricPage = () => {
                         htmlType="submit"
                         loading={isCreating}
                         type="primary">
-                        {i18n.t('label.create')}
+                        {t('label.create')}
                       </Button>
                     </Col>
                   </Row>
