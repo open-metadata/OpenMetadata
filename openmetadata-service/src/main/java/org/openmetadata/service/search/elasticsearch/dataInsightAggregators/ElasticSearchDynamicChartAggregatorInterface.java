@@ -1,7 +1,5 @@
 package org.openmetadata.service.search.elasticsearch.dataInsightAggregators;
 
-import static org.openmetadata.service.search.elasticsearch.ElasticSearchClient.xContentRegistry;
-
 import es.org.elasticsearch.action.search.SearchRequest;
 import es.org.elasticsearch.action.search.SearchResponse;
 import es.org.elasticsearch.common.xcontent.LoggingDeprecationHandler;
@@ -36,6 +34,7 @@ import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChartResultLi
 import org.openmetadata.schema.dataInsight.custom.FormulaHolder;
 import org.openmetadata.schema.dataInsight.custom.Function;
 import org.openmetadata.service.jdbi3.DataInsightSystemChartRepository;
+import org.openmetadata.service.search.elasticsearch.EsUtils;
 import org.openmetadata.service.security.policyevaluator.CompiledRule;
 import org.springframework.expression.Expression;
 
@@ -190,7 +189,8 @@ public interface ElasticSearchDynamicChartAggregatorInterface {
         XContentParser filterParser =
             XContentType.JSON
                 .xContent()
-                .createParser(xContentRegistry, LoggingDeprecationHandler.INSTANCE, filter);
+                .createParser(
+                    EsUtils.esXContentRegistry, LoggingDeprecationHandler.INSTANCE, filter);
         QueryBuilder queryFilter = SearchSourceBuilder.fromXContent(filterParser).query();
         getDateHistogramByFormula(formula, queryFilter, aggregationBuilder, formulas);
       } else {
@@ -205,7 +205,7 @@ public interface ElasticSearchDynamicChartAggregatorInterface {
       XContentParser filterParser =
           XContentType.JSON
               .xContent()
-              .createParser(xContentRegistry, LoggingDeprecationHandler.INSTANCE, filter);
+              .createParser(EsUtils.esXContentRegistry, LoggingDeprecationHandler.INSTANCE, filter);
       QueryBuilder queryFilter = SearchSourceBuilder.fromXContent(filterParser).query();
       aggregationBuilder.subAggregation(
           AggregationBuilders.filter("filer", queryFilter).subAggregation(subAgg));

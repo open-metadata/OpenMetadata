@@ -63,9 +63,7 @@ public class OpenSearchDynamicChartAggregatorTest extends OpenMetadataApplicatio
     XContentParser parser =
         XContentFactory.xContent(expectedJsonReq)
             .createParser(
-                OpenSearchClient.X_CONTENT_REGISTRY,
-                LoggingDeprecationHandler.INSTANCE,
-                expectedJsonReq);
+                OsUtils.osXContentRegistry, LoggingDeprecationHandler.INSTANCE, expectedJsonReq);
     SearchSourceBuilder searchSourceBuilder = SearchSourceBuilder.fromXContent(parser);
 
     // Create a SearchRequest and set the SearchSourceBuilder

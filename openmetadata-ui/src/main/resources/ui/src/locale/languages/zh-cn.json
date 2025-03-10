@@ -500,6 +500,7 @@
     "execution-plural": "执行",
     "execution-time": "执行时间",
     "exit-fit-to-screen": "退出适应屏幕",
+    "exit-full-screen": "退出全屏",
     "exit-version-history": "退出版本历史",
     "expand": "展开",
     "expand-all": "全部展开",
@@ -1005,6 +1006,7 @@
     "re-verify": "重新验证",
     "reaction-lowercase-plural": "表情回复",
     "read-type": "查看{{type}}",
+    "rearrange-nodes": "重新排列节点",
     "reason": "理由",
     "receiver-plural": "接收者",
     "recent-announcement-plural": "近期公告",
@@ -1440,7 +1442,9 @@
     "yes": "是",
     "yes-comma-confirm": "Yes, confirm",
     "yesterday": "昨天",
-    "your-entity": "您的{{entity}}"
+    "your-entity": "您的{{entity}}",
+    "zoom-in": "放大",
+    "zoom-out": "缩小"
   },
   "message": {
     "access-block-time-message": "在最多尝试登录失败后, 访问将被阻止(毫秒)",

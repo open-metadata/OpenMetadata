@@ -14,6 +14,8 @@
 package org.openmetadata.service.resources.lineage;
 
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
+import static org.openmetadata.service.search.SearchUtils.getRequiredLineageFields;
+import static org.openmetadata.service.search.SearchUtils.isConnectedVia;
 
 import es.org.elasticsearch.action.search.SearchResponse;
 import io.dropwizard.jersey.PATCH;
@@ -51,6 +53,9 @@ import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.lineage.AddLineage;
+import org.openmetadata.schema.api.lineage.LineageDirection;
+import org.openmetadata.schema.api.lineage.SearchLineageRequest;
+import org.openmetadata.schema.api.lineage.SearchLineageResult;
 import org.openmetadata.schema.type.EntityLineage;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.MetadataOperation;
@@ -192,7 +197,7 @@ public class LineageResource {
                     mediaType = "application/json",
                     schema = @Schema(implementation = SearchResponse.class)))
       })
-  public Response searchLineage(
+  public SearchLineageResult searchLineage(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "fqn") @QueryParam("fqn") String fqn,
@@ -207,11 +212,93 @@ public class LineageResource {
       @Parameter(description = "Filter documents by deleted param. By default deleted is false")
           @QueryParam("includeDeleted")
           boolean deleted,
-      @Parameter(description = "entity type") @QueryParam("type") String entityType)
+      @Parameter(description = "Source Fields to Include", schema = @Schema(type = "string"))
+          @QueryParam("fields")
+          @DefaultValue("*")
+          String includeSourceFields,
+      @Parameter(description = "entity type") @QueryParam("type") String entityType,
+      @Parameter(description = "From field to paginate the results, defaults to 0")
+          @DefaultValue("0")
+          @QueryParam("from")
+          int from,
+      @Parameter(description = "Size field to limit the no.of results returned, defaults to 10")
+          @DefaultValue("1000")
+          @QueryParam("size")
+          int size)
       throws IOException {
-
     return Entity.getSearchRepository()
-        .searchLineage(fqn, upstreamDepth, downstreamDepth, queryFilter, deleted, entityType);
+        .searchLineage(
+            new SearchLineageRequest()
+                .withFqn(fqn)
+                .withUpstreamDepth(upstreamDepth)
+                .withDownstreamDepth(downstreamDepth)
+                .withQueryFilter(queryFilter)
+                .withIncludeDeleted(deleted)
+                .withIsConnectedVia(isConnectedVia(entityType))
+                .withLayerFrom(from)
+                .withLayerSize(size)
+                .withIncludeSourceFields(getRequiredLineageFields(includeSourceFields)));
+  }
+
+  @GET
+  @Path("/getLineage/{direction}")
+  @Operation(
+      operationId = "searchLineageWithDirection",
+      summary = "Search lineage with Direction",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "search response",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = SearchResponse.class)))
+      })
+  public SearchLineageResult searchLineageWithDirection(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "fqn") @QueryParam("fqn") String fqn,
+      @Parameter(description = "Direction", required = true, schema = @Schema(type = "string"))
+          @PathParam("direction")
+          LineageDirection direction,
+      @Parameter(description = "upstreamDepth") @QueryParam("upstreamDepth") int upstreamDepth,
+      @Parameter(description = "downstreamDepth") @QueryParam("downstreamDepth")
+          int downstreamDepth,
+      @Parameter(
+              description =
+                  "Elasticsearch query that will be combined with the query_string query generator from the `query` argument")
+          @QueryParam("query_filter")
+          String queryFilter,
+      @Parameter(description = "Filter documents by deleted param. By default deleted is false")
+          @QueryParam("includeDeleted")
+          boolean deleted,
+      @Parameter(description = "Source Fields to Include", schema = @Schema(type = "string"))
+          @QueryParam("fields")
+          @DefaultValue("*")
+          String includeSourceFields,
+      @Parameter(description = "entity type") @QueryParam("type") String entityType,
+      @Parameter(description = "From field to paginate the results, defaults to 0")
+          @DefaultValue("0")
+          @QueryParam("from")
+          int from,
+      @Parameter(description = "Size field to limit the no.of results returned, defaults to 10")
+          @DefaultValue("1000")
+          @QueryParam("size")
+          int size)
+      throws IOException {
+    return Entity.getSearchRepository()
+        .searchLineageWithDirection(
+            new SearchLineageRequest()
+                .withFqn(fqn)
+                .withUpstreamDepth(upstreamDepth)
+                .withDownstreamDepth(downstreamDepth)
+                .withQueryFilter(queryFilter)
+                .withIncludeDeleted(deleted)
+                .withIsConnectedVia(isConnectedVia(entityType))
+                .withDirection(direction)
+                .withLayerFrom(from)
+                .withLayerSize(size)
+                .withIncludeSourceFields(getRequiredLineageFields(includeSourceFields)));
   }
 
   @GET
@@ -244,7 +331,7 @@ public class LineageResource {
       throws IOException {
 
     return Entity.getSearchRepository()
-        .searchDataQualityLineage(fqn, upstreamDepth, queryFilter, deleted);
+        .searchDataQualityLineage(fqn, upstreamDepth + 1, queryFilter, deleted);
   }
 
   @GET
@@ -279,8 +366,6 @@ public class LineageResource {
           boolean deleted,
       @Parameter(description = "entity type") @QueryParam("type") String entityType)
       throws IOException {
-    Entity.getSearchRepository()
-        .searchLineage(fqn, upstreamDepth, downstreamDepth, queryFilter, deleted, entityType);
     return dao.exportCsv(fqn, upstreamDepth, downstreamDepth, queryFilter, deleted, entityType);
   }
 
@@ -364,7 +449,7 @@ public class LineageResource {
             addLineage.getEdge().getToEntity().getType(),
             addLineage.getEdge().getToEntity().getId(),
             addLineage.getEdge().getToEntity().getName()));
-    dao.addLineage(addLineage);
+    dao.addLineage(addLineage, securityContext.getUserPrincipal().getName());
     return Response.status(Status.OK).build();
   }
 
@@ -445,7 +530,8 @@ public class LineageResource {
         securityContext,
         new OperationContext(toEntity, MetadataOperation.EDIT_LINEAGE),
         new ResourceContext<>(toEntity, toId, null));
-    return dao.patchLineageEdge(fromEntity, fromId, toEntity, toId, patch);
+    return dao.patchLineageEdge(
+        fromEntity, fromId, toEntity, toId, patch, securityContext.getUserPrincipal().getName());
   }
 
   @DELETE

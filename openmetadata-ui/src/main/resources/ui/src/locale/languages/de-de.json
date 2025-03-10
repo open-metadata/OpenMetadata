@@ -500,6 +500,9 @@
     "execution-plural": "Ausführungen",
     "execution-time": "Ausführungszeit",
     "exit-fit-to-screen": "Vollbild verlassen",
+    "exit-full-screen": "Vollbildmodus beenden",
+    "exit-version-history": "Exit Version History",
+    "expand": "Expand",
     "exit-version-history": "Versionshistorie verlassen",
     "expand": "Erweitern",
     "expand-all": "Alles erweitern",
@@ -1005,6 +1008,7 @@
     "re-verify": "Erneut überprüfen",
     "reaction-lowercase-plural": "reaktionen",
     "read-type": "Leseart {{type}}",
+    "rearrange-nodes": "Knoten neu anordnen",
     "reason": "Grund",
     "receiver-plural": "Empfänger",
     "recent-announcement-plural": "Aktuelle Ankündigungen",
@@ -1440,7 +1444,9 @@
     "yes": "Ja",
     "yes-comma-confirm": "Ja, bestätigen",
     "yesterday": "Gestern",
-    "your-entity": "Ihre {{entity}}"
+    "your-entity": "Ihre {{entity}}",
+    "zoom-in": "Vergrößern",
+    "zoom-out": "Verkleinern"
   },
   "message": {
     "access-block-time-message": "Der Zugriff wird für einige Millisekunden gesperrt, nachdem die maximale Anzahl fehlgeschlagener Anmeldeversuche erreicht wurde.",

@@ -1,0 +1,98 @@
+{
+  "$id": "https://open-metadata.org/schema/api/lineage/esLineageData.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "EsLineageData",
+  "description": "Response object for the search lineage request from Elastic Search.",
+  "javaType": "org.openmetadata.schema.api.lineage.EsLineageData",
+  "type": "object",
+  "definitions": {
+    "relationshipRef": {
+      "description": "Relationship Reference to an Entity.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "description": "Unique identifier of this entity instance.",
+          "$ref": "../../type/basic.json#/definitions/uuid"
+        },
+        "fullyQualifiedName": {
+          "description": "FullyQualifiedName of the entity.",
+          "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+        },
+        "fqnHash": {
+          "description": "FullyQualifiedName Hash of the entity.",
+          "type": "string"
+        },
+        "type": {
+          "description": "Type of the entity.",
+          "type": "string"
+        }
+      }
+    }
+  },
+  "properties": {
+    "fromEntity": {
+      "description": "From Entity.",
+      "$ref": "#/definitions/relationshipRef"
+    },
+    "toEntity": {
+      "description": "To Entity.",
+      "$ref": "#/definitions/relationshipRef"
+    },
+    "pipeline": {
+      "description": "Pipeline in case pipeline is present between entities."
+    },
+    "sqlQuery": {
+      "description": "Sql Query associated.",
+      "type": "string"
+    },
+    "columns": {
+      "description": "Columns associated.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/entityLineage.json#/definitions/columnLineage"
+      }
+    },
+    "description": {
+      "description": "Description.",
+      "type": "string"
+    },
+    "source": {
+      "description": "Source of the Lineage.",
+      "type": "string"
+    },
+    "docId": {
+      "description": "Doc Id for the Lineage.",
+      "type": "string"
+    },
+    "docUniqueId": {
+      "description": "Doc Unique Id for the Lineage.",
+      "type": "string"
+    },
+    "pipelineEntityType": {
+      "description": "Pipeline Entity or Stored procedure.",
+      "type": "string"
+    },
+    "createdAt": {
+      "description": "Last update time corresponding to the new version of the entity in Unix epoch time milliseconds.",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "createdBy": {
+      "description": "User who created the node.",
+      "type": "string"
+    },
+    "updatedAt": {
+      "description": "Last update time corresponding to the new version of the entity in Unix epoch time milliseconds.",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "updatedBy": {
+      "description": "User who made the update.",
+      "type": "string"
+    },
+    "assetEdges": {
+      "description": "Asset count in case of child assets lineage.",
+      "type": "integer",
+      "default": null
+    }
+  },
+  "additionalProperties": false
+}

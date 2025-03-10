@@ -41,12 +41,12 @@ let entityLineage: EntityLineageResponse | undefined = {
   edges: [
     {
       toEntity: {
-        fqn: 'sample_data.ecommerce_db.shopify.dim_location',
+        fullyQualifiedName: 'sample_data.ecommerce_db.shopify.dim_location',
         id: '30e9170c-0e07-4e55-bf93-2d2dfab3a36e',
         type: 'table',
       },
       fromEntity: {
-        fqn: 'sample_data.ecommerce_db.shopify.fact_sale',
+        fullyQualifiedName: 'sample_data.ecommerce_db.shopify.fact_sale',
         id: '5a1947bb-84eb-40de-a5c5-2b7b80c834c3',
         type: 'table',
       },
@@ -55,24 +55,25 @@ let entityLineage: EntityLineageResponse | undefined = {
     },
     {
       toEntity: {
-        fqn: 'mlflow_svc.eta_predictions',
+        fullyQualifiedName: 'mlflow_svc.eta_predictions',
         id: 'b81f6bad-42f3-4216-8505-cf6f0c0a8897',
         type: 'mlmodel',
       },
       fromEntity: {
-        fqn: 'sample_data.ecommerce_db.shopify.fact_sale',
+        fullyQualifiedName: 'sample_data.ecommerce_db.shopify.fact_sale',
         id: '5a1947bb-84eb-40de-a5c5-2b7b80c834c3',
         type: 'table',
       },
     },
     {
       toEntity: {
-        fqn: 'sample_data.ecommerce_db.shopify.fact_sale',
+        fullyQualifiedName: 'sample_data.ecommerce_db.shopify.fact_sale',
         id: '5a1947bb-84eb-40de-a5c5-2b7b80c834c3',
         type: 'table',
       },
       fromEntity: {
-        fqn: 'sample_data.ecommerce_db.shopify.dim_address_clean',
+        fullyQualifiedName:
+          'sample_data.ecommerce_db.shopify.dim_address_clean',
         id: '6059959e-96c8-4b61-b905-fc5d88b33293',
         type: 'table',
       },
@@ -86,8 +87,9 @@ jest.mock('../../context/LineageProvider/LineageProvider', () => ({
   useLineageProvider: jest.fn().mockImplementation(() => ({
     tracedNodes: [],
     tracedColumns: [],
+    activeLayer: [],
     entityLineage: entityLineage,
-    updateEntityType: jest.fn(),
+    updateEntityData: jest.fn(),
   })),
 }));
 

@@ -14,8 +14,8 @@ import { act, fireEvent, render, screen } from '@testing-library/react';
 import QueryString from 'qs';
 import React, { useEffect } from 'react';
 import { Edge } from 'reactflow';
-import { EdgeTypeEnum } from '../../components/Entity/EntityLineage/EntityLineage.interface';
 import { EntityType } from '../../enums/entity.enum';
+import { LineageDirection } from '../../generated/api/lineage/searchLineageRequest';
 import {
   getDataQualityLineage,
   getLineageDataByFQN,
@@ -46,7 +46,7 @@ const DummyChildrenComponent = () => {
     loadChildNodesHandler,
     onEdgeClick,
     onColumnClick,
-    updateEntityType,
+    updateEntityData,
     onLineageEditClick,
   } = useLineageProvider();
 
@@ -78,11 +78,11 @@ const DummyChildrenComponent = () => {
 
   const handleButtonClick = () => {
     // Trigger the loadChildNodesHandler method when the button is clicked
-    loadChildNodesHandler(nodeData, EdgeTypeEnum.DOWN_STREAM);
+    loadChildNodesHandler(nodeData, LineageDirection.Downstream);
   };
 
   useEffect(() => {
-    updateEntityType(EntityType.TABLE);
+    updateEntityData(EntityType.TABLE, undefined);
   }, []);
 
   return (
@@ -187,12 +187,16 @@ describe('LineageProvider', () => {
       );
     });
 
-    expect(getLineageDataByFQN).toHaveBeenCalledWith(
-      'table1',
-      'table',
-      { downstreamDepth: 1, nodesPerLayer: 50, upstreamDepth: 1 },
-      ''
-    );
+    expect(getLineageDataByFQN).toHaveBeenCalledWith({
+      entityType: 'table',
+      fqn: 'table1',
+      config: {
+        downstreamDepth: 1,
+        nodesPerLayer: 50,
+        upstreamDepth: 1,
+      },
+      queryFilter: '',
+    });
     expect(getDataQualityLineage).toHaveBeenCalledWith(
       'table1',
       { downstreamDepth: 1, nodesPerLayer: 50, upstreamDepth: 1 },

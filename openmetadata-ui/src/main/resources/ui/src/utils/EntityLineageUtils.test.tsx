@@ -12,23 +12,17 @@
  */
 
 import { Edge } from 'reactflow';
-import { EdgeTypeEnum } from '../components/Entity/EntityLineage/EntityLineage.interface';
 import { EdgeDetails } from '../components/Lineage/Lineage.interface';
 import { SourceType } from '../components/SearchedData/SearchedData.interface';
 import { EntityType } from '../enums/entity.enum';
 import { AddLineage, ColumnLineage } from '../generated/api/lineage/addLineage';
-import {
-  MOCK_CHILD_MAP,
-  MOCK_LINEAGE_DATA_NEW,
-  MOCK_NODES_AND_EDGES,
-  MOCK_PAGINATED_CHILD_MAP,
-} from '../mocks/Lineage.mock';
+import { LineageDirection } from '../generated/api/lineage/lineageDirection';
+import { MOCK_NODES_AND_EDGES } from '../mocks/Lineage.mock';
 import { addLineage } from '../rest/miscAPI';
 import {
   addLineageHandler,
   createNewEdge,
   getAllTracedEdges,
-  getChildMap,
   getColumnFunctionValue,
   getColumnLineageData,
   getColumnSourceTargetHandles,
@@ -37,11 +31,9 @@ import {
   getLineageDetailsObject,
   getLineageEdge,
   getLineageEdgeForAPI,
-  getPaginatedChildMap,
   getUpdatedColumnsFromEdge,
   getUpstreamDownstreamNodesEdges,
 } from './EntityLineageUtils';
-
 jest.mock('../rest/miscAPI', () => ({
   addLineage: jest.fn(),
 }));
@@ -143,19 +135,19 @@ describe('Test EntityLineageUtils utility', () => {
         fromEntity: {
           id: 'sourceId',
           type: 'table',
-          fqn: 'sourceFqn',
+          fullyQualifiedName: 'sourceFqn',
         },
         toEntity: {
           id: 'targetId',
           type: 'table',
-          fqn: 'targetFqn',
+          fullyQualifiedName: 'targetFqn',
         },
         sqlQuery: '',
       },
     });
     expect(result.edge.fromEntity.type).toBe('table');
-    expect(result.edge.toEntity.fqn).toBe('targetFqn');
-    expect(result.edge.fromEntity.fqn).toBe('sourceFqn');
+    expect(result.edge.toEntity.fullyQualifiedName).toBe('targetFqn');
+    expect(result.edge.fromEntity.fullyQualifiedName).toBe('sourceFqn');
     expect(result.edge.toEntity.type).toBe('table');
   });
 
@@ -226,7 +218,7 @@ describe('Test EntityLineageUtils utility', () => {
       { id: '2', source: '1', target: '3' },
       { id: '3', source: '2', target: '3' },
     ];
-    const direction = EdgeTypeEnum.DOWN_STREAM;
+    const direction = LineageDirection.Downstream;
 
     const result = getConnectedNodesEdges(
       selectedNode,
@@ -274,7 +266,7 @@ describe('Test EntityLineageUtils utility', () => {
       { id: '2', source: '1', target: '3' },
       { id: '3', source: '2', target: '3' },
     ];
-    const direction = EdgeTypeEnum.UP_STREAM;
+    const direction = LineageDirection.Upstream;
 
     const result = getConnectedNodesEdges(
       selectedNode,
@@ -316,12 +308,12 @@ describe('Test EntityLineageUtils utility', () => {
       fromEntity: {
         id: 'source',
         type: 'table',
-        fqn: 'sourceFqn',
+        fullyQualifiedName: 'sourceFqn',
       },
       toEntity: {
         id: 'target',
         type: 'table',
-        fqn: 'targetFqn',
+        fullyQualifiedName: 'targetFqn',
       },
       columns: [],
     };
@@ -353,25 +345,6 @@ describe('Test EntityLineageUtils utility', () => {
         toColumn: 'shopId',
       },
     ]);
-  });
-
-  it('getChildMap should return valid map object', () => {
-    const { map, exportResult } = getChildMap(
-      MOCK_LINEAGE_DATA_NEW,
-      's3_storage_sample.departments.media.movies'
-    );
-
-    expect(map).toEqual(MOCK_CHILD_MAP);
-    expect(exportResult).toEqual(
-      `Name,Display Name,Fully Qualified Name,Entity Type,Direction,Owner,Domain,Tags,Tier,Glossary Terms,Level
-"engineering","Engineering department","s3_storage_sample.departments.engineering","container","downstream","","","","","","1"`
-    );
-  });
-
-  it('getPaginatedChildMap should return valid map object', () => {
-    expect(
-      getPaginatedChildMap(MOCK_LINEAGE_DATA_NEW, MOCK_CHILD_MAP, {}, 50)
-    ).toEqual(MOCK_PAGINATED_CHILD_MAP);
   });
 
   // generate test for getColumnSourceTargetHandles
@@ -490,16 +463,16 @@ describe('Test EntityLineageUtils utility', () => {
   describe('getUpstreamDownstreamNodesEdges', () => {
     const edges = [
       {
-        fromEntity: { fqn: 'node1', type: 'table', id: '1' },
-        toEntity: { fqn: 'node2', type: 'table', id: '2' },
+        fromEntity: { fullyQualifiedName: 'node1', type: 'table', id: '1' },
+        toEntity: { fullyQualifiedName: 'node2', type: 'table', id: '2' },
       },
       {
-        fromEntity: { fqn: 'node2', type: 'table', id: '2' },
-        toEntity: { fqn: 'node3', type: 'table', id: '3' },
+        fromEntity: { fullyQualifiedName: 'node2', type: 'table', id: '2' },
+        toEntity: { fullyQualifiedName: 'node3', type: 'table', id: '3' },
       },
       {
-        fromEntity: { fqn: 'node3', type: 'table', id: '3' },
-        toEntity: { fqn: 'node4', type: 'table', id: '4' },
+        fromEntity: { fullyQualifiedName: 'node3', type: 'table', id: '3' },
+        toEntity: { fullyQualifiedName: 'node4', type: 'table', id: '4' },
       },
     ];
 
@@ -526,18 +499,18 @@ describe('Test EntityLineageUtils utility', () => {
 
       expect(result.downstreamEdges).toEqual([
         {
-          fromEntity: { fqn: 'node2', type: 'table', id: '2' },
-          toEntity: { fqn: 'node3', type: 'table', id: '3' },
+          fromEntity: { fullyQualifiedName: 'node2', type: 'table', id: '2' },
+          toEntity: { fullyQualifiedName: 'node3', type: 'table', id: '3' },
         },
         {
-          fromEntity: { fqn: 'node3', type: 'table', id: '3' },
-          toEntity: { fqn: 'node4', type: 'table', id: '4' },
+          fromEntity: { fullyQualifiedName: 'node3', type: 'table', id: '3' },
+          toEntity: { fullyQualifiedName: 'node4', type: 'table', id: '4' },
         },
       ]);
       expect(result.upstreamEdges).toEqual([
         {
-          fromEntity: { fqn: 'node1', type: 'table', id: '1' },
-          toEntity: { fqn: 'node2', type: 'table', id: '2' },
+          fromEntity: { fullyQualifiedName: 'node1', type: 'table', id: '1' },
+          toEntity: { fullyQualifiedName: 'node2', type: 'table', id: '2' },
         },
       ]);
       expect(result.downstreamNodes).toEqual([
