@@ -486,6 +486,36 @@ public class EventSubscriptionResource
   }
 
   @DELETE
+  @Path("/async/{id}")
+  @Valid
+  @Operation(
+      operationId = "deleteEventSubscriptionAsync",
+      summary = "Asynchronously delete an Event Subscription by Id",
+      description = "Asynchronously delete an Event Subscription",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Entity events",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = EventSubscription.class))),
+        @ApiResponse(responseCode = "404", description = "Entity for instance {id} is not found")
+      })
+  public Response deleteEventSubscriptionAsync(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the Event Subscription", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id)
+      throws SchedulerException {
+    EventSubscription eventSubscription = repository.get(null, id, repository.getFields("id"));
+    EventSubscriptionScheduler.getInstance().deleteEventSubscriptionPublisher(eventSubscription);
+    EventSubscriptionScheduler.getInstance().deleteSuccessfulAndFailedEventsRecordByAlert(id);
+    return deleteByIdAsync(uriInfo, securityContext, id, true, true);
+  }
+
+  @DELETE
   @Path("/name/{name}")
   @Operation(
       operationId = "deleteEventSubscriptionByName",

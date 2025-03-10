@@ -419,6 +419,28 @@ public class AppMarketPlaceResource
     return delete(uriInfo, securityContext, id, true, hardDelete);
   }
 
+  @DELETE
+  @Path("/async/{id}")
+  @Operation(
+      operationId = "deleteAppAsync",
+      summary = "Asynchronously delete a App by Id",
+      description = "Asynchronously delete a App by `Id`.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "OK"),
+        @ApiResponse(responseCode = "404", description = "App for instance {id} is not found")
+      })
+  public Response deleteByIdAsync(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Hard delete the entity. (Default = `false`)")
+          @QueryParam("hardDelete")
+          @DefaultValue("false")
+          boolean hardDelete,
+      @Parameter(description = "Id of the App", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id) {
+    return deleteByIdAsync(uriInfo, securityContext, id, true, hardDelete);
+  }
+
   @PUT
   @Path("/restore")
   @Operation(
