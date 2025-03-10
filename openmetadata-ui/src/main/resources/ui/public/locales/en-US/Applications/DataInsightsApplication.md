@@ -76,6 +76,11 @@ List of entities that you need to reindex
 $$
 
 $$section
+### moduleConfiguration.dataAssets.entities.items $(id="moduleConfiguration.dataAssets.entities.items")
+
+$$
+
+$$section
 ### Data Retention (Days) $(id="moduleConfiguration.dataAssets.retention")
 
 Defines the number of days the Data Assets Insights information will be kept. After it they will be deleted.

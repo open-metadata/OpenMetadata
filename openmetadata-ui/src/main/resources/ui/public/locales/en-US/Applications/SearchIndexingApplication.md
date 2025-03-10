@@ -73,6 +73,11 @@ List of entities that you need to reindex
 $$
 
 $$section
+### entities.items $(id="entities.items")
+
+$$
+
+$$section
 ### Recreate Indexes $(id="recreateIndex")
 
 $$

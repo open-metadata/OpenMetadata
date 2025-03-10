@@ -37,6 +37,11 @@ const processProperty = (key, prop, schema) => {
   // End section before processing $ref
   markdown += `$$\n\n`;
 
+  // Handle Array type
+  if (prop.type === 'array') {
+    markdown += processProperty(`${key}.items`, prop.items, schema);
+  }
+
   // Handle $ref
   if (prop.$ref) {
     const resolvedProp = resolveRef(schema, prop.$ref);
