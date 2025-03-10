@@ -11,19 +11,33 @@
  *  limitations under the License.
  */
 import { WidgetProps } from '@rjsf/utils';
-import React from 'react';
+import React, { useCallback } from 'react';
 import SchemaEditor from '../../../../../Database/SchemaEditor/SchemaEditor';
 import './code-widget.less';
 
-const CodeWidget = ({ value, onChange, disabled, schema }: WidgetProps) => (
-  <SchemaEditor
-    className="code-widget"
-    mode={schema.mode}
-    readOnly={disabled}
-    showCopyButton={false}
-    value={value || ''}
-    onChange={onChange}
-  />
-);
+const CodeWidget = ({
+  value,
+  onChange,
+  disabled,
+  schema,
+  onFocus,
+  ...props
+}: WidgetProps) => {
+  const onFocusHandler = useCallback(() => {
+    onFocus?.(props.id, props.value);
+  }, [onFocus, props.id, props.value]);
+
+  return (
+    <SchemaEditor
+      className="code-widget"
+      mode={schema.mode}
+      readOnly={disabled}
+      showCopyButton={false}
+      value={value || ''}
+      onChange={onChange}
+      onFocus={onFocusHandler}
+    />
+  );
+};
 
 export default CodeWidget;
