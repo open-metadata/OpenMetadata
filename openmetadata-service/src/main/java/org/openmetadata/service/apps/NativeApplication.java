@@ -1,6 +1,5 @@
 package org.openmetadata.service.apps;
 
-import java.util.Map;
 import org.openmetadata.schema.entity.app.App;
 import org.quartz.InterruptableJob;
 import org.quartz.JobExecutionContext;
@@ -13,8 +12,6 @@ public interface NativeApplication extends InterruptableJob {
   void uninstall();
 
   void triggerOnDemand();
-
-  void triggerOnDemand(Map<String, Object> config);
 
   void configure();
 
