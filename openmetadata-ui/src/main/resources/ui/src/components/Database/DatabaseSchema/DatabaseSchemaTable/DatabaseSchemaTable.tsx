@@ -51,7 +51,6 @@ import {
 import { searchQuery } from '../../../../rest/searchAPI';
 import {
   getEntityBulkEditPath,
-  getEntityName,
   highlightSearchText,
 } from '../../../../utils/EntityUtils';
 import { stringToHTML } from '../../../../utils/StringsUtils';
@@ -61,6 +60,7 @@ import DisplayName from '../../../common/DisplayName/DisplayName';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import NextPrevious from '../../../common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../../common/NextPrevious/NextPrevious.interface';
+import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
 import RichTextEditorPreviewerV1 from '../../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import Searchbar from '../../../common/SearchBarComponent/SearchBar.component';
 import Table from '../../../common/Table/Table';
@@ -274,7 +274,7 @@ export const DatabaseSchemaTable = ({
         width: 120,
         render: (owners: EntityReference[]) =>
           !isEmpty(owners) && owners.length > 0 ? (
-            owners.map((owner: EntityReference) => getEntityName(owner))
+            <OwnerLabel owners={owners} />
           ) : (
             <Typography.Text data-testid="no-owner-text">
               {NO_DATA_PLACEHOLDER}

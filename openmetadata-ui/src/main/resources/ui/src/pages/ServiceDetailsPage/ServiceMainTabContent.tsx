@@ -274,17 +274,6 @@ function ServiceMainTabContent({
                           }
                           extraTableFilters={
                             <>
-                              {entityType === EntityType.DATABASE_SERVICE && (
-                                <Button
-                                  className="text-primary p-0"
-                                  data-testid="bulk-edit-table"
-                                  icon={<Icon component={IconEdit} />}
-                                  type="text"
-                                  onClick={handleEditTable}>
-                                  {t('label.edit')}
-                                </Button>
-                              )}
-
                               <span>
                                 <Switch
                                   checked={showDeleted}
@@ -295,6 +284,17 @@ function ServiceMainTabContent({
                                   {t('label.deleted')}
                                 </Typography.Text>
                               </span>
+
+                              {entityType === EntityType.DATABASE_SERVICE && (
+                                <Button
+                                  className="text-primary p-0"
+                                  data-testid="bulk-edit-table"
+                                  icon={<Icon component={IconEdit} />}
+                                  type="text"
+                                  onClick={handleEditTable}>
+                                  {t('label.edit')}
+                                </Button>
+                              )}
                             </>
                           }
                           locale={{
