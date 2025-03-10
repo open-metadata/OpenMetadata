@@ -149,6 +149,12 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
         fields.contains("pipelineStatus")
             ? getPipelineStatus(pipeline)
             : pipeline.getPipelineStatus());
+    if (pipeline.getUsageSummary() == null) {
+      pipeline.withUsageSummary(
+          fields.contains("usageSummary")
+              ? EntityUtil.getLatestUsage(daoCollection.usageDAO(), pipeline.getId())
+              : null);
+    }
   }
 
   @Override
@@ -156,6 +162,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     pipeline.withTasks(fields.contains(TASKS_FIELD) ? pipeline.getTasks() : null);
     pipeline.withPipelineStatus(
         fields.contains("pipelineStatus") ? pipeline.getPipelineStatus() : null);
+    pipeline.withUsageSummary(fields.contains("usageSummary") ? pipeline.getUsageSummary() : null);
   }
 
   @Override
@@ -298,7 +305,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   }
 
   @Override
-  protected void cleanup(Pipeline pipeline) {
+  protected void entitySpecificCleanup(Pipeline pipeline) {
     // When a pipeline is removed , the linege needs to be removed
     daoCollection
         .relationshipDAO()
@@ -306,7 +313,6 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
             pipeline.getId(),
             LineageDetails.Source.PIPELINE_LINEAGE.value(),
             Relationship.UPSTREAM.ordinal());
-    super.cleanup(pipeline);
   }
 
   @Override
@@ -485,6 +491,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
       updateTasks(original, updated);
+      recordChange("state", original.getState(), updated.getState());
       recordChange("sourceUrl", original.getSourceUrl(), updated.getSourceUrl());
       recordChange("concurrency", original.getConcurrency(), updated.getConcurrency());
       recordChange(

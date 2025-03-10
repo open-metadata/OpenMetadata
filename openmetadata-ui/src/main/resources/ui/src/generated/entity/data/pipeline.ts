@@ -116,6 +116,10 @@ export interface Pipeline {
      */
     startDate?: Date;
     /**
+     * State of the Pipeline.
+     */
+    state?: PipelineState;
+    /**
      * Tags for this Pipeline.
      */
     tags?: TagLabel[];
@@ -132,6 +136,10 @@ export interface Pipeline {
      * User who made the update.
      */
     updatedBy?: string;
+    /**
+     * Latest usage information for this pipeline.
+     */
+    usageSummary?: UsageDetails;
     /**
      * Metadata version of the entity.
      */
@@ -250,6 +258,7 @@ export interface Style {
  * Description of the change.
  */
 export interface ChangeDescription {
+    changeSummary?: { [key: string]: ChangeSummary };
     /**
      * Names of fields added during the version changes.
      */
@@ -266,6 +275,29 @@ export interface ChangeDescription {
      * When a change did not result in change, this could be same as the current version.
      */
     previousVersion?: number;
+}
+
+export interface ChangeSummary {
+    changedAt?: number;
+    /**
+     * Name of the user or bot who made this change
+     */
+    changedBy?:    string;
+    changeSource?: ChangeSource;
+    [property: string]: any;
+}
+
+/**
+ * The source of the change. This will change based on the context of the change (example:
+ * manual vs programmatic)
+ */
+export enum ChangeSource {
+    Automated = "Automated",
+    Derived = "Derived",
+    Ingested = "Ingested",
+    Manual = "Manual",
+    Propagated = "Propagated",
+    Suggested = "Suggested",
 }
 
 export interface FieldChange {
@@ -476,6 +508,16 @@ export enum PipelineServiceType {
     Stitch = "Stitch",
 }
 
+/**
+ * State of the Pipeline.
+ *
+ * Enum defining the possible Pipeline State.
+ */
+export enum PipelineState {
+    Active = "Active",
+    Inactive = "Inactive",
+}
+
 export interface Task {
     /**
      * Description of this Task.
@@ -527,6 +569,51 @@ export interface Task {
      * Type of the Task. Usually refers to the class it implements.
      */
     taskType?: string;
+}
+
+/**
+ * Latest usage information for this pipeline.
+ *
+ * This schema defines the type for usage details. Daily, weekly, and monthly aggregation of
+ * usage is computed along with the percentile rank based on the usage for a given day.
+ */
+export interface UsageDetails {
+    /**
+     * Daily usage stats of a data asset on the start date.
+     */
+    dailyStats: UsageStats;
+    /**
+     * Date in UTC.
+     */
+    date: Date;
+    /**
+     * Monthly (last 30 days) rolling usage stats of a data asset on the start date.
+     */
+    monthlyStats?: UsageStats;
+    /**
+     * Weekly (last 7 days) rolling usage stats of a data asset on the start date.
+     */
+    weeklyStats?: UsageStats;
+}
+
+/**
+ * Daily usage stats of a data asset on the start date.
+ *
+ * Type used to return usage statistics.
+ *
+ * Monthly (last 30 days) rolling usage stats of a data asset on the start date.
+ *
+ * Weekly (last 7 days) rolling usage stats of a data asset on the start date.
+ */
+export interface UsageStats {
+    /**
+     * Usage count of a data asset on the start date.
+     */
+    count: number;
+    /**
+     * Optional daily percentile rank data asset use when relevant.
+     */
+    percentileRank?: number;
 }
 
 /**

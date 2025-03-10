@@ -24,6 +24,11 @@ import {
   PAGE_SIZE_BASE,
   pagingObject,
 } from '../../../../constants/constants';
+import {
+  COMMON_STATIC_TABLE_VISIBLE_COLUMNS,
+  DEFAULT_DATA_MODEL_TYPE_VISIBLE_COLUMNS,
+  TABLE_COLUMNS_KEYS,
+} from '../../../../constants/TableKeys.constants';
 import { EntityType } from '../../../../enums/entity.enum';
 import { Include } from '../../../../generated/type/include';
 import { Paging } from '../../../../generated/type/paging';
@@ -59,8 +64,8 @@ const DataModelTable = () => {
     () => [
       {
         title: t('label.name'),
-        dataIndex: 'displayName',
-        key: 'displayName',
+        dataIndex: TABLE_COLUMNS_KEYS.NAME,
+        key: TABLE_COLUMNS_KEYS.NAME,
         width: 350,
         render: (_, record: ServicePageData) => {
           const dataModelDisplayName = getEntityName(record);
@@ -82,8 +87,8 @@ const DataModelTable = () => {
       },
       {
         title: t('label.description'),
-        dataIndex: 'description',
-        key: 'description',
+        dataIndex: TABLE_COLUMNS_KEYS.DESCRIPTION,
+        key: TABLE_COLUMNS_KEYS.DESCRIPTION,
         render: (description: ServicePageData['description']) =>
           !isUndefined(description) && description.trim() ? (
             <RichTextEditorPreviewerV1 markdown={description} />
@@ -97,8 +102,8 @@ const DataModelTable = () => {
       },
       {
         title: t('label.data-model-type'),
-        dataIndex: 'dataModelType',
-        key: 'dataModelType',
+        dataIndex: TABLE_COLUMNS_KEYS.DATA_MODEL_TYPE,
+        key: TABLE_COLUMNS_KEYS.DATA_MODEL_TYPE,
       },
     ],
     []
@@ -148,21 +153,7 @@ const DataModelTable = () => {
   }, [pageSize, showDeleted]);
 
   return (
-    <Row gutter={[0, 16]}>
-      <Col className="p-t-sm p-x-lg" span={24}>
-        <Row justify="end">
-          <Col>
-            <Switch
-              checked={showDeleted}
-              data-testid="show-deleted"
-              onClick={handleShowDeletedChange}
-            />
-            <Typography.Text className="m-l-xs">
-              {t('label.deleted')}
-            </Typography.Text>{' '}
-          </Col>
-        </Row>
-      </Col>
+    <Row className="p-t-sm" gutter={[0, 16]}>
       <Col className="p-x-lg" data-testid="table-container" span={24}>
         <Table
           bordered
@@ -170,6 +161,19 @@ const DataModelTable = () => {
           columns={tableColumn}
           data-testid="data-models-table"
           dataSource={dataModels}
+          defaultVisibleColumns={DEFAULT_DATA_MODEL_TYPE_VISIBLE_COLUMNS}
+          extraTableFilters={
+            <span>
+              <Switch
+                checked={showDeleted}
+                data-testid="show-deleted"
+                onClick={handleShowDeletedChange}
+              />
+              <Typography.Text className="m-l-xs">
+                {t('label.deleted')}
+              </Typography.Text>
+            </span>
+          }
           loading={isLoading}
           locale={{
             emptyText: <ErrorPlaceHolder className="m-y-md" />,
@@ -177,6 +181,7 @@ const DataModelTable = () => {
           pagination={false}
           rowKey="id"
           size="small"
+          staticVisibleColumns={COMMON_STATIC_TABLE_VISIBLE_COLUMNS}
         />
       </Col>
       <Col className="p-b-sm" span={24}>

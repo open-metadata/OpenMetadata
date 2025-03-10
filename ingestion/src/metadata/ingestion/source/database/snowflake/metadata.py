@@ -115,6 +115,7 @@ from metadata.utils.tag_utils import get_ometa_tag_and_classification
 ischema_names["VARIANT"] = VARIANT
 ischema_names["GEOGRAPHY"] = create_sqlalchemy_type("GEOGRAPHY")
 ischema_names["GEOMETRY"] = create_sqlalchemy_type("GEOMETRY")
+ischema_names["VECTOR"] = create_sqlalchemy_type("VECTOR")
 
 logger = ingestion_logger()
 
