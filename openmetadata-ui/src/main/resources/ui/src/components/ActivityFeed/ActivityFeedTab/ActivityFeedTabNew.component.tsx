@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Dropdown, Segmented, Typography } from 'antd';
+import { Dropdown, Menu, Segmented, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import {
@@ -32,7 +32,13 @@ import { ReactComponent as TaskFilterIcon } from '../../../assets/svg/ic-task-fi
 import { ReactComponent as TaskIcon } from '../../../assets/svg/ic-task-new.svg';
 import { ReactComponent as MyTaskIcon } from '../../../assets/svg/task.svg';
 
-import { ICON_DIMENSION_USER_PAGE } from '../../../constants/constants';
+import { ReactComponent as AllActivityIcon } from '../../../assets/svg/all-activity-v2.svg';
+import { ReactComponent as TaskListIcon } from '../../../assets/svg/task-ic.svg';
+import {
+  COMMON_ICON_STYLES,
+  ICON_DIMENSION,
+  ICON_DIMENSION_USER_PAGE,
+} from '../../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
 import { observerOptions } from '../../../constants/Mydata.constants';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
@@ -48,7 +54,7 @@ import { useElementInView } from '../../../hooks/useElementInView';
 import { useFqn } from '../../../hooks/useFqn';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { getFeedCount } from '../../../rest/feedsAPI';
-import { getFeedCounts } from '../../../utils/CommonUtils';
+import { getCountBadge, getFeedCounts } from '../../../utils/CommonUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import {
   ENTITY_LINK_SEPARATOR,
@@ -63,6 +69,7 @@ import FeedPanelBodyV1New from '../ActivityFeedPanel/FeedPanelBodyV1New';
 import { useActivityFeedProvider } from '../ActivityFeedProvider/ActivityFeedProvider';
 import './activity-feed-tab.less';
 import {
+  ActivityFeedLayoutType,
   ActivityFeedTabProps,
   ActivityFeedTabs,
 } from './ActivityFeedTab.interface';
@@ -83,6 +90,7 @@ export const ActivityFeedTabNew = ({
   onUpdateFeedCount,
   onUpdateEntityDetails,
   subTab,
+  layoutType,
 }: ActivityFeedTabProps) => {
   const history = useHistory();
   const { t } = useTranslation();
@@ -465,8 +473,93 @@ export const ActivityFeedTabNew = ({
 
   return (
     <div className="activity-feed-tab">
+      {layoutType === ActivityFeedLayoutType.THREE_PANEL && (
+        <Menu
+          className="custom-menu p-t-sm"
+          data-testid="global-setting-left-panel"
+          items={[
+            {
+              label: (
+                <div className="d-flex justify-between">
+                  <Space align="center" size="small">
+                    <AllActivityIcon
+                      style={COMMON_ICON_STYLES}
+                      {...ICON_DIMENSION}
+                    />
+                    <span>{t('label.all')}</span>
+                  </Space>
+
+                  <span>
+                    {!isUserEntity &&
+                      getCountBadge(
+                        countData.data.conversationCount,
+                        '',
+                        activeTab === ActivityFeedTabs.ALL
+                      )}
+                  </span>
+                </div>
+              ),
+              key: 'all',
+            },
+            ...(isUserEntity
+              ? [
+                  {
+                    label: (
+                      <div className="d-flex justify-between">
+                        <Space align="center" size="small">
+                          <MentionIcon
+                            style={COMMON_ICON_STYLES}
+                            {...ICON_DIMENSION}
+                          />
+                          <span>{t('label.mention-plural')}</span>
+                        </Space>
+
+                        <span>
+                          {getCountBadge(
+                            countData.data.mentionCount,
+                            '',
+                            activeTab === ActivityFeedTabs.MENTIONS
+                          )}
+                        </span>
+                      </div>
+                    ),
+                    key: 'mentions',
+                  },
+                ]
+              : []),
+            {
+              label: (
+                <div className="d-flex justify-between">
+                  <Space align="center" size="small">
+                    <TaskListIcon
+                      style={COMMON_ICON_STYLES}
+                      {...ICON_DIMENSION}
+                    />
+                    <span>{t('label.task-plural')}</span>
+                  </Space>
+                  <span>
+                    {getCountBadge(
+                      countData.data.openTaskCount,
+                      '',
+                      isTaskActiveTab
+                    )}
+                  </span>
+                </div>
+              ),
+              key: 'tasks',
+            },
+          ]}
+          mode="inline"
+          rootClassName="left-container"
+          onClick={(info) => handleTabChange(info.key)}
+        />
+      )}
       <div
-        className={`center-container  ${isFullWidth ? 'full-width' : ''}`}
+        className={classNames('center-container', {
+          'full-width': isFullWidth,
+          'three-panel-layout':
+            layoutType === ActivityFeedLayoutType.THREE_PANEL,
+        })}
         id="center-container">
         {(isTaskActiveTab || isMentionTabSelected) && (
           <div
@@ -515,7 +608,12 @@ export const ActivityFeedTabNew = ({
         />
       </div>
 
-      <div className={`right-container ${isFullWidth ? 'hide-panel' : ''}`}>
+      <div
+        className={classNames('right-container', {
+          'hide-panel': isFullWidth,
+          'three-panel-layout':
+            layoutType === ActivityFeedLayoutType.THREE_PANEL,
+        })}>
         {loader}
         {selectedThread &&
           !loading &&
