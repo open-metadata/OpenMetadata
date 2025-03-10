@@ -822,10 +822,9 @@ public class IngestionPipelineResourceTest
                 .withConfig(
                     new ApplicationPipeline()
                         .withAppConfig(
-                            JsonUtils.getMap(
-                                new AutomatorAppConfig()
-                                    .withResources(new Resource().withQueryFilter(""))
-                                    .withActions(List.of())))));
+                            new AutomatorAppConfig()
+                                .withResources(new Resource().withQueryFilter(""))
+                                .withActions(List.of()))));
 
     // Create ingestion pipeline without having the CREATE_INGESTION_PIPELINE_AUTOMATOR permission
     assertResponse(
