@@ -29,6 +29,7 @@ import { visitEntityPage } from '../../../utils/entity';
 import { visitServiceDetailsPage } from '../../../utils/service';
 import {
   checkServiceFieldSectionHighlighting,
+  removeTheDefaultFilters,
   Services,
 } from '../../../utils/serviceIngestion';
 import ServiceBaseClass from './ServiceBaseClass';
@@ -70,6 +71,8 @@ class MysqlIngestionClass extends ServiceBaseClass {
   }
 
   async fillIngestionDetails(page: Page) {
+    await removeTheDefaultFilters(page);
+
     for (const filter of this.tableFilter) {
       await page.fill('#root\\/tableFilterPattern\\/includes', filter);
       await page

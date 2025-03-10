@@ -29,6 +29,7 @@ import { visitEntityPage } from '../../../utils/entity';
 import { visitServiceDetailsPage } from '../../../utils/service';
 import {
   checkServiceFieldSectionHighlighting,
+  removeTheDefaultFilters,
   Services,
 } from '../../../utils/serviceIngestion';
 import { sidebarClick } from '../../../utils/sidebar';
@@ -80,6 +81,8 @@ class RedshiftWithDBTIngestionClass extends ServiceBaseClass {
   }
 
   async fillIngestionDetails(page: Page) {
+    await removeTheDefaultFilters(page);
+
     // no schema or database filters
     await page
       .locator('#root\\/schemaFilterPattern\\/includes')

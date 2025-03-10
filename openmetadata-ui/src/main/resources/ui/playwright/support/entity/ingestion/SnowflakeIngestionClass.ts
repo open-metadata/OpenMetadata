@@ -15,6 +15,7 @@ import { Page } from '@playwright/test';
 import { uuid } from '../../../utils/common';
 import {
   checkServiceFieldSectionHighlighting,
+  removeTheDefaultFilters,
   Services,
 } from '../../../utils/serviceIngestion';
 import ServiceBaseClass from './ServiceBaseClass';
@@ -57,6 +58,8 @@ class SnowflakeIngestionClass extends ServiceBaseClass {
   }
 
   async fillIngestionDetails(page: Page) {
+    await removeTheDefaultFilters(page);
+
     await page.fill('#root\\/schemaFilterPattern\\/includes', `${this.schema}`);
     await page.locator('#root\\/schemaFilterPattern\\/includes').press('Enter');
   }

@@ -186,6 +186,8 @@ class ServiceBaseClass {
     await page.getByTestId('more-actions').first().click();
     await page.getByTestId('run-button').click();
 
+    await page.waitForLoadState('networkidle');
+
     await toastNotification(page, `Pipeline triggered successfully!`);
 
     // need manual wait to make sure we are awaiting on latest run results
@@ -195,7 +197,9 @@ class ServiceBaseClass {
   }
 
   async submitService(page: Page) {
-    await page.click('[data-testid="submit-btn"]');
+    await page.getByTestId('submit-btn').getByText('Next').click();
+
+    await page.getByTestId('submit-btn').getByText('Save').click();
     await page.waitForSelector('[data-testid="success-line"]', {
       state: 'visible',
     });
