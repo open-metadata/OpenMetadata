@@ -500,6 +500,7 @@
     "execution-plural": "実行",
     "execution-time": "execution-time",
     "exit-fit-to-screen": "Exit fit to screen",
+    "exit-full-screen": "全画面表示を終了",
     "exit-version-history": "Exit Version History",
     "expand": "Expand",
     "expand-all": "すべて展開",
@@ -1005,6 +1006,7 @@
     "re-verify": "再検証する",
     "reaction-lowercase-plural": "リアクションする",
     "read-type": "{{type}}を読む",
+    "rearrange-nodes": "ノードを再配置",
     "reason": "Reason",
     "receiver-plural": "レシーバー",
     "recent-announcement-plural": "Recent Announcements",
@@ -1441,7 +1443,9 @@
     "yes": "はい",
     "yes-comma-confirm": "Yes, confirm",
     "yesterday": "Yesterday",
-    "your-entity": "あなたの{{entity}}"
+    "your-entity": "あなたの{{entity}}",
+    "zoom-in": "拡大",
+    "zoom-out": "縮小"
   },
   "message": {
     "access-block-time-message": "Access will be blocked for milliseconds after max failed login attempts performed.",

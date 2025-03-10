@@ -500,6 +500,7 @@
     "execution-plural": "Execuções",
     "execution-time": "execution-time",
     "exit-fit-to-screen": "Sair do ajuste à tela",
+    "exit-full-screen": "Sair do Ecrã Inteiro",
     "exit-version-history": "Exit Version History",
     "expand": "Expand",
     "expand-all": "Expandir Tudo",
@@ -1005,6 +1006,7 @@
     "re-verify": "Verificar novamente",
     "reaction-lowercase-plural": "reações",
     "read-type": "Leia {{type}}",
+    "rearrange-nodes": "Reorganizar Nós",
     "reason": "Razão",
     "receiver-plural": "Receptores",
     "recent-announcement-plural": "Anúncios Recentes",
@@ -1441,7 +1443,9 @@
     "yes": "Sim",
     "yes-comma-confirm": "Sim, confirmar",
     "yesterday": "Ontem",
-    "your-entity": "Sua {{entity}}"
+    "your-entity": "Sua {{entity}}",
+    "zoom-in": "Aumentar",
+    "zoom-out": "Diminuir"
   },
   "message": {
     "access-block-time-message": "O acesso será bloqueado por milissegundos após o máximo de tentativas de login falhas serem realizadas.",
