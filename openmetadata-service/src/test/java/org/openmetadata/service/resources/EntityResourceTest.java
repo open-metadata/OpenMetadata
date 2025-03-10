@@ -2221,7 +2221,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
   @Test
   @Execution(ExecutionMode.CONCURRENT)
-  void delete_async_with_recursive_hardDelete(TestInfo test) throws Exception {
+  public void delete_async_with_recursive_hardDelete(TestInfo test) throws Exception {
     K request = createRequest(getEntityName(test), "", "", null);
     T entity = createEntity(request, ADMIN_AUTH_HEADERS);
 
