@@ -27,6 +27,7 @@ import {
 import { exportDatabaseServiceDetailsInCSV } from '../../rest/serviceAPI';
 import { exportTableDetailsInCSV } from '../../rest/tableAPI';
 import { getBulkEntityEditBreadcrumbList } from '../../utils/EntityBulkEdit/EntityBulkEditUtils';
+import Banner from '../common/Banner/Banner';
 import { ImportStatus } from '../common/EntityImport/ImportStatus/ImportStatus.component';
 import Loader from '../common/Loader/Loader';
 import TitleBreadcrumb from '../common/TitleBreadcrumb/TitleBreadcrumb.component';
@@ -49,6 +50,7 @@ const BulkEditEntity = ({
   isValidating,
   validationData,
   validateCSVData,
+  activeAsyncImportJob,
   onCSVReadComplete,
 }: BulkEditEntityProps) => {
   const { t } = useTranslation();
@@ -116,6 +118,20 @@ const BulkEditEntity = ({
           steps={ENTITY_BULK_EDIT_STEPS}
         />
       </Col>
+
+      <Col span={24}>
+        {activeAsyncImportJob?.jobId && (
+          <Banner
+            className="border-radius"
+            isLoading={!activeAsyncImportJob.error}
+            message={
+              activeAsyncImportJob.error ?? activeAsyncImportJob.message ?? ''
+            }
+            type={activeAsyncImportJob.error ? 'error' : 'success'}
+          />
+        )}
+      </Col>
+
       {isEmpty(csvExportData) ? (
         <Loader />
       ) : (

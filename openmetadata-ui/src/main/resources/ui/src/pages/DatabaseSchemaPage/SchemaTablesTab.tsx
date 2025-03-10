@@ -242,39 +242,37 @@ function SchemaTablesTab({
 
   return (
     <Row gutter={[16, 16]}>
-      {!isVersionView && (
-        <Col span={24}>
-          <Row gutter={[16, 16]} justify="end">
-            <Col>
-              <Button
-                className="text-primary p-0"
-                data-testid="bulk-edit-table"
-                icon={<Icon component={IconEdit} />}
-                type="text"
-                onClick={handleEditTable}>
-                {t('label.edit')}
-              </Button>
-            </Col>
-            <Col>
-              <Switch
-                checked={tableFilters.showDeletedTables}
-                data-testid="show-deleted"
-                onClick={handleShowDeletedTables}
-              />
-              <Typography.Text className="m-l-xs">
-                {t('label.deleted')}
-              </Typography.Text>{' '}
-            </Col>
-          </Row>
-        </Col>
-      )}
-
       <Col span={24}>
         <TableAntd
           bordered
           columns={tableColumn}
           data-testid="databaseSchema-tables"
           dataSource={tableData}
+          extraTableFilters={
+            !isVersionView && (
+              <>
+                <span>
+                  <Switch
+                    checked={tableFilters.showDeletedTables}
+                    data-testid="show-deleted"
+                    onClick={handleShowDeletedTables}
+                  />
+                  <Typography.Text className="m-l-xs">
+                    {t('label.deleted')}
+                  </Typography.Text>
+                </span>
+
+                <Button
+                  className="text-primary p-0"
+                  data-testid="bulk-edit-table"
+                  icon={<Icon component={IconEdit} />}
+                  type="text"
+                  onClick={handleEditTable}>
+                  {t('label.edit')}
+                </Button>
+              </>
+            )
+          }
           loading={tableDataLoading}
           locale={{
             emptyText: (

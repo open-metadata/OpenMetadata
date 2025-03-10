@@ -465,6 +465,7 @@ const BulkEntityImportPage = () => {
       <Row className="p-x-lg" gutter={[16, 16]}>
         {isBulkEdit ? (
           <BulkEditEntity
+            activeAsyncImportJob={activeAsyncImportJob}
             activeStep={activeStep}
             columns={columns}
             dataSource={dataSource}

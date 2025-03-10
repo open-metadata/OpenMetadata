@@ -16,11 +16,13 @@ import {
 } from '@inovua/reactdatagrid-community/types';
 import { VALIDATION_STEP } from '../../constants/BulkImport.constant';
 import { CSVImportResult } from '../../generated/type/csvImportResult';
+import { CSVImportJobType } from '../BulkImport/BulkEntityImport.interface';
 
 export interface BulkEditEntityProps {
   dataSource: Record<string, string>[];
   columns: TypeColumn[];
   activeStep: VALIDATION_STEP;
+  activeAsyncImportJob?: CSVImportJobType;
   isValidating: boolean;
   validationData?: CSVImportResult;
   validateCSVData?: {
