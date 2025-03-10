@@ -471,6 +471,7 @@ export const DataAssetsHeader = ({
 
                   <Tooltip title={t('label.version-plural-history')}>
                     <Button
+                      className="version-button"
                       data-testid="version-button"
                       icon={<Icon component={VersionIcon} />}
                       onClick={onVersionClick}>
@@ -539,9 +540,7 @@ export const DataAssetsHeader = ({
                 {tier ? (
                   <div className="d-flex flex-col gap-2">
                     <div className="d-flex items-center gap-1">
-                      <span className="entity-no-tier " data-testid="Tier">
-                        {t('label.tier')}
-                      </span>
+                      <span className="entity-no-tier ">{t('label.tier')}</span>
 
                       {editTierPermission && (
                         <Tooltip

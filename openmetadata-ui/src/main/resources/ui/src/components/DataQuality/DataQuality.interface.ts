@@ -78,6 +78,7 @@ export interface TestCaseStatusAreaChartWidgetProps {
 }
 
 export interface PieChartWidgetCommonProps {
+  className?: string;
   chartFilter?: DataQualityDashboardChartFilters;
 }
 

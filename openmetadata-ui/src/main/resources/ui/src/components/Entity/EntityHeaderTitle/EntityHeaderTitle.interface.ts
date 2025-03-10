@@ -33,4 +33,6 @@ export interface EntityHeaderTitleProps {
   handleFollowingClick?: () => void;
   followers?: number;
   entityType?: any;
+  nameClassName?: string;
+  displayNameClassName?: string;
 }

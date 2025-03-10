@@ -116,12 +116,13 @@ export const OwnerLabel = ({
                   owner.type === OwnerType.TEAM ? (
                     <Icon
                       component={IconTeamsGrey}
-                      data-testid="team-owner-icon"
+                      data-testid={`team-owner-icon ${getEntityName(owner)}`}
                       style={{ fontSize: '32px' }}
                     />
                   ) : (
                     <div
                       className="owner-avatar-icon"
+                      data-testid={getEntityName(owner)}
                       key={owner.id}
                       style={{ flexBasis: '32px' }}>
                       <ProfilePicture

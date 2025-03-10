@@ -99,9 +99,11 @@ export const addOwner = async ({
     await patchRequest;
   }
 
-  await expect(page.getByTestId(dataTestId ?? 'owner-link')).toContainText(
-    owner
-  );
+  await expect(
+    page
+      .getByTestId(dataTestId ?? 'owner-link')
+      .getByTestId(`team-owner-icon ${owner}`)
+  ).toBeVisible();
 };
 
 export const updateOwner = async ({
@@ -141,9 +143,11 @@ export const updateOwner = async ({
     await patchRequest;
   }
 
-  await expect(page.getByTestId(dataTestId ?? 'owner-link')).toContainText(
-    owner
-  );
+  await expect(
+    page
+      .getByTestId(dataTestId ?? 'owner-link')
+      .getByTestId(`team-owner-icon ${owner}`)
+  ).toBeVisible();
 };
 
 export const removeOwnersFromList = async ({
@@ -174,8 +178,8 @@ export const removeOwnersFromList = async ({
 
   for (const ownerName of ownerNames) {
     await expect(
-      page.getByTestId(dataTestId ?? 'owner-link')
-    ).not.toContainText(ownerName);
+      page.getByTestId(dataTestId ?? 'owner-link').getByTestId(ownerName)
+    ).not.toBeVisible();
   }
 };
 
@@ -208,9 +212,9 @@ export const removeOwner = async ({
 
   await patchRequest;
 
-  await expect(page.getByTestId(dataTestId ?? 'owner-link')).not.toContainText(
-    ownerName
-  );
+  await expect(
+    page.getByTestId(dataTestId ?? 'owner-link').getByTestId(ownerName)
+  ).not.toBeVisible();
 };
 
 export const addMultiOwner = async (data: {
@@ -293,9 +297,9 @@ export const addMultiOwner = async (data: {
   }
 
   for (const name of owners) {
-    await expect(page.locator(`[data-testid="${resultTestId}"]`)).toContainText(
-      name
-    );
+    await expect(
+      page.locator(`[data-testid="${resultTestId}"]`).getByTestId(name)
+    ).toBeVisible();
   }
 };
 
@@ -736,7 +740,9 @@ export const followEntity = async (
   await page.getByTestId('entity-follow-button').click();
   await followResponse;
 
-  await expect(page.getByTestId('entity-follow-button')).toContainText('1');
+  await expect(page.getByTestId('entity-follow-button')).toContainText(
+    'Following'
+  );
 };
 
 export const unFollowEntity = async (
@@ -749,7 +755,9 @@ export const unFollowEntity = async (
   await page.getByTestId('entity-follow-button').click();
   await unFollowResponse;
 
-  await expect(page.getByTestId('entity-follow-button')).toContainText('0');
+  await expect(page.getByTestId('entity-follow-button')).toContainText(
+    'Follow'
+  );
 };
 
 export const validateFollowedEntityToWidget = async (
@@ -1098,9 +1106,6 @@ export const deletedEntityCommonChecks = async ({
   deleted?: boolean;
 }) => {
   const isTableEntity = endPoint === EntityTypeEndpoint.Table;
-
-  // Go to first tab before starts validating
-  await page.click('.ant-tabs-tab:nth-child(1)');
 
   // Check if all the edit actions are available for the entity
   await checkForEditActions({

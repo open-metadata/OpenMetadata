@@ -12,6 +12,7 @@
  */
 import Icon, { ExclamationCircleFilled } from '@ant-design/icons';
 import { Badge, Button, Col, Divider, Row, Tooltip, Typography } from 'antd';
+import classNames from 'classnames';
 import { capitalize, isEmpty } from 'lodash';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -46,6 +47,8 @@ const EntityHeaderTitle = ({
   isFollowingLoading,
   handleFollowingClick,
   entityType,
+  nameClassName = '',
+  displayNameClassName = '',
 }: EntityHeaderTitleProps) => {
   const { t } = useTranslation();
   const location = useCustomLocation();
@@ -78,7 +81,11 @@ const EntityHeaderTitle = ({
         {/* If we do not have displayName name only be shown in the bold from the below code */}
         {!isEmpty(displayName) && showName ? (
           <Typography.Text
-            className="m-b-0 d-block display-sm font-semibold heading"
+            className={classNames(
+              'entity-header-name',
+              nameClassName,
+              'm-b-0 d-block display-sm font-semibold heading'
+            )}
             data-testid="entity-header-name">
             {stringToHTML(name)}
           </Typography.Text>
@@ -86,7 +93,11 @@ const EntityHeaderTitle = ({
 
         <div className="d-flex gap-3 items-center">
           <Typography.Text
-            className="m-b-0 subheading text-md font-medium"
+            className={classNames(
+              'entity-header-display-name',
+              displayNameClassName,
+              'm-b-0 subheading text-md font-medium'
+            )}
             data-testid="entity-header-display-name"
             ellipsis={{ tooltip: true }}
             style={{ color: color ?? TEXT_COLOR }}>
