@@ -48,7 +48,7 @@ const Chip = ({
           item.fullyQualifiedName ?? ''
         )}>
         {icon}
-        <Typography.Text className="text-left">
+        <Typography.Text className="text-left chip-tag-link">
           {getEntityName(item)}
         </Typography.Text>
       </Link>
@@ -61,7 +61,7 @@ const Chip = ({
 
   if (isEmpty(data) && showNoDataPlaceholder) {
     return (
-      <Typography.Paragraph className="text-grey-muted m-b-0">
+      <Typography.Paragraph className="text-grey-muted m-t-xs text-sm">
         {noDataPlaceholder ?? NO_DATA_PLACEHOLDER}
       </Typography.Paragraph>
     );
@@ -70,9 +70,9 @@ const Chip = ({
   return (
     <Row
       wrap
-      className="align-middle"
+      className="align-middle d-flex flex-col flex-start justify-center"
       data-testid="chip-container"
-      gutter={[20, 6]}>
+      gutter={[20, 0]}>
       {data.slice(0, USER_DATA_SIZE).map(getChipElement)}
       {hasMoreElement && (
         <Popover
@@ -84,7 +84,7 @@ const Chip = ({
           }
           overlayClassName="w-56"
           trigger="click">
-          <Tag className="m-l-xss" data-testid="plus-more-count">{`+${
+          <Tag className="m-l-xss chip-text" data-testid="plus-more-count">{`+${
             listLength - USER_DATA_SIZE
           } more`}</Tag>
         </Popover>

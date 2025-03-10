@@ -122,7 +122,7 @@
     "indexName": "domain_search_index",
     "indexMappingFile": "/elasticsearch/%s/domain_index_mapping.json",
     "alias": "domain",
-    "parentAliases": [],
+    "parentAliases": ["all"],
     "childAliases": ["dataProduct"]
   },
   "metric": {
@@ -297,6 +297,13 @@
     "indexName": "ingestion_pipeline_search_index",
     "indexMappingFile": "/elasticsearch/%s/ingestion_pipeline_index_mapping.json",
     "alias": "ingestionPipeline",
+    "parentAliases": [],
+    "childAliases": []
+  },
+  "queryCostRecord": {
+    "indexName": "query_cost_record_search_index",
+    "indexMappingFile": "/elasticsearch/%s/query_cost_record_index_mapping.json",
+    "alias": "queryCostRecord",
     "parentAliases": [],
     "childAliases": []
   }

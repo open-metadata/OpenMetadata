@@ -123,6 +123,10 @@
       "description": "Change that lead to this version of the entity.",
       "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
     },
+    "incrementalChangeDescription": {
+      "description": "Change that lead to this version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
     "databaseSchema": {
       "description": "Reference to Database Schema that contains this stored procedure.",
       "$ref": "../../type/entityReference.json"
