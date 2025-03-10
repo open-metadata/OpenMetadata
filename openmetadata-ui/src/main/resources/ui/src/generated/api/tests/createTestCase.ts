@@ -26,7 +26,7 @@ export interface CreateTestCase {
      * Display Name that identifies this test.
      */
     displayName?: string;
-    entityLink:   string;
+    entityLink?:  string;
     /**
      * Name that identifies this test case.
      */
