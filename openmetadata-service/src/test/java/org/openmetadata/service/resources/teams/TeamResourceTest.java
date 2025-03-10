@@ -506,11 +506,7 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
         invalidParentCount(1, DIVISION));
 
     // Department can have more than one parent
-    createWithParents(
-        "dep",
-        DEPARTMENT,
-        div12.getEntityReference(),
-        div21.getEntityReference());
+    createWithParents("dep", DEPARTMENT, div12.getEntityReference(), div21.getEntityReference());
 
     ORG_TEAM = getEntity(ORG_TEAM.getId(), "children,childrenCount", ADMIN_AUTH_HEADERS);
     assertEquals(5, ORG_TEAM.getChildrenCount());
