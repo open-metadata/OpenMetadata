@@ -14,12 +14,14 @@
 import { Form, Modal, Typography } from 'antd';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { EntityAttachmentProvider } from '../../components/common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import { VALIDATION_MESSAGES } from '../../constants/constants';
 import {
   HEX_COLOR_CODE_REGEX,
   TAG_NAME_REGEX,
 } from '../../constants/regex.constants';
 import { DEFAULT_FORM_VALUE } from '../../constants/Tags.constant';
+import { EntityType } from '../../enums/entity.enum';
 import {
   FieldProp,
   FieldTypes,
@@ -254,15 +256,21 @@ const TagsForm = ({
         form.setFieldsValue(DEFAULT_FORM_VALUE);
         onCancel();
       }}>
-      <Form
-        form={form}
-        initialValues={initialValues ?? DEFAULT_FORM_VALUE}
-        layout="vertical"
-        name="tags"
-        validateMessages={VALIDATION_MESSAGES}
-        onFinish={handleSave}>
-        {generateFormFields(formFields)}
-      </Form>
+      <EntityAttachmentProvider
+        entityFqn={initialValues?.fullyQualifiedName}
+        entityType={
+          isClassification ? EntityType.CLASSIFICATION : EntityType.TAG
+        }>
+        <Form
+          form={form}
+          initialValues={initialValues ?? DEFAULT_FORM_VALUE}
+          layout="vertical"
+          name="tags"
+          validateMessages={VALIDATION_MESSAGES}
+          onFinish={handleSave}>
+          {generateFormFields(formFields)}
+        </Form>
+      </EntityAttachmentProvider>
     </Modal>
   );
 };

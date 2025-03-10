@@ -215,3 +215,13 @@ fernetConfiguration:
 
 dataQualityConfiguration:
   severityIncidentClassifier: "org.openmetadata.service.util.incidentSeverityClassifier.LogisticRegressionIncidentSeverityClassifier"
+
+objectStorage:
+  enabled: true
+  provider: s3
+  s3:
+    bucketName: "openmetadata"
+    region: "us-west-2"
+    accessKey: "accessKey"
+    useIamRole: true
+    secretKey: "secretKey"
