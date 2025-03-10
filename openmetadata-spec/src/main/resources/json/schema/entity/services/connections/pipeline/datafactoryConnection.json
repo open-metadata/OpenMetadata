@@ -45,6 +45,11 @@
         "title": "Azure Data Factory Configuration",
         "description": "Available sources to fetch metadata.",
         "$ref": "../../../../security/credentials/azureCredentials.json"
+      },
+      "pipelineFilterPattern": {
+        "description": "Regex exclude pipelines.",
+        "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern",
+        "title": "Default Pipeline Filter Pattern"
       }
     },
     "additionalProperties": false,

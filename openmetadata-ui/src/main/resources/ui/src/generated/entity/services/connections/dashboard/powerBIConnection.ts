@@ -19,6 +19,10 @@ export interface PowerBIConnection {
      */
     authorityURI?: string;
     /**
+     * Regex exclude or include charts that matches the pattern.
+     */
+    chartFilterPattern?: FilterPattern;
+    /**
      * client_id for PowerBI.
      */
     clientId: string;
@@ -26,6 +30,14 @@ export interface PowerBIConnection {
      * clientSecret for PowerBI.
      */
     clientSecret: string;
+    /**
+     * Regex to exclude or include dashboards that matches the pattern.
+     */
+    dashboardFilterPattern?: FilterPattern;
+    /**
+     * Regex exclude or include data models that matches the pattern.
+     */
+    dataModelFilterPattern?: FilterPattern;
     /**
      * Dashboard URL for PowerBI service.
      */
@@ -38,6 +50,10 @@ export interface PowerBIConnection {
      * Source to get the .pbit files to extract lineage information
      */
     pbitFilesSource?: PowerBIPbitFilesSource;
+    /**
+     * Regex to exclude or include projects that matches the pattern.
+     */
+    projectFilterPattern?: FilterPattern;
     /**
      * PowerBI secrets.
      */
@@ -55,6 +71,28 @@ export interface PowerBIConnection {
      * Fetch the PowerBI metadata using admin APIs
      */
     useAdminApis?: boolean;
+}
+
+/**
+ * Regex exclude or include charts that matches the pattern.
+ *
+ * Regex to only fetch entities that matches the pattern.
+ *
+ * Regex to exclude or include dashboards that matches the pattern.
+ *
+ * Regex exclude or include data models that matches the pattern.
+ *
+ * Regex to exclude or include projects that matches the pattern.
+ */
+export interface FilterPattern {
+    /**
+     * List of strings/regex patterns to match and exclude only database entities that match.
+     */
+    excludes?: string[];
+    /**
+     * List of strings/regex patterns to match and include only database entities that match.
+     */
+    includes?: string[];
 }
 
 /**

@@ -15,7 +15,7 @@
  */
 export interface DatabaseServiceMetadataPipeline {
     /**
-     * Regex to only fetch databases that matches the pattern.
+     * Regex to only include/exclude databases that matches the pattern.
      */
     databaseFilterPattern?: FilterPattern;
     /**
@@ -83,11 +83,11 @@ export interface DatabaseServiceMetadataPipeline {
      */
     queryParsingTimeoutLimit?: number;
     /**
-     * Regex to only fetch tables or databases that matches the pattern.
+     * Regex to only include/exclude schemas that matches the pattern.
      */
     schemaFilterPattern?: FilterPattern;
     /**
-     * Regex exclude tables or databases that matches the pattern.
+     * Regex to only include/exclude tables that matches the pattern.
      */
     tableFilterPattern?: FilterPattern;
     /**
@@ -106,13 +106,13 @@ export interface DatabaseServiceMetadataPipeline {
 }
 
 /**
- * Regex to only fetch databases that matches the pattern.
+ * Regex to only include/exclude databases that matches the pattern.
  *
- * Regex to only fetch dashboards or charts that matches the pattern.
+ * Regex to only fetch entities that matches the pattern.
  *
- * Regex to only fetch tables or databases that matches the pattern.
+ * Regex to only include/exclude schemas that matches the pattern.
  *
- * Regex exclude tables or databases that matches the pattern.
+ * Regex to only include/exclude tables that matches the pattern.
  */
 export interface FilterPattern {
     /**

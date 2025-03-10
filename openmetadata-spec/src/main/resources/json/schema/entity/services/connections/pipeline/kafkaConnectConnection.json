@@ -61,6 +61,11 @@
         "title": "Kafka Service Name",
         "description": "Name of the Kafka Messaging Service associated with this KafkaConnect Pipeline Service. e.g. local_kafka",
         "type": "string"
+      },
+      "pipelineFilterPattern": {
+        "description": "Regex exclude pipelines.",
+        "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern",
+        "title": "Default Pipeline Filter Pattern"
       }
     },
     "additionalProperties": false,

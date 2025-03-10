@@ -121,17 +121,17 @@
       "title": "Use FQN For Filtering"
     },
     "schemaFilterPattern": {
-      "description": "Regex to only fetch tables or databases that matches the pattern.",
+      "description": "Regex to only include/exclude schemas that matches the pattern.",
       "$ref": "../type/filterPattern.json#/definitions/filterPattern",
       "title": "Schema Filter Pattern"
     },
     "tableFilterPattern": {
-      "description": "Regex exclude tables or databases that matches the pattern.",
+      "description": "Regex to only include/exclude tables that matches the pattern.",
       "$ref": "../type/filterPattern.json#/definitions/filterPattern",
       "title": "Table Filter Pattern"
     },
     "databaseFilterPattern": {
-      "description": "Regex to only fetch databases that matches the pattern.",
+      "description": "Regex to only include/exclude databases that matches the pattern.",
       "$ref": "../type/filterPattern.json#/definitions/filterPattern",
       "title": "Database Filter Pattern"
     },

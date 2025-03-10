@@ -32,6 +32,7 @@ import { IngestionWorkflowData } from '../../../../interface/service.interface';
 import { getSuccessMessage } from '../../../../utils/IngestionUtils';
 import { cleanWorkFlowData } from '../../../../utils/IngestionWorkflowUtils';
 import { getScheduleOptionsFromSchedules } from '../../../../utils/SchedularUtils';
+import { getFilteredSchema } from '../../../../utils/ServiceConnectionUtils';
 import { getIngestionName } from '../../../../utils/ServiceUtils';
 import { generateUUID } from '../../../../utils/StringsUtils';
 import SuccessScreen from '../../../common/SuccessScreen/SuccessScreen';
@@ -84,10 +85,16 @@ const AddIngestion = ({
     ? getScheduleOptionsFromSchedules(pipelineSchedules)
     : undefined;
 
+  const filterProperties = useMemo(
+    () => getFilteredSchema(serviceData?.connection?.config, false),
+    [serviceData?.connection?.config]
+  );
+
   // lazy initialization to initialize the data only once
   const [workflowData, setWorkflowData] = useState<IngestionWorkflowData>(
     () => ({
       ...(data?.sourceConfig.config ?? {}),
+      ...filterProperties,
       name: data?.name ?? generateUUID(),
       displayName:
         data?.displayName ?? getIngestionName(serviceData.name, pipelineType),

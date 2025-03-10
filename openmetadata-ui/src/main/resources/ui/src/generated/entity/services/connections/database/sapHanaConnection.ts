@@ -17,10 +17,18 @@ export interface SapHanaConnection {
     /**
      * Choose between Database connection or HDB User Store connection.
      */
-    connection:               SAPHanaConnection;
-    connectionArguments?:     { [key: string]: any };
-    connectionOptions?:       { [key: string]: string };
+    connection:           SAPHanaConnection;
+    connectionArguments?: { [key: string]: any };
+    connectionOptions?:   { [key: string]: string };
+    /**
+     * Regex to only include/exclude databases that matches the pattern.
+     */
+    databaseFilterPattern?:   FilterPattern;
     sampleDataStorageConfig?: SampleDataStorageConfig;
+    /**
+     * Regex to only include/exclude schemas that matches the pattern.
+     */
+    schemaFilterPattern?: FilterPattern;
     /**
      * SQLAlchemy driver scheme options.
      */
@@ -31,6 +39,10 @@ export interface SapHanaConnection {
     supportsMetadataExtraction?: boolean;
     supportsProfiler?:           boolean;
     supportsQueryComment?:       boolean;
+    /**
+     * Regex to only include/exclude tables that matches the pattern.
+     */
+    tableFilterPattern?: FilterPattern;
     /**
      * Service Type
      */
@@ -72,6 +84,26 @@ export interface SAPHanaConnection {
      * <USERNAME> <PASSWORD>`
      */
     userKey?: string;
+}
+
+/**
+ * Regex to only include/exclude databases that matches the pattern.
+ *
+ * Regex to only fetch entities that matches the pattern.
+ *
+ * Regex to only include/exclude schemas that matches the pattern.
+ *
+ * Regex to only include/exclude tables that matches the pattern.
+ */
+export interface FilterPattern {
+    /**
+     * List of strings/regex patterns to match and exclude only database entities that match.
+     */
+    excludes?: string[];
+    /**
+     * List of strings/regex patterns to match and include only database entities that match.
+     */
+    includes?: string[];
 }
 
 /**

@@ -60,6 +60,11 @@
         "description": "Generated Token to connect to DBTCloud.",
         "type": "string",
         "format": "password"
+      },
+      "pipelineFilterPattern": {
+        "description": "Regex exclude pipelines.",
+        "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern",
+        "title": "Default Pipeline Filter Pattern"
       }
     },
     "additionalProperties": false,
