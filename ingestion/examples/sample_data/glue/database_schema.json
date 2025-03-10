@@ -5,6 +5,7 @@
     "service": {
       "id": "b946d870-03b2-4d33-a075-13665a7a76b9",
       "type": "Glue"
-    }
+    },
+    "sourceUrl": "https://www.glue.com/information_schema"
   }
   

@@ -19,7 +19,8 @@
           "description": "Quantity of SKU",
           "ordinalPosition": 2
         }
-      ]
+      ],
+      "sourceUrl": "https://www.glue.com/sales"
     },
     {
       "name": "marketing",
@@ -43,7 +44,8 @@
       ],
       "Parameters": {
         "table_type": "ICEBERG"
-      }
+      },
+      "sourceUrl": "https://www.glue.com/marketing"
     }
   ]
 }
