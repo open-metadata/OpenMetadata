@@ -12,7 +12,7 @@
  */
 import { expect, test } from '@playwright/test';
 import { GlobalSettingOptions } from '../../constant/settings';
-import { redirectToHomePage } from '../../utils/common';
+import { redirectToHomePage, toastNotification } from '../../utils/common';
 import {
   mockEntitySearchSettings,
   setSliderValue,
@@ -21,122 +21,113 @@ import { settingClick } from '../../utils/sidebar';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
-test.beforeEach(async ({ page }) => {
-  await redirectToHomePage(page);
-});
+test.describe('Search Settings Tests', () => {
+  test.beforeEach(async ({ page }) => {
+    await redirectToHomePage(page);
+  });
 
-test('Update global search settings', async ({ page }) => {
-  test.slow(true);
+  test('Update global search settings', async ({ page }) => {
+    test.slow(true);
 
-  await settingClick(page, GlobalSettingOptions.SEARCH_SETTINGS);
+    await settingClick(page, GlobalSettingOptions.SEARCH_SETTINGS);
 
-  const enableRolesPolicesInSearchSwitch = page.getByTestId(
-    'enable-roles-polices-in-search-switch'
-  );
-  const initialCheckedState =
-    await enableRolesPolicesInSearchSwitch.isChecked();
-  await enableRolesPolicesInSearchSwitch.click();
+    const enableRolesPolicesInSearchSwitch = page.getByTestId(
+      'enable-roles-polices-in-search-switch'
+    );
+    const enableNaturalLanguageSearchSwitch = page.getByTestId(
+      'use-natural-language-search-switch'
+    );
 
-  await expect(enableRolesPolicesInSearchSwitch).toHaveAttribute(
-    'aria-checked',
-    (!initialCheckedState).toString()
-  );
+    await enableRolesPolicesInSearchSwitch.click();
+    await toastNotification(page, /Search Settings updated successfully/);
 
-  await expect(
-    page.getByText('Search Settings updated successfully')
-  ).toBeVisible();
+    await enableNaturalLanguageSearchSwitch.click();
+    await toastNotification(page, /Search Settings updated successfully/);
 
-  const globalSettingEditIcon = page.getByTestId(
-    'global-setting-edit-icon-Max Aggregate Size'
-  );
-  await globalSettingEditIcon.click();
+    const globalSettingEditIcon = page.getByTestId(
+      'global-setting-edit-icon-Max Aggregate Size'
+    );
+    await globalSettingEditIcon.click();
 
-  await page.getByTestId('value-input').fill('15000');
+    await page.getByTestId('value-input').fill('15000');
 
-  await page.getByTestId('inline-save-btn').click();
+    await page.getByTestId('inline-save-btn').click();
+    await toastNotification(page, /Search Settings updated successfully/);
 
-  await expect(
-    page.getByTestId(`global-setting-value-Max Aggregate Size`)
-  ).toHaveText('15000');
-});
+    await expect(
+      page.getByTestId(`global-setting-value-Max Aggregate Size`)
+    ).toHaveText('15000');
+  });
 
-test('Update entity search settings', async ({ page }) => {
-  await settingClick(page, GlobalSettingOptions.SEARCH_SETTINGS);
+  test('Update entity search settings', async ({ page }) => {
+    await settingClick(page, GlobalSettingOptions.SEARCH_SETTINGS);
 
-  await page.waitForSelector('[data-testid^="search-settings-card-"]');
-  const tableCard = page.getByTestId(
-    `search-settings-card-${mockEntitySearchSettings.key}`
-  );
+    const tableCard = page.getByTestId(mockEntitySearchSettings.key);
 
-  await tableCard.getByTestId('view-detail-button').click();
+    await tableCard.getByTestId('view-detail-button').click();
 
-  await expect(page).toHaveURL(new RegExp(mockEntitySearchSettings.url + '$'));
+    await expect(page).toHaveURL(
+      new RegExp(mockEntitySearchSettings.url + '$')
+    );
 
-  await expect(page.getByTestId('entity-search-settings-header')).toBeVisible();
+    await expect(
+      page.getByTestId('entity-search-settings-header')
+    ).toBeVisible();
 
-  const fieldContainers = page.getByTestId('field-container-header');
-  const firstFieldContainer = fieldContainers.first();
-  await firstFieldContainer.click();
+    const fieldContainers = page.getByTestId('field-container-header');
+    const firstFieldContainer = fieldContainers.first();
+    await firstFieldContainer.click();
 
-  // Highlight Field
-  const highlightFieldToggle = page.getByTestId('highlight-field-switch');
-  const initialCheckedState = await highlightFieldToggle.isChecked();
-  await highlightFieldToggle.click();
+    // Highlight Field
+    const highlightFieldToggle = page.getByTestId('highlight-field-switch');
+    await highlightFieldToggle.click();
 
-  await expect(highlightFieldToggle).toHaveAttribute(
-    'aria-checked',
-    (!initialCheckedState).toString()
-  );
+    // Field Weight
+    await setSliderValue(page, 'field-weight-slider', 8);
 
-  // Same for radio button
-  const mustNotMatchRadio = page.getByTestId('must-not-match-radio');
-  await mustNotMatchRadio.click();
+    // Add Boost
+    const addBoostButton = page.getByTestId('add-boost');
+    await addBoostButton.click();
 
-  // Field Weight
-  await setSliderValue(page, 'field-weight-slider', 8);
+    const fieldValueBoostSelect = page.getByTestId('value-boost-option');
 
-  // Add Boost
-  const addBoostButton = page.getByTestId('add-boost');
-  await addBoostButton.click();
+    await expect(fieldValueBoostSelect).toBeVisible();
 
-  const fieldValueBoostSelect = page.getByTestId('value-boost-option');
+    await fieldValueBoostSelect.click();
 
-  await expect(fieldValueBoostSelect).toBeVisible();
+    await expect(page.getByTestId('add-boost-component')).toBeInViewport();
 
-  await fieldValueBoostSelect.click();
+    await setSliderValue(page, 'field-boost-slider', 4);
 
-  await setSliderValue(page, 'field-boost-slider', 4);
+    const modifierSelect = page.getByTestId('modifier-select');
+    await modifierSelect.click();
 
-  // Switch to Boost tab
-  const boostTab = page.getByRole('tab', { name: 'Boosts' });
-  await boostTab.click();
+    await page.getByText('sqrt').click();
 
-  await expect(page.getByTestId('boost-configurations')).toBeVisible();
+    await page.getByTestId('missing-value-input').fill('1');
+    await page.getByTestId('gte-input').fill('2');
+    await page.getByTestId('lte-input').fill('3');
 
-  // Score Mode
-  const scoreModeSelect = page.getByTestId('score-mode-select');
-  const currentScoreMode = await scoreModeSelect.textContent();
-  const newScoreMode = currentScoreMode === 'max' ? 'sum' : 'max';
+    // Score Mode
+    const scoreModeSelect = page.getByTestId('score-mode-select');
+    await scoreModeSelect.click();
+    await page.getByTitle('max').click();
 
-  await scoreModeSelect.click();
-  await page.getByTitle(newScoreMode).click();
+    // Boost Mode
+    const boostModeSelect = page.getByTestId('boost-mode-select');
+    await boostModeSelect.click();
+    await page.getByTitle('replace').click();
 
-  // Boost Mode
-  const boostModeSelect = page.getByTestId('boost-mode-select');
-  const currentBoostMode = await boostModeSelect.textContent();
-  const newBoostMode = currentBoostMode === 'multiply' ? 'replace' : 'multiply';
+    // Save
+    await page.getByTestId('save-btn').click();
 
-  await boostModeSelect.click();
-  await page.getByTitle(newBoostMode).click();
+    await toastNotification(page, /Search Settings updated successfully/);
 
-  // Save
-  await page.getByTestId('save-btn').click();
+    await expect(scoreModeSelect).toHaveText('max');
+    await expect(boostModeSelect).toHaveText('replace');
 
-  await expect(
-    page.getByText('Search Settings updated successfully')
-  ).toBeVisible();
-  await expect(highlightFieldToggle).toHaveAttribute('aria-checked', 'true');
-  await expect(mustNotMatchRadio).toBeChecked();
-  await expect(scoreModeSelect).toHaveText(newScoreMode);
-  await expect(boostModeSelect).toHaveText(newBoostMode);
+    // Restore Defaults
+    await page.getByTestId('restore-defaults-btn').click();
+    await toastNotification(page, /Search Settings updated successfully/);
+  });
 });

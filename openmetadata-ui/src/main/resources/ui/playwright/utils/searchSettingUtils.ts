@@ -15,8 +15,8 @@ import { Page } from '@playwright/test';
 export const mockScoreMode = 'first';
 export const mockBoostMode = 'replace';
 export const mockEntitySearchSettings = {
-  key: 'search-settings/table',
-  url: '/settings/preferences/search-settings/table',
+  key: 'search-settings.tables',
+  url: '/settings/search-settings/tables',
 };
 
 export async function setSliderValue(
