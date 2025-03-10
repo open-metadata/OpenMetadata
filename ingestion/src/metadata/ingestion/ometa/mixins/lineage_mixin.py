@@ -177,7 +177,6 @@ class OMetaLineageMixin(Generic[T]):
                 data.model_dump_json(),
                 str(err),
             )
-            raise err
 
         from_entity_lineage = self.get_lineage_by_id(
             data.edge.fromEntity.type, str(data.edge.fromEntity.id.root)
