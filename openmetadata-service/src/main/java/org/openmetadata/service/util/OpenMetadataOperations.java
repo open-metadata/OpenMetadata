@@ -1164,6 +1164,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
 
     collectionDAO = jdbi.onDemand(CollectionDAO.class);
     Entity.setSearchRepository(searchRepository);
+    Entity.setJdbi(jdbi);
     Entity.setCollectionDAO(collectionDAO);
     Entity.setSystemRepository(new SystemRepository());
     Entity.initializeRepositories(config, jdbi);
