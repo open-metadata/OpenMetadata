@@ -84,7 +84,7 @@ const BasicSignUp = () => {
             </Typography.Text>
 
             {alert && (
-              <div className="m-t-lg login-form">
+              <div className="login-alert">
                 <AlertBar
                   isUnauthenticated
                   message={alert?.message}
@@ -94,7 +94,7 @@ const BasicSignUp = () => {
             )}
 
             {isAuthProviderBasic ? (
-              <div className="m-t-lg login-form">
+              <div className="login-form">
                 <Form
                   autoComplete="off"
                   form={form}
