@@ -13,6 +13,7 @@
 import { EditorOptions } from '@tiptap/core';
 import { Editor } from '@tiptap/react';
 import { DependencyList, useEffect, useRef, useState } from 'react';
+import { extensions } from '../Extensions';
 
 function useForceUpdate() {
   const [, setValue] = useState(0);
@@ -117,7 +118,10 @@ export const useCustomEditor = (
   useEffect(() => {
     let isMounted = true;
 
-    const instance = new Editor(options);
+    const instance = new Editor({
+      ...options,
+      extensions: [...extensions],
+    });
 
     setEditor(instance);
 

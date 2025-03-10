@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,17 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { NodeViewProps } from '@tiptap/react';
 
-export type EditorContentRef = {
-  getEditorContent: () => string;
-};
-
-export interface ModalWithMarkdownEditorProps {
-  header: string;
-  value: string;
-  placeholder: string;
-  onSave?: (text: string) => Promise<void>;
-  onCancel?: () => void;
-  visible: boolean;
-  allowFileUpload?: boolean;
+export interface ImagePopoverContentProps {
+  updateAttributes: NodeViewProps['updateAttributes'];
+  deleteNode: NodeViewProps['deleteNode'];
+  isUploading: boolean;
+  isValidSource: boolean;
+  src: string;
+  onPopupVisibleChange: (value: boolean) => void;
+  onUploadingChange: (value: boolean) => void;
 }
