@@ -145,6 +145,7 @@
     "browse": "Browse",
     "browse-app-plural": "Browse Apps",
     "browse-csv-file": "Browse CSV file",
+    "bulk-edit": "Bulk Edit",
     "by-entity": "By {{entity}}",
     "by-lowercase": "by",
     "ca-certs": "CA Certs",

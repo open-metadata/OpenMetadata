@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Col, Row, Switch, Typography } from 'antd';
+import Icon from '@ant-design/icons';
+import { Button, Col, Row, Switch, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
@@ -19,6 +20,7 @@ import { isEmpty } from 'lodash';
 import QueryString from 'qs';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useHistory } from 'react-router-dom';
+import { ReactComponent as IconEdit } from '../../../../assets/svg/edit-new.svg';
 import {
   getEntityDetailsPath,
   INITIAL_PAGING_VALUE,
@@ -48,7 +50,7 @@ import {
 } from '../../../../rest/databaseAPI';
 import { searchQuery } from '../../../../rest/searchAPI';
 import {
-  getEntityName,
+  getEntityBulkEditPath,
   highlightSearchText,
 } from '../../../../utils/EntityUtils';
 import { stringToHTML } from '../../../../utils/StringsUtils';
@@ -58,6 +60,7 @@ import DisplayName from '../../../common/DisplayName/DisplayName';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import NextPrevious from '../../../common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../../common/NextPrevious/NextPrevious.interface';
+import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
 import RichTextEditorPreviewerV1 from '../../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import Searchbar from '../../../common/SearchBarComponent/SearchBar.component';
 import Table from '../../../common/Table/Table';
@@ -271,7 +274,7 @@ export const DatabaseSchemaTable = ({
         width: 120,
         render: (owners: EntityReference[]) =>
           !isEmpty(owners) && owners.length > 0 ? (
-            owners.map((owner: EntityReference) => getEntityName(owner))
+            <OwnerLabel owners={owners} />
           ) : (
             <Typography.Text data-testid="no-owner-text">
               {NO_DATA_PLACEHOLDER}
@@ -289,6 +292,12 @@ export const DatabaseSchemaTable = ({
     ],
     [handleDisplayNameUpdate, allowEditDisplayNamePermission]
   );
+
+  const handleEditTable = () => {
+    history.push({
+      pathname: getEntityBulkEditPath(EntityType.DATABASE, decodedDatabaseFQN),
+    });
+  };
 
   useEffect(() => {
     fetchDatabaseSchema();
@@ -324,6 +333,16 @@ export const DatabaseSchemaTable = ({
           data-testid="database-databaseSchemas"
           dataSource={schemas}
           defaultVisibleColumns={DEFAULT_DATABASE_SCHEMA_VISIBLE_COLUMNS}
+          extraTableFilters={
+            <Button
+              className="text-primary p-0"
+              data-testid="bulk-edit-table"
+              icon={<Icon component={IconEdit} />}
+              type="text"
+              onClick={handleEditTable}>
+              {t('label.edit')}
+            </Button>
+          }
           loading={isLoading}
           locale={{
             emptyText: <ErrorPlaceHolder className="m-y-md" />,

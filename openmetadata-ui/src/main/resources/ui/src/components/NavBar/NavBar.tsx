@@ -414,7 +414,7 @@ const NavBar = ({
       socket && socket.off(SOCKET_EVENTS.CSV_EXPORT_CHANNEL);
       socket && socket.off(SOCKET_EVENTS.BACKGROUND_JOB_CHANNEL);
     };
-  }, [socket]);
+  }, [socket, onUpdateCSVExportJob]);
 
   useEffect(() => {
     fetchOMVersion();
