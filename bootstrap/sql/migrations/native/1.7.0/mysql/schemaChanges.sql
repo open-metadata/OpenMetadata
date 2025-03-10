@@ -2,6 +2,16 @@ UPDATE workflow_definition_entity
 SET json = JSON_REMOVE(json, '$.type')
 WHERE JSON_EXTRACT(json, '$.type') IS NOT NULL;
 
+-- Add status column to WorkflowInstances and WorkflowInstanceStates
+-- entityLink is generated through variables->global_relatedEntity due to the following reasons:
+-- 1. Flowable shares state through variables that get written into the database and we are persisting those
+-- 2. We are using a namespace system to define from which "Node" the variable should be fetched
+-- 3. We are saving the entityLink that triggers the workflow on the `relatedEntity` variable, within the `global` namespace
+ALTER TABLE workflow_instance_time_series ADD COLUMN status VARCHAR(20) GENERATED ALWAYS AS (json ->> '$.status') NOT NULL;
+ALTER TABLE workflow_instance_time_series ADD COLUMN entityLink VARCHAR(255) GENERATED ALWAYS AS (json ->> '$.variables.global_relatedEntity');
+
+ALTER TABLE workflow_instance_state_time_series ADD COLUMN status VARCHAR(20) GENERATED ALWAYS AS (json ->> '$.status') NOT NULL;
+
 -- Query Cost History Time Series
 CREATE TABLE query_cost_time_series (
   id varchar(36) GENERATED ALWAYS AS (json_unquote(json_extract(json,'$.id'))) VIRTUAL NOT NULL,

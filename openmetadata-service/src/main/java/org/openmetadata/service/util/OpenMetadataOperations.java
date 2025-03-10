@@ -37,6 +37,7 @@ import java.util.Objects;
 import java.util.Scanner;
 import java.util.Set;
 import java.util.concurrent.Callable;
+import javax.json.JsonPatch;
 import javax.validation.Validator;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -48,6 +49,7 @@ import org.openmetadata.schema.ServiceEntityInterface;
 import org.openmetadata.schema.api.configuration.OpenMetadataBaseUrlConfiguration;
 import org.openmetadata.schema.email.SmtpSettings;
 import org.openmetadata.schema.entity.app.App;
+import org.openmetadata.schema.entity.app.AppConfiguration;
 import org.openmetadata.schema.entity.app.AppMarketPlaceDefinition;
 import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.schema.entity.app.AppSchedule;
@@ -503,7 +505,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
             .withDescription(definition.getDescription())
             .withDisplayName(definition.getDisplayName())
             .withAppSchedule(new AppSchedule().withScheduleTimeline(ScheduleTimeline.NONE))
-            .withAppConfiguration(Map.of());
+            .withAppConfiguration(new AppConfiguration());
 
     AppMapper appMapper = new AppMapper();
     App entity = appMapper.createToEntity(createApp, ADMIN_USER_NAME);
@@ -780,27 +782,43 @@ public class OpenMetadataOperations implements Callable<Integer> {
       int maxRequests,
       int retries) {
     AppRepository appRepository = (AppRepository) Entity.getEntityRepository(Entity.APPLICATION);
-    App app = appRepository.getByName(null, appName, appRepository.getFields("id"));
+    App originalSearchIndexApp =
+        appRepository.getByName(null, appName, appRepository.getFields("id"));
 
-    EventPublisherJob config =
-        ((EventPublisherJob) app.getAppConfiguration())
-            .withEntities(entities)
-            .withBatchSize(batchSize)
-            .withPayLoadSize(payloadSize)
-            .withRecreateIndex(recreateIndexes)
-            .withProducerThreads(producerThreads)
-            .withConsumerThreads(consumerThreads)
-            .withQueueSize(queueSize)
-            .withInitialBackoff(backOff)
-            .withMaxBackoff(maxBackOff)
-            .withMaxConcurrentRequests(maxRequests)
-            .withMaxRetries(retries);
+    EventPublisherJob storedJob =
+        JsonUtils.convertValue(
+            originalSearchIndexApp.getAppConfiguration(), EventPublisherJob.class);
+
+    EventPublisherJob updatedJob = JsonUtils.deepCopy(storedJob, EventPublisherJob.class);
+    updatedJob
+        .withEntities(entities)
+        .withBatchSize(batchSize)
+        .withPayLoadSize(payloadSize)
+        .withRecreateIndex(recreateIndexes)
+        .withProducerThreads(producerThreads)
+        .withConsumerThreads(consumerThreads)
+        .withQueueSize(queueSize)
+        .withInitialBackoff(backOff)
+        .withMaxBackoff(maxBackOff)
+        .withMaxConcurrentRequests(maxRequests)
+        .withMaxRetries(retries);
+
+    // Update the search index app with the new configurations
+    App updatedSearchIndexApp = JsonUtils.deepCopy(originalSearchIndexApp, App.class);
+    updatedSearchIndexApp.withAppConfiguration(updatedJob);
+    JsonPatch patch = JsonUtils.getJsonPatch(originalSearchIndexApp, updatedSearchIndexApp);
+
+    appRepository.patch(null, originalSearchIndexApp.getId(), "admin", patch);
 
     // Trigger Application
     long currentTime = System.currentTimeMillis();
-    AppScheduler.getInstance().triggerOnDemandApplication(app, JsonUtils.getMap(config));
+    AppScheduler.getInstance().triggerOnDemandApplication(updatedSearchIndexApp);
 
-    int result = waitAndReturnReindexingAppStatus(app, currentTime);
+    int result = waitAndReturnReindexingAppStatus(updatedSearchIndexApp, currentTime);
+
+    // Re-patch with original configuration
+    JsonPatch repatch = JsonUtils.getJsonPatch(updatedSearchIndexApp, originalSearchIndexApp);
+    appRepository.patch(null, originalSearchIndexApp.getId(), "admin", repatch);
 
     return result;
   }
@@ -865,20 +883,36 @@ public class OpenMetadataOperations implements Callable<Integer> {
   private int executeDataInsightsReindexApp(
       int batchSize, boolean recreateIndexes, BackfillConfiguration backfillConfiguration) {
     AppRepository appRepository = (AppRepository) Entity.getEntityRepository(Entity.APPLICATION);
-    App app =
+    App originalDataInsightsApp =
         appRepository.getByName(null, "DataInsightsApplication", appRepository.getFields("id"));
 
-    DataInsightsAppConfig config =
-        ((DataInsightsAppConfig) app.getAppConfiguration())
-            .withBatchSize(batchSize)
-            .withRecreateDataAssetsIndex(recreateIndexes)
-            .withBackfillConfiguration(backfillConfiguration);
+    DataInsightsAppConfig storedConfig =
+        JsonUtils.convertValue(
+            originalDataInsightsApp.getAppConfiguration(), DataInsightsAppConfig.class);
+
+    DataInsightsAppConfig updatedConfig =
+        JsonUtils.deepCopy(storedConfig, DataInsightsAppConfig.class);
+    updatedConfig
+        .withBatchSize(batchSize)
+        .withRecreateDataAssetsIndex(recreateIndexes)
+        .withBackfillConfiguration(backfillConfiguration);
+
+    // Update the data insights app with the new configurations
+    App updatedDataInsightsApp = JsonUtils.deepCopy(originalDataInsightsApp, App.class);
+    updatedDataInsightsApp.withAppConfiguration(updatedConfig);
+    JsonPatch patch = JsonUtils.getJsonPatch(originalDataInsightsApp, updatedDataInsightsApp);
+
+    appRepository.patch(null, originalDataInsightsApp.getId(), "admin", patch);
 
     // Trigger Application
     long currentTime = System.currentTimeMillis();
-    AppScheduler.getInstance().triggerOnDemandApplication(app, JsonUtils.getMap(config));
+    AppScheduler.getInstance().triggerOnDemandApplication(updatedDataInsightsApp);
 
-    int result = waitAndReturnReindexingAppStatus(app, currentTime);
+    int result = waitAndReturnReindexingAppStatus(updatedDataInsightsApp, currentTime);
+
+    // Re-patch with original configuration
+    JsonPatch repatch = JsonUtils.getJsonPatch(updatedDataInsightsApp, originalDataInsightsApp);
+    appRepository.patch(null, originalDataInsightsApp.getId(), "admin", repatch);
 
     return result;
   }
