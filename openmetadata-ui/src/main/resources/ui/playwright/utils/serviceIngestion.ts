@@ -160,14 +160,3 @@ export const checkServiceFieldSectionHighlighting = async (
 ) => {
   await page.waitForSelector(`[data-id="${field}"][data-highlighted="true"]`);
 };
-
-export const removeTheDefaultFilters = async (page: Page) => {
-  await page
-    .getByTitle('^information_schema$')
-    .locator('[data-icon="close"]')
-    .click();
-  await page
-    .getByTitle('^performance_schema$')
-    .locator('[data-icon="close"]')
-    .click();
-};

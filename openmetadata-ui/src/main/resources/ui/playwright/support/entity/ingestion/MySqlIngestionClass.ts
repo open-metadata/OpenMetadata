@@ -29,13 +29,13 @@ import { visitEntityPage } from '../../../utils/entity';
 import { visitServiceDetailsPage } from '../../../utils/service';
 import {
   checkServiceFieldSectionHighlighting,
-  removeTheDefaultFilters,
   Services,
 } from '../../../utils/serviceIngestion';
 import ServiceBaseClass from './ServiceBaseClass';
 
 class MysqlIngestionClass extends ServiceBaseClass {
   name = '';
+  defaultFilters = ['^information_schema$', '^performance_schema$'];
   tableFilter: string[];
   profilerTable = 'alert_entity';
   constructor(tableFilter?: string[]) {
@@ -71,8 +71,6 @@ class MysqlIngestionClass extends ServiceBaseClass {
   }
 
   async fillIngestionDetails(page: Page) {
-    await removeTheDefaultFilters(page);
-
     for (const filter of this.tableFilter) {
       await page.fill('#root\\/tableFilterPattern\\/includes', filter);
       await page
@@ -176,7 +174,7 @@ class MysqlIngestionClass extends ServiceBaseClass {
     await page.waitForSelector('.ant-select-selection-item-content');
 
     await expect(page.locator('.ant-select-selection-item-content')).toHaveText(
-      this.tableFilter
+      this.defaultFilters.concat(this.tableFilter)
     );
   }
 }

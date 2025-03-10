@@ -200,6 +200,7 @@ class ServiceBaseClass {
     await page.getByTestId('submit-btn').getByText('Next').click();
 
     await page.getByTestId('submit-btn').getByText('Save').click();
+
     await page.waitForSelector('[data-testid="success-line"]', {
       state: 'visible',
     });

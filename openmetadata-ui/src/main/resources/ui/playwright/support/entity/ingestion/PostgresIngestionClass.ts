@@ -27,7 +27,6 @@ import { visitEntityPage } from '../../../utils/entity';
 import { visitServiceDetailsPage } from '../../../utils/service';
 import {
   checkServiceFieldSectionHighlighting,
-  removeTheDefaultFilters,
   Services,
 } from '../../../utils/serviceIngestion';
 import ServiceBaseClass from './ServiceBaseClass';
@@ -75,8 +74,6 @@ class PostgresIngestionClass extends ServiceBaseClass {
   }
 
   async fillIngestionDetails(page: Page) {
-    await removeTheDefaultFilters(page);
-
     await page
       .locator('#root\\/schemaFilterPattern\\/includes')
       .fill(this.filterPattern);
