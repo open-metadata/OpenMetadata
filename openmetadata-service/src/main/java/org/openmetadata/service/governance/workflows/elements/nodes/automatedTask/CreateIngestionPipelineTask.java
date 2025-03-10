@@ -2,6 +2,7 @@ package org.openmetadata.service.governance.workflows.elements.nodes.automatedTa
 
 import static org.openmetadata.service.governance.workflows.Workflow.getFlowableElementId;
 
+import lombok.Getter;
 import org.flowable.bpmn.model.BoundaryEvent;
 import org.flowable.bpmn.model.BpmnModel;
 import org.flowable.bpmn.model.EndEvent;
@@ -12,6 +13,7 @@ import org.flowable.bpmn.model.ServiceTask;
 import org.flowable.bpmn.model.StartEvent;
 import org.flowable.bpmn.model.SubProcess;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
+import org.openmetadata.schema.governance.workflows.WorkflowConfiguration;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.CreateIngestionPipelineTaskDefinition;
 import org.openmetadata.service.governance.workflows.elements.NodeInterface;
 import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.impl.CreateIngestionPipelineImpl;
@@ -23,14 +25,15 @@ import org.openmetadata.service.governance.workflows.flowable.builders.SubProces
 import org.openmetadata.service.util.JsonUtils;
 
 public class CreateIngestionPipelineTask implements NodeInterface {
-  private final SubProcess subProcess;
+  @Getter private final SubProcess subProcess;
   private final BoundaryEvent runtimeExceptionBoundaryEvent;
 
-  public CreateIngestionPipelineTask(CreateIngestionPipelineTaskDefinition nodeDefinition) {
+  public CreateIngestionPipelineTask(
+      CreateIngestionPipelineTaskDefinition nodeDefinition, WorkflowConfiguration config) {
     String subProcessId = nodeDefinition.getName();
 
     SubProcess subProcess =
-        new SubProcessBuilder().id(subProcessId).setAsync(true).exclusive(false).build();
+        new SubProcessBuilder().id(subProcessId).setAsync(true).exclusive(true).build();
 
     StartEvent startEvent =
         new StartEventBuilder().id(getFlowableElementId(subProcessId, "startEvent")).build();
@@ -53,6 +56,10 @@ public class CreateIngestionPipelineTask implements NodeInterface {
         new SequenceFlow(startEvent.getId(), createIngestionPipelineTask.getId()));
     subProcess.addFlowElement(
         new SequenceFlow(createIngestionPipelineTask.getId(), endEvent.getId()));
+
+    if (config.getStoreStageStatus()) {
+      attachWorkflowInstanceStageListeners(subProcess);
+    }
 
     this.runtimeExceptionBoundaryEvent = getRuntimeExceptionBoundaryEvent(subProcess);
     this.subProcess = subProcess;

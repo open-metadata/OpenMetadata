@@ -102,7 +102,6 @@ public class AppResource extends EntityResource<App, AppRepository> {
   private SearchRepository searchRepository;
   public static final List<ScheduleType> SCHEDULED_TYPES =
       List.of(ScheduleType.Scheduled, ScheduleType.ScheduledOrManual, ScheduleType.NoSchedule);
-  public static final String SLACK_APPLICATION = "SlackApplication";
   private final AppMapper mapper = new AppMapper();
 
   @Override

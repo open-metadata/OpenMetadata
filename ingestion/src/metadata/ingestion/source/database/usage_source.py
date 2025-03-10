@@ -72,6 +72,7 @@ class UsageSource(QueryParserSource, ABC):
                                 startTime=query_dict.get("start_time", ""),
                                 endTime=query_dict.get("end_time", ""),
                                 duration=query_dict.get("duration"),
+                                cost=query_dict.get("cost"),
                                 analysisDate=DateTime(analysis_date),
                                 aborted=self.get_aborted_status(query_dict),
                                 databaseName=self.get_database_name(query_dict),
@@ -122,15 +123,15 @@ class UsageSource(QueryParserSource, ABC):
                             row = dict(row)
                             try:
                                 row.update({k.lower(): v for k, v in row.items()})
-                                logger.debug(f"Processing row: {query}")
+                                logger.debug(f"Processing row: {row}")
                                 query_type = row.get("query_type")
-                                query = self.format_query(row["query_text"])
+                                query_text = self.format_query(row["query_text"])
                                 queries.append(
                                     TableQuery(
-                                        query=query,
+                                        query=query_text,
                                         query_type=query_type,
                                         exclude_usage=self.check_life_cycle_query(
-                                            query_type=query_type, query_text=query
+                                            query_type=query_type, query_text=query_text
                                         ),
                                         dialect=self.dialect.value,
                                         userName=row["user_name"],
@@ -142,6 +143,7 @@ class UsageSource(QueryParserSource, ABC):
                                         duration=row.get("duration"),
                                         serviceName=self.config.serviceName,
                                         databaseSchema=self.get_schema_name(row),
+                                        cost=row.get("cost"),
                                     )
                                 )
                             except Exception as exc:

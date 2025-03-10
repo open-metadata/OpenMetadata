@@ -11,6 +11,7 @@ import org.flowable.bpmn.model.SequenceFlow;
 import org.flowable.bpmn.model.ServiceTask;
 import org.flowable.bpmn.model.StartEvent;
 import org.flowable.bpmn.model.SubProcess;
+import org.openmetadata.schema.governance.workflows.WorkflowConfiguration;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.RunAppTaskDefinition;
 import org.openmetadata.service.governance.workflows.elements.NodeInterface;
 import org.openmetadata.service.governance.workflows.flowable.builders.EndEventBuilder;
@@ -24,11 +25,11 @@ public class RunAppTask implements NodeInterface {
   private final SubProcess subProcess;
   private final BoundaryEvent runtimeExceptionBoundaryEvent;
 
-  public RunAppTask(RunAppTaskDefinition nodeDefinition) {
+  public RunAppTask(RunAppTaskDefinition nodeDefinition, WorkflowConfiguration config) {
     String subProcessId = nodeDefinition.getName();
 
     SubProcess subProcess =
-        new SubProcessBuilder().id(subProcessId).setAsync(true).exclusive(false).build();
+        new SubProcessBuilder().id(subProcessId).setAsync(true).exclusive(true).build();
 
     StartEvent startEvent =
         new StartEventBuilder().id(getFlowableElementId(subProcessId, "startEvent")).build();
@@ -50,6 +51,10 @@ public class RunAppTask implements NodeInterface {
 
     subProcess.addFlowElement(new SequenceFlow(startEvent.getId(), runApp.getId()));
     subProcess.addFlowElement(new SequenceFlow(runApp.getId(), endEvent.getId()));
+
+    if (config.getStoreStageStatus()) {
+      attachWorkflowInstanceStageListeners(subProcess);
+    }
 
     this.runtimeExceptionBoundaryEvent = getRuntimeExceptionBoundaryEvent(subProcess);
     this.subProcess = subProcess;

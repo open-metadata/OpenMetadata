@@ -149,7 +149,7 @@ const UserListPageV1 = () => {
     isAdmin = false,
     isDeleted = false
   ) => {
-    let filters = 'isBot:false';
+    let filters = 'isAdmin:false isBot:false';
     if (isAdmin) {
       filters = 'isAdmin:true isBot:false';
     }
