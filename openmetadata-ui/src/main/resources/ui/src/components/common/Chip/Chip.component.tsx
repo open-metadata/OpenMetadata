@@ -13,6 +13,7 @@
 import { Col, Row, Tag, Typography } from 'antd';
 import { isEmpty } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import {
   NO_DATA_PLACEHOLDER,
@@ -33,6 +34,7 @@ const Chip = ({
 }: ChipProps) => {
   const [listLength, setListLength] = useState<number>(0);
   const [isExpanded, setIsExpanded] = useState<boolean>(false);
+  const { t } = useTranslation();
 
   const hasMoreElement = useMemo(
     () => listLength > USER_DATA_SIZE,
@@ -62,7 +64,7 @@ const Chip = ({
 
   if (isEmpty(data) && showNoDataPlaceholder) {
     return (
-      <Typography.Paragraph className="text-grey-muted m-t-xs text-sm">
+      <Typography.Paragraph className="m-t-xs text-sm no-data-chip-placeholder">
         {noDataPlaceholder ?? NO_DATA_PLACEHOLDER}
       </Typography.Paragraph>
     );
@@ -80,7 +82,9 @@ const Chip = ({
           className="m-l-xss chip-text cursor-pointer"
           data-testid="plus-more-count"
           onClick={() => setIsExpanded(!isExpanded)}>
-          {isExpanded ? 'Show less' : `+${listLength - USER_DATA_SIZE} more`}
+          {isExpanded
+            ? t('label.show-less')
+            : `+${listLength - USER_DATA_SIZE} more`}
         </Tag>
       )}
     </Row>

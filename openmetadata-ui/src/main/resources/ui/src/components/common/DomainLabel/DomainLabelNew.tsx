@@ -159,11 +159,9 @@ export const DomainLabelNew = ({
     } else {
       return (
         <Typography.Text
-          className={classNames(
-            'domain-link',
-            { 'text-xs': !showDomainHeading },
-            textClassName
-          )}
+          className={classNames('text-sm no-data-chip-placeholder', {
+            'text-xs': !showDomainHeading,
+          })}
           data-testid="no-domain-text">
           {t('label.no-entity', { entity: t('label.domain') })}
         </Typography.Text>
@@ -175,7 +173,6 @@ export const DomainLabelNew = ({
     showDomainHeading,
     textClassName,
     showAll,
-    t,
   ]);
 
   const label = useMemo(() => {

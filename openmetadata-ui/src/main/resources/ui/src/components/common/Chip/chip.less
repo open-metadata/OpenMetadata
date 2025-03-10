@@ -16,20 +16,23 @@
   font-weight: 400;
   font-size: 14px;
   line-height: 20px;
-  color: #535862;
+  color: @text-color;
   &:hover {
-    color: #175cd3;
+    color: @blue-9;
     text-decoration: none;
   }
 }
 
 .chip-text {
-  color: #175cd3;
+  color: @blue-9;
   &:hover {
-    color: #175cd3;
+    color: @blue-9;
   }
   &::after {
     animation: none !important;
     display: none !important;
   }
+}
+.no-data-chip-placeholder {
+  color: @text-color-tertiary;
 }

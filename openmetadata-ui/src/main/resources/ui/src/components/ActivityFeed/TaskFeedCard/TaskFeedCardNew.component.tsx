@@ -229,7 +229,7 @@ const TaskFeedCard = ({
     (Boolean(isPartOfAssigneeTeam) && !isCreator);
 
   const isSuggestionEmpty =
-    (taskDetails?.suggestion === '[]' &&
+    (isEqual(taskDetails?.suggestion, '[]') &&
       taskDetails?.type === TaskType.RequestTag) ||
     (!taskDetails?.suggestion &&
       taskDetails?.type === TaskType.RequestDescription);
