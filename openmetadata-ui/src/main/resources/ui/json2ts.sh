@@ -18,6 +18,34 @@ readonly UI_OUTPUT_DIRECTORY='openmetadata-ui/src/main/resources/ui/src/generate
 readonly MAX_PARALLEL_JOBS=35
 readonly TEMP_DIR=$(mktemp -d)
 
+# Default value for add_licensing flag
+ADD_LICENSING=false
+
+# Parse command line arguments
+while getopts "l:" opt; do
+  case $opt in
+    l)
+      if [[ "${OPTARG}" == "true" ]]; then
+        ADD_LICENSING=true
+      fi
+      ;;
+    \?)
+      echo "Invalid option: -$OPTARG" >&2
+      exit 1
+      ;;
+  esac
+done
+
+addLicensing(){
+    dir=$1
+    current_year=$(date +%Y)
+    # First read and modify the license text with current year
+    modified_license=$(sed "s/Copyright [0-9]\{4\}/Copyright ${current_year}/" openmetadata-ui/src/main/resources/ui/types-licensing.txt)
+    # Combine modified license with file content, adding a newline in between
+    echo "${modified_license}
+$(cat "$dir")" > "$dir"
+}
+
 # Function to modify schema file by updating $id field
 # Args:
 #   $1 - Input schema file path
@@ -48,6 +76,11 @@ generate_typescript() {
     # Remove empty output files
     if [[ ! -s "$output_file" ]]; then
         rm -f "$output_file"
+    else
+        # Only add licensing if the flag is true
+        if [[ "$ADD_LICENSING" == "true" ]]; then
+            addLicensing "$output_file"
+        fi
     fi
 }
 
