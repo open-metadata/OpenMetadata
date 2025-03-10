@@ -104,6 +104,7 @@ public final class Entity {
   private static final Set<String> ENTITY_LIST = new TreeSet<>();
 
   // Common field names
+  public static final String FIELD_SERVICE = "service";
   public static final String FIELD_OWNERS = "owners";
   public static final String FIELD_NAME = "name";
   public static final String FIELD_DESCRIPTION = "description";
@@ -114,6 +115,8 @@ public final class Entity {
   public static final String FIELD_PIPELINE_STATUS = "pipelineStatus";
   public static final String FIELD_DISPLAY_NAME = "displayName";
   public static final String FIELD_FULLY_QUALIFIED_NAME = "fullyQualifiedName";
+  public static final String FIELD_FULLY_QUALIFIED_NAME_HASH = "fqnHash";
+  public static final String FIELD_FULLY_QUALIFIED_NAME_HASH_KEYWORD = "fqnHash.keyword";
   public static final String FIELD_EXTENSION = "extension";
   public static final String FIELD_USAGE_SUMMARY = "usageSummary";
   public static final String FIELD_CHILDREN = "children";
@@ -710,5 +713,10 @@ public final class Entity {
         .filter(entry -> entry.getValue().equals(serviceType))
         .map(Map.Entry::getKey)
         .collect(Collectors.toSet());
+  }
+
+  public static boolean entityHasField(String entityType, String field) {
+    EntityRepository<?> entityRepository = Entity.getEntityRepository(entityType);
+    return entityRepository.getAllowedFields().contains(field);
   }
 }

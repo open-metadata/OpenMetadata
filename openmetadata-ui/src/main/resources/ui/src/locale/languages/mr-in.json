@@ -500,6 +500,7 @@
     "execution-plural": "अंमलबजावणी",
     "execution-time": "अंमलबजावणी वेळ",
     "exit-fit-to-screen": "स्क्रीनवर फिट होण्यासाठी बाहेर पडा",
+    "exit-full-screen": "पूर्ण स्क्रीनमधून बाहेर पडा",
     "exit-version-history": "आवृत्ती इतिहासातून बाहेर पडा",
     "expand": "विस्तृत करा",
     "expand-all": "सर्व विस्तृत करा",
@@ -1005,6 +1006,7 @@
     "re-verify": "पुन्हा सत्यापित करा",
     "reaction-lowercase-plural": "प्रतिक्रिया",
     "read-type": "{{type}} वाचा",
+    "rearrange-nodes": "नोड्स पुनर्रचना करा",
     "reason": "कारण",
     "receiver-plural": "प्राप्तकर्ते",
     "recent-announcement-plural": "अलीकडील घोषणा",
@@ -1440,7 +1442,9 @@
     "yes": "होय",
     "yes-comma-confirm": "होय, पुष्टी करा",
     "yesterday": "काल",
-    "your-entity": "तुमचे {{entity}}"
+    "your-entity": "तुमचे {{entity}}",
+    "zoom-in": "झूम इन",
+    "zoom-out": "झूम आउट"
   },
   "message": {
     "access-block-time-message": "कमाल अयशस्वी लॉगिन प्रयत्नांनंतर प्रवेश काही काळासाठी अवरोधित केला जाईल.",
