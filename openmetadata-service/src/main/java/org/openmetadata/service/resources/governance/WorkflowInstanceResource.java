@@ -110,7 +110,10 @@ public class WorkflowInstanceResource
           Boolean latest,
       @Parameter(description = "Workflow Definition Name", schema = @Schema(type = "String"))
           @QueryParam("workflowDefinitionName")
-          String workflowDefinitionName) {
+          String workflowDefinitionName,
+      @Parameter(description = "Entity Link", schema = @Schema(type = "String"))
+          @QueryParam("entityLink")
+          String entityLink) {
     OperationContext operationContext =
         new OperationContext(Entity.WORKFLOW_DEFINITION, MetadataOperation.VIEW_ALL);
     ResourceContextInterface resourceContext = ReportDataContext.builder().build();
@@ -118,6 +121,9 @@ public class WorkflowInstanceResource
 
     ListFilter filter = new ListFilter(null);
     filter.addQueryParam("entityFQNHash", FullyQualifiedName.buildHash(workflowDefinitionName));
+    if (entityLink != null) {
+      filter.addQueryParam("entityLink", entityLink);
+    }
     return repository.list(offset, startTs, endTs, limitParam, filter, latest);
   }
 }

@@ -46,12 +46,13 @@ public class RunAppDelegate implements JavaDelegate {
                   varHandler.getNamespacedVariable(
                       inputNamespaceMap.get(RELATED_ENTITY_VARIABLE), RELATED_ENTITY_VARIABLE));
 
-      boolean success =
+      boolean wasSuccessful =
           new RunAppImpl()
               .execute(
                   pipelineServiceClient, appName, waitForCompletion, timeoutSeconds, entityLink);
 
-      varHandler.setNodeVariable(RESULT_VARIABLE, success);
+      varHandler.setNodeVariable(RESULT_VARIABLE, getResultValue(wasSuccessful));
+      varHandler.setFailure(!wasSuccessful);
     } catch (Exception exc) {
       LOG.error(
           String.format(
@@ -59,6 +60,14 @@ public class RunAppDelegate implements JavaDelegate {
           exc);
       varHandler.setGlobalVariable(EXCEPTION_VARIABLE, exc.toString());
       throw new BpmnError(WORKFLOW_RUNTIME_EXCEPTION, exc.getMessage());
+    }
+  }
+
+  private String getResultValue(boolean result) {
+    if (result) {
+      return "success";
+    } else {
+      return "failure";
     }
   }
 }

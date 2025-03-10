@@ -44,7 +44,8 @@ public class MainWorkflow {
 
     // Add Nodes
     for (WorkflowNodeDefinitionInterface nodeDefinitionObj : workflowDefinition.getNodes()) {
-      NodeInterface node = NodeFactory.createNode(nodeDefinitionObj);
+      NodeInterface node =
+          NodeFactory.createNode(nodeDefinitionObj, workflowDefinition.getConfig());
       node.addToWorkflow(model, process);
 
       Optional.ofNullable(node.getRuntimeExceptionBoundaryEvent())

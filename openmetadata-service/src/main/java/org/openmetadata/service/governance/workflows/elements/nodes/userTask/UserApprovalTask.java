@@ -18,6 +18,7 @@ import org.flowable.bpmn.model.StartEvent;
 import org.flowable.bpmn.model.SubProcess;
 import org.flowable.bpmn.model.TerminateEventDefinition;
 import org.flowable.bpmn.model.UserTask;
+import org.openmetadata.schema.governance.workflows.WorkflowConfiguration;
 import org.openmetadata.schema.governance.workflows.elements.nodes.userTask.UserApprovalTaskDefinition;
 import org.openmetadata.service.governance.workflows.elements.NodeInterface;
 import org.openmetadata.service.governance.workflows.elements.nodes.userTask.impl.CreateApprovalTaskImpl;
@@ -37,7 +38,7 @@ public class UserApprovalTask implements NodeInterface {
   private final BoundaryEvent runtimeExceptionBoundaryEvent;
   private final List<Message> messages = new ArrayList<>();
 
-  public UserApprovalTask(UserApprovalTaskDefinition nodeDefinition) {
+  public UserApprovalTask(UserApprovalTaskDefinition nodeDefinition, WorkflowConfiguration config) {
     String subProcessId = nodeDefinition.getName();
     String assigneesVarName = getFlowableElementId(subProcessId, "assignees");
 
@@ -97,6 +98,10 @@ public class UserApprovalTask implements NodeInterface {
     subProcess.addFlowElement(new SequenceFlow(setAssigneesVariable.getId(), userTask.getId()));
     subProcess.addFlowElement(new SequenceFlow(userTask.getId(), endEvent.getId()));
     subProcess.addFlowElement(new SequenceFlow(terminationEvent.getId(), terminatedEvent.getId()));
+
+    if (config.getStoreStageStatus()) {
+      attachWorkflowInstanceStageListeners(subProcess);
+    }
 
     this.runtimeExceptionBoundaryEvent = getRuntimeExceptionBoundaryEvent(subProcess);
     this.subProcess = subProcess;

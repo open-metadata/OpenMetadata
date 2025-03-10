@@ -6115,5 +6115,12 @@ public interface CollectionDAO {
     default String getTimeSeriesTableName() {
       return "workflow_instance_state_time_series";
     }
+
+    @SqlQuery(
+        value =
+            "SELECT json FROM workflow_instance_state_time_series "
+                + "WHERE workflowInstanceId = :workflowInstanceId AND stage = :stage ORDER BY timestamp DESC")
+    List<String> listWorkflowInstanceStateForStage(
+        @Bind("workflowInstanceId") String workflowInstanceId, @Bind("stage") String stage);
   }
 }

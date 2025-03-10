@@ -6,6 +6,17 @@
   "type": "object",
   "javaType": "org.openmetadata.schema.governance.workflows.WorkflowInstance",
   "javaInterfaces": ["org.openmetadata.schema.EntityTimeSeriesInterface"],
+  "definitions": {
+    "workflowStatus": {
+      "type": "string",
+      "enum": [
+        "RUNNING",
+        "FINISHED",
+        "FAILURE",
+        "EXCEPTION"
+      ]
+    }
+  },
   "properties": {
     "id": {
       "description": "Unique identifier of this workflow instance state.",
@@ -34,6 +45,9 @@
     "exception": {
       "description": "If the Workflow Instance has errors, 'True'. Else, 'False'.",
       "type": "boolean"
+    },
+    "status": {
+      "$ref": "#/definitions/workflowStatus"
     }
   },
   "required": [],

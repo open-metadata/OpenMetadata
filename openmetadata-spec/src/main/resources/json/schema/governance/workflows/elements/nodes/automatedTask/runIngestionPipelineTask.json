@@ -8,6 +8,27 @@
   ],
   "javaType": "org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.RunIngestionPipelineTaskDefinition",
   "type": "object",
+  "definitions": {
+    "config": {
+      "type": "object",
+      "properties": {
+        "waitForCompletion": {
+          "title": "Wait for Completion",
+          "description": "Set if this step should wait until the Ingestion Pipeline finishes running",
+          "type": "boolean",
+          "default": true
+        },
+        "timeoutSeconds": {
+          "title": "Timeout Seconds",
+          "description": "Set the amount of seconds to wait before defining the Ingestion Pipeline has timed out.",
+          "type": "integer",
+          "default": 3600
+        }
+      },
+      "additionalProperties": false,
+      "required": ["waitForCompletion", "timeoutSeconds"]
+    }
+  },
   "properties": {
     "type": {
       "type": "string",
@@ -33,23 +54,7 @@
       "$ref": "../../../../../type/basic.json#/definitions/markdown"
     },
     "config": {
-      "type": "object",
-      "properties": {
-        "waitForCompletion": {
-          "title": "Wait for Completion",
-          "description": "Set if this step should wait until the Ingestion Pipeline finishes running",
-          "type": "boolean",
-          "default": true
-        },
-        "timeoutSeconds": {
-          "title": "Timeout Seconds",
-          "description": "Set the amount of seconds to wait before defining the Ingestion Pipeline has timed out.",
-          "type": "integer",
-          "default": 3600
-        }
-      },
-      "additionalProperties": false,
-      "required": ["waitForCompletion", "timeoutSeconds"]
+      "$ref": "#/definitions/config"
     },
     "input": {
       "type": "array",
@@ -73,7 +78,7 @@
     "branches": {
       "type": "array",
       "items": { "type":  "string" },
-      "default": ["true", "false"],
+      "default": ["success", "failure"],
       "additionalItems": false,
       "minItems": 2,
       "maxItems": 2

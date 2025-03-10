@@ -16,6 +16,7 @@ public class Workflow {
       "workflowInstanceExecutionId";
   public static final String WORKFLOW_RUNTIME_EXCEPTION = "workflowRuntimeException";
   public static final String EXCEPTION_VARIABLE = "exception";
+  public static final String FAILURE_VARIABLE = "failure";
   public static final String GLOBAL_NAMESPACE = "global";
   private final TriggerWorkflow triggerWorkflow;
   private final MainWorkflow mainWorkflow;

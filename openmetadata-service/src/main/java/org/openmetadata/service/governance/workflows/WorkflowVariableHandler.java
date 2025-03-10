@@ -1,5 +1,6 @@
 package org.openmetadata.service.governance.workflows;
 
+import static org.openmetadata.service.governance.workflows.Workflow.FAILURE_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAMESPACE;
 
 import lombok.extern.slf4j.Slf4j;
@@ -61,5 +62,11 @@ public class WorkflowVariableHandler {
   public void setNodeVariable(String varName, Object varValue) {
     String namespace = getNodeNamespace();
     setNamespacedVariable(namespace, varName, varValue);
+  }
+
+  public void setFailure(boolean failure) {
+    if (failure) {
+      varScope.setTransientVariable(FAILURE_VARIABLE, true);
+    }
   }
 }
