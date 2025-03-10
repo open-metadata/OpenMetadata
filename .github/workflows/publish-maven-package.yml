@@ -13,6 +13,16 @@ name: Publish Package to Maven Central Repository
 
 on:
   workflow_dispatch:
+          
+  push:
+    branches:
+      - main
+    paths:
+      - "openmetadata-service/**"
+      - "openmetadata-spec/src/main/resources/json/schema/**"
+      - "openmetadata-clients/**"
+      - "pom.xml"
+      - ".github/workflows/publish-maven-package.yml" 
 
 permissions:
   contents: read
