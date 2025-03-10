@@ -17,6 +17,10 @@ export interface KinesisConnection {
     awsConfig:                   AWSCredentials;
     supportsMetadataExtraction?: boolean;
     /**
+     * Regex to only fetch topics that matches the pattern.
+     */
+    topicFilterPattern?: FilterPattern;
+    /**
      * Service Type
      */
     type?: KinesisType;
@@ -66,6 +70,22 @@ export interface AWSCredentials {
      * The name of a profile to use with the boto session.
      */
     profileName?: string;
+}
+
+/**
+ * Regex to only fetch topics that matches the pattern.
+ *
+ * Regex to only fetch entities that matches the pattern.
+ */
+export interface FilterPattern {
+    /**
+     * List of strings/regex patterns to match and exclude only database entities that match.
+     */
+    excludes?: string[];
+    /**
+     * List of strings/regex patterns to match and include only database entities that match.
+     */
+    includes?: string[];
 }
 
 /**

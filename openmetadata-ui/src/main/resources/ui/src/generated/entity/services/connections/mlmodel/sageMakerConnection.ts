@@ -14,7 +14,11 @@
  * SageMaker Connection Config
  */
 export interface SageMakerConnection {
-    awsConfig:                   AWSCredentials;
+    awsConfig: AWSCredentials;
+    /**
+     * Regex to only fetch MlModels with names matching the pattern.
+     */
+    mlModelFilterPattern?:       FilterPattern;
     supportsMetadataExtraction?: boolean;
     /**
      * Service Type
@@ -66,6 +70,22 @@ export interface AWSCredentials {
      * The name of a profile to use with the boto session.
      */
     profileName?: string;
+}
+
+/**
+ * Regex to only fetch MlModels with names matching the pattern.
+ *
+ * Regex to only fetch entities that matches the pattern.
+ */
+export interface FilterPattern {
+    /**
+     * List of strings/regex patterns to match and exclude only database entities that match.
+     */
+    excludes?: string[];
+    /**
+     * List of strings/regex patterns to match and include only database entities that match.
+     */
+    includes?: string[];
 }
 
 /**

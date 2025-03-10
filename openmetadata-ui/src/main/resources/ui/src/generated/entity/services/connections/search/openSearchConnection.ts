@@ -37,6 +37,10 @@ export interface OpenSearchConnection {
      */
     scheme?: string;
     /**
+     * Regex to only fetch search indexes that matches the pattern.
+     */
+    searchIndexFilterPattern?: FilterPattern;
+    /**
      * Socket Timeout in Seconds
      */
     socketTimeoutSecs?:          number;
@@ -57,6 +61,22 @@ export interface OpenSearchConnection {
      * OpenSearch Username for Login
      */
     username?: string;
+}
+
+/**
+ * Regex to only fetch search indexes that matches the pattern.
+ *
+ * Regex to only fetch entities that matches the pattern.
+ */
+export interface FilterPattern {
+    /**
+     * List of strings/regex patterns to match and exclude only database entities that match.
+     */
+    excludes?: string[];
+    /**
+     * List of strings/regex patterns to match and include only database entities that match.
+     */
+    includes?: string[];
 }
 
 /**

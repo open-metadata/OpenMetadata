@@ -20,6 +20,18 @@ export interface QuickSightConnection {
     awsAccountId: string;
     awsConfig:    AWSCredentials;
     /**
+     * Regex exclude or include charts that matches the pattern.
+     */
+    chartFilterPattern?: FilterPattern;
+    /**
+     * Regex to exclude or include dashboards that matches the pattern.
+     */
+    dashboardFilterPattern?: FilterPattern;
+    /**
+     * Regex exclude or include data models that matches the pattern.
+     */
+    dataModelFilterPattern?: FilterPattern;
+    /**
      * The authentication method that the user uses to sign in.
      */
     identityType?: IdentityType;
@@ -27,7 +39,11 @@ export interface QuickSightConnection {
      * The Amazon QuickSight namespace that contains the dashboard IDs in this request ( To be
      * provided when identityType is `ANONYMOUS` )
      */
-    namespace?:                  string;
+    namespace?: string;
+    /**
+     * Regex to exclude or include projects that matches the pattern.
+     */
+    projectFilterPattern?:       FilterPattern;
     supportsMetadataExtraction?: boolean;
     /**
      * Service Type
@@ -79,6 +95,28 @@ export interface AWSCredentials {
      * The name of a profile to use with the boto session.
      */
     profileName?: string;
+}
+
+/**
+ * Regex exclude or include charts that matches the pattern.
+ *
+ * Regex to only fetch entities that matches the pattern.
+ *
+ * Regex to exclude or include dashboards that matches the pattern.
+ *
+ * Regex exclude or include data models that matches the pattern.
+ *
+ * Regex to exclude or include projects that matches the pattern.
+ */
+export interface FilterPattern {
+    /**
+     * List of strings/regex patterns to match and exclude only database entities that match.
+     */
+    excludes?: string[];
+    /**
+     * List of strings/regex patterns to match and include only database entities that match.
+     */
+    includes?: string[];
 }
 
 /**

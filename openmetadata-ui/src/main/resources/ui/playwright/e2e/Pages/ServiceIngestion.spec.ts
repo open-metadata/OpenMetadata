@@ -57,8 +57,6 @@ if (process.env.PLAYWRIGHT_IS_OSS) {
 // use the admin user to login
 test.use({
   storageState: 'playwright/.auth/admin.json',
-  trace: process.env.PLAYWRIGHT_IS_OSS ? 'off' : 'on-first-retry',
-  video: process.env.PLAYWRIGHT_IS_OSS ? 'on' : 'off',
 });
 
 services.forEach((ServiceClass) => {

@@ -47,7 +47,7 @@ export interface StorageServiceMetadataPipeline {
 /**
  * Regex to only fetch containers that matches the pattern.
  *
- * Regex to only fetch dashboards or charts that matches the pattern.
+ * Regex to only fetch entities that matches the pattern.
  */
 export interface FilterPattern {
     /**
