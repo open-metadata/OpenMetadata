@@ -19,6 +19,10 @@ export interface DatabaseServiceQueryUsagePipeline {
      */
     filterCondition?: string;
     /**
+     * Configuration to process query cost
+     */
+    processQueryCostAnalysis?: boolean;
+    /**
      * Configuration to tune how far we want to look back in query logs to process usage data.
      */
     queryLogDuration?: number;
