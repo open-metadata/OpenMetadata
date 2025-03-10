@@ -500,6 +500,7 @@
     "execution-plural": "การดำเนินการหลายรายการ",
     "execution-time": "ระยะเวลาการดำเนินการ",
     "exit-fit-to-screen": "ออกจากการพอดีหน้าจอ",
+    "exit-full-screen": "ออกจากโหมดเต็มหน้าจอ",
     "exit-version-history": "ออกจากประวัติเวอร์ชัน",
     "expand": "ขยาย",
     "expand-all": "ขยายทั้งหมด",
@@ -1005,6 +1006,7 @@
     "re-verify": "ตรวจสอบใหม่",
     "reaction-lowercase-plural": "ปฏิกิริยาหลายรายการ",
     "read-type": "อ่าน {{type}}",
+    "rearrange-nodes": "จัดเรียงโหนดใหม่",
     "reason": "เหตุผล",
     "receiver-plural": "ผู้รับ",
     "recent-announcement-plural": "ประกาศล่าสุด",
@@ -1440,7 +1442,9 @@
     "yes": "ใช่",
     "yes-comma-confirm": "ใช่, ยืนยัน",
     "yesterday": "เมื่อวานนี้",
-    "your-entity": "เอนทิตีของคุณ {{entity}}"
+    "your-entity": "เอนทิตีของคุณ {{entity}}",
+    "zoom-in": "ขยายเข้า",
+    "zoom-out": "ขยายออก"
   },
   "message": {
     "access-block-time-message": "การเข้าถึงจะถูกบล็อกเป็นมิลลิวินาทีหลังจากมีความพยายามเข้าสู่ระบบที่ล้มเหลวสูงสุด",
