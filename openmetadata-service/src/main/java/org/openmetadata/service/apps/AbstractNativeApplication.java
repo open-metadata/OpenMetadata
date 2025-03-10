@@ -7,7 +7,6 @@ import static org.openmetadata.service.exception.CatalogExceptionMessage.NO_MANU
 import static org.openmetadata.service.resources.apps.AppResource.SCHEDULED_TYPES;
 
 import java.util.List;
-import java.util.Map;
 import lombok.Getter;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -18,6 +17,7 @@ import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.schema.entity.app.AppType;
 import org.openmetadata.schema.entity.app.ScheduleType;
 import org.openmetadata.schema.entity.app.ScheduledExecutionContext;
+import org.openmetadata.schema.entity.applications.configuration.ApplicationConfig;
 import org.openmetadata.schema.entity.services.ingestionPipelines.AirflowConfig;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
@@ -99,18 +99,19 @@ public class AbstractNativeApplication implements NativeApplication {
   }
 
   @Override
-  public void triggerOnDemand(Map<String, Object> config) {
+  public void triggerOnDemand(ApplicationConfig config) {
     // Validate Native Application
     if (app.getScheduleType().equals(ScheduleType.ScheduledOrManual)) {
       AppRuntime runtime = getAppRuntime(app);
       validateServerExecutableApp(runtime);
       // Trigger the application with the provided configuration payload
-      Map<String, Object> appConfig = JsonUtils.getMap(app.getAppConfiguration());
+      ApplicationConfig appConfig =
+          JsonUtils.convertValue(app.getAppConfiguration(), ApplicationConfig.class);
       if (config != null) {
-        appConfig.putAll(config);
+        appConfig.getAdditionalProperties().putAll(config.getAdditionalProperties());
       }
       validateConfig(appConfig);
-      AppScheduler.getInstance().triggerOnDemandApplication(app, config);
+      AppScheduler.getInstance().triggerOnDemandApplication(app, appConfig);
     } else {
       throw new IllegalArgumentException(NO_MANUAL_TRIGGER_ERR);
     }
@@ -121,7 +122,7 @@ public class AbstractNativeApplication implements NativeApplication {
    * triggered.
    * @param config
    */
-  protected void validateConfig(Map<String, Object> config) {
+  protected void validateConfig(ApplicationConfig config) {
     LOG.warn("validateConfig is not implemented for this application. Skipping validation.");
   }
 
@@ -139,9 +140,12 @@ public class AbstractNativeApplication implements NativeApplication {
 
     try {
       bindExistingIngestionToApplication(ingestionPipelineRepository);
-      updateAppConfig(ingestionPipelineRepository, this.getApp().getAppConfiguration());
+      updateAppConfig(
+          ingestionPipelineRepository,
+          JsonUtils.convertValue(this.getApp().getAppConfiguration(), ApplicationConfig.class));
     } catch (EntityNotFoundException ex) {
-      Map<String, Object> config = JsonUtils.getMap(this.getApp().getAppConfiguration());
+      ApplicationConfig config =
+          JsonUtils.convertValue(this.getApp().getAppConfiguration(), ApplicationConfig.class);
       createAndBindIngestionPipeline(ingestionPipelineRepository, config);
     }
   }
@@ -177,7 +181,7 @@ public class AbstractNativeApplication implements NativeApplication {
   }
 
   private void updateAppConfig(
-      IngestionPipelineRepository repository, Map<String, Object> appConfiguration) {
+      IngestionPipelineRepository repository, ApplicationConfig appConfiguration) {
     String fqn = FullyQualifiedName.add(SERVICE_NAME, this.getApp().getName());
     IngestionPipeline updated = repository.findByName(fqn, Include.NON_DELETED);
     ApplicationPipeline appPipeline =
@@ -189,7 +193,7 @@ public class AbstractNativeApplication implements NativeApplication {
   }
 
   private void createAndBindIngestionPipeline(
-      IngestionPipelineRepository ingestionPipelineRepository, Map<String, Object> config) {
+      IngestionPipelineRepository ingestionPipelineRepository, ApplicationConfig config) {
     MetadataServiceRepository serviceEntityRepository =
         (MetadataServiceRepository) Entity.getEntityRepository(Entity.METADATA_SERVICE);
     EntityReference service =
@@ -260,8 +264,9 @@ public class AbstractNativeApplication implements NativeApplication {
     App jobApp = collectionDAO.applicationDAO().findEntityByName(appName);
     ApplicationHandler.getInstance().setAppRuntimeProperties(jobApp);
     jobApp.setAppConfiguration(
-        JsonUtils.getMapFromJson(
-            (String) jobExecutionContext.getJobDetail().getJobDataMap().get(APP_CONFIG)));
+        JsonUtils.convertValue(
+            jobExecutionContext.getJobDetail().getJobDataMap().get(APP_CONFIG),
+            ApplicationConfig.class));
     // Initialise the Application
     this.init(jobApp);
 

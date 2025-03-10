@@ -26,6 +26,7 @@ import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChartResultLi
 import org.openmetadata.schema.dataInsight.kpi.Kpi;
 import org.openmetadata.schema.dataInsight.type.KpiResult;
 import org.openmetadata.schema.entity.app.App;
+import org.openmetadata.schema.entity.applications.configuration.ApplicationConfig;
 import org.openmetadata.schema.entity.applications.configuration.internal.DataInsightsReportAppConfig;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
@@ -108,7 +109,7 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
   }
 
   @Override
-  protected void validateConfig(Map<String, Object> config) {
+  protected void validateConfig(ApplicationConfig config) {
     try {
       JsonUtils.convertValue(config, DataInsightsReportAppConfig.class);
     } catch (IllegalArgumentException e) {

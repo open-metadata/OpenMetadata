@@ -17,7 +17,7 @@ export interface CreateAppRequest {
     /**
      * Application Configuration object.
      */
-    appConfiguration?: { [key: string]: any };
+    appConfiguration?: any;
     appSchedule?:      any[] | boolean | AppScheduleClass | number | number | null | string;
     /**
      * Fqn of Bot Associated with this application.

@@ -51,6 +51,7 @@ import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.schema.entity.app.AppType;
 import org.openmetadata.schema.entity.app.CreateApp;
 import org.openmetadata.schema.entity.app.ScheduleType;
+import org.openmetadata.schema.entity.applications.configuration.ApplicationConfig;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
@@ -991,7 +992,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
               description =
                   "Configuration payload. Keys will be added to the current configuration. Delete keys by setting them to null.",
               content = @Content(mediaType = MediaType.APPLICATION_JSON))
-          Map<String, Object> configPayload) {
+          ApplicationConfig configPayload) {
     EntityUtil.Fields fields = getFields(String.format("%s,bot,pipelines", FIELD_OWNERS));
     App app = repository.getByName(uriInfo, name, fields);
     if (app.getAppType().equals(AppType.Internal)) {
