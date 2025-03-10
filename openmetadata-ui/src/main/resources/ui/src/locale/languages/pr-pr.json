@@ -500,6 +500,7 @@
     "execution-plural": "اجراها",
     "execution-time": "زمان اجرا",
     "exit-fit-to-screen": "خروج از حالت تناسب با صفحه",
+    "exit-full-screen": "خروج از حالت تمام صفحه",
     "exit-version-history": "خروج از تاریخچه نسخه",
     "expand": "گسترش",
     "expand-all": "گسترش همه",
@@ -1007,6 +1008,7 @@
     "re-verify": "دوباره تأیید کنید",
     "reaction-lowercase-plural": "واکنش‌ها",
     "read-type": "خواندن {{type}}",
+    "rearrange-nodes": "مرتب‌سازی گره‌ها",
     "reason": "دلیل",
     "receiver-plural": "گیرندگان",
     "recent-announcement-plural": "اعلانات اخیر",
@@ -1443,7 +1445,9 @@
     "yes": "بله",
     "yes-comma-confirm": "بله، تأیید",
     "yesterday": "دیروز",
-    "your-entity": "{{entity}} شما"
+    "your-entity": "{{entity}} شما",
+    "zoom-in": "بزرگنمایی",
+    "zoom-out": "کوچک‌نمایی"
   },
   "message": {
     "access-block-time-message": "دسترسی برای مدت میلی‌ثانیه‌ها بعد از حداکثر تلاش‌های ناموفق ورود، مسدود خواهد شد.",

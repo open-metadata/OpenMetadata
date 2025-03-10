@@ -126,7 +126,7 @@ public class RunAppImpl {
               .withRecreateDataAssetsIndex(false)
               .withModuleConfiguration(updatedModuleConfig);
     }
-    updatedApp.withAppConfiguration(JsonUtils.getMap(updatedConfig));
+    updatedApp.withAppConfiguration(updatedConfig);
     return updatedApp;
   }
 
@@ -144,8 +144,7 @@ public class RunAppImpl {
       long startTime,
       long timeoutMillis) {
     ApplicationHandler.getInstance()
-        .triggerApplicationOnDemand(
-            app, Entity.getCollectionDAO(), Entity.getSearchRepository(), null);
+        .triggerApplicationOnDemand(app, Entity.getCollectionDAO(), Entity.getSearchRepository());
 
     if (waitForCompletion) {
       return waitForCompletion(repository, app, startTime, timeoutMillis);

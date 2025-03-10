@@ -500,6 +500,7 @@
     "execution-plural": "Exécutions",
     "execution-time": "durée d'exécution",
     "exit-fit-to-screen": "Quitter le Mode Plein Écran",
+    "exit-full-screen": "Quitter le Plein Écran",
     "exit-version-history": "Quitter l'Historique des Versions",
     "expand": "Expand",
     "expand-all": "Développer tout",
@@ -1007,6 +1008,7 @@
     "re-verify": "Re-vérifier",
     "reaction-lowercase-plural": "réactions",
     "read-type": "Lire {{type}}",
+    "rearrange-nodes": "Réorganiser les Nœuds",
     "reason": "Raison",
     "receiver-plural": "Récepteurs",
     "recent-announcement-plural": "Annonces Récentes",
@@ -1443,7 +1445,9 @@
     "yes": "Oui",
     "yes-comma-confirm": "Oui, confirmer",
     "yesterday": "Hier",
-    "your-entity": "Votre {{entity}}"
+    "your-entity": "Votre {{entity}}",
+    "zoom-in": "Zoom Avant",
+    "zoom-out": "Zoom Arrière"
   },
   "message": {
     "access-block-time-message": "Nombre de millisecondes pendant lesquelles l'accès sera bloqué après le maximum de tentatives infructueuses.",
