@@ -40,6 +40,9 @@ def test_column_names_none(scanner):
     assert scanner.scan("id") is None
     assert scanner.scan("user_id") is None
 
+    # Mails
+    assert scanner.scan("email_verified") is None
+
 
 def test_column_names_sensitive(scanner):
     # Bank
@@ -59,4 +62,5 @@ def test_column_names_sensitive(scanner):
     assert scanner.scan("client_last_name") == EXPECTED_SENSITIVE
 
     assert scanner.scan("email") == EXPECTED_SENSITIVE
+    assert scanner.scan("email_address") == EXPECTED_SENSITIVE
     assert scanner.scan("ssn") == EXPECTED_SENSITIVE

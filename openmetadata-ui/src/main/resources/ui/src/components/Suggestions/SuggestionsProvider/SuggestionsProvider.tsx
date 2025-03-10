@@ -99,7 +99,7 @@ const SuggestionsProvider = ({ children }: { children?: ReactNode }) => {
         showErrorToast(
           err as AxiosError,
           t('server.entity-fetch-error', {
-            entity: t('label.lineage-data-lowercase'),
+            entity: t('label.suggestion-lowercase-plural'),
           })
         );
       } finally {
