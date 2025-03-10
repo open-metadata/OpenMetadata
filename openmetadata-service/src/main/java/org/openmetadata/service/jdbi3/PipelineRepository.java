@@ -215,6 +215,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
             pipeline.getVersion(), pipelineStatus, storedPipelineStatus);
     pipeline.setPipelineStatus(pipelineStatus);
     pipeline.setChangeDescription(change);
+    pipeline.setIncrementalChangeDescription(change);
 
     // Update ES Indexes and usage of this pipeline index
     searchRepository.updateEntity(pipeline);
