@@ -43,7 +43,7 @@ import FeedCardBodyNew from '../ActivityFeedCard/FeedCardBody/FeedCardBodyNew';
 import FeedCardFooterNew from '../ActivityFeedCardV2/FeedCardFooter/FeedCardFooterNew';
 import ActivityFeedEditorNew from '../ActivityFeedEditor/ActivityFeedEditorNew';
 import { useActivityFeedProvider } from '../ActivityFeedProvider/ActivityFeedProvider';
-import '../ActivityFeedTab/activity-feed-tab-new.less';
+import '../ActivityFeedTab/activity-feed-tab.less';
 import CommentCard from './CommentCard.component';
 
 interface ActivityFeedCardNewProps {

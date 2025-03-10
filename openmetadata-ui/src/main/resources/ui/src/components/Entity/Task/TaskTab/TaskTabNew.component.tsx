@@ -307,7 +307,7 @@ export const TaskTabNew = ({
             data-testid="task-title"
             type="link"
             onClick={handleTaskLinkClick}>
-            <Typography.Text className="p-0 task-id text-sm">{`#${taskDetails.id} `}</Typography.Text>
+            <Typography.Text className="p-0 task-id text-sm task-details-id">{`#${taskDetails.id} `}</Typography.Text>
 
             <Typography.Text className="p-xss task-details">
               {TASK_TYPES[taskDetails.type]}
@@ -316,12 +316,12 @@ export const TaskTabNew = ({
             {taskColumnName}
 
             <Typography.Text
-              className="break-all text-sm entity-link"
+              className="break-all text-sm entity-link header-link"
               data-testid="entity-link">
               {getNameFromFQN(entityFQN)}
             </Typography.Text>
 
-            <Typography.Text className="p-l-xss entity-type">{`(${entityType})`}</Typography.Text>
+            <Typography.Text className="p-l-xss entity-type header-link">{`(${entityType})`}</Typography.Text>
           </Button>
         </EntityPopOverCard>
       ) : null,

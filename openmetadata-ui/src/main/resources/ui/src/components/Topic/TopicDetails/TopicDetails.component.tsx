@@ -45,7 +45,6 @@ import { getTagsWithoutTier, getTierTags } from '../../../utils/TableUtils';
 import { createTagObject, updateTierTag } from '../../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import topicClassBase from '../../../utils/TopicClassBase';
-import { ActivityFeedTab } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import { withActivityFeed } from '../../AppRouter/withActivityFeed';
 import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -55,6 +54,8 @@ import SampleDataWithMessages from '../../Database/SampleDataWithMessages/Sample
 import Lineage from '../../Lineage/Lineage.component';
 
 import { useCustomPages } from '../../../hooks/useCustomPages';
+import { ActivityFeedLayoutType } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
+import { ActivityFeedTabNew } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTabNew.component';
 import QueryViewer from '../../common/QueryViewer/QueryViewer.component';
 import { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../PageLayoutV1/PageLayoutV1';
@@ -283,10 +284,11 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
     const tabs = topicClassBase.getTopicDetailPageTabs({
       schemaCount: topicDetails.messageSchema?.schemaFields?.length ?? 0,
       activityFeedTab: (
-        <ActivityFeedTab
+        <ActivityFeedTabNew
           refetchFeed
           entityFeedTotalCount={feedCount.totalCount}
           entityType={EntityType.TOPIC}
+          layoutType={ActivityFeedLayoutType.THREE_PANEL}
           onFeedUpdate={getEntityFeedCount}
           onUpdateEntityDetails={fetchTopic}
           onUpdateFeedCount={handleFeedCount}

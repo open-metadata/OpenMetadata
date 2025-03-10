@@ -30,7 +30,10 @@ import { restoreUser } from '../../../rest/userAPI';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import ActivityFeedProvider from '../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
-import { ActivityFeedTabs } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
+import {
+  ActivityFeedLayoutType,
+  ActivityFeedTabs,
+} from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import { ActivityFeedTabNew } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTabNew.component';
 import { DomainLabelNew } from '../../common/DomainLabel/DomainLabelNew';
 import TabsLabel from '../../common/TabsLabel/TabsLabel.component';
@@ -181,6 +184,7 @@ const Users = ({
             <ActivityFeedTabNew
               entityType={EntityType.USER}
               isForFeedTab={false}
+              layoutType={ActivityFeedLayoutType.TWO_PANEL}
               subTab={ActivityFeedTabs.ALL}
               onFeedUpdate={noop}
             />

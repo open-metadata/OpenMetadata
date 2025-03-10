@@ -14,7 +14,8 @@
 import { Col, Row } from 'antd';
 import { t } from 'i18next';
 import React from 'react';
-import { ActivityFeedTab } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
+import { ActivityFeedLayoutType } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
+import { ActivityFeedTabNew } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTabNew.component';
 import { CustomPropertyTable } from '../components/common/CustomPropertyTable/CustomPropertyTable';
 import TabsLabel from '../components/common/TabsLabel/TabsLabel.component';
 import { GenericTab } from '../components/Customization/GenericTab/GenericTab';
@@ -73,10 +74,11 @@ export const getMlModelDetailsPageTabs = ({
       ),
       key: EntityTabs.ACTIVITY_FEED,
       children: (
-        <ActivityFeedTab
+        <ActivityFeedTabNew
           refetchFeed
           entityFeedTotalCount={feedCount.totalCount}
           entityType={EntityType.MLMODEL}
+          layoutType={ActivityFeedLayoutType.THREE_PANEL}
           onFeedUpdate={fetchEntityFeedCount}
           onUpdateEntityDetails={fetchMlModel}
           onUpdateFeedCount={handleFeedCount}

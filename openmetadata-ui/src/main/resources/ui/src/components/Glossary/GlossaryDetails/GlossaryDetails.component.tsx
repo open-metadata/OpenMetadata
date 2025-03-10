@@ -45,7 +45,8 @@ import {
   getEntityVersionTags,
 } from '../../../utils/EntityVersionUtils';
 import { getWidgetFromKey } from '../../../utils/GlossaryTerm/GlossaryTermUtil';
-import { ActivityFeedTab } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
+import { ActivityFeedLayoutType } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
+import { ActivityFeedTabNew } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTabNew.component';
 import DescriptionV1 from '../../common/EntityDescription/DescriptionV1';
 import TabsLabel from '../../common/TabsLabel/TabsLabel.component';
 import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
@@ -305,11 +306,12 @@ const GlossaryDetails = ({
               ),
               key: EntityTabs.ACTIVITY_FEED,
               children: (
-                <ActivityFeedTab
+                <ActivityFeedTabNew
                   refetchFeed
                   entityFeedTotalCount={feedCount.totalCount}
                   entityType={EntityType.GLOSSARY}
                   hasGlossaryReviewer={!isEmpty(glossary.reviewers)}
+                  layoutType={ActivityFeedLayoutType.THREE_PANEL}
                   owners={glossary.owners}
                   onFeedUpdate={getEntityFeedCount}
                   onUpdateEntityDetails={noop}

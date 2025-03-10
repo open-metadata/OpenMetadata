@@ -90,11 +90,18 @@
 }
 
 .task-details-id {
-  color: #175cd3;
   font-size: 14px;
   font-style: normal;
   font-weight: 400;
   line-height: 20px;
+  .ant-typography,
+  .ant-typography a,
+  &.ant-typography,
+  &.ant-typography a,
+  & a.ant-typography,
+  & .ant-typography a {
+    color: @blue-9;
+  }
 }
 .task-details-entity-link {
   color: #535862;
