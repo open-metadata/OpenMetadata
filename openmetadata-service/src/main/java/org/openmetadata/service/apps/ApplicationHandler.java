@@ -73,7 +73,7 @@ public class ApplicationHandler {
     try {
       AppPrivateConfig appPrivateConfig = configReader.readConfigFromResource(app.getName());
       app.setPreview(appPrivateConfig.getPreview());
-      app.setPrivateConfiguration(appPrivateConfig.getParameters());
+      app.setPrivateConfiguration(appPrivateConfig.getParameters().getAdditionalProperties());
     } catch (IOException e) {
       LOG.debug("Config file for app {} not found: ", app.getName(), e);
     } catch (ConfigurationException e) {
@@ -95,9 +95,12 @@ public class ApplicationHandler {
   }
 
   public void triggerApplicationOnDemand(
-      App app, CollectionDAO daoCollection, SearchRepository searchRepository) {
+      App app,
+      CollectionDAO daoCollection,
+      SearchRepository searchRepository,
+      Map<String, Object> configPayload) {
     try {
-      runAppInit(app, daoCollection, searchRepository).triggerOnDemand();
+      runAppInit(app, daoCollection, searchRepository).triggerOnDemand(configPayload);
     } catch (ClassNotFoundException
         | NoSuchMethodException
         | InvocationTargetException
@@ -273,7 +276,7 @@ public class ApplicationHandler {
     updatedApp.setUpdatedBy(currentApp.getUpdatedBy());
     updatedApp.setFullyQualifiedName(currentApp.getFullyQualifiedName());
     EntityRepository<App>.EntityUpdater updater =
-        appRepository.getUpdater(currentApp, updatedApp, EntityRepository.Operation.PATCH);
+        appRepository.getUpdater(currentApp, updatedApp, EntityRepository.Operation.PATCH, null);
     updater.update();
     AppScheduler.getInstance().deleteScheduledApplication(updatedApp);
     AppScheduler.getInstance().scheduleApplication(updatedApp);

@@ -4,9 +4,12 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.regex.Pattern;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.type.ChangeDescription;
+import org.openmetadata.schema.type.ChangeSummaryMap;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.ParseTags;
@@ -101,9 +104,15 @@ public record TableIndex(Table table) implements ColumnIndex {
     doc.put("schemaDefinition", table.getSchemaDefinition());
     doc.put("service", getEntityWithDisplayName(table.getService()));
     doc.put("database", getEntityWithDisplayName(table.getDatabase()));
-    doc.put("lineage", SearchIndex.getLineageData(table.getEntityReference()));
+    doc.put("upstreamLineage", SearchIndex.getLineageData(table.getEntityReference()));
     doc.put("entityRelationship", SearchIndex.populateEntityRelationshipData(table));
     doc.put("databaseSchema", getEntityWithDisplayName(table.getDatabaseSchema()));
+    doc.put(
+        "changeSummary",
+        Optional.ofNullable(table.getChangeDescription())
+            .map(ChangeDescription::getChangeSummary)
+            .map(ChangeSummaryMap::getAdditionalProperties)
+            .orElse(null));
     return doc;
   }
 
