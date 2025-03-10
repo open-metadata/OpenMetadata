@@ -19,7 +19,7 @@ import { Col, Input, Row, Space, Tooltip, Typography } from 'antd';
 import { get, isEmpty, isNull, isObject, startCase } from 'lodash';
 import React, { ReactNode } from 'react';
 import ErrorPlaceHolder from '../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import { SERVICE_FILTER_PATTERN_FIELDS } from '../constants/ServiceConnection.constants';
+import { FILTER_PATTERN_BY_SERVICE_TYPE } from '../constants/ServiceConnection.constants';
 import { DEF_UI_SCHEMA, JWT_CONFIG } from '../constants/Services.constant';
 import { EntityType } from '../enums/entity.enum';
 import { ServiceConnectionFilterPatternFields } from '../enums/ServiceConnection.enum';
@@ -83,10 +83,15 @@ export const getKeyValues = ({
           </Col>
         );
       }
+      // Handle special cases for different service types
+      const serviceType = serviceCategory.slice(0, -1);
 
-      // Handle default Filter Config
+      // Get the filter pattern fields for the service type
+      const filterPatternFields =
+        FILTER_PATTERN_BY_SERVICE_TYPE[serviceType] ?? [];
+
       if (
-        SERVICE_FILTER_PATTERN_FIELDS.includes(
+        filterPatternFields.includes(
           key as ServiceConnectionFilterPatternFields
         )
       ) {
@@ -138,9 +143,6 @@ export const getKeyValues = ({
           </Col>
         );
       }
-
-      // Handle special cases for different service types
-      const serviceType = serviceCategory.slice(0, -1);
 
       // Pipeline service - Airflow connection
       if (
