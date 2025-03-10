@@ -857,6 +857,47 @@ public class AppResource extends EntityResource<App, AppRepository> {
     return delete(uriInfo, securityContext, id, true, hardDelete);
   }
 
+  @DELETE
+  @Path("/async/{id}")
+  @Operation(
+      operationId = "uninstallAppByNameAsync",
+      summary = "Asynchronously delete a App by Id",
+      description = "Asynchronously delete a App by `Id`.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "OK"),
+        @ApiResponse(
+            responseCode = "400",
+            description = "System entity {name} of type SystemApp can not be deleted."),
+        @ApiResponse(responseCode = "404", description = "App for instance {id} is not found")
+      })
+  public Response deleteByIdAsync(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Hard delete the entity. (Default = `false`)")
+          @QueryParam("hardDelete")
+          @DefaultValue("false")
+          boolean hardDelete,
+      @Parameter(description = "Id of the App", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id) {
+    App app = repository.get(uriInfo, id, repository.getFields("bot,pipelines"), ALL, false);
+    if (app.getSystem()) {
+      throw new IllegalArgumentException(
+          CatalogExceptionMessage.systemEntityDeleteNotAllowed(app.getName(), "SystemApp"));
+    }
+
+    ApplicationHandler.getInstance()
+        .performCleanup(
+            app,
+            Entity.getCollectionDAO(),
+            searchRepository,
+            securityContext.getUserPrincipal().getName());
+
+    // Remove from Pipeline Service
+    deleteApp(securityContext, app);
+    // Remove from repository
+    return deleteByIdAsync(uriInfo, securityContext, id, true, hardDelete);
+  }
+
   @PUT
   @Path("/restore")
   @Operation(
