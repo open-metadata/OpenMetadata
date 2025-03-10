@@ -5,6 +5,7 @@ import org.openmetadata.schema.governance.workflows.elements.NodeSubType;
 import org.openmetadata.schema.governance.workflows.elements.WorkflowNodeDefinitionInterface;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.CheckEntityAttributesTaskDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.CreateIngestionPipelineTaskDefinition;
+import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.CreateAndRunIngestionPipelineTaskDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.RunAppTaskDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.RunIngestionPipelineTaskDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.SetEntityCertificationTaskDefinition;
@@ -15,6 +16,7 @@ import org.openmetadata.schema.governance.workflows.elements.nodes.startEvent.St
 import org.openmetadata.schema.governance.workflows.elements.nodes.userTask.UserApprovalTaskDefinition;
 import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.CheckEntityAttributesTask;
 import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.CreateIngestionPipelineTask;
+import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.createAndRunIngestionPipeline.CreateAndRunIngestionPipelineTask;
 import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.RunIngestionPipelineTask;
 import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.SetEntityCertificationTask;
 import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.SetGlossaryTermStatusTask;
@@ -41,7 +43,9 @@ public class NodeFactory {
       case CREATE_INGESTION_PIPELINE_TASK -> new CreateIngestionPipelineTask(
           (CreateIngestionPipelineTaskDefinition) nodeDefinition, config);
       case RUN_INGESTION_PIPELINE_TASK -> new RunIngestionPipelineTask(
-          (RunIngestionPipelineTaskDefinition) nodeDefinition, config);
+              (RunIngestionPipelineTaskDefinition) nodeDefinition, config);
+      case CREATE_AND_RUN_INGESTION_PIPELINE_TASK -> new CreateAndRunIngestionPipelineTask(
+              (CreateAndRunIngestionPipelineTaskDefinition) nodeDefinition, config);
       case RUN_APP_TASK -> new RunAppTask((RunAppTaskDefinition) nodeDefinition, config);
       case PARALLEL_GATEWAY -> new ParallelGateway(
           (ParallelGatewayDefinition) nodeDefinition, config);
