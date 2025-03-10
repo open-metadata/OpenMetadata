@@ -43,7 +43,7 @@ export interface CreateTestCase {
     /**
      * Fully qualified name of the testSuite
      */
-    testSuite: string;
+    testSuite?: string;
     /**
      * If the test definition supports it, use dynamic assertion to evaluate the test case.
      */
