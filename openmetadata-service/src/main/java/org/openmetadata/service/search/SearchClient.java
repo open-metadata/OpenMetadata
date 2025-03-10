@@ -107,9 +107,9 @@ public interface SearchClient {
   String PROPAGATE_TEST_SUITES_SCRIPT = "ctx._source.testSuites = params.testSuites";
 
   String REMOVE_OWNERS_SCRIPT =
-      "if (ctx._source.owners != null && !ctx._source.owners.isEmpty()) { "
-          + "ctx._source.owners.removeIf(owner -> "
-          + "params.deletedOwners.stream().anyMatch(deletedOwner -> deletedOwner.id == owner.id) && owner.inherited == true); "
+      "if (ctx._source.owners != null) { "
+          + "ctx._source.owners.removeIf(owner -> owner.inherited == true); "
+          + "ctx._source.owners.addAll(params.deletedOwners); "
           + "}";
 
   String UPDATE_TAGS_FIELD_SCRIPT =
