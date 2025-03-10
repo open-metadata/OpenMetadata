@@ -7,7 +7,6 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
-import org.antlr.v4.runtime.misc.ParseCancellationException;
 import org.junit.jupiter.api.Test;
 
 class FullyQualifiedNameTest {
@@ -65,8 +64,13 @@ class FullyQualifiedNameTest {
 
   @Test
   void test_invalid() {
-    assertThrows(ParseCancellationException.class, () -> FullyQualifiedName.split("..a"));
-    assertThrows(ParseCancellationException.class, () -> FullyQualifiedName.split("a.."));
+    IllegalArgumentException exception1 =
+        assertThrows(IllegalArgumentException.class, () -> FullyQualifiedName.split("..a"));
+    assertEquals("Invalid FQN format: ..a", exception1.getMessage());
+
+    IllegalArgumentException exception2 =
+        assertThrows(IllegalArgumentException.class, () -> FullyQualifiedName.split("a.."));
+    assertEquals("Invalid FQN format: a..", exception2.getMessage());
   }
 
   @Test
