@@ -10,8 +10,8 @@
   "trigger": {
     "type": "eventBasedEntity",
     "config": {
-      "entityType": "databaseService",
-      "events": ["Created"]
+      "entityType": null,
+      "events": []
     }
   },
   "nodes": [
