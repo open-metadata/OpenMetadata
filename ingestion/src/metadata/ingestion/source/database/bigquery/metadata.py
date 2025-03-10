@@ -51,6 +51,10 @@ from metadata.generated.schema.entity.services.ingestionPipelines.status import 
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from metadata.generated.schema.security.credentials.gcpCredentials import (
+    GcpADC,
+    GcpCredentialsPath,
+)
 from metadata.generated.schema.security.credentials.gcpValues import (
     GcpCredentialsValues,
 )
@@ -242,7 +246,7 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
         # Upon invoking the set_project_id method, we retrieve a comprehensive
         # list of all project IDs. Subsequently, after the invokation,
         # we proceed to test the connections for each of these project IDs
-        self.project_ids = self.set_project_id()
+        self.project_ids = self.set_project_id(self.service_connection)
         self.life_cycle_query = BIGQUERY_LIFE_CYCLE_QUERY
         self.test_connection = self._test_connection
         self.test_connection()
@@ -275,9 +279,76 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
         return cls(config, metadata, incremental_config)
 
     @staticmethod
-    def set_project_id() -> List[str]:
-        _, project_ids = auth.default()
-        return project_ids if isinstance(project_ids, list) else [project_ids]
+    def set_project_id(
+        service_connection: Optional[BigQueryConnection] = None,
+    ) -> List[str]:
+        """
+        Get the project ID from the service connection or ADC.
+
+        Args:
+            service_connection: Optional BigQuery connection config
+
+        Returns:
+            List of project IDs to scan
+
+        Raises:
+            InvalidSourceException: If unable to get project IDs from either config or ADC
+        """
+        try:
+            # First check if project ID is configured in service connection
+            if (
+                service_connection
+                and hasattr(service_connection, "credentials")
+                and hasattr(service_connection.credentials, "gcpConfig")
+            ):
+                gcp_config = service_connection.credentials.gcpConfig
+
+                # Handle GcpCredentialsValues case
+                if isinstance(gcp_config, GcpCredentialsValues):
+                    if gcp_config.projectId:
+                        if isinstance(gcp_config.projectId, list):
+                            return gcp_config.projectId
+                        return [gcp_config.projectId]
+
+                # Handle GcpCredentialsPath case
+                elif isinstance(gcp_config, GcpCredentialsPath):
+                    if gcp_config.projectId:
+                        return [gcp_config.projectId]
+
+                # Handle GcpADC case - fetch projects only if explicitly configured to use ADC
+                elif isinstance(gcp_config, GcpADC):
+                    try:
+                        from google.cloud import resourcemanager_v3
+
+                        client = resourcemanager_v3.ProjectsClient()
+                        request = resourcemanager_v3.SearchProjectsRequest(
+                            query=""  # Empty query to return all accessible projects
+                        )
+                        page_result = client.search_projects(request=request)
+                        project_ids = [response.project_id for response in page_result]
+                        if project_ids:
+                            return project_ids
+                    except Exception as exc:
+                        logger.warning(
+                            f"Error fetching project IDs using resource manager: {exc}"
+                        )
+
+            # Fallback to ADC default project
+            try:
+                _, project_id = auth.default()
+                if project_id:
+                    return [project_id] if isinstance(project_id, str) else project_id
+            except Exception as exc:
+                logger.warning(f"Error getting default project from ADC: {exc}")
+
+            raise InvalidSourceException(
+                "Unable to get project IDs. Either configure project IDs in the connection or "
+                "ensure Application Default Credentials are set up correctly."
+            )
+
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            raise InvalidSourceException(f"Error setting BigQuery project IDs: {exc}")
 
     def _test_connection(self) -> None:
         for project_id in self.project_ids:
