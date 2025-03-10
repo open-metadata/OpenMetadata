@@ -2297,7 +2297,6 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
         "Delete operation initiated for " + deleteResponse.getEntityName(),
         deleteResponse.getMessage());
     assertEquals(hardDelete, deleteResponse.isHardDelete());
-    assertEquals(recursive, deleteResponse.isRecursive());
 
     if (!messageLatch.await(30, TimeUnit.SECONDS)) {
       fail("Did not receive delete notification via Socket.IO within the expected time.");

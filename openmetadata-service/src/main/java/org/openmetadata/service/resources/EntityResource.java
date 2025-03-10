@@ -458,12 +458,12 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       boolean hardDelete) {
     String jobId = UUID.randomUUID().toString();
     T entity;
-    String userName = securityContext.getUserPrincipal().getName();
     Response response;
 
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.DELETE);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
     entity = repository.get(uriInfo, id, repository.getFields("name"), Include.ALL, false);
+    String userName = securityContext.getUserPrincipal().getName();
 
     ExecutorService executorService = AsyncService.getInstance().getExecutorService();
     executorService.submit(

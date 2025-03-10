@@ -957,9 +957,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
           boolean hardDelete,
       @Parameter(description = "Id of the user", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id) {
-    Response response = deleteByIdAsync(uriInfo, securityContext, id, false, hardDelete);
-    decryptOrNullify(securityContext, (User) response.getEntity());
-    return response;
+    return deleteByIdAsync(uriInfo, securityContext, id, false, hardDelete);
   }
 
   @DELETE
