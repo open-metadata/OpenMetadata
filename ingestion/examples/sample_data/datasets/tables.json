@@ -9420,7 +9420,7 @@
             "sourceUrl": "http://localhost:8080/dim(shop)"
         },
         {
-            "name": "\\u043c\\u0430\\u0433\\u0430\\u0437\\u0438\\u043d",
+            "name": "магазин",
             "description": "This dimension table contains online shop information with weird characters.",
             "version": 0.1,
             "updatedAt": 1638354087633,
@@ -9428,29 +9428,29 @@
             "tableType": "Regular",
             "columns": [
                 {
-                    "name": "\\u0438\\u0434\\u0435\\u043d\\u0442\\u0438\\u0444\\u0438\\u043a\\u0430\\u0442\\u043e\\u0440",
+                    "name": "идентификатор",
                     "dataType": "NUMERIC",
                     "dataTypeDisplay": "numeric",
-                    "description": "\\u0438\\u0434\\u0435\\u043d\\u0442\\u0438\\u0444\\u0438\\u043a\\u0430\\u0442\\u043e\\u0440",
+                    "description": "идентификатор",
                     "tags": [],
                     "constraint": "PRIMARY_KEY",
                     "ordinalPosition": 1
                 },
                 {
-                    "name": "\\u0438\\u043c\\u044f",
+                    "name": "имя",
                     "dataType": "VARCHAR",
                     "dataLength": 100,
                     "dataTypeDisplay": "varchar",
-                    "description": "\\u0438\\u043c\\u044f",
+                    "description": "имя",
                     "tags": [],
                     "ordinalPosition": 2
                 },
                 {
-                    "name": "\\u0434\\u043e\\u043c\\u0435\\u043d",
+                    "name": "домен",
                     "dataType": "VARCHAR",
                     "dataLength": 1000,
                     "dataTypeDisplay": "varchar",
-                    "description": "\\u0434\\u043e\\u043c\\u0435\\u043d",
+                    "description": "домен",
                     "tags": [],
                     "ordinalPosition": 3
                 }
