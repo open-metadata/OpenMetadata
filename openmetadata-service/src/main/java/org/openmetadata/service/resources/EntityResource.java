@@ -464,7 +464,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.DELETE);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
     entity = repository.get(uriInfo, id, repository.getFields("name"), Include.ALL, false);
-    LOG.info("Delete entity: {}", entity);
+
     ExecutorService executorService = AsyncService.getInstance().getExecutorService();
     executorService.submit(
         () -> {
