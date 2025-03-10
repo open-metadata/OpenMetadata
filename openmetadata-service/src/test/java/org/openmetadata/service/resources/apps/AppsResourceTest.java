@@ -42,6 +42,7 @@ import org.openmetadata.schema.api.data.CreateTableProfile;
 import org.openmetadata.schema.api.events.CreateEventSubscription;
 import org.openmetadata.schema.api.services.CreateDatabaseService;
 import org.openmetadata.schema.entity.app.App;
+import org.openmetadata.schema.entity.app.AppConfiguration;
 import org.openmetadata.schema.entity.app.AppExtension;
 import org.openmetadata.schema.entity.app.AppMarketPlaceDefinition;
 import org.openmetadata.schema.entity.app.AppRunRecord;
@@ -355,23 +356,6 @@ public class AppsResourceTest extends EntityResourceTest<App, CreateApp> {
     assertAppStatusAvailableAfterTrigger(appName);
     assertListExtension(appName, AppExtension.ExtensionType.STATUS);
     assertAppRanAfterTriggerWithStatus(appName, AppRunRecord.Status.SUCCESS);
-
-    postTriggerApp(appName, ADMIN_AUTH_HEADERS, Map.of("batchSize", 1234));
-
-    assertEventually(
-        "triggerCustomConfig",
-        () ->
-            Assertions.assertEquals(
-                1234, getLatestAppRun(appName, ADMIN_AUTH_HEADERS).getConfig().get("batchSize")));
-  }
-
-  @Test
-  void post_trigger_app_400() {
-    String appName = "SearchIndexingApplication";
-    assertResponseContains(
-        () -> postTriggerApp(appName, ADMIN_AUTH_HEADERS, Map.of("thisShouldFail", "but will it?")),
-        BAD_REQUEST,
-        "Unrecognized field \"thisShouldFail\"");
   }
 
   private void assertAppStatusAvailableAfterTrigger(String appName) {
@@ -438,7 +422,7 @@ public class AppsResourceTest extends EntityResourceTest<App, CreateApp> {
             .withAppType(AppType.Internal)
             .withScheduleType(ScheduleType.Scheduled)
             .withRuntime(new ScheduledExecutionContext().withEnabled(true))
-            .withAppConfiguration(Map.of())
+            .withAppConfiguration(new AppConfiguration())
             .withPermission(NativeAppPermission.All)
             .withEventSubscriptions(
                 List.of(
@@ -462,7 +446,9 @@ public class AppsResourceTest extends EntityResourceTest<App, CreateApp> {
 
     // install app
     CreateApp installApp =
-        new CreateApp().withName(createRequest.getName()).withAppConfiguration(Map.of());
+        new CreateApp()
+            .withName(createRequest.getName())
+            .withAppConfiguration(new AppConfiguration());
     createEntity(installApp, ADMIN_AUTH_HEADERS);
     TestUtils.get(
         getResource(String.format("events/subscriptions/name/%s", subscriptionName)),
@@ -557,15 +543,8 @@ public class AppsResourceTest extends EntityResourceTest<App, CreateApp> {
 
   private void postTriggerApp(String appName, Map<String, String> authHeaders)
       throws HttpResponseException {
-    postTriggerApp(appName, authHeaders, Map.of());
-  }
-
-  private void postTriggerApp(
-      String appName, Map<String, String> authHeaders, Map<String, Object> config)
-      throws HttpResponseException {
     WebTarget target = getResource("apps/trigger").path(appName);
-    Response response =
-        SecurityUtil.addHeaders(target, authHeaders).post(javax.ws.rs.client.Entity.json(config));
+    Response response = SecurityUtil.addHeaders(target, authHeaders).post(null);
     readResponse(response, OK.getStatusCode());
   }
 
