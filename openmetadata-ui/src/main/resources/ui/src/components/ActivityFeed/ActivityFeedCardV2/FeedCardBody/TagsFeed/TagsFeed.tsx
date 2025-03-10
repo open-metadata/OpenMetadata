@@ -19,9 +19,9 @@ import { ReactComponent as DeletedIcon } from '../../../../../assets/svg/deleted
 
 import { Tag } from '../../../../../generated/entity/feed/tag';
 import TagsViewer from '../../../../Tag/TagsViewer/TagsViewer';
-import { TagsFeedProps } from './TagsFeed.interface';
+import { FeedCardBodyProps } from '../FeedCardBody.interface';
 
-function TagsFeed({ feed }: Readonly<TagsFeedProps>) {
+function TagsFeed({ feed }: Readonly<FeedCardBodyProps>) {
   const { previousTags, updatedTags } = useMemo(() => {
     return {
       previousTags:

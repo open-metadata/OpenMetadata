@@ -1,0 +1,17 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/feed/certification.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CertificationFeedInfo",
+  "javaType": "org.openmetadata.schema.entity.feed.CertificationFeedInfo",
+  "description": "This schema defines the certification addition/updation/deletion schema on feed.",
+  "type": "object",
+  "properties": {
+    "previousValue": {
+      "description": "Previous Certification details."
+    },
+    "updatedValue": {
+      "description": "Updated Certification details."
+    }
+  },
+  "additionalProperties": false
+}

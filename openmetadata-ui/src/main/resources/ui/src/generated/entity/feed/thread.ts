@@ -137,6 +137,7 @@ export interface AnnouncementDetails {
  */
 export enum CardStyle {
     Assets = "assets",
+    Certification = "certification",
     CustomProperties = "customProperties",
     Default = "default",
     Description = "description",
@@ -246,6 +247,8 @@ export interface FeedInfo {
 /**
  * This schema defines the schema for Assets addition/deletion Updates.
  *
+ * This schema defines the certification addition/updation/deletion schema on feed.
+ *
  * This schema defines the custom properties addition/deltion schema on feed.
  *
  * This schema defines the schema for Description Updates.
@@ -257,10 +260,14 @@ export interface FeedInfo {
 export interface Info {
     updatedAssets?: EntityReference[];
     /**
+     * Previous Certification details.
+     *
      * Previous Custom Property.
      */
     previousValue?: any;
     /**
+     * Updated Certification details.
+     *
      * Updated Custom Property.
      */
     updatedValue?: any;

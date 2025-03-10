@@ -14,6 +14,7 @@
 package org.openmetadata.service.formatter.factory;
 
 import static org.openmetadata.service.Entity.FIELD_ASSETS;
+import static org.openmetadata.service.Entity.FIELD_CERTIFICATION;
 import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
 import static org.openmetadata.service.Entity.FIELD_DOMAIN;
 import static org.openmetadata.service.Entity.FIELD_EXTENSION;
@@ -33,6 +34,7 @@ import org.openmetadata.service.formatter.entity.KpiFormatter;
 import org.openmetadata.service.formatter.entity.PipelineFormatter;
 import org.openmetadata.service.formatter.entity.QueryFormatter;
 import org.openmetadata.service.formatter.field.AssetsFieldFormatter;
+import org.openmetadata.service.formatter.field.CertificationFormatter;
 import org.openmetadata.service.formatter.field.CustomPropertiesFormatter;
 import org.openmetadata.service.formatter.field.DefaultFieldFormatter;
 import org.openmetadata.service.formatter.field.DescriptionFormatter;
@@ -73,6 +75,7 @@ public final class ParserFactory {
       case FIELD_EXTENSION -> new CustomPropertiesFormatter(decorator, thread, fieldChange);
       case TEST_RESULT_FIELD -> new TestCaseResultFormatter(decorator, thread, fieldChange);
       case FIELD_ASSETS -> new AssetsFieldFormatter(decorator, thread, fieldChange);
+      case FIELD_CERTIFICATION -> new CertificationFormatter(decorator, thread, fieldChange);
       default -> new DefaultFieldFormatter(decorator, thread, fieldChange);
     };
   }
