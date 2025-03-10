@@ -22,6 +22,7 @@ public record MlModelServiceIndex(MlModelService mlModelService) implements Sear
     Map<String, Object> commonAttributes =
         getCommonAttributesMap(mlModelService, Entity.MLMODEL_SERVICE);
     doc.putAll(commonAttributes);
+    doc.put("upstreamLineage", SearchIndex.getLineageData(mlModelService.getEntityReference()));
     return doc;
   }
 

@@ -500,6 +500,7 @@
     "execution-plural": "Запуски",
     "execution-time": "execution-time",
     "exit-fit-to-screen": "Закрыть полноэкранный режим",
+    "exit-full-screen": "Выйти из полноэкранного режима",
     "exit-version-history": "Exit Version History",
     "expand": "Expand",
     "expand-all": "Раскрыть все",
@@ -1005,6 +1006,7 @@
     "re-verify": "Повторно проверить",
     "reaction-lowercase-plural": "реакции",
     "read-type": "Читать {{type}}",
+    "rearrange-nodes": "Перегруппировать узлы",
     "reason": "Причина",
     "receiver-plural": "Приемники",
     "recent-announcement-plural": "Последние объявления",
@@ -1442,7 +1444,9 @@
     "yes": "Да",
     "yes-comma-confirm": "Yes, confirm",
     "yesterday": "Вчера",
-    "your-entity": "Ваш {{entity}}"
+    "your-entity": "Ваш {{entity}}",
+    "zoom-in": "Увеличить",
+    "zoom-out": "Уменьшить"
   },
   "message": {
     "access-block-time-message": "Access will be blocked for milliseconds after max failed login attempts performed.",
