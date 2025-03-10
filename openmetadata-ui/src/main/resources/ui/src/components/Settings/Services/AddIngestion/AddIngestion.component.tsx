@@ -86,8 +86,14 @@ const AddIngestion = ({
     : undefined;
 
   const filterProperties = useMemo(
-    () => getFilteredSchema(serviceData?.connection?.config, false),
-    [serviceData?.connection?.config]
+    () =>
+      getFilteredSchema(
+        isEditMode
+          ? data?.sourceConfig.config
+          : serviceData?.connection?.config,
+        false
+      ),
+    [data?.sourceConfig.config, serviceData?.connection?.config]
   );
 
   // lazy initialization to initialize the data only once
