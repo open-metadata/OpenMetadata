@@ -171,12 +171,9 @@ class OMetaLineageMixin(Generic[T]):
 
         except APIError as err:
             logger.debug(traceback.format_exc())
-            logger.error(
-                "Error %s trying to PUT lineage for %s: %s",
-                err.status_code,
-                data.model_dump_json(),
-                str(err),
-            )
+            error = f"Error {err.status_code} trying to PUT lineage for {data.model_dump_json()}: {str(err)}"
+            logger.error(error)
+            return {"error": error}
 
         from_entity_lineage = self.get_lineage_by_id(
             data.edge.fromEntity.type, str(data.edge.fromEntity.id.root)
@@ -396,6 +393,10 @@ class OMetaLineageMixin(Generic[T]):
                     resp = self.add_lineage(
                         lineage_request.right, check_patch=check_patch
                     )
+                    if resp.get("error"):
+                        logger.error(resp["error"])
+                        continue
+
                     entity_name = resp.get("entity", {}).get("name")
                     for node in resp.get("nodes", []):
                         logger.info(
