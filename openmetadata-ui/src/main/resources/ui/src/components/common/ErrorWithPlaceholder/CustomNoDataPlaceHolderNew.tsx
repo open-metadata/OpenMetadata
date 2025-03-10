@@ -27,19 +27,14 @@ const CustomNoDataPlaceHolderNew = ({
     <div
       className={classNames(className, 'flex-center flex-col w-full h-full')}
       data-testid="no-data-placeholder">
-      {icon ? (
-        icon
-      ) : (
+      {icon ?? (
         <NoDataFoundPlaceHolderIcon
           data-testid="no-data-image"
           height={size}
           width={size}
         />
       )}
-
-      <div className="m-t-xs text-center text-sm font-normal">
-        {children ? children : ''}
-      </div>
+      <div className="m-t-xs text-center text-sm font-normal">{children}</div>
     </div>
   );
 };

@@ -38,9 +38,7 @@ const NoDataPlaceholderNew = ({
     <div
       className={classNames(className, 'flex-center flex-col w-full h-full')}
       data-testid="no-data-placeholder">
-      {icon ? (
-        icon
-      ) : (
+      {icon ?? (
         <NoDataFoundPlaceHolderIcon
           data-testid="no-data-image"
           height={size}
@@ -48,7 +46,7 @@ const NoDataPlaceholderNew = ({
         />
       )}
 
-      {children ? children : ''}
+      {children}
     </div>
   );
 };
