@@ -23,7 +23,7 @@
       "description": "Test Cases to apply",
       "type": "array",
       "items": {
-        "$ref": "../../../../../tests/testCase.json"
+        "$ref": "../../../../../api/tests/createTestCase.json"
       }
     },
     "applyToChildren": {
