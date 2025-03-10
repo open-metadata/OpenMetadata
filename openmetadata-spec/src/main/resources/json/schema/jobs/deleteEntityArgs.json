@@ -1,0 +1,38 @@
+{
+  "$id": "https://open-metadata.org/schema/jobs/deleteEntityArgs.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "DeleteEntityArgs",
+  "description": "Arguments for delete operation job",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.jobs.DeleteEntityArgs",
+  "properties": {
+    "entityType": {
+      "description": "Type of entity being deleted",
+      "type": "string"
+    },
+    "entityId": {
+      "description": "Identifier of entity that was modified by the operation.",
+      "$ref": "../type/basic.json#/definitions/uuid"
+    },
+    "recursive": {
+      "description": "Whether to recursively delete child entities",
+      "type": "boolean",
+      "default": false
+    },
+    "hardDelete": {
+      "description": "Whether to perform hard delete",
+      "type": "boolean",
+      "default": false
+    },
+    "updatedBy": {
+      "description": "User who initiated the delete operation",
+      "type": "string"
+    },
+    "entityName": {
+      "description": "Unique name that identifies a Type.",
+      "$ref": "../entity/type.json#/definitions/entityName"
+    }
+  },
+  "required": ["entityType", "entityId", "updatedBy", "recursive", "hardDelete"],
+  "additionalProperties": false
+}

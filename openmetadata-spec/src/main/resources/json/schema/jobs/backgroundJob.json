@@ -12,17 +12,20 @@
     },
     "jobType": {
       "type": "string",
-      "enum": ["CUSTOM_PROPERTY_ENUM_CLEANUP"],
+      "enum": ["CUSTOM_PROPERTY_ENUM_CLEANUP","DELETE_ENTITY"],
       "description": "Type of the job."
     },
     "methodName": {
       "type": "string",
-      "description": "JobHandler name of the method that will be executed for this job."
+      "description": "JobHandler name  that will be executed for this job."
     },
     "jobArgs": {
       "oneOf": [
         {
           "$ref": "./enumCleanupArgs.json"
+        },
+        {
+          "$ref": "./deleteEntityArgs.json"
         }
       ],
       "description": "Object containing job arguments."
@@ -43,6 +46,10 @@
     "updatedAt": {
       "description": "Time when job was last updated in Unix epoch time milliseconds.",
       "$ref": "../type/basic.json#/definitions/timestamp"
+    },
+    "message": {
+      "description": "Message describing the job status or error details",
+      "type": "string"
     }
   },
   "required": ["id", "jobType", "methodName", "jobArgs", "status", "createdBy", "createdAt", "updatedAt"],

@@ -450,6 +450,21 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     return response.toResponse();
   }
 
+  public Response deleteAsync(
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      UUID id,
+      boolean recursive,
+      boolean hardDelete) {
+    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.DELETE);
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
+    DeleteResponse<T> response =
+        repository.deleteAsync(
+            securityContext.getUserPrincipal().getName(), id, recursive, hardDelete);
+
+    return response.toResponse();
+  }
+
   public Response deleteByName(
       UriInfo uriInfo,
       SecurityContext securityContext,
