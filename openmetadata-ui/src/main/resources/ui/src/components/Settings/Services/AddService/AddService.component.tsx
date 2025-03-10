@@ -160,8 +160,8 @@ const AddService = ({
         entityLowercase: t('label.service-lowercase'),
         entityLowercasePlural: t('label.service-lowercase-plural'),
         setInlineAlertDetails,
-        name: serviceConfig.serviceName,
         defaultErrorType: 'create',
+        name: serviceConfig.serviceName,
       });
     } finally {
       setSaveServiceState('initial');
