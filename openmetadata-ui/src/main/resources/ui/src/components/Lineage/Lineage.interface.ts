@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { EntityType } from '../../enums/entity.enum';
+import { LineageDirection } from '../../generated/api/lineage/lineageDirection';
 import { EntityReference } from '../../generated/entity/type';
 import { ColumnLineage } from '../../generated/type/entityLineage';
 import { SourceType } from '../SearchedData/SearchedData.interface';
@@ -32,9 +33,9 @@ export interface EntityLineageResponse {
 }
 
 export interface EdgeFromToData {
-  fqn: string;
   id: string;
   type: string;
+  fullyQualifiedName?: string;
 }
 
 export interface EdgeDetails {
@@ -46,10 +47,39 @@ export interface EdgeDetails {
   columns?: ColumnLineage[];
   description?: string;
   pipelineEntityType?: EntityType.PIPELINE | EntityType.STORED_PROCEDURE;
-  doc_id?: string;
+  docId?: string;
+  extraInfo?: EdgeDetails;
 }
 
 export type LineageSourceType = Omit<SourceType, 'service'> & {
   direction: string;
   depth: number;
 };
+
+export type NodeData = {
+  entity: EntityReference;
+  paging: {
+    entityDownstreamCount?: number;
+    entityUpstreamCount?: number;
+  };
+};
+
+export type LineageData = {
+  nodes: Record<string, NodeData>;
+  downstreamEdges: Record<string, EdgeDetails>;
+  upstreamEdges: Record<string, EdgeDetails>;
+};
+
+export interface LineageEntityReference extends EntityReference {
+  paging?: {
+    entityDownstreamCount?: number;
+    entityUpstreamCount?: number;
+  };
+  pagination_data?: {
+    index?: number;
+    parentId?: string;
+    childrenLength?: number;
+  };
+  expandPerformed?: boolean;
+  direction?: LineageDirection;
+}
