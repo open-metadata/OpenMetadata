@@ -12,7 +12,7 @@
  */
 
 export interface SliderWithInputProps {
-  value: number;
+  value?: number;
   onChange: (value: number | null) => void;
   className?: string;
 }
