@@ -93,7 +93,15 @@ public class ListFilter extends Filter<ListFilter> {
 
   private String getAgentTypeCondition() {
     String agentType = queryParams.get("agentType");
-    return agentType == null ? "" : String.format("agentType = '%s'", agentType);
+    if (agentType == null) {
+      return "";
+    } else {
+      if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
+        return String.format("JSON_EXTRACT(json, '$.agentType') = '%s'", agentType);
+      } else {
+        return String.format("json->>'agentType' = '%s'", agentType);
+      }
+    }
   }
 
   private String getEventSubscriptionAlertType() {

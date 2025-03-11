@@ -221,11 +221,9 @@ public class AppResource extends EntityResource<App, AppRepository> {
               schema = @Schema(type = "string"))
           @QueryParam("after")
           String after,
-      @Parameter(
-          description = "Filter by agent type",
-          schema = @Schema(type = "string"))
-      @QueryParam("agentType")
-      String agentType,
+      @Parameter(description = "Filter by agent type", schema = @Schema(type = "string"))
+          @QueryParam("agentType")
+          String agentType,
       @Parameter(
               description = "Include all, deleted, or non-deleted entities.",
               schema = @Schema(implementation = Include.class))
