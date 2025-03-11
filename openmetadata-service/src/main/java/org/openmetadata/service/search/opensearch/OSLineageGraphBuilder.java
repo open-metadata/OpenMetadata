@@ -14,8 +14,6 @@ import static org.openmetadata.service.search.elasticsearch.ElasticSearchClient.
 import static org.openmetadata.service.search.opensearch.OsUtils.getSearchRequest;
 
 import com.nimbusds.jose.util.Pair;
-import es.org.elasticsearch.search.aggregations.bucket.terms.ParsedStringTerms;
-import es.org.elasticsearch.search.aggregations.bucket.terms.Terms;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
@@ -34,6 +32,8 @@ import os.org.opensearch.action.search.SearchResponse;
 import os.org.opensearch.client.RequestOptions;
 import os.org.opensearch.client.RestHighLevelClient;
 import os.org.opensearch.search.SearchHit;
+import os.org.opensearch.search.aggregations.bucket.terms.ParsedStringTerms;
+import os.org.opensearch.search.aggregations.bucket.terms.Terms;
 
 @Slf4j
 public class OSLineageGraphBuilder {
