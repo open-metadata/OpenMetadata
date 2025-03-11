@@ -23,7 +23,7 @@ import DocumentTitle from '../../components/common/DocumentTitle/DocumentTitle';
 import { HTTP_STATUS_CODE } from '../../constants/Auth.constants';
 import { ROUTES } from '../../constants/constants';
 import { useAlertStore } from '../../hooks/useAlertStore';
-import { showErrorToast } from '../../utils/ToastUtils';
+import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import './forgot-password.styles.less';
 
 const ForgotPassword = () => {
@@ -33,14 +33,12 @@ const ForgotPassword = () => {
   const history = useHistory();
   const [loading, setLoading] = useState(false);
 
-  const [showResetLinkSentAlert, setShowResetLinkSentAlert] = useState(false);
-
   const handleSubmit = useCallback(
     async (data: { email: string }) => {
       try {
         setLoading(true);
         await handleForgotPassword?.(data.email);
-        setShowResetLinkSentAlert(true);
+        showSuccessToast(t('message.reset-link-has-been-sent'));
       } catch (error) {
         showErrorToast(
           (error as AxiosError).response?.status ===
@@ -48,13 +46,11 @@ const ForgotPassword = () => {
             ? t('server.forgot-password-email-error')
             : t('server.email-not-found')
         );
-
-        setShowResetLinkSentAlert(false);
       } finally {
         setLoading(false);
       }
     },
-    [setShowResetLinkSentAlert, handleForgotPassword]
+    [handleForgotPassword]
   );
 
   const handleLogin = () => {
@@ -81,14 +77,12 @@ const ForgotPassword = () => {
             </Typography.Text>
           </Col>
 
-          {(alert || showResetLinkSentAlert) && (
+          {alert && (
             <Col className="m-b-lg" span={24}>
               <AlertBar
                 isUnauthenticated
-                message={
-                  alert?.message ?? t('message.reset-link-has-been-sent') ?? ''
-                }
-                type={alert?.type ?? 'success'}
+                message={alert?.message}
+                type={alert?.type}
               />
             </Col>
           )}

@@ -55,7 +55,7 @@ const SignInPage = () => {
     };
   }, [authConfig]);
 
-  const { handleLogin, loginError } = useBasicAuth();
+  const { handleLogin } = useBasicAuth();
 
   const handleSignIn = () => {
     onLoginHandler && onLoginHandler();
@@ -176,11 +176,11 @@ const SignInPage = () => {
             <Typography.Text className="mt-8 w-80 text-xl font-medium text-grey-muted">
               {t('message.om-description')}{' '}
             </Typography.Text>
-            {(alert || loginError) && (
+            {alert && (
               <div className="login-alert">
                 <AlertBar
                   isUnauthenticated
-                  message={loginError ?? alert?.message ?? ''}
+                  message={alert?.message}
                   type={alert?.type}
                 />
               </div>
