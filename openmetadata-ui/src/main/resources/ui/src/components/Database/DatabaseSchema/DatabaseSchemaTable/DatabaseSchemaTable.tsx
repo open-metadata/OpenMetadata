@@ -10,8 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons';
-import { Button, Col, Row, Switch, Typography } from 'antd';
+import { Col, Row, Switch, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
@@ -20,7 +19,6 @@ import { isEmpty } from 'lodash';
 import QueryString from 'qs';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useHistory } from 'react-router-dom';
-import { ReactComponent as IconEdit } from '../../../../assets/svg/edit-new.svg';
 import {
   getEntityDetailsPath,
   INITIAL_PAGING_VALUE,
@@ -49,6 +47,7 @@ import {
   patchDatabaseSchemaDetails,
 } from '../../../../rest/databaseAPI';
 import { searchQuery } from '../../../../rest/searchAPI';
+import { getBulkEditButton } from '../../../../utils/EntityBulkEdit/EntityBulkEditUtils';
 import {
   getEntityBulkEditPath,
   highlightSearchText,
@@ -333,16 +332,10 @@ export const DatabaseSchemaTable = ({
           data-testid="database-databaseSchemas"
           dataSource={schemas}
           defaultVisibleColumns={DEFAULT_DATABASE_SCHEMA_VISIBLE_COLUMNS}
-          extraTableFilters={
-            <Button
-              className="text-primary p-0"
-              data-testid="bulk-edit-table"
-              icon={<Icon component={IconEdit} />}
-              type="text"
-              onClick={handleEditTable}>
-              {t('label.edit')}
-            </Button>
-          }
+          extraTableFilters={getBulkEditButton(
+            permissions.databaseSchema.EditAll,
+            handleEditTable
+          )}
           loading={isLoading}
           locale={{
             emptyText: <ErrorPlaceHolder className="m-y-md" />,

@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons';
-import { Button, Col, Row, Switch, Typography } from 'antd';
+import { Col, Row, Switch, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
@@ -20,7 +19,6 @@ import { isUndefined } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
-import { ReactComponent as IconEdit } from '../../assets/svg/edit-new.svg';
 import DisplayName from '../../components/common/DisplayName/DisplayName';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import NextPrevious from '../../components/common/NextPrevious/NextPrevious';
@@ -48,6 +46,7 @@ import {
   patchTableDetails,
   TableListParams,
 } from '../../rest/tableAPI';
+import { getBulkEditButton } from '../../utils/EntityBulkEdit/EntityBulkEditUtils';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import { getEntityBulkEditPath } from '../../utils/EntityUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -262,14 +261,7 @@ function SchemaTablesTab({
                   </Typography.Text>
                 </span>
 
-                <Button
-                  className="text-primary p-0"
-                  data-testid="bulk-edit-table"
-                  icon={<Icon component={IconEdit} />}
-                  type="text"
-                  onClick={handleEditTable}>
-                  {t('label.edit')}
-                </Button>
+                {getBulkEditButton(permissions.table.EditAll, handleEditTable)}
               </>
             )
           }

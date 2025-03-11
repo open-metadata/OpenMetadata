@@ -21,12 +21,9 @@ import { ENTITY_BULK_EDIT_STEPS } from '../../constants/BulkEdit.constants';
 import { EntityType } from '../../enums/entity.enum';
 import { useFqn } from '../../hooks/useFqn';
 import {
-  exportDatabaseDetailsInCSV,
-  exportDatabaseSchemaDetailsInCSV,
-} from '../../rest/databaseAPI';
-import { exportDatabaseServiceDetailsInCSV } from '../../rest/serviceAPI';
-import { exportTableDetailsInCSV } from '../../rest/tableAPI';
-import { getBulkEntityEditBreadcrumbList } from '../../utils/EntityBulkEdit/EntityBulkEditUtils';
+  getBulkEditCSVExportEntityApi,
+  getBulkEntityEditBreadcrumbList,
+} from '../../utils/EntityBulkEdit/EntityBulkEditUtils';
 import Banner from '../common/Banner/Banner';
 import { ImportStatus } from '../common/EntityImport/ImportStatus/ImportStatus.component';
 import Loader from '../common/Loader/Loader';
@@ -64,28 +61,10 @@ const BulkEditEntity = ({
     [entityType, fqn]
   );
 
-  const getCSVExportEntityApi = () => {
-    switch (entityType) {
-      case EntityType.DATABASE_SERVICE:
-        return exportDatabaseServiceDetailsInCSV;
-
-      case EntityType.DATABASE:
-        return exportDatabaseDetailsInCSV;
-
-      case EntityType.DATABASE_SCHEMA:
-        return exportDatabaseSchemaDetailsInCSV;
-
-      case EntityType.TABLE:
-        return exportTableDetailsInCSV;
-
-      default:
-        return exportTableDetailsInCSV;
-    }
-  };
   useEffect(() => {
     triggerExportForBulkEdit({
       name: fqn,
-      onExport: getCSVExportEntityApi(),
+      onExport: getBulkEditCSVExportEntityApi(entityType),
     });
   }, []);
 

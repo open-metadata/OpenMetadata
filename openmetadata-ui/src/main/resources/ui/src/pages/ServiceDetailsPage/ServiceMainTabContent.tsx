@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons';
-import { Button, Col, Row, Space, Switch, Typography } from 'antd';
+import { Col, Row, Space, Switch, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
@@ -21,7 +20,6 @@ import { EntityTags, ServiceTypes } from 'Models';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import { ReactComponent as IconEdit } from '../../assets/svg/edit-new.svg';
 import DescriptionV1 from '../../components/common/EntityDescription/DescriptionV1';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';
@@ -43,6 +41,7 @@ import { EntityType } from '../../enums/entity.enum';
 import { Paging } from '../../generated/type/paging';
 import { UsePagingInterface } from '../../hooks/paging/usePaging';
 import { ServicesType } from '../../interface/service.interface';
+import { getBulkEditButton } from '../../utils/EntityBulkEdit/EntityBulkEditUtils';
 import { getEntityBulkEditPath } from '../../utils/EntityUtils';
 import {
   callServicePatchAPI,
@@ -285,16 +284,11 @@ function ServiceMainTabContent({
                                 </Typography.Text>
                               </span>
 
-                              {entityType === EntityType.DATABASE_SERVICE && (
-                                <Button
-                                  className="text-primary p-0"
-                                  data-testid="bulk-edit-table"
-                                  icon={<Icon component={IconEdit} />}
-                                  type="text"
-                                  onClick={handleEditTable}>
-                                  {t('label.edit')}
-                                </Button>
-                              )}
+                              {entityType === EntityType.DATABASE_SERVICE &&
+                                getBulkEditButton(
+                                  servicePermission.EditAll,
+                                  handleEditTable
+                                )}
                             </>
                           }
                           locale={{

@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons';
 import { Button, Col, Form, Row, Select, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { ExpandableConfig } from 'antd/lib/table/interface';
@@ -56,6 +55,7 @@ import { TagLabel } from '../../../generated/type/tagLabel';
 import { useFqn } from '../../../hooks/useFqn';
 import { getTestCaseExecutionSummary } from '../../../rest/testAPI';
 import { getPartialNameFromTableFQN } from '../../../utils/CommonUtils';
+import { getBulkEditButton } from '../../../utils/EntityBulkEdit/EntityBulkEditUtils';
 import {
   getColumnSorter,
   getEntityBulkEditPath,
@@ -579,7 +579,6 @@ const SchemaTable = () => {
   const handleEditTable = () => {
     history.push({
       pathname: getEntityBulkEditPath(EntityType.TABLE, decodedEntityFqn),
-      state: { isBulkEdit: true },
     });
   };
 
@@ -624,16 +623,10 @@ const SchemaTable = () => {
           dataSource={data}
           defaultVisibleColumns={DEFAULT_SCHEMA_TABLE_VISIBLE_COLUMNS}
           expandable={expandableConfig}
-          extraTableFilters={
-            <Button
-              className="text-primary p-0"
-              data-testid="bulk-edit-table"
-              icon={<Icon component={IconEdit} />}
-              type="text"
-              onClick={handleEditTable}>
-              {t('label.edit')}
-            </Button>
-          }
+          extraTableFilters={getBulkEditButton(
+            tablePermissions.EditAll,
+            handleEditTable
+          )}
           locale={{
             emptyText: <FilterTablePlaceHolder />,
           }}
