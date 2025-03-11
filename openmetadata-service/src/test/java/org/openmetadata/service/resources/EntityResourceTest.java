@@ -2247,7 +2247,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   @Test
   @Execution(ExecutionMode.CONCURRENT)
   void delete_async_soft_delete(TestInfo test) throws Exception {
-    if (!supportsAsyncDelete && !supportsSoftDelete) {
+    if (!supportsAsyncDelete || !supportsSoftDelete) {
       return;
     }
 
