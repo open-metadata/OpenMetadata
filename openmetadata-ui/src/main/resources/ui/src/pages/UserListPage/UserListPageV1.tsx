@@ -131,13 +131,6 @@ const UserListPageV1 = () => {
     setIsDataLoading(false);
   };
 
-  const handleFetch = () => {
-    fetchUsersList({
-      isAdmin: isAdminPage,
-      include: isDeleted ? Include.Deleted : Include.NonDeleted,
-    });
-  };
-
   const userQuerySearch = (
     text = WILD_CARD_CHAR,
     currentPage = 1,
@@ -220,22 +213,12 @@ const UserListPageV1 = () => {
     handlePageChange(INITIAL_PAGING_VALUE);
     handlePageSizeChange(PAGE_SIZE_MEDIUM);
     setFilters({ isDeleted: value ? value : null });
-    fetchUsersList({
-      isAdmin: isAdminPage,
-      include: value ? Include.Deleted : Include.NonDeleted,
-      limit: PAGE_SIZE_MEDIUM,
-    });
   };
 
   const handleSearch = (value: string) => {
     handlePageChange(INITIAL_PAGING_VALUE);
 
     setFilters({ user: value ? value : null });
-    if (value) {
-      getSearchedUsers(value, INITIAL_PAGING_VALUE);
-    } else {
-      handleFetch();
-    }
   };
 
   useEffect(() => {
