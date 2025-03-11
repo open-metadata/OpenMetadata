@@ -24,6 +24,7 @@ import java.util.concurrent.Semaphore;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
+import javax.ws.rs.core.Response;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang.exception.ExceptionUtils;
@@ -42,6 +43,7 @@ import org.openmetadata.schema.system.Stats;
 import org.openmetadata.schema.system.StepStats;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.AbstractNativeApplication;
+import org.openmetadata.service.exception.AppException;
 import org.openmetadata.service.exception.SearchIndexException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
@@ -467,6 +469,16 @@ public class SearchIndexApp extends AbstractNativeApplication {
     LOG.info("Stopped reindexing job.");
     jobData.setStatus(EventPublisherJob.Status.STOPPED);
     sendUpdates(jobExecutionContext);
+  }
+
+  @Override
+  protected void validateConfig(Map<String, Object> appConfig) {
+    try {
+      JsonUtils.convertValue(appConfig, EventPublisherJob.class);
+    } catch (IllegalArgumentException e) {
+      throw AppException.byMessage(
+          Response.Status.BAD_REQUEST, "Invalid App Configuration: " + e.getMessage());
+    }
   }
 
   private void processTask(IndexingTask<?> task, JobExecutionContext jobExecutionContext) {
