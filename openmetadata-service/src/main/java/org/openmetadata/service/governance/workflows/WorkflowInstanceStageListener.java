@@ -1,5 +1,6 @@
 package org.openmetadata.service.governance.workflows;
 
+import static org.openmetadata.service.governance.workflows.Workflow.FAILURE_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.STAGE_INSTANCE_STATE_ID_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.WORKFLOW_INSTANCE_EXECUTION_ID_VARIABLE;
 import static org.openmetadata.service.governance.workflows.WorkflowHandler.getProcessDefinitionKeyFromId;
@@ -41,6 +42,7 @@ public class WorkflowInstanceStageListener implements JavaDelegate {
   private void addNewStage(
       DelegateExecution execution,
       WorkflowInstanceStateRepository workflowInstanceStateRepository) {
+    execution.removeTransientVariable(FAILURE_VARIABLE);
     String workflowDefinitionName =
         getProcessDefinitionKeyFromId(execution.getProcessDefinitionId());
     UUID workflowInstanceId = UUID.fromString(execution.getProcessInstanceBusinessKey());
