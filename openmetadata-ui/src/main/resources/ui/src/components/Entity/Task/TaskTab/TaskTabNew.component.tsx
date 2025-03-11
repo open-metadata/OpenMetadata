@@ -1073,6 +1073,7 @@ export const TaskTabNew = ({
 
                   <Input
                     className="comments-input-field"
+                    data-testid="comments-input-field"
                     placeholder={t('message.input-placeholder')}
                     onClick={() => setShowFeedEditor(true)}
                   />

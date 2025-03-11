@@ -40,7 +40,7 @@ import {
 import { addOwner, updateDescription } from '../../utils/entity';
 import { clickOnLogo } from '../../utils/sidebar';
 import {
-  checkTaskCount,
+  checkTaskCountInActivityFeed,
   createDescriptionTask,
   createTagTask,
   TaskDetails,
@@ -210,22 +210,14 @@ test.describe('Activity feed', () => {
     const resolveSuggestion = page.waitForResponse(
       '/api/v1/feed/tasks/*/resolve'
     );
-    const openTasksResponse = page.waitForResponse(
-      '/api/v1/feed?entityLink=*&type=Task&taskStatus=Open'
-    );
-    const closedTasksResponse = page.waitForResponse(
-      '/api/v1/feed?entityLink=*&type=Task&taskStatus=Closed'
-    );
 
     await page.getByText('Accept Suggestion').click();
 
     await toastNotification(page, /Task resolved successfully/);
 
     await resolveSuggestion;
-    await openTasksResponse;
-    await closedTasksResponse;
 
-    await checkTaskCount(page, 0, 2);
+    await checkTaskCountInActivityFeed(page, 0, 2);
   });
 
   test('User should be able to reply in feeds in ActivityFeed', async ({
@@ -317,7 +309,7 @@ test.describe('Activity feed', () => {
 
     await toastNotification(page, /Task resolved successfully/);
 
-    await checkTaskCount(page, 0, 2);
+    await checkTaskCountInActivityFeed(page, 0, 2);
   });
 
   test('Comment and Close Task should work in Task Flow', async ({ page }) => {
@@ -338,16 +330,16 @@ test.describe('Activity feed', () => {
 
     expect(descriptionTask).toContain('Request to update description');
 
-    // Check the editor send button is not visible and comment button is disabled when no text is added
-    await expect(page.locator('[data-testid="send-button"]')).not.toBeVisible();
-    await expect(page.locator('[data-testid="comment-button"]')).toBeDisabled();
+    const commentInput = page.locator('[data-testid="comments-input-field"]');
+    await commentInput.scrollIntoViewIfNeeded();
+    await commentInput.click();
 
     await page.fill(
       '[data-testid="editor-wrapper"] .ql-editor',
       'Test comment added'
     );
     const addComment = page.waitForResponse('/api/v1/feed/*/posts');
-    await page.getByTestId('comment-button').click();
+    await page.getByTestId('send-button').click();
     await addComment;
 
     // Close the task from the Button.Group, should throw error when no comment is added.
@@ -361,6 +353,8 @@ test.describe('Activity feed', () => {
     await toastNotification(page, 'Task cannot be closed without a comment.');
 
     // Close the task from the Button.Group, with comment is added.
+    await commentInput.scrollIntoViewIfNeeded();
+    await commentInput.click();
     await page.fill(
       '[data-testid="editor-wrapper"] .ql-editor',
       'Closing the task with comment'
@@ -377,10 +371,12 @@ test.describe('Activity feed', () => {
 
     await toastNotification(page, 'Task closed successfully.');
 
-    await checkTaskCount(page, 0, 1);
+    await checkTaskCountInActivityFeed(page, 0, 1);
   });
 
-  test('Open and Closed Task Tab', async ({ page }) => {
+  test('Open and Closed Task Tab with approve from Task Feed Card', async ({
+    page,
+  }) => {
     const value: TaskDetails = {
       term: entity3.entity.displayName,
       assignee: user1.responseData.name,
@@ -398,7 +394,7 @@ test.describe('Activity feed', () => {
     await openTaskAfterDescriptionResponse;
 
     // open task count after description
-    await checkTaskCount(page, 1, 0);
+    await checkTaskCountInActivityFeed(page, 1, 0);
 
     await page.getByTestId('schema').click();
 
@@ -410,37 +406,11 @@ test.describe('Activity feed', () => {
     await openTaskAfterTagResponse;
 
     // open task count after description
-    await checkTaskCount(page, 2, 0);
+    await checkTaskCountInActivityFeed(page, 2, 0);
 
-    // Close one task.
-    await page.fill(
-      '[data-testid="editor-wrapper"] .ql-editor',
-      'Closing the task with comment'
-    );
-    const commentWithCloseTask = page.waitForResponse(
-      '/api/v1/feed/tasks/*/close'
-    );
-    await page.getByRole('button', { name: 'down' }).click();
-    await page.waitForSelector('.ant-dropdown', {
-      state: 'visible',
-    });
-    await page.getByRole('menuitem', { name: 'close' }).click();
-    await commentWithCloseTask;
-
-    await toastNotification(page, 'Task closed successfully.');
-    // open task count after closing one task
-    await checkTaskCount(page, 1, 1);
-
-    // switch to closed task tab
-    const closedTaskResponse = page.waitForResponse(
-      '/api/v1/feed?*&type=Task&taskStatus=Closed'
-    );
-    await page.getByTestId('closed-task').click();
-    await closedTaskResponse;
-
-    expect(page.getByTestId('markdown-parser')).toContainText(
-      'Closing the task with comment'
-    );
+    page.locator('[data-testid="approve-button"]').first().click();
+    await toastNotification(page, 'Task resolved successfully');
+    await checkTaskCountInActivityFeed(page, 1, 1);
   });
 
   test('Assignee field should not be disabled for owned entity tasks', async ({
@@ -686,15 +656,17 @@ base.describe('Activity feed with Data Consumer User', () => {
       // create tag task
       await createTagTask(page1, { ...value, tag: 'PII.None' });
 
-      // Should only see the close and comment button
-      expect(
-        await page1.locator('[data-testid="comment-button"]').isDisabled()
-      ).toBeTruthy();
+      // Should only see the close button
       expect(page1.locator('[data-testid="close-button"]')).toBeVisible();
       expect(
         page1.locator('[data-testid="edit-accept-task-dropdown"]')
       ).not.toBeVisible();
 
+      const commentInput = page1.locator(
+        '[data-testid="comments-input-field"]'
+      );
+      await commentInput.scrollIntoViewIfNeeded();
+      await commentInput.click();
       // Close 1st task
       await page1.fill(
         '[data-testid="editor-wrapper"] .ql-editor',
@@ -707,13 +679,7 @@ base.describe('Activity feed with Data Consumer User', () => {
       await commentWithCloseTask;
 
       await toastNotification(page1, 'Task closed successfully.');
-      const openTask = await page1.getByTestId('open-task').textContent();
-
-      expect(openTask).toContain('1 Open');
-
-      const closedTask = await page1.getByTestId('closed-task').textContent();
-
-      expect(closedTask).toContain('1 Closed');
+      await checkTaskCountInActivityFeed(page1, 1, 1);
 
       await afterActionUser1();
     });
@@ -750,22 +716,10 @@ base.describe('Activity feed with Data Consumer User', () => {
 
       // Count for task should be 1 both open and closed
 
-      const openTaskBefore = await page2.getByTestId('open-task').textContent();
-
-      expect(openTaskBefore).toContain('1 Open');
-
-      const closedTaskBefore = await page2
-        .getByTestId('closed-task')
-        .textContent();
-
-      expect(closedTaskBefore).toContain('1 Closed');
+      checkTaskCountInActivityFeed(page2, 1, 1);
 
       // Should not see the close button
       expect(page2.locator('[data-testid="close-button"]')).not.toBeVisible();
-
-      expect(
-        await page2.locator('[data-testid="comment-button"]').isDisabled()
-      ).toBeTruthy();
 
       expect(
         page2.locator('[data-testid="edit-accept-task-dropdown"]')
@@ -775,15 +729,7 @@ base.describe('Activity feed with Data Consumer User', () => {
 
       await toastNotification(page2, /Task resolved successfully/);
 
-      await page2.waitForLoadState('networkidle');
-
-      const openTask = await page2.getByTestId('open-task').textContent();
-
-      expect(openTask).toContain('0 Open');
-
-      const closedTask = await page2.getByTestId('closed-task').textContent();
-
-      expect(closedTask).toContain('2 Closed');
+      checkTaskCountInActivityFeed(page2, 0, 2);
 
       await afterActionUser2();
     });
@@ -820,8 +766,9 @@ base.describe('Activity feed with Data Consumer User', () => {
 
       // Should only see the close, add and comment button
       expect(
-        await page1.locator('[data-testid="comment-button"]').isDisabled()
-      ).toBeTruthy();
+        page1.locator('[data-testid="comments-input-field"]')
+      ).toBeVisible();
+
       expect(page1.locator('[data-testid="close-button"]')).toBeVisible();
       expect(
         page1.locator('[data-testid="edit-accept-task-dropdown"]')
@@ -865,12 +812,13 @@ base.describe('Activity feed with Data Consumer User', () => {
         await tagsTask.click();
         await entityPageTaskTab;
 
-        expect(page2.getByTestId('noDiff-placeholder')).toBeVisible();
+        expect(page2.getByText('no diff available').first()).toBeVisible();
 
         // Should see the add_close dropdown and comment button
-        expect(
-          await page2.locator('[data-testid="comment-button"]').isDisabled()
-        ).toBeTruthy();
+        await expect(
+          page2.locator('[data-testid="comments-input-field"]')
+        ).toBeVisible();
+
         await expect(
           page2.getByTestId('add-close-task-dropdown')
         ).toBeVisible();
@@ -915,7 +863,7 @@ base.describe('Activity feed with Data Consumer User', () => {
         await querySearchResponse;
 
         // select value from dropdown
-        const dropdownValue = page2.getByTestId(`tag-PII.None`);
+        const dropdownValue = page2.getByTestId(`tag-PII.None`).first();
         await dropdownValue.hover();
         await dropdownValue.click();
         await clickOutside(page2);
@@ -928,7 +876,7 @@ base.describe('Activity feed with Data Consumer User', () => {
 
         // Accept the description task
 
-        await expect(page2.getByText('No Suggestion')).toBeVisible();
+        await expect(page2.getByText('No Suggestion').first()).toBeVisible();
 
         await page2.getByRole('button', { name: 'Add Description' }).click();
 

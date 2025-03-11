@@ -155,7 +155,7 @@ export const addMentionCommentInFeed = async (
     .fill(`Can you resolve this thread for me? @${user}`);
   await userSuggestionsResponse;
 
-  await page.locator(`[data-value="@${user}"]`).click();
+  await page.locator(`[data-value="@${user}"]`).first().click();
 
   // Send reply
   await expect(page.locator('[data-testid="send-button"]')).toBeVisible();
