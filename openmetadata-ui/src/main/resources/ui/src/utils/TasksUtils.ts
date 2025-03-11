@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { AxiosError } from 'axios';
-import { Change, diffWordsWithSpace } from 'diff';
+import { Change, diffLines } from 'diff';
 import i18Next from 'i18next';
 import { isEmpty, isEqual, isUndefined } from 'lodash';
 import React from 'react';
@@ -218,7 +218,7 @@ export const getDescriptionDiff = (
   oldValue: string,
   newValue: string
 ): Change[] => {
-  return diffWordsWithSpace(oldValue, newValue);
+  return diffLines(oldValue, newValue);
 };
 
 export const fetchOptions = ({
