@@ -207,16 +207,3 @@ export const isDescriptionContentEmpty = (content: string) => {
   // Check if the content is empty or has only empty paragraph tags
   return isEmpty(content) || content === '<p></p>';
 };
-
-/**
- *
- * @param description HTML string
- * @returns Text from HTML string
- */
-export const getTextFromHtmlString = (description?: string): string => {
-  if (!description) {
-    return '';
-  }
-
-  return description.replace(/<[^>]{1,1000}>/g, '').trim();
-};
