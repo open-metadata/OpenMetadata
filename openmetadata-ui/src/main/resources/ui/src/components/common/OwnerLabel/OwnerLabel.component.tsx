@@ -20,9 +20,9 @@ import { UserTeamSelectableList } from '../UserTeamSelectableList/UserTeamSelect
 import './owner-label.less';
 
 import { EntityReference } from '../../../generated/entity/data/table';
+import { NoOwnerState } from '../OwnerItem/NoOwner/NoOwnerState';
 import { OwnerItem } from '../OwnerItem/OwnerItem';
-import { NoOwnerState } from './NoOwnerState';
-import { RemainingOwnersControl } from './RemainingOwnersControl';
+import { RemainingOwnersControl } from '../OwnerItem/RemainingOwner/RemainingOwnersControl';
 
 export interface OwnerLabelProps {
   owners?: EntityReference[];
