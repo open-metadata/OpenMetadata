@@ -19,9 +19,11 @@ import { ReactComponent as PlusIcon } from '../../../assets/svg/plus-outlined.sv
 import { EntityLineageNodeType } from '../../../enums/entity.enum';
 import { LineageDirection } from '../../../generated/api/lineage/lineageDirection';
 import { Column } from '../../../generated/entity/data/table';
+import { ColumnTestSummaryDefinition } from '../../../generated/tests/testCase';
 import { encodeLineageHandles } from '../../../utils/EntityLineageUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getColumnDataTypeIcon } from '../../../utils/TableUtils';
+import TestSuiteSummaryWidget from './TestSuiteSummaryWidget/TestSuiteSummaryWidget.component';
 
 export const getHandleByType = (
   isConnectable: HandleProps['isConnectable'],
@@ -124,7 +126,10 @@ export const getColumnContent = (
   column: Column,
   isColumnTraced: boolean,
   isConnectable: boolean,
-  onColumnClick: (column: string) => void
+  onColumnClick: (column: string) => void,
+  showDataObservabilitySummary: boolean,
+  isLoading: boolean,
+  summary?: ColumnTestSummaryDefinition
 ) => {
   const { fullyQualifiedName } = column;
 
@@ -161,6 +166,9 @@ export const getColumnContent = (
         </Typography.Text>
       </span>
       <span className="custom-node-constraint">{column.constraint}</span>
+      {showDataObservabilitySummary && (
+        <TestSuiteSummaryWidget isLoading={isLoading} summary={summary} />
+      )}
     </div>
   );
 };

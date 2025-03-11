@@ -11,42 +11,16 @@
  *  limitations under the License.
  */
 import { Skeleton } from 'antd';
-import { isUndefined } from 'lodash';
-import React, { useEffect, useState } from 'react';
-import {
-  EntityReference,
-  TestSummary,
-} from '../../../../generated/tests/testCase';
-import { getTestCaseExecutionSummary } from '../../../../rest/testAPI';
+import React from 'react';
+import { TestSummary } from '../../../../generated/tests/testCase';
 
 const TestSuiteSummaryWidget = ({
-  testSuite,
+  summary,
+  isLoading,
 }: {
-  testSuite?: EntityReference;
+  summary?: TestSummary;
+  isLoading?: boolean;
 }) => {
-  const [summary, setSummary] = useState<TestSummary>();
-  const [isLoading, setIsLoading] = useState(true);
-
-  const fetchTestSuiteSummary = async (testSuite: EntityReference) => {
-    setIsLoading(true);
-    try {
-      const response = await getTestCaseExecutionSummary(testSuite.id);
-      setSummary(response);
-    } catch (error) {
-      setSummary(undefined);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    if (testSuite && isUndefined(summary)) {
-      fetchTestSuiteSummary(testSuite);
-    } else {
-      setIsLoading(false);
-    }
-  }, [testSuite]);
-
   if (isLoading) {
     return <Skeleton.Input active data-tesid="loader" />;
   }
