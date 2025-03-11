@@ -86,7 +86,10 @@ export const getDataAssetsHeaderInfo = (
         <>
           {topicDetails?.partitions ? (
             <>
-              <Divider className="self-center h-15 " type="vertical" />
+              <Divider
+                className="self-center vertical-divider"
+                type="vertical"
+              />
               <ExtraInfoLabel
                 label={t('label.partition-plural')}
                 value={topicDetails.partitions}
@@ -95,7 +98,10 @@ export const getDataAssetsHeaderInfo = (
           ) : null}
           {topicDetails?.replicationFactor && (
             <>
-              <Divider className="self-center h-15 " type="vertical" />
+              <Divider
+                className="self-center vertical-divider"
+                type="vertical"
+              />
               <ExtraInfoLabel
                 label={t('label.replication-factor')}
                 value={topicDetails.replicationFactor}
@@ -114,7 +120,10 @@ export const getDataAssetsHeaderInfo = (
         <>
           {dashboardDetails.dashboardType && (
             <>
-              <Divider className="self-center h-15 " type="vertical" />
+              <Divider
+                className="self-center vertical-divider"
+                type="vertical"
+              />
               <ExtraInfoLabel
                 label={t('label.entity-type-plural', {
                   entity: t('label.dashboard'),
@@ -125,7 +134,10 @@ export const getDataAssetsHeaderInfo = (
           )}
           {dashboardDetails.project && (
             <>
-              <Divider className="self-center h-15 " type="vertical" />
+              <Divider
+                className="self-center vertical-divider"
+                type="vertical"
+              />
               <ExtraInfoLabel
                 label={t('label.project')}
                 value={dashboardDetails.project}
@@ -134,7 +146,10 @@ export const getDataAssetsHeaderInfo = (
           )}
           {dashboardDetails?.usageSummary && (
             <>
-              <Divider className="self-center h-15 " type="vertical" />
+              <Divider
+                className="self-center vertical-divider"
+                type="vertical"
+              />
               <ExtraInfoLabel
                 label={t('label.usage')}
                 value={getUsagePercentile(
@@ -154,7 +169,40 @@ export const getDataAssetsHeaderInfo = (
       break;
     case EntityType.PIPELINE:
       const pipelineDetails = dataAsset as Pipeline;
+      returnData.extraInfo = (
+        <>
+          {pipelineDetails.state && (
+            <>
+              <Divider
+                className="self-center vertical-divider"
+                type="vertical"
+              />
+              <ExtraInfoLabel
+                showAsATag
+                label="state"
+                value={pipelineDetails.state}
+              />
+            </>
+          )}
 
+          {pipelineDetails?.usageSummary && (
+            <>
+              <Divider
+                className="self-center vertical-divider"
+                type="vertical"
+              />
+              <ExtraInfoLabel
+                label={t('label.usage')}
+                value={getUsagePercentile(
+                  pipelineDetails.usageSummary?.weeklyStats?.percentileRank ||
+                    0,
+                  false
+                )}
+              />
+            </>
+          )}
+        </>
+      );
       returnData.breadcrumbs =
         getBreadcrumbForEntitiesWithServiceOnly(pipelineDetails);
 
@@ -166,7 +214,10 @@ export const getDataAssetsHeaderInfo = (
         <>
           {mlModelDetail.algorithm && (
             <>
-              <Divider className="self-center h-15 " type="vertical" />
+              <Divider
+                className="self-center vertical-divider"
+                type="vertical"
+              />
               <ExtraInfoLabel
                 label={t('label.algorithm')}
                 value={mlModelDetail.algorithm}
@@ -175,7 +226,10 @@ export const getDataAssetsHeaderInfo = (
           )}
           {mlModelDetail.target && (
             <>
-              <Divider className="self-center h-15 " type="vertical" />
+              <Divider
+                className="self-center vertical-divider"
+                type="vertical"
+              />
               <ExtraInfoLabel
                 label={t('label.target')}
                 value={mlModelDetail.target}
@@ -184,7 +238,10 @@ export const getDataAssetsHeaderInfo = (
           )}
           {mlModelDetail.server && (
             <>
-              <Divider className="self-center h-15 " type="vertical" />
+              <Divider
+                className="self-center vertical-divider"
+                type="vertical"
+              />
               <ExtraInfoLink
                 newTab
                 href={mlModelDetail.server}
@@ -195,7 +252,10 @@ export const getDataAssetsHeaderInfo = (
           )}
           {mlModelDetail.dashboard && (
             <>
-              <Divider className="self-center h-15 " type="vertical" />
+              <Divider
+                className="self-center vertical-divider"
+                type="vertical"
+              />
               <ExtraInfoLink
                 href={getEntityDetailsPath(
                   EntityType.DASHBOARD,
@@ -208,7 +268,10 @@ export const getDataAssetsHeaderInfo = (
           )}
           {mlModelDetail?.usageSummary && (
             <>
-              <Divider className="self-center h-15 " type="vertical" />
+              <Divider
+                className="self-center vertical-divider"
+                type="vertical"
+              />
               <ExtraInfoLabel
                 label={t('label.usage')}
                 value={getUsagePercentile(
@@ -232,7 +295,10 @@ export const getDataAssetsHeaderInfo = (
         <>
           {!isUndefined(containerDetails?.dataModel?.isPartitioned) && (
             <>
-              <Divider className="self-center h-15 " type="vertical" />
+              <Divider
+                className="self-center vertical-divider"
+                type="vertical"
+              />
               <ExtraInfoLabel
                 label=""
                 value={
@@ -245,7 +311,10 @@ export const getDataAssetsHeaderInfo = (
           )}
           {!isUndefined(containerDetails.numberOfObjects) && (
             <>
-              <Divider className="self-center h-15 " type="vertical" />
+              <Divider
+                className="self-center vertical-divider"
+                type="vertical"
+              />
               <ExtraInfoLabel
                 label={t('label.number-of-object-plural')}
                 value={containerDetails.numberOfObjects}
@@ -254,7 +323,10 @@ export const getDataAssetsHeaderInfo = (
           )}
           {!isUndefined(containerDetails.size) && (
             <>
-              <Divider className="self-center h-15 " type="vertical" />
+              <Divider
+                className="self-center vertical-divider"
+                type="vertical"
+              />
               <ExtraInfoLabel
                 label={t('label.size')}
                 value={bytesToSize(containerDetails.size)}
@@ -278,7 +350,10 @@ export const getDataAssetsHeaderInfo = (
         <>
           {dataModelDetails.dataModelType && (
             <>
-              <Divider className="self-center h-15 " type="vertical" />
+              <Divider
+                className="self-center vertical-divider"
+                type="vertical"
+              />
               <ExtraInfoLabel
                 label={t('label.data-model-type')}
                 value={dataModelDetails.dataModelType}
@@ -287,7 +362,10 @@ export const getDataAssetsHeaderInfo = (
           )}
           {dataModelDetails.project && (
             <>
-              <Divider className="self-center h-15 " type="vertical" />
+              <Divider
+                className="self-center vertical-divider"
+                type="vertical"
+              />
               <ExtraInfoLabel
                 label={t('label.project')}
                 value={dataModelDetails.project}
@@ -425,7 +503,10 @@ export const getDataAssetsHeaderInfo = (
         <>
           {isObject(storedProcedureDetails.storedProcedureCode) && (
             <>
-              <Divider className="self-center h-15 " type="vertical" />
+              <Divider
+                className="self-center vertical-divider"
+                type="vertical"
+              />
               <ExtraInfoLabel
                 label={t('label.language')}
                 value={
@@ -455,7 +536,10 @@ export const getDataAssetsHeaderInfo = (
         <>
           {apiCollection.endpointURL && (
             <>
-              <Divider className="self-center h-15 " type="vertical" />
+              <Divider
+                className="self-center vertical-divider"
+                type="vertical"
+              />
               <ExtraInfoLink
                 newTab
                 href={apiCollection.endpointURL}
@@ -481,7 +565,10 @@ export const getDataAssetsHeaderInfo = (
         <>
           {apiEndpoint.requestMethod && (
             <>
-              <Divider className="self-center h-15 " type="vertical" />
+              <Divider
+                className="self-center vertical-divider"
+                type="vertical"
+              />
               <ExtraInfoLabel
                 dataTestId="api-endpoint-request-method"
                 label={t('label.request-method')}
@@ -491,7 +578,10 @@ export const getDataAssetsHeaderInfo = (
           )}
           {apiEndpoint.endpointURL && (
             <>
-              <Divider className="self-center h-15 " type="vertical" />
+              <Divider
+                className="self-center vertical-divider"
+                type="vertical"
+              />
               <ExtraInfoLink
                 newTab
                 href={apiEndpoint.endpointURL}
@@ -521,7 +611,10 @@ export const getDataAssetsHeaderInfo = (
         <>
           {tableDetails.tableType && (
             <>
-              <Divider className="self-center h-15 " type="vertical" />
+              <Divider
+                className="self-center vertical-divider"
+                type="vertical"
+              />
               <ExtraInfoLabel
                 showAsATag
                 label={t('label.type')}
@@ -531,7 +624,10 @@ export const getDataAssetsHeaderInfo = (
           )}
           {tableDetails?.usageSummary && (
             <>
-              <Divider className="self-center h-15 " type="vertical" />
+              <Divider
+                className="self-center vertical-divider"
+                type="vertical"
+              />
               <ExtraInfoLabel
                 label={t('label.usage')}
                 value={getUsagePercentile(
@@ -543,7 +639,10 @@ export const getDataAssetsHeaderInfo = (
           )}
           {tableDetails?.profile?.columnCount && (
             <>
-              <Divider className="self-center h-15 " type="vertical" />
+              <Divider
+                className="self-center vertical-divider"
+                type="vertical"
+              />
               <ExtraInfoLabel
                 label={t('label.column-plural')}
                 value={tableDetails.profile?.columnCount}
@@ -552,7 +651,10 @@ export const getDataAssetsHeaderInfo = (
           )}
           {tableDetails?.profile?.rowCount && (
             <>
-              <Divider className="self-center h-15 " type="vertical" />
+              <Divider
+                className="self-center vertical-divider"
+                type="vertical"
+              />
               <ExtraInfoLabel
                 label={t('label.row-plural')}
                 value={tableDetails.profile?.rowCount}
@@ -571,7 +673,7 @@ export const getDataAssetsHeaderInfo = (
     returnData.extraInfo = (
       <>
         {returnData.extraInfo}
-        <Divider className="self-center h-15 " type="vertical" />
+        <Divider className="self-center vertical-divider" type="vertical" />
         <ExtraInfoLink
           ellipsis
           newTab

@@ -41,12 +41,12 @@ export const RemainingOwnersControl: React.FC<RemainingOwnersControlProps> = ({
   const remainingCountLabel = `+${remainingCount}`;
 
   const handleShowMoreToggle = () => {
-    if (!isCompactView) {
+    if (isCompactView) {
       setShowAllOwners((prev) => !prev);
     }
   };
 
-  if (!isCompactView) {
+  if (isCompactView) {
     return (
       <div className="relative">
         <Button

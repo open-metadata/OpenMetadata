@@ -46,9 +46,9 @@ export const NoOwnerState: React.FC<NoOwnerStateProps> = ({
   const { t } = useTranslation();
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className="d-flex justify-center flex-col gap-2">
       <div className="d-flex items-center gap-1">
-        {!isCompactView && (
+        {isCompactView && (
           <div className="owner-avatar-icon d-flex">
             <Icon
               component={IconUser}
@@ -58,10 +58,14 @@ export const NoOwnerState: React.FC<NoOwnerStateProps> = ({
           </div>
         )}
         <Typography.Text
-          className={classNames('no-owner font-medium text-sm', className)}
+          className={classNames(
+            'no-owner',
+            isCompactView ? 'text-xs' : 'font-medium text-sm',
+            className
+          )}
           data-testid="owner-link">
           {placeHolder ??
-            (isCompactView
+            (!isCompactView
               ? t('label.owner-plural')
               : t('label.no-entity', {
                   entity: t('label.owner-plural'),
@@ -82,10 +86,11 @@ export const NoOwnerState: React.FC<NoOwnerStateProps> = ({
         )}
       </div>
 
-      <div className="no-owner-text text-sm font-medium">
-        {isCompactView &&
-          t('label.no-entity', { entity: t('label.owner-plural') })}
-      </div>
+      {!isCompactView && (
+        <div className="no-owner-text text-sm font-medium">
+          {t('label.no-entity', { entity: t('label.owner-plural') })}
+        </div>
+      )}
     </div>
   );
 };

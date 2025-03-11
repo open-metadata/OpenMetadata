@@ -53,7 +53,7 @@ export const OwnerLabel = ({
     team: false,
   },
   tooltipText,
-  isCompactView = false,
+  isCompactView = true,
 }: OwnerLabelProps) => {
   const { t } = useTranslation();
   const [showAllOwners, setShowAllOwners] = useState(false);
@@ -93,12 +93,12 @@ export const OwnerLabel = ({
         data-testid="owner-label">
         <div
           className={classNames(
-            `d-inline-flex ${isCompactView ? 'flex-col' : 'flex-wrap'} gap-2`,
+            `d-inline-flex ${!isCompactView ? 'flex-col' : 'flex-wrap'} gap-2`,
             { inherited: Boolean(owners.some((owner) => owner?.inherited)) },
             className
           )}>
-          {/* Compact view header */}
-          {isCompactView && (
+          {/* Compact view header - now for !isCompactView */}
+          {!isCompactView && (
             <div className="d-flex items-center gap-2">
               <Typography.Text
                 className={classNames(
@@ -123,7 +123,7 @@ export const OwnerLabel = ({
           )}
 
           {/* Owner avatars list */}
-          <div className={`d-flex items-center ${!isCompactView && 'gap-2'}`}>
+          <div className={`d-flex items-center ${isCompactView && 'gap-2'}`}>
             {visibleOwners.map((owner, index) => (
               <OwnerItem
                 className={className}
@@ -150,8 +150,8 @@ export const OwnerLabel = ({
           </div>
         </div>
 
-        {/* Edit button for non-compact view */}
-        {!isCompactView && onUpdate && (
+        {/* Edit button for non-compact view - now for isCompactView */}
+        {isCompactView && onUpdate && (
           <UserTeamSelectableList
             hasPermission={Boolean(hasPermission)}
             multiple={multiple}

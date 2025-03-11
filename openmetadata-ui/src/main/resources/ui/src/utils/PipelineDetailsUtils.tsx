@@ -34,7 +34,7 @@ import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interfa
 import { PipelineDetailPageTabProps } from './PipelineClassBase';
 
 // eslint-disable-next-line max-len
-export const defaultFields = `${TabSpecificField.FOLLOWERS}, ${TabSpecificField.TAGS}, ${TabSpecificField.OWNERS},${TabSpecificField.TASKS}, ${TabSpecificField.PIPELINE_STATUS}, ${TabSpecificField.DOMAIN},${TabSpecificField.DATA_PRODUCTS},${TabSpecificField.VOTES},${TabSpecificField.EXTENSION}`;
+export const defaultFields = `${TabSpecificField.FOLLOWERS}, ${TabSpecificField.TAGS}, ${TabSpecificField.OWNERS},${TabSpecificField.TASKS}, ${TabSpecificField.PIPELINE_STATUS}, ${TabSpecificField.DOMAIN},${TabSpecificField.DATA_PRODUCTS},${TabSpecificField.VOTES},${TabSpecificField.EXTENSION}, ${TabSpecificField.USAGE_SUMMARY}`;
 
 export const getTaskExecStatus = (taskName: string, tasks: TaskStatus[]) => {
   return tasks.find((task) => task.name === taskName)?.executionStatus;

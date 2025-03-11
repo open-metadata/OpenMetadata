@@ -200,10 +200,7 @@ export const DomainLabel = ({
     }
 
     return (
-      <div
-        className={`d-flex   flex-col gap-2 ${
-          !headerLayout && 'justify-center'
-        }`}>
+      <div className="d-flex   flex-col gap-2 justify-center">
         {headerLayout && (
           <div className="d-flex text-sm font-medium items-center ">
             <Typography.Text className="domain-link right-panel-label m-r-xss">

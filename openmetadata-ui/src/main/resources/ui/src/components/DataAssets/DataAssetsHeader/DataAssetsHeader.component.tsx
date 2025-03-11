@@ -526,23 +526,26 @@ export const DataAssetsHeader = ({
                   hasPermission={editDomainPermission}
                   textClassName="render-domain-lebel-style"
                 />
-                <Divider className="self-center h-15 " type="vertical" />
+                <Divider
+                  className="self-center vertical-divider"
+                  type="vertical"
+                />
               </>
             )}
             <OwnerLabel
-              isCompactView
               hasPermission={editOwnerPermission}
+              isCompactView={false}
               maxVisibleOwners={4}
               owners={dataAsset?.owners}
               onUpdate={onOwnerUpdate}
             />
-            <Divider className="self-center h-15 " type="vertical" />
+            <Divider className="self-center vertical-divider" type="vertical" />
             <TierCard currentTier={tier?.tagFQN} updateTier={onTierUpdate}>
               <Space
                 className="d-flex align-start"
                 data-testid="header-tier-container">
                 {tier ? (
-                  <div className="d-flex flex-col gap-2">
+                  <div className="d-flex items-center flex-col gap-2">
                     <div className="d-flex items-center gap-1">
                       <span className="entity-no-tier ">{t('label.tier')}</span>
 
@@ -573,7 +576,7 @@ export const DataAssetsHeader = ({
                     />
                   </div>
                 ) : (
-                  <div className="flex flex-col gap-2">
+                  <div className="flex items-center flex-col gap-2">
                     <div className="d-flex items-center gap-1">
                       <span className="entity-no-tier">{t('label.tier')}</span>
                       {editTierPermission && (
@@ -607,7 +610,10 @@ export const DataAssetsHeader = ({
 
             {entityType === EntityType.TABLE && onUpdateRetentionPeriod && (
               <>
-                <Divider className="self-center h-15 " type="vertical" />
+                <Divider
+                  className="self-center vertical-divider"
+                  type="vertical"
+                />
                 <RetentionPeriod
                   hasPermission={permissions.EditAll && !dataAsset.deleted}
                   retentionPeriod={(dataAsset as Table).retentionPeriod}

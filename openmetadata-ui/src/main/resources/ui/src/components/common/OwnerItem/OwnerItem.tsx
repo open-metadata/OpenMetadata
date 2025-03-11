@@ -53,9 +53,9 @@ export const OwnerItem: React.FC<OwnerItemProps> = ({
     <div
       className="d-inline-flex items-center owner-avatar-container gap-1"
       style={{
-        marginLeft: index === 0 || !isCompactView ? 0 : '-4px',
+        marginLeft: index === 0 || isCompactView ? 0 : '-4px',
       }}>
-      {isCompactView ? (
+      {!isCompactView ? (
         <UserPopOverCard userName={owner.name ?? ''}>
           <Link className="d-flex" data-testid="owner-link" to={ownerPath}>
             <OwnerAvatar owner={owner} />
