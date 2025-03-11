@@ -13,8 +13,8 @@
 import { Card } from 'antd';
 
 import React from 'react';
+import { ActivityFeedTab } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import { ActivityFeedLayoutType } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
-import { ActivityFeedTabNew } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTabNew.component';
 import { CustomPropertyTable } from '../components/common/CustomPropertyTable/CustomPropertyTable';
 import TabsLabel from '../components/common/TabsLabel/TabsLabel.component';
 import { TabProps } from '../components/common/TabsLabel/TabsLabel.interface';
@@ -71,7 +71,7 @@ export const getDashboardDataModelDetailPageTabs = ({
       ),
       key: EntityTabs.ACTIVITY_FEED,
       children: (
-        <ActivityFeedTabNew
+        <ActivityFeedTab
           refetchFeed
           entityFeedTotalCount={feedCount.totalCount}
           entityType={EntityType.DASHBOARD_DATA_MODEL}

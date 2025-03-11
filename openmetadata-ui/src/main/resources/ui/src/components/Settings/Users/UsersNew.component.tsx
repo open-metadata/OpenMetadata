@@ -30,11 +30,11 @@ import { restoreUser } from '../../../rest/userAPI';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import ActivityFeedProvider from '../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
+import { ActivityFeedTab } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import {
   ActivityFeedLayoutType,
   ActivityFeedTabs,
 } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
-import { ActivityFeedTabNew } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTabNew.component';
 import { DomainLabelNew } from '../../common/DomainLabel/DomainLabelNew';
 import TabsLabel from '../../common/TabsLabel/TabsLabel.component';
 import EntitySummaryPanel from '../../Explore/EntitySummaryPanel/EntitySummaryPanel.component';
@@ -181,7 +181,7 @@ const Users = ({
         key: UserPageTabs.ACTIVITY,
         children: (
           <ActivityFeedProvider user={userData.id}>
-            <ActivityFeedTabNew
+            <ActivityFeedTab
               entityType={EntityType.USER}
               isForFeedTab={false}
               layoutType={ActivityFeedLayoutType.TWO_PANEL}
@@ -203,7 +203,7 @@ const Users = ({
         key: UserPageTabs.TASK,
         children: (
           <ActivityFeedProvider user={userData.id}>
-            <ActivityFeedTabNew
+            <ActivityFeedTab
               entityType={EntityType.USER}
               isForFeedTab={false}
               subTab={ActivityFeedTabs.TASKS}

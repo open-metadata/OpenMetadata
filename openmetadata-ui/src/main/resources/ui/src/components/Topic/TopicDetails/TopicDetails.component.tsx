@@ -54,8 +54,8 @@ import SampleDataWithMessages from '../../Database/SampleDataWithMessages/Sample
 import Lineage from '../../Lineage/Lineage.component';
 
 import { useCustomPages } from '../../../hooks/useCustomPages';
+import { ActivityFeedTab } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import { ActivityFeedLayoutType } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
-import { ActivityFeedTabNew } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTabNew.component';
 import QueryViewer from '../../common/QueryViewer/QueryViewer.component';
 import { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../PageLayoutV1/PageLayoutV1';
@@ -284,7 +284,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
     const tabs = topicClassBase.getTopicDetailPageTabs({
       schemaCount: topicDetails.messageSchema?.schemaFields?.length ?? 0,
       activityFeedTab: (
-        <ActivityFeedTabNew
+        <ActivityFeedTab
           refetchFeed
           entityFeedTotalCount={feedCount.totalCount}
           entityType={EntityType.TOPIC}

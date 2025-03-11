@@ -15,8 +15,8 @@ import { t } from 'i18next';
 import { isEmpty, omit } from 'lodash';
 import { EntityTags } from 'Models';
 import React from 'react';
+import { ActivityFeedTab } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import { ActivityFeedLayoutType } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
-import { ActivityFeedTabNew } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTabNew.component';
 import { CustomPropertyTable } from '../components/common/CustomPropertyTable/CustomPropertyTable';
 import TabsLabel from '../components/common/TabsLabel/TabsLabel.component';
 import ContainerChildren from '../components/Container/ContainerChildren/ContainerChildren';
@@ -185,7 +185,7 @@ export const getContainerDetailPageTabs = ({
       ),
       key: EntityTabs.ACTIVITY_FEED,
       children: (
-        <ActivityFeedTabNew
+        <ActivityFeedTab
           refetchFeed
           entityFeedTotalCount={feedCount.totalCount}
           entityType={EntityType.CONTAINER}

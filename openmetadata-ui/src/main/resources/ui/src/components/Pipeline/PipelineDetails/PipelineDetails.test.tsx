@@ -72,9 +72,9 @@ const PipelineDetailsProps: PipeLineDetailsProp = {
 };
 
 jest.mock(
-  `../../ActivityFeed/ActivityFeedTab/ActivityFeedTabNew.component`,
+  `../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.component`,
   () => ({
-    ActivityFeedTabNew: jest.fn().mockReturnValue(<p>testActivityFeedTab</p>),
+    ActivityFeedTab: jest.fn().mockReturnValue(<p>testActivityFeedTab</p>),
   })
 );
 
