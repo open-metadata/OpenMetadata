@@ -36,6 +36,7 @@ The editor supports **Markdown formatting**, which can be applied using the tool
 - **Hyperlinks**
 - **Line breaks, Block quotes**
 - **Inline code**, `Code blocks`
+
 - Refer to the [Markdown Guide](https://www.markdownguide.org/cheat-sheet/) for more information.
 
 {% image
