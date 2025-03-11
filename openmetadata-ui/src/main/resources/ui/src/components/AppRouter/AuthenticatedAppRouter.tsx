@@ -283,7 +283,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       <Route exact component={ForbiddenPage} path={ROUTES.FORBIDDEN} />
 
       {/* Handle Entity Import pages */}
-      <AdminProtectedRoute
+      <Route
         exact
         component={BulkEntityImportPage}
         path={[ROUTES.ENTITY_IMPORT, ROUTES.BULK_EDIT_ENTITY_WITH_FQN]}
