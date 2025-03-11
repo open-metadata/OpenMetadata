@@ -29,7 +29,11 @@ import {
   SEARCH_INDICES_WITH_COLUMNS_FIELD,
   TEXT_FIELD_OPERATORS,
 } from '../constants/AdvancedSearch.constants';
-import { EntityFields, SuggestionField } from '../enums/AdvancedSearch.enum';
+import {
+  EntityFields,
+  EntityReferenceFields,
+  SuggestionField,
+} from '../enums/AdvancedSearch.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { CustomPropertySummary } from '../rest/metadataTypeAPI.interface';
 import { getAggregateFieldOptions } from '../rest/miscAPI';
@@ -123,7 +127,7 @@ class AdvancedSearchClassBase {
    */
   public autocomplete: (args: {
     searchIndex: SearchIndex | SearchIndex[];
-    entityField: EntityFields;
+    entityField: EntityFields | EntityReferenceFields;
     suggestField?: SuggestionField;
   }) => SelectFieldSettings['asyncFetch'] = ({ searchIndex, entityField }) => {
     // Wrapping the fetch function in a debounce of 300 ms
