@@ -1,11 +1,13 @@
 package org.openmetadata.service.apps;
 
 import static org.openmetadata.service.apps.scheduler.AppScheduler.APP_NAME;
+import static org.openmetadata.service.apps.scheduler.OmAppJobListener.APP_CONFIG;
 import static org.openmetadata.service.apps.scheduler.OmAppJobListener.JOB_LISTENER_NAME;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.NO_MANUAL_TRIGGER_ERR;
 import static org.openmetadata.service.resources.apps.AppResource.SCHEDULED_TYPES;
 
 import java.util.List;
+import java.util.Map;
 import lombok.Getter;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -16,7 +18,6 @@ import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.schema.entity.app.AppType;
 import org.openmetadata.schema.entity.app.ScheduleType;
 import org.openmetadata.schema.entity.app.ScheduledExecutionContext;
-import org.openmetadata.schema.entity.applications.configuration.ApplicationConfig;
 import org.openmetadata.schema.entity.services.ingestionPipelines.AirflowConfig;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
@@ -94,15 +95,34 @@ public class AbstractNativeApplication implements NativeApplication {
 
   @Override
   public void triggerOnDemand() {
+    triggerOnDemand(null);
+  }
+
+  @Override
+  public void triggerOnDemand(Map<String, Object> config) {
     // Validate Native Application
     if (app.getScheduleType().equals(ScheduleType.ScheduledOrManual)) {
       AppRuntime runtime = getAppRuntime(app);
       validateServerExecutableApp(runtime);
-      // Trigger the application
-      AppScheduler.getInstance().triggerOnDemandApplication(app);
+      // Trigger the application with the provided configuration payload
+      Map<String, Object> appConfig = JsonUtils.getMap(app.getAppConfiguration());
+      if (config != null) {
+        appConfig.putAll(config);
+      }
+      validateConfig(appConfig);
+      AppScheduler.getInstance().triggerOnDemandApplication(app, config);
     } else {
       throw new IllegalArgumentException(NO_MANUAL_TRIGGER_ERR);
     }
+  }
+
+  /**
+   * Validate the configuration of the application. This method is called before the application is
+   * triggered.
+   * @param config
+   */
+  protected void validateConfig(Map<String, Object> config) {
+    LOG.warn("validateConfig is not implemented for this application. Skipping validation.");
   }
 
   public void scheduleInternal() {
@@ -119,10 +139,10 @@ public class AbstractNativeApplication implements NativeApplication {
 
     try {
       bindExistingIngestionToApplication(ingestionPipelineRepository);
-      updateAppConfig(ingestionPipelineRepository, this.getApp().getAppConfiguration());
+      updateAppConfig(
+          ingestionPipelineRepository, JsonUtils.getMap(this.getApp().getAppConfiguration()));
     } catch (EntityNotFoundException ex) {
-      ApplicationConfig config =
-          JsonUtils.convertValue(this.getApp().getAppConfiguration(), ApplicationConfig.class);
+      Map<String, Object> config = JsonUtils.getMap(this.getApp().getAppConfiguration());
       createAndBindIngestionPipeline(ingestionPipelineRepository, config);
     }
   }
@@ -157,7 +177,8 @@ public class AbstractNativeApplication implements NativeApplication {
     }
   }
 
-  private void updateAppConfig(IngestionPipelineRepository repository, Object appConfiguration) {
+  private void updateAppConfig(
+      IngestionPipelineRepository repository, Map<String, Object> appConfiguration) {
     String fqn = FullyQualifiedName.add(SERVICE_NAME, this.getApp().getName());
     IngestionPipeline updated = repository.findByName(fqn, Include.NON_DELETED);
     ApplicationPipeline appPipeline =
@@ -169,7 +190,7 @@ public class AbstractNativeApplication implements NativeApplication {
   }
 
   private void createAndBindIngestionPipeline(
-      IngestionPipelineRepository ingestionPipelineRepository, ApplicationConfig config) {
+      IngestionPipelineRepository ingestionPipelineRepository, Map<String, Object> config) {
     MetadataServiceRepository serviceEntityRepository =
         (MetadataServiceRepository) Entity.getEntityRepository(Entity.METADATA_SERVICE);
     EntityReference service =
@@ -239,6 +260,9 @@ public class AbstractNativeApplication implements NativeApplication {
     String appName = (String) jobExecutionContext.getJobDetail().getJobDataMap().get(APP_NAME);
     App jobApp = collectionDAO.applicationDAO().findEntityByName(appName);
     ApplicationHandler.getInstance().setAppRuntimeProperties(jobApp);
+    jobApp.setAppConfiguration(
+        JsonUtils.getMapFromJson(
+            (String) jobExecutionContext.getJobDetail().getJobDataMap().get(APP_CONFIG)));
     // Initialise the Application
     this.init(jobApp);
 
