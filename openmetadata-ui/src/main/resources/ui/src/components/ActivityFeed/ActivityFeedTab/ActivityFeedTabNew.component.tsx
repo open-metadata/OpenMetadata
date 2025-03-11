@@ -498,34 +498,8 @@ export const ActivityFeedTabNew = ({
                   </span>
                 </div>
               ),
-              key: 'all',
+              key: ActivityFeedTabs.ALL,
             },
-            ...(isUserEntity
-              ? [
-                  {
-                    label: (
-                      <div className="d-flex justify-between">
-                        <Space align="center" size="small">
-                          <MentionIcon
-                            style={COMMON_ICON_STYLES}
-                            {...ICON_DIMENSION}
-                          />
-                          <span>{t('label.mention-plural')}</span>
-                        </Space>
-
-                        <span>
-                          {getCountBadge(
-                            countData.data.mentionCount,
-                            '',
-                            activeTab === ActivityFeedTabs.MENTIONS
-                          )}
-                        </span>
-                      </div>
-                    ),
-                    key: 'mentions',
-                  },
-                ]
-              : []),
             {
               label: (
                 <div className="d-flex justify-between">
@@ -545,11 +519,16 @@ export const ActivityFeedTabNew = ({
                   </span>
                 </div>
               ),
-              key: 'tasks',
+              key: ActivityFeedTabs.TASKS,
             },
           ]}
           mode="inline"
           rootClassName="left-container"
+          selectedKeys={[
+            activeTab === ActivityFeedTabs.ALL
+              ? ActivityFeedTabs.ALL
+              : ActivityFeedTabs.TASKS,
+          ]}
           onClick={(info) => handleTabChange(info.key)}
         />
       )}
