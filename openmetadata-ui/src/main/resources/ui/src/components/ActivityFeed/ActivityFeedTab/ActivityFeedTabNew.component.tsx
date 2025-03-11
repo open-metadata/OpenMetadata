@@ -337,7 +337,6 @@ export const ActivityFeedTabNew = ({
 
   const handleAfterTaskClose = () => {
     handleFeedFetchFromFeedList();
-    handleUpdateTaskFilter(ThreadTaskStatus.Closed);
     fetchFeedsCount();
   };
   const taskFilterOptions = useMemo(

@@ -96,6 +96,7 @@
   .hide-panel {
     flex: 0;
     margin-right: 0px;
+    border: none;
   }
   .placeholder-text {
     color: #666;
@@ -187,7 +188,7 @@
       .activity-feed-comment-text {
         word-wrap: break-word;
         white-space: normal;
-        color: #535862;
+        color: @text-color;
       }
     }
   }
@@ -208,14 +209,17 @@
   background-color: @grey-9;
   border: none;
   border-radius: 10px;
+  width: 100%;
   .ql-container {
     background-color: @grey-9;
     border: none;
+    width: 100%;
   }
   .ql-toolbar {
     background-color: @grey-9;
     border: none;
     border-bottom: 1px solid #d9d9d9;
+    flex-wrap: wrap;
   }
   .ql-toolbar button {
     color: #292929;
@@ -249,7 +253,7 @@
   font-size: 14px;
   font-weight: 500;
   line-height: 24px;
-  color: #373e44;
+  color: @text-color;
 }
 .activity-feed-reply-card-footer {
   margin-left: 45px;
@@ -261,7 +265,7 @@
 .task-tab-custom-dropdown {
   border-radius: 6px;
   .task-tab-filter-item {
-    color: #535862;
+    color: @text-color;
     font-size: 14px;
     font-weight: 400;
     line-height: 20px;
@@ -394,14 +398,14 @@
   color: #414651;
 }
 .card-style-feed-header {
-  color: #535862;
+  color: @text-color;
   font-size: 14px;
   font-style: normal;
   font-weight: 400;
   line-height: 20px;
 }
 .feed-card-header-v2-timestamp {
-  color: #717680;
+  color: @grey-8;
 }
 .close-tab-icon {
   position: absolute;
@@ -455,4 +459,11 @@
 .feed-footer-avatar-group .ant-avatar {
   margin-inline-end: -8px !important;
   border: 1px solid #fff;
+}
+.no-description-suggestion-card {
+  padding: 20px;
+  border: 0.5px solid #eaecf5;
+  background: @white;
+  border-radius: 12px;
+  margin-top: 16px;
 }

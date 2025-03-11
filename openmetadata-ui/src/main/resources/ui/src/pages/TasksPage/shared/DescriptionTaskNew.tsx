@@ -89,9 +89,11 @@ const DescriptionTaskNew: FC<DescriptionTaskProps> = ({
     );
 
     return !newDescription && !oldDescription ? (
-      <Typography.Text className="text-grey-muted p-xs">
-        {t('label.no-entity', { entity: t('label.suggestion') })}
-      </Typography.Text>
+      <div className="no-description-suggestion-card w-full">
+        <Typography.Text className="text-grey-muted p-xs">
+          {t('label.no-entity', { entity: t('label.suggestion') })}
+        </Typography.Text>
+      </div>
     ) : (
       <DiffViewNew
         className="p-xs"

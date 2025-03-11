@@ -103,7 +103,7 @@ const CommentCard = ({ feed, post, isLastReply }: CommentCardInterface) => {
           size={32}
         />
       </div>
-      <div>
+      <div className="w-full">
         <div className="d-flex items-center gap-2 flex-wrap">
           <Typography.Text className="activity-feed-user-name reply-card-user-name">
             <UserPopOverCard userName={feed.updatedBy ?? ''}>

@@ -17,7 +17,6 @@ import { isUndefined } from 'lodash';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { ReactComponent as CloseTabIcon } from '../../../assets/svg/ic-close-tab.svg';
 import { getUserPath } from '../../../constants/constants';
 import { ASSET_CARD_STYLES } from '../../../constants/Feeds.constants';
 import { EntityType } from '../../../enums/entity.enum';
@@ -53,8 +52,6 @@ interface ActivityFeedCardNewProps {
   post: Post;
   showActivityFeedEditor?: boolean;
   showThread?: boolean;
-  handlePanelResize?: (isFullWidth: boolean) => void;
-  isFullWidth?: boolean;
 }
 
 const ActivityFeedCardNew = ({
@@ -64,7 +61,6 @@ const ActivityFeedCardNew = ({
   showActivityFeedEditor,
   showThread,
   isActive,
-  handlePanelResize,
 }: ActivityFeedCardNewProps) => {
   const { entityFQN, entityType } = useMemo(() => {
     const entityFQN = getEntityFQN(feed.about) ?? '';
@@ -135,9 +131,11 @@ const ActivityFeedCardNew = ({
             className={classNames('text-sm', {
               'max-one-line': !showThread,
             })}>
-            <span className="w-4 h-4 m-r-xss d-inline-flex  align-middle">
-              {searchClassBase.getEntityIcon(entityType ?? '')}
-            </span>
+            {searchClassBase.getEntityIcon(entityType ?? '') && (
+              <span className="w-4 h-4 m-r-xss d-inline-flex align-middle">
+                {searchClassBase.getEntityIcon(entityType ?? '')}
+              </span>
+            )}
             <Link
               className="break-word text-sm header-link"
               data-testid="entity-link"
@@ -160,9 +158,11 @@ const ActivityFeedCardNew = ({
             ' m-t-xss':
               showThread && feed.entityRef?.type === EntityType.CONTAINER,
           })}>
-          <span className="w-4 h-4 m-r-xss d-inline-flex  align-middle">
-            {searchClassBase.getEntityIcon(entityType ?? '')}
-          </span>
+          {searchClassBase.getEntityIcon(entityType ?? '') && (
+            <span className="w-4 h-4 m-r-xss d-inline-flex align-middle">
+              {searchClassBase.getEntityIcon(entityType ?? '')}
+            </span>
+          )}
           <Typography.Text
             className={classNames('text-sm', {
               'max-one-line': !showThread,
@@ -263,16 +263,6 @@ const ActivityFeedCardNew = ({
                   </Typography.Text>
 
                   {renderEntityLink}
-
-                  {showThread && (
-                    <CloseTabIcon
-                      className="close-tab-icon"
-                      height={16}
-                      onClick={() => {
-                        handlePanelResize?.(true);
-                      }}
-                    />
-                  )}
                 </Space>
               )}
             </Space>
@@ -306,7 +296,12 @@ const ActivityFeedCardNew = ({
           )}
           {showFeedEditor ? (
             <ActivityFeedEditorNew
-              className="m-t-md feed-editor activity-feed-editor-container-new"
+              className={classNames(
+                'm-t-md feed-editor activity-feed-editor-container-new',
+                {
+                  'm-b-md': showActivityFeedEditor && feed?.posts?.length === 0,
+                }
+              )}
               onSave={onSave}
             />
           ) : (
@@ -315,7 +310,7 @@ const ActivityFeedCardNew = ({
                 <ProfilePictureNew
                   avatarType="outlined"
                   key={feed.id}
-                  name={currentUser?.displayName || currentUser?.name || ''}
+                  name={getEntityName(currentUser)}
                   size={32}
                 />
               </div>
