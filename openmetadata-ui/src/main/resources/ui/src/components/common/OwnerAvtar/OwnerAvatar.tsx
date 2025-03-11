@@ -21,9 +21,13 @@ import ProfilePicture from '../ProfilePicture/ProfilePicture';
 import './owner-avtar.less';
 interface OwnerAvatarProps {
   owner: EntityReference;
+  isCompactView: boolean;
 }
 
-export const OwnerAvatar: React.FC<OwnerAvatarProps> = ({ owner }) => {
+export const OwnerAvatar: React.FC<OwnerAvatarProps> = ({
+  owner,
+  isCompactView,
+}) => {
   const displayName = getEntityName(owner);
 
   return owner.type === OwnerType.TEAM ? (
@@ -32,9 +36,11 @@ export const OwnerAvatar: React.FC<OwnerAvatarProps> = ({ owner }) => {
         className="owner-team-icon"
         component={IconTeamsGrey}
         data-testid={getEntityName(owner)}
-        style={{ fontSize: '32px' }}
+        style={{ fontSize: isCompactView ? '16px' : '32px' }}
       />
-      <Typography.Text className=" text-sm">{displayName}</Typography.Text>
+      {!isCompactView && (
+        <Typography.Text className=" text-sm">{displayName}</Typography.Text>
+      )}
     </div>
   ) : (
     <div
