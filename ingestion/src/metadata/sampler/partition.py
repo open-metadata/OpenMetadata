@@ -167,7 +167,7 @@ def _handle_bigquery_partition(
                 partitionIntegerRangeEnd=10000,
             )
         # TODO: Allow External Hive Partitioning for profiler
-        logger.debug(
+        logger.info(
             f"Unknown partition type {partition.intervalType}. Cannot infer partition. Partitionning "
             "will be set to None. If partitionning is required for your table, you can set it "
             "directly in the table config. More information can be found at "
