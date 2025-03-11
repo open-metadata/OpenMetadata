@@ -222,12 +222,17 @@ public class AppResource extends EntityResource<App, AppRepository> {
           @QueryParam("after")
           String after,
       @Parameter(
+          description = "Filter by agent type",
+          schema = @Schema(type = "string"))
+      @QueryParam("agentType")
+      String agentType,
+      @Parameter(
               description = "Include all, deleted, or non-deleted entities.",
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    ListFilter filter = new ListFilter(include);
+    ListFilter filter = new ListFilter(include).addQueryParam("agentType", agentType);
     return super.listInternal(
         uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
