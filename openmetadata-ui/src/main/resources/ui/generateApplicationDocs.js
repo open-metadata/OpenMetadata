@@ -17,7 +17,16 @@ const path = require('path');
 const SCHEMA_DIR = path.join(__dirname, './src/utils/ApplicationSchemas');
 const DOCS_DIR = path.join(__dirname, './public/locales/en-US/Applications');
 
-const processProperty = (key, prop) => {
+const resolveRef = (schema, ref) => {
+  const path = ref.split('/').slice(1);
+  let current = schema;
+  for (const segment of path) {
+    current = current[segment];
+  }
+  return current;
+};
+
+const processProperty = (key, prop, schema) => {
   let markdown = `$$section\n`;
   markdown += `### ${prop.title || key} $(id="${key}")\n\n`;
 
@@ -25,14 +34,28 @@ const processProperty = (key, prop) => {
     markdown += `${prop.description}\n\n`;
   }
 
-  // Handle nested properties if they exist
-  if (prop.properties) {
-    for (const [nestedKey, nestedProp] of Object.entries(prop.properties)) {
-      markdown += processProperty(`${key}.${nestedKey}`, nestedProp);
+  // End section before processing $ref
+  markdown += `$$\n\n`;
+
+  // Handle $ref
+  if (prop.$ref) {
+    const resolvedProp = resolveRef(schema, prop.$ref);
+    if (resolvedProp.properties) {
+      for (const [nestedKey, nestedProp] of Object.entries(
+        resolvedProp.properties
+      )) {
+        markdown += processProperty(`${key}.${nestedKey}`, nestedProp, schema);
+      }
     }
   }
 
-  markdown += `$$\n\n`;
+  // Handle nested properties if they exist
+  if (prop.properties) {
+    for (const [nestedKey, nestedProp] of Object.entries(prop.properties)) {
+      markdown += processProperty(`${key}.${nestedKey}`, nestedProp, schema);
+    }
+  }
+
   return markdown;
 };
 
@@ -45,7 +68,11 @@ const generateMarkdown = (schema) => {
 
   if (schema.properties) {
     for (const [key, prop] of Object.entries(schema.properties)) {
-      markdown += processProperty(key, prop);
+      if (prop.type === 'array') {
+        markdown += processProperty(key, prop.items, schema);
+      } else {
+        markdown += processProperty(key, prop, schema);
+      }
     }
   }
 

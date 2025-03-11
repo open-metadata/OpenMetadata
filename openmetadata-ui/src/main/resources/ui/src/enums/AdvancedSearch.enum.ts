@@ -75,8 +75,8 @@ export enum EntityFields {
 export enum EntityReferenceFields {
   REVIEWERS = 'reviewers.fullyQualifiedName',
   OWNERS = 'owners.fullyQualifiedName',
-  DATABASE = 'database.fullyQualifiedName',
-  DATABASE_SCHEMA = 'databaseSchema.fullyQualifiedName',
+  DATABASE = 'database.name',
+  DATABASE_SCHEMA = 'databaseSchema.name',
   DESCRIPTION = 'description',
   NAME = 'name',
   DISPLAY_NAME = 'displayName',
@@ -84,5 +84,5 @@ export enum EntityReferenceFields {
   TIER = 'tier.tagFQN',
   TABLE_TYPE = 'tableType',
   EXTENSION = 'extension',
-  SERVICE = 'service.fullyQualifiedName',
+  SERVICE = 'service.name',
 }
