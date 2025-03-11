@@ -14,7 +14,13 @@ import Icon from '@ant-design/icons';
 import { Input, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { debounce } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
 import { ReactComponent as IconSearchV1 } from '../../../assets/svg/search.svg';
@@ -39,6 +45,7 @@ const SearchPreview = ({ searchConfig }: { searchConfig: SearchSettings }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [data, setData] = useState<SearchedDataProps['data']>([]);
   const [searchValue, setSearchValue] = useState<string>('');
+  const initialFetchDone = useRef(false);
   const {
     currentPage,
     pageSize,
@@ -144,10 +151,22 @@ const SearchPreview = ({ searchConfig }: { searchConfig: SearchSettings }) => {
   };
 
   useEffect(() => {
-    if (searchConfig && Object.keys(searchConfig).length > 0) {
+    if (
+      searchConfig &&
+      Object.keys(searchConfig).length > 0 &&
+      !initialFetchDone.current
+    ) {
       fetchAssets({ searchTerm: '', page: currentPage });
+      initialFetchDone.current = true;
     }
   }, [currentPage, searchConfig]);
+
+  // Separate effect for handling page changes after initial fetch
+  useEffect(() => {
+    if (initialFetchDone.current && currentPage > 1) {
+      fetchAssets({ searchTerm: searchValue, page: currentPage });
+    }
+  }, [currentPage]);
 
   return (
     <div className="search-preview">
