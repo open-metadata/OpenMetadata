@@ -70,7 +70,6 @@ public class DayOneExperienceApp extends AbstractNativeApplication {
     }
   }
 
-<<<<<<< HEAD
   @Override
   public void triggerOnDemand(Map<String, Object> config) {
     // Trigger the application with the provided configuration payload
@@ -89,8 +88,6 @@ public class DayOneExperienceApp extends AbstractNativeApplication {
             .triggerByKey(WORKFLOW_NAME, UUID.randomUUID().toString(), variables);
   }
 
-=======
->>>>>>> @{-1}
   private String readResource(String resourceFile) {
     try (InputStream in = getClass().getResourceAsStream(resourceFile)) {
       assert in != null;
@@ -106,10 +103,6 @@ public class DayOneExperienceApp extends AbstractNativeApplication {
 
   private String getAppBot() {
     return getApp().getBot().getName();
-<<<<<<< HEAD
-=======
-    //    return String.format("%sBot", getApp().getName());
->>>>>>> @{-1}
   }
 
   private WorkflowDefinition loadWorkflow() {
