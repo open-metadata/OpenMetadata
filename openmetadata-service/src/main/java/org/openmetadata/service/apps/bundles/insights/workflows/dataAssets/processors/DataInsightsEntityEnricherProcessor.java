@@ -13,7 +13,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.glassfish.jersey.internal.util.ExceptionUtils;
 import org.openmetadata.common.utils.CommonUtil;
@@ -174,9 +173,7 @@ public class DataInsightsEntityEnricherProcessor
     entityMap.put("descriptionSources", processDescriptionSources(entity, changeSummaryMap));
 
     // Process Tag Source
-    TagAndTierSources tagAndTierSources = processTagAndTierSources(entity);
-    entityMap.put("tagSources", tagAndTierSources.getTagSources());
-    entityMap.put("tierSources", tagAndTierSources.getTierSources());
+    entityMap.put("tagSources", processTagSources(entity));
 
     // Process Team
     Optional.ofNullable(processTeam(entity)).ifPresent(team -> entityMap.put("team", team));
@@ -302,50 +299,37 @@ public class DataInsightsEntityEnricherProcessor
     return team;
   }
 
-  private void processTagAndTierSources(
-      List<TagLabel> tagList, TagAndTierSources tagAndTierSources) {
+  private void processTagSources(List<TagLabel> tagList, Map<String, Integer> tagSources) {
     Optional.ofNullable(tagList)
         .ifPresent(
             tags -> {
-              tags.forEach(
-                  tag -> {
-                    String tagSource = tag.getLabelType().value();
-                    if (tag.getTagFQN().startsWith("Tier.")) {
-                      tagAndTierSources
-                          .getTierSources()
-                          .put(
-                              tagSource,
-                              tagAndTierSources.getTierSources().getOrDefault(tagSource, 0) + 1);
-                    } else {
-                      tagAndTierSources
-                          .getTagSources()
-                          .put(
-                              tagSource,
-                              tagAndTierSources.getTagSources().getOrDefault(tagSource, 0) + 1);
-                    }
-                  });
+              tags.stream()
+                  .filter(tag -> !tag.getTagFQN().startsWith("Tier."))
+                  .map(tag -> tag.getLabelType().value())
+                  .forEach(
+                      tagSource ->
+                          tagSources.put(tagSource, tagSources.getOrDefault(tagSource, 0) + 1));
             });
   }
 
-  private void processEntityTagSources(
-      EntityInterface entity, TagAndTierSources tagAndTierSources) {
-    processTagAndTierSources(entity.getTags(), tagAndTierSources);
+  private void processEntityTagSources(EntityInterface entity, Map<String, Integer> tagSources) {
+    processTagSources(entity.getTags(), tagSources);
   }
 
   private void processColumnTagSources(
-      ColumnsEntityInterface entity, TagAndTierSources tagAndTierSources) {
+      ColumnsEntityInterface entity, Map<String, Integer> tagSources) {
     for (Column column : entity.getColumns()) {
-      processTagAndTierSources(column.getTags(), tagAndTierSources);
+      processTagSources(column.getTags(), tagSources);
     }
   }
 
-  private TagAndTierSources processTagAndTierSources(EntityInterface entity) {
-    TagAndTierSources tagAndTierSources = new TagAndTierSources();
-    processEntityTagSources(entity, tagAndTierSources);
+  private Map<String, Integer> processTagSources(EntityInterface entity) {
+    Map<String, Integer> tagSources = new HashMap<>();
+    processEntityTagSources(entity, tagSources);
     if (hasColumns(entity)) {
-      processColumnTagSources((ColumnsEntityInterface) entity, tagAndTierSources);
+      processColumnTagSources((ColumnsEntityInterface) entity, tagSources);
     }
-    return tagAndTierSources;
+    return tagSources;
   }
 
   private String processTier(EntityInterface entity) {
@@ -410,16 +394,5 @@ public class DataInsightsEntityEnricherProcessor
   @Override
   public StepStats getStats() {
     return stats;
-  }
-
-  @Getter
-  public static class TagAndTierSources {
-    private final Map<String, Integer> tagSources;
-    private final Map<String, Integer> tierSources;
-
-    public TagAndTierSources() {
-      this.tagSources = new HashMap<>();
-      this.tierSources = new HashMap<>();
-    }
   }
 }
