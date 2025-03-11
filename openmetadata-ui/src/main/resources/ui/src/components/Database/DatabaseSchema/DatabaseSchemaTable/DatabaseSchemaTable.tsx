@@ -20,7 +20,6 @@ import QueryString from 'qs';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useHistory } from 'react-router-dom';
 import {
-  getEntityDetailsPath,
   INITIAL_PAGING_VALUE,
   NO_DATA_PLACEHOLDER,
   PAGE_SIZE,
@@ -51,6 +50,7 @@ import {
   getEntityName,
   highlightSearchText,
 } from '../../../../utils/EntityUtils';
+import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
 import { stringToHTML } from '../../../../utils/StringsUtils';
 import { getUsagePercentile } from '../../../../utils/TableUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';

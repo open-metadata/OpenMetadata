@@ -32,10 +32,7 @@ import SchemaEditor from '../../components/Database/SchemaEditor/SchemaEditor';
 import PageHeader from '../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { CustomPropertyTable } from '../../components/Settings/CustomProperty/CustomPropertyTable';
-import {
-  ENTITY_PATH,
-  getAddCustomPropertyPath,
-} from '../../constants/constants';
+import { ENTITY_PATH } from '../../constants/constants';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
@@ -48,6 +45,7 @@ import { Type } from '../../generated/entity/type';
 import { getTypeByFQN, updateType } from '../../rest/metadataTypeAPI';
 import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
+import { getAddCustomPropertyPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import './custom-properties-pageV1.less';
 

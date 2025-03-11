@@ -17,7 +17,6 @@ import { EntityTags } from 'Models';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import { getEntityDetailsPath } from '../../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
 import LineageProvider from '../../../context/LineageProvider/LineageProvider';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
@@ -55,6 +54,7 @@ import SampleDataWithMessages from '../../Database/SampleDataWithMessages/Sample
 import Lineage from '../../Lineage/Lineage.component';
 
 import { useCustomPages } from '../../../hooks/useCustomPages';
+import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import QueryViewer from '../../common/QueryViewer/QueryViewer.component';
 import { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../PageLayoutV1/PageLayoutV1';

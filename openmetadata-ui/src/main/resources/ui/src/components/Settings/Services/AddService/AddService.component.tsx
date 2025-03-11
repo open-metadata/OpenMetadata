@@ -18,7 +18,6 @@ import { capitalize, isEmpty, isUndefined } from 'lodash';
 import { LoadingState } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { useHistory } from 'react-router-dom';
-import { getServiceDetailsPath } from '../../../../constants/constants';
 import { GlobalSettingsMenuCategory } from '../../../../constants/GlobalSettings.constants';
 import {
   SERVICE_DEFAULT_ERROR_MAP,
@@ -34,6 +33,7 @@ import { getServiceLogo } from '../../../../utils/CommonUtils';
 import { handleEntityCreationError } from '../../../../utils/formUtils';
 import {
   getAddServicePath,
+  getServiceDetailsPath,
   getSettingPath,
 } from '../../../../utils/RouterUtils';
 import {

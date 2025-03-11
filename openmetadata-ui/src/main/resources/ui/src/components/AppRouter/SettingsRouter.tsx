@@ -311,7 +311,7 @@ const SettingsRouter = () => {
           ResourceEntity.USER,
           permissions
         )}
-        path={ROUTES.SETTINGS_WITH_TAB}
+        path={getSettingCategoryPath(GlobalSettingsMenuCategory.MEMBERS)}
       />
       <AdminProtectedRoute
         exact
