@@ -71,13 +71,23 @@ public class DayOneExperienceApp extends AbstractNativeApplication {
     }
     validateConfig(appConfig);
 
-    Map<String, Object> variables = new HashMap<>();
-    variables.put(
-        getNamespacedVariableName(GLOBAL_NAMESPACE, RELATED_ENTITY_VARIABLE),
-        JsonUtils.readOrConvertValue(appConfig, DayOneExperienceAppConfig.class).getEntityLink());
+    DayOneExperienceAppConfig runtimeConfig =
+        JsonUtils.readOrConvertValue(appConfig, DayOneExperienceAppConfig.class);
 
-    WorkflowHandler.getInstance()
-        .triggerByKey(WORKFLOW_NAME, UUID.randomUUID().toString(), variables);
+    if (runtimeConfig.getActive()) {
+      Map<String, Object> variables = new HashMap<>();
+      variables.put(
+          getNamespacedVariableName(GLOBAL_NAMESPACE, RELATED_ENTITY_VARIABLE),
+          runtimeConfig.getEntityLink());
+
+      WorkflowHandler.getInstance()
+          .triggerByKey(WORKFLOW_NAME, UUID.randomUUID().toString(), variables);
+    } else {
+      LOG.info(
+          String.format(
+              "%s is not active. Won't be triggered for %s",
+              WORKFLOW_NAME, runtimeConfig.getEntityLink()));
+    }
   }
 
   private String readResource(String resourceFile) {
