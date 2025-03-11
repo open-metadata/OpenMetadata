@@ -1,16 +1,14 @@
 package org.openmetadata.service.apps.bundles.dayOneExperience;
 
+import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAMESPACE;
+import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_VARIABLE;
+import static org.openmetadata.service.governance.workflows.WorkflowVariableHandler.getNamespacedVariableName;
+
 import java.io.InputStream;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-
-import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.schema.AppRuntime;
-import org.openmetadata.schema.entity.app.App;
-import org.openmetadata.schema.entity.app.ScheduleType;
-import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.internal.DayOneExperienceAppConfig;
@@ -19,7 +17,6 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.AbstractNativeApplication;
-import org.openmetadata.service.apps.scheduler.AppScheduler;
 import org.openmetadata.service.exception.UnhandledServerException;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.CollectionDAO;
@@ -27,11 +24,6 @@ import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.jdbi3.WorkflowDefinitionRepository;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.util.JsonUtils;
-
-import static org.openmetadata.service.exception.CatalogExceptionMessage.NO_MANUAL_TRIGGER_ERR;
-import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAMESPACE;
-import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_VARIABLE;
-import static org.openmetadata.service.governance.workflows.WorkflowVariableHandler.getNamespacedVariableName;
 
 @Slf4j
 public class DayOneExperienceApp extends AbstractNativeApplication {
@@ -81,11 +73,11 @@ public class DayOneExperienceApp extends AbstractNativeApplication {
 
     Map<String, Object> variables = new HashMap<>();
     variables.put(
-            getNamespacedVariableName(GLOBAL_NAMESPACE, RELATED_ENTITY_VARIABLE),
-            JsonUtils.readOrConvertValue(appConfig, DayOneExperienceAppConfig.class).getEntityLink());
+        getNamespacedVariableName(GLOBAL_NAMESPACE, RELATED_ENTITY_VARIABLE),
+        JsonUtils.readOrConvertValue(appConfig, DayOneExperienceAppConfig.class).getEntityLink());
 
     WorkflowHandler.getInstance()
-            .triggerByKey(WORKFLOW_NAME, UUID.randomUUID().toString(), variables);
+        .triggerByKey(WORKFLOW_NAME, UUID.randomUUID().toString(), variables);
   }
 
   private String readResource(String resourceFile) {
