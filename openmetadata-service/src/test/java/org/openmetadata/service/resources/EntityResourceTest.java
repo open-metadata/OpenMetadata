@@ -251,7 +251,6 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   protected boolean supportsPatch = true;
   protected final boolean supportsSoftDelete;
   protected boolean supportsFieldsQueryParam = true;
-  protected boolean supportsAsyncDelete = true;
   protected final boolean supportsEmptyDescription;
 
   // Special characters supported in the entity name
@@ -2200,9 +2199,6 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   @Test
   @Execution(ExecutionMode.CONCURRENT)
   void delete_async_nonExistentEntity_404() {
-    if (!supportsAsyncDelete) {
-      return;
-    }
     assertResponse(
         () -> deleteEntityAsync(NON_EXISTENT_ENTITY, false, false, ADMIN_AUTH_HEADERS),
         NOT_FOUND,
@@ -2212,9 +2208,6 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   @Test
   @Execution(ExecutionMode.CONCURRENT)
   void delete_async_entity_as_non_admin_401(TestInfo test) throws HttpResponseException {
-    if (!supportsAsyncDelete) {
-      return;
-    }
     // Create entity as admin
     K request = createRequest(getEntityName(test), "", "", null);
     T entity = createEntity(request, ADMIN_AUTH_HEADERS);
@@ -2229,9 +2222,6 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   @Test
   @Execution(ExecutionMode.CONCURRENT)
   public void delete_async_with_recursive_hardDelete(TestInfo test) throws Exception {
-    if (!supportsAsyncDelete) {
-      return;
-    }
     K request = createRequest(getEntityName(test), "", "", null);
     T entity = createEntity(request, ADMIN_AUTH_HEADERS);
 
@@ -2247,7 +2237,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   @Test
   @Execution(ExecutionMode.CONCURRENT)
   void delete_async_soft_delete(TestInfo test) throws Exception {
-    if (!supportsAsyncDelete || !supportsSoftDelete) {
+    if (!supportsSoftDelete) {
       return;
     }
 
