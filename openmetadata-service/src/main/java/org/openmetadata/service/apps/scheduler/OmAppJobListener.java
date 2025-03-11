@@ -14,6 +14,7 @@ import org.openmetadata.schema.entity.app.AppExtension;
 import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.schema.entity.app.FailureContext;
 import org.openmetadata.schema.entity.app.SuccessContext;
+import org.openmetadata.schema.entity.applications.configuration.ApplicationConfig;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.apps.ApplicationHandler;
 import org.openmetadata.service.jdbi3.AppRepository;
@@ -51,10 +52,14 @@ public class OmAppJobListener implements JobListener {
       String appName = (String) jobExecutionContext.getJobDetail().getJobDataMap().get(APP_NAME);
       App jobApp = repository.findByName(appName, Include.NON_DELETED);
 
-      Object overrideConfig =
-          jobExecutionContext.getMergedJobDataMap().getWrappedMap().get(APP_CONFIG_KEY);
+      ApplicationConfig appConfig =
+          JsonUtils.convertValue(jobApp.getAppConfiguration(), ApplicationConfig.class);
+      ApplicationConfig overrideConfig =
+          JsonUtils.convertValue(
+              jobExecutionContext.getMergedJobDataMap().getWrappedMap().get(APP_CONFIG_KEY),
+              ApplicationConfig.class);
       if (overrideConfig != null) {
-        jobApp.getAppConfiguration().putAll((Map<String, Object>) overrideConfig);
+        appConfig.getAdditionalProperties().putAll(overrideConfig.getAdditionalProperties());
       }
 
       ApplicationHandler.getInstance().setAppRuntimeProperties(jobApp);
@@ -69,7 +74,7 @@ public class OmAppJobListener implements JobListener {
               .withRunType(runType)
               .withStatus(AppRunRecord.Status.RUNNING)
               .withScheduleInfo(jobApp.getAppSchedule())
-              .withConfig(JsonUtils.getMap(jobApp.getAppConfiguration()));
+              .withConfig(JsonUtils.getMap(appConfig));
 
       boolean update = false;
       if (jobExecutionContext.isRecovering()) {
@@ -83,7 +88,7 @@ public class OmAppJobListener implements JobListener {
       }
       // Put the Context in the Job Data Map
       dataMap.put(SCHEDULED_APP_RUN_EXTENSION, JsonUtils.pojoToJson(runRecord));
-      dataMap.put(APP_CONFIG, JsonUtils.pojoToJson(jobApp.getAppConfiguration()));
+      dataMap.put(APP_CONFIG, JsonUtils.pojoToJson(appConfig));
 
       // Insert new Record Run
       pushApplicationStatusUpdates(jobExecutionContext, runRecord, update);

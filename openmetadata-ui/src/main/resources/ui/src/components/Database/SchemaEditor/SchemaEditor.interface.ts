@@ -29,4 +29,5 @@ export interface SchemaEditorProps {
   editorClass?: string;
   showCopyButton?: boolean;
   onChange?: (value: string) => void;
+  onFocus?: () => void;
 }
