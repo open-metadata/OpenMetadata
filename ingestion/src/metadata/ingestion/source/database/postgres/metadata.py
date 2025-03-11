@@ -60,8 +60,8 @@ from metadata.ingestion.source.database.postgres.models import PostgresStoredPro
 from metadata.ingestion.source.database.postgres.queries import (
     POSTGRES_GET_ALL_TABLE_PG_POLICY,
     POSTGRES_GET_DB_NAMES,
-    POSTGRES_GET_STORED_PROCEDURES,
     POSTGRES_GET_FUNCTIONS,
+    POSTGRES_GET_STORED_PROCEDURES,
     POSTGRES_GET_TABLE_NAMES,
     POSTGRES_PARTITION_DETAILS,
     POSTGRES_SCHEMA_COMMENTS,
