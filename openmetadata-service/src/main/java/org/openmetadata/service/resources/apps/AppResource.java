@@ -20,6 +20,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ExecutorService;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
@@ -81,9 +82,13 @@ import org.openmetadata.service.secrets.masker.EntityMaskerFactory;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.util.AsyncService;
+import org.openmetadata.service.util.DeleteEntityResponse;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
+import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
+import org.openmetadata.service.util.WebsocketNotificationHandler;
 import org.quartz.SchedulerException;
 
 @Path("/v1/apps")
@@ -884,18 +889,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
       throw new IllegalArgumentException(
           CatalogExceptionMessage.systemEntityDeleteNotAllowed(app.getName(), "SystemApp"));
     }
-
-    ApplicationHandler.getInstance()
-        .performCleanup(
-            app,
-            Entity.getCollectionDAO(),
-            searchRepository,
-            securityContext.getUserPrincipal().getName());
-
-    // Remove from Pipeline Service
-    deleteApp(securityContext, app);
-    // Remove from repository
-    return deleteByIdAsync(uriInfo, securityContext, id, true, hardDelete);
+    return deleteAppAsync(uriInfo, securityContext, id, true, hardDelete);
   }
 
   @PUT
@@ -1211,5 +1205,60 @@ public class AppResource extends EntityResource<App, AppRepository> {
         }
       }
     }
+  }
+
+  public Response deleteAppAsync(
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      UUID id,
+      boolean recursive,
+      boolean hardDelete) {
+    String jobId = UUID.randomUUID().toString();
+    App app;
+    Response response;
+
+    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.DELETE);
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
+    app = repository.get(uriInfo, id, repository.getFields("bot,pipelines"), Include.ALL, false);
+    String userName = securityContext.getUserPrincipal().getName();
+
+    ExecutorService executorService = AsyncService.getInstance().getExecutorService();
+    executorService.submit(
+        () -> {
+          try {
+            ApplicationHandler.getInstance()
+                .performCleanup(app, Entity.getCollectionDAO(), searchRepository, userName);
+
+            // Remove from Pipeline Service
+            deleteApp(securityContext, app);
+
+            // Remove from repository
+            RestUtil.DeleteResponse<App> deleteResponse =
+                repository.delete(userName, id, recursive, hardDelete);
+
+            if (hardDelete) {
+              limits.invalidateCache(entityType);
+            }
+
+            WebsocketNotificationHandler.sendDeleteOperationCompleteNotification(
+                jobId, securityContext, deleteResponse.entity());
+          } catch (Exception e) {
+            WebsocketNotificationHandler.sendDeleteOperationFailedNotification(
+                jobId, securityContext, app, e.getMessage());
+          }
+        });
+
+    response =
+        Response.accepted()
+            .entity(
+                new DeleteEntityResponse(
+                    jobId,
+                    "Delete operation initiated for " + app.getName(),
+                    app.getName(),
+                    hardDelete,
+                    recursive))
+            .build();
+
+    return response;
   }
 }

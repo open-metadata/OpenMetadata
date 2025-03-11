@@ -251,6 +251,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   protected boolean supportsPatch = true;
   protected final boolean supportsSoftDelete;
   protected boolean supportsFieldsQueryParam = true;
+  protected boolean supportsHardDelete = true;
   protected final boolean supportsEmptyDescription;
 
   // Special characters supported in the entity name
@@ -2222,6 +2223,9 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   @Test
   @Execution(ExecutionMode.CONCURRENT)
   public void delete_async_with_recursive_hardDelete(TestInfo test) throws Exception {
+    if (!supportsHardDelete) {
+      return;
+    }
     K request = createRequest(getEntityName(test), "", "", null);
     T entity = createEntity(request, ADMIN_AUTH_HEADERS);
 
