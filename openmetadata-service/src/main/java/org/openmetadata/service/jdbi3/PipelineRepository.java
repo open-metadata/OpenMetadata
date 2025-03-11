@@ -215,6 +215,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
             pipeline.getVersion(), pipelineStatus, storedPipelineStatus);
     pipeline.setPipelineStatus(pipelineStatus);
     pipeline.setChangeDescription(change);
+    pipeline.setIncrementalChangeDescription(change);
 
     // Update ES Indexes and usage of this pipeline index
     searchRepository.updateEntity(pipeline);
@@ -305,7 +306,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   }
 
   @Override
-  protected void cleanup(Pipeline pipeline) {
+  protected void entitySpecificCleanup(Pipeline pipeline) {
     // When a pipeline is removed , the linege needs to be removed
     daoCollection
         .relationshipDAO()
@@ -313,7 +314,6 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
             pipeline.getId(),
             LineageDetails.Source.PIPELINE_LINEAGE.value(),
             Relationship.UPSTREAM.ordinal());
-    super.cleanup(pipeline);
   }
 
   @Override

@@ -50,7 +50,6 @@ import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
 import { ReactComponent as AssigneesIcon } from '../../../../assets/svg/ic-assignees.svg';
-import { ReactComponent as CloseTabIcon } from '../../../../assets/svg/ic-close-tab.svg';
 import { ReactComponent as TaskCloseIcon } from '../../../../assets/svg/ic-close-task.svg';
 import { ReactComponent as TaskOpenIcon } from '../../../../assets/svg/ic-open-task.svg';
 import { ReactComponent as UserIcon } from '../../../../assets/svg/ic-user-profile.svg';
@@ -115,6 +114,7 @@ import ActivityFeedEditorNew from '../../../ActivityFeed/ActivityFeedEditor/Acti
 import { useActivityFeedProvider } from '../../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import InlineEdit from '../../../common/InlineEdit/InlineEdit.component';
 
+import { getEntityName } from '../../../../utils/EntityUtils';
 import { UserAvatarGroup } from '../../../common/OwnerLabel/UserAvatarGroup.component';
 import EntityPopOverCard from '../../../common/PopOverCard/EntityPopOverCard';
 import ProfilePictureNew from '../../../common/ProfilePicture/ProfilePictureNew';
@@ -623,7 +623,7 @@ export const TaskTabNew = ({
 
     return (
       <Space
-        className="items-end  justify-end task-cta-buttons"
+        className="items-end  justify-end"
         data-testid="task-cta-buttons"
         size="small">
         <Tooltip
@@ -669,7 +669,7 @@ export const TaskTabNew = ({
     const hasApprovalAccess = isAssignee || isCreator || editPermission;
 
     return (
-      <div className=" d-flex justify-end items-center gap-4 task-cta-buttons">
+      <div className=" d-flex justify-end items-center gap-4">
         <Dropdown.Button
           className="w-auto task-action-button"
           data-testid="task-cta-buttons"
@@ -707,7 +707,7 @@ export const TaskTabNew = ({
 
     return (
       <Space
-        className="items-end  justify-end task-cta-buttons"
+        className="items-end  justify-end"
         data-testid="task-cta-buttons"
         size="small">
         {isCreator && !hasEditAccess && (
@@ -1050,7 +1050,12 @@ export const TaskTabNew = ({
 
             {showFeedEditor ? (
               <ActivityFeedEditorNew
-                className="m-t-md feed-editor activity-feed-editor-container-new"
+                className={classNames(
+                  'm-t-md feed-editor activity-feed-editor-container-new',
+                  {
+                    'm-b-md': showFeedEditor && taskThread?.posts?.length === 0,
+                  }
+                )}
                 onSave={onSave}
                 onTextChange={setComment}
               />
@@ -1061,7 +1066,7 @@ export const TaskTabNew = ({
                     <ProfilePictureNew
                       avatarType="outlined"
                       key={taskThread.id}
-                      name={currentUser?.displayName || currentUser?.name || ''}
+                      name={getEntityName(currentUser)}
                       size={32}
                     />
                   </div>
@@ -1256,11 +1261,6 @@ export const TaskTabNew = ({
           </Form>
         </Modal>
       )}
-      <CloseTabIcon
-        className="close-tab-icon cursor-pointer"
-        height={16}
-        onClick={() => rest.handlePanelResize?.(true)}
-      />
     </Row>
   );
 };
