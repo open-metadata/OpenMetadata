@@ -24,14 +24,14 @@ from .common_e2e_sqa_mixins import SQACommonMethods
 
 class VerticaCliTest(CliCommonDB.TestSuite, SQACommonMethods):
     create_table_query: str = """
-        CREATE TABLE vendor_dimension_new AS
+        CREATE TABLE IF NOT EXISTS vendor_dimension_new AS
             SELECT *
             FROM vendor_dimension
             WHERE 1=0;
     """
 
     create_view_query: str = """
-        CREATE VIEW vendor_dimension_v AS
+        CREATE OR REPLACE VIEW vendor_dimension_v AS
             SELECT vendor_key, vendor_name
             FROM public.vendor_dimension_new;
     """
@@ -74,7 +74,7 @@ class VerticaCliTest(CliCommonDB.TestSuite, SQACommonMethods):
         return 2
 
     def expected_lineage_node(self) -> str:
-        return "e2e_vertica.VMart.public.vendor_dimension"
+        return "e2e_vertica.VMart.public.vendor_dimension_v"
 
     @staticmethod
     def fqn_created_table() -> str:
