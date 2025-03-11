@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { CloseOutlined } from '@ant-design/icons';
 import { Card, Typography } from 'antd';
 import { get } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
@@ -39,7 +38,6 @@ import { EntitySummaryPanelProps } from './EntitySummaryPanel.interface';
 export default function EntitySummaryPanel({
   entityDetails,
   highlights,
-  handleClosePanel,
 }: EntitySummaryPanelProps) {
   const { tab } = useParams<{ tab: string }>();
   const { getEntityPermission } = usePermissionProvider();
@@ -125,13 +123,6 @@ export default function EntitySummaryPanel({
   return (
     <Card
       className="summary-panel-container"
-      extra={
-        <CloseOutlined
-          className="cursor-pointer"
-          style={{ fontSize: 16 }}
-          onClick={handleClosePanel}
-        />
-      }
       title={
         viewPermission && (
           <Link
