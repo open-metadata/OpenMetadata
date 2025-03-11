@@ -13,10 +13,10 @@
 import { Button, Dropdown } from 'antd';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { EntityReference } from '../../../generated/entity/data/table';
-import { getEntityName } from '../../../utils/EntityUtils';
-import UserPopOverCard from '../PopOverCard/UserPopOverCard';
-import ProfilePicture from '../ProfilePicture/ProfilePicture';
+import { EntityReference } from '../../../../generated/tests/testCase';
+import { getEntityName } from '../../../../utils/EntityUtils';
+import UserPopOverCard from '../../PopOverCard/UserPopOverCard';
+import ProfilePicture from '../../ProfilePicture/ProfilePicture';
 
 interface RemainingOwnersControlProps {
   isCompactView: boolean;

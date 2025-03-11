@@ -224,13 +224,6 @@ export const renderDomainLink = (
         textClassName
       )}
       data-testid="domain-link"
-      style={{
-        color: '#414651',
-        display: 'inline-block',
-        overflow: 'hidden',
-        textOverflow: 'ellipsis',
-        whiteSpace: 'nowrap',
-      }}
       to={getDomainPath(domain?.fullyQualifiedName)}>
       {isUndefined(domainDisplayName)
         ? getEntityName(domain)

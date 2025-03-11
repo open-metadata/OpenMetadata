@@ -524,6 +524,7 @@ export const DataAssetsHeader = ({
                   entityId={dataAsset.id ?? ''}
                   entityType={entityType}
                   hasPermission={editDomainPermission}
+                  textClassName="render-domain-lebel-style"
                 />
                 <Divider className="self-center h-15 " type="vertical" />
               </>
