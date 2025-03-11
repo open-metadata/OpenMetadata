@@ -10,6 +10,8 @@ collate: true
 
 Entity Relationship (ER) Diagrams in Collate provide a visual representation of how tables are connected within a database. These diagrams offer a complete picture of your data structure by automatically detecting relationships based on constraints such as **primary keys** and **foreign keys** during metadata ingestion.
 
+{%  youtube videoId="3m2xHpIsYuM" start="0:00" end="1:30" width="800px" height="450px" /%}
+
 ## Automatic Detection of Relationships
 
 Collate's [**metadata ingestion workflow**](/connectors/ingestion/workflows/metadata) identifies and extracts table relationships, ensuring that **primary key** and **foreign key** constraints are accurately represented. Once ingestion is completed, users can access ER diagrams at both the **table level** and **database schema level**.  
