@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import test, { expect } from '@playwright/test';
+import { get } from 'lodash';
 import { PLAYWRIGHT_INGESTION_TAG_OBJ } from '../../constant/config';
 import { SidebarItem } from '../../constant/sidebar';
 import { TableClass } from '../../support/entity/TableClass';
@@ -416,11 +417,15 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
     const lineageResponse = page.waitForResponse(
       `/api/v1/lineage/getLineage?*fqn=${table1.entityResponseData?.['fullyQualifiedName']}*`
     );
+
+    await page.click('[data-testid="lineage"]');
+    await lineageResponse;
+
     const incidentCountResponse = page.waitForResponse(
       `/api/v1/dataQuality/testCases/testCaseIncidentStatus?*originEntityFQN=${table1.entityResponseData?.['fullyQualifiedName']}*limit=0*`
     );
-    await page.click('[data-testid="lineage"]');
-    await lineageResponse;
+    const nodeFqn = get(table1, 'entityResponseData.fullyQualifiedName');
+    await page.locator(`[data-testid="lineage-node-${nodeFqn}"]`).click();
     await incidentCountResponse;
 
     await page.waitForSelector("[role='dialog']", { state: 'visible' });

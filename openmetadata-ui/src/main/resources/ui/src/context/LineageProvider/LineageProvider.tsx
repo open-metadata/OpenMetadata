@@ -1260,6 +1260,22 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     }
   }, [entityLineage, redrawLineage]);
 
+  const onPlatformViewUpdate = useCallback(() => {
+    if (entity) {
+      if (platformView === LineagePlatformView.Service) {
+        if (entity?.service) {
+          fetchLineageData(
+            entity?.service.fullyQualifiedName ?? '',
+            entity?.service.type,
+            lineageConfig
+          );
+        }
+      } else if (platformView === LineagePlatformView.None) {
+        fetchLineageData(decodedFqn, entityType, lineageConfig);
+      }
+    }
+  }, [entity, entityType, decodedFqn, lineageConfig, platformView]);
+
   useEffect(() => {
     if (defaultLineageConfig) {
       setLineageConfig({
@@ -1332,18 +1348,8 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
   }, [reactFlowInstance?.viewportInitialized]);
 
   useEffect(() => {
-    if (platformView === LineagePlatformView.Service) {
-      if (entity?.service) {
-        fetchLineageData(
-          entity?.service.fullyQualifiedName ?? '',
-          entity?.service.type,
-          lineageConfig
-        );
-      }
-    } else if (platformView === LineagePlatformView.None) {
-      fetchLineageData(decodedFqn, entityType, lineageConfig);
-    }
-  }, [platformView, entity]);
+    onPlatformViewUpdate();
+  }, [platformView]);
 
   const activityFeedContextValues = useMemo(() => {
     return {

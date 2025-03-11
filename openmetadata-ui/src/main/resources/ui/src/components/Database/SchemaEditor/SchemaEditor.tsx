@@ -118,7 +118,7 @@ const SchemaEditor = ({
         value={internalValue}
         onBeforeChange={handleEditorInputBeforeChange}
         onChange={handleEditorInputChange}
-        onFocus={onFocus}
+        {...(onFocus && { onFocus })}
       />
     </div>
   );
