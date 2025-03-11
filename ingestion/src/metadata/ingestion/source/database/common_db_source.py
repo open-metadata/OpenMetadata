@@ -716,7 +716,7 @@ class CommonDbSourceService(
                 table_constraints.extend(
                     constraint
                     for constraint in foreign_table_constraints
-                    if constraint not in table_constraints
+                    if constraint and constraint not in table_constraints
                 )
             else:
                 table_constraints = foreign_table_constraints
