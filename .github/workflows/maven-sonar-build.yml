@@ -13,21 +13,6 @@ name: Maven SonarCloud CI
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - main
-      - '[0-9]+.[0-9]+.[0-9]+'
-    paths:
-      - "openmetadata-service/**"
-      - "openmetadata-ui/**"
-      - "openmetadata-spec/src/main/resources/json/schema/**"
-      - "openmetadata-dist/**"
-      - "openmetadata-clients/**"
-      - "common/**"
-      - "pom.xml"
-      - "yarn.lock"
-      - "Makefile"
-      - "bootstrap/**"
   pull_request_target:
     types: [labeled, opened, synchronize, reopened]
     paths:
@@ -45,7 +30,7 @@ permissions:
   contents: read
   checks: write
 
-concurrency: 
+concurrency:
   group: maven-sonar-build-${{ github.head_ref || github.run_id }}
   cancel-in-progress: true
 jobs:
@@ -65,10 +50,10 @@ jobs:
         uses: jesusvasquez333/verify-pr-label-action@v1.4.0
         if: ${{ github.event_name == 'pull_request_target' }}
         with:
-          github-token: '${{ secrets.GITHUB_TOKEN }}'
-          valid-labels: 'safe to test'
-          pull-request-number: '${{ github.event.pull_request.number }}'
-          disable-reviews: true  # To not auto approve changes
+          github-token: "${{ secrets.GITHUB_TOKEN }}"
+          valid-labels: "safe to test"
+          pull-request-number: "${{ github.event.pull_request.number }}"
+          disable-reviews: true # To not auto approve changes
 
       - name: Checkout
         uses: actions/checkout@v4
@@ -83,13 +68,13 @@ jobs:
           key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
           restore-keys: |
             ${{ runner.os }}-maven-
- 
+
       - name: Set up JDK 17
         if: steps.cache-output.outputs.exit-code == 0
         uses: actions/setup-java@v4
         with:
-          java-version: '17'
-          distribution: 'temurin'
+          java-version: "17"
+          distribution: "temurin"
 
       - name: Install Ubuntu dependencies
         if: steps.cache-output.outputs.exit-code == 0
@@ -116,4 +101,4 @@ jobs:
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           fail_on_test_failures: true
-          report_paths: 'openmetadata-service/target/surefire-reports/TEST-*.xml'
+          report_paths: "openmetadata-service/target/surefire-reports/TEST-*.xml"
