@@ -84,4 +84,6 @@ export enum GlobalSettingOptions {
   QUERY = 'query',
   TEST_CASES = 'testCases',
   TAGS = 'tags',
+  DOMAINS = 'domains',
+  DATA_PRODUCTS = 'dataProducts',
 }

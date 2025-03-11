@@ -549,6 +549,7 @@ export const ENTITY_PATH = {
   dataAssets: 'dataAsset',
   query: 'query',
   testCases: 'testCase',
+  domains: 'domain',
 };
 
 export const VALIDATION_MESSAGES = {

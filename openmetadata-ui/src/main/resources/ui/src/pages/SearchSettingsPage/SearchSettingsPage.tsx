@@ -10,24 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons/lib/components/Icon';
-import {
-  Button,
-  Checkbox,
-  Col,
-  Divider,
-  Dropdown,
-  Row,
-  Switch,
-  Typography,
-} from 'antd';
+import { Button, Col, Row, Switch, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { startCase } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
-import { ReactComponent as CloseIcon } from '../../assets/svg/close.svg';
-import { ReactComponent as FilterIcon } from '../../assets/svg/filter-primary.svg';
 import Loader from '../../components/common/Loader/Loader';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
@@ -36,12 +23,10 @@ import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { GlobalSettingItem } from '../../components/SearchSettings/GlobalSettingsItem/GlobalSettingsItem';
 import TermBoostComponent from '../../components/SearchSettings/TermBoost/TermBoost';
 import SettingItemCard from '../../components/Settings/SettingItemCard/SettingItemCard.component';
-import { DATA_ASSET_DROPDOWN_ITEMS } from '../../constants/AdvancedSearch.constants';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
 import { globalSettings } from '../../constants/SearchSettings.constant';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
-import { EntityFields } from '../../enums/AdvancedSearch.enum';
 import {
   SearchSettings,
   TermBoost,
@@ -70,21 +55,10 @@ const SearchSettingsPage = () => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [searchConfig, setSearchConfig] = useState<SearchSettings>();
   const [isUpdating, setIsUpdating] = useState<boolean>(false);
-  const [visible, setVisible] = useState<boolean>(false);
-  const [checkedItems, setCheckedItems] = useState<string[]>([]);
 
   const settingCategoryData = useMemo(
     () => getSearchSettingCategories(permissions, isAdminUser ?? false),
     [permissions, isAdminUser]
-  );
-
-  const entityFields = useMemo(
-    () =>
-      Object.entries(EntityFields).map(([key, field]) => ({
-        fieldName: field,
-        label: startCase(key.toLowerCase()),
-      })),
-    []
   );
 
   const breadcrumbs: TitleBreadcrumbProps['titleLinks'] = useMemo(
@@ -220,35 +194,10 @@ const SearchSettingsPage = () => {
     });
   };
 
-  const handleCheckboxChange = (label: string) => {
-    setCheckedItems((prev) =>
-      prev.includes(label)
-        ? prev.filter((item) => item !== label)
-        : [...prev, label]
-    );
-  };
-
   const handleViewDetailClick = (key: string) => {
     const [category, option] = key.split('.');
     history.push(getSettingPath(category, option));
   };
-
-  const menuItems = useMemo(
-    () => ({
-      items: entityFields.map((field) => ({
-        key: field.fieldName,
-        label: (
-          <Checkbox
-            checked={checkedItems.includes(field.fieldName)}
-            onChange={() => handleCheckboxChange(field.fieldName)}>
-            {field.label}
-          </Checkbox>
-        ),
-      })),
-      className: 'menu-items',
-    }),
-    [entityFields, checkedItems]
-  );
 
   useEffect(() => {
     fetchSearchConfig();
@@ -265,7 +214,7 @@ const SearchSettingsPage = () => {
           <TitleBreadcrumb titleLinks={breadcrumbs} />
         </Col>
         <Col span={24}>
-          <PageHeader data={PAGE_HEADERS.SEARCH_RBAC} />
+          <PageHeader data={PAGE_HEADERS.SEARCH_SETTINGS} />
         </Col>
       </Row>
       <Row className="p-y-md p-x-lg settings-row" gutter={[0, 16]}>
@@ -275,9 +224,7 @@ const SearchSettingsPage = () => {
           </Typography.Title>
         </Col>
         <Col span={24}>
-          <Row
-            className="p-x-xs global-settings-cards-container"
-            gutter={[20, 20]}>
+          <Row className="p-x-xs global-settings-cards-container" gutter={0}>
             <Col className="global-setting-card">
               <Typography.Text className="global-setting-card__content">
                 {t('label.enable-roles-polices-in-search')}
@@ -358,41 +305,8 @@ const SearchSettingsPage = () => {
         </Col>
       </Row>
 
-      <Row className="filters-configuration-row p-y-md p-x-lg" gutter={[0, 16]}>
-        <Col span={24}>
-          <Typography.Title className="text-md font-semibold" level={5}>
-            {t('label.filters-configuration')}
-          </Typography.Title>
-        </Col>
-        <Col className="filter-configuration-container" span={24}>
-          <Dropdown
-            data-testid="add-filter-dropdown"
-            getPopupContainer={(triggerNode) => triggerNode.parentElement!}
-            menu={menuItems}
-            open={visible}
-            placement="bottomLeft"
-            trigger={['click']}
-            onOpenChange={(flag) => setVisible(flag)}>
-            <Button
-              className="flex items-center gap-2 p-md text-sm font-medium add-filters-btn"
-              icon={<FilterIcon />}>
-              {t('label.add-filter-plural')}
-            </Button>
-          </Dropdown>
-          <Divider className="h-auto self-stretch" type="vertical" />
-          {DATA_ASSET_DROPDOWN_ITEMS.map((value) => (
-            <div
-              className="bg-white flex items-center justify-center gap-3 p-y-xss p-x-sm filter-value"
-              key={value.key}>
-              {value.label}
-              <Icon
-                className="text-grey-muted text-xss cursor-pointer"
-                component={CloseIcon}
-              />
-            </div>
-          ))}
-        </Col>
-      </Row>
+      {/* <FilterConfiguration /> */}
+
       <Row className="p-x-lg p-b-md" gutter={[16, 16]}>
         {settingCategoryData?.map((data) => (
           <Col key={data.key} span={6}>

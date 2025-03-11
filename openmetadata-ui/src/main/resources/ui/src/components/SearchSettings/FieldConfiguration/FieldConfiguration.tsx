@@ -52,7 +52,7 @@ const FieldConfiguration: React.FC<FieldConfigurationProps> = ({
         key: '1',
         label: (
           <Button
-            className="d-flex items-center justify-between border-none bg-transparent"
+            className="d-flex items-center justify-between border-none bg-transparent boost-option-btn"
             data-testid="value-boost-option"
             onClick={() => handleValueBoostClick(field.fieldName)}>
             <Icon className="text-xl" component={Document} />

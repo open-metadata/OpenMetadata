@@ -635,12 +635,12 @@ class GlobalSettingsClassBase {
             icon: MlModelIcon,
           },
           {
-            label: t('label.data-asset-plural'),
+            label: t('label.data-product-plural'),
             description: t('message.search-settings-for-entity', {
-              entity: t('label.data-asset-plural'),
+              entity: t('label.data-product-plural'),
             }),
             isProtected: Boolean(isAdminUser),
-            key: `${GlobalSettingsMenuCategory.SEARCH_SETTINGS}.${GlobalSettingOptions.DATA_ASSETS}`,
+            key: `${GlobalSettingsMenuCategory.SEARCH_SETTINGS}.${GlobalSettingOptions.DATA_PRODUCTS}`,
             icon: DataAssetsIcon,
           },
           {
@@ -653,15 +653,6 @@ class GlobalSettingsClassBase {
             icon: QueryIcon,
           },
           {
-            label: t('label.test-case-plural'),
-            description: t('message.search-settings-for-entity', {
-              entity: t('label.test-case-plural'),
-            }),
-            isProtected: Boolean(isAdminUser),
-            key: `${GlobalSettingsMenuCategory.SEARCH_SETTINGS}.${GlobalSettingOptions.TEST_CASES}`,
-            icon: TestCaseIcon,
-          },
-          {
             label: t('label.tag-plural'),
             description: t('message.search-settings-for-entity', {
               entity: t('label.tag-plural'),
@@ -672,7 +663,7 @@ class GlobalSettingsClassBase {
           },
           {
             label: t('label.database-plural'),
-            description: t('message.define-custom-property-for-entity', {
+            description: t('message.search-settings-for-entity', {
               entity: t('label.database-plural'),
             }),
             isProtected: Boolean(isAdminUser),
@@ -681,12 +672,30 @@ class GlobalSettingsClassBase {
           },
           {
             label: t('label.database-schema'),
-            description: t('message.define-custom-property-for-entity', {
+            description: t('message.search-settings-for-entity', {
               entity: t('label.database-schema'),
             }),
             isProtected: Boolean(isAdminUser),
             key: `${GlobalSettingsMenuCategory.SEARCH_SETTINGS}.${GlobalSettingOptions.DATABASE_SCHEMA}`,
             icon: SchemaIcon,
+          },
+          {
+            label: t('label.domain-plural'),
+            description: t('message.search-settings-for-entity', {
+              entity: t('label.domain-plural'),
+            }),
+            isProtected: Boolean(isAdminUser),
+            key: `${GlobalSettingsMenuCategory.SEARCH_SETTINGS}.${GlobalSettingOptions.DOMAINS}`,
+            icon: TestCaseIcon,
+          },
+          {
+            label: t('label.search-index-plural'),
+            description: t('message.search-settings-for-entity', {
+              entity: t('label.search-index-plural'),
+            }),
+            isProtected: Boolean(isAdminUser),
+            key: `${GlobalSettingsMenuCategory.SEARCH_SETTINGS}.${GlobalSettingOptions.SEARCH_INDEXES}`,
+            icon: TestCaseIcon,
           },
         ].sort((a, b) => a.label.localeCompare(b.label)),
       },

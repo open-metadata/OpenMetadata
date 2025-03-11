@@ -56,7 +56,7 @@ const SearchPreview = ({ searchConfig }: { searchConfig: SearchSettings }) => {
       page = currentPage,
       searchTerm = searchValue,
     }: { page?: number; searchTerm?: string } = {}) => {
-      if (searchConfig) {
+      if (searchConfig && Object.keys(searchConfig).length > 0) {
         try {
           setIsLoading(true);
           const res = await searchPreview({
@@ -125,7 +125,9 @@ const SearchPreview = ({ searchConfig }: { searchConfig: SearchSettings }) => {
   const debouncedSearch = useMemo(
     () =>
       debounce((searchTerm: string) => {
-        fetchAssets({ searchTerm });
+        if (searchConfig && Object.keys(searchConfig).length > 0) {
+          fetchAssets({ searchTerm });
+        }
       }, 1000),
     [fetchAssets]
   );
@@ -142,10 +144,10 @@ const SearchPreview = ({ searchConfig }: { searchConfig: SearchSettings }) => {
   };
 
   useEffect(() => {
-    if (searchConfig) {
+    if (searchConfig && Object.keys(searchConfig).length > 0) {
       fetchAssets({ searchTerm: '', page: currentPage });
     }
-  }, [currentPage]);
+  }, [currentPage, searchConfig]);
 
   return (
     <div className="search-preview">

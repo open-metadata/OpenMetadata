@@ -13,7 +13,7 @@
 @import url('../../../styles/variables.less');
 
 .entity-search-settings {
-  background-color: @grey-1;
+  background-color: @grey-9;
 }
 
 .entity-search-settings-header {
@@ -24,7 +24,7 @@
 
 .entity-search-settings-content {
   margin: 20px !important;
-  height: calc(100vh - 230px);
+  height: calc(100vh - 330px);
   overflow: hidden;
 }
 
@@ -66,6 +66,12 @@
     border: 1px solid @blue-9;
     color: @white;
     border-radius: 8px;
+  }
+
+  .save-btn:disabled {
+    background-color: @blue-9;
+    border: 1px solid @blue-9;
+    color: @white;
   }
 }
 

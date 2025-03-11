@@ -60,6 +60,7 @@ const EntitySearchSettings = () => {
     appPreferences: { searchConfig, ...appPreferences },
   } = useApplicationStore();
 
+  const [isSaving, setIsSaving] = useState(false);
   const [searchSettings, setSearchSettings] =
     useState<EntitySearchSettingsState>({
       searchFields: [],
@@ -115,6 +116,7 @@ const EntitySearchSettings = () => {
     }
 
     try {
+      setIsSaving(true);
       const updatedConfig = {
         ...searchConfig,
         assetTypeConfigurations: searchConfig.assetTypeConfigurations?.map(
@@ -152,6 +154,8 @@ const EntitySearchSettings = () => {
       });
     } catch (error) {
       showErrorToast(error as AxiosError);
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -378,7 +382,7 @@ const EntitySearchSettings = () => {
       className="entity-search-settings"
       pageTitle={t('label.search')}>
       <Row
-        className="entity-search-settings-header bg-white m-b-lg p-y-md p-x-sm"
+        className="entity-search-settings-header bg-white m-b-lg p-box"
         data-testid="entity-search-settings-header"
         gutter={[0, 16]}>
         <Col span={24}>
@@ -403,7 +407,7 @@ const EntitySearchSettings = () => {
           </div>
         </Col>
       </Row>
-      <Row className="entity-search-settings-header bg-white m-b-lg p-y-md p-x-sm">
+      <Row className="entity-search-settings-header bg-white m-b-lg p-box">
         <Col span={24}>
           <div className="d-flex items-center justify-between">
             <Typography.Text className="text-md font-medium">
@@ -432,7 +436,7 @@ const EntitySearchSettings = () => {
       </Row>
       <Row
         className="d-flex gap-5 items-start entity-search-settings-content"
-        gutter={[24, 0]}>
+        gutter={0}>
         <Col
           className="bg-white border-radius-card h-full flex-1 p-box configuration-container"
           span={8}>
@@ -507,6 +511,8 @@ const EntitySearchSettings = () => {
             <Button
               className="save-btn font-semibold m-l-md"
               data-testid="save-btn"
+              disabled={!searchSettings.isUpdated || isSaving}
+              loading={isSaving}
               onClick={handleSaveChanges}>
               {t('label.save')}
             </Button>

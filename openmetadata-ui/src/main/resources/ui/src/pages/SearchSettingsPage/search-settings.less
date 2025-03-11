@@ -13,7 +13,7 @@
 @import url('../../styles/variables.less');
 
 .search-settings {
-  background-color: @grey-1;
+  background-color: @grey-9;
 }
 
 .settings-row {
@@ -32,6 +32,7 @@
   margin-bottom: 8px;
 
   .global-setting-card {
+    padding: 32px 20px;
     border: 1px solid @grey-11;
     border-radius: 12px;
     background-color: @grey-11;
@@ -41,13 +42,12 @@
     display: flex;
     align-items: center;
     min-height: 60px;
-    padding: 32px 20px;
 
     &__content {
       flex: 1;
       min-width: 0;
       font-size: 14px;
-      font-weight: 400;
+      font-weight: 500;
       margin-right: 16px;
     }
 
@@ -60,56 +60,6 @@
 .term-boosts-container {
   background-color: @grey-11;
   border-radius: 6px;
-}
-
-.filters-configuration-row {
-  background-color: @white;
-  border: 1px solid @border-color-1;
-  border-radius: 10px;
-  margin: 20px;
-  margin-bottom: 24px;
-
-  .filter-configuration-container {
-    padding: 20px 16px;
-    border: 1px solid @border-color-1;
-    border-radius: 12px;
-    background-color: @grey-11;
-    display: flex;
-    align-items: flex-start;
-    gap: 8px;
-    flex-wrap: wrap;
-    min-height: auto;
-
-    .add-filters-btn {
-      color: @blue-9;
-      border: 1px solid @border-color-2;
-      background-color: @blue-11;
-      border-radius: 8px;
-
-      &:hover,
-      &:focus {
-        color: @blue-9;
-        background-color: @blue-11;
-        border-color: @border-color-2;
-      }
-    }
-
-    .filter-option {
-      flex-direction: row-reverse;
-      border: 1px solid @border-color-2;
-      border-radius: 8px;
-    }
-
-    .filter-value {
-      border: 1px solid @border-color-3;
-      border-radius: 8px;
-    }
-  }
-}
-
-.menu-items {
-  max-height: 250px;
-  overflow-y: auto;
 }
 
 .search-setting-card {
