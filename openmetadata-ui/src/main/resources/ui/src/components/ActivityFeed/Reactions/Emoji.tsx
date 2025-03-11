@@ -77,11 +77,11 @@ const Emoji: FC<EmojiProps> = ({
 
     return (
       <p className="w-44 m-0 p-0" data-testid="popover-content">
-        {`${visibleList.join(', ')}`}
+        <span className="text-sm">{`${visibleList.join(', ')}`}</span>
         {hasMore
           ? `, +${moreList.length} ${t('label.more-lowercase')}`
           : ''}{' '}
-        <span className="font-semibold">
+        <span className="font-normal text-sm">
           {t('message.reacted-with-emoji', { type: reactionType })}
         </span>
       </p>
@@ -113,9 +113,12 @@ const Emoji: FC<EmojiProps> = ({
       zIndex={9999}
       onOpenChange={setVisible}>
       <Button
-        className={classNames('ant-btn-reaction m-r-xss flex-center', {
-          'ant-btn-isReacted': isReacted,
-        })}
+        className={classNames(
+          'ant-btn-reaction m-r-xss flex-center transparent',
+          {
+            'ant-btn-isReacted': isReacted,
+          }
+        )}
         data-testid="emoji-button"
         key={reaction}
         shape="round"

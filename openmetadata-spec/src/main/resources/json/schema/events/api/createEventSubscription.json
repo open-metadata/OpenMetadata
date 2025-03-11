@@ -11,6 +11,10 @@
       "description": "Name that uniquely identifies this Alert.",
       "$ref": "../../type/basic.json#/definitions/entityName"
     },
+    "className": {
+      "description": "Consumer Class for the Event Subscription. Will use 'AlertPublisher' if not provided.",
+      "type": "string"
+    },
     "displayName": {
       "description": "Display name for this Alert.",
       "type": "string"
@@ -75,6 +79,9 @@
     "domain" : {
       "description": "Fully qualified name of the domain the Table belongs to.",
       "type": "string"
+    },
+    "config": {
+      "$ref": "../../type/basic.json#/definitions/map"
     }
   },
   "required": ["name", "alertType"],

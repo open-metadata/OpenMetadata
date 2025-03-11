@@ -66,6 +66,10 @@ export interface TestCase {
      */
     incidentId?: string;
     /**
+     * Change that lead to this version of the entity.
+     */
+    incrementalChangeDescription?: ChangeDescription;
+    /**
      * SQL query to retrieve the failed rows for this test case.
      */
     inspectionQuery?: string;
@@ -192,6 +196,8 @@ export interface FieldChange {
  *
  * Domain the test Suite belongs to. When not set, the test Suite inherits the domain from
  * the table it belongs to.
+ *
+ * DEPRECATED in 1.6.2: Use 'basicEntityReference'.
  */
 export interface EntityReference {
     /**
@@ -498,6 +504,14 @@ export interface TestSuite {
      */
     domain?: EntityReference;
     /**
+     * DEPRECATED in 1.6.2: Use 'basic'
+     */
+    executable?: boolean;
+    /**
+     * DEPRECATED in 1.6.2: Use 'basicEntityReference'.
+     */
+    executableEntityReference?: EntityReference;
+    /**
      * FullyQualifiedName same as `name`.
      */
     fullyQualifiedName?: string;
@@ -509,6 +523,10 @@ export interface TestSuite {
      * Unique identifier of this test suite instance.
      */
     id?: string;
+    /**
+     * Change that lead to this version of the entity.
+     */
+    incrementalChangeDescription?: ChangeDescription;
     /**
      * Indicates if the test suite is inherited from a parent entity.
      */

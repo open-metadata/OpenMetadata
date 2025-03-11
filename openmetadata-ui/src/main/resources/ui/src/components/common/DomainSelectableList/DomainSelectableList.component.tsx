@@ -15,26 +15,12 @@ import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as DomainIcon } from '../../../assets/svg/ic-domain.svg';
-import {
-  DE_ACTIVE_COLOR,
-  PAGE_SIZE_MEDIUM,
-} from '../../../constants/constants';
+import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../../constants/HelperTextUtil';
-import { EntityType } from '../../../enums/entity.enum';
-import { SearchIndex } from '../../../enums/search.enum';
 import { EntityReference } from '../../../generated/entity/type';
-import { useApplicationStore } from '../../../hooks/useApplicationStore';
-import { getDomainList } from '../../../rest/domainAPI';
-import { searchData } from '../../../rest/miscAPI';
-import { formatDomainsResponse } from '../../../utils/APIUtils';
-import { Transi18next } from '../../../utils/CommonUtils';
-import {
-  getEntityName,
-  getEntityReferenceListFromEntities,
-} from '../../../utils/EntityUtils';
+import { getEntityName } from '../../../utils/EntityUtils';
 import Fqn from '../../../utils/Fqn';
-import { getDomainPath } from '../../../utils/RouterUtils';
-import { SelectableList } from '../SelectableList/SelectableList.component';
+import DomainSelectablTree from '../DomainSelectableTree/DomainSelectableTree';
 import './domain-select-dropdown.less';
 import { DomainSelectableListProps } from './DomainSelectableList.interface';
 
@@ -72,58 +58,28 @@ const DomainSelectableList = ({
   popoverProps,
   selectedDomain,
   multiple = false,
+  onCancel,
 }: DomainSelectableListProps) => {
   const { t } = useTranslation();
-  const { theme } = useApplicationStore();
   const [popupVisible, setPopupVisible] = useState(false);
 
   const selectedDomainsList = useMemo(() => {
+    if (selectedDomain) {
+      return Array.isArray(selectedDomain)
+        ? selectedDomain.map((item) => item.fullyQualifiedName)
+        : [selectedDomain.fullyQualifiedName];
+    }
+
+    return [];
+  }, [selectedDomain]);
+
+  const initialDomains = useMemo(() => {
     if (selectedDomain) {
       return Array.isArray(selectedDomain) ? selectedDomain : [selectedDomain];
     }
 
     return [];
   }, [selectedDomain]);
-
-  const fetchOptions = async (searchText: string, after?: string) => {
-    if (searchText) {
-      try {
-        const res = await searchData(
-          searchText,
-          1,
-          PAGE_SIZE_MEDIUM,
-          '',
-          '',
-          '',
-          SearchIndex.DOMAIN
-        );
-
-        const data = getEntityReferenceListFromEntities(
-          formatDomainsResponse(res.data.hits.hits),
-          EntityType.DOMAIN
-        );
-
-        return { data, paging: { total: res.data.hits.total.value } };
-      } catch (error) {
-        return { data: [], paging: { total: 0 } };
-      }
-    } else {
-      try {
-        const { data, paging } = await getDomainList({
-          limit: PAGE_SIZE_MEDIUM,
-          after: after ?? undefined,
-        });
-        const filterData = getEntityReferenceListFromEntities(
-          data,
-          EntityType.DOMAIN
-        );
-
-        return { data: filterData, paging };
-      } catch (error) {
-        return { data: [], paging: { total: 0 } };
-      }
-    }
-  };
 
   const handleUpdate = useCallback(
     async (domains: EntityReference[]) => {
@@ -132,10 +88,16 @@ const DomainSelectableList = ({
       } else {
         await onUpdate(domains[0]);
       }
+
       setPopupVisible(false);
     },
     [onUpdate, multiple]
   );
+
+  const handleCancel = useCallback(() => {
+    setPopupVisible(false);
+    onCancel?.();
+  }, [onCancel]);
 
   return (
     // Used Button to stop click propagation event anywhere in the component to parent
@@ -146,39 +108,17 @@ const DomainSelectableList = ({
       <Popover
         destroyTooltipOnHide
         content={
-          <SelectableList
-            customTagRenderer={DomainListItemRenderer}
-            emptyPlaceholderText={
-              <Transi18next
-                i18nKey="message.no-domain-available"
-                renderElement={
-                  <a
-                    href={getDomainPath()}
-                    rel="noreferrer"
-                    style={{ color: theme.primaryColor }}
-                    target="_blank"
-                  />
-                }
-                values={{
-                  link: t('label.domain-plural'),
-                }}
-              />
-            }
-            fetchOptions={fetchOptions}
-            multiSelect={multiple}
-            removeIconTooltipLabel={t('label.remove-entity', {
-              entity: t('label.domain-lowercase'),
-            })}
-            searchPlaceholder={t('label.search-for-type', {
-              type: t('label.domain'),
-            })}
-            selectedItems={selectedDomainsList}
-            onCancel={() => setPopupVisible(false)}
-            onUpdate={handleUpdate}
+          <DomainSelectablTree
+            initialDomains={initialDomains}
+            isMultiple={multiple}
+            value={selectedDomainsList as string[]}
+            visible={popupVisible || Boolean(popoverProps?.open)}
+            onCancel={handleCancel}
+            onSubmit={handleUpdate}
           />
         }
         open={popupVisible}
-        overlayClassName="domain-select-popover"
+        overlayClassName="domain-select-popover w-400"
         placement="bottomRight"
         showArrow={false}
         trigger="click"

@@ -16,7 +16,17 @@ To be used by OpenMetadata class
 import functools
 import json
 import traceback
-from typing import Generic, Iterable, Iterator, List, Optional, Set, Type, TypeVar
+from typing import (
+    Generic,
+    Iterable,
+    Iterator,
+    List,
+    Optional,
+    Set,
+    Type,
+    TypeVar,
+    Union,
+)
 from urllib.parse import quote_plus
 
 from pydantic import Field
@@ -29,7 +39,7 @@ from metadata.ingestion.models.custom_pydantic import BaseModel
 from metadata.ingestion.ometa.client import REST, APIError
 from metadata.ingestion.ometa.utils import quote
 from metadata.ingestion.source.models import TableView
-from metadata.utils.elasticsearch import ES_INDEX_MAP
+from metadata.utils.elasticsearch import ES_INDEX_MAP, get_entity_from_es_result
 from metadata.utils.logger import ometa_logger
 
 logger = ometa_logger()
@@ -344,7 +354,7 @@ class ESMixin(Generic[T]):
             # Get next page
             last_hit = response.hits.hits[-1] if response.hits.hits else None
             if not last_hit or not last_hit.sort:
-                logger.info("No more pages to fetch")
+                logger.debug("No more pages to fetch")
                 break
 
             after = ",".join(last_hit.sort)
@@ -402,19 +412,51 @@ class ESMixin(Generic[T]):
             "query": {
                 "bool": {
                     "must": [
-                        {"term": {"service.name.keyword": service_name}},
                         {
-                            "term": {
-                                "tableType": [
-                                    TableType.View.value,
-                                    TableType.MaterializedView.value,
-                                    TableType.SecureView.value,
-                                    TableType.Dynamic.value,
+                            "bool": {
+                                "should": [
+                                    {"term": {"service.name.keyword": service_name}}
                                 ]
                             }
                         },
-                        {"term": {"deleted": False}},
-                        {"exists": {"field": "schemaDefinition"}},
+                        {
+                            "bool": {
+                                "must": [
+                                    {
+                                        "bool": {
+                                            "should": [
+                                                {
+                                                    "term": {
+                                                        "tableType": TableType.View.value
+                                                    }
+                                                },
+                                                {
+                                                    "term": {
+                                                        "tableType": TableType.MaterializedView.value
+                                                    }
+                                                },
+                                                {
+                                                    "term": {
+                                                        "tableType": TableType.SecureView.value
+                                                    }
+                                                },
+                                                {
+                                                    "term": {
+                                                        "tableType": TableType.Dynamic.value
+                                                    }
+                                                },
+                                            ]
+                                        }
+                                    }
+                                ]
+                            }
+                        },
+                        {"bool": {"should": [{"term": {"deleted": False}}]}},
+                        {
+                            "bool": {
+                                "should": [{"exists": {"field": "schemaDefinition"}}]
+                            }
+                        },
                     ]
                 }
             }
@@ -429,10 +471,36 @@ class ESMixin(Generic[T]):
                 _, database_name, schema_name, table_name = fqn.split(
                     hit.source["fullyQualifiedName"]
                 )
-                yield TableView(
-                    view_definition=hit.source["schemaDefinition"],
-                    service_name=service_name,
-                    db_name=database_name,
-                    schema_name=schema_name,
-                    table_name=table_name,
-                )
+                if hit.source.get("schemaDefinition"):
+                    yield TableView(
+                        view_definition=hit.source["schemaDefinition"],
+                        service_name=service_name,
+                        db_name=database_name,
+                        schema_name=schema_name,
+                        table_name=table_name,
+                    )
+
+    def search_in_any_service(
+        self,
+        entity_type: Type[T],
+        fqn_search_string: str,
+        fetch_multiple_entities: bool = False,
+    ) -> Optional[Union[List[Table], Table]]:
+        """
+        fetch table from es when with/without `db_service_name`
+        """
+        try:
+            entity_result = get_entity_from_es_result(
+                entity_list=self.es_search_from_fqn(
+                    entity_type=entity_type,
+                    fqn_search_string=fqn_search_string,
+                ),
+                fetch_multiple_entities=fetch_multiple_entities,
+            )
+            return entity_result
+        except Exception as exc:
+            logger.debug(
+                f"Error to fetch entity: fqn={fqn_search_string} from es: {exc}"
+            )
+            logger.debug(traceback.format_exc())
+        return None

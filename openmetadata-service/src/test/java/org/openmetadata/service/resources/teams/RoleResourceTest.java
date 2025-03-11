@@ -24,7 +24,6 @@ import static org.openmetadata.service.util.EntityUtil.fieldDeleted;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.TEST_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.TEST_USER_NAME;
-import static org.openmetadata.service.util.TestUtils.UpdateType.CHANGE_CONSOLIDATED;
 import static org.openmetadata.service.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.service.util.TestUtils.assertListNotNull;
 import static org.openmetadata.service.util.TestUtils.assertListNull;
@@ -136,10 +135,9 @@ public class RoleResourceTest extends EntityResourceTest<Role, CreateRole> {
     // Changes from this PATCH is consolidated with the previous changes
     originalJson = JsonUtils.pojoToJson(role);
     role.setPolicies(DATA_STEWARD_ROLE.getPolicies());
-    change = getChangeDescription(role, CHANGE_CONSOLIDATED);
+    change = getChangeDescription(role, MINOR_UPDATE);
     fieldDeleted(change, "policies", DATA_CONSUMER_ROLE.getPolicies());
-    fieldAdded(change, "policies", DATA_STEWARD_ROLE.getPolicies());
-    role = patchEntityAndCheck(role, originalJson, ADMIN_AUTH_HEADERS, CHANGE_CONSOLIDATED, change);
+    role = patchEntityAndCheck(role, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
     // Remove all the policies. It should be disallowed
     final String originalJson1 = JsonUtils.pojoToJson(role);

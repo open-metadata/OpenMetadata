@@ -193,7 +193,8 @@
             "PRIMARY_KEY",
             "FOREIGN_KEY",
             "SORT_KEY",
-            "DIST_KEY"
+            "DIST_KEY",
+            "CLUSTER_KEY"
           ]
         },
         "columns": {
@@ -1093,6 +1094,10 @@
       "$ref": "#/definitions/dataModel"
     },
     "changeDescription": {
+      "description": "Change that lead to this version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "incrementalChangeDescription": {
       "description": "Change that lead to this version of the entity.",
       "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
     },

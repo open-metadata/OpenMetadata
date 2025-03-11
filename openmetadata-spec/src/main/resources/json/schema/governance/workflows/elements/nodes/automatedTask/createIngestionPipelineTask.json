@@ -1,0 +1,94 @@
+{
+  "$id": "https://open-metadata.org/schema/governance/workflows/elements/nodes/automatedTask/createIngestionPipelineTask.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CreateIngestionPipelineTask",
+  "description": "Creates an Ingestion Pipeline",
+  "javaInterfaces": [
+    "org.openmetadata.schema.governance.workflows.elements.WorkflowNodeDefinitionInterface"
+  ],
+  "javaType": "org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.CreateIngestionPipelineTaskDefinition",
+  "type": "object",
+  "definitions": {
+    "config": {
+      "type": "object",
+      "properties": {
+        "pipelineType": {
+          "title": "Pipeline Type",
+          "description": "Define which ingestion pipeline type should be created",
+          "$ref": "../../../../../entity/services/ingestionPipelines/ingestionPipeline.json#/definitions/pipelineType"
+        },
+        "deploy": {
+          "title": "Deploy",
+          "description": "Set if the created pipeline should also be deployed",
+          "type": "boolean",
+          "default": true
+        }
+      },
+      "additionalProperties": false,
+      "required": ["pipelineType", "deploy"]
+    }
+  },
+  "properties": {
+    "type": {
+      "type": "string",
+      "default": "automatedTask"
+    },
+    "subType": {
+      "type": "string",
+      "default": "createIngestionPipelineTask"
+    },
+    "name": {
+      "title": "Name",
+      "description": "Name that identifies this Node.",
+      "$ref": "../../../../../type/basic.json#/definitions/entityName"
+    },
+    "displayName": {
+      "title": "Display Name",
+      "description": "Display Name that identifies this Node.",
+      "type": "string"
+    },
+    "description": {
+      "title": "Description",
+      "description": "Description of the Node.",
+      "$ref": "../../../../../type/basic.json#/definitions/markdown"
+    },
+    "config": {
+      "$ref": "#/definitions/config"
+    },
+    "input": {
+      "type": "array",
+      "items": { "type":  "string" },
+      "default": ["relatedEntity"],
+      "additionalItems": false,
+      "minItems": 1,
+      "maxItems": 1
+    },
+    "output": {
+      "type": "array",
+      "items": { "type":  "string" },
+      "default": ["ingestionPipelineId"],
+      "additionalItems": false,
+      "minItems": 1,
+      "maxItems": 1
+    },
+    "inputNamespaceMap": {
+      "type": "object",
+      "properties": {
+        "relatedEntity": {
+          "type": "string",
+          "default": "global"
+        }
+      },
+      "additionalProperties": false,
+      "required": ["relatedEntity"]
+    },
+    "branches": {
+      "type": "array",
+      "items": { "type":  "string" },
+      "default": ["success", "failure"],
+      "additionalItems": false,
+      "minItems": 2,
+      "maxItems": 2
+    }
+  }
+}

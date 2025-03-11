@@ -15,7 +15,7 @@ import Icon from '@ant-design/icons/lib/components/Icon';
 import { Button, Tag } from 'antd';
 import classNames from 'classnames';
 import React, { Fragment, useCallback, useMemo } from 'react';
-import { EdgeProps, getBezierPath } from 'reactflow';
+import { EdgeProps } from 'reactflow';
 import { ReactComponent as IconEditCircle } from '../../../assets/svg/ic-edit-circle.svg';
 import { ReactComponent as FunctionIcon } from '../../../assets/svg/ic-function.svg';
 import { ReactComponent as IconTimesCircle } from '../../../assets/svg/ic-times-circle.svg';
@@ -27,7 +27,10 @@ import { EntityType } from '../../../enums/entity.enum';
 import { StatusType } from '../../../generated/entity/data/pipeline';
 import { LineageLayer } from '../../../generated/settings/settings';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
-import { getColumnSourceTargetHandles } from '../../../utils/EntityLineageUtils';
+import {
+  getColumnSourceTargetHandles,
+  getEdgePathData,
+} from '../../../utils/EntityLineageUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import EntityPopOverCard from '../../common/PopOverCard/EntityPopOverCard';
 import { CustomEdgeData } from './EntityLineage.interface';
@@ -69,6 +72,8 @@ export const CustomEdge = ({
   markerEnd,
   data,
   selected,
+  source,
+  target,
 }: EdgeProps) => {
   const {
     edge,
@@ -96,11 +101,26 @@ export const CustomEdge = ({
 
   const { theme } = useApplicationStore();
 
+  const {
+    edgePath,
+    edgeCenterX,
+    edgeCenterY,
+    invisibleEdgePath,
+    invisibleEdgePath1,
+  } = getEdgePathData(source, target, offset, {
+    sourceX,
+    sourceY,
+    targetX,
+    targetY,
+    sourcePosition,
+    targetPosition,
+  });
+
   const showDqTracing = useMemo(() => {
     return (
       (activeLayer.includes(LineageLayer.DataObservability) &&
         dataQualityLineage?.edges?.some(
-          (dqEdge) => dqEdge?.doc_id === edge?.doc_id
+          (dqEdge) => dqEdge?.docId === edge?.docId
         )) ??
       false
     );
@@ -121,31 +141,6 @@ export const CustomEdge = ({
       tracedColumns.includes(decodedHandles.targetHandle ?? '')
     );
   }, [isColumnLineage, tracedColumns, sourceHandle, targetHandle]);
-
-  const [edgePath, edgeCenterX, edgeCenterY] = getBezierPath({
-    sourceX,
-    sourceY,
-    sourcePosition,
-    targetX,
-    targetY,
-    targetPosition,
-  });
-  const [invisibleEdgePath] = getBezierPath({
-    sourceX: sourceX + offset,
-    sourceY: sourceY + offset,
-    sourcePosition,
-    targetX: targetX + offset,
-    targetY: targetY + offset,
-    targetPosition,
-  });
-  const [invisibleEdgePath1] = getBezierPath({
-    sourceX: sourceX - offset,
-    sourceY: sourceY - offset,
-    sourcePosition,
-    targetX: targetX - offset,
-    targetY: targetY - offset,
-    targetPosition,
-  });
 
   const updatedStyle = useMemo(() => {
     const isNodeTraced =
@@ -347,7 +342,7 @@ export const CustomEdge = ({
 
   const dataTestId = useMemo(() => {
     if (!isColumnLineage) {
-      return `edge-${edge.fromEntity.fqn}-${edge.toEntity.fqn}`;
+      return `edge-${edge.fromEntity.fullyQualifiedName}-${edge.toEntity.fullyQualifiedName}`;
     } else {
       return `column-edge-${sourceHandle}-${targetHandle}`;
     }
@@ -370,7 +365,7 @@ export const CustomEdge = ({
         hasLabel &&
         getLineageEdgeIcon(
           <PipelineIcon />,
-          `pipeline-label-${edge.fromEntity.fqn}-${edge.toEntity.fqn}`,
+          `pipeline-label-${edge.fromEntity.fullyQualifiedName}-${edge.toEntity.fullyQualifiedName}`,
           currentPipelineStatus
         )}
       {isColumnLineageAllowed &&
@@ -385,7 +380,7 @@ export const CustomEdge = ({
         data.isExpanded &&
         getLineageEdgeIcon(
           <FunctionIcon />,
-          `function-icon-${edge.fromEntity.fqn}-${edge.toEntity.fqn}`
+          `function-icon-${edge.fromEntity.fullyQualifiedName}-${edge.toEntity.fullyQualifiedName}`
         )}
     </Fragment>
   );

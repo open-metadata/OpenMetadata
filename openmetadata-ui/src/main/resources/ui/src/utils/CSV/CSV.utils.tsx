@@ -23,6 +23,7 @@ import React from 'react';
 import { ReactComponent as SuccessBadgeIcon } from '../..//assets/svg/success-badge.svg';
 import { ReactComponent as FailBadgeIcon } from '../../assets/svg/fail-badge.svg';
 import { TableTypePropertyValueType } from '../../components/common/CustomPropertyTable/CustomPropertyTable.interface';
+import RichTextEditorPreviewerV1 from '../../components/common/RichTextEditor/RichTextEditorPreviewerV1';
 import {
   ExtensionDataProps,
   ExtensionDataTypes,
@@ -55,12 +56,7 @@ export const COLUMNS_WIDTH: Record<string, number> = {
   status: 70,
 };
 
-const statusRenderer = ({
-  value,
-}: {
-  value: Status;
-  data: { details: string };
-}) => {
+const statusRenderer = (value: Status) => {
   return value === Status.Failure ? (
     <FailBadgeIcon
       className="m-t-xss"
@@ -78,6 +74,32 @@ const statusRenderer = ({
   );
 };
 
+const renderColumnDataEditor = (
+  column: string,
+  recordData: {
+    value: string;
+    data: { details: string };
+  }
+) => {
+  const { value } = recordData;
+  switch (column) {
+    case 'status':
+    case 'glossaryStatus':
+      return statusRenderer(value as Status);
+    case 'description':
+      return (
+        <RichTextEditorPreviewerV1
+          enableSeeMoreVariant={false}
+          markdown={value}
+          reducePreviewLineClass="max-one-line"
+        />
+      );
+
+    default:
+      return value;
+  }
+};
+
 export const getColumnConfig = (
   column: string,
   entityType: EntityType
@@ -91,7 +113,7 @@ export const getColumnConfig = (
     sortable: false,
     renderEditor: csvUtilsClassBase.getEditor(colType, entityType),
     minWidth: COLUMNS_WIDTH[colType] ?? 180,
-    render: column === 'status' ? statusRenderer : undefined,
+    render: (recordData) => renderColumnDataEditor(colType, recordData),
   } as TypeColumn;
 };
 

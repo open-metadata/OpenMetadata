@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * OpenMetadata Ingestion Framework definition.
  */
 export interface Workflow {
@@ -229,6 +227,8 @@ export interface ServiceConnection {
  *
  * MongoDB Connection Config
  *
+ * Cassandra Connection Config
+ *
  * Couchbase Connection Config
  *
  * Greenplum Database Connection Config
@@ -248,6 +248,8 @@ export interface ServiceConnection {
  * Synapse Database Connection Config
  *
  * Exasol Database Connection Config
+ *
+ * Cockroach Database Connection Config
  *
  * Kafka Connection Config
  *
@@ -470,6 +472,9 @@ export interface ConfigClass {
      * Host and port of the MongoDB service when using the `mongodb` connection scheme. Only
      * host when using the `mongodb+srv` scheme.
      *
+     * Host and port of the Cassandra service when using the `cassandra` connection scheme. Only
+     * host when using the `cassandra+srv` scheme.
+     *
      * Host and port of the Doris service.
      *
      * Host and port of the Teradata service.
@@ -477,6 +482,8 @@ export interface ConfigClass {
      * Host and Port of the SAP ERP instance.
      *
      * Host and port of the Azure Synapse service.
+     *
+     * Host and port of the Cockrooach service.
      *
      * Host and port of the Amundsen Neo4j Connection. This expect a URI format like:
      * bolt://localhost:7687.
@@ -638,6 +645,9 @@ export interface ConfigClass {
      * Username to connect to MongoDB. This user should have privileges to read all the metadata
      * in MongoDB.
      *
+     * Username to connect to Cassandra. This user should have privileges to read all the
+     * metadata in Cassandra.
+     *
      * Username to connect to Couchbase. This user should have privileges to read all the
      * metadata in Couchbase.
      *
@@ -657,6 +667,9 @@ export interface ConfigClass {
      *
      * Username to connect to Exasol. This user should have privileges to read all the metadata
      * in Exasol.
+     *
+     * Username to connect to Cockroach. This user should have privileges to read all the
+     * metadata in Cockroach.
      *
      * username to connect to the Amundsen Neo4j Connection.
      *
@@ -723,13 +736,15 @@ export interface ConfigClass {
      *
      * Matillion Auth Configuration
      */
-    connection?: ConnectionObject;
+    connection?: ConfigConnection;
     /**
      * Tableau API version.
      *
      * Sigma API version.
      *
      * OpenMetadata server API version to use.
+     *
+     * Airbyte API version.
      */
     apiVersion?: string;
     /**
@@ -886,10 +901,11 @@ export interface ConfigClass {
      *
      * Http/Https connection scheme
      */
-    scheme?:                string;
-    supportsDatabase?:      boolean;
-    supportsDataDiff?:      boolean;
-    supportsDBTExtraction?: boolean;
+    scheme?:                                string;
+    supportsDatabase?:                      boolean;
+    supportsDataDiff?:                      boolean;
+    supportsDBTExtraction?:                 boolean;
+    supportsIncrementalMetadataExtraction?: boolean;
     /**
      * Supports Lineage Extraction.
      */
@@ -951,6 +967,9 @@ export interface ConfigClass {
      *
      * Initial Redshift database to connect to. If you want to ingest all databases, set
      * ingestAllDatabases to true.
+     *
+     * Optional name to give to the database in OpenMetadata. If left blank, we will use default
+     * as the database name.
      */
     database?: string;
     /**
@@ -1027,7 +1046,19 @@ export interface ConfigClass {
     /**
      * Databricks compute resources URL.
      */
-    httpPath?:                      string;
+    httpPath?: string;
+    /**
+     * Table name to fetch the query history.
+     */
+    queryHistoryTable?: string;
+    /**
+     * License to connect to DB2.
+     */
+    license?: string;
+    /**
+     * License file name to connect to DB2.
+     */
+    licenseFileName?:               string;
     supportsViewLineageExtraction?: boolean;
     /**
      * Available sources to fetch the metadata.
@@ -1121,6 +1152,10 @@ export interface ConfigClass {
      * usage monitoring.
      */
     account?: string;
+    /**
+     * Full name of the schema where the account usage data is stored.
+     */
+    accountUsageSchema?: string;
     /**
      * Optional configuration for ingestion to keep the client session active in case the
      * ingestion process runs for longer durations.
@@ -1246,6 +1281,11 @@ export interface ConfigClass {
      */
     consumerConfig?: { [key: string]: any };
     /**
+     * Consumer Config SSL Config. Configuration for enabling SSL for the Consumer Config
+     * connection.
+     */
+    consumerConfigSSL?: ConsumerConfigSSLClass;
+    /**
      * sasl.mechanism Consumer Config property
      */
     saslMechanism?: SaslMechanismType;
@@ -1268,7 +1308,7 @@ export interface ConfigClass {
      * Schema Registry SSL Config. Configuration for enabling SSL for the Schema Registry
      * connection.
      */
-    schemaRegistrySSL?: SchemaRegistrySSLClass;
+    schemaRegistrySSL?: ConsumerConfigSSLClass;
     /**
      * Schema Registry Topic Suffix Name. The suffix to be appended to the topic name to get
      * topic schema from registry.
@@ -1672,6 +1712,8 @@ export enum AuthProvider {
  *
  * Azure Database Connection Config
  *
+ * Configuration for connecting to DataStax Astra DB in the cloud.
+ *
  * Types of methods used to authenticate to the alation instance
  *
  * API Access Token Auth Credentials
@@ -1709,6 +1751,10 @@ export interface AuthenticationTypeForTableau {
      * JWT to connect to source.
      */
     jwt?: string;
+    /**
+     * Configuration for connecting to DataStax Astra DB in the cloud.
+     */
+    cloudConfig?: DataStaxAstraDBConfiguration;
     /**
      * Access Token for the API
      */
@@ -1805,6 +1851,30 @@ export interface AzureCredentials {
      * Key Vault Name
      */
     vaultName?: string;
+}
+
+/**
+ * Configuration for connecting to DataStax Astra DB in the cloud.
+ */
+export interface DataStaxAstraDBConfiguration {
+    /**
+     * Timeout in seconds for establishing new connections to Cassandra.
+     */
+    connectTimeout?: number;
+    /**
+     * Timeout in seconds for individual Cassandra requests.
+     */
+    requestTimeout?: number;
+    /**
+     * File path to the Secure Connect Bundle (.zip) used for a secure connection to DataStax
+     * Astra DB.
+     */
+    secureConnectBundle?: string;
+    /**
+     * The Astra DB application token used for authentication.
+     */
+    token?: string;
+    [property: string]: any;
 }
 
 /**
@@ -2054,7 +2124,7 @@ export interface SSLCertificatesByPath {
  * Qlik Authentication Certificate File Path
  */
 export interface QlikCertificatesBy {
-    sslConfig?: SchemaRegistrySSLClass;
+    sslConfig?: ConsumerConfigSSLClass;
     /**
      * Client Certificate
      */
@@ -2075,6 +2145,9 @@ export interface QlikCertificatesBy {
  *
  * SSL Configuration details.
  *
+ * Consumer Config SSL Config. Configuration for enabling SSL for the Consumer Config
+ * connection.
+ *
  * Schema Registry SSL Config. Configuration for enabling SSL for the Schema Registry
  * connection.
  *
@@ -2082,7 +2155,7 @@ export interface QlikCertificatesBy {
  *
  * OpenMetadata Client configured to validate SSL certificates.
  */
-export interface SchemaRegistrySSLClass {
+export interface ConsumerConfigSSLClass {
     /**
      * The CA certificate used for SSL validation.
      */
@@ -2130,7 +2203,7 @@ export interface DeltaLakeConfigurationSource {
      *
      * Available sources to fetch files.
      */
-    connection?: ConnectionClass;
+    connection?: ConfigSourceConnection;
     /**
      * Bucket Name of the data source.
      */
@@ -2173,7 +2246,7 @@ export interface DeltaLakeConfigurationSource {
  *
  * DataLake S3 bucket will ingest metadata of files in bucket
  */
-export interface ConnectionClass {
+export interface ConfigSourceConnection {
     /**
      * Thrift connection to the metastore service. E.g., localhost:9083
      */
@@ -2424,9 +2497,9 @@ export interface GCPImpersonateServiceAccountValues {
  *
  * Matillion Auth Configuration
  *
- * Matillion ETL Auth Config
+ * Matillion ETL Auth Config.
  */
-export interface ConnectionObject {
+export interface ConfigConnection {
     /**
      * Password for Superset.
      *
@@ -2543,7 +2616,6 @@ export interface ConnectionObject {
      */
     databaseMode?:                  string;
     supportsViewLineageExtraction?: boolean;
-    [property: string]: any;
 }
 
 /**
@@ -2668,6 +2740,9 @@ export enum ConnectionScheme {
  * OpenMetadata Client configured to validate SSL certificates.
  *
  * SSL Configuration details.
+ *
+ * Consumer Config SSL Config. Configuration for enabling SSL for the Consumer Config
+ * connection.
  *
  * Schema Registry SSL Config. Configuration for enabling SSL for the Schema Registry
  * connection.
@@ -2898,7 +2973,7 @@ export interface HiveMetastoreConnectionDetails {
     /**
      * SSL Configuration details.
      */
-    sslConfig?:                  SchemaRegistrySSLClass;
+    sslConfig?:                  ConsumerConfigSSLClass;
     sslMode?:                    SSLMode;
     supportsDatabase?:           boolean;
     supportsDataDiff?:           boolean;
@@ -2955,9 +3030,9 @@ export enum HiveMetastoreConnectionDetailsType {
 /**
  * We support username/password or client certificate authentication
  *
- * username/password auth
+ * Configuration for connecting to Nifi Basic Auth.
  *
- * client certificate auth
+ * Configuration for connecting to Nifi Client Certificate Auth.
  */
 export interface NifiCredentialsConfiguration {
     /**
@@ -3175,6 +3250,9 @@ export enum KafkaSecurityProtocol {
  *
  * SSL Configuration details.
  *
+ * Consumer Config SSL Config. Configuration for enabling SSL for the Consumer Config
+ * connection.
+ *
  * Schema Registry SSL Config. Configuration for enabling SSL for the Schema Registry
  * connection.
  *
@@ -3349,7 +3427,9 @@ export enum RESTType {
     AzureSQL = "AzureSQL",
     BigQuery = "BigQuery",
     BigTable = "BigTable",
+    Cassandra = "Cassandra",
     Clickhouse = "Clickhouse",
+    Cockroach = "Cockroach",
     Couchbase = "Couchbase",
     CustomDashboard = "CustomDashboard",
     CustomDatabase = "CustomDatabase",
@@ -3478,6 +3558,8 @@ export interface SourceConfig {
  * Application Pipeline Configuration.
  *
  * ApiService Metadata Pipeline Configuration.
+ *
+ * Apply a set of operations on a service
  */
 export interface Pipeline {
     /**
@@ -3597,6 +3679,14 @@ export interface Pipeline {
      */
     stageFileLocation?: string;
     /**
+     * Set 'Cross Database Service Names' to process lineage with the database.
+     */
+    crossDatabaseServiceNames?: string[];
+    /**
+     * Handle Lineage for Snowflake Temporary and Transient Tables.
+     */
+    enableTempTableLineage?: boolean;
+    /**
      * Set the 'Override View Lineage' toggle to control whether to override the existing view
      * lineage.
      */
@@ -3605,6 +3695,11 @@ export interface Pipeline {
      * Configuration to set the timeout for parsing the query in seconds.
      */
     parsingTimeoutLimit?: number;
+    /**
+     * Set the 'Process Cross Database Lineage' toggle to control whether to process table
+     * lineage across different databases.
+     */
+    processCrossDatabaseLineage?: boolean;
     /**
      * Set the 'Process Query Lineage' toggle to control whether to process query lineage.
      */
@@ -3702,12 +3797,8 @@ export interface Pipeline {
      *
      * Percentage of data or no. of rows we want to execute the profiler and tests on
      */
-    profileSample?:     number;
-    profileSampleType?: ProfileSampleType;
-    /**
-     * Number of sample rows to ingest when 'Generate Sample Data' is enabled
-     */
-    sampleDataCount?:    number;
+    profileSample?:      number;
+    profileSampleType?:  ProfileSampleType;
     samplingMethodType?: SamplingMethodType;
     /**
      * Number of threads to use during metric computations
@@ -3735,6 +3826,10 @@ export interface Pipeline {
      * information
      */
     enableAutoClassification?: boolean;
+    /**
+     * Number of sample rows to ingest when 'Generate Sample Data' is enabled
+     */
+    sampleDataCount?: number;
     /**
      * Option to turn on/off storing sample data. If enabled, we will ingest sample data for
      * each table.
@@ -3803,9 +3898,13 @@ export interface Pipeline {
      */
     searchIndexFilterPattern?: FilterPattern;
     /**
-     * Fully qualified name of the entity to be tested.
+     * Fully qualified name of the entity to be tested, if we're working with a basic suite.
      */
     entityFullyQualifiedName?: string;
+    /**
+     * Service connections to be used for the logical test suite.
+     */
+    serviceConnections?: ServiceConnections[];
     /**
      * List of test cases to be executed on the entity. If null, all test cases will be executed.
      */
@@ -3860,6 +3959,14 @@ export interface Pipeline {
      */
     dbtUpdateDescriptions?: boolean;
     /**
+     * Optional configuration to update the owners from DBT or not
+     */
+    dbtUpdateOwners?: boolean;
+    /**
+     * Optional configuration to search across databases for tables or not
+     */
+    searchAcrossDatabases?: boolean;
+    /**
      * Application configuration
      */
     appConfig?: any[] | boolean | CollateAIAppConfig | number | null | string;
@@ -3881,6 +3988,14 @@ export interface Pipeline {
      * like endpoints, etc., with that collection will be deleted
      */
     markDeletedApiCollections?: boolean;
+    /**
+     * List of operations to be performed on the service
+     */
+    operations?: Operation[];
+    /**
+     * Service to be modified
+     */
+    service?: EntityReference;
 }
 
 /**
@@ -3931,12 +4046,16 @@ export interface FilterPattern {
  *
  * Configuration for the Automator External Application.
  *
+ * This schema defines the Slack App Token Configuration
+ *
  * No configuration needed to instantiate the Data Insights Pipeline. The logic is handled
  * in the backend.
  *
  * Search Indexing App.
  *
- * This schema defines the Slack App Token Configuration
+ * Configuration for the Collate AI Quality Agent.
+ *
+ * Configuration for the Day One Experience Flow.
  */
 export interface CollateAIAppConfig {
     /**
@@ -3961,14 +4080,23 @@ export interface CollateAIAppConfig {
     /**
      * Entities selected to run the automation.
      */
-    resources?:             Resource;
+    resources?: Resource;
+    /**
+     * Bot Token
+     */
+    botToken?: string;
+    /**
+     * User Token
+     */
+    userToken?:             string;
     backfillConfiguration?: BackfillConfiguration;
     /**
      * Maximum number of events processed at a time (Default 100).
      *
      * Maximum number of events sent in a batch (Default 100).
      */
-    batchSize?: number;
+    batchSize?:           number;
+    moduleConfiguration?: ModuleConfiguration;
     /**
      * Recreates the DataAssets index on DataInsights. Useful if you changed a Custom Property
      * Type and are facing errors. Bear in mind that recreating the index will delete your
@@ -4022,13 +4150,16 @@ export interface CollateAIAppConfig {
      */
     searchIndexMappingLanguage?: SearchIndexMappingLanguage;
     /**
-     * Bot Token
+     * Whether the suggested tests should be active or not upon suggestion
+     *
+     * Whether the Day One Experience flow should be active or not.
      */
-    botToken?: string;
+    active?: boolean;
     /**
-     * User Token
+     * Enter the retention period for change event records in days (e.g., 7 for one week, 30 for
+     * one month).
      */
-    userToken?: string;
+    changeEventRetentionPeriod?: number;
 }
 
 /**
@@ -4043,7 +4174,15 @@ export interface CollateAIAppConfig {
  *
  * Remove Owner Action Type
  *
+ * Add a Custom Property to the selected assets.
+ *
  * Add owners to the selected assets.
+ *
+ * Remove Custom Properties Action Type
+ *
+ * Add a Data Product to the selected assets.
+ *
+ * Remove a Data Product to the selected assets.
  *
  * Propagate description, tags and glossary terms via lineage
  *
@@ -4054,13 +4193,13 @@ export interface Action {
      * Apply tags to the children of the selected assets that match the criteria. E.g., columns,
      * tasks, topic fields,...
      *
-     * Remove tags from all the children of the selected assets. E.g., columns, tasks, topic
+     * Remove tags from the children of the selected assets. E.g., columns, tasks, topic
      * fields,...
      *
      * Apply the description to the children of the selected assets that match the criteria.
      * E.g., columns, tasks, topic fields,...
      *
-     * Remove descriptions from all children of the selected assets. E.g., columns, tasks, topic
+     * Remove descriptions from the children of the selected assets. E.g., columns, tasks, topic
      * fields,...
      */
     applyToChildren?: string[];
@@ -4073,6 +4212,9 @@ export interface Action {
      *
      * Update the description even if they are already defined in the asset. By default, we'll
      * only add the descriptions to assets without the description set.
+     *
+     * Update the Custom Property even if it is defined in the asset. By default, we will only
+     * apply the owners to assets without the given Custom Property informed.
      *
      * Update the tier even if it is defined in the asset. By default, we will only apply the
      * tier to assets without tier.
@@ -4096,6 +4238,16 @@ export interface Action {
      */
     type: ActionType;
     /**
+     * Remove tags from all the children and parent of the selected assets.
+     *
+     * Remove descriptions from all the children and parent of the selected assets.
+     */
+    applyToAll?: boolean;
+    /**
+     * Remove tags by its label type
+     */
+    labels?: LabelElement[];
+    /**
      * Domain to apply
      */
     domain?: EntityReference;
@@ -4104,6 +4256,12 @@ export interface Action {
      */
     description?: string;
     /**
+     * Owners to apply
+     *
+     * Custom Properties keys to remove
+     */
+    customProperties?: any;
+    /**
      * tier to apply
      */
     tier?: TagLabel;
@@ -4111,6 +4269,12 @@ export interface Action {
      * Owners to apply
      */
     owners?: EntityReference[];
+    /**
+     * Data Products to apply
+     *
+     * Data Products to remove
+     */
+    dataProducts?: EntityReference[];
     /**
      * Propagate the metadata to columns via column-level lineage.
      */
@@ -4155,6 +4319,8 @@ export interface Action {
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
+ *
+ * Service to be modified
  */
 export interface EntityReference {
     /**
@@ -4200,6 +4366,15 @@ export interface EntityReference {
 }
 
 /**
+ * Remove tags by its label type
+ */
+export enum LabelElement {
+    Automated = "Automated",
+    Manual = "Manual",
+    Propagated = "Propagated",
+}
+
+/**
  * This schema defines the type for labeling an entity with a Tag.
  *
  * tier to apply
@@ -4224,7 +4399,7 @@ export interface TagLabel {
      * label was propagated from upstream based on lineage. 'Automated' is used when a tool was
      * used to determine the tag label.
      */
-    labelType: LabelType;
+    labelType: LabelTypeEnum;
     /**
      * Name of the tag or glossary term.
      */
@@ -4249,7 +4424,7 @@ export interface TagLabel {
  * label was propagated from upstream based on lineage. 'Automated' is used when a tool was
  * used to determine the tag label.
  */
-export enum LabelType {
+export enum LabelTypeEnum {
     Automated = "Automated",
     Derived = "Derived",
     Manual = "Manual",
@@ -4301,6 +4476,8 @@ export interface Style {
  *
  * Add Description Action Type.
  *
+ * Add Custom Properties Action Type.
+ *
  * Remove Description Action Type
  *
  * Add Tier Action Type.
@@ -4309,11 +4486,19 @@ export interface Style {
  *
  * Remove Owner Action Type
  *
+ * Remove Custom Properties Action Type.
+ *
+ * Add Data Products Action Type.
+ *
+ * Remove Data Products Action Type.
+ *
  * Lineage propagation action type.
  *
  * ML PII Tagging action type.
  */
 export enum ActionType {
+    AddCustomPropertiesAction = "AddCustomPropertiesAction",
+    AddDataProductAction = "AddDataProductAction",
     AddDescriptionAction = "AddDescriptionAction",
     AddDomainAction = "AddDomainAction",
     AddOwnerAction = "AddOwnerAction",
@@ -4321,6 +4506,8 @@ export enum ActionType {
     AddTierAction = "AddTierAction",
     LineagePropagationAction = "LineagePropagationAction",
     MLTaggingAction = "MLTaggingAction",
+    RemoveCustomPropertiesAction = "RemoveCustomPropertiesAction",
+    RemoveDataProductAction = "RemoveDataProductAction",
     RemoveDescriptionAction = "RemoveDescriptionAction",
     RemoveDomainAction = "RemoveDomainAction",
     RemoveOwnerAction = "RemoveOwnerAction",
@@ -4348,6 +4535,83 @@ export interface BackfillConfiguration {
 }
 
 /**
+ * Different Module Configurations
+ */
+export interface ModuleConfiguration {
+    /**
+     * App Analytics Module configuration
+     */
+    appAnalytics: AppAnalyticsConfig;
+    /**
+     * Cost Analysis Insights Module configuration
+     */
+    costAnalysis: CostAnalysisConfig;
+    /**
+     * Data Assets Insights Module configuration
+     */
+    dataAssets: DataAssetsConfig;
+    /**
+     * Data Quality Insights Module configuration
+     */
+    dataQuality: DataQualityConfig;
+}
+
+/**
+ * App Analytics Module configuration
+ */
+export interface AppAnalyticsConfig {
+    /**
+     * If Enabled, App Analytics insights will be populated when the App runs.
+     */
+    enabled: boolean;
+}
+
+/**
+ * Cost Analysis Insights Module configuration
+ */
+export interface CostAnalysisConfig {
+    /**
+     * If Enabled, Cost Analysis insights will be populated when the App runs.
+     */
+    enabled: boolean;
+}
+
+/**
+ * Data Assets Insights Module configuration
+ */
+export interface DataAssetsConfig {
+    /**
+     * If Enabled, Data Asset insights will be populated when the App runs.
+     */
+    enabled: boolean;
+    /**
+     * List of Entities to Reindex
+     */
+    entities?: string[];
+    /**
+     * Defines the number of days the Data Assets Insights information will be kept. After it
+     * they will be deleted.
+     */
+    retention?:     number;
+    serviceFilter?: ServiceFilter;
+}
+
+export interface ServiceFilter {
+    serviceName?: string;
+    serviceType?: string;
+}
+
+/**
+ * Data Quality Insights Module configuration
+ */
+export interface DataQualityConfig {
+    /**
+     * If Enabled, Data Quality insights will be populated when the App runs.
+     */
+    enabled: boolean;
+}
+
+/**
  * Entities selected to run the automation.
  */
 export interface Resource {
@@ -4372,15 +4636,17 @@ export interface Resource {
 export enum CollateAIAppConfigType {
     Automator = "Automator",
     CollateAI = "CollateAI",
+    CollateAIQualityAgent = "CollateAIQualityAgent",
     DataInsights = "DataInsights",
     DataInsightsReport = "DataInsightsReport",
+    DayOneExperienceWorkflow = "DayOneExperienceWorkflow",
     SearchIndexing = "SearchIndexing",
 }
 
 /**
  * Application private configuration
  *
- * PRivate Configuration for the CollateAI External Application.
+ * Private Configuration for the CollateAI External Application.
  */
 export interface PrivateConfig {
     /**
@@ -4391,7 +4657,7 @@ export interface PrivateConfig {
     /**
      * Limits for the CollateAI Application.
      */
-    limits: CollateAILimits;
+    limits: AppLimitsConfig;
     /**
      * WAII API Token
      */
@@ -4404,21 +4670,18 @@ export interface PrivateConfig {
 
 /**
  * Limits for the CollateAI Application.
+ *
+ * Private Configuration for the App Limits.
  */
-export interface CollateAILimits {
+export interface AppLimitsConfig {
     /**
-     * Start of the billing cycle.
+     * The records of the limits.
      */
-    billingCycleStart?: Date;
+    actions: { [key: string]: number };
     /**
-     * Maximum number of descriptions generated by the CollateAI
+     * The start of this limit cycle.
      */
-    descriptions?: number;
-    /**
-     * Maximum number of queries generated by CollateAI.
-     */
-    queries?: number;
-    [property: string]: any;
+    billingCycleStart: Date;
 }
 
 /**
@@ -4568,6 +4831,78 @@ export interface LineageInformation {
 }
 
 /**
+ * Operation to be performed on the entity
+ */
+export interface Operation {
+    /**
+     * Entity to be modified
+     */
+    entityLink: string;
+    /**
+     * The id of the operation
+     */
+    id: string;
+    /**
+     * The configuration for the operation to be applied
+     */
+    parameters: ReverseIngestionConfig;
+    /**
+     * Templated SQL command to be used for the operation. Context parameters will be populated
+     * based on the event type.
+     */
+    SQLTemplate?: string;
+    /**
+     * Type of operation to perform
+     */
+    type: Type;
+}
+
+/**
+ * The configuration for the operation to be applied
+ *
+ * Configuration for updating descriptions
+ *
+ * Configuration for updating owners
+ *
+ * Configuration for updating tags
+ */
+export interface ReverseIngestionConfig {
+    /**
+     * New description of the service
+     */
+    newDescription?: string;
+    /**
+     * Previous description of the service
+     */
+    previousDescription?: string;
+    /**
+     * Added owners to be applied
+     */
+    addedOwners?: EntityReference[];
+    /**
+     * Removed owners from the entity
+     */
+    removedOwners?: EntityReference[];
+    /**
+     * Added tags to be applied
+     */
+    addedTags?: TagLabel[];
+    /**
+     * Removed tags of the entity
+     */
+    removedTags?: TagLabel[];
+}
+
+/**
+ * Type of operation to perform
+ */
+export enum Type {
+    UpdateDescription = "UPDATE_DESCRIPTION",
+    UpdateOwner = "UPDATE_OWNER",
+    UpdateTags = "UPDATE_TAGS",
+}
+
+/**
  * Type of Profile Sample (percentage or rows)
  */
 export enum ProfileSampleType {
@@ -4581,6 +4916,17 @@ export enum ProfileSampleType {
 export enum SamplingMethodType {
     Bernoulli = "BERNOULLI",
     System = "SYSTEM",
+}
+
+/**
+ * Service connections available for the logical test suite.
+ */
+export interface ServiceConnections {
+    /**
+     * Connection configuration for the source. ex: mysql , tableau connection.
+     */
+    serviceConnection: ServiceConnection;
+    serviceName:       string;
 }
 
 /**
@@ -4650,6 +4996,8 @@ export interface StorageMetadataBucketDetails {
  * Pipeline Source Config For Application Pipeline type. Nothing is required.
  *
  * Api Source Config Metadata Pipeline type
+ *
+ * Reverse Ingestion Config Pipeline type
  */
 export enum ConfigType {
     APIMetadata = "ApiMetadata",
@@ -4666,6 +5014,7 @@ export enum ConfigType {
     MlModelMetadata = "MlModelMetadata",
     PipelineMetadata = "PipelineMetadata",
     Profiler = "Profiler",
+    ReverseIngestion = "ReverseIngestion",
     SearchMetadata = "SearchMetadata",
     StorageMetadata = "StorageMetadata",
     TestSuite = "TestSuite",
@@ -4810,7 +5159,7 @@ export interface OpenMetadataConnection {
     /**
      * SSL Configuration for OpenMetadata Server
      */
-    sslConfig?: SchemaRegistrySSLClass;
+    sslConfig?: ConsumerConfigSSLClass;
     /**
      * If set to true, when creating a service during the ingestion we will store its Service
      * Connection. Otherwise, the ingestion will create a bare service without connection

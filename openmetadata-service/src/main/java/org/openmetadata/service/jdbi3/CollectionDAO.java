@@ -60,6 +60,7 @@ import org.openmetadata.schema.TokenInterface;
 import org.openmetadata.schema.analytics.ReportData;
 import org.openmetadata.schema.analytics.WebAnalyticEvent;
 import org.openmetadata.schema.api.configuration.LoginConfiguration;
+import org.openmetadata.schema.api.configuration.OpenMetadataBaseUrlConfiguration;
 import org.openmetadata.schema.api.configuration.profiler.ProfilerConfiguration;
 import org.openmetadata.schema.api.lineage.LineageSettings;
 import org.openmetadata.schema.api.search.SearchSettings;
@@ -152,6 +153,7 @@ import org.openmetadata.service.resources.tags.TagLabelUtil;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.service.util.jdbi.BindConcat;
 import org.openmetadata.service.util.jdbi.BindFQN;
 import org.openmetadata.service.util.jdbi.BindListFQN;
 import org.openmetadata.service.util.jdbi.BindUUID;
@@ -192,6 +194,9 @@ public interface CollectionDAO {
 
   @CreateSqlObject
   TestCaseResolutionStatusTimeSeriesDAO testCaseResolutionStatusTimeSeriesDao();
+
+  @CreateSqlObject
+  QueryCostTimeSeriesDAO queryCostRecordTimeSeriesDAO();
 
   @CreateSqlObject
   TestCaseResultTimeSeriesDAO testCaseResultTimeSeriesDao();
@@ -746,20 +751,27 @@ public interface CollectionDAO {
     @SqlQuery(
         "SELECT id, extension, json "
             + "FROM entity_extension "
-            + "WHERE id IN (<ids>) AND extension LIKE CONCAT(:extensionPrefix, '.%') "
+            + "WHERE id IN (<ids>) AND extension LIKE :extension "
             + "ORDER BY id, extension")
     @RegisterRowMapper(ExtensionRecordWithIdMapper.class)
     List<ExtensionRecordWithId> getExtensionsBatch(
-        @BindList("ids") List<String> ids, @Bind("extensionPrefix") String extensionPrefix);
+        @BindList("ids") List<String> ids,
+        @BindConcat(
+                value = "extension",
+                parts = {":extensionPrefix", ".%"})
+            String extensionPrefix);
 
     @SqlQuery(
         "SELECT id, extension, json, jsonschema "
             + "FROM entity_extension "
-            + "WHERE extension LIKE CONCAT(:extensionPrefix, '%') "
+            + "WHERE extension LIKE :extension "
             + "ORDER BY id, extension")
     @RegisterRowMapper(ExtensionWithIdAndSchemaRowMapper.class)
     List<ExtensionWithIdAndSchemaObject> getExtensionsByPrefixBatch(
-        @Bind("extensionPrefix") String extensionPrefix);
+        @BindConcat(
+                value = "extension",
+                parts = {":extensionPrefix", "%"})
+            String extensionPrefix);
 
     @Transaction
     @ConnectionAwareSqlBatch(
@@ -869,12 +881,21 @@ public interface CollectionDAO {
 
   @Getter
   @Builder
+  class EntityRelationshipCount {
+    private UUID id;
+    private Integer count;
+  }
+
+  @Getter
+  @Builder
   class EntityRelationshipObject {
     private String fromId;
     private String toId;
     private String fromEntity;
     private String toEntity;
     private int relation;
+    private String json;
+    private String jsonSchema;
   }
 
   @Getter
@@ -986,7 +1007,7 @@ public interface CollectionDAO {
     }
 
     @SqlQuery(
-        "SELECT fromId, toId, fromEntity, toEntity, relation "
+        "SELECT fromId, toId, fromEntity, toEntity, relation, json, jsonSchema "
             + "FROM entity_relationship "
             + "WHERE fromId IN (<fromIds>) "
             + "AND relation = :relation "
@@ -1001,6 +1022,19 @@ public interface CollectionDAO {
         @Bind("toEntityType") String toEntityType);
 
     @SqlQuery(
+        "SELECT fromId, toId, fromEntity, toEntity, relation, json, jsonSchema "
+            + "FROM entity_relationship "
+            + "WHERE fromId IN (<fromIds>) "
+            + "AND relation = :relation "
+            + "AND toEntity = :toEntityType "
+            + "AND deleted = FALSE")
+    @UseRowMapper(RelationshipObjectMapper.class)
+    List<EntityRelationshipObject> findToBatch(
+        @BindList("fromIds") List<String> fromIds,
+        @Bind("relation") int relation,
+        @Bind("toEntityType") String toEntityType);
+
+    @SqlQuery(
         "SELECT toId, toEntity, json FROM entity_relationship "
             + "WHERE fromId = :fromId AND fromEntity = :fromEntity AND relation = :relation AND toEntity = :toEntity")
     @RegisterRowMapper(ToRelationshipMapper.class)
@@ -1009,6 +1043,37 @@ public interface CollectionDAO {
         @Bind("fromEntity") String fromEntity,
         @Bind("relation") int relation,
         @Bind("toEntity") String toEntity);
+
+    @SqlQuery(
+        "SELECT fromId, COUNT(toId) FROM entity_relationship "
+            + "WHERE fromId IN (<fromIds>) AND fromEntity = :fromEntity AND relation = :relation AND toEntity = :toEntity "
+            + "GROUP BY fromId")
+    @RegisterRowMapper(ToRelationshipCountMapper.class)
+    List<EntityRelationshipCount> countFindTo(
+        @BindList("fromIds") List<String> fromIds,
+        @Bind("fromEntity") String fromEntity,
+        @Bind("relation") int relation,
+        @Bind("toEntity") String toEntity);
+
+    @SqlQuery(
+        "SELECT COUNT(toId) FROM entity_relationship WHERE fromId = :fromId AND fromEntity = :fromEntity "
+            + "AND relation IN (<relation>)")
+    @RegisterRowMapper(ToRelationshipMapper.class)
+    int countFindTo(
+        @BindUUID("fromId") UUID fromId,
+        @Bind("fromEntity") String fromEntity,
+        @BindList("relation") List<Integer> relation);
+
+    @SqlQuery(
+        "SELECT toId, toEntity, json FROM entity_relationship WHERE fromId = :fromId AND fromEntity = :fromEntity "
+            + "AND relation IN (<relation>) ORDER BY toId LIMIT :limit OFFSET :offset")
+    @RegisterRowMapper(ToRelationshipMapper.class)
+    List<EntityRelationshipRecord> findToWithOffset(
+        @BindUUID("fromId") UUID fromId,
+        @Bind("fromEntity") String fromEntity,
+        @BindList("relation") List<Integer> relation,
+        @Bind("offset") int offset,
+        @Bind("limit") int limit);
 
     @ConnectionAwareSqlQuery(
         value =
@@ -1040,7 +1105,7 @@ public interface CollectionDAO {
         @Bind("fromEntity") String fromEntity);
 
     @SqlQuery(
-        "SELECT fromId, toId, fromEntity, toEntity, relation "
+        "SELECT fromId, toId, fromEntity, toEntity, relation, json, jsonSchema "
             + "FROM entity_relationship "
             + "WHERE toId IN (<toIds>) "
             + "AND relation = :relation "
@@ -1050,7 +1115,7 @@ public interface CollectionDAO {
         @BindList("toIds") List<String> toIds, @Bind("relation") int relation);
 
     @SqlQuery(
-        "SELECT fromId, toId, fromEntity, toEntity, relation "
+        "SELECT fromId, toId, fromEntity, toEntity, relation, json, jsonSchema "
             + "FROM entity_relationship "
             + "WHERE toId IN (<toIds>) "
             + "AND relation = :relation "
@@ -1063,7 +1128,7 @@ public interface CollectionDAO {
         @Bind("fromEntityType") String fromEntityType);
 
     @SqlQuery(
-        "SELECT fromId, toId, fromEntity, toEntity, relation, json "
+        "SELECT fromId, toId, fromEntity, toEntity, relation, json, jsonSchema "
             + "FROM entity_relationship "
             + "WHERE toId IN (<toIds>) "
             + "AND relation = :relation "
@@ -1085,7 +1150,7 @@ public interface CollectionDAO {
         @Bind("relation") int relation);
 
     @SqlQuery(
-        "SELECT fromId, toId, fromEntity, toEntity, relation "
+        "SELECT fromId, toId, fromEntity, toEntity, relation, json, jsonSchema "
             + "FROM entity_relationship "
             + "WHERE toId IN (<toIds>) "
             + "AND relation = :relation "
@@ -1117,13 +1182,13 @@ public interface CollectionDAO {
 
     @ConnectionAwareSqlQuery(
         value =
-            "SELECT toId, toEntity, fromId, fromEntity, relation FROM entity_relationship "
+            "SELECT toId, toEntity, fromId, fromEntity, relation, json, jsonSchema FROM entity_relationship "
                 + "WHERE JSON_UNQUOTE(JSON_EXTRACT(json, '$.source')) = :source AND (toId = :toId AND toEntity = :toEntity) "
                 + "AND relation = :relation ORDER BY fromId",
         connectionType = MYSQL)
     @ConnectionAwareSqlQuery(
         value =
-            "SELECT toId, toEntity, fromId, fromEntity, relation FROM entity_relationship "
+            "SELECT toId, toEntity, fromId, fromEntity, relation, json, jsonSchema FROM entity_relationship "
                 + "WHERE  json->>'source' = :source AND (toId = :toId AND toEntity = :toEntity) "
                 + "AND relation = :relation ORDER BY fromId",
         connectionType = POSTGRES)
@@ -1136,13 +1201,13 @@ public interface CollectionDAO {
 
     @ConnectionAwareSqlQuery(
         value =
-            "SELECT toId, toEntity, fromId, fromEntity, relation FROM entity_relationship "
+            "SELECT toId, toEntity, fromId, fromEntity, relation, json, jsonSchema FROM entity_relationship "
                 + "WHERE JSON_UNQUOTE(JSON_EXTRACT(json, '$.pipeline.id')) =:toId OR toId = :toId AND relation = :relation "
                 + "AND JSON_UNQUOTE(JSON_EXTRACT(json, '$.source')) = :source ORDER BY toId",
         connectionType = MYSQL)
     @ConnectionAwareSqlQuery(
         value =
-            "SELECT toId, toEntity, fromId, fromEntity, relation FROM entity_relationship "
+            "SELECT toId, toEntity, fromId, fromEntity, relation, json, jsonSchema FROM entity_relationship "
                 + "WHERE  json->'pipeline'->>'id' =:toId OR toId = :toId AND relation = :relation "
                 + "AND json->>'source' = :source ORDER BY toId",
         connectionType = POSTGRES)
@@ -1163,6 +1228,16 @@ public interface CollectionDAO {
             + " AND toId = :toId "
             + " AND relation = :relation ")
     String getRelation(
+        @BindUUID("fromId") UUID fromId,
+        @BindUUID("toId") UUID toId,
+        @Bind("relation") int relation);
+
+    @SqlQuery(
+        "SELECT toId, toEntity, fromId, fromEntity, relation, json, jsonSchema FROM entity_relationship WHERE fromId = :fromId "
+            + " AND toId = :toId "
+            + " AND relation = :relation ")
+    @RegisterRowMapper(RelationshipObjectMapper.class)
+    EntityRelationshipObject getRecord(
         @BindUUID("fromId") UUID fromId,
         @BindUUID("toId") UUID toId,
         @Bind("relation") int relation);
@@ -1271,6 +1346,16 @@ public interface CollectionDAO {
       }
     }
 
+    class ToRelationshipCountMapper implements RowMapper<EntityRelationshipCount> {
+      @Override
+      public EntityRelationshipCount map(ResultSet rs, StatementContext ctx) throws SQLException {
+        return EntityRelationshipCount.builder()
+            .id(UUID.fromString(rs.getString(1)))
+            .count(rs.getInt(2))
+            .build();
+      }
+    }
+
     class RelationshipObjectMapper implements RowMapper<EntityRelationshipObject> {
       @Override
       public EntityRelationshipObject map(ResultSet rs, StatementContext ctx) throws SQLException {
@@ -1280,6 +1365,8 @@ public interface CollectionDAO {
             .toEntity(rs.getString("toEntity"))
             .toId(rs.getString("toId"))
             .relation(rs.getInt("relation"))
+            .json(rs.getString("json"))
+            .jsonSchema(rs.getString("jsonSchema"))
             .build();
       }
     }
@@ -1397,6 +1484,11 @@ public interface CollectionDAO {
         @Define("condition") String condition,
         @Define("sortingOrder") String sortingOrder);
 
+    @SqlQuery(
+        "SELECT id FROM thread_entity WHERE type = 'Conversation' AND createdAt < :cutoffMillis LIMIT :batchSize")
+    List<UUID> fetchConversationThreadIdsOlderThan(
+        @Bind("cutoffMillis") long cutoffMillis, @Bind("batchSize") int batchSize);
+
     @ConnectionAwareSqlQuery(
         value =
             "SELECT count(id) FROM thread_entity <condition> "
@@ -1486,16 +1578,25 @@ public interface CollectionDAO {
     @SqlQuery(
         "SELECT json FROM thread_entity <condition> "
             + "AND hash_id in (SELECT fromFQNHash FROM field_relationship WHERE "
-            + "(:fqnPrefixHash IS NULL OR toFQNHash LIKE CONCAT(:fqnPrefixHash, '.%') OR toFQNHash=:fqnPrefixHash) AND fromType='THREAD' AND "
-            + "(:toType IS NULL OR toType LIKE CONCAT(:toType, '.%') OR toType=:toType) AND relation= :relation) "
+            + "(:fqnPrefixHash IS NULL OR toFQNHash LIKE :concatFqnPrefixHash OR toFQNHash=:fqnPrefixHash) AND fromType='THREAD' AND "
+            + "(:toType IS NULL OR toType LIKE :concatToType OR toType=:toType) AND relation= :relation) "
             + "AND (:userName IS NULL OR MD5(id) in (SELECT toFQNHash FROM field_relationship WHERE "
             + " ((fromType='user' AND fromFQNHash= :userName) OR"
             + " (fromType='team' AND fromFQNHash IN (<teamNames>))) AND toType='THREAD' AND relation= :filterRelation) )"
             + "<sortingOrder> "
             + "LIMIT :limit")
     List<String> listThreadsByEntityLink(
-        @BindFQN("fqnPrefixHash") String fqnPrefixHash,
-        @Bind("toType") String toType,
+        @BindConcat(
+                value = "concatFqnPrefixHash",
+                original = "fqnPrefixHash",
+                parts = {":fqnPrefixHash", ".%"},
+                hash = true)
+            String fqnPrefixHash,
+        @BindConcat(
+                value = "concatToType",
+                original = "toType",
+                parts = {":toType", ".%"})
+            String toType,
         @Bind("limit") int limit,
         @Bind("relation") int relation,
         @BindFQN("userName") String userName,
@@ -1527,14 +1628,23 @@ public interface CollectionDAO {
     @SqlQuery(
         "SELECT count(id) FROM thread_entity <condition> "
             + "AND hash_id in (SELECT fromFQNHash FROM field_relationship WHERE "
-            + "(:fqnPrefixHash IS NULL OR toFQNHash LIKE CONCAT(:fqnPrefixHash, '.%') OR toFQNHash=:fqnPrefixHash) AND fromType='THREAD' AND "
-            + "(:toType IS NULL OR toType LIKE CONCAT(:toType, '.%') OR toType=:toType) AND relation= :relation) "
+            + "(:fqnPrefixHash IS NULL OR toFQNHash LIKE :concatFqnPrefixHash OR toFQNHash=:fqnPrefixHash) AND fromType='THREAD' AND "
+            + "(:toType IS NULL OR toType LIKE :concatToType OR toType=:toType) AND relation= :relation) "
             + "AND (:userName IS NULL OR id in (SELECT toFQNHash FROM field_relationship WHERE "
             + " ((fromType='user' AND fromFQNHash= :userName) OR"
             + " (fromType='team' AND fromFQNHash IN (<teamNames>))) AND toType='THREAD' AND relation= :filterRelation) )")
     int listCountThreadsByEntityLink(
-        @BindFQN("fqnPrefixHash") String fqnPrefixHash,
-        @Bind("toType") String toType,
+        @BindConcat(
+                value = "concatFqnPrefixHash",
+                original = "fqnPrefixHash",
+                parts = {":fqnPrefixHash", ".%"},
+                hash = true)
+            String fqnPrefixHash,
+        @BindConcat(
+                value = "concatToType",
+                original = "toType",
+                parts = {":toType", ".%"})
+            String toType,
         @Bind("relation") int relation,
         @Bind("userName") String userName,
         @BindList("teamNames") List<String> teamNames,
@@ -1556,9 +1666,9 @@ public interface CollectionDAO {
             + "    WHERE hash_id IN ( "
             + "        SELECT fromFQNHash FROM field_relationship "
             + "        WHERE "
-            + "            (:fqnPrefixHash IS NULL OR toFQNHash LIKE CONCAT(:fqnPrefixHash, '.%') OR toFQNHash = :fqnPrefixHash) "
+            + "            (:fqnPrefixHash IS NULL OR toFQNHash LIKE :concatFqnPrefixHash OR toFQNHash = :fqnPrefixHash) "
             + "            AND fromType = 'THREAD' "
-            + "            AND (:toType IS NULL OR toType LIKE CONCAT(:toType, '.%') OR toType = :toType) "
+            + "            AND (:toType IS NULL OR toType LIKE :concatToType OR toType = :toType) "
             + "            AND relation = 3 "
             + "    )  "
             + "    UNION  "
@@ -1570,8 +1680,17 @@ public interface CollectionDAO {
     @RegisterRowMapper(ThreadCountFieldMapper.class)
     List<List<String>> listCountByEntityLink(
         @BindUUID("entityId") UUID entityId,
-        @BindFQN("fqnPrefixHash") String fqnPrefixHash,
-        @Bind("toType") String toType);
+        @BindConcat(
+                value = "concatFqnPrefixHash",
+                original = "fqnPrefixHash",
+                parts = {":fqnPrefixHash", ".%"},
+                hash = true)
+            String fqnPrefixHash,
+        @BindConcat(
+                value = "concatToType",
+                original = "toType",
+                parts = {":toType", ".%"})
+            String toType);
 
     @ConnectionAwareSqlQuery(
         value =
@@ -1784,18 +1903,31 @@ public interface CollectionDAO {
     @SqlQuery(
         "SELECT json FROM thread_entity <condition> "
             + "AND MD5(id) in (SELECT fromFQNHash FROM field_relationship WHERE "
-            + "(:fqnPrefixHash IS NULL OR toFQNHash LIKE CONCAT(:fqnPrefixHash, '.%') OR toFQNHash=:fqnPrefixHash) AND fromType='THREAD' AND "
-            + "((:toType1 IS NULL OR toType LIKE CONCAT(:toType1, '.%') OR toType=:toType1) OR "
-            + "(:toType2 IS NULL OR toType LIKE CONCAT(:toType2, '.%') OR toType=:toType2)) AND relation= :relation)"
+            + "(:fqnPrefixHash IS NULL OR toFQNHash LIKE :concatFqnPrefixHash OR toFQNHash=:fqnPrefixHash) AND fromType='THREAD' AND "
+            + "((:toType1 IS NULL OR toType LIKE :concatToType1 OR toType=:toType1) OR "
+            + "(:toType2 IS NULL OR toType LIKE :concatToType2 OR toType=:toType2)) AND relation= :relation)"
             + "AND (:userName IS NULL OR MD5(id) in (SELECT toFQNHash FROM field_relationship WHERE "
             + " ((fromType='user' AND fromFQNHash= :userName) OR"
             + " (fromType='team' AND fromFQNHash IN (<teamNames>))) AND toType='THREAD' AND relation= :filterRelation) )"
             + "<sortingOrder> "
             + "LIMIT :limit")
     List<String> listThreadsByGlossaryAndTerms(
-        @BindFQN("fqnPrefixHash") String fqnPrefixHash,
-        @Bind("toType1") String toType1,
-        @Bind("toType2") String toType2,
+        @BindConcat(
+                value = "concatFqnPrefixHash",
+                original = "fqnPrefixHash",
+                parts = {":fqnPrefixHash", ".%"},
+                hash = true)
+            String fqnPrefixHash,
+        @BindConcat(
+                value = "concatToType1",
+                original = "toType1",
+                parts = {":toType1", ".%"})
+            String toType1,
+        @BindConcat(
+                value = "concatToType2",
+                original = "toType2",
+                parts = {":toType2", ".%"})
+            String toType2,
         @Bind("limit") int limit,
         @Bind("relation") int relation,
         @BindFQN("userName") String userName,
@@ -1827,9 +1959,9 @@ public interface CollectionDAO {
             + "    WHERE te.hash_id IN ( "
             + "        SELECT fr.fromFQNHash "
             + "        FROM field_relationship fr "
-            + "        WHERE (:fqnPrefixHash IS NULL OR fr.toFQNHash LIKE CONCAT(:fqnPrefixHash, '.%') OR fr.toFQNHash = :fqnPrefixHash) "
+            + "        WHERE (:fqnPrefixHash IS NULL OR fr.toFQNHash LIKE :concatFqnPrefixHash OR fr.toFQNHash = :fqnPrefixHash) "
             + "        AND fr.fromType = 'THREAD' "
-            + "        AND (:toType1 IS NULL OR fr.toType LIKE CONCAT(:toType1, '.%') OR fr.toType = :toType1) "
+            + "        AND (:toType1 IS NULL OR fr.toType LIKE :concatToType1 OR fr.toType = :toType1) "
             + "        AND fr.relation = 3 "
             + "    ) "
             + "    UNION "
@@ -1840,9 +1972,9 @@ public interface CollectionDAO {
             + "        SELECT fr.fromFQNHash "
             + "        FROM field_relationship fr "
             + "        JOIN thread_entity te2 ON te2.hash_id = fr.fromFQNHash WHERE fr.fromFQNHash = te.hash_id AND te2.type = 'Task' "
-            + "        AND (:fqnPrefixHash IS NULL OR fr.toFQNHash LIKE CONCAT(:fqnPrefixHash, '.%') OR fr.toFQNHash = :fqnPrefixHash) "
+            + "        AND (:fqnPrefixHash IS NULL OR fr.toFQNHash LIKE :concatFqnPrefixHash OR fr.toFQNHash = :fqnPrefixHash) "
             + "        AND fr.fromType = 'THREAD' "
-            + "        AND (:toType2 IS NULL OR fr.toType LIKE CONCAT(:toType2, '.%') OR fr.toType = :toType2) "
+            + "        AND (:toType2 IS NULL OR fr.toType LIKE :concatToType2 OR fr.toType = :toType2) "
             + "        AND fr.relation = 3 "
             + "    ) "
             + ") AS combined_results WHERE combined_results.type is not NULL "
@@ -1850,9 +1982,22 @@ public interface CollectionDAO {
     @RegisterRowMapper(ThreadCountFieldMapper.class)
     List<List<String>> listCountThreadsByGlossaryAndTerms(
         @BindUUID("entityId") UUID entityId,
-        @BindFQN("fqnPrefixHash") String fqnPrefixHash,
-        @Bind("toType1") String toType1,
-        @Bind("toType2") String toType2);
+        @BindConcat(
+                value = "concatFqnPrefixHash",
+                original = "fqnPrefixHash",
+                parts = {":fqnPrefixHash", ".%"},
+                hash = true)
+            String fqnPrefixHash,
+        @BindConcat(
+                value = "concatToType1",
+                original = "toType1",
+                parts = {":toType1", ".%"})
+            String toType1,
+        @BindConcat(
+                value = "concatToType2",
+                original = "toType2",
+                parts = {":toType2", ".%"})
+            String toType2);
 
     @SqlQuery("select id from thread_entity where entityId = :entityId")
     List<String> findByEntityId(@Bind("entityId") String entityId);
@@ -1957,11 +2102,15 @@ public interface CollectionDAO {
 
     @SqlQuery(
         "SELECT fromFQN, toFQN, json FROM field_relationship WHERE "
-            + "fromFQNHash LIKE CONCAT(:fqnPrefixHash, '%') AND fromType = :fromType AND toType = :toType "
+            + "fromFQNHash LIKE :concatFqnPrefixHash AND fromType = :fromType AND toType = :toType "
             + "AND relation = :relation")
     @RegisterRowMapper(ToFieldMapper.class)
     List<Triple<String, String, String>> listToByPrefix(
-        @BindFQN("fqnPrefixHash") String fqnPrefixHash,
+        @BindConcat(
+                value = "concatFqnPrefixHash",
+                parts = {":fqnPrefixHash", "%"},
+                hash = true)
+            String fqnPrefixHash,
         @Bind("fromType") String fromType,
         @Bind("toType") String toType,
         @Bind("relation") int relation);
@@ -1987,13 +2136,17 @@ public interface CollectionDAO {
 
     @SqlQuery(
         "SELECT fromFQN, toFQN, json FROM field_relationship WHERE "
-            + "fromFQNHash LIKE CONCAT(:fqnPrefixHash, '%') AND fromType = :type AND toType = :otherType AND relation = :relation "
+            + "fromFQNHash LIKE :concatFqnPrefixHash AND fromType = :type AND toType = :otherType AND relation = :relation "
             + "UNION "
             + "SELECT toFQN, fromFQN, json FROM field_relationship WHERE "
-            + "toFQNHash LIKE CONCAT(:fqnPrefixHash, '%') AND toType = :type AND fromType = :otherType AND relation = :relation")
+            + "toFQNHash LIKE :concatFqnPrefixHash AND toType = :type AND fromType = :otherType AND relation = :relation")
     @RegisterRowMapper(ToFieldMapper.class)
     List<Triple<String, String, String>> listBidirectionalByPrefix(
-        @BindFQN("fqnPrefixHash") String fqnPrefixHash,
+        @BindConcat(
+                value = "concatFqnPrefixHash",
+                parts = {":fqnPrefixHash", "%"},
+                hash = true)
+            String fqnPrefixHash,
         @Bind("type") String type,
         @Bind("otherType") String otherType,
         @Bind("relation") int relation);
@@ -2258,6 +2411,52 @@ public interface CollectionDAO {
     void deleteOldRecords(
         @Bind("eventSubscriptionId") String eventSubscriptionId, @Bind("limit") long limit);
 
+    @ConnectionAwareSqlUpdate(
+        value =
+            "DELETE FROM successful_sent_change_events "
+                + "WHERE timestamp < :cutoff ORDER BY timestamp LIMIT :limit",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "DELETE FROM successful_sent_change_events "
+                + "WHERE ctid IN ( "
+                + "  SELECT ctid FROM successful_sent_change_events "
+                + "  WHERE timestamp < :cutoff ORDER BY timestamp LIMIT :limit "
+                + ")",
+        connectionType = POSTGRES)
+    int deleteSuccessfulSentChangeEventsInBatches(
+        @Bind("cutoff") long cutoff, @Bind("limit") int limit);
+
+    @ConnectionAwareSqlUpdate(
+        value =
+            "DELETE FROM change_event "
+                + "WHERE eventTime < :cutoff ORDER BY eventTime LIMIT :limit",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "DELETE FROM change_event "
+                + "WHERE ctid IN ( "
+                + "  SELECT ctid FROM change_event "
+                + "  WHERE eventTime < :cutoff ORDER BY eventTime LIMIT :limit "
+                + ")",
+        connectionType = POSTGRES)
+    int deleteChangeEventsInBatches(@Bind("cutoff") long cutoff, @Bind("limit") int limit);
+
+    @ConnectionAwareSqlUpdate(
+        value =
+            "DELETE FROM consumers_dlq "
+                + "WHERE timestamp < :cutoff ORDER BY timestamp LIMIT :limit",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "DELETE FROM consumers_dlq "
+                + "WHERE ctid IN ( "
+                + "  SELECT ctid FROM consumers_dlq "
+                + "  WHERE timestamp < :cutoff ORDER BY timestamp LIMIT :limit "
+                + ")",
+        connectionType = POSTGRES)
+    int deleteConsumersDlqInBatches(@Bind("cutoff") long cutoff, @Bind("limit") int limit);
+
     @SqlQuery(
         "SELECT json FROM successful_sent_change_events WHERE event_subscription_id = :eventSubscriptionId ORDER BY timestamp DESC LIMIT :limit OFFSET :paginationOffset")
     List<String> getSuccessfulChangeEventBySubscriptionId(
@@ -2439,12 +2638,12 @@ public interface CollectionDAO {
       String directChildrenOf = filter.getQueryParam("directChildrenOf");
 
       if (!nullOrEmpty(directChildrenOf)) {
-        filter.queryParams.put(
-            "directChildrenOfHash", FullyQualifiedName.buildHash(directChildrenOf));
-        condition =
-            String.format(
-                " %s AND fqnHash = CONCAT(:directChildrenOfHash, '.', MD5(CASE WHEN name LIKE '%%.%%' THEN CONCAT('\"', name, '\"') ELSE name END))  ",
-                condition);
+        String parentFqnHash = FullyQualifiedName.buildHash(directChildrenOf);
+        filter.queryParams.put("fqnHashSingleLevel", parentFqnHash + ".%");
+        filter.queryParams.put("fqnHashNestedLevel", parentFqnHash + ".%.%");
+
+        condition +=
+            " AND fqnHash LIKE :fqnHashSingleLevel AND fqnHash NOT LIKE :fqnHashNestedLevel";
       }
 
       return listCount(getTableName(), getNameHashColumn(), filter.getQueryParams(), condition);
@@ -2457,12 +2656,12 @@ public interface CollectionDAO {
       String directChildrenOf = filter.getQueryParam("directChildrenOf");
 
       if (!nullOrEmpty(directChildrenOf)) {
-        filter.queryParams.put(
-            "directChildrenOfHash", FullyQualifiedName.buildHash(directChildrenOf));
-        condition =
-            String.format(
-                " %s AND fqnHash = CONCAT(:directChildrenOfHash, '.', MD5(CASE WHEN name LIKE '%%.%%' THEN CONCAT('\"', name, '\"') ELSE name END))  ",
-                condition);
+        String parentFqnHash = FullyQualifiedName.buildHash(directChildrenOf);
+        filter.queryParams.put("fqnHashSingleLevel", parentFqnHash + ".%");
+        filter.queryParams.put("fqnHashNestedLevel", parentFqnHash + ".%.%");
+
+        condition +=
+            " AND fqnHash LIKE :fqnHashSingleLevel AND fqnHash NOT LIKE :fqnHashNestedLevel";
       }
 
       return listBefore(
@@ -2475,19 +2674,24 @@ public interface CollectionDAO {
       String directChildrenOf = filter.getQueryParam("directChildrenOf");
 
       if (!nullOrEmpty(directChildrenOf)) {
-        filter.queryParams.put(
-            "directChildrenOfHash", FullyQualifiedName.buildHash(directChildrenOf));
-        condition =
-            String.format(
-                " %s AND fqnHash = CONCAT(:directChildrenOfHash, '.', MD5(CASE WHEN name LIKE '%%.%%' THEN CONCAT('\"', name, '\"') ELSE name END))  ",
-                condition);
+        String parentFqnHash = FullyQualifiedName.buildHash(directChildrenOf);
+        filter.queryParams.put("fqnHashSingleLevel", parentFqnHash + ".%");
+        filter.queryParams.put("fqnHashNestedLevel", parentFqnHash + ".%.%");
+
+        condition +=
+            " AND fqnHash LIKE :fqnHashSingleLevel AND fqnHash NOT LIKE :fqnHashNestedLevel";
       }
       return listAfter(
           getTableName(), filter.getQueryParams(), condition, limit, afterName, afterId);
     }
 
-    @SqlQuery("select json FROM glossary_term_entity where fqnhash LIKE CONCAT(:fqnhash, '.%')")
-    List<String> getNestedTerms(@BindFQN("fqnhash") String fqnhash);
+    @SqlQuery("select json FROM glossary_term_entity where fqnhash LIKE :concatFqnhash ")
+    List<String> getNestedTerms(
+        @BindConcat(
+                value = "concatFqnhash",
+                parts = {":fqnhash", ".%"},
+                hash = true)
+            String fqnhash);
   }
 
   interface IngestionPipelineDAO extends EntityDAO<IngestionPipeline> {
@@ -3118,8 +3322,13 @@ public interface CollectionDAO {
           afterId);
     }
 
-    @SqlQuery("select json FROM tag where fqnhash LIKE CONCAT(:fqnhash, '.%')")
-    List<String> getTagsStartingWithPrefix(@BindFQN("fqnhash") String fqnhash);
+    @SqlQuery("select json FROM tag where fqnhash LIKE :concatFqnhash")
+    List<String> getTagsStartingWithPrefix(
+        @BindConcat(
+                value = "concatFqnhash",
+                parts = {":fqnhash", ".%"},
+                hash = true)
+            String fqnhash);
   }
 
   @RegisterRowMapper(TagLabelMapper.class)
@@ -3148,10 +3357,11 @@ public interface CollectionDAO {
 
     default Map<String, List<TagLabel>> getTagsByPrefix(
         String targetFQNPrefix, String postfix, boolean requiresFqnHash) {
-      String fqnHash =
+      String targetFQNPrefixHash =
           requiresFqnHash ? FullyQualifiedName.buildHash(targetFQNPrefix) : targetFQNPrefix;
       Map<String, List<TagLabel>> resultSet = new LinkedHashMap<>();
-      List<Pair<String, TagLabel>> tags = getTagsInternalByPrefix(fqnHash, postfix);
+      List<Pair<String, TagLabel>> tags =
+          getTagsInternalByPrefix(new String[] {targetFQNPrefixHash, postfix});
       tags.forEach(
           pair -> {
             String targetHash = pair.getLeft();
@@ -3197,7 +3407,7 @@ public interface CollectionDAO {
                 + "  ON ta.fqnHash = tu.tagFQNHash "
                 + "  WHERE tu.source = 0 "
                 + ") AS combined_data "
-                + "WHERE combined_data.targetFQNHash  LIKE CONCAT(:targetFQNHashPrefix, :postfix)",
+                + "WHERE combined_data.targetFQNHash LIKE :targetFQNHash",
         connectionType = MYSQL)
     @ConnectionAwareSqlQuery(
         value =
@@ -3213,11 +3423,14 @@ public interface CollectionDAO {
                 + "  JOIN tag_usage AS tu ON ta.fqnHash = tu.tagFQNHash "
                 + "  WHERE tu.source = 0 "
                 + ") AS combined_data "
-                + "WHERE combined_data.targetFQNHash LIKE CONCAT(:targetFQNHashPrefix, :postfix)",
+                + "WHERE combined_data.targetFQNHash LIKE :targetFQNHash",
         connectionType = POSTGRES)
     @RegisterRowMapper(TagLabelRowMapperWithTargetFqnHash.class)
     List<Pair<String, TagLabel>> getTagsInternalByPrefix(
-        @Bind("targetFQNHashPrefix") String targetFQNHashPrefix, @Bind("postfix") String postfix);
+        @BindConcat(
+                value = "targetFQNHash",
+                parts = {":targetFQNHashPrefix", ":postfix"})
+            String... targetFQNHash);
 
     @SqlQuery("SELECT * FROM tag_usage")
     @Deprecated(since = "Release 1.1")
@@ -3226,17 +3439,29 @@ public interface CollectionDAO {
 
     @SqlQuery(
         "SELECT COUNT(*) FROM tag_usage "
-            + "WHERE (tagFQNHash LIKE CONCAT(:tagFqnHash, '.%') OR tagFQNHash = :tagFqnHash) "
+            + "WHERE (tagFQNHash LIKE :concatTagFQNHash OR tagFQNHash = :tagFqnHash) "
             + "AND source = :source")
-    int getTagCount(@Bind("source") int source, @BindFQN("tagFqnHash") String tagFqnHash);
+    int getTagCount(
+        @Bind("source") int source,
+        @BindConcat(
+                value = "concatTagFQNHash",
+                original = "tagFqnHash",
+                parts = {":tagFqnHash", ".%"},
+                hash = true)
+            String tagFqnHash);
 
     @SqlUpdate("DELETE FROM tag_usage where targetFQNHash = :targetFQNHash")
     void deleteTagsByTarget(@BindFQN("targetFQNHash") String targetFQNHash);
 
     @SqlUpdate(
-        "DELETE FROM tag_usage where tagFQNHash = :tagFqnHash AND targetFQNHash LIKE CONCAT(:targetFQNHash, '%')")
+        "DELETE FROM tag_usage where tagFQNHash = :tagFqnHash AND targetFQNHash LIKE :targetFQNHash")
     void deleteTagsByTagAndTargetEntity(
-        @BindFQN("tagFqnHash") String tagFqnHash, @BindFQN("targetFQNHash") String targetFQNHash);
+        @BindFQN("tagFqnHash") String tagFqnHash,
+        @BindConcat(
+                value = "targetFQNHash",
+                parts = {":targetFQNHashPrefix", "%"},
+                hash = true)
+            String targetFQNHashPrefix);
 
     @SqlUpdate("DELETE FROM tag_usage where tagFQNHash = :tagFQNHash AND source = :source")
     void deleteTagLabels(@Bind("source") int source, @BindFQN("tagFQNHash") String tagFQNHash);
@@ -3245,8 +3470,14 @@ public interface CollectionDAO {
     void deleteTagLabelsByFqn(@BindFQN("tagFQNHash") String tagFQNHash);
 
     @SqlUpdate(
-        "DELETE FROM tag_usage where targetFQNHash = :targetFQNHash OR targetFQNHash LIKE CONCAT(:targetFQNHash, '.%')")
-    void deleteTagLabelsByTargetPrefix(@BindFQN("targetFQNHash") String targetFQNHash);
+        "DELETE FROM tag_usage where targetFQNHash = :targetFQNHash OR targetFQNHash LIKE :concatTargetFQNHash")
+    void deleteTagLabelsByTargetPrefix(
+        @BindConcat(
+                value = "concatTargetFQNHash",
+                original = "targetFQNHash",
+                parts = {":targetFQNHashPrefix", ".%"},
+                hash = true)
+            String targetFQNHashPrefix);
 
     @Deprecated(since = "Release 1.1")
     @ConnectionAwareSqlUpdate(
@@ -3328,9 +3559,14 @@ public interface CollectionDAO {
     @RegisterRowMapper(TagLabelMapper.class)
     List<String> getTargetFQNHashForTag(@BindFQN("tagFQNHash") String tagFQNHash);
 
-    @SqlQuery("select targetFQNHash FROM tag_usage where tagFQNHash LIKE CONCAT(:tagFQNHash, '.%')")
+    @SqlQuery("select targetFQNHash FROM tag_usage where tagFQNHash LIKE :tagFQNHash")
     @RegisterRowMapper(TagLabelMapper.class)
-    List<String> getTargetFQNHashForTagPrefix(@BindFQN("tagFQNHash") String tagFQNHash);
+    List<String> getTargetFQNHashForTagPrefix(
+        @BindConcat(
+                value = "tagFQNHash",
+                parts = {":tagFQNHashPrefix", ".%"},
+                hash = true)
+            String tagFQNHashPrefix);
 
     class TagLabelMapper implements RowMapper<TagLabel> {
       @Override
@@ -4237,6 +4473,9 @@ public interface CollectionDAO {
         value = "SELECT MAX(\"offset\") FROM change_event",
         connectionType = POSTGRES)
     long getLatestOffset();
+
+    @SqlQuery("SELECT count(*) FROM change_event")
+    long listCount();
   }
 
   class FailedEventResponseMapper implements RowMapper<FailedEventResponse> {
@@ -4599,6 +4838,37 @@ public interface CollectionDAO {
       return listAfter(
           getTableName(), mySqlCondition, postgresCondition, limit, afterName, afterId, groupBy);
     }
+
+    @SqlQuery(
+        "SELECT json FROM <table> tn\n"
+            + "INNER JOIN (SELECT DISTINCT fromId FROM entity_relationship er\n"
+            + "<cond> AND toEntity = 'testSuite' and fromEntity = :entityType) er ON fromId = tn.id\n"
+            + "LIMIT :limit OFFSET :offset;")
+    List<String> listEntitiesWithTestSuite(
+        @Define("table") String table,
+        @BindMap Map<String, ?> params,
+        @Define("cond") String cond,
+        @Bind("entityType") String entityType,
+        @Bind("limit") int limit,
+        @Bind("offset") int offset);
+
+    default List<String> listEntitiesWithTestsuite(
+        ListFilter filter, String table, String entityType, int limit, int offset) {
+      return listEntitiesWithTestSuite(
+          table, filter.getQueryParams(), filter.getCondition(), entityType, limit, offset);
+    }
+
+    @SqlQuery(
+        "SELECT COUNT(DISTINCT fromId) FROM entity_relationship er\n"
+            + "<cond> AND toEntity = 'testSuite' and fromEntity = :entityType;")
+    Integer countEntitiesWithTestSuite(
+        @BindMap Map<String, ?> params,
+        @Define("cond") String cond,
+        @Bind("entityType") String entityType);
+
+    default Integer countEntitiesWithTestsuite(ListFilter filter, String entityType) {
+      return countEntitiesWithTestSuite(filter.getQueryParams(), filter.getCondition(), entityType);
+    }
   }
 
   interface TestCaseDAO extends EntityDAO<TestCase> {
@@ -4704,11 +4974,11 @@ public interface CollectionDAO {
   interface AppsDataStore {
     @ConnectionAwareSqlUpdate(
         value =
-            "INSERT INTO apps_data_store(identifier, type, json) VALUES (:identifier, :type, :json)",
+            "INSERT INTO apps_data_store(identifier, type, json) VALUES (:identifier, :type, :json) ON DUPLICATE KEY UPDATE json = VALUES(json)",
         connectionType = MYSQL)
     @ConnectionAwareSqlUpdate(
         value =
-            "INSERT INTO apps_data_store(identifier, type, json) VALUES (:identifier, :type, :json :: jsonb)",
+            "INSERT INTO apps_data_store(identifier, type, json) VALUES (:identifier, :type, :json :: jsonb) ON CONFLICT (identifier, type) DO UPDATE SET json = EXCLUDED.json",
         connectionType = POSTGRES)
     void insert(
         @Bind("identifier") String identifier,
@@ -4911,6 +5181,34 @@ public interface CollectionDAO {
         String incidentStateId) {
       insert(getTimeSeriesTableName(), entityFQNHash, extension, jsonSchema, json, incidentStateId);
     }
+  }
+
+  interface QueryCostTimeSeriesDAO extends EntityTimeSeriesDAO {
+    @Override
+    default String getTimeSeriesTableName() {
+      return "query_cost_time_series";
+    }
+
+    // TODO: Do not change id on override... updating json changed the id as well
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO <table>(entityFQNHash, jsonSchema, json) "
+                + "VALUES (:entityFQNHash, :jsonSchema, :json) ON DUPLICATE KEY UPDATE"
+                + "    json = VALUES(json);",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO <table>(entityFQNHash, jsonSchema, json) "
+                + "VALUES (:entityFQNHash, :jsonSchema, (:json :: jsonb)) "
+                + "ON CONFLICT (entityFQNHash, timestamp) "
+                + "DO UPDATE SET "
+                + "json = EXCLUDED.json",
+        connectionType = POSTGRES)
+    void insertWithoutExtension(
+        @Define("table") String table,
+        @BindFQN("entityFQNHash") String entityFQNHash,
+        @Bind("jsonSchema") String jsonSchema,
+        @Bind("json") String json);
   }
 
   interface TestCaseResolutionStatusTimeSeriesDAO extends EntityTimeSeriesDAO {
@@ -5226,6 +5524,8 @@ public interface CollectionDAO {
       Object value =
           switch (configType) {
             case EMAIL_CONFIGURATION -> JsonUtils.readValue(json, SmtpSettings.class);
+            case OPEN_METADATA_BASE_URL_CONFIGURATION -> JsonUtils.readValue(
+                json, OpenMetadataBaseUrlConfiguration.class);
             case CUSTOM_UI_THEME_PREFERENCE -> JsonUtils.readValue(json, UiThemePreference.class);
             case LOGIN_CONFIGURATION -> JsonUtils.readValue(json, LoginConfiguration.class);
             case SLACK_APP_CONFIGURATION, SLACK_INSTALLER, SLACK_BOT, SLACK_STATE -> JsonUtils
@@ -5501,8 +5801,8 @@ public interface CollectionDAO {
       if (fqnPrefix != null) {
         String fqnPrefixHash = FullyQualifiedName.buildHash(fqnPrefix);
         filter.queryParams.put("fqnPrefixHash", fqnPrefixHash);
-        String fqnCond =
-            " AND (fqnHash LIKE CONCAT(:fqnPrefixHash, '.%') OR fqnHash=:fqnPrefixHash)";
+        filter.queryParams.put("concatFqnPrefixHash", fqnPrefixHash + ".%");
+        String fqnCond = " AND (fqnHash LIKE :concatFqnPrefixHash OR fqnHash=:fqnPrefixHash)";
         mysqlCondition.append(fqnCond);
         psqlCondition.append(fqnCond);
       }
@@ -5540,8 +5840,8 @@ public interface CollectionDAO {
       if (fqnPrefix != null) {
         String fqnPrefixHash = FullyQualifiedName.buildHash(fqnPrefix);
         filter.queryParams.put("fqnPrefixHash", fqnPrefixHash);
-        String fqnCond =
-            " AND (fqnHash LIKE CONCAT(:fqnPrefixHash, '.%') OR fqnHash=:fqnPrefixHash)";
+        filter.queryParams.put("concatFqnPrefixHash", fqnPrefixHash + ".%");
+        String fqnCond = " AND (fqnHash LIKE :concatFqnPrefixHash OR fqnHash=:fqnPrefixHash)";
         mysqlCondition.append(fqnCond);
         psqlCondition.append(fqnCond);
       }
@@ -5578,8 +5878,8 @@ public interface CollectionDAO {
       if (fqnPrefix != null) {
         String fqnPrefixHash = FullyQualifiedName.buildHash(fqnPrefix);
         filter.queryParams.put("fqnPrefixHash", fqnPrefixHash);
-        String fqnCond =
-            " AND (fqnHash LIKE CONCAT(:fqnPrefixHash, '.%') OR fqnHash=:fqnPrefixHash)";
+        filter.queryParams.put("concatFqnPrefixHash", fqnPrefixHash + ".%");
+        String fqnCond = " AND (fqnHash LIKE :concatFqnPrefixHash OR fqnHash=:fqnPrefixHash)";
         mysqlCondition.append(fqnCond);
         psqlCondition.append(fqnCond);
       }
@@ -5815,5 +6115,12 @@ public interface CollectionDAO {
     default String getTimeSeriesTableName() {
       return "workflow_instance_state_time_series";
     }
+
+    @SqlQuery(
+        value =
+            "SELECT json FROM workflow_instance_state_time_series "
+                + "WHERE workflowInstanceId = :workflowInstanceId AND stage = :stage ORDER BY timestamp DESC")
+    List<String> listWorkflowInstanceStateForStage(
+        @Bind("workflowInstanceId") String workflowInstanceId, @Bind("stage") String stage);
   }
 }

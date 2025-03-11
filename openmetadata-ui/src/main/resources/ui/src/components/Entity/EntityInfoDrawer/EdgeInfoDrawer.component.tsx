@@ -24,6 +24,7 @@ import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import { LINEAGE_SOURCE } from '../../../constants/Lineage.constants';
 import { CSMode } from '../../../enums/codemirror.enum';
 import { EntityType } from '../../../enums/entity.enum';
+import { AddLineage } from '../../../generated/api/lineage/addLineage';
 import { Source } from '../../../generated/type/entityLineage';
 import { getNameFromFQN } from '../../../utils/CommonUtils';
 import {
@@ -53,8 +54,6 @@ const EdgeInfoDrawer = ({
   const [edgeData, setEdgeData] = useState<EdgeInformationType>();
   const [mysqlQuery, setMysqlQuery] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [isDescriptionEditable, setIsDescriptionEditable] =
-    useState<boolean>(false);
   const [showSqlQueryModal, setShowSqlQueryModal] = useState(false);
 
   const { t } = useTranslation();
@@ -159,10 +158,9 @@ const EdgeInfoDrawer = ({
             },
             lineageDetails,
           },
-        };
+        } as AddLineage;
         await onEdgeDetailsUpdate?.(updatedEdgeDetails);
       }
-      setIsDescriptionEditable(false);
     },
     [edgeDescription, edgeEntity, edge]
   );
@@ -187,7 +185,7 @@ const EdgeInfoDrawer = ({
             },
             lineageDetails,
           },
-        };
+        } as AddLineage;
         await onEdgeDetailsUpdate?.(updatedEdgeDetails);
         setMysqlQuery(updatedQuery);
       }
@@ -244,10 +242,7 @@ const EdgeInfoDrawer = ({
                 entityName="Edge"
                 entityType={EntityType.LINEAGE_EDGE}
                 hasEditAccess={hasEditAccess}
-                isEdit={isDescriptionEditable}
                 showCommentsIcon={false}
-                onCancel={() => setIsDescriptionEditable(false)}
-                onDescriptionEdit={() => setIsDescriptionEditable(true)}
                 onDescriptionUpdate={onDescriptionUpdate}
               />
             </Col>

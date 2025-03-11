@@ -7,14 +7,17 @@ import org.openmetadata.service.governance.workflows.flowable.TriggerWorkflow;
 
 @Getter
 public class Workflow {
+  public static final String INGESTION_PIPELINE_ID_VARIABLE = "ingestionPipelineId";
   public static final String RELATED_ENTITY_VARIABLE = "relatedEntity";
   public static final String RESULT_VARIABLE = "result";
-  public static final String RESOLVED_BY_VARIABLE = "resolvedBy";
+  public static final String UPDATED_BY_VARIABLE = "updatedBy";
   public static final String STAGE_INSTANCE_STATE_ID_VARIABLE = "stageInstanceStateId";
   public static final String WORKFLOW_INSTANCE_EXECUTION_ID_VARIABLE =
       "workflowInstanceExecutionId";
   public static final String WORKFLOW_RUNTIME_EXCEPTION = "workflowRuntimeException";
   public static final String EXCEPTION_VARIABLE = "exception";
+  public static final String FAILURE_VARIABLE = "failure";
+  public static final String GLOBAL_NAMESPACE = "global";
   private final TriggerWorkflow triggerWorkflow;
   private final MainWorkflow mainWorkflow;
 

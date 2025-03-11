@@ -36,6 +36,7 @@
 @yellow-6: #c18100;
 @yellow-7: #e7b85d;
 @yellow-8: #ffbe0e08;
+@yellow-9: #ffbe0e0d;
 @error-light-color: #ff9a8e40;
 @failed-color: #cb2431;
 @red-1: #cb2531;
@@ -57,12 +58,15 @@
 @blue-6: #eff5ff;
 @blue-7: #3062d4;
 @blue-8: #f5f8ff;
+@blue-9: #175cd3;
+@blue-10: #005bc4;
+
 @partial-success-1: #06a4a4;
 @partial-success-2: #bdeeee;
 @black: #000000;
 @aborted-color: #efae2f;
-@text-color: #292929;
-@text-color-tertiary: #00000080;
+@text-color: #181d27;
+@text-color-tertiary: #414651;
 @grey-1: #f8f8f8;
 @grey-2: #f2f2f2;
 @grey-3: #959595;
@@ -70,11 +74,21 @@
 @grey-5: #fbfbfb;
 @grey-6: #f9f9f9;
 @grey-7: #9ca3af;
+@grey-8: #717680;
+@grey-9: #f8f9fc;
+@grey-10: #f5f5f5;
+@grey-11: #fdfdfd;
+@grey-12: #e9eaeb;
 @text-grey-muted: @grey-4;
 @font-size-base: 14px;
 @box-shadow-base: 0px 2px 10px rgba(0, 0, 0, 0.12);
 @white: #fff;
 @border-radius-base: 4px;
+@border-radius-xs: 8px;
+@border-radius-sm: 12px;
+@border-radius-md: 16px;
+@border-radius-lg: 20px;
+@border-radius-xl: 24px;
 @checkbox-size: 14px;
 @switch-height: 16px;
 @switch-sm-height: 12px;
@@ -110,6 +124,13 @@
 @team-avatar-bg: #0950c51a;
 @om-navbar-height: ~'var(--ant-navbar-height)';
 @sidebar-width: 60px;
+@error-bg-color: rgb(from @error-color r g b / 0.1);
+@success-bg-color: rgb(from @success-color r g b / 0.1);
+@warning-bg-color: rgb(from @warning-color r g b / 0.1);
+@info-bg-color: rgb(from @info-color r g b / 0.1);
+
+// Font
+@font-family: 'Inter', 'Poppins', sans-serif;
 
 // Sizing
 @page-height: calc(100vh - @om-navbar-height);
@@ -135,6 +156,10 @@
 // Navbar height - 49px for filter bar on explore page
 @explore-page-height: calc(100vh - @om-navbar-height - 49px);
 @welcome-page-height: calc(100vh - 112px);
+
+@profile-page-sidebar: calc(100vh - @om-navbar-height - 40px);
+@profile-entity-details-tab-height: calc(@profile-page-sidebar - 64px);
+@user-profile-page-panel-height: calc(100vh - @om-navbar-height - 108px);
 
 //  48px - navbar height
 @welcome-page-height: calc(100vh - 48px - @om-navbar-height);
@@ -176,3 +201,5 @@
 @success-bg-color: rgb(from @success-color r g b / 0.1);
 @warning-bg-color: rgb(from @warning-color r g b / 0.1);
 @info-bg-color: rgb(from @info-color r g b / 0.1);
+
+@card-radius: 12px;

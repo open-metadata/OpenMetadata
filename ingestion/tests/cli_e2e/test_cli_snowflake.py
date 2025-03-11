@@ -172,7 +172,7 @@ class SnowflakeCliTest(CliCommonDB.TestSuite, SQACommonMethods):
     def expected_tables() -> int:
         return 7
 
-    def inserted_rows_count(self) -> int:
+    def expected_sample_size(self) -> int:
         return len(
             [q for q in self.insert_data_queries if "E2E_DB.e2e_test.persons" in q]
         )
@@ -181,7 +181,7 @@ class SnowflakeCliTest(CliCommonDB.TestSuite, SQACommonMethods):
         return 2
 
     def expected_lineage_node(self) -> str:
-        return "e2e_snowflake.E2E_DB.E2E_TEST.view_persons"
+        return "e2e_snowflake.E2E_DB.E2E_TEST.VIEW_PERSONS"
 
     @staticmethod
     def fqn_created_table() -> str:

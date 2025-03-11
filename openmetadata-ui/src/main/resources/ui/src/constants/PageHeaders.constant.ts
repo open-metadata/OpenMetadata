@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import brandClassBase from '../utils/BrandData/BrandClassBase';
 import i18n from '../utils/i18next/LocalUtil';
 
 export const PAGE_HEADERS = {
@@ -192,7 +193,9 @@ export const PAGE_HEADERS = {
   },
   SETTING: {
     header: i18n.t('label.setting-plural'),
-    subHeader: i18n.t('message.page-sub-header-for-setting'),
+    subHeader: i18n.t('message.page-sub-header-for-setting', {
+      brandName: brandClassBase.getPageTitle(),
+    }),
   },
   LOGIN_CONFIGURATION: {
     header: i18n.t('label.login'),
@@ -205,6 +208,12 @@ export const PAGE_HEADERS = {
   LINEAGE_CONFIG: {
     header: i18n.t('label.lineage-config'),
     subHeader: i18n.t('message.page-sub-header-for-lineage-config-setting'),
+  },
+  OM_URL_CONFIG: {
+    header: i18n.t('label.entity-configuration', {
+      entity: i18n.t('label.open-metadata-url'),
+    }),
+    subHeader: i18n.t('message.om-url-configuration-message'),
   },
   OM_HEALTH: {
     header: i18n.t('label.health-check'),

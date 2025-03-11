@@ -212,6 +212,15 @@ const mockPaging = {
   total: 1,
 };
 
+const mockPagingCursor = {
+  cursorData: {
+    cursorType: null,
+    cursorValue: undefined,
+  },
+  currentPage: 1,
+  pageSize: 10,
+};
+
 const mockCurrentHandleIngestionListUpdate = jest.fn();
 const mockCurrentHandleSearchChange = jest.fn();
 const mockCurrentOnPageChange = jest.fn();
@@ -240,5 +249,6 @@ export const ingestionProps: IngestionProps = {
     pageSize: 10,
     handlePageSizeChange: jest.fn(),
     showPagination: true,
+    pagingCursor: mockPagingCursor,
   },
 };

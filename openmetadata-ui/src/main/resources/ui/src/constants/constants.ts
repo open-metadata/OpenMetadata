@@ -131,6 +131,7 @@ export const ROUTES = {
   NOT_FOUND: '/404',
   FORBIDDEN: '/403',
   UNAUTHORISED: '/unauthorised',
+  LOGOUT: '/logout',
   MY_DATA: '/my-data',
   TOUR: '/tour',
   REPORTS: '/reports',
@@ -262,6 +263,7 @@ export const ROUTES = {
   EDIT_KPI: `/data-insights/kpi/edit-kpi/${PLACEHOLDER_ROUTE_FQN}`,
 
   SETTINGS_EDIT_CUSTOM_LOGIN_CONFIG: `/settings/OpenMetadata/loginConfiguration/edit-custom-login-configuration`,
+  SETTINGS_OM_URL_CONFIG: `/settings/OpenMetadata/openMetadataBaseUrlConfiguration/edit-open-metadata-url-configuration`,
 
   CUSTOMIZE_PAGE: `/customize-page/${PLACEHOLDER_ROUTE_FQN}/:pageFqn`,
 
@@ -282,6 +284,9 @@ export const ROUTES = {
   // Metric Entity
   METRICS: '/metrics',
   ADD_METRIC: '/metrics/add-metric',
+
+  // Entity Import
+  ENTITY_IMPORT: `/bulk/import/${PLACEHOLDER_ROUTE_ENTITY_TYPE}/${PLACEHOLDER_ROUTE_FQN}`,
 };
 
 export const SOCKET_EVENTS = {
@@ -580,6 +585,11 @@ export const ICON_DIMENSION = {
   height: 14,
   fontSize: 14,
 };
+export const ICON_DIMENSION_USER_PAGE = {
+  width: 16,
+  height: 16,
+  fontSize: 16,
+};
 
 export const DATA_ASSET_ICON_DIMENSION = {
   height: 18,
@@ -610,4 +620,8 @@ export const STATUS_LABEL = {
   [Status.Started]: 'Started',
   [Status.Stopped]: 'Stopped',
   [Status.Success]: 'Success',
+};
+
+export const INITIAL_TABLE_FILTERS = {
+  showDeletedTables: false,
 };

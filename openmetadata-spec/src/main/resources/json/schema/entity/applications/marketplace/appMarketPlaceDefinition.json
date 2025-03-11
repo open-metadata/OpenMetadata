@@ -56,6 +56,10 @@
       "description": "Change that lead to this version of the entity.",
       "$ref": "../../../type/entityHistory.json#/definitions/changeDescription"
     },
+    "incrementalChangeDescription": {
+      "description": "Change that lead to this version of the entity.",
+      "$ref": "../../../type/entityHistory.json#/definitions/changeDescription"
+    },
     "deleted": {
       "description": "When `true` indicates the entity has been soft deleted.",
       "type": "boolean",
@@ -149,6 +153,14 @@
       "description": "If the app run can be interrupted as part of the execution.",
       "type": "boolean",
       "default": false
+    },
+    "eventSubscriptions": {
+      "description": "Event subscriptions that will be created when the application is installed.",
+      "type": "array",
+      "default": [],
+      "items": {
+        "$ref": "../../../events/api/createEventSubscription.json"
+      }
     }
   },
   "additionalProperties": false,

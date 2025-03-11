@@ -49,7 +49,6 @@ import {
   ChangeDescription,
   DataProduct,
 } from '../../../generated/entity/domains/dataProduct';
-import { Domain } from '../../../generated/entity/domains/domain';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { Style } from '../../../generated/type/tagLabel';
 import { useFqn } from '../../../hooks/useFqn';
@@ -73,6 +72,7 @@ import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomProp
 import { ManageButtonItemLabel } from '../../common/ManageButtonContentItem/ManageButtonContentItem.component';
 import ResizablePanels from '../../common/ResizablePanels/ResizablePanels';
 import TabsLabel from '../../common/TabsLabel/TabsLabel.component';
+import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
 import { AssetSelectionModal } from '../../DataAssets/AssetsSelectionModal/AssetSelectionModal';
 import { DomainTabs } from '../../Domain/DomainPage.interface';
 import DocumentationTab from '../../Domain/DomainTabs/DocumentationTab/DocumentationTab.component';
@@ -390,7 +390,7 @@ const DataProductsDetailsPage = ({
   const handelExtensionUpdate = useCallback(
     async (updatedDataProduct: DataProduct) => {
       await onUpdate({
-        ...(dataProduct as DataProduct),
+        ...dataProduct,
         extension: updatedDataProduct.extension,
       });
     },
@@ -409,19 +409,8 @@ const DataProductsDetailsPage = ({
         key: DataProductTabs.DOCUMENTATION,
         children: (
           <DocumentationTab
-            domain={dataProduct}
-            editCustomAttributePermission={
-              (dataProductPermission.EditAll ||
-                dataProductPermission.EditCustomFields) &&
-              !isVersionsView
-            }
             isVersionsView={isVersionsView}
             type={DocumentationEntity.DATA_PRODUCT}
-            viewAllPermission={dataProductPermission.ViewAll}
-            onExtensionUpdate={handelExtensionUpdate}
-            onUpdate={(data: Domain | DataProduct) =>
-              onUpdate(data as DataProduct)
-            }
           />
         ),
       },
@@ -490,9 +479,7 @@ const DataProductsDetailsPage = ({
         children: (
           <div className="p-md">
             <CustomPropertyTable<EntityType.DATA_PRODUCT>
-              entityDetails={dataProduct}
               entityType={EntityType.DATA_PRODUCT}
-              handleExtensionUpdate={handelExtensionUpdate}
               hasEditAccess={
                 (dataProductPermission.EditAll ||
                   dataProductPermission.EditCustomFields) &&
@@ -628,16 +615,24 @@ const DataProductsDetailsPage = ({
           </div>
         </Col>
 
-        <Col span={24}>
-          <Tabs
-            destroyInactiveTabPane
-            activeKey={activeTab ?? DomainTabs.DOCUMENTATION}
-            className="domain-details-page-tabs"
-            data-testid="tabs"
-            items={tabs}
-            onChange={handleTabChange}
-          />
-        </Col>
+        <GenericProvider<DataProduct>
+          currentVersionData={dataProduct}
+          data={dataProduct}
+          isVersionView={isVersionsView}
+          permissions={dataProductPermission}
+          type={EntityType.DATA_PRODUCT}
+          onUpdate={onUpdate}>
+          <Col span={24}>
+            <Tabs
+              destroyInactiveTabPane
+              activeKey={activeTab ?? DomainTabs.DOCUMENTATION}
+              className="domain-details-page-tabs"
+              data-testid="tabs"
+              items={tabs}
+              onChange={handleTabChange}
+            />
+          </Col>
+        </GenericProvider>
       </Row>
 
       <EntityNameModal<DataProduct>

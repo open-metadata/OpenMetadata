@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * This schema defines the Settings. A Settings represents a generic Setting.
  */
 export interface Settings {
@@ -42,6 +40,7 @@ export enum SettingType {
     JwtTokenConfiguration = "jwtTokenConfiguration",
     LineageSettings = "lineageSettings",
     LoginConfiguration = "loginConfiguration",
+    OpenMetadataBaseURLConfiguration = "openMetadataBaseUrlConfiguration",
     ProfilerConfiguration = "profilerConfiguration",
     SandboxModeEnabled = "sandboxModeEnabled",
     SearchSettings = "searchSettings",
@@ -52,6 +51,7 @@ export enum SettingType {
     SlackEventPublishers = "slackEventPublishers",
     SlackInstaller = "slackInstaller",
     SlackState = "slackState",
+    WorkflowSettings = "workflowSettings",
 }
 
 /**
@@ -73,6 +73,8 @@ export enum SettingType {
  *
  * This schema defines the SMTP Settings for sending Email
  *
+ * This schema defines the OpenMetadata base URL configuration
+ *
  * This schema defines the Slack App Information
  *
  * This schema defines the profiler configuration. It is used to configure globally the
@@ -83,6 +85,8 @@ export enum SettingType {
  * This schema defines the Asset Certification Settings.
  *
  * This schema defines the Lineage Settings.
+ *
+ * This schema defines the Workflow Settings.
  */
 export interface PipelineServiceClientConfiguration {
     /**
@@ -199,6 +203,10 @@ export interface PipelineServiceClientConfiguration {
      * Saml Configuration that is applicable only when the provider is Saml
      */
     samlConfiguration?: SamlSSOClientConfig;
+    /**
+     * Token Validation Algorithm to use.
+     */
+    tokenValidationAlgorithm?: TokenValidationAlgorithm;
     /**
      * List of unique admin principals.
      */
@@ -334,10 +342,6 @@ export interface PipelineServiceClientConfiguration {
      */
     enableSmtpServer?: boolean;
     /**
-     * Openmetadata Server Endpoint
-     */
-    openMetadataUrl?: string;
-    /**
      * Mail of the sender
      */
     senderMail?: string;
@@ -356,6 +360,10 @@ export interface PipelineServiceClientConfiguration {
     templatePath?:           string;
     templates?:              Templates;
     transportationStrategy?: TransportationStrategy;
+    /**
+     * OpenMetadata Server Endpoint
+     */
+    openMetadataUrl?: string;
     /**
      * Client Secret of the Application.
      */
@@ -390,6 +398,14 @@ export interface PipelineServiceClientConfiguration {
      * Upstream Depth for Lineage.
      */
     upstreamDepth?: number;
+    /**
+     * Used to set up the Workflow Executor Settings.
+     */
+    executorConfiguration?: ExecutorConfiguration;
+    /**
+     * Used to set up the History CleanUp Settings.
+     */
+    historyCleanUpConfiguration?: HistoryCleanUpConfiguration;
 }
 
 /**
@@ -569,6 +585,43 @@ export enum AuthProvider {
 export enum ClientType {
     Confidential = "confidential",
     Public = "public",
+}
+
+/**
+ * Used to set up the Workflow Executor Settings.
+ */
+export interface ExecutorConfiguration {
+    /**
+     * Default worker Pool Size. The Workflow Executor by default has this amount of workers.
+     */
+    corePoolSize?: number;
+    /**
+     * The amount of time a Job gets locked before being retried.
+     */
+    jobLockTimeInMillis?: number;
+    /**
+     * Maximum worker Pool Size. The Workflow Executor could grow up to this number of workers.
+     */
+    maxPoolSize?: number;
+    /**
+     * Amount of Tasks that can be queued to be picked up by the Workflow Executor.
+     */
+    queueSize?: number;
+    /**
+     * The amount of Tasks that the Workflow Executor is able to pick up each time it looks for
+     * more.
+     */
+    tasksDuePerAcquisition?: number;
+}
+
+/**
+ * Used to set up the History CleanUp Settings.
+ */
+export interface HistoryCleanUpConfiguration {
+    /**
+     * Cleans the Workflow Task that were finished, after given number of days.
+     */
+    cleanAfterNumberOfDays?: number;
 }
 
 /**
@@ -1170,6 +1223,15 @@ export interface Config {
 export enum Templates {
     Collate = "collate",
     Openmetadata = "openmetadata",
+}
+
+/**
+ * Token Validation Algorithm to use.
+ */
+export enum TokenValidationAlgorithm {
+    Rs256 = "RS256",
+    Rs384 = "RS384",
+    Rs512 = "RS512",
 }
 
 export enum TransportationStrategy {

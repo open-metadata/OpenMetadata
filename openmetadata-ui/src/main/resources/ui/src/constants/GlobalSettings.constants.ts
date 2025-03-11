@@ -77,4 +77,5 @@ export enum GlobalSettingOptions {
   METRICS = 'metrics',
   SEARCH_RBAC = 'search-rbac',
   LINEAGE_CONFIG = 'lineageConfig',
+  OM_URL_CONFIG = 'om-url-config',
 }

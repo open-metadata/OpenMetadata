@@ -12,6 +12,8 @@ import static org.openmetadata.service.Entity.GLOSSARY_TERM;
 import static org.openmetadata.service.Entity.QUERY;
 import static org.openmetadata.service.Entity.RAW_COST_ANALYSIS_REPORT_DATA;
 import static org.openmetadata.service.Entity.TABLE;
+import static org.openmetadata.service.events.scheduled.ServicesStatusJobHandler.HEALTHY_STATUS;
+import static org.openmetadata.service.events.scheduled.ServicesStatusJobHandler.UNHEALTHY_STATUS;
 import static org.openmetadata.service.exception.CatalogGenericExceptionMapper.getResponse;
 import static org.openmetadata.service.search.EntityBuilderConstant.API_RESPONSE_SCHEMA_FIELD;
 import static org.openmetadata.service.search.EntityBuilderConstant.API_RESPONSE_SCHEMA_FIELD_KEYWORD;
@@ -30,6 +32,10 @@ import static org.openmetadata.service.search.EntityBuilderConstant.POST_TAG;
 import static org.openmetadata.service.search.EntityBuilderConstant.PRE_TAG;
 import static org.openmetadata.service.search.EntityBuilderConstant.SCHEMA_FIELD_NAMES;
 import static org.openmetadata.service.search.EntityBuilderConstant.UNIFIED;
+import static org.openmetadata.service.search.SearchUtils.createElasticSearchSSLContext;
+import static org.openmetadata.service.search.SearchUtils.getLineageDirection;
+import static org.openmetadata.service.search.SearchUtils.getRelationshipRef;
+import static org.openmetadata.service.search.SearchUtils.shouldApplyRbacConditions;
 import static org.openmetadata.service.search.UpdateSearchEventsConstant.SENDING_REQUEST_TO_ELASTIC_SEARCH;
 import static org.openmetadata.service.search.opensearch.OpenSearchEntitiesProcessor.getUpdateRequest;
 import static org.openmetadata.service.util.FullyQualifiedName.getParentFQN;
@@ -47,6 +53,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import javax.json.JsonObject;
 import javax.net.ssl.SSLContext;
@@ -64,6 +71,10 @@ import org.apache.http.client.CredentialsProvider;
 import org.apache.http.impl.client.BasicCredentialsProvider;
 import org.jetbrains.annotations.NotNull;
 import org.openmetadata.common.utils.CommonUtil;
+import org.openmetadata.schema.api.lineage.EsLineageData;
+import org.openmetadata.schema.api.lineage.LineageDirection;
+import org.openmetadata.schema.api.lineage.SearchLineageRequest;
+import org.openmetadata.schema.api.lineage.SearchLineageResult;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChartResultList;
@@ -74,6 +85,8 @@ import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearch
 import org.openmetadata.schema.tests.DataQualityReport;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.LayerPaging;
+import org.openmetadata.schema.type.lineage.NodeInformation;
 import org.openmetadata.sdk.exception.SearchException;
 import org.openmetadata.sdk.exception.SearchIndexNotFoundException;
 import org.openmetadata.service.Entity;
@@ -85,8 +98,10 @@ import org.openmetadata.service.jdbi3.TableRepository;
 import org.openmetadata.service.jdbi3.TestCaseResultRepository;
 import org.openmetadata.service.search.SearchAggregation;
 import org.openmetadata.service.search.SearchClient;
+import org.openmetadata.service.search.SearchHealthStatus;
 import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.SearchRequest;
+import org.openmetadata.service.search.SearchResultListMapper;
 import org.openmetadata.service.search.SearchSortFilter;
 import org.openmetadata.service.search.indexes.APIEndpointIndex;
 import org.openmetadata.service.search.indexes.ContainerIndex;
@@ -135,6 +150,8 @@ import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
 import os.org.opensearch.OpenSearchException;
 import os.org.opensearch.OpenSearchStatusException;
 import os.org.opensearch.action.ActionListener;
+import os.org.opensearch.action.admin.cluster.health.ClusterHealthRequest;
+import os.org.opensearch.action.admin.cluster.health.ClusterHealthResponse;
 import os.org.opensearch.action.admin.indices.alias.IndicesAliasesRequest;
 import os.org.opensearch.action.admin.indices.delete.DeleteIndexRequest;
 import os.org.opensearch.action.bulk.BulkRequest;
@@ -156,15 +173,14 @@ import os.org.opensearch.client.indices.GetIndexRequest;
 import os.org.opensearch.client.indices.GetMappingsRequest;
 import os.org.opensearch.client.indices.GetMappingsResponse;
 import os.org.opensearch.client.indices.PutMappingRequest;
+import os.org.opensearch.cluster.health.ClusterHealthStatus;
 import os.org.opensearch.cluster.metadata.MappingMetadata;
 import os.org.opensearch.common.lucene.search.function.CombineFunction;
 import os.org.opensearch.common.lucene.search.function.FieldValueFactorFunction;
 import os.org.opensearch.common.lucene.search.function.FunctionScoreQuery;
-import os.org.opensearch.common.settings.Settings;
 import os.org.opensearch.common.unit.Fuzziness;
 import os.org.opensearch.common.unit.TimeValue;
 import os.org.opensearch.common.xcontent.LoggingDeprecationHandler;
-import os.org.opensearch.common.xcontent.NamedXContentRegistry;
 import os.org.opensearch.common.xcontent.XContentParser;
 import os.org.opensearch.common.xcontent.XContentType;
 import os.org.opensearch.index.IndexNotFoundException;
@@ -188,7 +204,6 @@ import os.org.opensearch.script.Script;
 import os.org.opensearch.script.ScriptType;
 import os.org.opensearch.search.SearchHit;
 import os.org.opensearch.search.SearchHits;
-import os.org.opensearch.search.SearchModule;
 import os.org.opensearch.search.aggregations.AggregationBuilder;
 import os.org.opensearch.search.aggregations.AggregationBuilders;
 import os.org.opensearch.search.aggregations.BucketOrder;
@@ -217,10 +232,11 @@ import os.org.opensearch.search.suggest.completion.context.CategoryQueryContext;
 // Not tagged with Repository annotation as it is programmatically initialized
 public class OpenSearchClient implements SearchClient {
   @Getter protected final RestHighLevelClient client;
-  public static final NamedXContentRegistry X_CONTENT_REGISTRY;
   private final boolean isClientAvailable;
   private final RBACConditionEvaluator rbacConditionEvaluator;
   private final QueryBuilderFactory queryBuilderFactory;
+
+  private final OSLineageGraphBuilder lineageGraphBuilder;
 
   private final String clusterAlias;
 
@@ -240,17 +256,13 @@ public class OpenSearchClient implements SearchClient {
       Stream.concat(FIELDS_TO_REMOVE.stream(), Stream.of("schemaDefinition", "customMetrics"))
           .toList();
 
-  static {
-    SearchModule searchModule = new SearchModule(Settings.EMPTY, List.of());
-    X_CONTENT_REGISTRY = new NamedXContentRegistry(searchModule.getNamedXContents());
-  }
-
   public OpenSearchClient(ElasticSearchConfiguration config) {
     client = createOpenSearchClient(config);
     clusterAlias = config != null ? config.getClusterAlias() : "";
     isClientAvailable = client != null;
     queryBuilderFactory = new OpenSearchQueryBuilderFactory();
     rbacConditionEvaluator = new RBACConditionEvaluator(queryBuilderFactory);
+    lineageGraphBuilder = new OSLineageGraphBuilder(client);
   }
 
   @Override
@@ -375,7 +387,7 @@ public class OpenSearchClient implements SearchClient {
             XContentType.JSON
                 .xContent()
                 .createParser(
-                    X_CONTENT_REGISTRY,
+                    OsUtils.osXContentRegistry,
                     LoggingDeprecationHandler.INSTANCE,
                     request.getPostFilter());
         QueryBuilder filter = SearchSourceBuilder.fromXContent(filterParser).query();
@@ -463,52 +475,9 @@ public class OpenSearchClient implements SearchClient {
                 .getIndexMapping(GLOSSARY_TERM)
                 .getIndexName(clusterAlias))) {
       searchSourceBuilder.query(QueryBuilders.boolQuery().must(searchSourceBuilder.query()));
-
-      if (request.isGetHierarchy()) {
-        /*
-        Search for user input terms in name, fullyQualifiedName, displayName and glossary.fullyQualifiedName, glossary.displayName
-        */
-        QueryBuilder baseQuery =
-            QueryBuilders.boolQuery()
-                .should(searchSourceBuilder.query())
-                .should(QueryBuilders.matchPhraseQuery("fullyQualifiedName", request.getQuery()))
-                .should(QueryBuilders.matchPhraseQuery("name", request.getQuery()))
-                .should(QueryBuilders.matchPhraseQuery("displayName", request.getQuery()))
-                .should(
-                    QueryBuilders.matchPhraseQuery(
-                        "glossary.fullyQualifiedName", request.getQuery()))
-                .should(QueryBuilders.matchPhraseQuery("glossary.displayName", request.getQuery()))
-                .must(QueryBuilders.matchQuery("status", "Approved"))
-                .minimumShouldMatch(1);
-        searchSourceBuilder.query(baseQuery);
-
-        SearchResponse searchResponse =
-            client.search(
-                new os.org.opensearch.action.search.SearchRequest(request.getIndex())
-                    .source(searchSourceBuilder),
-                RequestOptions.DEFAULT);
-
-        // Extract parent terms from aggregation
-        BoolQueryBuilder parentTermQueryBuilder = QueryBuilders.boolQuery();
-        Terms parentTerms = searchResponse.getAggregations().get("fqnParts_agg");
-
-        // Build  es query to get parent terms for the user input query , to build correct hierarchy
-        if (!parentTerms.getBuckets().isEmpty() && !request.getQuery().equals("*")) {
-          parentTerms.getBuckets().stream()
-              .map(Terms.Bucket::getKeyAsString)
-              .forEach(
-                  parentTerm ->
-                      parentTermQueryBuilder.should(
-                          QueryBuilders.matchQuery("fullyQualifiedName", parentTerm)));
-
-          searchSourceBuilder.query(
-              parentTermQueryBuilder
-                  .minimumShouldMatch(1)
-                  .must(QueryBuilders.matchQuery("status", "Approved")));
-        }
-        searchSourceBuilder.sort(SortBuilders.fieldSort("fullyQualifiedName").order(SortOrder.ASC));
-      }
     }
+
+    buildHierarchyQuery(request, searchSourceBuilder, client);
 
     /* for performance reasons OpenSearch doesn't provide accurate hits
     if we enable trackTotalHits parameter it will try to match every result, count and return hits
@@ -572,15 +541,88 @@ public class OpenSearchClient implements SearchClient {
     return getResponse(NOT_FOUND, "Document not found.");
   }
 
+  private void buildHierarchyQuery(
+      SearchRequest request, SearchSourceBuilder searchSourceBuilder, RestHighLevelClient client)
+      throws IOException {
+
+    if (!request.isGetHierarchy()) {
+      return;
+    }
+
+    String indexName = request.getIndex();
+    String glossaryTermIndex =
+        Entity.getSearchRepository().getIndexMapping(GLOSSARY_TERM).getIndexName(clusterAlias);
+    String domainIndex =
+        Entity.getSearchRepository().getIndexMapping(DOMAIN).getIndexName(clusterAlias);
+
+    BoolQueryBuilder baseQuery =
+        QueryBuilders.boolQuery()
+            .should(searchSourceBuilder.query())
+            .should(QueryBuilders.matchPhraseQuery("fullyQualifiedName", request.getQuery()))
+            .should(QueryBuilders.matchPhraseQuery("name", request.getQuery()))
+            .should(QueryBuilders.matchPhraseQuery("displayName", request.getQuery()));
+
+    if (indexName.equalsIgnoreCase(glossaryTermIndex)) {
+      baseQuery
+          .should(QueryBuilders.matchPhraseQuery("glossary.fullyQualifiedName", request.getQuery()))
+          .should(QueryBuilders.matchPhraseQuery("glossary.displayName", request.getQuery()))
+          .must(QueryBuilders.matchQuery("status", "Approved"));
+    } else if (indexName.equalsIgnoreCase(domainIndex)) {
+      baseQuery
+          .should(QueryBuilders.matchPhraseQuery("parent.fullyQualifiedName", request.getQuery()))
+          .should(QueryBuilders.matchPhraseQuery("parent.displayName", request.getQuery()));
+    }
+
+    baseQuery.minimumShouldMatch(1);
+    searchSourceBuilder.query(baseQuery);
+
+    SearchResponse searchResponse =
+        client.search(
+            new os.org.opensearch.action.search.SearchRequest(request.getIndex())
+                .source(searchSourceBuilder),
+            RequestOptions.DEFAULT);
+
+    Terms parentTerms = searchResponse.getAggregations().get("fqnParts_agg");
+
+    // Build  es query to get parent terms for the user input query , to build correct hierarchy
+    // In case of default search , no need to get parent terms they are already present in the
+    // response
+    if (parentTerms != null
+        && !parentTerms.getBuckets().isEmpty()
+        && !request.getQuery().equals("*")) {
+      BoolQueryBuilder parentTermQueryBuilder = QueryBuilders.boolQuery();
+
+      parentTerms.getBuckets().stream()
+          .map(Terms.Bucket::getKeyAsString)
+          .forEach(
+              parentTerm ->
+                  parentTermQueryBuilder.should(
+                      QueryBuilders.matchQuery("fullyQualifiedName", parentTerm)));
+      if (indexName.equalsIgnoreCase(glossaryTermIndex)) {
+        parentTermQueryBuilder
+            .minimumShouldMatch(1)
+            .must(QueryBuilders.matchQuery("status", "Approved"));
+      } else {
+        parentTermQueryBuilder.minimumShouldMatch(1);
+      }
+      searchSourceBuilder.query(parentTermQueryBuilder);
+    }
+
+    searchSourceBuilder.sort(SortBuilders.fieldSort("fullyQualifiedName").order(SortOrder.ASC));
+  }
+
   public List<?> buildSearchHierarchy(SearchRequest request, SearchResponse searchResponse) {
     List<?> response = new ArrayList<>();
-    if (request
-        .getIndex()
-        .equalsIgnoreCase(
-            Entity.getSearchRepository()
-                .getIndexMapping(GLOSSARY_TERM)
-                .getIndexName(clusterAlias))) {
+    String indexName = request.getIndex();
+    String glossaryTermIndex =
+        Entity.getSearchRepository().getIndexMapping(GLOSSARY_TERM).getIndexName(clusterAlias);
+    String domainIndex =
+        Entity.getSearchRepository().getIndexMapping(DOMAIN).getIndexName(clusterAlias);
+
+    if (indexName.equalsIgnoreCase(glossaryTermIndex)) {
       response = buildGlossaryTermSearchHierarchy(searchResponse);
+    } else if (indexName.equalsIgnoreCase(domainIndex)) {
+      response = buildDomainSearchHierarchy(searchResponse);
     }
     return response;
   }
@@ -634,6 +676,38 @@ public class OpenSearchClient implements SearchClient {
             });
 
     return new ArrayList<>(rootTerms.values());
+  }
+
+  public List<EntityHierarchy> buildDomainSearchHierarchy(SearchResponse searchResponse) {
+    Map<String, EntityHierarchy> entityHierarchyMap =
+        Arrays.stream(searchResponse.getHits().getHits())
+            .map(hit -> JsonUtils.readValue(hit.getSourceAsString(), EntityHierarchy.class))
+            .collect(
+                Collectors.toMap(
+                    EntityHierarchy::getFullyQualifiedName,
+                    entity -> {
+                      entity.setChildren(new ArrayList<>());
+                      return entity;
+                    },
+                    (existing, replacement) -> existing,
+                    LinkedHashMap::new));
+
+    List<EntityHierarchy> rootDomains = new ArrayList<>();
+
+    entityHierarchyMap
+        .values()
+        .forEach(
+            entity -> {
+              String parentFqn = getParentFQN(entity.getFullyQualifiedName());
+              EntityHierarchy parentEntity = entityHierarchyMap.get(parentFqn);
+              if (parentEntity != null) {
+                parentEntity.getChildren().add(entity);
+              } else {
+                rootDomains.add(entity);
+              }
+            });
+
+    return rootDomains;
   }
 
   @Override
@@ -770,64 +844,65 @@ public class OpenSearchClient implements SearchClient {
     return Response.status(OK).entity(response).build();
   }
 
-  public Map<String, Object> searchLineageInternal(
-      String fqn,
-      int upstreamDepth,
-      int downstreamDepth,
-      String queryFilter,
-      boolean deleted,
-      String entityType)
-      throws IOException {
-    if (entityType.equalsIgnoreCase(Entity.PIPELINE)
-        || entityType.equalsIgnoreCase(Entity.STORED_PROCEDURE)) {
-      return searchPipelineLineage(fqn, upstreamDepth, downstreamDepth, queryFilter, deleted);
+  @Override
+  public SearchLineageResult searchLineage(SearchLineageRequest lineageRequest) throws IOException {
+    int upstreamDepth = lineageRequest.getUpstreamDepth();
+    int downstreamDepth = lineageRequest.getDownstreamDepth();
+    SearchLineageResult result =
+        lineageGraphBuilder.getDownstreamLineage(
+            lineageRequest
+                .withUpstreamDepth(upstreamDepth + 1)
+                .withDownstreamDepth(downstreamDepth + 1)
+                .withDirection(LineageDirection.DOWNSTREAM)
+                .withDirectionValue(
+                    getLineageDirection(
+                        lineageRequest.getDirection(), lineageRequest.getIsConnectedVia())));
+    SearchLineageResult upstreamLineage =
+        lineageGraphBuilder.getUpstreamLineage(
+            lineageRequest
+                .withUpstreamDepth(upstreamDepth + 1)
+                .withDownstreamDepth(downstreamDepth + 1)
+                .withDirection(LineageDirection.UPSTREAM)
+                .withDirectionValue(
+                    getLineageDirection(
+                        lineageRequest.getDirection(), lineageRequest.getIsConnectedVia())));
+
+    // Here we are merging everything from downstream paging into upstream paging
+    for (var nodeFromDownstream : result.getNodes().entrySet()) {
+      if (upstreamLineage.getNodes().containsKey(nodeFromDownstream.getKey())) {
+        NodeInformation existingNode = upstreamLineage.getNodes().get(nodeFromDownstream.getKey());
+        LayerPaging existingPaging = existingNode.getPaging();
+        existingPaging.setEntityDownstreamCount(
+            nodeFromDownstream.getValue().getPaging().getEntityDownstreamCount());
+      }
     }
-    Map<String, Object> responseMap = new HashMap<>();
-    Set<Map<String, Object>> edges = new HashSet<>();
-    Set<Map<String, Object>> nodes = new HashSet<>();
-    os.org.opensearch.action.search.SearchRequest searchRequest =
-        new os.org.opensearch.action.search.SearchRequest(
-            Entity.getSearchRepository().getIndexOrAliasName(GLOBAL_SEARCH_ALIAS));
-    SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
-    List<String> sourceFieldsToExcludeCopy = new ArrayList<>(SOURCE_FIELDS_TO_EXCLUDE);
-    searchSourceBuilder.fetchSource(null, sourceFieldsToExcludeCopy.toArray(String[]::new));
-    searchSourceBuilder.query(
-        QueryBuilders.boolQuery().must(QueryBuilders.termQuery("fullyQualifiedName", fqn)));
-    searchRequest.source(searchSourceBuilder.size(1000));
-    SearchResponse searchResponse = client.search(searchRequest, RequestOptions.DEFAULT);
-    for (var hit : searchResponse.getHits().getHits()) {
-      HashMap<String, Object> tempMap = new HashMap<>(JsonUtils.getMap(hit.getSourceAsMap()));
-      tempMap.keySet().removeAll(FIELDS_TO_REMOVE);
-      responseMap.put("entity", tempMap);
-    }
-    getLineage(
-        fqn,
-        downstreamDepth,
-        edges,
-        nodes,
-        queryFilter,
-        "lineage.fromEntity.fqnHash.keyword",
-        deleted);
-    getLineage(
-        fqn, upstreamDepth, edges, nodes, queryFilter, "lineage.toEntity.fqnHash.keyword", deleted);
-    responseMap.put("edges", edges);
-    responseMap.put("nodes", nodes);
-    return responseMap;
+    // since paging from downstream is merged into upstream, we can just put the upstream result
+    result.getNodes().putAll(upstreamLineage.getNodes());
+    result.getUpstreamEdges().putAll(upstreamLineage.getUpstreamEdges());
+    return result;
   }
 
-  @Override
-  public Response searchLineage(
-      String fqn,
-      int upstreamDepth,
-      int downstreamDepth,
-      String queryFilter,
-      boolean deleted,
-      String entityType)
+  public SearchLineageResult searchLineageWithDirection(SearchLineageRequest lineageRequest)
       throws IOException {
-    Map<String, Object> responseMap =
-        searchLineageInternal(
-            fqn, upstreamDepth, downstreamDepth, queryFilter, deleted, entityType);
-    return Response.status(OK).entity(responseMap).build();
+    int upstreamDepth = lineageRequest.getUpstreamDepth();
+    int downstreamDepth = lineageRequest.getDownstreamDepth();
+    if (lineageRequest.getDirection().equals(LineageDirection.UPSTREAM)) {
+      return lineageGraphBuilder.getUpstreamLineage(
+          lineageRequest
+              .withUpstreamDepth(upstreamDepth + 1)
+              .withDownstreamDepth(downstreamDepth + 1)
+              .withDirectionValue(
+                  getLineageDirection(
+                      lineageRequest.getDirection(), lineageRequest.getIsConnectedVia())));
+    } else {
+      return lineageGraphBuilder.getDownstreamLineage(
+          lineageRequest
+              .withUpstreamDepth(upstreamDepth + 1)
+              .withDownstreamDepth(downstreamDepth + 1)
+              .withDirectionValue(
+                  getLineageDirection(
+                      lineageRequest.getDirection(), lineageRequest.getIsConnectedVia())));
+    }
   }
 
   private void getEntityRelationship(
@@ -860,7 +935,8 @@ public class OpenSearchClient implements SearchClient {
         XContentParser filterParser =
             XContentType.JSON
                 .xContent()
-                .createParser(X_CONTENT_REGISTRY, LoggingDeprecationHandler.INSTANCE, queryFilter);
+                .createParser(
+                    OsUtils.osXContentRegistry, LoggingDeprecationHandler.INSTANCE, queryFilter);
         QueryBuilder filter = SearchSourceBuilder.fromXContent(filterParser).query();
         BoolQueryBuilder newQuery =
             QueryBuilders.boolQuery().must(searchSourceBuilder.query()).filter(filter);
@@ -951,7 +1027,7 @@ public class OpenSearchClient implements SearchClient {
   public Response searchDataQualityLineage(
       String fqn, int upstreamDepth, String queryFilter, boolean deleted) throws IOException {
     Map<String, Object> responseMap = new HashMap<>();
-    Set<Map<String, Object>> edges = new HashSet<>();
+    Set<EsLineageData> edges = new HashSet<>();
     Set<Map<String, Object>> nodes = new HashSet<>();
     searchDataQualityLineage(fqn, upstreamDepth, queryFilter, deleted, edges, nodes);
     responseMap.put("edges", edges);
@@ -1031,72 +1107,16 @@ public class OpenSearchClient implements SearchClient {
     return Response.status(OK).entity(responseMap).build();
   }
 
-  private void getLineage(
-      String fqn,
-      int depth,
-      Set<Map<String, Object>> edges,
-      Set<Map<String, Object>> nodes,
-      String queryFilter,
-      String direction,
-      boolean deleted)
-      throws IOException {
-    if (depth <= 0) {
-      return;
-    }
-    os.org.opensearch.action.search.SearchRequest searchRequest =
-        new os.org.opensearch.action.search.SearchRequest(
-            Entity.getSearchRepository().getIndexOrAliasName(GLOBAL_SEARCH_ALIAS));
-    SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
-    searchSourceBuilder.fetchSource(null, SOURCE_FIELDS_TO_EXCLUDE.toArray(String[]::new));
-    searchSourceBuilder.query(
-        QueryBuilders.boolQuery()
-            .must(QueryBuilders.termQuery(direction, FullyQualifiedName.buildHash(fqn))));
-    if (CommonUtil.nullOrEmpty(deleted)) {
-      searchSourceBuilder.query(
-          QueryBuilders.boolQuery()
-              .must(QueryBuilders.termQuery(direction, FullyQualifiedName.buildHash(fqn)))
-              .must(QueryBuilders.termQuery("deleted", deleted)));
-    }
-    buildSearchSourceFilter(queryFilter, searchSourceBuilder);
-
-    searchRequest.source(searchSourceBuilder.size(1000));
-    os.org.opensearch.action.search.SearchResponse searchResponse =
-        client.search(searchRequest, RequestOptions.DEFAULT);
-    for (var hit : searchResponse.getHits().getHits()) {
-      List<Map<String, Object>> lineage =
-          (List<Map<String, Object>>) hit.getSourceAsMap().get("lineage");
-      HashMap<String, Object> tempMap = new HashMap<>(JsonUtils.getMap(hit.getSourceAsMap()));
-      nodes.add(tempMap);
-      for (Map<String, Object> lin : lineage) {
-        HashMap<String, String> fromEntity = (HashMap<String, String>) lin.get("fromEntity");
-        HashMap<String, String> toEntity = (HashMap<String, String>) lin.get("toEntity");
-        if (direction.equalsIgnoreCase("lineage.fromEntity.fqnHash.keyword")) {
-          if (!edges.contains(lin) && fromEntity.get("fqn").equals(fqn)) {
-            edges.add(lin);
-            getLineage(
-                toEntity.get("fqn"), depth - 1, edges, nodes, queryFilter, direction, deleted);
-          }
-        } else {
-          if (!edges.contains(lin) && toEntity.get("fqn").equals(fqn)) {
-            edges.add(lin);
-            getLineage(
-                fromEntity.get("fqn"), depth - 1, edges, nodes, queryFilter, direction, deleted);
-          }
-        }
-      }
-    }
-  }
-
   private void searchDataQualityLineage(
       String fqn,
       int upstreamDepth,
       String queryFilter,
       boolean deleted,
-      Set<Map<String, Object>> edges,
+      Set<EsLineageData> edges,
       Set<Map<String, Object>> nodes)
       throws IOException {
     Map<String, Map<String, Object>> allNodes = new HashMap<>();
-    Map<String, List<Map<String, Object>>> allEdges = new HashMap<>();
+    Map<String, List<EsLineageData>> allEdges = new HashMap<>();
     Set<String> nodesWithFailures = new HashSet<>();
 
     collectNodesAndEdges(
@@ -1119,7 +1139,7 @@ public class OpenSearchClient implements SearchClient {
       int upstreamDepth,
       String queryFilter,
       boolean deleted,
-      Map<String, List<Map<String, Object>>> allEdges,
+      Map<String, List<EsLineageData>> allEdges,
       Map<String, Map<String, Object>> allNodes,
       Set<String> nodesWithFailure,
       Set<String> processedNode)
@@ -1141,25 +1161,23 @@ public class OpenSearchClient implements SearchClient {
         if (testCaseResultRepository.hasTestCaseFailure(doc.get("fullyQualifiedName").toString())) {
           nodesWithFailure.add(nodeId);
         }
-        Optional<List> optionalLineageList =
-            JsonUtils.readJsonAtPath(JsonUtils.pojoToJson(doc), "$.lineage", List.class);
-        if (optionalLineageList.isPresent()) {
-          List<Map<String, Object>> lineageList =
-              (List<Map<String, Object>>) optionalLineageList.get();
-          for (Map<String, Object> lineage : lineageList) {
-            Map<String, String> fromEntity = (Map<String, String>) lineage.get("fromEntity");
-            String fromEntityId = fromEntity.get("id");
-            allEdges.computeIfAbsent(fromEntityId, k -> new ArrayList<>()).add(lineage);
-            collectNodesAndEdges(
-                fromEntity.get("fqn"),
-                upstreamDepth - 1,
-                queryFilter,
-                deleted,
-                allEdges,
-                allNodes,
-                nodesWithFailure,
-                processedNode);
-          }
+
+        List<EsLineageData> lineageDataList =
+            JsonUtils.readOrConvertValues(doc.get("upstreamLineage"), EsLineageData.class);
+        for (EsLineageData lineage : lineageDataList) {
+          // lineage toEntity is the entity itself
+          lineage.withToEntity(getRelationshipRef(doc));
+          String fromEntityId = lineage.getFromEntity().getId().toString();
+          allEdges.computeIfAbsent(fromEntityId, k -> new ArrayList<>()).add(lineage);
+          collectNodesAndEdges(
+              lineage.getFromEntity().getFullyQualifiedName(),
+              upstreamDepth - 1,
+              queryFilter,
+              deleted,
+              allEdges,
+              allNodes,
+              nodesWithFailure,
+              processedNode);
         }
       }
     }
@@ -1168,10 +1186,10 @@ public class OpenSearchClient implements SearchClient {
   private void traceBackDQLineage(
       String nodeFailureId,
       Set<String> nodesWithFailures,
-      Map<String, List<Map<String, Object>>> allEdges,
+      Map<String, List<EsLineageData>> allEdges,
       Map<String, Map<String, Object>> allNodes,
       Set<Map<String, Object>> nodes,
-      Set<Map<String, Object>> edges,
+      Set<EsLineageData> edges,
       Set<String> processedNodes) {
     if (processedNodes.contains(nodeFailureId)) {
       return;
@@ -1186,16 +1204,14 @@ public class OpenSearchClient implements SearchClient {
         nodes.add(node);
       }
     }
-    List<Map<String, Object>> edgesForNode = allEdges.get(nodeFailureId);
+    List<EsLineageData> edgesForNode = allEdges.get(nodeFailureId);
     if (edgesForNode != null) {
-      for (Map<String, Object> edge : edgesForNode) {
-        Map<String, String> fromEntity = (Map<String, String>) edge.get("fromEntity");
-        String fromEntityId = fromEntity.get("id");
-        if (!fromEntityId.equals(nodeFailureId)) continue; // skip if the edge is from the node
-        Map<String, String> toEntity = (Map<String, String>) edge.get("toEntity");
+      for (EsLineageData edge : edgesForNode) {
+        String fromEntityId = edge.getFromEntity().getId().toString();
+        if (!fromEntityId.equals(nodeFailureId)) continue;
         edges.add(edge);
         traceBackDQLineage(
-            toEntity.get("id"),
+            edge.getToEntity().getId().toString(),
             nodesWithFailures,
             allEdges,
             allNodes,
@@ -1222,107 +1238,6 @@ public class OpenSearchClient implements SearchClient {
     buildSearchSourceFilter(queryFilter, searchSourceBuilder);
     searchRequest.source(searchSourceBuilder.size(1000));
     return client.search(searchRequest, RequestOptions.DEFAULT);
-  }
-
-  private Map<String, Object> searchPipelineLineage(
-      String fqn, int upstreamDepth, int downstreamDepth, String queryFilter, boolean deleted)
-      throws IOException {
-    Map<String, Object> responseMap = new HashMap<>();
-    Set<Map<String, Object>> edges = new HashSet<>();
-    Set<Map<String, Object>> nodes = new HashSet<>();
-    responseMap.put("entity", null);
-    Object[] searchAfter = null;
-    long processedRecords = 0;
-    long totalRecords = -1;
-    while (totalRecords != processedRecords) {
-      os.org.opensearch.action.search.SearchRequest searchRequest =
-          new os.org.opensearch.action.search.SearchRequest(
-              Entity.getSearchRepository().getIndexOrAliasName(GLOBAL_SEARCH_ALIAS));
-      BoolQueryBuilder boolQueryBuilder = QueryBuilders.boolQuery();
-      boolQueryBuilder.should(
-          QueryBuilders.boolQuery()
-              .must(QueryBuilders.termQuery("lineage.pipeline.fullyQualifiedName.keyword", fqn)));
-      SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
-      searchSourceBuilder.fetchSource(null, SOURCE_FIELDS_TO_EXCLUDE.toArray(String[]::new));
-      FieldSortBuilder sortBuilder = SortBuilders.fieldSort("fullyQualifiedName");
-      searchSourceBuilder.sort(sortBuilder);
-      searchSourceBuilder.query(boolQueryBuilder);
-      if (searchAfter != null) {
-        searchSourceBuilder.searchAfter(searchAfter);
-      }
-      if (CommonUtil.nullOrEmpty(deleted)) {
-        searchSourceBuilder.query(
-            QueryBuilders.boolQuery()
-                .must(boolQueryBuilder)
-                .must(QueryBuilders.termQuery("deleted", deleted)));
-      }
-      buildSearchSourceFilter(queryFilter, searchSourceBuilder);
-
-      searchRequest.source(searchSourceBuilder);
-      SearchResponse searchResponse = client.search(searchRequest, RequestOptions.DEFAULT);
-      for (var hit : searchResponse.getHits().getHits()) {
-        List<Map<String, Object>> lineage =
-            (List<Map<String, Object>>) hit.getSourceAsMap().get("lineage");
-        HashMap<String, Object> tempMap = new HashMap<>(JsonUtils.getMap(hit.getSourceAsMap()));
-        nodes.add(tempMap);
-        for (Map<String, Object> lin : lineage) {
-          HashMap<String, String> fromEntity = (HashMap<String, String>) lin.get("fromEntity");
-          HashMap<String, String> toEntity = (HashMap<String, String>) lin.get("toEntity");
-          HashMap<String, String> pipeline = (HashMap<String, String>) lin.get("pipeline");
-          if (pipeline != null && pipeline.get("fullyQualifiedName").equalsIgnoreCase(fqn)) {
-            edges.add(lin);
-            getLineage(
-                fromEntity.get("fqn"),
-                upstreamDepth,
-                edges,
-                nodes,
-                queryFilter,
-                "lineage.toEntity.fqn.keyword",
-                deleted);
-            getLineage(
-                toEntity.get("fqn"),
-                downstreamDepth,
-                edges,
-                nodes,
-                queryFilter,
-                "lineage.fromEntity.fqn.keyword",
-                deleted);
-          }
-        }
-      }
-      totalRecords = searchResponse.getHits().getTotalHits().value;
-      int currentHits = searchResponse.getHits().getHits().length;
-      processedRecords += currentHits;
-      if (currentHits > 0) {
-        searchAfter = searchResponse.getHits().getHits()[currentHits - 1].getSortValues();
-      } else {
-        searchAfter = null;
-      }
-    }
-    getLineage(
-        fqn, downstreamDepth, edges, nodes, queryFilter, "lineage.fromEntity.fqn.keyword", deleted);
-    getLineage(
-        fqn, upstreamDepth, edges, nodes, queryFilter, "lineage.toEntity.fqn.keyword", deleted);
-
-    if (edges.isEmpty()) {
-      os.org.opensearch.action.search.SearchRequest searchRequestForEntity =
-          new os.org.opensearch.action.search.SearchRequest(
-              Entity.getSearchRepository().getIndexOrAliasName(GLOBAL_SEARCH_ALIAS));
-      SearchSourceBuilder searchSourceBuilderForEntity = new SearchSourceBuilder();
-      searchSourceBuilderForEntity.query(
-          QueryBuilders.boolQuery().must(QueryBuilders.termQuery("fullyQualifiedName", fqn)));
-      searchRequestForEntity.source(searchSourceBuilderForEntity.size(1000));
-      SearchResponse searchResponseForEntity =
-          client.search(searchRequestForEntity, RequestOptions.DEFAULT);
-      for (var hit : searchResponseForEntity.getHits().getHits()) {
-        HashMap<String, Object> tempMap = new HashMap<>(JsonUtils.getMap(hit.getSourceAsMap()));
-        tempMap.keySet().removeAll(FIELDS_TO_REMOVE);
-        responseMap.put("entity", tempMap);
-      }
-    }
-    responseMap.put("edges", edges);
-    responseMap.put("nodes", nodes);
-    return responseMap;
   }
 
   private static FunctionScoreQueryBuilder boostScore(QueryStringQueryBuilder queryBuilder) {
@@ -1380,6 +1295,7 @@ public class OpenSearchClient implements SearchClient {
     hb.preTags(PRE_TAG);
     hb.postTags(POST_TAG);
     hb.maxAnalyzerOffset(MAX_ANALYZED_OFFSET);
+    hb.requireFieldMatch(false);
     return hb;
   }
 
@@ -1402,7 +1318,7 @@ public class OpenSearchClient implements SearchClient {
     XContentParser filterParser =
         XContentType.JSON
             .xContent()
-            .createParser(X_CONTENT_REGISTRY, LoggingDeprecationHandler.INSTANCE, query);
+            .createParser(OsUtils.osXContentRegistry, LoggingDeprecationHandler.INSTANCE, query);
     QueryBuilder filter = SearchSourceBuilder.fromXContent(filterParser).query();
 
     BoolQueryBuilder boolQueryBuilder = QueryBuilders.boolQuery().must(filter);
@@ -1445,7 +1361,7 @@ public class OpenSearchClient implements SearchClient {
       XContentParser queryParser =
           XContentType.JSON
               .xContent()
-              .createParser(X_CONTENT_REGISTRY, LoggingDeprecationHandler.INSTANCE, query);
+              .createParser(OsUtils.osXContentRegistry, LoggingDeprecationHandler.INSTANCE, query);
       QueryBuilder parsedQuery = SearchSourceBuilder.fromXContent(queryParser).query();
       BoolQueryBuilder boolQueryBuilder = QueryBuilders.boolQuery().must(parsedQuery);
       searchSourceBuilder.query(boolQueryBuilder);
@@ -1488,7 +1404,7 @@ public class OpenSearchClient implements SearchClient {
       XContentParser queryParser =
           XContentType.JSON
               .xContent()
-              .createParser(X_CONTENT_REGISTRY, LoggingDeprecationHandler.INSTANCE, query);
+              .createParser(OsUtils.osXContentRegistry, LoggingDeprecationHandler.INSTANCE, query);
       QueryBuilder parsedQuery = SearchSourceBuilder.fromXContent(queryParser).query();
       BoolQueryBuilder boolQueryBuilder = QueryBuilders.boolQuery().must(parsedQuery);
       searchSourceBuilder.query(boolQueryBuilder);
@@ -1645,6 +1561,7 @@ public class OpenSearchClient implements SearchClient {
         AggregationBuilders.terms("databaseSchema.name.keyword")
             .field("databaseSchema.name.keyword")
             .size(MAX_AGGREGATE_SIZE));
+    // used for explore tree results
     searchSourceBuilder.aggregation(
         AggregationBuilders.terms("database.displayName")
             .field("database.displayName")
@@ -1799,7 +1716,10 @@ public class OpenSearchClient implements SearchClient {
         buildSearchQueryBuilder(query, DomainIndex.getFields());
     FunctionScoreQueryBuilder queryBuilder = boostScore(queryStringBuilder);
     HighlightBuilder hb = buildHighlights(new ArrayList<>());
-    return searchBuilder(queryBuilder, hb, from, size);
+    SearchSourceBuilder searchSourceBuilder = searchBuilder(queryBuilder, hb, from, size);
+    searchSourceBuilder.aggregation(
+        AggregationBuilders.terms("fqnParts_agg").field("fqnParts").size(1000));
+    return addAggregation(searchSourceBuilder);
   }
 
   private static SearchSourceBuilder buildSearchEntitySearch(String query, int from, int size) {
@@ -2162,12 +2082,12 @@ public class OpenSearchClient implements SearchClient {
   }
 
   @Override
-  public void updateByFqnPrefix(String indexName, String oldParentFQN, String newParentFQN) {
+  public void updateByFqnPrefix(
+      String indexName, String oldParentFQN, String newParentFQN, String prefixFieldCondition) {
     // Match all children documents whose fullyQualifiedName starts with the old parent's FQN
-    PrefixQueryBuilder prefixQuery =
-        new PrefixQueryBuilder("fullyQualifiedName", oldParentFQN + ".");
-
-    UpdateByQueryRequest updateByQueryRequest = new UpdateByQueryRequest(indexName);
+    PrefixQueryBuilder prefixQuery = new PrefixQueryBuilder(prefixFieldCondition, oldParentFQN);
+    UpdateByQueryRequest updateByQueryRequest =
+        new UpdateByQueryRequest(Entity.getSearchRepository().getIndexOrAliasName(indexName));
     updateByQueryRequest.setQuery(prefixQuery);
 
     Map<String, Object> params = new HashMap<>();
@@ -2182,6 +2102,14 @@ public class OpenSearchClient implements SearchClient {
             + "    if (ctx._source.parent.containsKey('fullyQualifiedName')) { "
             + "        String parentFQN = ctx._source.parent.fullyQualifiedName; "
             + "        ctx._source.parent.fullyQualifiedName = parentFQN.replace(params.oldParentFQN, params.newParentFQN); "
+            + "    } "
+            + "} "
+            + "if (ctx._source.containsKey('tags')) { "
+            + "    for (int i = 0; i < ctx._source.tags.size(); i++) { "
+            + "        if (ctx._source.tags[i].containsKey('tagFQN')) { "
+            + "            String tagFQN = ctx._source.tags[i].tagFQN; "
+            + "            ctx._source.tags[i].tagFQN = tagFQN.replace(params.oldParentFQN, params.newParentFQN); "
+            + "        } "
             + "    } "
             + "}";
     Script inlineScript =
@@ -2199,13 +2127,14 @@ public class OpenSearchClient implements SearchClient {
 
   @Override
   public void updateLineage(
-      String indexName, Pair<String, String> fieldAndValue, Map<String, Object> lineagaData) {
+      String indexName, Pair<String, String> fieldAndValue, EsLineageData lineageData) {
     if (isClientAvailable) {
       UpdateByQueryRequest updateByQueryRequest = new UpdateByQueryRequest(indexName);
       updateByQueryRequest.setQuery(
           new MatchQueryBuilder(fieldAndValue.getKey(), fieldAndValue.getValue())
               .operator(Operator.AND));
-      Map<String, Object> params = Collections.singletonMap("lineageData", lineagaData);
+      Map<String, Object> params =
+          Collections.singletonMap("lineageData", JsonUtils.getMap(lineageData));
       Script script =
           new Script(ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, ADD_UPDATE_LINEAGE, params);
       updateByQueryRequest.setScript(script);
@@ -2262,7 +2191,24 @@ public class OpenSearchClient implements SearchClient {
     XContentParser parser = createXContentParser(query);
     parser.nextToken();
     deleteRequest.setQuery(RangeQueryBuilder.fromXContent(parser));
-    client.deleteByQuery(deleteRequest, RequestOptions.DEFAULT);
+    deleteEntityFromOpenSearchByQuery(deleteRequest);
+  }
+
+  @SneakyThrows
+  public void deleteByRangeAndTerm(
+      String index, String rangeQueryStr, String termKey, String termValue) {
+    DeleteByQueryRequest deleteRequest = new DeleteByQueryRequest(index);
+    // Hack: Due to an issue on how the RangeQueryBuilder.fromXContent works, we're removing the
+    // first token from the Parser
+    XContentParser rangeParser = createXContentParser(rangeQueryStr);
+    rangeParser.nextToken();
+    RangeQueryBuilder rangeQuery = RangeQueryBuilder.fromXContent(rangeParser);
+
+    TermQueryBuilder termQuery = QueryBuilders.termQuery(termKey, termValue);
+
+    BoolQueryBuilder query = QueryBuilders.boolQuery().must(rangeQuery).must(termQuery);
+    deleteRequest.setQuery(query);
+    deleteEntityFromOpenSearchByQuery(deleteRequest);
   }
 
   @SneakyThrows
@@ -2744,7 +2690,7 @@ public class OpenSearchClient implements SearchClient {
     try {
       return XContentType.JSON
           .xContent()
-          .createParser(X_CONTENT_REGISTRY, LoggingDeprecationHandler.INSTANCE, query);
+          .createParser(OsUtils.osXContentRegistry, LoggingDeprecationHandler.INSTANCE, query);
     } catch (IOException e) {
       LOG.error("Failed to create XContentParser", e);
       throw e;
@@ -2779,7 +2725,7 @@ public class OpenSearchClient implements SearchClient {
 
   private void buildSearchRBACQuery(
       SubjectContext subjectContext, SearchSourceBuilder searchSourceBuilder) {
-    if (SearchClient.shouldApplyRbacConditions(subjectContext, rbacConditionEvaluator)) {
+    if (shouldApplyRbacConditions(subjectContext, rbacConditionEvaluator)) {
       OMQueryBuilder rbacQuery = rbacConditionEvaluator.evaluateConditions(subjectContext);
       if (rbacQuery != null) {
         searchSourceBuilder.query(
@@ -2797,7 +2743,8 @@ public class OpenSearchClient implements SearchClient {
         XContentParser filterParser =
             XContentType.JSON
                 .xContent()
-                .createParser(X_CONTENT_REGISTRY, LoggingDeprecationHandler.INSTANCE, queryFilter);
+                .createParser(
+                    OsUtils.osXContentRegistry, LoggingDeprecationHandler.INSTANCE, queryFilter);
         QueryBuilder filter = SearchSourceBuilder.fromXContent(filterParser).query();
         BoolQueryBuilder newQuery =
             QueryBuilders.boolQuery().must(searchSourceBuilder.query()).filter(filter);
@@ -2805,6 +2752,18 @@ public class OpenSearchClient implements SearchClient {
       } catch (Exception ex) {
         LOG.warn("Error parsing query_filter from query parameters, ignoring filter", ex);
       }
+    }
+  }
+
+  @Override
+  public SearchHealthStatus getSearchHealthStatus() throws IOException {
+    ClusterHealthRequest request = new ClusterHealthRequest();
+    ClusterHealthResponse response = client.cluster().health(request, RequestOptions.DEFAULT);
+    if (response.getStatus().equals(ClusterHealthStatus.GREEN)
+        || response.getStatus().equals(ClusterHealthStatus.YELLOW)) {
+      return new SearchHealthStatus(HEALTHY_STATUS);
+    } else {
+      return new SearchHealthStatus(UNHEALTHY_STATUS);
     }
   }
 }

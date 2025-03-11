@@ -47,6 +47,7 @@ import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.Permission;
 import org.openmetadata.schema.type.ResourcePermission;
 import org.openmetadata.schema.type.api.BulkOperationResult;
+import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
@@ -56,7 +57,9 @@ import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.search.SearchListFilter;
 import org.openmetadata.service.search.SearchSortFilter;
+import org.openmetadata.service.security.AuthRequest;
 import org.openmetadata.service.security.AuthorizationException;
+import org.openmetadata.service.security.AuthorizationLogic;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.CreateResourceContext;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
@@ -231,8 +234,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
   }
 
   public T getVersionInternal(SecurityContext securityContext, UUID id, String version) {
-    OperationContext operationContext =
-        new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
+    OperationContext operationContext = new OperationContext(entityType, VIEW_BASIC);
     return getVersionInternal(
         securityContext, id, version, operationContext, getResourceContextById(id));
   }
@@ -248,8 +250,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
   }
 
   protected EntityHistory listVersionsInternal(SecurityContext securityContext, UUID id) {
-    OperationContext operationContext =
-        new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
+    OperationContext operationContext = new OperationContext(entityType, VIEW_BASIC);
     return listVersionsInternal(securityContext, id, operationContext, getResourceContextById(id));
   }
 
@@ -302,6 +303,21 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     return Response.created(entity.getHref()).entity(entity).build();
   }
 
+  public Response create(
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      List<AuthRequest> authRequests,
+      AuthorizationLogic authorizationLogic,
+      T entity) {
+    OperationContext operationContext = new OperationContext(entityType, CREATE);
+    CreateResourceContext<T> createResourceContext =
+        new CreateResourceContext<>(entityType, entity);
+    limits.enforceLimits(securityContext, createResourceContext, operationContext);
+    authorizer.authorizeRequests(securityContext, authRequests, authorizationLogic);
+    entity = addHref(uriInfo, repository.create(uriInfo, entity));
+    return Response.created(entity.getHref()).entity(entity).build();
+  }
+
   public Response createOrUpdate(UriInfo uriInfo, SecurityContext securityContext, T entity) {
     repository.prepareInternal(entity, true);
     // If entity does not exist, this is a create operation, else update operation
@@ -325,13 +341,69 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     return response.toResponse();
   }
 
+  public Response createOrUpdate(
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      List<AuthRequest> authRequests,
+      AuthorizationLogic authorizationLogic,
+      T entity) {
+    repository.prepareInternal(entity, true);
+    // If entity does not exist, this is a create operation, else update operation
+    ResourceContext<T> resourceContext = getResourceContextByName(entity.getFullyQualifiedName());
+    MetadataOperation operation = createOrUpdateOperation(resourceContext);
+    OperationContext operationContext = new OperationContext(entityType, operation);
+    if (operation == CREATE) {
+      CreateResourceContext<T> createResourceContext =
+          new CreateResourceContext<>(entityType, entity);
+      limits.enforceLimits(securityContext, createResourceContext, operationContext);
+      authorizer.authorizeRequests(securityContext, authRequests, authorizationLogic);
+      entity = addHref(uriInfo, repository.create(uriInfo, entity));
+      return new PutResponse<>(Response.Status.CREATED, entity, ENTITY_CREATED).toResponse();
+    }
+    authorizer.authorizeRequests(securityContext, authRequests, authorizationLogic);
+    PutResponse<T> response = repository.createOrUpdate(uriInfo, entity);
+    addHref(uriInfo, response.getEntity());
+    return response.toResponse();
+  }
+
+  /** Deprecated: use method with changeContext
+   * Example:
+   * ```
+   * patchInternal(uriInfo, securityContext, id, patch, changeContext);
+   * ```
+   * */
+  @Deprecated
   public Response patchInternal(
       UriInfo uriInfo, SecurityContext securityContext, UUID id, JsonPatch patch) {
+    return patchInternal(uriInfo, securityContext, id, patch, null);
+  }
+
+  public Response patchInternal(
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      UUID id,
+      JsonPatch patch,
+      ChangeSource changeSource) {
     OperationContext operationContext = new OperationContext(entityType, patch);
     authorizer.authorize(
         securityContext,
         operationContext,
         getResourceContextById(id, ResourceContextInterface.Operation.PATCH));
+    PatchResponse<T> response =
+        repository.patch(
+            uriInfo, id, securityContext.getUserPrincipal().getName(), patch, changeSource);
+    addHref(uriInfo, response.entity());
+    return response.toResponse();
+  }
+
+  public Response patchInternal(
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      List<AuthRequest> authRequests,
+      AuthorizationLogic authorizationLogic,
+      UUID id,
+      JsonPatch patch) {
+    authorizer.authorizeRequests(securityContext, authRequests, authorizationLogic);
     PatchResponse<T> response =
         repository.patch(uriInfo, id, securityContext.getUserPrincipal().getName(), patch);
     addHref(uriInfo, response.entity());
@@ -340,13 +412,23 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
 
   public Response patchInternal(
       UriInfo uriInfo, SecurityContext securityContext, String fqn, JsonPatch patch) {
+    return patchInternal(uriInfo, securityContext, fqn, patch, null);
+  }
+
+  public Response patchInternal(
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      String fqn,
+      JsonPatch patch,
+      ChangeSource changeSource) {
     OperationContext operationContext = new OperationContext(entityType, patch);
     authorizer.authorize(
         securityContext,
         operationContext,
         getResourceContextByName(fqn, ResourceContextInterface.Operation.PATCH));
     PatchResponse<T> response =
-        repository.patch(uriInfo, fqn, securityContext.getUserPrincipal().getName(), patch);
+        repository.patch(
+            uriInfo, fqn, securityContext.getUserPrincipal().getName(), patch, changeSource);
     addHref(uriInfo, response.entity());
     return response.toResponse();
   }
@@ -584,7 +666,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
   }
 
   protected static final MetadataOperation[] VIEW_ALL_OPERATIONS = {MetadataOperation.VIEW_ALL};
-  protected static final MetadataOperation[] VIEW_BASIC_OPERATIONS = {MetadataOperation.VIEW_BASIC};
+  protected static final MetadataOperation[] VIEW_BASIC_OPERATIONS = {VIEW_BASIC};
 
   private MetadataOperation[] getViewOperations(Fields fields) {
     if (fields.getFieldList().isEmpty()) {

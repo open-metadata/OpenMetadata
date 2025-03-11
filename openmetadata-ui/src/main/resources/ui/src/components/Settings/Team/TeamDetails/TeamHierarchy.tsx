@@ -33,8 +33,12 @@ import { Team } from '../../../../generated/entity/teams/team';
 import { Include } from '../../../../generated/type/include';
 import { getTeamByName, patchTeamDetail } from '../../../../rest/teamsAPI';
 import { Transi18next } from '../../../../utils/CommonUtils';
-import { getEntityName } from '../../../../utils/EntityUtils';
+import {
+  getEntityName,
+  highlightSearchText,
+} from '../../../../utils/EntityUtils';
 import { getTeamsWithFqnPath } from '../../../../utils/RouterUtils';
+import { stringToHTML } from '../../../../utils/StringsUtils';
 import { getTableExpandableConfig } from '../../../../utils/TableUtils';
 import { isDropRestricted } from '../../../../utils/TeamUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
@@ -50,6 +54,7 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
   data,
   onTeamExpand,
   isFetchingAllTeamAdvancedDetails,
+  searchTerm,
 }) => {
   const { t } = useTranslation();
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
@@ -68,7 +73,9 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
           <Link
             className="link-hover"
             to={getTeamsWithFqnPath(record.fullyQualifiedName || record.name)}>
-            {getEntityName(record)}
+            {stringToHTML(
+              highlightSearchText(getEntityName(record), searchTerm)
+            )}
           </Link>
         ),
       },

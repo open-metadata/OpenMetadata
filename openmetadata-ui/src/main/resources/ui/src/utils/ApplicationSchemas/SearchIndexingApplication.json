@@ -87,6 +87,7 @@
           "databaseService",
           "dashboardService",
           "query",
+          "queryCostResult",
           "apiService",
           "searchIndex",
           "testCaseResult",
