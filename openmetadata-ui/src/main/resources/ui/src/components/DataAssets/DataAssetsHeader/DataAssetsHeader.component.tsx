@@ -421,7 +421,10 @@ export const DataAssetsHeader = ({
 
   return (
     <>
-      <Row data-testid="data-assets-header" gutter={[0, 20]}>
+      <Row
+        className="data-assets-header-container"
+        data-testid="data-assets-header"
+        gutter={[0, 20]}>
         <Col className="d-flex flex-col gap-3" span={24}>
           <TitleBreadcrumb
             loading={isBreadcrumbLoading}
@@ -561,7 +564,6 @@ export const DataAssetsHeader = ({
                     </div>
 
                     <TagsV1
-                      isNewDesign
                       startWith={TAG_START_WITH.SOURCE_ICON}
                       tag={tier}
                       tagProps={{

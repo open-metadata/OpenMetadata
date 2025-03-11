@@ -81,7 +81,7 @@ const TitleBreadcrumb: FunctionComponent<TitleBreadcrumbProps> = ({
         </span>
         {noLink && index < titleLinks.length - 1 && (
           <span className="text-xss text-grey-muted">
-            {t('label.slash-symbol')}
+            {t('label.arrow-symbol')}
           </span>
         )}
       </>
@@ -118,7 +118,7 @@ const TitleBreadcrumb: FunctionComponent<TitleBreadcrumbProps> = ({
                       {link.name}
                     </Link>
                     <span className="text-sm font-regular p-x-xs text-grey-muted">
-                      {t('label.slash-symbol')}
+                      {t('label.arrow-symbol')}
                     </span>
                   </>
                 ) : (

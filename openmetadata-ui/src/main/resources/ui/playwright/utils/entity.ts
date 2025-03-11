@@ -100,9 +100,7 @@ export const addOwner = async ({
   }
 
   await expect(
-    page
-      .getByTestId(dataTestId ?? 'owner-link')
-      .getByTestId(`team-owner-icon ${owner}`)
+    page.getByTestId(dataTestId ?? 'owner-link').getByTestId(`${owner}`)
   ).toBeVisible();
 };
 
@@ -144,9 +142,7 @@ export const updateOwner = async ({
   }
 
   await expect(
-    page
-      .getByTestId(dataTestId ?? 'owner-link')
-      .getByTestId(`team-owner-icon ${owner}`)
+    page.getByTestId(dataTestId ?? 'owner-link').getByTestId(`${owner}`)
   ).toBeVisible();
 };
 

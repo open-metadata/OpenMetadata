@@ -11,64 +11,65 @@
  *  limitations under the License.
  */
 @import '../../../styles/variables.less';
-
-.data-asset-button-group {
-  .ant-btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 10px 16px;
+.data-assets-header-container {
+  .data-asset-button-group {
+    .ant-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 10px 16px;
+    }
   }
-}
-.data-asset-header-metadata {
-  border-radius: 12px;
-  border: 0.5px solid @grey-300;
-  padding: 20px;
-  gap: 50px;
-  background-color: @background-color;
-}
-.ant-space-item {
-  .entity-no-tier {
-    color: @blue-heading;
+  .data-asset-header-metadata {
+    border-radius: 12px;
+    border: 0.5px solid @grey-300;
+    padding: 20px;
+    gap: 50px;
+    background-color: @background-color;
+  }
+  .ant-space-item {
+    .entity-no-tier {
+      color: @primary-heading-color;
+      font-weight: 500;
+      font-size: 14px;
+      line-height: 20px;
+    }
+  }
+
+  .ant-btn-icon-only.edit-tier-button {
+    border: 1px solid @border-light;
+    svg {
+      color: #535862;
+    }
+  }
+
+  .ant-typography > .extra-info-label-heading {
+    color: @primary-heading-color;
     font-weight: 500;
-    font-size: 14px;
-    line-height: 20px;
   }
-}
 
-.ant-btn-icon-only.edit-tier-button {
-  border: 1px solid @border-light;
-  svg {
-    color: #535862;
+  .ant-typography > .extra-info-value {
+    color: @grey-700;
   }
-}
-
-.ant-typography > .extra-info-label-heading {
-  color: @blue-heading;
-  font-weight: 500;
-}
-
-.ant-typography > .extra-info-value {
-  color: @grey-700;
-}
-.ant-typography {
-  .showAsATag {
-    background-color: @background-primary;
-    padding: 4px 8px;
-    border-radius: 8px;
-    font-weight: 400;
-    color: @tag-text;
+  .ant-typography {
+    .showAsATag {
+      background-color: @background-primary;
+      padding: 4px 8px;
+      border-radius: 8px;
+      font-weight: 400;
+      color: @tag-text;
+    }
   }
-}
-.header-icon {
-  height: 72px;
-  width: 60px;
-  object-fit: contain;
-}
+  .header-icon {
+    height: 72px;
+    width: 60px;
+    object-fit: contain;
+  }
 
-.no-tier-text {
-  color: @grey-700;
-}
-.ant-typography.extra-info-link {
-  color: @grey-700;
+  .no-tier-text {
+    color: @grey-700;
+  }
+  .ant-typography.extra-info-link {
+    color: @grey-700;
+  }
 }

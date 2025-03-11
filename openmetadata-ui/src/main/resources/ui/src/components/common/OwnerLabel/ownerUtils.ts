@@ -10,16 +10,18 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-// ... existing code ...
-@import url('../../../styles/variables.less');
-.domain-link.ant-typography {
-  color: @primary-heading-color;
-}
+import {
+  getTeamAndUserDetailsPath,
+  getUserPath,
+} from '../../../constants/constants';
+import { OwnerType } from '../../../enums/user.enum';
+import { EntityReference } from '../../../generated/entity/data/table';
 
-.ant-typography.domain-link-text,
-.domain-link-text {
-  color: @grey-700;
-}
-.domain-link-container {
-  width: 150px;
-}
+/**
+ * Returns the appropriate path for an owner link based on owner type
+ */
+export const getOwnerPath = (owner: EntityReference): string => {
+  return owner.type === OwnerType.TEAM
+    ? getTeamAndUserDetailsPath(owner.fullyQualifiedName ?? '')
+    : getUserPath(owner.name ?? '');
+};
