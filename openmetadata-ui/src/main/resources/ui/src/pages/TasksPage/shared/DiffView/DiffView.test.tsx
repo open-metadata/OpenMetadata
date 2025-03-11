@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -13,7 +13,7 @@
 
 import { render, screen } from '@testing-library/react';
 import React from 'react';
-import { DiffView } from './DiffView';
+import DiffView from './DiffView';
 
 const mockDiff = [
   {
@@ -70,7 +70,7 @@ describe('Test DiffView Component', () => {
 
   it('Should render expected diff values', async () => {
     const newContentList = mockDiff.filter((diff) => diff.added);
-    const removedontentList = mockDiff.filter((diff) => diff.removed);
+    const removeContentList = mockDiff.filter((diff) => diff.removed);
 
     render(<DiffView diffArr={mockDiff} />);
 
@@ -78,6 +78,6 @@ describe('Test DiffView Component', () => {
     const diffRemoved = await screen.findAllByTestId('diff-removed');
 
     expect(diffAdded).toHaveLength(newContentList.length);
-    expect(diffRemoved).toHaveLength(removedontentList.length);
+    expect(diffRemoved).toHaveLength(removeContentList.length);
   });
 });

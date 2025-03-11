@@ -21,7 +21,7 @@ import { EditorContentRef } from '../../../components/common/RichTextEditor/Rich
 import RichTextEditorPreviewerV1 from '../../../components/common/RichTextEditor/RichTextEditorPreviewerV1';
 import { isDescriptionContentEmpty } from '../../../utils/BlockEditorUtils';
 import { getDescriptionDiff } from '../../../utils/TasksUtils';
-import { DiffView } from './DiffView';
+import DiffView from './DiffView/DiffView';
 
 interface Props {
   value: string;
