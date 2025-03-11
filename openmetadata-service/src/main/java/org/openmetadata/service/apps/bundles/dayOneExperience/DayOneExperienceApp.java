@@ -1,7 +1,6 @@
 package org.openmetadata.service.apps.bundles.dayOneExperience;
 
 import java.io.InputStream;
-<<<<<<< HEAD
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -11,11 +10,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.AppRuntime;
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.ScheduleType;
-=======
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.app.App;
->>>>>>> @{-1}
 import org.openmetadata.schema.entity.app.internal.DayOneExperienceAppConfig;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.type.EntityReference;
