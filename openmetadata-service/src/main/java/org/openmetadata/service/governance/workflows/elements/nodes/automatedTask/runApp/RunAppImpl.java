@@ -13,6 +13,8 @@ import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.schema.entity.app.AppType;
 import org.openmetadata.schema.entity.app.external.CollateAIAppConfig;
+import org.openmetadata.schema.entity.app.internal.CollateAIQualityAgentAppConfig;
+import org.openmetadata.schema.entity.app.internal.CollateAITierAgentAppConfig;
 import org.openmetadata.schema.entity.applications.configuration.internal.AppAnalyticsConfig;
 import org.openmetadata.schema.entity.applications.configuration.internal.BackfillConfiguration;
 import org.openmetadata.schema.entity.applications.configuration.internal.CostAnalysisConfig;
@@ -81,11 +83,14 @@ public class RunAppImpl {
   }
 
   private boolean validateAppShouldRun(App app, ServiceEntityInterface service) {
-    // We only want to run the CollateAIApplication for Databases
+    // We only want to run the CollateAIApplication and CollateAIQualityAgentApplication for
+    // Databases
     if (Entity.getEntityTypeFromObject(service).equals(Entity.DATABASE_SERVICE)
-        && app.getName().equals("CollateAIApplication")) {
+        && List.of("CollateAIApplication", "CollateAIQualityAgentApplication")
+            .contains(app.getName())) {
       return true;
-    } else if (app.getName().equals("DataInsightsApplication")) {
+    } else if (List.of("DataInsightsApplication", "CollateAITierAgentApplication")
+        .contains(app.getName())) {
       return true;
     } else {
       return false;
@@ -101,6 +106,18 @@ public class RunAppImpl {
           .withFilter(
               String.format(
                   "{\"query\":{\"bool\":{\"must\":[{\"bool\":{\"must\":[{\"term\":{\"Tier.TagFQN\":\"Tier.Tier1\"}}]}},{\"bool\":{\"must\":[{\"term\":{\"entityType\":\"table\"}}]}},{\"bool\":{\"must\":[{\"term\":{\"service.name.keyword\":\"%s\"}}]}}]}}}",
+                  service.getName().toLowerCase()));
+    } else if (app.getName().equals("CollateAIQualityAgentApplication")) {
+      (JsonUtils.convertValue(updatedConfig, CollateAIQualityAgentAppConfig.class))
+          .withFilter(
+              String.format(
+                  "{\"query\":{\"bool\":{\"must\":[{\"bool\":{\"must\":[{\"term\":{\"Tier.TagFQN\":\"Tier.Tier1\"}}]}},{\"bool\":{\"must\":[{\"term\":{\"entityType\":\"table\"}}]}},{\"bool\":{\"must\":[{\"term\":{\"service.name.keyword\":\"%s\"}}]}}]}}}",
+                  service.getName().toLowerCase()));
+    } else if (app.getName().equals("CollateAITierAgentApplication")) {
+      (JsonUtils.convertValue(updatedConfig, CollateAITierAgentAppConfig.class))
+          .withFilter(
+              String.format(
+                  "{\"query\":{\"bool\":{\"must\":[{\"bool\":{\"must\":[{\"term\":{\"entityType\":\"table\"}}]}},{\"bool\":{\"must\":[{\"term\":{\"service.name.keyword\":\"%s\"}}]}}]}}}",
                   service.getName().toLowerCase()));
     } else if (app.getName().equals("DataInsightsApplication")) {
       DataInsightsAppConfig updatedAppConfig =
