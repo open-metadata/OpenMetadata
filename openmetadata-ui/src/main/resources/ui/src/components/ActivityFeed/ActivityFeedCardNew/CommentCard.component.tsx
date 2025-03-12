@@ -14,6 +14,8 @@ import { Tooltip, Typography } from 'antd';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
 import React, { useCallback, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { getUserPath } from '../../../constants/constants';
 import { Thread } from '../../../generated/entity/feed/thread';
 import {
   formatDateTime,
@@ -23,7 +25,8 @@ import {
   getFrontEndFormat,
   MarkdownToHTMLConverter,
 } from '../../../utils/FeedUtils';
-import ProfilePicture from '../../common/ProfilePicture/ProfilePicture';
+import UserPopOverCard from '../../common/PopOverCard/UserPopOverCard';
+import ProfilePictureNew from '../../common/ProfilePicture/ProfilePictureNew';
 import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import FeedCardFooterNew from '../ActivityFeedCardV2/FeedCardFooter/FeedCardFooterNew';
 import ActivityFeedEditor from '../ActivityFeedEditor/ActivityFeedEditorNew';
@@ -79,7 +82,7 @@ const CommentCard = ({ feed, post, isLastReply }: CommentCardInterface) => {
 
     return (
       <RichTextEditorPreviewerV1
-        className="text-wrap"
+        className="text-wrap text-xs"
         markdown={getFrontEndFormat(post.message)}
       />
     );
@@ -93,17 +96,23 @@ const CommentCard = ({ feed, post, isLastReply }: CommentCardInterface) => {
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}>
       <div className="profile-picture m-r-xs">
-        <ProfilePicture
+        <ProfilePictureNew
           avatarType="outlined"
           key={feed.id}
           name={feed.updatedBy!}
           size={32}
         />
       </div>
-      <div>
+      <div className="w-full">
         <div className="d-flex items-center gap-2 flex-wrap">
           <Typography.Text className="activity-feed-user-name reply-card-user-name">
-            {feed.updatedBy}
+            <UserPopOverCard userName={feed.updatedBy ?? ''}>
+              <Link
+                className="reply-card-user-name"
+                to={getUserPath(feed.updatedBy ?? '')}>
+                {feed.updatedBy}
+              </Link>
+            </UserPopOverCard>
           </Typography.Text>
           <Typography.Text className="seperator">{seperator}</Typography.Text>
           <Typography.Text>

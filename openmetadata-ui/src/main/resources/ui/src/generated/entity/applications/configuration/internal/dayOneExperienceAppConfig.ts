@@ -30,5 +30,5 @@ export interface DayOneExperienceAppConfig {
  * Application type.
  */
 export enum DayOneExperienceAppType {
-    DayOneExperienceWorkflow = "DayOneExperienceWorkflow",
+    DayOneExperienceApplication = "DayOneExperienceApplication",
 }

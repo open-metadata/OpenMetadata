@@ -56,6 +56,10 @@ public interface EntityInterface {
 
   ChangeDescription getIncrementalChangeDescription();
 
+  default UsageDetails getUsageSummary() {
+    return null;
+  }
+
   default List<EntityReference> getOwners() {
     return null;
   }
@@ -73,6 +77,10 @@ public interface EntityInterface {
   }
 
   default Votes getVotes() {
+    return null;
+  }
+
+  default EntityReference getService() {
     return null;
   }
 
@@ -127,6 +135,8 @@ public interface EntityInterface {
   void setChangeDescription(ChangeDescription changeDescription);
 
   void setIncrementalChangeDescription(ChangeDescription incrementalChangeDescription);
+
+  default void setUsageSummary(UsageDetails usageSummary) {}
 
   void setFullyQualifiedName(String fullyQualifiedName);
 

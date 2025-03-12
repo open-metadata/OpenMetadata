@@ -9,7 +9,7 @@ collate: true
 The **Glossary Approval Workflow** is designed to define the process of updating the status of Glossary Terms within Collate.
 It is triggered when a Glossary Term is created or updated and it ensures it undergoes a review process until it reaches the desired status.
 
-{% image src="/images/v1.6/how-to-guides/governance/workflows-glossary-approval" alt="glossary-approval" /%}
+{% image src="/images/v1.6/how-to-guides/governance/workflows-glossary-approval.png" alt="glossary-approval" /%}
 
 ## Workflow Elements
 
