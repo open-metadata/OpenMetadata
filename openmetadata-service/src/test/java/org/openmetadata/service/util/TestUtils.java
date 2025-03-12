@@ -51,6 +51,7 @@ import javax.json.JsonObject;
 import javax.validation.constraints.Size;
 import javax.ws.rs.client.Entity;
 import javax.ws.rs.client.WebTarget;
+import javax.ws.rs.core.Form;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
@@ -762,5 +763,20 @@ public final class TestUtils {
       // If the path doesn't exist, this is expected behavior, so the test should pass.
       assertTrue(true, "The path does not exist as expected: " + jsonPath);
     }
+  }
+
+  public static Form buildMultipartForm(
+      java.io.InputStream fileStream,
+      String fileParamName,
+      String fileName,
+      String entityLink,
+      String contentType,
+      Double size) {
+    Form form = new Form();
+    form.param("file", "dummy"); // For simplicity, a dummy value is used
+    form.param("entityLink", entityLink);
+    form.param("contentType", contentType);
+    form.param("size", String.valueOf(size));
+    return form;
   }
 }

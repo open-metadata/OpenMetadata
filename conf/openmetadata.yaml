@@ -160,6 +160,11 @@ database:
   evictionInterval: ${DB_CONNECTION_EVICTION_INTERVAL:-5 minutes}
   minIdleTime: ${DB_CONNECTION_MIN_IDLE_TIME:-1 minute}
 
+objectStorage:
+  enabled: false
+  provider: NOOP
+  maxFileSize: 5 * 1024 * 1024
+
 migrationConfiguration:
   flywayPath: "./bootstrap/sql/migrations/flyway"
   nativePath: "./bootstrap/sql/migrations/native"

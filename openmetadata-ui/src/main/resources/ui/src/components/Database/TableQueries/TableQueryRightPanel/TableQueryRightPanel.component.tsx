@@ -116,6 +116,7 @@ const TableQueryRightPanel = ({
             <Space direction="vertical" size={4}>
               <DescriptionV1
                 description={query?.description || ''}
+                entityFullyQualifiedName={query?.fullyQualifiedName}
                 entityType={EntityType.QUERY}
                 hasEditAccess={EditDescription || EditAll}
                 showCommentsIcon={false}
