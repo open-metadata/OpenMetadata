@@ -18,6 +18,8 @@ public class Workflow {
   public static final String EXCEPTION_VARIABLE = "exception";
   public static final String FAILURE_VARIABLE = "failure";
   public static final String GLOBAL_NAMESPACE = "global";
+  public static final String SUCCESSFUL_RESULT = "success";
+  public static final String FAILURE_RESULT = "failure";
   private final TriggerWorkflow triggerWorkflow;
   private final MainWorkflow mainWorkflow;
 
@@ -28,5 +30,9 @@ public class Workflow {
 
   public static String getFlowableElementId(String parentName, String elementName) {
     return String.format("%s.%s", parentName, elementName);
+  }
+
+  public static String getResultFromBoolean(boolean result) {
+    return result ? SUCCESSFUL_RESULT : FAILURE_RESULT;
   }
 }

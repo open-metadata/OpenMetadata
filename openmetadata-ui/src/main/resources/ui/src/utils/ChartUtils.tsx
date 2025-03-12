@@ -42,3 +42,7 @@ export const updateActiveChartFilter = (
 
   return updatedData;
 };
+
+export const percentageFormatter = (value?: number) => {
+  return value ? `${value}%` : '';
+};
