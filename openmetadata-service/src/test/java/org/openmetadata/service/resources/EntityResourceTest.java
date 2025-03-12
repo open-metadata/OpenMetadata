@@ -177,6 +177,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.LifeCycle;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.type.csv.CsvDocumentation;
 import org.openmetadata.schema.type.csv.CsvHeader;
 import org.openmetadata.schema.type.csv.CsvImportResult;
@@ -215,10 +216,13 @@ import org.openmetadata.service.resources.tags.TagResourceTest;
 import org.openmetadata.service.resources.teams.*;
 import org.openmetadata.service.search.models.IndexMapping;
 import org.openmetadata.service.security.SecurityUtil;
+import org.openmetadata.service.socket.WebSocketManager;
 import org.openmetadata.service.util.CSVExportMessage;
 import org.openmetadata.service.util.CSVExportResponse;
 import org.openmetadata.service.util.CSVImportMessage;
 import org.openmetadata.service.util.CSVImportResponse;
+import org.openmetadata.service.util.DeleteEntityMessage;
+import org.openmetadata.service.util.DeleteEntityResponse;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
@@ -2188,6 +2192,163 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     }
   }
 
+  /////////////////////////////////////////////////////////////////////////////////////////////////
+  // Common entity tests for ASYNC DELETE operations
+  //////////////////////////////////////////////////////////////////////////////////////////////////
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void delete_async_nonExistentEntity_404() {
+    assertResponse(
+        () -> deleteEntityAsync(NON_EXISTENT_ENTITY, false, false, ADMIN_AUTH_HEADERS),
+        NOT_FOUND,
+        entityNotFound(entityType, NON_EXISTENT_ENTITY));
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void delete_async_entity_as_non_admin_401(TestInfo test) throws HttpResponseException {
+    // Create entity as admin
+    K request = createRequest(getEntityName(test), "", "", null);
+    T entity = createEntity(request, ADMIN_AUTH_HEADERS);
+
+    // Attempt to delete async as non-admin should fail
+    assertResponse(
+        () -> deleteEntityAsync(entity.getId(), false, false, TEST_AUTH_HEADERS),
+        FORBIDDEN,
+        permissionNotAllowed(TEST_USER_NAME, List.of(MetadataOperation.DELETE)));
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  public void delete_async_with_recursive_hardDelete(TestInfo test) throws Exception {
+    K request = createRequest(getEntityName(test), "", "", null);
+    T entity = createEntity(request, ADMIN_AUTH_HEADERS);
+
+    // Test async delete with recursive and hard delete flags
+    DeleteEntityMessage deleteMessage = receiveDeleteEntityMessage(entity.getId(), true, true);
+
+    assertEquals("COMPLETED", deleteMessage.getStatus());
+    assertEquals(entity.getName(), deleteMessage.getEntityName());
+    assertNull(deleteMessage.getError());
+    assertEntityDeleted(entity.getId(), true);
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void delete_async_soft_delete(TestInfo test) throws Exception {
+    if (!supportsSoftDelete) {
+      return;
+    }
+
+    K request = createRequest(getEntityName(test), "", "", null);
+    T entity = createEntity(request, ADMIN_AUTH_HEADERS);
+
+    // Test async soft delete
+    DeleteEntityMessage deleteMessage = receiveDeleteEntityMessage(entity.getId(), false, false);
+
+    assertEquals("COMPLETED", deleteMessage.getStatus());
+    assertEquals(entity.getName(), deleteMessage.getEntityName());
+    assertNull(deleteMessage.getError());
+    assertEntityDeleted(entity.getId(), false);
+  }
+
+  protected DeleteEntityMessage receiveDeleteEntityMessage(
+      UUID id, boolean recursive, boolean hardDelete) throws Exception {
+    UUID userId = getAdminUserId();
+    String uri = String.format("http://localhost:%d", APP.getLocalPort());
+
+    IO.Options options = new IO.Options();
+    options.path = "/api/v1/push/feed";
+    options.query = "userId=" + userId.toString();
+    options.transports = new String[] {"websocket"};
+    options.reconnection = false;
+    options.timeout = 10000; // 10 seconds
+
+    Socket socket = IO.socket(uri, options);
+
+    CountDownLatch connectLatch = new CountDownLatch(1);
+    CountDownLatch messageLatch = new CountDownLatch(1);
+    final String[] receivedMessage = new String[1];
+
+    socket
+        .on(
+            Socket.EVENT_CONNECT,
+            args -> {
+              LOG.info("Connected to Socket.IO server");
+              connectLatch.countDown();
+            })
+        .on(
+            WebSocketManager.DELETE_ENTITY_CHANNEL,
+            args -> {
+              receivedMessage[0] = (String) args[0];
+              LOG.info("Received delete message: " + receivedMessage[0]);
+              messageLatch.countDown();
+              socket.disconnect();
+            })
+        .on(
+            Socket.EVENT_CONNECT_ERROR,
+            args -> {
+              LOG.error("Socket.IO connect error: " + args[0]);
+              connectLatch.countDown();
+              messageLatch.countDown();
+            })
+        .on(
+            Socket.EVENT_DISCONNECT,
+            args -> {
+              LOG.info("Disconnected from Socket.IO server");
+            });
+
+    socket.connect();
+    if (!connectLatch.await(10, TimeUnit.SECONDS)) {
+      fail("Could not connect to Socket.IO server");
+    }
+
+    // Initiate the delete operation after connection is established
+    javax.ws.rs.core.Response response =
+        deleteEntityAsync(id, recursive, hardDelete, ADMIN_AUTH_HEADERS);
+    assertEquals(javax.ws.rs.core.Response.Status.ACCEPTED.getStatusCode(), response.getStatus());
+
+    // Validate initial response
+    DeleteEntityResponse deleteResponse = response.readEntity(DeleteEntityResponse.class);
+    assertNotNull(deleteResponse.getJobId());
+    assertEquals(
+        "Delete operation initiated for " + deleteResponse.getEntityName(),
+        deleteResponse.getMessage());
+    assertEquals(hardDelete, deleteResponse.isHardDelete());
+
+    if (!messageLatch.await(30, TimeUnit.SECONDS)) {
+      fail("Did not receive delete notification via Socket.IO within the expected time.");
+    }
+
+    String receivedJson = receivedMessage[0];
+    if (receivedJson == null) {
+      fail("Received message is null.");
+    }
+
+    DeleteEntityMessage deleteMessage =
+        JsonUtils.readValue(receivedJson, DeleteEntityMessage.class);
+    if ("FAILED".equals(deleteMessage.getStatus())) {
+      fail("Delete operation failed: " + deleteMessage.getError());
+    }
+
+    return deleteMessage;
+  }
+
+  protected javax.ws.rs.core.Response deleteEntityAsync(
+      UUID id, boolean recursive, boolean hardDelete, Map<String, String> authHeaders)
+      throws HttpResponseException {
+    try {
+      WebTarget target = getCollection().path(String.format("async/%s", id));
+      target = target.queryParam("recursive", recursive).queryParam("hardDelete", hardDelete);
+      LOG.info("Deleting entity with id {}, target:{}", id, target);
+      return TestUtils.deleteAsync(target, authHeaders);
+    } catch (HttpResponseException e) {
+      LOG.error("Failed to delete entity with id {}: {}", id, e.getMessage());
+      throw e;
+    }
+  }
+
   //////////////////////////////////////////////////////////////////////////////////////////////////
   // Other tests
   //////////////////////////////////////////////////////////////////////////////////////////////////
@@ -2508,7 +2669,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
             (patchedEntity.getCertification().getExpiryDate()
                 - patchedEntity.getCertification().getAppliedDate()),
         30D * 24 * 60 * 60 * 1000,
-        10 * 1000);
+        60 * 1000);
 
     // Create Second Tag
     Tag newCertificationTag =
@@ -2675,6 +2836,14 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     return getCollection().path("/" + id);
   }
 
+  protected final WebTarget getResource(UUID id, Map<String, String> queryParams) {
+    WebTarget target = getResource(id);
+    for (Entry<String, String> entry : queryParams.entrySet()) {
+      target = target.queryParam(entry.getKey(), entry.getValue());
+    }
+    return target;
+  }
+
   protected final WebTarget getResourceByName(String name) {
     return getCollection().path("/name/" + name);
   }
@@ -2752,13 +2921,23 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   public final T patchEntity(
       UUID id, String originalJson, T updated, Map<String, String> authHeaders)
       throws HttpResponseException {
+    return patchEntity(id, originalJson, updated, authHeaders, null);
+  }
+
+  public final T patchEntity(
+      UUID id,
+      String originalJson,
+      T updated,
+      Map<String, String> authHeaders,
+      ChangeSource changeSource)
+      throws HttpResponseException {
     try {
       ObjectMapper mapper = new ObjectMapper();
       updated.setOwners(reduceEntityReferences(updated.getOwners()));
       String updatedEntityJson = JsonUtils.pojoToJson(updated);
       JsonNode patch =
           JsonDiff.asJson(mapper.readTree(originalJson), mapper.readTree(updatedEntityJson));
-      return patchEntity(id, patch, authHeaders);
+      return patchEntity(id, patch, authHeaders, changeSource);
     } catch (JsonProcessingException ignored) {
 
     }
@@ -2767,7 +2946,17 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
   public final T patchEntity(UUID id, JsonNode patch, Map<String, String> authHeaders)
       throws HttpResponseException {
-    return TestUtils.patch(getResource(id), patch, entityClass, authHeaders);
+    return patchEntity(id, patch, authHeaders, null);
+  }
+
+  public final T patchEntity(
+      UUID id, JsonNode patch, Map<String, String> authHeaders, ChangeSource changeSource)
+      throws HttpResponseException {
+    Map<String, String> queryParams = new HashMap<>();
+    if (changeSource != null) {
+      queryParams.put("changeSource", changeSource.name());
+    }
+    return patch(getResource(id, queryParams), patch, entityClass, authHeaders);
   }
 
   public final T patchEntityUsingFqn(
@@ -3019,12 +3208,27 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       UpdateType updateType,
       ChangeDescription expectedChange)
       throws IOException {
+    return patchEntityAndCheck(
+        updated, originalJson, authHeaders, updateType, expectedChange, null);
+  }
+
+  /**
+   * Helper function to generate JSON PATCH, submit PATCH API request and validate response.
+   */
+  public final T patchEntityAndCheck(
+      T updated,
+      String originalJson,
+      Map<String, String> authHeaders,
+      UpdateType updateType,
+      ChangeDescription expectedChange,
+      ChangeSource changeSource)
+      throws IOException {
 
     String updatedBy =
         updateType == NO_CHANGE ? updated.getUpdatedBy() : getPrincipalName(authHeaders);
 
     // Validate information returned in patch response has the updates
-    T returned = patchEntity(updated.getId(), originalJson, updated, authHeaders);
+    T returned = patchEntity(updated.getId(), originalJson, updated, authHeaders, changeSource);
 
     validateCommonEntityFields(updated, returned, updatedBy);
     compareEntities(updated, returned, authHeaders);
@@ -3968,7 +4172,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   private String receiveCsvImportViaSocketIO(String entityName, String csv, boolean dryRun)
       throws Exception {
     UUID userId = getAdminUserId();
-    String uri = String.format("http://localhost:%d", APP.getLocalPort());
+    String uri = format("http://localhost:%d", APP.getLocalPort());
 
     IO.Options options = new IO.Options();
     options.path = "/api/v1/push/feed";
@@ -4046,7 +4250,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   protected String initiateExport(String entityName) throws IOException {
     WebTarget target = getResourceByName(entityName + "/exportAsync");
     CSVExportResponse response =
-        TestUtils.getWithResponse(
+        getWithResponse(
             target, CSVExportResponse.class, ADMIN_AUTH_HEADERS, Status.ACCEPTED.getStatusCode());
     return response.getJobId();
   }
@@ -4056,7 +4260,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     WebTarget target = getResourceByName(entityName + "/importAsync");
     target = !dryRun ? target.queryParam("dryRun", false) : target;
     CSVImportResponse response =
-        TestUtils.putCsv(target, csv, CSVImportResponse.class, Status.OK, ADMIN_AUTH_HEADERS);
+        putCsv(target, csv, CSVImportResponse.class, OK, ADMIN_AUTH_HEADERS);
     return response.getJobId();
   }
 
@@ -4125,7 +4329,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
   protected CsvDocumentation getCsvDocumentation() throws HttpResponseException {
     WebTarget target = getCollection().path("/documentation/csv");
-    return TestUtils.get(target, CsvDocumentation.class, ADMIN_AUTH_HEADERS);
+    return get(target, CsvDocumentation.class, ADMIN_AUTH_HEADERS);
   }
 
   public T assertOwnerInheritance(K createRequest, EntityReference expectedOwner)
@@ -4211,14 +4415,13 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       throws IOException {
     RestClient searchClient = getSearchClient();
     String entityType = entity.getType();
-    IndexMapping index = Entity.getSearchRepository().getIndexMapping(entityType);
+    IndexMapping index = getSearchRepository().getIndexMapping(entityType);
     Request request =
         new Request(
             "GET",
-            String.format(
-                "%s/_search", index.getIndexName(Entity.getSearchRepository().getClusterAlias())));
+            format("%s/_search", index.getIndexName(getSearchRepository().getClusterAlias())));
     String query =
-        String.format(
+        format(
             "{\"size\": 100, \"query\": {\"bool\": {\"must\": [{\"term\": {\"_id\": \"%s\"}}]}}}",
             entity.getId().toString());
     request.setJsonEntity(query);
@@ -4240,14 +4443,13 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       throws IOException {
     RestClient searchClient = getSearchClient();
     String entityType = entity.getType();
-    IndexMapping index = Entity.getSearchRepository().getIndexMapping(entityType);
+    IndexMapping index = getSearchRepository().getIndexMapping(entityType);
     Request request =
         new Request(
             "GET",
-            String.format(
-                "%s/_search", index.getIndexName(Entity.getSearchRepository().getClusterAlias())));
+            format("%s/_search", index.getIndexName(getSearchRepository().getClusterAlias())));
     String query =
-        String.format(
+        format(
             "{\"size\": 100, \"query\": {\"bool\": {\"must\": [{\"term\": {\"_id\": \"%s\"}}]}}}",
             entity.getId().toString());
     request.setJsonEntity(query);

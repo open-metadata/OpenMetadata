@@ -25,9 +25,15 @@ import {
   NO_DATA_PLACEHOLDER,
   PAGE_SIZE,
 } from '../../../../constants/constants';
+import {
+  COMMON_STATIC_TABLE_VISIBLE_COLUMNS,
+  DEFAULT_DATABASE_SCHEMA_VISIBLE_COLUMNS,
+  TABLE_COLUMNS_KEYS,
+} from '../../../../constants/TableKeys.constants';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import { EntityType, TabSpecificField } from '../../../../enums/entity.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
+import { Database } from '../../../../generated/entity/data/database';
 import { DatabaseSchema } from '../../../../generated/entity/data/databaseSchema';
 import { EntityReference } from '../../../../generated/entity/type';
 import { UsageDetails } from '../../../../generated/type/entityUsage';
@@ -55,21 +61,23 @@ import { PagingHandlerParams } from '../../../common/NextPrevious/NextPrevious.i
 import RichTextEditorPreviewerV1 from '../../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import Searchbar from '../../../common/SearchBarComponent/SearchBar.component';
 import Table from '../../../common/Table/Table';
+import { useGenericContext } from '../../../Customization/GenericProvider/GenericProvider';
 import { EntityName } from '../../../Modals/EntityNameModal/EntityNameModal.interface';
 import { DatabaseSchemaTableProps } from './DatabaseSchemaTable.interface';
 
 export const DatabaseSchemaTable = ({
-  isDatabaseDeleted,
   isVersionPage = false,
 }: Readonly<DatabaseSchemaTableProps>) => {
   const { fqn: decodedDatabaseFQN } = useFqn();
   const history = useHistory();
   const location = useCustomLocation();
   const { permissions } = usePermissionProvider();
-
   const [schemas, setSchemas] = useState<DatabaseSchema[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showDeletedSchemas, setShowDeletedSchemas] = useState<boolean>(false);
+  const { data } = useGenericContext<Database>();
+
+  const { deleted: isDatabaseDeleted } = data ?? {};
 
   const allowEditDisplayNamePermission = useMemo(() => {
     return (
@@ -219,8 +227,8 @@ export const DatabaseSchemaTable = ({
     () => [
       {
         title: t('label.schema-name'),
-        dataIndex: 'name',
-        key: 'name',
+        dataIndex: TABLE_COLUMNS_KEYS.NAME,
+        key: TABLE_COLUMNS_KEYS.NAME,
         width: 250,
         render: (_, record: DatabaseSchema) => (
           <DisplayName
@@ -245,8 +253,8 @@ export const DatabaseSchemaTable = ({
       },
       {
         title: t('label.description'),
-        dataIndex: 'description',
-        key: 'description',
+        dataIndex: TABLE_COLUMNS_KEYS.DESCRIPTION,
+        key: TABLE_COLUMNS_KEYS.DESCRIPTION,
         render: (text: string) =>
           text?.trim() ? (
             <RichTextEditorPreviewerV1 markdown={text} />
@@ -258,8 +266,8 @@ export const DatabaseSchemaTable = ({
       },
       {
         title: t('label.owner-plural'),
-        dataIndex: 'owners',
-        key: 'owners',
+        dataIndex: TABLE_COLUMNS_KEYS.OWNERS,
+        key: TABLE_COLUMNS_KEYS.OWNERS,
         width: 120,
         render: (owners: EntityReference[]) =>
           !isEmpty(owners) && owners.length > 0 ? (
@@ -272,8 +280,8 @@ export const DatabaseSchemaTable = ({
       },
       {
         title: t('label.usage'),
-        dataIndex: 'usageSummary',
-        key: 'usageSummary',
+        dataIndex: TABLE_COLUMNS_KEYS.USAGE_SUMMARY,
+        key: TABLE_COLUMNS_KEYS.USAGE_SUMMARY,
         width: 120,
         render: (text: UsageDetails) =>
           getUsagePercentile(text?.weeklyStats?.percentileRank ?? 0),
@@ -315,6 +323,7 @@ export const DatabaseSchemaTable = ({
           columns={schemaTableColumns}
           data-testid="database-databaseSchemas"
           dataSource={schemas}
+          defaultVisibleColumns={DEFAULT_DATABASE_SCHEMA_VISIBLE_COLUMNS}
           loading={isLoading}
           locale={{
             emptyText: <ErrorPlaceHolder className="m-y-md" />,
@@ -322,6 +331,7 @@ export const DatabaseSchemaTable = ({
           pagination={false}
           rowKey="id"
           size="small"
+          staticVisibleColumns={COMMON_STATIC_TABLE_VISIBLE_COLUMNS}
         />
       </Col>
       <Col span={24}>

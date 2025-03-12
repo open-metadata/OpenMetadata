@@ -16,7 +16,7 @@ import os
 
 import yaml
 
-from metadata.automations.runner import execute
+from metadata.automations.execute_runner import execute
 from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
 )

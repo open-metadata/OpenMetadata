@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * Line Chart
  */
 export interface LineChart {
@@ -21,6 +19,10 @@ export interface LineChart {
      */
     excludeGroups?: string[];
     /**
+     * Regex to exclude fields from the data insight chart when xAxisField is specified.
+     */
+    excludeXAxisField?: string;
+    /**
      * Breakdown field for the data insight chart.
      */
     groupBy?: string;
@@ -28,7 +30,11 @@ export interface LineChart {
      * List of groups to be included in the data insight chart when groupBy is specified.
      */
     includeGroups?: string[];
-    kpiDetails?:    KpiDetails;
+    /**
+     * Regex to include fields in the data insight chart when xAxisField is specified.
+     */
+    includeXAxisFiled?: string;
+    kpiDetails?:        KpiDetails;
     /**
      * Metrics for the data insight chart.
      */

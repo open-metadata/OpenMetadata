@@ -26,7 +26,7 @@ public class ServicesStatusJobHandler {
   public static final String PIPELINE_SERVICE_STATUS_JOB = "pipelineServiceStatusJob";
   public static final String STATUS_GROUP = "status";
   public static final String PIPELINE_STATUS_CRON_TRIGGER = "pipelineStatusTrigger";
-  public static final String DATABSE_SEARCH_STATUS_CRON_TRIGGER = "databaseAndSearchStatusTrigger";
+  public static final String DATABASE_SEARCH_STATUS_CRON_TRIGGER = "databaseAndSearchStatusTrigger";
   public static final String JOB_CONTEXT_PIPELINE_SERVICE_CLIENT = "pipelineServiceClient";
   public static final String JOB_CONTEXT_METER_REGISTRY = "meterRegistry";
   public static final String JOB_CONTEXT_CLUSTER_NAME = "clusterName";
@@ -63,7 +63,7 @@ public class ServicesStatusJobHandler {
     try {
       instance = new ServicesStatusJobHandler(eventMonitorConfiguration, config, clusterName);
     } catch (Exception ex) {
-      LOG.error("Failed to initialize the Pipeline Service Status Handler");
+      throw new RuntimeException("Failed to initialize the Pipeline Service Status Handler", ex);
     }
     return instance;
   }
@@ -112,7 +112,8 @@ public class ServicesStatusJobHandler {
           jobBuilder(
               DatabseAndSearchServiceStatusJob.class, DATABASE_SEARCH_STATUS_JOB, STATUS_GROUP);
       Trigger trigger =
-          getTrigger(servicesHealthCheckInterval, DATABSE_SEARCH_STATUS_CRON_TRIGGER, STATUS_GROUP);
+          getTrigger(
+              servicesHealthCheckInterval, DATABASE_SEARCH_STATUS_CRON_TRIGGER, STATUS_GROUP);
       scheduler.scheduleJob(jobDetail, trigger);
     } catch (Exception ex) {
       LOG.error("Failed in setting up job Scheduler for Pipeline Service Status", ex);

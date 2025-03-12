@@ -87,9 +87,9 @@ class SampleTest(TestCase):
         )
         query: CTE = sampler.get_sample_query()
         expected_query = (
-            "WITH users_rnd AS \n(SELECT users_1.id AS id \n"
+            'WITH "9bc65c2abec141778ffaa729489f3e87_rnd" AS \n(SELECT users_1.id AS id \n'
             "FROM users AS users_1 TABLESAMPLE system(50.0 PERCENT))\n "
-            "SELECT users_rnd.id \nFROM users_rnd"
+            'SELECT "9bc65c2abec141778ffaa729489f3e87_rnd".id \nFROM "9bc65c2abec141778ffaa729489f3e87_rnd"'
         )
         assert (
             expected_query.casefold()
@@ -110,9 +110,9 @@ class SampleTest(TestCase):
         )
         query: CTE = sampler.get_sample_query()
         expected_query = (
-            "WITH users_rnd AS \n(SELECT users_1.id AS id "
+            'WITH "9bc65c2abec141778ffaa729489f3e87_rnd" AS \n(SELECT users_1.id AS id '
             "\nFROM users AS users_1 TABLESAMPLE system(50 ROWS))\n "
-            "SELECT users_rnd.id \nFROM users_rnd"
+            'SELECT "9bc65c2abec141778ffaa729489f3e87_rnd".id \nFROM "9bc65c2abec141778ffaa729489f3e87_rnd"'
         )
         assert (
             expected_query.casefold()
@@ -140,9 +140,10 @@ class SampleTest(TestCase):
         )
         query: CTE = sampler.get_sample_query()
         expected_query = (
-            "WITH users_rnd AS \n(SELECT users_1.id AS id \n"
+            'WITH "9bc65c2abec141778ffaa729489f3e87_rnd" AS \n(SELECT users_1.id AS id \n'
             "FROM users AS users_1 TABLESAMPLE system(50.0 PERCENT) "
-            "\nWHERE id IN ('1', '2'))\n SELECT users_rnd.id \nFROM users_rnd"
+            "\nWHERE id IN ('1', '2'))\n SELECT \"9bc65c2abec141778ffaa729489f3e87_rnd\".id "
+            '\nFROM "9bc65c2abec141778ffaa729489f3e87_rnd"'
         )
         assert (
             expected_query.casefold()

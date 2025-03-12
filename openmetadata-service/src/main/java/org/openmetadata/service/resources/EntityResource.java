@@ -13,7 +13,6 @@
 
 package org.openmetadata.service.resources;
 
-import static javax.ws.rs.client.Entity.entity;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.EventType.ENTITY_CREATED;
@@ -47,6 +46,7 @@ import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.Permission;
 import org.openmetadata.schema.type.ResourcePermission;
 import org.openmetadata.schema.type.api.BulkOperationResult;
+import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
@@ -69,6 +69,7 @@ import org.openmetadata.service.util.AsyncService;
 import org.openmetadata.service.util.BulkAssetsOperationResponse;
 import org.openmetadata.service.util.CSVExportResponse;
 import org.openmetadata.service.util.CSVImportResponse;
+import org.openmetadata.service.util.DeleteEntityResponse;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.RestUtil;
@@ -233,8 +234,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
   }
 
   public T getVersionInternal(SecurityContext securityContext, UUID id, String version) {
-    OperationContext operationContext =
-        new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
+    OperationContext operationContext = new OperationContext(entityType, VIEW_BASIC);
     return getVersionInternal(
         securityContext, id, version, operationContext, getResourceContextById(id));
   }
@@ -250,8 +250,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
   }
 
   protected EntityHistory listVersionsInternal(SecurityContext securityContext, UUID id) {
-    OperationContext operationContext =
-        new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
+    OperationContext operationContext = new OperationContext(entityType, VIEW_BASIC);
     return listVersionsInternal(securityContext, id, operationContext, getResourceContextById(id));
   }
 
@@ -367,15 +366,32 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     return response.toResponse();
   }
 
+  /** Deprecated: use method with changeContext
+   * Example:
+   * ```
+   * patchInternal(uriInfo, securityContext, id, patch, changeContext);
+   * ```
+   * */
+  @Deprecated
   public Response patchInternal(
       UriInfo uriInfo, SecurityContext securityContext, UUID id, JsonPatch patch) {
+    return patchInternal(uriInfo, securityContext, id, patch, null);
+  }
+
+  public Response patchInternal(
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      UUID id,
+      JsonPatch patch,
+      ChangeSource changeSource) {
     OperationContext operationContext = new OperationContext(entityType, patch);
     authorizer.authorize(
         securityContext,
         operationContext,
         getResourceContextById(id, ResourceContextInterface.Operation.PATCH));
     PatchResponse<T> response =
-        repository.patch(uriInfo, id, securityContext.getUserPrincipal().getName(), patch);
+        repository.patch(
+            uriInfo, id, securityContext.getUserPrincipal().getName(), patch, changeSource);
     addHref(uriInfo, response.entity());
     return response.toResponse();
   }
@@ -396,13 +412,23 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
 
   public Response patchInternal(
       UriInfo uriInfo, SecurityContext securityContext, String fqn, JsonPatch patch) {
+    return patchInternal(uriInfo, securityContext, fqn, patch, null);
+  }
+
+  public Response patchInternal(
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      String fqn,
+      JsonPatch patch,
+      ChangeSource changeSource) {
     OperationContext operationContext = new OperationContext(entityType, patch);
     authorizer.authorize(
         securityContext,
         operationContext,
         getResourceContextByName(fqn, ResourceContextInterface.Operation.PATCH));
     PatchResponse<T> response =
-        repository.patch(uriInfo, fqn, securityContext.getUserPrincipal().getName(), patch);
+        repository.patch(
+            uriInfo, fqn, securityContext.getUserPrincipal().getName(), patch, changeSource);
     addHref(uriInfo, response.entity());
     return response.toResponse();
   }
@@ -422,6 +448,52 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     }
     addHref(uriInfo, response.entity());
     return response.toResponse();
+  }
+
+  public Response deleteByIdAsync(
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      UUID id,
+      boolean recursive,
+      boolean hardDelete) {
+    String jobId = UUID.randomUUID().toString();
+    T entity;
+    Response response;
+
+    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.DELETE);
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
+    entity = repository.get(uriInfo, id, repository.getFields("name"), Include.ALL, false);
+    String userName = securityContext.getUserPrincipal().getName();
+
+    ExecutorService executorService = AsyncService.getInstance().getExecutorService();
+    executorService.submit(
+        () -> {
+          try {
+            DeleteResponse<T> deleteResponse =
+                repository.delete(userName, id, recursive, hardDelete);
+            if (hardDelete) {
+              limits.invalidateCache(entityType);
+            }
+            WebsocketNotificationHandler.sendDeleteOperationCompleteNotification(
+                jobId, securityContext, deleteResponse.entity());
+          } catch (Exception e) {
+            WebsocketNotificationHandler.sendDeleteOperationFailedNotification(
+                jobId, securityContext, entity, e.getMessage());
+          }
+        });
+
+    response =
+        Response.accepted()
+            .entity(
+                new DeleteEntityResponse(
+                    jobId,
+                    "Delete operation initiated for " + entity.getName(),
+                    entity.getName(),
+                    hardDelete,
+                    recursive))
+            .build();
+
+    return response;
   }
 
   public Response deleteByName(
@@ -640,7 +712,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
   }
 
   protected static final MetadataOperation[] VIEW_ALL_OPERATIONS = {MetadataOperation.VIEW_ALL};
-  protected static final MetadataOperation[] VIEW_BASIC_OPERATIONS = {MetadataOperation.VIEW_BASIC};
+  protected static final MetadataOperation[] VIEW_BASIC_OPERATIONS = {VIEW_BASIC};
 
   private MetadataOperation[] getViewOperations(Fields fields) {
     if (fields.getFieldList().isEmpty()) {

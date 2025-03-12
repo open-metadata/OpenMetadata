@@ -41,6 +41,10 @@ jest.mock('react-router-dom', () => ({
   })),
 }));
 
+jest.mock('../../../common/RichTextEditor/RichTextEditorPreviewerV1', () =>
+  jest.fn().mockImplementation(({ markdown }) => <div>{markdown}</div>)
+);
+
 describe('PersonaDetailsCard Component', () => {
   it('should render persona details card', async () => {
     await act(async () => {
