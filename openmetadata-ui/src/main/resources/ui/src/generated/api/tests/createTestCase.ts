@@ -26,7 +26,7 @@ export interface CreateTestCase {
      * Display Name that identifies this test.
      */
     displayName?: string;
-    entityLink?:  string;
+    entityLink:   string;
     /**
      * Name that identifies this test case.
      */
@@ -43,7 +43,7 @@ export interface CreateTestCase {
     /**
      * Fully qualified name of the testSuite
      */
-    testSuite?: string;
+    testSuite: string;
     /**
      * If the test definition supports it, use dynamic assertion to evaluate the test case.
      */
