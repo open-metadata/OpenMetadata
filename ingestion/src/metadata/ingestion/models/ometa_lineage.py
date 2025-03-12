@@ -12,13 +12,17 @@
 Custom wrapper for Lineage Request
 """
 
-from typing import Optional
+from typing import Optional, Type, TypeVar
 
 from pydantic import BaseModel
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 
+T = TypeVar("T", bound=BaseModel)
+
 
 class OMetaLineageRequest(BaseModel):
     override_lineage: Optional[bool] = False
     lineage_request: AddLineageRequest
+    entity_fqn: Optional[str] = None
+    entity: Optional[Type[T]] = None

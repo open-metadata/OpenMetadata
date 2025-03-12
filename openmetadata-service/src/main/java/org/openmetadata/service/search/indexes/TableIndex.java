@@ -105,6 +105,7 @@ public record TableIndex(Table table) implements ColumnIndex {
     doc.put("service", getEntityWithDisplayName(table.getService()));
     doc.put("database", getEntityWithDisplayName(table.getDatabase()));
     doc.put("upstreamLineage", SearchIndex.getLineageData(table.getEntityReference()));
+    doc.put("processedLineage", table.getProcessedLineage());
     doc.put("entityRelationship", SearchIndex.populateEntityRelationshipData(table));
     doc.put("databaseSchema", getEntityWithDisplayName(table.getDatabaseSchema()));
     doc.put(

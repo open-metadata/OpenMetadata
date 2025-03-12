@@ -298,6 +298,9 @@
       "deleted": {
         "type": "boolean"
       },
+      "processedLineage": {
+        "type": "boolean"
+      },
       "entityType": {
         "type": "keyword"
       },
