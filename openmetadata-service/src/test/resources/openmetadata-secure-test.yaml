@@ -219,4 +219,4 @@ dataQualityConfiguration:
 objectStorage:
   enabled: false
   provider: NOOP
-  maxFileSize: 5 * 1024 * 1024
+  maxFileSize: 5242880
