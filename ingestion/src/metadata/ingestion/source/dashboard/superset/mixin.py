@@ -282,7 +282,7 @@ class SupersetSourceMixin(DashboardServiceSource):
         return result
 
     def _get_input_tables(self, chart: FetchChart):
-        if getattr(chart,"sql", None):
+        if getattr(chart, "sql", None):
             result = self._parse_lineage_from_dataset_sql(chart)
         else:
             result = [
