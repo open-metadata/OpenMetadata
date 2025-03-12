@@ -306,6 +306,9 @@
       "deleted": {
         "type": "boolean"
       },
+      "processedLineage": {
+        "type": "boolean"
+      },
       "owners": {
         "properties": {
           "id": {
