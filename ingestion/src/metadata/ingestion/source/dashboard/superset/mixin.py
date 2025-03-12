@@ -282,7 +282,7 @@ class SupersetSourceMixin(DashboardServiceSource):
         return result
 
     def _get_input_tables(self, chart: FetchChart):
-        if chart.sql:
+        if getattr(chart, "sql", None):
             result = self._parse_lineage_from_dataset_sql(chart)
         else:
             result = [
@@ -339,7 +339,7 @@ class SupersetSourceMixin(DashboardServiceSource):
             except Exception as exc:
                 yield Either(
                     left=StackTraceError(
-                        name=db_service_name,
+                        name="Dashboard Lineage Details",
                         error=(
                             "Error to yield dashboard lineage details for DB "
                             f"service name [{db_service_name}]: {exc}"
