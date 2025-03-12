@@ -139,6 +139,7 @@
     "batch-size": "Taille du Lot",
     "before-number-of-day-plural": "Before {{numberOfDays}} days",
     "beta": "Bêta",
+    "boost": "Boost",
     "boost-mode": "Mode de boost",
     "boost-plural": "Boosts",
     "bot": "Agent Numérique",

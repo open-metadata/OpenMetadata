@@ -139,6 +139,7 @@
     "batch-size": "Batch Size",
     "before-number-of-day-plural": "Before {{numberOfDays}} days",
     "beta": "Beta",
+    "boost": "Boost",
     "boost-mode": "Boost Mode",
     "boost-plural": "Boosts",
     "bot": "Bot",

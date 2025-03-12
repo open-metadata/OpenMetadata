@@ -12,15 +12,75 @@
  */
 @import url('../../../styles/variables.less');
 
-.tag-boost-header {
-  // background-color: @grey-10;
-  // border-radius: 6px;
+.term-boost {
+  background-color: @white;
+  border: 1px solid @grey-10;
+  border-radius: 12px;
+  min-width: 300px;
 }
 
-.delete-icon {
+.term-boost-header {
+  background-color: @blue-12;
+}
+
+.delete-term-boost {
   color: @red-10;
+  background-color: @red-11;
+  border: 1px solid @red-12;
+  border-radius: 8px;
+  &:hover {
+    color: @red-10;
+    background-color: @red-11;
+    border: 1px solid @red-12;
+  }
+}
+
+.save-term-boost {
+  color: @blue-10;
+  background-color: @blue-15;
+  border: 1px solid @blue-14;
+  border-radius: 8px;
+  &:hover {
+    color: @blue-10;
+    background-color: @blue-15;
+    border: 1px solid @blue-14;
+  }
 }
 
 .boost-value {
   color: @blue-3;
+}
+
+.config-section-content {
+  border: 1px solid @border-color-4;
+}
+
+.custom-select {
+  .ant-select-selector {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+  }
+
+  .ant-select-focused .ant-select-selector,
+  .ant-select-selector:focus,
+  .ant-select-selector:active,
+  .ant-select-open .ant-select-selector {
+    border: none !important;
+    box-shadow: none !important;
+  }
+
+  &.ant-select-focused:not(.ant-select-disabled):not(.ant-select-customize-input):not(.ant-select-borderless)
+    .ant-select-selector {
+    border: none !important;
+    box-shadow: none !important;
+  }
+
+  &.ant-select-disabled {
+    .ant-select-selector {
+      background-color: transparent !important;
+      color: @black !important;
+    }
+  }
 }

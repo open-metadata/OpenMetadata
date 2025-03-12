@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Col, Row, Switch, Typography } from 'antd';
+import { Col, Row, Switch, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -21,7 +21,7 @@ import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/Ti
 import PageHeader from '../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { GlobalSettingItem } from '../../components/SearchSettings/GlobalSettingsItem/GlobalSettingsItem';
-import TermBoostComponent from '../../components/SearchSettings/TermBoost/TermBoost';
+import TermBoostList from '../../components/SearchSettings/TermBoostList/TermBoostList';
 import SettingItemCard from '../../components/Settings/SettingItemCard/SettingItemCard.component';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
@@ -55,6 +55,7 @@ const SearchSettingsPage = () => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [searchConfig, setSearchConfig] = useState<SearchSettings>();
   const [isUpdating, setIsUpdating] = useState<boolean>(false);
+  const [showNewTermBoost, setShowNewTermBoost] = useState<boolean>(false);
 
   const settingCategoryData = useMemo(
     () => getSearchSettingCategories(permissions, isAdminUser ?? false),
@@ -129,32 +130,33 @@ const SearchSettingsPage = () => {
   };
 
   const handleAddNewTermBoost = () => {
-    if (!searchConfig) {
-      return;
-    }
+    // if (!searchConfig) {
+    //   return;
+    // }
 
-    const updatedConfig = {
-      ...searchConfig,
-      globalSettings: {
-        ...searchConfig.globalSettings,
-        termBoosts: [
-          { field: '', value: '', boost: 0 },
-          ...(searchConfig.globalSettings?.termBoosts ?? []),
-        ],
-      },
-    };
+    // const updatedConfig = {
+    //   ...searchConfig,
+    //   globalSettings: {
+    //     ...searchConfig.globalSettings,
+    //     termBoosts: [
+    //       { field: '', value: '', boost: 0 },
+    //       ...(searchConfig.globalSettings?.termBoosts ?? []),
+    //     ],
+    //   },
+    // };
 
-    setSearchConfig(updatedConfig);
+    // setSearchConfig(updatedConfig);
+    setShowNewTermBoost(true);
   };
 
   const handleTermBoostChange = (newTermBoost: TermBoost) => {
-    if (!searchConfig || !newTermBoost.field || !newTermBoost.boost) {
+    if (!searchConfig || !newTermBoost.value || !newTermBoost.boost) {
       return;
     }
 
     const termBoosts = [...(searchConfig.globalSettings?.termBoosts || [])];
     const existingIndex = termBoosts.findIndex(
-      (tb) => tb.field === '' || tb.field === newTermBoost.field
+      (tb) => tb.value === newTermBoost.value
     );
 
     if (existingIndex >= 0) {
@@ -176,16 +178,19 @@ const SearchSettingsPage = () => {
       field: 'termBoosts',
       value: termBoosts,
     });
+    setShowNewTermBoost(false);
   };
 
-  const handleDeleteTermBoost = (field: string) => {
-    if (!searchConfig || !field) {
+  const handleDeleteTermBoost = (value: string) => {
+    if (!searchConfig || !value) {
+      setShowNewTermBoost(false);
+
       return;
     }
 
     const termBoosts =
       searchConfig.globalSettings?.termBoosts?.filter(
-        (tb) => tb.field !== field
+        (tb) => tb.value !== value
       ) || [];
 
     handleUpdateSearchConfig({
@@ -219,7 +224,7 @@ const SearchSettingsPage = () => {
       </Row>
       <Row className="p-y-md p-x-lg settings-row" gutter={[0, 16]}>
         <Col span={24}>
-          <Typography.Title className="text-md font-semibold" level={5}>
+          <Typography.Title className="text-sm font-semibold" level={5}>
             {t('label.global-setting-plural')}
           </Typography.Title>
         </Col>
@@ -242,24 +247,6 @@ const SearchSettingsPage = () => {
                 }
               />
             </Col>
-            <Col className="global-setting-card">
-              <Typography.Text className="global-setting-card__content">
-                {t('label.use-natural-language-search')}
-              </Typography.Text>
-              <Switch
-                checked={searchConfig?.globalSettings?.useNaturalLanguageSearch}
-                className="m-l-xlg global-setting-card__action"
-                data-testid="use-natural-language-search-switch"
-                disabled={isUpdating}
-                onChange={() =>
-                  handleUpdateSearchConfig({
-                    enabled:
-                      !searchConfig?.globalSettings?.useNaturalLanguageSearch,
-                    field: 'useNaturalLanguageSearch',
-                  })
-                }
-              />
-            </Col>
             {globalSettings.map(({ key, label }) => (
               <Col className="global-setting-card" key={key}>
                 <GlobalSettingItem
@@ -275,37 +262,22 @@ const SearchSettingsPage = () => {
               </Col>
             ))}
           </Row>
-          <Row className="term-boosts-section m-t-md" gutter={[0, 16]}>
+          <Row className="term-boosts-section p-box m-t-lg" gutter={[0, 16]}>
             <Col span={24}>
-              <div className="d-flex items-center justify-between m-b-md">
-                <Typography.Text className="text-md font-medium">
-                  {t('label.configure-term-boost')}
-                </Typography.Text>
-                <Button
-                  data-testid="add-term-boost"
-                  type="primary"
-                  onClick={handleAddNewTermBoost}>
-                  {t('label.add-term-boost')}
-                </Button>
-              </div>
-              <div
-                className="d-flex items-center gap-2 flex-wrap term-boosts-container"
-                data-testid="term-boosts">
-                {searchConfig?.globalSettings?.termBoosts?.map((termBoost) => (
-                  <TermBoostComponent
-                    key={termBoost.field}
-                    termBoost={termBoost}
-                    onDeleteBoost={handleDeleteTermBoost}
-                    onTermBoostChange={handleTermBoostChange}
-                  />
-                ))}
-              </div>
+              <Typography.Text className="text-sm font-semibold">
+                {t('label.configure-term-boost')}
+              </Typography.Text>
+              <TermBoostList
+                handleAddNewTermBoost={handleAddNewTermBoost}
+                handleDeleteTermBoost={handleDeleteTermBoost}
+                handleTermBoostChange={handleTermBoostChange}
+                showNewTermBoost={showNewTermBoost}
+                termBoosts={searchConfig?.globalSettings?.termBoosts ?? []}
+              />
             </Col>
           </Row>
         </Col>
       </Row>
-
-      {/* <FilterConfiguration /> */}
 
       <Row className="p-x-lg p-b-md" gutter={[16, 16]}>
         {settingCategoryData?.map((data) => (

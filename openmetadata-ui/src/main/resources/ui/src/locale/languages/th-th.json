@@ -139,6 +139,7 @@
     "batch-size": "ขนาดชุดข้อมูล",
     "before-number-of-day-plural": "ก่อน {{numberOfDays}} วัน",
     "beta": "เบต้า",
+    "boost": "Boost",
     "boost-mode": "โหมดเพิ่มประสิทธิภาพ",
     "boost-plural": "การเพิ่มประสิทธิภาพ",
     "bot": "บอท",

@@ -10,12 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons';
+import Icon, { DownOutlined } from '@ant-design/icons';
 import { Button, Col, Row, Slider, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as Delete } from '../../../assets/svg/delete-white.svg';
+import { ReactComponent as Document } from '../../../assets/svg/document.svg';
+import { ReactComponent as Save } from '../../../assets/svg/save.svg';
 import { TermBoost } from '../../../generated/configuration/searchSettings';
 import { getFilterOptions } from '../../../utils/SearchSettingsUtils';
 import tagClassBase from '../../../utils/TagClassBase';
@@ -27,19 +29,33 @@ interface TermBoostProps {
   termBoost: TermBoost;
   onTermBoostChange: (termBoost: TermBoost) => void;
   onDeleteBoost: (termValue: string) => void;
+  showNewTermBoost?: boolean;
 }
 
 const TermBoostComponent: React.FC<TermBoostProps> = ({
   termBoost,
   onTermBoostChange,
   onDeleteBoost,
+  showNewTermBoost,
 }) => {
   const { t } = useTranslation();
-  const [formData, setFormData] = useState<TermBoost>({
-    field: termBoost.field ?? '',
-    value: termBoost.value ?? '',
-    boost: termBoost.boost ?? 0,
+  const [termBoostData, setTermBoostData] = useState<TermBoost>({
+    field: '',
+    value: '',
+    boost: 0,
   });
+
+  const isNewBoost = showNewTermBoost || (!termBoost.field && !termBoost.value);
+
+  useEffect(() => {
+    if (!isNewBoost) {
+      setTermBoostData({
+        field: termBoost.field,
+        value: termBoost.value,
+        boost: termBoost.boost,
+      });
+    }
+  }, [termBoost, isNewBoost]);
 
   const fetchTags = async (searchText: string) => {
     try {
@@ -86,91 +102,97 @@ const TermBoostComponent: React.FC<TermBoostProps> = ({
 
   const handleTagChange = (value: string, option: any) => {
     const updatedData = {
-      ...formData,
+      ...termBoostData,
       field: option.field,
       value: value,
     };
 
-    setFormData(updatedData);
+    setTermBoostData(updatedData);
   };
 
   const handleBoostChange = (value: number) => {
-    const updatedData = { ...formData, boost: value };
+    const updatedData = { ...termBoostData, boost: value };
 
-    setFormData(updatedData);
+    setTermBoostData(updatedData);
   };
 
   const handleSave = () => {
-    if (formData.field && formData.value && formData.boost) {
-      onTermBoostChange(formData);
+    if (termBoostData.field && termBoostData.value && termBoostData.boost) {
+      onTermBoostChange(termBoostData);
     }
   };
 
   return (
-    <div className="m-t-md" style={{ minWidth: '300px' }}>
-      <div className="m-b-sm p-sm tag-boost-header">
-        <Row className="d-flex flex-column p-sm bg-white border-radius-card">
-          <Col>
-            <div className="d-flex items-center justify-between m-b-sm">
-              <Typography.Text
-                className="m-b-sm d-block"
-                data-testid="term-boost-label">
-                {t('label.term-boost')}
-              </Typography.Text>
-              <Icon
-                className="font-semibold text-xl delete-icon"
-                component={Delete}
-                data-testid="delete-term-boost"
-                onClick={() => onDeleteBoost(termBoost.value)}
-              />
-            </div>
-          </Col>
-          <Col>
-            <AsyncSelect
-              showSearch
-              api={fetchTags}
-              className="w-full"
-              data-testid="term-boost-select"
-              filterOption={getFilterOptions}
-              optionLabelProp="value"
-              placeholder={t('label.select-tag')}
-              value={formData.value}
-              onChange={handleTagChange}
+    <div className="term-boost">
+      <Row className="p-box d-flex items-center justify-between term-boost-header">
+        <Col className="d-flex items-center gap-2">
+          <Icon className="text-md" component={Document} />
+          <Typography.Text
+            className="text-sm font-medium"
+            data-testid="term-boost-label">
+            {t('label.term-boost')}
+          </Typography.Text>
+        </Col>
+        <Col className="d-flex items-center gap-2">
+          <Button
+            className="delete-term-boost"
+            data-testid="delete-term-boost"
+            icon={<Icon className="text-md" component={Delete} />}
+            onClick={() => onDeleteBoost(termBoost.value)}
+          />
+          <Button
+            className="save-term-boost"
+            data-testid="save-term-boost"
+            disabled={
+              !termBoostData.field ||
+              !termBoostData.value ||
+              !termBoostData.boost
+            }
+            icon={<Icon className="text-md" component={Save} />}
+            onClick={handleSave}
+          />
+        </Col>
+      </Row>
+      <Row className="p-box d-flex flex-column gap-3">
+        <Col className="p-y-xs p-x-sm border-radius-card m-b-sm bg-white config-section-content">
+          <label className="text-grey-muted text-xs font-normal">
+            {t('label.select-tag')}
+          </label>
+          <AsyncSelect
+            showSearch
+            api={fetchTags}
+            className="w-full custom-select"
+            data-testid="term-boost-select"
+            filterOption={getFilterOptions}
+            optionLabelProp="value"
+            placeholder={t('label.select-tag')}
+            suffixIcon={<DownOutlined className="text-grey-muted" />}
+            value={termBoostData.value}
+            onChange={handleTagChange}
+          />
+        </Col>
+        <Col className="d-flex flex-column gap-2">
+          <div className="d-flex items-center justify-between p-x-xss">
+            <Typography.Text data-testid="term-boost-impact-label">
+              {t('label.boost')}
+            </Typography.Text>
+            <Typography.Text
+              className="font-semibold boost-value"
+              data-testid="term-boost-value">
+              {termBoostData.boost}
+            </Typography.Text>
+          </div>
+          <div data-testid="term-boost-slider">
+            <Slider
+              max={100}
+              min={0}
+              tooltip={{ open: false }}
+              value={termBoostData.boost}
+              onChange={handleBoostChange}
             />
-          </Col>
-          <Col className="m-t-sm">
-            <div className="d-flex items-center justify-between">
-              <Typography.Text data-testid="term-boost-impact-label">
-                {t('label.impact')}
-              </Typography.Text>
-              <Typography.Text
-                className="font-semibold boost-value"
-                data-testid="term-boost-value">
-                {formData.boost}
-              </Typography.Text>
-            </div>
-            <div data-testid="term-boost-slider">
-              <Slider
-                max={50}
-                min={0}
-                tooltip={{ open: false }}
-                value={formData.boost}
-                onChange={handleBoostChange}
-              />
-            </div>
-          </Col>
-          <Col>
-            <Button
-              className="w-full"
-              data-testid="save-term-boost"
-              disabled={!formData.field || !formData.value || !formData.boost}
-              type="primary"
-              onClick={handleSave}>
-              {t('label.save')}
-            </Button>
-          </Col>
-        </Row>
-      </div>
+          </div>
+        </Col>
+      </Row>
     </div>
   );
 };

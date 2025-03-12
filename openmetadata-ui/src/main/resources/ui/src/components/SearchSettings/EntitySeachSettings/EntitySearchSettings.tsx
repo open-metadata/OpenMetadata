@@ -47,7 +47,7 @@ import { TitleBreadcrumbProps } from '../../common/TitleBreadcrumb/TitleBreadcru
 import PageLayoutV1 from '../../PageLayoutV1/PageLayoutV1';
 import FieldConfiguration from '../FieldConfiguration/FieldConfiguration';
 import SearchPreview from '../SearchPreview/SearchPreview';
-import TermBoostComponent from '../TermBoost/TermBoost';
+import TermBoostList from '../TermBoostList/TermBoostList';
 import './entity-search-settings.less';
 
 const EntitySearchSettings = () => {
@@ -73,6 +73,7 @@ const EntitySearchSettings = () => {
     });
   const [previewSearchConfig, setPreviewSearchConfig] =
     useState<SearchSettings>(searchConfig ?? {});
+  const [showNewTermBoost, setShowNewTermBoost] = useState<boolean>(false);
 
   const entityType = useMemo(() => ENTITY_PATH[tab], [tab]);
 
@@ -251,7 +252,7 @@ const EntitySearchSettings = () => {
     });
   };
 
-  const handleDeleteBoost = (fieldName: string) => {
+  const handleDeleteValueBoost = (fieldName: string) => {
     setSearchSettings((prev) => ({
       ...prev,
       fieldValueBoosts: (prev.fieldValueBoosts ?? []).filter(
@@ -262,14 +263,7 @@ const EntitySearchSettings = () => {
   };
 
   const handleAddNewTermBoost = () => {
-    setSearchSettings((prev) => ({
-      ...prev,
-      termBoosts: [
-        { field: '', value: '', boost: 0 },
-        ...(prev.termBoosts || []),
-      ],
-      isUpdated: true,
-    }));
+    setShowNewTermBoost(true);
   };
 
   const handleTermBoostChange = (newTermBoost: TermBoost) => {
@@ -280,7 +274,7 @@ const EntitySearchSettings = () => {
     setSearchSettings((prev) => {
       const termBoosts = [...(prev.termBoosts || [])];
       const existingIndex = termBoosts.findIndex(
-        (tb) => tb.value === '' || tb.value === newTermBoost.value
+        (tb) => tb.value === newTermBoost.value
       );
 
       if (existingIndex >= 0) {
@@ -295,13 +289,19 @@ const EntitySearchSettings = () => {
         isUpdated: true,
       };
     });
+
+    setShowNewTermBoost(false);
   };
 
   const handleDeleteTermBoost = (value: string) => {
+    // If deleting a new card (empty value), just hide it
     if (!value) {
+      setShowNewTermBoost(false);
+
       return;
     }
 
+    // For existing cards, update the state
     setSearchSettings((prev) => ({
       ...prev,
       termBoosts: prev.termBoosts?.filter((tb) => tb.value !== value) || [],
@@ -409,29 +409,17 @@ const EntitySearchSettings = () => {
       </Row>
       <Row className="entity-search-settings-header bg-white m-b-lg p-box">
         <Col span={24}>
-          <div className="d-flex items-center justify-between">
-            <Typography.Text className="text-md font-medium">
-              {t('label.configure-term-boost')}
-            </Typography.Text>
-            <Button
-              data-testid="add-term-boost"
-              type="primary"
-              onClick={handleAddNewTermBoost}>
-              {t('label.add-term-boost')}
-            </Button>
-          </div>
-          <div
-            className="m-t-md d-flex items-center gap-2 flex-wrap term-boosts-container"
-            data-testid="term-boosts">
-            {searchSettings.termBoosts?.map((termBoost) => (
-              <TermBoostComponent
-                key={termBoost.value}
-                termBoost={termBoost}
-                onDeleteBoost={handleDeleteTermBoost}
-                onTermBoostChange={handleTermBoostChange}
-              />
-            ))}
-          </div>
+          <Typography.Text className="text-sm font-semibold">
+            {t('label.configure-term-boost')}
+          </Typography.Text>
+          <TermBoostList
+            className="p-box m-t-md"
+            handleAddNewTermBoost={handleAddNewTermBoost}
+            handleDeleteTermBoost={handleDeleteTermBoost}
+            handleTermBoostChange={handleTermBoostChange}
+            showNewTermBoost={showNewTermBoost}
+            termBoosts={searchSettings.termBoosts ?? []}
+          />
         </Col>
       </Row>
       <Row
@@ -453,7 +441,7 @@ const EntitySearchSettings = () => {
                   index={index}
                   key={field.fieldName}
                   searchSettings={searchSettings}
-                  onDeleteBoost={handleDeleteBoost}
+                  onDeleteBoost={handleDeleteValueBoost}
                   onFieldWeightChange={handleFieldWeightChange}
                   onHighlightFieldsChange={handleHighlightFieldsChange}
                   onValueBoostChange={handleValueBoostChange}

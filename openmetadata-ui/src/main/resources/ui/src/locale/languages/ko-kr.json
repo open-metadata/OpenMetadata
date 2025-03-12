@@ -139,6 +139,7 @@
     "batch-size": "배치 크기",
     "before-number-of-day-plural": "{{numberOfDays}}일 전",
     "beta": "베타",
+    "boost": "Boost",
     "boost-mode": "Boost Mode",
     "boost-plural": "Boosts",
     "bot": "봇",

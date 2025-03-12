@@ -139,6 +139,7 @@
     "batch-size": "Tamaño del lote",
     "before-number-of-day-plural": "Antes de {{numberOfDays}} días",
     "beta": "Beta",
+    "boost": "Impulso",
     "boost-mode": "Modo de impulso",
     "boost-plural": "Impulsos",
     "bot": "Bot",

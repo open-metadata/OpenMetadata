@@ -41,18 +41,6 @@ export interface SettingCategoryData {
 
 export interface UpdateConfigParams {
   enabled?: boolean;
-  field?:
-    | PropertyKey
-    | 'enableAccessControl'
-    | 'useNaturalLanguageSearch'
-    | 'termBoosts';
+  field?: PropertyKey | 'enableAccessControl' | 'termBoosts';
   value?: number | TermBoost[];
-}
-
-export type MatchType = 'mustMatch' | 'shouldMatch' | 'mustNotMatch';
-
-export interface MatchFields {
-  mustMatch: string[];
-  shouldMatch: string[];
-  mustNotMatch: string[];
 }

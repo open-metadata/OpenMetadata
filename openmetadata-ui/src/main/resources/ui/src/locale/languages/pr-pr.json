@@ -139,6 +139,7 @@
     "batch-size": "اندازه دسته",
     "before-number-of-day-plural": "قبل از {{ numberOfDays}} روز",
     "beta": "بتا",
+    "boost": "تقویت",
     "boost-mode": "حالت تقویت",
     "boost-plural": "تقویت‌ها",
     "bot": "ربات",

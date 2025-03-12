@@ -24,7 +24,6 @@ import SearchSettingsPage from './SearchSettingsPage';
 const mockSearchSettings: SearchSettings = {
   globalSettings: {
     enableAccessControl: true,
-    useNaturalLanguageSearch: false,
     maxAggregateSize: 10000,
     maxResultHits: 10000,
   },
@@ -130,45 +129,6 @@ describe('Test SearchSettingsPage', () => {
         globalSettings: {
           ...mockSearchSettings.globalSettings,
           enableAccessControl: false,
-        },
-      },
-    });
-  });
-
-  it('Handles natural language search toggle', async () => {
-    (updateSettingsConfig as jest.Mock).mockResolvedValue({
-      data: {
-        config_type: 'searchSettings',
-        config_value: {
-          globalSettings: {
-            ...mockSearchSettings.globalSettings,
-          },
-        },
-      },
-    });
-
-    await act(async () => {
-      render(
-        <MemoryRouter>
-          <SearchSettingsPage />
-        </MemoryRouter>
-      );
-    });
-
-    const naturalLanguageSearchSwitch = screen.getByTestId(
-      'use-natural-language-search-switch'
-    );
-
-    await act(async () => {
-      fireEvent.click(naturalLanguageSearchSwitch);
-    });
-
-    expect(updateSettingsConfig).toHaveBeenCalledWith({
-      config_type: 'searchSettings',
-      config_value: {
-        globalSettings: {
-          ...mockSearchSettings.globalSettings,
-          useNaturalLanguageSearch: true,
         },
       },
     });
