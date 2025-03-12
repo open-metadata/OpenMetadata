@@ -34,6 +34,8 @@ public class WebSocketManager {
 
   public static final String BULK_ASSETS_CHANNEL = "bulkAssetsChannel";
 
+  public static final String DELETE_ENTITY_CHANNEL = "deleteEntityChannel";
+
   @Getter
   private final Map<UUID, Map<String, SocketIoSocket>> activityFeedEndpoints =
       new ConcurrentHashMap<>();

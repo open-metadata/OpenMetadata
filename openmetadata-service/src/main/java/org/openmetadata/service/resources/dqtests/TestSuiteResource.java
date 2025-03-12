@@ -779,6 +779,38 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
   }
 
   @DELETE
+  @Path("/async/{id}")
+  @Operation(
+      operationId = "deleteLogicalTestSuiteAsync",
+      summary = "Delete a logical test suite asynchronously",
+      description = "Delete a logical test suite by `id` asynchronously.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "OK"),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Logical test suite for instance {id} is not found")
+      })
+  public Response deleteAsync(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Hard delete the logical entity. (Default = `false`)")
+          @QueryParam("hardDelete")
+          @DefaultValue("false")
+          boolean hardDelete,
+      @Parameter(description = "Id of the logical test suite", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id) {
+    OperationContext operationContext =
+        new OperationContext(Entity.TEST_SUITE, MetadataOperation.DELETE);
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
+    TestSuite testSuite = Entity.getEntity(Entity.TEST_SUITE, id, "*", ALL);
+    if (Boolean.TRUE.equals(testSuite.getBasic())) {
+      throw new IllegalArgumentException(NON_BASIC_TEST_SUITE_DELETION_ERROR);
+    }
+    return repository.deleteLogicalTestSuiteAsync(securityContext, testSuite, hardDelete);
+  }
+
+  @DELETE
   @Path("/name/{name}")
   @Operation(
       operationId = "deleteLogicalTestSuite",

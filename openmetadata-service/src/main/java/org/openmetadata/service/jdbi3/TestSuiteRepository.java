@@ -22,10 +22,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.ExecutorService;
 import java.util.stream.Collectors;
 import javax.json.JsonArray;
 import javax.json.JsonObject;
 import javax.json.JsonValue;
+import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -52,11 +54,14 @@ import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.SearchListFilter;
 import org.openmetadata.service.search.indexes.SearchIndex;
 import org.openmetadata.service.search.models.IndexMapping;
+import org.openmetadata.service.util.AsyncService;
+import org.openmetadata.service.util.DeleteEntityResponse;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
+import org.openmetadata.service.util.WebsocketNotificationHandler;
 
 @Slf4j
 public class TestSuiteRepository extends EntityRepository<TestSuite> {
@@ -478,6 +483,36 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
     }
     // Delete all the contained entities
     deleteChildren(childrenRecords, hardDelete, updatedBy);
+  }
+
+  public Response deleteLogicalTestSuiteAsync(
+      SecurityContext securityContext, TestSuite testSuite, boolean hardDelete) {
+    String jobId = UUID.randomUUID().toString();
+
+    ExecutorService executorService = AsyncService.getInstance().getExecutorService();
+    executorService.submit(
+        () -> {
+          try {
+            RestUtil.DeleteResponse<TestSuite> deleteResponse =
+                deleteLogicalTestSuite(securityContext, testSuite, hardDelete);
+            deleteFromSearch(deleteResponse.entity(), hardDelete);
+
+            WebsocketNotificationHandler.sendDeleteOperationCompleteNotification(
+                jobId, securityContext, deleteResponse.entity());
+          } catch (Exception e) {
+            WebsocketNotificationHandler.sendDeleteOperationFailedNotification(
+                jobId, securityContext, testSuite, e.getMessage());
+          }
+        });
+    return Response.accepted()
+        .entity(
+            new DeleteEntityResponse(
+                jobId,
+                "Delete operation initiated for " + testSuite.getName(),
+                testSuite.getName(),
+                hardDelete,
+                false))
+        .build();
   }
 
   private void updateTestSummaryFromBucket(JsonObject bucket, TestSummary testSummary) {

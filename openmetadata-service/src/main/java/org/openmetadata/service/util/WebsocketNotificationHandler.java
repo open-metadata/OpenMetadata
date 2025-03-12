@@ -27,6 +27,7 @@ import javax.ws.rs.container.ContainerResponseContext;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
@@ -232,6 +233,41 @@ public class WebsocketNotificationHandler {
     if (userId != null) {
       WebSocketManager.getInstance()
           .sendToOne(userId, WebSocketManager.CSV_IMPORT_CHANNEL, jsonMessage);
+    }
+  }
+
+  public static void sendDeleteOperationCompleteNotification(
+      String jobId, SecurityContext securityContext, EntityInterface entity) {
+    DeleteEntityMessage message =
+        new DeleteEntityMessage(jobId, "COMPLETED", entity.getName(), null);
+    String jsonMessage = JsonUtils.pojoToJson(message);
+    UUID userId = getUserIdFromSecurityContext(securityContext);
+    LOG.info(
+        "[AsyncDelete] Delete operation completed successfully - jobId: {}, userId:{}, entity: {}, ",
+        jobId,
+        userId,
+        entity.getName());
+    if (userId != null) {
+      WebSocketManager.getInstance()
+          .sendToOne(userId, WebSocketManager.DELETE_ENTITY_CHANNEL, jsonMessage);
+    }
+  }
+
+  public static void sendDeleteOperationFailedNotification(
+      String jobId, SecurityContext securityContext, EntityInterface entity, String error) {
+    DeleteEntityMessage message = new DeleteEntityMessage(jobId, "FAILED", entity.getName(), error);
+    String jsonMessage = JsonUtils.pojoToJson(message);
+
+    UUID userId = getUserIdFromSecurityContext(securityContext);
+    LOG.error(
+        "[AsyncDelete] Delete operation failed - jobId: {}, userId:{} ,entity: {}, error: {}",
+        jobId,
+        userId,
+        entity.getName(),
+        error);
+    if (userId != null) {
+      WebSocketManager.getInstance()
+          .sendToOne(userId, WebSocketManager.DELETE_ENTITY_CHANNEL, jsonMessage);
     }
   }
 }
