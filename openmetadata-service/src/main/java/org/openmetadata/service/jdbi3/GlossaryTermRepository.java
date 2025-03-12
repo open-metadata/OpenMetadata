@@ -72,6 +72,7 @@ import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.GlossaryTerm.Status;
 import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.entity.teams.Team;
+import org.openmetadata.schema.search.SearchRequest;
 import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
@@ -94,7 +95,6 @@ import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.resources.glossary.GlossaryTermResource;
-import org.openmetadata.service.search.SearchRequest;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -491,20 +491,20 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     try {
       String key = "_source";
       SearchRequest searchRequest =
-          new SearchRequest.ElasticSearchRequestBuilder(
+          new SearchRequest()
+              .withQuery(
                   String.format(
                       "** AND (tags.tagFQN:\"%s\")",
-                      ReindexingUtil.escapeDoubleQuotes(glossaryFqn)),
-                  size,
-                  Entity.getSearchRepository().getIndexOrAliasName(GLOBAL_SEARCH_ALIAS))
-              .from(0)
-              .fetchSource(true)
-              .trackTotalHits(false)
-              .sortFieldParam("_score")
-              .deleted(false)
-              .sortOrder("desc")
-              .includeSourceFields(new ArrayList<>())
-              .build();
+                      ReindexingUtil.escapeDoubleQuotes(glossaryFqn)))
+              .withSize(size)
+              .withIndex(Entity.getSearchRepository().getIndexOrAliasName(GLOBAL_SEARCH_ALIAS))
+              .withFrom(0)
+              .withFetchSource(true)
+              .withTrackTotalHits(false)
+              .withSortFieldParam("_score")
+              .withDeleted(false)
+              .withSortOrder("desc")
+              .withIncludeSourceFields(new ArrayList<>());
       Response response = searchRepository.search(searchRequest, null);
       String json = (String) response.getEntity();
       Set<EntityReference> fqns = new TreeSet<>(compareEntityReferenceById);
