@@ -401,7 +401,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
           onUpdate={onTopicUpdate}>
           <Col span={24}>
             <Tabs
-              activeKey={activeTab ?? EntityTabs.SCHEMA}
+              activeKey={activeTab}
               className="entity-details-page-tabs"
               data-testid="tabs"
               items={tabs}

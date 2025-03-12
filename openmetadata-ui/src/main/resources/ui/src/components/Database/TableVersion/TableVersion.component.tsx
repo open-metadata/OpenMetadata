@@ -262,7 +262,7 @@ const TableVersion: React.FC<TableVersionProp> = ({
               onUpdate={() => Promise.resolve()}>
               <Col span={24}>
                 <Tabs
-                  defaultActiveKey={tab ?? EntityTabs.SCHEMA}
+                  defaultActiveKey={tab}
                   items={tabItems}
                   onChange={handleTabChange}
                 />

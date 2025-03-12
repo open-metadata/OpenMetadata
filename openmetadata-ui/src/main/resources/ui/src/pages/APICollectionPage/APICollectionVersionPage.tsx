@@ -398,7 +398,7 @@ const APICollectionVersionPage = () => {
                   <Tabs
                     className="entity-details-page-tabs"
                     data-testid="tabs"
-                    defaultActiveKey={tab ?? EntityTabs.API_COLLECTION}
+                    defaultActiveKey={tab}
                     items={tabs}
                     onChange={handleTabChange}
                   />

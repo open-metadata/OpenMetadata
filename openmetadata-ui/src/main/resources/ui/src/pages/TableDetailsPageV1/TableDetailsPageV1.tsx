@@ -123,7 +123,7 @@ const TableDetailsPageV1: React.FC = () => {
   );
   const [testCaseSummary, setTestCaseSummary] = useState<TestSummary>();
   const [dqFailureCount, setDqFailureCount] = useState(0);
-  const { customizedPage } = useCustomPages(PageType.Table);
+  const { customizedPage, isLoading } = useCustomPages(PageType.Table);
 
   const tableFqn = useMemo(
     () =>
@@ -747,7 +747,7 @@ const TableDetailsPageV1: React.FC = () => {
     }
   };
 
-  if (loading) {
+  if (loading || isLoading) {
     return <Loader />;
   }
 
@@ -798,11 +798,7 @@ const TableDetailsPageV1: React.FC = () => {
           {/* Entity Tabs */}
           <Col span={24}>
             <Tabs
-              activeKey={
-                isTourOpen
-                  ? activeTabForTourDatasetPage
-                  : activeTab ?? EntityTabs.SCHEMA
-              }
+              activeKey={isTourOpen ? activeTabForTourDatasetPage : activeTab}
               className="table-details-page-tabs entity-details-page-tabs"
               data-testid="tabs"
               items={tabs}

@@ -93,7 +93,9 @@ const DatabaseDetails: FunctionComponent = () => {
     useParams<{ tab: EntityTabs }>();
   const { fqn: decodedDatabaseFQN } = useFqn();
   const [isLoading, setIsLoading] = useState(true);
-  const { customizedPage } = useCustomPages(PageType.Database);
+  const { customizedPage, isLoading: loading } = useCustomPages(
+    PageType.Database
+  );
 
   const [database, setDatabase] = useState<Database>({} as Database);
   const [serviceType, setServiceType] = useState<string>();
@@ -434,7 +436,7 @@ const DatabaseDetails: FunctionComponent = () => {
     }
   };
 
-  if (isLoading || isDatabaseDetailsLoading) {
+  if (isLoading || isDatabaseDetailsLoading || loading) {
     return <Loader />;
   }
 
@@ -480,7 +482,7 @@ const DatabaseDetails: FunctionComponent = () => {
             onUpdate={settingsUpdateHandler}>
             <Col span={24}>
               <Tabs
-                activeKey={activeTab ?? EntityTabs.SCHEMA}
+                activeKey={activeTab}
                 className="entity-details-page-tabs"
                 data-testid="tabs"
                 items={tabs}

@@ -37,6 +37,7 @@ import {
 import dashboardDataModelClassBase from '../../../../utils/DashboardDataModelClassBase';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import { withActivityFeed } from '../../../AppRouter/withActivityFeed';
+import Loader from '../../../common/Loader/Loader';
 import { GenericProvider } from '../../../Customization/GenericProvider/GenericProvider';
 import { DataAssetsHeader } from '../../../DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import { EntityName } from '../../../Modals/EntityNameModal/EntityNameModal.interface';
@@ -59,7 +60,9 @@ const DataModelDetails = ({
   const history = useHistory();
   const { tab: activeTab } = useParams<{ tab: EntityTabs }>();
   const { fqn: decodedDataModelFQN } = useFqn();
-  const { customizedPage } = useCustomPages(PageType.DashboardDataModel);
+  const { customizedPage, isLoading } = useCustomPages(
+    PageType.DashboardDataModel
+  );
 
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA
@@ -190,6 +193,10 @@ const DataModelDetails = ({
     editLineagePermission,
   ]);
 
+  if (isLoading) {
+    return <Loader />;
+  }
+
   return (
     <PageLayoutV1
       className="bg-white"
@@ -224,7 +231,7 @@ const DataModelDetails = ({
           onUpdate={onUpdateDataModel}>
           <Col span={24}>
             <Tabs
-              activeKey={activeTab ?? EntityTabs.MODEL}
+              activeKey={activeTab}
               className="entity-details-page-tabs"
               data-testid="tabs"
               items={tabs}

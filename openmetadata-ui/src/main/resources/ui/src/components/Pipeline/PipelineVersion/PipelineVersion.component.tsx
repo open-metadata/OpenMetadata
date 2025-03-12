@@ -295,7 +295,7 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
               onUpdate={() => Promise.resolve()}>
               <Col span={24}>
                 <Tabs
-                  defaultActiveKey={tab ?? EntityTabs.TASKS}
+                  defaultActiveKey={tab}
                   items={tabItems}
                   onChange={handleTabChange}
                 />
