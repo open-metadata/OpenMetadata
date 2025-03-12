@@ -23,7 +23,7 @@ import {
 } from '../../../generated/entity/feed/thread';
 import { getDescriptionDiff } from '../../../utils/TasksUtils';
 import { DescriptionTabs } from './DescriptionTabs';
-import { DiffView } from './DiffView';
+import DiffView from './DiffView/DiffView';
 
 interface DescriptionTaskProps {
   taskThread: Thread;
@@ -76,17 +76,15 @@ const DescriptionTask: FC<DescriptionTaskProps> = ({
     const newDescription = task?.suggestion;
     const oldDescription = task?.oldValue;
 
-    const diffs = getDescriptionDiff(
-      oldDescription || '',
-      newDescription || ''
-    );
-
     return !newDescription && !oldDescription ? (
       <Typography.Text className="text-grey-muted p-xs">
         {t('label.no-entity', { entity: t('label.suggestion') })}
       </Typography.Text>
     ) : (
-      <DiffView className="p-xs" diffArr={diffs} />
+      <DiffView
+        className="p-xs"
+        diffArr={getDescriptionDiff(oldDescription ?? '', newDescription ?? '')}
+      />
     );
   };
 
