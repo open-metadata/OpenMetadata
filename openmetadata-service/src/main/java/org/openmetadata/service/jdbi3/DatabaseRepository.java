@@ -20,6 +20,8 @@ import static org.openmetadata.csv.CsvUtil.addOwners;
 import static org.openmetadata.csv.CsvUtil.addTagLabels;
 import static org.openmetadata.csv.CsvUtil.addTagTiers;
 import static org.openmetadata.service.Entity.DATABASE_SCHEMA;
+import static org.openmetadata.service.Entity.STORED_PROCEDURE;
+import static org.openmetadata.service.Entity.TABLE;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -32,10 +34,13 @@ import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.csv.CSVRecord;
 import org.apache.commons.lang3.tuple.Pair;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
+import org.openmetadata.csv.CsvUtil;
 import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
+import org.openmetadata.schema.entity.data.StoredProcedure;
+import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.type.DatabaseProfilerConfig;
 import org.openmetadata.schema.type.EntityReference;
@@ -124,14 +129,18 @@ public class DatabaseRepository extends EntityRepository<Database> {
   @Override
   public String exportToCsv(String name, String user) throws IOException {
     Database database = getByName(null, name, Fields.EMPTY_FIELDS); // Validate database name
-    DatabaseSchemaRepository repository =
+
+    // Get schemas
+    DatabaseSchemaRepository schemaRepository =
         (DatabaseSchemaRepository) Entity.getEntityRepository(DATABASE_SCHEMA);
     List<DatabaseSchema> schemas =
-        repository.listAllForCSV(
-            repository.getFields("owners,tags,domain,extension"), database.getFullyQualifiedName());
-
+        schemaRepository.listAllForCSV(
+            schemaRepository.getFields("owners,tags,domain,extension"),
+            database.getFullyQualifiedName());
     schemas.sort(Comparator.comparing(EntityInterface::getFullyQualifiedName));
-    return new DatabaseCsv(database, user).exportCsv(schemas);
+
+    // Export schemas and all their child entities
+    return new DatabaseCsv(database, user).exportAllCsv(schemas);
   }
 
   @Override
@@ -142,7 +151,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
             null,
             name,
             getFields(
-                "service")); // Validate glossary name, and get service needed in case of create
+                "service")); // Validate database name, and get service needed in case of create
     DatabaseCsv databaseCsv = new DatabaseCsv(database, user);
     return databaseCsv.importCsv(csv, dryRun);
   }
@@ -263,10 +272,106 @@ public class DatabaseRepository extends EntityRepository<Database> {
       this.database = database;
     }
 
+    /**
+     * Export database schemas and all their child entities (tables, views, stored procedures)
+     */
+    public String exportAllCsv(List<DatabaseSchema> schemas) throws IOException {
+      // Create CSV file with schemas
+      CsvFile csvFile = new CsvFile().withHeaders(HEADERS);
+
+      // Add schemas
+      for (DatabaseSchema schema : schemas) {
+        addEntityToCSV(csvFile, schema, DATABASE_SCHEMA);
+
+        // Get tables under each schema
+        TableRepository tableRepository = (TableRepository) Entity.getEntityRepository(TABLE);
+        List<Table> tables =
+            tableRepository.listAllForCSV(
+                tableRepository.getFields("owners,tags,domain,extension,columns"),
+                schema.getFullyQualifiedName());
+
+        // Add tables and their columns
+        for (Table table : tables) {
+          // Add the table entity
+          addEntityToCSV(csvFile, table, TABLE);
+
+          // Add all columns as separate rows
+          tableRepository.exportColumnsRecursively(table, csvFile);
+        }
+
+        // Get stored procedures under each schema
+        StoredProcedureRepository spRepository =
+            (StoredProcedureRepository) Entity.getEntityRepository(STORED_PROCEDURE);
+        List<StoredProcedure> storedProcedures =
+            spRepository.listAllForCSV(
+                spRepository.getFields("owners,tags,domain,extension"),
+                schema.getFullyQualifiedName());
+
+        // Add stored procedures
+        for (StoredProcedure sp : storedProcedures) {
+          addEntityToCSV(csvFile, sp, STORED_PROCEDURE);
+        }
+      }
+
+      return CsvUtil.formatCsv(csvFile);
+    }
+
+    /**
+     * Add entity to CSV file with entity type
+     */
+    public <E extends EntityInterface> void addEntityToCSV(
+        CsvFile csvFile, E entity, String entityType) {
+      List<String> recordList = new ArrayList<>();
+      addField(recordList, entity.getName());
+      addField(recordList, entity.getDisplayName());
+      addField(recordList, entity.getDescription());
+      addOwners(recordList, entity.getOwners());
+      addTagLabels(recordList, entity.getTags());
+      addGlossaryTerms(recordList, entity.getTags());
+      addTagTiers(recordList, entity.getTags());
+      Object retentionPeriod = EntityUtil.getEntityField(entity, "retentionPeriod");
+      Object sourceUrl = EntityUtil.getEntityField(entity, "sourceUrl");
+      addField(recordList, retentionPeriod == null ? "" : retentionPeriod.toString());
+      addField(recordList, sourceUrl == null ? "" : sourceUrl.toString());
+      String domain =
+          entity.getDomain() == null || Boolean.TRUE.equals(entity.getDomain().getInherited())
+              ? ""
+              : entity.getDomain().getFullyQualifiedName();
+      addField(recordList, domain);
+      addExtension(recordList, entity.getExtension());
+      // Add entityType and fullyQualifiedName
+      addField(recordList, entityType);
+      addField(recordList, entity.getFullyQualifiedName());
+      addRecord(csvFile, recordList);
+    }
+
     @Override
     protected void createEntity(CSVPrinter printer, List<CSVRecord> csvRecords) throws IOException {
       CSVRecord csvRecord = getNextRecord(printer, csvRecords);
-      String schemaFqn = FullyQualifiedName.add(database.getFullyQualifiedName(), csvRecord.get(0));
+
+      // Get entityType and fullyQualifiedName if provided
+      String entityType = csvRecord.size() > 11 ? csvRecord.get(11) : DATABASE_SCHEMA;
+      String entityFQN = csvRecord.size() > 12 ? csvRecord.get(12) : null;
+
+      if (DATABASE_SCHEMA.equals(entityType)) {
+        createSchemaEntity(printer, csvRecord, entityFQN);
+      } else if (TABLE.equals(entityType)) {
+        createTableEntity(printer, csvRecord, entityFQN);
+      } else if (STORED_PROCEDURE.equals(entityType)) {
+        createStoredProcedureEntity(printer, csvRecord, entityFQN);
+      } else {
+        LOG.warn("Unknown entity type: {}", entityType);
+      }
+    }
+
+    private void createSchemaEntity(CSVPrinter printer, CSVRecord csvRecord, String entityFQN)
+        throws IOException {
+      // If FQN is not provided, construct it from database FQN and schema name
+      String schemaFqn =
+          entityFQN != null
+              ? entityFQN
+              : FullyQualifiedName.add(database.getFullyQualifiedName(), csvRecord.get(0));
+
       DatabaseSchema schema;
       try {
         schema = Entity.getEntityByName(DATABASE_SCHEMA, schemaFqn, "*", Include.NON_DELETED);
@@ -280,7 +385,6 @@ public class DatabaseRepository extends EntityRepository<Database> {
 
       // Headers: name, displayName, description, owner, tags, glossaryTerms, tiers retentionPeriod,
       // sourceUrl, domain
-      // Field 1,2,3,6,7 - database schema name, displayName, description
       List<TagLabel> tagLabels =
           getTagLabels(
               printer,
@@ -304,26 +408,138 @@ public class DatabaseRepository extends EntityRepository<Database> {
       }
     }
 
+    private void createTableEntity(CSVPrinter printer, CSVRecord csvRecord, String entityFQN)
+        throws IOException {
+      // Implementation for creating a table entity from CSV
+      // Parse schema FQN from table FQN or use database FQN + schema name
+      String schemaFQN;
+      String tableName = csvRecord.get(0);
+
+      if (entityFQN != null) {
+        // Extract schema FQN from table FQN
+        schemaFQN = FullyQualifiedName.getParentFQN(entityFQN);
+      } else {
+        // If no entity FQN provided, we need to determine which schema this table belongs to
+        // This might require looking up schemas and finding the right one
+        throw new IllegalArgumentException(
+            "Table import requires fullyQualifiedName to determine the schema it belongs to");
+      }
+
+      // Get the schema
+      DatabaseSchema schema;
+      try {
+        schema = Entity.getEntityByName(DATABASE_SCHEMA, schemaFQN, "*", Include.NON_DELETED);
+      } catch (Exception ex) {
+        throw new IllegalArgumentException("Schema not found: " + schemaFQN);
+      }
+
+      TableRepository tableRepository = (TableRepository) Entity.getEntityRepository(TABLE);
+      Table table;
+
+      try {
+        table = Entity.getEntityByName(TABLE, entityFQN, "*", Include.NON_DELETED);
+      } catch (Exception ex) {
+        LOG.warn("Table not found: {}, it will be created with Import.", entityFQN);
+        table =
+            new Table()
+                .withName(tableName)
+                .withService(schema.getService())
+                .withDatabase(schema.getDatabase())
+                .withDatabaseSchema(schema.getEntityReference());
+      }
+
+      List<TagLabel> tagLabels =
+          getTagLabels(
+              printer,
+              csvRecord,
+              List.of(
+                  Pair.of(4, TagLabel.TagSource.CLASSIFICATION),
+                  Pair.of(5, TagLabel.TagSource.GLOSSARY),
+                  Pair.of(6, TagLabel.TagSource.CLASSIFICATION)));
+
+      table
+          .withDisplayName(csvRecord.get(1))
+          .withDescription(csvRecord.get(2))
+          .withOwners(getOwners(printer, csvRecord, 3))
+          .withTags(tagLabels)
+          .withRetentionPeriod(csvRecord.get(7))
+          .withSourceUrl(csvRecord.get(8))
+          .withDomain(getEntityReference(printer, csvRecord, 9, Entity.DOMAIN))
+          .withExtension(getExtension(printer, csvRecord, 10));
+
+      if (processRecord) {
+        // Use the table repository to create/update the table
+        tableRepository.createOrUpdate(null, table);
+      }
+    }
+
+    private void createStoredProcedureEntity(
+        CSVPrinter printer, CSVRecord csvRecord, String entityFQN) throws IOException {
+      // Implementation for creating a stored procedure entity from CSV
+      // Similar to createTableEntity but for stored procedures
+
+      String schemaFQN;
+      String spName = csvRecord.get(0);
+
+      if (entityFQN != null) {
+        // Extract schema FQN from SP FQN
+        schemaFQN = FullyQualifiedName.getParentFQN(entityFQN);
+      } else {
+        // If no entity FQN provided, we need to determine which schema this SP belongs to
+        throw new IllegalArgumentException(
+            "Stored procedure import requires fullyQualifiedName to determine the schema it belongs to");
+      }
+
+      // Get the schema
+      DatabaseSchema schema;
+      try {
+        schema = Entity.getEntityByName(DATABASE_SCHEMA, schemaFQN, "*", Include.NON_DELETED);
+      } catch (Exception ex) {
+        throw new IllegalArgumentException("Schema not found: " + schemaFQN);
+      }
+
+      StoredProcedureRepository spRepository =
+          (StoredProcedureRepository) Entity.getEntityRepository(STORED_PROCEDURE);
+      StoredProcedure sp;
+
+      try {
+        sp = Entity.getEntityByName(STORED_PROCEDURE, entityFQN, "*", Include.NON_DELETED);
+      } catch (Exception ex) {
+        LOG.warn("Stored procedure not found: {}, it will be created with Import.", entityFQN);
+        sp =
+            new StoredProcedure()
+                .withName(spName)
+                .withService(schema.getService())
+                .withDatabase(schema.getDatabase())
+                .withDatabaseSchema(schema.getEntityReference());
+      }
+
+      List<TagLabel> tagLabels =
+          getTagLabels(
+              printer,
+              csvRecord,
+              List.of(
+                  Pair.of(4, TagLabel.TagSource.CLASSIFICATION),
+                  Pair.of(5, TagLabel.TagSource.GLOSSARY),
+                  Pair.of(6, TagLabel.TagSource.CLASSIFICATION)));
+
+      sp.withDisplayName(csvRecord.get(1))
+          .withDescription(csvRecord.get(2))
+          .withOwners(getOwners(printer, csvRecord, 3))
+          .withTags(tagLabels)
+          .withSourceUrl(csvRecord.get(8))
+          .withDomain(getEntityReference(printer, csvRecord, 9, Entity.DOMAIN))
+          .withExtension(getExtension(printer, csvRecord, 10));
+
+      if (processRecord) {
+        // Use the stored procedure repository to create/update the SP
+        spRepository.createOrUpdate(null, sp);
+      }
+    }
+
     @Override
     protected void addRecord(CsvFile csvFile, DatabaseSchema entity) {
-      // Headers: name, displayName, description, owner, tags, retentionPeriod, sourceUrl, domain
-      List<String> recordList = new ArrayList<>();
-      addField(recordList, entity.getName());
-      addField(recordList, entity.getDisplayName());
-      addField(recordList, entity.getDescription());
-      addOwners(recordList, entity.getOwners());
-      addTagLabels(recordList, entity.getTags());
-      addGlossaryTerms(recordList, entity.getTags());
-      addTagTiers(recordList, entity.getTags());
-      addField(recordList, entity.getRetentionPeriod());
-      addField(recordList, entity.getSourceUrl());
-      String domain =
-          entity.getDomain() == null || Boolean.TRUE.equals(entity.getDomain().getInherited())
-              ? ""
-              : entity.getDomain().getFullyQualifiedName();
-      addField(recordList, domain);
-      addExtension(recordList, entity.getExtension());
-      addRecord(csvFile, recordList);
+      addEntityToCSV(csvFile, entity, DATABASE_SCHEMA);
     }
   }
 }

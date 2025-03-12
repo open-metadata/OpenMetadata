@@ -18,9 +18,12 @@ import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrDefault;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.csv.CsvUtil.addExtension;
 import static org.openmetadata.csv.CsvUtil.addField;
 import static org.openmetadata.csv.CsvUtil.addGlossaryTerms;
+import static org.openmetadata.csv.CsvUtil.addOwners;
 import static org.openmetadata.csv.CsvUtil.addTagLabels;
+import static org.openmetadata.csv.CsvUtil.addTagTiers;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.service.Entity.DATABASE_SCHEMA;
@@ -58,6 +61,7 @@ import org.apache.commons.lang3.tuple.Triple;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.csv.EntityCsv;
+import org.openmetadata.csv.HierarchyCSVImporter;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.data.CreateTableProfile;
 import org.openmetadata.schema.api.feed.ResolveTask;
@@ -802,6 +806,149 @@ public class TableRepository extends EntityRepository<Table> {
     return new TableCsv(table, user).exportCsv(listOf(table));
   }
 
+  /**
+   * Add entity to CSV file with entity type
+   */
+  public <E extends EntityInterface> void addEntityToCSV(
+      CsvFile csvFile, E entity, String entityType) {
+    List<String> recordList = new ArrayList<>();
+    addField(recordList, entity.getName());
+    addField(recordList, entity.getDisplayName());
+    addField(recordList, entity.getDescription());
+    addOwners(recordList, entity.getOwners());
+    addTagLabels(recordList, entity.getTags());
+    addGlossaryTerms(recordList, entity.getTags());
+    addTagTiers(recordList, entity.getTags());
+
+    // Handle optional fields that may not exist in all entity types
+    Object retentionPeriod = EntityUtil.getEntityField(entity, "retentionPeriod");
+    Object sourceUrl = EntityUtil.getEntityField(entity, "sourceUrl");
+    addField(recordList, retentionPeriod == null ? "" : retentionPeriod.toString());
+    addField(recordList, sourceUrl == null ? "" : sourceUrl.toString());
+
+    String domain = "";
+    Object domainObj = EntityUtil.getEntityField(entity, "domain");
+    if (domainObj != null) {
+      EntityReference domainRef = (EntityReference) domainObj;
+      domain =
+          (domainRef == null || Boolean.TRUE.equals(domainRef.getInherited()))
+              ? ""
+              : domainRef.getFullyQualifiedName();
+    }
+    addField(recordList, domain);
+
+    addExtension(recordList, entity.getExtension());
+
+    // Add entityType and fullyQualifiedName
+    addField(recordList, entityType);
+    addField(recordList, entity.getFullyQualifiedName());
+
+    // Use HierarchyCSVImporter to handle empty fields at entity level
+    HierarchyCSVImporter.addEntityRecordWithEmptyFields(
+        csvFile, recordList, TableCsv.HEADERS, entityType, false);
+  }
+
+  /**
+   * Export table with columns for recursive export/import structure
+   *
+   * @param table The table to export
+   * @param csvFile The CSV file to add records to
+   * @param user The user performing the action
+   */
+  public void exportTableWithColumns(Table table, CsvFile csvFile, String user) throws IOException {
+    // Add the table as an entity with entityType = TABLE
+    addEntityToCSV(csvFile, table, TABLE);
+
+    // Add all columns as separate rows
+    exportColumnsRecursively(table, csvFile);
+  }
+
+  /**
+   * Export columns for a table, handling nested column structure
+   *
+   * @param table The table whose columns are being exported
+   * @param csvFile The CSV file to add column records to
+   */
+  public void exportColumnsRecursively(Table table, CsvFile csvFile) {
+    if (table.getColumns() != null && !table.getColumns().isEmpty()) {
+      for (Column column : table.getColumns()) {
+        addColumnRecord(csvFile, column, table.getFullyQualifiedName());
+      }
+    }
+  }
+
+  /**
+   * Helper method to add a record to a CSV file
+   */
+  private void addRecordToCSV(CsvFile csvFile, List<String> recordList) {
+    List<List<String>> records = csvFile.getRecords();
+    if (records == null) {
+      records = new ArrayList<>();
+    }
+    records.add(recordList);
+    csvFile.withRecords(records);
+  }
+
+  private void addColumnRecord(CsvFile csvFile, Column column, String tableFqn) {
+    // Create a record with fields in the exact order matching headers in tableCsvDocumentation.json
+    List<String> recordList = new ArrayList<>();
+
+    // Basic entity fields
+    addField(recordList, getLocalColumnName(tableFqn, column.getFullyQualifiedName())); // name
+    addField(recordList, column.getDisplayName()); // displayName
+    addField(recordList, column.getDescription()); // description
+
+    // Fields that should be empty for columns
+    addField(recordList, ""); // owner (empty for columns)
+
+    // Column-specific fields that may have values
+    addTagLabels(recordList, column.getTags()); // tags
+    addGlossaryTerms(recordList, column.getTags()); // glossaryTerms
+
+    // More fields that should be empty for columns
+    addField(recordList, ""); // tiers (empty for columns)
+    addField(recordList, ""); // retentionPeriod (empty for columns)
+    addField(recordList, ""); // sourceUrl (empty for columns)
+    addField(recordList, ""); // domain (empty for columns)
+    addField(recordList, ""); // extension (empty for columns)
+
+    // Metadata fields - IMPORTANT: These need to be in the same position for all entity types
+    addField(recordList, "column"); // entityType
+    addField(recordList, column.getFullyQualifiedName()); // fullyQualifiedName
+
+    // Column data type fields - these should be added at the end
+    addField(recordList, column.getDataTypeDisplay()); // column.dataTypeDisplay
+    addField(
+        recordList,
+        column.getDataType() == null ? null : column.getDataType().value()); // column.dataType
+    addField(
+        recordList,
+        column.getArrayDataType() == null
+            ? null
+            : column.getArrayDataType().value()); // column.arrayDataType
+    addField(
+        recordList,
+        column.getDataLength() == null
+            ? null
+            : String.valueOf(column.getDataLength())); // column.dataLength
+
+    // Add directly to the CSV file without using HierarchyCSVImporter
+    // Since we've manually built the record in the correct order
+    List<List<String>> records = csvFile.getRecords();
+    if (records == null) {
+      records = new ArrayList<>();
+      csvFile.withRecords(records);
+    }
+    records.add(recordList);
+
+    // Process child columns recursively
+    if (column.getChildren() != null && !column.getChildren().isEmpty()) {
+      for (Column childColumn : column.getChildren()) {
+        addColumnRecord(csvFile, childColumn, tableFqn);
+      }
+    }
+  }
+
   @Override
   public CsvImportResult importFromCsv(String name, String csv, boolean dryRun, String user)
       throws IOException {
@@ -1285,6 +1432,48 @@ public class TableRepository extends EntityRepository<Table> {
       this.table = table;
     }
 
+    /**
+     * Add entity to CSV file with entity type and fully qualified name
+     */
+    public <E extends EntityInterface> void addEntityToCSV(
+        CsvFile csvFile, E entity, String entityType) {
+      List<String> recordList = new ArrayList<>();
+      addField(recordList, entity.getName());
+      addField(recordList, entity.getDisplayName());
+      addField(recordList, entity.getDescription());
+      addOwners(recordList, entity.getOwners());
+      addTagLabels(recordList, entity.getTags());
+      addGlossaryTerms(recordList, entity.getTags());
+      addTagTiers(recordList, entity.getTags());
+
+      // Handle optional fields that may not exist in all entity types
+      Object retentionPeriod = EntityUtil.getEntityField(entity, "retentionPeriod");
+      Object sourceUrl = EntityUtil.getEntityField(entity, "sourceUrl");
+      addField(recordList, retentionPeriod == null ? "" : retentionPeriod.toString());
+      addField(recordList, sourceUrl == null ? "" : sourceUrl.toString());
+
+      String domain = "";
+      Object domainObj = EntityUtil.getEntityField(entity, "domain");
+      if (domainObj != null) {
+        EntityReference domainRef = (EntityReference) domainObj;
+        domain =
+            (domainRef == null || Boolean.TRUE.equals(domainRef.getInherited()))
+                ? ""
+                : domainRef.getFullyQualifiedName();
+      }
+      addField(recordList, domain);
+
+      addExtension(recordList, entity.getExtension());
+
+      // Add entityType and fullyQualifiedName
+      addField(recordList, entityType);
+      addField(recordList, entity.getFullyQualifiedName());
+
+      // Use HierarchyCSVImporter to handle empty fields at entity level
+      HierarchyCSVImporter.addEntityRecordWithEmptyFields(
+          csvFile, recordList, HEADERS, entityType, false);
+    }
+
     @Override
     protected void createEntity(CSVPrinter printer, List<CSVRecord> csvRecords) throws IOException {
       // Headers: column.fullyQualifiedName, column.displayName, column.description,
@@ -1340,7 +1529,7 @@ public class TableRepository extends EntityRepository<Table> {
     }
 
     public void updateColumnsFromCsv(CSVPrinter printer, CSVRecord csvRecord) throws IOException {
-      String columnFqn = csvRecord.get(0);
+      String columnFqn = csvRecord.get(0); // name
       Column column = findColumn(table.getColumns(), columnFqn);
       boolean columnExists = column != null;
       if (!columnExists) {
@@ -1351,23 +1540,43 @@ public class TableRepository extends EntityRepository<Table> {
                 .withFullyQualifiedName(
                     table.getFullyQualifiedName() + Entity.SEPARATOR + columnFqn);
       }
-      column.withDisplayName(csvRecord.get(1));
-      column.withDescription(csvRecord.get(2));
-      column.withDataTypeDisplay(csvRecord.get(3));
-      column.withDataType(
-          nullOrEmpty(csvRecord.get(4)) ? null : ColumnDataType.fromValue(csvRecord.get(4)));
-      column.withArrayDataType(
-          nullOrEmpty(csvRecord.get(5)) ? null : ColumnDataType.fromValue(csvRecord.get(5)));
-      column.withDataLength(
-          nullOrEmpty(csvRecord.get(6)) ? null : Integer.parseInt(csvRecord.get(6)));
+
+      // Basic column properties
+      column.withDisplayName(csvRecord.get(1)); // displayName
+      column.withDescription(csvRecord.get(2)); // description
+
+      // Skip position 3 (owner) - columns don't have owners
+
+      // Tags and glossary terms
       List<TagLabel> tagLabels =
           getTagLabels(
               printer,
               csvRecord,
               List.of(
-                  Pair.of(7, TagLabel.TagSource.CLASSIFICATION),
-                  Pair.of(8, TagLabel.TagSource.GLOSSARY)));
+                  Pair.of(4, TagLabel.TagSource.CLASSIFICATION), // tags
+                  Pair.of(5, TagLabel.TagSource.GLOSSARY))); // glossaryTerms
       column.withTags(nullOrEmpty(tagLabels) ? null : tagLabels);
+
+      // Skip positions 6-10 (tiers, retentionPeriod, sourceUrl, domain, extension)
+
+      // Skip positions 11-12 (entityType, fullyQualifiedName) - these are metadata fields
+
+      // Data type related fields
+      column.withDataTypeDisplay(csvRecord.get(13)); // column.dataTypeDisplay
+      column.withDataType(
+          nullOrEmpty(csvRecord.get(14))
+              ? null
+              : ColumnDataType.fromValue(csvRecord.get(14))); // column.dataType
+      column.withArrayDataType(
+          nullOrEmpty(csvRecord.get(15))
+              ? null
+              : ColumnDataType.fromValue(csvRecord.get(15))); // column.arrayDataType
+      column.withDataLength(
+          nullOrEmpty(csvRecord.get(16))
+              ? null
+              : Integer.parseInt(csvRecord.get(16))); // column.dataLength
+
+      // Set ordinal position based on record number
       column.withOrdinalPosition(
           nullOrDefault(
               column.getOrdinalPosition(),
@@ -1420,21 +1629,54 @@ public class TableRepository extends EntityRepository<Table> {
     }
 
     private void addRecord(CsvFile csvFile, List<String> recordList, Column column) {
+      // Create a record with fields in the exact order matching headers in
+      // tableCsvDocumentation.json
+      // Basic entity fields
       addField(
           recordList,
-          getLocalColumnName(table.getFullyQualifiedName(), column.getFullyQualifiedName()));
-      addField(recordList, column.getDisplayName());
-      addField(recordList, column.getDescription());
-      addField(recordList, column.getDataTypeDisplay());
-      addField(recordList, column.getDataType() == null ? null : column.getDataType().value());
-      addField(
-          recordList, column.getArrayDataType() == null ? null : column.getArrayDataType().value());
+          getLocalColumnName(
+              table.getFullyQualifiedName(), column.getFullyQualifiedName())); // name
+      addField(recordList, column.getDisplayName()); // displayName
+      addField(recordList, column.getDescription()); // description
+
+      // Fields that should be empty for columns
+      addField(recordList, ""); // owner (empty for columns)
+
+      // Column-specific fields that may have values
+      addTagLabels(recordList, column.getTags()); // tags
+      addGlossaryTerms(recordList, column.getTags()); // glossaryTerms
+
+      // More fields that should be empty for columns
+      addField(recordList, ""); // tiers (empty for columns)
+      addField(recordList, ""); // retentionPeriod (empty for columns)
+      addField(recordList, ""); // sourceUrl (empty for columns)
+      addField(recordList, ""); // domain (empty for columns)
+      addField(recordList, ""); // extension (empty for columns)
+
+      // Metadata fields - IMPORTANT: These need to be in the same position for all entity types
+      addField(recordList, "column"); // entityType
+      addField(recordList, column.getFullyQualifiedName()); // fullyQualifiedName
+
+      // Column data type fields - these should be added at the end
+      addField(recordList, column.getDataTypeDisplay()); // column.dataTypeDisplay
       addField(
           recordList,
-          column.getDataLength() == null ? null : String.valueOf(column.getDataLength()));
-      addTagLabels(recordList, column.getTags());
-      addGlossaryTerms(recordList, column.getTags());
-      addRecord(csvFile, recordList);
+          column.getDataType() == null ? null : column.getDataType().value()); // column.dataType
+      addField(
+          recordList,
+          column.getArrayDataType() == null
+              ? null
+              : column.getArrayDataType().value()); // column.arrayDataType
+      addField(
+          recordList,
+          column.getDataLength() == null
+              ? null
+              : String.valueOf(column.getDataLength())); // column.dataLength
+
+      // Add directly to CSV file
+      super.addRecord(csvFile, recordList);
+
+      // Process child columns recursively
       listOrEmpty(column.getChildren()).forEach(c -> addRecord(csvFile, new ArrayList<>(), c));
     }
 
