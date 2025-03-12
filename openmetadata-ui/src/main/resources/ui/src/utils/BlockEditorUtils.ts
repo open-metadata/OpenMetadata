@@ -165,9 +165,15 @@ export const isHTMLString = (content: string) => {
  * Convert a markdown string to an HTML string
  */
 const _convertMarkdownStringToHtmlString = new Showdown.Converter({
-  ghCodeBlocks: false,
+  ghCodeBlocks: true,
   encodeEmails: false,
   ellipsis: false,
+  tables: true,
+  strikethrough: true,
+  simpleLineBreaks: true,
+  openLinksInNewWindow: true,
+  emoji: true,
+  underline: true,
 });
 
 export const getHtmlStringFromMarkdownString = (content: string) => {
@@ -206,17 +212,4 @@ export const setEditorContent = (editor: Editor, newContent: string) => {
 export const isDescriptionContentEmpty = (content: string) => {
   // Check if the content is empty or has only empty paragraph tags
   return isEmpty(content) || content === '<p></p>';
-};
-
-/**
- *
- * @param description HTML string
- * @returns Text from HTML string
- */
-export const getTextFromHtmlString = (description?: string): string => {
-  if (!description) {
-    return '';
-  }
-
-  return description.replace(/<[^>]{1,1000}>/g, '').trim();
 };
