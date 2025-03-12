@@ -14,12 +14,12 @@ import { fireEvent, render } from '@testing-library/react';
 import React from 'react';
 import { ReactFlowProvider } from 'reactflow';
 import { EntityLineageNodeType } from '../../../enums/entity.enum';
+import { LineageDirection } from '../../../generated/api/lineage/lineageDirection';
 import {
   getCollapseHandle,
   getColumnHandle,
   getExpandHandle,
 } from './CustomNode.utils';
-import { EdgeTypeEnum } from './EntityLineage.interface';
 
 describe('Custom Node Utils', () => {
   it('getColumnHandle should return null when nodeType is NOT_CONNECTED', () => {
@@ -48,7 +48,7 @@ describe('Custom Node Utils', () => {
   describe('getExpandHandle', () => {
     it('renders a Button component', () => {
       const { getByRole } = render(
-        getExpandHandle(EdgeTypeEnum.DOWN_STREAM, jest.fn())
+        getExpandHandle(LineageDirection.Downstream, jest.fn())
       );
 
       expect(getByRole('button')).toBeInTheDocument();
@@ -57,7 +57,7 @@ describe('Custom Node Utils', () => {
 
     it('applies the correct class name for non-DOWN_STREAM direction', () => {
       const { getByRole } = render(
-        getExpandHandle(EdgeTypeEnum.UP_STREAM, jest.fn())
+        getExpandHandle(LineageDirection.Upstream, jest.fn())
       );
 
       expect(getByRole('button')).toHaveClass('react-flow__handle-left');
@@ -66,7 +66,7 @@ describe('Custom Node Utils', () => {
     it('calls the onClickHandler when clicked', () => {
       const onClickHandler = jest.fn();
       const { getByRole } = render(
-        getExpandHandle(EdgeTypeEnum.DOWN_STREAM, onClickHandler)
+        getExpandHandle(LineageDirection.Downstream, onClickHandler)
       );
 
       fireEvent.click(getByRole('button'));
@@ -80,7 +80,7 @@ describe('Custom Node Utils', () => {
       const onClickHandler = jest.fn();
 
       const { getByTestId } = render(
-        getCollapseHandle(EdgeTypeEnum.DOWN_STREAM, onClickHandler)
+        getCollapseHandle(LineageDirection.Downstream, onClickHandler)
       );
 
       const collapseHandle = getByTestId('downstream-collapse-handle');
@@ -93,7 +93,7 @@ describe('Custom Node Utils', () => {
       const onClickHandler = jest.fn();
 
       const { getByTestId } = render(
-        getCollapseHandle(EdgeTypeEnum.UP_STREAM, onClickHandler)
+        getCollapseHandle(LineageDirection.Upstream, onClickHandler)
       );
 
       const collapseHandle = getByTestId('upstream-collapse-handle');
