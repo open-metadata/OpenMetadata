@@ -16,9 +16,10 @@ import { Change } from 'diff';
 import { uniqueId } from 'lodash';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { getTextFromHtmlString } from '../../../utils/BlockEditorUtils';
+import RichTextEditorPreviewerV1 from '../../../../components/common/RichTextEditor/RichTextEditorPreviewerV1';
+import './diff-view.less';
 
-export const DiffView = ({
+const DiffView = ({
   diffArr,
   className,
 }: {
@@ -27,11 +28,10 @@ export const DiffView = ({
 }) => {
   const { t } = useTranslation();
   const elements = diffArr.map((diff) => {
-    const diffValue = getTextFromHtmlString(diff.value);
     if (diff.added) {
       return (
         <ins className="diff-added" data-testid="diff-added" key={uniqueId()}>
-          {diffValue}
+          <RichTextEditorPreviewerV1 markdown={diff.value} />
         </ins>
       );
     }
@@ -41,21 +41,23 @@ export const DiffView = ({
           data-testid="diff-removed"
           key={uniqueId()}
           style={{ color: 'grey', textDecoration: 'line-through' }}>
-          {diffValue}
+          <RichTextEditorPreviewerV1 markdown={diff.value} />
         </del>
       );
     }
 
     return (
       <span data-testid="diff-normal" key={uniqueId()}>
-        {diffValue}
+        <RichTextEditorPreviewerV1 markdown={diff.value} />
       </span>
     );
   });
 
   return (
     <div className={classNames('w-full h-max-56 overflow-y-auto', className)}>
-      <pre className="whitespace-pre-wrap m-b-0" data-testid="diff-container">
+      <pre
+        className="whitespace-pre-wrap m-b-0 diff-container"
+        data-testid="diff-container">
         {diffArr.length ? (
           elements
         ) : (
@@ -67,3 +69,5 @@ export const DiffView = ({
     </div>
   );
 };
+
+export default DiffView;
