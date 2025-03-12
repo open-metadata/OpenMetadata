@@ -1,4 +1,4 @@
-package org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.impl;
+package org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.createAndRunIngestionPipeline;
 
 import static org.openmetadata.service.Entity.API_SERVICE;
 import static org.openmetadata.service.Entity.DASHBOARD_SERVICE;
@@ -9,9 +9,6 @@ import static org.openmetadata.service.Entity.MLMODEL_SERVICE;
 import static org.openmetadata.service.Entity.PIPELINE_SERVICE;
 import static org.openmetadata.service.Entity.SEARCH_SERVICE;
 import static org.openmetadata.service.Entity.STORAGE_SERVICE;
-import static org.openmetadata.service.governance.workflows.Workflow.INGESTION_PIPELINE_ID_VARIABLE;
-import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_VARIABLE;
-import static org.openmetadata.service.governance.workflows.Workflow.RESULT_VARIABLE;
 
 import java.time.LocalDate;
 import java.time.ZoneId;
@@ -21,9 +18,8 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
-import org.flowable.common.engine.api.delegate.Expression;
-import org.flowable.engine.delegate.DelegateExecution;
-import org.flowable.engine.delegate.JavaDelegate;
+import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.ServiceEntityInterface;
 import org.openmetadata.schema.entity.services.ingestionPipelines.AirflowConfig;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
@@ -43,16 +39,14 @@ import org.openmetadata.schema.metadataIngestion.PipelineServiceMetadataPipeline
 import org.openmetadata.schema.metadataIngestion.SearchServiceMetadataPipeline;
 import org.openmetadata.schema.metadataIngestion.SourceConfig;
 import org.openmetadata.schema.metadataIngestion.StorageServiceMetadataPipeline;
-import org.openmetadata.schema.type.Include;
 import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.governance.workflows.WorkflowVariableHandler;
 import org.openmetadata.service.jdbi3.IngestionPipelineRepository;
-import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineMapper;
 import org.openmetadata.service.util.JsonUtils;
 
-public class CreateIngestionPipelineImpl implements JavaDelegate {
+@Slf4j
+public class CreateIngestionPipelineImpl {
   private static final Map<PipelineType, String> SUPPORT_FEATURE_MAP = new HashMap<>();
 
   static {
@@ -87,53 +81,35 @@ public class CreateIngestionPipelineImpl implements JavaDelegate {
     SERVICE_TO_PIPELINE_MAP.put(API_SERVICE, new ApiServiceMetadataPipeline());
   }
 
-  private Expression pipelineTypeExpr;
-  private Expression deployExpr;
-  private Expression inputNamespaceMapExpr;
-  private Expression ingestionPipelineMapperExpr;
-  private Expression pipelineServiceClientExpr;
+  private final IngestionPipelineMapper mapper;
+  private final PipelineServiceClientInterface pipelineServiceClient;
 
-  @Override
-  public void execute(DelegateExecution execution) {
-    WorkflowVariableHandler varHandler = new WorkflowVariableHandler(execution);
-    Map<String, String> inputNamespaceMap =
-        JsonUtils.readOrConvertValue(inputNamespaceMapExpr.getValue(execution), Map.class);
-    PipelineType pipelineType =
-        PipelineType.fromValue((String) pipelineTypeExpr.getValue(execution));
-    boolean deploy = Boolean.parseBoolean((String) deployExpr.getValue(execution));
-    IngestionPipelineMapper mapper =
-        (IngestionPipelineMapper) ingestionPipelineMapperExpr.getValue(execution);
-    PipelineServiceClientInterface pipelineServiceClient =
-        (PipelineServiceClientInterface) pipelineServiceClientExpr.getValue(execution);
-
-    MessageParser.EntityLink entityLink =
-        MessageParser.EntityLink.parse(
-            (String)
-                varHandler.getNamespacedVariable(
-                    inputNamespaceMap.get(RELATED_ENTITY_VARIABLE), RELATED_ENTITY_VARIABLE));
-
-    ServiceEntityInterface service = Entity.getEntity(entityLink, "owners", Include.NON_DELETED);
-
-    if (supportsPipelineType(pipelineType, JsonUtils.getMap(service.getConnection().getConfig()))) {
-      IngestionPipeline ingestionPipeline = createIngestionPipeline(mapper, pipelineType, service);
-      varHandler.setNodeVariable(INGESTION_PIPELINE_ID_VARIABLE, ingestionPipeline.getId());
-
-      boolean wasSuccessful = true;
-
-      if (deploy) {
-        wasSuccessful = deployPipeline(pipelineServiceClient, ingestionPipeline, service);
-      }
-      // TODO: Use this variable to either continue the flow or send some kind of notification
-      varHandler.setNodeVariable(RESULT_VARIABLE, getResultValue(wasSuccessful));
-    }
+  public CreateIngestionPipelineImpl(
+      IngestionPipelineMapper mapper, PipelineServiceClientInterface pipelineServiceClient) {
+    this.mapper = mapper;
+    this.pipelineServiceClient = pipelineServiceClient;
   }
 
-  private String getResultValue(boolean result) {
-    if (result) {
-      return "success";
-    } else {
-      return "failure";
+  public CreateIngestionPipelineResult execute(
+      ServiceEntityInterface service, PipelineType pipelineType, boolean deploy) {
+    if (!supportsPipelineType(
+        pipelineType, JsonUtils.getMap(service.getConnection().getConfig()))) {
+      LOG.debug(
+          String.format(
+              "Service '%s' does not support Ingestion Pipeline of type '%s'",
+              service.getDisplayName(), pipelineType));
+      return new CreateIngestionPipelineResult(null, true);
     }
+
+    boolean wasSuccessful = true;
+
+    IngestionPipeline ingestionPipeline = getOrCreateIngestionPipeline(pipelineType, service);
+
+    if (deploy) {
+      wasSuccessful = deployPipeline(pipelineServiceClient, ingestionPipeline, service);
+    }
+
+    return new CreateIngestionPipelineResult(ingestionPipeline.getId(), wasSuccessful);
   }
 
   private boolean supportsPipelineType(
@@ -152,23 +128,21 @@ public class CreateIngestionPipelineImpl implements JavaDelegate {
     return response.getCode() == 200;
   }
 
-  private IngestionPipeline createIngestionPipeline(
-      IngestionPipelineMapper mapper, PipelineType pipelineType, ServiceEntityInterface service) {
+  private IngestionPipeline getOrCreateIngestionPipeline(
+      PipelineType pipelineType, ServiceEntityInterface service) {
     String displayName = String.format("[%s] %s", service.getName(), pipelineType);
     IngestionPipelineRepository repository =
         (IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
 
-    for (String ingestionPipelineStr :
-        repository.listAllByParentFqn(service.getFullyQualifiedName())) {
-      IngestionPipeline ingestionPipeline =
-          JsonUtils.readOrConvertValue(ingestionPipelineStr, IngestionPipeline.class);
-      if (ingestionPipeline.getPipelineType().equals(pipelineType)
-          && ingestionPipeline.getDisplayName().equals(displayName)) {
-        return ingestionPipeline;
-      }
-    }
-    ;
+    return Optional.ofNullable(getIngestionPipeline(repository, pipelineType, service, displayName))
+        .orElseGet(() -> createIngestionPipeline(repository, pipelineType, service, displayName));
+  }
 
+  private IngestionPipeline createIngestionPipeline(
+      IngestionPipelineRepository repository,
+      PipelineType pipelineType,
+      ServiceEntityInterface service,
+      String displayName) {
     org.openmetadata.schema.api.services.ingestionPipelines.CreateIngestionPipeline create =
         new org.openmetadata.schema.api.services.ingestionPipelines.CreateIngestionPipeline()
             .withAirflowConfig(new AirflowConfig().withStartDate(getYesterdayDate()))
@@ -185,6 +159,23 @@ public class CreateIngestionPipelineImpl implements JavaDelegate {
     return repository.create(null, ingestionPipeline);
   }
 
+  private IngestionPipeline getIngestionPipeline(
+      IngestionPipelineRepository repository,
+      PipelineType pipelineType,
+      ServiceEntityInterface service,
+      String displayName) {
+    for (String ingestionPipelineStr :
+        repository.listAllByParentFqn(service.getFullyQualifiedName())) {
+      IngestionPipeline ingestionPipeline =
+          JsonUtils.readOrConvertValue(ingestionPipelineStr, IngestionPipeline.class);
+      if (ingestionPipeline.getPipelineType().equals(pipelineType)
+          && ingestionPipeline.getDisplayName().equals(displayName)) {
+        return ingestionPipeline;
+      }
+    }
+    return null;
+  }
+
   private Object getSourceConfig(PipelineType pipelineType, ServiceEntityInterface service) {
     String entityType = Entity.getEntityTypeFromObject(service);
     if (entityType.equals(DATABASE_SERVICE)) {
@@ -199,5 +190,16 @@ public class CreateIngestionPipelineImpl implements JavaDelegate {
   private Date getYesterdayDate() {
     return Date.from(
         LocalDate.now(ZoneOffset.UTC).minusDays(1).atStartOfDay(ZoneId.of("UTC")).toInstant());
+  }
+
+  @Getter
+  public static class CreateIngestionPipelineResult {
+    private final UUID ingestionPipelineId;
+    private final boolean successful;
+
+    public CreateIngestionPipelineResult(UUID ingestionPipelineId, boolean wasSuccessful) {
+      this.ingestionPipelineId = ingestionPipelineId;
+      this.successful = wasSuccessful;
+    }
   }
 }

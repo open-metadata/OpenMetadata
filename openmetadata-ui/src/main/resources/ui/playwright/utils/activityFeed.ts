@@ -57,7 +57,7 @@ export const checkDescriptionInEditModal = async (
   // click on the Current tab
   await page.getByRole('tab', { name: 'current' }).click();
 
-  await expect(page.getByTestId('markdown-parser')).toContainText(
+  await expect(page.getByTestId('markdown-parser').first()).toContainText(
     taskValue.oldDescription ?? ''
   );
 };
