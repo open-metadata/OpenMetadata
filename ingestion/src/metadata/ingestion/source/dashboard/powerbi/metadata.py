@@ -622,6 +622,9 @@ class PowerbiSource(DashboardServiceSource):
             db_match = re.search(
                 r'AmazonRedshift\.Database\("[^"]+","([^"]+)"\)', source_expression
             )
+            if not db_match:
+                # not valid redshift source
+                return None
             schema_table_match = re.findall(r'\[Name="([^"]+)"\]', source_expression)
 
             database = db_match.group(1) if db_match else None
@@ -642,6 +645,9 @@ class PowerbiSource(DashboardServiceSource):
 
     def _parse_snowflake_source(self, source_expression: str) -> Optional[dict]:
         try:
+            if "Snowflake.Databases" not in source_expression:
+                # Not a snowflake valid expression
+                return None
             db_match = re.search(
                 r'\[Name="([^"]+)",Kind="Database"\]', source_expression
             )
