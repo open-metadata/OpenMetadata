@@ -640,7 +640,7 @@ class GlobalSettingsClassBase {
               entity: t('label.data-product-plural'),
             }),
             isProtected: Boolean(isAdminUser),
-            key: `${GlobalSettingsMenuCategory.SEARCH_SETTINGS}.${GlobalSettingOptions.DATA_PRODUCTS}`,
+            key: `${GlobalSettingsMenuCategory.SEARCH_SETTINGS}.${GlobalSettingOptions.DATA_PRODUCT}`,
             icon: DataAssetsIcon,
           },
           {

@@ -90,44 +90,39 @@ const SearchPreview = ({ searchConfig }: { searchConfig: SearchSettings }) => {
     [currentPage, pageSize, searchConfig, entityType, handlePagingChange]
   );
 
-  const renderSearchResults = () => {
-    if (isLoading) {
-      return <Loader />;
-    }
-    if (data.length > 0) {
-      return (
-        <>
-          {data.map(({ _score, _source, _id = '' }) => (
-            <ExploreSearchCard
-              showEntityIcon
-              className="search-card"
-              data-testid="searched-data-card"
-              id={_id}
-              key={_source.name}
-              score={_score}
-              searchValue={searchValue}
-              showTags={false}
-              source={_source}
-            />
-          ))}
-          {showPagination && (
-            <NextPrevious
-              isNumberBased
-              currentPage={currentPage}
-              pageSize={pageSize}
-              paging={paging}
-              pagingHandler={({ currentPage }: PagingHandlerParams) =>
-                handlePageChange(currentPage)
-              }
-              onShowSizeChange={handlePageSizeChange}
-            />
-          )}
-        </>
-      );
-    }
-
-    return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.NO_DATA} />;
-  };
+  const searchResults = isLoading ? (
+    <Loader />
+  ) : data.length > 0 ? (
+    <>
+      {data.map(({ _score, _source, _id = '' }) => (
+        <ExploreSearchCard
+          showEntityIcon
+          className="search-card"
+          data-testid="searched-data-card"
+          id={_id}
+          key={_source.name}
+          score={_score}
+          searchValue={searchValue}
+          showTags={false}
+          source={_source}
+        />
+      ))}
+      {showPagination && (
+        <NextPrevious
+          isNumberBased
+          currentPage={currentPage}
+          pageSize={pageSize}
+          paging={paging}
+          pagingHandler={({ currentPage }: PagingHandlerParams) =>
+            handlePageChange(currentPage)
+          }
+          onShowSizeChange={handlePageSizeChange}
+        />
+      )}
+    </>
+  ) : (
+    <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.NO_DATA} />
+  );
 
   const debouncedSearch = useMemo(
     () =>
@@ -188,7 +183,7 @@ const SearchPreview = ({ searchConfig }: { searchConfig: SearchSettings }) => {
         value={searchValue}
         onChange={(e) => handleSearch(e.target.value)}
       />
-      <div className="search-results-container">{renderSearchResults()}</div>
+      <div className="search-results-container">{searchResults}</div>
     </div>
   );
 };

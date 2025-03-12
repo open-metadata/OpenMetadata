@@ -17,6 +17,7 @@ import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as Delete } from '../../../assets/svg/delete-white.svg';
 import { TermBoost } from '../../../generated/configuration/searchSettings';
+import { getFilterOptions } from '../../../utils/SearchSettingsUtils';
 import tagClassBase from '../../../utils/TagClassBase';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { AsyncSelect } from '../../common/AsyncSelect/AsyncSelect';
@@ -130,14 +131,9 @@ const TermBoostComponent: React.FC<TermBoostProps> = ({
               api={fetchTags}
               className="w-full"
               data-testid="term-boost-select"
-              filterOption={(input, option) =>
-                (option?.value?.toString().toLowerCase() ?? '').includes(
-                  input.toLowerCase()
-                )
-              }
+              filterOption={getFilterOptions}
               optionLabelProp="value"
-              options={[]}
-              placeholder="Select a tag"
+              placeholder={t('label.select-tag')}
               value={formData.value}
               onChange={handleTagChange}
             />

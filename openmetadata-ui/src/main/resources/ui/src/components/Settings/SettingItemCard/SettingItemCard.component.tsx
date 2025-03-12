@@ -21,14 +21,14 @@ import './setting-item-card.style.less';
 interface SettingMenuItemProps {
   data: SettingMenuItem;
   onClick: (key: string) => void;
-  isButton?: boolean;
+  isButtonVisible?: boolean;
   className?: string;
 }
 
 const SettingItemCard = ({
   data,
   onClick,
-  isButton = false,
+  isButtonVisible = false,
   className,
 }: SettingMenuItemProps) => {
   const { t } = useTranslation();
@@ -56,7 +56,7 @@ const SettingItemCard = ({
           {data.description}
         </Typography.Paragraph>
       </div>
-      {isButton && (
+      {isButtonVisible && (
         <Button
           className="setting-card-action-btn"
           data-testid="view-detail-button"

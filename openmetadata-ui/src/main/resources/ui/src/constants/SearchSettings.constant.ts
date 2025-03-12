@@ -11,9 +11,10 @@
  *  limitations under the License.
  */
 import { Property } from '../pages/SearchSettingsPage/searchSettings.interface';
+import i18n from '../utils/i18next/LocalUtil';
 
 export const globalSettings: Property[] = [
-  { key: 'maxAggregateSize', label: 'Max Aggregate Size' },
-  { key: 'maxResultHits', label: 'Max Result Hits' },
-  { key: 'maxAnalyzedOffset', label: 'Max Analyzed Offset' },
+  { key: 'maxAggregateSize', label: i18n.t('label.max-aggregate-size') },
+  { key: 'maxResultHits', label: i18n.t('label.max-result-hits') },
+  { key: 'maxAnalyzedOffset', label: i18n.t('label.max-analyzed-offset') },
 ];

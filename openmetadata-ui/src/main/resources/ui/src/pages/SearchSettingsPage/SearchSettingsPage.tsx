@@ -311,11 +311,11 @@ const SearchSettingsPage = () => {
         {settingCategoryData?.map((data) => (
           <Col key={data.key} span={6}>
             <SettingItemCard
-              isButton
+              isButtonVisible
               className="search-setting-card"
               data={data}
               key={data.key}
-              onClick={() => handleViewDetailClick(data.key)}
+              onClick={handleViewDetailClick}
             />
           </Col>
         ))}
