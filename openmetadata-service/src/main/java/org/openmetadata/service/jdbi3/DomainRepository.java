@@ -33,6 +33,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.api.BulkAssets;
 import org.openmetadata.schema.type.api.BulkOperationResult;
+import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.domains.DomainResource;
 import org.openmetadata.service.util.EntityUtil;
@@ -117,7 +118,8 @@ public class DomainRepository extends EntityRepository<Domain> {
   }
 
   @Override
-  public EntityUpdater getUpdater(Domain original, Domain updated, Operation operation) {
+  public EntityRepository<Domain>.EntityUpdater getUpdater(
+      Domain original, Domain updated, Operation operation, ChangeSource changeSource) {
     return new DomainUpdater(original, updated, operation);
   }
 

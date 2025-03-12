@@ -15,10 +15,11 @@ import { useForm } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
 import React, { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { TabSpecificField } from '../../../enums/entity.enum';
+import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
 import { getGlossaryTermByFQN } from '../../../rest/glossaryAPI';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import Loader from '../../common/Loader/Loader';
 import AddGlossaryTermForm from '../AddGlossaryTermForm/AddGlossaryTermForm.component';
 import { GlossaryTermForm } from '../AddGlossaryTermForm/AddGlossaryTermForm.interface';
@@ -113,17 +114,21 @@ const GlossaryTermModal: FC<Props> = ({
       title={dialogTitle}
       width={800}
       onCancel={onCancel}>
-      {isLoading ? (
-        <Loader />
-      ) : (
-        <AddGlossaryTermForm
-          editMode={editMode}
-          formRef={form}
-          glossaryTerm={glossaryTerm}
-          onCancel={onCancel}
-          onSave={handleSave}
-        />
-      )}
+      <EntityAttachmentProvider
+        entityFqn={glossaryTermFQN}
+        entityType={EntityType.GLOSSARY_TERM}>
+        {isLoading ? (
+          <Loader />
+        ) : (
+          <AddGlossaryTermForm
+            editMode={editMode}
+            formRef={form}
+            glossaryTerm={glossaryTerm}
+            onCancel={onCancel}
+            onSave={handleSave}
+          />
+        )}
+      </EntityAttachmentProvider>
     </Modal>
   );
 };

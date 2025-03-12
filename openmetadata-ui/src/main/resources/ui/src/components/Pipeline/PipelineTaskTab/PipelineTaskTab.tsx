@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Card, Col, Radio, Row, Table, Typography } from 'antd';
+import { Card, Col, Radio, Row, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { groupBy, isEmpty, isUndefined, uniqBy } from 'lodash';
 import { EntityTags, TagFilterOptions } from 'Models';
@@ -24,6 +24,11 @@ import {
   NO_DATA_PLACEHOLDER,
 } from '../../../constants/constants';
 import { PIPELINE_TASK_TABS } from '../../../constants/pipeline.constants';
+import {
+  COMMON_STATIC_TABLE_VISIBLE_COLUMNS,
+  DEFAULT_PIPELINE_VISIBLE_COLUMNS,
+  TABLE_COLUMNS_KEYS,
+} from '../../../constants/TableKeys.constants';
 import { EntityType } from '../../../enums/entity.enum';
 import {
   Pipeline,
@@ -39,7 +44,9 @@ import {
   searchTagInData,
 } from '../../../utils/TableTags/TableTags.utils';
 import { createTagObject } from '../../../utils/TagsUtils';
+import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
+import Table from '../../common/Table/Table';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 import { ColumnFilter } from '../../Database/ColumnFilter/ColumnFilter.component';
 import TableDescription from '../../Database/TableDescription/TableDescription.component';
@@ -170,8 +177,8 @@ export const PipelineTaskTab = () => {
   const taskColumns: ColumnsType<Task> = useMemo(
     () => [
       {
-        key: t('label.name'),
-        dataIndex: 'name',
+        key: TABLE_COLUMNS_KEYS.NAME,
+        dataIndex: TABLE_COLUMNS_KEYS.NAME,
         title: t('label.name'),
         width: 220,
         fixed: 'left',
@@ -197,8 +204,8 @@ export const PipelineTaskTab = () => {
           ),
       },
       {
-        key: t('label.type'),
-        dataIndex: 'taskType',
+        key: TABLE_COLUMNS_KEYS.TASK_TYPE,
+        dataIndex: TABLE_COLUMNS_KEYS.TASK_TYPE,
         width: 180,
         title: t('label.type'),
         render: (text) => (
@@ -206,8 +213,8 @@ export const PipelineTaskTab = () => {
         ),
       },
       {
-        key: t('label.description'),
-        dataIndex: 'description',
+        key: TABLE_COLUMNS_KEYS.DESCRIPTION,
+        dataIndex: TABLE_COLUMNS_KEYS.DESCRIPTION,
         width: 350,
         title: t('label.description'),
         render: (_, record, index) => (
@@ -227,16 +234,16 @@ export const PipelineTaskTab = () => {
       },
       {
         title: t('label.owner-plural'),
-        dataIndex: 'owners',
-        key: 'owners',
+        dataIndex: TABLE_COLUMNS_KEYS.OWNERS,
+        key: TABLE_COLUMNS_KEYS.OWNERS,
         width: 120,
         filterIcon: columnFilterIcon,
         render: (owner) => <OwnerLabel hasPermission={false} owners={owner} />,
       },
       {
         title: t('label.tag-plural'),
-        dataIndex: 'tags',
-        key: 'tags',
+        dataIndex: TABLE_COLUMNS_KEYS.TAGS,
+        key: TABLE_COLUMNS_KEYS.TAGS,
         width: 300,
         filterIcon: columnFilterIcon,
         render: (tags, record, index) => (
@@ -258,8 +265,8 @@ export const PipelineTaskTab = () => {
       },
       {
         title: t('label.glossary-term-plural'),
-        dataIndex: 'tags',
-        key: 'glossary',
+        dataIndex: TABLE_COLUMNS_KEYS.TAGS,
+        key: TABLE_COLUMNS_KEYS.GLOSSARY,
         width: 300,
         filterIcon: columnFilterIcon,
         filters: tagFilter.Glossary,
@@ -312,10 +319,12 @@ export const PipelineTaskTab = () => {
             columns={taskColumns}
             data-testid="task-table"
             dataSource={tasksInternal}
+            defaultVisibleColumns={DEFAULT_PIPELINE_VISIBLE_COLUMNS}
             pagination={false}
             rowKey="name"
             scroll={{ x: 1200 }}
             size="small"
+            staticVisibleColumns={COMMON_STATIC_TABLE_VISIBLE_COLUMNS}
           />
         ) : (
           tasksDAGView
@@ -323,18 +332,22 @@ export const PipelineTaskTab = () => {
       </Col>
 
       {editTask && (
-        <ModalWithMarkdownEditor
-          header={`${t('label.edit-entity', {
-            entity: t('label.task'),
-          })}: "${getEntityName(editTask.task)}"`}
-          placeholder={t('label.enter-field-description', {
-            field: t('label.task-lowercase'),
-          })}
-          value={editTask.task.description ?? ''}
-          visible={Boolean(editTask)}
-          onCancel={closeEditTaskModal}
-          onSave={onTaskUpdate}
-        />
+        <EntityAttachmentProvider
+          entityFqn={editTask.task.fullyQualifiedName}
+          entityType={EntityType.PIPELINE}>
+          <ModalWithMarkdownEditor
+            header={`${t('label.edit-entity', {
+              entity: t('label.task'),
+            })}: "${getEntityName(editTask.task)}"`}
+            placeholder={t('label.enter-field-description', {
+              field: t('label.task-lowercase'),
+            })}
+            value={editTask.task.description ?? ''}
+            visible={Boolean(editTask)}
+            onCancel={closeEditTaskModal}
+            onSave={onTaskUpdate}
+          />
+        </EntityAttachmentProvider>
       )}
     </Row>
   );

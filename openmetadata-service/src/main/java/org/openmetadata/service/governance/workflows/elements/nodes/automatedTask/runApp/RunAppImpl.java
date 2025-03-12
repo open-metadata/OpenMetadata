@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Set;
 import javax.json.JsonPatch;
 import lombok.SneakyThrows;
+import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.ServiceEntityInterface;
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppRunRecord;
@@ -29,6 +30,7 @@ import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.apps.ApplicationHandler;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.AppRepository;
 import org.openmetadata.service.jdbi3.IngestionPipelineRepository;
 import org.openmetadata.service.resources.feeds.MessageParser;
@@ -36,6 +38,7 @@ import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
 
+@Slf4j
 public class RunAppImpl {
   public boolean execute(
       PipelineServiceClientInterface pipelineServiceClient,
@@ -46,8 +49,14 @@ public class RunAppImpl {
     ServiceEntityInterface service = Entity.getEntity(entityLink, "owners", Include.NON_DELETED);
 
     AppRepository appRepository = (AppRepository) Entity.getEntityRepository(Entity.APPLICATION);
-    App app =
-        appRepository.getByName(null, appName, new EntityUtil.Fields(Set.of("bot", "pipelines")));
+    App app;
+    try {
+      app =
+          appRepository.getByName(null, appName, new EntityUtil.Fields(Set.of("bot", "pipelines")));
+    } catch (EntityNotFoundException ex) {
+      LOG.warn(String.format("App: '%s' is not Installed. Skipping", appName));
+      return true;
+    }
 
     if (!validateAppShouldRun(app, service)) {
       return true;
@@ -117,7 +126,7 @@ public class RunAppImpl {
               .withRecreateDataAssetsIndex(false)
               .withModuleConfiguration(updatedModuleConfig);
     }
-    updatedApp.withAppConfiguration(updatedConfig);
+    updatedApp.withAppConfiguration(JsonUtils.getMap(updatedConfig));
     return updatedApp;
   }
 
@@ -135,7 +144,8 @@ public class RunAppImpl {
       long startTime,
       long timeoutMillis) {
     ApplicationHandler.getInstance()
-        .triggerApplicationOnDemand(app, Entity.getCollectionDAO(), Entity.getSearchRepository());
+        .triggerApplicationOnDemand(
+            app, Entity.getCollectionDAO(), Entity.getSearchRepository(), null);
 
     if (waitForCompletion) {
       return waitForCompletion(repository, app, startTime, timeoutMillis);

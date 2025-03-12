@@ -40,7 +40,7 @@ import {
 import customizeMyDataPageClassBase from '../../../../utils/CustomizeMyDataPageClassBase';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
-import ActivityFeedProvider from '../../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
+import { withActivityFeed } from '../../../AppRouter/withActivityFeed';
 import PageLayoutV1 from '../../../PageLayoutV1/PageLayoutV1';
 import AddWidgetModal from '../AddWidgetModal/AddWidgetModal';
 import { CustomizablePageHeader } from '../CustomizablePageHeader/CustomizablePageHeader';
@@ -205,7 +205,7 @@ function CustomizeMyData({
   useGridLayoutDirection();
 
   return (
-    <ActivityFeedProvider>
+    <>
       <PageLayoutV1
         mainContainerClassName="p-t-0"
         pageContainerStyle={{
@@ -246,8 +246,8 @@ function CustomizeMyData({
           placeholderWidgetKey={placeholderWidgetKey}
         />
       )}
-    </ActivityFeedProvider>
+    </>
   );
 }
 
-export default CustomizeMyData;
+export default withActivityFeed(CustomizeMyData);

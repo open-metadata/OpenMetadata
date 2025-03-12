@@ -13,11 +13,6 @@
 import { expect, Page } from '@playwright/test';
 import { isEmpty, lowerCase } from 'lodash';
 import {
-  customFormatDateTime,
-  getCurrentMillis,
-  getEpochMillisForFutureDays,
-} from '../../src/utils/date-time/DateTimeUtils';
-import {
   ENTITIES_WITHOUT_FOLLOWING_BUTTON,
   LIST_OF_FIELDS_TO_EDIT_NOT_TO_BE_PRESENT,
   LIST_OF_FIELDS_TO_EDIT_TO_BE_DISABLED,
@@ -30,6 +25,11 @@ import {
   redirectToHomePage,
   toastNotification,
 } from './common';
+import {
+  customFormatDateTime,
+  getCurrentMillis,
+  getEpochMillisForFutureDays,
+} from './dateTime';
 
 export const visitEntityPage = async (data: {
   page: Page;
@@ -1098,9 +1098,6 @@ export const deletedEntityCommonChecks = async ({
   deleted?: boolean;
 }) => {
   const isTableEntity = endPoint === EntityTypeEndpoint.Table;
-
-  // Go to first tab before starts validating
-  await page.click('.ant-tabs-tab:nth-child(1)');
 
   // Check if all the edit actions are available for the entity
   await checkForEditActions({

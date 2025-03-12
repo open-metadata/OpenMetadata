@@ -22,6 +22,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.AppException;
 import org.openmetadata.service.exception.EntityNotFoundException;
@@ -368,17 +369,17 @@ public class AppRepository extends EntityRepository<App> {
   }
 
   @Override
-  protected void cleanup(App app) {
+  protected void entitySpecificCleanup(App app) {
     // Remove the Pipelines for Application
     List<EntityReference> pipelineRef = getIngestionPipelines(app);
     pipelineRef.forEach(
         reference ->
             Entity.deleteEntity("admin", reference.getType(), reference.getId(), true, true));
-    super.cleanup(app);
   }
 
   @Override
-  public EntityUpdater getUpdater(App original, App updated, Operation operation) {
+  public EntityRepository<App>.EntityUpdater getUpdater(
+      App original, App updated, Operation operation, ChangeSource changeSource) {
     return new AppRepository.AppUpdater(original, updated, operation);
   }
 
@@ -401,7 +402,7 @@ public class AppRepository extends EntityRepository<App> {
     newSubs.add(eventSubscription.getEntityReference());
     App updated = JsonUtils.deepCopy(app, App.class).withEventSubscriptions(newSubs);
     updated.setOpenMetadataServerConnection(null);
-    getUpdater(app, updated, EntityRepository.Operation.PUT).update();
+    getUpdater(app, updated, EntityRepository.Operation.PUT, null).update();
     return updated;
   }
 
@@ -416,7 +417,7 @@ public class AppRepository extends EntityRepository<App> {
     newSubs.removeIf(sub -> sub.getId().equals(eventSubscriptionId));
     App updated = JsonUtils.deepCopy(app, App.class).withEventSubscriptions(newSubs);
     updated.setOpenMetadataServerConnection(null);
-    getUpdater(app, updated, EntityRepository.Operation.PUT).update();
+    getUpdater(app, updated, EntityRepository.Operation.PUT, null).update();
     return updated;
   }
 

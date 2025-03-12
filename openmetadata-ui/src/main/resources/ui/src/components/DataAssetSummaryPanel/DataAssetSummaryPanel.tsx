@@ -176,9 +176,8 @@ export const DataAssetSummaryPanel = ({
         return (
           <>
             <Row
-              className="p-md border-radius-card"
-              gutter={[0, 4]}
-              style={{ background: '#f5f5f5' }}>
+              className="p-md border-radius-card summary-panel-card"
+              gutter={[0, 4]}>
               <Col span={24}>
                 <CommonEntitySummaryInfo
                   componentType={componentType}

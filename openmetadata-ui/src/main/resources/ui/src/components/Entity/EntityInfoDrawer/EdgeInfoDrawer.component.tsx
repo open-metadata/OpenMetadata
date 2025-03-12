@@ -24,6 +24,7 @@ import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import { LINEAGE_SOURCE } from '../../../constants/Lineage.constants';
 import { CSMode } from '../../../enums/codemirror.enum';
 import { EntityType } from '../../../enums/entity.enum';
+import { AddLineage } from '../../../generated/api/lineage/addLineage';
 import { Source } from '../../../generated/type/entityLineage';
 import { getNameFromFQN } from '../../../utils/CommonUtils';
 import {
@@ -157,7 +158,7 @@ const EdgeInfoDrawer = ({
             },
             lineageDetails,
           },
-        };
+        } as AddLineage;
         await onEdgeDetailsUpdate?.(updatedEdgeDetails);
       }
     },
@@ -184,7 +185,7 @@ const EdgeInfoDrawer = ({
             },
             lineageDetails,
           },
-        };
+        } as AddLineage;
         await onEdgeDetailsUpdate?.(updatedEdgeDetails);
         setMysqlQuery(updatedQuery);
       }

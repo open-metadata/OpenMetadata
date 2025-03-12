@@ -69,6 +69,12 @@
           "$ref": "automator/removeCustomPropertiesAction.json"
         },
         {
+          "$ref": "automator/addDataProductAction.json"
+        },
+        {
+          "$ref": "automator/removeDataProductAction.json"
+        },
+        {
           "$ref": "automator/lineagePropagationAction.json"
         },
         {

@@ -93,6 +93,7 @@ class OpenlineageSource(PipelineServiceSource):
         """Nothing to prepare"""
 
     def close(self) -> None:
+        self.metadata.compute_percentile(Pipeline, self.today)
         self.metadata.close()
 
     @classmethod
