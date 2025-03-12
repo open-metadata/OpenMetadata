@@ -391,6 +391,7 @@ class ESMixin(Generic[T]):
     def yield_es_view_def(
         self,
         service_name: str,
+        incremental: bool = False,
     ) -> Iterable[TableView]:
         """
         Get the view definition from ES
@@ -451,6 +452,10 @@ class ESMixin(Generic[T]):
                 }
             }
         }
+        if incremental:
+            query.get("query").get("bool").get("must").append(
+                {"bool": {"should": [{"term": {"processedLineage": False}}]}}
+            )
         query = json.dumps(query)
         for response in self._paginate_es_internal(
             entity=Table,

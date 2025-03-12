@@ -33,6 +33,7 @@ public record StoredProcedureIndex(StoredProcedure storedProcedure) implements S
     doc.put("lineage", SearchIndex.getLineageData(storedProcedure.getEntityReference()));
     doc.put("tier", parseTags.getTierTag());
     doc.put("service", getEntityWithDisplayName(storedProcedure.getService()));
+    doc.put("processedLineage", storedProcedure.getProcessedLineage());
     return doc;
   }
 

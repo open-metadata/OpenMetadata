@@ -156,8 +156,19 @@ public class StoredProcedureRepository extends EntityRepository<StoredProcedure>
             original.getStoredProcedureType(),
             updated.getStoredProcedureType());
       }
+      updateProcessedLineage(original, updated);
+      recordChange(
+          "processedLineage", original.getProcessedLineage(), updated.getProcessedLineage());
       recordChange("sourceUrl", original.getSourceUrl(), updated.getSourceUrl());
       recordChange("sourceHash", original.getSourceHash(), updated.getSourceHash());
+    }
+
+    private void updateProcessedLineage(StoredProcedure origSP, StoredProcedure updatedSP) {
+      // if schema definition changes make processed lineage false
+      if (origSP.getProcessedLineage().booleanValue()
+          && !origSP.getCode().equals(updatedSP.getCode())) {
+        updatedSP.setProcessedLineage(false);
+      }
     }
   }
 }

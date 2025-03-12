@@ -265,11 +265,22 @@ class LineageSource(QueryParserSource, ABC):
                     timeout_seconds=self.source_config.parsingTimeoutLimit,
                 ):
                     if lineage.right is not None:
+                        view_fqn = fqn.build(
+                            metadata=self.metadata,
+                            entity_type=Table,
+                            service_name=self.service_name,
+                            database_name=view.db_name,
+                            schema_name=view.schema_name,
+                            table_name=view.table_name,
+                            skip_es_search=True,
+                        )
                         queue.put(
                             Either(
                                 right=OMetaLineageRequest(
                                     lineage_request=lineage.right,
                                     override_lineage=self.source_config.overrideViewLineage,
+                                    entity_fqn=view_fqn,
+                                    entity=Table,
                                 )
                             )
                         )
@@ -281,7 +292,11 @@ class LineageSource(QueryParserSource, ABC):
 
     def yield_view_lineage(self) -> Iterable[Either[AddLineageRequest]]:
         logger.info("Processing View Lineage")
-        producer_fn = partial(self.metadata.yield_es_view_def, self.config.serviceName)
+        producer_fn = partial(
+            self.metadata.yield_es_view_def,
+            self.config.serviceName,
+            self.source_config.incrementalLineageProcessing,
+        )
         processor_fn = self.view_lineage_generator
         yield from self.generate_lineage_in_thread(producer_fn, processor_fn)
 

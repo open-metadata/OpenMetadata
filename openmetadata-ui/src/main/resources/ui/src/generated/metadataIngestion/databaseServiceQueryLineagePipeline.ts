@@ -27,6 +27,11 @@ export interface DatabaseServiceQueryLineagePipeline {
      */
     filterCondition?: string;
     /**
+     * Set the 'Incremental Lineage Processing' toggle to control whether to process lineage
+     * incrementally.
+     */
+    incrementalLineageProcessing?: boolean;
+    /**
      * Set the 'Override View Lineage' toggle to control whether to override the existing view
      * lineage.
      */

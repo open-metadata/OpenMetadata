@@ -90,6 +90,10 @@ export interface StoredProcedure {
      */
     owners?: EntityReference[];
     /**
+     * Processed lineage for the stored procedure
+     */
+    processedLineage?: boolean;
+    /**
      * Link to Database service this table is hosted in.
      */
     service?: EntityReference;

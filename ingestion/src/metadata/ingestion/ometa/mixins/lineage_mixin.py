@@ -406,3 +406,24 @@ class OMetaLineageMixin(Generic[T]):
                     logger.error(
                         f"Error while adding lineage: {lineage_request.left.error}"
                     )
+
+    def patch_lineage_processed_flag(
+        self,
+        entity: Type[T],
+        fqn: str,
+    ) -> None:
+
+        try:
+            original_entity = self.get_by_name(entity=entity, fqn=fqn)
+            if not original_entity:
+                return
+
+            updated_entity = original_entity.model_copy(deep=True)
+            updated_entity.processedLineage = True
+
+            self.patch(
+                entity=entity, source=original_entity, destination=updated_entity
+            )
+        except Exception as exc:
+            logger.debug(f"Error while patching lineage processed flag: {exc}")
+            logger.debug(traceback.format_exc())

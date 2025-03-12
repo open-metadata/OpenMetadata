@@ -115,6 +115,10 @@ export interface Table {
      */
     owners?: EntityReference[];
     /**
+     * Processed lineage for the table
+     */
+    processedLineage?: boolean;
+    /**
      * Latest Data profile for a table.
      */
     profile?: TableProfile;

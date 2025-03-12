@@ -288,7 +288,16 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
                     entity_id=str(add_lineage.lineage_request.edge.toEntity.id.root),
                     source=add_lineage.lineage_request.edge.lineageDetails.source.value,
                 )
-        return self._run_dispatch(add_lineage.lineage_request)
+        lineage_response = self._run_dispatch(add_lineage.lineage_request)
+        if (
+            lineage_response
+            and lineage_response.right is not None
+            and add_lineage.entity_fqn
+            and add_lineage.entity
+        ):
+            self.metadata.patch_lineage_processed_flag(
+                entity=add_lineage.entity, fqn=add_lineage.entity_fqn
+            )
 
     def _create_role(self, create_role: CreateRoleRequest) -> Optional[Role]:
         """
