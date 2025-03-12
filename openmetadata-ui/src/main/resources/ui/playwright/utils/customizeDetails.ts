@@ -18,7 +18,11 @@ import {
   DASHBOARD_DEFAULT_TABS,
   DATABASE_DEFAULT_TABS,
   DATABASE_SCHEMA_DEFAULT_TABS,
+  DOMAIN_DEFAULT_TABS,
   ECustomizedDataAssets,
+  ECustomizedGovernance,
+  GLOSSARY_DEFAULT_TABS,
+  GLOSSARY_TERM_DEFAULT_TABS,
   ML_MODEL_DEFAULT_TABS,
   PIPELINE_DEFAULT_TABS,
   SEARCH_INDEX_DEFAULT_TABS,
@@ -28,7 +32,9 @@ import {
 } from '../constant/customizeDetail';
 import { EntityDataClass } from '../support/entity/EntityDataClass';
 
-export const getCustomizeDetailsEntity = (type: ECustomizedDataAssets) => {
+export const getCustomizeDetailsEntity = (
+  type: ECustomizedDataAssets | ECustomizedGovernance
+) => {
   switch (type) {
     case ECustomizedDataAssets.TABLE:
       return EntityDataClass.table1;
@@ -56,13 +62,21 @@ export const getCustomizeDetailsEntity = (type: ECustomizedDataAssets) => {
       return EntityDataClass.storedProcedure1;
     case ECustomizedDataAssets.API_ENDPOINT:
       return EntityDataClass.apiEndpoint1;
+    case ECustomizedGovernance.DOMAIN:
+      return EntityDataClass.domain1;
+    case ECustomizedGovernance.GLOSSARY:
+      return EntityDataClass.glossary1;
+    case ECustomizedGovernance.GLOSSARY_TERM:
+      return EntityDataClass.glossaryTerm1;
 
     default:
       throw new Error(`Invalid entity type: ${type}`);
   }
 };
 
-export const getCustomizeDetailsDefaultTabs = (type: ECustomizedDataAssets) => {
+export const getCustomizeDetailsDefaultTabs = (
+  type: ECustomizedDataAssets | ECustomizedGovernance
+) => {
   switch (type) {
     case ECustomizedDataAssets.TABLE:
       return TABLE_DEFAULT_TABS;
@@ -90,5 +104,11 @@ export const getCustomizeDetailsDefaultTabs = (type: ECustomizedDataAssets) => {
       return CONTAINER_DEFAULT_TABS;
     case ECustomizedDataAssets.DATABASE:
       return DATABASE_DEFAULT_TABS;
+    case ECustomizedGovernance.DOMAIN:
+      return DOMAIN_DEFAULT_TABS;
+    case ECustomizedGovernance.GLOSSARY:
+      return GLOSSARY_DEFAULT_TABS;
+    case ECustomizedGovernance.GLOSSARY_TERM:
+      return GLOSSARY_TERM_DEFAULT_TABS;
   }
 };

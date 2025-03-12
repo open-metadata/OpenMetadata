@@ -26,6 +26,12 @@ export enum ECustomizedDataAssets {
   API_ENDPOINT = 'API Endpoint',
 }
 
+export enum ECustomizedGovernance {
+  DOMAIN = 'Domain',
+  GLOSSARY = 'Glossary',
+  GLOSSARY_TERM = 'Glossary Term',
+}
+
 export const TABLE_DEFAULT_TABS = [
   'Schema',
   'Activity Feeds & Tasks',
@@ -140,5 +146,22 @@ export const ML_MODEL_DEFAULT_TABS = [
   'Activity Feeds & Tasks',
   'Details',
   'Lineage',
+  'Custom Properties',
+];
+
+export const DOMAIN_DEFAULT_TABS = [
+  'Documentation',
+  'Sub Domains',
+  'Data Products',
+  'Assets',
+];
+
+export const GLOSSARY_DEFAULT_TABS = ['Terms', 'Activity Feeds & Tasks'];
+
+export const GLOSSARY_TERM_DEFAULT_TABS = [
+  'Overview',
+  'Glossary Terms',
+  'Assets',
+  'Activity Feeds & Tasks',
   'Custom Properties',
 ];
