@@ -23,11 +23,11 @@ import { Operation } from '../../generated/entity/policies/policy';
 import AddCustomMetricPage from '../../pages/AddCustomMetricPage/AddCustomMetricPage';
 import { CustomizablePage } from '../../pages/CustomizablePage/CustomizablePage';
 import DataQualityPage from '../../pages/DataQuality/DataQualityPage';
-import BulkEntityImportPage from '../../pages/EntityImport/BulkEntityImportPage/BulkEntityImportPage';
 import ForbiddenPage from '../../pages/ForbiddenPage/ForbiddenPage';
 import TagPage from '../../pages/TagPage/TagPage';
 import { checkPermission, userPermissions } from '../../utils/PermissionsUtils';
 import AdminProtectedRoute from './AdminProtectedRoute';
+import EntityImportRouter from './EntityImportRouter';
 import withSuspenseFallback from './withSuspenseFallback';
 
 const DomainRouter = withSuspenseFallback(
@@ -282,10 +282,9 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
     <Switch>
       <Route exact component={ForbiddenPage} path={ROUTES.FORBIDDEN} />
 
-      {/* Handle Entity Import pages */}
+      {/* Handle Entity Import and Edit pages */}
       <Route
-        exact
-        component={BulkEntityImportPage}
+        component={EntityImportRouter}
         path={[ROUTES.ENTITY_IMPORT, ROUTES.BULK_EDIT_ENTITY_WITH_FQN]}
       />
 
