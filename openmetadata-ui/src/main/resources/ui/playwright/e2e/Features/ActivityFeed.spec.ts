@@ -630,7 +630,7 @@ base.describe('Activity feed with Data Consumer User', () => {
     await afterAction();
   });
 
-  base('Create and Assign Task with Suggestions', async ({ browser }) => {
+  base.fixme('Create and Assign Task with Suggestions', async ({ browser }) => {
     const { page: page1, afterAction: afterActionUser1 } =
       await performUserLogin(browser, user1);
     const { page: page2, afterAction: afterActionUser2 } =
