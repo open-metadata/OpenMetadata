@@ -34,7 +34,6 @@ import os.org.opensearch.client.RestHighLevelClient;
 import os.org.opensearch.common.xcontent.XContentType;
 import os.org.opensearch.rest.RestStatus;
 
-
 @Slf4j
 public class OpenSearchIndexSink implements BulkSink, Closeable {
 

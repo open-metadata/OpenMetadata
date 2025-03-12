@@ -15,11 +15,6 @@ import static org.openmetadata.service.events.scheduled.ServicesStatusJobHandler
 import static org.openmetadata.service.exception.CatalogGenericExceptionMapper.getResponse;
 import static org.openmetadata.service.search.EntityBuilderConstant.MAX_AGGREGATE_SIZE;
 import static org.openmetadata.service.search.EntityBuilderConstant.MAX_RESULT_HITS;
-import static org.openmetadata.service.search.EntityBuilderConstant.OWNER_DISPLAY_NAME_KEYWORD;
-import static org.openmetadata.service.search.EntityBuilderConstant.POST_TAG;
-import static org.openmetadata.service.search.EntityBuilderConstant.PRE_TAG;
-import static org.openmetadata.service.search.EntityBuilderConstant.SCHEMA_FIELD_NAMES;
-import static org.openmetadata.service.search.EntityBuilderConstant.UNIFIED;
 import static org.openmetadata.service.search.SearchUtils.createElasticSearchSSLContext;
 import static org.openmetadata.service.search.SearchUtils.getLineageDirection;
 import static org.openmetadata.service.search.SearchUtils.getRelationshipRef;
@@ -61,10 +56,6 @@ import es.org.elasticsearch.client.indices.GetMappingsResponse;
 import es.org.elasticsearch.client.indices.PutMappingRequest;
 import es.org.elasticsearch.cluster.health.ClusterHealthStatus;
 import es.org.elasticsearch.cluster.metadata.MappingMetadata;
-import es.org.elasticsearch.common.settings.Settings;
-import es.org.elasticsearch.common.lucene.search.function.CombineFunction;
-import es.org.elasticsearch.common.lucene.search.function.FieldValueFactorFunction;
-import es.org.elasticsearch.common.lucene.search.function.FunctionScoreQuery;
 import es.org.elasticsearch.common.unit.Fuzziness;
 import es.org.elasticsearch.common.xcontent.LoggingDeprecationHandler;
 import es.org.elasticsearch.core.TimeValue;
@@ -199,13 +190,9 @@ import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 @Slf4j
 public class ElasticSearchClient implements SearchClient {
-
-  private static final Logger LOG = LoggerFactory.getLogger(ElasticSearchClient.class);
 
   @SuppressWarnings("deprecated")
   @Getter
@@ -360,14 +347,21 @@ public class ElasticSearchClient implements SearchClient {
   }
 
   @Override
-  public Response previewSearch(SearchRequest request, SubjectContext subjectContext, SearchSettings searchSettings) throws IOException {
+  public Response previewSearch(
+      SearchRequest request, SubjectContext subjectContext, SearchSettings searchSettings)
+      throws IOException {
     return doSearch(request, subjectContext, searchSettings);
   }
 
-  public Response doSearch(SearchRequest request, SubjectContext subjectContext, SearchSettings searchSettings) throws IOException {
+  public Response doSearch(
+      SearchRequest request, SubjectContext subjectContext, SearchSettings searchSettings)
+      throws IOException {
     ElasticSearchSourceBuilderFactory searchBuilderFactory =
         new ElasticSearchSourceBuilderFactory(searchSettings);
- 
+    SearchSourceBuilder searchSourceBuilder =
+        searchBuilderFactory.getSearchSourceBuilder(
+            request.getIndex(), request.getQuery(), request.getFrom(), request.getSize());
+
     buildSearchRBACQuery(subjectContext, searchSourceBuilder);
     // Add Filter
     buildSearchSourceFilter(request.getQueryFilter(), searchSourceBuilder);
@@ -793,11 +787,11 @@ public class ElasticSearchClient implements SearchClient {
       searchSourceBuilder.searchAfter(searchAfter);
     }
 
-    if (searchSortFilter.isSorted()) {
+    if (Boolean.TRUE.equals(searchSortFilter.isSorted())) {
       FieldSortBuilder fieldSortBuilder =
           SortBuilders.fieldSort(searchSortFilter.getSortField())
               .order(SortOrder.fromString(searchSortFilter.getSortType()));
-      if (searchSortFilter.isNested()) {
+      if (Boolean.TRUE.equals(searchSortFilter.isNested())) {
         NestedSortBuilder nestedSortBuilder =
             new NestedSortBuilder(searchSortFilter.getSortNestedPath());
         fieldSortBuilder.setNestedSort(nestedSortBuilder);
@@ -876,12 +870,13 @@ public class ElasticSearchClient implements SearchClient {
     String endpoint = "/" + request.getIndex() + "/_nlq";
     Request nlqRequest = new Request("POST", endpoint);
     nlqRequest.setJsonEntity(buildNLQRequest(request));
-    es.org.elasticsearch.client.Response esResponse = client.getLowLevelClient().performRequest(nlqRequest);
+    es.org.elasticsearch.client.Response esResponse =
+        client.getLowLevelClient().performRequest(nlqRequest);
     String responseBody = EntityUtils.toString(esResponse.getEntity());
     return Response.status(Response.Status.OK).entity(responseBody).build();
   }
 
-  private String buildNLQRequest(SearchRequest request)  {
+  private String buildNLQRequest(SearchRequest request) {
     ObjectMapper mapper = new ObjectMapper();
     ObjectNode queryJson = mapper.createObjectNode();
     queryJson.put("query", request.getQuery());

@@ -27,7 +27,6 @@ import os.org.opensearch.common.xcontent.ContextParser;
 import os.org.opensearch.common.xcontent.DeprecationHandler;
 import os.org.opensearch.common.xcontent.LoggingDeprecationHandler;
 import os.org.opensearch.common.xcontent.NamedXContentRegistry;
-import os.org.opensearch.common.xcontent.XContentFactory;
 import os.org.opensearch.common.xcontent.XContentParser;
 import os.org.opensearch.common.xcontent.XContentType;
 import os.org.opensearch.common.xcontent.json.JsonXContent;
@@ -62,20 +61,16 @@ public class OpenSearchDynamicChartAggregatorTest extends OpenMetadataApplicatio
   private boolean compareRequest(String expectedJsonReq, Map<String, Object> chartDetails)
       throws IOException {
 
-    try (XContentParser parser = XContentType.JSON.xContent()
-        .createParser(
-            OpenSearchClient.X_CONTENT_REGISTRY,
-            LoggingDeprecationHandler.INSTANCE,
-            expectedJsonReq
-        )
-    ) {
+    try (XContentParser parser =
+        XContentType.JSON
+            .xContent()
+            .createParser(
+                OsUtils.osXContentRegistry, LoggingDeprecationHandler.INSTANCE, expectedJsonReq)) {
       SearchSourceBuilder searchSourceBuilder = SearchSourceBuilder.fromXContent(parser);
-      SearchRequest expectedSearchRequest = new SearchRequest()
-          .source(searchSourceBuilder)
-          .indices("di-data-assets-*");
-      DataInsightCustomChart chart = new DataInsightCustomChart()
-          .withName("random_chart_name")
-          .withChartDetails(chartDetails);
+      SearchRequest expectedSearchRequest =
+          new SearchRequest().source(searchSourceBuilder).indices("di-data-assets-*");
+      DataInsightCustomChart chart =
+          new DataInsightCustomChart().withName("random_chart_name").withChartDetails(chartDetails);
       OpenSearchDynamicChartAggregatorInterface aggregator =
           OpenSearchDynamicChartAggregatorFactory.getAggregator(chart);
 

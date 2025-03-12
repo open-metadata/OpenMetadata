@@ -14,6 +14,7 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.openmetadata.schema.api.lineage.EsLineageData;
 import org.openmetadata.schema.api.lineage.SearchLineageRequest;
 import org.openmetadata.schema.api.lineage.SearchLineageResult;
+import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChartResultList;
@@ -173,7 +174,9 @@ public interface SearchClient {
 
   void addIndexAlias(IndexMapping indexMapping, String... aliasName);
 
-  Response previewSearch(SearchRequest request, SubjectContext subjectContext, SearchSettings searchSettings) throws IOException;
+  Response previewSearch(
+      SearchRequest request, SubjectContext subjectContext, SearchSettings searchSettings)
+      throws IOException;
 
   Response search(SearchRequest request, SubjectContext subjectContext) throws IOException;
 
@@ -349,6 +352,6 @@ public interface SearchClient {
   Object getLowLevelClient();
 
   Object getClient();
-  
+
   SearchHealthStatus getSearchHealthStatus() throws IOException;
 }

@@ -70,6 +70,7 @@ import org.openmetadata.schema.EntityTimeSeriesInterface;
 import org.openmetadata.schema.analytics.ReportData;
 import org.openmetadata.schema.api.lineage.SearchLineageRequest;
 import org.openmetadata.schema.api.lineage.SearchLineageResult;
+import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
@@ -1007,11 +1008,14 @@ public class SearchRepository {
     return searchClient.search(request, subjectContext);
   }
 
-  public Response previewSearch(SearchRequest request, SubjectContext subjectContext, SearchSettings searchSettings) throws IOException {
+  public Response previewSearch(
+      SearchRequest request, SubjectContext subjectContext, SearchSettings searchSettings)
+      throws IOException {
     return searchClient.previewSearch(request, subjectContext, searchSettings);
   }
 
-  public Response searchWithNLQ(SearchRequest request, SubjectContext subjectContext) throws IOException {
+  public Response searchWithNLQ(SearchRequest request, SubjectContext subjectContext)
+      throws IOException {
     return searchClient.searchWithNLQ(request, subjectContext);
   }
 

@@ -223,27 +223,30 @@ public class SearchResource {
   @Operation(
       operationId = "previewSearch",
       summary = "Preview Search Results",
-      description = "Preview search results based on provided SearchSettings without saving changes.",
+      description =
+          "Preview search results based on provided SearchSettings without saving changes.",
       responses = {
-          @ApiResponse(
-              responseCode = "200",
-              description = "Search preview response",
-              content = @Content(
-                  mediaType = "application/json",
-                  schema = @Schema(implementation = SearchResponse.class)))
+        @ApiResponse(
+            responseCode = "200",
+            description = "Search preview response",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = SearchResponse.class)))
       })
   public Response previewSearch(
       @Context SecurityContext securityContext,
       @RequestBody(description = "Preview request containing search settings", required = true)
-      PreviewSearchRequest previewRequest) throws IOException {
+          PreviewSearchRequest previewRequest)
+      throws IOException {
 
     SubjectContext subjectContext = getSubjectContext(securityContext);
 
     SearchRequest searchRequest =
         new SearchRequest.ElasticSearchRequestBuilder(
-            previewRequest.getQuery(),
-            previewRequest.getSize(),
-            Entity.getSearchRepository().getIndexOrAliasName(previewRequest.getIndex()))
+                previewRequest.getQuery(),
+                previewRequest.getSize(),
+                Entity.getSearchRepository().getIndexOrAliasName(previewRequest.getIndex()))
             .from(previewRequest.getFrom())
             .queryFilter(previewRequest.getQueryFilter())
             .postFilter(previewRequest.getPostFilter())
@@ -255,7 +258,8 @@ public class SearchResource {
             .explain(previewRequest.getExplain())
             .build();
 
-    return searchRepository.previewSearch(searchRequest, subjectContext, previewRequest.getSearchSettings());
+    return searchRepository.previewSearch(
+        searchRequest, subjectContext, previewRequest.getSearchSettings());
   }
 
   @GET
@@ -265,32 +269,35 @@ public class SearchResource {
       summary = "Search entities using Natural Language Query (NLQ)",
       description = "Search entities using Natural Language Queries (NLQ).",
       responses = {
-          @ApiResponse(
-              responseCode = "200",
-              description = "NLQ search response",
-              content =
-              @Content(
-                  mediaType = "application/json",
-                  schema = @Schema(implementation = SearchResponse.class))),
+        @ApiResponse(
+            responseCode = "200",
+            description = "NLQ search response",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = SearchResponse.class))),
       })
   public Response searchWithNLQ(
       @Context SecurityContext securityContext,
       @Parameter(description = "ElasticSearch/OpenSearch index name", required = true)
-      @DefaultValue("table_search_index")
-      @QueryParam("index")
-      String index,
-      @Parameter(description = "NLQ query string in natural language") @QueryParam("q") String nlqQuery,
+          @DefaultValue("table_search_index")
+          @QueryParam("index")
+          String index,
+      @Parameter(description = "NLQ query string in natural language") @QueryParam("q")
+          String nlqQuery,
       @Parameter(description = "From offset for pagination") @DefaultValue("0") @QueryParam("from")
-      int from,
-      @Parameter(description = "Number of results to return") @DefaultValue("10") @QueryParam("size")
-      int size)
+          int from,
+      @Parameter(description = "Number of results to return")
+          @DefaultValue("10")
+          @QueryParam("size")
+          int size)
       throws IOException {
 
     SubjectContext subjectContext = getSubjectContext(securityContext);
 
     SearchRequest request =
         new SearchRequest.ElasticSearchRequestBuilder(
-            nlqQuery, size, Entity.getSearchRepository().getIndexOrAliasName(index))
+                nlqQuery, size, Entity.getSearchRepository().getIndexOrAliasName(index))
             .from(from)
             .build();
 

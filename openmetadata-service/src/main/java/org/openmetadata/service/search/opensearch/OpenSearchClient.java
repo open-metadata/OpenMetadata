@@ -6,6 +6,8 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.AGGREGATED_COST_ANALYSIS_REPORT_DATA;
 import static org.openmetadata.service.Entity.DATA_PRODUCT;
 import static org.openmetadata.service.Entity.DOMAIN;
+import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
+import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
 import static org.openmetadata.service.Entity.GLOSSARY_TERM;
 import static org.openmetadata.service.Entity.QUERY;
 import static org.openmetadata.service.Entity.RAW_COST_ANALYSIS_REPORT_DATA;
@@ -15,12 +17,13 @@ import static org.openmetadata.service.events.scheduled.ServicesStatusJobHandler
 import static org.openmetadata.service.exception.CatalogGenericExceptionMapper.getResponse;
 import static org.openmetadata.service.search.EntityBuilderConstant.DOMAIN_DISPLAY_NAME_KEYWORD;
 import static org.openmetadata.service.search.EntityBuilderConstant.ES_TAG_FQN_FIELD;
+import static org.openmetadata.service.search.EntityBuilderConstant.FIELD_DISPLAY_NAME_NGRAM;
 import static org.openmetadata.service.search.EntityBuilderConstant.MAX_AGGREGATE_SIZE;
+import static org.openmetadata.service.search.EntityBuilderConstant.MAX_ANALYZED_OFFSET;
 import static org.openmetadata.service.search.EntityBuilderConstant.MAX_RESULT_HITS;
 import static org.openmetadata.service.search.EntityBuilderConstant.OWNER_DISPLAY_NAME_KEYWORD;
 import static org.openmetadata.service.search.EntityBuilderConstant.POST_TAG;
 import static org.openmetadata.service.search.EntityBuilderConstant.PRE_TAG;
-import static org.openmetadata.service.search.EntityBuilderConstant.SCHEMA_FIELD_NAMES;
 import static org.openmetadata.service.search.EntityBuilderConstant.UNIFIED;
 import static org.openmetadata.service.search.SearchUtils.createElasticSearchSSLContext;
 import static org.openmetadata.service.search.SearchUtils.getLineageDirection;
@@ -31,6 +34,8 @@ import static org.openmetadata.service.search.opensearch.OpenSearchEntitiesProce
 import static org.openmetadata.service.util.FullyQualifiedName.getParentFQN;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -48,9 +53,6 @@ import java.util.stream.Stream;
 import javax.json.JsonObject;
 import javax.net.ssl.SSLContext;
 import javax.ws.rs.core.Response;
-
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import lombok.Getter;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -157,6 +159,7 @@ import os.org.opensearch.cluster.metadata.MappingMetadata;
 import os.org.opensearch.common.lucene.search.function.CombineFunction;
 import os.org.opensearch.common.lucene.search.function.FieldValueFactorFunction;
 import os.org.opensearch.common.lucene.search.function.FunctionScoreQuery;
+import os.org.opensearch.common.settings.Settings;
 import os.org.opensearch.common.unit.Fuzziness;
 import os.org.opensearch.common.unit.TimeValue;
 import os.org.opensearch.common.xcontent.LoggingDeprecationHandler;
@@ -174,6 +177,8 @@ import os.org.opensearch.index.query.QueryStringQueryBuilder;
 import os.org.opensearch.index.query.RangeQueryBuilder;
 import os.org.opensearch.index.query.ScriptQueryBuilder;
 import os.org.opensearch.index.query.TermQueryBuilder;
+import os.org.opensearch.index.query.functionscore.FunctionScoreQueryBuilder;
+import os.org.opensearch.index.query.functionscore.ScoreFunctionBuilders;
 import os.org.opensearch.index.reindex.DeleteByQueryRequest;
 import os.org.opensearch.index.reindex.UpdateByQueryRequest;
 import os.org.opensearch.rest.RestStatus;
@@ -181,6 +186,7 @@ import os.org.opensearch.script.Script;
 import os.org.opensearch.script.ScriptType;
 import os.org.opensearch.search.SearchHit;
 import os.org.opensearch.search.SearchHits;
+import os.org.opensearch.search.SearchModule;
 import os.org.opensearch.search.aggregations.AggregationBuilder;
 import os.org.opensearch.search.aggregations.AggregationBuilders;
 import os.org.opensearch.search.aggregations.BucketOrder;
@@ -199,13 +205,11 @@ import os.org.opensearch.search.sort.NestedSortBuilder;
 import os.org.opensearch.search.sort.SortBuilders;
 import os.org.opensearch.search.sort.SortMode;
 import os.org.opensearch.search.sort.SortOrder;
-import os.org.opensearch.search.sort.SortMode;
 import os.org.opensearch.search.suggest.Suggest;
 import os.org.opensearch.search.suggest.SuggestBuilder;
 import os.org.opensearch.search.suggest.SuggestBuilders;
 import os.org.opensearch.search.suggest.completion.CompletionSuggestionBuilder;
 import os.org.opensearch.search.suggest.completion.context.CategoryQueryContext;
-import com.fasterxml.jackson.core.JsonProcessingException;
 
 @Slf4j
 // Not tagged with Repository annotation as it is programmatically initialized
@@ -239,7 +243,6 @@ public class OpenSearchClient implements SearchClient {
 
   static {
     SearchModule searchModule = new SearchModule(Settings.EMPTY, List.of());
-    X_CONTENT_REGISTRY = new NamedXContentRegistry(searchModule.getNamedXContents());
     RequestOptions.Builder builder = RequestOptions.DEFAULT.toBuilder();
     builder.addHeader("Content-Type", "application/json");
     builder.addHeader("Accept", "application/json");
@@ -363,17 +366,21 @@ public class OpenSearchClient implements SearchClient {
 
   @Override
   public Response search(SearchRequest request, SubjectContext subjectContext) throws IOException {
-      SearchSettings searchSettings =
-          SettingsCache.getSetting(SettingsType.SEARCH_SETTINGS, SearchSettings.class);
-      return doSearch(request, subjectContext, searchSettings);
-  }
-
-  @Override
-  public Response previewSearch(SearchRequest request, SubjectContext subjectContext, SearchSettings searchSettings) throws IOException {
+    SearchSettings searchSettings =
+        SettingsCache.getSetting(SettingsType.SEARCH_SETTINGS, SearchSettings.class);
     return doSearch(request, subjectContext, searchSettings);
   }
 
-  public Response doSearch(SearchRequest request, SubjectContext subjectContext, SearchSettings searchSettings) throws IOException {
+  @Override
+  public Response previewSearch(
+      SearchRequest request, SubjectContext subjectContext, SearchSettings searchSettings)
+      throws IOException {
+    return doSearch(request, subjectContext, searchSettings);
+  }
+
+  public Response doSearch(
+      SearchRequest request, SubjectContext subjectContext, SearchSettings searchSettings)
+      throws IOException {
     OpenSearchSourceBuilderFactory searchBuilderFactory =
         new OpenSearchSourceBuilderFactory(searchSettings);
     SearchSourceBuilder searchSourceBuilder =
@@ -531,7 +538,8 @@ public class OpenSearchClient implements SearchClient {
       throws IOException {
     Request nlqRequest = new Request("POST", "/_nlq");
     nlqRequest.setJsonEntity(buildNLQRequest(request));
-    os.org.opensearch.client.Response nlqResponse = client.getLowLevelClient().performRequest(nlqRequest);
+    os.org.opensearch.client.Response nlqResponse =
+        client.getLowLevelClient().performRequest(nlqRequest);
     String responseBody = EntityUtils.toString(nlqResponse.getEntity());
     return Response.status(Response.Status.OK).entity(responseBody).build();
   }
@@ -1268,100 +1276,6 @@ public class OpenSearchClient implements SearchClient {
     return client.search(searchRequest, RequestOptions.DEFAULT);
   }
 
-  private Map<String, Object> searchPipelineLineage(
-      String fqn, int upstreamDepth, int downstreamDepth, String queryFilter, boolean deleted)
-      throws IOException {
-    Map<String, Object> responseMap = new HashMap<>();
-    Set<Map<String, Object>> edges = new HashSet<>();
-    Set<Map<String, Object>> nodes = new HashSet<>();
-    responseMap.put("entity", null);
-    Object[] searchAfter = null;
-    long processedRecords = 0;
-    long totalRecords = -1;
-    // Process pipeline as edge
-    while (totalRecords != processedRecords) {
-      os.org.opensearch.action.search.SearchRequest searchRequest =
-          new os.org.opensearch.action.search.SearchRequest(
-              Entity.getSearchRepository().getIndexOrAliasName(GLOBAL_SEARCH_ALIAS));
-      BoolQueryBuilder boolQueryBuilder = QueryBuilders.boolQuery();
-      boolQueryBuilder.should(
-          QueryBuilders.boolQuery()
-              .must(QueryBuilders.termQuery("lineage.pipeline.fullyQualifiedName.keyword", fqn)));
-      SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
-      searchSourceBuilder.fetchSource(null, SOURCE_FIELDS_TO_EXCLUDE.toArray(String[]::new));
-      FieldSortBuilder sortBuilder = SortBuilders.fieldSort("fullyQualifiedName");
-      searchSourceBuilder.sort(sortBuilder);
-      searchSourceBuilder.size(1000);
-      searchSourceBuilder.query(boolQueryBuilder);
-      if (searchAfter != null) {
-        searchSourceBuilder.searchAfter(searchAfter);
-      }
-      if (!CommonUtil.nullOrEmpty(deleted)) {
-        searchSourceBuilder.query(
-            QueryBuilders.boolQuery()
-                .must(boolQueryBuilder)
-                .must(QueryBuilders.termQuery("deleted", deleted)));
-      }
-      buildSearchSourceFilter(queryFilter, searchSourceBuilder);
-
-      searchRequest.source(searchSourceBuilder);
-      SearchResponse searchResponse = client.search(searchRequest, RequestOptions.DEFAULT);
-      for (var hit : searchResponse.getHits().getHits()) {
-        List<Map<String, Object>> lineage =
-            (List<Map<String, Object>>) hit.getSourceAsMap().get("lineage");
-        HashMap<String, Object> tempMap = new HashMap<>(JsonUtils.getMap(hit.getSourceAsMap()));
-        nodes.add(tempMap);
-        for (Map<String, Object> lin : lineage) {
-          HashMap<String, String> pipeline = (HashMap<String, String>) lin.get("pipeline");
-          if (pipeline != null && pipeline.get("fullyQualifiedName").equalsIgnoreCase(fqn)) {
-            edges.add(lin);
-          }
-        }
-      }
-      totalRecords = searchResponse.getHits().getTotalHits().value;
-      int currentHits = searchResponse.getHits().getHits().length;
-      processedRecords += currentHits;
-      if (currentHits > 0) {
-        searchAfter = searchResponse.getHits().getHits()[currentHits - 1].getSortValues();
-      } else {
-        // when current records are 0 break the loop
-        break;
-      }
-    }
-
-    // Process pipeline as node
-    getLineage(
-        fqn,
-        downstreamDepth,
-        edges,
-        nodes,
-        queryFilter,
-        "lineage.fromEntity.fqnHash.keyword",
-        deleted);
-    getLineage(
-        fqn, upstreamDepth, edges, nodes, queryFilter, "lineage.toEntity.fqnHash.keyword", deleted);
-
-    if (edges.isEmpty()) {
-      os.org.opensearch.action.search.SearchRequest searchRequestForEntity =
-          new os.org.opensearch.action.search.SearchRequest(
-              Entity.getSearchRepository().getIndexOrAliasName(GLOBAL_SEARCH_ALIAS));
-      SearchSourceBuilder searchSourceBuilderForEntity = new SearchSourceBuilder();
-      searchSourceBuilderForEntity.query(
-          QueryBuilders.boolQuery().must(QueryBuilders.termQuery("fullyQualifiedName", fqn)));
-      searchRequestForEntity.source(searchSourceBuilderForEntity.size(1000));
-      SearchResponse searchResponseForEntity =
-          client.search(searchRequestForEntity, RequestOptions.DEFAULT);
-      for (var hit : searchResponseForEntity.getHits().getHits()) {
-        HashMap<String, Object> tempMap = new HashMap<>(JsonUtils.getMap(hit.getSourceAsMap()));
-        tempMap.keySet().removeAll(FIELDS_TO_REMOVE);
-        responseMap.put("entity", tempMap);
-      }
-    }
-    responseMap.put("edges", edges);
-    responseMap.put("nodes", nodes);
-    return responseMap;
-  }
-
   private static FunctionScoreQueryBuilder boostScore(QueryStringQueryBuilder queryBuilder) {
     FunctionScoreQueryBuilder.FilterFunctionBuilder tier1Boost =
         new FunctionScoreQueryBuilder.FilterFunctionBuilder(
@@ -1787,12 +1701,8 @@ public class OpenSearchClient implements SearchClient {
       UpdateRequest updateRequest = new UpdateRequest(indexName, docId);
       // Create script with proper parameters
       Map<String, Object> parameters = new HashMap<>(doc);
-      Script script = new Script(
-          ScriptType.INLINE,
-          Script.DEFAULT_SCRIPT_LANG,
-          scriptTxt,
-          parameters
-      );
+      Script script =
+          new Script(ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, scriptTxt, parameters);
 
       updateRequest.script(script);
       updateRequest.scriptedUpsert(true);
@@ -2434,8 +2344,8 @@ public class OpenSearchClient implements SearchClient {
                 requestConfigBuilder
                     .setConnectTimeout(esConfig.getConnectionTimeoutSecs() * 1000)
                     .setSocketTimeout(esConfig.getSocketTimeoutSecs() * 1000));
-        //restClientBuilder.setCompressionEnabled(true);
-        //restClientBuilder.setChunkedEnabled(true);
+        // restClientBuilder.setCompressionEnabled(true);
+        // restClientBuilder.setChunkedEnabled(true);
         return new RestHighLevelClient(restClientBuilder);
       } catch (Exception e) {
         LOG.error("Failed to create open search client ", e);

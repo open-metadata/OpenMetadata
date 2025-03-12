@@ -105,10 +105,7 @@ public interface SearchIndex {
             ? 0
             : entity.getVotes().getUpVotes() - entity.getVotes().getDownVotes());
     map.put("descriptionStatus", getDescriptionStatus(entity));
-    map.put(
-        "fqnParts",
-        getFQNParts(
-            entity.getFullyQualifiedName()));
+    map.put("fqnParts", getFQNParts(entity.getFullyQualifiedName()));
     map.put("deleted", entity.getDeleted() != null && entity.getDeleted());
 
     Optional.ofNullable(entity.getCertification())
