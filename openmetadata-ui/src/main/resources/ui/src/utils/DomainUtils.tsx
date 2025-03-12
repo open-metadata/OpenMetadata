@@ -213,10 +213,7 @@ export const renderDomainLink = (
   showDomainHeading: boolean,
   textClassName?: string
 ) => (
-  <Tooltip
-    title={
-      isUndefined(domainDisplayName) ? getEntityName(domain) : domainDisplayName
-    }>
+  <Tooltip title={domainDisplayName ?? getEntityName(domain)}>
     <Link
       className={classNames(
         'no-underline domain-link domain-link-text font-medium',

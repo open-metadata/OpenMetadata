@@ -177,7 +177,9 @@ export const DomainLabel = ({
     if (showDomainHeading) {
       return (
         <>
-          <div className="d-flex text-sm  font-medium items-center m-b-xs">
+          <div
+            className="d-flex text-sm  font-medium items-center m-b-xs"
+            data-testid="header-domain-container">
             {!headerLayout ? (
               <Typography.Text className="right-panel-label m-r-xss">
                 {t('label.domain')}
@@ -202,7 +204,9 @@ export const DomainLabel = ({
     return (
       <div className="d-flex   flex-col gap-2 justify-center">
         {headerLayout && (
-          <div className="d-flex text-sm font-medium items-center ">
+          <div
+            className="d-flex text-sm font-medium items-center "
+            data-testid="header-domain-container">
             <Typography.Text className="domain-link right-panel-label m-r-xss">
               {t('label.domain')}
             </Typography.Text>

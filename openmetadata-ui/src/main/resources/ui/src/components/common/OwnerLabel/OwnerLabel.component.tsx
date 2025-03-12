@@ -20,9 +20,9 @@ import { UserTeamSelectableList } from '../UserTeamSelectableList/UserTeamSelect
 import './owner-label.less';
 
 import { EntityReference } from '../../../generated/entity/data/table';
-import { NoOwnerState } from '../OwnerItem/NoOwner/NoOwnerState';
+import { NoOwnerFound } from '../NoOwner/NoOwnerFound';
 import { OwnerItem } from '../OwnerItem/OwnerItem';
-import { RemainingOwnersControl } from '../OwnerItem/RemainingOwner/RemainingOwnersControl';
+import { OwnerReveal } from '../RemainingOwner/OwnerReveal';
 
 export interface OwnerLabelProps {
   owners?: EntityReference[];
@@ -72,7 +72,7 @@ export const OwnerLabel = ({
     // If no owners, render the empty state
     if (!hasOwners) {
       return (
-        <NoOwnerState
+        <NoOwnerFound
           className={className}
           hasPermission={hasPermission}
           isCompactView={isCompactView}
@@ -137,7 +137,7 @@ export const OwnerLabel = ({
 
             {/* Show more button/dropdown */}
             {showMoreButton && (
-              <RemainingOwnersControl
+              <OwnerReveal
                 isCompactView={isCompactView}
                 isDropdownOpen={isDropdownOpen}
                 owners={owners.slice(maxVisibleOwners)}

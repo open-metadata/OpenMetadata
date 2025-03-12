@@ -91,7 +91,9 @@ const EntityHeaderTitle = ({
           </Typography.Text>
         ) : null}
 
-        <div className="d-flex gap-3 items-center">
+        <div
+          className="d-flex gap-3 items-center"
+          data-testid="entity-header-title">
           <Typography.Text
             className={classNames(
               'entity-header-display-name',
@@ -115,7 +117,7 @@ const EntityHeaderTitle = ({
             placement="topRight"
             title={copyTooltip ?? t('message.copy-to-clipboard')}>
             <Button
-              className="remove-button-default-styling copy-button"
+              className="remove-button-default-styling copy-button d-flex align-center justify-center p-xss "
               icon={<Icon component={ShareIcon} />}
               onClick={handleShareButtonClick}
             />
@@ -127,7 +129,7 @@ const EntityHeaderTitle = ({
                 entity: capitalize(entityType),
               })}>
               <Button
-                className="entity-follow-button text-sm "
+                className="entity-follow-button d-flex gap-1 align-center justify-center p-y-xss p-x-sm w-fit-content border-none h-auto text-sm "
                 data-testid="entity-follow-button"
                 disabled={deleted}
                 icon={<Icon component={StarFilledIcon} />}

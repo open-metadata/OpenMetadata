@@ -183,7 +183,7 @@ a.ant-typography,
 }
 
 // Typography Mixins
-.text-style(@size, @lh, @ls: -1%) {
+.text-style(@size, @lh, @ls: 0%) {
   font-size: @size;
   line-height: @lh;
   letter-spacing: @ls;
@@ -218,31 +218,31 @@ a.ant-typography,
 }
 
 .display-sm {
-  .text-style(30px, 38px, -1.875%);
+  .text-style(30px, 38px, 0%);
 
   .font-weight-variants();
 }
 
 .display-xs {
-  .text-style(24px, 32px, 2%);
+  .text-style(24px, 32px, 0%);
 
   .font-weight-variants();
 }
 
 .text-xl {
-  .text-style(20px, 30px, -1%);
+  .text-style(20px, 30px, 0%);
 }
 .text-lg {
-  .text-style(18px, 28px, -1%);
+  .text-style(18px, 28px, 0%);
 }
 .text-md {
-  .text-style(16px, 24px, -1%);
+  .text-style(16px, 24px, 0%);
 }
 .text-sm {
-  .text-style(14px, 20px, -1%);
+  .text-style(14px, 20px, 0%);
 }
 .text-xs {
-  .text-style(12px, 18px, -1%);
+  .text-style(12px, 18px, 0%);
 }
 
 // =============================== End of New Design System ===============================

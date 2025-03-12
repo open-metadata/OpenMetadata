@@ -13,22 +13,12 @@
 import { Button, Dropdown } from 'antd';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { EntityReference } from '../../../../generated/tests/testCase';
-import { getEntityName } from '../../../../utils/EntityUtils';
-import UserPopOverCard from '../../PopOverCard/UserPopOverCard';
-import ProfilePicture from '../../ProfilePicture/ProfilePicture';
+import { getEntityName } from '../../../utils/EntityUtils';
+import UserPopOverCard from '../PopOverCard/UserPopOverCard';
+import ProfilePicture from '../ProfilePicture/ProfilePicture';
+import { OwnerRevealProps } from './OwnerReveal.interface';
 
-interface RemainingOwnersControlProps {
-  isCompactView: boolean;
-  isDropdownOpen: boolean;
-  owners: EntityReference[];
-  remainingCount: number;
-  showAllOwners: boolean;
-  setIsDropdownOpen: (isOpen: boolean) => void;
-  setShowAllOwners: React.Dispatch<React.SetStateAction<boolean>>;
-}
-
-export const RemainingOwnersControl: React.FC<RemainingOwnersControlProps> = ({
+export const OwnerReveal: React.FC<OwnerRevealProps> = ({
   isCompactView,
   isDropdownOpen,
   owners,

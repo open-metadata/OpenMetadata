@@ -179,7 +179,7 @@ export const getDataAssetsHeaderInfo = (
               />
               <ExtraInfoLabel
                 showAsATag
-                label="state"
+                label={t('label.state')}
                 value={pipelineDetails.state}
               />
             </>

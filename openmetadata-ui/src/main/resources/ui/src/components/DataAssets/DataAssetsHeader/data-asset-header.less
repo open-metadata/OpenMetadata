@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-@import '../../../styles/variables.less';
+@import (reference) '../../../styles/variables.less';
 .data-assets-header-container {
   .data-asset-button-group {
     .ant-btn {
@@ -39,7 +39,7 @@
   .ant-btn-icon-only.edit-tier-button {
     border: 1px solid @border-light;
     svg {
-      color: #535862;
+      color: @grey-600;
     }
   }
 
@@ -71,6 +71,7 @@
   }
   .ant-typography.extra-info-link {
     color: @grey-700;
+    max-width: 200px;
   }
 
   .domain-link-text.render-domain-lebel-style {

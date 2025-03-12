@@ -19,7 +19,6 @@ import React, {
   useMemo,
   useState,
 } from 'react';
-import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import TitleBreadcrumbSkeleton from '../Skeleton/BreadCrumb/TitleBreadcrumbSkeleton.component';
 import { TitleBreadcrumbProps, TitleLink } from './TitleBreadcrumb.interface';
@@ -31,7 +30,6 @@ const TitleBreadcrumb: FunctionComponent<TitleBreadcrumbProps> = ({
   loading = false,
   widthDeductions,
 }: TitleBreadcrumbProps) => {
-  const { t } = useTranslation();
   const [screenWidth, setScreenWidth] = useState(window.innerWidth);
 
   const finalWidthOfBreadcrumb = useMemo(() => {
@@ -80,9 +78,7 @@ const TitleBreadcrumb: FunctionComponent<TitleBreadcrumbProps> = ({
           {link.name}
         </span>
         {noLink && index < titleLinks.length - 1 && (
-          <span className="text-xss text-grey-muted">
-            {t('label.arrow-symbol')}
-          </span>
+          <span className="text-xss text-grey-muted">{'>'}</span>
         )}
       </>
     );
@@ -118,7 +114,7 @@ const TitleBreadcrumb: FunctionComponent<TitleBreadcrumbProps> = ({
                       {link.name}
                     </Link>
                     <span className="text-sm font-regular p-x-xs text-grey-muted">
-                      {t('label.arrow-symbol')}
+                      {'>'}
                     </span>
                   </>
                 ) : (

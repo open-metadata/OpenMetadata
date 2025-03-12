@@ -10,15 +10,18 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-@import (reference) '../../../styles/variables.less';
-.domain-link.ant-typography {
-  color: @primary-heading-color;
-}
+import { EntityReference } from '../../../generated/tests/testCase';
 
-.ant-typography.domain-link-text,
-.domain-link-text {
-  color: @grey-700;
-}
-.domain-link-container {
-  width: 150px;
+export interface NoOwnerFoundProps {
+  isCompactView: boolean;
+  placeHolder?: string;
+  owners: EntityReference[];
+  hasPermission?: boolean;
+  onUpdate?: (owners?: EntityReference[]) => void;
+  multiple: {
+    user: boolean;
+    team: boolean;
+  };
+  tooltipText?: string;
+  className?: string;
 }

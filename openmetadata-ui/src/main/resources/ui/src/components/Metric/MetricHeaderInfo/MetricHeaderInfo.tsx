@@ -195,7 +195,7 @@ const MetricHeaderInfo: FC<MetricHeaderInfoProps> = ({
 
   return (
     <>
-      <Divider className="self-center h-15 " type="vertical" />
+      <Divider className="self-center vertical-divider" type="vertical" />
       <MetricInfoItem
         hasPermission={hasPermission}
         label={t('label.metric-type')}
@@ -209,7 +209,7 @@ const MetricHeaderInfo: FC<MetricHeaderInfoProps> = ({
         valueKey="metricType"
         onUpdateMetricDetails={onUpdateMetricDetails}
       />
-      <Divider className="self-center h-15 " type="vertical" />
+      <Divider className="self-center vertical-divider" type="vertical" />
 
       <MetricInfoItem
         hasPermission={hasPermission}
@@ -224,7 +224,7 @@ const MetricHeaderInfo: FC<MetricHeaderInfoProps> = ({
         valueKey="unitOfMeasurement"
         onUpdateMetricDetails={onUpdateMetricDetails}
       />
-      <Divider className="self-center h-15 " type="vertical" />
+      <Divider className="self-center vertical-divider" type="vertical" />
 
       <MetricInfoItem
         hasPermission={hasPermission}

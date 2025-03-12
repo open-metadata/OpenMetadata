@@ -103,9 +103,9 @@ export const ExtraInfoLabel = ({
         <span className="extra-info-label-heading">{`${label}: `}</span>
       )}
       <span
-        className={`font-medium extra-info-value ${
-          showAsATag ? 'showAsATag' : ''
-        }`}>
+        className={classNames('font-medium extra-info-value', {
+          showAsATag: showAsATag,
+        })}>
         {value}
       </span>
     </Typography.Text>
@@ -140,9 +140,6 @@ export const ExtraInfoLink = ({
             className="extra-info-link"
             href={href}
             rel={newTab ? 'noopener noreferrer' : undefined}
-            style={{
-              maxWidth: '200px',
-            }}
             target={newTab ? '_blank' : undefined}>
             {value}
           </Typography.Link>

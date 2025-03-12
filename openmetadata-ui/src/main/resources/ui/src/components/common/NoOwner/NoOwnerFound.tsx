@@ -15,25 +15,11 @@ import { Typography } from 'antd';
 import classNames from 'classnames';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as IconUser } from '../../../../assets/svg/user.svg';
-import { EntityReference } from '../../../../generated/tests/testCase';
-import { UserTeamSelectableList } from '../../UserTeamSelectableList/UserTeamSelectableList.component';
+import { ReactComponent as IconUser } from '../../../assets/svg/user.svg';
+import { UserTeamSelectableList } from '../UserTeamSelectableList/UserTeamSelectableList.component';
+import { NoOwnerFoundProps } from './NoOwnerFound.interface';
 
-interface NoOwnerStateProps {
-  isCompactView: boolean;
-  placeHolder?: string;
-  owners: EntityReference[];
-  hasPermission?: boolean;
-  onUpdate?: (owners?: EntityReference[]) => void;
-  multiple: {
-    user: boolean;
-    team: boolean;
-  };
-  tooltipText?: string;
-  className?: string;
-}
-
-export const NoOwnerState: React.FC<NoOwnerStateProps> = ({
+export const NoOwnerFound: React.FC<NoOwnerFoundProps> = ({
   isCompactView,
   placeHolder,
   owners,
@@ -46,7 +32,9 @@ export const NoOwnerState: React.FC<NoOwnerStateProps> = ({
   const { t } = useTranslation();
 
   return (
-    <div className="d-flex justify-center flex-col gap-2">
+    <div
+      className="d-flex justify-center flex-col gap-2"
+      data-testid="owner-label">
       <div className="d-flex items-center gap-1">
         {isCompactView && (
           <div className="owner-avatar-icon d-flex">
