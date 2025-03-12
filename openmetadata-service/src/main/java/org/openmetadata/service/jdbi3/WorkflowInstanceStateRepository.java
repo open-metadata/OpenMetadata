@@ -40,7 +40,6 @@ public class WorkflowInstanceStateRepository
       createNewRecord(recordEntity, recordFQN);
     } else {
       timeSeriesDao.update(JsonUtils.pojoToJson(recordEntity), recordEntity.getId());
-      postUpdate(recordEntity);
     }
     return recordEntity;
   }

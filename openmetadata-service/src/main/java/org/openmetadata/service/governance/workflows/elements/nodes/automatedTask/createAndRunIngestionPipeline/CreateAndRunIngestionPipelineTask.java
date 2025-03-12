@@ -1,8 +1,7 @@
-package org.openmetadata.service.governance.workflows.elements.nodes.automatedTask;
+package org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.createAndRunIngestionPipeline;
 
 import static org.openmetadata.service.governance.workflows.Workflow.getFlowableElementId;
 
-import lombok.Getter;
 import org.flowable.bpmn.model.BoundaryEvent;
 import org.flowable.bpmn.model.BpmnModel;
 import org.flowable.bpmn.model.EndEvent;
@@ -14,9 +13,8 @@ import org.flowable.bpmn.model.StartEvent;
 import org.flowable.bpmn.model.SubProcess;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
 import org.openmetadata.schema.governance.workflows.WorkflowConfiguration;
-import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.CreateIngestionPipelineTaskDefinition;
+import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.CreateAndRunIngestionPipelineTaskDefinition;
 import org.openmetadata.service.governance.workflows.elements.NodeInterface;
-import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.impl.CreateIngestionPipelineImpl;
 import org.openmetadata.service.governance.workflows.flowable.builders.EndEventBuilder;
 import org.openmetadata.service.governance.workflows.flowable.builders.FieldExtensionBuilder;
 import org.openmetadata.service.governance.workflows.flowable.builders.ServiceTaskBuilder;
@@ -24,38 +22,47 @@ import org.openmetadata.service.governance.workflows.flowable.builders.StartEven
 import org.openmetadata.service.governance.workflows.flowable.builders.SubProcessBuilder;
 import org.openmetadata.service.util.JsonUtils;
 
-public class CreateIngestionPipelineTask implements NodeInterface {
-  @Getter private final SubProcess subProcess;
+public class CreateAndRunIngestionPipelineTask implements NodeInterface {
+  private final SubProcess subProcess;
   private final BoundaryEvent runtimeExceptionBoundaryEvent;
 
-  public CreateIngestionPipelineTask(
-      CreateIngestionPipelineTaskDefinition nodeDefinition, WorkflowConfiguration config) {
+  public CreateAndRunIngestionPipelineTask(
+      CreateAndRunIngestionPipelineTaskDefinition nodeDefinition, WorkflowConfiguration config) {
+
     String subProcessId = nodeDefinition.getName();
 
     SubProcess subProcess =
-        new SubProcessBuilder().id(subProcessId).setAsync(true).exclusive(true).build();
+        new SubProcessBuilder().id(subProcessId).setAsync(true).exclusive(false).build();
 
     StartEvent startEvent =
         new StartEventBuilder().id(getFlowableElementId(subProcessId, "startEvent")).build();
 
-    ServiceTask createIngestionPipelineTask =
-        getCreateIngestionPipelineTask(
+    ServiceTask createIngestionPipeline =
+        getCreateIngestionPipelineServiceTask(
             subProcessId,
             nodeDefinition.getConfig().getPipelineType(),
-            nodeDefinition.getConfig().getDeploy(),
+            JsonUtils.pojoToJson(nodeDefinition.getInputNamespaceMap()));
+
+    ServiceTask runIngestionPipeline =
+        getRunIngestionPipelineServiceTask(
+            subProcessId,
+            nodeDefinition.getConfig().getWaitForCompletion(),
+            nodeDefinition.getConfig().getTimeoutSeconds(),
             JsonUtils.pojoToJson(nodeDefinition.getInputNamespaceMap()));
 
     EndEvent endEvent =
         new EndEventBuilder().id(getFlowableElementId(subProcessId, "endEvent")).build();
 
     subProcess.addFlowElement(startEvent);
-    subProcess.addFlowElement(createIngestionPipelineTask);
+    subProcess.addFlowElement(createIngestionPipeline);
+    subProcess.addFlowElement(runIngestionPipeline);
     subProcess.addFlowElement(endEvent);
 
     subProcess.addFlowElement(
-        new SequenceFlow(startEvent.getId(), createIngestionPipelineTask.getId()));
+        new SequenceFlow(startEvent.getId(), createIngestionPipeline.getId()));
     subProcess.addFlowElement(
-        new SequenceFlow(createIngestionPipelineTask.getId(), endEvent.getId()));
+        new SequenceFlow(createIngestionPipeline.getId(), runIngestionPipeline.getId()));
+    subProcess.addFlowElement(new SequenceFlow(runIngestionPipeline.getId(), endEvent.getId()));
 
     if (config.getStoreStageStatus()) {
       attachWorkflowInstanceStageListeners(subProcess);
@@ -70,8 +77,47 @@ public class CreateIngestionPipelineTask implements NodeInterface {
     return runtimeExceptionBoundaryEvent;
   }
 
-  private ServiceTask getCreateIngestionPipelineTask(
-      String subProcessId, PipelineType pipelineType, boolean deploy, String inputNamespaceMap) {
+  private ServiceTask getRunIngestionPipelineServiceTask(
+      String subProcessId,
+      boolean waitForCompletion,
+      long timeoutSeconds,
+      String inputNamespaceMap) {
+    FieldExtension waitExpr =
+        new FieldExtensionBuilder()
+            .fieldName("waitForCompletionExpr")
+            .fieldValue(String.valueOf(waitForCompletion))
+            .build();
+    FieldExtension timeoutSecondsExpr =
+        new FieldExtensionBuilder()
+            .fieldName("timeoutSecondsExpr")
+            .fieldValue(String.valueOf(timeoutSeconds))
+            .build();
+
+    FieldExtension inputNamespaceMapExpr =
+        new FieldExtensionBuilder()
+            .fieldName("inputNamespaceMapExpr")
+            .fieldValue(inputNamespaceMap)
+            .build();
+
+    FieldExtension pipelineServiceClientExpr =
+        new FieldExtensionBuilder()
+            .fieldName("pipelineServiceClientExpr")
+            .expression("${PipelineServiceClient}")
+            .build();
+
+    return new ServiceTaskBuilder()
+        .id(getFlowableElementId(subProcessId, "triggerIngestionWorkflow"))
+        .implementation(RunIngestionPipelineDelegate.class.getName())
+        .addFieldExtension(waitExpr)
+        .addFieldExtension(timeoutSecondsExpr)
+        .addFieldExtension(inputNamespaceMapExpr)
+        .addFieldExtension(pipelineServiceClientExpr)
+        .setAsync(true)
+        .build();
+  }
+
+  private ServiceTask getCreateIngestionPipelineServiceTask(
+      String subProcessId, PipelineType pipelineType, String inputNamespaceMap) {
     FieldExtension pipelineTypeExpr =
         new FieldExtensionBuilder()
             .fieldName("pipelineTypeExpr")
@@ -81,7 +127,7 @@ public class CreateIngestionPipelineTask implements NodeInterface {
     FieldExtension deployExpr =
         new FieldExtensionBuilder()
             .fieldName("deployExpr")
-            .fieldValue(String.valueOf(deploy))
+            .fieldValue(String.valueOf(true))
             .build();
 
     FieldExtension ingestionPipelineMapperExpr =
@@ -103,14 +149,13 @@ public class CreateIngestionPipelineTask implements NodeInterface {
             .build();
 
     return new ServiceTaskBuilder()
-        .id(getFlowableElementId(subProcessId, "checkIngestionPipelineSucceeded"))
-        .implementation(CreateIngestionPipelineImpl.class.getName())
+        .id(getFlowableElementId(subProcessId, "createIngestionPipeline"))
+        .implementation(CreateIngestionPipelineDelegate.class.getName())
         .addFieldExtension(pipelineTypeExpr)
         .addFieldExtension(deployExpr)
         .addFieldExtension(ingestionPipelineMapperExpr)
         .addFieldExtension(pipelineServiceClientExpr)
         .addFieldExtension(inputNamespaceMapExpr)
-        .setAsync(true)
         .build();
   }
 
