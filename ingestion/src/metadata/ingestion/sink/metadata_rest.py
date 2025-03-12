@@ -251,6 +251,13 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
     @_run_dispatch.register
     def write_lineage(self, add_lineage: AddLineageRequest) -> Either[Dict[str, Any]]:
         created_lineage = self.metadata.add_lineage(add_lineage, check_patch=True)
+        if created_lineage.get("error"):
+            return Either(
+                left=StackTraceError(
+                    name="AddLineageRequestError", error=created_lineage["error"]
+                )
+            )
+
         return Either(right=created_lineage["entity"]["fullyQualifiedName"])
 
     @_run_dispatch.register
