@@ -20,7 +20,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ENTITY_NAME_REGEX } from '../../../constants/regex.constants';
 import { TABLE_DIFF } from '../../../constants/TestSuite.constant';
-import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
+import { TabSpecificField } from '../../../enums/entity.enum';
 import { Table } from '../../../generated/entity/data/table';
 import {
   TestDataType,
@@ -47,7 +47,6 @@ import { getEntityFQN } from '../../../utils/FeedUtils';
 import { generateFormFields } from '../../../utils/formUtils';
 import { isValidJSONString } from '../../../utils/StringsUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
-import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import Loader from '../../common/Loader/Loader';
 import { EditTestCaseModalProps } from './AddDataQualityTest.interface';
 import ParameterForm from './components/ParameterForm';
@@ -264,89 +263,85 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
       width={720}
       onCancel={onCancel}
       onOk={() => form.submit()}>
-      <EntityAttachmentProvider
-        entityFqn={testCase?.fullyQualifiedName}
-        entityType={EntityType.TEST_CASE}>
-        {isLoading ? (
-          <Loader />
-        ) : (
-          <Form
-            data-testid="edit-test-form"
-            form={form}
-            layout="vertical"
-            name="tableTestForm"
-            onFinish={handleFormSubmit}>
-            {!showOnlyParameter && (
-              <>
-                <Form.Item required label={t('label.table')} name="table">
+      {isLoading ? (
+        <Loader />
+      ) : (
+        <Form
+          data-testid="edit-test-form"
+          form={form}
+          layout="vertical"
+          name="tableTestForm"
+          onFinish={handleFormSubmit}>
+          {!showOnlyParameter && (
+            <>
+              <Form.Item required label={t('label.table')} name="table">
+                <Input disabled />
+              </Form.Item>
+              {isColumn && (
+                <Form.Item required label={t('label.column')} name="column">
                   <Input disabled />
                 </Form.Item>
-                {isColumn && (
-                  <Form.Item required label={t('label.column')} name="column">
-                    <Input disabled />
-                  </Form.Item>
-                )}
-                <Form.Item
-                  required
-                  label={t('label.name')}
-                  name="name"
-                  rules={[
-                    {
-                      pattern: ENTITY_NAME_REGEX,
-                      message: t('message.entity-name-validation'),
-                    },
-                  ]}>
-                  <Input
-                    disabled
-                    placeholder={t('message.enter-test-case-name')}
-                  />
-                </Form.Item>
-                <Form.Item label={t('label.display-name')} name="displayName">
-                  <Input placeholder={t('message.enter-test-case-name')} />
-                </Form.Item>
-                <Form.Item
-                  required
-                  label={t('label.test-entity', {
-                    entity: t('label.type'),
-                  })}
-                  name="testDefinition">
-                  <Input
-                    disabled
-                    placeholder={t('message.enter-test-case-name')}
-                  />
-                </Form.Item>
-              </>
-            )}
+              )}
+              <Form.Item
+                required
+                label={t('label.name')}
+                name="name"
+                rules={[
+                  {
+                    pattern: ENTITY_NAME_REGEX,
+                    message: t('message.entity-name-validation'),
+                  },
+                ]}>
+                <Input
+                  disabled
+                  placeholder={t('message.enter-test-case-name')}
+                />
+              </Form.Item>
+              <Form.Item label={t('label.display-name')} name="displayName">
+                <Input placeholder={t('message.enter-test-case-name')} />
+              </Form.Item>
+              <Form.Item
+                required
+                label={t('label.test-entity', {
+                  entity: t('label.type'),
+                })}
+                name="testDefinition">
+                <Input
+                  disabled
+                  placeholder={t('message.enter-test-case-name')}
+                />
+              </Form.Item>
+            </>
+          )}
 
-            {generateFormFields(
-              testCaseClassBase.createFormAdditionalFields(
-                selectedDefinition?.supportsDynamicAssertion ?? false
-              )
-            )}
-            <Form.Item
-              noStyle
-              shouldUpdate={(prevValues, currentValues) => {
-                return !isEqual(
-                  prevValues['useDynamicAssertion'],
-                  currentValues['useDynamicAssertion']
-                );
-              }}>
-              {({ getFieldValue }) =>
-                getFieldValue('useDynamicAssertion') ? null : paramsField
-              }
-            </Form.Item>
+          {generateFormFields(
+            testCaseClassBase.createFormAdditionalFields(
+              selectedDefinition?.supportsDynamicAssertion ?? false
+            )
+          )}
+          <Form.Item
+            noStyle
+            shouldUpdate={(prevValues, currentValues) => {
+              return !isEqual(
+                prevValues['useDynamicAssertion'],
+                currentValues['useDynamicAssertion']
+              );
+            }}>
+            {({ getFieldValue }) =>
+              getFieldValue('useDynamicAssertion') ? null : paramsField
+            }
+          </Form.Item>
 
-            {!showOnlyParameter && (
-              <>
-                {generateFormFields([descriptionField])}
-                {isComputeRowCountFieldVisible
-                  ? generateFormFields(formFields)
-                  : null}
-              </>
-            )}
-          </Form>
-        )}
-      </EntityAttachmentProvider>
+          {!showOnlyParameter && (
+            <>
+              {generateFormFields([descriptionField])}
+              {isComputeRowCountFieldVisible
+                ? generateFormFields(formFields)
+                : null}
+            </>
+          )}
+        </Form>
+      )}
     </Modal>
   );
 };

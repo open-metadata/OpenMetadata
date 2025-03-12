@@ -12,7 +12,6 @@
  */
 
 import { upperFirst } from 'lodash';
-import { EntityStats } from '../components/Settings/Applications/AppLogsViewer/AppLogsViewer.interface';
 import { getEntityStatsData } from './ApplicationUtils';
 import {
   MOCK_APPLICATION_ENTITY_STATS,
@@ -21,9 +20,7 @@ import {
 
 describe('ApplicationUtils tests', () => {
   it('getEntityStatsData should return stats data in array', () => {
-    const resultData = getEntityStatsData(
-      MOCK_APPLICATION_ENTITY_STATS as unknown as EntityStats
-    );
+    const resultData = getEntityStatsData(MOCK_APPLICATION_ENTITY_STATS);
 
     const sortedMockData = MOCK_APPLICATION_ENTITY_STATS_DATA.map((data) => ({
       ...data,

@@ -12,29 +12,108 @@
  */
 import { NodeViewProps } from '@tiptap/core';
 import { NodeViewWrapper } from '@tiptap/react';
-import { Popover, Tabs, Typography } from 'antd';
+import {
+  Button,
+  Col,
+  Form,
+  FormProps,
+  Input,
+  Popover,
+  Row,
+  Space,
+  Tabs,
+  Typography,
+} from 'antd';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
-import React, { FC, useMemo, useState } from 'react';
+import React, { FC, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconFormatImage } from '../../../../assets/svg/ic-format-image.svg';
 import Loader from '../../../common/Loader/Loader';
-import imageClassBase from './ImageClassBase';
-import { ImagePopoverContentProps } from './ImageComponent.interface';
 
-const PopoverContent: FC<ImagePopoverContentProps> = (props) => {
-  const tabs = useMemo(() => {
-    return imageClassBase.getImageComponentPopoverTab().map((tab) => {
-      const TabComponent = tab.children;
+interface PopoverContentProps {
+  updateAttributes: NodeViewProps['updateAttributes'];
+  deleteNode: NodeViewProps['deleteNode'];
+  isUploading: boolean;
+  isValidSource: boolean;
+  src: string;
+  onPopupVisibleChange: (value: boolean) => void;
+  onUploadingChange: (value: boolean) => void;
+}
 
-      return {
-        ...tab,
-        children: <TabComponent {...props} />,
-      };
-    });
-  }, [imageClassBase]);
+const PopoverContent: FC<PopoverContentProps> = ({
+  updateAttributes,
+  onPopupVisibleChange,
+  onUploadingChange,
+  src,
+  deleteNode,
+}) => {
+  const { t } = useTranslation();
 
-  return <Tabs defaultActiveKey="embed" items={tabs} />;
+  const handleEmbedImage: FormProps['onFinish'] = (values) => {
+    onPopupVisibleChange(false);
+    onUploadingChange(true);
+    const { Url } = values;
+    updateAttributes({ src: Url });
+    onUploadingChange(false);
+  };
+
+  const embedLinkElement = (
+    <Form
+      data-testid="embed-link-form"
+      initialValues={{ Url: src }}
+      onFinish={handleEmbedImage}>
+      <Row gutter={[8, 8]}>
+        <Col span={24}>
+          <Form.Item
+            name="Url"
+            rules={[
+              {
+                required: true,
+                type: 'url',
+                message: t('label.field-required', {
+                  field: t('label.url-uppercase'),
+                }),
+              },
+            ]}>
+            <Input
+              autoFocus
+              data-testid="embed-input"
+              placeholder="Paste the image link..."
+            />
+          </Form.Item>
+        </Col>
+        <Col className="om-image-node-embed-link-btn-col" span={24}>
+          <Space className="om-image-node-action">
+            <Button
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                deleteNode();
+              }}>
+              {t('label.delete')}
+            </Button>
+          </Space>
+          <Button htmlType="submit" type="primary">
+            {t('label.embed-image')}
+          </Button>
+        </Col>
+      </Row>
+    </Form>
+  );
+
+  return (
+    <Tabs
+      defaultActiveKey="embed"
+      items={[
+        {
+          label: t('label.embed-link'),
+          key: 'embed',
+          children: embedLinkElement,
+        },
+      ]}
+    />
+  );
 };
 
 const ImageComponent: FC<NodeViewProps> = ({

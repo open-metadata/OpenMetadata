@@ -76,7 +76,6 @@ import {
   prepareConstraintIcon,
   updateFieldTags,
 } from '../../../utils/TableUtils';
-import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import FilterTablePlaceHolder from '../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
 import Searchbar from '../../common/SearchBarComponent/SearchBar.component';
 import Table from '../../common/Table/Table';
@@ -626,20 +625,16 @@ const SchemaTable = () => {
         />
       </Col>
       {editColumn && (
-        <EntityAttachmentProvider
-          entityFqn={editColumn.fullyQualifiedName}
-          entityType={EntityType.TABLE}>
-          <ModalWithMarkdownEditor
-            header={`${t('label.edit-entity', {
-              entity: t('label.column'),
-            })}: "${getEntityName(editColumn)}"`}
-            placeholder={t('message.enter-column-description')}
-            value={editColumn.description as string}
-            visible={Boolean(editColumn)}
-            onCancel={closeEditColumnModal}
-            onSave={handleEditColumnChange}
-          />
-        </EntityAttachmentProvider>
+        <ModalWithMarkdownEditor
+          header={`${t('label.edit-entity', {
+            entity: t('label.column'),
+          })}: "${getEntityName(editColumn)}"`}
+          placeholder={t('message.enter-column-description')}
+          value={editColumn.description as string}
+          visible={Boolean(editColumn)}
+          onCancel={closeEditColumnModal}
+          onSave={handleEditColumnChange}
+        />
       )}
       {editColumnDisplayName && (
         <EntityNameModal

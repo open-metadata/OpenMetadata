@@ -12,7 +12,6 @@
  */
 import { Editor } from '@tiptap/react';
 import { SuggestionKeyDownProps } from '@tiptap/suggestion';
-import { EntityType } from '../../enums/entity.enum';
 
 export type MenuType = 'bubble' | 'bar';
 
@@ -44,16 +43,6 @@ export interface BlockEditorProps {
   menuType?: MenuType;
   autoFocus?: boolean;
   placeholder?: string;
-  showInlineAlert?: boolean;
-}
-
-export interface BlockEditorAttachmentProps {
-  allowImageUpload?: boolean;
-  onImageUpload?: (
-    file: File,
-    entityType?: EntityType,
-    entityFqn?: string
-  ) => Promise<string>;
 }
 
 export interface EditorSlotsProps {
@@ -64,12 +53,4 @@ export interface EditorSlotsProps {
 export interface BarMenuProps {
   editor: Editor;
   onLinkToggle?: () => void;
-}
-
-export enum FileType {
-  TEXT_HTML = 'text/html',
-  FILE = 'file',
-  IMAGE = 'image',
-  VIDEO = 'video',
-  AUDIO = 'audio',
 }

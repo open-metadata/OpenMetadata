@@ -24,7 +24,6 @@ import {
 import { EntityTags, TagFilterOptions } from 'Models';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { EntityAttachmentProvider } from '../../../components/common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import FilterTablePlaceHolder from '../../../components/common/ErrorWithPlaceholder/FilterTablePlaceHolder';
 import Table from '../../../components/common/Table/Table';
 import ToggleExpandButton from '../../../components/common/ToggleExpandButton/ToggleExpandButton';
@@ -319,22 +318,18 @@ const SearchIndexFieldsTable = ({
         staticVisibleColumns={COMMON_STATIC_TABLE_VISIBLE_COLUMNS}
       />
       {editField && (
-        <EntityAttachmentProvider
-          entityFqn={editField.field.fullyQualifiedName}
-          entityType={EntityType.SEARCH_INDEX}>
-          <ModalWithMarkdownEditor
-            header={`${t('label.edit-entity', {
-              entity: t('label.field'),
-            })}: "${getEntityName(editField.field)}"`}
-            placeholder={t('label.enter-field-description', {
-              field: t('label.field'),
-            })}
-            value={editField.field.description as string}
-            visible={Boolean(editField)}
-            onCancel={closeEditFieldModal}
-            onSave={handleEditFieldChange}
-          />
-        </EntityAttachmentProvider>
+        <ModalWithMarkdownEditor
+          header={`${t('label.edit-entity', {
+            entity: t('label.field'),
+          })}: "${getEntityName(editField.field)}"`}
+          placeholder={t('label.enter-field-description', {
+            field: t('label.field'),
+          })}
+          value={editField.field.description as string}
+          visible={Boolean(editField)}
+          onCancel={closeEditFieldModal}
+          onSave={handleEditFieldChange}
+        />
       )}
     </>
   );

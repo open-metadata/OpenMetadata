@@ -21,7 +21,6 @@ import { MlFeature, Mlmodel } from '../../../generated/entity/data/mlmodel';
 import { TagSource } from '../../../generated/type/schema';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { createTagObject } from '../../../utils/TagsUtils';
-import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 import TableDescription from '../../Database/TableDescription/TableDescription.component';
@@ -240,23 +239,19 @@ const MlModelFeaturesList = () => {
           })}
         </Row>
         {!isEmpty(selectedFeature) && (
-          <EntityAttachmentProvider
-            entityFqn={selectedFeature.fullyQualifiedName}
-            entityType={EntityType.MLMODEL}>
-            <ModalWithMarkdownEditor
-              header={t('label.edit-entity-name', {
-                entityType: t('label.feature'),
-                entityName: getEntityName(selectedFeature),
-              })}
-              placeholder={t('label.enter-field-description', {
-                field: t('label.feature-lowercase'),
-              })}
-              value={selectedFeature.description as string}
-              visible={editDescription}
-              onCancel={handleCancelEditDescription}
-              onSave={handleDescriptionChange}
-            />
-          </EntityAttachmentProvider>
+          <ModalWithMarkdownEditor
+            header={t('label.edit-entity-name', {
+              entityType: t('label.feature'),
+              entityName: getEntityName(selectedFeature),
+            })}
+            placeholder={t('label.enter-field-description', {
+              field: t('label.feature-lowercase'),
+            })}
+            value={selectedFeature.description as string}
+            visible={editDescription}
+            onCancel={handleCancelEditDescription}
+            onSave={handleDescriptionChange}
+          />
         )}
       </Fragment>
     );

@@ -15,12 +15,11 @@ export type EditorContentRef = {
   getEditorContent: () => string;
 };
 
-export interface ModalWithMarkdownEditorProps {
+export type ModalWithMarkdownEditorProps = {
   header: string;
   value: string;
   placeholder: string;
   onSave?: (text: string) => Promise<void>;
   onCancel?: () => void;
   visible: boolean;
-  allowFileUpload?: boolean;
-}
+};

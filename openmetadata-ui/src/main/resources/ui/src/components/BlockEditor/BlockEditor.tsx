@@ -12,8 +12,7 @@
  */
 import { EditorContent } from '@tiptap/react';
 import classNames from 'classnames';
-import { isNil, isUndefined } from 'lodash';
-
+import { isNil } from 'lodash';
 import React, {
   forwardRef,
   useEffect,
@@ -23,19 +22,15 @@ import React, {
 import { useTranslation } from 'react-i18next';
 import { EDITOR_OPTIONS } from '../../constants/BlockEditor.constants';
 import { formatContent, setEditorContent } from '../../utils/BlockEditorUtils';
-import Banner from '../common/Banner/Banner';
-import { useEntityAttachment } from '../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import BarMenu from './BarMenu/BarMenu';
 import './block-editor.less';
 import {
   BlockEditorProps,
   BlockEditorRef,
   EditorSlotsRef,
-  FileType,
 } from './BlockEditor.interface';
 import EditorSlots from './EditorSlots';
 import { extensions } from './Extensions';
-import './Extensions/File/file-node.less';
 import { useCustomEditor } from './hooks/useCustomEditor';
 
 const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
@@ -47,59 +42,27 @@ const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
       autoFocus,
       placeholder,
       onChange,
-      showInlineAlert = true,
     },
     ref
   ) => {
     const { i18n } = useTranslation();
     const editorSlots = useRef<EditorSlotsRef>(null);
-    const {
-      allowFileUpload,
-      allowImageUpload,
-      handleFileUpload,
-      errorMessage,
-      handleErrorMessage,
-    } = useEntityAttachment();
 
-    const editorWrapperRef = useRef<HTMLDivElement>(null);
-
+    // this hook to initialize the editor
     const editor = useCustomEditor({
       ...EDITOR_OPTIONS,
       extensions,
       onUpdate({ editor }) {
-        handleErrorMessage(undefined);
         const htmlContent = editor.getHTML();
+
         const backendFormat = formatContent(htmlContent, 'server');
+
         onChange?.(backendFormat);
       },
       editorProps: {
         attributes: {
           class: 'om-block-editor',
           ...(autoFocus ? { autofocus: 'true' } : {}),
-        },
-        handleDOMEvents: {
-          paste: (view, event) => {
-            // Allow paste if either image or file upload is enabled
-            if (!allowImageUpload && !allowFileUpload) {
-              return false;
-            }
-
-            const items = Array.from(event.clipboardData?.items || []);
-            const files = items
-              .filter((item) => item.kind === FileType.FILE)
-              .map((item) => item.getAsFile())
-              .filter(Boolean) as File[];
-
-            if (!files.length) {
-              return false;
-            }
-
-            event.preventDefault();
-            const pos = view.state.selection.from;
-            handleFileUpload(files[0], view, pos, showInlineAlert);
-
-            return true;
-          },
         },
       },
       autofocus: autoFocus,
@@ -109,74 +72,6 @@ const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
     useImperativeHandle(ref, () => ({
       editor,
     }));
-
-    // Handle drag and drop events
-    const handleDragEnter = (e: React.DragEvent) => {
-      if (!allowImageUpload && !allowFileUpload) {
-        return;
-      }
-
-      handleErrorMessage(undefined);
-      const { items } = e.dataTransfer;
-      const hasFiles = Array.from(items).some(
-        (item) => item.kind === FileType.FILE
-      );
-
-      if (hasFiles) {
-        const editorElement = document.querySelector(
-          '.ProseMirror[contenteditable="true"]'
-        );
-        if (editorElement) {
-          (editorElement as HTMLElement).classList.add('drag-over');
-        }
-      }
-    };
-
-    const handleDragLeave = (e: React.DragEvent) => {
-      const editorElement = document.querySelector(
-        '.ProseMirror[contenteditable="true"]'
-      );
-      // Only remove class if we're leaving the editor area
-      if (editorElement && !editorElement.contains(e.relatedTarget as Node)) {
-        (editorElement as HTMLElement).classList.remove('drag-over');
-      }
-    };
-
-    const handleDrop = (e: React.DragEvent) => {
-      if ((!allowImageUpload && !allowFileUpload) || !editor?.view) {
-        return;
-      }
-
-      e.preventDefault();
-
-      const editorElement = document.querySelector(
-        '.ProseMirror[contenteditable="true"]'
-      );
-      if (editorElement) {
-        (editorElement as HTMLElement).classList.remove('drag-over');
-      }
-
-      const { files, items } = e.dataTransfer;
-
-      // Only handle file drops, let BlockAndDragDrop handle block moves
-      if (!files?.length || items[0]?.type === FileType.TEXT_HTML) {
-        return;
-      }
-
-      const coordinates = editor.view.posAtCoords({
-        left: e.clientX,
-        top: e.clientY,
-      });
-
-      if (coordinates) {
-        handleFileUpload(
-          files[0],
-          editor.view,
-          coordinates.pos,
-          showInlineAlert
-        );
-      }
-    };
 
     // this effect to handle the content change
     useEffect(() => {
@@ -211,12 +106,17 @@ const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
 
     // this effect to handle the RTL and LTR direction
     useEffect(() => {
-      const editorWrapper = editorWrapperRef.current;
+      const editorWrapper = document.getElementById('block-editor-wrapper');
       if (!editorWrapper) {
         return;
       }
       editorWrapper.setAttribute('dir', i18n.dir());
-      editorWrapper.style.textAlign = i18n.dir() === 'rtl' ? 'right' : 'left';
+      // text align right if rtl
+      if (i18n.dir() === 'rtl') {
+        editorWrapper.style.textAlign = 'right';
+      } else {
+        editorWrapper.style.textAlign = 'left';
+      }
     }, [i18n]);
 
     return (
@@ -225,20 +125,7 @@ const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
           'block-editor-wrapper--bar-menu': menuType === 'bar',
           'block-editor-wrapper--bubble-menu': menuType === 'bubble',
         })}
-        id="block-editor-wrapper"
-        ref={editorWrapperRef}
-        onDragEnter={handleDragEnter}
-        onDragLeave={handleDragLeave}
-        onDragOver={(e) => e.preventDefault()}
-        onDrop={handleDrop}>
-        {showInlineAlert && errorMessage && (
-          <Banner
-            className="border-radius"
-            isLoading={isUndefined(errorMessage)}
-            message={errorMessage}
-            type="error"
-          />
-        )}
+        id="block-editor-wrapper">
         {menuType === 'bar' && !isNil(editor) && (
           <BarMenu
             editor={editor}

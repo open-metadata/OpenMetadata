@@ -38,7 +38,6 @@ import { useSuggestionsContext } from '../../Suggestions/SuggestionsProvider/Sug
 import SuggestionsSlider from '../../Suggestions/SuggestionsSlider/SuggestionsSlider';
 import RichTextEditorPreviewerV1 from '../RichTextEditor/RichTextEditorPreviewerV1';
 import { DescriptionProps } from './Description.interface';
-import { EntityAttachmentProvider } from './EntityAttachmentProvider/EntityAttachmentProvider';
 
 const { Text } = Typography;
 
@@ -57,18 +56,13 @@ const DescriptionV1 = ({
   reduceDescription,
   showSuggestions = false,
   isDescriptionExpanded,
-  entityFullyQualifiedName,
 }: DescriptionProps) => {
   const history = useHistory();
   const { suggestions = [], selectedUserSuggestions = [] } =
     useSuggestionsContext();
   const [isEditDescription, setIsEditDescription] = useState(false);
-  const { fqn } = useFqn();
+  const { fqn: entityFqn } = useFqn();
   const { onThreadLinkSelect } = useGenericContext();
-
-  const entityFqn = useMemo(() => {
-    return entityFullyQualifiedName ?? fqn;
-  }, [entityFullyQualifiedName, fqn]);
 
   const handleRequestDescription = useCallback(() => {
     history.push(getRequestDescriptionPath(entityType, entityFqn));
@@ -222,35 +216,33 @@ const DescriptionV1 = ({
   }, [description, suggestionData, isDescriptionExpanded]);
 
   const content = (
-    <EntityAttachmentProvider entityFqn={entityFqn} entityType={entityType}>
-      <Space
-        className={classNames('schema-description d-flex', className)}
-        data-testid="asset-description-container"
-        direction="vertical"
-        size={16}>
-        <div className="d-flex justify-between flex-wrap">
-          <div className="d-flex items-center gap-2">
-            <Text className="right-panel-label">{t('label.description')}</Text>
-            {showActions && actionButtons}
-          </div>
-          {showSuggestions && suggestions.length > 0 && <SuggestionsSlider />}
+    <Space
+      className={classNames('schema-description d-flex', className)}
+      data-testid="asset-description-container"
+      direction="vertical"
+      size={16}>
+      <div className="d-flex justify-between flex-wrap">
+        <div className="d-flex items-center gap-2">
+          <Text className="right-panel-label">{t('label.description')}</Text>
+          {showActions && actionButtons}
         </div>
+        {showSuggestions && suggestions.length > 0 && <SuggestionsSlider />}
+      </div>
 
-        <div>
-          {descriptionContent}
-          <ModalWithMarkdownEditor
-            header={t('label.edit-description-for', { entityName })}
-            placeholder={t('label.enter-entity', {
-              entity: t('label.description'),
-            })}
-            value={description}
-            visible={Boolean(isEditDescription)}
-            onCancel={handleCancelEditDescription}
-            onSave={handleDescriptionChange}
-          />
-        </div>
-      </Space>
-    </EntityAttachmentProvider>
+      <div>
+        {descriptionContent}
+        <ModalWithMarkdownEditor
+          header={t('label.edit-description-for', { entityName })}
+          placeholder={t('label.enter-entity', {
+            entity: t('label.description'),
+          })}
+          value={description}
+          visible={Boolean(isEditDescription)}
+          onCancel={handleCancelEditDescription}
+          onSave={handleDescriptionChange}
+        />
+      </div>
+    </Space>
   );
 
   return wrapInCard ? <Card>{content}</Card> : content;

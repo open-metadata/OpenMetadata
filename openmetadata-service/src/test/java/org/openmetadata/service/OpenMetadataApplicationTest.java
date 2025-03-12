@@ -103,7 +103,7 @@ public abstract class OpenMetadataApplicationTest {
 
   private static String HOST;
   private static String PORT;
-  protected static Client client;
+  private static Client client;
 
   static {
     CollectionRegistry.addTestResource(webhookCallbackResource);
