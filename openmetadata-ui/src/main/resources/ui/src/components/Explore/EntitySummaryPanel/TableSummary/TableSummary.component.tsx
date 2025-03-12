@@ -110,9 +110,9 @@ function TableSummary({ entityDetails }: TableSummaryProps) {
     ) : (
       <div className="d-flex justify-between">
         <div className="profiler-item green" data-testid="test-passed">
-          <div className="text-xs text-grey-muted">{`${t(
-            'label.test-plural'
-          )} ${t('label.passed')}`}</div>
+          <div className="text-xs">{`${t('label.test-plural')} ${t(
+            'label.passed'
+          )}`}</div>
           <div
             className="font-semibold text-lg"
             data-testid="test-passed-value">
@@ -120,9 +120,9 @@ function TableSummary({ entityDetails }: TableSummaryProps) {
           </div>
         </div>
         <div className="profiler-item amber" data-testid="test-aborted">
-          <div className="text-xs text-grey-muted">{`${t(
-            'label.test-plural'
-          )} ${t('label.aborted')}`}</div>
+          <div className="text-xs">{`${t('label.test-plural')} ${t(
+            'label.aborted'
+          )}`}</div>
           <div
             className="font-semibold text-lg"
             data-testid="test-aborted-value">
@@ -130,9 +130,9 @@ function TableSummary({ entityDetails }: TableSummaryProps) {
           </div>
         </div>
         <div className="profiler-item red" data-testid="test-failed">
-          <div className="text-xs text-grey-muted">{`${t(
-            'label.test-plural'
-          )} ${t('label.failed')}`}</div>
+          <div className="text-xs">{`${t('label.test-plural')} ${t(
+            'label.failed'
+          )}`}</div>
           <div
             className="font-semibold text-lg"
             data-testid="test-failed-value">
