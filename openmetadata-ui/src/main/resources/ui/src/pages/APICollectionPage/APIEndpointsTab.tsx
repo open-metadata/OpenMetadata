@@ -24,6 +24,11 @@ import RichTextEditorPreviewerV1 from '../../components/common/RichTextEditor/Ri
 import TableAntd from '../../components/common/Table/Table';
 import { useGenericContext } from '../../components/Customization/GenericProvider/GenericProvider';
 import { NO_DATA, PAGE_SIZE } from '../../constants/constants';
+import {
+  COMMON_STATIC_TABLE_VISIBLE_COLUMNS,
+  DEFAULT_API_ENDPOINT_TAB_VISIBLE_COLUMNS,
+  TABLE_COLUMNS_KEYS,
+} from '../../constants/TableKeys.constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { APICollection } from '../../generated/entity/data/apiCollection';
@@ -98,8 +103,8 @@ function APIEndpointsTab({
     () => [
       {
         title: t('label.name'),
-        dataIndex: 'name',
-        key: 'name',
+        dataIndex: TABLE_COLUMNS_KEYS.NAME,
+        key: TABLE_COLUMNS_KEYS.NAME,
         width: 400,
         render: (_, record: APIEndpoint) => {
           return (
@@ -119,8 +124,8 @@ function APIEndpointsTab({
       },
       {
         title: t('label.request-method'),
-        dataIndex: 'requestMethod',
-        key: 'requestMethod',
+        dataIndex: TABLE_COLUMNS_KEYS.REQUEST_METHOD,
+        key: TABLE_COLUMNS_KEYS.REQUEST_METHOD,
 
         render: (requestMethod: APIEndpoint['requestMethod']) => {
           return <Typography.Text>{requestMethod || NO_DATA}</Typography.Text>;
@@ -128,8 +133,8 @@ function APIEndpointsTab({
       },
       {
         title: t('label.description'),
-        dataIndex: 'description',
-        key: 'description',
+        dataIndex: TABLE_COLUMNS_KEYS.DESCRIPTION,
+        key: TABLE_COLUMNS_KEYS.DESCRIPTION,
         render: (text: string) =>
           text?.trim() ? (
             <RichTextEditorPreviewerV1 markdown={text} />
@@ -161,34 +166,32 @@ function APIEndpointsTab({
 
   return (
     <Row gutter={[16, 16]}>
-      {!isVersionView && (
-        <Col span={24}>
-          <Row justify="end">
-            <Col>
-              <Switch
-                checked={filters.showDeletedEndpoints}
-                data-testid="show-deleted"
-                onClick={() =>
-                  setFilters({
-                    ...filters,
-                    showDeletedEndpoints: !filters.showDeletedEndpoints,
-                  })
-                }
-              />
-              <Typography.Text className="m-l-xs">
-                {t('label.deleted')}
-              </Typography.Text>{' '}
-            </Col>
-          </Row>
-        </Col>
-      )}
-
       <Col span={24}>
         <TableAntd
           bordered
           columns={tableColumn}
           data-testid="databaseSchema-tables"
           dataSource={apiEndpoints}
+          defaultVisibleColumns={DEFAULT_API_ENDPOINT_TAB_VISIBLE_COLUMNS}
+          extraTableFilters={
+            !isVersionView && (
+              <span>
+                <Switch
+                  checked={filters.showDeletedEndpoints}
+                  data-testid="show-deleted"
+                  onClick={() =>
+                    setFilters({
+                      ...filters,
+                      showDeletedEndpoints: !filters.showDeletedEndpoints,
+                    })
+                  }
+                />
+                <Typography.Text className="m-l-xs">
+                  {t('label.deleted')}
+                </Typography.Text>{' '}
+              </span>
+            )
+          }
           loading={apiEndpointsLoading}
           locale={{
             emptyText: (
@@ -201,6 +204,7 @@ function APIEndpointsTab({
           pagination={false}
           rowKey="id"
           size="small"
+          staticVisibleColumns={COMMON_STATIC_TABLE_VISIBLE_COLUMNS}
         />
       </Col>
       {showPagination && (

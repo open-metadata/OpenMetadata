@@ -70,11 +70,12 @@ public class RunIngestionPipelineImpl implements JavaDelegate {
       Thread.sleep(60 * 1000);
       pipelineServiceClient.runPipeline(ingestionPipeline, service);
 
-      boolean success = true;
+      boolean wasSuccessful = true;
       if (waitForCompletion) {
-        success = waitForIngestionPipeline(ingestionPipeline, repository, timeoutSeconds);
+        wasSuccessful = waitForIngestionPipeline(ingestionPipeline, repository, timeoutSeconds);
       }
-      varHandler.setNodeVariable(RESULT_VARIABLE, success);
+      varHandler.setNodeVariable(RESULT_VARIABLE, getResultValue(wasSuccessful));
+      varHandler.setFailure(!wasSuccessful);
     } catch (Exception exc) {
       LOG.error(
           String.format(
@@ -82,6 +83,14 @@ public class RunIngestionPipelineImpl implements JavaDelegate {
           exc);
       varHandler.setGlobalVariable(EXCEPTION_VARIABLE, exc.toString());
       throw new BpmnError(WORKFLOW_RUNTIME_EXCEPTION, exc.getMessage());
+    }
+  }
+
+  private String getResultValue(boolean result) {
+    if (result) {
+      return "success";
+    } else {
+      return "failure";
     }
   }
 

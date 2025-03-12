@@ -32,7 +32,7 @@ public class MetricIndex implements SearchIndex {
   public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
     Map<String, Object> commonAttributes = getCommonAttributesMap(metric, Entity.METRIC);
     doc.putAll(commonAttributes);
-    doc.put("lineage", SearchIndex.getLineageData(metric.getEntityReference()));
+    doc.put("upstreamLineage", SearchIndex.getLineageData(metric.getEntityReference()));
     return doc;
   }
 }

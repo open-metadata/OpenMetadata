@@ -177,10 +177,7 @@ function TableSummary({ entityDetails }: TableSummaryProps) {
   }, [tableDetails.id]);
 
   return (
-    <Row
-      className="p-md border-radius-card"
-      gutter={[0, 8]}
-      style={{ background: '#f5f5f5' }}>
+    <Row className="p-md border-radius-card summary-panel-card" gutter={[0, 8]}>
       <Col span={24}>
         <Typography.Text
           className="summary-panel-section-title"

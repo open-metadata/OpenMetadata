@@ -295,7 +295,7 @@ public class TeamRepository extends EntityRepository<Team> {
   }
 
   @Override
-  protected void cleanup(Team team) {
+  protected void entitySpecificCleanup(Team team) {
     // When a team is deleted, if the children team don't have another parent, set Organization as
     // the parent
     for (EntityReference child : listOrEmpty(team.getChildren())) {
@@ -308,7 +308,6 @@ public class TeamRepository extends EntityRepository<Team> {
         LOG.info("Moving parent of team " + childTeam.getId() + " to organization");
       }
     }
-    super.cleanup(team);
   }
 
   @Override

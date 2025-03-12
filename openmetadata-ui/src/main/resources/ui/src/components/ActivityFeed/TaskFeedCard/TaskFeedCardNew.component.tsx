@@ -15,7 +15,7 @@ import { Button, Card, Col, Row, Tooltip, Typography } from 'antd';
 
 import classNames from 'classnames';
 import { isEmpty, isEqual, isUndefined, lowerCase } from 'lodash';
-import React, { useMemo } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import { ReactComponent as AssigneesIcon } from '../../../assets/svg/ic-assignees.svg';
@@ -25,7 +25,6 @@ import { ReactComponent as ReplyIcon } from '../../../assets/svg/ic-reply-2.svg'
 import EntityPopOverCard from '../../../components/common/PopOverCard/EntityPopOverCard';
 import UserPopOverCard from '../../../components/common/PopOverCard/UserPopOverCard';
 import {
-  Post,
   TaskDetails,
   Thread,
   ThreadTaskStatus,
@@ -39,11 +38,11 @@ import EntityLink from '../../../utils/EntityLink';
 import { getEntityFQN, getEntityType } from '../../../utils/FeedUtils';
 
 import { AxiosError } from 'axios';
-import { ICON_DIMENSION_USER_PAGE } from '../../../constants/constants';
 import { TaskOperation } from '../../../constants/Feeds.constants';
 import { TASK_TYPES } from '../../../constants/Task.constant';
 import { TaskType } from '../../../generated/api/feed/createThread';
 import { ResolveTask } from '../../../generated/api/feed/resolveTask';
+import { useAuth } from '../../../hooks/authHooks';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import DescriptionTaskNew from '../../../pages/TasksPage/shared/DescriptionTaskNew';
 import TagsTask from '../../../pages/TasksPage/shared/TagsTask';
@@ -55,19 +54,15 @@ import {
   isTagsTask,
 } from '../../../utils/TasksUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
-import { OwnerLabelNew } from '../../common/OwnerLabel/OwnerLabelNew.component';
+
+import { UserAvatarGroup } from '../../common/OwnerLabel/UserAvatarGroup.component';
 import { useActivityFeedProvider } from '../ActivityFeedProvider/ActivityFeedProvider';
 import './task-feed-card.less';
 
 interface TaskFeedCardProps {
-  post: Post;
   feed: Thread;
   className?: string;
-  showThread?: boolean;
-  isOpenInDrawer?: boolean;
   isActive?: boolean;
-  isForFeedTab?: boolean;
-  hidePopover: boolean;
   onAfterClose: any;
   onUpdateEntityDetails: any;
 }
@@ -83,7 +78,7 @@ const TaskFeedCard = ({
   const { t } = useTranslation();
   const { setActiveThread } = useActivityFeedProvider();
   const { currentUser } = useApplicationStore();
-
+  const { isAdminUser } = useAuth();
   const { threadTs: timeStamp, task: taskDetails } = feed;
 
   const isTaskTags = isTagsTask(taskDetails?.type as TaskType);
@@ -141,7 +136,7 @@ const TaskFeedCard = ({
             {taskColumnName}
 
             <Typography.Text
-              className="break-all text-primary text-sm"
+              className="break-all header-link text-sm"
               data-testid="entity-link">
               {getNameFromFQN(entityFQN)}
             </Typography.Text>
@@ -198,9 +193,9 @@ const TaskFeedCard = ({
     }
   };
   const onTaskReject = () => {
-    const updatedComment = isTaskGlossaryApproval ? 'Rejected' : 'Rejected';
+    const updatedComment = 'Rejected';
     if (isTaskGlossaryApproval) {
-      const data = { newValue: 'rejected' };
+      const data = { newValue: 'Rejected' };
       updateTaskData(data as TaskDetails);
 
       return;
@@ -215,10 +210,29 @@ const TaskFeedCard = ({
       })
       .catch((err: AxiosError) => showErrorToast(err));
   };
-
+  const isCreator = isEqual(feed.createdBy, currentUser?.name);
+  const checkIfUserPartOfTeam = useCallback(
+    (teamId: string): boolean => {
+      return Boolean(currentUser?.teams?.find((team) => teamId === team.id));
+    },
+    [currentUser]
+  );
   const isAssignee = taskDetails?.assignees?.some((assignee) =>
     isEqual(assignee.id, currentUser?.id)
   );
+  const isPartOfAssigneeTeam = taskDetails?.assignees?.some((assignee) =>
+    assignee.type === 'team' ? checkIfUserPartOfTeam(assignee.id) : false
+  );
+  const hasEditAccess =
+    (isAdminUser && !isTaskGlossaryApproval) ||
+    isAssignee ||
+    (Boolean(isPartOfAssigneeTeam) && !isCreator);
+
+  const isSuggestionEmpty =
+    (isEqual(taskDetails?.suggestion, '[]') &&
+      taskDetails?.type === TaskType.RequestTag) ||
+    (!taskDetails?.suggestion &&
+      taskDetails?.type === TaskType.RequestDescription);
 
   return (
     <Button block className="remove-button-default-styling" type="text">
@@ -227,7 +241,14 @@ const TaskFeedCard = ({
           active: isActive,
         })}
         data-testid="task-feed-card">
-        <Row gutter={isTaskDescription ? undefined : [0, 14]}>
+        <Row
+          gutter={
+            isTaskTestCaseResult || isTaskGlossaryApproval
+              ? [0, 6]
+              : isTaskDescription
+              ? undefined
+              : [0, 14]
+          }>
           <Col className="d-flex flex-col align-start">
             <Col>
               <Icon
@@ -290,11 +311,11 @@ const TaskFeedCard = ({
             />
           )}
           <Col
-            className="task-feed-card-footer  d-flex align-center justify-between"
+            className="task-feed-card-footer  d-flex flex-wrap align-center justify-between"
             span={24}>
             <Col className="d-flex">
               <Col className="d-flex flex-center">
-                <ReplyIcon className="m-r-xs" />
+                <ReplyIcon className="m-r-xs" height={20} width={20} />
                 {feed.posts && feed.posts?.length > 0 && (
                   <span className="posts-length m-r-xss">
                     {t(
@@ -313,16 +334,16 @@ const TaskFeedCard = ({
                     ? 'task-card-assignee'
                     : ''
                 }`}>
-                <AssigneesIcon {...ICON_DIMENSION_USER_PAGE} />
-                <OwnerLabelNew
-                  avatarSize={16}
+                <AssigneesIcon height={20} width={20} />
+                <UserAvatarGroup
+                  avatarSize={24}
                   className="p-t-05"
                   owners={feed?.task?.assignees}
                 />
               </Col>
             </Col>
 
-            {!isTaskTestCaseResult && isAssignee && (
+            {!isTaskTestCaseResult && hasEditAccess && !isSuggestionEmpty && (
               <Col className="d-flex gap-2">
                 {feed.task?.status === ThreadTaskStatus.Open && (
                   <Button

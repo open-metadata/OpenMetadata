@@ -57,7 +57,7 @@ const DescriptionTaskNew: FC<DescriptionTaskProps> = ({
     const newValue = task?.newValue;
     if (!oldValue && !newValue) {
       return (
-        <div className="border border-main p-xs rounded-4 m-y-xss m-b-sm">
+        <div className="p-xs rounded-4 m-y-xss m-b-sm">
           <Typography.Text className="text-grey-muted">
             {t('label.no-entity', { entity: t('label.description') })}
           </Typography.Text>
@@ -66,7 +66,7 @@ const DescriptionTaskNew: FC<DescriptionTaskProps> = ({
     } else {
       return (
         <DiffViewNew
-          className="border border-main p-xs rounded-4 m-y-xss m-b-sm"
+          className="p-xs rounded-4 m-y-xss m-b-sm"
           diffArr={getDescriptionDiff(oldValue ?? '', newValue ?? '')}
           showDescTitle={showDescTitle}
           task={taskThread}
@@ -89,9 +89,11 @@ const DescriptionTaskNew: FC<DescriptionTaskProps> = ({
     );
 
     return !newDescription && !oldDescription ? (
-      <Typography.Text className="text-grey-muted p-xs">
-        {t('label.no-entity', { entity: t('label.suggestion') })}
-      </Typography.Text>
+      <div className="no-description-suggestion-card w-full">
+        <Typography.Text className="text-grey-muted p-xs">
+          {t('label.no-entity', { entity: t('label.suggestion') })}
+        </Typography.Text>
+      </div>
     ) : (
       <DiffViewNew
         className="p-xs"
@@ -102,7 +104,7 @@ const DescriptionTaskNew: FC<DescriptionTaskProps> = ({
   };
 
   return (
-    <div data-testid="task-description-tabs">
+    <div className="w-full" data-testid="task-description-tabs">
       <Fragment>
         {isTaskClosed ? (
           getDiffView()
@@ -120,7 +122,7 @@ const DescriptionTaskNew: FC<DescriptionTaskProps> = ({
                     onTextChange={onChange}
                   />
                 ) : (
-                  <div className="d-flex border border-main rounded-4 m-b-md">
+                  <div className="d-flex rounded-4 m-b-md">
                     {getSuggestedDescriptionDiff()}
                   </div>
                 )}

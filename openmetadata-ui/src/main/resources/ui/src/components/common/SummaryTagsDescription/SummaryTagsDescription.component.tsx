@@ -33,9 +33,8 @@ const SummaryTagsDescription = ({
   return (
     <>
       <Row
-        className="p-md border-radius-card"
-        gutter={[0, 8]}
-        style={{ background: '#f5f5f5' }}>
+        className="p-md border-radius-card summary-panel-card"
+        gutter={[0, 8]}>
         <Col span={24}>
           <Typography.Text
             className="summary-panel-section-title"
@@ -55,9 +54,8 @@ const SummaryTagsDescription = ({
       </Row>
 
       <Row
-        className="p-md border-radius-card"
-        gutter={[0, 8]}
-        style={{ background: '#f5f5f5' }}>
+        className="p-md border-radius-card summary-panel-card"
+        gutter={[0, 8]}>
         <Col span={24}>
           <Typography.Text
             className="summary-panel-section-title"

@@ -17,11 +17,11 @@ import { Handle, HandleProps, HandleType, Position } from 'reactflow';
 import { ReactComponent as MinusIcon } from '../../../assets/svg/control-minus.svg';
 import { ReactComponent as PlusIcon } from '../../../assets/svg/plus-outlined.svg';
 import { EntityLineageNodeType } from '../../../enums/entity.enum';
+import { LineageDirection } from '../../../generated/api/lineage/lineageDirection';
 import { Column } from '../../../generated/entity/data/table';
 import { encodeLineageHandles } from '../../../utils/EntityLineageUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getColumnDataTypeIcon } from '../../../utils/TableUtils';
-import { EdgeTypeEnum } from './EntityLineage.interface';
 
 export const getHandleByType = (
   isConnectable: HandleProps['isConnectable'],
@@ -66,14 +66,14 @@ export const getColumnHandle = (
 };
 
 export const getExpandHandle = (
-  direction: EdgeTypeEnum,
+  direction: LineageDirection,
   onClickHandler: () => void
 ) => {
   return (
     <Button
       className={classNames(
         'absolute lineage-node-handle flex-center',
-        direction === EdgeTypeEnum.DOWN_STREAM
+        direction === LineageDirection.Downstream
           ? 'react-flow__handle-right'
           : 'react-flow__handle-left'
       )}
@@ -91,19 +91,19 @@ export const getExpandHandle = (
 };
 
 export const getCollapseHandle = (
-  direction: EdgeTypeEnum,
+  direction: LineageDirection,
   onClickHandler: () => void
 ) => {
   return (
     <Button
       className={classNames(
         'absolute lineage-node-minus lineage-node-handle flex-center',
-        direction === EdgeTypeEnum.DOWN_STREAM
+        direction === LineageDirection.Downstream
           ? 'react-flow__handle-right'
           : 'react-flow__handle-left'
       )}
       data-testid={
-        direction === EdgeTypeEnum.DOWN_STREAM
+        direction === LineageDirection.Downstream
           ? 'downstream-collapse-handle'
           : 'upstream-collapse-handle'
       }

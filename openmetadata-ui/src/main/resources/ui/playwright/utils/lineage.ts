@@ -62,6 +62,21 @@ export const LINEAGE_CSV_HEADERS = [
   'pipelineServiceType',
 ];
 
+export type LineageEdge = {
+  fromEntity: {
+    id: string;
+    type: string;
+  };
+  toEntity: {
+    id: string;
+    type: string;
+  };
+  columns: {
+    fromColumns: string[];
+    toColumn: string;
+  }[];
+};
+
 export const verifyColumnLayerInactive = async (page: Page) => {
   await page.click('[data-testid="lineage-layer-btn"]'); // Open Layer popover
   await page.waitForSelector(
@@ -84,7 +99,7 @@ export const editLineage = async (page: Page) => {
 };
 
 export const performZoomOut = async (page: Page) => {
-  const zoomOutBtn = page.locator('.react-flow__controls-zoomout');
+  const zoomOutBtn = page.getByTestId('zoom-out');
   const enabled = await zoomOutBtn.isEnabled();
   if (enabled) {
     for (const _ of Array.from({ length: 8 })) {
@@ -160,6 +175,10 @@ export const dragConnection = async (
   await lineageRes;
 };
 
+export const rearrangeNodes = async (page: Page) => {
+  await page.getByTestId('rearrange').click();
+};
+
 export const connectEdgeBetweenNodes = async (
   page: Page,
   fromNode: EntityClass,
@@ -214,8 +233,6 @@ export const performExpand = async (
     await expandBtn.click();
     await expandRes;
     await verifyNodePresent(page, newNode);
-  } else {
-    await expect(expandBtn).toBeVisible();
   }
 };
 
@@ -458,7 +475,7 @@ export const addPipelineBetweenNodes = async (
   bVerifyPipeline = false
 ) => {
   await sourceEntity.visitEntityPage(page);
-  await page.click('[data-testid="lineage"]');
+  await visitLineageTab(page);
   await editLineage(page);
 
   await performZoomOut(page);

@@ -11,6 +11,7 @@ import org.flowable.bpmn.model.SequenceFlow;
 import org.flowable.bpmn.model.ServiceTask;
 import org.flowable.bpmn.model.StartEvent;
 import org.flowable.bpmn.model.SubProcess;
+import org.openmetadata.schema.governance.workflows.WorkflowConfiguration;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.CheckEntityAttributesTaskDefinition;
 import org.openmetadata.service.governance.workflows.elements.NodeInterface;
 import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.impl.CheckEntityAttributesImpl;
@@ -25,7 +26,8 @@ public class CheckEntityAttributesTask implements NodeInterface {
   private final SubProcess subProcess;
   private final BoundaryEvent runtimeExceptionBoundaryEvent;
 
-  public CheckEntityAttributesTask(CheckEntityAttributesTaskDefinition nodeDefinition) {
+  public CheckEntityAttributesTask(
+      CheckEntityAttributesTaskDefinition nodeDefinition, WorkflowConfiguration config) {
     String subProcessId = nodeDefinition.getName();
 
     SubProcess subProcess = new SubProcessBuilder().id(subProcessId).build();
@@ -48,6 +50,10 @@ public class CheckEntityAttributesTask implements NodeInterface {
 
     subProcess.addFlowElement(new SequenceFlow(startEvent.getId(), checkEntityAttributes.getId()));
     subProcess.addFlowElement(new SequenceFlow(checkEntityAttributes.getId(), endEvent.getId()));
+
+    if (config.getStoreStageStatus()) {
+      attachWorkflowInstanceStageListeners(subProcess);
+    }
 
     this.runtimeExceptionBoundaryEvent = getRuntimeExceptionBoundaryEvent(subProcess);
     this.subProcess = subProcess;
