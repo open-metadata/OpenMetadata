@@ -63,7 +63,16 @@ test.describe('Advanced Search Custom Property', () => {
 
       await table.visitEntityPage(page);
 
+      const customPropertyResponse = page.waitForResponse(
+        '/api/v1/metadata/types/name/table?fields=customProperties'
+      );
       await page.getByTestId('custom_properties').click(); // Tab Click
+
+      await customPropertyResponse;
+
+      await page.waitForSelector('.ant-skeleton-active', {
+        state: 'detached',
+      });
 
       await page
         .getByTestId(`custom-property-${durationPropertyName}-card`)
