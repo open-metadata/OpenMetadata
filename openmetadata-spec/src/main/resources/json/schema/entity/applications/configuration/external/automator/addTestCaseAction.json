@@ -49,7 +49,7 @@
       "description": "Test Cases to apply",
       "type": "array",
       "items": {
-        "$ref": "../../../../../api/tests/createTestCase.json"
+        "$ref": "#/definitions/testCaseDefinitions"
       }
     },
     "applyToChildren": {
@@ -57,7 +57,7 @@
       "description": "Add tests to the selected table columns",
       "type": "array",
       "items": {
-        "$ref": "#/definitions/testCaseDefinitions"
+        "$ref": "../../../../../type/basic.json#/definitions/entityName"
       },
       "default": null
     },
