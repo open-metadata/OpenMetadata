@@ -129,7 +129,7 @@ import { MessagingServiceType } from '../generated/entity/data/topic';
 import { APIServiceType } from '../generated/entity/services/apiService';
 import { MetadataServiceType } from '../generated/entity/services/metadataService';
 import { SearchSourceAlias } from '../interface/search.interface';
-import { ConfigData } from '../interface/service.interface';
+import { ConfigData, ServicesType } from '../interface/service.interface';
 import { getAPIConfig } from './APIServiceUtils';
 import { getDashboardConfig } from './DashboardServiceUtils';
 import { getDatabaseConfig } from './DatabaseServiceUtils';
@@ -253,6 +253,10 @@ class ServiceUtilClassBase {
         config: configData,
       },
     };
+  }
+
+  public getServiceExtraInfo(_data?: ServicesType): any {
+    return null;
   }
 
   public getSupportedServiceFromList() {

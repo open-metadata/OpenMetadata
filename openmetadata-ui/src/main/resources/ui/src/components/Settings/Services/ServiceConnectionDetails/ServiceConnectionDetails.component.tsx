@@ -20,6 +20,7 @@ import { Card, Col, Row, Space, Tooltip } from 'antd';
 import Input from 'antd/lib/input/Input';
 import { get, isEmpty, isNull, isObject } from 'lodash';
 import React, { ReactNode, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   DEF_UI_SCHEMA,
   JWT_CONFIG,
@@ -41,15 +42,18 @@ type ServiceConnectionDetailsProps = {
   connectionDetails: ConfigData;
   serviceCategory: string;
   serviceFQN: string;
+  extraInfo: any;
 };
 
 const ServiceConnectionDetails = ({
   connectionDetails,
   serviceCategory,
   serviceFQN,
+  extraInfo,
 }: ServiceConnectionDetailsProps) => {
   const [schema, setSchema] = useState({});
   const [data, setData] = useState<ReactNode>();
+  const { t } = useTranslation();
 
   const getKeyValues = (
     obj: object,
@@ -290,15 +294,77 @@ const ServiceConnectionDetails = ({
   }, [schema]);
 
   return (
-    <Card>
-      <div
-        className="d-flex flex-wrap p-xss"
-        data-testid="service-connection-details">
-        <Row className="w-full" gutter={[8, 8]}>
-          {data}
-        </Row>
-      </div>
-    </Card>
+    <>
+      <Card>
+        <div
+          className="d-flex flex-wrap p-xss"
+          data-testid="service-connection-details">
+          <Row className="w-full" gutter={[8, 8]}>
+            {data}
+          </Row>
+        </div>
+      </Card>
+      {extraInfo && (
+        <Card className="m-t-md">
+          <div className="d-flex flex-wrap p-xss">
+            <Row className="w-full" gutter={[8, 8]}>
+              <Col span={12}>
+                <Row>
+                  <Col className="d-flex items-center" span={8}>
+                    <Space size={0}>
+                      <p className="text-grey-muted m-0">{extraInfo.type}</p>
+                      <Tooltip
+                        position="bottom"
+                        title={extraInfo.description}
+                        trigger="hover">
+                        <InfoCircleOutlined
+                          className="m-x-xss"
+                          style={{ color: '#C4C4C4' }}
+                        />
+                      </Tooltip>
+                    </Space>
+                  </Col>
+                  <Col span={16}>
+                    <Input
+                      readOnly
+                      className="w-full border-none"
+                      data-testid="input-field"
+                      type="text"
+                      value={extraInfo.name}
+                    />
+                  </Col>
+                </Row>
+              </Col>
+              <Col span={12}>
+                <Row>
+                  <Col className="d-flex items-center" span={8}>
+                    <Space size={0}>
+                      <p className="text-grey-muted m-0">
+                        {t('label.location')} {t('label.url-uppercase')}
+                      </p>
+                      <Tooltip
+                        position="bottom"
+                        title={extraInfo.description}
+                        trigger="hover">
+                        <InfoCircleOutlined
+                          className="m-x-xss"
+                          style={{ color: '#C4C4C4' }}
+                        />
+                      </Tooltip>
+                    </Space>
+                  </Col>
+                  <Col span={16}>
+                    <a href={extraInfo.href} rel="noreferrer" target="_blank">
+                      {t('label.click-here')}
+                    </a>
+                  </Col>
+                </Row>
+              </Col>
+            </Row>
+          </div>
+        </Card>
+      )}
+    </>
   );
 };
 
