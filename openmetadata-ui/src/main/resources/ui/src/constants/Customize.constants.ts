@@ -53,4 +53,5 @@ export const TAB_LABEL_MAP: Record<EntityTabs, string> = {
   [EntityTabs.SCHEMA_DEFINITION]: 'label.schema-definition',
   [EntityTabs.EXPRESSION]: 'label.expression',
   [EntityTabs.DASHBOARD]: 'label.dashboard',
+  [EntityTabs.INSIGHTS]: 'label.insight-plural',
 } as const;
