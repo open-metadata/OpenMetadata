@@ -134,6 +134,7 @@ describe('ServiceConnectionDetails', () => {
     render(
       <ServiceConnectionDetails
         connectionDetails={databaseSchema}
+        extraInfo={null}
         serviceCategory={ServiceCategory.DATABASE_SERVICES}
         serviceFQN="test"
       />
@@ -149,6 +150,7 @@ describe('ServiceConnectionDetails', () => {
       render(
         <ServiceConnectionDetails
           connectionDetails={databaseSchema}
+          extraInfo={null}
           serviceCategory={ServiceCategory.DATABASE_SERVICES}
           serviceFQN="test"
         />
@@ -182,6 +184,7 @@ describe('ServiceConnectionDetails', () => {
       render(
         <ServiceConnectionDetails
           connectionDetails={databaseSchema}
+          extraInfo={null}
           serviceCategory={service.name}
           serviceFQN="test"
         />
@@ -197,6 +200,7 @@ describe('ServiceConnectionDetails', () => {
       render(
         <ServiceConnectionDetails
           connectionDetails={pipelineSchema as ConfigData}
+          extraInfo={null}
           serviceCategory={ServiceCategory.PIPELINE_SERVICES}
           serviceFQN="test"
         />
@@ -226,6 +230,7 @@ describe('ServiceConnectionDetails', () => {
     render(
       <ServiceConnectionDetails
         connectionDetails={metaDataSchema as ConfigData}
+        extraInfo={null}
         serviceCategory={ServiceCategory.METADATA_SERVICES}
         serviceFQN="test"
       />
