@@ -97,6 +97,14 @@ class PowerBiColumns(BaseModel):
     columnType: Optional[str] = None
 
 
+class PowerBITableSource(BaseModel):
+    """
+    PowerBI Table Source
+    """
+
+    expression: str
+
+
 class PowerBiTable(BaseModel):
     """
     PowerBI Table Model
@@ -106,6 +114,7 @@ class PowerBiTable(BaseModel):
     name: str
     columns: Optional[List[PowerBiColumns]] = None
     description: Optional[str] = None
+    source: Optional[List[PowerBITableSource]] = None
 
 
 class TablesResponse(BaseModel):
