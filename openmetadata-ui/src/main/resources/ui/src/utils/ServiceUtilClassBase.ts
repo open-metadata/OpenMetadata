@@ -129,6 +129,7 @@ import { MessagingServiceType } from '../generated/entity/data/topic';
 import { APIServiceType } from '../generated/entity/services/apiService';
 import { MetadataServiceType } from '../generated/entity/services/metadataService';
 import { SearchSourceAlias } from '../interface/search.interface';
+import { ConfigData } from '../interface/service.interface';
 import { getAPIConfig } from './APIServiceUtils';
 import { getDashboardConfig } from './DashboardServiceUtils';
 import { getDatabaseConfig } from './DatabaseServiceUtils';
@@ -206,6 +207,52 @@ class ServiceUtilClassBase {
 
   filterUnsupportedServiceType(types: string[]) {
     return types.filter((type) => !this.unSupportedServices.includes(type));
+  }
+
+  public ADVANCED_PROPERTIES = [
+    'connectionArguments',
+    'connectionOptions',
+    'scheme',
+    'sampleDataStorageConfig',
+    'computeTableMetrics',
+    'computeColumnMetrics',
+    'includeViews',
+    'useStatistics',
+    'confidence',
+    'samplingMethodType',
+    'sampleDataCount',
+    'threadCount',
+    'timeoutSeconds',
+    'sslConfig',
+    'sslMode',
+    'schemaRegistrySSL',
+    'consumerConfigSSL',
+    'verify',
+  ];
+
+  public getServiceConfigData(data: {
+    serviceName: string;
+    serviceType: string;
+    description: string;
+    userId: string;
+    configData: ConfigData;
+  }) {
+    const { serviceName, serviceType, description, userId, configData } = data;
+
+    return {
+      name: serviceName,
+      serviceType: serviceType,
+      description: description,
+      owners: [
+        {
+          id: userId,
+          type: 'user',
+        },
+      ],
+      connection: {
+        config: configData,
+      },
+    };
   }
 
   public getSupportedServiceFromList() {
