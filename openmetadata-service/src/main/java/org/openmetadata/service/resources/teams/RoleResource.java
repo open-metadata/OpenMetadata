@@ -443,6 +443,30 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
   }
 
   @DELETE
+  @Path("/async/{id}")
+  @Operation(
+      operationId = "deleteRoleAsync",
+      summary = "Asynchronously delete a role",
+      description = "Asynchronously delete a role by given `id`.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "OK"),
+        @ApiResponse(responseCode = "404", description = "Role for instance {id} is not found")
+      })
+  public Response deleteByIdAsync(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Hard delete the entity. (Default = `false`)")
+          @QueryParam("hardDelete")
+          @DefaultValue("false")
+          boolean hardDelete,
+      @Parameter(description = "Id of the role", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id) {
+    // A role has a strong relationship with a policy. Recursively delete the policy that the role
+    // contains, to avoid leaving a dangling policy without a role.
+    return deleteByIdAsync(uriInfo, securityContext, id, true, hardDelete);
+  }
+
+  @DELETE
   @Path("/name/{name}")
   @Operation(
       operationId = "deleteRoleByName",
