@@ -26,6 +26,9 @@ jest.mock('../../common/NextPrevious/NextPrevious', () => {
     </div>
   ));
 });
+jest.mock('../../common/RichTextEditor/RichTextEditorPreviewerV1', () =>
+  jest.fn().mockImplementation(({ markdown }) => <div>{markdown}</div>)
+);
 
 const mockChildrenList = [
   {
