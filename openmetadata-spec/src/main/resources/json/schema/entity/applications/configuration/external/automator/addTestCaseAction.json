@@ -10,6 +10,32 @@
       "type": "string",
       "enum": ["AddTestCaseAction"],
       "default": "AddTestCaseAction"
+    },
+    "testCaseDefinitions": {
+      "description": "Minimum set of requirements to get a Test Case request ready",
+      "type": "object",
+      "properties": {
+        "testDefinition": {
+          "description": "Fully qualified name of the test definition.",
+          "$ref": "../../../../../type/basic.json#/definitions/fullyQualifiedEntityName"
+        },
+        "parameterValues": {
+          "type": "array",
+          "items": {
+            "$ref": "../../../../../tests/testCase.json#/definitions/testCaseParameterValue"
+          }
+        },
+        "computePassedFailedRowCount": {
+          "description": "Compute the passed and failed row count for the test case.",
+          "type": "boolean",
+          "default": false
+        },
+        "useDynamicAssertion": {
+          "description": "If the test definition supports it, use dynamic assertion to evaluate the test case.",
+          "type": "boolean",
+          "default": false
+        }
+      }
     }
   },
   "properties": {
@@ -31,7 +57,7 @@
       "description": "Add tests to the selected table columns",
       "type": "array",
       "items": {
-        "$ref": "../../../../../type/basic.json#/definitions/entityName"
+        "$ref": "#/definitions/testCaseDefinitions"
       },
       "default": null
     },

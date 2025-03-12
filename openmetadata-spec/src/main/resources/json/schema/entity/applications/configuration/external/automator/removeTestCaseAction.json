@@ -19,11 +19,11 @@
       "$ref": "#/definitions/removeTestCaseActionType",
       "default": "RemoveTestCaseAction"
     },
-    "testCases": {
+    "testCaseDefinitions": {
       "description": "Test Cases to remove",
       "type": "array",
       "items": {
-        "$ref": "../../../../../api/tests/createTestCase.json"
+        "$ref": "../../../../../type/basic.json#/definitions/fullyQualifiedEntityName"
       }
     },
     "applyToChildren": {
