@@ -13,7 +13,7 @@
 
 import { Popover, Skeleton, Space, Tag, Typography } from 'antd';
 import classNamesFunc from 'classnames';
-import { isEmpty, isUndefined, upperCase } from 'lodash';
+import { isEmpty, isUndefined, upperFirst } from 'lodash';
 import React, {
   FunctionComponent,
   useCallback,
@@ -22,7 +22,6 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { NO_DATA_PLACEHOLDER } from '../../../../../constants/constants';
-import { PIPELINE_INGESTION_RUN_STATUS } from '../../../../../constants/pipeline.constants';
 import {
   IngestionPipeline,
   PipelineStatus,
@@ -40,7 +39,7 @@ interface Props {
   ingestion?: IngestionPipeline;
   classNames?: string;
   appRuns?: PipelineStatus[];
-  isApplicationType?: boolean;
+  fetchStatus?: boolean;
   pipelineIdToFetchStatus?: string;
   handlePipelineIdToFetchStatus?: (pipelineId?: string) => void;
 }
@@ -53,7 +52,7 @@ export const IngestionRecentRuns: FunctionComponent<Props> = ({
   ingestion,
   classNames,
   appRuns,
-  isApplicationType,
+  fetchStatus = true,
   pipelineIdToFetchStatus = '',
   handlePipelineIdToFetchStatus,
 }: Props) => {
@@ -83,13 +82,13 @@ export const IngestionRecentRuns: FunctionComponent<Props> = ({
   }, [ingestion, ingestion?.fullyQualifiedName]);
 
   useEffect(() => {
-    if (isApplicationType && appRuns) {
+    if (fetchStatus && ingestion?.fullyQualifiedName) {
+      fetchPipelineStatus();
+    } else if (!isUndefined(appRuns)) {
       setRecentRunStatus(appRuns.splice(0, 5).reverse() ?? []);
       setLoading(false);
-    } else if (ingestion?.fullyQualifiedName) {
-      fetchPipelineStatus();
     }
-  }, [ingestion, ingestion?.fullyQualifiedName]);
+  }, [ingestion, ingestion?.fullyQualifiedName, appRuns]);
 
   useEffect(() => {
     // To fetch pipeline status on demand
@@ -120,17 +119,18 @@ export const IngestionRecentRuns: FunctionComponent<Props> = ({
         recentRunStatus.map((r, i) => {
           const status = (
             <Tag
-              className={classNamesFunc('ingestion-run-badge', {
-                latest: i === recentRunStatus.length - 1,
-              })}
-              color={
-                PIPELINE_INGESTION_RUN_STATUS[r?.pipelineState ?? 'success']
-              }
+              className={classNamesFunc(
+                'ingestion-run-badge',
+                r?.pipelineState ?? '',
+                {
+                  latest: i === recentRunStatus.length - 1,
+                }
+              )}
               data-testid="pipeline-status"
               key={`${r.runId}-status`}
               onClick={() => handleRunStatusClick(r)}>
               {i === recentRunStatus.length - 1
-                ? upperCase(r?.pipelineState)
+                ? upperFirst(r?.pipelineState)
                 : ''}
             </Tag>
           );

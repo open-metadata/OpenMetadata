@@ -13,7 +13,6 @@
 
 import { Typography } from 'antd';
 import { ExpandableConfig } from 'antd/lib/table/interface';
-import { t } from 'i18next';
 import { isEmpty, isUndefined, startCase, uniq } from 'lodash';
 import { ServiceTypes } from 'Models';
 import React from 'react';
@@ -34,23 +33,33 @@ import {
   INGESTION_ACTION_TYPE,
   PIPELINE_TYPE_LOCALIZATION,
 } from '../constants/Ingestions.constant';
+import { SERVICE_INGESTION_PIPELINE_TYPES } from '../constants/Services.constant';
 import { ERROR_PLACEHOLDER_TYPE } from '../enums/common.enum';
 import { ELASTIC_SEARCH_RE_INDEX_PAGE_TABS } from '../enums/ElasticSearch.enum';
+import { EntityTabs } from '../enums/entity.enum';
 import { FormSubmitType } from '../enums/form.enum';
+import { ServiceAgentSubTabs } from '../enums/service.enum';
 import { PipelineType } from '../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { UIThemePreference } from '../generated/configuration/uiThemePreference';
 import { HiveMetastoreConnectionDetails as Connection } from '../generated/entity/services/databaseService';
 import {
   IngestionPipeline,
+  PipelineState,
   StepSummary,
 } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { SearchSourceAlias } from '../interface/search.interface';
 import { DataObj, ServicesType } from '../interface/service.interface';
 import { Transi18next } from './CommonUtils';
+import i18n from './i18next/LocalUtil';
 import { getSettingPath, getSettingsPathWithFqn } from './RouterUtils';
 import { getDayCron } from './SchedularUtils';
 import serviceUtilClassBase from './ServiceUtilClassBase';
-import { getServiceRouteFromServiceType } from './ServiceUtils';
+import {
+  getReadableCountString,
+  getServiceRouteFromServiceType,
+} from './ServiceUtils';
+
+const { t } = i18n;
 
 export const getIngestionHeadingName = (
   ingestionType: string,
@@ -65,10 +74,10 @@ export const getIngestionHeadingName = (
   );
 
   return type === INGESTION_ACTION_TYPE.ADD
-    ? t('label.add-workflow-ingestion', {
+    ? t('label.add-workflow-agent', {
         workflow: ingestionName,
       })
-    : t('label.edit-workflow-ingestion', {
+    : t('label.edit-workflow-agent', {
         workflow: ingestionName,
       });
 };
@@ -120,7 +129,12 @@ export const getBreadCrumbsArray = (
         },
         {
           name: serviceData?.name || '',
-          url: getServiceDetailsPath(serviceFQN, serviceCategory, 'ingestions'),
+          url: getServiceDetailsPath(
+            serviceFQN,
+            serviceCategory,
+            EntityTabs.AGENTS,
+            ServiceAgentSubTabs.METADATA
+          ),
           imgSrc: serviceUtilClassBase.getServiceTypeLogo(
             serviceData as SearchSourceAlias
           ),
@@ -308,7 +322,7 @@ export const getMenuItems = (
   isDataSightIngestionExists: boolean
 ) => {
   return types.map((type) => ({
-    label: t('label.add-workflow-ingestion', {
+    label: t('label.add-workflow-agent', {
       workflow: t(`label.${PIPELINE_TYPE_LOCALIZATION[type]}`),
     }),
     key: type,
@@ -316,25 +330,6 @@ export const getMenuItems = (
       type === PipelineType.DataInsight ? isDataSightIngestionExists : false,
     ['data-testid']: 'list-item',
   }));
-};
-
-export const getIngestionButtonText = (
-  hasMetadata?: IngestionPipeline,
-  pipelineType?: PipelineType
-) => {
-  if (hasMetadata) {
-    return t('label.add-entity', {
-      entity: t('label.ingestion-lowercase'),
-    });
-  } else {
-    return pipelineType === PipelineType.ElasticSearchReindex
-      ? t('label.deploy')
-      : t('label.add-workflow-ingestion', {
-          workflow: startCase(
-            pipelineType ? pipelineType : t(`label.${PipelineType.Metadata}`)
-          ),
-        });
-  }
 };
 
 export const getSuccessMessage = (
@@ -426,3 +421,36 @@ export const getDefaultIngestionSchedule = ({
     })
   );
 };
+
+export const getTypeAndStatusMenuItems = () => {
+  const typeMenuItems = SERVICE_INGESTION_PIPELINE_TYPES.map((type) => ({
+    label: startCase(type),
+    key: type,
+    ['data-testid']: `type-menu-item-${type}`,
+  }));
+  const statusMenuItems = Object.values(PipelineState).map((status) => ({
+    label: startCase(status),
+    key: status,
+    ['data-testid']: `status-menu-item-${status}`,
+  }));
+
+  return { typeMenuItems, statusMenuItems };
+};
+
+export const getIngestionStatusCountData = (summary?: StepSummary) => [
+  {
+    label: t('label.success'),
+    value: getReadableCountString(summary?.records ?? 0, 1),
+    type: 'success',
+  },
+  {
+    label: t('label.failed'),
+    value: getReadableCountString(summary?.errors ?? 0, 1),
+    type: 'failed',
+  },
+  {
+    label: t('label.warning'),
+    value: getReadableCountString(summary?.warnings ?? 0, 1),
+    type: 'warning',
+  },
+];

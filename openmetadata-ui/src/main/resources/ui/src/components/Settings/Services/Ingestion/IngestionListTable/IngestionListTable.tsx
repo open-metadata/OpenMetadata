@@ -14,7 +14,9 @@
 import { Col, Row } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
+import classNames from 'classnames';
 import { isUndefined } from 'lodash';
+import { FixedType } from 'rc-table/lib/interface';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -28,11 +30,21 @@ import {
   IngestionServicePermission,
   ResourceEntity,
 } from '../../../../../context/PermissionProvider/PermissionProvider.interface';
-import { IngestionPipeline } from '../../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import {
+  IngestionPipeline,
+  PipelineStatus,
+} from '../../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { UseAirflowStatusProps } from '../../../../../hooks/useAirflowStatus';
 import { useApplicationStore } from '../../../../../hooks/useApplicationStore';
-import { deleteIngestionPipelineById } from '../../../../../rest/ingestionPipelineAPI';
+import {
+  deleteIngestionPipelineById,
+  getRunHistoryForPipeline,
+} from '../../../../../rest/ingestionPipelineAPI';
 import { Transi18next } from '../../../../../utils/CommonUtils';
+import {
+  getCurrentMillis,
+  getEpochMillisForPastDays,
+} from '../../../../../utils/date-time/DateTimeUtils';
 import {
   getEntityName,
   highlightSearchText,
@@ -56,9 +68,17 @@ import EntityDeleteModal from '../../../../Modals/EntityDeleteModal/EntityDelete
 import { SelectedRowDetails } from '../ingestion.interface';
 import { IngestionRecentRuns } from '../IngestionRecentRun/IngestionRecentRuns.component';
 import { IngestionListTableProps } from './IngestionListTable.interface';
+import IngestionStatusCount from './IngestionStatusCount/IngestionStatusCount';
 import PipelineActions from './PipelineActions/PipelineActions';
 
+const queryParams = {
+  startTs: getEpochMillisForPastDays(1),
+  endTs: getCurrentMillis(),
+};
+
 function IngestionListTable({
+  bordered = true,
+  tableContainerClassName = '',
   afterDeleteAction,
   airflowInformation,
   deployIngestion,
@@ -97,6 +117,9 @@ function IngestionListTable({
   const [isConfirmationModalOpen, setIsConfirmationModalOpen] = useState(false);
   const [ingestionPipelinePermissions, setIngestionPipelinePermissions] =
     useState<IngestionServicePermission>();
+  const [recentRunStatuses, setRecentRunStatuses] = useState<
+    Record<string, PipelineStatus[]>
+  >({});
 
   const handleDeleteSelection = useCallback((row: SelectedRowDetails) => {
     setDeleteSelection(row);
@@ -158,17 +181,23 @@ function IngestionListTable({
     [handleCancelConfirmationModal]
   );
 
-  const fetchIngestionPipelinesPermission = useCallback(async () => {
+  const fetchIngestionPipelineExtraDetails = useCallback(async () => {
     try {
-      const promises = ingestionData.map((item) =>
+      const permissionPromises = ingestionData.map((item) =>
         getEntityPermissionByFqn(
           ResourceEntity.INGESTION_PIPELINE,
           item.fullyQualifiedName ?? ''
         )
       );
-      const response = await Promise.allSettled(promises);
+      const recentRunStatusPromises = ingestionData.map((item) =>
+        getRunHistoryForPipeline(item.fullyQualifiedName ?? '', queryParams)
+      );
+      const permissionResponse = await Promise.allSettled(permissionPromises);
+      const recentRunStatusResponse = await Promise.allSettled(
+        recentRunStatusPromises
+      );
 
-      const permissionData = response.reduce((acc, cv, index) => {
+      const permissionData = permissionResponse.reduce((acc, cv, index) => {
         return {
           ...acc,
           [ingestionData?.[index].name]:
@@ -176,7 +205,30 @@ function IngestionListTable({
         };
       }, {});
 
+      const recentRunStatusData = recentRunStatusResponse.reduce(
+        (acc, cv, index) => {
+          let value: PipelineStatus[] = [];
+
+          if (cv.status === 'fulfilled') {
+            const runs = cv.value.data ?? [];
+
+            const ingestion = ingestionData[index];
+
+            value =
+              runs.length === 0 && ingestion?.pipelineStatuses
+                ? [ingestion.pipelineStatuses]
+                : runs;
+          }
+
+          return {
+            ...acc,
+            [ingestionData?.[index].name]: value,
+          };
+        },
+        {}
+      );
       setIngestionPipelinePermissions(permissionData);
+      setRecentRunStatuses(recentRunStatusData);
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
@@ -195,7 +247,7 @@ function IngestionListTable({
   }, [handleDelete, deleteSelection]);
 
   useEffect(() => {
-    fetchIngestionPipelinesPermission();
+    fetchIngestionPipelineExtraDetails();
   }, [ingestionData]);
 
   useEffect(() => {
@@ -252,8 +304,11 @@ function IngestionListTable({
     () => [
       {
         title: t('label.name'),
+        className: 'name-column',
         dataIndex: 'name',
         key: 'name',
+        fixed: 'left' as FixedType,
+        width: 250,
         render: customRenderNameField ?? renderNameField(searchText),
       },
       ...(showDescriptionCol
@@ -288,20 +343,35 @@ function IngestionListTable({
         },
       ]),
       {
+        title: t('label.count'),
+        dataIndex: 'count',
+        key: 'count',
+        width: 150,
+        render: (_: string, record: IngestionPipeline) => {
+          return (
+            <IngestionStatusCount
+              summary={recentRunStatuses[record.name]?.[0]?.status?.[0]}
+            />
+          );
+        },
+      },
+      {
         title: t('label.schedule'),
         dataIndex: 'schedule',
         key: 'schedule',
-        width: 240,
+        width: 150,
         render: renderScheduleField,
       },
       {
         title: t('label.recent-run-plural'),
         dataIndex: 'recentRuns',
         key: 'recentRuns',
-        width: 160,
+        width: 150,
         render: (_: string, record: IngestionPipeline) => (
           <IngestionRecentRuns
+            appRuns={recentRunStatuses[record.name]}
             classNames="align-middle"
+            fetchStatus={false}
             handlePipelineIdToFetchStatus={handlePipelineIdToFetchStatus}
             ingestion={record}
             pipelineIdToFetchStatus={pipelineIdToFetchStatus}
@@ -312,7 +382,7 @@ function IngestionListTable({
         title: t('label.status'),
         dataIndex: 'status',
         key: 'status',
-        width: 100,
+        width: 80,
         render: renderStatusField,
       },
       ...(enableActions
@@ -322,6 +392,7 @@ function IngestionListTable({
               dataIndex: 'actions',
               key: 'actions',
               width: 180,
+              fixed: 'right' as FixedType,
               render: renderActionsField,
             },
           ]
@@ -333,6 +404,7 @@ function IngestionListTable({
       enableActions,
       handlePipelineIdToFetchStatus,
       pipelineTypeColumnObj,
+      recentRunStatuses,
     ]
   );
 
@@ -353,10 +425,13 @@ function IngestionListTable({
 
   return (
     <>
-      <Row className="m-b-md" data-testid="ingestion-table" gutter={[16, 16]}>
+      <Row
+        className={classNames('m-b-md', tableContainerClassName)}
+        data-testid="ingestion-table"
+        gutter={[16, 16]}>
         <Col span={24}>
           <Table
-            bordered
+            bordered={bordered}
             className={tableClassName}
             columns={tableColumn}
             data-testid="ingestion-list-table"
@@ -374,6 +449,7 @@ function IngestionListTable({
             }}
             pagination={false}
             rowKey="fullyQualifiedName"
+            scroll={{ x: 1500 }}
             size="small"
             {...extraTableProps}
           />
@@ -384,6 +460,7 @@ function IngestionListTable({
           onPageChange && (
             <Col span={24}>
               <NextPrevious
+                className="m-b-sm"
                 currentPage={ingestionPagingInfo.currentPage}
                 isLoading={isLoading}
                 isNumberBased={isNumberBasedPaging}

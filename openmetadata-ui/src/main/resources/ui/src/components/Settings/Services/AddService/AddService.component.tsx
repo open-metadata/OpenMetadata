@@ -268,7 +268,7 @@ const AddService = ({
             activeIngestionStep={activeIngestionStep}
             handleCancelClick={() => handleAddIngestion(false)}
             handleViewServiceClick={handleViewServiceClick}
-            heading={`${t('label.add-workflow-ingestion', {
+            heading={`${t('label.add-workflow-agent', {
               workflow: capitalize(PipelineType.Metadata),
             })}`}
             ingestionAction={ingestionAction}
