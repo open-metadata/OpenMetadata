@@ -28,6 +28,8 @@ import java.util.Map;
 import javax.servlet.http.HttpServletResponse;
 import javax.ws.rs.client.Invocation;
 import javax.ws.rs.client.WebTarget;
+import javax.ws.rs.core.MultivaluedHashMap;
+import javax.ws.rs.core.MultivaluedMap;
 import javax.ws.rs.core.SecurityContext;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang.StringUtils;
@@ -58,6 +60,12 @@ public final class SecurityUtil {
       builder.put(CatalogOpenIdAuthorizationRequestFilter.X_AUTH_PARAMS_EMAIL_HEADER, username);
     }
     return builder.build();
+  }
+
+  public static MultivaluedMap<String, Object> authHeadersMM(String username) {
+    MultivaluedMap<String, Object> headers = new MultivaluedHashMap<>();
+    headers.add(CatalogOpenIdAuthorizationRequestFilter.X_AUTH_PARAMS_EMAIL_HEADER, username);
+    return headers;
   }
 
   public static String getPrincipalName(Map<String, String> authHeaders) {
