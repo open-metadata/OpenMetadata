@@ -438,7 +438,11 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
         nonEmptyTestSuites.getData().stream().anyMatch(ts -> !ts.getTests().isEmpty()));
     // 5. List test suite with a query
     queryParams.clear();
-    queryParams.put("q", logicalTestSuite.getFullyQualifiedName());
+    queryParams.put(
+        "q",
+        "%7B%22query%22%3A%20%7B%22term%22%3A%20%7B%22id%22%3A%20%22"
+            + logicalTestSuite.getId()
+            + "%22%7D%7D%7D");
     ResultList<TestSuite> queryTestSuites =
         listEntitiesFromSearch(queryParams, 100, 0, ADMIN_AUTH_HEADERS);
     Assertions.assertTrue(
