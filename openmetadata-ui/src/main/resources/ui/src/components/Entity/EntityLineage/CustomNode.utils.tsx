@@ -137,7 +137,8 @@ export const getColumnContent = (
     <div
       className={classNames(
         'custom-node-column-container',
-        isColumnTraced && 'custom-node-header-tracing'
+        isColumnTraced && 'custom-node-header-tracing',
+        showDataObservabilitySummary && 'p-r-md'
       )}
       data-testid={`column-${fullyQualifiedName}`}
       key={fullyQualifiedName}
@@ -151,23 +152,28 @@ export const getColumnContent = (
         'lineage-column-node-handle',
         encodeLineageHandles(fullyQualifiedName ?? '')
       )}
-
-      <span className="custom-node-name-container">
-        <div className="custom-node-name-icon">
-          {getColumnDataTypeIcon({
-            dataType: column.dataType,
-            width: '14px',
-          })}
-        </div>
-        <Typography.Text
-          className="custom-node-column-label"
-          ellipsis={{ tooltip: true }}>
-          {getEntityName(column)}
-        </Typography.Text>
-      </span>
-      <span className="custom-node-constraint">{column.constraint}</span>
+      <div className={classNames('d-flex justify-between w-full')}>
+        <span className="custom-node-name-container">
+          <div className="custom-node-name-icon">
+            {getColumnDataTypeIcon({
+              dataType: column.dataType,
+              width: '14px',
+            })}
+          </div>
+          <Typography.Text
+            className="custom-node-column-label"
+            ellipsis={{ tooltip: true }}>
+            {getEntityName(column)}
+          </Typography.Text>
+        </span>
+        <span className="custom-node-constraint">{column.constraint}</span>
+      </div>
       {showDataObservabilitySummary && (
-        <TestSuiteSummaryWidget isLoading={isLoading} summary={summary} />
+        <TestSuiteSummaryWidget
+          isLoading={isLoading}
+          size="small"
+          summary={summary}
+        />
       )}
     </div>
   );

@@ -46,12 +46,22 @@
   overflow: hidden;
 
   .profiler-item {
-    width: 36px;
-    height: 36px;
     margin-right: 4px;
     border-radius: 4px;
-    line-height: 36px;
-    font-size: 14px;
+
+    &.medium {
+      width: 36px;
+      height: 36px;
+      line-height: 36px;
+      font-size: 14px;
+    }
+
+    &.small {
+      width: 24px;
+      height: 24px;
+      line-height: 24px;
+      font-size: 12px;
+    }
 
     &.green {
       border: 1px solid @green-5;
@@ -261,7 +271,7 @@
   width: 20px;
   border-radius: 0;
   border-color: @lineage-border;
-  background: @white;
+  background: transparent;
   top: 1px;
   height: 25px;
   transform: none;
@@ -279,7 +289,8 @@
 .custom-node-column-container {
   display: flex;
   justify-content: space-between;
-  padding: 6px 12px;
+  align-items: center;
+  padding: 6px;
   background: @white;
   position: relative;
   font-size: 12px;

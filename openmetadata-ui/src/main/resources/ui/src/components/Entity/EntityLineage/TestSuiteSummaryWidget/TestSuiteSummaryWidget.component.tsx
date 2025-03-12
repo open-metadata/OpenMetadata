@@ -11,15 +11,18 @@
  *  limitations under the License.
  */
 import { Skeleton } from 'antd';
+import classNames from 'classnames';
 import React from 'react';
 import { TestSummary } from '../../../../generated/tests/testCase';
 
 const TestSuiteSummaryWidget = ({
   summary,
   isLoading,
+  size = 'medium',
 }: {
   summary?: TestSummary;
   isLoading?: boolean;
+  size?: 'medium' | 'small';
 }) => {
   if (isLoading) {
     return <Skeleton.Input active data-tesid="loader" />;
@@ -27,17 +30,23 @@ const TestSuiteSummaryWidget = ({
 
   return (
     <div className="d-flex justify-end">
-      <div className="profiler-item green" data-testid="test-passed">
+      <div
+        className={classNames(`profiler-item green`, size)}
+        data-testid="test-passed">
         <div className="font-medium" data-testid="test-passed-value">
           {summary?.success ?? 0}
         </div>
       </div>
-      <div className="profiler-item amber" data-testid="test-aborted">
+      <div
+        className={classNames(`profiler-item amber`, size)}
+        data-testid="test-aborted">
         <div className="font-medium" data-testid="test-aborted-value">
           {summary?.aborted ?? 0}
         </div>
       </div>
-      <div className="profiler-item red" data-testid="test-failed">
+      <div
+        className={classNames(`profiler-item red`, size)}
+        data-testid="test-failed">
         <div className="font-medium" data-testid="test-failed-value">
           {summary?.failed ?? 0}
         </div>
