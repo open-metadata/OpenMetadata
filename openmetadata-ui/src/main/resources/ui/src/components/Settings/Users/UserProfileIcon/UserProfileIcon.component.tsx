@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { CheckOutlined } from '@ant-design/icons';
-import { Dropdown, Space, Tooltip, Typography } from 'antd';
+import { Button, Dropdown, Space, Tooltip, Typography } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { isEmpty, some } from 'lodash';
 import React, {
@@ -332,9 +332,10 @@ export const UserProfileIcon = () => {
         rootClassName: 'profile-dropdown',
       }}
       trigger={['click']}>
-      <div className="app-user-icon" data-testid="dropdown-profile">
-        <div className="d-flex gap-2 w-40 items-center">
-          {isImgUrlValid ? (
+      <Button
+        className="flex-center p-0 gap-2"
+        icon={
+          isImgUrlValid ? (
             <img
               alt="user"
               className="app-bar-user-profile-pic"
@@ -345,25 +346,26 @@ export const UserProfileIcon = () => {
             />
           ) : (
             <ProfilePicture name={currentUser?.name ?? ''} width="36" />
-          )}
-          <div className="d-flex flex-col">
-            <Tooltip title={getEntityName(currentUser)}>
-              <Typography.Text className="username truncate w-max-112">
-                {getEntityName(currentUser)}
-              </Typography.Text>
-            </Tooltip>
-            <Typography.Text
-              className="text-grey-muted text-xs w-28"
-              data-testid="default-persona"
-              ellipsis={{ tooltip: true }}>
-              {isEmpty(selectedPersona)
-                ? t('label.default')
-                : getEntityName(selectedPersona)}
+          )
+        }
+        type="text">
+        <Space direction="vertical">
+          <Tooltip title={getEntityName(currentUser)}>
+            <Typography.Text className="username">
+              {getEntityName(currentUser)}
             </Typography.Text>
-          </div>
-        </div>
+          </Tooltip>
+          <Typography.Text
+            className=""
+            data-testid="default-persona"
+            ellipsis={{ tooltip: true }}>
+            {isEmpty(selectedPersona)
+              ? t('label.default')
+              : getEntityName(selectedPersona)}
+          </Typography.Text>
+        </Space>
         <DropDownIcon width={16} />
-      </div>
+      </Button>
     </Dropdown>
   );
 };

@@ -10,22 +10,18 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-@import url('../../../styles/variables.less');
+@import (reference) '../../../styles/variables.less';
 
 .left-sidebar-col {
   position: relative;
-  background-color: @white !important;
-  z-index: 1;
 
   .left-sidebar-container {
     position: absolute;
     top: 0;
     left: 0;
-    width: 60px;
+    width: 84px;
     border-radius: 0;
-    border: 1px solid @border-color;
-    border-top: 0;
-    background: @white;
+
     transition: 0.3s ease-in-out;
     overflow: scroll;
     scrollbar-width: none;
@@ -44,11 +40,10 @@
     }
   }
 
-  .brand-logo-container {
-    height: 64px;
-    padding-top: 17px;
-    padding-left: 14px;
-    background: rgba(248, 248, 248, 1);
+  .logo-container {
+    height: 80px;
+    text-align: center;
+    padding: 20px 0;
   }
 
   // Css apply when sidebar is open
@@ -69,9 +64,9 @@
     }
 
     .left-sidebar-menu.ant-menu {
+      background-color: #f8f9fc !important;
       .ant-menu-item {
         .ant-menu-item-icon {
-          background: rgba(248, 248, 248, 1);
         }
 
         .left-panel-item {
@@ -99,7 +94,6 @@
         }
 
         .ant-menu-item-icon {
-          background: rgba(248, 248, 248, 1);
         }
       }
     }
@@ -112,8 +106,10 @@
   }
 
   .left-sidebar-menu.ant-menu {
+    background-color: transparent !important;
+
     .ant-menu-item {
-      padding: 8px 0 8px 8px !important;
+      padding: 6px 12px;
       height: auto;
       margin: 4px auto;
       transition: 0.3s ease-in-out;
@@ -124,7 +120,6 @@
       }
 
       &:hover {
-        background: rgba(9, 80, 197, 0.04);
         color: @text-color;
 
         .ant-menu-item-icon {
@@ -212,8 +207,6 @@
 
     .ant-menu-submenu-selected {
       .ant-menu-submenu-title {
-        background-color: @left-nav-item-background;
-
         .left-panel-item {
           .left-panel-label {
             color: @text-color;
@@ -236,7 +229,6 @@
     .ant-menu-submenu-title:active,
     .ant-menu-item:hover,
     .ant-menu-submenu-title:hover {
-      background-color: @left-nav-item-background;
       color: @text-color;
 
       .left-panel-item {
@@ -286,7 +278,7 @@
   border-right: 1px solid @border-color;
   overflow: auto;
   height: calc(100vh - @om-navbar-height);
-  background-color: @white;
+
   overflow-x: hidden;
 }
 
@@ -298,12 +290,14 @@
     left: initial;
   }
 
-  .brand-logo-container {
+  .logo-container {
     padding-left: initial;
     padding-right: 14px;
+    height: 80px;
   }
 
   .left-sidebar-menu.ant-menu {
+    background: #f8f9fc !important;
     .ant-menu-item {
       padding: 8px 13px 8px 0 !important;
 

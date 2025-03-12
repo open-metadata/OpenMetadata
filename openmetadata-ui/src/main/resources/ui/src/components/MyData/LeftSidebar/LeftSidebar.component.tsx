@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Col, Menu, MenuProps, Row, Typography } from 'antd';
+import { Button, Layout, Menu, MenuProps, Typography } from 'antd';
 import Modal from 'antd/lib/modal/Modal';
 import classNames from 'classnames';
 import { isEmpty, noop } from 'lodash';
@@ -22,10 +22,8 @@ import {
   SETTING_ITEM,
   SIDEBAR_NESTED_KEYS,
 } from '../../../constants/LeftSidebar.constants';
-import { SidebarItem } from '../../../enums/sidebar.enum';
-import leftSidebarClassBase from '../../../utils/LeftSidebarClassBase';
-
 import { EntityType } from '../../../enums/entity.enum';
+import { SidebarItem } from '../../../enums/sidebar.enum';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { useCustomizeStore } from '../../../pages/CustomizablePage/CustomizeStore';
@@ -34,10 +32,13 @@ import {
   filterAndArrangeTreeByKeys,
   getNestedKeysFromNavigationItems,
 } from '../../../utils/CustomizaNavigation/CustomizeNavigation';
+import leftSidebarClassBase from '../../../utils/LeftSidebarClassBase';
 import BrandImage from '../../common/BrandImage/BrandImage';
 import './left-sidebar.less';
 import { LeftSidebarItem as LeftSidebarItemType } from './LeftSidebar.interface';
 import LeftSidebarItem from './LeftSidebarItem.component';
+
+const { Sider } = Layout;
 
 const LeftSidebar = () => {
   const location = useCustomLocation();
@@ -46,6 +47,8 @@ const LeftSidebar = () => {
   const [showConfirmLogoutModal, setShowConfirmLogoutModal] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(true);
   const { selectedPersona } = useApplicationStore();
+  const { i18n } = useTranslation();
+  const isDirectionRTL = useMemo(() => i18n.dir() === 'rtl', [i18n]);
 
   const { currentPersonaDocStore, setCurrentPersonaDocStore } =
     useCustomizeStore();
@@ -117,6 +120,24 @@ const LeftSidebar = () => {
     }
   }, []);
 
+  const menuItems = useMemo(() => {
+    return [
+      ...sideBarItems.map((item) => {
+        return {
+          key: item.key,
+          label: <LeftSidebarItem data={item} />,
+          children: item.children?.map((item: LeftSidebarItemType) => {
+            return {
+              key: item.key,
+              label: <LeftSidebarItem data={item} />,
+            };
+          }),
+        };
+      }),
+      ...LOWER_SIDEBAR_TOP_SIDEBAR_MENU_ITEMS,
+    ];
+  }, [sideBarItems]);
+
   useEffect(() => {
     if (selectedPersona.fullyQualifiedName) {
       fetchCustomizedDocStore(selectedPersona.fullyQualifiedName);
@@ -124,58 +145,36 @@ const LeftSidebar = () => {
   }, [selectedPersona]);
 
   return (
-    <div
-      className={classNames(
-        'd-flex flex-col justify-between h-full left-sidebar-container',
-        { 'sidebar-open': !isSidebarCollapsed }
-      )}
+    <Sider
+      className={classNames('left-sidebar-col left-sidebar-container', {
+        'left-sidebar-col-rtl': isDirectionRTL,
+        'sidebar-open': !isSidebarCollapsed,
+      })}
       data-testid="left-sidebar"
+      width={84}
       onMouseLeave={handleMouseOut}
       onMouseOver={handleMouseOver}>
-      <Row className="p-b-sm">
-        <Col className="brand-logo-container" span={24}>
-          <Link className="flex-shrink-0" id="openmetadata_logo" to="/">
-            <BrandImage
-              alt="OpenMetadata Logo"
-              className="vertical-middle"
-              dataTestId="image"
-              height={30}
-              isMonoGram={isSidebarCollapsed}
-              width="auto"
-            />
-          </Link>
-        </Col>
-
-        <Col className="w-full">
-          <Menu
-            items={sideBarItems.map((item) => {
-              return {
-                key: item.key,
-                label: <LeftSidebarItem data={item} />,
-                children: item.children?.map((item: LeftSidebarItemType) => {
-                  return {
-                    key: item.key,
-                    label: <LeftSidebarItem data={item} />,
-                  };
-                }),
-              };
-            })}
-            mode="inline"
-            rootClassName="left-sidebar-menu"
-            selectedKeys={selectedKeys}
-            subMenuCloseDelay={1}
+      <div className="logo-container">
+        <Link className="flex-shrink-0" id="openmetadata_logo" to="/">
+          <BrandImage
+            alt="OpenMetadata Logo"
+            className="vertical-middle"
+            dataTestId="image"
+            height={30}
+            isMonoGram={isSidebarCollapsed}
+            width="auto"
           />
-        </Col>
-      </Row>
+        </Link>
+      </div>
 
-      <Row className="p-y-sm">
-        <Menu
-          items={LOWER_SIDEBAR_TOP_SIDEBAR_MENU_ITEMS}
-          mode="inline"
-          rootClassName="left-sidebar-menu"
-          selectedKeys={selectedKeys}
-        />
-      </Row>
+      <Menu
+        items={menuItems}
+        mode="inline"
+        rootClassName="left-sidebar-menu"
+        selectedKeys={selectedKeys}
+        subMenuCloseDelay={1}
+      />
+
       {showConfirmLogoutModal && (
         <Modal
           centered
@@ -205,7 +204,7 @@ const LeftSidebar = () => {
           </div>
         </Modal>
       )}
-    </div>
+    </Sider>
   );
 };
 
