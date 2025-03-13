@@ -506,20 +506,19 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
         invalidParentCount(1, DIVISION));
 
     // Department can have more than one parent
-    createWithParents(
-        "dep",
-        DEPARTMENT,
-        div12.getEntityReference(),
-        div21.getEntityReference(),
-        ORG_TEAM.getEntityReference());
+    createWithParents("dep", DEPARTMENT, div12.getEntityReference(), div21.getEntityReference());
+
+    ORG_TEAM = getEntity(ORG_TEAM.getId(), "children,childrenCount", ADMIN_AUTH_HEADERS);
+    assertEquals(ORG_TEAM.getChildren().size(), ORG_TEAM.getChildrenCount());
 
     //
     // Deletion tests to ensure no dangling parent/children relationship
     // Delete bu1 and ensure Organization does not have it a child and bu11, div12, dep13 don't
     // change Org to parent
     deleteEntity(bu1.getId(), true, true, ADMIN_AUTH_HEADERS);
-    ORG_TEAM = getEntity(ORG_TEAM.getId(), "children", ADMIN_AUTH_HEADERS);
+    ORG_TEAM = getEntity(ORG_TEAM.getId(), "children,childrenCount", ADMIN_AUTH_HEADERS);
     assertEntityReferencesDoesNotContain(ORG_TEAM.getChildren(), bu1.getEntityReference());
+    assertEquals(ORG_TEAM.getChildren().size(), ORG_TEAM.getChildrenCount());
   }
 
   @Test
