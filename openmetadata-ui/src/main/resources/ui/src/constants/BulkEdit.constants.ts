@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,28 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { startCase } from 'lodash';
-import { ResourceEntity } from '../context/PermissionProvider/PermissionProvider.interface';
 import i18n from '../utils/i18next/LocalUtil';
+import { VALIDATION_STEP } from './BulkImport.constant';
 
-export const SUPPORTED_BULK_IMPORT_EDIT_ENTITY = [
-  ResourceEntity.TABLE,
-  ResourceEntity.DATABASE_SERVICE,
-  ResourceEntity.DATABASE,
-  ResourceEntity.DATABASE_SCHEMA,
-];
-
-export enum VALIDATION_STEP {
-  UPLOAD = 0,
-  EDIT_VALIDATE = 1,
-  UPDATE = 2,
-}
-
-export const ENTITY_IMPORT_STEPS = [
-  {
-    name: startCase(i18n.t('label.upload-csv-uppercase-file')),
-    step: VALIDATION_STEP.UPLOAD,
-  },
+export const ENTITY_BULK_EDIT_STEPS = [
   {
     name: i18n.t('label.preview-and-edit'),
     step: VALIDATION_STEP.EDIT_VALIDATE,
