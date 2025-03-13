@@ -106,7 +106,7 @@
     <jsonschema2pojo.version>1.2.1</jsonschema2pojo.version>
     <commons-lang.version>2.6</commons-lang.version>
     <lombok.version>1.18.34</lombok.version>
-    <tomcat-jdbc.version>10.1.10</tomcat-jdbc.version>
+    <tomcat-jdbc.version>11.0.5</tomcat-jdbc.version>
     <elasticsearch.version>7.17.23</elasticsearch.version>
     <opensearch.version>2.6.0</opensearch.version>
     <httpasyncclient.version>4.1.5</httpasyncclient.version>
@@ -279,6 +279,12 @@
         <groupId>io.dropwizard</groupId>
         <artifactId>dropwizard-jdbi3</artifactId>
         <version>${dropwizard-jdbi3.version}</version>
+        <exclusions>
+          <exclusion>
+            <groupId>org.apache.tomcat</groupId>
+            <artifactId>tomcat-jdbc</artifactId>
+          </exclusion>
+        </exclusions>
       </dependency>
       <dependency>
         <groupId>org.jdbi</groupId>

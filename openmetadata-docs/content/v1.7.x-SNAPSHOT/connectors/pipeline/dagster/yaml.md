@@ -7,7 +7,7 @@ slug: /connectors/pipeline/dagster/yaml
 name="Dagster"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=["Pipelines", "Pipeline Status", "Tags"]
+availableFeatures=["Pipelines", "Pipeline Status", "Tags", "Usage"]
 unavailableFeatures=["Owners", "Lineage"]
 / %}
 
