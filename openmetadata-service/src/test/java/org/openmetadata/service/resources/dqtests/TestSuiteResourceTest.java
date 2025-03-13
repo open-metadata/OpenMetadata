@@ -439,7 +439,7 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
     // 5. List test suite with a query
     queryParams.clear();
     queryParams.put(
-        "q",
+        "queryString",
         "%7B%22query%22%3A%20%7B%22term%22%3A%20%7B%22id%22%3A%20%22"
             + logicalTestSuite.getId()
             + "%22%7D%7D%7D");
@@ -449,6 +449,15 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
         queryTestSuites.getData().stream()
             .allMatch(
                 ts -> ts.getFullyQualifiedName().equals(logicalTestSuite.getFullyQualifiedName())));
+
+    queryParams.clear();
+    queryParams.put("q", logicalTestSuite.getFullyQualifiedName());
+    queryTestSuites = listEntitiesFromSearch(queryParams, 100, 0, ADMIN_AUTH_HEADERS);
+    Assertions.assertTrue(
+        queryTestSuites.getData().stream()
+            .allMatch(
+                ts -> ts.getFullyQualifiedName().equals(logicalTestSuite.getFullyQualifiedName())));
+
     // 6. List test suites with a nested sort
     queryParams.clear();
     queryParams.put("fields", "tests");
