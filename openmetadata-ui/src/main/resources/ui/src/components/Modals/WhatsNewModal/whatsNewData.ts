@@ -1670,7 +1670,8 @@ Since we are introducing the Auto Classification workflow, we are going to remov
 -   Optimized pipeline service client initialization
 -   Implemented Incremental Lineage Processing
 -   Don't overwrite query to execute
--   Fixed external app logs`,
+-   Fixed external app logs
+-   Fixed incremental lineage processing when processedLineage is null`,
     },
   },
 ];
