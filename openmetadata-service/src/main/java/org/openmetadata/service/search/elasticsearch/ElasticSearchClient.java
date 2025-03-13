@@ -2422,7 +2422,7 @@ public class ElasticSearchClient implements SearchClient {
         GetMappingsRequest request =
             new GetMappingsRequest()
                 .indices(
-                    DataInsightSystemChartRepository.DI_SEARCH_INDEX_PREFIX
+                    DataInsightSystemChartRepository.getDataInsightsIndexPrefix()
                         + "-"
                         + type.toLowerCase());
 
