@@ -136,7 +136,12 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
               description = "Returns list of queries after this cursor",
               schema = @Schema(type = "string"))
           @QueryParam("after")
-          String after) {
+          String after,
+      @Parameter(
+              description = "Filter services by domain",
+              schema = @Schema(type = "string", example = "Marketing"))
+          @QueryParam("domain")
+          String domain) {
     ListFilter filter = new ListFilter(null);
     if (!CommonUtil.nullOrEmpty(entityId)) {
       filter.addQueryParam("entityId", entityId.toString());
@@ -144,7 +149,7 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
     filter.addQueryParam("service", service);
     ResultList<Query> queries =
         super.listInternal(
-            uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
+            uriInfo, securityContext, fieldsParam, filter, limitParam, before, after, domain);
     return PIIMasker.getQueries(queries, authorizer, securityContext);
   }
 

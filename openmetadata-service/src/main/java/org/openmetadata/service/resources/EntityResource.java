@@ -136,6 +136,30 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     return list;
   }
 
+  //  public ResultList<T> listInternal(
+  //      UriInfo uriInfo,
+  //      SecurityContext securityContext,
+  //      String fieldsParam,
+  //      ListFilter filter,
+  //      int limitParam,
+  //      String before,
+  //      String after) {
+  //    Fields fields = getFields(fieldsParam);
+  //    OperationContext listOperationContext =
+  //        new OperationContext(entityType, getViewOperations(fields));
+  //    ResourceContext resourceContext = filter.getResourceContext(entityType);
+  //    return listInternal(
+  //        uriInfo,
+  //        securityContext,
+  //        fields,
+  //        filter,
+  //        limitParam,
+  //        before,
+  //        after,
+  //        listOperationContext,
+  //        resourceContext);
+  //  }
+
   public ResultList<T> listInternal(
       UriInfo uriInfo,
       SecurityContext securityContext,
@@ -143,7 +167,8 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       ListFilter filter,
       int limitParam,
       String before,
-      String after) {
+      String after,
+      String domain) {
     Fields fields = getFields(fieldsParam);
     OperationContext listOperationContext =
         new OperationContext(entityType, getViewOperations(fields));
@@ -157,7 +182,8 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
         before,
         after,
         listOperationContext,
-        resourceContext);
+        resourceContext,
+        domain);
   }
 
   public ResultList<T> listInternal(
@@ -169,12 +195,13 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       String before,
       String after,
       OperationContext operationContext,
-      ResourceContextInterface resourceContext) {
+      ResourceContextInterface resourceContext,
+      String domain) {
     RestUtil.validateCursors(before, after);
     authorizer.authorize(securityContext, operationContext, resourceContext);
 
     // Add Domain Filter
-    EntityUtil.addDomainQueryParam(securityContext, filter, entityType);
+    EntityUtil.addDomainQueryParam(securityContext, filter, entityType, domain);
 
     // List
     ResultList<T> resultList;

@@ -141,6 +141,11 @@ public class TestDefinitionResource
           @QueryParam("entityType")
           String entityType,
       @Parameter(
+              description = "Filter services by domain",
+              schema = @Schema(type = "string", example = "Marketing"))
+          @QueryParam("domain")
+          String domain,
+      @Parameter(
               description = "Filter by a test platform",
               schema = @Schema(implementation = TestPlatform.class))
           @QueryParam("testPlatform")
@@ -161,7 +166,7 @@ public class TestDefinitionResource
       filter.addQueryParam("supportedDataType", supportedDataTypeParam);
     }
     return super.listInternal(
-        uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
+        uriInfo, securityContext, fieldsParam, filter, limitParam, before, after, domain);
   }
 
   @GET

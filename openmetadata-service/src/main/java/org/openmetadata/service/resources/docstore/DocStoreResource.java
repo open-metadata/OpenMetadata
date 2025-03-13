@@ -149,7 +149,12 @@ public class DocStoreResource extends EntityResource<Document, DocumentRepositor
               description = "Returns list of personas after this cursor",
               schema = @Schema(type = "string"))
           @QueryParam("after")
-          String after) {
+          String after,
+      @Parameter(
+              description = "Filter services by domain",
+              schema = @Schema(type = "string", example = "Marketing"))
+          @QueryParam("domain")
+          String domain) {
     ListFilter filter = new ListFilter(Include.ALL);
     if (entityType != null) {
       filter.addQueryParam("entityType", entityType);
@@ -157,7 +162,8 @@ public class DocStoreResource extends EntityResource<Document, DocumentRepositor
     if (fqnPrefix != null) {
       filter.addQueryParam("fqnPrefix", fqnPrefix);
     }
-    return super.listInternal(uriInfo, securityContext, "", filter, limitParam, before, after);
+    return super.listInternal(
+        uriInfo, securityContext, "", filter, limitParam, before, after, domain);
   }
 
   @GET
