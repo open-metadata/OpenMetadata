@@ -16,6 +16,7 @@ import { ROUTES } from '../../constants/constants';
 import { EntityType } from '../../enums/entity.enum';
 import EntityVersionPage from '../../pages/EntityVersionPage/EntityVersionPage.component';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
+import EntityImportRouter from './EntityImportRouter';
 
 const EntityRouter = () => {
   const { entityType } = useParams<{ entityType: EntityType }>();
@@ -27,6 +28,12 @@ const EntityRouter = () => {
 
   return (
     <Switch>
+      {/* Handle Entity Import and Edit pages */}
+      <Route
+        component={EntityImportRouter}
+        path={[ROUTES.ENTITY_IMPORT, ROUTES.BULK_EDIT_ENTITY_WITH_FQN]}
+      />
+
       <Route
         exact
         component={EntityVersionPage}

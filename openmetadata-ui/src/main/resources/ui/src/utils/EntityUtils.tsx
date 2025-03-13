@@ -2493,6 +2493,13 @@ export const getEntityImportPath = (entityType: EntityType, fqn: string) => {
   ).replace(PLACEHOLDER_ROUTE_FQN, fqn);
 };
 
+export const getEntityBulkEditPath = (entityType: EntityType, fqn: string) => {
+  return ROUTES.BULK_EDIT_ENTITY_WITH_FQN.replace(
+    PLACEHOLDER_ROUTE_ENTITY_TYPE,
+    entityType
+  ).replace(PLACEHOLDER_ROUTE_FQN, fqn);
+};
+
 /**
  * Updates the node type based on whether it's a source or target node
  * @param node - The node to update

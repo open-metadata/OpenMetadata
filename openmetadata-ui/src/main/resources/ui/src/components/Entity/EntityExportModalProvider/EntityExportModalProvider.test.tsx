@@ -12,6 +12,7 @@
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
+import { useLocation } from 'react-router-dom';
 import {
   EntityExportModalProvider,
   useEntityExportModalProvider,
@@ -27,6 +28,12 @@ const mockShowModal: ExportData = {
   name: 'test',
   onExport: jest.fn().mockImplementation(() => Promise.resolve(mockExportJob)),
 };
+
+jest.mock('react-router-dom', () => ({
+  useLocation: jest.fn().mockImplementation(() => ({
+    pathname: '/mock-path',
+  })),
+}));
 
 const ConsumerComponent = () => {
   const { showModal } = useEntityExportModalProvider();
@@ -139,5 +146,22 @@ describe('EntityExportModalProvider component', () => {
     expect(mockShowModal.onExport).toHaveBeenCalledWith(mockShowModal.name);
 
     expect(await screen.findByText(mockExportJob.message)).toBeInTheDocument();
+  });
+
+  it('Export modal should not be visible if route is bulk edit', async () => {
+    (useLocation as jest.Mock).mockReturnValue({
+      pathname: '/bulk/edit',
+    });
+    render(
+      <EntityExportModalProvider>
+        <ConsumerComponent />
+      </EntityExportModalProvider>
+    );
+
+    const manageBtn = await screen.findByText('Manage');
+
+    fireEvent.click(manageBtn);
+
+    expect(screen.queryByTestId('export-entity-modal')).not.toBeInTheDocument();
   });
 });

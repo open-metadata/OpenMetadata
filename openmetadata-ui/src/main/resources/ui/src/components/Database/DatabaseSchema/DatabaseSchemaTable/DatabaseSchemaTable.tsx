@@ -47,8 +47,9 @@ import {
   patchDatabaseSchemaDetails,
 } from '../../../../rest/databaseAPI';
 import { searchQuery } from '../../../../rest/searchAPI';
+import { getBulkEditButton } from '../../../../utils/EntityBulkEdit/EntityBulkEditUtils';
 import {
-  getEntityName,
+  getEntityBulkEditPath,
   highlightSearchText,
 } from '../../../../utils/EntityUtils';
 import { stringToHTML } from '../../../../utils/StringsUtils';
@@ -58,6 +59,7 @@ import DisplayName from '../../../common/DisplayName/DisplayName';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import NextPrevious from '../../../common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../../common/NextPrevious/NextPrevious.interface';
+import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
 import RichTextEditorPreviewerV1 from '../../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import Searchbar from '../../../common/SearchBarComponent/SearchBar.component';
 import Table from '../../../common/Table/Table';
@@ -271,7 +273,7 @@ export const DatabaseSchemaTable = ({
         width: 120,
         render: (owners: EntityReference[]) =>
           !isEmpty(owners) && owners.length > 0 ? (
-            owners.map((owner: EntityReference) => getEntityName(owner))
+            <OwnerLabel owners={owners} />
           ) : (
             <Typography.Text data-testid="no-owner-text">
               {NO_DATA_PLACEHOLDER}
@@ -289,6 +291,12 @@ export const DatabaseSchemaTable = ({
     ],
     [handleDisplayNameUpdate, allowEditDisplayNamePermission]
   );
+
+  const handleEditTable = () => {
+    history.push({
+      pathname: getEntityBulkEditPath(EntityType.DATABASE, decodedDatabaseFQN),
+    });
+  };
 
   useEffect(() => {
     fetchDatabaseSchema();
@@ -324,6 +332,10 @@ export const DatabaseSchemaTable = ({
           data-testid="database-databaseSchemas"
           dataSource={schemas}
           defaultVisibleColumns={DEFAULT_DATABASE_SCHEMA_VISIBLE_COLUMNS}
+          extraTableFilters={getBulkEditButton(
+            permissions.databaseSchema.EditAll,
+            handleEditTable
+          )}
           loading={isLoading}
           locale={{
             emptyText: <ErrorPlaceHolder className="m-y-md" />,

@@ -18,6 +18,7 @@ import { compare } from 'fast-json-patch';
 import { isUndefined } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useHistory } from 'react-router-dom';
 import DisplayName from '../../components/common/DisplayName/DisplayName';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import NextPrevious from '../../components/common/NextPrevious/NextPrevious';
@@ -45,7 +46,9 @@ import {
   patchTableDetails,
   TableListParams,
 } from '../../rest/tableAPI';
+import { getBulkEditButton } from '../../utils/EntityBulkEdit/EntityBulkEditUtils';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
+import { getEntityBulkEditPath } from '../../utils/EntityUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 interface SchemaTablesTabProps {
@@ -56,6 +59,7 @@ function SchemaTablesTab({
   isVersionView = false,
 }: Readonly<SchemaTablesTabProps>) {
   const { t } = useTranslation();
+  const history = useHistory();
   const [tableData, setTableData] = useState<Array<Table>>([]);
   const [tableDataLoading, setTableDataLoading] = useState<boolean>(true);
   const { permissions } = usePermissionProvider();
@@ -201,6 +205,15 @@ function SchemaTablesTab({
     [handleDisplayNameUpdate, allowEditDisplayNamePermission]
   );
 
+  const handleEditTable = () => {
+    history.push({
+      pathname: getEntityBulkEditPath(
+        EntityType.DATABASE_SCHEMA,
+        decodedDatabaseSchemaFQN
+      ),
+    });
+  };
+
   useEffect(() => {
     if (viewDatabaseSchemaPermission && decodedDatabaseSchemaFQN) {
       if (pagingCursor?.cursorData?.cursorType) {
@@ -228,29 +241,30 @@ function SchemaTablesTab({
 
   return (
     <Row gutter={[16, 16]}>
-      {!isVersionView && (
-        <Col span={24}>
-          <Row justify="end">
-            <Col>
-              <Switch
-                checked={tableFilters.showDeletedTables}
-                data-testid="show-deleted"
-                onClick={handleShowDeletedTables}
-              />
-              <Typography.Text className="m-l-xs">
-                {t('label.deleted')}
-              </Typography.Text>{' '}
-            </Col>
-          </Row>
-        </Col>
-      )}
-
       <Col span={24}>
         <TableAntd
           bordered
           columns={tableColumn}
           data-testid="databaseSchema-tables"
           dataSource={tableData}
+          extraTableFilters={
+            !isVersionView && (
+              <>
+                <span>
+                  <Switch
+                    checked={tableFilters.showDeletedTables}
+                    data-testid="show-deleted"
+                    onClick={handleShowDeletedTables}
+                  />
+                  <Typography.Text className="m-l-xs">
+                    {t('label.deleted')}
+                  </Typography.Text>
+                </span>
+
+                {getBulkEditButton(permissions.table.EditAll, handleEditTable)}
+              </>
+            )
+          }
           loading={tableDataLoading}
           locale={{
             emptyText: (
