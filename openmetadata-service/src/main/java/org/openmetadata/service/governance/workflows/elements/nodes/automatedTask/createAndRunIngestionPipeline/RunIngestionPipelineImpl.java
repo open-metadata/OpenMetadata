@@ -89,7 +89,9 @@ public class RunIngestionPipelineImpl {
       IngestionPipelineRepository repository,
       IngestionPipeline ingestionPipeline,
       long startTime,
-      long timeoutMillis) {
+      long timeoutMillis)
+      throws InterruptedException {
+    long backoffMillis = 5 * 1000;
     while (true) {
       if (System.currentTimeMillis() - startTime > timeoutMillis) {
         return false;
@@ -102,6 +104,8 @@ public class RunIngestionPipelineImpl {
               .getData();
 
       if (statuses.isEmpty()) {
+        Thread.sleep(backoffMillis);
+        backoffMillis *= 2;
         continue;
       }
 
