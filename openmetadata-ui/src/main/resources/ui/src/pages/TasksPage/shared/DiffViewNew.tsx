@@ -37,13 +37,6 @@ export const DiffViewNew = ({
   const [shouldShowViewMore, setShouldShowViewMore] = useState<boolean>(false);
   const contentRef = useRef<HTMLDivElement>(null);
 
-  function stripHtml(html: string) {
-    return html
-      .replace(/<(?!\/?strong\b)[^>]+>/g, '')
-      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-      .trim();
-  }
-
   useEffect(() => {
     const checkHeight = () => {
       if (contentRef.current) {
@@ -74,7 +67,6 @@ export const DiffViewNew = ({
   }, [diffArr]);
 
   const elements = diffArr.map((diff) => {
-    const diffValue = stripHtml(diff.value);
     if (diff.added) {
       return (
         <ins
@@ -107,7 +99,6 @@ export const DiffViewNew = ({
     return (
       <span
         className="diff-normal-new"
-        dangerouslySetInnerHTML={{ __html: diffValue }}
         data-testid="diff-normal-new"
         key={uniqueId()}>
         {' '}
