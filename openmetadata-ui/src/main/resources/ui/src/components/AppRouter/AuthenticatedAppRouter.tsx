@@ -27,7 +27,6 @@ import ForbiddenPage from '../../pages/ForbiddenPage/ForbiddenPage';
 import TagPage from '../../pages/TagPage/TagPage';
 import { checkPermission, userPermissions } from '../../utils/PermissionsUtils';
 import AdminProtectedRoute from './AdminProtectedRoute';
-import EntityImportRouter from './EntityImportRouter';
 import withSuspenseFallback from './withSuspenseFallback';
 
 const DomainRouter = withSuspenseFallback(
@@ -281,12 +280,6 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
   return (
     <Switch>
       <Route exact component={ForbiddenPage} path={ROUTES.FORBIDDEN} />
-
-      {/* Handle Entity Import and Edit pages */}
-      <Route
-        component={EntityImportRouter}
-        path={[ROUTES.ENTITY_IMPORT, ROUTES.BULK_EDIT_ENTITY_WITH_FQN]}
-      />
 
       <Route exact component={MyDataPage} path={ROUTES.MY_DATA} />
       <Route exact component={TourPageComponent} path={ROUTES.TOUR} />
