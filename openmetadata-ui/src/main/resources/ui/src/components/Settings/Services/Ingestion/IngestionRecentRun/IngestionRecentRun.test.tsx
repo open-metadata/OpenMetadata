@@ -297,8 +297,8 @@ describe('Test IngestionRecentRun component', () => {
     await act(async () => {
       render(
         <IngestionRecentRuns
-          isApplicationType
           appRuns={mockDataInsightApplicationRun.data}
+          fetchStatus={false}
         />
       );
     });

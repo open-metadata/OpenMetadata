@@ -15,7 +15,6 @@ import { capitalize, get, toLower } from 'lodash';
 import { ServiceTypes } from 'Models';
 import MetricIcon from '../assets/svg/metric.svg';
 import PlatformInsightsWidget from '../components/ServiceInsights/PlatformInsightsWidget/PlatformInsightsWidget';
-import CollateAIAgentsWidget from '../components/Settings/Services/Ingestion/CollateAIAgentsWidget/CollateAIAgentsWidget';
 import MetadataAgentsWidget from '../components/Settings/Services/Ingestion/MetadataAgentsWidget/MetadataAgentsWidget';
 import {
   AIRBYTE,
@@ -739,7 +738,6 @@ class ServiceUtilClassBase {
   public getAgentsTabWidgets() {
     const widgets: Record<string, React.ComponentType<any>> = {
       MetadataAgentsWidget,
-      CollateAIAgentsWidget,
     };
 
     return widgets;

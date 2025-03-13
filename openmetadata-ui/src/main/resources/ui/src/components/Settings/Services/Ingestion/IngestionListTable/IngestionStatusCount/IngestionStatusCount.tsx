@@ -19,9 +19,10 @@ import './ingestion-status-count.less';
 
 interface Props {
   summary?: StepSummary;
+  runId?: string;
 }
 
-function IngestionStatusCount({ summary }: Props) {
+function IngestionStatusCount({ summary, runId }: Props) {
   const records = useMemo(
     () => getIngestionStatusCountData(summary),
     [summary]
@@ -35,7 +36,7 @@ function IngestionStatusCount({ summary }: Props) {
       justify="space-between"
       wrap={false}>
       {records.map((record) => (
-        <Col key={record.value}>
+        <Col key={`${record.label}-${runId}`}>
           <div className={classNames('status-count', record.type)}>
             <Typography.Text className="record-count">
               {record.value}

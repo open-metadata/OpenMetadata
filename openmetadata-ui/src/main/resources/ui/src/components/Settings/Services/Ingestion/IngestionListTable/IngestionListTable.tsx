@@ -350,6 +350,7 @@ function IngestionListTable({
         render: (_: string, record: IngestionPipeline) => {
           return (
             <IngestionStatusCount
+              runId={recentRunStatuses[record.name]?.[0]?.runId}
               summary={recentRunStatuses[record.name]?.[0]?.status?.[0]}
             />
           );
