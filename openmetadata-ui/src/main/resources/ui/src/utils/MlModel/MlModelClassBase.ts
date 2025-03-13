@@ -50,11 +50,27 @@ export interface MlModelDetailPageTabProps {
   labelMap: Record<EntityTabs, string>;
 }
 
+enum MlModelWidgetKeys {
+  DESCRIPTION = DetailPageWidgetKeys.DESCRIPTION,
+  ML_MODEL_FEATURES = DetailPageWidgetKeys.ML_MODEL_FEATURES,
+  DATA_PRODUCTS = DetailPageWidgetKeys.DATA_PRODUCTS,
+  TAGS = DetailPageWidgetKeys.TAGS,
+  GLOSSARY_TERMS = DetailPageWidgetKeys.GLOSSARY_TERMS,
+  CUSTOM_PROPERTIES = DetailPageWidgetKeys.CUSTOM_PROPERTIES,
+}
+
 class MlModelDetailsClassBase {
-  tabs = [];
+  defaultWidgetHeight: Record<MlModelWidgetKeys, number>;
 
   constructor() {
-    this.tabs = [];
+    this.defaultWidgetHeight = {
+      [MlModelWidgetKeys.DESCRIPTION]: 2,
+      [MlModelWidgetKeys.ML_MODEL_FEATURES]: 8,
+      [MlModelWidgetKeys.DATA_PRODUCTS]: 2,
+      [MlModelWidgetKeys.TAGS]: 2,
+      [MlModelWidgetKeys.GLOSSARY_TERMS]: 2,
+      [MlModelWidgetKeys.CUSTOM_PROPERTIES]: 4,
+    };
   }
 
   public getMlModelDetailPageTabs(
@@ -86,7 +102,7 @@ class MlModelDetailsClassBase {
 
     return [
       {
-        h: 1,
+        h: this.defaultWidgetHeight[MlModelWidgetKeys.DESCRIPTION],
         i: DetailPageWidgetKeys.DESCRIPTION,
         w: 6,
         x: 0,
@@ -94,7 +110,7 @@ class MlModelDetailsClassBase {
         static: false,
       },
       {
-        h: 8,
+        h: this.defaultWidgetHeight[MlModelWidgetKeys.ML_MODEL_FEATURES],
         i: DetailPageWidgetKeys.ML_MODEL_FEATURES,
         w: 6,
         x: 0,
@@ -102,7 +118,7 @@ class MlModelDetailsClassBase {
         static: false,
       },
       {
-        h: 1,
+        h: this.defaultWidgetHeight[MlModelWidgetKeys.DATA_PRODUCTS],
         i: DetailPageWidgetKeys.DATA_PRODUCTS,
         w: 2,
         x: 6,
@@ -110,7 +126,7 @@ class MlModelDetailsClassBase {
         static: false,
       },
       {
-        h: 2,
+        h: this.defaultWidgetHeight[MlModelWidgetKeys.TAGS],
         i: DetailPageWidgetKeys.TAGS,
         w: 2,
         x: 6,
@@ -118,7 +134,7 @@ class MlModelDetailsClassBase {
         static: false,
       },
       {
-        h: 2,
+        h: this.defaultWidgetHeight[MlModelWidgetKeys.GLOSSARY_TERMS],
         i: DetailPageWidgetKeys.GLOSSARY_TERMS,
         w: 2,
         x: 6,
@@ -126,7 +142,7 @@ class MlModelDetailsClassBase {
         static: false,
       },
       {
-        h: 4,
+        h: this.defaultWidgetHeight[MlModelWidgetKeys.CUSTOM_PROPERTIES],
         i: DetailPageWidgetKeys.CUSTOM_PROPERTIES,
         w: 2,
         x: 6,
@@ -158,6 +174,25 @@ class MlModelDetailsClassBase {
 
   public getWidgetsFromKey(widgetConfig: WidgetConfig) {
     return getMlModelWidgetsFromKey(widgetConfig);
+  }
+
+  public getWidgetHeight(widgetName: string) {
+    switch (widgetName) {
+      case DetailPageWidgetKeys.DESCRIPTION:
+        return this.defaultWidgetHeight[MlModelWidgetKeys.DESCRIPTION];
+      case DetailPageWidgetKeys.ML_MODEL_FEATURES:
+        return this.defaultWidgetHeight[MlModelWidgetKeys.ML_MODEL_FEATURES];
+      case DetailPageWidgetKeys.DATA_PRODUCTS:
+        return this.defaultWidgetHeight[MlModelWidgetKeys.DATA_PRODUCTS];
+      case DetailPageWidgetKeys.TAGS:
+        return this.defaultWidgetHeight[MlModelWidgetKeys.TAGS];
+      case DetailPageWidgetKeys.GLOSSARY_TERMS:
+        return this.defaultWidgetHeight[MlModelWidgetKeys.GLOSSARY_TERMS];
+      case DetailPageWidgetKeys.CUSTOM_PROPERTIES:
+        return this.defaultWidgetHeight[MlModelWidgetKeys.CUSTOM_PROPERTIES];
+      default:
+        return 1;
+    }
   }
 }
 

@@ -53,7 +53,29 @@ export interface PipelineDetailPageTabProps {
   labelMap?: Record<EntityTabs, string>;
 }
 
+enum PipelineWidgetKeys {
+  DESCRIPTION = DetailPageWidgetKeys.DESCRIPTION,
+  PIPELINE_TASKS = DetailPageWidgetKeys.PIPELINE_TASKS,
+  DATA_PRODUCTS = DetailPageWidgetKeys.DATA_PRODUCTS,
+  TAGS = DetailPageWidgetKeys.TAGS,
+  GLOSSARY_TERMS = DetailPageWidgetKeys.GLOSSARY_TERMS,
+  CUSTOM_PROPERTIES = DetailPageWidgetKeys.CUSTOM_PROPERTIES,
+}
+
 class PipelineClassBase {
+  defaultWidgetHeight: Record<PipelineWidgetKeys, number>;
+
+  constructor() {
+    this.defaultWidgetHeight = {
+      [PipelineWidgetKeys.DESCRIPTION]: 2,
+      [PipelineWidgetKeys.PIPELINE_TASKS]: 8,
+      [PipelineWidgetKeys.DATA_PRODUCTS]: 2,
+      [PipelineWidgetKeys.TAGS]: 2,
+      [PipelineWidgetKeys.GLOSSARY_TERMS]: 2,
+      [PipelineWidgetKeys.CUSTOM_PROPERTIES]: 4,
+    };
+  }
+
   public getPipelineDetailPageTabs(
     tabProps: PipelineDetailPageTabProps
   ): TabProps[] {
@@ -83,7 +105,7 @@ class PipelineClassBase {
 
     return [
       {
-        h: 2,
+        h: this.defaultWidgetHeight[PipelineWidgetKeys.DESCRIPTION],
         i: DetailPageWidgetKeys.DESCRIPTION,
         w: 6,
         x: 0,
@@ -91,7 +113,7 @@ class PipelineClassBase {
         static: false,
       },
       {
-        h: 11,
+        h: this.defaultWidgetHeight[PipelineWidgetKeys.PIPELINE_TASKS],
         i: DetailPageWidgetKeys.PIPELINE_TASKS,
         w: 6,
         x: 0,
@@ -99,7 +121,7 @@ class PipelineClassBase {
         static: false,
       },
       {
-        h: 1,
+        h: this.defaultWidgetHeight[PipelineWidgetKeys.DATA_PRODUCTS],
         i: DetailPageWidgetKeys.DATA_PRODUCTS,
         w: 2,
         x: 6,
@@ -107,7 +129,7 @@ class PipelineClassBase {
         static: false,
       },
       {
-        h: 2,
+        h: this.defaultWidgetHeight[PipelineWidgetKeys.TAGS],
         i: DetailPageWidgetKeys.TAGS,
         w: 2,
         x: 6,
@@ -115,7 +137,7 @@ class PipelineClassBase {
         static: false,
       },
       {
-        h: 2,
+        h: this.defaultWidgetHeight[PipelineWidgetKeys.GLOSSARY_TERMS],
         i: DetailPageWidgetKeys.GLOSSARY_TERMS,
         w: 2,
         x: 6,
@@ -123,7 +145,7 @@ class PipelineClassBase {
         static: false,
       },
       {
-        h: 4,
+        h: this.defaultWidgetHeight[PipelineWidgetKeys.CUSTOM_PROPERTIES],
         i: DetailPageWidgetKeys.CUSTOM_PROPERTIES,
         w: 2,
         x: 6,
@@ -156,6 +178,25 @@ class PipelineClassBase {
 
   public getWidgetsFromKey(widgetConfig: WidgetConfig) {
     return getPipelineWidgetsFromKey(widgetConfig);
+  }
+
+  public getWidgetHeight(widgetName: string) {
+    switch (widgetName) {
+      case DetailPageWidgetKeys.DESCRIPTION:
+        return this.defaultWidgetHeight[PipelineWidgetKeys.DESCRIPTION];
+      case DetailPageWidgetKeys.PIPELINE_TASKS:
+        return this.defaultWidgetHeight[PipelineWidgetKeys.PIPELINE_TASKS];
+      case DetailPageWidgetKeys.DATA_PRODUCTS:
+        return this.defaultWidgetHeight[PipelineWidgetKeys.DATA_PRODUCTS];
+      case DetailPageWidgetKeys.TAGS:
+        return this.defaultWidgetHeight[PipelineWidgetKeys.TAGS];
+      case DetailPageWidgetKeys.GLOSSARY_TERMS:
+        return this.defaultWidgetHeight[PipelineWidgetKeys.GLOSSARY_TERMS];
+      case DetailPageWidgetKeys.CUSTOM_PROPERTIES:
+        return this.defaultWidgetHeight[PipelineWidgetKeys.CUSTOM_PROPERTIES];
+      default:
+        return 1;
+    }
   }
 }
 

@@ -11,15 +11,20 @@
  *  limitations under the License.
  */
 import { TabsProps } from 'antd';
-import { noop } from 'lodash';
+import { noop, uniqueId } from 'lodash';
 import { TAB_LABEL_MAP } from '../../constants/Customize.constants';
 import { CommonWidgetType } from '../../constants/CustomizeWidgets.constants';
+import { LandingPageWidgetKeys } from '../../enums/CustomizablePage.enum';
 import { EntityTabs } from '../../enums/entity.enum';
 import { PageType, Tab } from '../../generated/system/ui/page';
 import { WidgetConfig } from '../../pages/CustomizablePage/CustomizablePage.interface';
 import apiCollectionClassBase from '../APICollection/APICollectionClassBase';
 import apiEndpointClassBase from '../APIEndpoints/APIEndpointClassBase';
 import containerDetailsClassBase from '../ContainerDetailsClassBase';
+import {
+  getNewWidgetPlacement,
+  moveEmptyWidgetToTheEnd,
+} from '../CustomizableLandingPageUtils';
 import customizeGlossaryPageClassBase from '../CustomizeGlossaryPage/CustomizeGlossaryPage';
 import customizeGlossaryTermPageClassBase from '../CustomizeGlossaryTerm/CustomizeGlossaryTermBaseClass';
 import dashboardDataModelClassBase from '../DashboardDataModelClassBase';
@@ -352,6 +357,97 @@ export const getWidgetsFromKey = (
       return null;
   }
 };
+
+export const getWidgetHeight = (pageType: PageType, widgetName: string) => {
+  switch (pageType) {
+    case PageType.Table:
+      return tableClassBase.getWidgetHeight(widgetName);
+
+    case PageType.Topic:
+      return topicClassBase.getWidgetHeight(widgetName);
+    case PageType.StoredProcedure:
+      return storedProcedureClassBase.getWidgetHeight(widgetName);
+    case PageType.DashboardDataModel:
+      return dashboardDataModelClassBase.getWidgetHeight(widgetName);
+    case PageType.Container:
+      return containerDetailsClassBase.getWidgetHeight(widgetName);
+    case PageType.Database:
+      return databaseClassBase.getWidgetHeight(widgetName);
+    case PageType.DatabaseSchema:
+      return databaseSchemaClassBase.getWidgetHeight(widgetName);
+    case PageType.Pipeline:
+      return pipelineClassBase.getWidgetHeight(widgetName);
+    case PageType.SearchIndex:
+      return searchIndexClassBase.getWidgetHeight(widgetName);
+    case PageType.Dashboard:
+      return dashboardDetailsClassBase.getWidgetHeight(widgetName);
+    case PageType.Domain:
+      return domainClassBase.getWidgetHeight(widgetName);
+    case PageType.APICollection:
+      return apiCollectionClassBase.getWidgetHeight(widgetName);
+    case PageType.APIEndpoint:
+      return apiEndpointClassBase.getWidgetHeight(widgetName);
+    case PageType.Metric:
+      return metricDetailsClassBase.getWidgetHeight(widgetName);
+    case PageType.MlModel:
+      return mlModelClassBase.getWidgetHeight(widgetName);
+    default:
+      return 0;
+  }
+};
+
+export const getAddWidgetHandler =
+  (
+    newWidgetData: CommonWidgetType,
+    placeholderWidgetKey: string,
+    widgetWidth: number,
+    maxGridSize: number,
+    pageType: PageType
+  ) =>
+  (currentLayout: Array<WidgetConfig>): WidgetConfig[] => {
+    const widgetFQN = uniqueId(`${newWidgetData.fullyQualifiedName}-`);
+    const widgetHeight = getWidgetHeight(
+      pageType,
+      newWidgetData.fullyQualifiedName
+    );
+
+    // The widget with key "ExtraWidget.EmptyWidgetPlaceholder" will always remain in the bottom
+    // and is not meant to be replaced hence
+    // if placeholderWidgetKey is "ExtraWidget.EmptyWidgetPlaceholder"
+    // append the new widget in the array
+    // else replace the new widget with other placeholder widgets
+    if (
+      placeholderWidgetKey === LandingPageWidgetKeys.EMPTY_WIDGET_PLACEHOLDER
+    ) {
+      return [
+        ...moveEmptyWidgetToTheEnd(currentLayout),
+        {
+          w: widgetWidth,
+          h: widgetHeight,
+          i: widgetFQN,
+          static: false,
+          ...getNewWidgetPlacement(currentLayout, widgetWidth),
+        },
+      ];
+    } else {
+      return currentLayout.map((widget: WidgetConfig) => {
+        const widgetX =
+          widget.x + widgetWidth <= maxGridSize
+            ? widget.x
+            : maxGridSize - widgetWidth;
+
+        return widget.i === placeholderWidgetKey
+          ? {
+              ...widget,
+              i: widgetFQN,
+              h: widgetHeight,
+              w: widgetWidth,
+              x: widgetX,
+            }
+          : widget;
+      });
+    }
+  };
 
 export const getDetailsTabWithNewLabel = (
   defaultTabs: Array<

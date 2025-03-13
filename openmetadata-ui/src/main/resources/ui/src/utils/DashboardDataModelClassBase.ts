@@ -50,7 +50,29 @@ export interface DashboardDataModelDetailPageTabProps {
   labelMap?: Record<EntityTabs, string>;
 }
 
+enum DashboardDataModelWidgetKeys {
+  DESCRIPTION = DetailPageWidgetKeys.DESCRIPTION,
+  DATA_MODEL = DetailPageWidgetKeys.DATA_MODEL,
+  DATA_PRODUCTS = DetailPageWidgetKeys.DATA_PRODUCTS,
+  TAGS = DetailPageWidgetKeys.TAGS,
+  GLOSSARY_TERMS = DetailPageWidgetKeys.GLOSSARY_TERMS,
+  CUSTOM_PROPERTIES = DetailPageWidgetKeys.CUSTOM_PROPERTIES,
+}
+
 class DashboardDataModelBase {
+  defaultWidgetHeight: Record<DashboardDataModelWidgetKeys, number>;
+
+  constructor() {
+    this.defaultWidgetHeight = {
+      [DashboardDataModelWidgetKeys.DESCRIPTION]: 2,
+      [DashboardDataModelWidgetKeys.DATA_MODEL]: 6,
+      [DashboardDataModelWidgetKeys.DATA_PRODUCTS]: 2,
+      [DashboardDataModelWidgetKeys.TAGS]: 2,
+      [DashboardDataModelWidgetKeys.GLOSSARY_TERMS]: 2,
+      [DashboardDataModelWidgetKeys.CUSTOM_PROPERTIES]: 4,
+    };
+  }
+
   public getDashboardDataModelDetailPageTabs(
     tabsProps: DashboardDataModelDetailPageTabProps
   ): TabProps[] {
@@ -79,7 +101,7 @@ class DashboardDataModelBase {
 
     return [
       {
-        h: 2,
+        h: this.defaultWidgetHeight[DashboardDataModelWidgetKeys.DESCRIPTION],
         i: DetailPageWidgetKeys.DESCRIPTION,
         w: 6,
         x: 0,
@@ -87,7 +109,7 @@ class DashboardDataModelBase {
         static: false,
       },
       {
-        h: 6,
+        h: this.defaultWidgetHeight[DashboardDataModelWidgetKeys.DATA_MODEL],
         i: DetailPageWidgetKeys.DATA_MODEL,
         w: 6,
         x: 0,
@@ -95,7 +117,7 @@ class DashboardDataModelBase {
         static: false,
       },
       {
-        h: 1,
+        h: this.defaultWidgetHeight[DashboardDataModelWidgetKeys.DATA_PRODUCTS],
         i: DetailPageWidgetKeys.DATA_PRODUCTS,
         w: 2,
         x: 6,
@@ -103,7 +125,7 @@ class DashboardDataModelBase {
         static: false,
       },
       {
-        h: 2,
+        h: this.defaultWidgetHeight[DashboardDataModelWidgetKeys.TAGS],
         i: DetailPageWidgetKeys.TAGS,
         w: 2,
         x: 6,
@@ -111,7 +133,9 @@ class DashboardDataModelBase {
         static: false,
       },
       {
-        h: 2,
+        h: this.defaultWidgetHeight[
+          DashboardDataModelWidgetKeys.GLOSSARY_TERMS
+        ],
         i: DetailPageWidgetKeys.GLOSSARY_TERMS,
         w: 2,
         x: 6,
@@ -119,7 +143,9 @@ class DashboardDataModelBase {
         static: false,
       },
       {
-        h: 4,
+        h: this.defaultWidgetHeight[
+          DashboardDataModelWidgetKeys.CUSTOM_PROPERTIES
+        ],
         i: DetailPageWidgetKeys.CUSTOM_PROPERTIES,
         w: 2,
         x: 6,
@@ -152,6 +178,35 @@ class DashboardDataModelBase {
 
   public getWidgetsFromKey(widgetConfig: WidgetConfig) {
     return getDashboardDataModelWidgetsFromKey(widgetConfig);
+  }
+
+  public getWidgetHeight(widgetName: string) {
+    switch (widgetName) {
+      case DetailPageWidgetKeys.DESCRIPTION:
+        return this.defaultWidgetHeight[
+          DashboardDataModelWidgetKeys.DESCRIPTION
+        ];
+      case DetailPageWidgetKeys.DATA_MODEL:
+        return this.defaultWidgetHeight[
+          DashboardDataModelWidgetKeys.DATA_MODEL
+        ];
+      case DetailPageWidgetKeys.DATA_PRODUCTS:
+        return this.defaultWidgetHeight[
+          DashboardDataModelWidgetKeys.DATA_PRODUCTS
+        ];
+      case DetailPageWidgetKeys.TAGS:
+        return this.defaultWidgetHeight[DashboardDataModelWidgetKeys.TAGS];
+      case DetailPageWidgetKeys.GLOSSARY_TERMS:
+        return this.defaultWidgetHeight[
+          DashboardDataModelWidgetKeys.GLOSSARY_TERMS
+        ];
+      case DetailPageWidgetKeys.CUSTOM_PROPERTIES:
+        return this.defaultWidgetHeight[
+          DashboardDataModelWidgetKeys.CUSTOM_PROPERTIES
+        ];
+      default:
+        return 1;
+    }
   }
 }
 

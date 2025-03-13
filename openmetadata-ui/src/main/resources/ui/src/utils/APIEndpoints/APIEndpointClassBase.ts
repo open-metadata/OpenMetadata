@@ -50,11 +50,27 @@ export interface APIEndpointDetailPageTabProps {
   labelMap: Record<EntityTabs, string>;
 }
 
+enum APIEndpointWidgetKeys {
+  DESCRIPTION = DetailPageWidgetKeys.DESCRIPTION,
+  API_SCHEMA = DetailPageWidgetKeys.API_SCHEMA,
+  DATA_PRODUCTS = DetailPageWidgetKeys.DATA_PRODUCTS,
+  TAGS = DetailPageWidgetKeys.TAGS,
+  GLOSSARY_TERMS = DetailPageWidgetKeys.GLOSSARY_TERMS,
+  CUSTOM_PROPERTIES = DetailPageWidgetKeys.CUSTOM_PROPERTIES,
+}
+
 class APIEndpointClassBase {
-  tabs = [];
+  defaultWidgetHeight: Record<APIEndpointWidgetKeys, number>;
 
   constructor() {
-    this.tabs = [];
+    this.defaultWidgetHeight = {
+      [APIEndpointWidgetKeys.DESCRIPTION]: 2,
+      [APIEndpointWidgetKeys.API_SCHEMA]: 8,
+      [APIEndpointWidgetKeys.DATA_PRODUCTS]: 2,
+      [APIEndpointWidgetKeys.TAGS]: 2,
+      [APIEndpointWidgetKeys.GLOSSARY_TERMS]: 2,
+      [APIEndpointWidgetKeys.CUSTOM_PROPERTIES]: 4,
+    };
   }
 
   public getAPIEndpointDetailPageTabs(
@@ -85,7 +101,7 @@ class APIEndpointClassBase {
 
     return [
       {
-        h: 2,
+        h: this.defaultWidgetHeight[APIEndpointWidgetKeys.DESCRIPTION],
         i: DetailPageWidgetKeys.DESCRIPTION,
         w: 6,
         x: 0,
@@ -93,7 +109,7 @@ class APIEndpointClassBase {
         static: false,
       },
       {
-        h: 8,
+        h: this.defaultWidgetHeight[APIEndpointWidgetKeys.API_SCHEMA],
         i: DetailPageWidgetKeys.API_SCHEMA,
         w: 6,
         x: 0,
@@ -101,7 +117,7 @@ class APIEndpointClassBase {
         static: false,
       },
       {
-        h: 1,
+        h: this.defaultWidgetHeight[APIEndpointWidgetKeys.DATA_PRODUCTS],
         i: DetailPageWidgetKeys.DATA_PRODUCTS,
         w: 2,
         x: 6,
@@ -109,7 +125,7 @@ class APIEndpointClassBase {
         static: false,
       },
       {
-        h: 2,
+        h: this.defaultWidgetHeight[APIEndpointWidgetKeys.TAGS],
         i: DetailPageWidgetKeys.TAGS,
         w: 2,
         x: 6,
@@ -117,7 +133,7 @@ class APIEndpointClassBase {
         static: false,
       },
       {
-        h: 2,
+        h: this.defaultWidgetHeight[APIEndpointWidgetKeys.GLOSSARY_TERMS],
         i: DetailPageWidgetKeys.GLOSSARY_TERMS,
         w: 2,
         x: 6,
@@ -125,7 +141,7 @@ class APIEndpointClassBase {
         static: false,
       },
       {
-        h: 4,
+        h: this.defaultWidgetHeight[APIEndpointWidgetKeys.CUSTOM_PROPERTIES],
         i: DetailPageWidgetKeys.CUSTOM_PROPERTIES,
         w: 2,
         x: 6,
@@ -157,6 +173,27 @@ class APIEndpointClassBase {
 
   public getWidgetsFromKey(widgetConfig: WidgetConfig) {
     return getApiEndpointWidgetsFromKey(widgetConfig);
+  }
+
+  public getWidgetHeight(widgetName: string) {
+    switch (widgetName) {
+      case DetailPageWidgetKeys.DESCRIPTION:
+        return this.defaultWidgetHeight[APIEndpointWidgetKeys.DESCRIPTION];
+      case DetailPageWidgetKeys.API_SCHEMA:
+        return this.defaultWidgetHeight[APIEndpointWidgetKeys.API_SCHEMA];
+      case DetailPageWidgetKeys.DATA_PRODUCTS:
+        return this.defaultWidgetHeight[APIEndpointWidgetKeys.DATA_PRODUCTS];
+      case DetailPageWidgetKeys.TAGS:
+        return this.defaultWidgetHeight[APIEndpointWidgetKeys.TAGS];
+      case DetailPageWidgetKeys.GLOSSARY_TERMS:
+        return this.defaultWidgetHeight[APIEndpointWidgetKeys.GLOSSARY_TERMS];
+      case DetailPageWidgetKeys.CUSTOM_PROPERTIES:
+        return this.defaultWidgetHeight[
+          APIEndpointWidgetKeys.CUSTOM_PROPERTIES
+        ];
+      default:
+        return 1;
+    }
   }
 }
 

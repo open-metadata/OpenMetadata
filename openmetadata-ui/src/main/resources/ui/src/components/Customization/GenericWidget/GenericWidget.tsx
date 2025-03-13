@@ -19,6 +19,7 @@ import { WidgetCommonProps } from '../../../pages/CustomizablePage/CustomizableP
 import customizeGlossaryTermPageClassBase from '../../../utils/CustomizeGlossaryTerm/CustomizeGlossaryTermBaseClass';
 import { WIDGET_COMPONENTS } from '../../../utils/GenericWidget/GenericWidgetUtils';
 import { useGlossaryStore } from '../../Glossary/useGlossary.store';
+import './generic-widget.less';
 
 export const GenericWidget = (props: WidgetCommonProps) => {
   const handleRemoveClick = () => {
@@ -60,28 +61,23 @@ export const GenericWidget = (props: WidgetCommonProps) => {
 
   return (
     <Card
-      bodyStyle={{ height: '100%' }}
-      className="h-full"
-      title={
-        <div className="d-flex justify-between align-center">
-          <span>{widgetName}</span>
-          {props.isEditView && (
-            <Space size={8}>
-              <DragOutlined
-                className="drag-widget-icon cursor-pointer"
-                data-testid="drag-widget-button"
-                size={14}
-              />
-              <Button
-                data-testid="remove-widget-button"
-                icon={<CloseOutlined size={14} />}
-                size="small"
-                onClick={handleRemoveClick}
-              />
-            </Space>
-          )}
-        </div>
-      }>
+      className="generic-widget-card"
+      extra={
+        <Space size={8}>
+          <DragOutlined
+            className="drag-widget-icon cursor-pointer"
+            data-testid="drag-widget-button"
+            size={14}
+          />
+          <Button
+            data-testid="remove-widget-button"
+            icon={<CloseOutlined size={14} />}
+            size="small"
+            onClick={handleRemoveClick}
+          />
+        </Space>
+      }
+      title={widgetName}>
       {cardContent}
     </Card>
   );

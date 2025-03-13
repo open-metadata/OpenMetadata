@@ -48,11 +48,27 @@ export interface TopicDetailPageTabProps {
   labelMap?: Record<EntityTabs, string>;
 }
 
+enum TopicWidgetKeys {
+  DESCRIPTION = DetailPageWidgetKeys.DESCRIPTION,
+  TOPIC_SCHEMA = DetailPageWidgetKeys.TOPIC_SCHEMA,
+  DATA_PRODUCTS = DetailPageWidgetKeys.DATA_PRODUCTS,
+  TAGS = DetailPageWidgetKeys.TAGS,
+  GLOSSARY_TERMS = DetailPageWidgetKeys.GLOSSARY_TERMS,
+  CUSTOM_PROPERTIES = DetailPageWidgetKeys.CUSTOM_PROPERTIES,
+}
+
 class TopicClassBase {
-  tabs = [];
+  defaultWidgetHeight: Record<TopicWidgetKeys, number>;
 
   constructor() {
-    this.tabs = [];
+    this.defaultWidgetHeight = {
+      [TopicWidgetKeys.DESCRIPTION]: 2,
+      [TopicWidgetKeys.TOPIC_SCHEMA]: 8,
+      [TopicWidgetKeys.DATA_PRODUCTS]: 2,
+      [TopicWidgetKeys.TAGS]: 2,
+      [TopicWidgetKeys.GLOSSARY_TERMS]: 2,
+      [TopicWidgetKeys.CUSTOM_PROPERTIES]: 4,
+    };
   }
 
   public getTopicDetailPageTabs(
@@ -85,7 +101,7 @@ class TopicClassBase {
 
     return [
       {
-        h: 2,
+        h: this.defaultWidgetHeight[TopicWidgetKeys.DESCRIPTION],
         i: DetailPageWidgetKeys.DESCRIPTION,
         w: 6,
         x: 0,
@@ -93,7 +109,7 @@ class TopicClassBase {
         static: false,
       },
       {
-        h: 8,
+        h: this.defaultWidgetHeight[TopicWidgetKeys.TOPIC_SCHEMA],
         i: DetailPageWidgetKeys.TOPIC_SCHEMA,
         w: 6,
         x: 0,
@@ -101,7 +117,7 @@ class TopicClassBase {
         static: false,
       },
       {
-        h: 1,
+        h: this.defaultWidgetHeight[TopicWidgetKeys.DATA_PRODUCTS],
         i: DetailPageWidgetKeys.DATA_PRODUCTS,
         w: 2,
         x: 6,
@@ -109,7 +125,7 @@ class TopicClassBase {
         static: false,
       },
       {
-        h: 2,
+        h: this.defaultWidgetHeight[TopicWidgetKeys.TAGS],
         i: DetailPageWidgetKeys.TAGS,
         w: 2,
         x: 6,
@@ -117,7 +133,7 @@ class TopicClassBase {
         static: false,
       },
       {
-        h: 2,
+        h: this.defaultWidgetHeight[TopicWidgetKeys.GLOSSARY_TERMS],
         i: DetailPageWidgetKeys.GLOSSARY_TERMS,
         w: 2,
         x: 6,
@@ -125,7 +141,7 @@ class TopicClassBase {
         static: false,
       },
       {
-        h: 4,
+        h: this.defaultWidgetHeight[TopicWidgetKeys.CUSTOM_PROPERTIES],
         i: DetailPageWidgetKeys.CUSTOM_PROPERTIES,
         w: 2,
         x: 6,
@@ -162,6 +178,25 @@ class TopicClassBase {
 
   public getWidgetsFromKey(widgetConfig: WidgetConfig) {
     return getTopicWidgetsFromKey(widgetConfig);
+  }
+
+  public getWidgetHeight(widgetName: string) {
+    switch (widgetName) {
+      case DetailPageWidgetKeys.DESCRIPTION:
+        return this.defaultWidgetHeight[TopicWidgetKeys.DESCRIPTION];
+      case DetailPageWidgetKeys.TOPIC_SCHEMA:
+        return this.defaultWidgetHeight[TopicWidgetKeys.TOPIC_SCHEMA];
+      case DetailPageWidgetKeys.DATA_PRODUCTS:
+        return this.defaultWidgetHeight[TopicWidgetKeys.DATA_PRODUCTS];
+      case DetailPageWidgetKeys.TAGS:
+        return this.defaultWidgetHeight[TopicWidgetKeys.TAGS];
+      case DetailPageWidgetKeys.GLOSSARY_TERMS:
+        return this.defaultWidgetHeight[TopicWidgetKeys.GLOSSARY_TERMS];
+      case DetailPageWidgetKeys.CUSTOM_PROPERTIES:
+        return this.defaultWidgetHeight[TopicWidgetKeys.CUSTOM_PROPERTIES];
+      default:
+        return 1;
+    }
   }
 }
 

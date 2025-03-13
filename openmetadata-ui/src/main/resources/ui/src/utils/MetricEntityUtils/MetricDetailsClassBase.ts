@@ -50,11 +50,27 @@ export interface MetricDetailPageTabProps {
   labelMap: Record<EntityTabs, string>;
 }
 
+enum MetricWidgetKeys {
+  DESCRIPTION = DetailPageWidgetKeys.DESCRIPTION,
+  DATA_PRODUCTS = DetailPageWidgetKeys.DATA_PRODUCTS,
+  TAGS = DetailPageWidgetKeys.TAGS,
+  GLOSSARY_TERMS = DetailPageWidgetKeys.GLOSSARY_TERMS,
+  RELATED_METRICS = DetailPageWidgetKeys.RELATED_METRICS,
+  CUSTOM_PROPERTIES = DetailPageWidgetKeys.CUSTOM_PROPERTIES,
+}
+
 class MetricDetailsClassBase {
-  tabs = [];
+  defaultWidgetHeight: Record<MetricWidgetKeys, number>;
 
   constructor() {
-    this.tabs = [];
+    this.defaultWidgetHeight = {
+      [MetricWidgetKeys.DESCRIPTION]: 2,
+      [MetricWidgetKeys.DATA_PRODUCTS]: 2,
+      [MetricWidgetKeys.TAGS]: 2,
+      [MetricWidgetKeys.GLOSSARY_TERMS]: 2,
+      [MetricWidgetKeys.RELATED_METRICS]: 2,
+      [MetricWidgetKeys.CUSTOM_PROPERTIES]: 4,
+    };
   }
 
   public getMetricDetailPageTabs(
@@ -86,7 +102,7 @@ class MetricDetailsClassBase {
 
     return [
       {
-        h: 6,
+        h: this.defaultWidgetHeight[MetricWidgetKeys.DESCRIPTION],
         i: DetailPageWidgetKeys.DESCRIPTION,
         w: 6,
         x: 0,
@@ -94,7 +110,7 @@ class MetricDetailsClassBase {
         static: false,
       },
       {
-        h: 1,
+        h: this.defaultWidgetHeight[MetricWidgetKeys.DATA_PRODUCTS],
         i: DetailPageWidgetKeys.DATA_PRODUCTS,
         w: 2,
         x: 6,
@@ -102,7 +118,7 @@ class MetricDetailsClassBase {
         static: false,
       },
       {
-        h: 2,
+        h: this.defaultWidgetHeight[MetricWidgetKeys.TAGS],
         i: DetailPageWidgetKeys.TAGS,
         w: 2,
         x: 6,
@@ -110,7 +126,7 @@ class MetricDetailsClassBase {
         static: false,
       },
       {
-        h: 2,
+        h: this.defaultWidgetHeight[MetricWidgetKeys.GLOSSARY_TERMS],
         i: DetailPageWidgetKeys.GLOSSARY_TERMS,
         w: 2,
         x: 6,
@@ -118,7 +134,7 @@ class MetricDetailsClassBase {
         static: false,
       },
       {
-        h: 2,
+        h: this.defaultWidgetHeight[MetricWidgetKeys.RELATED_METRICS],
         i: DetailPageWidgetKeys.RELATED_METRICS,
         w: 2,
         x: 6,
@@ -126,7 +142,7 @@ class MetricDetailsClassBase {
         static: false,
       },
       {
-        h: 4,
+        h: this.defaultWidgetHeight[MetricWidgetKeys.CUSTOM_PROPERTIES],
         i: DetailPageWidgetKeys.CUSTOM_PROPERTIES,
         w: 2,
         x: 6,
@@ -158,6 +174,25 @@ class MetricDetailsClassBase {
 
   public getWidgetsFromKey(widgetConfig: WidgetConfig) {
     return getMetricWidgetsFromKey(widgetConfig);
+  }
+
+  public getWidgetHeight(widgetName: string) {
+    switch (widgetName) {
+      case DetailPageWidgetKeys.DESCRIPTION:
+        return this.defaultWidgetHeight[MetricWidgetKeys.DESCRIPTION];
+      case DetailPageWidgetKeys.DATA_PRODUCTS:
+        return this.defaultWidgetHeight[MetricWidgetKeys.DATA_PRODUCTS];
+      case DetailPageWidgetKeys.TAGS:
+        return this.defaultWidgetHeight[MetricWidgetKeys.TAGS];
+      case DetailPageWidgetKeys.GLOSSARY_TERMS:
+        return this.defaultWidgetHeight[MetricWidgetKeys.GLOSSARY_TERMS];
+      case DetailPageWidgetKeys.RELATED_METRICS:
+        return this.defaultWidgetHeight[MetricWidgetKeys.RELATED_METRICS];
+      case DetailPageWidgetKeys.CUSTOM_PROPERTIES:
+        return this.defaultWidgetHeight[MetricWidgetKeys.CUSTOM_PROPERTIES];
+      default:
+        return 1;
+    }
   }
 }
 
