@@ -352,6 +352,10 @@ export interface Pipeline {
      */
     filterCondition?: string;
     /**
+     * Configuration to process query cost
+     */
+    processQueryCostAnalysis?: boolean;
+    /**
      * Configuration to set the file path for query logs
      */
     queryLogFilePath?: string;
@@ -372,6 +376,11 @@ export interface Pipeline {
      * Handle Lineage for Snowflake Temporary and Transient Tables.
      */
     enableTempTableLineage?: boolean;
+    /**
+     * Set the 'Incremental Lineage Processing' toggle to control whether to process lineage
+     * incrementally.
+     */
+    incrementalLineageProcessing?: boolean;
     /**
      * Set the 'Override View Lineage' toggle to control whether to override the existing view
      * lineage.
@@ -846,6 +855,10 @@ export interface CollateAIAppConfig {
      * one month).
      */
     changeEventRetentionPeriod?: number;
+    /**
+     * Service Entity Link for which to trigger the application.
+     */
+    entityLink?: string;
 }
 
 /**
@@ -861,6 +874,10 @@ export interface CollateAIAppConfig {
  * Remove Owner Action Type
  *
  * Add a Custom Property to the selected assets.
+ *
+ * Add Test Cases to the selected assets.
+ *
+ * Remove Test Cases Action Type
  *
  * Add owners to the selected assets.
  *
@@ -887,6 +904,10 @@ export interface Action {
      *
      * Remove descriptions from the children of the selected assets. E.g., columns, tasks, topic
      * fields,...
+     *
+     * Add tests to the selected table columns
+     *
+     * Remove tests to the selected table columns
      */
     applyToChildren?: string[];
     /**
@@ -905,8 +926,15 @@ export interface Action {
      * Update the tier even if it is defined in the asset. By default, we will only apply the
      * tier to assets without tier.
      *
+     * Update the test even if it is defined in the asset. By default, we will only apply the
+     * test to assets without the existing test already existing.
+     *
      * Update the owners even if it is defined in the asset. By default, we will only apply the
      * owners to assets without owner.
+     *
+     * Update the Data Product even if the asset belongs to a different Domain. By default, we
+     * will only add the Data Product if the asset has no Domain, or it belongs to the same
+     * domain as the Data Product.
      *
      * Update descriptions, tags and Glossary Terms via lineage even if they are already defined
      * in the asset. By default, descriptions are only updated if they are not already defined
@@ -951,6 +979,18 @@ export interface Action {
      * tier to apply
      */
     tier?: TagLabel;
+    /**
+     * Test Cases to apply
+     */
+    testCases?: TestCaseDefinitions[];
+    /**
+     * Remove all test cases
+     */
+    removeAll?: boolean;
+    /**
+     * Test Cases to remove
+     */
+    testCaseDefinitions?: string[];
     /**
      * Owners to apply
      */
@@ -1090,6 +1130,42 @@ export interface Style {
 }
 
 /**
+ * Minimum set of requirements to get a Test Case request ready
+ */
+export interface TestCaseDefinitions {
+    /**
+     * Compute the passed and failed row count for the test case.
+     */
+    computePassedFailedRowCount?: boolean;
+    parameterValues?:             TestCaseParameterValue[];
+    /**
+     * Fully qualified name of the test definition.
+     */
+    testDefinition?: string;
+    /**
+     * If the test definition supports it, use dynamic assertion to evaluate the test case.
+     */
+    useDynamicAssertion?: boolean;
+    [property: string]: any;
+}
+
+/**
+ * This schema defines the parameter values that can be passed for a Test Case.
+ */
+export interface TestCaseParameterValue {
+    /**
+     * name of the parameter. Must match the parameter names in testCaseParameterDefinition
+     */
+    name?: string;
+    /**
+     * value to be passed for the Parameters. These are input from Users. We capture this in
+     * string and convert during the runtime.
+     */
+    value?: string;
+    [property: string]: any;
+}
+
+/**
  * Application Type
  *
  * Add Tags action type.
@@ -1110,6 +1186,10 @@ export interface Style {
  *
  * Remove Tier Action Type
  *
+ * Add Test Case Action Type.
+ *
+ * Remove Test Case Action Type
+ *
  * Remove Owner Action Type
  *
  * Remove Custom Properties Action Type.
@@ -1129,6 +1209,7 @@ export enum ActionType {
     AddDomainAction = "AddDomainAction",
     AddOwnerAction = "AddOwnerAction",
     AddTagsAction = "AddTagsAction",
+    AddTestCaseAction = "AddTestCaseAction",
     AddTierAction = "AddTierAction",
     LineagePropagationAction = "LineagePropagationAction",
     MLTaggingAction = "MLTaggingAction",
@@ -1138,6 +1219,7 @@ export enum ActionType {
     RemoveDomainAction = "RemoveDomainAction",
     RemoveOwnerAction = "RemoveOwnerAction",
     RemoveTagsAction = "RemoveTagsAction",
+    RemoveTestCaseAction = "RemoveTestCaseAction",
     RemoveTierAction = "RemoveTierAction",
 }
 
@@ -1276,7 +1358,7 @@ export enum CollateAIAppConfigType {
     CollateAIQualityAgent = "CollateAIQualityAgent",
     DataInsights = "DataInsights",
     DataInsightsReport = "DataInsightsReport",
-    DayOneExperienceWorkflow = "DayOneExperienceWorkflow",
+    DayOneExperienceApplication = "DayOneExperienceApplication",
     SearchIndexing = "SearchIndexing",
 }
 
@@ -2538,6 +2620,10 @@ export interface ConfigClass {
      */
     connectionArguments?: { [key: string]: any };
     /**
+     * Cost per TiB for BigQuery usage
+     */
+    costPerTB?: number;
+    /**
      * GCP Credentials
      *
      * Azure Credentials
@@ -2813,6 +2899,10 @@ export interface ConfigClass {
      * ingestion process runs for longer durations.
      */
     clientSessionKeepAlive?: boolean;
+    /**
+     * Cost of credit for the Snowflake account.
+     */
+    creditCost?: number;
     /**
      * Optional configuration for ingestion of TRANSIENT tables, By default, it will skip the
      * TRANSIENT tables.

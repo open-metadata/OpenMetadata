@@ -3,6 +3,7 @@
   "displayName": "Day One Experience Application",
   "appConfiguration": {
     "type": "DayOneExperienceApplication",
-    "active": false
+    "active": true,
+    "entityLink": null
   }
 }

@@ -8,11 +8,7 @@
     "storeStageStatus": true
   },
   "trigger": {
-    "type": "eventBasedEntity",
-    "config": {
-      "entityType": "databaseService",
-      "events": ["Created"]
-    }
+    "type": "noOp"
   },
   "nodes": [
     {

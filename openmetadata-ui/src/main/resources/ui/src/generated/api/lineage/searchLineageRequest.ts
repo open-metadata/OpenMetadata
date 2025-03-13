@@ -18,15 +18,11 @@ export interface SearchLineageRequest {
     /**
      * Lineage Direction Value.
      */
-    directionValue?: string;
+    directionValue?: string[];
     /**
      * The downstream depth of the lineage
      */
     downstreamDepth?: number;
-    /**
-     * Query Filter
-     */
-    entityType: string;
     /**
      * Entity Fqn to search lineage
      */
@@ -35,6 +31,14 @@ export interface SearchLineageRequest {
      * Include deleted entities
      */
     includeDeleted?: boolean;
+    /**
+     * Include source fields
+     */
+    includeSourceFields?: string[];
+    /**
+     * Connected Via
+     */
+    isConnectedVia?: boolean;
     /**
      * Layer to start the search from.
      */

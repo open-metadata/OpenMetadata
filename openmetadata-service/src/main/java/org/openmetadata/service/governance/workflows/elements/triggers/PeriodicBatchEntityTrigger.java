@@ -22,7 +22,7 @@ import org.flowable.bpmn.model.StartEvent;
 import org.flowable.bpmn.model.TimerEventDefinition;
 import org.openmetadata.schema.entity.app.AppSchedule;
 import org.openmetadata.schema.entity.app.ScheduleTimeline;
-import org.openmetadata.schema.governance.workflows.elements.nodes.trigger.PeriodicBatchEntityTriggerDefinition;
+import org.openmetadata.schema.governance.workflows.elements.triggers.PeriodicBatchEntityTriggerDefinition;
 import org.openmetadata.service.apps.scheduler.AppScheduler;
 import org.openmetadata.service.governance.workflows.elements.TriggerInterface;
 import org.openmetadata.service.governance.workflows.elements.triggers.impl.FetchEntitiesImpl;
