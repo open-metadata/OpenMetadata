@@ -123,7 +123,7 @@ public class OpenSearchLineChartAggregator implements OpenSearchDynamicChartAggr
     searchSourceBuilder.query(queryFilter);
     os.org.opensearch.action.search.SearchRequest searchRequest =
         new os.org.opensearch.action.search.SearchRequest(
-            DataInsightSystemChartRepository.DI_SEARCH_INDEX);
+            DataInsightSystemChartRepository.getDataInsightsSearchIndex());
     searchRequest.source(searchSourceBuilder);
     return searchRequest;
   }

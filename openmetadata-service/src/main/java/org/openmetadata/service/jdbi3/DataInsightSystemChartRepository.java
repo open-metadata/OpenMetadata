@@ -59,6 +59,22 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
         "");
   }
 
+  public static String getDataInsightsIndexPrefix() {
+    String clusterAlias = Entity.getSearchRepository().getClusterAlias();
+    if (!(clusterAlias == null || clusterAlias.isEmpty())) {
+      return String.format("%s-%s", clusterAlias, DI_SEARCH_INDEX_PREFIX);
+    }
+    return DI_SEARCH_INDEX_PREFIX;
+  }
+
+  public static String getDataInsightsSearchIndex() {
+    String clusterAlias = Entity.getSearchRepository().getClusterAlias();
+    if (!(clusterAlias == null || clusterAlias.isEmpty())) {
+      return String.format("%s-%s", clusterAlias, DI_SEARCH_INDEX);
+    }
+    return DI_SEARCH_INDEX;
+  }
+
   @Override
   public void setFields(DataInsightCustomChart entity, EntityUtil.Fields fields) {
     /* Nothing to do */

@@ -7,15 +7,23 @@ import java.io.IOException;
 import org.apache.http.util.EntityUtils;
 import org.openmetadata.service.apps.bundles.insights.search.DataInsightsSearchInterface;
 import org.openmetadata.service.apps.bundles.insights.search.IndexLifecyclePolicyConfig;
+import org.openmetadata.service.apps.bundles.insights.search.IndexTemplate;
 import org.openmetadata.service.search.models.IndexMapping;
 
 public class ElasticSearchDataInsightsClient implements DataInsightsSearchInterface {
   private final RestClient client;
   private final String resourcePath = "/dataInsights/elasticsearch";
   private final String lifecyclePolicyName = "di-data-assets-lifecycle";
+  private final String clusterAlias;
 
-  public ElasticSearchDataInsightsClient(RestClient client) {
+  public ElasticSearchDataInsightsClient(RestClient client, String clusterAlias) {
     this.client = client;
+    this.clusterAlias = clusterAlias;
+  }
+
+  @Override
+  public String getClusterAlias() {
+    return clusterAlias;
   }
 
   private Response performRequest(String method, String path) throws IOException {
@@ -65,22 +73,24 @@ public class ElasticSearchDataInsightsClient implements DataInsightsSearchInterf
       int retentionDays)
       throws IOException {
     createLifecyclePolicy(
-        lifecyclePolicyName,
+        getStringWithClusterAlias(lifecyclePolicyName),
         buildLifecyclePolicy(
             readResource(String.format("%s/indexLifecyclePolicy.json", resourcePath)),
             retentionDays));
     createComponentTemplate(
-        "di-data-assets-settings",
+        getStringWithClusterAlias("di-data-assets-settings"),
         readResource(String.format("%s/indexSettingsTemplate.json", resourcePath)));
     createComponentTemplate(
-        "di-data-assets-mapping",
+        getStringWithClusterAlias("di-data-assets-mapping"),
         buildMapping(
             entityType,
             entityIndexMapping,
             language,
             readResource(String.format("%s/indexMappingsTemplate.json", resourcePath))));
     createIndexTemplate(
-        "di-data-assets", readResource(String.format("%s/indexTemplate.json", resourcePath)));
+        getStringWithClusterAlias("di-data-assets"),
+        IndexTemplate.getIndexTemplateWithClusterAlias(
+            getClusterAlias(), readResource(String.format("%s/indexTemplate.json", resourcePath))));
     createDataStream(name);
   }
 
@@ -94,10 +104,13 @@ public class ElasticSearchDataInsightsClient implements DataInsightsSearchInterf
   public void updateLifecyclePolicy(int retentionDays) throws IOException {
     String currentLifecyclePolicy =
         EntityUtils.toString(
-            performRequest("GET", String.format("/_ilm/policy/%s", lifecyclePolicyName))
+            performRequest(
+                    "GET",
+                    String.format(
+                        "/_ilm/policy/%s", getStringWithClusterAlias(lifecyclePolicyName)))
                 .getEntity());
     if (new IndexLifecyclePolicyConfig(
-                lifecyclePolicyName,
+                getStringWithClusterAlias(lifecyclePolicyName),
                 currentLifecyclePolicy,
                 IndexLifecyclePolicyConfig.SearchType.ELASTICSEARCH)
             .getRetentionDays()
@@ -107,7 +120,9 @@ public class ElasticSearchDataInsightsClient implements DataInsightsSearchInterf
               readResource(String.format("%s/indexLifecyclePolicy.json", resourcePath)),
               retentionDays);
       performRequest(
-          "PUT", String.format("/_ilm/policy/%s", lifecyclePolicyName), updatedLifecyclePolicy);
+          "PUT",
+          String.format("/_ilm/policy/%s", getStringWithClusterAlias(lifecyclePolicyName)),
+          updatedLifecyclePolicy);
     }
   }
 
