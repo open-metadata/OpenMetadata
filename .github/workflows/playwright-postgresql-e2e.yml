@@ -21,6 +21,7 @@ on:
       - opened
       - synchronize
       - reopened
+      - ready_for_review
     paths-ignore:
       - 'openmetadata-docs/**'
       - '.github/**'

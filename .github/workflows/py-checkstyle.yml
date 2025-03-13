@@ -15,7 +15,7 @@ name: Python Checkstyle
 # access to secrets
 on:
   pull_request_target:
-    types: [labeled, opened, synchronize, reopened]
+    types: [labeled, opened, synchronize, reopened, ready_for_review]
 
 permissions:
   contents: read
@@ -27,6 +27,7 @@ concurrency:
 jobs:
   py-checkstyle:
     runs-on: ubuntu-latest
+    if: ${{ !github.event.pull_request.draft }}
     permissions:
       pull-requests: write
 

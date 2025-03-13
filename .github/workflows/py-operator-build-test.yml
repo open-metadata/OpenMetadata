@@ -13,7 +13,7 @@ name: py-operator-build-test
 on:
   workflow_dispatch:
   pull_request_target:
-    types: [labeled, opened, synchronize, reopened]
+    types: [labeled, opened, synchronize, reopened, ready_for_review]
     paths:
       - "ingestion/**"
       - "openmetadata-service/**"
@@ -31,6 +31,7 @@ concurrency:
 jobs:
   py-run-build-tests:
     runs-on: ubuntu-latest
+    if: ${{ !github.event.pull_request.draft }}
     steps:
       - name: Free Disk Space (Ubuntu)
         uses: jlumbroso/free-disk-space@main

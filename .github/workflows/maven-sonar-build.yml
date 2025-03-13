@@ -14,7 +14,7 @@ name: Maven SonarCloud CI
 on:
   workflow_dispatch:
   pull_request_target:
-    types: [labeled, opened, synchronize, reopened]
+    types: [labeled, opened, synchronize, reopened, ready_for_review]
     paths:
       - "openmetadata-service/**"
       - "openmetadata-spec/src/main/resources/json/schema/**"
@@ -36,6 +36,7 @@ concurrency:
 jobs:
   maven-sonarcloud-ci:
     runs-on: ubuntu-latest
+    if: ${{ !github.event.pull_request.draft }}
     steps:
       - name: Wait for the labeler
         uses: lewagon/wait-on-check-action@v1.3.4
