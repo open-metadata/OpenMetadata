@@ -57,6 +57,7 @@ export enum EntityType {
   PERSONA = 'persona',
   DOC_STORE = 'docStore',
   PAGE = 'Page',
+  KNOWLEDGE_PAGE = 'page',
   knowledgePanels = 'KnowLedgePanels',
   GOVERN = 'govern',
   ALL = 'all',
@@ -74,6 +75,7 @@ export enum EntityType {
   API_COLLECTION = 'apiCollection',
   API_ENDPOINT = 'apiEndpoint',
   METRIC = 'metric',
+  WORKFLOW_DEFINITION = 'workflowDefinition',
 }
 
 export enum EntityLineageDirection {

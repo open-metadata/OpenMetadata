@@ -40,6 +40,10 @@ jest.mock('../SuggestionsProvider/SuggestionsProvider', () => ({
   default: 'SuggestionsProvider',
 }));
 
+jest.mock('../../common/RichTextEditor/RichTextEditorPreviewerV1', () =>
+  jest.fn().mockImplementation(({ markdown }) => <div>{markdown}</div>)
+);
+
 describe('SuggestionsAlert', () => {
   beforeEach(() => {
     jest.useFakeTimers();
