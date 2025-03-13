@@ -97,12 +97,21 @@ const AddBoost = ({
     <div
       className="bg-white custom-panel add-boost-container"
       data-testid="add-boost-component">
-      <div className="d-flex items-center gap-2 add-boost-header">
-        <Icon className="text-xl" component={Document} />
-        <Typography.Text className="font-medium" data-testid="boost-label">
-          {t('label.value-boost')}
-        </Typography.Text>
+      <div className="d-flex items-center justify-between gap-2 add-boost-header">
+        <div className="d-flex items-center gap-2">
+          <Icon className="text-xl" component={Document} />
+          <Typography.Text className="font-medium" data-testid="boost-label">
+            {t('label.value-boost')}
+          </Typography.Text>
+        </div>
+        <Button
+          className="delete-boost-btn"
+          data-testid="delete-boost-btn"
+          icon={<Icon className="text-md" component={Delete} />}
+          onClick={handleDelete}
+        />
       </div>
+
       <Divider className="p-x-sm m-0" />
       <div className="m-y-sm p-box">
         <Form form={form} layout="vertical">
@@ -219,19 +228,6 @@ const AddBoost = ({
                 />
               </Form.Item>
             </div>
-          </div>
-
-          <Divider />
-
-          {/* Delete Button */}
-          <div className="d-flex justify-end w-full">
-            <Button
-              className="delete-boost-btn d-flex items-center gap-2 border-none border-radius-card"
-              data-testid="delete-boost-btn"
-              onClick={handleDelete}>
-              <Icon className="text-xl font-semibold" component={Delete} />
-              <span className="text-sm">{t('label.delete-boost')}</span>
-            </Button>
           </div>
         </Form>
       </div>

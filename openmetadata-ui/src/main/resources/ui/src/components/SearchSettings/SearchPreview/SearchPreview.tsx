@@ -41,7 +41,7 @@ import './search-preview.less';
 
 const SearchPreview = ({ searchConfig }: { searchConfig: SearchSettings }) => {
   const { t } = useTranslation();
-  const { tab } = useParams<{ tab: keyof typeof ENTITY_PATH }>();
+  const { fqn } = useParams<{ fqn: keyof typeof ENTITY_PATH }>();
   const [isLoading, setIsLoading] = useState(true);
   const [data, setData] = useState<SearchedDataProps['data']>([]);
   const [searchValue, setSearchValue] = useState<string>('');
@@ -56,7 +56,7 @@ const SearchPreview = ({ searchConfig }: { searchConfig: SearchSettings }) => {
     showPagination,
   } = usePaging();
 
-  const entityType = useMemo(() => ENTITY_PATH[tab], [tab]);
+  const entityType = useMemo(() => ENTITY_PATH[fqn], [fqn]);
 
   const fetchAssets = useCallback(
     async ({

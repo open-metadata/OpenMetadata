@@ -273,8 +273,10 @@ const SettingsRouter = () => {
       <AdminProtectedRoute
         exact
         component={EntitySearchSettings}
-        path={getSettingCategoryPath(
-          GlobalSettingsMenuCategory.SEARCH_SETTINGS
+        path={getSettingPath(
+          GlobalSettingsMenuCategory.PREFERENCES,
+          GlobalSettingOptions.SEARCH_SETTINGS,
+          true
         )}
       />
 

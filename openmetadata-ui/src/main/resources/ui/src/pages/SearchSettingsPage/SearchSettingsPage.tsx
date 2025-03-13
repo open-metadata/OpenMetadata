@@ -39,7 +39,7 @@ import {
   updateSettingsConfig,
 } from '../../rest/settingConfigAPI';
 import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
-import { getSettingPath } from '../../utils/RouterUtils';
+import { getSettingsPathWithFqn } from '../../utils/RouterUtils';
 import { getSearchSettingCategories } from '../../utils/SearchSettingsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import './search-settings.less';
@@ -130,22 +130,6 @@ const SearchSettingsPage = () => {
   };
 
   const handleAddNewTermBoost = () => {
-    // if (!searchConfig) {
-    //   return;
-    // }
-
-    // const updatedConfig = {
-    //   ...searchConfig,
-    //   globalSettings: {
-    //     ...searchConfig.globalSettings,
-    //     termBoosts: [
-    //       { field: '', value: '', boost: 0 },
-    //       ...(searchConfig.globalSettings?.termBoosts ?? []),
-    //     ],
-    //   },
-    // };
-
-    // setSearchConfig(updatedConfig);
     setShowNewTermBoost(true);
   };
 
@@ -200,8 +184,8 @@ const SearchSettingsPage = () => {
   };
 
   const handleViewDetailClick = (key: string) => {
-    const [category, option] = key.split('.');
-    history.push(getSettingPath(category, option));
+    const [category, option, entity] = key.split('.');
+    history.push(getSettingsPathWithFqn(category, option, entity));
   };
 
   useEffect(() => {

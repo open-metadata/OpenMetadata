@@ -21,7 +21,6 @@ export enum GlobalSettingsMenuCategory {
   BOTS = 'bots',
   APPLICATIONS = 'apps',
   PERSONA = 'persona',
-  SEARCH_SETTINGS = 'search-settings',
 }
 
 export enum GlobalSettingOptions {

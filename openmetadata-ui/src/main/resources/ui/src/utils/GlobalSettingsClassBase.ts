@@ -48,7 +48,6 @@ import { ReactComponent as ProfilerConfigIcon } from '../assets/svg/profiler-con
 import { ReactComponent as QueryIcon } from '../assets/svg/query-colored-new.svg';
 import { ReactComponent as RolesIcon } from '../assets/svg/role-colored.svg';
 import { ReactComponent as SearchIconV1 } from '../assets/svg/search-colored-new.svg';
-import { ReactComponent as SearchIcon } from '../assets/svg/search-colored.svg';
 import { ReactComponent as SearchIndexIcon } from '../assets/svg/search-index-colored-new.svg';
 import { ReactComponent as AccessControlIcon } from '../assets/svg/setting-access-control.svg';
 import { ReactComponent as CustomProperties } from '../assets/svg/setting-custom-properties.svg';
@@ -370,6 +369,161 @@ class GlobalSettingsClassBase {
             isProtected: Boolean(isAdminUser),
             key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.SEARCH_SETTINGS}`,
             icon: PoliciesIcon,
+            items: [
+              {
+                label: t('label.table-plural'),
+                description: t('message.search-settings-for-entity', {
+                  entity: t('label.table-plural'),
+                }),
+                isProtected: Boolean(isAdminUser),
+                key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.SEARCH_SETTINGS}.${GlobalSettingOptions.TABLES}`,
+                icon: TableIcon,
+              },
+              {
+                label: t('label.dashboard-plural'),
+                description: t('message.search-settings-for-entity', {
+                  entity: t('label.dashboard-plural'),
+                }),
+                isProtected: Boolean(isAdminUser),
+                key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.SEARCH_SETTINGS}.${GlobalSettingOptions.DASHBOARDS}`,
+                icon: DashboardIcon,
+              },
+              {
+                label: t('label.pipeline-plural'),
+                description: t('message.search-settings-for-entity', {
+                  entity: t('label.pipeline-plural'),
+                }),
+                isProtected: Boolean(isAdminUser),
+                key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.SEARCH_SETTINGS}.${GlobalSettingOptions.PIPELINES}`,
+                icon: PipelineIcon,
+              },
+              {
+                label: t('label.topic-plural'),
+                description: t('message.search-settings-for-entity', {
+                  entity: t('label.topic-plural'),
+                }),
+                isProtected: Boolean(isAdminUser),
+                key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.SEARCH_SETTINGS}.${GlobalSettingOptions.TOPICS}`,
+                icon: MessagingIcon,
+              },
+              {
+                label: t('label.glossary-term'),
+                description: t('message.search-settings-for-entity', {
+                  entity: t('label.glossary-term'),
+                }),
+                isProtected: Boolean(isAdminUser),
+                key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.SEARCH_SETTINGS}.${GlobalSettingOptions.GLOSSARY_TERM}`,
+                icon: GlossaryIcon,
+              },
+              {
+                label: t('label.api-endpoint'),
+                description: t('message.search-settings-for-entity', {
+                  entity: t('label.api-endpoint'),
+                }),
+                isProtected: Boolean(isAdminUser),
+                key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.SEARCH_SETTINGS}.${GlobalSettingOptions.API_ENDPOINTS}`,
+                icon: APIEndpointIcon,
+              },
+              {
+                label: t('label.dashboard-data-model-plural'),
+                description: t('message.search-settings-for-entity', {
+                  entity: t('label.dashboard-data-model-plural'),
+                }),
+                isProtected: Boolean(isAdminUser),
+                key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.SEARCH_SETTINGS}.${GlobalSettingOptions.DASHBOARD_DATA_MODEL}`,
+                icon: DashboardDataModelIcon,
+              },
+              {
+                label: t('label.stored-procedure-plural'),
+                description: t('message.search-settings-for-entity', {
+                  entity: t('label.stored-procedure-plural'),
+                }),
+                isProtected: Boolean(isAdminUser),
+                key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.SEARCH_SETTINGS}.${GlobalSettingOptions.STORED_PROCEDURES}`,
+                icon: StoredProcedureIcon,
+              },
+              {
+                label: t('label.container-plural'),
+                description: t('message.search-settings-for-entity', {
+                  entity: t('label.container-plural'),
+                }),
+                isProtected: Boolean(isAdminUser),
+                key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.SEARCH_SETTINGS}.${GlobalSettingOptions.CONTAINERS}`,
+                icon: StorageIcon,
+              },
+              {
+                label: t('label.ml-model-plural'),
+                description: t('message.search-settings-for-entity', {
+                  entity: t('label.ml-model-plural'),
+                }),
+                isProtected: Boolean(isAdminUser),
+                key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.SEARCH_SETTINGS}.${GlobalSettingOptions.MLMODELS}`,
+                icon: MlModelIcon,
+              },
+              {
+                label: t('label.data-product-plural'),
+                description: t('message.search-settings-for-entity', {
+                  entity: t('label.data-product-plural'),
+                }),
+                isProtected: Boolean(isAdminUser),
+                key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.SEARCH_SETTINGS}.${GlobalSettingOptions.DATA_PRODUCT}`,
+                icon: DataAssetsIcon,
+              },
+              {
+                label: t('label.query'),
+                description: t('message.search-settings-for-entity', {
+                  entity: t('label.query'),
+                }),
+                isProtected: Boolean(isAdminUser),
+                key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.SEARCH_SETTINGS}.${GlobalSettingOptions.QUERY}`,
+                icon: QueryIcon,
+              },
+              {
+                label: t('label.tag-plural'),
+                description: t('message.search-settings-for-entity', {
+                  entity: t('label.tag-plural'),
+                }),
+                isProtected: Boolean(isAdminUser),
+                key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.SEARCH_SETTINGS}.${GlobalSettingOptions.TAGS}`,
+                icon: TagIcon,
+              },
+              {
+                label: t('label.database-plural'),
+                description: t('message.search-settings-for-entity', {
+                  entity: t('label.database-plural'),
+                }),
+                isProtected: Boolean(isAdminUser),
+                key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.SEARCH_SETTINGS}.${GlobalSettingOptions.DATABASES}`,
+                icon: DatabaseIcon,
+              },
+              {
+                label: t('label.database-schema'),
+                description: t('message.search-settings-for-entity', {
+                  entity: t('label.database-schema'),
+                }),
+                isProtected: Boolean(isAdminUser),
+                key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.SEARCH_SETTINGS}.${GlobalSettingOptions.DATABASE_SCHEMA}`,
+                icon: SchemaIcon,
+              },
+              {
+                label: t('label.domain-plural'),
+                description: t('message.search-settings-for-entity', {
+                  entity: t('label.domain-plural'),
+                }),
+                isProtected: Boolean(isAdminUser),
+                key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.SEARCH_SETTINGS}.${GlobalSettingOptions.DOMAINS}`,
+                icon: DomainIcon,
+              },
+              {
+                label: t('label.search-index-plural'),
+                description: t('message.search-settings-for-entity', {
+                  entity: t('label.search-index-plural'),
+                }),
+                isProtected: Boolean(isAdminUser),
+                key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.SEARCH_SETTINGS}.${GlobalSettingOptions.SEARCH_INDEXES}`,
+                icon: SearchIndexIcon,
+              },
+            ].sort((a, b) => a.label.localeCompare(b.label)),
           },
           {
             label: t('label.lineage'),
@@ -538,167 +692,6 @@ class GlobalSettingsClassBase {
             isProtected: Boolean(isAdminUser),
             key: `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.GLOSSARY_TERM}`,
             icon: GlossaryIcon,
-          },
-        ].sort((a, b) => a.label.localeCompare(b.label)),
-      },
-      {
-        category: t('label.search-setting-plural'),
-        key: GlobalSettingsMenuCategory.SEARCH_SETTINGS,
-        icon: SearchIcon,
-        description: 't(message.search-settings-description)',
-        items: [
-          {
-            label: t('label.table-plural'),
-            description: t('message.search-settings-for-entity', {
-              entity: t('label.table-plural'),
-            }),
-            isProtected: Boolean(isAdminUser),
-            key: `${GlobalSettingsMenuCategory.SEARCH_SETTINGS}.${GlobalSettingOptions.TABLES}`,
-            icon: TableIcon,
-          },
-          {
-            label: t('label.dashboard-plural'),
-            description: t('message.search-settings-for-entity', {
-              entity: t('label.dashboard-plural'),
-            }),
-            isProtected: Boolean(isAdminUser),
-            key: `${GlobalSettingsMenuCategory.SEARCH_SETTINGS}.${GlobalSettingOptions.DASHBOARDS}`,
-            icon: DashboardIcon,
-          },
-          {
-            label: t('label.pipeline-plural'),
-            description: t('message.search-settings-for-entity', {
-              entity: t('label.pipeline-plural'),
-            }),
-            isProtected: Boolean(isAdminUser),
-            key: `${GlobalSettingsMenuCategory.SEARCH_SETTINGS}.${GlobalSettingOptions.PIPELINES}`,
-            icon: PipelineIcon,
-          },
-          {
-            label: t('label.topic-plural'),
-            description: t('message.search-settings-for-entity', {
-              entity: t('label.topic-plural'),
-            }),
-            isProtected: Boolean(isAdminUser),
-            key: `${GlobalSettingsMenuCategory.SEARCH_SETTINGS}.${GlobalSettingOptions.TOPICS}`,
-            icon: MessagingIcon,
-          },
-          {
-            label: t('label.glossary-term'),
-            description: t('message.search-settings-for-entity', {
-              entity: t('label.glossary-term'),
-            }),
-            isProtected: Boolean(isAdminUser),
-            key: `${GlobalSettingsMenuCategory.SEARCH_SETTINGS}.${GlobalSettingOptions.GLOSSARY_TERM}`,
-            icon: GlossaryIcon,
-          },
-          {
-            label: t('label.api-endpoint'),
-            description: t('message.search-settings-for-entity', {
-              entity: t('label.api-endpoint'),
-            }),
-            isProtected: Boolean(isAdminUser),
-            key: `${GlobalSettingsMenuCategory.SEARCH_SETTINGS}.${GlobalSettingOptions.API_ENDPOINTS}`,
-            icon: APIEndpointIcon,
-          },
-          {
-            label: t('label.dashboard-data-model-plural'),
-            description: t('message.search-settings-for-entity', {
-              entity: t('label.dashboard-data-model-plural'),
-            }),
-            isProtected: Boolean(isAdminUser),
-            key: `${GlobalSettingsMenuCategory.SEARCH_SETTINGS}.${GlobalSettingOptions.DASHBOARD_DATA_MODEL}`,
-            icon: DashboardDataModelIcon,
-          },
-          {
-            label: t('label.stored-procedure-plural'),
-            description: t('message.search-settings-for-entity', {
-              entity: t('label.stored-procedure-plural'),
-            }),
-            isProtected: Boolean(isAdminUser),
-            key: `${GlobalSettingsMenuCategory.SEARCH_SETTINGS}.${GlobalSettingOptions.STORED_PROCEDURES}`,
-            icon: StoredProcedureIcon,
-          },
-          {
-            label: t('label.container-plural'),
-            description: t('message.search-settings-for-entity', {
-              entity: t('label.container-plural'),
-            }),
-            isProtected: Boolean(isAdminUser),
-            key: `${GlobalSettingsMenuCategory.SEARCH_SETTINGS}.${GlobalSettingOptions.CONTAINERS}`,
-            icon: StorageIcon,
-          },
-          {
-            label: t('label.ml-model-plural'),
-            description: t('message.search-settings-for-entity', {
-              entity: t('label.ml-model-plural'),
-            }),
-            isProtected: Boolean(isAdminUser),
-            key: `${GlobalSettingsMenuCategory.SEARCH_SETTINGS}.${GlobalSettingOptions.MLMODELS}`,
-            icon: MlModelIcon,
-          },
-          {
-            label: t('label.data-product-plural'),
-            description: t('message.search-settings-for-entity', {
-              entity: t('label.data-product-plural'),
-            }),
-            isProtected: Boolean(isAdminUser),
-            key: `${GlobalSettingsMenuCategory.SEARCH_SETTINGS}.${GlobalSettingOptions.DATA_PRODUCT}`,
-            icon: DataAssetsIcon,
-          },
-          {
-            label: t('label.query'),
-            description: t('message.search-settings-for-entity', {
-              entity: t('label.query'),
-            }),
-            isProtected: Boolean(isAdminUser),
-            key: `${GlobalSettingsMenuCategory.SEARCH_SETTINGS}.${GlobalSettingOptions.QUERY}`,
-            icon: QueryIcon,
-          },
-          {
-            label: t('label.tag-plural'),
-            description: t('message.search-settings-for-entity', {
-              entity: t('label.tag-plural'),
-            }),
-            isProtected: Boolean(isAdminUser),
-            key: `${GlobalSettingsMenuCategory.SEARCH_SETTINGS}.${GlobalSettingOptions.TAGS}`,
-            icon: TagIcon,
-          },
-          {
-            label: t('label.database-plural'),
-            description: t('message.search-settings-for-entity', {
-              entity: t('label.database-plural'),
-            }),
-            isProtected: Boolean(isAdminUser),
-            key: `${GlobalSettingsMenuCategory.SEARCH_SETTINGS}.${GlobalSettingOptions.DATABASES}`,
-            icon: DatabaseIcon,
-          },
-          {
-            label: t('label.database-schema'),
-            description: t('message.search-settings-for-entity', {
-              entity: t('label.database-schema'),
-            }),
-            isProtected: Boolean(isAdminUser),
-            key: `${GlobalSettingsMenuCategory.SEARCH_SETTINGS}.${GlobalSettingOptions.DATABASE_SCHEMA}`,
-            icon: SchemaIcon,
-          },
-          {
-            label: t('label.domain-plural'),
-            description: t('message.search-settings-for-entity', {
-              entity: t('label.domain-plural'),
-            }),
-            isProtected: Boolean(isAdminUser),
-            key: `${GlobalSettingsMenuCategory.SEARCH_SETTINGS}.${GlobalSettingOptions.DOMAINS}`,
-            icon: DomainIcon,
-          },
-          {
-            label: t('label.search-index-plural'),
-            description: t('message.search-settings-for-entity', {
-              entity: t('label.search-index-plural'),
-            }),
-            isProtected: Boolean(isAdminUser),
-            key: `${GlobalSettingsMenuCategory.SEARCH_SETTINGS}.${GlobalSettingOptions.SEARCH_INDEXES}`,
-            icon: SearchIndexIcon,
           },
         ].sort((a, b) => a.label.localeCompare(b.label)),
       },

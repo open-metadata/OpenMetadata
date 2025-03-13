@@ -52,7 +52,10 @@ import './entity-search-settings.less';
 
 const EntitySearchSettings = () => {
   const { t } = useTranslation();
-  const { tab } = useParams<{ tab: keyof typeof ENTITY_PATH }>();
+  const { fqn } = useParams<{
+    fqn: keyof typeof ENTITY_PATH;
+  }>();
+
   const { permissions } = usePermissionProvider();
   const { isAdminUser } = useAuth();
   const {
@@ -75,7 +78,7 @@ const EntitySearchSettings = () => {
     useState<SearchSettings>(searchConfig ?? {});
   const [showNewTermBoost, setShowNewTermBoost] = useState<boolean>(false);
 
-  const entityType = useMemo(() => ENTITY_PATH[tab], [tab]);
+  const entityType = useMemo(() => ENTITY_PATH[fqn], [fqn]);
 
   const getEntityConfiguration = useMemo(() => {
     return getEntitySearchConfig(searchConfig, entityType);
@@ -87,8 +90,8 @@ const EntitySearchSettings = () => {
       isAdminUser ?? false
     );
 
-    return settingCategories?.find((data) => data.key.split('.')[1] === tab);
-  }, [permissions, isAdminUser, tab]);
+    return settingCategories?.find((data) => data.key.split('.')[2] === fqn);
+  }, [permissions, isAdminUser, fqn]);
 
   const entitySearchFields = useMemo(() => {
     if (!getEntityConfiguration?.searchFields) {

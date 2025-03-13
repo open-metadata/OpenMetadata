@@ -12,7 +12,10 @@
  */
 import { DefaultOptionType } from 'antd/lib/select';
 import { startCase } from 'lodash';
-import { GlobalSettingsMenuCategory } from '../constants/GlobalSettings.constants';
+import {
+  GlobalSettingOptions,
+  GlobalSettingsMenuCategory,
+} from '../constants/GlobalSettings.constants';
 import { UIPermission } from '../context/PermissionProvider/PermissionProvider.interface';
 import {
   BoostMode,
@@ -33,20 +36,20 @@ export const getSearchSettingCategories = (
   permissions: UIPermission,
   isAdminUser: boolean
 ): SettingCategoryData[] | undefined => {
-  let categoryItem = globalSettingsClassBase
+  const categoryItem = globalSettingsClassBase
     .getGlobalSettingsMenuWithPermission(permissions, isAdminUser)
-    .find((item) => item.key === GlobalSettingsMenuCategory.SEARCH_SETTINGS);
+    .find((item) => item.key === GlobalSettingsMenuCategory.PREFERENCES)
+    ?.items?.find(
+      (item) =>
+        item.key ===
+        `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.SEARCH_SETTINGS}`
+    );
 
-  if (categoryItem) {
-    categoryItem = {
-      ...categoryItem,
-      items: categoryItem?.items?.filter(
+  return categoryItem
+    ? (categoryItem?.items?.filter(
         (item) => item.isProtected
-      ) as SettingCategoryData[],
-    };
-  }
-
-  return categoryItem?.items as SettingCategoryData[];
+      ) as SettingCategoryData[])
+    : [];
 };
 
 /**
