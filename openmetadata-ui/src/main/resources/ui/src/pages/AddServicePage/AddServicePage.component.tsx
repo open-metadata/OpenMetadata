@@ -44,6 +44,7 @@ import { handleEntityCreationError } from '../../utils/formUtils';
 import { getAddServicePath, getSettingPath } from '../../utils/RouterUtils';
 import {
   getAddServiceEntityBreadcrumb,
+  getEntityTypeFromServiceCategory,
   getServiceRouteFromServiceType,
   getServiceType,
 } from '../../utils/ServiceUtils';
@@ -150,8 +151,9 @@ const AddServicePage = () => {
 
   const triggerTheDayOneApplication = async (serviceDetails: ServicesType) => {
     try {
+      const entityType = getEntityTypeFromServiceCategory(serviceCategory);
       const entityLink = getEntityFeedLink(
-        serviceCategory,
+        entityType,
         serviceDetails.fullyQualifiedName
       );
 
