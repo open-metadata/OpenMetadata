@@ -15,4 +15,5 @@ workflowConfig:
     # verifySSL: validate  # or ignore
     # sslConfig:
     #   caCertificate: /local/path/to/certificate
+# ingestionPipelineFQN: <service name>.<ingestion name> ## e.g., "my_redshift.metadata"
 ```
