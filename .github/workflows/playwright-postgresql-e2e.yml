@@ -21,6 +21,7 @@ on:
       - opened
       - synchronize
       - reopened
+      - ready_for_review
     paths-ignore:
       - 'openmetadata-docs/**'
       - '.github/**'
@@ -38,7 +39,8 @@ concurrency:
 
 jobs:
   playwright-ci-postgresql:
-    runs-on: ubuntu-22.04
+    runs-on: large-x86
+    if: ${{ !github.event.pull_request.draft }}
     environment: test
     strategy:
       fail-fast: false
@@ -102,7 +104,12 @@ jobs:
         run: npx playwright@1.48.2 install --with-deps
       - name: Run Playwright tests
         working-directory: openmetadata-ui/src/main/resources/ui/
-        run: npx playwright test --shard=${{ matrix.shardIndex }}/${{ matrix.shardTotal }}
+        run: |
+          if [[ "${{ contains(github.event.pull_request.changed_files, 'ingestion/') }}" == "true" ]]; then
+            npx playwright test --grep @ingestion --shard=${{ matrix.shardIndex }}/${{ matrix.shardTotal }}
+          else
+            npx playwright test --shard=${{ matrix.shardIndex }}/${{ matrix.shardTotal }}
+          fi
         env:
           PLAYWRIGHT_IS_OSS: true
           PLAYWRIGHT_SNOWFLAKE_USERNAME: ${{ secrets.TEST_SNOWFLAKE_USERNAME }}
