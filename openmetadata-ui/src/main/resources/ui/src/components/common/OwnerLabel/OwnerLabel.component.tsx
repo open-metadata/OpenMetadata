@@ -13,32 +13,14 @@
 
 import { Typography } from 'antd';
 import classNames from 'classnames';
-import React, { ReactNode, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-
-import { UserTeamSelectableList } from '../UserTeamSelectableList/UserTeamSelectableList.component';
-import './owner-label.less';
-
-import { EntityReference } from '../../../generated/entity/data/table';
 import { NoOwnerFound } from '../NoOwner/NoOwnerFound';
 import { OwnerItem } from '../OwnerItem/OwnerItem';
 import { OwnerReveal } from '../RemainingOwner/OwnerReveal';
-
-export interface OwnerLabelProps {
-  owners?: EntityReference[];
-  className?: string;
-  onUpdate?: (owners?: EntityReference[]) => void;
-  hasPermission?: boolean;
-  ownerDisplayName?: ReactNode[];
-  placeHolder?: string;
-  maxVisibleOwners?: number;
-  multiple?: {
-    user: boolean;
-    team: boolean;
-  };
-  tooltipText?: string;
-  isCompactView?: boolean;
-}
+import { UserTeamSelectableList } from '../UserTeamSelectableList/UserTeamSelectableList.component';
+import './owner-label.less';
+import { OwnerLabelProps } from './OwnerLabel.interface';
 
 export const OwnerLabel = ({
   owners = [],
@@ -97,7 +79,6 @@ export const OwnerLabel = ({
             { inherited: Boolean(owners.some((owner) => owner?.inherited)) },
             className
           )}>
-          {/* Compact view header - now for !isCompactView */}
           {!isCompactView && (
             <div className="d-flex items-center gap-2">
               <Typography.Text
@@ -150,7 +131,6 @@ export const OwnerLabel = ({
           </div>
         </div>
 
-        {/* Edit button for non-compact view - now for isCompactView */}
         {isCompactView && onUpdate && (
           <UserTeamSelectableList
             hasPermission={Boolean(hasPermission)}

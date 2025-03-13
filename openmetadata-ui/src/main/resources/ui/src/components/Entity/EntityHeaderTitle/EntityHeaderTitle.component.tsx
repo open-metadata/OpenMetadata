@@ -73,22 +73,27 @@ const EntityHeaderTitle = ({
       data-testid={`${serviceName}-${name}`}
       gutter={12}
       wrap={false}>
-      {icon && <Col className="flex-center ">{icon}</Col>}
+      {icon && <Col className="flex-center">{icon}</Col>}
       <Col
         className={`d-flex flex-col gap-2 ${
           deleted || badge ? 'w-max-full-140' : 'entity-header-content'
         }`}>
         {/* If we do not have displayName name only be shown in the bold from the below code */}
         {!isEmpty(displayName) && showName ? (
-          <Typography.Text
-            className={classNames(
-              'entity-header-name',
-              nameClassName,
-              'm-b-0 d-block display-sm font-semibold heading'
-            )}
-            data-testid="entity-header-name">
-            {stringToHTML(name)}
-          </Typography.Text>
+          <Tooltip
+            align={{ targetOffset: [0, -15] }}
+            title={stringToHTML(name)}>
+            <Typography.Text
+              className={classNames(
+                'entity-header-name',
+                nameClassName,
+                'm-b-0 d-block display-sm font-semibold'
+              )}
+              data-testid="entity-header-name"
+              ellipsis={{ tooltip: true }}>
+              {stringToHTML(name)}
+            </Typography.Text>
+          </Tooltip>
         ) : null}
 
         <div
@@ -117,7 +122,7 @@ const EntityHeaderTitle = ({
             placement="topRight"
             title={copyTooltip ?? t('message.copy-to-clipboard')}>
             <Button
-              className="remove-button-default-styling copy-button d-flex align-center justify-center p-xss "
+              className="remove-button-default-styling copy-button flex-center p-xss "
               icon={<Icon component={ShareIcon} />}
               onClick={handleShareButtonClick}
             />
@@ -129,7 +134,7 @@ const EntityHeaderTitle = ({
                 entity: capitalize(entityType),
               })}>
               <Button
-                className="entity-follow-button d-flex gap-1 align-center justify-center p-y-xss p-x-sm w-fit-content border-none h-auto text-sm "
+                className="entity-follow-button flex-center gap-1 text-sm "
                 data-testid="entity-follow-button"
                 disabled={deleted}
                 icon={<Icon component={StarFilledIcon} />}

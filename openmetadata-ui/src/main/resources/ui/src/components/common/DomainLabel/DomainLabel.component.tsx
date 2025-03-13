@@ -150,7 +150,7 @@ export const DomainLabel = ({
         <Typography.Text
           className={classNames(
             'domain-link-text',
-            { 'text-sm font-medium': !showDomainHeading },
+            { 'font-medium text-sm': !showDomainHeading },
             textClassName
           )}
           data-testid="no-domain-text">
