@@ -34,8 +34,14 @@
         "$ref": "../../../../../type/basic.json#/definitions/entityName"
       },
       "default": null
+    },
+    "removeAll": {
+      "title": "Remove All",
+      "description": "Remove all test cases",
+      "type": "boolean",
+      "default": false
     }
   },
-  "required": ["type", "testCases"],
+  "required": ["type"],
   "additionalProperties": false
 }
