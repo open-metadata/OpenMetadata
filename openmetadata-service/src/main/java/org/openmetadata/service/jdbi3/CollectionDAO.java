@@ -5064,7 +5064,7 @@ public interface CollectionDAO {
         @Bind("extension") String extension,
         @BindJsonContains(
                 value = "service_filter",
-                path = "$.successContext.stats.services",
+                path = "$.services",
                 property = "id")
             UUID service);
 
@@ -5076,7 +5076,7 @@ public interface CollectionDAO {
         @Bind("extension") String extension,
         @BindJsonContains(
                 value = "service_filter",
-                path = "$.successContext.stats.services",
+                path = "$.services",
                 property = "id",
                 ifNull = "TRUE")
             UUID service);
@@ -5090,7 +5090,7 @@ public interface CollectionDAO {
         @Bind("extension") String extension,
         @BindJsonContains(
                 value = "service_filter",
-                path = "$.successContext.stats.services",
+                path = "$.services",
                 property = "id",
                 ifNull = "TRUE")
             UUID service);
@@ -5105,7 +5105,7 @@ public interface CollectionDAO {
         @Bind("extension") String extension,
         @BindJsonContains(
                 value = "service_filter",
-                path = "$.successContext.stats.services",
+                path = "$.services",
                 property = "id",
                 ifNull = "TRUE")
             UUID service);
