@@ -50,7 +50,7 @@ concurrency:
   cancel-in-progress: true
 jobs:
   maven-sonarcloud-ci:
-    runs-on: large-x86
+    runs-on: ubuntu-latest
     steps:
       - name: Wait for the labeler
         uses: lewagon/wait-on-check-action@v1.3.4

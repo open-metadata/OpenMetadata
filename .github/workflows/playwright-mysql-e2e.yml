@@ -40,6 +40,7 @@ concurrency:
 jobs:
   playwright-ci-mysql:
     runs-on: large-x86
+    if: ${{ !github.event.pull_request.draft }}
     environment: test
     strategy:
       fail-fast: false

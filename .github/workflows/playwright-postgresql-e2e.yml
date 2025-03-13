@@ -39,6 +39,7 @@ concurrency:
 jobs:
   playwright-ci-postgresql:
     runs-on: large-x86
+    if: ${{ !github.event.pull_request.draft }}
     environment: test
     strategy:
       fail-fast: false

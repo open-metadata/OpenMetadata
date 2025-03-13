@@ -33,7 +33,7 @@ permissions:
 
 jobs:
   py-run-tests:
-    runs-on: large-x86
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
