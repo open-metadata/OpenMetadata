@@ -114,7 +114,7 @@ public class ElasticSearchLineChartAggregator
     searchSourceBuilder.query(queryFilter);
     es.org.elasticsearch.action.search.SearchRequest searchRequest =
         new es.org.elasticsearch.action.search.SearchRequest(
-            DataInsightSystemChartRepository.DI_SEARCH_INDEX);
+            DataInsightSystemChartRepository.getDataInsightsSearchIndex());
     searchRequest.source(searchSourceBuilder);
     return searchRequest;
   }

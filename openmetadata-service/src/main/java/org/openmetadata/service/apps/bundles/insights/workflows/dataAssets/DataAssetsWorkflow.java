@@ -151,8 +151,11 @@ public class DataAssetsWorkflow {
     contextData.put(END_TIMESTAMP_KEY, endTimestamp);
 
     for (PaginatedEntitiesSource source : sources) {
-      deleteDataBeforeInserting(getDataStreamName(source.getEntityType()));
-      contextData.put(DATA_STREAM_KEY, getDataStreamName(source.getEntityType()));
+      deleteDataBeforeInserting(
+          getDataStreamName(searchInterface.getClusterAlias(), source.getEntityType()));
+      contextData.put(
+          DATA_STREAM_KEY,
+          getDataStreamName(searchInterface.getClusterAlias(), source.getEntityType()));
       contextData.put(ENTITY_TYPE_KEY, source.getEntityType());
       contextData.put(
           ENTITY_TYPE_FIELDS_KEY,

@@ -88,4 +88,17 @@ public interface DataInsightsSearchInterface {
   void deleteDataAssetDataStream(String name) throws IOException;
 
   Boolean dataAssetDataStreamExists(String name) throws IOException;
+
+  String getClusterAlias();
+
+  default String getStringWithClusterAlias(String s) {
+    return getStringWithClusterAlias(getClusterAlias(), s);
+  }
+
+  static String getStringWithClusterAlias(String clusterAlias, String s) {
+    if (!(clusterAlias == null || clusterAlias.isEmpty())) {
+      return String.format("%s-%s", clusterAlias, s);
+    }
+    return s;
+  }
 }

@@ -5,13 +5,21 @@ import es.org.elasticsearch.client.Response;
 import es.org.elasticsearch.client.RestClient;
 import java.io.IOException;
 import org.openmetadata.service.apps.bundles.insights.search.DataInsightsSearchInterface;
+import org.openmetadata.service.apps.bundles.insights.search.IndexTemplate;
 import org.openmetadata.service.search.models.IndexMapping;
 
 public class ElasticSearchDataInsightsClient implements DataInsightsSearchInterface {
   private final RestClient client;
+  private final String clusterAlias;
 
-  public ElasticSearchDataInsightsClient(RestClient client) {
+  public ElasticSearchDataInsightsClient(RestClient client, String clusterAlias) {
     this.client = client;
+    this.clusterAlias = clusterAlias;
+  }
+
+  @Override
+  public String getClusterAlias() {
+    return clusterAlias;
   }
 
   private Response performRequest(String method, String path) throws IOException {
@@ -58,20 +66,22 @@ public class ElasticSearchDataInsightsClient implements DataInsightsSearchInterf
       throws IOException {
     String resourcePath = "/dataInsights/elasticsearch";
     createLifecyclePolicy(
-        "di-data-assets-lifecycle",
+        getStringWithClusterAlias("di-data-assets-lifecycle"),
         readResource(String.format("%s/indexLifecyclePolicy.json", resourcePath)));
     createComponentTemplate(
-        "di-data-assets-settings",
+        getStringWithClusterAlias("di-data-assets-settings"),
         readResource(String.format("%s/indexSettingsTemplate.json", resourcePath)));
     createComponentTemplate(
-        "di-data-assets-mapping",
+        getStringWithClusterAlias("di-data-assets-mapping"),
         buildMapping(
             entityType,
             entityIndexMapping,
             language,
             readResource(String.format("%s/indexMappingsTemplate.json", resourcePath))));
     createIndexTemplate(
-        "di-data-assets", readResource(String.format("%s/indexTemplate.json", resourcePath)));
+        getStringWithClusterAlias("di-data-assets"),
+        IndexTemplate.getIndexTemplateWithClusterAlias(
+            getClusterAlias(), readResource(String.format("%s/indexTemplate.json", resourcePath))));
     createDataStream(name);
   }
 

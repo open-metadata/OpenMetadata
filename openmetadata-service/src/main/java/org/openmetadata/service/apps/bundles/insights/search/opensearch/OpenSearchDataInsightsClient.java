@@ -2,6 +2,7 @@ package org.openmetadata.service.apps.bundles.insights.search.opensearch;
 
 import java.io.IOException;
 import org.openmetadata.service.apps.bundles.insights.search.DataInsightsSearchInterface;
+import org.openmetadata.service.apps.bundles.insights.search.IndexTemplate;
 import org.openmetadata.service.search.models.IndexMapping;
 import os.org.opensearch.client.Request;
 import os.org.opensearch.client.Response;
@@ -10,9 +11,16 @@ import os.org.opensearch.client.RestClient;
 
 public class OpenSearchDataInsightsClient implements DataInsightsSearchInterface {
   private final RestClient client;
+  private final String clusterAlias;
 
-  public OpenSearchDataInsightsClient(RestClient client) {
+  public OpenSearchDataInsightsClient(RestClient client, String clusterAlias) {
     this.client = client;
+    this.clusterAlias = clusterAlias;
+  }
+
+  @Override
+  public String getClusterAlias() {
+    return clusterAlias;
   }
 
   private Response performRequest(String method, String path) throws IOException {
@@ -69,17 +77,19 @@ public class OpenSearchDataInsightsClient implements DataInsightsSearchInterface
       throws IOException {
     String resourcePath = "/dataInsights/opensearch";
     createLifecyclePolicy(
-        "di-data-assets-lifecycle",
+        getStringWithClusterAlias("di-data-assets-lifecycle"),
         readResource(String.format("%s/indexLifecyclePolicy.json", resourcePath)));
     createComponentTemplate(
-        "di-data-assets-mapping",
+        getStringWithClusterAlias("di-data-assets-mapping"),
         buildMapping(
             entityType,
             entityIndexMapping,
             language,
             readResource(String.format("%s/indexMappingsTemplate.json", resourcePath))));
     createIndexTemplate(
-        "di-data-assets", readResource(String.format("%s/indexTemplate.json", resourcePath)));
+        getStringWithClusterAlias("di-data-assets"),
+        IndexTemplate.getIndexTemplateWithClusterAlias(
+            getClusterAlias(), readResource(String.format("%s/indexTemplate.json", resourcePath))));
     createDataStream(name);
   }
 
