@@ -215,3 +215,8 @@ fernetConfiguration:
 
 dataQualityConfiguration:
   severityIncidentClassifier: "org.openmetadata.service.util.incidentSeverityClassifier.LogisticRegressionIncidentSeverityClassifier"
+
+objectStorage:
+  enabled: false
+  provider: NOOP
+  maxFileSize: 5242880
