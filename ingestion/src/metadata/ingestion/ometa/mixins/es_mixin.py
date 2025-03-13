@@ -464,7 +464,20 @@ class ESMixin(Generic[T]):
         }
         if incremental:
             query.get("query").get("bool").get("must").append(
-                {"bool": {"should": [{"term": {"processedLineage": False}}]}}
+                {
+                    "bool": {
+                        "should": [
+                            {"term": {"processedLineage": False}},
+                            {
+                                "bool": {
+                                    "must_not": {
+                                        "exists": {"field": "processedLineage"}
+                                    }
+                                }
+                            },
+                        ]
+                    }
+                }
             )
         query = json.dumps(query)
         for response in self._paginate_es_internal(
