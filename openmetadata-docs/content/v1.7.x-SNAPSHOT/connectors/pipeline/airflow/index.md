@@ -7,7 +7,7 @@ slug: /connectors/pipeline/airflow
 name="Airflow"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=["Pipelines", "Pipeline Status", "Lineage", "Owners"]
+availableFeatures=["Pipelines", "Pipeline Status", "Lineage", "Owners", "Usage"]
 unavailableFeatures=["Tags"]
 / %}
 

@@ -116,6 +116,12 @@
     "supportsDataDiff": {
         "title": "Supports Data Diff Extraction.",
         "$ref": "../connectionBasicType.json#/definitions/supportsDataDiff"
+    },
+    "costPerTB": {
+      "title": "Cost Per TiB",
+      "description": "Cost per TiB for BigQuery usage",
+      "type": "number",
+      "default": 6.25
     }
   },
   "additionalProperties": false,
