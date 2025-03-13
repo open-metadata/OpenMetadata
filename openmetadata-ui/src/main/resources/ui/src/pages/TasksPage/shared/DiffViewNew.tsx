@@ -16,6 +16,7 @@ import { Change } from 'diff';
 import { uniqueId } from 'lodash';
 import React, { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import TaskDescriptionPreviewer from '../../../components/common/RichTextEditor/TaskDescriptionPreviewer';
 import {
   Thread,
   ThreadTaskStatus,
@@ -43,26 +44,63 @@ export const DiffViewNew = ({
       .trim();
   }
 
+  useEffect(() => {
+    const checkHeight = () => {
+      if (contentRef.current) {
+        const lineHeight = parseInt(
+          window.getComputedStyle(contentRef.current).lineHeight,
+          10
+        );
+        const twoLinesHeight = lineHeight * 2;
+
+        // Get the actual content height without restrictions
+        const clone = contentRef.current.cloneNode(true) as HTMLElement;
+        clone.style.maxHeight = 'none';
+        clone.style.position = 'absolute';
+        clone.style.visibility = 'hidden';
+        document.body.appendChild(clone);
+        const fullHeight = clone.scrollHeight;
+        document.body.removeChild(clone);
+
+        // Compare the full height with two lines height
+        setShouldShowViewMore(fullHeight > twoLinesHeight);
+      }
+    };
+
+    // Small delay to ensure content is rendered
+    const timer = setTimeout(checkHeight, 100);
+
+    return () => clearTimeout(timer);
+  }, [diffArr]);
+
   const elements = diffArr.map((diff) => {
     const diffValue = stripHtml(diff.value);
     if (diff.added) {
       return (
         <ins
           className="diff-added-new"
-          dangerouslySetInnerHTML={{ __html: diffValue }}
           data-testid="diff-added"
-          key={uniqueId()}
-        />
+          key={uniqueId()}>
+          <TaskDescriptionPreviewer
+            enableSeeMoreVariant={false}
+            markdown={diff.value}
+            showReadMoreBtn={false}
+          />
+        </ins>
       );
     }
     if (diff.removed) {
       return (
         <del
           className="diff-removed-new"
-          dangerouslySetInnerHTML={{ __html: diffValue }}
           data-testid="diff-removed-new"
-          key={uniqueId()}
-        />
+          key={uniqueId()}>
+          <TaskDescriptionPreviewer
+            enableSeeMoreVariant={false}
+            markdown={diff.value}
+            showReadMoreBtn={false}
+          />
+        </del>
       );
     }
 
@@ -71,33 +109,16 @@ export const DiffViewNew = ({
         className="diff-normal-new"
         dangerouslySetInnerHTML={{ __html: diffValue }}
         data-testid="diff-normal-new"
-        key={uniqueId()}
-      />
+        key={uniqueId()}>
+        {' '}
+        <TaskDescriptionPreviewer
+          enableSeeMoreVariant={false}
+          markdown={diff.value}
+          showReadMoreBtn={false}
+        />
+      </span>
     );
   });
-
-  // Check if content exceeds the clamp height
-  useEffect(() => {
-    const checkHeight = () => {
-      if (contentRef.current) {
-        const element = contentRef.current;
-        // Get the line height and max lines from CSS
-        const lineHeight = parseInt(
-          window.getComputedStyle(element).lineHeight
-        );
-        const maxLines = showDescTitle ? 3 : 2;
-        const maxHeight = lineHeight * maxLines;
-
-        setShouldShowViewMore(element.scrollHeight > maxHeight);
-      }
-    };
-
-    checkHeight();
-    // Add resize listener to recheck on window resize
-    window.addEventListener('resize', checkHeight);
-
-    return () => window.removeEventListener('resize', checkHeight);
-  }, [diffArr, showDescTitle]);
 
   return (
     <div
@@ -148,15 +169,15 @@ export const DiffViewNew = ({
               ref={contentRef}>
               {elements}
             </div>
-            {!expanded && shouldShowViewMore && (
-              <span className="text-expand" onClick={() => setExpanded(true)}>
-                {t('label.view-more')}
-              </span>
-            )}
-            {expanded && shouldShowViewMore && (
-              <span className="text-expand" onClick={() => setExpanded(false)}>
-                {t('label.view-less')}
-              </span>
+            {shouldShowViewMore && (
+              <div className="mt-2">
+                <span
+                  className="cursor-pointer view-more-less-button"
+                  data-testid="view-more-button"
+                  onClick={() => setExpanded(!expanded)}>
+                  {expanded ? t('label.view-less') : t('label.view-more')}
+                </span>
+              </div>
             )}
           </>
         ) : (
