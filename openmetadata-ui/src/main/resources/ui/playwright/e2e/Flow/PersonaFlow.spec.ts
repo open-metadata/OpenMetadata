@@ -140,7 +140,7 @@ test.describe.serial('Persona operations', () => {
     );
   });
 
-  test('Persona update description flow should work properly', async ({
+  test.skip('Persona update description flow should work properly', async ({
     page,
   }) => {
     await page

@@ -11,7 +11,15 @@
  *  limitations under the License.
  */
 import { startCase } from 'lodash';
+import { ResourceEntity } from '../context/PermissionProvider/PermissionProvider.interface';
 import i18n from '../utils/i18next/LocalUtil';
+
+export const SUPPORTED_BULK_IMPORT_EDIT_ENTITY = [
+  ResourceEntity.TABLE,
+  ResourceEntity.DATABASE_SERVICE,
+  ResourceEntity.DATABASE,
+  ResourceEntity.DATABASE_SCHEMA,
+];
 
 export enum VALIDATION_STEP {
   UPLOAD = 0,

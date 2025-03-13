@@ -232,8 +232,8 @@ export const PersonaDetailsPage = () => {
         </Col>
         <Col span={24}>
           <DescriptionV1
-            hasEditAccess
             description={personaDetails.description}
+            entityName={personaDetails.name}
             entityType={EntityType.PERSONA}
             showCommentsIcon={false}
             onDescriptionUpdate={handleDescriptionUpdate}

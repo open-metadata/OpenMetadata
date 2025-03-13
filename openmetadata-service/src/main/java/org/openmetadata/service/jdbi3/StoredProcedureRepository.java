@@ -72,7 +72,7 @@ public class StoredProcedureRepository extends EntityRepository<StoredProcedure>
   }
 
   @Override
-  protected void cleanup(StoredProcedure storedProcedure) {
+  protected void entitySpecificCleanup(StoredProcedure storedProcedure) {
     // When a pipeline is removed , the linege needs to be removed
     daoCollection
         .relationshipDAO()
@@ -80,7 +80,6 @@ public class StoredProcedureRepository extends EntityRepository<StoredProcedure>
             storedProcedure.getId(),
             LineageDetails.Source.QUERY_LINEAGE.value(),
             Relationship.UPSTREAM.ordinal());
-    super.cleanup(storedProcedure);
   }
 
   @Override
@@ -161,8 +160,19 @@ public class StoredProcedureRepository extends EntityRepository<StoredProcedure>
             original.getStoredProcedureType(),
             updated.getStoredProcedureType());
       }
+      updateProcessedLineage(original, updated);
+      recordChange(
+          "processedLineage", original.getProcessedLineage(), updated.getProcessedLineage());
       recordChange("sourceUrl", original.getSourceUrl(), updated.getSourceUrl());
       recordChange("sourceHash", original.getSourceHash(), updated.getSourceHash());
+    }
+
+    private void updateProcessedLineage(StoredProcedure origSP, StoredProcedure updatedSP) {
+      // if schema definition changes make processed lineage false
+      if (origSP.getProcessedLineage().booleanValue()
+          && !origSP.getCode().equals(updatedSP.getCode())) {
+        updatedSP.setProcessedLineage(false);
+      }
     }
   }
 }

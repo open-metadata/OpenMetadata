@@ -7,7 +7,7 @@ slug: /connectors/pipeline/dbtcloud/yaml
 name="dbt Cloud"
 stage="PROD"
 platform="Collate"
-availableFeatures=["Pipelines", "Pipeline Status", "Tags"]
+availableFeatures=["Pipelines", "Pipeline Status", "Tags", "Usage"]
 unavailableFeatures=["Owners", "Lineage"]
 / %}
 

@@ -90,38 +90,29 @@
 }
 
 .task-details-id {
-  color: #175cd3;
+  color: @blue-9;
   font-size: 14px;
   font-style: normal;
   font-weight: 400;
   line-height: 20px;
 }
 .task-details-entity-link {
-  color: #535862;
+  color: @text-color-tertiary;
   font-size: 14px;
   font-style: normal;
   font-weight: 400;
   line-height: 20px;
 }
 
-.reserve-right-sidebar {
-  .task-cta-buttons {
-    // Right side padding 20 + 64 width of sidebar
-    padding-right: 84px;
-  }
-}
-
 //user profile page
 .action-required-card {
-  display: flex;
-  align-items: center;
   border-radius: 12px;
-  border: 0.8px solid #dfdfdf;
+  border: 0.5px solid #eaecf5;
   background: linear-gradient(
-    90deg,
-    rgba(85, 155, 238, 0.25) 0%,
-    rgba(96, 167, 251, 0.25) 19%,
-    rgba(245, 245, 245, 0.25) 100%
+    270deg,
+    rgba(85, 155, 238, 0.2) 0.56%,
+    rgba(96, 167, 251, 0.2) 16.47%,
+    rgba(245, 245, 245, 0.2) 99.98%
   );
   padding: 16px;
   margin: 24px 0px;
@@ -130,9 +121,10 @@
 
 .action-required-text {
   flex-grow: 1;
-  font-size: 16px;
   font-weight: 400;
-  color: #373e44;
+  color: #414651;
+  font-weight: 500;
+  line-height: 20px;
 }
 
 .action-buttons {
@@ -183,69 +175,43 @@
 .entity-type {
   font-size: 14px;
   font-weight: 600;
-  color: #0950c5;
+  color: @blue-9;
   line-height: 20px;
 }
 .entity-link {
   font-weight: 600;
   line-height: 20px;
-  color: #0950c5;
+  color: @blue-9;
 }
 .task-details {
   font-size: 14px;
-  color: #535862;
+  color: @text-color;
+  line-height: 20px;
+  font-weight: 400;
+}
+
+.diff-view-container-card {
+  max-height: 200px;
+  border: 0.5px solid #eaecf5;
+  background: @white;
+  border-radius: 8px;
+}
+.diff-view-container-card-right-panel {
+  max-height: 400px;
+  background: #f8f9fc;
+  border-radius: 12px;
+  border: 0.5px solid #eaecf5;
+}
+.task-tab-description-header {
+  color: #414651;
+  font-size: 14px;
+  font-style: normal;
+  font-weight: 600;
   line-height: 20px;
 }
-.action-required-card {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+.tags-details-contianer {
   border-radius: 12px;
-  border: 0.8px solid #dfdfdf;
+  border: 0.5px solid #eaecf5;
+  background: #f8f9fc;
   padding: 16px;
-  background: linear-gradient(
-    90deg,
-    rgba(85, 155, 238, 0.25) 0%,
-    rgba(96, 167, 251, 0.25) 19%,
-    rgba(245, 245, 245, 0.25) 100%
-  );
-  box-shadow: none;
-
-  .action-required-text {
-    font-size: 16px;
-    font-weight: 400;
-    color: #333;
-    line-height: 24px;
-  }
-
-  .action-buttons {
-    display: flex;
-    gap: 8px;
-    margin-left: 200px;
-  }
-
-  .approve-button {
-    background-color: #2f74eb;
-    border-color: #2f74eb;
-    border-radius: 8px;
-    font-weight: 500;
-  }
-
-  .approve-button:hover {
-    background-color: #1f67e9;
-    border-color: #1f67e9;
-  }
-
-  .reject-button {
-    background-color: #d93025;
-    border-color: #d93025;
-    color: white;
-    border-radius: 8px;
-    font-weight: 500;
-  }
-
-  .reject-button:hover {
-    background-color: #b1271c;
-    border-color: #b1271c;
-  }
 }
