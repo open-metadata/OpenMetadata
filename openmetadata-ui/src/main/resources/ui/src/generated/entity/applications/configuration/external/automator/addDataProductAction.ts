@@ -19,6 +19,12 @@ export interface AddDataProductAction {
      */
     dataProducts: EntityReference[];
     /**
+     * Update the Data Product even if the asset belongs to a different Domain. By default, we
+     * will only add the Data Product if the asset has no Domain, or it belongs to the same
+     * domain as the Data Product.
+     */
+    overwriteMetadata?: boolean;
+    /**
      * Application Type
      */
     type: AddDataProductActionType;
