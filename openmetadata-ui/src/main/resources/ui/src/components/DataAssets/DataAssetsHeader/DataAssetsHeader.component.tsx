@@ -125,33 +125,31 @@ export const ExtraInfoLink = ({
   newTab?: boolean;
   ellipsis?: boolean;
 }) => (
-  <>
-    <div
-      className={classNames('d-flex  text-sm  flex-col gap-2', {
-        'w-48': ellipsis,
-      })}>
-      {!isEmpty(label) && (
-        <span className="extra-info-label-heading  m-r-xss">{`${label}: `}</span>
-      )}
-      <div className="d-flex items-center gap-1">
-        <Tooltip title={value}>
-          <Typography.Link
-            ellipsis
-            className="extra-info-link"
-            href={href}
-            rel={newTab ? 'noopener noreferrer' : undefined}
-            target={newTab ? '_blank' : undefined}>
-            {value}
-          </Typography.Link>
-        </Tooltip>
-        <Icon
-          className="m-l-xs"
-          component={IconExternalLink}
-          style={DATA_ASSET_ICON_DIMENSION}
-        />
-      </div>
+  <div
+    className={classNames('d-flex  text-sm  flex-col gap-2', {
+      'w-48': ellipsis,
+    })}>
+    {!isEmpty(label) && (
+      <span className="extra-info-label-heading  m-r-xss">{`${label}: `}</span>
+    )}
+    <div className="d-flex items-center gap-1">
+      <Tooltip title={value}>
+        <Typography.Link
+          ellipsis
+          className="extra-info-link"
+          href={href}
+          rel={newTab ? 'noopener noreferrer' : undefined}
+          target={newTab ? '_blank' : undefined}>
+          {value}
+        </Typography.Link>
+      </Tooltip>
+      <Icon
+        className="m-l-xs"
+        component={IconExternalLink}
+        style={DATA_ASSET_ICON_DIMENSION}
+      />
     </div>
-  </>
+  </div>
 );
 
 export const DataAssetsHeader = ({
@@ -620,13 +618,11 @@ export const DataAssetsHeader = ({
             )}
 
             {entityType === EntityType.METRIC && onMetricUpdate && (
-              <>
-                <MetricHeaderInfo
-                  metricDetails={dataAsset as Metric}
-                  metricPermissions={permissions}
-                  onUpdateMetricDetails={onMetricUpdate}
-                />
-              </>
+              <MetricHeaderInfo
+                metricDetails={dataAsset as Metric}
+                metricPermissions={permissions}
+                onUpdateMetricDetails={onMetricUpdate}
+              />
             )}
             {extraInfo}
           </div>

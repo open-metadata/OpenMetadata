@@ -69,9 +69,7 @@ export const OwnerLabel = ({
 
     return (
       <div
-        className={`d-flex owner-label-heading gap-2 ${
-          isCompactView ? 'items-center' : 'items-center'
-        }`}
+        className="d-flex owner-label-heading gap-2 items-center"
         data-testid="owner-label">
         <div
           className={classNames(

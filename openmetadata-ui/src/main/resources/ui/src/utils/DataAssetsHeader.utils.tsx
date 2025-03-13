@@ -153,7 +153,7 @@ export const getDataAssetsHeaderInfo = (
               <ExtraInfoLabel
                 label={t('label.usage')}
                 value={getUsagePercentile(
-                  dashboardDetails.usageSummary?.weeklyStats?.percentileRank ||
+                  dashboardDetails.usageSummary?.weeklyStats?.percentileRank ??
                     0,
                   false
                 )}
@@ -194,7 +194,7 @@ export const getDataAssetsHeaderInfo = (
               <ExtraInfoLabel
                 label={t('label.usage')}
                 value={getUsagePercentile(
-                  pipelineDetails.usageSummary?.weeklyStats?.percentileRank ||
+                  pipelineDetails.usageSummary?.weeklyStats?.percentileRank ??
                     0,
                   false
                 )}
