@@ -144,7 +144,7 @@ class DomainClassBase {
         i: DetailPageWidgetKeys.CUSTOM_PROPERTIES,
         w: 2,
         x: 6,
-        y: 6,
+        y: 5,
         static: false,
       },
     ];
