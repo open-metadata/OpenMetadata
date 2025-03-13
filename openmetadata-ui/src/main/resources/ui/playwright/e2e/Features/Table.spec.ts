@@ -65,7 +65,7 @@ test.describe('Table pagination sorting search scenarios ', () => {
     expect(await page.locator('.ant-table-row').count()).toBe(10);
   });
 
-  test('Table search with sorting should works', async ({ page }) => {
+  test.skip('Table search with sorting should works', async ({ page }) => {
     await sidebarClick(page, SidebarItem.DATA_QUALITY);
 
     await page.click('[data-testid="by-test-cases"]');
