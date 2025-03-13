@@ -43,9 +43,10 @@ const SuggestionsAlert = ({
 
   return (
     <Card
-      className={classNames('suggested-description-card card-padding-0', {
+      className={classNames('suggested-card card-padding-0', {
         'card-inline-flex': showInlineCard,
-      })}>
+      })}
+      data-testid={`suggested-${suggestion.type}-card`}>
       <div className="suggested-alert-content">
         {suggestion.type === SuggestionType.SuggestDescription ? (
           <RichTextEditorPreviewerV1

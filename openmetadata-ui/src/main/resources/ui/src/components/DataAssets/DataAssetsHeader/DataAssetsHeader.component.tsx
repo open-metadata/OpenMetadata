@@ -437,7 +437,7 @@ export const DataAssetsHeader = ({
 
       if (activeSuggestion) {
         return (
-          <div className="w-40">
+          <div className="w-40" data-testid="tier-suggestion-container">
             <SuggestionsAlert
               showInlineCard
               hasEditAccess={editTierPermission}
