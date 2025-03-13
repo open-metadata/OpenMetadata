@@ -7,7 +7,7 @@ slug: /connectors/pipeline/flink
 name="Flink"
 stage="BETA"
 platform="Collate"
-availableFeatures=["Pipelines", "Pipeline Status"]
+availableFeatures=["Pipelines", "Pipeline Status", "Usage"]
 unavailableFeatures=["Owners", "Tags", "Lineage"]
 / %}
 

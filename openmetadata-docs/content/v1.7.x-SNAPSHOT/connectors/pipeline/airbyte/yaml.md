@@ -7,7 +7,7 @@ slug: /connectors/pipeline/airbyte/yaml
 name="Airbyte"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=["Pipelines", "Pipeline Status", "Lineage"]
+availableFeatures=["Pipelines", "Pipeline Status", "Lineage", "Usage"]
 unavailableFeatures=["Owners", "Tags"]
 / %}
 

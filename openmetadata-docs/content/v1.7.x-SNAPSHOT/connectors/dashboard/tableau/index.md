@@ -7,7 +7,7 @@ slug: /connectors/dashboard/tableau
 name="Tableau"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=["Dashboards", "Charts", "Lineage", "Owners", "Datamodels", "Tags", "Projects", "Column Lineage"]
+availableFeatures=["Dashboards", "Charts", "Lineage", "Owners", "Datamodels", "Tags", "Projects", "Column Lineage", "Usage"]
 unavailableFeatures=[]
 / %}
 

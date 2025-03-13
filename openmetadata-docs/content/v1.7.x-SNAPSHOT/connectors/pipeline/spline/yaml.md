@@ -7,7 +7,7 @@ slug: /connectors/pipeline/spline/yaml
 name="Spline"
 stage="BETA"
 platform="OpenMetadata"
-availableFeatures=["Pipelines", "Pipeline Status"]
+availableFeatures=["Pipelines", "Pipeline Status", "Usage"]
 unavailableFeatures=["Owners", "Tags", "Lineage"]
 / %}
 

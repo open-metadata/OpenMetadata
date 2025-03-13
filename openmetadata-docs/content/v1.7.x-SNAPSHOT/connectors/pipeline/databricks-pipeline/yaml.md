@@ -7,7 +7,7 @@ slug: /connectors/pipeline/databricks-pipeline/yaml
 name="Databricks"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=["Pipelines", "Pipeline Status"]
+availableFeatures=["Pipelines", "Pipeline Status", "Usage"]
 unavailableFeatures=["Owners", "Tags", "Lineage"]
 / %}
 

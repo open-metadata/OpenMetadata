@@ -7,7 +7,7 @@ slug: /connectors/pipeline/openlineage
 name="OpenLineage"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=["Pipelines", "Lineage"]
+availableFeatures=["Pipelines", "Lineage", "Usage"]
 unavailableFeatures=["Pipeline Status", "Owners", "Tags"]
 / %}
 
