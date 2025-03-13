@@ -38,9 +38,11 @@ import {
   getSuggestionsList,
   updateSuggestionStatus,
 } from '../../../rest/suggestionsAPI';
+import { getSuggestionByType } from '../../../utils/Suggestion/SuggestionUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import {
   SuggestionAction,
+  SuggestionDataByTypes,
   SuggestionsContextType,
 } from './SuggestionsProvider.interface';
 
@@ -58,7 +60,7 @@ const SuggestionsProvider = ({ children }: { children?: ReactNode }) => {
   >([]);
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [suggestionsByUser, setSuggestionsByUser] = useState<
-    Map<string, Suggestion[]>
+    Map<string, SuggestionDataByTypes>
   >(new Map());
   const publish = usePub();
 
@@ -76,24 +78,10 @@ const SuggestionsProvider = ({ children }: { children?: ReactNode }) => {
           limit: limit ?? suggestionLimit,
         });
         setSuggestions(data);
+
+        const { allUsersList, groupedSuggestions } = getSuggestionByType(data);
         setSuggestionLimit(paging.total);
-
-        const allUsersData = data.map(
-          (suggestion) => suggestion.createdBy as EntityReference
-        );
-        const uniqueUsers = uniqWith(allUsersData, isEqual);
-        setAllSuggestionsUsers(uniqueUsers);
-
-        const groupedSuggestions = data.reduce((acc, suggestion) => {
-          const createdBy = suggestion?.createdBy?.name ?? '';
-          if (!acc.has(createdBy)) {
-            acc.set(createdBy, []);
-          }
-          acc.get(createdBy)?.push(suggestion);
-
-          return acc;
-        }, new Map() as Map<string, Suggestion[]>);
-
+        setAllSuggestionsUsers(uniqWith(allUsersList, isEqual));
         setSuggestionsByUser(groupedSuggestions);
       } catch (err) {
         showErrorToast(
@@ -133,7 +121,13 @@ const SuggestionsProvider = ({ children }: { children?: ReactNode }) => {
   );
 
   const selectedUserSuggestions = useMemo(() => {
-    return suggestionsByUser.get(activeUser?.name ?? '') ?? [];
+    return (
+      suggestionsByUser.get(activeUser?.name ?? '') ?? {
+        tags: [],
+        description: [],
+        combinedData: [],
+      }
+    );
   }, [activeUser, suggestionsByUser]);
 
   const acceptRejectAllSuggestions = useCallback(
@@ -153,7 +147,7 @@ const SuggestionsProvider = ({ children }: { children?: ReactNode }) => {
 
         await fetchSuggestions();
         if (status === SuggestionAction.Accept) {
-          selectedUserSuggestions.forEach((suggestion) => {
+          selectedUserSuggestions.combinedData.forEach((suggestion) => {
             publish('updateDetails', suggestion);
           });
         }

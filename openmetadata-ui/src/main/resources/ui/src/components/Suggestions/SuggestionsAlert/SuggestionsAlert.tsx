@@ -15,9 +15,11 @@ import { Button, Card, Typography } from 'antd';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as StarIcon } from '../../../assets/svg/ic-suggestions-coloured.svg';
+import { SuggestionType } from '../../../generated/entity/feed/suggestion';
 import UserPopOverCard from '../../common/PopOverCard/UserPopOverCard';
 import ProfilePicture from '../../common/ProfilePicture/ProfilePicture';
 import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
+import TagsViewer from '../../Tag/TagsViewer/TagsViewer';
 import { useSuggestionsContext } from '../SuggestionsProvider/SuggestionsProvider';
 import { SuggestionAction } from '../SuggestionsProvider/SuggestionsProvider.interface';
 import './suggestions-alert.less';
@@ -40,10 +42,14 @@ const SuggestionsAlert = ({
   return (
     <Card className="suggested-description-card card-padding-0">
       <div className="suggested-alert-content">
-        <RichTextEditorPreviewerV1
-          markdown={suggestion.description ?? ''}
-          maxLength={maxLength}
-        />
+        {suggestion.type === SuggestionType.SuggestDescription ? (
+          <RichTextEditorPreviewerV1
+            markdown={suggestion.description ?? ''}
+            maxLength={maxLength}
+          />
+        ) : (
+          <TagsViewer tags={suggestion.tagLabels ?? []} />
+        )}
       </div>
       <div className="suggested-alert-footer d-flex justify-between">
         <div className="d-flex items-center gap-2 ">

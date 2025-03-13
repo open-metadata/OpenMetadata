@@ -16,11 +16,17 @@ import {
 } from '../../../generated/entity/feed/suggestion';
 import { EntityReference } from '../../../generated/entity/type';
 
+export interface SuggestionDataByTypes {
+  tags: Suggestion[];
+  description: Suggestion[];
+  combinedData: Suggestion[];
+}
+
 export interface SuggestionsContextType {
   suggestionLimit: number;
-  selectedUserSuggestions: Suggestion[];
+  selectedUserSuggestions: SuggestionDataByTypes;
   suggestions: Suggestion[];
-  suggestionsByUser: Map<string, Suggestion[]>;
+  suggestionsByUser: Map<string, SuggestionDataByTypes>;
   loading: boolean;
   loadingAccept: boolean;
   loadingReject: boolean;

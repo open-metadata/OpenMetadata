@@ -51,7 +51,7 @@ const SuggestionsSlider = () => {
           })}
         </Button>
       )}
-      {selectedUserSuggestions.length > 0 && (
+      {selectedUserSuggestions?.combinedData.length > 0 && (
         <Space className="slider-btn-container m-l-xs">
           <Button
             ghost
