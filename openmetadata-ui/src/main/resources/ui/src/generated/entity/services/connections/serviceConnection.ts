@@ -806,6 +806,10 @@ export interface ConfigClass {
      */
     connectionArguments?: { [key: string]: any };
     /**
+     * Cost per TiB for BigQuery usage
+     */
+    costPerTB?: number;
+    /**
      * GCP Credentials
      *
      * Azure Credentials
