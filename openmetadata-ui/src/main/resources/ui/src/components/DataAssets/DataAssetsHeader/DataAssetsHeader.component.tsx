@@ -61,6 +61,7 @@ import {
   getDataAssetsHeaderInfo,
   isDataAssetsWithServiceField,
 } from '../../../utils/DataAssetsHeader.utils';
+import EntityLink from '../../../utils/EntityLink';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import {
   getEntityFeedLink,
@@ -79,6 +80,8 @@ import RetentionPeriod from '../../Database/RetentionPeriod/RetentionPeriod.comp
 import Voting from '../../Entity/Voting/Voting.component';
 import { VotingDataProps } from '../../Entity/Voting/voting.interface';
 import MetricHeaderInfo from '../../Metric/MetricHeaderInfo/MetricHeaderInfo';
+import SuggestionsAlert from '../../Suggestions/SuggestionsAlert/SuggestionsAlert';
+import { useSuggestionsContext } from '../../Suggestions/SuggestionsProvider/SuggestionsProvider';
 import TagsV1 from '../../Tag/TagsV1/TagsV1.component';
 import './data-asset-header.less';
 import {
@@ -175,6 +178,7 @@ export const DataAssetsHeader = ({
   isCustomizedView = false,
 }: DataAssetsHeaderProps) => {
   const { currentUser } = useApplicationStore();
+  const { selectedUserSuggestions } = useSuggestionsContext();
   const USER_ID = currentUser?.id ?? '';
   const { t } = useTranslation();
   const { isTourPage } = useTourProvider();
@@ -419,6 +423,35 @@ export const DataAssetsHeader = ({
       [permissions, dataAsset]
     );
 
+  const tierSuggestionRender = useMemo(() => {
+    if (entityType === EntityType.TABLE) {
+      const entityLink = EntityLink.getTableEntityLink(
+        dataAsset.fullyQualifiedName ?? ''
+      );
+
+      const activeSuggestion = selectedUserSuggestions?.tags.find(
+        (suggestion) =>
+          suggestion.entityLink === entityLink &&
+          getTierTags(suggestion.tagLabels ?? [])
+      );
+
+      if (activeSuggestion) {
+        return (
+          <div className="w-40">
+            <SuggestionsAlert
+              showInlineCard
+              hasEditAccess={editTierPermission}
+              showSuggestedBy={false}
+              suggestion={activeSuggestion}
+            />
+          </div>
+        );
+      }
+    }
+
+    return null;
+  }, [editTierPermission, selectedUserSuggestions]);
+
   return (
     <>
       <Row data-testid="data-assets-header" gutter={[8, 12]}>
@@ -463,42 +496,48 @@ export const DataAssetsHeader = ({
                   onUpdate={onOwnerUpdate}
                 />
                 <Divider className="self-center" type="vertical" />
-                <TierCard currentTier={tier?.tagFQN} updateTier={onTierUpdate}>
-                  <Space data-testid="header-tier-container">
-                    {tier ? (
-                      <TagsV1
-                        startWith={TAG_START_WITH.SOURCE_ICON}
-                        tag={tier}
-                        tagProps={{
-                          'data-testid': 'Tier',
-                        }}
-                      />
-                    ) : (
-                      <span className="font-medium text-xs" data-testid="Tier">
-                        {t('label.no-entity', {
-                          entity: t('label.tier'),
-                        })}
-                      </span>
-                    )}
-
-                    {editTierPermission && (
-                      <Tooltip
-                        title={t('label.edit-entity', {
-                          entity: t('label.tier'),
-                        })}>
-                        <Button
-                          className="flex-center p-0"
-                          data-testid="edit-tier"
-                          icon={
-                            <EditIcon color={DE_ACTIVE_COLOR} width="14px" />
-                          }
-                          size="small"
-                          type="text"
+                {tierSuggestionRender ?? (
+                  <TierCard
+                    currentTier={tier?.tagFQN}
+                    updateTier={onTierUpdate}>
+                    <Space data-testid="header-tier-container">
+                      {tier ? (
+                        <TagsV1
+                          startWith={TAG_START_WITH.SOURCE_ICON}
+                          tag={tier}
+                          tagProps={{
+                            'data-testid': 'Tier',
+                          }}
                         />
-                      </Tooltip>
-                    )}
-                  </Space>
-                </TierCard>
+                      ) : (
+                        <span
+                          className="font-medium text-xs"
+                          data-testid="Tier">
+                          {t('label.no-entity', {
+                            entity: t('label.tier'),
+                          })}
+                        </span>
+                      )}
+
+                      {editTierPermission && (
+                        <Tooltip
+                          title={t('label.edit-entity', {
+                            entity: t('label.tier'),
+                          })}>
+                          <Button
+                            className="flex-center p-0"
+                            data-testid="edit-tier"
+                            icon={
+                              <EditIcon color={DE_ACTIVE_COLOR} width="14px" />
+                            }
+                            size="small"
+                            type="text"
+                          />
+                        </Tooltip>
+                      )}
+                    </Space>
+                  </TierCard>
+                )}
 
                 {entityType === EntityType.TABLE && onUpdateRetentionPeriod && (
                   <RetentionPeriod

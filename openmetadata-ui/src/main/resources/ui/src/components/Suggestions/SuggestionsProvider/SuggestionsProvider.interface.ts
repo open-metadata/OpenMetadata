@@ -10,10 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  Suggestion,
-  SuggestionType,
-} from '../../../generated/entity/feed/suggestion';
+import { Suggestion } from '../../../generated/entity/feed/suggestion';
 import { EntityReference } from '../../../generated/entity/type';
 
 export interface SuggestionDataByTypes {
@@ -37,10 +34,7 @@ export interface SuggestionsContextType {
     suggestion: Suggestion,
     action: SuggestionAction
   ) => void;
-  acceptRejectAllSuggestions: (
-    suggestionType: SuggestionType,
-    status: SuggestionAction
-  ) => void;
+  acceptRejectAllSuggestions: (status: SuggestionAction) => void;
 }
 
 export enum SuggestionAction {

@@ -33,6 +33,7 @@ import { State, TagSource } from '../../../generated/type/tagLabel';
 import EntityLink from '../../../utils/EntityLink';
 import { getEntityFeedLink } from '../../../utils/EntityUtils';
 import { getFilterTags } from '../../../utils/TableTags/TableTags.utils';
+import { getTierTags } from '../../../utils/TableUtils';
 import tagClassBase from '../../../utils/TagClassBase';
 import { fetchGlossaryList, getTagPlaceholder } from '../../../utils/TagsUtils';
 import {
@@ -416,7 +417,9 @@ const TagsContainerV2 = ({
 
   const suggestionDataRender = useMemo(() => {
     const activeSuggestion = selectedUserSuggestions?.tags.find(
-      (suggestion) => suggestion.entityLink === entityLink
+      (suggestion) =>
+        suggestion.entityLink === entityLink &&
+        !getTierTags(suggestion.tagLabels ?? [])
     );
 
     if (activeSuggestion) {

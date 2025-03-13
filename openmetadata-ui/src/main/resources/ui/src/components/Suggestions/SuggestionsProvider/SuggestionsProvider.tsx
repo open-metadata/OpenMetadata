@@ -131,19 +131,26 @@ const SuggestionsProvider = ({ children }: { children?: ReactNode }) => {
   }, [activeUser, suggestionsByUser]);
 
   const acceptRejectAllSuggestions = useCallback(
-    async (suggestionType: SuggestionType, status: SuggestionAction) => {
+    async (status: SuggestionAction) => {
       if (status === SuggestionAction.Accept) {
         setLoadingAccept(true);
       } else {
         setLoadingReject(true);
       }
       try {
-        await approveRejectAllSuggestions(
-          activeUser?.id ?? '',
-          entityFqn,
-          suggestionType,
-          status
+        const promises = [
+          SuggestionType.SuggestDescription,
+          SuggestionType.SuggestTagLabel,
+        ].map((suggestionType) =>
+          approveRejectAllSuggestions(
+            activeUser?.id ?? '',
+            entityFqn,
+            suggestionType,
+            status
+          )
         );
+
+        await Promise.allSettled(promises);
 
         await fetchSuggestions();
         if (status === SuggestionAction.Accept) {

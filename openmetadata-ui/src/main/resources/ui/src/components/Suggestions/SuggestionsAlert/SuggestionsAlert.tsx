@@ -12,6 +12,7 @@
  */
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
 import { Button, Card, Typography } from 'antd';
+import classNames from 'classnames';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as StarIcon } from '../../../assets/svg/ic-suggestions-coloured.svg';
@@ -29,6 +30,7 @@ const SuggestionsAlert = ({
   suggestion,
   hasEditAccess = false,
   maxLength,
+  showInlineCard,
   showSuggestedBy = true,
 }: SuggestionsAlertProps) => {
   const { t } = useTranslation();
@@ -40,7 +42,10 @@ const SuggestionsAlert = ({
   }
 
   return (
-    <Card className="suggested-description-card card-padding-0">
+    <Card
+      className={classNames('suggested-description-card card-padding-0', {
+        'card-inline-flex': showInlineCard,
+      })}>
       <div className="suggested-alert-content">
         {suggestion.type === SuggestionType.SuggestDescription ? (
           <RichTextEditorPreviewerV1
