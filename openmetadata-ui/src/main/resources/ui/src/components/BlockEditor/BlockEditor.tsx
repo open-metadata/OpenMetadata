@@ -67,7 +67,7 @@ const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
       ...EDITOR_OPTIONS,
       extensions,
       onUpdate({ editor }) {
-        handleErrorMessage(undefined);
+        handleErrorMessage?.(undefined);
         const htmlContent = editor.getHTML();
         const backendFormat = formatContent(htmlContent, 'server');
         onChange?.(backendFormat);
@@ -96,7 +96,7 @@ const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
 
             event.preventDefault();
             const pos = view.state.selection.from;
-            handleFileUpload(files[0], view, pos, showInlineAlert);
+            handleFileUpload?.(files[0], view, pos, showInlineAlert);
 
             return true;
           },
@@ -116,7 +116,7 @@ const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
         return;
       }
 
-      handleErrorMessage(undefined);
+      handleErrorMessage?.(undefined);
       const { items } = e.dataTransfer;
       const hasFiles = Array.from(items).some(
         (item) => item.kind === FileType.FILE
@@ -169,7 +169,7 @@ const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
       });
 
       if (coordinates) {
-        handleFileUpload(
+        handleFileUpload?.(
           files[0],
           editor.view,
           coordinates.pos,
