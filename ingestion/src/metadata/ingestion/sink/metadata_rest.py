@@ -251,6 +251,13 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
     @_run_dispatch.register
     def write_lineage(self, add_lineage: AddLineageRequest) -> Either[Dict[str, Any]]:
         created_lineage = self.metadata.add_lineage(add_lineage, check_patch=True)
+        if created_lineage.get("error"):
+            return Either(
+                left=StackTraceError(
+                    name="AddLineageRequestError", error=created_lineage["error"]
+                )
+            )
+
         return Either(right=created_lineage["entity"]["fullyQualifiedName"])
 
     @_run_dispatch.register
@@ -289,7 +296,16 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
                     entity_id=str(add_lineage.lineage_request.edge.toEntity.id.root),
                     source=add_lineage.lineage_request.edge.lineageDetails.source.value,
                 )
-        return self._run_dispatch(add_lineage.lineage_request)
+        lineage_response = self._run_dispatch(add_lineage.lineage_request)
+        if (
+            lineage_response
+            and lineage_response.right is not None
+            and add_lineage.entity_fqn
+            and add_lineage.entity
+        ):
+            self.metadata.patch_lineage_processed_flag(
+                entity=add_lineage.entity, fqn=add_lineage.entity_fqn
+            )
 
     def _create_role(self, create_role: CreateRoleRequest) -> Optional[Role]:
         """

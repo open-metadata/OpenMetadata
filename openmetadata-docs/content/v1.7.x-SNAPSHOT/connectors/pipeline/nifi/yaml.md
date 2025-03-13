@@ -7,7 +7,7 @@ slug: /connectors/pipeline/nifi/yaml
 name="Nifi"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=["Pipelines"]
+availableFeatures=["Pipelines", "Usage"]
 unavailableFeatures=["Pipeline Status", "Owners", "Tags", "Lineage"]
 / %}
 
