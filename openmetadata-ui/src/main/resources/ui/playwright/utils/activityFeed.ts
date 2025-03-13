@@ -57,9 +57,14 @@ export const checkDescriptionInEditModal = async (
   // click on the Current tab
   await page.getByRole('tab', { name: 'current' }).click();
 
-  await expect(page.getByTestId('markdown-parser').first()).toContainText(
-    taskValue.oldDescription ?? ''
-  );
+  const taskDescriptionTabs = page.getByTestId('task-description-tabs');
+
+  await expect(
+    taskDescriptionTabs
+      .locator('.ant-tabs-content-holder')
+      .getByTestId('markdown-parser')
+      .first()
+  ).toContainText(taskValue.oldDescription ?? '');
 };
 
 export const deleteFeedComments = async (page: Page, feed: Locator) => {
