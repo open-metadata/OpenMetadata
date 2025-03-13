@@ -836,7 +836,7 @@ export const TaskTabNew = ({
           <Col className="flex items-center gap-2 text-grey-muted" span={8}>
             <UserIcon height={16} />
             <Typography.Text className="incident-manager-details-label">
-              {t('label.created-by')}:{' '}
+              {t('label.created-by')}
             </Typography.Text>
           </Col>
           <Col className="flex items-center gap-2" span={16}>
@@ -898,7 +898,7 @@ export const TaskTabNew = ({
               <Col className="flex items-center gap-2 text-grey-muted" span={8}>
                 <AssigneesIcon height={16} />
                 <Typography.Text className="incident-manager-details-label @grey-8">
-                  {t('label.assignee-plural')}:{' '}
+                  {t('label.assignee-plural')}
                 </Typography.Text>
               </Col>
               <Col className="flex items-center gap-2" span={16}>
