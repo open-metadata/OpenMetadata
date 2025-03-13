@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Typography } from 'antd';
+import { Button, Col, Row, Typography } from 'antd';
 import classNames from 'classnames';
 import React, { Fragment } from 'react';
 import { Handle, HandleProps, HandleType, Position } from 'reactflow';
@@ -152,8 +152,10 @@ export const getColumnContent = (
         'lineage-column-node-handle',
         encodeLineageHandles(fullyQualifiedName ?? '')
       )}
-      <div className={classNames('d-flex justify-between w-full')}>
-        <span className="custom-node-name-container">
+      <Row gutter={24}>
+        <Col
+          className="custom-node-name-container"
+          span={showDataObservabilitySummary ? 8 : 12}>
           <div className="custom-node-name-icon">
             {getColumnDataTypeIcon({
               dataType: column.dataType,
@@ -165,16 +167,26 @@ export const getColumnContent = (
             ellipsis={{ tooltip: true }}>
             {getEntityName(column)}
           </Typography.Text>
-        </span>
-        <span className="custom-node-constraint">{column.constraint}</span>
-      </div>
-      {showDataObservabilitySummary && (
-        <TestSuiteSummaryWidget
-          isLoading={isLoading}
-          size="small"
-          summary={summary}
-        />
-      )}
+        </Col>
+
+        <Col
+          className={classNames(
+            'custom-node-constraint',
+            showDataObservabilitySummary ? 'text-left' : 'text-right'
+          )}
+          span={showDataObservabilitySummary ? 8 : 12}>
+          {column.constraint}
+        </Col>
+        {showDataObservabilitySummary && (
+          <Col span={8}>
+            <TestSuiteSummaryWidget
+              isLoading={isLoading}
+              size="small"
+              summary={summary}
+            />
+          </Col>
+        )}
+      </Row>
     </div>
   );
 };
