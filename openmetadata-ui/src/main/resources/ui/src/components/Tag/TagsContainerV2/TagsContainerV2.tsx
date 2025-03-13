@@ -404,36 +404,32 @@ const TagsContainerV2 = ({
     editTagButton,
   ]);
 
-  const entityLink = useMemo(
-    () =>
-      entityType === EntityType.TABLE
-        ? EntityLink.getTableEntityLink(
-            entityFqn ?? '',
-            EntityLink.getTableColumnNameFromColumnFqn(columnData?.fqn ?? '')
-          )
-        : getEntityFeedLink(entityType, columnData?.fqn),
-    [entityType, entityFqn]
-  );
-
   const suggestionDataRender = useMemo(() => {
-    const activeSuggestion = selectedUserSuggestions?.tags.find(
-      (suggestion) =>
-        suggestion.entityLink === entityLink &&
-        !getTierTags(suggestion.tagLabels ?? [])
-    );
-
-    if (activeSuggestion) {
-      return (
-        <SuggestionsAlert
-          hasEditAccess={permission}
-          showSuggestedBy={false}
-          suggestion={activeSuggestion}
-        />
+    if (!isGlossaryType && entityType === EntityType.TABLE) {
+      const entityLink = EntityLink.getTableEntityLink(
+        entityFqn ?? '',
+        EntityLink.getTableColumnNameFromColumnFqn(columnData?.fqn ?? '')
       );
+
+      const activeSuggestion = selectedUserSuggestions?.tags.find(
+        (suggestion) =>
+          suggestion.entityLink === entityLink &&
+          !getTierTags(suggestion.tagLabels ?? [])
+      );
+
+      if (activeSuggestion) {
+        return (
+          <SuggestionsAlert
+            hasEditAccess={permission}
+            showSuggestedBy={!entityLink.includes('columns')}
+            suggestion={activeSuggestion}
+          />
+        );
+      }
     }
 
     return null;
-  }, [permission, entityLink, selectedUserSuggestions]);
+  }, [permission, entityType, isGlossaryType, selectedUserSuggestions]);
 
   useEffect(() => {
     setTags(getFilterTags(selectedTags));
@@ -445,12 +441,9 @@ const TagsContainerV2 = ({
       data-testid={isGlossaryType ? 'glossary-container' : 'tags-container'}>
       {header}
 
-      {suggestionDataRender && tagType !== TagSource.Glossary ? (
-        suggestionDataRender
-      ) : (
+      {suggestionDataRender ?? (
         <>
           {tagBody}
-
           {(children || showBottomEditButton) && (
             <Space align="baseline" className="m-t-xs w-full" size="middle">
               {showBottomEditButton && !showInlineEditButton && editTagButton}

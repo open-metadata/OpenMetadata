@@ -450,7 +450,12 @@ export const DataAssetsHeader = ({
     }
 
     return null;
-  }, [editTierPermission, selectedUserSuggestions]);
+  }, [
+    entityType,
+    dataAsset.fullyQualifiedName,
+    editTierPermission,
+    selectedUserSuggestions,
+  ]);
 
   return (
     <>

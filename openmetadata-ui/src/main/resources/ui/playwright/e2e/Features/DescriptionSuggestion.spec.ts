@@ -84,7 +84,7 @@ test.describe('Description Suggestions Table Entity', () => {
 
       // All Column Suggestions Card should be visible
       await expect(
-        page.getByTestId('suggested-SuggestDescriptionLabel-card')
+        page.getByTestId('suggested-SuggestDescription-card')
       ).toHaveCount(6);
 
       // Close the suggestions

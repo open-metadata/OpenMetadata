@@ -197,7 +197,6 @@ const DescriptionV1 = ({
       return (
         <SuggestionsAlert
           hasEditAccess={hasEditAccess}
-          showSuggestedBy={false}
           suggestion={activeSuggestion}
         />
       );
