@@ -58,7 +58,6 @@ import {
   getTestConnectionName,
   shouldTestConnection,
 } from '../../../utils/ServiceUtils';
-import { showErrorToast } from '../../../utils/ToastUtils';
 import Loader from '../Loader/Loader';
 import './test-connection.style.less';
 import { TestConnectionProps, TestStatus } from './TestConnection.interface';
@@ -85,6 +84,8 @@ const TestConnection: FC<TestConnectionProps> = ({
   const [message, setMessage] = useState<string>(
     TEST_CONNECTION_INITIAL_MESSAGE
   );
+
+  const [errorMessage, setErrorMessage] = useState<string>('');
 
   const [testConnectionStep, setTestConnectionStep] = useState<
     TestConnectionStep[]
@@ -341,7 +342,14 @@ const TestConnection: FC<TestConnectionProps> = ({
       setIsTestingConnection(false);
       setMessage(TEST_CONNECTION_FAILURE_MESSAGE);
       setTestStatus(StatusType.Failed);
-      showErrorToast(error as AxiosError);
+      if ((error as AxiosError).status === 400) {
+        setErrorMessage((error as AxiosError).response?.data as string);
+      } else {
+        setErrorMessage(
+          (error as AxiosError<{ responseMessage: string }>).response?.data
+            ?.responseMessage as string
+        );
+      }
 
       // delete the workflow if there is an exception
       const workflowId = currentWorkflowRef.current?.id;
@@ -473,6 +481,7 @@ const TestConnection: FC<TestConnectionProps> = ({
         </Button>
       )}
       <TestConnectionModal
+        errorMessage={errorMessage}
         isConnectionTimeout={isConnectionTimeout}
         isOpen={dialogOpen}
         isTestingConnection={isTestingConnection}

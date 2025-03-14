@@ -22,8 +22,10 @@ import React, { FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconTimeOut } from '../../../../assets/svg/ic-time-out.svg';
 import { ReactComponent as IconTimeOutButton } from '../../../../assets/svg/ic-timeout-button.svg';
+import { TEST_CONNECTION_FAILURE_MESSAGE } from '../../../../constants/Services.constant';
 import { TestConnectionStepResult } from '../../../../generated/entity/automations/workflow';
 import { TestConnectionStep } from '../../../../generated/entity/services/connections/testConnectionDefinition';
+import InlineAlert from '../../InlineAlert/InlineAlert';
 import ConnectionStepCard from '../ConnectionStepCard/ConnectionStepCard';
 import './test-connection-modal.less';
 interface TestConnectionModalProps {
@@ -36,6 +38,7 @@ interface TestConnectionModalProps {
   onCancel: () => void;
   onConfirm: () => void;
   onTestConnection: () => void;
+  errorMessage: string;
 }
 
 const TestConnectionModal: FC<TestConnectionModalProps> = ({
@@ -48,6 +51,7 @@ const TestConnectionModal: FC<TestConnectionModalProps> = ({
   onCancel,
   isConnectionTimeout,
   onTestConnection,
+  errorMessage,
 }) => {
   const { t } = useTranslation();
 
@@ -77,6 +81,13 @@ const TestConnectionModal: FC<TestConnectionModalProps> = ({
         className="p-x-md w-full overflow-hidden"
         direction="vertical"
         size={16}>
+        {errorMessage && (
+          <InlineAlert
+            description={errorMessage}
+            heading={TEST_CONNECTION_FAILURE_MESSAGE}
+            type="error"
+          />
+        )}
         <Progress
           className="test-connection-progress-bar"
           format={getProgressFormat}
