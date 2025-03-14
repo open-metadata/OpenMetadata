@@ -53,7 +53,29 @@ export interface SearchIndexDetailPageTabProps {
   labelMap?: Record<EntityTabs, string>;
 }
 
+enum SearchIndexWidgetKeys {
+  DESCRIPTION = DetailPageWidgetKeys.DESCRIPTION,
+  SEARCH_INDEX_FIELDS = DetailPageWidgetKeys.SEARCH_INDEX_FIELDS,
+  DATA_PRODUCTS = DetailPageWidgetKeys.DATA_PRODUCTS,
+  TAGS = DetailPageWidgetKeys.TAGS,
+  GLOSSARY_TERMS = DetailPageWidgetKeys.GLOSSARY_TERMS,
+  CUSTOM_PROPERTIES = DetailPageWidgetKeys.CUSTOM_PROPERTIES,
+}
+
 class SearchIndexClassBase {
+  defaultWidgetHeight: Record<SearchIndexWidgetKeys, number>;
+
+  constructor() {
+    this.defaultWidgetHeight = {
+      [SearchIndexWidgetKeys.DESCRIPTION]: 2,
+      [SearchIndexWidgetKeys.SEARCH_INDEX_FIELDS]: 11,
+      [SearchIndexWidgetKeys.DATA_PRODUCTS]: 2,
+      [SearchIndexWidgetKeys.TAGS]: 2,
+      [SearchIndexWidgetKeys.GLOSSARY_TERMS]: 2,
+      [SearchIndexWidgetKeys.CUSTOM_PROPERTIES]: 4,
+    };
+  }
+
   public getSearchIndexDetailPageTabs(
     tabProps: SearchIndexDetailPageTabProps
   ): TabProps[] {
@@ -84,7 +106,7 @@ class SearchIndexClassBase {
 
     return [
       {
-        h: 2,
+        h: this.defaultWidgetHeight[SearchIndexWidgetKeys.DESCRIPTION],
         i: DetailPageWidgetKeys.DESCRIPTION,
         w: 6,
         x: 0,
@@ -92,7 +114,7 @@ class SearchIndexClassBase {
         static: false,
       },
       {
-        h: 11,
+        h: this.defaultWidgetHeight[SearchIndexWidgetKeys.SEARCH_INDEX_FIELDS],
         i: DetailPageWidgetKeys.SEARCH_INDEX_FIELDS,
         w: 6,
         x: 0,
@@ -100,7 +122,7 @@ class SearchIndexClassBase {
         static: false,
       },
       {
-        h: 1,
+        h: this.defaultWidgetHeight[SearchIndexWidgetKeys.DATA_PRODUCTS],
         i: DetailPageWidgetKeys.DATA_PRODUCTS,
         w: 2,
         x: 6,
@@ -108,7 +130,7 @@ class SearchIndexClassBase {
         static: false,
       },
       {
-        h: 2,
+        h: this.defaultWidgetHeight[SearchIndexWidgetKeys.TAGS],
         i: DetailPageWidgetKeys.TAGS,
         w: 2,
         x: 6,
@@ -116,7 +138,7 @@ class SearchIndexClassBase {
         static: false,
       },
       {
-        h: 2,
+        h: this.defaultWidgetHeight[SearchIndexWidgetKeys.GLOSSARY_TERMS],
         i: DetailPageWidgetKeys.GLOSSARY_TERMS,
         w: 2,
         x: 6,
@@ -124,7 +146,7 @@ class SearchIndexClassBase {
         static: false,
       },
       {
-        h: 4,
+        h: this.defaultWidgetHeight[SearchIndexWidgetKeys.CUSTOM_PROPERTIES],
         i: DetailPageWidgetKeys.CUSTOM_PROPERTIES,
         w: 2,
         x: 6,
@@ -157,6 +179,29 @@ class SearchIndexClassBase {
 
   public getWidgetsFromKey(widgetConfig: WidgetConfig) {
     return getSearchIndexWidgetsFromKey(widgetConfig);
+  }
+
+  public getWidgetHeight(widgetName: string) {
+    switch (widgetName) {
+      case DetailPageWidgetKeys.DESCRIPTION:
+        return this.defaultWidgetHeight[SearchIndexWidgetKeys.DESCRIPTION];
+      case DetailPageWidgetKeys.SEARCH_INDEX_FIELDS:
+        return this.defaultWidgetHeight[
+          SearchIndexWidgetKeys.SEARCH_INDEX_FIELDS
+        ];
+      case DetailPageWidgetKeys.DATA_PRODUCTS:
+        return this.defaultWidgetHeight[SearchIndexWidgetKeys.DATA_PRODUCTS];
+      case DetailPageWidgetKeys.TAGS:
+        return this.defaultWidgetHeight[SearchIndexWidgetKeys.TAGS];
+      case DetailPageWidgetKeys.GLOSSARY_TERMS:
+        return this.defaultWidgetHeight[SearchIndexWidgetKeys.GLOSSARY_TERMS];
+      case DetailPageWidgetKeys.CUSTOM_PROPERTIES:
+        return this.defaultWidgetHeight[
+          SearchIndexWidgetKeys.CUSTOM_PROPERTIES
+        ];
+      default:
+        return 1;
+    }
   }
 }
 

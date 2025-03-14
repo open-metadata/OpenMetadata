@@ -33,6 +33,7 @@ const entityCreationConfig: EntityDataClassCreationConfig = {
   pipelineService: true,
   searchIndexService: true,
   storageService: true,
+  entityDetails: true,
 };
 
 const entities = [

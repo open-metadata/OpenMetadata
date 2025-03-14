@@ -42,6 +42,7 @@ import { getTagsWithoutTier, getTierTags } from '../../../utils/TableUtils';
 import { createTagObject, updateTierTag } from '../../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { withActivityFeed } from '../../AppRouter/withActivityFeed';
+import Loader from '../../common/Loader/Loader';
 import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
 import { DataAssetsHeader } from '../../DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.interface';
@@ -85,7 +86,7 @@ const PipelineDetails = ({
     }, [pipelineDetails]);
 
   // local state variables
-  const { customizedPage } = useCustomPages(PageType.Pipeline);
+  const { customizedPage, isLoading } = useCustomPages(PageType.Pipeline);
 
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA
@@ -305,6 +306,10 @@ const PipelineDetails = ({
     getEntityFeedCount();
   }, [pipelineFQN]);
 
+  if (isLoading) {
+    return <Loader />;
+  }
+
   return (
     <PageLayoutV1
       className="bg-white"
@@ -338,7 +343,7 @@ const PipelineDetails = ({
           onUpdate={settingsUpdateHandler}>
           <Col span={24}>
             <Tabs
-              activeKey={tab ?? EntityTabs.TASKS}
+              activeKey={tab}
               className="entity-details-page-tabs"
               data-testid="tabs"
               items={tabs}

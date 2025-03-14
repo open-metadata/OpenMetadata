@@ -82,7 +82,7 @@ function SearchIndexDetailsPage() {
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA
   );
-  const { customizedPage } = useCustomPages(PageType.SearchIndex);
+  const { customizedPage, isLoading } = useCustomPages(PageType.SearchIndex);
 
   const [searchIndexPermissions, setSearchIndexPermissions] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
@@ -510,7 +510,7 @@ function SearchIndexDetailsPage() {
     }
   }, [decodedSearchIndexFQN, viewPermission]);
 
-  if (loading) {
+  if (isLoading || loading) {
     return <Loader />;
   }
 
@@ -559,7 +559,7 @@ function SearchIndexDetailsPage() {
           onUpdate={onSearchIndexUpdate}>
           <Col span={24}>
             <Tabs
-              activeKey={activeTab ?? EntityTabs.FIELDS}
+              activeKey={activeTab}
               className="entity-details-page-tabs"
               data-testid="tabs"
               items={tabs}

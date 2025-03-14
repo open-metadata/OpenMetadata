@@ -250,7 +250,6 @@ export const CommonWidgets = ({
 
   return (
     <div
-      className="overflow-scroll"
       data-grid={widgetConfig}
       data-testid={widgetConfig.i}
       id={widgetConfig.i}

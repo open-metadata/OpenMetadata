@@ -282,7 +282,7 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
               <Col span={24}>
                 <Tabs
                   data-testid="tabs"
-                  defaultActiveKey={tab ?? EntityTabs.DETAILS}
+                  defaultActiveKey={tab}
                   items={tabItems}
                   onChange={handleTabChange}
                 />

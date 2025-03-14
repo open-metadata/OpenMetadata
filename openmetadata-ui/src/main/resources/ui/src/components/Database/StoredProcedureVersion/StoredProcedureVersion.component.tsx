@@ -201,7 +201,7 @@ const StoredProcedureVersion = ({
               onUpdate={() => Promise.resolve()}>
               <Col span={24}>
                 <Tabs
-                  defaultActiveKey={tab ?? EntityTabs.CODE}
+                  defaultActiveKey={tab}
                   items={tabItems}
                   onChange={handleTabChange}
                 />

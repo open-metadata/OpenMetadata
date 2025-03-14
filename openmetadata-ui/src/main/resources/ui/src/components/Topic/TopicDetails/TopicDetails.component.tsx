@@ -55,6 +55,7 @@ import SampleDataWithMessages from '../../Database/SampleDataWithMessages/Sample
 import Lineage from '../../Lineage/Lineage.component';
 
 import { useCustomPages } from '../../../hooks/useCustomPages';
+import Loader from '../../common/Loader/Loader';
 import QueryViewer from '../../common/QueryViewer/QueryViewer.component';
 import { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../PageLayoutV1/PageLayoutV1';
@@ -78,7 +79,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
     useParams<{ tab: EntityTabs }>();
   const { fqn: decodedTopicFQN } = useFqn();
   const history = useHistory();
-  const { customizedPage } = useCustomPages(PageType.Topic);
+  const { customizedPage, isLoading } = useCustomPages(PageType.Topic);
 
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA
@@ -363,6 +364,10 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
     viewAllPermission,
   ]);
 
+  if (isLoading) {
+    return <Loader />;
+  }
+
   return (
     <PageLayoutV1
       className="bg-white"
@@ -396,7 +401,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
           onUpdate={onTopicUpdate}>
           <Col span={24}>
             <Tabs
-              activeKey={activeTab ?? EntityTabs.SCHEMA}
+              activeKey={activeTab}
               className="entity-details-page-tabs"
               data-testid="tabs"
               items={tabs}

@@ -22,7 +22,6 @@ import {
   TAB_GRID_MAX_COLUMNS,
 } from '../../../constants/CustomizeWidgets.constants';
 import { EntityTabs } from '../../../enums/entity.enum';
-import { Document } from '../../../generated/entity/docStore/document';
 import { Page, Tab } from '../../../generated/system/ui/page';
 import { PageType } from '../../../generated/system/ui/uiCustomization';
 import { useGridLayoutDirection } from '../../../hooks/useGridLayoutDirection';
@@ -32,14 +31,13 @@ import {
 } from '../../../pages/CustomizablePage/CustomizablePage.interface';
 import { useCustomizeStore } from '../../../pages/CustomizablePage/CustomizeStore';
 import {
-  getAddWidgetHandler,
   getLayoutUpdateHandler,
   getLayoutWithEmptyWidgetPlaceholder,
   getRemoveWidgetHandler,
   getUniqueFilteredLayout,
 } from '../../../utils/CustomizableLandingPageUtils';
-
 import {
+  getAddWidgetHandler,
   getCustomizableWidgetByPage,
   getDefaultTabs,
   getDefaultWidgetForTab,
@@ -240,10 +238,11 @@ export const CustomizeTabWidget = () => {
     ) => {
       setTabLayouts(
         getAddWidgetHandler(
-          newWidgetData as unknown as Document,
+          newWidgetData,
           placeholderWidgetKey,
           widgetSize,
-          TAB_GRID_MAX_COLUMNS
+          TAB_GRID_MAX_COLUMNS,
+          currentPageType as PageType
         )
       );
       setIsWidgetModalOpen(false);
