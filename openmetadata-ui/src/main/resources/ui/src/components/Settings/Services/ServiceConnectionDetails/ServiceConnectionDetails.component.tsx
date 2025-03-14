@@ -39,7 +39,7 @@ const ServiceConnectionDetails = ({
   connectionDetails,
   serviceCategory,
   serviceFQN,
-}: ServiceConnectionDetailsProps) => {
+}: Readonly<ServiceConnectionDetailsProps>) => {
   const [schema, setSchema] = useState<Record<string, any>>({});
   const [data, setData] = useState<ReactNode>();
 

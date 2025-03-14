@@ -17,21 +17,10 @@ import validator from '@rjsf/validator-ajv8';
 import { Alert } from 'antd';
 import { t } from 'i18next';
 import { isEmpty, isUndefined } from 'lodash';
-import { LoadingState } from 'Models';
-import React, {
-  Fragment,
-  FunctionComponent,
-  useEffect,
-  useRef,
-  useState,
-} from 'react';
-import { ServiceCategory } from '../../../../enums/service.enum';
+import React, { Fragment, useEffect, useRef, useState } from 'react';
 import { useAirflowStatus } from '../../../../hooks/useAirflowStatus';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
-import {
-  ConfigData,
-  ServicesType,
-} from '../../../../interface/service.interface';
+import { ConfigData } from '../../../../interface/service.interface';
 import { getPipelineServiceHostIp } from '../../../../rest/ingestionPipelineAPI';
 import { Transi18next } from '../../../../utils/CommonUtils';
 import { formatFormDataForSubmit } from '../../../../utils/JSONSchemaFormUtils';
@@ -45,21 +34,9 @@ import WorkflowArrayFieldTemplate from '../../../common/Form/JSONSchema/JSONSche
 import FormBuilder from '../../../common/FormBuilder/FormBuilder';
 import InlineAlert from '../../../common/InlineAlert/InlineAlert';
 import TestConnection from '../../../common/TestConnection/TestConnection';
+import { ConnectionConfigFormProps } from './ConnectionConfigForm.interface';
 
-interface Props {
-  data?: ServicesType;
-  okText?: string;
-  cancelText?: string;
-  serviceType: string;
-  serviceCategory: ServiceCategory;
-  status: LoadingState;
-  onFocus: (id: string) => void;
-  onSave: (data: IChangeEvent<ConfigData>) => Promise<void>;
-  disableTestConnection?: boolean;
-  onCancel?: () => void;
-}
-
-const ConnectionConfigForm: FunctionComponent<Props> = ({
+const ConnectionConfigForm = ({
   data,
   okText = t('label.save'),
   cancelText = t('label.cancel'),
@@ -70,7 +47,7 @@ const ConnectionConfigForm: FunctionComponent<Props> = ({
   onSave,
   onFocus,
   disableTestConnection = false,
-}: Props) => {
+}: Readonly<ConnectionConfigFormProps>) => {
   const { inlineAlertDetails } = useApplicationStore();
 
   const formRef = useRef<Form<ConfigData>>(null);

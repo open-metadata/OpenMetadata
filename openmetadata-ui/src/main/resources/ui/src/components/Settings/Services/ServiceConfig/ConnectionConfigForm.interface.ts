@@ -18,7 +18,7 @@ import {
   ServicesType,
 } from '../../../../interface/service.interface';
 
-export interface FiltersConfigFormProps {
+export interface ConnectionConfigFormProps {
   data?: ServicesType;
   okText?: string;
   cancelText?: string;
@@ -27,5 +27,6 @@ export interface FiltersConfigFormProps {
   status: LoadingState;
   onFocus: (id: string) => void;
   onSave: (data: IChangeEvent<ConfigData>) => Promise<void>;
+  disableTestConnection?: boolean;
   onCancel?: () => void;
 }

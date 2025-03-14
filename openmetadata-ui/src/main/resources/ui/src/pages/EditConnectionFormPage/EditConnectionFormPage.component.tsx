@@ -205,7 +205,7 @@ function EditConnectionFormPage() {
       <TitleBreadcrumb titleLinks={slashedBreadcrumb} />
       <div className="m-t-md">
         <Space className="p-b-xs">
-          {getServiceLogo(serviceDetails?.serviceType || '', 'h-6')}{' '}
+          {getServiceLogo(serviceDetails?.serviceType ?? '', 'h-6')}{' '}
           <Typography className="text-base" data-testid="header">
             {t('message.edit-service-entity-connection', {
               entity: serviceFQN,
@@ -223,7 +223,7 @@ function EditConnectionFormPage() {
             data={serviceDetails}
             okText={t('label.next')}
             serviceCategory={serviceCategory}
-            serviceType={serviceDetails?.serviceType || ''}
+            serviceType={serviceDetails?.serviceType ?? ''}
             status={saveServiceState}
             onCancel={onCancel}
             onFocus={handleFieldFocus}
@@ -238,7 +238,7 @@ function EditConnectionFormPage() {
             cancelText={t('label.back')}
             data={serviceDetails}
             serviceCategory={serviceCategory}
-            serviceType={serviceDetails?.serviceType || ''}
+            serviceType={serviceDetails?.serviceType ?? ''}
             status={saveServiceState}
             onCancel={handleFiltersInputBackClick}
             onFocus={handleFieldFocus}
