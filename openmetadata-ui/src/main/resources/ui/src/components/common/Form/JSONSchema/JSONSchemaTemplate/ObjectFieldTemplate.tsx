@@ -21,7 +21,7 @@ import classNames from 'classnames';
 import { isEmpty, isUndefined } from 'lodash';
 import React, { Fragment, FunctionComponent } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ADVANCED_PROPERTIES } from '../../../../../constants/Services.constant';
+import serviceUtilClassBase from '../../../../../utils/ServiceUtilClassBase';
 import './object-field-template.less';
 
 const { Panel } = Collapse;
@@ -40,9 +40,10 @@ export const ObjectFieldTemplate: FunctionComponent<ObjectFieldTemplateProps> =
 
     const { advancedProperties, normalProperties } = properties.reduce(
       (propertyMap, currentProperty) => {
-        const isAdvancedProperty = ADVANCED_PROPERTIES.includes(
-          currentProperty.name
-        );
+        const isAdvancedProperty =
+          serviceUtilClassBase.ADVANCED_PROPERTIES.includes(
+            currentProperty.name
+          );
 
         let advancedProperties = [...propertyMap.advancedProperties];
         let normalProperties = [...propertyMap.normalProperties];
