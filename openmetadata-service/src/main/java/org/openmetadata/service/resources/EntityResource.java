@@ -195,12 +195,13 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       int offset,
       SearchSortFilter searchSortFilter,
       String q,
+      String queryString,
       OperationContext operationContext,
       ResourceContextInterface resourceContext)
       throws IOException {
     authorizer.authorize(securityContext, operationContext, resourceContext);
     return repository.listFromSearchWithOffset(
-        uriInfo, fields, searchListFilter, limit, offset, searchSortFilter, q);
+        uriInfo, fields, searchListFilter, limit, offset, searchSortFilter, q, queryString);
   }
 
   public T getInternal(

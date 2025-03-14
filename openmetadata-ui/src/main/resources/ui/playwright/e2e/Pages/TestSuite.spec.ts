@@ -64,7 +64,7 @@ test.beforeEach(async ({ page }) => {
   await redirectToHomePage(page);
 });
 
-test.skip('Logical TestSuite', async ({ page }) => {
+test('Logical TestSuite', async ({ page }) => {
   test.slow();
 
   const NEW_TEST_SUITE = {

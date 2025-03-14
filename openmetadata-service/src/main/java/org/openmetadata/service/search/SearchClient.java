@@ -187,7 +187,8 @@ public interface SearchClient {
       int offset,
       String index,
       SearchSortFilter searchSortFilter,
-      String q)
+      String q,
+      String queryString)
       throws IOException;
 
   SearchResultListMapper listWithDeepPagination(

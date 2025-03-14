@@ -18,7 +18,7 @@ import { getApiContext, redirectToHomePage, uuid } from '../../utils/common';
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
-test.skip(
+test(
   'TestSuite multi pipeline support',
   PLAYWRIGHT_INGESTION_TAG_OBJ,
   async ({ page }) => {
@@ -185,7 +185,7 @@ test.skip(
   }
 );
 
-test.skip(
+test(
   "Edit the pipeline's test case",
   PLAYWRIGHT_INGESTION_TAG_OBJ,
   async ({ page }) => {

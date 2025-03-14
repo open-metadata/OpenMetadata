@@ -401,7 +401,12 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
               description = "search query term to use in list",
               schema = @Schema(type = "string"))
           @QueryParam("q")
-          String q)
+          String q,
+      @Parameter(
+              description = "raw elasticsearch query to use in list",
+              schema = @Schema(type = "string"))
+          @QueryParam("queryString")
+          String queryString)
       throws IOException {
     if ((startTimestamp == null && endTimestamp != null)
         || (startTimestamp != null && endTimestamp == null)) {
@@ -471,6 +476,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
             offset,
             searchSortFilter,
             q,
+            queryString,
             operationContext,
             resourceContextInterface);
     return PIIMasker.getTestCases(tests, authorizer, securityContext);
