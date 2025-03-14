@@ -812,6 +812,10 @@ export interface OpenMetadataConnection {
      */
     clusterName?: string;
     /**
+     * Regex to only include/exclude databases that matches the pattern.
+     */
+    databaseFilterPattern?: FilterPattern;
+    /**
      * Configuration for Sink Component in the OpenMetadata Ingestion Framework.
      */
     elasticsSearch?: ElasticsSearch;
@@ -885,6 +889,10 @@ export interface OpenMetadataConnection {
      */
     limitRecords?: number;
     /**
+     * Regex to only include/exclude schemas that matches the pattern.
+     */
+    schemaFilterPattern?: FilterPattern;
+    /**
      * Secrets Manager Loader for the Pipeline Service Client.
      */
     secretsManagerLoader?: SecretsManagerClientLoader;
@@ -915,6 +923,10 @@ export interface OpenMetadataConnection {
      */
     supportsElasticSearchReindexingExtraction?: boolean;
     /**
+     * Regex to only include/exclude tables that matches the pattern.
+     */
+    tableFilterPattern?: FilterPattern;
+    /**
      * Service Type
      */
     type?: OpenmetadataType;
@@ -941,6 +953,26 @@ export enum AuthProvider {
     Okta = "okta",
     Openmetadata = "openmetadata",
     Saml = "saml",
+}
+
+/**
+ * Regex to only include/exclude databases that matches the pattern.
+ *
+ * Regex to only fetch entities that matches the pattern.
+ *
+ * Regex to only include/exclude schemas that matches the pattern.
+ *
+ * Regex to only include/exclude tables that matches the pattern.
+ */
+export interface FilterPattern {
+    /**
+     * List of strings/regex patterns to match and exclude only database entities that match.
+     */
+    excludes?: string[];
+    /**
+     * List of strings/regex patterns to match and include only database entities that match.
+     */
+    includes?: string[];
 }
 
 /**
