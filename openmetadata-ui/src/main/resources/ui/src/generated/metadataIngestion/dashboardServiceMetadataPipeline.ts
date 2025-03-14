@@ -87,7 +87,7 @@ export interface DashboardServiceMetadataPipeline {
 /**
  * Regex exclude or include charts that matches the pattern.
  *
- * Regex to only fetch dashboards or charts that matches the pattern.
+ * Regex to only fetch entities that matches the pattern.
  *
  * Regex to exclude or include dashboards that matches the pattern.
  *

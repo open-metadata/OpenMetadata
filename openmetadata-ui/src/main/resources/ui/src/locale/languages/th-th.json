@@ -1174,6 +1174,7 @@
     "service-sso": "{{serviceType}} SSO",
     "service-type": "ประเภทบริการ",
     "session-plural": "เซสชันหลายรายการ",
+    "set-default-filters": "ตั้งค่าตัวกรองตัวค่าเริ่มต้น",
     "setting-plural": "การตั้งค่าหลายรายการ",
     "setup-guide": "คู่มือการติดตั้ง",
     "severity": "ความรุนแรง",

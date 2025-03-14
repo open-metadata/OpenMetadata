@@ -86,7 +86,7 @@ export interface DatabaseServiceProfilerPipeline {
  * Regex to only compute metrics for table that matches the given tag, tiers, gloassary
  * pattern.
  *
- * Regex to only fetch dashboards or charts that matches the pattern.
+ * Regex to only fetch entities that matches the pattern.
  *
  * Regex to only fetch databases that matches the pattern.
  *

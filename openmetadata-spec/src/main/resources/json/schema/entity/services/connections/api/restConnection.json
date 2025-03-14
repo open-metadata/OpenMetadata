@@ -33,6 +33,11 @@
       "type": "string",
       "format": "password"
     },
+    "apiCollectionFilterPattern": {
+      "description": "Regex to only fetch api collections with names matching the pattern.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern",
+      "title": "Default API Collection Filter Pattern"
+    },
     "supportsMetadataExtraction": {
       "title": "Supports Metadata Extraction",
       "description": "Supports Metadata Extraction.",

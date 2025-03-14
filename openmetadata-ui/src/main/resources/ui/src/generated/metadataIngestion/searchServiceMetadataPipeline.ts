@@ -54,7 +54,7 @@ export interface SearchServiceMetadataPipeline {
 /**
  * Regex to only fetch search indexes that matches the pattern.
  *
- * Regex to only fetch dashboards or charts that matches the pattern.
+ * Regex to only fetch entities that matches the pattern.
  */
 export interface FilterPattern {
     /**

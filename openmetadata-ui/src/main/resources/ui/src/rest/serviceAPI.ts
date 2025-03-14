@@ -12,7 +12,7 @@
  */
 
 import { AxiosResponse } from 'axios';
-import { RestoreRequestType, ServiceData, ServicesUpdateRequest } from 'Models';
+import { RestoreRequestType, ServicesUpdateRequest } from 'Models';
 import { WILD_CARD_CHAR } from '../constants/char.constants';
 import { PAGE_SIZE } from '../constants/constants';
 import { TabSpecificField } from '../enums/entity.enum';
@@ -91,7 +91,7 @@ export const postService = async (
 ) => {
   const response = await APIClient.post<
     ServicesUpdateRequest,
-    AxiosResponse<ServiceData>
+    AxiosResponse<ServicesType>
   >(`/services/${serviceCat}`, options);
 
   return response.data;

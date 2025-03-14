@@ -14,9 +14,13 @@
 import { AxiosError } from 'axios';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
 import { t } from 'i18next';
+import { startCase } from 'lodash';
 import { ServiceTypes } from 'Models';
 import React from 'react';
-import { GlobalSettingOptions } from '../constants/GlobalSettings.constants';
+import {
+  GlobalSettingOptions,
+  GlobalSettingsMenuCategory,
+} from '../constants/GlobalSettings.constants';
 import {
   SERVICE_TYPES_ENUM,
   SERVICE_TYPE_MAP,
@@ -54,6 +58,7 @@ import {
 import { getDashboardURL } from './DashboardServiceUtils';
 import entityUtilClassBase from './EntityUtilClassBase';
 import { getBrokers } from './MessagingServiceUtils';
+import { getSettingPath } from './RouterUtils';
 import { showErrorToast } from './ToastUtils';
 
 export const getFormattedGuideText = (
@@ -551,4 +556,25 @@ export const getActiveFieldNameForAppDocs = (activeField?: string) => {
     .slice(1)
     .filter((segment) => !/^\d+$/.test(segment))
     .join('.');
+};
+
+export const getAddServiceEntityBreadcrumb = (
+  serviceCategory: ServiceCategory
+) => {
+  return [
+    {
+      name: startCase(serviceCategory),
+      url: getSettingPath(
+        GlobalSettingsMenuCategory.SERVICES,
+        getServiceRouteFromServiceType(serviceCategory as ServiceTypes)
+      ),
+    },
+    {
+      name: t('label.add-new-entity', {
+        entity: t('label.service'),
+      }),
+      url: '',
+      activeTitle: true,
+    },
+  ];
 };

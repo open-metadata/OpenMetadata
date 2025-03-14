@@ -109,8 +109,11 @@ export const patchApplication = async (id: string, patch: Operation[]) => {
   return response.data;
 };
 
-export const triggerOnDemandApp = (appName: string): Promise<AxiosResponse> => {
-  return APIClient.post(`${BASE_URL}/trigger/${getEncodedFqn(appName)}`, {});
+export const triggerOnDemandApp = (
+  appName: string,
+  data?: Record<string, unknown>
+): Promise<AxiosResponse> => {
+  return APIClient.post(`${BASE_URL}/trigger/${getEncodedFqn(appName)}`, data);
 };
 
 export const deployApp = (appName: string): Promise<AxiosResponse> => {

@@ -1174,6 +1174,7 @@
     "service-sso": "{{serviceType}} SSO",
     "service-type": "סוג השירות",
     "session-plural": "מספר יחידות",
+    "set-default-filters": "קבל מסנן ברירת מחדל",
     "setting-plural": "הגדרות",
     "setup-guide": "מדריך הגדרה",
     "severity": "Severity",

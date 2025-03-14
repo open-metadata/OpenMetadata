@@ -20,7 +20,11 @@ export interface AlationSinkConnection {
     authType:             AuthenticationTypeForAlation;
     connectionArguments?: { [key: string]: any };
     connectionOptions?:   { [key: string]: string };
-    datasourceLinks?:     { [key: string]: string };
+    /**
+     * Regex to only include/exclude databases that matches the pattern.
+     */
+    databaseFilterPattern?: FilterPattern;
+    datasourceLinks?:       { [key: string]: string };
     /**
      * Host and port of the Alation service.
      */
@@ -32,9 +36,17 @@ export interface AlationSinkConnection {
     /**
      * Project name to create the refreshToken. Can be anything
      */
-    projectName?:                string;
+    projectName?: string;
+    /**
+     * Regex to only include/exclude schemas that matches the pattern.
+     */
+    schemaFilterPattern?:        FilterPattern;
     sslConfig?:                  Config;
     supportsMetadataExtraction?: boolean;
+    /**
+     * Regex to only include/exclude tables that matches the pattern.
+     */
+    tableFilterPattern?: FilterPattern;
     /**
      * Service Type
      */
@@ -62,6 +74,26 @@ export interface AuthenticationTypeForAlation {
      * Access Token for the API
      */
     accessToken?: string;
+}
+
+/**
+ * Regex to only include/exclude databases that matches the pattern.
+ *
+ * Regex to only fetch entities that matches the pattern.
+ *
+ * Regex to only include/exclude schemas that matches the pattern.
+ *
+ * Regex to only include/exclude tables that matches the pattern.
+ */
+export interface FilterPattern {
+    /**
+     * List of strings/regex patterns to match and exclude only database entities that match.
+     */
+    excludes?: string[];
+    /**
+     * List of strings/regex patterns to match and include only database entities that match.
+     */
+    includes?: string[];
 }
 
 /**

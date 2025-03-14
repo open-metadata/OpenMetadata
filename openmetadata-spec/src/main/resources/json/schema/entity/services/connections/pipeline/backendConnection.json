@@ -19,6 +19,11 @@
       "description": "Service Type",
       "$ref": "#/definitions/BackendType",
       "default": "Backend"
+    },
+    "pipelineFilterPattern": {
+      "description": "Regex exclude pipelines.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern",
+      "title": "Default Pipeline Filter Pattern"
     }
   },
   "additionalProperties": false

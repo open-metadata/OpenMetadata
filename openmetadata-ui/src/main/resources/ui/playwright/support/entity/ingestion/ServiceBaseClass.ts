@@ -150,7 +150,11 @@ class ServiceBaseClass {
   }
 
   async addIngestionPipeline(page: Page) {
-    await page.click('[data-testid="add-ingestion-button"]');
+    await page.click('[role="tab"] [data-testid="ingestions"]');
+
+    await page.waitForSelector('[data-testid="add-new-ingestion-button"]');
+
+    await page.click('[data-testid="add-new-ingestion-button"]');
 
     // Add ingestion page
     await page.waitForSelector('[data-testid="add-ingestion-container"]');
@@ -186,6 +190,8 @@ class ServiceBaseClass {
     await page.getByTestId('more-actions').first().click();
     await page.getByTestId('run-button').click();
 
+    await page.waitForLoadState('networkidle');
+
     await toastNotification(page, `Pipeline triggered successfully!`);
 
     // need manual wait to make sure we are awaiting on latest run results
@@ -195,14 +201,19 @@ class ServiceBaseClass {
   }
 
   async submitService(page: Page) {
-    await page.click('[data-testid="submit-btn"]');
-    await page.waitForSelector('[data-testid="success-line"]', {
-      state: 'visible',
-    });
+    await page.getByTestId('submit-btn').getByText('Next').click();
 
-    await expect(page.getByTestId('success-line')).toContainText(
-      'has been created successfully'
+    const dayOneExperienceApplicationRequest = page.waitForRequest(
+      (request) =>
+        request
+          .url()
+          .includes('/api/v1/apps/trigger/DayOneExperienceApplication') &&
+        request.method() === 'POST'
     );
+
+    await page.getByTestId('submit-btn').getByText('Save').click();
+
+    await dayOneExperienceApplicationRequest;
   }
 
   async scheduleIngestion(page: Page) {

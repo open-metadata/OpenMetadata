@@ -1174,6 +1174,7 @@
     "service-sso": "{{serviceType}}单点登录",
     "service-type": "服务类型",
     "session-plural": "会话",
+    "set-default-filters": "设置默认过滤器",
     "setting-plural": "设置",
     "setup-guide": "安装引导",
     "severity": "Severity",

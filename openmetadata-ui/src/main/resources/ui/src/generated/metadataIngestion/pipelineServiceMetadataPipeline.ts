@@ -85,7 +85,7 @@ export interface LineageInformation {
 /**
  * Regex exclude pipelines.
  *
- * Regex to only fetch dashboards or charts that matches the pattern.
+ * Regex to only fetch entities that matches the pattern.
  */
 export interface FilterPattern {
     /**

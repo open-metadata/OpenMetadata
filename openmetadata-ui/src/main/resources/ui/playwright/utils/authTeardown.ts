@@ -16,6 +16,7 @@ import {
   VIEW_ALL_RULE,
 } from '../constant/permission';
 import { AdminClass } from '../support/user/AdminClass';
+import { enableDisableDay1ExperienceApplication } from './applications';
 import { getApiContext } from './common';
 
 export const restoreOrganizationDefaultRole = async (
@@ -75,6 +76,8 @@ const restoreRolesAndPolicies = async (page: Page) => {
   await restoreOrganizationDefaultRole(apiContext);
   // update default Organization policy
   await updateDefaultOrganizationPolicy(apiContext);
+  // enable the day 1 experience application
+  await enableDisableDay1ExperienceApplication(apiContext);
 
   await afterAction();
 };
