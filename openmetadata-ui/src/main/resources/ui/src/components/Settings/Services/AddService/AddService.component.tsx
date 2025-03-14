@@ -36,6 +36,7 @@ import {
   getAddServicePath,
   getSettingPath,
 } from '../../../../utils/RouterUtils';
+import serviceUtilClassBase from '../../../../utils/ServiceUtilClassBase';
 import {
   getServiceCreatedLabel,
   getServiceRouteFromServiceType,
@@ -129,23 +130,13 @@ const AddService = ({
   // Service connection
   const handleConnectionDetailsBackClick = () => setActiveServiceStep(2);
   const handleConfigUpdate = async (newConfigData: ConfigData) => {
-    const data = {
-      name: serviceConfig.serviceName,
+    const configData = serviceUtilClassBase.getServiceConfigData({
+      serviceName: serviceConfig.serviceName,
       serviceType: selectServiceType,
       description: serviceConfig.description,
-      owners: [
-        {
-          id: currentUser?.id ?? '',
-          type: 'user',
-        },
-      ],
-    };
-    const configData = {
-      ...data,
-      connection: {
-        config: newConfigData,
-      },
-    };
+      userId: currentUser?.id ?? '',
+      configData: newConfigData,
+    });
     setSaveServiceState('waiting');
     try {
       await onAddServiceSave(configData);

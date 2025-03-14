@@ -435,27 +435,6 @@ export const TEST_CONNECTION_WARNING_MESSAGE = i18n.t(
   'message.connection-test-warning'
 );
 
-export const ADVANCED_PROPERTIES = [
-  'connectionArguments',
-  'connectionOptions',
-  'scheme',
-  'sampleDataStorageConfig',
-  'computeTableMetrics',
-  'computeColumnMetrics',
-  'includeViews',
-  'useStatistics',
-  'confidence',
-  'samplingMethodType',
-  'sampleDataCount',
-  'threadCount',
-  'timeoutSeconds',
-  'sslConfig',
-  'sslMode',
-  'schemaRegistrySSL',
-  'consumerConfigSSL',
-  'verify',
-];
-
 export const PIPELINE_SERVICE_PLATFORM = 'Airflow';
 
 export const SERVICE_TYPES = [

@@ -114,6 +114,7 @@ import {
   getServiceVersionPath,
   getSettingPath,
 } from '../../utils/RouterUtils';
+import serviceUtilClassBase from '../../utils/ServiceUtilClassBase';
 import {
   getCountLabel,
   getEntityTypeFromServiceCategory,
@@ -991,6 +992,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
         <Col className="p-x-lg" span={24}>
           <ServiceConnectionDetails
             connectionDetails={connectionDetails ?? {}}
+            extraInfo={serviceUtilClassBase.getServiceExtraInfo(serviceDetails)}
             serviceCategory={serviceCategory}
             serviceFQN={serviceDetails?.serviceType || ''}
           />
