@@ -189,7 +189,7 @@ class TableauSource(DashboardServiceSource):
         """
         if self.source_config.includeTags:
             tags: Set[TableauTag] = set()
-            for container in [[dashboard_details], dashboard_details.charts]:
+            for container in [[dashboard_details], dashboard_details.charts or []]:
                 for elem in container:
                     tags.update(elem.tags)
 
