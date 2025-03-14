@@ -68,7 +68,7 @@ class ParquetDataFrameReader(DataFrameReader):
         from pyarrow.parquet import ParquetDataset
 
         client_kwargs = {
-            "endpoint_override": self.config_source.securityConfig.endPointURL,
+            "endpoint_override": str(self.config_source.securityConfig.endPointURL),
             "region": self.config_source.securityConfig.awsRegion,
             "access_key": self.config_source.securityConfig.awsAccessKeyId,
             "session_token": self.config_source.securityConfig.awsSessionToken,
