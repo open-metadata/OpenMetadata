@@ -150,7 +150,11 @@ class ServiceBaseClass {
   }
 
   async addIngestionPipeline(page: Page) {
-    await page.click('[data-testid="add-ingestion-button"]');
+    await page.click('[role="tab"] [data-testid="ingestions"]');
+
+    await page.waitForSelector('[data-testid="add-new-ingestion-button"]');
+
+    await page.click('[data-testid="add-new-ingestion-button"]');
 
     // Add ingestion page
     await page.waitForSelector('[data-testid="add-ingestion-container"]');
@@ -199,15 +203,17 @@ class ServiceBaseClass {
   async submitService(page: Page) {
     await page.getByTestId('submit-btn').getByText('Next').click();
 
+    const dayOneExperienceApplicationRequest = page.waitForRequest(
+      (request) =>
+        request
+          .url()
+          .includes('/api/v1/apps/trigger/DayOneExperienceApplication') &&
+        request.method() === 'POST'
+    );
+
     await page.getByTestId('submit-btn').getByText('Save').click();
 
-    await page.waitForSelector('[data-testid="success-line"]', {
-      state: 'visible',
-    });
-
-    await expect(page.getByTestId('success-line')).toContainText(
-      'has been created successfully'
-    );
+    await dayOneExperienceApplicationRequest;
   }
 
   async scheduleIngestion(page: Page) {
