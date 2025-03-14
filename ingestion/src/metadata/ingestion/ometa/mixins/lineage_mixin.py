@@ -407,11 +407,37 @@ class OMetaLineageMixin(Generic[T]):
                         f"Error while adding lineage: {lineage_request.left.error}"
                     )
 
+    def _set_permissions(self):
+        try:
+            if not hasattr(self, "is_edit_table_allowed"):
+                permissions = self.client.get(path="/permissions")
+                for permission in permissions.get("data", []):
+                    if permission.get("resource") != "table":
+                        continue
+                    for action in permission.get("permissions", []):
+                        if (
+                            action.get("operation") == "EditAll"
+                            and action.get("access") == "allow"
+                        ):
+                            self.is_edit_table_allowed = True
+                            return
+                logger.warning("Please grant EditAll permission to the user")
+        except Exception as exc:
+            logger.debug(f"Error while setting permissions: {exc}")
+            logger.debug(traceback.format_exc())
+        self.is_edit_table_allowed = False
+
     def patch_lineage_processed_flag(
         self,
         entity: Type[T],
         fqn: str,
     ) -> None:
+        """
+        Patch the processed lineage flag for an entity.
+        """
+        self._set_permissions()
+        if not self.is_edit_table_allowed:
+            return
 
         try:
             original_entity = self.get_by_name(entity=entity, fqn=fqn)
