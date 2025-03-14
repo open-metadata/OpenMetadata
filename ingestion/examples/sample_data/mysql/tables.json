@@ -54,7 +54,8 @@
         "displayName": "mysql_sample",
         "deleted": false,
         "inherited": null
-      }
+      },
+      "sourceUrl": "https://localhost:3306/new_er_database"
     },
     {
       "name": "Users",
@@ -125,7 +126,8 @@
         "displayName": "mysql_sample",
         "deleted": false,
         "inherited": null
-      }
+      },
+      "sourceUrl": "https://localhost:3306/new_er_database"
     },
     {
       "name": "Categories",
@@ -180,7 +182,8 @@
         "displayName": "mysql_sample",
         "deleted": false,
         "inherited": null
-      }
+      },
+      "sourceUrl": "https://localhost:3306/posts_db"
     },
     {
       "name": "Posts",
@@ -299,7 +302,8 @@
         "displayName": "mysql_sample",
         "deleted": false,
         "inherited": null
-      }
+      },
+      "sourceUrl": "https://localhost:3306/posts_db"
     },
     {
       "name": "Comments",
@@ -402,7 +406,8 @@
         "displayName": "mysql_sample",
         "deleted": false,
         "inherited": null
-      }
+      },
+      "sourceUrl": "https://localhost:3306/posts_db"
     },
     {
       "name": "PostTags",
@@ -489,7 +494,8 @@
         "displayName": "mysql_sample",
         "deleted": false,
         "inherited": null
-      }
+      },
+      "sourceUrl": "https://localhost:3306/posts_db"
     },
     {
       "name": "Profiles",
@@ -567,7 +573,8 @@
         "displayName": "mysql_sample",
         "deleted": false,
         "inherited": null
-      }
+      },
+      "sourceUrl": "https://localhost:3306/posts_db"
     }
   ]
 }

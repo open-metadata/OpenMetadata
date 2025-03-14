@@ -5,5 +5,6 @@
   "service": {
     "id": "b946d870-03b2-4d33-a075-13665a7a76b9",
     "type": "SAMPLEDATA"
-  }
+  },
+  "sourceUrl": "https://www.ecommerce-db.com/ecommerce_db"
 }
