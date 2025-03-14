@@ -5062,10 +5062,7 @@ public interface CollectionDAO {
     int listAppExtensionCount(
         @Bind("appId") String appId,
         @Bind("extension") String extension,
-        @BindJsonContains(
-                value = "service_filter",
-                path = "$.services",
-                property = "id")
+        @BindJsonContains(value = "service_filter", path = "$.services", property = "id")
             UUID service);
 
     @SqlQuery(
