@@ -2,6 +2,7 @@ package org.openmetadata.service.resources.system;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.settings.SettingsType.LINEAGE_SETTINGS;
+import static org.openmetadata.schema.settings.SettingsType.SEARCH_SETTINGS;
 
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Hidden;
@@ -13,6 +14,8 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import java.io.IOException;
+import java.util.List;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
 import javax.ws.rs.Consumes;
@@ -30,6 +33,10 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.common.utils.CommonUtil;
+import org.openmetadata.schema.api.search.AssetTypeConfiguration;
+import org.openmetadata.schema.api.search.GlobalSettings;
+import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.auth.EmailRequest;
 import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.settings.SettingsType;
@@ -42,7 +49,9 @@ import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
+import org.openmetadata.service.exception.SystemSettingsException;
 import org.openmetadata.service.exception.UnhandledServerException;
+import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.SystemRepository;
 import org.openmetadata.service.resources.Collection;
@@ -50,6 +59,8 @@ import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.JwtFilter;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
+import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.email.EmailUtil;
 
@@ -67,6 +78,7 @@ public class SystemResource {
   private OpenMetadataApplicationConfig applicationConfig;
   private PipelineServiceClientInterface pipelineServiceClient;
   private JwtFilter jwtFilter;
+  private SearchSettings defaultSearchSettingsCache = new SearchSettings();
 
   public SystemResource(Authorizer authorizer) {
     this.systemRepository = Entity.getSystemRepository();
@@ -81,10 +93,48 @@ public class SystemResource {
 
     this.jwtFilter =
         new JwtFilter(config.getAuthenticationConfiguration(), config.getAuthorizerConfiguration());
+    loadDefaultSearchSettings(false);
   }
 
   public static class SettingsList extends ResultList<Settings> {
     /* Required for serde */
+  }
+
+  public SearchSettings readDefaultSearchSettings() {
+    if (defaultSearchSettingsCache != null) {
+      try {
+        List<String> jsonDataFiles =
+            EntityUtil.getJsonDataResources(".*/json/data/searchSettings/searchSettings.json");
+        if (!jsonDataFiles.isEmpty()) {
+          String json =
+              CommonUtil.getResourceAsStream(
+                  EntityRepository.class.getClassLoader(), jsonDataFiles.get(0));
+          defaultSearchSettingsCache = JsonUtils.readValue(json, SearchSettings.class);
+        }
+      } catch (IOException e) {
+        LOG.error("Failed to read default search settings. Message: {}", e.getMessage(), e);
+      }
+    }
+    return defaultSearchSettingsCache;
+  }
+
+  public SearchSettings loadDefaultSearchSettings(boolean force) {
+    SearchSettings searchSettings = readDefaultSearchSettings();
+    if (!force) {
+      Settings existingSettings =
+          systemRepository.getConfigWithKey(String.valueOf(SEARCH_SETTINGS));
+      if (existingSettings != null && existingSettings.getConfigValue() != null) {
+        SearchSettings existingSearchSettings = (SearchSettings) existingSettings.getConfigValue();
+        if (existingSearchSettings.getGlobalSettings() != null) {
+          return searchSettings;
+        }
+      }
+    }
+    Settings settings =
+        new Settings().withConfigType(SettingsType.SEARCH_SETTINGS).withConfigValue(searchSettings);
+    systemRepository.createOrUpdate(settings);
+    LOG.info("Default searchSettings loaded successfully.");
+    return searchSettings;
   }
 
   @GET
@@ -186,7 +236,91 @@ public class SystemResource {
       @Context SecurityContext securityContext,
       @Valid Settings settingName) {
     authorizer.authorizeAdmin(securityContext);
+    if (SettingsType.SEARCH_SETTINGS
+        .value()
+        .equalsIgnoreCase(settingName.getConfigType().toString())) {
+      SearchSettings defaultSearchSettings = loadDefaultSearchSettings(false);
+      SearchSettings incomingSearchSettings =
+          JsonUtils.convertValue(settingName.getConfigValue(), SearchSettings.class);
+
+      GlobalSettings defaultGlobalSettings = defaultSearchSettings.getGlobalSettings();
+      GlobalSettings incomingGlobalSettings = incomingSearchSettings.getGlobalSettings();
+
+      GlobalSettings mergedGlobalSettings = new GlobalSettings();
+
+      mergedGlobalSettings.setMaxAggregateSize(
+          incomingGlobalSettings != null && incomingGlobalSettings.getMaxAggregateSize() != null
+              ? incomingGlobalSettings.getMaxAggregateSize()
+              : defaultGlobalSettings.getMaxAggregateSize());
+
+      mergedGlobalSettings.setMaxResultHits(
+          incomingGlobalSettings != null && incomingGlobalSettings.getMaxResultHits() != null
+              ? incomingGlobalSettings.getMaxResultHits()
+              : defaultGlobalSettings.getMaxResultHits());
+
+      mergedGlobalSettings.setMaxAnalyzedOffset(
+          incomingGlobalSettings != null && incomingGlobalSettings.getMaxAnalyzedOffset() != null
+              ? incomingGlobalSettings.getMaxAnalyzedOffset()
+              : defaultGlobalSettings.getMaxAnalyzedOffset());
+
+      mergedGlobalSettings.setAggregations(defaultGlobalSettings.getAggregations());
+      mergedGlobalSettings.setHighlightFields(defaultGlobalSettings.getHighlightFields());
+
+      incomingSearchSettings.setGlobalSettings(mergedGlobalSettings);
+
+      if (incomingSearchSettings.getDefaultConfiguration() == null) {
+        incomingSearchSettings.setDefaultConfiguration(
+            defaultSearchSettings.getDefaultConfiguration());
+      }
+
+      List<AssetTypeConfiguration> defaultAssetTypes =
+          defaultSearchSettings.getAssetTypeConfigurations();
+      List<AssetTypeConfiguration> incomingAssetTypes =
+          incomingSearchSettings.getAssetTypeConfigurations();
+
+      for (AssetTypeConfiguration defaultConfig : defaultAssetTypes) {
+        String assetType = defaultConfig.getAssetType().toLowerCase();
+        boolean exists =
+            incomingAssetTypes.stream()
+                .anyMatch(config -> config.getAssetType().equalsIgnoreCase(assetType));
+        if (!exists) {
+          incomingAssetTypes.add(defaultConfig);
+        }
+      }
+
+      settingName.setConfigValue(incomingSearchSettings);
+    }
     return systemRepository.createOrUpdate(settingName);
+  }
+
+  @PUT
+  @Path("/settings/reset/{name}")
+  @Operation(
+      operationId = "resetSettingToDefault",
+      summary = "Reset a setting to default",
+      description = "Reset the specified setting to its default value.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Settings reset to default",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Settings.class)))
+      })
+  public Response resetSettingToDefault(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Name of the setting", schema = @Schema(type = "string"))
+          @PathParam("name")
+          String name) {
+    authorizer.authorizeAdmin(securityContext);
+
+    if (!SettingsType.SEARCH_SETTINGS.value().equalsIgnoreCase(name)) {
+      throw new SystemSettingsException("Resetting of setting '" + name + "' is not supported.");
+    }
+    SearchSettings settings = loadDefaultSearchSettings(true);
+    return Response.ok(settings).build();
   }
 
   @PUT

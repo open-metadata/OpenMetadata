@@ -111,6 +111,7 @@ public final class SearchUtils {
       SubjectContext subjectContext, RBACConditionEvaluator rbacConditionEvaluator) {
     return Boolean.TRUE.equals(
             SettingsCache.getSetting(SettingsType.SEARCH_SETTINGS, SearchSettings.class)
+                .getGlobalSettings()
                 .getEnableAccessControl())
         && subjectContext != null
         && !subjectContext.isAdmin()
