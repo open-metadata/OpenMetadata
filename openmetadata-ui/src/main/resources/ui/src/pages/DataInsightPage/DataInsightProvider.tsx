@@ -122,7 +122,9 @@ const DataInsightProvider = ({ children }: DataInsightProviderProps) => {
     }));
     setChartFilter((previous) => ({
       ...previous,
-      team: teams.length ? teams.map((team) => team.key).join(',') : undefined,
+      team: teams.length
+        ? teams.map((team) => team.label).join(',')
+        : undefined,
     }));
   };
 
