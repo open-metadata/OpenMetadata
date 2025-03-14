@@ -114,10 +114,10 @@ public class OmAppJobListener implements JobListener {
     runRecord.withEndTime(endTime);
     runRecord.setExecutionTime(endTime - runRecord.getStartTime());
 
-    if (jobExecutionContext.getMergedJobDataMap().get(SERVICES_FIELD) != null) {
+    if (jobExecutionContext.getJobDetail().getJobDataMap().get(SERVICES_FIELD) != null) {
       runRecord.setServices(
-          JsonUtils.readObjects(
-              (String) jobExecutionContext.getMergedJobDataMap().get(SERVICES_FIELD),
+          JsonUtils.convertObjects(
+              jobExecutionContext.getJobDetail().getJobDataMap().get(SERVICES_FIELD),
               EntityReference.class));
     }
 
