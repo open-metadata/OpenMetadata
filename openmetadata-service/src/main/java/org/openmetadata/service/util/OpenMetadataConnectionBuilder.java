@@ -191,7 +191,8 @@ public class OpenMetadataConnectionBuilder {
   private User retrieveBotUser(String botName) {
     User botUser = retrieveIngestionBotUser(botName);
     if (botUser == null) {
-      throw new IllegalArgumentException(String.format("Please, verify that the bot [%s] is present.", botName));
+      throw new IllegalArgumentException(
+          String.format("Please, verify that the bot [%s] is present.", botName));
     }
     return botUser;
   }
