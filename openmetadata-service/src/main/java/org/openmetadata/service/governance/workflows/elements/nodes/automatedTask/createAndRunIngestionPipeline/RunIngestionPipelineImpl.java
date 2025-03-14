@@ -90,6 +90,7 @@ public class RunIngestionPipelineImpl {
       IngestionPipeline ingestionPipeline,
       long startTime,
       long timeoutMillis) {
+    long backoffMillis = 5 * 1000;
     while (true) {
       if (System.currentTimeMillis() - startTime > timeoutMillis) {
         return false;
@@ -102,7 +103,14 @@ public class RunIngestionPipelineImpl {
               .getData();
 
       if (statuses.isEmpty()) {
-        continue;
+        try {
+          Thread.sleep(backoffMillis);
+          backoffMillis *= 2;
+          continue;
+        } catch (InterruptedException ie) {
+          Thread.currentThread().interrupt();
+          throw new RuntimeException("Retry interrupted", ie);
+        }
       }
 
       PipelineStatus status = statuses.get(statuses.size() - 1);
