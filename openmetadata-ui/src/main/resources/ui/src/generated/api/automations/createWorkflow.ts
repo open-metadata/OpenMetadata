@@ -434,6 +434,10 @@ export interface ConfigClass {
     connectionArguments?: { [key: string]: any };
     connectionOptions?:   { [key: string]: string };
     /**
+     * Cost per TiB for BigQuery usage
+     */
+    costPerTB?: number;
+    /**
      * GCP Credentials
      *
      * Azure Credentials
@@ -1003,6 +1007,10 @@ export interface ConfigClass {
      * ingestion process runs for longer durations.
      */
     clientSessionKeepAlive?: boolean;
+    /**
+     * Cost of credit for the Snowflake account.
+     */
+    creditCost?: number;
     /**
      * Optional configuration for ingestion of TRANSIENT tables, By default, it will skip the
      * TRANSIENT tables.

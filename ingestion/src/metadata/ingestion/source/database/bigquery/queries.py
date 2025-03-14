@@ -32,7 +32,8 @@ BIGQUERY_STATEMENT = textwrap.dedent(
    end_time,
    query as query_text,
    null as schema_name,
-   total_slot_ms as duration
+   total_slot_ms as duration,
+   (total_bytes_billed / POWER(2, 40)) * {cost_per_tib} as cost
 FROM `region-{region}`.INFORMATION_SCHEMA.JOBS_BY_PROJECT
 WHERE creation_time BETWEEN "{start_time}" AND "{end_time}"
   {filters}

@@ -17,14 +17,15 @@ import org.openmetadata.service.jdbi3.WorkflowInstanceStateRepository;
 public class WorkflowInstanceStageListener implements JavaDelegate {
   @Override
   public void execute(DelegateExecution execution) {
+    WorkflowVariableHandler varHandler = new WorkflowVariableHandler(execution);
     try {
       WorkflowInstanceStateRepository workflowInstanceStateRepository =
           (WorkflowInstanceStateRepository)
               Entity.getEntityTimeSeriesRepository(Entity.WORKFLOW_INSTANCE_STATE);
 
       switch (execution.getEventName()) {
-        case "start" -> addNewStage(execution, workflowInstanceStateRepository);
-        case "end" -> updateStage(execution, workflowInstanceStateRepository);
+        case "start" -> addNewStage(varHandler, execution, workflowInstanceStateRepository);
+        case "end" -> updateStage(varHandler, execution, workflowInstanceStateRepository);
         default -> LOG.debug(
             String.format(
                 "WorkflowStageUpdaterListener does not support listening for the event: '%s'",
@@ -40,6 +41,7 @@ public class WorkflowInstanceStageListener implements JavaDelegate {
   }
 
   private void addNewStage(
+      WorkflowVariableHandler varHandler,
       DelegateExecution execution,
       WorkflowInstanceStateRepository workflowInstanceStateRepository) {
     execution.removeTransientVariable(FAILURE_VARIABLE);
@@ -57,13 +59,15 @@ public class WorkflowInstanceStageListener implements JavaDelegate {
             workflowInstanceId,
             workflowDefinitionName,
             System.currentTimeMillis());
-    execution.setVariable(STAGE_INSTANCE_STATE_ID_VARIABLE, workflowInstanceStateId);
+    varHandler.setNodeVariable(STAGE_INSTANCE_STATE_ID_VARIABLE, workflowInstanceStateId);
   }
 
   private void updateStage(
+      WorkflowVariableHandler varHandler,
       DelegateExecution execution,
       WorkflowInstanceStateRepository workflowInstanceStateRepository) {
-    UUID workflowInstanceStateId = (UUID) execution.getVariable(STAGE_INSTANCE_STATE_ID_VARIABLE);
+    UUID workflowInstanceStateId =
+        (UUID) varHandler.getNodeVariable(STAGE_INSTANCE_STATE_ID_VARIABLE);
     workflowInstanceStateRepository.updateStage(
         workflowInstanceStateId, System.currentTimeMillis(), execution.getVariables());
   }

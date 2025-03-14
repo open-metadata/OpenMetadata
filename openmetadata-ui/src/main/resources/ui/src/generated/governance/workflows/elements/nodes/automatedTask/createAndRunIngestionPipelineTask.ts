@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 /**
- * Creates an Ingestion Pipeline
+ * Creates and Runs an Ingestion Pipeline
  */
-export interface CreateIngestionPipelineTask {
+export interface CreateAndRunIngestionPipelineTask {
     branches?: string[];
     config?:   Config;
     /**
@@ -30,7 +30,6 @@ export interface CreateIngestionPipelineTask {
      * Name that identifies this Node.
      */
     name?:    string;
-    output?:  string[];
     subType?: string;
     type?:    string;
     [property: string]: any;
@@ -38,13 +37,17 @@ export interface CreateIngestionPipelineTask {
 
 export interface Config {
     /**
-     * Set if the created pipeline should also be deployed
-     */
-    deploy: boolean;
-    /**
      * Define which ingestion pipeline type should be created
      */
     pipelineType: PipelineType;
+    /**
+     * Set the amount of seconds to wait before defining the Ingestion Pipeline has timed out.
+     */
+    timeoutSeconds: number;
+    /**
+     * Set if this step should wait until the Ingestion Pipeline finishes running
+     */
+    waitForCompletion: boolean;
 }
 
 /**
