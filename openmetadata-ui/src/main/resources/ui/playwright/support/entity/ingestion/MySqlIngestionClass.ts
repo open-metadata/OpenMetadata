@@ -35,6 +35,7 @@ import ServiceBaseClass from './ServiceBaseClass';
 
 class MysqlIngestionClass extends ServiceBaseClass {
   name = '';
+  defaultFilters = ['^information_schema$', '^performance_schema$'];
   tableFilter: string[];
   profilerTable = 'alert_entity';
   constructor(tableFilter?: string[]) {
@@ -173,7 +174,7 @@ class MysqlIngestionClass extends ServiceBaseClass {
     await page.waitForSelector('.ant-select-selection-item-content');
 
     await expect(page.locator('.ant-select-selection-item-content')).toHaveText(
-      this.tableFilter
+      this.defaultFilters.concat(this.tableFilter)
     );
   }
 }

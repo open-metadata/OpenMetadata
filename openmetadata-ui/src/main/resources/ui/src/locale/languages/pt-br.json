@@ -1174,6 +1174,7 @@
     "service-sso": "{{serviceType}} SSO",
     "service-type": "Tipo de Serviço",
     "session-plural": "Sessões",
+    "set-default-filters": "Definir Filtros Padrão",
     "setting-plural": "Configurações",
     "setup-guide": "Guia de Configuração",
     "severity": "Severity",
