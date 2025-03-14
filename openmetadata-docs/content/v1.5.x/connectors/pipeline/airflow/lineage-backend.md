@@ -60,6 +60,16 @@ AIRFLOW__LINEAGE__JWT_TOKEN="<your-token>"
 We can choose the option that best adapts to our current architecture. Find more information on Airflow configurations
 [here](https://airflow.apache.org/docs/apache-airflow/stable/howto/set-config.html).
 
+Moreover, when using the lineage backend to bring in Pipeline metadata, we will add the URL of DAG. We build
+this URL by using the `webserver` base URL. If you want to make sure this value is informed correctly, double-check
+what you have defined in the `webserver` configuration [here](https://airflow.apache.org/docs/apache-airflow/stable/configurations-ref.html#base-url).
+
+```env
+AIRFLOW__WEBSERVER__BASE_URL="http://localhost:8080"
+```
+
+Make sure this is a valid URI by not forgetting to add the scheme, otherwise we won't be able to properly parse it.
+
 #### Optional Parameters
 
 You can also set the following parameters:

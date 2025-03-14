@@ -56,11 +56,19 @@ test.describe('API service', () => {
     await page.locator('#root\\/token').fill(apiServiceConfig.token);
     await page.getByTestId('submit-btn').click();
 
+    const dayOneExperienceApplicationRequest = page.waitForRequest(
+      (request) =>
+        request
+          .url()
+          .includes('/api/v1/apps/trigger/DayOneExperienceApplication') &&
+        request.method() === 'POST'
+    );
+
     await page.getByTestId('submit-btn').getByText('Save').click();
 
-    // step 3
-    await page.getByTestId('view-service-button').click();
+    await dayOneExperienceApplicationRequest;
 
+    // step 3
     await expect(page.getByTestId('entity-header-display-name')).toHaveText(
       apiServiceConfig.name
     );

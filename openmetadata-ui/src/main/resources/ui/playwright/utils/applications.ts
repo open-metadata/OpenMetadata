@@ -10,22 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { IChangeEvent } from '@rjsf/core';
-import { LoadingState } from 'Models';
-import { ServiceCategory } from '../../../../enums/service.enum';
-import {
-  ConfigData,
-  ServicesType,
-} from '../../../../interface/service.interface';
+import { APIRequestContext } from '@playwright/test';
 
-export interface FiltersConfigFormProps {
-  data?: ServicesType;
-  okText?: string;
-  cancelText?: string;
-  serviceType: string;
-  serviceCategory: ServiceCategory;
-  status: LoadingState;
-  onFocus: (id: string) => void;
-  onSave: (data: IChangeEvent<ConfigData>) => Promise<void>;
-  onCancel?: () => void;
-}
+export const enableDisableDay1ExperienceApplication = async (
+  apiContext: APIRequestContext,
+  enable = true
+) => {
+  await apiContext.patch('/api/v1/apps/name/DayOneExperienceApplication', {
+    data: [{ op: 'replace', path: '/appConfiguration/active', value: enable }],
+    headers: {
+      'Content-Type': 'application/json-patch+json',
+    },
+  });
+};

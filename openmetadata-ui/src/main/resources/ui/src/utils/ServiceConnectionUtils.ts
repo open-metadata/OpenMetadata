@@ -37,7 +37,7 @@ export const getConnectionSchemas = ({
 }) => {
   const config = isNil(data)
     ? ({} as ConfigData)
-    : ((data as ServicesType).connection?.config as ConfigData);
+    : (data.connection?.config as ConfigData);
 
   let connSch = {
     schema: {} as Record<string, any>,

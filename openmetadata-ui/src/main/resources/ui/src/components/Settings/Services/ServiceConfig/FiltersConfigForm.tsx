@@ -38,7 +38,7 @@ function FiltersConfigForm({
   onCancel,
   onSave,
   onFocus,
-}: FiltersConfigFormProps) {
+}: Readonly<FiltersConfigFormProps>) {
   const { t } = useTranslation();
   const { inlineAlertDetails } = useApplicationStore();
   const formRef = useRef<Form<ConfigData>>(null);
