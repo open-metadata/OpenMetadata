@@ -56,6 +56,8 @@ test.describe('API service', () => {
     await page.locator('#root\\/token').fill(apiServiceConfig.token);
     await page.getByTestId('submit-btn').click();
 
+    await page.getByTestId('submit-btn').getByText('Save').click();
+
     // step 3
     await page.getByTestId('view-service-button').click();
 

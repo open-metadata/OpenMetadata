@@ -7,7 +7,7 @@ slug: /connectors/dashboard/looker/yaml
   name="Looker"
   stage="PROD"
   platform="OpenMetadata"
-  availableFeatures=["Dashboards", "Charts", "Owners", "Datamodels", "Lineage"]
+  availableFeatures=["Dashboards", "Charts", "Owners", "Datamodels", "Lineage", "Usage"]
   unavailableFeatures=["Tags", "Projects"]
 / %}
 

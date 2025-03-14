@@ -12,7 +12,7 @@
  */
 
 import { ServiceCategory } from '../../../../../enums/service.enum';
-import { ServiceConfig } from '../AddService.interface';
+import { ServiceConfig } from '../../../../../pages/AddServicePage/AddServicePage.interface';
 
 export type SelectServiceTypeProps = {
   showError: boolean;

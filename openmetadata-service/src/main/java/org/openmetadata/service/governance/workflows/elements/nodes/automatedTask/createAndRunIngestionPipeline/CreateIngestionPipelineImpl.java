@@ -212,7 +212,7 @@ public class CreateIngestionPipelineImpl {
           JsonUtils.readOrConvertValue(ingestionPipelineStr, IngestionPipeline.class);
       if (ingestionPipeline.getPipelineType().equals(pipelineType)
           && ingestionPipeline.getDisplayName().equals(displayName)) {
-        return ingestionPipeline;
+        return ingestionPipeline.withService(service.getEntityReference());
       }
     }
     return null;
