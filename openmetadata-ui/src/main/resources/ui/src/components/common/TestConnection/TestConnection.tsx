@@ -108,7 +108,6 @@ const TestConnection: FC<TestConnectionProps> = ({
    * Current workflow reference
    */
   const currentWorkflowRef = useRef(currentWorkflow);
-  const progressRef = useRef(TEST_CONNECTION_PROGRESS_PERCENTAGE.ZERO);
 
   const { controller } = useAbortController();
 
@@ -119,11 +118,6 @@ const TestConnection: FC<TestConnectionProps> = ({
   const allowTestConn = useMemo(() => {
     return shouldTestConnection(connectionType);
   }, [connectionType]);
-
-  const setProgressWithRef = (value: number) => {
-    progressRef.current = value;
-    setProgress(value);
-  };
 
   const isTestConnectionDisabled =
     isTestingConnection ||
@@ -171,7 +165,7 @@ const TestConnection: FC<TestConnectionProps> = ({
     setTestConnectionStepResult([]);
     setTestStatus(undefined);
     setIsConnectionTimeout(false);
-    setProgressWithRef(TEST_CONNECTION_PROGRESS_PERCENTAGE.ZERO);
+    setProgress(TEST_CONNECTION_PROGRESS_PERCENTAGE.ZERO);
   };
 
   const handleDeleteWorkflow = async (workflowId: string) => {
@@ -191,7 +185,7 @@ const TestConnection: FC<TestConnectionProps> = ({
     isTestConnectionSuccess: boolean,
     steps: TestConnectionStepResult[]
   ) => {
-    setProgressWithRef(TEST_CONNECTION_PROGRESS_PERCENTAGE.HUNDRED);
+    setProgress(TEST_CONNECTION_PROGRESS_PERCENTAGE.HUNDRED);
     if (isTestConnectionSuccess) {
       setTestStatus(StatusType.Successful);
       setMessage(TEST_CONNECTION_SUCCESS_MESSAGE);
@@ -212,6 +206,7 @@ const TestConnection: FC<TestConnectionProps> = ({
     response: Workflow,
     intervalObject: {
       intervalId?: number;
+      timeoutId?: number;
     }
   ) => {
     // return a promise that wraps the interval and handles errors inside it
@@ -222,9 +217,7 @@ const TestConnection: FC<TestConnectionProps> = ({
        */
       intervalObject.intervalId = toNumber(
         setInterval(async () => {
-          setProgressWithRef(
-            progressRef.current + TEST_CONNECTION_PROGRESS_PERCENTAGE.ONE
-          );
+          setProgress((prev) => prev + TEST_CONNECTION_PROGRESS_PERCENTAGE.ONE);
           try {
             const workflowResponse = await getWorkflowData(
               response.id,
@@ -250,6 +243,7 @@ const TestConnection: FC<TestConnectionProps> = ({
 
             // clear the current interval
             clearInterval(intervalObject.intervalId);
+            clearTimeout(intervalObject.timeoutId);
 
             // set testing connection to false
             setIsTestingConnection(false);
@@ -277,6 +271,7 @@ const TestConnection: FC<TestConnectionProps> = ({
     // current interval id
     const intervalObject: {
       intervalId?: number;
+      timeoutId?: number;
     } = {};
 
     try {
@@ -294,19 +289,19 @@ const TestConnection: FC<TestConnectionProps> = ({
       // fetch the connection steps for current connectionType
       await fetchConnectionDefinition();
 
-      setProgressWithRef(TEST_CONNECTION_PROGRESS_PERCENTAGE.TEN);
+      setProgress(TEST_CONNECTION_PROGRESS_PERCENTAGE.TEN);
 
       // create the workflow
       const response = await addWorkflow(createWorkflowData, controller.signal);
 
       setCurrentWorkflow(response);
 
-      setProgressWithRef(TEST_CONNECTION_PROGRESS_PERCENTAGE.TWENTY);
+      setProgress(TEST_CONNECTION_PROGRESS_PERCENTAGE.TWENTY);
 
       // trigger the workflow
       const status = await triggerWorkflowById(response.id, controller.signal);
 
-      setProgressWithRef(TEST_CONNECTION_PROGRESS_PERCENTAGE.FORTY);
+      setProgress(TEST_CONNECTION_PROGRESS_PERCENTAGE.FORTY);
 
       if (status !== 200) {
         setTestStatus(StatusType.Failed);
@@ -320,7 +315,7 @@ const TestConnection: FC<TestConnectionProps> = ({
       }
 
       // stop fetching the workflow after 2 minutes
-      setTimeout(() => {
+      const timeoutId = setTimeout(() => {
         // clear the current interval
         clearInterval(intervalObject.intervalId);
 
@@ -332,22 +327,21 @@ const TestConnection: FC<TestConnectionProps> = ({
           currentWorkflowStatus
         );
 
-        if (
-          !isWorkflowCompleted &&
-          progressRef.current !== TEST_CONNECTION_PROGRESS_PERCENTAGE.HUNDRED
-        ) {
+        if (!isWorkflowCompleted) {
           setMessage(TEST_CONNECTION_INFO_MESSAGE);
           setIsConnectionTimeout(true);
         }
 
         setIsTestingConnection(false);
-        setProgressWithRef(TEST_CONNECTION_PROGRESS_PERCENTAGE.HUNDRED);
+        setProgress(TEST_CONNECTION_PROGRESS_PERCENTAGE.HUNDRED);
       }, FETCHING_EXPIRY_TIME);
+
+      intervalObject.timeoutId = Number(timeoutId);
 
       // Handle workflow polling and completion
       await handleWorkflowPolling(response, intervalObject);
     } catch (error) {
-      setProgressWithRef(TEST_CONNECTION_PROGRESS_PERCENTAGE.HUNDRED);
+      setProgress(TEST_CONNECTION_PROGRESS_PERCENTAGE.HUNDRED);
       clearInterval(intervalObject.intervalId);
       setIsTestingConnection(false);
       setMessage(TEST_CONNECTION_FAILURE_MESSAGE);
