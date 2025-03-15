@@ -328,7 +328,7 @@ export const getMenuItems = (
     key: type,
     disabled:
       type === PipelineType.DataInsight ? isDataSightIngestionExists : false,
-    ['data-testid']: 'list-item',
+    ['data-testid']: `agent-item-${type}`,
   }));
 };
 
