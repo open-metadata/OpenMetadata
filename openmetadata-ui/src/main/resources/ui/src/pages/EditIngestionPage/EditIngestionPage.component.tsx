@@ -40,6 +40,7 @@ import {
   IngestionPipeline,
   PipelineType,
 } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { withPageLayout } from '../../hoc/withPageLayout';
 import { useAirflowStatus } from '../../hooks/useAirflowStatus';
 import { useFqn } from '../../hooks/useFqn';
 import { DataObj } from '../../interface/service.interface';
@@ -50,6 +51,7 @@ import {
 } from '../../rest/ingestionPipelineAPI';
 import { getServiceByFQN } from '../../rest/serviceAPI';
 import { getEntityMissingError } from '../../utils/CommonUtils';
+import i18n from '../../utils/i18next/LocalUtil';
 import {
   getBreadCrumbsArray,
   getIngestionHeadingName,
@@ -59,8 +61,8 @@ import { getServiceType } from '../../utils/ServiceUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const EditIngestionPage = () => {
-  const { t } = useTranslation();
   const { fetchAirflowStatus } = useAirflowStatus();
+  const { t } = useTranslation();
   const { ingestionType, serviceCategory } = useParams<{
     ingestionType: string;
     serviceCategory: string;
@@ -302,7 +304,7 @@ const EditIngestionPage = () => {
 
   return (
     <ResizablePanels
-      className="content-height-with-resizable-panel"
+      className="content-height-with-resizable-panel m--t-sm"
       firstPanel={{
         children: firstPanelChildren,
         minWidth: 700,
@@ -322,4 +324,8 @@ const EditIngestionPage = () => {
   );
 };
 
-export default EditIngestionPage;
+export default withPageLayout(
+  i18n.t('label.edit-entity', {
+    entity: i18n.t('label.ingestion'),
+  })
+)(EditIngestionPage);

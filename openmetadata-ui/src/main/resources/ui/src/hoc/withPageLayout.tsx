@@ -11,17 +11,14 @@
  *  limitations under the License.
  */
 import React, { FC } from 'react';
-import { useTranslation } from 'react-i18next';
 import PageLayoutV1 from '../components/PageLayoutV1/PageLayoutV1';
 
 export const withPageLayout =
-  <P,>(pageTitleKey: string) =>
+  <P,>(pageTitle: string) =>
   (Component: FC<P>) => {
     const WrappedComponent: FC<P> = (props) => {
-      const { t } = useTranslation();
-
       return (
-        <PageLayoutV1 pageTitle={t(`label.${pageTitleKey}`)}>
+        <PageLayoutV1 pageTitle={pageTitle}>
           <Component {...props} />
         </PageLayoutV1>
       );

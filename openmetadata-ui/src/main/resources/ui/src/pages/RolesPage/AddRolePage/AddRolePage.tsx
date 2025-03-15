@@ -13,9 +13,9 @@
 
 import { Button, Form, Input, Select, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { t } from 'i18next';
 import { trim } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import ResizablePanels from '../../../components/common/ResizablePanels/ResizablePanels';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
@@ -24,10 +24,12 @@ import { NAME_FIELD_RULES } from '../../../constants/Form.constants';
 import { GlobalSettingOptions } from '../../../constants/GlobalSettings.constants';
 import { TabSpecificField } from '../../../enums/entity.enum';
 import { Policy } from '../../../generated/entity/policies/policy';
+import { withPageLayout } from '../../../hoc/withPageLayout';
 import { FieldProp, FieldTypes } from '../../../interface/FormUtils.interface';
 import { addRole, getPolicies } from '../../../rest/rolesAPIV1';
 import { getIsErrorMatch } from '../../../utils/CommonUtils';
 import { getField } from '../../../utils/formUtils';
+import i18n from '../../../utils/i18next/LocalUtil';
 import {
   getPath,
   getRoleWithFqnPath,
@@ -39,21 +41,22 @@ const rolesPath = getPath(GlobalSettingOptions.ROLES);
 
 const breadcrumb = [
   {
-    name: t('label.setting-plural'),
+    name: i18n.t('label.setting-plural'),
     url: getSettingPath(),
   },
   {
-    name: t('label.role-plural'),
+    name: i18n.t('label.role-plural'),
     url: rolesPath,
   },
   {
-    name: t('label.add-new-entity', { entity: t('label.role') }),
+    name: i18n.t('label.add-new-entity', { entity: i18n.t('label.role') }),
     url: '',
   },
 ];
 
 const AddRolePage = () => {
   const history = useHistory();
+  const { t } = useTranslation();
   const [policies, setPolicies] = useState<Policy[]>([]);
   const [name, setName] = useState<string>('');
   const [description, setDescription] = useState<string>('');
@@ -134,7 +137,7 @@ const AddRolePage = () => {
 
   return (
     <ResizablePanels
-      className="content-height-with-resizable-panel"
+      className="content-height-with-resizable-panel m--t-sm"
       firstPanel={{
         className: 'content-resizable-panel-container',
         children: (
@@ -146,7 +149,9 @@ const AddRolePage = () => {
               <Typography.Paragraph
                 className="text-base"
                 data-testid="form-title">
-                {t('label.add-new-entity', { entity: t('label.role') })}
+                {t('label.add-new-entity', {
+                  entity: t('label.role'),
+                })}
               </Typography.Paragraph>
               <Form
                 data-testid="role-form"
@@ -235,4 +240,8 @@ const AddRolePage = () => {
   );
 };
 
-export default AddRolePage;
+export default withPageLayout(
+  i18n.t('label.add-new-entity', {
+    entity: i18n.t('label.role'),
+  })
+)(AddRolePage);

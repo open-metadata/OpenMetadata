@@ -29,6 +29,19 @@ jest.mock('../../rest/miscAPI', () => ({
 jest.mock('react-router-dom', () => ({
   useParams: jest.fn().mockReturnValue({ fqn: MOCK_TABLE.fullyQualifiedName }),
 }));
+
+jest.mock('../../hoc/withPageLayout', () => ({
+  withPageLayout: jest.fn().mockImplementation(
+    () =>
+      (Component: React.FC) =>
+      (
+        props: JSX.IntrinsicAttributes & {
+          children?: React.ReactNode | undefined;
+        }
+      ) =>
+        <Component {...props} />
+  ),
+}));
 jest.mock(
   '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component',
   () => {
