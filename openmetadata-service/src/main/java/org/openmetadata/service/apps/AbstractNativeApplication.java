@@ -139,7 +139,8 @@ public class AbstractNativeApplication implements NativeApplication {
 
     try {
       bindExistingIngestionToApplication(ingestionPipelineRepository);
-      updateAppConfig(ingestionPipelineRepository, this.getApp().getAppConfiguration());
+      updateAppConfig(
+          ingestionPipelineRepository, JsonUtils.getMap(this.getApp().getAppConfiguration()));
     } catch (EntityNotFoundException ex) {
       Map<String, Object> config = JsonUtils.getMap(this.getApp().getAppConfiguration());
       createAndBindIngestionPipeline(ingestionPipelineRepository, config);

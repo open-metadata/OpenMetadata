@@ -6,14 +6,42 @@
   "type": "object",
   "definitions": {
     "appConfig": {
-      "existingJavaType": "java.util.Map<String, Object>",
-      "type": "object",
-      "additionalProperties": true
+      "oneOf": [
+        {
+          "$ref": "external/collateAIAppConfig.json"
+        },
+        {
+          "$ref": "external/automatorAppConfig.json"
+        },
+        {
+          "$ref": "external/slackAppTokenConfiguration.json"
+        },
+        {
+          "$ref": "internal/dataInsightsAppConfig.json"
+        },
+        {
+          "$ref": "internal/dataInsightsReportAppConfig.json"
+        },
+        {
+          "$ref": "internal/searchIndexingAppConfig.json"
+        },
+        {
+          "$ref": "internal/collateAIQualityAgentAppConfig.json"
+        },
+        {
+          "$ref": "internal/dataRetentionConfiguration.json"
+        },
+        {
+          "$ref": "internal/dayOneExperienceAppConfig.json"
+        }
+      ]
     },
     "privateConfig": {
-      "existingJavaType": "java.util.Map<String, Object>",
-      "type": "object",
-      "additionalProperties": true
+      "oneOf": [
+        {
+          "$ref": "private/external/collateAIAppPrivateConfig.json"
+        }
+      ]
     }
   }
 }
