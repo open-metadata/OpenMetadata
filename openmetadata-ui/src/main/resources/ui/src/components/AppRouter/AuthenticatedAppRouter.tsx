@@ -316,6 +316,12 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       />
       <Route
         exact
+        component={ServiceVersionPage}
+        path={ROUTES.SERVICE_VERSION}
+      />
+
+      <Route
+        exact
         component={ServicePage}
         path={[
           ROUTES.SERVICE_WITH_SUB_TAB,
@@ -344,12 +350,6 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
 
       <Route exact component={SwaggerPage} path={ROUTES.SWAGGER} />
       <Route exact component={DomainVersionPage} path={ROUTES.DOMAIN_VERSION} />
-
-      <Route
-        exact
-        component={ServiceVersionPage}
-        path={ROUTES.SERVICE_VERSION}
-      />
 
       <Route
         exact
