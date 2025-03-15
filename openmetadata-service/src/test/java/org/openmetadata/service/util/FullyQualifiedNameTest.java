@@ -52,9 +52,9 @@ class FullyQualifiedNameTest {
     assertEquals("\"a.b\"", FullyQualifiedName.quoteName("\"a.b\"")); // Leave existing valid quotes
     assertEquals("a", FullyQualifiedName.quoteName("\"a\"")); // Remove quotes when not needed
     // we now allow quotes
-    assertEquals("\\\"a", FullyQualifiedName.quoteName("\"a"));
-    assertEquals("a\\\"", FullyQualifiedName.quoteName("a\""));
-    assertEquals("a\\\"b", FullyQualifiedName.quoteName("a\"b"));
+    assertEquals("\"a", FullyQualifiedName.quoteName("\"a"));
+    assertEquals("a\"", FullyQualifiedName.quoteName("a\""));
+    assertEquals("a\"b", FullyQualifiedName.quoteName("a\"b"));
   }
 
   @Test
