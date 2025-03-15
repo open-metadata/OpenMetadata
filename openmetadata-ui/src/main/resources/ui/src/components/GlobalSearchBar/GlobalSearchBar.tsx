@@ -152,10 +152,7 @@ export const GlobalSearchBar = () => {
   };
 
   return (
-    <div
-      data-testid="navbar-search-container"
-      ref={searchContainerRef}
-      style={{ height: '40px', width: '50%' }}>
+    <div data-testid="navbar-search-container" ref={searchContainerRef}>
       <Popover
         content={
           !isTourRoute &&
@@ -190,7 +187,7 @@ export const GlobalSearchBar = () => {
         <Input
           addonBefore={entitiesSelect}
           autoComplete="off"
-          className="rounded-4  appbar-search"
+          className="rounded-4 appbar-search"
           data-testid="searchBox"
           id="searchBox"
           placeholder={t('label.search-for-type', {

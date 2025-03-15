@@ -102,7 +102,7 @@ const NavBar: React.FC = () => {
   const [isFeatureModalOpen, setIsFeatureModalOpen] = useState<boolean>(false);
   const [version, setVersion] = useState<string>();
   const [isDomainDropdownOpen, setIsDomainDropdownOpen] = useState(false);
-  const domainContainerRef = useRef<HTMLDivElement>(null);
+  //   const domainContainerRef = useRef<HTMLDivElement>(null);
 
   const fetchOMVersion = async () => {
     try {
@@ -348,30 +348,6 @@ const NavBar: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      // Check if click is inside the domain-select-popover
-      const isClickInPopover = (event.target as Element)?.closest(
-        '.domain-select-popover'
-      );
-
-      if (
-        domainContainerRef.current &&
-        !domainContainerRef.current.contains(event.target as Node) &&
-        !isClickInPopover &&
-        isDomainDropdownOpen
-      ) {
-        setIsDomainDropdownOpen(false);
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [isDomainDropdownOpen]);
-
-  useEffect(() => {
     const targetNode = document.body;
     targetNode.addEventListener('keydown', handleKeyPress);
 
@@ -395,20 +371,25 @@ const NavBar: React.FC = () => {
   const handleModalCancel = useCallback(() => setIsFeatureModalOpen(false), []);
 
   return (
-    <Header>
-      <div className="d-flex align-center justify-between">
-        <GlobalSearchBar />
+    <>
+      <Header>
+        <div className="navbar-container">
+          <GlobalSearchBar />
 
-        <div className="flex-center gap-4">
-          <div className="d-flex" ref={domainContainerRef}>
+          <div className="flex-center gap-5 nav-bar-side-items">
             <DomainSelectableList
               hasPermission
-              popoverProps={{ open: isDomainDropdownOpen }}
+              popoverProps={{
+                open: isDomainDropdownOpen,
+                onOpenChange: (open) => {
+                  setIsDomainDropdownOpen(open);
+                },
+              }}
               selectedDomain={activeDomainEntityRef}
               onCancel={() => setIsDomainDropdownOpen(false)}
               onUpdate={handleDomainChange}>
               <Button
-                className="flex-center gap-2 p-0"
+                className="flex-center gap-2 p-0 font-medium"
                 data-testid="domain-dropdown"
                 type="text"
                 onClick={() => setIsDomainDropdownOpen(!isDomainDropdownOpen)}>
@@ -418,76 +399,84 @@ const NavBar: React.FC = () => {
                   name="domain"
                   width={24}
                 />
-                <Typography.Text>
+                <Typography.Text className="font-medium">
                   {activeDomainEntityRef
                     ? getEntityName(activeDomainEntityRef)
                     : activeDomain}
                 </Typography.Text>
 
-                <DropDownIcon height={14} width={14} />
+                <DropDownIcon width={20} />
               </Button>
             </DomainSelectableList>
-          </div>
 
-          <Dropdown
-            className="cursor-pointer"
-            menu={{
-              items: languageSelectOptions,
-              onClick: handleLanguageChange,
-            }}
-            placement="bottomRight"
-            trigger={['click']}>
-            <Button className="flex-center gap-2 p-0" type="text">
-              {upperCase((language || SupportedLocales.English).split('-')[0])}{' '}
-              <DropDownIcon height={14} width={14} />
-            </Button>
-          </Dropdown>
-          <Dropdown
-            destroyPopupOnHide
-            className="cursor-pointer"
-            dropdownRender={() => (
-              <NotificationBox
-                hasMentionNotification={hasMentionNotification}
-                hasTaskNotification={hasTaskNotification}
-                onMarkMentionsNotificationRead={handleMentionsNotificationRead}
-                onMarkTaskNotificationRead={handleTaskNotificationRead}
-                onTabChange={handleActiveTab}
+            <Dropdown
+              className="cursor-pointer"
+              menu={{
+                items: languageSelectOptions,
+                onClick: handleLanguageChange,
+              }}
+              placement="bottomRight"
+              trigger={['click']}>
+              <Button className="flex-center gap-2 p-0 font-medium" type="text">
+                {upperCase(
+                  (language || SupportedLocales.English).split('-')[0]
+                )}{' '}
+                <DropDownIcon width={20} />
+              </Button>
+            </Dropdown>
+            <Dropdown
+              destroyPopupOnHide
+              className="cursor-pointer"
+              dropdownRender={() => (
+                <NotificationBox
+                  hasMentionNotification={hasMentionNotification}
+                  hasTaskNotification={hasTaskNotification}
+                  onMarkMentionsNotificationRead={
+                    handleMentionsNotificationRead
+                  }
+                  onMarkTaskNotificationRead={handleTaskNotificationRead}
+                  onTabChange={handleActiveTab}
+                />
+              )}
+              overlayStyle={{
+                width: '425px',
+                minHeight: '375px',
+              }}
+              placement="bottomRight"
+              trigger={['click']}
+              onOpenChange={handleBellClick}>
+              <Button
+                className="flex-center p-sm"
+                icon={
+                  <Badge dot offset={[-6, 3]}>
+                    <IconBell width={20} />
+                  </Badge>
+                }
+                size="large"
+                title={t('label.notification-plural')}
+                type="text"
               />
-            )}
-            overlayStyle={{
-              zIndex: 9999,
-              width: '425px',
-              minHeight: '375px',
-            }}
-            placement="bottomRight"
-            trigger={['click']}
-            onOpenChange={handleBellClick}>
-            <Button
-              className="flex-center p-0"
-              icon={<IconBell style={{ fontSize: '24px' }} />}
-              title={t('label.notification-plural')}
-              type="text">
-              <Badge dot={hasTaskNotification || hasMentionNotification} />
-            </Button>
-          </Dropdown>
-          <Dropdown
-            menu={{
-              items: getHelpDropdownItems(version),
-              onClick: handleSupportClick,
-            }}
-            overlayStyle={{ width: 175 }}
-            placement="bottomRight"
-            trigger={['click']}>
-            <Button
-              className="flex-center p-0"
-              icon={<Help style={{ fontSize: '24px' }} />}
-              title={t('label.need-help')}
-              type="text"
-            />
-          </Dropdown>
-          <UserProfileIcon />
+            </Dropdown>
+            <Dropdown
+              menu={{
+                items: getHelpDropdownItems(version),
+                onClick: handleSupportClick,
+              }}
+              overlayStyle={{ width: 175 }}
+              placement="bottomRight"
+              trigger={['click']}>
+              <Button
+                className="flex-center p-sm"
+                icon={<Help width={20} />}
+                size="large"
+                title={t('label.need-help')}
+                type="text"
+              />
+            </Dropdown>
+            <UserProfileIcon />
+          </div>
         </div>
-      </div>
+      </Header>
       <WhatsNewModal
         header={`${t('label.whats-new')}!`}
         visible={isFeatureModalOpen}
@@ -515,7 +504,7 @@ const NavBar: React.FC = () => {
         />
       )}
       {renderAlertCards}
-    </Header>
+    </>
   );
 };
 

@@ -18,7 +18,36 @@
   }
 }
 
+.nav-bar-side-items {
+  .ant-btn-icon-only {
+    color: @text-color;
+
+    &:hover,
+    &:focus,
+    &:active {
+      background: transparent;
+      border: none;
+    }
+  }
+}
+
 .navbar-container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  > div {
+    height: 40px;
+    .ant-input-wrapper.ant-input-group,
+    .ant-input-affix-wrapper {
+      height: 40px;
+    }
+  }
+
+  .appbar-search {
+    min-width: 380px;
+    width: calc(100vw - 800px);
+  }
   .app-user-icon {
     display: flex;
     justify-content: space-between;

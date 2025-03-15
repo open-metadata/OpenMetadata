@@ -10,6 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
+@import (reference) url('../../../../styles/variables.less');
+
 .profile-dropdown {
   .ant-dropdown-menu-item-group {
     .ant-dropdown-menu-item-only-child {
@@ -20,9 +23,16 @@
     }
   }
 }
-.user-profile-btn {
+.user-profile-btn.ant-btn {
   padding: 0;
   gap: @padding-md;
+
+  &:hover,
+  &:active,
+  &:focus {
+    background: none;
+    border-color: transparent;
+  }
 
   .app-bar-user-profile-pic {
     display: inline-block;
@@ -31,7 +41,13 @@
     border-radius: 50%;
   }
 
-  .username {
+  .name-persona-container {
     width: 98px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    line-height: 20px;
+    color: #252b37;
   }
 }

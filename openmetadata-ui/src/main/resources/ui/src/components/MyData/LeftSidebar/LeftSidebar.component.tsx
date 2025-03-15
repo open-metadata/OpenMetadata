@@ -146,21 +146,25 @@ const LeftSidebar = () => {
 
   return (
     <Sider
+      collapsible
       className={classNames('left-sidebar-col left-sidebar-container', {
         'left-sidebar-col-rtl': isDirectionRTL,
         'sidebar-open': !isSidebarCollapsed,
       })}
+      collapsed={isSidebarCollapsed}
+      collapsedWidth={84}
       data-testid="left-sidebar"
-      width={84}
-      onMouseLeave={handleMouseOut}
-      onMouseOver={handleMouseOver}>
+      trigger={null}
+      width={228}
+      onMouseEnter={handleMouseOver}
+      onMouseLeave={handleMouseOut}>
       <div className="logo-container">
         <Link className="flex-shrink-0" id="openmetadata_logo" to="/">
           <BrandImage
             alt="OpenMetadata Logo"
             className="vertical-middle"
             dataTestId="image"
-            height={30}
+            height={40}
             isMonoGram={isSidebarCollapsed}
             width="auto"
           />
@@ -168,6 +172,7 @@ const LeftSidebar = () => {
       </div>
 
       <Menu
+        inlineIndent={0}
         items={menuItems}
         mode="inline"
         rootClassName="left-sidebar-menu"

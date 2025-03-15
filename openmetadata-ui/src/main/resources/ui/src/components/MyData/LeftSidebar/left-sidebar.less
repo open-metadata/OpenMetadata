@@ -10,18 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-@import (reference) '../../../styles/variables.less';
+@import url('../../../styles/variables.less');
 
 .left-sidebar-col {
-  position: relative;
-
   .left-sidebar-container {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 84px;
-    border-radius: 0;
-
     transition: 0.3s ease-in-out;
     overflow: scroll;
     scrollbar-width: none;
@@ -41,16 +33,14 @@
   }
 
   .logo-container {
-    height: 80px;
+    height: 40px;
     text-align: center;
-    padding: 20px 0;
+    margin: 20px 0;
   }
 
   // Css apply when sidebar is open
 
-  .sidebar-open {
-    width: 230px;
-
+  &.sidebar-open {
     .ant-menu-submenu-arrow {
       opacity: 1;
     }
@@ -64,9 +54,9 @@
     }
 
     .left-sidebar-menu.ant-menu {
-      background-color: #f8f9fc !important;
       .ant-menu-item {
         .ant-menu-item-icon {
+          background: rgba(248, 248, 248, 1);
         }
 
         .left-panel-item {
@@ -94,6 +84,7 @@
         }
 
         .ant-menu-item-icon {
+          background: rgba(248, 248, 248, 1);
         }
       }
     }
@@ -106,10 +97,8 @@
   }
 
   .left-sidebar-menu.ant-menu {
-    background-color: transparent !important;
-
     .ant-menu-item {
-      padding: 6px 12px;
+      padding: 8px 0 8px 8px !important;
       height: auto;
       margin: 4px auto;
       transition: 0.3s ease-in-out;
@@ -120,6 +109,7 @@
       }
 
       &:hover {
+        background: rgba(9, 80, 197, 0.04);
         color: @text-color;
 
         .ant-menu-item-icon {
@@ -278,7 +268,6 @@
   border-right: 1px solid @border-color;
   overflow: auto;
   height: calc(100vh - @om-navbar-height);
-
   overflow-x: hidden;
 }
 
@@ -290,14 +279,7 @@
     left: initial;
   }
 
-  .logo-container {
-    padding-left: initial;
-    padding-right: 14px;
-    height: 80px;
-  }
-
   .left-sidebar-menu.ant-menu {
-    background: #f8f9fc !important;
     .ant-menu-item {
       padding: 8px 13px 8px 0 !important;
 

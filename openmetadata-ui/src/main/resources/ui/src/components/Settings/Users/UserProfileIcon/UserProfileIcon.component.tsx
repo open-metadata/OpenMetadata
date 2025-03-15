@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { CheckOutlined } from '@ant-design/icons';
-import { Button, Dropdown, Space, Tooltip, Typography } from 'antd';
+import { Button, Dropdown, Space, Typography } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { isEmpty, some } from 'lodash';
 import React, {
@@ -354,12 +354,13 @@ export const UserProfileIcon = () => {
         }
         size="large"
         type="text">
-        <Space className="username" direction="vertical">
-          <Tooltip title={getEntityName(currentUser)}>
-            <Typography.Text className="username">
-              {getEntityName(currentUser)}
-            </Typography.Text>
-          </Tooltip>
+        <div className="name-persona-container">
+          <Typography.Text
+            className="font-semibold"
+            title={getEntityName(currentUser)}>
+            {getEntityName(currentUser)}
+          </Typography.Text>
+
           <Typography.Text
             className=""
             data-testid="default-persona"
@@ -368,8 +369,8 @@ export const UserProfileIcon = () => {
               ? t('label.default')
               : getEntityName(selectedPersona)}
           </Typography.Text>
-        </Space>
-        <DropDownIcon width={16} />
+        </div>
+        <DropDownIcon width={24} />
       </Button>
     </Dropdown>
   );
