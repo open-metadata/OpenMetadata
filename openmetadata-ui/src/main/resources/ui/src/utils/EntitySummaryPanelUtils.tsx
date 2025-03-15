@@ -411,7 +411,7 @@ export const getEntityChildDetails = (
         (entityInfo as Topic).messageSchema?.schemaFields
       ) ? (
         <Typography.Text data-testid="no-data-message">
-          <Typography.Text className="text-grey-body">
+          <Typography.Text className="no-data-chip-placeholder">
             {i18n.t('message.no-data-available')}
           </Typography.Text>
         </Typography.Text>

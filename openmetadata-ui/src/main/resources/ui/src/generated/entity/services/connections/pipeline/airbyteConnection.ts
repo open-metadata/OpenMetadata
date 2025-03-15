@@ -25,7 +25,11 @@ export interface AirbyteConnection {
     /**
      * Password to connect to Airbyte.
      */
-    password?:                   string;
+    password?: string;
+    /**
+     * Regex exclude pipelines.
+     */
+    pipelineFilterPattern?:      FilterPattern;
     supportsMetadataExtraction?: boolean;
     /**
      * Service Type
@@ -35,6 +39,22 @@ export interface AirbyteConnection {
      * Username to connect to Airbyte.
      */
     username?: string;
+}
+
+/**
+ * Regex exclude pipelines.
+ *
+ * Regex to only fetch entities that matches the pattern.
+ */
+export interface FilterPattern {
+    /**
+     * List of strings/regex patterns to match and exclude only database entities that match.
+     */
+    excludes?: string[];
+    /**
+     * List of strings/regex patterns to match and include only database entities that match.
+     */
+    includes?: string[];
 }
 
 /**
