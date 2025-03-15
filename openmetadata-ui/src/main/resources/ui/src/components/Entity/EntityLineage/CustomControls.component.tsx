@@ -52,7 +52,9 @@ const CustomControls: FC<ControlProps> = ({
   };
 
   const queryFilter = useMemo(() => {
-    const nodeIds = nodes.map((node) => node.data.node.id).filter(Boolean);
+    const nodeIds = (nodes ?? [])
+      .map((node) => node.data?.node?.id)
+      .filter(Boolean);
 
     return {
       query: {

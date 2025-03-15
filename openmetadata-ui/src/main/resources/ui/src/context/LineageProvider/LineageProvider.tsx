@@ -193,6 +193,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
   const deletePressed = useKeyPress('Delete');
   const backspacePressed = useKeyPress('Backspace');
   const { showModal } = useEntityExportModalProvider();
+  const [isPlatformLineage, setIsPlatformLineage] = useState(false);
 
   const lineageLayer = useMemo(() => {
     const param = location.search;
@@ -499,9 +500,14 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
   }, []);
 
   const updateEntityData = useCallback(
-    (entityType: EntityType, entity?: SourceType) => {
+    (
+      entityType: EntityType,
+      entity?: SourceType,
+      isPlatformLineage?: boolean
+    ) => {
       setEntity(entity);
       setEntityType(entityType);
+      setIsPlatformLineage(isPlatformLineage ?? false);
     },
     []
   );
@@ -1387,6 +1393,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
       columnsHavingLineage,
       expandAllColumns,
       platformView,
+      isPlatformLineage,
       toggleColumnView,
       onInitReactFlow,
       onPaneClick,
@@ -1436,6 +1443,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     activeLayer,
     columnsHavingLineage,
     expandAllColumns,
+    isPlatformLineage,
     toggleColumnView,
     onInitReactFlow,
     onPaneClick,
