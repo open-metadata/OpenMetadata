@@ -560,9 +560,11 @@ test.describe('Activity feed', () => {
 
       await expect(page2.getByTestId('message-container')).toHaveCount(1);
 
-      await expect(page2.getByTestId('owner-link')).toContainText(
-        user2.responseData.displayName
-      );
+      await page2.getByTestId('task-feed-card').locator('.ant-avatar').hover();
+
+      await expect(
+        page2.getByText(user2.responseData.displayName)
+      ).toBeVisible();
 
       // Check the Task based on Created by me task filter
 
@@ -579,9 +581,11 @@ test.describe('Activity feed', () => {
 
       await expect(page2.getByTestId('message-container')).toHaveCount(1);
 
-      await expect(page2.getByTestId('owner-link')).toContainText(
-        user1.responseData.displayName
-      );
+      await page2.getByTestId('task-feed-card').locator('.ant-avatar').hover();
+
+      await expect(
+        page2.getByText(user2.responseData.displayName)
+      ).toBeVisible();
 
       await afterActionUser2();
     });

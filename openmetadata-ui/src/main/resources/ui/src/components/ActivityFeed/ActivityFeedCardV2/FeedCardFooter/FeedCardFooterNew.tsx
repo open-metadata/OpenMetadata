@@ -27,8 +27,10 @@ function FeedCardFooterNew({
   feed,
   post,
   isPost = false,
+  isForFeedTab = false,
 }: Readonly<FeedCardFooterProps>) {
-  const { updateReactions, fetchUpdatedThread } = useActivityFeedProvider();
+  const { showDrawer, updateReactions, fetchUpdatedThread } =
+    useActivityFeedProvider();
 
   // The number of posts in the thread
   const postLength = useMemo(() => feed?.postsCount ?? 0, [feed?.postsCount]);
@@ -55,6 +57,9 @@ function FeedCardFooterNew({
     },
     [updateReactions, post, feed.id, isPost, fetchUpdatedThread]
   );
+  const showReplies = useCallback(() => {
+    showDrawer?.(feed);
+  }, [showDrawer, feed]);
 
   return (
     <Row align="top" className={classNames({ 'm-y-md': isPost })}>
@@ -88,7 +93,12 @@ function FeedCardFooterNew({
             )}
 
             {!isPost && (
-              <ThreadIcon data-testid="thread-count" height={18} width={18} />
+              <ThreadIcon
+                data-testid="thread-count"
+                height={18}
+                width={18}
+                onClick={isForFeedTab ? showReplies : undefined}
+              />
             )}
             <Reactions
               reactions={post.reactions ?? []}
