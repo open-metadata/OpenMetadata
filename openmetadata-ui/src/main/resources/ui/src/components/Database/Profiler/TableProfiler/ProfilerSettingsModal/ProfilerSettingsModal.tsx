@@ -113,11 +113,20 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
     []
   );
 
-  const selectOptions = useMemo(() => {
-    return columns.map(({ name }) => ({
+  const { columnOptions, columnWithAllOption } = useMemo(() => {
+    const columnOptions = columns.map(({ name }) => ({
       label: name,
       value: name,
     }));
+    const columnWithAllOption = [
+      {
+        label: t('label.all'),
+        value: 'all',
+      },
+      ...columnOptions,
+    ];
+
+    return { columnOptions, columnWithAllOption };
   }, [columns]);
   const metricsOptions = useMemo(() => {
     const metricsOptions = [
@@ -547,9 +556,9 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
               allowClear
               className="w-full"
               data-testid="exclude-column-select"
-              dropdownStyle={{ maxHeight: 200 }}
+              dropdownStyle={{ maxHeight: 200, overflowY: 'auto' }}
               mode="multiple"
-              options={selectOptions}
+              options={columnOptions}
               placeholder={t('label.select-column-plural-to-exclude')}
               size="middle"
               value={state?.excludeCol}
@@ -604,7 +613,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                                 showSearch
                                 className="w-full"
                                 data-testid="include-column-select"
-                                options={selectOptions}
+                                options={columnWithAllOption}
                                 placeholder={t(
                                   'label.select-column-plural-to-include'
                                 )}
