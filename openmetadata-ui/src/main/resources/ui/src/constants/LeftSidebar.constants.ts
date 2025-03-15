@@ -21,6 +21,7 @@ import { ReactComponent as DataQualityIcon } from '../assets/svg/ic-data-contrac
 import { ReactComponent as DomainsIcon } from '../assets/svg/ic-domain.svg';
 import { ReactComponent as IncidentMangerIcon } from '../assets/svg/ic-incident-manager.svg';
 import { ReactComponent as ObservabilityIcon } from '../assets/svg/ic-observability.svg';
+import { ReactComponent as PlatformLineageIcon } from '../assets/svg/ic-platform-lineage.svg';
 import { ReactComponent as SettingsIcon } from '../assets/svg/ic-settings-v1.svg';
 import { ReactComponent as InsightsIcon } from '../assets/svg/lamp-charge.svg';
 import { ReactComponent as LogoutIcon } from '../assets/svg/logout.svg';
@@ -42,6 +43,13 @@ export const SIDEBAR_LIST: Array<LeftSidebarItem> = [
     redirect_url: ROUTES.EXPLORE,
     icon: ExploreIcon,
     dataTestId: `app-bar-item-${SidebarItem.EXPLORE}`,
+  },
+  {
+    key: ROUTES.PLATFORM_LINEAGE,
+    title: i18next.t('label.platform-lineage'),
+    redirect_url: ROUTES.PLATFORM_LINEAGE,
+    icon: PlatformLineageIcon,
+    dataTestId: `app-bar-item-${SidebarItem.LINEAGE}`,
   },
   {
     key: ROUTES.OBSERVABILITY,

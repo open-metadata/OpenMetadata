@@ -26,4 +26,5 @@ export interface ExploreQuickFiltersProps {
   onChangeShowDeleted?: (showDeleted: boolean) => void;
   independent?: boolean; // flag to indicate if the filters are independent of aggregations
   fieldsWithNullValues?: EntityFields[];
+  defaultQueryFilter?: Record<string, unknown>;
 }

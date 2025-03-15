@@ -26,6 +26,7 @@ import { SearchDropdownOption } from '../components/SearchDropdown/SearchDropdow
 import { NULL_OPTION_KEY } from '../constants/AdvancedSearch.constants';
 import { EntityFields } from '../enums/AdvancedSearch.enum';
 import { EntityType } from '../enums/entity.enum';
+import { SearchIndex } from '../enums/search.enum';
 import { Aggregations } from '../interface/search.interface';
 import {
   EsBoolQuery,
@@ -33,6 +34,10 @@ import {
   QueryFilterInterface,
   TabsInfoData,
 } from '../pages/ExplorePage/ExplorePage.interface';
+import {
+  getAggregateFieldOptions,
+  postAggregateFieldOptions,
+} from '../rest/miscAPI';
 
 /**
  * It takes an array of filters and a data lookup and returns a new object with the filters grouped by
@@ -316,4 +321,16 @@ export const getQuickFilterObjectForEntities = (
       label: value,
     })),
   };
+};
+
+export const getAggregationOptions = async (
+  index: SearchIndex | SearchIndex[],
+  key: string,
+  value: string,
+  filter: string,
+  isIndependent: boolean
+) => {
+  return isIndependent
+    ? postAggregateFieldOptions(index, key, value, filter)
+    : getAggregateFieldOptions(index, key, value, filter);
 };

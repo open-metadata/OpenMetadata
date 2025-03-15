@@ -252,4 +252,8 @@ export const PAGE_HEADERS = {
       entity: i18n.t('label.metric-plural'),
     }),
   },
+  PLATFORM_LINEAGE: {
+    header: i18n.t('label.platform-lineage'),
+    subHeader: i18n.t('message.page-sub-header-for-platform-lineage'),
+  },
 };

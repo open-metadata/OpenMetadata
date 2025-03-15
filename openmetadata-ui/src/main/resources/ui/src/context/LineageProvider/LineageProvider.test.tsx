@@ -14,6 +14,7 @@ import { act, fireEvent, render, screen } from '@testing-library/react';
 import QueryString from 'qs';
 import React, { useEffect } from 'react';
 import { Edge } from 'reactflow';
+import { SourceType } from '../../components/SearchedData/SearchedData.interface';
 import { EntityType } from '../../enums/entity.enum';
 import { LineageDirection } from '../../generated/api/lineage/searchLineageRequest';
 import {
@@ -82,7 +83,12 @@ const DummyChildrenComponent = () => {
   };
 
   useEffect(() => {
-    updateEntityData(EntityType.TABLE, undefined);
+    updateEntityData(EntityType.TABLE, {
+      id: 'table1',
+      name: 'table1',
+      type: 'table',
+      fullyQualifiedName: 'table1',
+    } as SourceType);
   }, []);
 
   return (

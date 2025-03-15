@@ -53,6 +53,7 @@ const LineageControlButtons: FC<LineageControlButtonsProps> = ({
     platformView,
     toggleColumnView,
     onExportClick,
+    isPlatformLineage,
     loading,
     status,
     onLineageEditClick,
@@ -98,23 +99,25 @@ const LineageControlButtons: FC<LineageControlButtonsProps> = ({
   return (
     <>
       <div className="lineage-control-buttons">
-        {!deleted && platformView === LineagePlatformView.None && (
-          <Button
-            className={classNames('lineage-button', {
-              active: isEditMode,
-            })}
-            data-testid="edit-lineage"
-            disabled={!hasEditAccess}
-            icon={getLoadingStatusValue(editIcon, loading, status)}
-            title={
-              hasEditAccess
-                ? t('label.edit-entity', { entity: t('label.lineage') })
-                : NO_PERMISSION_FOR_ACTION
-            }
-            type="text"
-            onClick={onLineageEditClick}
-          />
-        )}
+        {!deleted &&
+          platformView === LineagePlatformView.None &&
+          !isPlatformLineage && (
+            <Button
+              className={classNames('lineage-button', {
+                active: isEditMode,
+              })}
+              data-testid="edit-lineage"
+              disabled={!hasEditAccess}
+              icon={getLoadingStatusValue(editIcon, loading, status)}
+              title={
+                hasEditAccess
+                  ? t('label.edit-entity', { entity: t('label.lineage') })
+                  : NO_PERMISSION_FOR_ACTION
+              }
+              type="text"
+              onClick={onLineageEditClick}
+            />
+          )}
 
         {isColumnLayerActive && !isEditMode && (
           <Button

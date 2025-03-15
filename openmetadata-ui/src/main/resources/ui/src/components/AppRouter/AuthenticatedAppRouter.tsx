@@ -24,6 +24,7 @@ import AddCustomMetricPage from '../../pages/AddCustomMetricPage/AddCustomMetric
 import { CustomizablePage } from '../../pages/CustomizablePage/CustomizablePage';
 import DataQualityPage from '../../pages/DataQuality/DataQualityPage';
 import ForbiddenPage from '../../pages/ForbiddenPage/ForbiddenPage';
+import PlatformLineage from '../../pages/PlatformLineage/PlatformLineage';
 import TagPage from '../../pages/TagPage/TagPage';
 import { checkPermission, userPermissions } from '../../utils/PermissionsUtils';
 import AdminProtectedRoute from './AdminProtectedRoute';
@@ -284,6 +285,11 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       <Route exact component={MyDataPage} path={ROUTES.MY_DATA} />
       <Route exact component={TourPageComponent} path={ROUTES.TOUR} />
       <Route exact component={ExplorePageV1} path={ROUTES.EXPLORE} />
+      <Route
+        exact
+        component={PlatformLineage}
+        path={[ROUTES.PLATFORM_LINEAGE, ROUTES.PLATFORM_LINEAGE_WITH_FQN]}
+      />
       <Route component={ExplorePageV1} path={ROUTES.EXPLORE_WITH_TAB} />
       <Route
         exact

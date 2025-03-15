@@ -27,6 +27,7 @@ import javax.ws.rs.core.Response;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
+import org.openmetadata.schema.search.SearchRequest;
 import org.openmetadata.schema.system.EntityError;
 import org.openmetadata.schema.system.Stats;
 import org.openmetadata.schema.system.StepStats;
@@ -35,7 +36,6 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.EntityTimeSeriesRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
-import org.openmetadata.service.search.SearchRequest;
 import org.openmetadata.service.util.JsonUtils;
 import os.org.opensearch.action.bulk.BulkItemResponse;
 import os.org.opensearch.action.bulk.BulkResponse;
@@ -148,18 +148,17 @@ public class ReindexingUtil {
       String matchingKey, String sourceFqn, int from) {
     String key = "_source";
     SearchRequest searchRequest =
-        new SearchRequest.ElasticSearchRequestBuilder(
-                String.format("(%s:\"%s\")", matchingKey, sourceFqn),
-                100,
-                Entity.getSearchRepository().getIndexOrAliasName(GLOBAL_SEARCH_ALIAS))
-            .from(from)
-            .fetchSource(true)
-            .trackTotalHits(false)
-            .sortFieldParam("_score")
-            .deleted(false)
-            .sortOrder("desc")
-            .includeSourceFields(new ArrayList<>())
-            .build();
+        new SearchRequest()
+            .withQuery(String.format("(%s:\"%s\")", matchingKey, sourceFqn))
+            .withSize(100)
+            .withIndex(Entity.getSearchRepository().getIndexOrAliasName(GLOBAL_SEARCH_ALIAS))
+            .withFrom(from)
+            .withFetchSource(true)
+            .withTrackTotalHits(false)
+            .withSortFieldParam("_score")
+            .withDeleted(false)
+            .withSortOrder("desc")
+            .withIncludeSourceFields(new ArrayList<>());
     List<EntityReference> entities = new ArrayList<>();
     Response response = Entity.getSearchRepository().search(searchRequest, null);
     String json = (String) response.getEntity();
