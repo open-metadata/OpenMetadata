@@ -65,6 +65,7 @@ interface TaskFeedCardProps {
   isActive?: boolean;
   onAfterClose: any;
   onUpdateEntityDetails: any;
+  isForFeedTab?: boolean;
 }
 
 const TaskFeedCard = ({
@@ -73,6 +74,7 @@ const TaskFeedCard = ({
   isActive,
   onAfterClose,
   onUpdateEntityDetails,
+  isForFeedTab = false,
 }: TaskFeedCardProps) => {
   const history = useHistory();
   const { t } = useTranslation();
@@ -80,7 +82,7 @@ const TaskFeedCard = ({
   const { currentUser } = useApplicationStore();
   const { isAdminUser } = useAuth();
   const { threadTs: timeStamp, task: taskDetails } = feed;
-
+  const { showDrawer } = useActivityFeedProvider();
   const isTaskTags = isTagsTask(taskDetails?.type as TaskType);
   const isTaskDescription = isDescriptionTask(taskDetails?.type as TaskType);
 
@@ -234,6 +236,10 @@ const TaskFeedCard = ({
     (!taskDetails?.suggestion &&
       taskDetails?.type === TaskType.RequestDescription);
 
+  const showReplies = useCallback(() => {
+    showDrawer?.(feed);
+  }, [showDrawer, feed]);
+
   return (
     <Button block className="remove-button-default-styling" type="text">
       <div
@@ -315,7 +321,12 @@ const TaskFeedCard = ({
             span={24}>
             <Col className="d-flex">
               <Col className="d-flex flex-center">
-                <ReplyIcon className="m-r-xs" height={20} width={20} />
+                <ReplyIcon
+                  className="m-r-xs"
+                  height={20}
+                  width={20}
+                  onClick={isForFeedTab ? showReplies : undefined}
+                />
                 {feed.posts && feed.posts?.length > 0 && (
                   <span className="posts-length m-r-xss">
                     {t(

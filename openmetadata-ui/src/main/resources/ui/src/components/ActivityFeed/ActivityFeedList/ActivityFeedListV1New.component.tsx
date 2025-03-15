@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { Typography } from 'antd';
+import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import React, { ReactNode, useEffect, useMemo, useState } from 'react';
 import { ReactComponent as FeedEmptyIcon } from '../../../assets/svg/ic-task-empty.svg';
@@ -131,7 +132,12 @@ const ActivityFeedListV1New = ({
   }
 
   return (
-    <div className="p-b-md" id="feedData">
+    <div
+      className={classNames({
+        'feed-widget-padding': isForFeedTab,
+        'activity-feed-tab-padding': !isForFeedTab,
+      })}
+      id="feedData">
       {feeds}
     </div>
   );

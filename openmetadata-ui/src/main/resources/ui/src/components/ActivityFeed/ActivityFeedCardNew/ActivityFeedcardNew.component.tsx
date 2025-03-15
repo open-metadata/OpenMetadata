@@ -52,6 +52,7 @@ interface ActivityFeedCardNewProps {
   post: Post;
   showActivityFeedEditor?: boolean;
   showThread?: boolean;
+  isForFeedTab?: boolean;
 }
 
 const ActivityFeedCardNew = ({
@@ -61,6 +62,7 @@ const ActivityFeedCardNew = ({
   showActivityFeedEditor,
   showThread,
   isActive,
+  isForFeedTab,
 }: ActivityFeedCardNewProps) => {
   const { entityFQN, entityType } = useMemo(() => {
     const entityFQN = getEntityFQN(feed.about) ?? '';
@@ -258,7 +260,9 @@ const ActivityFeedCardNew = ({
                       showThread &&
                       feed.entityRef?.type !== EntityType.CONTAINER,
                   })}>
-                  <Typography.Text className="card-style-feed-header text-sm">
+                  <Typography.Text
+                    className="card-style-feed-header text-sm"
+                    data-testid="headerText">
                     {feedHeaderText}
                   </Typography.Text>
 
@@ -283,7 +287,12 @@ const ActivityFeedCardNew = ({
           />
 
           {(isPost || (!showThread && !isPost)) && (
-            <FeedCardFooterNew feed={feed} isPost={isPost} post={post} />
+            <FeedCardFooterNew
+              feed={feed}
+              isForFeedTab={isForFeedTab}
+              isPost={isPost}
+              post={post}
+            />
           )}
         </Space>
       </Space>

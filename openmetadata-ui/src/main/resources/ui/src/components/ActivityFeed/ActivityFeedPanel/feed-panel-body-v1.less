@@ -25,3 +25,52 @@
     background-color: @grey-1;
   }
 }
+.activity-feed-card-new {
+  border-radius: 12px;
+  margin: 10px 0px;
+  background: @grey-9;
+  display: flex;
+  flex-direction: column;
+  flex-wrap: wrap;
+  width: inherit;
+  border: 0.5px solid @grey-15;
+
+  &.ant-card {
+    background: @grey-9;
+    border-radius: 12px;
+    margin-bottom: 20px;
+  }
+
+  .ant-card-body {
+    width: inherit;
+    padding: 20px;
+
+    .ant-space-item {
+      width: inherit;
+    }
+  }
+}
+.header-link {
+  word-wrap: break-word;
+  white-space: normal;
+  color: @blue-9;
+  font-weight: 600;
+}
+.feeds-widget-container {
+  .ant-tabs.ant-tabs-top.h-full
+    .ant-tabs-content.ant-tabs-content-top
+    .ant-tabs-tabpane {
+    display: flex;
+    flex-direction: column;
+  }
+  .feed-card-header-v2-timestamp {
+    color: @grey-8;
+  }
+}
+
+.feed-widget-padding {
+  padding: 20px 20px 0px 20px;
+}
+.activity-feed-tab-padding {
+  padding: 10px 20px 20px 20px;
+}
