@@ -27,10 +27,13 @@ import {
   TAG_CONSTANT,
   TAG_START_WITH,
 } from '../../../constants/Tag.constants';
+import { EntityType } from '../../../enums/entity.enum';
 import { LabelType } from '../../../generated/entity/data/table';
 import { State, TagSource } from '../../../generated/type/tagLabel';
+import EntityLink from '../../../utils/EntityLink';
 import { getEntityFeedLink } from '../../../utils/EntityUtils';
 import { getFilterTags } from '../../../utils/TableTags/TableTags.utils';
+import { getTierTags } from '../../../utils/TableUtils';
 import tagClassBase from '../../../utils/TagClassBase';
 import { fetchGlossaryList, getTagPlaceholder } from '../../../utils/TagsUtils';
 import {
@@ -40,6 +43,8 @@ import {
 import { SelectOption } from '../../common/AsyncSelectList/AsyncSelectList.interface';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 import { TableTagsProps } from '../../Database/TableTags/TableTags.interface';
+import SuggestionsAlert from '../../Suggestions/SuggestionsAlert/SuggestionsAlert';
+import { useSuggestionsContext } from '../../Suggestions/SuggestionsProvider/SuggestionsProvider';
 import TagSelectForm from '../TagsSelectForm/TagsSelectForm.component';
 import TagsV1 from '../TagsV1/TagsV1.component';
 import TagsViewer from '../TagsViewer/TagsViewer';
@@ -59,6 +64,7 @@ const TagsContainerV2 = ({
   showHeader = true,
   showBottomEditButton,
   showInlineEditButton,
+  columnData,
   onSelectionChange,
   children,
   defaultLabelType,
@@ -68,6 +74,7 @@ const TagsContainerV2 = ({
   const [form] = Form.useForm();
   const { t } = useTranslation();
   const { onThreadLinkSelect } = useGenericContext();
+  const { selectedUserSuggestions } = useSuggestionsContext();
 
   const [isEditTags, setIsEditTags] = useState(false);
   const [tags, setTags] = useState<TableTagsProps>();
@@ -397,6 +404,33 @@ const TagsContainerV2 = ({
     editTagButton,
   ]);
 
+  const suggestionDataRender = useMemo(() => {
+    if (!isGlossaryType && entityType === EntityType.TABLE) {
+      const entityLink = EntityLink.getTableEntityLink(
+        entityFqn ?? '',
+        EntityLink.getTableColumnNameFromColumnFqn(columnData?.fqn ?? '')
+      );
+
+      const activeSuggestion = selectedUserSuggestions?.tags.find(
+        (suggestion) =>
+          suggestion.entityLink === entityLink &&
+          !getTierTags(suggestion.tagLabels ?? [])
+      );
+
+      if (activeSuggestion) {
+        return (
+          <SuggestionsAlert
+            hasEditAccess={permission}
+            showSuggestedBy={!entityLink.includes('columns')}
+            suggestion={activeSuggestion}
+          />
+        );
+      }
+    }
+
+    return null;
+  }, [permission, entityType, isGlossaryType, selectedUserSuggestions]);
+
   useEffect(() => {
     setTags(getFilterTags(selectedTags));
   }, [selectedTags]);
@@ -406,13 +440,17 @@ const TagsContainerV2 = ({
       className="w-full tags-container"
       data-testid={isGlossaryType ? 'glossary-container' : 'tags-container'}>
       {header}
-      {tagBody}
 
-      {(children || showBottomEditButton) && (
-        <Space align="baseline" className="m-t-xs w-full" size="middle">
-          {showBottomEditButton && !showInlineEditButton && editTagButton}
-          {children}
-        </Space>
+      {suggestionDataRender ?? (
+        <>
+          {tagBody}
+          {(children || showBottomEditButton) && (
+            <Space align="baseline" className="m-t-xs w-full" size="middle">
+              {showBottomEditButton && !showInlineEditButton && editTagButton}
+              {children}
+            </Space>
+          )}
+        </>
       )}
     </div>
   );

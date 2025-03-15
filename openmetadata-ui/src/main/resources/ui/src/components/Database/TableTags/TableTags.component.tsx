@@ -43,6 +43,11 @@ const TableTags = <T extends TableUnion>({
         data-testid="tags-wrapper">
         <TagsContainerV2
           showBottomEditButton
+          columnData={{
+            fqn: record.fullyQualifiedName ?? '',
+          }}
+          entityFqn={entityFqn}
+          entityType={entityType}
           permission={hasTagEditAccess && !isReadOnly}
           selectedTags={tags}
           showHeader={false}

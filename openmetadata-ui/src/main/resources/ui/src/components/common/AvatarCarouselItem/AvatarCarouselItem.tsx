@@ -37,9 +37,8 @@ const AvatarCarouselItem = ({
   const buttonRef = useRef(null);
   avatarBtnRefs.current[index] = buttonRef;
   const getUserSuggestionsCount = useCallback(
-    (userName: string) => {
-      return suggestionsByUser.get(userName) ?? [];
-    },
+    (userName: string) =>
+      suggestionsByUser.get(userName)?.combinedData.length ?? 0,
     [suggestionsByUser]
   );
 
@@ -58,7 +57,7 @@ const AvatarCarouselItem = ({
 
   return (
     <UserPopOverCard key={avatar.id} userName={avatar?.name ?? ''}>
-      <Badge count={getUserSuggestionsCount(avatar?.name ?? '').length}>
+      <Badge count={getUserSuggestionsCount(avatar?.name ?? '')}>
         {button}
       </Badge>
     </UserPopOverCard>

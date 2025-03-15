@@ -260,6 +260,14 @@ jest.mock('../../../constants/constants', () => ({
   getEntityDetailsPath: jest.fn(),
 }));
 
+jest.mock('../../../utils/EntityUtils', () => {
+  return {
+    getEntityFeedLink: jest.fn(),
+    getEntityName: jest.fn(),
+    getColumnSorter: jest.fn(),
+  };
+});
+
 jest.mock('../../../rest/pipelineAPI', () => ({
   restorePipeline: jest.fn().mockImplementation(() => Promise.resolve()),
 }));

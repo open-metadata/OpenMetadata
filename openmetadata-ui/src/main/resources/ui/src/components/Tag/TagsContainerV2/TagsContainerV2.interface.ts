@@ -23,6 +23,9 @@ export type TagsContainerV2Props = {
   entityType?: string;
   entityFqn?: string;
   tagType: TagSource;
+  columnData?: {
+    fqn: string;
+  };
   showHeader?: boolean;
   showBottomEditButton?: boolean;
   showInlineEditButton?: boolean;

@@ -60,8 +60,7 @@ const DescriptionV1 = ({
   entityFullyQualifiedName,
 }: DescriptionProps) => {
   const history = useHistory();
-  const { suggestions = [], selectedUserSuggestions = [] } =
-    useSuggestionsContext();
+  const { suggestions, selectedUserSuggestions } = useSuggestionsContext();
   const [isEditDescription, setIsEditDescription] = useState(false);
   const { fqn } = useFqn();
   const { onThreadLinkSelect } = useGenericContext();
@@ -190,7 +189,7 @@ const DescriptionV1 = ({
   );
 
   const suggestionData = useMemo(() => {
-    const activeSuggestion = selectedUserSuggestions.find(
+    const activeSuggestion = selectedUserSuggestions?.description.find(
       (suggestion) => suggestion.entityLink === entityLinkWithoutField
     );
 
@@ -233,7 +232,7 @@ const DescriptionV1 = ({
             <Text className="right-panel-label">{t('label.description')}</Text>
             {showActions && actionButtons}
           </div>
-          {showSuggestions && suggestions.length > 0 && <SuggestionsSlider />}
+          {showSuggestions && suggestions?.length > 0 && <SuggestionsSlider />}
         </div>
 
         <div>

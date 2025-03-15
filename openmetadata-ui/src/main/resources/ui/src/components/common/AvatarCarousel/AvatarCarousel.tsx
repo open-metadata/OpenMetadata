@@ -64,10 +64,10 @@ const AvatarCarousel = ({ showArrows = false }: AvatarCarouselProps) => {
   }, [currentSlide]);
 
   useEffect(() => {
-    if (selectedUserSuggestions.length === 0) {
+    if (selectedUserSuggestions.combinedData.length === 0) {
       setCurrentSlide(-1);
     }
-  }, [selectedUserSuggestions]);
+  }, [selectedUserSuggestions.combinedData]);
 
   return (
     <div className="avatar-carousel-container d-flex items-center">

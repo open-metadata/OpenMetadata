@@ -156,21 +156,11 @@ function TestComponent() {
   return (
     <>
       <button
-        onClick={() =>
-          acceptRejectAllSuggestions(
-            SuggestionType.SuggestDescription,
-            SuggestionAction.Accept
-          )
-        }>
+        onClick={() => acceptRejectAllSuggestions(SuggestionAction.Accept)}>
         Accept All
       </button>
       <button
-        onClick={() =>
-          acceptRejectAllSuggestions(
-            SuggestionType.SuggestDescription,
-            SuggestionAction.Reject
-          )
-        }>
+        onClick={() => acceptRejectAllSuggestions(SuggestionAction.Reject)}>
         Reject All
       </button>
       <button
