@@ -239,5 +239,6 @@ export interface TriggerObject {
 
 export enum Type {
     EventBasedEntity = "eventBasedEntity",
+    NoOp = "noOp",
     PeriodicBatchEntity = "periodicBatchEntity",
 }

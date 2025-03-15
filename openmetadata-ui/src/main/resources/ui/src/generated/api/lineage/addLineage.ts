@@ -103,9 +103,22 @@ export interface EntityReference {
  */
 export interface LineageDetails {
     /**
+     * Asset count in case of child assets lineage.
+     */
+    assetEdges?: number;
+    /**
      * Lineage information of how upstream columns were combined to get downstream column.
      */
     columnsLineage?: ColumnLineage[];
+    /**
+     * Last update time corresponding to the new version of the entity in Unix epoch time
+     * milliseconds.
+     */
+    createdAt?: number;
+    /**
+     * User who created the node.
+     */
+    createdBy?: string;
     /**
      * description of lineage
      */
@@ -122,6 +135,15 @@ export interface LineageDetails {
      * SQL used for transformation.
      */
     sqlQuery?: string;
+    /**
+     * Last update time corresponding to the new version of the entity in Unix epoch time
+     * milliseconds.
+     */
+    updatedAt?: number;
+    /**
+     * User who made the update.
+     */
+    updatedBy?: string;
     [property: string]: any;
 }
 
@@ -148,6 +170,7 @@ export interface ColumnLineage {
  * Lineage type describes how a lineage was created.
  */
 export enum Source {
+    ChildAssets = "ChildAssets",
     CrossDatabaseLineage = "CrossDatabaseLineage",
     DashboardLineage = "DashboardLineage",
     DbtLineage = "DbtLineage",
