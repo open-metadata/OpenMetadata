@@ -99,6 +99,11 @@ public abstract class EntityCsv<T extends EntityInterface> {
   public static final String IMPORT_SKIPPED = "skipped";
   public static final String ENTITY_CREATED = "Entity created";
   public static final String ENTITY_UPDATED = "Entity updated";
+
+  // Additional fields for export/import with multiple entity types
+  public static final String FIELD_ENTITY_TYPE = "entityType";
+  public static final String FIELD_FULLY_QUALIFIED_NAME = "fullyQualifiedName";
+
   private final String entityType;
   private final List<CsvHeader> csvHeaders;
   private final List<String> expectedHeaders;
@@ -187,7 +192,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
   protected abstract void addRecord(CsvFile csvFile, T entity);
 
   /** Implement this method to export an entity into a list of fields to create a CSV record */
-  public final void addRecord(CsvFile csvFile, List<String> recordList) {
+  public void addRecord(CsvFile csvFile, List<String> recordList) {
     List<List<String>> list = csvFile.getRecords();
     list.add(recordList);
     csvFile.withRecords(list);
