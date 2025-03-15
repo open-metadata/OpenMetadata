@@ -13,7 +13,7 @@
 import { DownOutlined, SearchOutlined, UpOutlined } from '@ant-design/icons';
 import { Button, Collapse, Input, Space } from 'antd';
 import classNames from 'classnames';
-import { isEmpty } from 'lodash';
+import { isEmpty, isUndefined } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { BORDER_COLOR } from '../../../../constants/constants';
@@ -25,7 +25,13 @@ import { useLineageProvider } from '../../../../context/LineageProvider/LineageP
 import { EntityType } from '../../../../enums/entity.enum';
 import { Column, Table } from '../../../../generated/entity/data/table';
 import { LineageLayer } from '../../../../generated/settings/settings';
+import {
+  EntityReference,
+  TestSummary,
+} from '../../../../generated/tests/testCase';
+import { getTestCaseExecutionSummary } from '../../../../rest/testAPI';
 import { getEntityChildrenAndLabel } from '../../../../utils/EntityLineageUtils';
+import EntityLink from '../../../../utils/EntityLink';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import searchClassBase from '../../../../utils/SearchClassBase';
 import { getColumnContent } from '../CustomNode.utils';
@@ -48,6 +54,8 @@ const NodeChildren = ({ node, isConnectable }: NodeChildrenProps) => {
   const [filteredColumns, setFilteredColumns] = useState<EntityChildren>([]);
   const [showAllColumns, setShowAllColumns] = useState(false);
   const [isExpanded, setIsExpanded] = useState<boolean>(true);
+  const [summary, setSummary] = useState<TestSummary>();
+  const [isLoading, setIsLoading] = useState(true);
 
   const { showColumns, showDataObservability } = useMemo(() => {
     return {
@@ -57,6 +65,27 @@ const NodeChildren = ({ node, isConnectable }: NodeChildrenProps) => {
       ),
     };
   }, [activeLayer]);
+
+  const getColumnSummary = useCallback(
+    (column: Column) => {
+      const { fullyQualifiedName } = column;
+
+      return summary?.columnTestSummary?.find(
+        (data) =>
+          EntityLink.getEntityColumnFqn(data.entityLink ?? '') ===
+          fullyQualifiedName
+      );
+    },
+    [summary]
+  );
+
+  const showDataObservabilitySummary = useMemo(() => {
+    return Boolean(
+      showDataObservability &&
+        entityType === EntityType.TABLE &&
+        (node as Table).testSuite
+    );
+  }, [node, showDataObservability, entityType]);
 
   const supportsColumns = useMemo(() => {
     return (
@@ -117,16 +146,43 @@ const NodeChildren = ({ node, isConnectable }: NodeChildrenProps) => {
     setShowAllColumns(expandAllColumns);
   }, [expandAllColumns]);
 
+  const fetchTestSuiteSummary = async (testSuite: EntityReference) => {
+    setIsLoading(true);
+    try {
+      const response = await getTestCaseExecutionSummary(testSuite.id);
+      setSummary(response);
+    } catch (error) {
+      setSummary(undefined);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    const testSuite = (node as Table)?.testSuite;
+    if (showDataObservabilitySummary && testSuite && isUndefined(summary)) {
+      fetchTestSuiteSummary(testSuite);
+    } else {
+      setIsLoading(false);
+    }
+  }, [node, showDataObservabilitySummary, summary]);
+
   const renderRecord = useCallback(
     (record: Column) => {
       const isColumnTraced = tracedColumns.includes(
         record.fullyQualifiedName ?? ''
       );
+
+      const columnSummary = getColumnSummary(record);
+
       const headerContent = getColumnContent(
         record,
         isColumnTraced,
         isConnectable,
-        onColumnClick
+        onColumnClick,
+        showDataObservabilitySummary,
+        isLoading,
+        columnSummary
       );
 
       if (!record.children || record.children.length === 0) {
@@ -139,6 +195,9 @@ const NodeChildren = ({ node, isConnectable }: NodeChildrenProps) => {
 
       const childRecords = record?.children?.map((child) => {
         const { fullyQualifiedName, dataType } = child;
+
+        const columnSummary = getColumnSummary(child);
+
         if (DATATYPES_HAVING_SUBFIELDS.includes(dataType)) {
           return renderRecord(child);
         } else {
@@ -154,7 +213,10 @@ const NodeChildren = ({ node, isConnectable }: NodeChildrenProps) => {
             child,
             isColumnTraced,
             isConnectable,
-            onColumnClick
+            onColumnClick,
+            showDataObservabilitySummary,
+            isLoading,
+            columnSummary
           );
         }
       });
@@ -178,12 +240,21 @@ const NodeChildren = ({ node, isConnectable }: NodeChildrenProps) => {
         </Collapse>
       );
     },
-    [isConnectable, tracedColumns, onColumnClick, isColumnVisible]
+    [
+      isConnectable,
+      tracedColumns,
+      onColumnClick,
+      isColumnVisible,
+      showDataObservabilitySummary,
+      isLoading,
+      summary,
+    ]
   );
-
   const renderColumnsData = useCallback(
     (column: Column) => {
       const { fullyQualifiedName, dataType } = column;
+      const columnSummary = getColumnSummary(column);
+
       if (DATATYPES_HAVING_SUBFIELDS.includes(dataType)) {
         return renderRecord(column);
       } else {
@@ -196,11 +267,21 @@ const NodeChildren = ({ node, isConnectable }: NodeChildrenProps) => {
           column,
           isColumnTraced,
           isConnectable,
-          onColumnClick
+          onColumnClick,
+          showDataObservabilitySummary,
+          isLoading,
+          columnSummary
         );
       }
     },
-    [isConnectable, tracedColumns, isColumnVisible]
+    [
+      isConnectable,
+      tracedColumns,
+      isColumnVisible,
+      showDataObservabilitySummary,
+      isLoading,
+      summary,
+    ]
   );
 
   if (supportsColumns && (showColumns || showDataObservability)) {
@@ -231,11 +312,9 @@ const NodeChildren = ({ node, isConnectable }: NodeChildrenProps) => {
               </Button>
             )}
           </div>
-          {showDataObservability &&
-            entityType === EntityType.TABLE &&
-            (node as Table).testSuite && (
-              <TestSuiteSummaryWidget testSuite={(node as Table).testSuite} />
-            )}
+          {showDataObservabilitySummary && (
+            <TestSuiteSummaryWidget isLoading={isLoading} summary={summary} />
+          )}
         </div>
 
         {showColumns && isExpanded && (

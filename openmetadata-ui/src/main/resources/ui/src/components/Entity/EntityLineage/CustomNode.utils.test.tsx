@@ -15,11 +15,19 @@ import React from 'react';
 import { ReactFlowProvider } from 'reactflow';
 import { EntityLineageNodeType } from '../../../enums/entity.enum';
 import { LineageDirection } from '../../../generated/api/lineage/lineageDirection';
+import { Column } from '../../../generated/entity/data/table';
 import {
   getCollapseHandle,
+  getColumnContent,
   getColumnHandle,
   getExpandHandle,
 } from './CustomNode.utils';
+
+// Add mock before describe blocks
+jest.mock('./TestSuiteSummaryWidget/TestSuiteSummaryWidget.component', () => ({
+  __esModule: true,
+  default: () => <div data-testid="test-suite-summary" />,
+}));
 
 describe('Custom Node Utils', () => {
   it('getColumnHandle should return null when nodeType is NOT_CONNECTED', () => {
@@ -103,6 +111,102 @@ describe('Custom Node Utils', () => {
       fireEvent.click(collapseHandle);
 
       expect(onClickHandler).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('getColumnContent', () => {
+    const mockColumn = {
+      fullyQualifiedName: 'test.column',
+      dataType: 'string',
+      name: 'test column',
+      constraint: 'NOT NULL',
+    } as unknown as Column;
+    const mockOnColumnClick = jest.fn();
+
+    beforeEach(() => {
+      jest.clearAllMocks();
+    });
+
+    it('should render basic column content', () => {
+      const { getByTestId, getByText } = render(
+        <ReactFlowProvider>
+          {getColumnContent(
+            mockColumn,
+            false,
+            true,
+            mockOnColumnClick,
+            false,
+            false
+          )}
+        </ReactFlowProvider>
+      );
+
+      expect(getByTestId('column-test.column')).toBeInTheDocument();
+      expect(getByText('test column')).toBeInTheDocument();
+      expect(getByText('NOT NULL')).toBeInTheDocument();
+    });
+
+    it('should apply tracing class when isColumnTraced is true', () => {
+      const { getByTestId } = render(
+        <ReactFlowProvider>
+          {getColumnContent(
+            mockColumn,
+            true,
+            true,
+            mockOnColumnClick,
+            false,
+            false
+          )}
+        </ReactFlowProvider>
+      );
+
+      expect(getByTestId('column-test.column')).toHaveClass(
+        'custom-node-header-tracing'
+      );
+    });
+
+    it('should render TestSuiteSummaryWidget when showDataObservabilitySummary is true', () => {
+      const mockSummary = {
+        success: 1,
+        failed: 0,
+        aborted: 0,
+        total: 1,
+      };
+
+      const { getByTestId } = render(
+        <ReactFlowProvider>
+          {getColumnContent(
+            mockColumn,
+            false,
+            true,
+            mockOnColumnClick,
+            true,
+            false,
+            mockSummary
+          )}
+        </ReactFlowProvider>
+      );
+
+      expect(getByTestId('test-suite-summary')).toBeInTheDocument();
+    });
+
+    it('should call onColumnClick when clicked', () => {
+      const { getByTestId } = render(
+        <ReactFlowProvider>
+          {getColumnContent(
+            mockColumn,
+            false,
+            true,
+            mockOnColumnClick,
+            false,
+            false
+          )}
+        </ReactFlowProvider>
+      );
+
+      fireEvent.click(getByTestId('column-test.column'));
+
+      expect(mockOnColumnClick).toHaveBeenCalledWith('test.column');
     });
   });
 });
