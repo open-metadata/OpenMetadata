@@ -471,5 +471,8 @@ export const permissionForApproveOrReject = (
     (reviewer) => reviewer.id === currentUser?.id
   );
 
-  return taskThread && isReviewer;
+  return {
+    permission: taskThread && isReviewer,
+    taskId: taskThread?.task?.id,
+  };
 };
