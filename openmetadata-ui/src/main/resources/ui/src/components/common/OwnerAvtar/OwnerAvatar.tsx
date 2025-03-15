@@ -35,7 +35,7 @@ export const OwnerAvatar: React.FC<OwnerAvatarProps> = ({
       <Icon
         className="owner-team-icon"
         component={IconTeamsGrey}
-        data-testid={getEntityName(owner)}
+        data-testid={!isCompactView && getEntityName(owner)}
         style={{ fontSize: isCompactView ? '16px' : '32px' }}
       />
       {!isCompactView && (
@@ -45,7 +45,7 @@ export const OwnerAvatar: React.FC<OwnerAvatarProps> = ({
   ) : (
     <div
       className="owner-avatar-icon"
-      data-testid={getEntityName(owner)}
+      data-testid={!isCompactView && getEntityName(owner)}
       key={owner.id}
       style={{ flexBasis: '32px' }}>
       <ProfilePicture
