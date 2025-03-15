@@ -236,6 +236,8 @@ export enum DataType {
     Lowcardinality = "LOWCARDINALITY",
     Macaddr = "MACADDR",
     Map = "MAP",
+    MeasureHidden = "MEASURE HIDDEN",
+    MeasureVisible = "MEASURE VISIBLE",
     Mediumblob = "MEDIUMBLOB",
     Mediumtext = "MEDIUMTEXT",
     Money = "MONEY",

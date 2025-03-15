@@ -164,7 +164,9 @@
         "BITMAP",
         "UINT",
         "BIT",
-        "MONEY"
+        "MONEY",
+        "MEASURE HIDDEN",
+        "MEASURE VISIBLE"
       ]
     },
     "constraint": {
