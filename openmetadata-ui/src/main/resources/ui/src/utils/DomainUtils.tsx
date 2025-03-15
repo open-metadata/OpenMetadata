@@ -18,6 +18,7 @@ import React, { Fragment, ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { ReactComponent as DomainIcon } from '../assets/svg/ic-domain.svg';
 import { ReactComponent as SubDomainIcon } from '../assets/svg/ic-subdomain.svg';
+import { CustomPropertyTable } from '../components/common/CustomPropertyTable/CustomPropertyTable';
 import { TreeListItem } from '../components/common/DomainSelectableTree/DomainSelectableTree.interface';
 import { OwnerLabel } from '../components/common/OwnerLabel/OwnerLabel.component';
 import ResizablePanels from '../components/common/ResizablePanels/ResizablePanels';
@@ -442,6 +443,27 @@ export const getDomainDetailTabs = ({
                     'entity-summary-resizable-right-panel-container domain-resizable-panel-container',
                 }}
               />
+            ),
+          },
+          {
+            label: (
+              <TabsLabel
+                id={EntityTabs.CUSTOM_PROPERTIES}
+                name={i18n.t('label.custom-property-plural')}
+              />
+            ),
+            key: EntityTabs.CUSTOM_PROPERTIES,
+            children: (
+              <div className="m-sm">
+                <CustomPropertyTable<EntityType.DOMAIN>
+                  entityType={EntityType.DOMAIN}
+                  hasEditAccess={
+                    domainPermission.EditAll ||
+                    domainPermission.EditCustomFields
+                  }
+                  hasPermission={domainPermission.ViewAll}
+                />
+              </div>
             ),
           },
         ]

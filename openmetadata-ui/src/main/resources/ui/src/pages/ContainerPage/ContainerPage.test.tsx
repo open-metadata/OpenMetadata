@@ -198,6 +198,8 @@ jest.mock('../../utils/EntityUtils', () => ({
   getEntityName: jest
     .fn()
     .mockImplementation((entity) => entity?.name ?? 'entityName'),
+  getEntityFeedLink: jest.fn(),
+  getColumnSorter: jest.fn(),
 }));
 
 jest.mock('../../utils/PermissionsUtils', () => ({

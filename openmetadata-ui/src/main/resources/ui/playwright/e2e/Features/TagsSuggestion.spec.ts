@@ -15,8 +15,7 @@ import { TableClass } from '../../support/entity/TableClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import { redirectToHomePage } from '../../utils/common';
-import { createTableDescriptionSuggestions } from '../../utils/suggestions';
-import { performUserLogin } from '../../utils/user';
+import { createTableTagsSuggestions } from '../../utils/suggestions';
 
 const table = new TableClass();
 const table2 = new TableClass();
@@ -24,7 +23,7 @@ const user1 = new UserClass();
 const user2 = new UserClass();
 let entityLinkList: string[];
 
-test.describe('Description Suggestions Table Entity', () => {
+test.describe('Tags Suggestions Table Entity', () => {
   test.slow(true);
 
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
@@ -41,7 +40,7 @@ test.describe('Description Suggestions Table Entity', () => {
 
     // Create suggestions for both users
     for (const entityLink of entityLinkList) {
-      await createTableDescriptionSuggestions(apiContext, entityLink);
+      await createTableTagsSuggestions(apiContext, entityLink);
     }
 
     await afterAction();
@@ -84,7 +83,7 @@ test.describe('Description Suggestions Table Entity', () => {
 
       // All Column Suggestions Card should be visible
       await expect(
-        page.getByTestId('suggested-SuggestDescription-card')
+        page.getByTestId('suggested-SuggestTagLabel-card')
       ).toHaveCount(6);
 
       // Close the suggestions
@@ -115,9 +114,9 @@ test.describe('Description Suggestions Table Entity', () => {
 
       await expect(
         page.locator(
-          `[data-row-key*=${table.columnsName[0]}] [data-testid="description"]`
+          `[data-row-key*=${table.columnsName[0]}] [data-testid="tags-container"]`
         )
-      ).toContainText('this is suggested data description');
+      ).toContainText('Personal');
     });
 
     await test.step('Reject Single Suggestion', async () => {
@@ -142,9 +141,9 @@ test.describe('Description Suggestions Table Entity', () => {
 
       await expect(
         page.locator(
-          `[data-row-key*=${table.columnsName[1]}] [data-testid="description"]`
+          `[data-row-key*=${table.columnsName[1]}] [data-testid="tags-container"]`
         )
-      ).not.toContainText('this is suggested data description');
+      ).not.toContainText('Personal');
     });
 
     await test.step('Accept all Suggestion', async () => {
@@ -156,7 +155,7 @@ test.describe('Description Suggestions Table Entity', () => {
       await allAvatarSuggestion.nth(0).click();
 
       const acceptResponse = page.waitForResponse(
-        '/api/v1/suggestions/accept-all?userId=*&entityFQN=*&suggestionType=SuggestDescription'
+        '/api/v1/suggestions/accept-all?userId=*&entityFQN=*&suggestionType=SuggestTagLabel'
       );
 
       await page.click(`[data-testid="accept-all-suggestions"]`);
@@ -166,9 +165,9 @@ test.describe('Description Suggestions Table Entity', () => {
       // check the third column description, since other two are already checked
       await expect(
         page.locator(
-          `[data-row-key*=${table.columnsName[5]}] [data-testid="description"]`
+          `[data-row-key*=${table.columnsName[5]}] [data-testid="tags-container"]`
         )
-      ).toContainText('this is suggested data description');
+      ).toContainText('Personal');
 
       // Actions Buttons should not be visible
       await expect(
@@ -179,6 +178,46 @@ test.describe('Description Suggestions Table Entity', () => {
       ).not.toBeVisible();
       await expect(page.getByTestId('close-suggestion')).not.toBeVisible();
     });
+
+    await afterAction();
+  });
+
+  test('Accept the Suggestions for Tier Card', async ({ browser }) => {
+    const { page, apiContext, afterAction } = await performAdminLogin(browser);
+
+    await createTableTagsSuggestions(
+      apiContext,
+      `<#E::table::${table.entityResponseData.fullyQualifiedName}>`,
+      true
+    );
+
+    await redirectToHomePage(page);
+    await table.visitEntityPage(page);
+
+    const allAvatarSuggestion = page
+      .getByTestId('asset-description-container')
+      .getByTestId('profile-avatar');
+
+    // Click the first avatar
+    await allAvatarSuggestion.nth(0).click();
+
+    const singleResolveResponse = page.waitForResponse(
+      '/api/v1/suggestions/*/accept'
+    );
+
+    await page
+      .locator(
+        `[data-testid="tier-suggestion-container"] [data-testid="accept-suggestion"]`
+      )
+      .click();
+
+    await singleResolveResponse;
+
+    await expect(
+      page.locator(
+        `[data-testid="header-tier-container"] [data-testid="tag-redirect-link"]`
+      )
+    ).toContainText('Tier1');
 
     await afterAction();
   });
@@ -197,84 +236,24 @@ test.describe('Description Suggestions Table Entity', () => {
     await allAvatarSuggestion.nth(0).click();
 
     const acceptResponse = page.waitForResponse(
-      '/api/v1/suggestions/reject-all?userId=*&entityFQN=*&suggestionType=SuggestDescription'
+      '/api/v1/suggestions/reject-all?userId=*&entityFQN=*&suggestionType=SuggestTagLabel'
     );
 
     await page.click(`[data-testid="reject-all-suggestions"]`);
 
     await acceptResponse;
 
-    // check the last column description
+    // check the last column tags
     await expect(
       page.locator(
-        `[data-row-key*=${table.columnsName[1]}] [data-testid="description"]`
+        `[data-row-key*=${table.columnsName[1]}] [data-testid="tags-container"]`
       )
-    ).not.toContainText('this is suggested data description');
+    ).not.toContainText('Personal');
 
     // Actions Buttons should not be visible
     await expect(page.getByTestId('accept-all-suggestions')).not.toBeVisible();
     await expect(page.getByTestId('reject-all-suggestions')).not.toBeVisible();
     await expect(page.getByTestId('close-suggestion')).not.toBeVisible();
-
-    await afterAction();
-  });
-
-  test('Fetch All Pending Suggestions', async ({ browser }) => {
-    const { page, afterAction } = await performAdminLogin(browser);
-    const { afterAction: afterAction2, apiContext: apiContext2 } =
-      await performUserLogin(browser, user1);
-    const { afterAction: afterAction3, apiContext: apiContext3 } =
-      await performUserLogin(browser, user2);
-
-    for (const entityLink of entityLinkList) {
-      await createTableDescriptionSuggestions(apiContext2, entityLink);
-      await createTableDescriptionSuggestions(apiContext3, entityLink);
-    }
-
-    await redirectToHomePage(page);
-    await table.visitEntityPage(page);
-
-    await expect(page.getByTestId('more-suggestion-button')).toBeVisible();
-
-    const fetchMoreSuggestionResponse = page.waitForResponse(
-      '/api/v1/suggestions?entityFQN=*&limit=*'
-    );
-    await page.getByTestId('more-suggestion-button').click();
-    await fetchMoreSuggestionResponse;
-
-    const allAvatarSuggestion = page
-      .getByTestId('asset-description-container')
-      .getByTestId('profile-avatar');
-
-    // Click the first avatar
-    await expect(allAvatarSuggestion).toHaveCount(3);
-
-    await afterAction();
-    await afterAction2();
-    await afterAction3();
-  });
-
-  test('Should fetch initial 10 suggestions on entity change from table1 to table2', async ({
-    browser,
-  }) => {
-    // Jumping from one table to another table to check if the suggestions are fetched correctly
-    // due to provider boundary on entity.
-
-    const { page, afterAction } = await performAdminLogin(browser);
-
-    await redirectToHomePage(page);
-
-    const suggestionFetchCallResponse = page.waitForResponse(
-      '/api/v1/suggestions?entityFQN=*&limit=10'
-    );
-    await table2.visitEntityPage(page);
-    await suggestionFetchCallResponse;
-
-    const suggestionFetchCallResponse2 = page.waitForResponse(
-      '/api/v1/suggestions?entityFQN=*&limit=10'
-    );
-    await table.visitEntityPage(page);
-    await suggestionFetchCallResponse2;
 
     await afterAction();
   });
