@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Input, InputRef, Popover, Select } from 'antd';
+import { Input, Popover, Select } from 'antd';
 import classNames from 'classnames';
 import { debounce, isString } from 'lodash';
 import Qs from 'qs';
@@ -34,14 +34,13 @@ import {
 import searchClassBase from '../../utils/SearchClassBase';
 import SearchOptions from '../AppBar/SearchOptions';
 import Suggestions from '../AppBar/Suggestions';
-import CmdKIcon from '../common/CmdKIcon/CmdKIcon.component';
+import './global-search-bar.less';
 
 export const GlobalSearchBar = () => {
   const tabsInfo = searchClassBase.getTabsInfo();
   const { searchCriteria, updateSearchCriteria } = useApplicationStore();
   const searchContainerRef = useRef<HTMLDivElement>(null);
   const { t } = useTranslation();
-  const searchRef = useRef<InputRef>(null);
   const [isSearchBlur, setIsSearchBlur] = useState<boolean>(true);
   const [suggestionSearch, setSuggestionSearch] = useState<string>('');
   const location = useCustomLocation();
@@ -64,10 +63,12 @@ export const GlobalSearchBar = () => {
     () => (
       <Select
         defaultActiveFirstOption
+        bordered={false}
         className="global-search-select"
         data-testid="global-search-selector"
         listHeight={300}
         popupClassName="global-search-select-menu"
+        size="small"
         value={searchCriteria}
         onChange={updateSearchCriteria}>
         {searchClassBase.getGlobalSearchOptions().map(({ value, label }) => (
@@ -152,7 +153,10 @@ export const GlobalSearchBar = () => {
   };
 
   return (
-    <div data-testid="navbar-search-container" ref={searchContainerRef}>
+    <div
+      className="flex-center search-container"
+      data-testid="navbar-search-container"
+      ref={searchContainerRef}>
       <Popover
         content={
           !isTourRoute &&
@@ -185,53 +189,14 @@ export const GlobalSearchBar = () => {
         trigger={['click']}
         onOpenChange={setIsSearchBoxOpen}>
         <Input
-          addonBefore={entitiesSelect}
           autoComplete="off"
+          bordered={false}
           className="rounded-4 appbar-search"
           data-testid="searchBox"
           id="searchBox"
           placeholder={t('label.search-for-type', {
             type: t('label.data-asset-plural'),
           })}
-          ref={searchRef}
-          style={{
-            height: '100%',
-          }}
-          suffix={
-            <span className="d-flex items-center">
-              <CmdKIcon />
-              <span className="cursor-pointer m-b-xs m-l-sm w-4 h-4 text-center">
-                {searchValue ? (
-                  <Icon
-                    alt="icon-cancel"
-                    className={classNames('align-middle', {
-                      'text-primary': !isSearchBlur,
-                    })}
-                    component={IconCloseCircleOutlined}
-                    data-testid="cancel-icon"
-                    style={{ fontSize: '16px' }}
-                    onClick={handleClear}
-                  />
-                ) : (
-                  <Icon
-                    alt="icon-search"
-                    className={classNames('align-middle', {
-                      'text-grey-3': isSearchBlur,
-                      'text-primary': !isSearchBlur,
-                    })}
-                    component={IconSearch}
-                    data-testid="search-icon"
-                    style={{ fontSize: '16px' }}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      handleOnClick();
-                    }}
-                  />
-                )}
-              </span>
-            </span>
-          }
           type="text"
           value={searchValue}
           onBlur={() => {
@@ -248,6 +213,37 @@ export const GlobalSearchBar = () => {
           onKeyDown={handleKeyDown}
         />
       </Popover>
+
+      {entitiesSelect}
+
+      {searchValue ? (
+        <Icon
+          alt="icon-cancel"
+          className={classNames('align-middle', {
+            'text-primary': !isSearchBlur,
+          })}
+          component={IconCloseCircleOutlined}
+          data-testid="cancel-icon"
+          style={{ fontSize: '16px' }}
+          onClick={handleClear}
+        />
+      ) : (
+        <Icon
+          alt="icon-search"
+          className={classNames('align-middle', {
+            'text-grey-3': isSearchBlur,
+            'text-primary': !isSearchBlur,
+          })}
+          component={IconSearch}
+          data-testid="search-icon"
+          style={{ fontSize: '16px' }}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            handleOnClick();
+          }}
+        />
+      )}
     </div>
   );
 };
