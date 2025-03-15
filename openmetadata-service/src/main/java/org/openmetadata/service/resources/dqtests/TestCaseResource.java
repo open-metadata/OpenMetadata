@@ -170,6 +170,11 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
           @QueryParam("after")
           String after,
       @Parameter(
+              description = "Filter services by domain",
+              schema = @Schema(type = "string", example = "Marketing"))
+          @QueryParam("domain")
+          String domain,
+      @Parameter(
               description = "Return list of tests by entity link",
               schema =
                   @Schema(type = "string", example = "<E#/{entityType}/{entityFQN}/{fieldName}>"))
@@ -243,7 +248,8 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
             before,
             after,
             operationContext,
-            resourceContext);
+            resourceContext,
+            domain);
     return PIIMasker.getTestCases(tests, authorizer, securityContext);
   }
 

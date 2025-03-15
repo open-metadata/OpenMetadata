@@ -204,12 +204,18 @@ public class EventSubscriptionResource
               description = "Returns list of event subscriptions after this cursor",
               schema = @Schema(type = "string"))
           @QueryParam("after")
-          String after) {
+          String after,
+      @Parameter(
+              description = "Filter services by domain",
+              schema = @Schema(type = "string", example = "Marketing"))
+          @QueryParam("domain")
+          String domain) {
     ListFilter filter = new ListFilter(null);
     if (!nullOrEmpty(alertType)) {
       filter.addQueryParam("alertType", alertType);
     }
-    return listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
+    return listInternal(
+        uriInfo, securityContext, fieldsParam, filter, limitParam, before, after, domain);
   }
 
   @GET

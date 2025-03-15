@@ -154,6 +154,11 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
           @DefaultValue("non-deleted")
           Include include,
       @Parameter(
+              description = "Filter services by domain",
+              schema = @Schema(type = "string", example = "Marketing"))
+          @QueryParam("domain")
+          String domain,
+      @Parameter(
               description = "Filter by workflowType.",
               schema = @Schema(implementation = WorkflowType.class))
           @QueryParam("workflowType")
@@ -172,7 +177,7 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
     }
     ResultList<Workflow> workflows =
         super.listInternal(
-            uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
+            uriInfo, securityContext, fieldsParam, filter, limitParam, before, after, domain);
     workflows.setData(
         listOrEmpty(workflows.getData()).stream()
             .map(service -> decryptOrNullify(securityContext, service))

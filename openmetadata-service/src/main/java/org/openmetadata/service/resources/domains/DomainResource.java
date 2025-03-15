@@ -125,9 +125,21 @@ public class DomainResource extends EntityResource<Domain, DomainRepository> {
               description = "Returns list of Domain after this cursor",
               schema = @Schema(type = "string"))
           @QueryParam("after")
-          String after) {
+          String after,
+      @Parameter(
+              description = "Filter services by domain",
+              schema = @Schema(type = "string", example = "Marketing"))
+          @QueryParam("domain")
+          String domain) {
     return listInternal(
-        uriInfo, securityContext, fieldsParam, new ListFilter(null), limitParam, before, after);
+        uriInfo,
+        securityContext,
+        fieldsParam,
+        new ListFilter(null),
+        limitParam,
+        before,
+        after,
+        domain);
   }
 
   @GET

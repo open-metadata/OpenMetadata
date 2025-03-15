@@ -692,13 +692,15 @@ public final class EntityUtil {
   }
 
   public static void addDomainQueryParam(
-      SecurityContext securityContext, ListFilter filter, String entityType) {
+      SecurityContext securityContext, ListFilter filter, String entityType, String domain) {
     SubjectContext subjectContext = getSubjectContext(securityContext);
     // If the User is admin then no need to add domainId in the query param
     // Also if there are domain restriction on the subject context via role
+    // Similarly, for my_doamin, apply user domain filter
     if (!subjectContext.isAdmin()
-        && !subjectContext.isBot()
-        && subjectContext.hasAnyRole(DOMAIN_ONLY_ACCESS_ROLE)) {
+            && !subjectContext.isBot()
+            && subjectContext.hasAnyRole(DOMAIN_ONLY_ACCESS_ROLE)
+        || (!nullOrEmpty(domain) && domain.equals(Entity.MY_DOMAIN))) {
       if (!nullOrEmpty(subjectContext.getUserDomains())) {
         filter.addQueryParam(
             "domainId", getCommaSeparatedIdsFromRefs(subjectContext.getUserDomains()));
@@ -706,6 +708,12 @@ public final class EntityUtil {
         filter.addQueryParam("domainId", NULL_PARAM);
         filter.addQueryParam("entityType", entityType);
       }
+    }
+
+    if (!nullOrEmpty(domain) && !domain.equals(Entity.MY_DOMAIN)) {
+      EntityReference domainReference =
+          Entity.getEntityReferenceByName(Entity.DOMAIN, domain, Include.NON_DELETED);
+      filter.addQueryParam("domainId", String.format("'%s'", domainReference.getId()));
     }
   }
 

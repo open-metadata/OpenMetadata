@@ -213,14 +213,19 @@ public class TableResource extends EntityResource<Table, TableRepository> {
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include) {
+          Include include,
+      @Parameter(
+              description = "Filter services by domain",
+              schema = @Schema(type = "string", example = "Marketing"))
+          @QueryParam("domain")
+          String domain) {
     ListFilter filter =
         new ListFilter(include)
             .addQueryParam("database", databaseParam)
             .addQueryParam("databaseSchema", databaseSchemaParam)
             .addQueryParam("includeEmptyTestSuite", includeEmptyTestSuite);
     return super.listInternal(
-        uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
+        uriInfo, securityContext, fieldsParam, filter, limitParam, before, after, domain);
   }
 
   @GET

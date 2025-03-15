@@ -135,7 +135,8 @@ public abstract class ServiceEntityResource<
       filter.addQueryParam("domainId", String.format("'%s'", domainReference.getId()));
     }
     ResultList<T> services =
-        listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
+        listInternal(
+            uriInfo, securityContext, fieldsParam, filter, limitParam, before, after, domain);
     return addHref(uriInfo, decryptOrNullify(securityContext, services));
   }
 }
