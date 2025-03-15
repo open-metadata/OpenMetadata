@@ -24,7 +24,7 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { PAGE_SIZE } from '../../../../constants/constants';
+import { PAGE_SIZE_BASE } from '../../../../constants/constants';
 import { mockDatasetData } from '../../../../constants/mockTourData.constants';
 import {
   DEFAULT_RANGE_DATA,
@@ -71,7 +71,7 @@ export const TableProfilerProvider = ({
   const { t } = useTranslation();
   const { fqn: datasetFQN } = useFqn();
   const { isTourOpen } = useTourProvider();
-  const testCasePaging = usePaging(PAGE_SIZE);
+  const testCasePaging = usePaging(PAGE_SIZE_BASE);
   const location = useCustomLocation();
   // profiler has its own api but sent's the data in Table type
   const [tableProfiler, setTableProfiler] = useState<Table>();
