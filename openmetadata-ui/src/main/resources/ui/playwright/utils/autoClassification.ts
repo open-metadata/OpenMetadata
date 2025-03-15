@@ -33,9 +33,13 @@ export const addAndTriggerAutoClassificationPipeline = async (
   );
 
   // Add auto classification ingestion
-  await page.click('[data-testid="ingestions"]');
+  await page.click('[data-testid="agents"]');
 
   await page.click('[data-testid="add-new-ingestion-button"]');
+
+  await page.waitForSelector(
+    '.ant-dropdown:visible [data-menu-id*="autoClassification"]'
+  );
 
   await page.waitForSelector('[data-menu-id*="autoClassification"]');
 
@@ -57,9 +61,9 @@ export const addAndTriggerAutoClassificationPipeline = async (
 
   // Header available once page loads
   await page.getByTestId('loader').waitFor({ state: 'detached' });
-  await page.getByTestId('ingestions').click();
+  await page.getByTestId('agents').click();
   await page
-    .getByLabel('Ingestions')
+    .getByLabel('agents')
     .getByTestId('loader')
     .waitFor({ state: 'detached' });
 

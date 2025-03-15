@@ -94,3 +94,8 @@ export type SearchServiceTypeSmallCaseType = {
 export type ApiServiceTypeSmallCaseType = {
   [K in keyof typeof APIServiceType]: Lowercase<typeof APIServiceType[K]>;
 };
+
+export enum ServiceAgentSubTabs {
+  COLLATE_AI = 'collateAI',
+  METADATA = 'metadata',
+}

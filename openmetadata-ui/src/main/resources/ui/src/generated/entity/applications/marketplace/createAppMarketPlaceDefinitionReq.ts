@@ -15,6 +15,10 @@
  */
 export interface CreateAppMarketPlaceDefinitionReq {
     /**
+     * This schema defines the type of the agent.
+     */
+    agentType?: AgentType;
+    /**
      * Allow users to configure the app from the UI. If `false`, the `configure` step will be
      * hidden.
      */
@@ -112,6 +116,16 @@ export interface CreateAppMarketPlaceDefinitionReq {
      * Tags associated with the entity.
      */
     tags?: TagLabel[];
+}
+
+/**
+ * This schema defines the type of the agent.
+ *
+ * This schema defines the type of application.
+ */
+export enum AgentType {
+    CollateAI = "CollateAI",
+    Metadata = "Metadata",
 }
 
 /**

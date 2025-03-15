@@ -39,7 +39,8 @@ import {
 } from '../constants/GlobalSettings.constants';
 import { arrServiceTypes } from '../constants/Services.constant';
 import { AlertDetailTabs } from '../enums/Alerts.enum';
-import { EntityAction } from '../enums/entity.enum';
+import { EntityAction, EntityTabs } from '../enums/entity.enum';
+import { ServiceAgentSubTabs } from '../enums/service.enum';
 import { ProfilerDashboardType } from '../enums/table.enum';
 import { PipelineType } from '../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { DataQualityPageTabs } from '../pages/DataQuality/DataQualityPage.interface';
@@ -436,7 +437,12 @@ export const getLogEntityPath = (
     !arrServiceTypes.includes(path as ServiceTypes) &&
     path !== PipelineType.TestSuite
   ) {
-    return getServiceDetailsPath(path, logEntityType, 'ingestions');
+    return getServiceDetailsPath(
+      path,
+      logEntityType,
+      EntityTabs.AGENTS,
+      ServiceAgentSubTabs.METADATA
+    );
   }
 
   return getSettingPath(
