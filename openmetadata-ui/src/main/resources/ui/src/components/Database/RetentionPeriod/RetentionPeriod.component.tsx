@@ -116,7 +116,7 @@ const RetentionPeriod = ({
   }, [retentionPeriod]);
 
   return (
-    <div>
+    <>
       <Space data-testid="retention-period-container">
         <ExtraInfoLabel
           label={t('label.retention-period')}
@@ -176,7 +176,7 @@ const RetentionPeriod = ({
           </Form.Item>
         </Form>
       </Modal>
-    </div>
+    </>
   );
 };
 
