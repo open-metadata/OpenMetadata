@@ -784,6 +784,15 @@ class ServiceUtilClassBase {
     return widgets;
   }
 
+  public getEditConfigData(serviceData: ServicesType, data: ConfigData) {
+    return {
+      ...serviceData,
+      connection: {
+        config: data,
+      },
+    };
+  }
+
   /**
    * @param originalEnum will take the enum that should be converted
    * @returns object with lowercase value

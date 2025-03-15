@@ -69,12 +69,8 @@ function EditConnectionFormPage() {
       return;
     }
 
-    const configData: ServicesUpdateRequest = {
-      ...serviceDetails,
-      connection: {
-        config: updatedData,
-      },
-    };
+    const configData: ServicesUpdateRequest =
+      serviceUtilClassBase.getEditConfigData(serviceDetails, updatedData);
 
     const jsonPatch = compare(serviceDetails, configData);
 
