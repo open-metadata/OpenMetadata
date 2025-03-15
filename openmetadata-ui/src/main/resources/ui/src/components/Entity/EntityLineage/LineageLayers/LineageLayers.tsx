@@ -16,6 +16,7 @@ import classNames from 'classnames';
 import { t } from 'i18next';
 import React from 'react';
 import { ReactComponent as DataQualityIcon } from '../../../../assets/svg/ic-data-contract.svg';
+import { ReactComponent as DomainIcon } from '../../../../assets/svg/ic-domain.svg';
 import { ReactComponent as Layers } from '../../../../assets/svg/ic-layers.svg';
 import { ReactComponent as ServiceView } from '../../../../assets/svg/services.svg';
 import { useLineageProvider } from '../../../../context/LineageProvider/LineageProvider';
@@ -24,6 +25,23 @@ import { EntityType } from '../../../../enums/entity.enum';
 import { LineageLayer } from '../../../../generated/settings/settings';
 import searchClassBase from '../../../../utils/SearchClassBase';
 import './lineage-layers.less';
+import { LayerButtonProps } from './LineageLayers.interface';
+
+const LayerButton: React.FC<LayerButtonProps> = React.memo(
+  ({ isActive, onClick, icon, label, testId }) => (
+    <Button
+      className={classNames('lineage-layer-button h-15', {
+        active: isActive,
+      })}
+      data-testid={testId}
+      onClick={onClick}>
+      <div className="lineage-layer-btn">
+        <div className="layer-icon">{icon}</div>
+        <Typography.Text className="text-xss">{label}</Typography.Text>
+      </div>
+    </Button>
+  )
+);
 
 const LineageLayers = () => {
   const {
@@ -34,72 +52,66 @@ const LineageLayers = () => {
     platformView,
   } = useLineageProvider();
 
-  const onButtonClick = (value: LineageLayer) => {
-    const index = activeLayer.indexOf(value);
-    if (index === -1) {
-      onUpdateLayerView([...activeLayer, value]);
-    } else {
-      onUpdateLayerView(activeLayer.filter((layer) => layer !== value));
-    }
-  };
+  const handleLayerClick = React.useCallback(
+    (value: LineageLayer) => {
+      const index = activeLayer.indexOf(value);
+      if (index === -1) {
+        onUpdateLayerView([...activeLayer, value]);
+      } else {
+        onUpdateLayerView(activeLayer.filter((layer) => layer !== value));
+      }
+    },
+    [activeLayer, onUpdateLayerView]
+  );
+
+  const handlePlatformViewChange = React.useCallback(
+    (view: LineagePlatformView) => {
+      onPlatformViewChange(
+        platformView === view ? LineagePlatformView.None : view
+      );
+    },
+    [platformView, onPlatformViewChange]
+  );
+
+  const buttonContent = React.useMemo(
+    () => (
+      <ButtonGroup>
+        <LayerButton
+          icon={searchClassBase.getEntityIcon(EntityType.TABLE)}
+          isActive={activeLayer.includes(LineageLayer.ColumnLevelLineage)}
+          label={t('label.column')}
+          testId="lineage-layer-column-btn"
+          onClick={() => handleLayerClick(LineageLayer.ColumnLevelLineage)}
+        />
+        <LayerButton
+          icon={<DataQualityIcon />}
+          isActive={activeLayer.includes(LineageLayer.DataObservability)}
+          label={t('label.observability')}
+          testId="lineage-layer-observability-btn"
+          onClick={() => handleLayerClick(LineageLayer.DataObservability)}
+        />
+        <LayerButton
+          icon={<ServiceView />}
+          isActive={platformView === LineagePlatformView.Service}
+          label={t('label.service')}
+          testId="lineage-layer-service-btn"
+          onClick={() => handlePlatformViewChange(LineagePlatformView.Service)}
+        />
+        <LayerButton
+          icon={<DomainIcon />}
+          isActive={platformView === LineagePlatformView.Domain}
+          label={t('label.domain')}
+          testId="lineage-layer-domain-btn"
+          onClick={() => handlePlatformViewChange(LineagePlatformView.Domain)}
+        />
+      </ButtonGroup>
+    ),
+    [activeLayer, platformView, handleLayerClick, handlePlatformViewChange]
+  );
 
   return (
     <Popover
-      content={
-        <ButtonGroup>
-          <Button
-            className={classNames('lineage-layer-button h-15', {
-              active: activeLayer.includes(LineageLayer.ColumnLevelLineage),
-            })}
-            data-testid="lineage-layer-column-btn"
-            onClick={() => onButtonClick(LineageLayer.ColumnLevelLineage)}>
-            <div className="lineage-layer-btn">
-              <div className="layer-icon">
-                {searchClassBase.getEntityIcon(EntityType.TABLE)}
-              </div>
-              <Typography.Text className="text-xss">
-                {t('label.column')}
-              </Typography.Text>
-            </div>
-          </Button>
-          <Button
-            className={classNames('lineage-layer-button h-15', {
-              active: activeLayer.includes(LineageLayer.DataObservability),
-            })}
-            data-testid="lineage-layer-observability-btn"
-            onClick={() => onButtonClick(LineageLayer.DataObservability)}>
-            <div className="lineage-layer-btn">
-              <div className="layer-icon">
-                <DataQualityIcon />
-              </div>
-              <Typography.Text className="text-xss">
-                {t('label.observability')}
-              </Typography.Text>
-            </div>
-          </Button>
-          <Button
-            className={classNames('lineage-layer-button h-15', {
-              active: platformView === LineagePlatformView.Service,
-            })}
-            data-testid="lineage-layer-observability-btn"
-            onClick={() =>
-              onPlatformViewChange(
-                platformView === LineagePlatformView.Service
-                  ? LineagePlatformView.None
-                  : LineagePlatformView.Service
-              )
-            }>
-            <div className="lineage-layer-btn">
-              <div className="layer-icon">
-                <ServiceView />
-              </div>
-              <Typography.Text className="text-xss">
-                {t('label.service')}
-              </Typography.Text>
-            </div>
-          </Button>
-        </ButtonGroup>
-      }
+      content={buttonContent}
       overlayClassName="lineage-layers-popover"
       placement="right"
       trigger="click">
@@ -121,4 +133,4 @@ const LineageLayers = () => {
   );
 };
 
-export default LineageLayers;
+export default React.memo(LineageLayers);
