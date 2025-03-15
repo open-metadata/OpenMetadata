@@ -19,8 +19,10 @@ import React, {
   Fragment,
   HTMLAttributes,
   ReactNode,
+  useEffect,
   useMemo,
 } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useAlertStore } from '../../hooks/useAlertStore';
 import AlertBar from '../AlertBar/AlertBar';
 import DocumentTitle from '../common/DocumentTitle/DocumentTitle';
@@ -62,7 +64,7 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
   mainContainerClassName = '',
   pageContainerStyle = {},
 }: PageLayoutProp) => {
-  const { alert } = useAlertStore();
+  const { alert, resetAlert } = useAlertStore();
 
   const contentWidth = useMemo(() => {
     if (leftPanel && rightPanel) {
@@ -75,6 +77,12 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
       return '100%';
     }
   }, [leftPanel, rightPanel, leftPanelWidth, rightPanelWidth]);
+
+  const location = useLocation();
+
+  useEffect(() => {
+    resetAlert();
+  }, [location.pathname, resetAlert]);
 
   return (
     <Fragment>
