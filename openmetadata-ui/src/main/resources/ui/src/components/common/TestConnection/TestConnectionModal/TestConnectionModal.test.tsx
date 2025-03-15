@@ -44,7 +44,6 @@ describe('TestConnectionModal', () => {
     render(
       <TestConnectionModal
         isOpen
-        errorMessage=""
         isConnectionTimeout={isConnectionTimeout}
         isTestingConnection={false}
         progress={10}
@@ -63,7 +62,6 @@ describe('TestConnectionModal', () => {
     render(
       <TestConnectionModal
         isOpen
-        errorMessage=""
         isConnectionTimeout={isConnectionTimeout}
         isTestingConnection={false}
         progress={10}
@@ -83,7 +81,6 @@ describe('TestConnectionModal', () => {
     render(
       <TestConnectionModal
         isOpen
-        errorMessage=""
         isConnectionTimeout={isConnectionTimeout}
         isTestingConnection={false}
         progress={10}
@@ -102,7 +99,6 @@ describe('TestConnectionModal', () => {
     render(
       <TestConnectionModal
         isOpen
-        errorMessage=""
         isConnectionTimeout={isConnectionTimeout}
         isTestingConnection={false}
         progress={10}
@@ -122,7 +118,6 @@ describe('TestConnectionModal', () => {
       <TestConnectionModal
         isOpen
         isTestingConnection
-        errorMessage=""
         isConnectionTimeout={isConnectionTimeout}
         progress={10}
         testConnectionStep={testConnectionStep}
@@ -140,7 +135,6 @@ describe('TestConnectionModal', () => {
     render(
       <TestConnectionModal
         isOpen
-        errorMessage=""
         isConnectionTimeout={isConnectionTimeout}
         isTestingConnection={false}
         progress={10}
@@ -162,7 +156,6 @@ describe('TestConnectionModal', () => {
     render(
       <TestConnectionModal
         isOpen
-        errorMessage=""
         isConnectionTimeout={isConnectionTimeout}
         isTestingConnection={false}
         progress={10}
@@ -184,7 +177,6 @@ describe('TestConnectionModal', () => {
     render(
       <TestConnectionModal
         isOpen
-        errorMessage=""
         isConnectionTimeout={isConnectionTimeout}
         isTestingConnection={false}
         progress={90}
@@ -207,7 +199,6 @@ describe('TestConnectionModal', () => {
       <TestConnectionModal
         isConnectionTimeout
         isOpen
-        errorMessage=""
         isTestingConnection={false}
         progress={90}
         testConnectionStep={testConnectionStep}
@@ -228,7 +219,6 @@ describe('TestConnectionModal', () => {
       <TestConnectionModal
         isConnectionTimeout
         isOpen
-        errorMessage=""
         isTestingConnection={false}
         progress={90}
         testConnectionStep={testConnectionStep}

@@ -85,7 +85,7 @@ const TestConnection: FC<TestConnectionProps> = ({
     TEST_CONNECTION_INITIAL_MESSAGE
   );
 
-  const [errorMessage, setErrorMessage] = useState<string>('');
+  const [errorMessage, setErrorMessage] = useState<string>();
 
   const [testConnectionStep, setTestConnectionStep] = useState<
     TestConnectionStep[]

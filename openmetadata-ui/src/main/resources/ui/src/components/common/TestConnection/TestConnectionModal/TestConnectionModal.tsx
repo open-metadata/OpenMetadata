@@ -38,7 +38,7 @@ interface TestConnectionModalProps {
   onCancel: () => void;
   onConfirm: () => void;
   onTestConnection: () => void;
-  errorMessage: string;
+  errorMessage?: string;
 }
 
 const TestConnectionModal: FC<TestConnectionModalProps> = ({
