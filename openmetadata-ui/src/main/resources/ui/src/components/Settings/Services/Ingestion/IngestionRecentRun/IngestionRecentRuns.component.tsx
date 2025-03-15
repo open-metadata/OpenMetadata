@@ -51,7 +51,7 @@ export const IngestionRecentRuns = ({
     try {
       if (fetchStatus && !isUndefined(ingestion?.fullyQualifiedName)) {
         const response = await getRunHistoryForPipeline(
-          ingestion.fullyQualifiedName,
+          ingestion?.fullyQualifiedName ?? '',
           queryParams
         );
 
