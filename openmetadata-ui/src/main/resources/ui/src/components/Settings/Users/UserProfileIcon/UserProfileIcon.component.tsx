@@ -333,11 +333,11 @@ export const UserProfileIcon = () => {
       }}
       trigger={['click']}>
       <Button
-        className="flex-center p-0 gap-2"
+        className="user-profile-btn flex-center"
         icon={
           isImgUrlValid ? (
             <img
-              alt="user"
+              alt={getEntityName(currentUser)}
               className="app-bar-user-profile-pic"
               data-testid="app-bar-user-profile-pic"
               referrerPolicy="no-referrer"
@@ -345,11 +345,16 @@ export const UserProfileIcon = () => {
               onError={handleOnImageError}
             />
           ) : (
-            <ProfilePicture name={currentUser?.name ?? ''} width="36" />
+            <ProfilePicture
+              displayName={currentUser?.name}
+              name={currentUser?.name ?? ''}
+              width="40"
+            />
           )
         }
+        size="large"
         type="text">
-        <Space direction="vertical">
+        <Space className="username" direction="vertical">
           <Tooltip title={getEntityName(currentUser)}>
             <Typography.Text className="username">
               {getEntityName(currentUser)}
