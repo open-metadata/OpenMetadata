@@ -251,6 +251,8 @@ const GlossaryTermTab = ({
         await updateTask(TaskOperation.RESOLVE, taskId + '', data);
         showSuccessToast(t('server.task-resolved-successfully'));
 
+        await fetchAllTasks();
+
         const currentExpandedKeys = [...expandedRowKeys];
         refreshGlossaryTerms && refreshGlossaryTerms();
         setExpandedRowKeys(currentExpandedKeys);
@@ -258,7 +260,7 @@ const GlossaryTermTab = ({
         showErrorToast(error as AxiosError);
       }
     },
-    [refreshGlossaryTerms, expandedRowKeys]
+    [refreshGlossaryTerms, expandedRowKeys, fetchAllTasks]
   );
 
   const handleApproveGlossaryTerm = (taskId: string) => {
@@ -384,7 +386,7 @@ const GlossaryTermTab = ({
             <div>
               {status === Status.InReview && permission ? (
                 <StatusAction
-                  dataTestId={termFQN}
+                  dataTestId={record.name}
                   onApprove={() => handleApproveGlossaryTerm(taskId)}
                   onReject={() => handleRejectGlossaryTerm(taskId)}
                 />

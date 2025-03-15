@@ -40,7 +40,7 @@ const StatusBadge = ({ label, status, dataTestId }: StatusBadgeProps) => {
       {StatusIcon && (
         <Icon className="text-sm m-t-xss" component={StatusIcon} />
       )}
-      <span className="status-badge-label">{label}</span>
+      <span className={`status-badge-label ${status}`}>{label}</span>
     </div>
   );
 };

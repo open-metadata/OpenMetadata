@@ -374,7 +374,9 @@ test.describe('Glossary tests', () => {
     }
   });
 
-  test('Approve Glossary Term from Glossary Listing', async ({ browser }) => {
+  test('Approve and reject glossary term from Glossary Listing', async ({
+    browser,
+  }) => {
     test.slow(true);
 
     const { page, afterAction, apiContext } = await performAdminLogin(browser);
@@ -387,7 +389,10 @@ test.describe('Glossary tests', () => {
     glossary1.data.reviewers = [
       { name: `${user3.data.firstName}${user3.data.lastName}`, type: 'user' },
     ];
-    glossary1.data.terms = [new GlossaryTerm(glossary1)];
+    glossary1.data.terms = [
+      new GlossaryTerm(glossary1),
+      new GlossaryTerm(glossary1),
+    ];
 
     await test.step('Create Glossary and Terms', async () => {
       await sidebarClick(page, SidebarItem.GLOSSARY);
@@ -396,7 +401,7 @@ test.describe('Glossary tests', () => {
       await createGlossaryTerms(page, glossary1.data);
     });
 
-    await test.step('Approve Glossary Term from Glossary Listing', async () => {
+    await test.step('Approve and Reject Glossary Term', async () => {
       await redirectToHomePage(page1);
       await sidebarClick(page1, SidebarItem.GLOSSARY);
       await selectActiveGlossary(page1, glossary1.data.name);
@@ -411,6 +416,15 @@ test.describe('Glossary tests', () => {
         glossary1.data.terms[0].data,
         'Approved'
       );
+
+      await page1
+        .getByTestId(`${glossary1.data.terms[1].data.name}-reject-btn`)
+        .click();
+      await taskResolve;
+
+      await expect(
+        page1.getByTestId(`${glossary1.data.terms[1].data.name}`)
+      ).not.toBeVisible();
 
       await afterActionUser1();
     });
