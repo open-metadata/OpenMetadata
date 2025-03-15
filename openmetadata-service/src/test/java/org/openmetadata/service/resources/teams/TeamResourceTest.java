@@ -132,18 +132,18 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     CreateTeam createTeam = createRequest(test, 1).withTeamType(DEPARTMENT);
     TEAM1 = createEntity(createTeam, ADMIN_AUTH_HEADERS);
 
-    createTeam = createRequest(test, 11).withParents(List.of(TEAM1.getId()));
+    createTeam = createRequest(test, 11).withParents(List.of(TEAM1.getFullyQualifiedName()));
     TEAM11 = createEntity(createTeam, ADMIN_AUTH_HEADERS);
 
     // TEAM2 has Team only policy - users from other teams can't access its assets
     createTeam =
         createRequest(test, 2)
             .withTeamType(DEPARTMENT)
-            .withPolicies(List.of(TEAM_ONLY_POLICY.getId()))
-            .withDefaultRoles(List.of(DATA_STEWARD_ROLE.getId()));
+            .withPolicies(List.of(TEAM_ONLY_POLICY.getFullyQualifiedName()))
+            .withDefaultRoles(List.of(DATA_STEWARD_ROLE.getFullyQualifiedName()));
     TEAM2 = createEntity(createTeam, ADMIN_AUTH_HEADERS);
 
-    createTeam = createRequest(test, 21).withParents(List.of(TEAM2.getId()));
+    createTeam = createRequest(test, 21).withParents(List.of(TEAM2.getFullyQualifiedName()));
     TEAM21 = createEntity(createTeam, ADMIN_AUTH_HEADERS);
 
     TEAM11_REF = TEAM11.getEntityReference();
@@ -204,14 +204,16 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     User user2 =
         userResourceTest.createEntity(
             userResourceTest.createRequest(test, 2), USER_WITH_CREATE_HEADERS);
-    List<UUID> users = Arrays.asList(user1.getId(), user2.getId());
+    List<String> users =
+        Arrays.asList(user1.getFullyQualifiedName(), user2.getFullyQualifiedName());
 
     RoleResourceTest roleResourceTest = new RoleResourceTest();
     Role role1 =
         roleResourceTest.createEntity(roleResourceTest.createRequest(test, 1), ADMIN_AUTH_HEADERS);
     Role role2 =
         roleResourceTest.createEntity(roleResourceTest.createRequest(test, 2), ADMIN_AUTH_HEADERS);
-    List<UUID> roles = Arrays.asList(role1.getId(), role2.getId());
+    List<String> roles =
+        Arrays.asList(role1.getFullyQualifiedName(), role2.getFullyQualifiedName());
 
     CreateTeam create =
         createRequest(test)
@@ -237,12 +239,12 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     UserResourceTest userResourceTest = new UserResourceTest();
     User user1 =
         userResourceTest.createEntity(userResourceTest.createRequest(test, 1), ADMIN_AUTH_HEADERS);
-    List<UUID> users = Collections.singletonList(user1.getId());
+    List<String> users = Collections.singletonList(user1.getFullyQualifiedName());
 
     RoleResourceTest roleResourceTest = new RoleResourceTest();
     Role role1 =
         roleResourceTest.createEntity(roleResourceTest.createRequest(test, 1), ADMIN_AUTH_HEADERS);
-    List<UUID> roles = Collections.singletonList(role1.getId());
+    List<String> roles = Collections.singletonList(role1.getFullyQualifiedName());
 
     CreateTeam create = createRequest(test).withUsers(users).withDefaultRoles(roles);
     Team team = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
@@ -588,7 +590,9 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
 
     // Change bu2 parent from Organization to bu1 using PUT operation
     CreateTeam create =
-        createRequest("put2").withTeamType(BUSINESS_UNIT).withParents(List.of(bu1.getId()));
+        createRequest("put2")
+            .withTeamType(BUSINESS_UNIT)
+            .withParents(List.of(bu1.getFullyQualifiedName()));
     ChangeDescription change = getChangeDescription(bu2, MINOR_UPDATE);
     fieldDeleted(change, "parents", List.of(ORG_TEAM.getEntityReference()));
     fieldAdded(change, "parents", List.of(bu1.getEntityReference()));
@@ -681,18 +685,19 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
   void patch_deleteUserAndDefaultRolesFromTeam_200(TestInfo test) throws IOException {
     UserResourceTest userResourceTest = new UserResourceTest();
     final int totalUsers = 20;
-    ArrayList<UUID> users = new ArrayList<>();
+    List<String> users = new ArrayList<>();
     for (int i = 0; i < totalUsers; i++) {
       User user =
           userResourceTest.createEntity(
               userResourceTest.createRequest(test, i), ADMIN_AUTH_HEADERS);
-      users.add(user.getId());
+      users.add(user.getFullyQualifiedName());
     }
 
     RoleResourceTest roleResourceTest = new RoleResourceTest();
     roleResourceTest.createRoles(test, 5, 0);
     List<Role> roles = roleResourceTest.listEntities(Map.of(), ADMIN_AUTH_HEADERS).getData();
-    List<UUID> rolesIds = roles.stream().map(Role::getId).collect(Collectors.toList());
+    List<String> rolesIds =
+        roles.stream().map(Role::getFullyQualifiedName).collect(Collectors.toList());
 
     CreateTeam create =
         createRequest(getEntityName(test), "description", "displayName", null)
@@ -724,7 +729,9 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
   @Test
   void post_teamWithPolicies(TestInfo test) throws IOException {
     CreateTeam create =
-        createRequest(getEntityName(test)).withPolicies(List.of(POLICY1.getId(), POLICY2.getId()));
+        createRequest(getEntityName(test))
+            .withPolicies(
+                List.of(POLICY1.getFullyQualifiedName(), POLICY2.getFullyQualifiedName()));
     createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
   }
 
@@ -736,7 +743,7 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     // Add policies to the team
     create =
         createRequest(getEntityName(test))
-            .withPolicies(List.of(POLICY1.getId(), POLICY2.getId()))
+            .withPolicies(List.of(POLICY1.getFullyQualifiedName(), POLICY2.getFullyQualifiedName()))
             .withName(team.getName());
     ChangeDescription change = getChangeDescription(team, MINOR_UPDATE);
     fieldAdded(
@@ -959,7 +966,7 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     Team team = createEntity(createTeam, ADMIN_AUTH_HEADERS);
 
     // Create a children team without domain and ensure it inherits domain from the parent
-    createTeam = createRequest("team1").withParents(listOf(team.getId()));
+    createTeam = createRequest("team1").withParents(listOf(team.getFullyQualifiedName()));
     assertDomainInheritance(createTeam, DOMAIN.getEntityReference());
   }
 
@@ -1128,15 +1135,15 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     TestUtils.validateEntityReferences(team.getOwns());
 
     List<EntityReference> expectedUsers = new ArrayList<>();
-    for (UUID userId : listOrEmpty(createRequest.getUsers())) {
-      expectedUsers.add(new EntityReference().withId(userId).withType(Entity.USER));
+    for (String fqn : listOrEmpty(createRequest.getUsers())) {
+      expectedUsers.add(new EntityReference().withFullyQualifiedName(fqn).withType(Entity.USER));
     }
     expectedUsers = expectedUsers.isEmpty() ? null : expectedUsers;
-    TestUtils.assertEntityReferences(expectedUsers, team.getUsers());
-    TestUtils.assertEntityReferenceIds(createRequest.getDefaultRoles(), team.getDefaultRoles());
-    TestUtils.assertEntityReferenceIds(createRequest.getParents(), team.getParents());
-    TestUtils.assertEntityReferenceIds(createRequest.getChildren(), team.getChildren());
-    TestUtils.assertEntityReferenceIds(createRequest.getPolicies(), team.getPolicies());
+    TestUtils.assertEntityReferencesFqn(expectedUsers, team.getUsers());
+    TestUtils.assertEntityReferenceFqn(createRequest.getDefaultRoles(), team.getDefaultRoles());
+    TestUtils.assertEntityReferenceFqn(createRequest.getParents(), team.getParents());
+    TestUtils.assertEntityReferenceFqn(createRequest.getChildren(), team.getChildren());
+    TestUtils.assertEntityReferenceFqn(createRequest.getPolicies(), team.getPolicies());
   }
 
   @Override
@@ -1194,7 +1201,7 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
       String teamName, TeamType teamType, Boolean isJoinable, EntityReference... parents)
       throws HttpResponseException {
     List<EntityReference> parentList = List.of(parents);
-    List<UUID> parentIds = EntityUtil.refToIds(parentList);
+    List<String> parentIds = EntityUtil.refToFqns(parentList);
     Team team =
         createEntity(
             createRequest(teamName)
@@ -1209,7 +1216,7 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
   private Team createWithChildren(String teamName, TeamType teamType, EntityReference... children)
       throws HttpResponseException {
     List<EntityReference> childrenList = List.of(children);
-    List<UUID> childIds = EntityUtil.refToIds(childrenList);
+    List<String> childIds = EntityUtil.refToFqns(childrenList);
     Team team =
         createEntity(
             createRequest(teamName).withChildren(childIds).withTeamType(teamType),
