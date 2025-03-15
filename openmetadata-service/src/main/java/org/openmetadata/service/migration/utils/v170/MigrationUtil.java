@@ -280,5 +280,51 @@ public class MigrationUtil {
         new LineChart()
             .withMetrics(
                 List.of(new LineChartMetric().withFormula("count(q='tags.tagFQN: tier.*')"))));
+
+    createChart(
+        "description_source_breakdown",
+        new LineChart()
+            .withMetrics(
+                List.of(
+                    new LineChartMetric()
+                        .withFormula(
+                            "sum(k='descriptionSources.Ingested')+"
+                                + "sum(k='descriptionSources.Manual')+"
+                                + "sum(k='descriptionSources.Propagated')+"
+                                + "sum(k='descriptionSources.Automated')")
+                        .withName("manual"),
+                    new LineChartMetric()
+                        .withFormula("sum(k='descriptionSources.Suggested')")
+                        .withName("ai"))));
+
+    createChart(
+        "tag_source_breakdown",
+        new LineChart()
+            .withMetrics(
+                List.of(
+                    new LineChartMetric()
+                        .withFormula(
+                            "sum(k='tagSources.Ingested')+"
+                                + "sum(k='tagSources.Manual')+"
+                                + "sum(k='tagSources.Propagated')")
+                        .withName("manual"),
+                    new LineChartMetric()
+                        .withFormula("sum(k='tagSources.Automated')")
+                        .withName("ai"))));
+
+    createChart(
+        "tier_source_breakdown",
+        new LineChart()
+            .withMetrics(
+                List.of(
+                    new LineChartMetric()
+                        .withFormula(
+                            "sum(k='tierSources.Ingested')+"
+                                + "sum(k='tierSources.Manual')+"
+                                + "sum(k='tierSources.Propagated')")
+                        .withName("manual"),
+                    new LineChartMetric()
+                        .withFormula("sum(k='tierSources.Automated')")
+                        .withName("ai"))));
   }
 }
