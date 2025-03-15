@@ -178,6 +178,9 @@ const CustomEntityDetailV1 = () => {
       case ENTITY_PATH.storedProcedures:
         return PAGE_HEADERS.STORED_PROCEDURE_CUSTOM_ATTRIBUTES;
 
+      case ENTITY_PATH.domains:
+        return PAGE_HEADERS.DOMAIN_CUSTOM_ATTRIBUTES;
+
       case ENTITY_PATH.glossaryTerm:
         return PAGE_HEADERS.GLOSSARY_TERM_CUSTOM_ATTRIBUTES;
 

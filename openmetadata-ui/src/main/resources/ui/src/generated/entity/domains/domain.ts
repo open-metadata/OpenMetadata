@@ -44,6 +44,10 @@ export interface Domain {
      */
     experts?: EntityReference[];
     /**
+     * Entity extension data with custom attributes added to the entity.
+     */
+    extension?: any;
+    /**
      * FullyQualifiedName same as `name`.
      */
     fullyQualifiedName?: string;

@@ -550,6 +550,7 @@ export const ENTITY_PATH = {
   apiEndpoints: 'apiEndpoint',
   dataProducts: 'dataProduct',
   metrics: 'metric',
+  domains: 'domain',
 };
 
 export const VALIDATION_MESSAGES = {

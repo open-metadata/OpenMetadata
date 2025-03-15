@@ -27,6 +27,7 @@ import { ReactComponent as IconAPI } from '../assets/svg/ic-api-service.svg';
 import { ReactComponent as DashboardDataModelIcon } from '../assets/svg/ic-dashboard-data-model-colored.svg';
 import { ReactComponent as DataProductIcon } from '../assets/svg/ic-data-product-colored.svg';
 import { ReactComponent as SchemaIcon } from '../assets/svg/ic-database-schema-colored.svg';
+import { ReactComponent as DomainIcon } from '../assets/svg/ic-domain.svg';
 import { ReactComponent as LineageIcon } from '../assets/svg/ic-lineage-config.svg';
 import { ReactComponent as LinkIcon } from '../assets/svg/ic-url-link.svg';
 
@@ -531,6 +532,15 @@ class GlobalSettingsClassBase {
             isProtected: Boolean(isAdminUser),
             key: `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.GLOSSARY_TERM}`,
             icon: GlossaryIcon,
+          },
+          {
+            label: t('label.domain'),
+            description: t('message.define-custom-property-for-entity', {
+              entity: t('label.domain'),
+            }),
+            isProtected: Boolean(isAdminUser),
+            key: `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.DOMAIN}`,
+            icon: DomainIcon,
           },
         ].sort((a, b) => a.label.localeCompare(b.label)),
       },

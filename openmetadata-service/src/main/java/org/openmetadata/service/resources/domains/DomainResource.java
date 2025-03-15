@@ -73,7 +73,7 @@ import org.openmetadata.service.util.ResultList;
 public class DomainResource extends EntityResource<Domain, DomainRepository> {
   public static final String COLLECTION_PATH = "/v1/domains/";
   private final DomainMapper mapper = new DomainMapper();
-  static final String FIELDS = "tags,children,owners,experts";
+  static final String FIELDS = "tags,children,owners,experts,extension";
 
   public DomainResource(Authorizer authorizer, Limits limits) {
     super(Entity.DOMAIN, authorizer, limits);

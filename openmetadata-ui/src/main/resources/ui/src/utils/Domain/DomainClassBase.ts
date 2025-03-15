@@ -75,6 +75,7 @@ class DomainClassBase {
       EntityTabs.SUBDOMAINS,
       EntityTabs.DATA_PRODUCTS,
       EntityTabs.ASSETS,
+      EntityTabs.CUSTOM_PROPERTIES,
     ].map((tab: EntityTabs) => ({
       id: tab,
       name: tab,
@@ -136,6 +137,14 @@ class DomainClassBase {
         w: 2,
         x: 6,
         y: 4,
+        static: false,
+      },
+      {
+        h: 4,
+        i: DetailPageWidgetKeys.CUSTOM_PROPERTIES,
+        w: 2,
+        x: 6,
+        y: 5,
         static: false,
       },
     ];
