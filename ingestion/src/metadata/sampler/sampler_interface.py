@@ -86,7 +86,6 @@ class SamplerInterface(ABC):
 
         self.service_connection_config = service_connection_config
         self.connection = get_ssl_connection(self.service_connection_config)
-        self.client = self.get_client()
 
     # pylint: disable=too-many-arguments, too-many-locals
     @classmethod
