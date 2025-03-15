@@ -300,6 +300,12 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
             InvalidSourceException: If unable to get project IDs from either config or ADC
         """
         try:
+
+            # TODO: Add support for fetching project ids from resource manager
+            # Bigquery resource manager for fetching project ids
+            # "google-cloud-resource-manager~=1.14.1",
+            # "grpc-google-iam-v1~=0.14.0",
+
             # First check if project ID is configured in service connection
             if (
                 service_connection
@@ -310,35 +316,20 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
 
                 # Handle GcpCredentialsValues case
                 if isinstance(gcp_config, GcpCredentialsValues):
-                    if gcp_config.projectId:
+                    if getattr(gcp_config, "projectId", None):
                         if isinstance(gcp_config.projectId, list):
                             return gcp_config.projectId
                         return [gcp_config.projectId]
 
                 # Handle GcpCredentialsPath case
                 elif isinstance(gcp_config, GcpCredentialsPath):
-                    if gcp_config.projectId:
+                    if getattr(gcp_config, "projectId", None):
                         return [gcp_config.projectId]
 
                 # Handle GcpADC case - fetch projects only if explicitly configured to use ADC
                 elif isinstance(gcp_config, GcpADC):
-                    # try:
-                    #     from google.cloud import resourcemanager_v3
-
-                    #     client = resourcemanager_v3.ProjectsClient()
-                    #     request = resourcemanager_v3.SearchProjectsRequest(
-                    #         query=""  # Empty query to return all accessible projects
-                    #     )
-                    #     page_result = client.search_projects(request=request)
-                    #     project_ids = [response.project_id for response in page_result]
-                    #     if project_ids:
-                    #         return project_ids
-                    # except Exception as exc:
-                    #     logger.warning(
-                    #         f"Error fetching project IDs using resource manager: {exc}"
-                    #     )
-                    pass
-
+                    if getattr(gcp_config, "projectId", None):
+                        return [gcp_config.projectId]
             # Fallback to ADC default project
             try:
                 _, project_id = auth.default()
