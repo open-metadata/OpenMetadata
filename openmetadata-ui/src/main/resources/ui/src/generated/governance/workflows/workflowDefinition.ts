@@ -18,6 +18,7 @@ export interface WorkflowDefinition {
      * Change that lead to this version of the entity.
      */
     changeDescription?: ChangeDescription;
+    config?:            WorkflowConfiguration;
     /**
      * When `true` indicates the entity has been soft deleted.
      */
@@ -91,6 +92,7 @@ export interface WorkflowDefinition {
  * Description of the change.
  */
 export interface ChangeDescription {
+    changeSummary?: { [key: string]: ChangeSummary };
     /**
      * Names of fields added during the version changes.
      */
@@ -109,6 +111,29 @@ export interface ChangeDescription {
     previousVersion?: number;
 }
 
+export interface ChangeSummary {
+    changedAt?: number;
+    /**
+     * Name of the user or bot who made this change
+     */
+    changedBy?:    string;
+    changeSource?: ChangeSource;
+    [property: string]: any;
+}
+
+/**
+ * The source of the change. This will change based on the context of the change (example:
+ * manual vs programmatic)
+ */
+export enum ChangeSource {
+    Automated = "Automated",
+    Derived = "Derived",
+    Ingested = "Ingested",
+    Manual = "Manual",
+    Propagated = "Propagated",
+    Suggested = "Suggested",
+}
+
 export interface FieldChange {
     /**
      * Name of the entity field that changed.
@@ -124,6 +149,13 @@ export interface FieldChange {
      * field type to deserialize it.
      */
     oldValue?: any;
+}
+
+export interface WorkflowConfiguration {
+    /**
+     * If True, all the stage status will be stored in the database.
+     */
+    storeStageStatus: boolean;
 }
 
 /**
@@ -207,5 +239,6 @@ export interface TriggerObject {
 
 export enum Type {
     EventBasedEntity = "eventBasedEntity",
+    NoOp = "noOp",
     PeriodicBatchEntity = "periodicBatchEntity",
 }

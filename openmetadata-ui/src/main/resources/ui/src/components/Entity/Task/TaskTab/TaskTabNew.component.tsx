@@ -50,7 +50,6 @@ import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
 import { ReactComponent as AssigneesIcon } from '../../../../assets/svg/ic-assignees.svg';
-import { ReactComponent as CloseTabIcon } from '../../../../assets/svg/ic-close-tab.svg';
 import { ReactComponent as TaskCloseIcon } from '../../../../assets/svg/ic-close-task.svg';
 import { ReactComponent as TaskOpenIcon } from '../../../../assets/svg/ic-open-task.svg';
 import { ReactComponent as UserIcon } from '../../../../assets/svg/ic-user-profile.svg';
@@ -115,6 +114,7 @@ import ActivityFeedEditorNew from '../../../ActivityFeed/ActivityFeedEditor/Acti
 import { useActivityFeedProvider } from '../../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import InlineEdit from '../../../common/InlineEdit/InlineEdit.component';
 
+import { getEntityName } from '../../../../utils/EntityUtils';
 import { UserAvatarGroup } from '../../../common/OwnerLabel/UserAvatarGroup.component';
 import EntityPopOverCard from '../../../common/PopOverCard/EntityPopOverCard';
 import ProfilePictureNew from '../../../common/ProfilePicture/ProfilePictureNew';
@@ -307,7 +307,7 @@ export const TaskTabNew = ({
             data-testid="task-title"
             type="link"
             onClick={handleTaskLinkClick}>
-            <Typography.Text className="p-0 task-id text-sm">{`#${taskDetails.id} `}</Typography.Text>
+            <Typography.Text className="p-0 task-id text-sm task-details-id">{`#${taskDetails.id} `}</Typography.Text>
 
             <Typography.Text className="p-xss task-details">
               {TASK_TYPES[taskDetails.type]}
@@ -316,12 +316,12 @@ export const TaskTabNew = ({
             {taskColumnName}
 
             <Typography.Text
-              className="break-all text-sm entity-link"
+              className="break-all text-sm entity-link header-link"
               data-testid="entity-link">
               {getNameFromFQN(entityFQN)}
             </Typography.Text>
 
-            <Typography.Text className="p-l-xss entity-type">{`(${entityType})`}</Typography.Text>
+            <Typography.Text className="p-l-xss entity-type header-link">{`(${entityType})`}</Typography.Text>
           </Button>
         </EntityPopOverCard>
       ) : null,
@@ -623,7 +623,7 @@ export const TaskTabNew = ({
 
     return (
       <Space
-        className="items-end  justify-end task-cta-buttons"
+        className="items-end  justify-end"
         data-testid="task-cta-buttons"
         size="small">
         <Tooltip
@@ -669,7 +669,7 @@ export const TaskTabNew = ({
     const hasApprovalAccess = isAssignee || isCreator || editPermission;
 
     return (
-      <div className=" d-flex justify-end items-center gap-4 task-cta-buttons">
+      <div className=" d-flex justify-end items-center gap-4">
         <Dropdown.Button
           className="w-auto task-action-button"
           data-testid="task-cta-buttons"
@@ -707,7 +707,7 @@ export const TaskTabNew = ({
 
     return (
       <Space
-        className="items-end  justify-end task-cta-buttons"
+        className="items-end  justify-end"
         data-testid="task-cta-buttons"
         size="small">
         {isCreator && !hasEditAccess && (
@@ -836,7 +836,7 @@ export const TaskTabNew = ({
           <Col className="flex items-center gap-2 text-grey-muted" span={8}>
             <UserIcon height={16} />
             <Typography.Text className="incident-manager-details-label">
-              {t('label.created-by')}:{' '}
+              {t('label.created-by')}
             </Typography.Text>
           </Col>
           <Col className="flex items-center gap-2" span={16}>
@@ -898,7 +898,7 @@ export const TaskTabNew = ({
               <Col className="flex items-center gap-2 text-grey-muted" span={8}>
                 <AssigneesIcon height={16} />
                 <Typography.Text className="incident-manager-details-label @grey-8">
-                  {t('label.assignee-plural')}:{' '}
+                  {t('label.assignee-plural')}
                 </Typography.Text>
               </Col>
               <Col className="flex items-center gap-2" span={16}>
@@ -1050,7 +1050,12 @@ export const TaskTabNew = ({
 
             {showFeedEditor ? (
               <ActivityFeedEditorNew
-                className="m-t-md feed-editor activity-feed-editor-container-new"
+                className={classNames(
+                  'm-t-md feed-editor activity-feed-editor-container-new',
+                  {
+                    'm-b-md': showFeedEditor && taskThread?.posts?.length === 0,
+                  }
+                )}
                 onSave={onSave}
                 onTextChange={setComment}
               />
@@ -1061,13 +1066,14 @@ export const TaskTabNew = ({
                     <ProfilePictureNew
                       avatarType="outlined"
                       key={taskThread.id}
-                      name={currentUser?.displayName || currentUser?.name || ''}
+                      name={getEntityName(currentUser)}
                       size={32}
                     />
                   </div>
 
                   <Input
                     className="comments-input-field"
+                    data-testid="comments-input-field"
                     placeholder={t('message.input-placeholder')}
                     onClick={() => setShowFeedEditor(true)}
                   />
@@ -1256,11 +1262,6 @@ export const TaskTabNew = ({
           </Form>
         </Modal>
       )}
-      <CloseTabIcon
-        className="close-tab-icon cursor-pointer"
-        height={16}
-        onClick={() => rest.handlePanelResize?.(true)}
-      />
     </Row>
   );
 };

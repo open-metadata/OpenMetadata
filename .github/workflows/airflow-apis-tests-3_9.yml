@@ -12,14 +12,8 @@
 
 name: airflow-apis-tests
 on:
-  push:
-    branches:
-      - main
-      - '0.[0-9]+.[0-9]+'
-    paths:
-      - 'openmetadata-airflow-apis/**'
   pull_request_target:
-    types: [labeled, opened, synchronize, reopened]
+    types: [labeled, opened, synchronize, reopened, ready_for_review]
     paths:
       - 'openmetadata-airflow-apis/**'
 
@@ -32,6 +26,7 @@ concurrency:
 jobs:
   airflow-apis-tests:
     runs-on: ubuntu-latest
+    if: ${{ !github.event.pull_request.draft }}
     steps:
     - name: Free Disk Space (Ubuntu)
       uses: jlumbroso/free-disk-space@main
