@@ -1,8 +1,11 @@
 package org.openmetadata.service.resources.system;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import org.openmetadata.schema.api.search.AssetTypeConfiguration;
+import org.openmetadata.schema.api.search.FieldBoost;
 import org.openmetadata.schema.api.search.GlobalSettings;
 import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.service.exception.SystemSettingsException;
@@ -15,12 +18,33 @@ public class SearchSettingsHandler {
   private static final int MIN_ANALYZED_OFFSET = 1000;
   private static final int MAX_ANALYZED_OFFSET = 1000000;
 
-  /**
-   * Validates the global settings according to the defined constraints.
-   *
-   * @param globalSettings The global settings to validate
-   * @throws SystemSettingsException if validation fails
-   */
+  public void validateSearchSettings(SearchSettings searchSettings) {
+    // Validate global settings
+    validateGlobalSettings(searchSettings.getGlobalSettings());
+    
+    // Validate asset type configurations for duplicate fields
+    if (searchSettings.getAssetTypeConfigurations() != null) {
+      for (AssetTypeConfiguration assetConfig : searchSettings.getAssetTypeConfigurations()) {
+        validateAssetTypeConfiguration(assetConfig);
+      }
+    }
+  }
+
+  public void validateAssetTypeConfiguration(AssetTypeConfiguration assetConfig) {
+    if (assetConfig.getSearchFields() != null) {
+      Set<String> fieldNames = new HashSet<>();
+      
+      for (FieldBoost fieldBoost : assetConfig.getSearchFields()) {
+        String fieldName = fieldBoost.getField();
+        if (!fieldNames.add(fieldName)) {
+          throw new SystemSettingsException(
+              String.format("Duplicate field configuration found for field: %s in asset type: %s", 
+                           fieldName, assetConfig.getAssetType()));
+        }
+      }
+    }
+  }
+
   public void validateGlobalSettings(GlobalSettings globalSettings) {
     if (globalSettings != null) {
       if (globalSettings.getMaxAggregateSize() != null) {
@@ -145,6 +169,9 @@ public class SearchSettingsHandler {
 
     // Merge asset type configurations
     mergeAssetTypeConfigurations(defaultSearchSettings, incomingSearchSettings);
+    
+    // Validate the merged settings before returning
+    validateSearchSettings(incomingSearchSettings);
 
     return incomingSearchSettings;
   }

@@ -70,7 +70,6 @@ import org.openmetadata.schema.util.EntitiesCount;
 import org.openmetadata.schema.util.ServicesCount;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.OpenMetadataApplicationTest;
-import org.openmetadata.service.exception.SystemSettingsException;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.dashboards.DashboardResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
@@ -97,7 +96,7 @@ import org.openmetadata.service.util.TestUtils;
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @Execution(ExecutionMode.CONCURRENT)
-public class SystemResourceTest extends OpenMetadataApplicationTest {
+class SystemResourceTest extends OpenMetadataApplicationTest {
   static OpenMetadataApplicationConfig config;
 
   @BeforeAll
@@ -112,7 +111,7 @@ public class SystemResourceTest extends OpenMetadataApplicationTest {
   }
 
   @BeforeAll
-  public static void setup(TestInfo test) throws IOException, URISyntaxException {
+  static void setup(TestInfo test) throws IOException, URISyntaxException {
     EntityResourceTest<Table, CreateTable> entityResourceTest = new TableResourceTest();
     entityResourceTest.setup(test);
   }
@@ -455,13 +454,21 @@ public class SystemResourceTest extends OpenMetadataApplicationTest {
             .findFirst()
             .orElseThrow(() -> new AssertionError("Table configuration not found"));
 
-    tableConfig.getSearchFields().add(new FieldBoost().withField("name").withBoost(20.0));
+    // Find the existing 'name' field and update its boost by adding 20.0
+    FieldBoost nameField = tableConfig.getSearchFields().stream()
+        .filter(field -> "name".equals(field.getField()))
+        .findFirst()
+        .orElseThrow(() -> new AssertionError("Name field configuration not found"));
+
+    // Update the existing field boost instead of adding a new one
+    nameField.setBoost(nameField.getBoost() + 20.0);
 
     Settings updatedSettings =
         new Settings().withConfigType(SettingsType.SEARCH_SETTINGS).withConfigValue(searchConfig);
 
     updateSystemConfig(updatedSettings);
 
+    // Rest of the test remains unchanged
     Settings modifiedSettings = getSystemConfig(SettingsType.SEARCH_SETTINGS);
     SearchSettings modifiedSearchConfig =
         JsonUtils.convertValue(modifiedSettings.getConfigValue(), SearchSettings.class);
@@ -469,19 +476,18 @@ public class SystemResourceTest extends OpenMetadataApplicationTest {
     assertEquals(true, modifiedSearchConfig.getGlobalSettings().getEnableAccessControl());
     assertEquals(5000, modifiedSearchConfig.getGlobalSettings().getMaxAggregateSize());
     assertEquals(
-        20.0,
+        30.0, // Now expecting 30.0 (10.0 + 20.0) as we're updating the existing field
         modifiedSearchConfig.getAssetTypeConfigurations().stream()
             .filter(conf -> "table".equalsIgnoreCase(conf.getAssetType()))
             .findFirst()
-            .get()
-            .getSearchFields()
-            .get(0)
-            .getBoost());
+            .flatMap(conf -> conf.getSearchFields().stream()
+                .filter(field -> "name".equals(field.getField()))
+                .findFirst()
+                .map(FieldBoost::getBoost))
+            .orElse(null));
 
-    // Step 2: Reset the settings to default
     resetSystemConfig();
 
-    // Retrieve the settings after reset
     Settings resetSettings = getSystemConfig(SettingsType.SEARCH_SETTINGS);
     SearchSettings resetSearchConfig =
         JsonUtils.convertValue(resetSettings.getConfigValue(), SearchSettings.class);
@@ -494,10 +500,11 @@ public class SystemResourceTest extends OpenMetadataApplicationTest {
         resetSearchConfig.getAssetTypeConfigurations().stream()
             .filter(conf -> "table".equalsIgnoreCase(conf.getAssetType()))
             .findFirst()
-            .get()
-            .getSearchFields()
-            .get(0)
-            .getBoost());
+            .flatMap(conf -> conf.getSearchFields().stream()
+                .filter(field -> "name".equals(field.getField()))
+                .findFirst()
+                .map(FieldBoost::getBoost))
+            .orElse(null));
   }
 
   @Test
@@ -774,8 +781,8 @@ public class SystemResourceTest extends OpenMetadataApplicationTest {
         new Settings().withConfigType(SettingsType.SEARCH_SETTINGS).withConfigValue(searchConfig);
     try {
       updateSystemConfig(updatedSettings);
-      fail("Expected SystemSettingsException for invalid maxAggregateSize");
-    } catch (SystemSettingsException e) {
+      fail("Expected HttpResponseException for invalid maxAggregateSize");
+    } catch (HttpResponseException e) {
       assertTrue(e.getMessage().contains("maxAggregateSize must be between 100 and 10000"));
     }
 
@@ -784,8 +791,8 @@ public class SystemResourceTest extends OpenMetadataApplicationTest {
         new Settings().withConfigType(SettingsType.SEARCH_SETTINGS).withConfigValue(searchConfig);
     try {
       updateSystemConfig(updatedSettings);
-      fail("Expected SystemSettingsException for invalid maxAggregateSize");
-    } catch (SystemSettingsException e) {
+      fail("Expected HttpResponseException for invalid maxAggregateSize");
+    } catch (HttpResponseException e) {
       assertTrue(e.getMessage().contains("maxAggregateSize must be between 100 and 10000"));
     }
 
@@ -796,8 +803,8 @@ public class SystemResourceTest extends OpenMetadataApplicationTest {
         new Settings().withConfigType(SettingsType.SEARCH_SETTINGS).withConfigValue(searchConfig);
     try {
       updateSystemConfig(updatedSettings);
-      fail("Expected SystemSettingsException for invalid maxResultHits");
-    } catch (SystemSettingsException e) {
+      fail("Expected HttpResponseException for invalid maxResultHits");
+    } catch (HttpResponseException e) {
       assertTrue(e.getMessage().contains("maxResultHits must be between 100 and 10000"));
     }
 
@@ -808,8 +815,8 @@ public class SystemResourceTest extends OpenMetadataApplicationTest {
         new Settings().withConfigType(SettingsType.SEARCH_SETTINGS).withConfigValue(searchConfig);
     try {
       updateSystemConfig(updatedSettings);
-      fail("Expected SystemSettingsException for invalid maxAnalyzedOffset");
-    } catch (SystemSettingsException e) {
+      fail("Expected HttpResponseException for invalid maxAnalyzedOffset");
+    } catch (HttpResponseException e) {
       assertTrue(e.getMessage().contains("maxAnalyzedOffset must be between 1000 and 1000000"));
     }
 
@@ -905,6 +912,32 @@ public class SystemResourceTest extends OpenMetadataApplicationTest {
         updatedSearchConfig.getGlobalSettings().getFieldValueBoosts().get(0).getField());
     assertEquals(
         25.0, updatedSearchConfig.getGlobalSettings().getFieldValueBoosts().get(0).getFactor());
+  }
+
+  @Test
+  void testDuplicateSearchFieldConfiguration() throws HttpResponseException {
+    Settings searchSettings = getSystemConfig(SettingsType.SEARCH_SETTINGS);
+    SearchSettings searchConfig = JsonUtils.convertValue(searchSettings.getConfigValue(), SearchSettings.class);
+
+    AssetTypeConfiguration tableConfig = searchConfig.getAssetTypeConfigurations().stream()
+        .filter(conf -> "table".equalsIgnoreCase(conf.getAssetType()))
+        .findFirst()
+        .orElseThrow(() -> new AssertionError("Table configuration not found"));
+
+    tableConfig.getSearchFields().add(new FieldBoost().withField("name").withBoost(20.0));
+
+    Settings updatedSettings = new Settings()
+        .withConfigType(SettingsType.SEARCH_SETTINGS)
+        .withConfigValue(searchConfig);
+
+    WebTarget target = getResource("system/settings");
+    try {
+        TestUtils.put(target, updatedSettings, Response.Status.OK, ADMIN_AUTH_HEADERS);
+        fail("Expected HttpResponseException for duplicate field configuration");
+    } catch (HttpResponseException e) {
+        assertEquals(400, e.getStatusCode());
+        assertTrue(e.getMessage().contains("Duplicate field configuration found for field: name in asset type: table"));
+    }
   }
 
   private static ValidationResponse getValidation() throws HttpResponseException {
