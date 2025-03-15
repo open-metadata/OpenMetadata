@@ -53,7 +53,7 @@ export const OwnerAvatar: React.FC<OwnerAvatarProps> = ({
         key="profile-picture"
         name={owner.name ?? ''}
         type="circle"
-        width="32"
+        width={isCompactView ? '18' : '32'}
       />
     </div>
   );

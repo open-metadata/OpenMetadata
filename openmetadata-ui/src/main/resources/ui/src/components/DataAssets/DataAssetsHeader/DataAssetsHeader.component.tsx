@@ -89,28 +89,48 @@ export const ExtraInfoLabel = ({
   value,
   dataTestId,
   showAsATag = false,
+  inlineLayout = false,
 }: {
   label: string;
   value: string | number;
   dataTestId?: string;
   showAsATag?: boolean;
-}) => (
-  <div className="d-flex align-start ">
-    <Typography.Text
-      className="text-sm d-flex flex-col gap-2"
-      data-testid={dataTestId}>
-      {!isEmpty(label) && (
-        <span className="extra-info-label-heading">{`${label}: `}</span>
-      )}
-      <span
-        className={classNames('font-medium extra-info-value', {
-          showAsATag: showAsATag,
-        })}>
-        {value}
-      </span>
-    </Typography.Text>
-  </div>
-);
+  inlineLayout?: boolean;
+}) => {
+  if (inlineLayout) {
+    return (
+      <>
+        <Divider className="self-center" type="vertical" />
+        <Typography.Text
+          className="self-center text-xs whitespace-nowrap"
+          data-testid={dataTestId}>
+          {!isEmpty(label) && (
+            <span className="text-grey-muted">{`${label}: `}</span>
+          )}
+          <span className="font-medium">{value}</span>
+        </Typography.Text>
+      </>
+    );
+  }
+
+  return (
+    <div className="d-flex align-start ">
+      <Typography.Text
+        className="whitespace-nowrap text-sm d-flex flex-col gap-2"
+        data-testid={dataTestId}>
+        {!isEmpty(label) && (
+          <span className="extra-info-label-heading">{`${label}: `}</span>
+        )}
+        <span
+          className={classNames('font-medium extra-info-value', {
+            showAsATag: showAsATag,
+          })}>
+          {value}
+        </span>
+      </Typography.Text>
+    </div>
+  );
+};
 
 export const ExtraInfoLink = ({
   label,
@@ -457,7 +477,7 @@ export const DataAssetsHeader = ({
                       onUpdateVote={handleVoteChange}
                     />
                   )}
-                  {!excludeEntityService && (
+                  {!excludeEntityService && (openTaskCount ?? 0) > 0 && (
                     <Tooltip title={t('label.open-task-plural')}>
                       <Button
                         icon={<Icon component={TaskOpenIcon} />}

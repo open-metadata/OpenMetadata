@@ -73,7 +73,9 @@ export const OwnerItem: React.FC<OwnerItemProps> = ({
             )}
             data-testid="owner-link"
             to={ownerPath}>
-            {ownerDisplayName ?? displayName}
+            <span data-testid={getEntityName(owner)}>
+              {ownerDisplayName ?? displayName}
+            </span>
           </Link>
         </>
       )}

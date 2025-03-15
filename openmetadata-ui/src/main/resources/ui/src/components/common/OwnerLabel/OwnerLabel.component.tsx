@@ -83,8 +83,7 @@ export const OwnerLabel = ({
                 className={classNames(
                   'no-owner font-medium text-sm',
                   className
-                )}
-                data-testid="owner-link">
+                )}>
                 {placeHolder ?? t('label.owner-plural')}
               </Typography.Text>
               {onUpdate && (
