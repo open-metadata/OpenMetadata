@@ -114,7 +114,9 @@ const CommentCard = ({ feed, post, isLastReply }: CommentCardInterface) => {
               </Link>
             </UserPopOverCard>
           </Typography.Text>
-          <Typography.Text className="seperator">{seperator}</Typography.Text>
+          <Typography.Text className="seperator m-b-xss">
+            {seperator}
+          </Typography.Text>
           <Typography.Text>
             <Tooltip
               color="white"

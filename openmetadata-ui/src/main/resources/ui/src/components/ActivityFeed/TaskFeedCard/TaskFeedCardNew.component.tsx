@@ -348,6 +348,7 @@ const TaskFeedCard = ({
                 {feed.task?.status === ThreadTaskStatus.Open && (
                   <Button
                     className="approve-btn d-flex items-center"
+                    data-testid="approve-button"
                     icon={<CheckCircleFilled />}
                     type="primary"
                     onClick={onTaskResolve}>
@@ -357,6 +358,7 @@ const TaskFeedCard = ({
                 {feed.task?.status === ThreadTaskStatus.Open && (
                   <Button
                     className="reject-btn  d-flex items-center"
+                    data-testid="reject-button"
                     icon={<CloseCircleFilled />}
                     type="default"
                     onClick={onTaskReject}>

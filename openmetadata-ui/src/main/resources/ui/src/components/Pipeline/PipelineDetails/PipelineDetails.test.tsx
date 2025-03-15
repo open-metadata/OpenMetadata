@@ -331,7 +331,7 @@ describe('Test PipelineDetails component', () => {
   });
 
   it('Check if active tab is activity feed', async () => {
-    (useParams as jest.Mock).mockReturnValue({ tab: 'activity_feed' });
+    (useParams as jest.Mock).mockReturnValue({ tab: EntityTabs.ACTIVITY_FEED });
 
     const { container } = render(
       <PipelineDetails {...PipelineDetailsProps} />,

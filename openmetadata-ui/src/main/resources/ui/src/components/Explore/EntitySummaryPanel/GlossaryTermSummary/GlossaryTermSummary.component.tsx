@@ -99,7 +99,7 @@ function GlossaryTermSummary({
               </Space>
             ) : (
               <Typography.Text
-                className="text-grey-body"
+                className="no-data-chip-placeholder"
                 data-testid="no-reviewer-header">
                 {t('label.no-reviewer')}
               </Typography.Text>
@@ -130,7 +130,7 @@ function GlossaryTermSummary({
               </div>
             ) : (
               <Typography.Text
-                className="text-grey-body"
+                className="no-data-chip-placeholder"
                 data-testid="no-synonyms-available-header">
                 {t('message.no-synonyms-available')}
               </Typography.Text>

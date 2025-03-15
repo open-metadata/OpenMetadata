@@ -22,13 +22,12 @@ import BlockEditor from '../../BlockEditor/BlockEditor';
 import './rich-text-editor-previewerV1.less';
 import { PreviewerProp } from './RichTextEditor.interface';
 
-const RichTextEditorPreviewerV1: FC<PreviewerProp> = ({
+const TaskDescriptionPreviewer: FC<PreviewerProp> = ({
   markdown = '',
   className = '',
-  enableSeeMoreVariant = true,
+  enableSeeMoreVariant = false,
   textVariant = 'black',
   showReadMoreBtn = true,
-  isDescriptionExpanded = false,
 }) => {
   const { t, i18n } = useTranslation();
   const [content, setContent] = useState<string>('');
@@ -36,32 +35,22 @@ const RichTextEditorPreviewerV1: FC<PreviewerProp> = ({
   const [isOverflowing, setIsOverflowing] = useState<boolean>(false);
   const contentRef = useRef<HTMLDivElement>(null);
 
-  const handleReadMoreToggle = () => setReadMore((prev) => !prev);
-
   useEffect(() => {
     setContent(formatContent(markdown, 'client'));
   }, [markdown]);
 
   useEffect(() => {
-    setReadMore(Boolean(isDescriptionExpanded));
-  }, [isDescriptionExpanded]);
-
-  useEffect(() => {
-    const checkOverflow = () => {
-      if (contentRef.current) {
-        const el = contentRef.current;
-        const { scrollHeight, clientHeight } = el;
-        setIsOverflowing(scrollHeight > clientHeight + 1);
-      }
-    };
-
-    checkOverflow();
-    setTimeout(checkOverflow, 100);
-
-    window.addEventListener('resize', checkOverflow);
-
-    return () => window.removeEventListener('resize', checkOverflow);
+    if (contentRef.current) {
+      const overflow =
+        contentRef.current.scrollHeight > contentRef.current.clientHeight;
+      setIsOverflowing(overflow);
+      setReadMore(overflow);
+    }
   }, [content]);
+
+  const handleReadMoreToggle = () => {
+    setReadMore(!readMore);
+  };
 
   if (isDescriptionContentEmpty(markdown)) {
     return <span className="text-grey-muted">{t('label.no-description')}</span>;
@@ -75,24 +64,27 @@ const RichTextEditorPreviewerV1: FC<PreviewerProp> = ({
       data-testid="viewer-container"
       dir={i18n.dir()}>
       <div
-        className={classNames('markdown-parser', textVariant, {
-          'text-clamp-2': !readMore,
-        })}
+        className={classNames('markdown-parser', textVariant)}
         data-testid="markdown-parser"
         ref={contentRef}
-        style={{
-          display: '-webkit-box',
-          WebkitBoxOrient: 'vertical',
-          WebkitLineClamp: readMore ? 'unset' : 2,
-          overflow: 'hidden',
-          transition: 'max-height 0.3s ease',
-        }}>
+        style={
+          enableSeeMoreVariant
+            ? {
+                display: '-webkit-box',
+                WebkitBoxOrient: 'vertical',
+                WebkitLineClamp: readMore ? 'unset' : 2,
+                overflow: 'hidden',
+                transition: 'max-height 0.3s ease',
+              }
+            : undefined
+        }>
         <BlockEditor autoFocus={false} content={content} editable={false} />
       </div>
       {isOverflowing && showReadMoreBtn && enableSeeMoreVariant && (
         <Button
-          className="text-right view-more-less-button"
+          className="text-xs text-right"
           data-testid={`read-${readMore ? 'less' : 'more'}-button`}
+          style={{ fontSize: '14px', color: '#175CD3 !important' }}
           type="link"
           onClick={handleReadMoreToggle}>
           {readMore ? t('label.view-less') : t('label.view-more')}
@@ -102,4 +94,4 @@ const RichTextEditorPreviewerV1: FC<PreviewerProp> = ({
   );
 };
 
-export default RichTextEditorPreviewerV1;
+export default TaskDescriptionPreviewer;

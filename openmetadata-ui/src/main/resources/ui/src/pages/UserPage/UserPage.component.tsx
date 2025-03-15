@@ -27,7 +27,7 @@ import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import Loader from '../../components/common/Loader/Loader';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
-import Users from '../../components/Settings/Users/UsersNew.component';
+import Users from '../../components/Settings/Users/Users.component';
 import { ROUTES } from '../../constants/constants';
 import { TabSpecificField } from '../../enums/entity.enum';
 import { User } from '../../generated/entity/teams/user';

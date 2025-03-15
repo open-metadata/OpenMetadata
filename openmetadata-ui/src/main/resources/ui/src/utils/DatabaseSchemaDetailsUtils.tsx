@@ -17,6 +17,7 @@ import { useHistory } from 'react-router-dom';
 import { ReactComponent as ExportIcon } from '../assets/svg/ic-export.svg';
 import { ReactComponent as ImportIcon } from '../assets/svg/ic-import.svg';
 import { ActivityFeedTab } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
+import { ActivityFeedLayoutType } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import { CustomPropertyTable } from '../components/common/CustomPropertyTable/CustomPropertyTable';
 import { ManageButtonItemLabel } from '../components/common/ManageButtonContentItem/ManageButtonContentItem.component';
 import TabsLabel from '../components/common/TabsLabel/TabsLabel.component';
@@ -91,6 +92,7 @@ export const getDataBaseSchemaPageBaseTabs = ({
           refetchFeed
           entityFeedTotalCount={feedCount.totalCount}
           entityType={EntityType.DATABASE_SCHEMA}
+          layoutType={ActivityFeedLayoutType.THREE_PANEL}
           onFeedUpdate={getEntityFeedCount}
           onUpdateEntityDetails={fetchDatabaseSchemaDetails}
           onUpdateFeedCount={handleFeedCount}
