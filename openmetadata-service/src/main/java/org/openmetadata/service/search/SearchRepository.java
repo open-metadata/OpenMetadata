@@ -1019,6 +1019,18 @@ public class SearchRepository {
       SearchSortFilter searchSortFilter,
       String q)
       throws IOException {
+    return listWithOffset(filter, limit, offset, entityType, searchSortFilter, q, null);
+  }
+
+  public SearchResultListMapper listWithOffset(
+      SearchListFilter filter,
+      int limit,
+      int offset,
+      String entityType,
+      SearchSortFilter searchSortFilter,
+      String q,
+      String queryString)
+      throws IOException {
     IndexMapping index = entityIndexMap.get(entityType);
     return searchClient.listWithOffset(
         filter.getCondition(entityType),
@@ -1026,7 +1038,8 @@ public class SearchRepository {
         offset,
         index.getIndexName(clusterAlias),
         searchSortFilter,
-        q);
+        q,
+        queryString);
   }
 
   public SearchResultListMapper listWithDeepPagination(

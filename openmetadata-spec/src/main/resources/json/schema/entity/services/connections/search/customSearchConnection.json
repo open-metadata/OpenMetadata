@@ -29,6 +29,11 @@
     "connectionOptions": {
       "title": "Connection Options",
       "$ref": "../connectionBasicType.json#/definitions/connectionOptions"
+    },
+    "searchIndexFilterPattern": {
+      "title": "Default Search Index Filter Pattern",
+      "description": "Regex to only fetch search indexes that matches the pattern.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern"
     }
   },
   "additionalProperties": false,
