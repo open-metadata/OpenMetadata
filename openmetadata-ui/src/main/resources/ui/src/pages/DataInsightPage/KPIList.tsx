@@ -28,7 +28,6 @@ import RichTextEditorPreviewerV1 from '../../components/common/RichTextEditor/Ri
 import Table from '../../components/common/Table/Table';
 import { EmptyGraphPlaceholder } from '../../components/DataInsight/EmptyGraphPlaceholder';
 import {
-  getKpiPath,
   INITIAL_PAGING_VALUE,
   PAGE_SIZE_MEDIUM,
   pagingObject,
@@ -45,6 +44,7 @@ import { getListKPIs } from '../../rest/KpiAPI';
 import { formatDateTime } from '../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../utils/EntityUtils';
 import { checkPermission } from '../../utils/PermissionsUtils';
+import { getKpiPath } from '../../utils/RouterUtils';
 
 const KPIList = () => {
   const history = useHistory();

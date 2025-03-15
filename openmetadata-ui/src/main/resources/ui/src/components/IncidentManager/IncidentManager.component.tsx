@@ -21,11 +21,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory } from 'react-router-dom';
 import { WILD_CARD_CHAR } from '../../constants/char.constants';
-import {
-  getEntityDetailsPath,
-  PAGE_SIZE_BASE,
-  PAGE_SIZE_MEDIUM,
-} from '../../constants/constants';
+import { PAGE_SIZE_BASE, PAGE_SIZE_MEDIUM } from '../../constants/constants';
 import { PROFILER_FILTER_RANGE } from '../../constants/profiler.constant';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
@@ -69,7 +65,10 @@ import {
   getEntityName,
   getEntityReferenceListFromEntities,
 } from '../../utils/EntityUtils';
-import { getIncidentManagerDetailPagePath } from '../../utils/RouterUtils';
+import {
+  getEntityDetailsPath,
+  getIncidentManagerDetailPagePath,
+} from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { AsyncSelect } from '../common/AsyncSelect/AsyncSelect';
 import DatePickerMenu from '../common/DatePickerMenu/DatePickerMenu.component';

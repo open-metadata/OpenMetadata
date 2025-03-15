@@ -25,10 +25,7 @@ import {
   DataAssetsType,
   DataAssetsWithServiceField,
 } from '../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
-import {
-  getEntityDetailsPath,
-  NO_DATA_PLACEHOLDER,
-} from '../constants/constants';
+import { NO_DATA_PLACEHOLDER } from '../constants/constants';
 import { EntityType } from '../enums/entity.enum';
 import { APICollection } from '../generated/entity/data/apiCollection';
 import { APIEndpoint } from '../generated/entity/data/apiEndpoint';
@@ -63,6 +60,7 @@ import {
   getEntityBreadcrumbs,
   getEntityName,
 } from './EntityUtils';
+import { getEntityDetailsPath } from './RouterUtils';
 import { bytesToSize } from './StringsUtils';
 import { getUsagePercentile } from './TableUtils';
 

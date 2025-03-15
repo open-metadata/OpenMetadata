@@ -13,10 +13,6 @@
 import { render } from '@testing-library/react';
 import { startCase } from 'lodash';
 import React from 'react';
-import {
-  getEntityDetailsPath,
-  getServiceDetailsPath,
-} from '../constants/constants';
 import { EntityTabs, EntityType } from '../enums/entity.enum';
 import { ExplorePageTabs } from '../enums/Explore.enum';
 import { ServiceCategory } from '../enums/service.enum';
@@ -49,7 +45,11 @@ import {
   mockText,
   mockUrl,
 } from './mocks/EntityUtils.mock';
-import { getSettingPath } from './RouterUtils';
+import {
+  getEntityDetailsPath,
+  getServiceDetailsPath,
+  getSettingPath,
+} from './RouterUtils';
 import { getServiceRouteFromServiceType } from './ServiceUtils';
 
 jest.mock('../constants/constants', () => ({

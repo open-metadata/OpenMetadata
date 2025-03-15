@@ -44,13 +44,6 @@ import {
 import TagsV1 from '../components/Tag/TagsV1/TagsV1.component';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
-  getBotsPagePath,
-  getBotsPath,
-  getEntityDetailsPath,
-  getGlossaryTermDetailsPath,
-  getKpiPath,
-  getServiceDetailsPath,
-  getTagsDetailsPath,
   NO_DATA,
   PLACEHOLDER_ROUTE_ENTITY_TYPE,
   PLACEHOLDER_ROUTE_FQN,
@@ -125,18 +118,25 @@ import { BasicEntityOverviewInfo } from './EntityUtils.interface';
 import Fqn from './Fqn';
 import {
   getApplicationDetailsPath,
+  getBotsPagePath,
+  getBotsPath,
   getClassificationTagPath,
   getDataQualityPagePath,
   getDomainDetailsPath,
   getDomainPath,
+  getEntityDetailsPath,
   getGlossaryPath,
+  getGlossaryTermDetailsPath,
   getIncidentManagerDetailPagePath,
+  getKpiPath,
   getNotificationAlertDetailsPath,
   getObservabilityAlertDetailsPath,
   getPersonaDetailsPath,
   getPolicyWithFqnPath,
   getRoleWithFqnPath,
+  getServiceDetailsPath,
   getSettingPath,
+  getTagsDetailsPath,
   getTeamsWithFqnPath,
 } from './RouterUtils';
 import { getServiceRouteFromServiceType } from './ServiceUtils';

@@ -11,13 +11,13 @@
  *  limitations under the License.
  */
 
-import {
-  getEntityDetailsPath,
-  getGlossaryTermDetailsPath,
-} from '../constants/constants';
 import { EntityType } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { EntityUtilClassBase } from './EntityUtilClassBase';
+import {
+  getEntityDetailsPath,
+  getGlossaryTermDetailsPath,
+} from './RouterUtils';
 import { getTestSuiteDetailsPath } from './TestSuiteUtils';
 
 jest.mock('../constants/constants', () => ({

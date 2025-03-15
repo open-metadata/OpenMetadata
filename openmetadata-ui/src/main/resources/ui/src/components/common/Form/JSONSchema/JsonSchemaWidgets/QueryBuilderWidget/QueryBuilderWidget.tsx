@@ -35,7 +35,6 @@ import {
   Query,
   Utils as QbUtils,
 } from 'react-awesome-query-builder';
-import { getExplorePath } from '../../../../../../constants/constants';
 import { EntityType } from '../../../../../../enums/entity.enum';
 import { SearchIndex } from '../../../../../../enums/search.enum';
 import {
@@ -52,6 +51,7 @@ import {
   getJsonTreeFromQueryFilter,
   jsonLogicToElasticsearch,
 } from '../../../../../../utils/QueryBuilderUtils';
+import { getExplorePath } from '../../../../../../utils/RouterUtils';
 import searchClassBase from '../../../../../../utils/SearchClassBase';
 import { withAdvanceSearch } from '../../../../../AppRouter/withAdvanceSearch';
 import { useAdvanceSearch } from '../../../../../Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';

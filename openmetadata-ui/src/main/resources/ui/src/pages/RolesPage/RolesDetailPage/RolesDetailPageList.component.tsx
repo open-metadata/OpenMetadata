@@ -19,12 +19,12 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as IconRemove } from '../../../assets/svg/ic-remove.svg';
 import RichTextEditorPreviewerV1 from '../../../components/common/RichTextEditor/RichTextEditorPreviewerV1';
-import { getUserPath } from '../../../constants/constants';
 import { EntityReference } from '../../../generated/type/entityReference';
 import { getEntityName } from '../../../utils/EntityUtils';
 import {
   getPolicyWithFqnPath,
   getTeamsWithFqnPath,
+  getUserPath,
 } from '../../../utils/RouterUtils';
 
 const RolesDetailPageList = ({

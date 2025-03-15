@@ -15,7 +15,7 @@ import { isString } from 'lodash';
 import Qs from 'qs';
 import React, { useEffect, useState } from 'react';
 import { useHistory } from 'react-router-dom';
-import { getExplorePath, TOUR_SEARCH_TERM } from '../../constants/constants';
+import { TOUR_SEARCH_TERM } from '../../constants/constants';
 import { useTourProvider } from '../../context/TourProvider/TourProvider';
 import { CurrentTourPageType } from '../../enums/tour.enum';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
@@ -28,6 +28,7 @@ import {
 } from '../../utils/AuthProvider.util';
 import { addToRecentSearched } from '../../utils/CommonUtils';
 import { getOidcToken } from '../../utils/LocalStorageUtils';
+import { getExplorePath } from '../../utils/RouterUtils';
 import searchClassBase from '../../utils/SearchClassBase';
 import NavBar from '../NavBar/NavBar';
 import './app-bar.style.less';

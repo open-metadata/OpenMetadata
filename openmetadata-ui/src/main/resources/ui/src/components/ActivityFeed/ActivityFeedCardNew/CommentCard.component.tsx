@@ -15,7 +15,6 @@ import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
 import React, { useCallback, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { getUserPath } from '../../../constants/constants';
 import { Thread } from '../../../generated/entity/feed/thread';
 import {
   formatDateTime,
@@ -25,6 +24,7 @@ import {
   getFrontEndFormat,
   MarkdownToHTMLConverter,
 } from '../../../utils/FeedUtils';
+import { getUserPath } from '../../../utils/RouterUtils';
 import UserPopOverCard from '../../common/PopOverCard/UserPopOverCard';
 import ProfilePictureNew from '../../common/ProfilePicture/ProfilePictureNew';
 import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';

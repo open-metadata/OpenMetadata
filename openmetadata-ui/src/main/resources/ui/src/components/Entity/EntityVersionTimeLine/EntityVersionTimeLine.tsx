@@ -18,7 +18,6 @@ import { isEmpty, toString } from 'lodash';
 import React, { forwardRef, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { getUserPath } from '../../../constants/constants';
 import { useLimitStore } from '../../../context/LimitsProvider/useLimitsStore';
 import { EntityHistory } from '../../../generated/type/entityHistory';
 import { useUserProfile } from '../../../hooks/user-profile/useUserProfile';
@@ -28,6 +27,7 @@ import {
   getSummary,
   renderVersionButton,
 } from '../../../utils/EntityVersionUtils';
+import { getUserPath } from '../../../utils/RouterUtils';
 import UserPopOverCard from '../../common/PopOverCard/UserPopOverCard';
 import CloseIcon from '../../Modals/CloseIcon.component';
 import './entity-version-timeline.less';

@@ -30,10 +30,7 @@ import { GenericTab } from '../../components/Customization/GenericTab/GenericTab
 import { CommonWidgets } from '../../components/DataAssets/CommonWidgets/CommonWidgets';
 import { DatabaseSchemaTable } from '../../components/Database/DatabaseSchema/DatabaseSchemaTable/DatabaseSchemaTable';
 import { useEntityExportModalProvider } from '../../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
-import {
-  getEntityDetailsPath,
-  NO_DATA_PLACEHOLDER,
-} from '../../constants/constants';
+import { NO_DATA_PLACEHOLDER } from '../../constants/constants';
 import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { DetailPageWidgetKeys } from '../../enums/CustomizeDetailPage.enum';
 import {
@@ -50,6 +47,7 @@ import { WidgetConfig } from '../../pages/CustomizablePage/CustomizablePage.inte
 import { exportDatabaseDetailsInCSV } from '../../rest/databaseAPI';
 import { getEntityImportPath, getEntityName } from '../EntityUtils';
 import i18n from '../i18next/LocalUtil';
+import { getEntityDetailsPath } from '../RouterUtils';
 import { getUsagePercentile } from '../TableUtils';
 import { DatabaseDetailPageTabProps } from './DatabaseClassBase';
 

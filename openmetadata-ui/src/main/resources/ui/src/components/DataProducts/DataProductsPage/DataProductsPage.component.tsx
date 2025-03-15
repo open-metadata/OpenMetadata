@@ -18,10 +18,6 @@ import { toString } from 'lodash';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import {
-  getEntityDetailsPath,
-  getVersionPath,
-} from '../../../constants/constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
@@ -34,7 +30,11 @@ import {
   getDataProductVersionsList,
   patchDataProduct,
 } from '../../../rest/dataProductAPI';
-import { getDomainPath } from '../../../utils/RouterUtils';
+import {
+  getDomainPath,
+  getEntityDetailsPath,
+  getVersionPath,
+} from '../../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../common/Loader/Loader';
