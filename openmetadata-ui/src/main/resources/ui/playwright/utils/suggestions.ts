@@ -14,33 +14,59 @@ import { APIRequestContext } from '@playwright/test';
 
 const SUGGESTION_DESCRIPTION_DATA = {
   description: 'this is suggested data description',
+  type: 'SuggestDescription',
+};
+
+const SUGGESTION_TAGS_DATA = {
   tagLabels: [
     {
-      description:
-        'Data that can be used to directly or indirectly identify a person.',
-      displayName: 'Personal15',
-      href: 'http://localhost:8585/api/v1/tags/d90759e3-f94e-4e17-8624-9cbe31d347b7',
+      displayName: 'Personal',
       labelType: 'Manual',
       name: 'Personal',
       source: 'Classification',
       state: 'Suggested',
-      style: {
-        color: 'string',
-        iconURL: 'string',
-      },
-      tagFQN: 'PersonalData.Personal15',
+      tagFQN: 'PersonalData.Personal',
     },
   ],
-  type: 'SuggestDescription',
+  type: 'SuggestTagLabel',
 };
 
-export const createTableSuggestions = async (
+const SUGGESTION_TIER_TAGS_DATA = {
+  tagLabels: [
+    {
+      displayName: 'Tier1',
+      labelType: 'Manual',
+      name: 'Tier1',
+      source: 'Classification',
+      state: 'Suggested',
+      tagFQN: 'Tier.Tier1',
+    },
+  ],
+  type: 'SuggestTagLabel',
+};
+
+export const createTableDescriptionSuggestions = async (
   apiContext: APIRequestContext,
   entityLink: string
 ) => {
   const suggestionResponse = await apiContext.post('/api/v1/suggestions', {
     data: {
       ...SUGGESTION_DESCRIPTION_DATA,
+      entityLink,
+    },
+  });
+
+  return suggestionResponse;
+};
+
+export const createTableTagsSuggestions = async (
+  apiContext: APIRequestContext,
+  entityLink: string,
+  isTierTag?: boolean
+) => {
+  const suggestionResponse = await apiContext.post('/api/v1/suggestions', {
+    data: {
+      ...(isTierTag ? SUGGESTION_TIER_TAGS_DATA : SUGGESTION_TAGS_DATA),
       entityLink,
     },
   });

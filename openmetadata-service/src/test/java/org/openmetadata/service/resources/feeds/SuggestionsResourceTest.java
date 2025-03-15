@@ -12,6 +12,8 @@ import static org.openmetadata.service.resources.EntityResourceTest.C1;
 import static org.openmetadata.service.resources.EntityResourceTest.C2;
 import static org.openmetadata.service.resources.EntityResourceTest.PERSONAL_DATA_TAG_LABEL;
 import static org.openmetadata.service.resources.EntityResourceTest.PII_SENSITIVE_TAG_LABEL;
+import static org.openmetadata.service.resources.EntityResourceTest.TIER1_TAG_LABEL;
+import static org.openmetadata.service.resources.EntityResourceTest.TIER2_TAG_LABEL;
 import static org.openmetadata.service.security.SecurityUtil.authHeaders;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
@@ -528,6 +530,37 @@ public class SuggestionsResourceTest extends OpenMetadataApplicationTest {
     }
   }
 
+  @Test
+  @Order(6)
+  void put_acceptSuggestion_mutuallyExclusiveTags_200(TestInfo test) throws IOException {
+    TableResourceTest tableResourceTest = new TableResourceTest();
+    CreateTable createTable = tableResourceTest.createRequest(test);
+    Table table = tableResourceTest.createAndCheckEntity(createTable, ADMIN_AUTH_HEADERS);
+    MessageParser.EntityLink entityLink =
+        new MessageParser.EntityLink(Entity.TABLE, table.getFullyQualifiedName());
+
+    CreateSuggestion create = createTierSuggestion(TIER1_TAG_LABEL, entityLink);
+    Suggestion suggestion = createSuggestion(create, USER_AUTH_HEADERS);
+    Assertions.assertEquals(create.getEntityLink(), suggestion.getEntityLink());
+
+    // When accepting the suggestion, we'll get the Tier1 tag applied to the table
+    acceptSuggestion(suggestion.getId(), USER_AUTH_HEADERS);
+    table = tableResourceTest.getEntity(table.getId(), "tags", USER_AUTH_HEADERS);
+    List<TagLabel> expectedTags = new ArrayList<>(table.getTags());
+    expectedTags.addAll(suggestion.getTagLabels());
+    validateAppliedTags(expectedTags, table.getTags());
+
+    // Not, let's try to apply the Tier2 tag, which is mutually exclusive with the Tier1 tag
+    // The table should then only have the Tier2
+    create = createTierSuggestion(TIER2_TAG_LABEL, entityLink);
+    suggestion = createSuggestion(create, USER_AUTH_HEADERS);
+    acceptSuggestion(suggestion.getId(), USER_AUTH_HEADERS);
+    table = tableResourceTest.getEntity(table.getId(), "tags", USER_AUTH_HEADERS);
+    expectedTags = new ArrayList<>(table.getTags());
+    expectedTags.addAll(suggestion.getTagLabels());
+    validateAppliedTags(expectedTags, table.getTags());
+  }
+
   public Suggestion createSuggestion(CreateSuggestion create, Map<String, String> authHeaders)
       throws HttpResponseException {
     return TestUtils.post(getResource("suggestions"), create, Suggestion.class, authHeaders);
@@ -550,6 +583,13 @@ public class SuggestionsResourceTest extends OpenMetadataApplicationTest {
         .withTagLabels(List.of(PII_SENSITIVE_TAG_LABEL, PERSONAL_DATA_TAG_LABEL))
         .withType(SuggestionType.SuggestTagLabel)
         .withEntityLink(TABLE_LINK);
+  }
+
+  public CreateSuggestion createTierSuggestion(TagLabel tier, MessageParser.EntityLink entityLink) {
+    return new CreateSuggestion()
+        .withTagLabels(List.of(tier))
+        .withType(SuggestionType.SuggestTagLabel)
+        .withEntityLink(entityLink.getLinkString());
   }
 
   public Suggestion getSuggestion(UUID id, Map<String, String> authHeaders)

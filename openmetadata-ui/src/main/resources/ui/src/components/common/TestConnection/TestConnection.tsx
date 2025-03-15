@@ -166,7 +166,7 @@ const TestConnection: FC<TestConnectionProps> = ({
     setTestConnectionStepResult([]);
     setTestStatus(undefined);
     setIsConnectionTimeout(false);
-    setProgress(0);
+    setProgress(TEST_CONNECTION_PROGRESS_PERCENTAGE.ZERO);
   };
 
   const handleDeleteWorkflow = async (workflowId: string) => {
@@ -207,6 +207,7 @@ const TestConnection: FC<TestConnectionProps> = ({
     response: Workflow,
     intervalObject: {
       intervalId?: number;
+      timeoutId?: number;
     }
   ) => {
     // return a promise that wraps the interval and handles errors inside it
@@ -243,6 +244,7 @@ const TestConnection: FC<TestConnectionProps> = ({
 
             // clear the current interval
             clearInterval(intervalObject.intervalId);
+            clearTimeout(intervalObject.timeoutId);
 
             // set testing connection to false
             setIsTestingConnection(false);
@@ -270,6 +272,7 @@ const TestConnection: FC<TestConnectionProps> = ({
     // current interval id
     const intervalObject: {
       intervalId?: number;
+      timeoutId?: number;
     } = {};
 
     try {
@@ -313,7 +316,7 @@ const TestConnection: FC<TestConnectionProps> = ({
       }
 
       // stop fetching the workflow after 2 minutes
-      setTimeout(() => {
+      const timeoutId = setTimeout(() => {
         // clear the current interval
         clearInterval(intervalObject.intervalId);
 
@@ -333,6 +336,8 @@ const TestConnection: FC<TestConnectionProps> = ({
         setIsTestingConnection(false);
         setProgress(TEST_CONNECTION_PROGRESS_PERCENTAGE.HUNDRED);
       }, FETCHING_EXPIRY_TIME);
+
+      intervalObject.timeoutId = Number(timeoutId);
 
       // Handle workflow polling and completion
       await handleWorkflowPolling(response, intervalObject);
