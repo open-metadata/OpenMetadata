@@ -37,7 +37,7 @@ const TableDescription = ({
   hasEditPermission,
 }: TableDescriptionProps) => {
   const { t } = useTranslation();
-  const { selectedUserSuggestions = [] } = useSuggestionsContext();
+  const { selectedUserSuggestions } = useSuggestionsContext();
   const { onThreadLinkSelect } = useGenericContext();
 
   const entityLink = useMemo(
@@ -52,7 +52,7 @@ const TableDescription = ({
   );
 
   const suggestionData = useMemo(() => {
-    const activeSuggestion = selectedUserSuggestions.find(
+    const activeSuggestion = selectedUserSuggestions?.description.find(
       (suggestion) => suggestion.entityLink === entityLink
     );
 

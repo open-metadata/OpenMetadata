@@ -11,23 +11,28 @@
  *  limitations under the License.
  */
 
-import { Card, Typography } from 'antd';
+import { Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined, startCase } from 'lodash';
-import { ServicesData, ServicesUpdateRequest, ServiceTypes } from 'Models';
+import { LoadingState, ServicesUpdateRequest, ServiceTypes } from 'Models';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useParams } from 'react-router-dom';
+import { useHistory, useParams } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
 import ServiceDocPanel from '../../components/common/ServiceDocPanel/ServiceDocPanel';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
-import ServiceConfig from '../../components/Settings/Services/ServiceConfig/ServiceConfig';
+import IngestionStepper from '../../components/Settings/Services/Ingestion/IngestionStepper/IngestionStepper.component';
+import ConnectionConfigForm from '../../components/Settings/Services/ServiceConfig/ConnectionConfigForm';
+import FiltersConfigForm from '../../components/Settings/Services/ServiceConfig/FiltersConfigForm';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
-import { OPEN_METADATA } from '../../constants/Services.constant';
+import {
+  OPEN_METADATA,
+  STEPS_FOR_EDIT_SERVICE,
+} from '../../constants/Services.constant';
 import { TabSpecificField } from '../../enums/entity.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { withPageLayout } from '../../hoc/withPageLayout';
@@ -35,7 +40,7 @@ import { useFqn } from '../../hooks/useFqn';
 import { SearchSourceAlias } from '../../interface/search.interface';
 import { ConfigData, ServicesType } from '../../interface/service.interface';
 import { getServiceByFQN, patchService } from '../../rest/serviceAPI';
-import { getEntityMissingError } from '../../utils/CommonUtils';
+import { getEntityMissingError, getServiceLogo } from '../../utils/CommonUtils';
 import { getEntityName } from '../../utils/EntityUtils';
 import i18n from '../../utils/i18next/LocalUtil';
 import { getPathByServiceFQN, getSettingPath } from '../../utils/RouterUtils';
@@ -56,7 +61,10 @@ function EditConnectionFormPage() {
     () => serviceFQN === OPEN_METADATA,
     [serviceFQN]
   );
-
+  const history = useHistory();
+  const [saveServiceState, setSaveServiceState] =
+    useState<LoadingState>('initial');
+  const [activeServiceStep, setActiveServiceStep] = useState(1);
   const [isLoading, setIsLoading] = useState(!isOpenMetadataService);
   const [isError, setIsError] = useState(isOpenMetadataService);
   const [serviceDetails, setServiceDetails] = useState<ServicesType>();
@@ -64,16 +72,37 @@ function EditConnectionFormPage() {
     TitleBreadcrumbProps['titleLinks']
   >([]);
   const [activeField, setActiveField] = useState<string>('');
+  const [serviceConfig, setServiceConfig] = useState<ServicesType>();
 
-  const handleConfigUpdate = async (updatedData: ConfigData) => {
+  const handleConfigSave = (updatedData: ConfigData) => {
+    const configData: ServicesUpdateRequest = {
+      ...serviceDetails,
+      connection: {
+        config: {
+          ...serviceDetails?.connection?.config,
+          ...updatedData,
+        },
+      },
+    };
+
+    setServiceConfig(configData);
+    setActiveServiceStep(2);
+  };
+
+  const handleFiltersSave = async (updatedData: ConfigData) => {
     if (isUndefined(serviceDetails)) {
       return;
     }
 
     const configData: ServicesUpdateRequest = {
       ...serviceDetails,
+      ...serviceConfig,
       connection: {
-        config: updatedData,
+        config: {
+          ...serviceDetails?.connection?.config,
+          ...serviceConfig?.connection?.config,
+          ...updatedData,
+        },
       },
     };
 
@@ -84,17 +113,22 @@ function EditConnectionFormPage() {
     }
 
     try {
+      setSaveServiceState('waiting');
       const response = await patchService(
         serviceCategory,
         serviceDetails.id,
         jsonPatch
       );
-      setServiceDetails({
+      setServiceConfig({
         ...response,
         owners: response?.owners ?? serviceDetails?.owners,
       });
+
+      history.push(getPathByServiceFQN(serviceCategory, serviceFQN));
     } catch (error) {
       showErrorToast(error as AxiosError);
+    } finally {
+      setSaveServiceState('initial');
     }
   };
 
@@ -140,6 +174,12 @@ function EditConnectionFormPage() {
     }
   };
 
+  const onCancel = () => {
+    history.goBack();
+  };
+
+  const handleFiltersInputBackClick = () => setActiveServiceStep(1);
+
   const handleFieldFocus = (fieldName: string) => {
     if (isEmpty(fieldName)) {
       return;
@@ -167,25 +207,51 @@ function EditConnectionFormPage() {
   const firstPanelChildren = (
     <div className="max-width-md w-9/10 service-form-container">
       <TitleBreadcrumb titleLinks={slashedBreadcrumb} />
-      <Card className="p-lg m-t-md">
-        <Typography.Title level={5}>
-          {t('message.edit-service-entity-connection', {
-            entity: serviceFQN,
-          })}
-        </Typography.Title>
-        <ServiceConfig
-          data={serviceDetails as ServicesData}
-          disableTestConnection={
-            ServiceCategory.METADATA_SERVICES === serviceCategory &&
-            OPEN_METADATA === serviceFQN
-          }
-          handleUpdate={handleConfigUpdate}
-          serviceCategory={serviceCategory}
-          serviceFQN={serviceFQN}
-          serviceType={serviceDetails?.serviceType || ''}
-          onFocus={handleFieldFocus}
+      <div className="m-t-md">
+        <Space className="p-b-xs">
+          {getServiceLogo(serviceDetails?.serviceType ?? '', 'h-6')}{' '}
+          <Typography className="text-base" data-testid="header">
+            {t('message.edit-service-entity-connection', {
+              entity: serviceFQN,
+            })}
+          </Typography>
+        </Space>
+        <IngestionStepper
+          activeStep={activeServiceStep}
+          steps={STEPS_FOR_EDIT_SERVICE}
         />
-      </Card>
+
+        {activeServiceStep === 1 && (
+          <ConnectionConfigForm
+            cancelText={t('label.back')}
+            data={serviceDetails}
+            okText={t('label.next')}
+            serviceCategory={serviceCategory}
+            serviceType={serviceDetails?.serviceType ?? ''}
+            status={saveServiceState}
+            onCancel={onCancel}
+            onFocus={handleFieldFocus}
+            onSave={async (e) => {
+              e.formData && handleConfigSave(e.formData);
+            }}
+          />
+        )}
+
+        {activeServiceStep === 2 && (
+          <FiltersConfigForm
+            cancelText={t('label.back')}
+            data={serviceDetails}
+            serviceCategory={serviceCategory}
+            serviceType={serviceDetails?.serviceType ?? ''}
+            status={saveServiceState}
+            onCancel={handleFiltersInputBackClick}
+            onFocus={handleFieldFocus}
+            onSave={async (e) => {
+              e.formData && handleFiltersSave(e.formData);
+            }}
+          />
+        )}
+      </div>
     </div>
   );
 
@@ -198,10 +264,8 @@ function EditConnectionFormPage() {
         flex: 0.7,
         className: 'content-resizable-panel-container',
       }}
-      hideSecondPanel={!serviceDetails?.serviceType ?? ''}
-      pageTitle={t('label.edit-entity', {
-        entity: t('label.connection'),
-      })}
+      hideSecondPanel={!serviceDetails?.serviceType}
+      pageTitle={t('label.edit-entity', { entity: t('label.connection') })}
       secondPanel={{
         children: (
           <ServiceDocPanel

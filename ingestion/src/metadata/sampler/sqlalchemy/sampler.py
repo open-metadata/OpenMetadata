@@ -153,7 +153,10 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
         if self.sample_query:
             return self._rdn_sample_from_user_query()
 
-        if not self.sample_config.profileSample:
+        if not self.sample_config.profileSample or (
+            self.sample_config.profileSampleType == ProfileSampleType.PERCENTAGE
+            and self.sample_config.profileSample == 100
+        ):
             if self.partition_details:
                 partitioned = self._partitioned_table()
                 return partitioned.cte(f"{self.get_sampler_table_name()}_partitioned")

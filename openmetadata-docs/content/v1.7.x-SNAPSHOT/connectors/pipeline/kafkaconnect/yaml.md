@@ -7,7 +7,7 @@ slug: /connectors/pipeline/kafkaconnect/yaml
 name="KafkaConnect"
 stage="PROD"
 platform="Collate"
-availableFeatures=["Pipelines", "Pipeline Status", "Tags"]
+availableFeatures=["Pipelines", "Pipeline Status", "Tags", "Usage"]
 unavailableFeatures=["Owners", "Lineage"]
 / %}
 

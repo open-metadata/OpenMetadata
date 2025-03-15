@@ -278,5 +278,6 @@ export enum ScheduleTimeline {
 
 export enum Type {
     EventBasedEntity = "eventBasedEntity",
+    NoOp = "noOp",
     PeriodicBatchEntity = "periodicBatchEntity",
 }

@@ -66,7 +66,7 @@ const AddIngestionPage = () => {
   const history = useHistory();
   const [serviceData, setServiceData] = useState<DataObj>();
   const [activeIngestionStep, setActiveIngestionStep] = useState(1);
-  const [isLoading, setIsloading] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
   const [isError, setIsError] = useState(false);
   const [ingestionProgress, setIngestionProgress] = useState(0);
   const [isIngestionCreated, setIsIngestionCreated] = useState(false);
@@ -88,32 +88,32 @@ const AddIngestionPage = () => {
     [ingestionType]
   );
 
-  const fetchServiceDetails = () => {
-    getServiceByFQN(serviceCategory, serviceFQN)
-      .then((resService) => {
-        if (resService) {
-          setServiceData(resService as DataObj);
-        } else {
-          showErrorToast(
-            t('server.entity-fetch-error', {
-              entity: t('label.service-detail-lowercase-plural'),
-            })
-          );
-        }
-      })
-      .catch((error: AxiosError) => {
-        if (error.response?.status === 404) {
-          setIsError(true);
-        } else {
-          showErrorToast(
-            error,
-            t('server.entity-fetch-error', {
-              entity: t('label.service-detail-lowercase-plural'),
-            })
-          );
-        }
-      })
-      .finally(() => setIsloading(false));
+  const fetchServiceDetails = async () => {
+    try {
+      const response = await getServiceByFQN(serviceCategory, serviceFQN);
+      if (response) {
+        setServiceData(response as DataObj);
+      } else {
+        showErrorToast(
+          t('server.entity-fetch-error', {
+            entity: t('label.service-detail-lowercase-plural'),
+          })
+        );
+      }
+    } catch (error) {
+      if ((error as AxiosError).response?.status === 404) {
+        setIsError(true);
+      } else {
+        showErrorToast(
+          error as AxiosError,
+          t('server.entity-fetch-error', {
+            entity: t('label.service-detail-lowercase-plural'),
+          })
+        );
+      }
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const onIngestionDeploy = (id?: string) => {

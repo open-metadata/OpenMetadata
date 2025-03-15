@@ -13,7 +13,6 @@
 
 package org.openmetadata.service.resources;
 
-import static javax.ws.rs.client.Entity.entity;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.EventType.ENTITY_CREATED;
@@ -70,6 +69,7 @@ import org.openmetadata.service.util.AsyncService;
 import org.openmetadata.service.util.BulkAssetsOperationResponse;
 import org.openmetadata.service.util.CSVExportResponse;
 import org.openmetadata.service.util.CSVImportResponse;
+import org.openmetadata.service.util.DeleteEntityResponse;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.RestUtil;
@@ -195,12 +195,13 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       int offset,
       SearchSortFilter searchSortFilter,
       String q,
+      String queryString,
       OperationContext operationContext,
       ResourceContextInterface resourceContext)
       throws IOException {
     authorizer.authorize(securityContext, operationContext, resourceContext);
     return repository.listFromSearchWithOffset(
-        uriInfo, fields, searchListFilter, limit, offset, searchSortFilter, q);
+        uriInfo, fields, searchListFilter, limit, offset, searchSortFilter, q, queryString);
   }
 
   public T getInternal(
@@ -448,6 +449,52 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     }
     addHref(uriInfo, response.entity());
     return response.toResponse();
+  }
+
+  public Response deleteByIdAsync(
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      UUID id,
+      boolean recursive,
+      boolean hardDelete) {
+    String jobId = UUID.randomUUID().toString();
+    T entity;
+    Response response;
+
+    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.DELETE);
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
+    entity = repository.get(uriInfo, id, repository.getFields("name"), Include.ALL, false);
+    String userName = securityContext.getUserPrincipal().getName();
+
+    ExecutorService executorService = AsyncService.getInstance().getExecutorService();
+    executorService.submit(
+        () -> {
+          try {
+            DeleteResponse<T> deleteResponse =
+                repository.delete(userName, id, recursive, hardDelete);
+            if (hardDelete) {
+              limits.invalidateCache(entityType);
+            }
+            WebsocketNotificationHandler.sendDeleteOperationCompleteNotification(
+                jobId, securityContext, deleteResponse.entity());
+          } catch (Exception e) {
+            WebsocketNotificationHandler.sendDeleteOperationFailedNotification(
+                jobId, securityContext, entity, e.getMessage());
+          }
+        });
+
+    response =
+        Response.accepted()
+            .entity(
+                new DeleteEntityResponse(
+                    jobId,
+                    "Delete operation initiated for " + entity.getName(),
+                    entity.getName(),
+                    hardDelete,
+                    recursive))
+            .build();
+
+    return response;
   }
 
   public Response deleteByName(
