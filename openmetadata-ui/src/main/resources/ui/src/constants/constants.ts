@@ -288,6 +288,10 @@ export const ROUTES = {
 
   // Entity Import
   ENTITY_IMPORT: `/bulk/import/${PLACEHOLDER_ROUTE_ENTITY_TYPE}/${PLACEHOLDER_ROUTE_FQN}`,
+
+  // Entity Bulk Edit
+  BULK_EDIT_ENTITY: `/bulk/edit`,
+  BULK_EDIT_ENTITY_WITH_FQN: `/bulk/edit/${PLACEHOLDER_ROUTE_ENTITY_TYPE}/${PLACEHOLDER_ROUTE_FQN}`,
 };
 
 export const SOCKET_EVENTS = {

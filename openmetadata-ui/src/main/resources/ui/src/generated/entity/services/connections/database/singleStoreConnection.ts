@@ -17,6 +17,10 @@ export interface SingleStoreConnection {
     connectionArguments?: { [key: string]: any };
     connectionOptions?:   { [key: string]: string };
     /**
+     * Regex to only include/exclude databases that matches the pattern.
+     */
+    databaseFilterPattern?: FilterPattern;
+    /**
      * Optional name to give to the database in OpenMetadata. If left blank, we will use default
      * as the database name.
      */
@@ -37,6 +41,10 @@ export interface SingleStoreConnection {
     password?:                string;
     sampleDataStorageConfig?: SampleDataStorageConfig;
     /**
+     * Regex to only include/exclude schemas that matches the pattern.
+     */
+    schemaFilterPattern?: FilterPattern;
+    /**
      * SQLAlchemy driver scheme options.
      */
     scheme?:                        SingleStoreScheme;
@@ -46,6 +54,10 @@ export interface SingleStoreConnection {
     supportsQueryComment?:          boolean;
     supportsViewLineageExtraction?: boolean;
     /**
+     * Regex to only include/exclude tables that matches the pattern.
+     */
+    tableFilterPattern?: FilterPattern;
+    /**
      * Service Type
      */
     type?: SingleStoreType;
@@ -54,6 +66,26 @@ export interface SingleStoreConnection {
      * metadata in MySQL.
      */
     username: string;
+}
+
+/**
+ * Regex to only include/exclude databases that matches the pattern.
+ *
+ * Regex to only fetch entities that matches the pattern.
+ *
+ * Regex to only include/exclude schemas that matches the pattern.
+ *
+ * Regex to only include/exclude tables that matches the pattern.
+ */
+export interface FilterPattern {
+    /**
+     * List of strings/regex patterns to match and exclude only database entities that match.
+     */
+    excludes?: string[];
+    /**
+     * List of strings/regex patterns to match and include only database entities that match.
+     */
+    includes?: string[];
 }
 
 /**

@@ -300,6 +300,10 @@ export interface ServiceConnection {
  */
 export interface ConfigClass {
     /**
+     * Regex to only fetch api collections with names matching the pattern.
+     */
+    apiCollectionFilterPattern?: APICollectionFilterPatternClass;
+    /**
      * Open API Schema URL.
      */
     openAPISchemaURL?: string;
@@ -344,6 +348,10 @@ export interface ConfigClass {
      */
     type?: RESTType;
     /**
+     * Regex exclude or include charts that matches the pattern.
+     */
+    chartFilterPattern?: APICollectionFilterPatternClass;
+    /**
      * User's Client ID. This user should have privileges to read all the metadata in Looker.
      *
      * client_id for PowerBI.
@@ -361,6 +369,14 @@ export interface ConfigClass {
      * clientSecret for Sigma.
      */
     clientSecret?: string;
+    /**
+     * Regex to exclude or include dashboards that matches the pattern.
+     */
+    dashboardFilterPattern?: APICollectionFilterPatternClass;
+    /**
+     * Regex exclude or include data models that matches the pattern.
+     */
+    dataModelFilterPattern?: APICollectionFilterPatternClass;
     /**
      * Credentials to extract the .lkml files from a repository. This is required to get all the
      * lineage and definitions.
@@ -473,6 +489,10 @@ export interface ConfigClass {
      * Host and port of the OpenSearch service.
      */
     hostPort?: string;
+    /**
+     * Regex to exclude or include projects that matches the pattern.
+     */
+    projectFilterPattern?: APICollectionFilterPatternClass;
     /**
      * Password to connect to Metabase.
      *
@@ -850,12 +870,24 @@ export interface ConfigClass {
      */
     connectionArguments?: { [key: string]: any };
     /**
+     * Cost per TiB for BigQuery usage
+     */
+    costPerTB?: number;
+    /**
      * GCP Credentials
      *
      * Azure Credentials
      */
-    credentials?:             GCPCredentials;
+    credentials?: GCPCredentials;
+    /**
+     * Regex to only include/exclude databases that matches the pattern.
+     */
+    databaseFilterPattern?:   ConfigDatabaseFilterPattern;
     sampleDataStorageConfig?: SampleDataStorageConfig;
+    /**
+     * Regex to only include/exclude schemas that matches the pattern.
+     */
+    schemaFilterPattern?: ConfigSchemaFilterPattern;
     /**
      * SQLAlchemy driver scheme options.
      *
@@ -881,6 +913,10 @@ export interface ConfigClass {
      * Supports Usage Extraction.
      */
     supportsUsageExtraction?: boolean;
+    /**
+     * Regex to only include/exclude tables that matches the pattern.
+     */
+    tableFilterPattern?: APICollectionFilterPatternClass;
     /**
      * Taxonomy location used to fetch policy tags
      */
@@ -1295,6 +1331,10 @@ export interface ConfigClass {
      */
     securityProtocol?: KafkaSecurityProtocol;
     /**
+     * Regex to only fetch topics that matches the pattern.
+     */
+    topicFilterPattern?: APICollectionFilterPatternClass;
+    /**
      * Enable encryption for the Amundsen Neo4j Connection.
      */
     encrypted?: boolean;
@@ -1476,6 +1516,10 @@ export interface ConfigClass {
      */
     numberOfStatus?: number;
     /**
+     * Regex exclude pipelines.
+     */
+    pipelineFilterPattern?: APICollectionFilterPatternClass;
+    /**
      * Fivetran API Secret.
      */
     apiSecret?: string;
@@ -1566,6 +1610,10 @@ export interface ConfigClass {
      */
     subscription_id?: string;
     /**
+     * Regex to only fetch MlModels with names matching the pattern.
+     */
+    mlModelFilterPattern?: APICollectionFilterPatternClass;
+    /**
      * Mlflow Model registry backend. E.g.,
      * mysql+pymysql://mlflow:password@localhost:3307/experiments
      */
@@ -1583,9 +1631,17 @@ export interface ConfigClass {
      */
     bucketNames?: string[];
     /**
+     * Regex to only fetch containers that matches the pattern.
+     */
+    containerFilterPattern?: APICollectionFilterPatternClass;
+    /**
      * Connection Timeout in Seconds
      */
     connectionTimeoutSecs?: number;
+    /**
+     * Regex to only fetch search indexes that matches the pattern.
+     */
+    searchIndexFilterPattern?: APICollectionFilterPatternClass;
     /**
      * Keep Alive Timeout in Seconds
      */
@@ -1618,6 +1674,46 @@ export interface UsernamePasswordAuthentication {
      * KafkaConnect user to authenticate to the API.
      */
     username?: string;
+}
+
+/**
+ * Regex to only fetch api collections with names matching the pattern.
+ *
+ * Regex to only fetch entities that matches the pattern.
+ *
+ * Regex exclude or include charts that matches the pattern.
+ *
+ * Regex to exclude or include dashboards that matches the pattern.
+ *
+ * Regex exclude or include data models that matches the pattern.
+ *
+ * Regex to exclude or include projects that matches the pattern.
+ *
+ * Regex to only include/exclude tables that matches the pattern.
+ *
+ * Regex to only include/exclude databases that matches the pattern.
+ *
+ * Regex to only include/exclude schemas that matches the pattern.
+ *
+ * Regex to only fetch topics that matches the pattern.
+ *
+ * Regex exclude pipelines.
+ *
+ * Regex to only fetch MlModels with names matching the pattern.
+ *
+ * Regex to only fetch containers that matches the pattern.
+ *
+ * Regex to only fetch search indexes that matches the pattern.
+ */
+export interface APICollectionFilterPatternClass {
+    /**
+     * List of strings/regex patterns to match and exclude only database entities that match.
+     */
+    excludes?: string[];
+    /**
+     * List of strings/regex patterns to match and include only database entities that match.
+     */
+    includes?: string[];
 }
 
 /**
@@ -2525,6 +2621,10 @@ export interface ConfigConnection {
      */
     database?: string;
     /**
+     * Regex to only include/exclude databases that matches the pattern.
+     */
+    databaseFilterPattern?: ConnectionDatabaseFilterPattern;
+    /**
      * Host and port of the source service.
      *
      * Host and port of the MySQL service.
@@ -2543,6 +2643,10 @@ export interface ConfigConnection {
     ingestAllDatabases?:      boolean;
     sampleDataStorageConfig?: SampleDataStorageConfig;
     /**
+     * Regex to only include/exclude schemas that matches the pattern.
+     */
+    schemaFilterPattern?: ConnectionSchemaFilterPattern;
+    /**
      * SQLAlchemy driver scheme options.
      */
     scheme?:                     ConnectionScheme;
@@ -2555,6 +2659,10 @@ export interface ConfigConnection {
     supportsProfiler?:           boolean;
     supportsQueryComment?:       boolean;
     supportsUsageExtraction?:    boolean;
+    /**
+     * Regex to only include/exclude tables that matches the pattern.
+     */
+    tableFilterPattern?: APICollectionFilterPatternClass;
     /**
      * Service Type
      */
@@ -2580,6 +2688,10 @@ export interface ConfigConnection {
      */
     userKey?: string;
     /**
+     * Regex exclude pipelines.
+     */
+    pipelineFilterPattern?: APICollectionFilterPatternClass;
+    /**
      * How to run the SQLite database. :memory: by default.
      */
     databaseMode?:                  string;
@@ -2602,6 +2714,47 @@ export interface AuthConfigurationType {
     password?:    string;
     awsConfig?:   AWSCredentials;
     azureConfig?: AzureCredentials;
+}
+
+/**
+ * Regex to only include/exclude databases that matches the pattern.
+ *
+ * Regex to only fetch api collections with names matching the pattern.
+ *
+ * Regex to only fetch entities that matches the pattern.
+ *
+ * Regex exclude or include charts that matches the pattern.
+ *
+ * Regex to exclude or include dashboards that matches the pattern.
+ *
+ * Regex exclude or include data models that matches the pattern.
+ *
+ * Regex to exclude or include projects that matches the pattern.
+ *
+ * Regex to only include/exclude tables that matches the pattern.
+ *
+ * Regex to only include/exclude schemas that matches the pattern.
+ *
+ * Regex to only fetch topics that matches the pattern.
+ *
+ * Regex exclude pipelines.
+ *
+ * Regex to only fetch MlModels with names matching the pattern.
+ *
+ * Regex to only fetch containers that matches the pattern.
+ *
+ * Regex to only fetch search indexes that matches the pattern.
+ */
+export interface ConnectionDatabaseFilterPattern {
+    /**
+     * List of strings/regex patterns to match and exclude only database entities that match.
+     */
+    excludes?: string[];
+    /**
+     * List of strings/regex patterns to match and include only database entities that match.
+     */
+    includes?: string[];
+    [property: string]: any;
 }
 
 /**
@@ -2690,6 +2843,47 @@ export interface AwsCredentials {
      * The name of a profile to use with the boto session.
      */
     profileName?: string;
+}
+
+/**
+ * Regex to only include/exclude schemas that matches the pattern.
+ *
+ * Regex to only fetch api collections with names matching the pattern.
+ *
+ * Regex to only fetch entities that matches the pattern.
+ *
+ * Regex exclude or include charts that matches the pattern.
+ *
+ * Regex to exclude or include dashboards that matches the pattern.
+ *
+ * Regex exclude or include data models that matches the pattern.
+ *
+ * Regex to exclude or include projects that matches the pattern.
+ *
+ * Regex to only include/exclude tables that matches the pattern.
+ *
+ * Regex to only include/exclude databases that matches the pattern.
+ *
+ * Regex to only fetch topics that matches the pattern.
+ *
+ * Regex exclude pipelines.
+ *
+ * Regex to only fetch MlModels with names matching the pattern.
+ *
+ * Regex to only fetch containers that matches the pattern.
+ *
+ * Regex to only fetch search indexes that matches the pattern.
+ */
+export interface ConnectionSchemaFilterPattern {
+    /**
+     * List of strings/regex patterns to match and exclude only database entities that match.
+     */
+    excludes?: string[];
+    /**
+     * List of strings/regex patterns to match and include only database entities that match.
+     */
+    includes?: string[];
+    [property: string]: any;
 }
 
 /**
@@ -2824,6 +3018,47 @@ export interface GCPCredentials {
 }
 
 /**
+ * Regex to only fetch api collections with names matching the pattern.
+ *
+ * Regex to only fetch entities that matches the pattern.
+ *
+ * Regex exclude or include charts that matches the pattern.
+ *
+ * Regex to exclude or include dashboards that matches the pattern.
+ *
+ * Regex exclude or include data models that matches the pattern.
+ *
+ * Regex to exclude or include projects that matches the pattern.
+ *
+ * Regex to only include/exclude tables that matches the pattern.
+ *
+ * Regex to only include/exclude databases that matches the pattern.
+ *
+ * Regex to only include/exclude schemas that matches the pattern.
+ *
+ * Regex to only fetch topics that matches the pattern.
+ *
+ * Regex exclude pipelines.
+ *
+ * Regex to only fetch MlModels with names matching the pattern.
+ *
+ * Regex to only fetch containers that matches the pattern.
+ *
+ * Regex to only fetch search indexes that matches the pattern.
+ */
+export interface ConfigDatabaseFilterPattern {
+    /**
+     * List of strings/regex patterns to match and exclude only database entities that match.
+     */
+    excludes?: string[];
+    /**
+     * List of strings/regex patterns to match and include only database entities that match.
+     */
+    includes?: string[];
+    [property: string]: any;
+}
+
+/**
  * Configuration for Sink Component in the OpenMetadata Ingestion Framework.
  */
 export interface ElasticsSearch {
@@ -2923,6 +3158,10 @@ export interface HiveMetastoreConnectionDetails {
      */
     database?: string;
     /**
+     * Regex to only include/exclude databases that matches the pattern.
+     */
+    databaseFilterPattern?: ConnectionDatabaseFilterPattern;
+    /**
      * Host and port of the source service.
      *
      * Host and port of the MySQL service.
@@ -2934,6 +3173,10 @@ export interface HiveMetastoreConnectionDetails {
      */
     ingestAllDatabases?:      boolean;
     sampleDataStorageConfig?: SampleDataStorageConfig;
+    /**
+     * Regex to only include/exclude schemas that matches the pattern.
+     */
+    schemaFilterPattern?: DefaultSchemaFilterPattern;
     /**
      * SQLAlchemy driver scheme options.
      */
@@ -2951,6 +3194,10 @@ export interface HiveMetastoreConnectionDetails {
     supportsProfiler?:           boolean;
     supportsQueryComment?:       boolean;
     supportsUsageExtraction?:    boolean;
+    /**
+     * Regex to only include/exclude tables that matches the pattern.
+     */
+    tableFilterPattern?: APICollectionFilterPatternClass;
     /**
      * Service Type
      */
@@ -2974,6 +3221,15 @@ export interface HiveMetastoreConnectionDetails {
      * attempts to scan all the schemas.
      */
     databaseSchema?: string;
+}
+
+/**
+ * Regex to only include/exclude schemas that matches the pattern.
+ */
+export interface DefaultSchemaFilterPattern {
+    excludes?: string[];
+    includes?: string[];
+    [property: string]: any;
 }
 
 /**
@@ -3146,6 +3402,47 @@ export enum SaslMechanismType {
     Plain = "PLAIN",
     ScramSHA256 = "SCRAM-SHA-256",
     ScramSHA512 = "SCRAM-SHA-512",
+}
+
+/**
+ * Regex to only fetch api collections with names matching the pattern.
+ *
+ * Regex to only fetch entities that matches the pattern.
+ *
+ * Regex exclude or include charts that matches the pattern.
+ *
+ * Regex to exclude or include dashboards that matches the pattern.
+ *
+ * Regex exclude or include data models that matches the pattern.
+ *
+ * Regex to exclude or include projects that matches the pattern.
+ *
+ * Regex to only include/exclude tables that matches the pattern.
+ *
+ * Regex to only include/exclude databases that matches the pattern.
+ *
+ * Regex to only include/exclude schemas that matches the pattern.
+ *
+ * Regex to only fetch topics that matches the pattern.
+ *
+ * Regex exclude pipelines.
+ *
+ * Regex to only fetch MlModels with names matching the pattern.
+ *
+ * Regex to only fetch containers that matches the pattern.
+ *
+ * Regex to only fetch search indexes that matches the pattern.
+ */
+export interface ConfigSchemaFilterPattern {
+    /**
+     * List of strings/regex patterns to match and exclude only database entities that match.
+     */
+    excludes?: string[];
+    /**
+     * List of strings/regex patterns to match and include only database entities that match.
+     */
+    includes?: string[];
+    [property: string]: any;
 }
 
 /**
