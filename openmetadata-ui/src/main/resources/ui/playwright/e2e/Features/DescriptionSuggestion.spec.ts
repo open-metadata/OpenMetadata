@@ -15,7 +15,7 @@ import { TableClass } from '../../support/entity/TableClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import { redirectToHomePage } from '../../utils/common';
-import { createTableSuggestions } from '../../utils/suggestions';
+import { createTableDescriptionSuggestions } from '../../utils/suggestions';
 import { performUserLogin } from '../../utils/user';
 
 const table = new TableClass();
@@ -41,7 +41,7 @@ test.describe('Description Suggestions Table Entity', () => {
 
     // Create suggestions for both users
     for (const entityLink of entityLinkList) {
-      await createTableSuggestions(apiContext, entityLink);
+      await createTableDescriptionSuggestions(apiContext, entityLink);
     }
 
     await afterAction();
@@ -83,7 +83,9 @@ test.describe('Description Suggestions Table Entity', () => {
       await expect(page.getByTestId('close-suggestion')).toBeVisible();
 
       // All Column Suggestions Card should be visible
-      await expect(page.locator('.suggested-description-card')).toHaveCount(6);
+      await expect(
+        page.getByTestId('suggested-SuggestDescription-card')
+      ).toHaveCount(6);
 
       // Close the suggestions
       await page.getByTestId('close-suggestion').click();
@@ -225,8 +227,8 @@ test.describe('Description Suggestions Table Entity', () => {
       await performUserLogin(browser, user2);
 
     for (const entityLink of entityLinkList) {
-      await createTableSuggestions(apiContext2, entityLink);
-      await createTableSuggestions(apiContext3, entityLink);
+      await createTableDescriptionSuggestions(apiContext2, entityLink);
+      await createTableDescriptionSuggestions(apiContext3, entityLink);
     }
 
     await redirectToHomePage(page);
