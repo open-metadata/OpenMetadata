@@ -57,7 +57,6 @@ public class FullyQualifiedName {
   public static String buildHash(String... strings) {
     List<String> list = new ArrayList<>();
     for (String string : strings) {
-      LOG.info("Building hash for string: {}", string);
       list.add(EntityUtil.hash(quoteName(string)));
     }
     return String.join(Entity.SEPARATOR, list);
@@ -65,9 +64,7 @@ public class FullyQualifiedName {
 
   public static String buildHash(String fullyQualifiedName) {
     if (fullyQualifiedName != null && !fullyQualifiedName.isEmpty()) {
-      LOG.info("Building hash for FQN: {}", fullyQualifiedName);
       String[] split = split(fullyQualifiedName);
-      LOG.info("Split[] ==: {}", split);
       return buildHash(split);
     }
     return fullyQualifiedName;
@@ -75,7 +72,6 @@ public class FullyQualifiedName {
 
   public static String[] split(String string) {
     SplitListener listener = new SplitListener();
-    LOG.info("Splitting FQN: {}", string);
     walk(string, listener);
     return listener.split();
   }
