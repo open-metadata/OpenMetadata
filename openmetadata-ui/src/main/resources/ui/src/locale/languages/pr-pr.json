@@ -1174,6 +1174,7 @@
     "service-sso": "{{serviceType}} SSO",
     "service-type": "نوع خدمت",
     "session-plural": "جلسات",
+    "set-default-filters": "تعیین فیلترهای پیشفرض",
     "setting-plural": "تنظیمات",
     "setup-guide": "راهنمای راه‌اندازی",
     "severity": "شدت",
