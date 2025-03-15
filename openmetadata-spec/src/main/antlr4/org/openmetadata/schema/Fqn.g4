@@ -4,25 +4,20 @@ fqn
     : name ('.' name)* EOF
     ;
 
+// A name component of an FQN.
+// - unquotedName: regular name without dots (can contain " quotes)
+// - quotedName: name with dots, enclosed in quotes
 name
-    : NAME                        # unquotedName
-    | NAME_WITH_RESERVED          # quotedName
-    | SIMPLE_QUOTED_NAME          # simpleQuotedName
+    : NAME               # unquotedName
+    | NAME_WITH_RESERVED # quotedName
     ;
 
 NAME
-    : NON_RESERVED+
+    : (NON_RESERVED | QUOTE)+
     ;
 
 NAME_WITH_RESERVED
     : QUOTE NON_RESERVED* (RESERVED NON_RESERVED*)+ QUOTE
-    ;
-
-SIMPLE_QUOTED_NAME
-    : (NON_RESERVED | ESCAPED_QUOTE)*
-    ;
-fragment ESCAPED_QUOTE
-    : '\\' '"'
     ;
 
 QUOTE
@@ -30,7 +25,7 @@ QUOTE
     ;
 
 NON_RESERVED
-    : ~[".\\]
+    : ~[".]
     ;
 
 RESERVED
