@@ -28,6 +28,7 @@ import { PageType } from '../../../generated/system/ui/page';
 import { TagLabel } from '../../../generated/type/schema';
 import LimitWrapper from '../../../hoc/LimitWrapper';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { useCustomPages } from '../../../hooks/useCustomPages';
 import { useFqn } from '../../../hooks/useFqn';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { restoreTopic } from '../../../rest/topicsAPI';
@@ -45,21 +46,20 @@ import { createTagObject, updateTierTag } from '../../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import topicClassBase from '../../../utils/TopicClassBase';
 import { ActivityFeedTab } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
+import { ActivityFeedLayoutType } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import { withActivityFeed } from '../../AppRouter/withActivityFeed';
 import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import QueryViewer from '../../common/QueryViewer/QueryViewer.component';
 import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
 import { DataAssetsHeader } from '../../DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import SampleDataWithMessages from '../../Database/SampleDataWithMessages/SampleDataWithMessages';
 import Lineage from '../../Lineage/Lineage.component';
-
-import { useCustomPages } from '../../../hooks/useCustomPages';
-import { getEntityDetailsPath } from '../../../utils/RouterUtils';
-import QueryViewer from '../../common/QueryViewer/QueryViewer.component';
 import { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../PageLayoutV1/PageLayoutV1';
 import { SourceType } from '../../SearchedData/SearchedData.interface';
 import { TopicDetailsProps } from './TopicDetails.interface';
+
 const TopicDetails: React.FC<TopicDetailsProps> = ({
   updateTopicDetailsState,
   topicDetails,
@@ -287,6 +287,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
           refetchFeed
           entityFeedTotalCount={feedCount.totalCount}
           entityType={EntityType.TOPIC}
+          layoutType={ActivityFeedLayoutType.THREE_PANEL}
           onFeedUpdate={getEntityFeedCount}
           onUpdateEntityDetails={fetchTopic}
           onUpdateFeedCount={handleFeedCount}

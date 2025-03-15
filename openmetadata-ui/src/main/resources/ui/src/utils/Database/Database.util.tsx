@@ -19,6 +19,7 @@ import { Link, useHistory } from 'react-router-dom';
 import { ReactComponent as ExportIcon } from '../../assets/svg/ic-export.svg';
 import { ReactComponent as ImportIcon } from '../../assets/svg/ic-import.svg';
 import { ActivityFeedTab } from '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
+import { ActivityFeedLayoutType } from '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import { CustomPropertyTable } from '../../components/common/CustomPropertyTable/CustomPropertyTable';
 import { ManageButtonItemLabel } from '../../components/common/ManageButtonContentItem/ManageButtonContentItem.component';
 import { OwnerLabel } from '../../components/common/OwnerLabel/OwnerLabel.component';
@@ -176,6 +177,7 @@ export const getDatabasePageBaseTabs = ({
           refetchFeed
           entityFeedTotalCount={feedCount.totalCount}
           entityType={EntityType.DATABASE}
+          layoutType={ActivityFeedLayoutType.THREE_PANEL}
           onFeedUpdate={getEntityFeedCount}
           onUpdateEntityDetails={getDetailsByFQN}
           onUpdateFeedCount={handleFeedCount}

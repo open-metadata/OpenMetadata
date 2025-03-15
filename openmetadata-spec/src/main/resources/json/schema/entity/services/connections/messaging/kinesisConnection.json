@@ -24,6 +24,11 @@
         "title": "AWS Credentials Configuration",
         "$ref": "../../../../security/credentials/awsCredentials.json"
       },
+      "topicFilterPattern": {
+        "description": "Regex to only fetch topics that matches the pattern.",
+        "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern",
+        "title": "Default Topic Filter Pattern"
+      },
       "supportsMetadataExtraction": {
         "title": "Supports Metadata Extraction",
         "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"

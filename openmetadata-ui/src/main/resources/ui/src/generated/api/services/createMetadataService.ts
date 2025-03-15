@@ -64,6 +64,10 @@ export interface MetadataConnection {
  */
 export interface Connection {
     /**
+     * Regex to only include/exclude databases that matches the pattern.
+     */
+    databaseFilterPattern?: DatabaseFilterPatternClass;
+    /**
      * Enable encryption for the Amundsen Neo4j Connection.
      */
     encrypted?: boolean;
@@ -87,8 +91,16 @@ export interface Connection {
      *
      * password to connect  to the Atlas.
      */
-    password?:                   string;
+    password?: string;
+    /**
+     * Regex to only include/exclude schemas that matches the pattern.
+     */
+    schemaFilterPattern?:        DatabaseFilterPatternClass;
     supportsMetadataExtraction?: boolean;
+    /**
+     * Regex to only include/exclude tables that matches the pattern.
+     */
+    tableFilterPattern?: DatabaseFilterPatternClass;
     /**
      * Service Type
      */
@@ -364,6 +376,10 @@ export interface AlationDatabaseConnection {
      */
     database?: string;
     /**
+     * Regex to only include/exclude databases that matches the pattern.
+     */
+    databaseFilterPattern?: FilterPattern;
+    /**
      * Host and port of the source service.
      *
      * Host and port of the MySQL service.
@@ -375,6 +391,10 @@ export interface AlationDatabaseConnection {
      */
     ingestAllDatabases?:      boolean;
     sampleDataStorageConfig?: SampleDataStorageConfig;
+    /**
+     * Regex to only include/exclude schemas that matches the pattern.
+     */
+    schemaFilterPattern?: DefaultSchemaFilterPattern;
     /**
      * SQLAlchemy driver scheme options.
      */
@@ -392,6 +412,10 @@ export interface AlationDatabaseConnection {
     supportsProfiler?:           boolean;
     supportsQueryComment?:       boolean;
     supportsUsageExtraction?:    boolean;
+    /**
+     * Regex to only include/exclude tables that matches the pattern.
+     */
+    tableFilterPattern?: DatabaseFilterPatternClass;
     /**
      * Service Type
      */
@@ -512,6 +536,27 @@ export interface AzureCredentials {
 }
 
 /**
+ * Regex to only include/exclude databases that matches the pattern.
+ *
+ * Regex to only fetch entities that matches the pattern.
+ *
+ * Regex to only include/exclude schemas that matches the pattern.
+ *
+ * Regex to only include/exclude tables that matches the pattern.
+ */
+export interface FilterPattern {
+    /**
+     * List of strings/regex patterns to match and exclude only database entities that match.
+     */
+    excludes?: string[];
+    /**
+     * List of strings/regex patterns to match and include only database entities that match.
+     */
+    includes?: string[];
+    [property: string]: any;
+}
+
+/**
  * Storage config to store sample data
  */
 export interface SampleDataStorageConfig {
@@ -590,6 +635,15 @@ export interface AwsCredentials {
 }
 
 /**
+ * Regex to only include/exclude schemas that matches the pattern.
+ */
+export interface DefaultSchemaFilterPattern {
+    excludes?: string[];
+    includes?: string[];
+    [property: string]: any;
+}
+
+/**
  * SQLAlchemy driver scheme options.
  */
 export enum Scheme {
@@ -632,6 +686,26 @@ export enum SSLMode {
     Require = "require",
     VerifyCA = "verify-ca",
     VerifyFull = "verify-full",
+}
+
+/**
+ * Regex to only include/exclude databases that matches the pattern.
+ *
+ * Regex to only fetch entities that matches the pattern.
+ *
+ * Regex to only include/exclude schemas that matches the pattern.
+ *
+ * Regex to only include/exclude tables that matches the pattern.
+ */
+export interface DatabaseFilterPatternClass {
+    /**
+     * List of strings/regex patterns to match and exclude only database entities that match.
+     */
+    excludes?: string[];
+    /**
+     * List of strings/regex patterns to match and include only database entities that match.
+     */
+    includes?: string[];
 }
 
 /**

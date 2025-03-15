@@ -23,6 +23,11 @@ export enum ActivityFeedTabs {
   TASKS = 'tasks',
 }
 
+export enum ActivityFeedLayoutType {
+  TWO_PANEL = 'TWO_PANEL',
+  THREE_PANEL = 'THREE_PANEL',
+}
+
 export interface ActivityFeedTabBasicProps {
   isForFeedTab?: boolean;
   refetchFeed?: boolean;
@@ -33,6 +38,7 @@ export interface ActivityFeedTabBasicProps {
   onUpdateEntityDetails?: () => void;
   owners?: EntityReference[];
   subTab?: ActivityFeedTabs;
+  layoutType?: ActivityFeedLayoutType;
 }
 
 export type ActivityFeedTabProps = ActivityFeedTabBasicProps &

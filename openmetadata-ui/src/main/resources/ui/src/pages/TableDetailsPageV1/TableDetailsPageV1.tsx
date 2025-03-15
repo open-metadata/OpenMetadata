@@ -50,7 +50,10 @@ import {
 } from '../../enums/entity.enum';
 import { Tag } from '../../generated/entity/classification/tag';
 import { Table, TableType } from '../../generated/entity/data/table';
-import { Suggestion } from '../../generated/entity/feed/suggestion';
+import {
+  Suggestion,
+  SuggestionType,
+} from '../../generated/entity/feed/suggestion';
 import { PageType } from '../../generated/system/ui/page';
 import { TestSummary } from '../../generated/tests/testCase';
 import { TagLabel } from '../../generated/type/tagLabel';
@@ -665,7 +668,7 @@ const TableDetailsPageV1: React.FC = () => {
     }));
   }, []);
 
-  const updateDescriptionFromSuggestions = useCallback(
+  const updateDescriptionTagFromSuggestions = useCallback(
     (suggestion: Suggestion) => {
       setTableDetails((prev) => {
         if (!prev) {
@@ -684,14 +687,18 @@ const TableDetailsPageV1: React.FC = () => {
         if (!activeCol) {
           return {
             ...prev,
-            description: suggestion.description,
+            ...(suggestion.type === SuggestionType.SuggestDescription
+              ? { description: suggestion.description }
+              : { tags: suggestion.tagLabels }),
           };
         } else {
           const updatedColumns = prev.columns.map((column) => {
             if (column.fullyQualifiedName === activeCol.fullyQualifiedName) {
               return {
                 ...column,
-                description: suggestion.description,
+                ...(suggestion.type === SuggestionType.SuggestDescription
+                  ? { description: suggestion.description }
+                  : { tags: suggestion.tagLabels }),
               };
             } else {
               return column;
@@ -727,7 +734,7 @@ const TableDetailsPageV1: React.FC = () => {
   useSub(
     'updateDetails',
     (suggestion: Suggestion) => {
-      updateDescriptionFromSuggestions(suggestion);
+      updateDescriptionTagFromSuggestions(suggestion);
     },
     [tableDetails]
   );
