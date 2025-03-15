@@ -202,9 +202,30 @@ class SqlColumnHandlerMixin:
             ]
         return Column(**parsed_string)
 
+    def get_columns(
+        self,
+        schema_name: str,
+        table_type: str,
+        table_name: str,
+        db_name: str,
+        inspector: Inspector,
+    ):
+        """
+        Get columns list
+        """
+
+        return inspector.get_columns(
+            table_name, schema_name, table_type=table_type, db_name=db_name
+        )
+
     @calculate_execution_time()
     def get_columns_and_constraints(  # pylint: disable=too-many-locals
-        self, schema_name: str, table_name: str, db_name: str, inspector: Inspector
+        self,
+        schema_name: str,
+        table_type: str,
+        table_name: str,
+        db_name: str,
+        inspector: Inspector,
     ) -> Tuple[
         Optional[List[Column]], Optional[List[TableConstraint]], Optional[List[Dict]]
     ]:
@@ -246,7 +267,9 @@ class SqlColumnHandlerMixin:
 
         table_columns = []
 
-        columns = inspector.get_columns(table_name, schema_name, db_name=db_name)
+        columns = self.get_columns(
+            schema_name, table_type, table_name, db_name, inspector
+        )
         for column in columns:
             try:
                 children = None
@@ -284,11 +307,13 @@ class SqlColumnHandlerMixin:
 
                     om_column = Column(
                         name=ColumnName(
-                            root=column["name"]
-                            # Passing whitespace if column name is an empty string
-                            # since pydantic doesn't accept empty string
-                            if column["name"]
-                            else " "
+                            root=(
+                                column["name"]
+                                # Passing whitespace if column name is an empty string
+                                # since pydantic doesn't accept empty string
+                                if column["name"]
+                                else " "
+                            )
                         ),
                         description=column.get("comment"),
                         dataType=col_type,

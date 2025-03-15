@@ -90,7 +90,13 @@
       "title": "Include Transient Tables",
       "description": "Optional configuration for ingestion of TRANSIENT tables, By default, it will skip the TRANSIENT tables.",
       "type": "boolean",
-      "default": true
+      "default": false
+    },
+    "includeStreams": {
+      "title": "Include Streams",
+      "description": "Optional configuration for ingestion of streams, By default, it will skip the streams.",
+      "type": "boolean",
+      "default": false
     },
     "clientSessionKeepAlive": {
       "title": "Client Session Keep Alive",
