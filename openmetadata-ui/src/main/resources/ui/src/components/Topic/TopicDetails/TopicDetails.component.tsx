@@ -41,6 +41,7 @@ import {
   getEntityName,
   getEntityReferenceFromEntity,
 } from '../../../utils/EntityUtils';
+import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import { getTagsWithoutTier, getTierTags } from '../../../utils/TableUtils';
 import { createTagObject, updateTierTag } from '../../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';

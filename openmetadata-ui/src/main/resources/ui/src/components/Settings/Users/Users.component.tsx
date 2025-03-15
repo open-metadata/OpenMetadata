@@ -28,6 +28,7 @@ import { useFqn } from '../../../hooks/useFqn';
 import { searchData } from '../../../rest/miscAPI';
 import { restoreUser } from '../../../rest/userAPI';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
+import { getUserPath } from '../../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import ActivityFeedProvider from '../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import { ActivityFeedTab } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
