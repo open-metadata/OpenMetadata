@@ -14,18 +14,10 @@
 import { Popover, Skeleton, Space, Tag, Typography } from 'antd';
 import classNamesFunc from 'classnames';
 import { isEmpty, isUndefined, upperFirst } from 'lodash';
-import React, {
-  FunctionComponent,
-  useCallback,
-  useEffect,
-  useState,
-} from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { NO_DATA_PLACEHOLDER } from '../../../../../constants/constants';
-import {
-  IngestionPipeline,
-  PipelineStatus,
-} from '../../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { PipelineStatus } from '../../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { getRunHistoryForPipeline } from '../../../../../rest/ingestionPipelineAPI';
 import {
   formatDateTime,
@@ -34,28 +26,21 @@ import {
 } from '../../../../../utils/date-time/DateTimeUtils';
 import IngestionRunDetailsModal from '../../../../Modals/IngestionRunDetailsModal/IngestionRunDetailsModal';
 import './ingestion-recent-run.style.less';
+import { IngestionRecentRunsProps } from './IngestionRecentRuns.interface';
 
-interface Props {
-  ingestion?: IngestionPipeline;
-  classNames?: string;
-  appRuns?: PipelineStatus[];
-  fetchStatus?: boolean;
-  pipelineIdToFetchStatus?: string;
-  handlePipelineIdToFetchStatus?: (pipelineId?: string) => void;
-}
 const queryParams = {
   startTs: getEpochMillisForPastDays(1),
   endTs: getCurrentMillis(),
 };
 
-export const IngestionRecentRuns: FunctionComponent<Props> = ({
+export const IngestionRecentRuns = ({
   ingestion,
   classNames,
   appRuns,
   fetchStatus = true,
   pipelineIdToFetchStatus = '',
   handlePipelineIdToFetchStatus,
-}: Props) => {
+}: Readonly<IngestionRecentRunsProps>) => {
   const { t } = useTranslation();
   const [recentRunStatus, setRecentRunStatus] = useState<PipelineStatus[]>([]);
   const [loading, setLoading] = useState(true);
@@ -64,30 +49,29 @@ export const IngestionRecentRuns: FunctionComponent<Props> = ({
   const fetchPipelineStatus = useCallback(async () => {
     setLoading(true);
     try {
-      const response = await getRunHistoryForPipeline(
-        ingestion?.fullyQualifiedName ?? '',
-        queryParams
-      );
+      if (fetchStatus && !isUndefined(ingestion?.fullyQualifiedName)) {
+        const response = await getRunHistoryForPipeline(
+          ingestion.fullyQualifiedName,
+          queryParams
+        );
 
-      const runs = response.data.splice(0, 5).reverse() ?? [];
+        const runs = response.data.splice(0, 5).reverse() ?? [];
 
-      setRecentRunStatus(
-        runs.length === 0 && ingestion?.pipelineStatuses
-          ? [ingestion.pipelineStatuses]
-          : runs
-      );
+        setRecentRunStatus(
+          runs.length === 0 && ingestion?.pipelineStatuses
+            ? [ingestion.pipelineStatuses]
+            : runs
+        );
+      } else {
+        setRecentRunStatus(appRuns?.splice(0, 5).reverse() ?? []);
+      }
     } finally {
       setLoading(false);
     }
   }, [ingestion, ingestion?.fullyQualifiedName]);
 
   useEffect(() => {
-    if (fetchStatus && ingestion?.fullyQualifiedName) {
-      fetchPipelineStatus();
-    } else if (!isUndefined(appRuns)) {
-      setRecentRunStatus(appRuns.splice(0, 5).reverse() ?? []);
-      setLoading(false);
-    }
+    fetchPipelineStatus();
   }, [ingestion, ingestion?.fullyQualifiedName, appRuns]);
 
   useEffect(() => {

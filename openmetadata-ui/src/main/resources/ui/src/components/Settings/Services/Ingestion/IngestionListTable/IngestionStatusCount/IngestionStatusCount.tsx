@@ -13,16 +13,14 @@
 import { Col, Row, Typography } from 'antd';
 import classNames from 'classnames';
 import React, { useMemo } from 'react';
-import { StepSummary } from '../../../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { getIngestionStatusCountData } from '../../../../../../utils/IngestionUtils';
 import './ingestion-status-count.less';
+import { IngestionStatusCountProps } from './IngestionStatusCount.interface';
 
-interface Props {
-  summary?: StepSummary;
-  runId?: string;
-}
-
-function IngestionStatusCount({ summary, runId }: Props) {
+function IngestionStatusCount({
+  summary,
+  runId,
+}: Readonly<IngestionStatusCountProps>) {
   const records = useMemo(
     () => getIngestionStatusCountData(summary),
     [summary]

@@ -21,14 +21,6 @@ import { DISABLED } from '../../../../../constants/constants';
 import { usePermissionProvider } from '../../../../../context/PermissionProvider/PermissionProvider';
 import { ServiceCategory } from '../../../../../enums/service.enum';
 import {
-  IngestionPipeline,
-  PipelineType,
-} from '../../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
-import { Paging } from '../../../../../generated/type/paging';
-import { UsePagingInterface } from '../../../../../hooks/paging/usePaging';
-import { UseAirflowStatusProps } from '../../../../../hooks/useAirflowStatus';
-import { ServicesType } from '../../../../../interface/service.interface';
-import {
   deployIngestionPipelineById,
   enableDisableIngestionPipelineById,
   triggerIngestionPipelineById,
@@ -37,30 +29,11 @@ import {
   showErrorToast,
   showSuccessToast,
 } from '../../../../../utils/ToastUtils';
-import { PagingHandlerParams } from '../../../../common/NextPrevious/NextPrevious.interface';
 import ButtonSkeleton from '../../../../common/Skeleton/CommonSkeletons/ControlElements/ControlElements.component';
 import AddIngestionButton from '../AddIngestionButton.component';
 import IngestionListTable from '../IngestionListTable/IngestionListTable';
 import './metadata-agents-widget.less';
-
-export interface Props {
-  ingestionPagingInfo: UsePagingInterface;
-  serviceDetails: ServicesType;
-  serviceName: string;
-  ingestionPipelineList: Array<IngestionPipeline>;
-  pipelineType?: PipelineType;
-  isLoading?: boolean;
-  searchText: string;
-  airflowInformation: UseAirflowStatusProps;
-  onIngestionWorkflowsUpdate: (
-    paging?: Omit<Paging, 'total'>,
-    limit?: number
-  ) => void;
-  handleIngestionListUpdate: (
-    ingestionList: React.SetStateAction<IngestionPipeline[]>
-  ) => void;
-  onPageChange: ({ cursorType, currentPage }: PagingHandlerParams) => void;
-}
+import { MetadataAgentsWidgetProps } from './MetadataAgentsWidget.interface';
 
 function MetadataAgentsWidget({
   serviceName,
@@ -74,7 +47,7 @@ function MetadataAgentsWidget({
   onPageChange,
   airflowInformation,
   searchText,
-}: Props) {
+}: MetadataAgentsWidgetProps) {
   const { t } = useTranslation();
   const { serviceCategory } = useParams<{
     serviceCategory: ServiceCategory;
