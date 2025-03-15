@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.TEST_AUTH_HEADERS;
 
@@ -42,7 +43,9 @@ import org.openmetadata.schema.api.data.*;
 import org.openmetadata.schema.api.lineage.LineageSettings;
 import org.openmetadata.schema.api.search.AssetTypeConfiguration;
 import org.openmetadata.schema.api.search.FieldBoost;
+import org.openmetadata.schema.api.search.FieldValueBoost;
 import org.openmetadata.schema.api.search.SearchSettings;
+import org.openmetadata.schema.api.search.TermBoost;
 import org.openmetadata.schema.api.services.CreateDashboardService;
 import org.openmetadata.schema.api.services.CreateDatabaseService;
 import org.openmetadata.schema.api.services.CreateMessagingService;
@@ -67,6 +70,7 @@ import org.openmetadata.schema.util.EntitiesCount;
 import org.openmetadata.schema.util.ServicesCount;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.OpenMetadataApplicationTest;
+import org.openmetadata.service.exception.SystemSettingsException;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.dashboards.DashboardResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
@@ -755,6 +759,152 @@ public class SystemResourceTest extends OpenMetadataApplicationTest {
     updatedProfilerSettings =
         JsonUtils.convertValue(getProfilerConfig().getConfigValue(), ProfilerConfiguration.class);
     assertEquals(profilerConfiguration, updatedProfilerSettings);
+  }
+
+  @Test
+  void testSearchSettingsValidation() throws HttpResponseException {
+    // Retrieve current settings
+    Settings searchSettings = getSystemConfig(SettingsType.SEARCH_SETTINGS);
+    SearchSettings searchConfig =
+        JsonUtils.convertValue(searchSettings.getConfigValue(), SearchSettings.class);
+
+    // Test maxAggregateSize validation
+    searchConfig.getGlobalSettings().setMaxAggregateSize(50); // Below minimum
+    Settings updatedSettings =
+        new Settings().withConfigType(SettingsType.SEARCH_SETTINGS).withConfigValue(searchConfig);
+    try {
+      updateSystemConfig(updatedSettings);
+      fail("Expected SystemSettingsException for invalid maxAggregateSize");
+    } catch (SystemSettingsException e) {
+      assertTrue(e.getMessage().contains("maxAggregateSize must be between 100 and 10000"));
+    }
+
+    searchConfig.getGlobalSettings().setMaxAggregateSize(15000); // Above maximum
+    updatedSettings =
+        new Settings().withConfigType(SettingsType.SEARCH_SETTINGS).withConfigValue(searchConfig);
+    try {
+      updateSystemConfig(updatedSettings);
+      fail("Expected SystemSettingsException for invalid maxAggregateSize");
+    } catch (SystemSettingsException e) {
+      assertTrue(e.getMessage().contains("maxAggregateSize must be between 100 and 10000"));
+    }
+
+    // Test maxResultHits validation
+    searchConfig.getGlobalSettings().setMaxAggregateSize(1000); // Reset to valid value
+    searchConfig.getGlobalSettings().setMaxResultHits(50); // Below minimum
+    updatedSettings =
+        new Settings().withConfigType(SettingsType.SEARCH_SETTINGS).withConfigValue(searchConfig);
+    try {
+      updateSystemConfig(updatedSettings);
+      fail("Expected SystemSettingsException for invalid maxResultHits");
+    } catch (SystemSettingsException e) {
+      assertTrue(e.getMessage().contains("maxResultHits must be between 100 and 10000"));
+    }
+
+    // Test maxAnalyzedOffset validation
+    searchConfig.getGlobalSettings().setMaxResultHits(1000); // Reset to valid value
+    searchConfig.getGlobalSettings().setMaxAnalyzedOffset(500); // Below minimum
+    updatedSettings =
+        new Settings().withConfigType(SettingsType.SEARCH_SETTINGS).withConfigValue(searchConfig);
+    try {
+      updateSystemConfig(updatedSettings);
+      fail("Expected SystemSettingsException for invalid maxAnalyzedOffset");
+    } catch (SystemSettingsException e) {
+      assertTrue(e.getMessage().contains("maxAnalyzedOffset must be between 1000 and 1000000"));
+    }
+
+    // Test valid values
+    searchConfig.getGlobalSettings().setMaxAggregateSize(5000);
+    searchConfig.getGlobalSettings().setMaxResultHits(5000);
+    searchConfig.getGlobalSettings().setMaxAnalyzedOffset(5000);
+    updatedSettings =
+        new Settings().withConfigType(SettingsType.SEARCH_SETTINGS).withConfigValue(searchConfig);
+    updateSystemConfig(updatedSettings);
+
+    // Verify settings were updated
+    Settings retrievedSettings = getSystemConfig(SettingsType.SEARCH_SETTINGS);
+    SearchSettings updatedSearchConfig =
+        JsonUtils.convertValue(retrievedSettings.getConfigValue(), SearchSettings.class);
+    assertEquals(5000, updatedSearchConfig.getGlobalSettings().getMaxAggregateSize());
+    assertEquals(5000, updatedSearchConfig.getGlobalSettings().getMaxResultHits());
+    assertEquals(5000, updatedSearchConfig.getGlobalSettings().getMaxAnalyzedOffset());
+  }
+
+  @Test
+  void testCacheInvalidation() throws HttpResponseException {
+    // First, get the initial settings
+    Settings searchSettings = getSystemConfig(SettingsType.SEARCH_SETTINGS);
+    SearchSettings originalSearchConfig =
+        JsonUtils.convertValue(searchSettings.getConfigValue(), SearchSettings.class);
+
+    // Modify the settings
+    originalSearchConfig.getGlobalSettings().setMaxAggregateSize(5000);
+    Settings updatedSettings =
+        new Settings()
+            .withConfigType(SettingsType.SEARCH_SETTINGS)
+            .withConfigValue(originalSearchConfig);
+
+    // Update the settings
+    updateSystemConfig(updatedSettings);
+
+    // Get the settings directly from cache using SettingsCache
+    SearchSettings cachedSettings =
+        SettingsCache.getSetting(SettingsType.SEARCH_SETTINGS, SearchSettings.class);
+
+    // Verify that the cached value has been updated
+    assertEquals(
+        5000,
+        cachedSettings.getGlobalSettings().getMaxAggregateSize(),
+        "Cache should be invalidated and updated value should be fetched");
+  }
+
+  @Test
+  void testTermBoostsAndFieldValueBoostsOverride() throws HttpResponseException {
+    // Retrieve current settings
+    Settings searchSettings = getSystemConfig(SettingsType.SEARCH_SETTINGS);
+    SearchSettings searchConfig =
+        JsonUtils.convertValue(searchSettings.getConfigValue(), SearchSettings.class);
+
+    // Create new term boosts and field value boosts
+    List<TermBoost> termBoosts = new ArrayList<>();
+    termBoosts.add(
+        new TermBoost().withField("custom_term").withValue("term_value").withBoost(15.0));
+
+    List<FieldValueBoost> fieldValueBoosts = new ArrayList<>();
+    fieldValueBoosts.add(new FieldValueBoost().withField("custom_field").withFactor(25.0));
+
+    // Set the new boosts in the settings
+    searchConfig.getGlobalSettings().setTermBoosts(termBoosts);
+    searchConfig.getGlobalSettings().setFieldValueBoosts(fieldValueBoosts);
+
+    // Update the settings
+    Settings updatedSettings =
+        new Settings().withConfigType(SettingsType.SEARCH_SETTINGS).withConfigValue(searchConfig);
+    updateSystemConfig(updatedSettings);
+
+    // Retrieve the updated settings
+    Settings retrievedSettings = getSystemConfig(SettingsType.SEARCH_SETTINGS);
+    SearchSettings updatedSearchConfig =
+        JsonUtils.convertValue(retrievedSettings.getConfigValue(), SearchSettings.class);
+
+    // Verify that term boosts and field value boosts have been updated
+    assertNotNull(updatedSearchConfig.getGlobalSettings().getTermBoosts());
+    assertFalse(updatedSearchConfig.getGlobalSettings().getTermBoosts().isEmpty());
+    assertEquals(1, updatedSearchConfig.getGlobalSettings().getTermBoosts().size());
+    assertEquals(
+        "custom_term", updatedSearchConfig.getGlobalSettings().getTermBoosts().get(0).getField());
+    assertEquals(
+        "term_value", updatedSearchConfig.getGlobalSettings().getTermBoosts().get(0).getValue());
+    assertEquals(15.0, updatedSearchConfig.getGlobalSettings().getTermBoosts().get(0).getBoost());
+
+    assertNotNull(updatedSearchConfig.getGlobalSettings().getFieldValueBoosts());
+    assertFalse(updatedSearchConfig.getGlobalSettings().getFieldValueBoosts().isEmpty());
+    assertEquals(1, updatedSearchConfig.getGlobalSettings().getFieldValueBoosts().size());
+    assertEquals(
+        "custom_field",
+        updatedSearchConfig.getGlobalSettings().getFieldValueBoosts().get(0).getField());
+    assertEquals(
+        25.0, updatedSearchConfig.getGlobalSettings().getFieldValueBoosts().get(0).getFactor());
   }
 
   private static ValidationResponse getValidation() throws HttpResponseException {

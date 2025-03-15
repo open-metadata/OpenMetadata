@@ -34,8 +34,6 @@ import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
-import org.openmetadata.schema.api.search.AssetTypeConfiguration;
-import org.openmetadata.schema.api.search.GlobalSettings;
 import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.auth.EmailRequest;
 import org.openmetadata.schema.settings.Settings;
@@ -55,6 +53,7 @@ import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.SystemRepository;
 import org.openmetadata.service.resources.Collection;
+import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.JwtFilter;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
@@ -79,6 +78,7 @@ public class SystemResource {
   private PipelineServiceClientInterface pipelineServiceClient;
   private JwtFilter jwtFilter;
   private SearchSettings defaultSearchSettingsCache = new SearchSettings();
+  private SearchSettingsHandler searchSettingsHandler = new SearchSettingsHandler();
 
   public SystemResource(Authorizer authorizer) {
     this.systemRepository = Entity.getSystemRepository();
@@ -242,55 +242,15 @@ public class SystemResource {
       SearchSettings defaultSearchSettings = loadDefaultSearchSettings(false);
       SearchSettings incomingSearchSettings =
           JsonUtils.convertValue(settingName.getConfigValue(), SearchSettings.class);
-
-      GlobalSettings defaultGlobalSettings = defaultSearchSettings.getGlobalSettings();
-      GlobalSettings incomingGlobalSettings = incomingSearchSettings.getGlobalSettings();
-
-      GlobalSettings mergedGlobalSettings = new GlobalSettings();
-
-      mergedGlobalSettings.setMaxAggregateSize(
-          incomingGlobalSettings != null && incomingGlobalSettings.getMaxAggregateSize() != null
-              ? incomingGlobalSettings.getMaxAggregateSize()
-              : defaultGlobalSettings.getMaxAggregateSize());
-
-      mergedGlobalSettings.setMaxResultHits(
-          incomingGlobalSettings != null && incomingGlobalSettings.getMaxResultHits() != null
-              ? incomingGlobalSettings.getMaxResultHits()
-              : defaultGlobalSettings.getMaxResultHits());
-
-      mergedGlobalSettings.setMaxAnalyzedOffset(
-          incomingGlobalSettings != null && incomingGlobalSettings.getMaxAnalyzedOffset() != null
-              ? incomingGlobalSettings.getMaxAnalyzedOffset()
-              : defaultGlobalSettings.getMaxAnalyzedOffset());
-
-      mergedGlobalSettings.setAggregations(defaultGlobalSettings.getAggregations());
-      mergedGlobalSettings.setHighlightFields(defaultGlobalSettings.getHighlightFields());
-
-      incomingSearchSettings.setGlobalSettings(mergedGlobalSettings);
-
-      if (incomingSearchSettings.getDefaultConfiguration() == null) {
-        incomingSearchSettings.setDefaultConfiguration(
-            defaultSearchSettings.getDefaultConfiguration());
-      }
-
-      List<AssetTypeConfiguration> defaultAssetTypes =
-          defaultSearchSettings.getAssetTypeConfigurations();
-      List<AssetTypeConfiguration> incomingAssetTypes =
-          incomingSearchSettings.getAssetTypeConfigurations();
-
-      for (AssetTypeConfiguration defaultConfig : defaultAssetTypes) {
-        String assetType = defaultConfig.getAssetType().toLowerCase();
-        boolean exists =
-            incomingAssetTypes.stream()
-                .anyMatch(config -> config.getAssetType().equalsIgnoreCase(assetType));
-        if (!exists) {
-          incomingAssetTypes.add(defaultConfig);
-        }
-      }
-
-      settingName.setConfigValue(incomingSearchSettings);
+      searchSettingsHandler.validateGlobalSettings(incomingSearchSettings.getGlobalSettings());
+      SearchSettings mergedSettings =
+          searchSettingsHandler.mergeSearchSettings(defaultSearchSettings, incomingSearchSettings);
+      settingName.setConfigValue(mergedSettings);
     }
-    return systemRepository.createOrUpdate(settingName);
+    Response response = systemRepository.createOrUpdate(settingName);
+    // Explicitly invalidate the cache to ensure latest settings are fetched
+    SettingsCache.invalidateSettings(settingName.getConfigType().value());
+    return response;
   }
 
   @PUT

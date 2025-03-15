@@ -205,9 +205,7 @@ public class ElasticSearchSourceBuilderFactory
           Entity.DASHBOARD_DATA_MODEL,
           "data_product_search_index",
           "api_endpoint_search_index",
-          Entity.API_ENDPOINT,
-          "all",
-          "dataAsset" -> true;
+          Entity.API_ENDPOINT -> true;
       default -> false;
     };
   }

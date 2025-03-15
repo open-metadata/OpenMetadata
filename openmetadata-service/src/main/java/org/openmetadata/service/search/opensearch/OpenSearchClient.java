@@ -1699,15 +1699,11 @@ public class OpenSearchClient implements SearchClient {
       String indexName, String docId, Map<String, Object> doc, String scriptTxt) {
     if (isClientAvailable) {
       UpdateRequest updateRequest = new UpdateRequest(indexName, docId);
-      // Create script with proper parameters
-      Map<String, Object> parameters = new HashMap<>(doc);
       Script script =
-          new Script(ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, scriptTxt, parameters);
-
-      updateRequest.script(script);
+          new Script(
+              ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, scriptTxt, JsonUtils.getMap(doc));
       updateRequest.scriptedUpsert(true);
-      updateRequest.docAsUpsert(true);
-      updateRequest.doc(doc, XContentType.JSON);
+      updateRequest.script(script);
       updateOpenSearch(updateRequest);
     }
   }
