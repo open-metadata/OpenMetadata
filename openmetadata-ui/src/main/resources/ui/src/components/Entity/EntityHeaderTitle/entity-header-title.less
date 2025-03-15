@@ -12,8 +12,7 @@
  */
 @import (reference) url('../../../styles/variables.less');
 
-.ant-col.entity-header-content {
-  width: calc(100% - 100px);
+.entity-header-title {
   .ant-typography-ellipsis.entity-header-name {
     margin-bottom: 0px;
     display: block;
@@ -21,6 +20,9 @@
   }
   .ant-typography-ellipsis.entity-header-display-name {
     font-size: 16px;
+  }
+  .ant-col.entity-header-content {
+    max-width: calc(100% - 100px);
   }
 }
 

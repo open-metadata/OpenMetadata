@@ -17,7 +17,11 @@ export interface MatillionConnection {
     /**
      * Matillion Auth Configuration
      */
-    connection?:                 Matillion;
+    connection?: Matillion;
+    /**
+     * Regex exclude pipelines.
+     */
+    pipelineFilterPattern?:      FilterPattern;
     supportsMetadataExtraction?: boolean;
     /**
      * Service Type
@@ -70,6 +74,22 @@ export interface Config {
 
 export enum Type {
     MatillionETL = "MatillionETL",
+}
+
+/**
+ * Regex exclude pipelines.
+ *
+ * Regex to only fetch entities that matches the pattern.
+ */
+export interface FilterPattern {
+    /**
+     * List of strings/regex patterns to match and exclude only database entities that match.
+     */
+    excludes?: string[];
+    /**
+     * List of strings/regex patterns to match and include only database entities that match.
+     */
+    includes?: string[];
 }
 
 /**

@@ -13,7 +13,7 @@ name: py-tests
 on:
   workflow_dispatch:
   pull_request_target:
-    types: [labeled, opened, synchronize, reopened]
+    types: [labeled, opened, synchronize, reopened, ready_for_review]
     paths:
       - "ingestion/**"
       - "openmetadata-service/**"
@@ -32,6 +32,7 @@ jobs:
   py-run-tests:
     timeout-minutes: 180
     runs-on: ubuntu-latest
+    if: ${{ !github.event.pull_request.draft }}
     strategy:
       fail-fast: false
       matrix:

@@ -69,7 +69,7 @@ const EntityHeaderTitle = ({
   const content = (
     <Row
       align="middle"
-      className={className}
+      className={classNames('entity-header-title', className)}
       data-testid={`${serviceName}-${name}`}
       gutter={12}
       wrap={false}>

@@ -78,6 +78,7 @@ public class MainWorkflow {
     private final Map<String, WorkflowNodeDefinitionInterface> nodeMap;
     private final Map<String, List<String>> incomingEdgesMap;
     private final Set<String> globalVariables;
+    private final String workflowTriggerType;
 
     public WorkflowGraph(WorkflowDefinition workflowDefinition) {
       Map<String, WorkflowNodeDefinitionInterface> nodeMap = new HashMap<>();
@@ -96,6 +97,7 @@ public class MainWorkflow {
       this.nodeMap = nodeMap;
       this.incomingEdgesMap = incomingEdgesMap;
       this.globalVariables = workflowDefinition.getTrigger().getOutput();
+      this.workflowTriggerType = workflowDefinition.getTrigger().getType();
     }
 
     private void validateNode(WorkflowNodeDefinitionInterface nodeDefinition) {
@@ -112,7 +114,7 @@ public class MainWorkflow {
         String namespace = entry.getValue();
 
         if (namespace.equals(GLOBAL_NAMESPACE)) {
-          if (!validateGlobalContainsVariable(variable)) {
+          if (!(validateGlobalContainsVariable(variable) || triggerIsNoOp())) {
             throw new RuntimeException(
                 String.format(
                     "Invalid Workflow: [%s] is expecting '%s' to be a global variable, but it is not present.",
@@ -137,6 +139,10 @@ public class MainWorkflow {
 
     private boolean validateGlobalContainsVariable(String variable) {
       return globalVariables.contains(variable);
+    }
+
+    private boolean triggerIsNoOp() {
+      return workflowTriggerType.equals("noOp");
     }
 
     private boolean validateNodeOutputsVariable(String nodeName, String variable) {
