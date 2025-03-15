@@ -6,6 +6,7 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import java.io.IOException;
 import java.util.UUID;
 import javax.validation.Valid;
 import javax.ws.rs.Consumes;
@@ -21,8 +22,10 @@ import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import org.openmetadata.schema.entity.data.CreateQueryCostRecord;
 import org.openmetadata.schema.entity.data.QueryCostRecord;
+import org.openmetadata.schema.entity.data.QueryCostSearchResult;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.QueryCostRepository;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityTimeSeriesResource;
@@ -105,5 +108,33 @@ public class QueryCostResource
     QueryCostRecord queryCostRecord =
         mapper.createToEntity(createQueryCostRecord, securityContext.getUserPrincipal().getName());
     return create(queryCostRecord, queryCostRecord.getQueryReference().getFullyQualifiedName());
+  }
+
+  @GET
+  @Path("/service/{serviceName}")
+  @Operation(
+      operationId = "getQueryCostByService",
+      summary = "Get Query Cost By Service",
+      description = "Get Query Cost By Service",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Create query cost record",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = CreateQueryCostRecord.class)))
+      })
+  public QueryCostSearchResult getQueryCostAggData(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @PathParam("serviceName") String serviceName)
+      throws IOException {
+    OperationContext operationContext =
+        new OperationContext(Entity.QUERY, MetadataOperation.VIEW_QUERIES);
+    ListFilter filter = new ListFilter(null);
+    ResourceContext resourceContext = filter.getResourceContext(Entity.QUERY);
+    authorizer.authorize(securityContext, operationContext, resourceContext);
+    return repository.getQueryCostAggData(serviceName);
   }
 }

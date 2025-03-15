@@ -253,7 +253,7 @@ public class QueryRepository extends EntityRepository<Query> {
           "users",
           USER,
           original.getUsers(),
-          updated.getUsers(),
+          updated.getUsers() == null ? new ArrayList<>() : updated.getUsers(),
           Relationship.USES,
           Entity.QUERY,
           original.getId());
