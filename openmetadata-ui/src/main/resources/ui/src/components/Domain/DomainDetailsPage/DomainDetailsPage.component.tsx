@@ -282,7 +282,7 @@ const DomainDetailsPage = ({
   );
 
   const addDataProduct = useCallback(
-    async (formData: CreateDataProduct) => {
+    async (formData: CreateDataProduct | CreateDomain) => {
       const data = {
         ...formData,
         domain: domain.fullyQualifiedName,
