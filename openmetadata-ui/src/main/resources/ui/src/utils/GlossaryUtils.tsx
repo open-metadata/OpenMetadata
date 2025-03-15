@@ -36,6 +36,7 @@ import {
   TermReference,
 } from '../generated/entity/data/glossaryTerm';
 import { Domain } from '../generated/entity/domains/domain';
+import { User } from '../generated/entity/teams/user';
 import { calculatePercentageFromValue } from './CommonUtils';
 import { getEntityName } from './EntityUtils';
 import { VersionStatus } from './EntityVersionUtils.interface';
@@ -450,5 +451,25 @@ export const glossaryTermTableColumnsWidth = (
   reviewers: calculatePercentageFromValue(tableWidth, 33),
   synonyms: calculatePercentageFromValue(tableWidth, 33),
   owners: calculatePercentageFromValue(tableWidth, 17),
-  status: calculatePercentageFromValue(tableWidth, 12),
+  status: calculatePercentageFromValue(tableWidth, 33),
 });
+
+export const getGlossaryEntityLink = (glossaryTermFQN: string) =>
+  `<#E::${EntityType.GLOSSARY_TERM}::${glossaryTermFQN}>`;
+
+export const permissionForApproveOrReject = (
+  record: ModifiedGlossaryTerm,
+  currentUser: User,
+  termTaskThreads: Record<string, Array<any>>
+) => {
+  const entityLink = getGlossaryEntityLink(record.fullyQualifiedName ?? '');
+  const taskThread = termTaskThreads[entityLink]?.find(
+    (thread) => thread.about === entityLink
+  );
+
+  const isReviewer = record.reviewers?.some(
+    (reviewer) => reviewer.id === currentUser?.id
+  );
+
+  return taskThread && isReviewer;
+};

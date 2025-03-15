@@ -374,6 +374,51 @@ test.describe('Glossary tests', () => {
     }
   });
 
+  test('Approve Glossary Term from Glossary Listing', async ({ browser }) => {
+    test.slow(true);
+
+    const { page, afterAction, apiContext } = await performAdminLogin(browser);
+    const { page: page1, afterAction: afterActionUser1 } =
+      await performUserLogin(browser, user3);
+    const glossary1 = new Glossary();
+
+    glossary1.data.owners = [{ name: 'admin', type: 'user' }];
+    glossary1.data.mutuallyExclusive = true;
+    glossary1.data.reviewers = [
+      { name: `${user3.data.firstName}${user3.data.lastName}`, type: 'user' },
+    ];
+    glossary1.data.terms = [new GlossaryTerm(glossary1)];
+
+    await test.step('Create Glossary and Terms', async () => {
+      await sidebarClick(page, SidebarItem.GLOSSARY);
+      await createGlossary(page, glossary1.data, false);
+      await verifyGlossaryDetails(page, glossary1.data);
+      await createGlossaryTerms(page, glossary1.data);
+    });
+
+    await test.step('Approve Glossary Term from Glossary Listing', async () => {
+      await redirectToHomePage(page1);
+      await sidebarClick(page1, SidebarItem.GLOSSARY);
+      await selectActiveGlossary(page1, glossary1.data.name);
+
+      const taskResolve = page1.waitForResponse('/api/v1/feed/tasks/*/resolve');
+      await page1.getByRole('button', { name: 'Approve' }).click();
+      await taskResolve;
+      await toastNotification(page1, /Task resolved successfully/);
+
+      await validateGlossaryTerm(
+        page1,
+        glossary1.data.terms[0].data,
+        'Approved'
+      );
+
+      await afterActionUser1();
+    });
+
+    await glossary1.delete(apiContext);
+    await afterAction();
+  });
+
   test('Add and Remove Assets', async ({ browser }) => {
     test.slow(true);
 

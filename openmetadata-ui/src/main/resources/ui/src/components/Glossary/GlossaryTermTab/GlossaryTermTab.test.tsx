@@ -78,6 +78,16 @@ jest.mock('../useGlossary.store', () => ({
   })),
 }));
 
+jest.mock(
+  '../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider',
+  () => ({
+    useActivityFeedProvider: jest.fn().mockImplementation(() => ({
+      entityThread: [],
+      getFeedData: jest.fn(),
+    })),
+  })
+);
+
 describe('Test GlossaryTermTab component', () => {
   it('should show the ErrorPlaceHolder component, if no glossary is present', () => {
     const { container } = render(<GlossaryTermTab {...mockProps} />, {
