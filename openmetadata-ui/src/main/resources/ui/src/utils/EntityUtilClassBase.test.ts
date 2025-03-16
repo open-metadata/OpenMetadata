@@ -38,6 +38,11 @@ jest.mock('./RouterUtils', () => ({
   getDomainDetailsPath: jest.fn(),
   getSettingPath: jest.fn(),
   getTeamsWithFqnPath: jest.fn(),
+  getEditWebhookPath: jest.fn(),
+  getServiceDetailsPath: jest.fn(),
+  getTagsDetailsPath: jest.fn(),
+  getGlossaryTermDetailsPath: jest.fn(),
+  getUserPath: jest.fn(),
 }));
 
 jest.mock('./TestSuiteUtils', () => ({

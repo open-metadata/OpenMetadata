@@ -61,15 +61,12 @@ jest.mock('./RouterUtils', () => ({
   getDataQualityPagePath: jest.fn(),
   getDomainPath: jest.fn(),
   getSettingPath: jest.fn(),
+  getServiceDetailsPath: jest.fn(),
+  getEntityDetailsPath: jest.fn(),
 }));
 
 jest.mock('./ServiceUtils', () => ({
   getServiceRouteFromServiceType: jest.fn(),
-}));
-
-jest.mock('../constants/constants', () => ({
-  getServiceDetailsPath: jest.fn(),
-  getEntityDetailsPath: jest.fn(),
 }));
 
 describe('EntityUtils unit tests', () => {
