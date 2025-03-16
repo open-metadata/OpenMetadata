@@ -13,11 +13,6 @@
           "description": "Flag to enable or disable RBAC Search Configuration globally.",
           "default": false
         },
-        "useNaturalLanguageSearch": {
-          "type": "boolean",
-          "description": "If true, uses more flexible natural language search (fuzziness, synonyms, etc.) globally.",
-          "default": false
-        },
         "maxAggregateSize": {
           "type": "integer",
           "default": 10000

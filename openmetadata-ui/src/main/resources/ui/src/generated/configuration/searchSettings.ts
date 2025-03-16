@@ -227,8 +227,4 @@ export interface GlobalSettings {
      * List of field=value term-boost rules that apply only to this asset.
      */
     termBoosts?: TermBoost[];
-    /**
-     * If true, uses more flexible natural language search (fuzziness, synonyms, etc.) globally.
-     */
-    useNaturalLanguageSearch?: boolean;
 }

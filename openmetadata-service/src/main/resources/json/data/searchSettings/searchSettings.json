@@ -1,7 +1,6 @@
 {
   "globalSettings": {
     "enableAccessControl": false,
-    "useNaturalLanguageSearch": false,
     "maxAggregateSize": 10000,
     "maxResultHits": 10000,
     "maxAnalyzedOffset": 1000,
