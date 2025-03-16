@@ -335,7 +335,6 @@ const Services = ({ serviceName }: ServicesProps) => {
         description ? (
           <RichTextEditorPreviewerV1
             className="max-two-lines"
-            enableSeeMoreVariant={false}
             markdown={highlightSearchText(description, searchTerm)}
           />
         ) : (
