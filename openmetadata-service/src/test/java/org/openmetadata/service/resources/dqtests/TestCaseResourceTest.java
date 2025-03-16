@@ -953,7 +953,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
         listEntitiesFromSearch(queryParams, testCasesNum, 0, ADMIN_AUTH_HEADERS);
     assertEquals(testCasesNum, allEntities.getData().size());
     queryParams.put(
-        "q",
+        "queryString",
         "%7B%22query%22%3A%20%7B%22term%22%3A%20%7B%22id%22%3A%20%22"
             + testCaseForEL.getId()
             + "%22%7D%7D%7D");
@@ -964,6 +964,13 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
         allEntities.getData().stream()
             .allMatch(
                 ts -> ts.getFullyQualifiedName().equals(testCaseForEL.getFullyQualifiedName())));
+
+    queryParams.clear();
+    queryParams.put("q", "test_getSimpleListFromSearchb");
+    allEntities = listEntitiesFromSearch(queryParams, testCasesNum, 0, ADMIN_AUTH_HEADERS);
+    // Note: Since the "name" field and its ngram variant are  prioritized in the search query
+    // and the test case names are very similar, the fuzzy matching returns all test cases.
+    assertEquals(testCasesNum, allEntities.getData().size());
 
     queryParams.clear();
     queryParams.put("entityLink", testCaseForEL.getEntityLink());
@@ -3664,7 +3671,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
 
     String id = testCaseResultResultList.getData().get(0).getId().toString();
     queryParams.put(
-        "q",
+        "queryString",
         "%7B%22query%22%3A%20%7B%22term%22%3A%20%7B%22id.keyword%22%3A%20%22"
             + id
             + "%22%7D%7D%7D");
