@@ -42,6 +42,7 @@ public class ResourceRegistry {
     mapFieldOperation(MetadataOperation.EDIT_TAGS, Entity.FIELD_TAGS);
     mapFieldOperation(MetadataOperation.EDIT_OWNERS, Entity.FIELD_OWNERS);
     mapFieldOperation(MetadataOperation.EDIT_REVIEWERS, Entity.FIELD_REVIEWERS);
+    mapFieldOperation(MetadataOperation.VIEW_CUSTOM_FIELDS, "extension");
     mapFieldOperation(MetadataOperation.EDIT_CUSTOM_FIELDS, "extension");
     mapFieldOperation(MetadataOperation.EDIT_USERS, "users");
     mapFieldOperation(MetadataOperation.EDIT_ROLE, "defaultRoles");
@@ -90,6 +91,7 @@ public class ResourceRegistry {
       operations.add(MetadataOperation.EDIT_OWNERS);
     }
     if (entityFields.contains(Entity.FIELD_EXTENSION)) {
+      operations.add(MetadataOperation.VIEW_CUSTOM_FIELDS);
       operations.add(MetadataOperation.EDIT_CUSTOM_FIELDS);
     }
     if (entityFields.contains("roles") || entityFields.contains("defaultRoles")) {
