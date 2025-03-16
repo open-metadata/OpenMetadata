@@ -241,6 +241,40 @@ public class LineageResource {
   }
 
   @GET
+  @Path("/getPlatformLineage")
+  @Operation(
+      operationId = "getPlatformLineage",
+      summary = "Get Platform Lineage",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "search response",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = SearchResponse.class)))
+      })
+  public SearchLineageResult searchLineage(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "view (service or domain)") @QueryParam("view") String view,
+      @Parameter(
+              description =
+                  "Elasticsearch query that will be combined with the query_string query generator from the `query` argument")
+          @QueryParam("query_filter")
+          String queryFilter,
+      @Parameter(description = "Filter documents by deleted param. By default deleted is false")
+          @QueryParam("includeDeleted")
+          boolean deleted,
+      @Parameter(description = "Source Fields to Include", schema = @Schema(type = "string"))
+          @QueryParam("fields")
+          @DefaultValue("*")
+          String includeSourceFields)
+      throws IOException {
+    return Entity.getSearchRepository().searchPlatformLineage(view, queryFilter, deleted);
+  }
+
+  @GET
   @Path("/getLineage/{direction}")
   @Operation(
       operationId = "searchLineageWithDirection",

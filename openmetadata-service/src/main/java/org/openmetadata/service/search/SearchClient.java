@@ -209,6 +209,9 @@ public interface SearchClient {
   SearchLineageResult searchLineageWithDirection(SearchLineageRequest lineageRequest)
       throws IOException;
 
+  SearchLineageResult searchPlatformLineage(String index, String queryFilter, boolean deleted)
+      throws IOException;
+
   Response searchEntityRelationship(
       String fqn, int upstreamDepth, int downstreamDepth, String queryFilter, boolean deleted)
       throws IOException;

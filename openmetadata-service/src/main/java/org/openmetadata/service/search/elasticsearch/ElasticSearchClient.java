@@ -916,6 +916,12 @@ public class ElasticSearchClient implements SearchClient {
     }
   }
 
+  @Override
+  public SearchLineageResult searchPlatformLineage(
+      String index, String queryFilter, boolean deleted) throws IOException {
+    return lineageGraphBuilder.getPlatformLineage(index, queryFilter, deleted);
+  }
+
   private void getEntityRelationship(
       String fqn,
       int depth,

@@ -1071,6 +1071,11 @@ public class SearchRepository {
     return searchClient.searchLineage(lineageRequest);
   }
 
+  public SearchLineageResult searchPlatformLineage(
+      String alias, String queryFilter, boolean deleted) throws IOException {
+    return searchClient.searchPlatformLineage(alias, queryFilter, deleted);
+  }
+
   public SearchLineageResult searchLineageWithDirection(SearchLineageRequest lineageRequest)
       throws IOException {
     return searchClient.searchLineageWithDirection(lineageRequest);
