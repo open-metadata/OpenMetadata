@@ -24,7 +24,7 @@ import Loader from '../Loader/Loader';
 type Props = {
   inputClassName?: string;
   onSearch: (text: string) => void;
-  searchValue: string;
+  searchValue?: string;
   typingInterval?: number;
   placeholder?: string;
   label?: string;
@@ -65,7 +65,7 @@ const Searchbar = ({
   );
 
   useEffect(() => {
-    setUserSearch(searchValue);
+    setUserSearch(searchValue ?? '');
   }, [searchValue]);
 
   const debouncedOnSearch = useCallback(
@@ -142,6 +142,7 @@ const Searchbar = ({
 };
 
 Searchbar.defaultProps = {
+  searchValue: '',
   typingInterval: 1000,
   placeholder: 'Search...',
   label: '',
