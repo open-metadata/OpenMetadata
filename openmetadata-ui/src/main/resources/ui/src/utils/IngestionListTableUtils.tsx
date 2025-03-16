@@ -12,13 +12,13 @@
  */
 
 import { Col, Row, Tag, Typography } from 'antd';
+import classNames from 'classnames';
 import cronstrue from 'cronstrue/i18n';
 import { t } from 'i18next';
 import { capitalize, isUndefined } from 'lodash';
 import React from 'react';
 import { ReactComponent as TimeDateIcon } from '../assets/svg/time-date.svg';
 import { NO_DATA_PLACEHOLDER } from '../constants/constants';
-import { PIPELINE_INGESTION_RUN_STATUS } from '../constants/pipeline.constants';
 import { IngestionPipeline } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { getEntityName, highlightSearchText } from './EntityUtils';
 import { getCurrentLocaleForConstrue } from './i18next/i18nextUtil';
@@ -46,10 +46,12 @@ export const renderTypeField =
 
 export const renderStatusField = (_: string, record: IngestionPipeline) => (
   <Tag
-    className="ingestion-run-badge latest"
-    color={PIPELINE_INGESTION_RUN_STATUS[record.enabled ? 'success' : 'paused']}
+    className={classNames(
+      'ingestion-run-badge latest',
+      record.enabled ? 'success' : 'paused'
+    )}
     data-testid="pipeline-active-status">
-    {record.enabled ? t('label.active-uppercase') : t('label.paused-uppercase')}
+    {record.enabled ? t('label.active') : t('label.paused')}
   </Tag>
 );
 

@@ -15,6 +15,10 @@
  */
 export interface App {
     /**
+     * This schema defines the type of the agent.
+     */
+    agentType?: AgentType;
+    /**
      * Allow users to configure the app from the UI. If `false`, the `configure` step will be
      * hidden.
      */
@@ -170,6 +174,16 @@ export interface App {
      * Metadata version of the entity.
      */
     version?: number;
+}
+
+/**
+ * This schema defines the type of the agent.
+ *
+ * This schema defines the type of application.
+ */
+export enum AgentType {
+    CollateAI = "CollateAI",
+    Metadata = "Metadata",
 }
 
 /**
