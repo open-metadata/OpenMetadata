@@ -60,6 +60,13 @@
     "defaultConfiguration": {
       "$ref": "#/definitions/assetTypeConfiguration",
       "description": "Fallback configuration for any entity/asset not matched in assetTypeConfigurations."
+    },
+    "allowedFields": {
+      "type": "array",
+      "description": "Configurations of allowed searchable fields for each entity type",
+      "items": {
+        "$ref": "#/definitions/allowedSearchFields"
+      }
     }
   },
   "definitions": {
@@ -244,6 +251,35 @@
         }
       },
       "required": ["name", "type", "field"],
+      "additionalProperties": false
+    },
+    "allowedSearchFields": {
+      "type": "object",
+      "properties": {
+        "entityType": {
+          "type": "string",
+          "description": "Entity type this field configuration applies to"
+        },
+        "fields": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "Field name that can be used in searchFields"
+              },
+              "description": {
+                "type": "string", 
+                "description": "Detailed explanation of what this field represents and how it affects search behavior"
+              }
+            },
+            "required": ["name", "description"],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": ["entityType", "fields"],
       "additionalProperties": false
     }
   },

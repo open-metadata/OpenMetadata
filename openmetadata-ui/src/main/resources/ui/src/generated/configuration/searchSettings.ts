@@ -12,6 +12,10 @@
  */
 export interface SearchSettings {
     /**
+     * Configurations of allowed searchable fields for each entity type
+     */
+    allowedFields?: AllowedSearchFields[];
+    /**
      * List of per-asset search configurations that override the global settings.
      */
     assetTypeConfigurations?: AssetTypeConfiguration[];
@@ -20,6 +24,25 @@ export interface SearchSettings {
      */
     defaultConfiguration?: AssetTypeConfiguration;
     globalSettings?:       GlobalSettings;
+}
+
+export interface AllowedSearchFields {
+    /**
+     * Entity type this field configuration applies to
+     */
+    entityType: string;
+    fields:     Field[];
+}
+
+export interface Field {
+    /**
+     * Detailed explanation of what this field represents and how it affects search behavior
+     */
+    description: string;
+    /**
+     * Field name that can be used in searchFields
+     */
+    name: string;
 }
 
 /**
