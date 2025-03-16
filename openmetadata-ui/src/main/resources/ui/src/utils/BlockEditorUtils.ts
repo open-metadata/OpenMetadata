@@ -82,10 +82,14 @@ export const formatContent = (
   htmlString: string,
   formatFor: FormatContentFor
 ) => {
+  const processedString = htmlString.replace(
+    /\*\*(.*?)\*\*/g,
+    '<strong>$1</strong>'
+  );
   // Create a new DOMParser
   const parser = new DOMParser();
   const doc = parser.parseFromString(
-    _convertMarkdownFormatToHtmlString(htmlString),
+    _convertMarkdownFormatToHtmlString(processedString),
     'text/html'
   );
 
