@@ -147,10 +147,6 @@ const PlatformLineage = () => {
     }
   }, [decodedFqn, entityType]);
 
-  const parsedEntityType = useMemo(() => {
-    return selectedEntity?.entityType;
-  }, [entityType, selectedEntity]);
-
   useEffect(() => {
     init();
   }, [init]);
@@ -173,21 +169,21 @@ const PlatformLineage = () => {
       <LineageProvider>
         <Lineage
           entity={selectedEntity}
-          entityType={parsedEntityType as EntityType}
+          entityType={entityType}
           hasEditAccess={
             permissions?.EditAll || permissions?.EditLineage || false
           }
           isPlatformLineage={
-            SERVICE_TYPES.includes(parsedEntityType as EntityType) ||
-            parsedEntityType === EntityType.DOMAIN
+            SERVICE_TYPES.includes(entityType) ||
+            entityType === EntityType.DOMAIN
           }
         />
       </LineageProvider>
     );
-  }, [selectedEntity, loading, permissions]);
+  }, [selectedEntity, loading, permissions, entityType]);
 
   return (
-    <PageLayoutV1 pageTitle={t('label.query')}>
+    <PageLayoutV1 pageTitle={t('label.lineage')}>
       <Row gutter={[0, 16]}>
         <Row className="p-x-lg">
           <Col span={24}>
