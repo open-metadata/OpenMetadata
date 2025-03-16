@@ -58,7 +58,6 @@ describe('PlatformLineage', () => {
   it('renders platform lineage component with search controls', async () => {
     render(<PlatformLineage />);
 
-    expect(screen.getByTestId('search-type-select')).toBeInTheDocument();
     expect(screen.getByTestId('search-entity-select')).toBeInTheDocument();
   });
 });

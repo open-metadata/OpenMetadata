@@ -10,14 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-.platform-lineage-container {
-  .lineage-card {
-    height: calc(100vh - 190px);
-  }
+import { EntityReference } from '../../../../generated/entity/type';
 
-  .full-screen-lineage {
-    .lineage-card {
-      height: calc(100vh - 50px);
-    }
-  }
+export interface EntitySuggestionOptionProps {
+  entity: EntityReference;
+  heading?: string;
+  onSelectHandler?: (value: EntityReference) => void;
+  className?: string;
+  showEntityTypeBadge?: boolean;
 }

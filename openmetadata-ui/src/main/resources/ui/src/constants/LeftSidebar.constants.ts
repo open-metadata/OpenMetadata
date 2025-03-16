@@ -46,7 +46,7 @@ export const SIDEBAR_LIST: Array<LeftSidebarItem> = [
   },
   {
     key: ROUTES.PLATFORM_LINEAGE,
-    title: i18next.t('label.platform-lineage'),
+    title: i18next.t('label.lineage'),
     redirect_url: ROUTES.PLATFORM_LINEAGE,
     icon: PlatformLineageIcon,
     dataTestId: `app-bar-item-${SidebarItem.LINEAGE}`,

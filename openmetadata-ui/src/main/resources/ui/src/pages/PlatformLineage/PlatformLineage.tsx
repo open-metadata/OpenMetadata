@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Col, Divider, Row, Select, Space } from 'antd';
+import { Col, Divider, Row, Select } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
 import { AxiosError } from 'axios';
 import { debounce } from 'lodash';
@@ -19,74 +19,80 @@ import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';
+import { AssetsUnion } from '../../components/DataAssets/AssetsSelectionModal/AssetSelectionModal.interface';
+import EntitySuggestionOption from '../../components/Entity/EntityLineage/EntitySuggestionOption/EntitySuggestionOption.component';
 import Lineage from '../../components/Lineage/Lineage.component';
 import PageHeader from '../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { SourceType } from '../../components/SearchedData/SearchedData.interface';
 import { PAGE_SIZE_BASE } from '../../constants/constants';
 import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
+import { SERVICE_TYPES } from '../../constants/Services.constant';
 import LineageProvider from '../../context/LineageProvider/LineageProvider';
+import {
+  OperationPermission,
+  ResourceEntity,
+} from '../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
-import { ServiceCategoryPlural } from '../../enums/service.enum';
-import { Domain } from '../../generated/entity/domains/domain';
-import { DatabaseService } from '../../generated/entity/services/databaseService';
+import { EntityReference } from '../../generated/entity/type';
 import { useFqn } from '../../hooks/useFqn';
-import { ServicesType } from '../../interface/service.interface';
-import { getDomainByName } from '../../rest/domainAPI';
+import { getEntityPermissionByFqn } from '../../rest/permissionAPI';
 import { searchQuery } from '../../rest/searchAPI';
-import { getServiceByFQN } from '../../rest/serviceAPI';
-import { getEntityName } from '../../utils/EntityUtils';
+import { getEntityAPIfromSource } from '../../utils/Assets/AssetsUtils';
+import { getLineageEntityExclusionFilter } from '../../utils/EntityLineageUtils';
+import { getOperationPermissions } from '../../utils/PermissionsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import './platform-lineage.less';
-import { LineagePlatformView } from './PlatformLineage.interface';
 
 const PlatformLineage = () => {
   const { t } = useTranslation();
   const history = useHistory();
   const { entityType } = useParams<{ entityType: EntityType }>();
   const { fqn: decodedFqn } = useFqn();
-  const [searchType, setSearchType] = useState<LineagePlatformView>(
-    entityType === EntityType.DOMAIN
-      ? LineagePlatformView.Domain
-      : LineagePlatformView.Service
-  );
-  const [selectedEntity, setSelectedEntity] = useState<ServicesType | Domain>();
+  const [selectedEntity, setSelectedEntity] = useState<SourceType>();
   const [loading, setLoading] = useState(false);
   const [options, setOptions] = useState<DefaultOptionType[]>([]);
   const [isSearchLoading, setIsSearchLoading] = useState(false);
   const [defaultValue, setDefaultValue] = useState<string>(
     decodedFqn ?? undefined
   );
+  const [permissions, setPermissions] = useState<OperationPermission>();
 
   const debouncedSearch = useCallback(
     debounce(async (value: string) => {
       try {
         setIsSearchLoading(true);
-        const searchIndices =
-          searchType === 'domain'
-            ? [SearchIndex.DOMAIN]
-            : [
-                SearchIndex.DATABASE_SERVICE,
-                SearchIndex.DASHBOARD_SERVICE,
-                SearchIndex.PIPELINE_SERVICE,
-                SearchIndex.ML_MODEL_SERVICE,
-                SearchIndex.STORAGE_SERVICE,
-                SearchIndex.MESSAGING_SERVICE,
-                SearchIndex.SEARCH_SERVICE,
-                SearchIndex.API_SERVICE_INDEX,
-              ];
+        const searchIndices = [
+          SearchIndex.DATA_ASSET,
+          SearchIndex.DOMAIN,
+          SearchIndex.DATABASE_SERVICE,
+          SearchIndex.DASHBOARD_SERVICE,
+          SearchIndex.PIPELINE_SERVICE,
+          SearchIndex.ML_MODEL_SERVICE,
+          SearchIndex.STORAGE_SERVICE,
+          SearchIndex.MESSAGING_SERVICE,
+          SearchIndex.SEARCH_SERVICE,
+          SearchIndex.API_SERVICE_INDEX,
+        ];
 
         const response = await searchQuery({
           query: `*${value}*`,
           searchIndex: searchIndices,
           pageSize: PAGE_SIZE_BASE,
+          queryFilter: getLineageEntityExclusionFilter(),
         });
 
         setOptions(
           response.hits.hits.map((hit) => ({
             value: hit._source.fullyQualifiedName ?? '',
-            label: getEntityName(hit._source),
+            label: (
+              <EntitySuggestionOption
+                showEntityTypeBadge
+                entity={hit._source as EntityReference}
+                onSelectHandler={handleEntitySelect}
+              />
+            ),
             data: hit,
           }))
         );
@@ -94,23 +100,15 @@ const PlatformLineage = () => {
         setIsSearchLoading(false);
       }
     }, 300),
-    [searchType]
+    []
   );
 
-  const onSearchTypeChange = useCallback((value: LineagePlatformView) => {
-    setSearchType(value);
-    setOptions([]);
-    setDefaultValue('');
-  }, []);
-
   const handleEntitySelect = useCallback(
-    (_, option: DefaultOptionType | DefaultOptionType[]) => {
-      if (Array.isArray(option)) {
-        return;
-      }
-      setSelectedEntity(option.data._source);
+    (value: EntityReference) => {
       history.push(
-        `/platform-lineage/${option.data._source.entityType}/${option.data._source.fullyQualifiedName}`
+        `/lineage/${(value as SourceType).entityType}/${
+          value.fullyQualifiedName
+        }`
       );
     },
     [history]
@@ -123,17 +121,25 @@ const PlatformLineage = () => {
 
     try {
       setLoading(true);
-      const res =
-        entityType === EntityType.DOMAIN
-          ? await getDomainByName(decodedFqn)
-          : await getServiceByFQN(
-              ServiceCategoryPlural[
-                entityType as keyof typeof ServiceCategoryPlural
-              ],
-              decodedFqn
-            );
-      setSelectedEntity(res);
-      setDefaultValue(decodedFqn);
+      const [entityResponse, permissionResponse] = await Promise.allSettled([
+        getEntityAPIfromSource(entityType as AssetsUnion)(decodedFqn),
+        getEntityPermissionByFqn(
+          entityType as unknown as ResourceEntity,
+          decodedFqn
+        ),
+      ]);
+
+      if (entityResponse.status === 'fulfilled') {
+        setSelectedEntity(entityResponse.value);
+        setDefaultValue(decodedFqn);
+      }
+
+      if (permissionResponse.status === 'fulfilled') {
+        const operationPermission = getOperationPermissions(
+          permissionResponse.value
+        );
+        setPermissions(operationPermission);
+      }
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
@@ -142,11 +148,7 @@ const PlatformLineage = () => {
   }, [decodedFqn, entityType]);
 
   const parsedEntityType = useMemo(() => {
-    if (entityType === EntityType.DOMAIN) {
-      return EntityType.DOMAIN;
-    } else {
-      return (selectedEntity as DatabaseService)?.serviceType;
-    }
+    return selectedEntity?.entityType;
   }, [entityType, selectedEntity]);
 
   useEffect(() => {
@@ -170,14 +172,19 @@ const PlatformLineage = () => {
     return (
       <LineageProvider>
         <Lineage
-          isPlatformLineage
-          entity={selectedEntity as SourceType}
+          entity={selectedEntity}
           entityType={parsedEntityType as EntityType}
-          hasEditAccess={false}
+          hasEditAccess={
+            permissions?.EditAll || permissions?.EditLineage || false
+          }
+          isPlatformLineage={
+            SERVICE_TYPES.includes(parsedEntityType as EntityType) ||
+            parsedEntityType === EntityType.DOMAIN
+          }
         />
       </LineageProvider>
     );
-  }, [selectedEntity, loading]);
+  }, [selectedEntity, loading, permissions]);
 
   return (
     <PageLayoutV1 pageTitle={t('label.query')}>
@@ -186,32 +193,22 @@ const PlatformLineage = () => {
           <Col span={24}>
             <PageHeader data={PAGE_HEADERS.PLATFORM_LINEAGE} />
           </Col>
-          <Col span={24}>
-            <Space className="m-t-md">
-              <Select
-                data-testid="search-type-select"
-                options={[
-                  { value: 'service', label: t('label.service') },
-                  { value: 'domain', label: t('label.domain') },
-                ]}
-                style={{ width: 120 }}
-                value={searchType}
-                onChange={onSearchTypeChange}
-              />
+          <Col span={18}>
+            <div className="m-t-md w-full">
               <Select
                 showSearch
+                className="w-full"
                 data-testid="search-entity-select"
                 filterOption={false}
                 loading={isSearchLoading}
+                optionLabelProp="value"
                 options={options}
-                placeholder={t('label.search-entity', { entity: searchType })}
-                style={{ width: 300 }}
+                placeholder={t('label.search-entity', { entity: 'entity' })}
                 value={defaultValue}
-                onChange={handleEntitySelect}
-                onFocus={() => debouncedSearch('')}
+                onFocus={() => !defaultValue && debouncedSearch('')}
                 onSearch={debouncedSearch}
               />
-            </Space>
+            </div>
           </Col>
         </Row>
         <Col span={24}>

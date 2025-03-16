@@ -253,7 +253,7 @@ export const PAGE_HEADERS = {
     }),
   },
   PLATFORM_LINEAGE: {
-    header: i18n.t('label.platform-lineage'),
+    header: i18n.t('label.lineage'),
     subHeader: i18n.t('message.page-sub-header-for-platform-lineage'),
   },
 };
