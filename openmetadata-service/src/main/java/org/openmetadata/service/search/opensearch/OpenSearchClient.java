@@ -514,8 +514,6 @@ public class OpenSearchClient implements SearchClient {
     try {
       RequestOptions.Builder builder = RequestOptions.DEFAULT.toBuilder();
       builder.addHeader("Content-Type", "application/json");
-      RequestOptions requestOptions = builder.build();
-      searchSourceBuilder.toString();
       SearchResponse searchResponse =
           client.search(
               new os.org.opensearch.action.search.SearchRequest(request.getIndex())

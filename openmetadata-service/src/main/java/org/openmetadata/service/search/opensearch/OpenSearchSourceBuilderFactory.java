@@ -149,15 +149,26 @@ public class OpenSearchSourceBuilderFactory
       fields = SearchIndex.getDefaultFields();
     }
 
-    QueryStringQueryBuilder userQuery =
-        QueryBuilders.queryStringQuery(query)
-            .fields(fields)
-            .fuzziness(Fuzziness.AUTO)
-            .type(MultiMatchQueryBuilder.Type.MOST_FIELDS)
-            .defaultOperator(Operator.AND)
-            .fuzziness(Fuzziness.AUTO)
-            .fuzzyPrefixLength(3)
-            .tieBreaker(0.5f);
+    BoolQueryBuilder baseQuery = QueryBuilders.boolQuery();
+    if (query == null || query.trim().isEmpty() || query.trim().equals("*")) {
+      baseQuery.must(QueryBuilders.matchAllQuery());
+    } else {
+      MultiMatchQueryBuilder multiMatchQueryBuilder =
+          QueryBuilders.multiMatchQuery(query)
+              .type(MultiMatchQueryBuilder.Type.MOST_FIELDS)
+              .fuzziness(Fuzziness.AUTO)
+              .prefixLength(1)
+              .operator(Operator.AND)
+              .tieBreaker(0.3f);
+
+      for (Map.Entry<String, Float> fieldEntry : fields.entrySet()) {
+        String fieldName = fieldEntry.getKey();
+        Float boost = fieldEntry.getValue();
+        multiMatchQueryBuilder.field(fieldName, boost);
+      }
+
+      baseQuery.must(multiMatchQueryBuilder);
+    }
 
     List<FunctionScoreQueryBuilder.FilterFunctionBuilder> functions = new ArrayList<>();
     if (searchSettings.getGlobalSettings().getTermBoosts() != null) {
@@ -181,29 +192,38 @@ public class OpenSearchSourceBuilderFactory
       }
     }
 
-    QueryBuilder finalQuery = userQuery;
+    QueryBuilder finalQuery = baseQuery;
     if (!functions.isEmpty()) {
+      float functionBoostFactor = 0.3f;
       FunctionScoreQueryBuilder functionScore =
           QueryBuilders.functionScoreQuery(
-              userQuery, functions.toArray(new FunctionScoreQueryBuilder.FilterFunctionBuilder[0]));
+              baseQuery, functions.toArray(new FunctionScoreQueryBuilder.FilterFunctionBuilder[0]));
+
       if (assetConfig.getScoreMode() != null) {
         functionScore.scoreMode(toScoreMode(assetConfig.getScoreMode().value()));
       } else {
         functionScore.scoreMode(FunctionScoreQuery.ScoreMode.SUM);
       }
+
       if (assetConfig.getBoostMode() != null) {
         functionScore.boostMode(toCombineFunction(assetConfig.getBoostMode().value()));
       } else {
-        functionScore.boostMode(CombineFunction.MULTIPLY);
+        functionScore.boostMode(CombineFunction.SUM);
       }
-      finalQuery = functionScore;
+
+      BoolQueryBuilder combinedQuery = QueryBuilders.boolQuery();
+      combinedQuery.must(baseQuery);
+      combinedQuery.should(functionScore.boost(functionBoostFactor));
+      finalQuery = combinedQuery;
     }
 
     HighlightBuilder highlightBuilder = null;
-    if (assetConfig.getHighlightFields() != null && !assetConfig.getHighlightFields().isEmpty()) {
-      highlightBuilder = buildHighlights(assetConfig.getHighlightFields());
-    } else if (searchSettings.getGlobalSettings().getHighlightFields() != null) {
-      highlightBuilder = buildHighlights(searchSettings.getGlobalSettings().getHighlightFields());
+    if (query != null && !query.trim().isEmpty()) {
+      if (assetConfig.getHighlightFields() != null && !assetConfig.getHighlightFields().isEmpty()) {
+        highlightBuilder = buildHighlights(assetConfig.getHighlightFields());
+      } else if (searchSettings.getGlobalSettings().getHighlightFields() != null) {
+        highlightBuilder = buildHighlights(searchSettings.getGlobalSettings().getHighlightFields());
+      }
     }
 
     SearchSourceBuilder searchSourceBuilder =
@@ -217,7 +237,7 @@ public class OpenSearchSourceBuilderFactory
     }
 
     addConfiguredAggregations(searchSourceBuilder, assetConfig);
-
+    searchSourceBuilder.explain(true);
     return searchSourceBuilder;
   }
 
