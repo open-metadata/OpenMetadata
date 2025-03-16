@@ -10,11 +10,18 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Space } from 'antd';
+import { Alert, Button, Space } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, toNumber } from 'lodash';
-import React, { FC, useEffect, useMemo, useRef, useState } from 'react';
+import React, {
+  FC,
+  ReactNode,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as FailIcon } from '../../../assets/svg/fail-badge.svg';
 import { ReactComponent as WarningIcon } from '../../../assets/svg/ic-warning.svg';
@@ -32,6 +39,7 @@ import {
   TEST_CONNECTION_WARNING_MESSAGE,
   WORKFLOW_COMPLETE_STATUS,
 } from '../../../constants/Services.constant';
+import { ClientErrors } from '../../../enums/Axios.enum';
 import { CreateWorkflow } from '../../../generated/api/automations/createWorkflow';
 import { ConfigClass } from '../../../generated/entity/automations/testServiceConnection';
 import {
@@ -58,6 +66,7 @@ import {
   getTestConnectionName,
   shouldTestConnection,
 } from '../../../utils/ServiceUtils';
+import InlineAlert from '../InlineAlert/InlineAlert';
 import Loader from '../Loader/Loader';
 import './test-connection.style.less';
 import { TestConnectionProps, TestStatus } from './TestConnection.interface';
@@ -85,7 +94,7 @@ const TestConnection: FC<TestConnectionProps> = ({
     TEST_CONNECTION_INITIAL_MESSAGE
   );
 
-  const [errorMessage, setErrorMessage] = useState<string>();
+  const [errorComponent, setErrorComponent] = useState<ReactNode>();
 
   const [testConnectionStep, setTestConnectionStep] = useState<
     TestConnectionStep[]
@@ -347,12 +356,31 @@ const TestConnection: FC<TestConnectionProps> = ({
       setIsTestingConnection(false);
       setMessage(TEST_CONNECTION_FAILURE_MESSAGE);
       setTestStatus(StatusType.Failed);
-      if ((error as AxiosError).status === 400) {
-        setErrorMessage((error as AxiosError).response?.data as string);
+      if ((error as AxiosError).status === ClientErrors.BAD_REQUEST) {
+        setErrorComponent(
+          <Alert
+            message={(error as AxiosError).response?.data as ReactNode}
+            type="error"
+          />
+        );
+      } else if ((error as AxiosError).status === 500) {
+        setErrorComponent(
+          <InlineAlert
+            description={t('server.unexpected-response')}
+            heading={TEST_CONNECTION_FAILURE_MESSAGE}
+            type="error"
+          />
+        );
       } else {
-        setErrorMessage(
-          (error as AxiosError<{ responseMessage: string }>).response?.data
-            ?.responseMessage as string
+        setErrorComponent(
+          <InlineAlert
+            description={
+              (error as AxiosError<{ responseMessage: string }>).response?.data
+                ?.responseMessage
+            }
+            heading={TEST_CONNECTION_FAILURE_MESSAGE}
+            type="error"
+          />
         );
       }
 
@@ -486,7 +514,7 @@ const TestConnection: FC<TestConnectionProps> = ({
         </Button>
       )}
       <TestConnectionModal
-        errorMessage={errorMessage}
+        errorComponent={errorComponent}
         isConnectionTimeout={isConnectionTimeout}
         isOpen={dialogOpen}
         isTestingConnection={isTestingConnection}
