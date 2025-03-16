@@ -170,7 +170,7 @@ public class SearchSettingsHandler {
 
     // Merge asset type configurations
     mergeAssetTypeConfigurations(defaultSearchSettings, incomingSearchSettings);
-    
+
     // IMPORTANT: Always preserve allowedFields from default settings
     // This ensures admins cannot override the allowedFields configuration
     incomingSearchSettings.setAllowedFields(defaultSearchSettings.getAllowedFields());

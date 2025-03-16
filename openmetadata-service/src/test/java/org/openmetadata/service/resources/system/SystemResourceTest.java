@@ -957,63 +957,62 @@ class SystemResourceTest extends OpenMetadataApplicationTest {
   void testAllowedFieldsCannotBeOverwritten() throws HttpResponseException {
     // Step 1: Retrieve the current search settings
     Settings searchSettings = getSystemConfig(SettingsType.SEARCH_SETTINGS);
-    SearchSettings searchConfig = 
+    SearchSettings searchConfig =
         JsonUtils.convertValue(searchSettings.getConfigValue(), SearchSettings.class);
-    
+
     // Store the original allowedFields configuration
     List<?> originalAllowedFields = searchConfig.getAllowedFields();
     assertNotNull(originalAllowedFields, "Original allowedFields should not be null");
     assertFalse(originalAllowedFields.isEmpty(), "Original allowedFields should not be empty");
-    
+
     // Get the original size of the allowedFields for later comparison
     int originalSize = originalAllowedFields.size();
-    
-    // Step 2: Create a properly structured modified allowedFields list using AllowedSearchFields class
+
+    // Step 2: Create a properly structured modified allowedFields list using AllowedSearchFields
+    // class
     // First, create field entries for our test entity
     List<Field> fieldsList = new ArrayList<>();
     fieldsList.add(new Field().withName("test.field").withDescription("Test field description"));
-    
+
     // Create our test AllowedSearchFields entity
-    AllowedSearchFields testEntity = new AllowedSearchFields()
-        .withEntityType("test")
-        .withFields(fieldsList);
-    
+    AllowedSearchFields testEntity =
+        new AllowedSearchFields().withEntityType("test").withFields(fieldsList);
+
     // Create a list with just one AllowedSearchFields entry
     List<AllowedSearchFields> modifiedAllowedFields = new ArrayList<>();
     modifiedAllowedFields.add(testEntity);
-    
+
     // Replace the original allowedFields with our modified version
     searchConfig.setAllowedFields(modifiedAllowedFields);
-    
+
     // Step 3: Update the settings with the modified configuration
-    Settings updatedSettings = 
+    Settings updatedSettings =
         new Settings().withConfigType(SettingsType.SEARCH_SETTINGS).withConfigValue(searchConfig);
     updateSystemConfig(updatedSettings);
-    
+
     // Step 4: Retrieve the settings after update
     Settings retrievedSettings = getSystemConfig(SettingsType.SEARCH_SETTINGS);
-    SearchSettings updatedSearchConfig = 
+    SearchSettings updatedSearchConfig =
         JsonUtils.convertValue(retrievedSettings.getConfigValue(), SearchSettings.class);
-    
+
     // Step 5: Verify that allowedFields were not changed by the update
     List<AllowedSearchFields> retrievedAllowedFields = updatedSearchConfig.getAllowedFields();
     assertNotNull(retrievedAllowedFields, "Retrieved allowedFields should not be null");
     assertFalse(retrievedAllowedFields.isEmpty(), "Retrieved allowedFields should not be empty");
-    
+
     // Verify the size remained the same
     assertEquals(
-        originalSize, 
-        retrievedAllowedFields.size(),
-        "The size of allowedFields should not change");
-    
+        originalSize, retrievedAllowedFields.size(), "The size of allowedFields should not change");
+
     // Verify that entity types in allowedFields remained the same (none is "test")
-    Set<String> retrievedEntityTypes = retrievedAllowedFields.stream()
-        .map(AllowedSearchFields::getEntityType)
-        .collect(Collectors.toSet());
-        
+    Set<String> retrievedEntityTypes =
+        retrievedAllowedFields.stream()
+            .map(AllowedSearchFields::getEntityType)
+            .collect(Collectors.toSet());
+
     // Verify that our test entity was not added
     assertFalse(
-        retrievedEntityTypes.contains("test"), 
+        retrievedEntityTypes.contains("test"),
         "The test entity type should not be added to allowedFields");
   }
 
