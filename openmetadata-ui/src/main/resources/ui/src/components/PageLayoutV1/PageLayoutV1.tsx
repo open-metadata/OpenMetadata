@@ -21,10 +21,8 @@ import React, {
   ReactNode,
   useMemo,
 } from 'react';
-import { useAsyncDeleteProvider } from '../../context/AsyncDeleteProvider/AsyncDeleteProvider';
 import { useAlertStore } from '../../hooks/useAlertStore';
 import AlertBar from '../AlertBar/AlertBar';
-import Banner from '../common/Banner/Banner';
 import DocumentTitle from '../common/DocumentTitle/DocumentTitle';
 import './../../styles/layout/page-layout.less';
 
@@ -65,7 +63,6 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
   pageContainerStyle = {},
 }: PageLayoutProp) => {
   const { alert } = useAlertStore();
-  const { asyncDeleteJob, isDeleting } = useAsyncDeleteProvider();
 
   const contentWidth = useMemo(() => {
     if (leftPanel && rightPanel) {
@@ -125,17 +122,7 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
                 <AlertBar message={alert.message} type={alert.type} />
               </Col>
             )}
-            {Object.keys(asyncDeleteJob).length > 0 &&
-              Object.values(asyncDeleteJob).map((data) => (
-                <Col id="async-delete-alert" key={data.jobId} span={24}>
-                  <Banner
-                    className="border-radius"
-                    isLoading={isDeleting[data.jobId ?? '']}
-                    message={data.error ?? data.message ?? ''}
-                    type={asyncDeleteJob.error ? 'error' : 'success'}
-                  />
-                </Col>
-              ))}
+
             <Col className={`${alert && 'p-t-sm'}`} span={24}>
               {children}
             </Col>

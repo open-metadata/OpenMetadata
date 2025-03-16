@@ -121,7 +121,7 @@ const NavBar = ({
   handleClear,
 }: NavBarProps) => {
   const { onUpdateCSVExportJob } = useEntityExportModalProvider();
-  const { showDeleteEntityAlertBanner } = useAsyncDeleteProvider();
+  const { handleDeleteEntityWebsocketResponse } = useAsyncDeleteProvider();
   const { searchCriteria, updateSearchCriteria } = useApplicationStore();
   const searchContainerRef = useRef<HTMLDivElement>(null);
   const Logo = useMemo(() => brandClassBase.getMonogram().src, []);
@@ -414,7 +414,7 @@ const NavBar = ({
           const deleteResponseData = JSON.parse(
             deleteResponse
           ) as AsyncDeleteWebsocketResponse;
-          showDeleteEntityAlertBanner(deleteResponseData);
+          handleDeleteEntityWebsocketResponse(deleteResponseData);
         }
       });
     }

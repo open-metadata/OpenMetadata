@@ -27,13 +27,13 @@ export interface DeleteWidgetAsyncFormFields {
 }
 
 export interface AsyncDeleteContextType {
-  isDeleting: Record<string, boolean>;
-  asyncDeleteJob: Record<string, Partial<AsyncDeleteJob>>;
+  asyncDeleteJob?: Partial<AsyncDeleteJob>;
   handleOnAsyncEntityDeleteConfirm: ({
     deleteType,
   }: DeleteWidgetAsyncFormFields) => Promise<void>;
-
-  showDeleteEntityAlertBanner: (response: AsyncDeleteWebsocketResponse) => void;
+  handleDeleteEntityWebsocketResponse: (
+    response: AsyncDeleteWebsocketResponse
+  ) => void;
 }
 
 export type AsyncDeleteResponse = {

@@ -11,12 +11,18 @@
  *  limitations under the License.
  */
 import { AxiosError } from 'axios';
-import React, { createContext, useContext, useMemo, useState } from 'react';
+import React, {
+  createContext,
+  useContext,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { DeleteType } from '../../components/common/DeleteWidget/DeleteWidget.interface';
 import { deleteAsyncEntity } from '../../rest/miscAPI';
 import deleteWidgetClassBase from '../../utils/DeleteWidget/DeleteWidgetClassBase';
-import { showErrorToast } from '../../utils/ToastUtils';
+import { showDeleteEntityToast, showErrorToast } from '../../utils/ToastUtils';
 import {
   AsyncDeleteContextType,
   AsyncDeleteJob,
@@ -29,10 +35,9 @@ export const AsyncDeleteContext = createContext({} as AsyncDeleteContextType);
 
 const AsyncDeleteProvider = ({ children }: AsyncDeleteProviderProps) => {
   const { t } = useTranslation();
-  const [asyncDeleteJob, setAsyncDeleteJob] = useState<
-    Record<string, Partial<AsyncDeleteJob>>
-  >({});
-  const [isDeleting, setIsDeleting] = useState<Record<string, boolean>>({});
+  const [asyncDeleteJob, setAsyncDeleteJob] =
+    useState<Partial<AsyncDeleteJob>>();
+  const asyncDeleteJobRef = useRef<Partial<AsyncDeleteJob>>();
 
   const handleOnAsyncEntityDeleteConfirm = async ({
     entityName,
@@ -52,12 +57,22 @@ const AsyncDeleteProvider = ({ children }: AsyncDeleteProviderProps) => {
         deleteType === DeleteType.HARD_DELETE
       );
 
-      const jobId = response.jobId ?? '';
-      setAsyncDeleteJob((prev) => ({
-        ...prev,
-        [jobId]: response,
-      }));
-      setIsDeleting((prev) => ({ ...prev, [jobId]: true }));
+      // In case of recursive delete if false and entity has data.
+      // sometime socket throw the error before the response
+      if (asyncDeleteJobRef.current?.status === 'FAILED') {
+        showErrorToast(
+          asyncDeleteJobRef.current.error ??
+            t('server.delete-entity-error', {
+              entity: entityName,
+            })
+        );
+
+        return;
+      }
+
+      setAsyncDeleteJob(response);
+      asyncDeleteJobRef.current = response;
+      showDeleteEntityToast(response.message);
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -68,38 +83,24 @@ const AsyncDeleteProvider = ({ children }: AsyncDeleteProviderProps) => {
     }
   };
 
-  const showDeleteEntityAlertBanner = (
+  const handleDeleteEntityWebsocketResponse = (
     response: AsyncDeleteWebsocketResponse
   ) => {
     const updatedAsyncDeleteJob: Partial<AsyncDeleteJob> = {
       ...response,
       ...asyncDeleteJob,
     };
-
-    setAsyncDeleteJob((prev) => ({
-      ...prev,
-      [response.jobId ?? '']: updatedAsyncDeleteJob,
-    }));
-
-    if (response.status === 'COMPLETED') {
-      setAsyncDeleteJob((prev) => {
-        const { [response.jobId ?? '']: _, ...rest } = prev;
-
-        return rest;
-      });
-    }
-
-    setIsDeleting((prev) => ({ ...prev, [response.jobId ?? '']: false }));
+    setAsyncDeleteJob(updatedAsyncDeleteJob);
+    asyncDeleteJobRef.current = updatedAsyncDeleteJob;
   };
 
   const activityFeedContextValues = useMemo(() => {
     return {
-      isDeleting,
       asyncDeleteJob,
       handleOnAsyncEntityDeleteConfirm,
-      showDeleteEntityAlertBanner,
+      handleDeleteEntityWebsocketResponse,
     };
-  }, [handleOnAsyncEntityDeleteConfirm, showDeleteEntityAlertBanner]);
+  }, [handleOnAsyncEntityDeleteConfirm, handleDeleteEntityWebsocketResponse]);
 
   return (
     <AsyncDeleteContext.Provider value={activityFeedContextValues}>
