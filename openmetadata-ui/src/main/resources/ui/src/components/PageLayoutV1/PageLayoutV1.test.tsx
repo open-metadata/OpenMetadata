@@ -18,6 +18,14 @@ jest.mock('../common/DocumentTitle/DocumentTitle', () =>
   jest.fn().mockImplementation(() => <div>DocumentTitle</div>)
 );
 
+jest.mock('react-router-dom', () => ({
+  useLocation: jest.fn().mockReturnValue({
+    location: {
+      pathname: '/',
+    },
+  }),
+}));
+
 describe('PageLayoutV1', () => {
   it('Should render with the left panel, center content, and right panel', () => {
     const leftPanelText = 'Left panel';
