@@ -68,6 +68,7 @@ export const getServiceMainTabColumns = (
     title: t('label.description'),
     dataIndex: TABLE_COLUMNS_KEYS.DESCRIPTION,
     key: TABLE_COLUMNS_KEYS.DESCRIPTION,
+    width: 300,
     render: (description: ServicePageData['description']) =>
       !isUndefined(description) && description.trim() ? (
         <RichTextEditorPreviewerV1 markdown={description} />
@@ -85,6 +86,7 @@ export const getServiceMainTabColumns = (
           title: t('label.schedule-interval'),
           dataIndex: TABLE_COLUMNS_KEYS.SCHEDULE_INTERVAL,
           key: TABLE_COLUMNS_KEYS.SCHEDULE_INTERVAL,
+          width: 200,
           render: (scheduleInterval: Pipeline['scheduleInterval']) =>
             scheduleInterval ? (
               <span>{scheduleInterval}</span>
@@ -98,6 +100,7 @@ export const getServiceMainTabColumns = (
     title: t('label.owner-plural'),
     dataIndex: TABLE_COLUMNS_KEYS.OWNERS,
     key: TABLE_COLUMNS_KEYS.OWNERS,
+    width: 200,
     render: (owners: ServicePageData['owners']) =>
       !isUndefined(owners) && owners.length > 0 ? (
         <OwnerLabel owners={owners} />
@@ -120,6 +123,7 @@ export const getServiceMainTabColumns = (
           title: t('label.usage'),
           dataIndex: TABLE_COLUMNS_KEYS.USAGE_SUMMARY,
           key: TABLE_COLUMNS_KEYS.USAGE_SUMMARY,
+          width: 200,
           render: (usageSummary: Database['usageSummary']) => (
             <Typography.Text>
               {getUsagePercentile(

@@ -257,6 +257,7 @@ export const DatabaseSchemaTable = ({
         title: t('label.description'),
         dataIndex: TABLE_COLUMNS_KEYS.DESCRIPTION,
         key: TABLE_COLUMNS_KEYS.DESCRIPTION,
+        width: 300,
         render: (text: string) =>
           text?.trim() ? (
             <RichTextEditorPreviewerV1 markdown={text} />
