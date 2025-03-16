@@ -3,27 +3,23 @@ package org.openmetadata.service.migration.utils.v170;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
+import static org.openmetadata.service.Entity.getAllServicesForLineage;
 import static org.openmetadata.service.governance.workflows.Workflow.UPDATED_BY_VARIABLE;
 
 import java.lang.reflect.Field;
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Handle;
 import org.jdbi.v3.core.statement.UnableToExecuteStatementException;
-import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.ServiceEntityInterface;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
 import org.openmetadata.schema.dataInsight.custom.LineChart;
 import org.openmetadata.schema.dataInsight.custom.LineChartMetric;
 import org.openmetadata.schema.entity.domains.Domain;
-import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.governance.workflows.WorkflowConfiguration;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.governance.workflows.elements.WorkflowNodeDefinitionInterface;
@@ -37,7 +33,6 @@ import org.openmetadata.service.jdbi3.AppMarketPlaceRepository;
 import org.openmetadata.service.jdbi3.AppRepository;
 import org.openmetadata.service.jdbi3.DataInsightSystemChartRepository;
 import org.openmetadata.service.jdbi3.DomainRepository;
-import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.WorkflowDefinitionRepository;
 import org.openmetadata.service.resources.databases.DatasourceConfig;
@@ -359,7 +354,7 @@ public class MigrationUtil {
 
   public static void runMigrationServiceLineage(Handle handle) {
     try {
-      List<ServiceEntityInterface> allServices = getAllServices();
+      List<ServiceEntityInterface> allServices = getAllServicesForLineage();
       for (ServiceEntityInterface fromService : allServices) {
         for (ServiceEntityInterface toService : allServices) {
           insertServiceLineageDetails(handle, fromService, toService);
@@ -428,23 +423,6 @@ public class MigrationUtil {
           toService.getFullyQualifiedName(),
           ex);
     }
-  }
-
-  private static List<ServiceEntityInterface> getAllServices() {
-    List<ServiceEntityInterface> allServices = new ArrayList<>();
-    Set<ServiceType> serviceTypes = new HashSet<>(List.of(ServiceType.values()));
-    serviceTypes.remove(ServiceType.METADATA);
-
-    for (ServiceType serviceType : serviceTypes) {
-      EntityRepository<? extends EntityInterface> repository =
-          Entity.getServiceEntityRepository(serviceType);
-      ListFilter filter = new ListFilter(Include.ALL);
-      List<ServiceEntityInterface> services =
-          (List<ServiceEntityInterface>) repository.listAll(repository.getFields("id"), filter);
-      allServices.addAll(services);
-    }
-
-    return allServices;
   }
 
   private static List<Domain> getAllDomains() {
