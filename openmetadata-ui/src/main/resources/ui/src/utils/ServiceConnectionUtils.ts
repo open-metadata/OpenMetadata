@@ -125,7 +125,7 @@ export const getConnectionSchemas = ({
 /**
  * Filters the schema to remove default filters
  * @param schema - The schema to filter
- * @param removeDefaultFilters - Whether to remove default filters,
+ * @param removeDefaultFilters - Whether to remove default filter fields,
  * if true, it will remove the fields that are in the SERVICE_FILTER_PATTERN_FIELDS
  * if false, it will keep only fields that are in the SERVICE_FILTER_PATTERN_FIELDS
  * @returns The filtered schema

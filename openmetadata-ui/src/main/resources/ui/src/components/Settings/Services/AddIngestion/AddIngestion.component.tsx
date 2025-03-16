@@ -29,10 +29,12 @@ import { IngestionPipeline } from '../../../../generated/entity/services/ingesti
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { useFqn } from '../../../../hooks/useFqn';
 import { IngestionWorkflowData } from '../../../../interface/service.interface';
-import { getSuccessMessage } from '../../../../utils/IngestionUtils';
+import {
+  getDefaultFilterPropertyValues,
+  getSuccessMessage,
+} from '../../../../utils/IngestionUtils';
 import { cleanWorkFlowData } from '../../../../utils/IngestionWorkflowUtils';
 import { getScheduleOptionsFromSchedules } from '../../../../utils/SchedularUtils';
-import { getFilteredSchema } from '../../../../utils/ServiceConnectionUtils';
 import { getIngestionName } from '../../../../utils/ServiceUtils';
 import { generateUUID } from '../../../../utils/StringsUtils';
 import SuccessScreen from '../../../common/SuccessScreen/SuccessScreen';
@@ -87,13 +89,14 @@ const AddIngestion = ({
 
   const filterProperties = useMemo(
     () =>
-      getFilteredSchema(
-        isEditMode
-          ? data?.sourceConfig.config
-          : serviceData?.connection?.config,
-        false
-      ),
-    [data?.sourceConfig.config, serviceData?.connection?.config]
+      getDefaultFilterPropertyValues({
+        pipelineType,
+        serviceCategory,
+        ingestionData: data,
+        serviceData,
+        isEditMode,
+      }),
+    [pipelineType, serviceCategory, data, serviceData, isEditMode]
   );
 
   // lazy initialization to initialize the data only once
