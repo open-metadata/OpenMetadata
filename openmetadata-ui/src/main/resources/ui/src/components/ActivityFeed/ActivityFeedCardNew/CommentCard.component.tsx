@@ -17,10 +17,12 @@ import React, { useCallback, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { getUserPath } from '../../../constants/constants';
 import { Thread } from '../../../generated/entity/feed/thread';
+import { useUserProfile } from '../../../hooks/user-profile/useUserProfile';
 import {
   formatDateTime,
   getRelativeTime,
 } from '../../../utils/date-time/DateTimeUtils';
+import { getEntityName } from '../../../utils/EntityUtils';
 import {
   getFrontEndFormat,
   MarkdownToHTMLConverter,
@@ -45,6 +47,11 @@ const CommentCard = ({ feed, post, isLastReply }: CommentCardInterface) => {
   const [isEditPost, setIsEditPost] = useState<boolean>(false);
   const [postMessage, setPostMessage] = useState<string>('');
   const seperator = '.';
+
+  const [, , user] = useUserProfile({
+    permission: true,
+    name: feed.updatedBy ?? '',
+  });
 
   const onEditPost = () => {
     setIsEditPost(!isEditPost);
@@ -110,7 +117,7 @@ const CommentCard = ({ feed, post, isLastReply }: CommentCardInterface) => {
               <Link
                 className="reply-card-user-name"
                 to={getUserPath(feed.updatedBy ?? '')}>
-                {feed.updatedBy}
+                {getEntityName(user)}
               </Link>
             </UserPopOverCard>
           </Typography.Text>

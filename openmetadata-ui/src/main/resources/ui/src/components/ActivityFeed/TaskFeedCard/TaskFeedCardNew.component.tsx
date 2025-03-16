@@ -55,6 +55,8 @@ import {
 } from '../../../utils/TasksUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 
+import { useUserProfile } from '../../../hooks/user-profile/useUserProfile';
+import { getEntityName } from '../../../utils/EntityUtils';
 import { UserAvatarGroup } from '../../common/OwnerLabel/UserAvatarGroup.component';
 import { useActivityFeedProvider } from '../ActivityFeedProvider/ActivityFeedProvider';
 import './task-feed-card.less';
@@ -87,6 +89,10 @@ const TaskFeedCard = ({
   const { showDrawer } = useActivityFeedProvider();
   const isTaskTags = isTagsTask(taskDetails?.type as TaskType);
   const isTaskDescription = isDescriptionTask(taskDetails?.type as TaskType);
+  const [, , user] = useUserProfile({
+    permission: true,
+    name: feed.createdBy ?? '',
+  });
 
   const { entityType, entityFQN } = useMemo(
     () => ({
@@ -281,7 +287,7 @@ const TaskFeedCard = ({
                   <span
                     className="task-created-by-text p-r-xss"
                     data-testid="task-created-by">
-                    {feed.createdBy}
+                    {getEntityName(user)}
                   </span>
                 </UserPopOverCard>
                 <span className="task-timestamp-text">

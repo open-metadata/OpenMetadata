@@ -22,6 +22,7 @@ import { ASSET_CARD_STYLES } from '../../../constants/Feeds.constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { CardStyle, Post, Thread } from '../../../generated/entity/feed/thread';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { useUserProfile } from '../../../hooks/user-profile/useUserProfile';
 import {
   formatDateTime,
   getRelativeTime,
@@ -78,6 +79,10 @@ const ActivityFeedCardNew = ({
   const [showFeedEditor, setShowFeedEditor] = useState<boolean>(false);
   const [isEditPost, setIsEditPost] = useState<boolean>(false);
   const { updateFeed } = useActivityFeedProvider();
+  const [, , user] = useUserProfile({
+    permission: true,
+    name: feed.createdBy ?? '',
+  });
 
   const onSave = (message: string) => {
     postFeed(message, selectedThread?.id ?? '').catch(() => {
@@ -243,7 +248,7 @@ const ActivityFeedCardNew = ({
                     })}
                     userName={feed.createdBy ?? ''}>
                     <Link to={getUserPath(feed.createdBy ?? '')}>
-                      {feed.createdBy}
+                      {getEntityName(user)}
                     </Link>
                   </UserPopOverCard>
                 </Typography.Text>
