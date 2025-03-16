@@ -121,7 +121,7 @@ const BasicAuthProvider = ({
       } catch (error) {
         const err = error as AxiosError<{ code: number; message: string }>;
 
-        showErrorToast(err.response?.data.message || LOGIN_FAILED_ERROR);
+        showErrorToast(err.response?.data.message ?? LOGIN_FAILED_ERROR);
         onLoginFailure();
       }
     } catch (err) {
