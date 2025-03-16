@@ -40,6 +40,7 @@ import { EntityTabs, EntityType } from '../../../../../enums/entity.enum';
 import { ProfilerDashboardType } from '../../../../../enums/table.enum';
 import { TestCaseStatus } from '../../../../../generated/tests/testCase';
 import LimitWrapper from '../../../../../hoc/LimitWrapper';
+import useCustomLocation from '../../../../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../../../../hooks/useFqn';
 import {
   ListTestCaseParamsBySearch,
@@ -96,6 +97,7 @@ export const QualityTab = () => {
   }, [permissions]);
   const { fqn: datasetFQN } = useFqn();
   const history = useHistory();
+  const location = useCustomLocation();
   const { t } = useTranslation();
 
   const [selectedTestCaseStatus, setSelectedTestCaseStatus] =
@@ -249,6 +251,14 @@ export const QualityTab = () => {
     history.push(getAddDataQualityTableTestPath(type, datasetFQN));
   };
 
+  const handleTabChange = () => {
+    history.replace({
+      pathname: location.pathname,
+      search: location.search,
+      state: undefined,
+    });
+  };
+
   const addButtonContent = useMemo(
     () => [
       {
@@ -333,7 +343,7 @@ export const QualityTab = () => {
         <SummaryPanel testSummary={testCaseSummary ?? INITIAL_TEST_SUMMARY} />
       </Col>
       <Col span={24}>
-        <Tabs items={tabs} />
+        <Tabs items={tabs} onChange={handleTabChange} />
       </Col>
     </Row>
   );
