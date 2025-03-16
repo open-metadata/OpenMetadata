@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { CloseOutlined, DragOutlined } from '@ant-design/icons';
+import { HolderOutlined, MinusCircleOutlined } from '@ant-design/icons';
 import { Button, Card, Space } from 'antd';
 import { startCase } from 'lodash';
 import React, { useMemo } from 'react';
@@ -63,21 +63,25 @@ export const GenericWidget = (props: WidgetCommonProps) => {
     <Card
       className="generic-widget-card"
       extra={
-        <Space size={8}>
-          <DragOutlined
-            className="drag-widget-icon cursor-pointer"
-            data-testid="drag-widget-button"
-            size={14}
-          />
+        <Button
+          data-testid="remove-widget-button"
+          icon={<MinusCircleOutlined size={16} />}
+          size="small"
+          onClick={handleRemoveClick}
+        />
+      }
+      title={
+        <Space>
           <Button
-            data-testid="remove-widget-button"
-            icon={<CloseOutlined size={14} />}
+            className="drag-widget-icon"
+            data-testid="drag-widget-button"
+            icon={<HolderOutlined size={16} />}
             size="small"
-            onClick={handleRemoveClick}
           />
+          {widgetName}
         </Space>
       }
-      title={widgetName}>
+      type="inner">
       {cardContent}
     </Card>
   );

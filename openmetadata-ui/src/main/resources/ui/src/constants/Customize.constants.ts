@@ -41,7 +41,7 @@ export const TAB_LABEL_MAP: Record<EntityTabs, string> = {
   [EntityTabs.TEST_CASES]: 'label.test-case-plural',
   [EntityTabs.PIPELINE]: 'label.pipeline',
   [EntityTabs.DATA_Model]: 'label.data-model',
-  [EntityTabs.INGESTIONS]: 'label.ingestion-plural',
+  [EntityTabs.AGENTS]: 'label.agent-plural',
   [EntityTabs.CONNECTION]: 'label.connection',
   [EntityTabs.SQL]: 'label.sql',
   [EntityTabs.FIELDS]: 'label.field-plural',

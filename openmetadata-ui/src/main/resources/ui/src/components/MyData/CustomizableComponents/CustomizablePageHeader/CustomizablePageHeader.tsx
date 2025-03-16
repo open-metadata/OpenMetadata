@@ -10,12 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Col, Modal, Space, Typography } from 'antd';
-import { startCase } from 'lodash';
+import { CloseOutlined, RedoOutlined, SaveOutlined } from '@ant-design/icons';
+import { Button, Card, Modal, Space, Typography } from 'antd';
+import { camelCase } from 'lodash';
 import React, { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory } from 'react-router-dom';
-import { useApplicationStore } from '../../../../hooks/useApplicationStore';
+import { PageType } from '../../../../generated/system/ui/page';
 import { useFqn } from '../../../../hooks/useFqn';
 import { useCustomizeStore } from '../../../../pages/CustomizablePage/CustomizeStore';
 import { Transi18next } from '../../../../utils/CommonUtils';
@@ -36,7 +37,6 @@ export const CustomizablePageHeader = ({
   const history = useHistory();
   const [isResetModalOpen, setIsResetModalOpen] = React.useState(false);
   const [saving, setSaving] = React.useState(false);
-  const { theme } = useApplicationStore();
 
   const handleCancel = () => {
     history.push(getPersonaDetailsPath(personaFqn));
@@ -63,57 +63,60 @@ export const CustomizablePageHeader = ({
   const i18Values = useMemo(
     () => ({
       persona: personaName,
-      pageName: startCase(currentPageType as string) ?? t('label.landing-page'),
+      entity:
+        currentPageType === PageType.LandingPage
+          ? t('label.landing-page')
+          : t(`label.${camelCase(currentPageType as string)}`),
     }),
     [personaName]
   );
 
   return (
-    <Col
-      className="bg-white d-flex justify-between border-bottom p-sm"
-      data-testid="customize-landing-page-header"
-      span={24}>
-      <div className="d-flex gap-2 items-center">
-        <Typography.Title
-          className="m-0"
-          data-testid="customize-page-title"
-          level={5}>
-          <Transi18next
-            i18nKey="message.customize-landing-page-header"
-            renderElement={
-              <Link
-                style={{ color: theme.primaryColor, fontSize: '16px' }}
-                to={getPersonaDetailsPath(personaFqn)}
-              />
-            }
-            values={i18Values}
-          />
-        </Typography.Title>
+    <Card
+      bordered={false}
+      className="customize-page-header"
+      data-testid="customize-landing-page-header">
+      <div className="d-flex items-center justify-between">
+        <div>
+          <Typography.Title
+            className="m-0"
+            data-testid="customize-page-title"
+            level={5}>
+            {t('label.customize-entity', { entity: t('label.table') })}
+          </Typography.Title>
+          <Typography.Paragraph className="m-0">
+            <Transi18next
+              i18nKey="message.customize-entity-landing-page-header-for-persona"
+              renderElement={<Link to={getPersonaDetailsPath(personaFqn)} />}
+              values={i18Values}
+            />
+          </Typography.Paragraph>
+        </div>
+        <Space>
+          <Button
+            data-testid="cancel-button"
+            disabled={saving}
+            icon={<CloseOutlined />}
+            onClick={handleCancel}>
+            {t('label.cancel')}
+          </Button>
+          <Button
+            data-testid="reset-button"
+            disabled={saving}
+            icon={<RedoOutlined />}
+            onClick={handleOpenResetModal}>
+            {t('label.reset')}
+          </Button>
+          <Button
+            data-testid="save-button"
+            icon={<SaveOutlined />}
+            loading={saving}
+            type="primary"
+            onClick={handleSave}>
+            {t('label.save')}
+          </Button>
+        </Space>
       </div>
-      <Space>
-        <Button
-          data-testid="cancel-button"
-          disabled={saving}
-          size="small"
-          onClick={handleCancel}>
-          {t('label.cancel')}
-        </Button>
-        <Button
-          data-testid="reset-button"
-          disabled={saving}
-          size="small"
-          onClick={handleOpenResetModal}>
-          {t('label.reset')}
-        </Button>
-        <Button
-          data-testid="save-button"
-          loading={saving}
-          size="small"
-          type="primary"
-          onClick={handleSave}>
-          {t('label.save')}
-        </Button>
-      </Space>
       {isResetModalOpen && (
         <Modal
           centered
@@ -127,6 +130,6 @@ export const CustomizablePageHeader = ({
           {t('message.reset-layout-confirmation')}
         </Modal>
       )}
-    </Col>
+    </Card>
   );
 };

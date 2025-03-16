@@ -12,12 +12,10 @@
  */
 
 import { Typography } from 'antd';
-import { ExpandableConfig } from 'antd/lib/table/interface';
 import { isEmpty, isUndefined, startCase, uniq } from 'lodash';
 import { ServiceTypes } from 'Models';
 import React from 'react';
 import ErrorPlaceHolder from '../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import ConnectionStepCard from '../components/common/TestConnection/ConnectionStepCard/ConnectionStepCard';
 import { getServiceDetailsPath } from '../constants/constants';
 import {
   DATA_INSIGHTS_PIPELINE_DOCS,
@@ -361,37 +359,6 @@ export const getSuccessMessage = (
     </Typography.Text>
   );
 };
-
-export const getExpandableStatusRow = (
-  expandedKeys: Array<string>
-): ExpandableConfig<StepSummary> => ({
-  expandedRowRender: (record) => {
-    return (
-      record.failures?.map((failure) => (
-        <ConnectionStepCard
-          isTestingConnection={false}
-          key={failure.name}
-          testConnectionStep={{
-            name: failure.name,
-            mandatory: false,
-            description: failure.error,
-          }}
-          testConnectionStepResult={{
-            name: failure.name,
-            passed: false,
-            mandatory: false,
-            message: failure.error,
-            errorLog: failure.stackTrace,
-          }}
-        />
-      )) ?? []
-    );
-  },
-  indentSize: 0,
-  expandIcon: () => null,
-  expandedRowKeys: expandedKeys,
-  rowExpandable: (record) => (record.failures?.length ?? 0) > 0,
-});
 
 export const getDefaultIngestionSchedule = ({
   isEditMode = false,

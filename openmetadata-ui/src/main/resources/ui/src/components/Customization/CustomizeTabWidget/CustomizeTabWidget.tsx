@@ -10,13 +10,29 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons';
-import { Button, Input, Modal, Tooltip } from 'antd';
+
+import {
+  CheckCircleOutlined,
+  CloseCircleOutlined,
+  EditOutlined,
+  MoreOutlined,
+  PlusOutlined,
+} from '@ant-design/icons';
+import {
+  Button,
+  Card,
+  Col,
+  Dropdown,
+  Input,
+  MenuProps,
+  Modal,
+  Space,
+} from 'antd';
 import { isEmpty, isNil, toString, uniqueId } from 'lodash';
+import { MenuInfo } from 'rc-menu/lib/interface';
 import React, { useCallback, useMemo, useState } from 'react';
 import RGL, { Layout, WidthProvider } from 'react-grid-layout';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import {
   CommonWidgetType,
   TAB_GRID_MAX_COLUMNS,
@@ -44,7 +60,6 @@ import {
 } from '../../../utils/CustomizePage/CustomizePageUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getWidgetFromKey } from '../../../utils/GlossaryTerm/GlossaryTermUtil';
-import { DraggableTabs } from '../../common/DraggableTabs/DraggableTabs';
 import AddDetailsPageWidgetModal from '../../MyData/CustomizableComponents/AddDetailsPageWidgetModal/AddDetailsPageWidgetModal';
 
 const ReactGridLayout = WidthProvider(RGL);
@@ -268,54 +283,137 @@ export const CustomizeTabWidget = () => {
   // call the hook to set the direction of the grid layout
   useGridLayoutDirection();
 
+  const handleMenuClick = (menuInfo: MenuInfo, itemId: string) => {
+    switch (menuInfo.key) {
+      case 'edit':
+        setActiveKey(itemId);
+
+        break;
+      case 'rename':
+        handleTabEditClick(itemId);
+
+        break;
+      case 'delete':
+        remove(itemId);
+
+        break;
+    }
+  };
+
+  const tabMenuItems: MenuProps['items'] = [
+    {
+      label: 'Edit Widgets',
+      key: 'edit',
+      icon: <CheckCircleOutlined />,
+    },
+    {
+      label: 'Rename',
+      key: 'rename',
+      icon: <EditOutlined />,
+    },
+    {
+      label: 'Delete',
+      key: 'delete',
+      icon: <CloseCircleOutlined />,
+    },
+  ];
+
   return (
     <>
-      <DraggableTabs
-        activeKey={activeKey ?? undefined}
-        items={items.map((item) => ({
-          key: item.id,
-          label: (
-            <Button
-              type="text"
-              onClick={(event) => {
-                event.stopPropagation();
-                item.editable && onChange(item.id);
-              }}>
-              <Tooltip
-                title={
-                  item.editable ? '' : t('message.no-customization-available')
-                }>
-                {getEntityName(item)}
-                <Icon
-                  className="m-l-xs "
-                  component={EditIcon}
+      <Col span={24}>
+        <Card bordered={false} className="m-x-lg" title="Customize Tabs">
+          <Space wrap size={16}>
+            {items.map((item) => (
+              <Dropdown
+                key={item.id}
+                menu={{
+                  items: tabMenuItems,
+                  onClick: (menuInfo) => handleMenuClick(menuInfo, item.id),
+                }}>
+                <Button onClick={() => onChange(item.id)}>
+                  <Space>
+                    {getEntityName(item)}
+                    <MoreOutlined />
+                  </Space>
+                </Button>
+              </Dropdown>
+            ))}
+            <Button icon={<PlusOutlined />} type="primary" onClick={add}>
+              {t('label.add-entity', {
+                entity: t('label.tab'),
+              })}
+            </Button>
+          </Space>
+
+          {/* <DraggableTabs
+            activeKey={activeKey ?? undefined}
+            items={items.map((item) => ({
+              key: item.id,
+              label: (
+                <Button
+                  type="text"
                   onClick={(event) => {
                     event.stopPropagation();
-                    handleTabEditClick(item.id);
-                  }}
-                />
-              </Tooltip>
+                    item.editable && onChange(item.id);
+                  }}>
+                  <Tooltip
+                    title={
+                      item.editable
+                        ? ''
+                        : t('message.no-customization-available')
+                    }>
+                    {getEntityName(item)}
+                    <Icon
+                      className="m-l-xs "
+                      component={EditIcon}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        handleTabEditClick(item.id);
+                      }}
+                    />
+                  </Tooltip>
+                </Button>
+              ),
+              closable: true,
+            }))}
+            size="small"
+            tabBarGutter={2}
+            type="editable-card"
+            onChange={onChange}
+            onEdit={onEdit}
+            onTabChange={onTabPositionChange}
+          /> */}
+        </Card>
+      </Col>
+      <Col span={24}>
+        <Card
+          bodyStyle={{ padding: 0 }}
+          bordered={false}
+          className="m-x-lg"
+          extra={
+            <Button
+              icon={<PlusOutlined />}
+              type="primary"
+              onClick={handleOpenAddWidgetModal}>
+              {t('label.add-entity', {
+                entity: t('label.widget'),
+              })}
             </Button>
-          ),
-          closable: true,
-        }))}
-        size="small"
-        tabBarGutter={2}
-        type="editable-card"
-        onChange={onChange}
-        onEdit={onEdit}
-        onTabChange={onTabPositionChange}
-      />
-
-      <ReactGridLayout
-        className="grid-container"
-        cols={TAB_GRID_MAX_COLUMNS}
-        draggableHandle=".drag-widget-icon"
-        margin={[16, 16]}
-        rowHeight={100}
-        onLayoutChange={handleLayoutUpdate}>
-        {widgets}
-      </ReactGridLayout>
+          }
+          title={`Customize ${getEntityName(
+            items.find((item) => item.id === activeKey) as Tab
+          )} Tabs`}>
+          <ReactGridLayout
+            className="grid-container"
+            cols={TAB_GRID_MAX_COLUMNS}
+            draggableHandle=".drag-widget-icon"
+            margin={[16, 16]}
+            rowHeight={100}
+            onLayoutChange={handleLayoutUpdate}>
+            {widgets}
+          </ReactGridLayout>
+        </Card>
+      </Col>
 
       {currentPageType && (
         <AddDetailsPageWidgetModal
