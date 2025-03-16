@@ -19,20 +19,20 @@ import { ReactComponent as APIEndpointIcon } from '../assets/svg/api-endpoints-c
 import { ReactComponent as IconAPI } from '../assets/svg/apis-colored-new.svg';
 import { ReactComponent as ApplicationIcon } from '../assets/svg/application-colored.svg';
 import { ReactComponent as BotIcon } from '../assets/svg/bot-colored.svg';
+import { ReactComponent as StorageIcon } from '../assets/svg/containers-colored-new.svg';
 import { ReactComponent as AppearanceIcon } from '../assets/svg/custom-logo-colored.svg';
 import { ReactComponent as DashboardIcon } from '../assets/svg/dashboard-colored-new.svg';
 import { ReactComponent as DashboardDataModelIcon } from '../assets/svg/dashboard-data-models-colored-new.svg';
+import { ReactComponent as DataAssetsIcon } from '../assets/svg/data-assets-colored-new.svg';
+import { ReactComponent as DataObservability } from '../assets/svg/data-observability-colored-new.svg';
 import { ReactComponent as DataProductIcon } from '../assets/svg/data-product-colored-new.svg';
 import { ReactComponent as DatabaseIcon } from '../assets/svg/database-colored-new.svg';
 import { ReactComponent as SchemaIcon } from '../assets/svg/database-schema-colored-new.svg';
+import { ReactComponent as DomainIcon } from '../assets/svg/domain-colored-new.svg';
 import { ReactComponent as EmailIcon } from '../assets/svg/email-colored.svg';
 import { ReactComponent as GlossaryIcon } from '../assets/svg/glossary-term-colored-new.svg';
 import { ReactComponent as LineageIcon } from '../assets/svg/ic-lineage-config.svg';
 import { ReactComponent as LinkIcon } from '../assets/svg/ic-url-link.svg';
-import { ReactComponent as StorageIcon } from '../assets/svg/containers-colored-new.svg';
-import { ReactComponent as DataAssetsIcon } from '../assets/svg/data-assets-colored-new.svg';
-import { ReactComponent as DataObservability } from '../assets/svg/data-observability-colored-new.svg';
-import { ReactComponent as DomainIcon } from '../assets/svg/domain-colored-new.svg';
 import { ReactComponent as LoginIcon } from '../assets/svg/login-colored.svg';
 import { ReactComponent as OpenMetadataIcon } from '../assets/svg/logo-monogram.svg';
 import { ReactComponent as MessagingIcon } from '../assets/svg/messaging-colored-new.svg';
@@ -698,7 +698,7 @@ class GlobalSettingsClassBase {
               entity: t('label.domain'),
             }),
             isProtected: Boolean(isAdminUser),
-            key: `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.DOMAIN}`,
+            key: `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.DOMAINS}`,
             icon: DomainIcon,
           },
         ].sort((a, b) => a.label.localeCompare(b.label)),

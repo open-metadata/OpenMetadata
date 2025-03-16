@@ -90,39 +90,47 @@ const SearchPreview = ({ searchConfig }: { searchConfig: SearchSettings }) => {
     [currentPage, pageSize, searchConfig, entityType, handlePagingChange]
   );
 
-  const searchResults = isLoading ? (
-    <Loader />
-  ) : data.length > 0 ? (
-    <>
-      {data.map(({ _score, _source, _id = '' }) => (
-        <ExploreSearchCard
-          showEntityIcon
-          className="search-card"
-          data-testid="searched-data-card"
-          id={_id}
-          key={_source.name}
-          score={_score}
-          searchValue={searchValue}
-          showTags={false}
-          source={_source}
-        />
-      ))}
-      {showPagination && (
-        <NextPrevious
-          isNumberBased
-          currentPage={currentPage}
-          pageSize={pageSize}
-          paging={paging}
-          pagingHandler={({ currentPage }: PagingHandlerParams) =>
-            handlePageChange(currentPage)
-          }
-          onShowSizeChange={handlePageSizeChange}
-        />
-      )}
-    </>
-  ) : (
-    <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.NO_DATA} />
-  );
+  const renderSearchResults = () => {
+    if (isLoading) {
+      return <Loader />;
+    }
+
+    if (data.length === 0) {
+      return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.NO_DATA} />;
+    }
+
+    return (
+      <>
+        {data.map(({ _score, _source, _id = '' }) => (
+          <ExploreSearchCard
+            showEntityIcon
+            className="search-card"
+            data-testid="searched-data-card"
+            id={_id}
+            key={_source.name}
+            score={_score}
+            searchValue={searchValue}
+            showTags={false}
+            source={_source}
+          />
+        ))}
+        {showPagination && (
+          <NextPrevious
+            isNumberBased
+            currentPage={currentPage}
+            pageSize={pageSize}
+            paging={paging}
+            pagingHandler={({ currentPage }: PagingHandlerParams) =>
+              handlePageChange(currentPage)
+            }
+            onShowSizeChange={handlePageSizeChange}
+          />
+        )}
+      </>
+    );
+  };
+
+  const searchResults = renderSearchResults();
 
   const debouncedSearch = useMemo(
     () =>
