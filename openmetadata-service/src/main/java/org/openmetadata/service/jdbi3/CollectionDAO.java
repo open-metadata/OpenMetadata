@@ -1242,6 +1242,12 @@ public interface CollectionDAO {
         @BindUUID("toId") UUID toId,
         @Bind("relation") int relation);
 
+    @SqlQuery(
+        "SELECT toId, toEntity, fromId, fromEntity, relation, json, jsonSchema FROM entity_relationship where relation = :relation ORDER BY fromId, toId LIMIT :limit OFFSET :offset")
+    @RegisterRowMapper(RelationshipObjectMapper.class)
+    List<EntityRelationshipObject> getRecordWithOffset(
+        @Bind("relation") int relation, @Bind("offset") long offset, @Bind("limit") int limit);
+
     //
     // Delete Operations
     //

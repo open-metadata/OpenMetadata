@@ -3,6 +3,8 @@ package org.openmetadata.service.migration.postgres.v170;
 import static org.openmetadata.service.migration.utils.v170.MigrationUtil.createServiceCharts;
 import static org.openmetadata.service.migration.utils.v170.MigrationUtil.runLineageMigrationForNonNullColumn;
 import static org.openmetadata.service.migration.utils.v170.MigrationUtil.runLineageMigrationForNullColumn;
+import static org.openmetadata.service.migration.utils.v170.MigrationUtil.runMigrationForDomainLineage;
+import static org.openmetadata.service.migration.utils.v170.MigrationUtil.runMigrationServiceLineage;
 import static org.openmetadata.service.migration.utils.v170.MigrationUtil.updateDataInsightsApplication;
 import static org.openmetadata.service.migration.utils.v170.MigrationUtil.updateGovernanceWorkflowDefinitions;
 
@@ -27,9 +29,8 @@ public class Migration extends MigrationProcessImpl {
     // Lineage
     runLineageMigrationForNullColumn(handle);
     runLineageMigrationForNonNullColumn(handle);
-    initializeWorkflowHandler();
-    updateGovernanceWorkflowDefinitions();
-    updateDataInsightsApplication();
+    runMigrationServiceLineage(handle);
+    runMigrationForDomainLineage(handle);
 
     createServiceCharts();
   }

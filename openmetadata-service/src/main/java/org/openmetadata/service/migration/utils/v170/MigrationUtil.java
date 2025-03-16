@@ -1,39 +1,73 @@
 package org.openmetadata.service.migration.utils.v170;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 import static org.openmetadata.service.governance.workflows.Workflow.UPDATED_BY_VARIABLE;
 
 import java.lang.reflect.Field;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Handle;
 import org.jdbi.v3.core.statement.UnableToExecuteStatementException;
+import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.ServiceEntityInterface;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
 import org.openmetadata.schema.dataInsight.custom.LineChart;
 import org.openmetadata.schema.dataInsight.custom.LineChartMetric;
+import org.openmetadata.schema.entity.domains.Domain;
+import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.governance.workflows.WorkflowConfiguration;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.governance.workflows.elements.WorkflowNodeDefinitionInterface;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.LineageDetails;
+import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.governance.workflows.flowable.MainWorkflow;
 import org.openmetadata.service.jdbi3.AppMarketPlaceRepository;
 import org.openmetadata.service.jdbi3.AppRepository;
 import org.openmetadata.service.jdbi3.DataInsightSystemChartRepository;
+import org.openmetadata.service.jdbi3.DomainRepository;
+import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.WorkflowDefinitionRepository;
 import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
 public class MigrationUtil {
+  static final Map<String, List<String>> SERVICE_TYPE_ENTITY_MAP = new HashMap<>();
+
+  static {
+    SERVICE_TYPE_ENTITY_MAP.put(Entity.DATABASE_SERVICE, List.of("table_entity"));
+    SERVICE_TYPE_ENTITY_MAP.put(Entity.MESSAGING_SERVICE, List.of("topic_entity"));
+    SERVICE_TYPE_ENTITY_MAP.put(
+        Entity.DASHBOARD_SERVICE, List.of("dashboard_entity", "dashboard_data_model_entity"));
+    SERVICE_TYPE_ENTITY_MAP.put(Entity.PIPELINE_SERVICE, List.of("pipeline_entity"));
+    SERVICE_TYPE_ENTITY_MAP.put(Entity.MLMODEL_SERVICE, List.of("ml_model_entity"));
+    SERVICE_TYPE_ENTITY_MAP.put(Entity.STORAGE_SERVICE, List.of("storage_container_entity"));
+    SERVICE_TYPE_ENTITY_MAP.put(Entity.SEARCH_SERVICE, List.of("search_index_entity"));
+    SERVICE_TYPE_ENTITY_MAP.put(Entity.API_SERVICE, List.of("api_endpoint_entity"));
+  }
+
   private MigrationUtil() {}
 
+  public static final String DOMAIN_LINEAGE =
+      "select count(*) from entity_relationship where fromId in (select toId from entity_relationship where fromId = '%s' and relation = 10) AND toId in (select toId from entity_relationship where fromId = '%s' and relation = 10) and relation = 13";
+
+  public static final String SERVICE_ENTITY_MIGRATION =
+      "SELECT COUNT(*) FROM entity_relationship er JOIN %s f ON er.fromID = f.id JOIN %s t ON er.toID = t.id WHERE er.relation = 13 AND f.fqnHash LIKE '%s.%%' AND t.fqnHash LIKE '%s.%%'";
   private static final String UPDATE_NULL_JSON =
       "UPDATE entity_relationship SET json = :json WHERE json IS NULL AND relation = 13";
 
@@ -280,5 +314,141 @@ public class MigrationUtil {
         new LineChart()
             .withMetrics(
                 List.of(new LineChartMetric().withFormula("count(q='tags.tagFQN: tier.*')"))));
+  }
+
+  public static void runMigrationForDomainLineage(Handle handle) {
+    try {
+      List<Domain> allDomains = getAllDomains();
+      for (Domain fromDomain : allDomains) {
+        for (Domain toDomain : allDomains) {
+          if (fromDomain.getId().equals(toDomain.getId())) {
+            continue;
+          }
+          String sql =
+              String.format(
+                  DOMAIN_LINEAGE, fromDomain.getId().toString(), toDomain.getId().toString());
+          int count = handle.createQuery(sql).mapTo(Integer.class).one();
+          if (count > 0) {
+            LineageDetails domainLineageDetails =
+                new LineageDetails()
+                    .withCreatedAt(System.currentTimeMillis())
+                    .withUpdatedAt(System.currentTimeMillis())
+                    .withCreatedBy(ADMIN_USER_NAME)
+                    .withUpdatedBy(ADMIN_USER_NAME)
+                    .withSource(LineageDetails.Source.CHILD_ASSETS)
+                    .withAssetEdges(count);
+            Entity.getCollectionDAO()
+                .relationshipDAO()
+                .insert(
+                    fromDomain.getId(),
+                    toDomain.getId(),
+                    fromDomain.getEntityReference().getType(),
+                    toDomain.getEntityReference().getType(),
+                    Relationship.UPSTREAM.ordinal(),
+                    JsonUtils.pojoToJson(domainLineageDetails));
+          }
+        }
+      }
+
+    } catch (Exception ex) {
+      LOG.error(
+          "Error while updating null json rows with createdAt, createdBy, updatedAt and updatedBy for lineage.",
+          ex);
+    }
+  }
+
+  public static void runMigrationServiceLineage(Handle handle) {
+    try {
+      List<ServiceEntityInterface> allServices = getAllServices();
+      for (ServiceEntityInterface fromService : allServices) {
+        for (ServiceEntityInterface toService : allServices) {
+          insertServiceLineageDetails(handle, fromService, toService);
+        }
+      }
+    } catch (Exception ex) {
+      LOG.error(
+          "Error while updating null json rows with createdAt, createdBy, updatedAt and updatedBy for lineage.",
+          ex);
+    }
+  }
+
+  private static void insertServiceLineageDetails(
+      Handle handle, ServiceEntityInterface fromService, ServiceEntityInterface toService) {
+    try {
+      if (fromService.getId().equals(toService.getId())
+          && fromService.getServiceType().equals(toService.getServiceType())) {
+        return;
+      }
+
+      String fromServiceHash = FullyQualifiedName.buildHash(fromService.getFullyQualifiedName());
+      String toServiceHash = FullyQualifiedName.buildHash(toService.getFullyQualifiedName());
+      List<String> fromTableNames =
+          listOrEmpty(SERVICE_TYPE_ENTITY_MAP.get(fromService.getEntityReference().getType()));
+      List<String> toTableNames =
+          listOrEmpty(SERVICE_TYPE_ENTITY_MAP.get(toService.getEntityReference().getType()));
+      for (String fromTableName : fromTableNames) {
+        for (String toTableName : toTableNames) {
+          if (!nullOrEmpty(fromTableName) && !nullOrEmpty(toTableName)) {
+            String sql =
+                String.format(
+                    SERVICE_ENTITY_MIGRATION,
+                    fromTableName,
+                    toTableName,
+                    fromServiceHash,
+                    toServiceHash);
+            int count = handle.createQuery(sql).mapTo(Integer.class).one();
+
+            if (count > 0) {
+              LineageDetails serviceLineageDetails =
+                  new LineageDetails()
+                      .withCreatedAt(System.currentTimeMillis())
+                      .withUpdatedAt(System.currentTimeMillis())
+                      .withCreatedBy(ADMIN_USER_NAME)
+                      .withUpdatedBy(ADMIN_USER_NAME)
+                      .withSource(LineageDetails.Source.CHILD_ASSETS)
+                      .withAssetEdges(count);
+              Entity.getCollectionDAO()
+                  .relationshipDAO()
+                  .insert(
+                      fromService.getId(),
+                      toService.getId(),
+                      fromService.getEntityReference().getType(),
+                      toService.getEntityReference().getType(),
+                      Relationship.UPSTREAM.ordinal(),
+                      JsonUtils.pojoToJson(serviceLineageDetails));
+            }
+          }
+        }
+      }
+
+    } catch (Exception ex) {
+      LOG.error(
+          "Found issue while updating lineage for service from {} , to: {}",
+          fromService.getFullyQualifiedName(),
+          toService.getFullyQualifiedName(),
+          ex);
+    }
+  }
+
+  private static List<ServiceEntityInterface> getAllServices() {
+    List<ServiceEntityInterface> allServices = new ArrayList<>();
+    Set<ServiceType> serviceTypes = new HashSet<>(List.of(ServiceType.values()));
+    serviceTypes.remove(ServiceType.METADATA);
+
+    for (ServiceType serviceType : serviceTypes) {
+      EntityRepository<? extends EntityInterface> repository =
+          Entity.getServiceEntityRepository(serviceType);
+      ListFilter filter = new ListFilter(Include.ALL);
+      List<ServiceEntityInterface> services =
+          (List<ServiceEntityInterface>) repository.listAll(repository.getFields("id"), filter);
+      allServices.addAll(services);
+    }
+
+    return allServices;
+  }
+
+  private static List<Domain> getAllDomains() {
+    DomainRepository repository = (DomainRepository) Entity.getEntityRepository(Entity.DOMAIN);
+    return repository.listAll(repository.getFields("id"), new ListFilter(Include.ALL));
   }
 }
