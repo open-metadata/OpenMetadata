@@ -38,6 +38,13 @@ jest.mock('../../components/common/DocumentTitle/DocumentTitle', () => {
   return jest.fn().mockReturnValue(<p>DocumentTitle</p>);
 });
 
+jest.mock('../../hooks/useAlertStore', () => ({
+  useAlertStore: jest.fn(() => ({
+    alert: { message: 'Test Alert', type: 'success' },
+    resetAlert: jest.fn(),
+  })),
+}));
+
 jest.mock('../../components/AlertBar/AlertBar', () => {
   return jest.fn().mockReturnValue(<p data-testid="alert-bar">Alert Bar</p>);
 });
@@ -130,7 +137,7 @@ describe('ForgotPassword', () => {
       handleForgotPassword: mockHandleError,
     });
 
-    const { getByLabelText, getByText, queryByTestId } = render(
+    const { getByLabelText, getByText, getByTestId } = render(
       <ForgotPassword />
     );
     const emailInput = getByLabelText('label.email');
@@ -144,6 +151,6 @@ describe('ForgotPassword', () => {
 
     expect(showErrorToast).toHaveBeenCalledWith('server.email-not-found');
     expect(mockHandleError).toHaveBeenCalledWith('test@example.com');
-    expect(queryByTestId('alert-bar')).not.toBeInTheDocument();
+    expect(getByTestId('alert-bar')).toBeInTheDocument();
   });
 });
