@@ -20,9 +20,7 @@ jest.mock('../common/DocumentTitle/DocumentTitle', () =>
 
 jest.mock('react-router-dom', () => ({
   useLocation: jest.fn().mockReturnValue({
-    location: {
-      pathname: '/',
-    },
+    pathname: '/',
   }),
 }));
 
