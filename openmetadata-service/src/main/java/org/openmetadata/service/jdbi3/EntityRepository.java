@@ -181,9 +181,9 @@ import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
 import org.openmetadata.service.jobs.JobDAO;
 import org.openmetadata.service.resources.tags.TagLabelUtil;
 import org.openmetadata.service.resources.teams.RoleResource;
-import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchListFilter;
 import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.search.SearchResultListMapper;
 import org.openmetadata.service.search.SearchSortFilter;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -1355,9 +1355,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
       SearchListFilter searchListFilter,
       int limit,
       int offset,
-      String q)
+      String q,
+      String queryString)
       throws IOException {
-    return listFromSearchWithOffset(uriInfo, fields, searchListFilter, limit, offset, null, q);
+    return listFromSearchWithOffset(
+        uriInfo, fields, searchListFilter, limit, offset, null, q, queryString);
   }
 
   public ResultList<T> listFromSearchWithOffset(
@@ -1367,25 +1369,26 @@ public abstract class EntityRepository<T extends EntityInterface> {
       int limit,
       int offset,
       SearchSortFilter searchSortFilter,
-      String q)
+      String q,
+      String queryString)
       throws IOException {
     List<T> entityList = new ArrayList<>();
     Long total;
 
     if (limit > 0) {
-      SearchClient.SearchResultListMapper results =
+      SearchResultListMapper results =
           searchRepository.listWithOffset(
-              searchListFilter, limit, offset, entityType, searchSortFilter, q);
+              searchListFilter, limit, offset, entityType, searchSortFilter, q, queryString);
       total = results.getTotal();
       for (Map<String, Object> json : results.getResults()) {
-        T entity = JsonUtils.readOrConvertValue(json, entityClass);
+        T entity = JsonUtils.readOrConvertValueLenient(json, entityClass);
         entityList.add(withHref(uriInfo, entity));
       }
       return new ResultList<>(entityList, offset, limit, total.intValue());
     } else {
-      SearchClient.SearchResultListMapper results =
+      SearchResultListMapper results =
           searchRepository.listWithOffset(
-              searchListFilter, limit, offset, entityType, searchSortFilter, q);
+              searchListFilter, limit, offset, entityType, searchSortFilter, q, queryString);
       total = results.getTotal();
       return new ResultList<>(entityList, null, limit, total.intValue());
     }
@@ -1474,41 +1477,55 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
-  @Transaction
-  protected void cleanup(T entityInterface) {
-    UUID id = entityInterface.getId();
+  protected final void cleanup(T entityInterface) {
+    Entity.getJdbi()
+        .inTransaction(
+            handle -> {
+              // Perform Entity Specific Cleanup
+              entitySpecificCleanup(entityInterface);
 
-    // Delete all the relationships to other entities
-    daoCollection.relationshipDAO().deleteAll(id, entityType);
+              UUID id = entityInterface.getId();
 
-    // Delete all the field relationships to other entities
-    daoCollection.fieldRelationshipDAO().deleteAllByPrefix(entityInterface.getFullyQualifiedName());
+              // Delete all the relationships to other entities
+              daoCollection.relationshipDAO().deleteAll(id, entityType);
 
-    // Delete all the extensions of entity
-    daoCollection.entityExtensionDAO().deleteAll(id);
+              // Delete all the field relationships to other entities
+              daoCollection
+                  .fieldRelationshipDAO()
+                  .deleteAllByPrefix(entityInterface.getFullyQualifiedName());
 
-    // Delete all the tag labels
-    daoCollection
-        .tagUsageDAO()
-        .deleteTagLabelsByTargetPrefix(entityInterface.getFullyQualifiedName());
+              // Delete all the extensions of entity
+              daoCollection.entityExtensionDAO().deleteAll(id);
 
-    // when the glossary and tag is deleted, delete its usage
-    daoCollection.tagUsageDAO().deleteTagLabelsByFqn(entityInterface.getFullyQualifiedName());
-    // Delete all the usage data
-    daoCollection.usageDAO().delete(id);
+              // Delete all the tag labels
+              daoCollection
+                  .tagUsageDAO()
+                  .deleteTagLabelsByTargetPrefix(entityInterface.getFullyQualifiedName());
 
-    // Delete the extension data storing custom properties
-    removeExtension(entityInterface);
+              // when the glossary and tag is deleted, delete its usage
+              daoCollection
+                  .tagUsageDAO()
+                  .deleteTagLabelsByFqn(entityInterface.getFullyQualifiedName());
+              // Delete all the usage data
+              daoCollection.usageDAO().delete(id);
 
-    // Delete all the threads that are about this entity
-    Entity.getFeedRepository().deleteByAbout(entityInterface.getId());
+              // Delete the extension data storing custom properties
+              removeExtension(entityInterface);
 
-    // Remove entity from the cache
-    invalidate(entityInterface);
+              // Delete all the threads that are about this entity
+              Entity.getFeedRepository().deleteByAbout(entityInterface.getId());
 
-    // Finally, delete the entity
-    dao.delete(id);
+              // Remove entity from the cache
+              invalidate(entityInterface);
+
+              // Finally, delete the entity
+              dao.delete(id);
+
+              return null;
+            });
   }
+
+  protected void entitySpecificCleanup(T entityInterface) {}
 
   private void invalidate(T entity) {
     CACHE_WITH_ID.invalidate(new ImmutablePair<>(entityType, entity.getId()));
@@ -2684,16 +2701,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   protected final Fields getFields(Set<String> fields) {
     return new Fields(allowedFields, fields);
-  }
-
-  public final Set<String> getCommonFields(Set<String> input) {
-    Set<String> result = new HashSet<>();
-    for (String field : input) {
-      if (allowedFields.contains(field)) {
-        result.add(field);
-      }
-    }
-    return result;
   }
 
   public final Set<String> getAllowedFieldsCopy() {

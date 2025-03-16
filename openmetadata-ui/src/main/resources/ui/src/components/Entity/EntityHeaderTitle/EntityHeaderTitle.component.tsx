@@ -12,6 +12,7 @@
  */
 import { ExclamationCircleFilled } from '@ant-design/icons';
 import { Badge, Col, Divider, Row, Typography } from 'antd';
+import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -39,6 +40,8 @@ const EntityHeaderTitle = ({
   color,
   showName = true,
   certification,
+  nameClassName = '',
+  displayNameClassName = '',
 }: EntityHeaderTitleProps) => {
   const { t } = useTranslation();
   const location = useCustomLocation();
@@ -51,7 +54,7 @@ const EntityHeaderTitle = ({
   const content = (
     <Row
       align="middle"
-      className={className}
+      className={classNames('entity-header-title', className)}
       data-testid={`${serviceName}-${name}`}
       gutter={12}
       wrap={false}>
@@ -63,15 +66,19 @@ const EntityHeaderTitle = ({
         {/* If we do not have displayName name only be shown in the bold from the below code */}
         {!isEmpty(displayName) && showName ? (
           <Typography.Text
-            className="m-b-0 d-block text-grey-muted"
-            data-testid="entity-header-name">
+            className={classNames('entity-header-name', nameClassName)}
+            data-testid="entity-header-name"
+            ellipsis={{ tooltip: true }}>
             {stringToHTML(name)}
           </Typography.Text>
         ) : null}
 
         {/* It will render displayName fallback to name */}
         <Typography.Text
-          className="m-b-0 d-block entity-header-display-name text-lg font-semibold"
+          className={classNames(
+            'entity-header-display-name',
+            displayNameClassName
+          )}
           data-testid="entity-header-display-name"
           ellipsis={{ tooltip: true }}
           style={{ color: color ?? TEXT_COLOR }}>

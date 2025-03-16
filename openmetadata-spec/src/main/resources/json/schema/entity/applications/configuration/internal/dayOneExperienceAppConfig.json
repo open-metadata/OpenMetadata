@@ -9,8 +9,8 @@
     "dayOneExperienceAppType": {
       "description": "Application type.",
       "type": "string",
-      "enum": ["DayOneExperienceWorkflow"],
-      "default": "DayOneExperienceWorkflow"
+      "enum": ["DayOneExperienceApplication"],
+      "default": "DayOneExperienceApplication"
     }
   },
   "properties": {
@@ -18,13 +18,18 @@
       "title": "Application Type",
       "description": "Application Type",
       "$ref": "#/definitions/dayOneExperienceAppType",
-      "default": "DayOneExperienceWorkflow"
+      "default": "DayOneExperienceApplication"
     },
     "active": {
       "title": "Active",
       "description": "Whether the Day One Experience flow should be active or not.",
       "type": "boolean",
       "default": true
+    },
+    "entityLink": {
+      "title": "Service Entity Link",
+      "description": "Service Entity Link for which to trigger the application.",
+      "$ref": "../../../../type/basic.json#/definitions/entityLink"
     }
   },
   "additionalProperties": false,

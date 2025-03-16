@@ -12,15 +12,8 @@
 name: py-operator-build-test
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - main
-      - '0.[0-9]+.[0-9]+'
-    paths-ignore:
-      - 'openmetadata-docs/**'
-      - 'openmetadata-docs-v1/**'
   pull_request_target:
-    types: [labeled, opened, synchronize, reopened]
+    types: [labeled, opened, synchronize, reopened, ready_for_review]
     paths:
       - "ingestion/**"
       - "openmetadata-service/**"
@@ -38,8 +31,8 @@ concurrency:
 jobs:
   py-run-build-tests:
     runs-on: ubuntu-latest
+    if: ${{ !github.event.pull_request.draft }}
     steps:
-
       - name: Free Disk Space (Ubuntu)
         uses: jlumbroso/free-disk-space@main
         with:
@@ -64,10 +57,10 @@ jobs:
         uses: jesusvasquez333/verify-pr-label-action@v1.4.0
         if: ${{ github.event_name == 'pull_request_target' }}
         with:
-          github-token: '${{ secrets.GITHUB_TOKEN }}'
-          valid-labels: 'safe to test'
-          pull-request-number: '${{ github.event.pull_request.number }}'
-          disable-reviews: true  # To not auto approve changes
+          github-token: "${{ secrets.GITHUB_TOKEN }}"
+          valid-labels: "safe to test"
+          pull-request-number: "${{ github.event.pull_request.number }}"
+          disable-reviews: true # To not auto approve changes
 
       - name: Checkout
         uses: actions/checkout@v4

@@ -155,6 +155,7 @@ import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.jdbi.BindConcat;
 import org.openmetadata.service.util.jdbi.BindFQN;
+import org.openmetadata.service.util.jdbi.BindJsonContains;
 import org.openmetadata.service.util.jdbi.BindListFQN;
 import org.openmetadata.service.util.jdbi.BindUUID;
 
@@ -894,6 +895,8 @@ public interface CollectionDAO {
     private String fromEntity;
     private String toEntity;
     private int relation;
+    private String json;
+    private String jsonSchema;
   }
 
   @Getter
@@ -1005,7 +1008,7 @@ public interface CollectionDAO {
     }
 
     @SqlQuery(
-        "SELECT fromId, toId, fromEntity, toEntity, relation "
+        "SELECT fromId, toId, fromEntity, toEntity, relation, json, jsonSchema "
             + "FROM entity_relationship "
             + "WHERE fromId IN (<fromIds>) "
             + "AND relation = :relation "
@@ -1020,7 +1023,7 @@ public interface CollectionDAO {
         @Bind("toEntityType") String toEntityType);
 
     @SqlQuery(
-        "SELECT fromId, toId, fromEntity, toEntity, relation "
+        "SELECT fromId, toId, fromEntity, toEntity, relation, json, jsonSchema "
             + "FROM entity_relationship "
             + "WHERE fromId IN (<fromIds>) "
             + "AND relation = :relation "
@@ -1103,7 +1106,7 @@ public interface CollectionDAO {
         @Bind("fromEntity") String fromEntity);
 
     @SqlQuery(
-        "SELECT fromId, toId, fromEntity, toEntity, relation "
+        "SELECT fromId, toId, fromEntity, toEntity, relation, json, jsonSchema "
             + "FROM entity_relationship "
             + "WHERE toId IN (<toIds>) "
             + "AND relation = :relation "
@@ -1113,7 +1116,7 @@ public interface CollectionDAO {
         @BindList("toIds") List<String> toIds, @Bind("relation") int relation);
 
     @SqlQuery(
-        "SELECT fromId, toId, fromEntity, toEntity, relation "
+        "SELECT fromId, toId, fromEntity, toEntity, relation, json, jsonSchema "
             + "FROM entity_relationship "
             + "WHERE toId IN (<toIds>) "
             + "AND relation = :relation "
@@ -1126,7 +1129,7 @@ public interface CollectionDAO {
         @Bind("fromEntityType") String fromEntityType);
 
     @SqlQuery(
-        "SELECT fromId, toId, fromEntity, toEntity, relation, json "
+        "SELECT fromId, toId, fromEntity, toEntity, relation, json, jsonSchema "
             + "FROM entity_relationship "
             + "WHERE toId IN (<toIds>) "
             + "AND relation = :relation "
@@ -1148,7 +1151,7 @@ public interface CollectionDAO {
         @Bind("relation") int relation);
 
     @SqlQuery(
-        "SELECT fromId, toId, fromEntity, toEntity, relation "
+        "SELECT fromId, toId, fromEntity, toEntity, relation, json, jsonSchema "
             + "FROM entity_relationship "
             + "WHERE toId IN (<toIds>) "
             + "AND relation = :relation "
@@ -1180,13 +1183,13 @@ public interface CollectionDAO {
 
     @ConnectionAwareSqlQuery(
         value =
-            "SELECT toId, toEntity, fromId, fromEntity, relation FROM entity_relationship "
+            "SELECT toId, toEntity, fromId, fromEntity, relation, json, jsonSchema FROM entity_relationship "
                 + "WHERE JSON_UNQUOTE(JSON_EXTRACT(json, '$.source')) = :source AND (toId = :toId AND toEntity = :toEntity) "
                 + "AND relation = :relation ORDER BY fromId",
         connectionType = MYSQL)
     @ConnectionAwareSqlQuery(
         value =
-            "SELECT toId, toEntity, fromId, fromEntity, relation FROM entity_relationship "
+            "SELECT toId, toEntity, fromId, fromEntity, relation, json, jsonSchema FROM entity_relationship "
                 + "WHERE  json->>'source' = :source AND (toId = :toId AND toEntity = :toEntity) "
                 + "AND relation = :relation ORDER BY fromId",
         connectionType = POSTGRES)
@@ -1199,13 +1202,13 @@ public interface CollectionDAO {
 
     @ConnectionAwareSqlQuery(
         value =
-            "SELECT toId, toEntity, fromId, fromEntity, relation FROM entity_relationship "
+            "SELECT toId, toEntity, fromId, fromEntity, relation, json, jsonSchema FROM entity_relationship "
                 + "WHERE JSON_UNQUOTE(JSON_EXTRACT(json, '$.pipeline.id')) =:toId OR toId = :toId AND relation = :relation "
                 + "AND JSON_UNQUOTE(JSON_EXTRACT(json, '$.source')) = :source ORDER BY toId",
         connectionType = MYSQL)
     @ConnectionAwareSqlQuery(
         value =
-            "SELECT toId, toEntity, fromId, fromEntity, relation FROM entity_relationship "
+            "SELECT toId, toEntity, fromId, fromEntity, relation, json, jsonSchema FROM entity_relationship "
                 + "WHERE  json->'pipeline'->>'id' =:toId OR toId = :toId AND relation = :relation "
                 + "AND json->>'source' = :source ORDER BY toId",
         connectionType = POSTGRES)
@@ -1226,6 +1229,16 @@ public interface CollectionDAO {
             + " AND toId = :toId "
             + " AND relation = :relation ")
     String getRelation(
+        @BindUUID("fromId") UUID fromId,
+        @BindUUID("toId") UUID toId,
+        @Bind("relation") int relation);
+
+    @SqlQuery(
+        "SELECT toId, toEntity, fromId, fromEntity, relation, json, jsonSchema FROM entity_relationship WHERE fromId = :fromId "
+            + " AND toId = :toId "
+            + " AND relation = :relation ")
+    @RegisterRowMapper(RelationshipObjectMapper.class)
+    EntityRelationshipObject getRecord(
         @BindUUID("fromId") UUID fromId,
         @BindUUID("toId") UUID toId,
         @Bind("relation") int relation);
@@ -1353,6 +1366,8 @@ public interface CollectionDAO {
             .toEntity(rs.getString("toEntity"))
             .toId(rs.getString("toId"))
             .relation(rs.getInt("relation"))
+            .json(rs.getString("json"))
+            .jsonSchema(rs.getString("jsonSchema"))
             .build();
       }
     }
@@ -5043,32 +5058,54 @@ public interface CollectionDAO {
     void delete(@Bind("appId") String appId, @Bind("extension") String extension);
 
     @SqlQuery(
-        "SELECT count(*) FROM apps_extension_time_series where appId = :appId and extension = :extension")
-    int listAppExtensionCount(@Bind("appId") String appId, @Bind("extension") String extension);
+        "SELECT count(*) FROM apps_extension_time_series where appId = :appId and extension = :extension AND <service_filter>")
+    int listAppExtensionCount(
+        @Bind("appId") String appId,
+        @Bind("extension") String extension,
+        @BindJsonContains(value = "service_filter", path = "$.services", property = "id")
+            UUID service);
 
     @SqlQuery(
-        "SELECT count(*) FROM apps_extension_time_series where appId = :appId and extension = :extension AND timestamp > :startTime")
+        "SELECT count(*) FROM apps_extension_time_series where appId = :appId and extension = :extension AND timestamp > :startTime AND <service_filter>")
     int listAppExtensionCountAfterTime(
         @Bind("appId") String appId,
         @Bind("startTime") long startTime,
-        @Bind("extension") String extension);
+        @Bind("extension") String extension,
+        @BindJsonContains(
+                value = "service_filter",
+                path = "$.services",
+                property = "id",
+                ifNull = "TRUE")
+            UUID service);
 
     @SqlQuery(
-        "SELECT json FROM apps_extension_time_series where appId = :appId AND extension = :extension ORDER BY timestamp DESC LIMIT :limit OFFSET :offset")
+        "SELECT json FROM apps_extension_time_series where appId = :appId AND extension = :extension AND <service_filter> ORDER BY timestamp DESC LIMIT :limit OFFSET :offset")
     List<String> listAppExtension(
         @Bind("appId") String appId,
         @Bind("limit") int limit,
         @Bind("offset") int offset,
-        @Bind("extension") String extension);
+        @Bind("extension") String extension,
+        @BindJsonContains(
+                value = "service_filter",
+                path = "$.services",
+                property = "id",
+                ifNull = "TRUE")
+            UUID service);
 
     @SqlQuery(
-        "SELECT json FROM apps_extension_time_series where appId = :appId AND extension = :extension AND timestamp > :startTime ORDER BY timestamp DESC LIMIT :limit OFFSET :offset")
+        "SELECT json FROM apps_extension_time_series where appId = :appId AND extension = :extension AND timestamp > :startTime AND <service_filter> ORDER BY timestamp DESC LIMIT :limit OFFSET :offset")
     List<String> listAppExtensionAfterTime(
         @Bind("appId") String appId,
         @Bind("limit") int limit,
         @Bind("offset") int offset,
         @Bind("startTime") long startTime,
-        @Bind("extension") String extension);
+        @Bind("extension") String extension,
+        @BindJsonContains(
+                value = "service_filter",
+                path = "$.services",
+                property = "id",
+                ifNull = "TRUE")
+            UUID service);
 
     // Prepare methods to get extension by name instead of ID
     // For example, for limits we need to fetch by app name to ensure if we reinstall the app,
@@ -5101,6 +5138,19 @@ public interface CollectionDAO {
         @Bind("offset") int offset,
         @Bind("startTime") long startTime,
         @Bind("extension") String extension);
+
+    default List<String> listAppExtensionAfterTime(
+        String appId, int limit, int offset, long startTime, String extension) {
+      return listAppExtensionAfterTime(appId, limit, offset, startTime, extension, null);
+    }
+
+    default int listAppExtensionCountAfterTime(String appName, long startTime, String extension) {
+      return listAppExtensionCountAfterTime(appName, startTime, extension, null);
+    }
+
+    default List<String> listAppExtension(String appName, int limit, int offset, String extension) {
+      return listAppExtension(appName, limit, offset, extension, null);
+    }
   }
 
   interface ReportDataTimeSeriesDAO extends EntityTimeSeriesDAO {
@@ -5186,8 +5236,8 @@ public interface CollectionDAO {
         value =
             "INSERT INTO <table>(entityFQNHash, jsonSchema, json) "
                 + "VALUES (:entityFQNHash, :jsonSchema, (:json :: jsonb)) "
-                + "ON CONFLICT (entityFQNHash, timestamp)"
-                + "DO UPDATE SET"
+                + "ON CONFLICT (entityFQNHash, timestamp) "
+                + "DO UPDATE SET "
                 + "json = EXCLUDED.json",
         connectionType = POSTGRES)
     void insertWithoutExtension(
@@ -6101,5 +6151,12 @@ public interface CollectionDAO {
     default String getTimeSeriesTableName() {
       return "workflow_instance_state_time_series";
     }
+
+    @SqlQuery(
+        value =
+            "SELECT json FROM workflow_instance_state_time_series "
+                + "WHERE workflowInstanceId = :workflowInstanceId AND stage = :stage ORDER BY timestamp DESC")
+    List<String> listWorkflowInstanceStateForStage(
+        @Bind("workflowInstanceId") String workflowInstanceId, @Bind("stage") String stage);
   }
 }

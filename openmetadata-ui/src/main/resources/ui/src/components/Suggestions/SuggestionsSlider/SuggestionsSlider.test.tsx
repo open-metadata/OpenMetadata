@@ -29,7 +29,7 @@ jest.mock('../../common/AvatarCarousel/AvatarCarousel', () => {
 jest.mock('../SuggestionsProvider/SuggestionsProvider', () => ({
   useSuggestionsContext: jest.fn().mockImplementation(() => ({
     suggestions: [{ id: '1' }, { id: '2' }],
-    selectedUserSuggestions: [{ id: '1' }, { id: '2' }],
+    selectedUserSuggestions: { combinedData: [{ id: '1' }, { id: '2' }] },
     suggestionLimit: 2,
     acceptRejectAllSuggestions,
     fetchSuggestions,
@@ -66,7 +66,7 @@ describe('SuggestionsSlider', () => {
   it("should show the more suggestion if limit and suggestion doesn't match", () => {
     (useSuggestionsContext as jest.Mock).mockReturnValueOnce({
       suggestions: [{ id: '1' }, { id: '2' }],
-      selectedUserSuggestions: [{ id: '1' }, { id: '2' }],
+      selectedUserSuggestions: { combinedData: [{ id: '1' }, { id: '2' }] },
       suggestionLimit: 20,
       acceptRejectAllSuggestions,
       fetchSuggestions,

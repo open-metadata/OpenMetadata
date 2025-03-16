@@ -10,6 +10,19 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-.ant-col.entity-header-content {
-  max-width: calc(100% - 100px);
+@import (reference) url('../../../styles/variables.less');
+
+.entity-header-title {
+  .ant-typography-ellipsis.entity-header-name {
+    margin-bottom: 0px;
+    display: block;
+    color: @text-grey-muted;
+  }
+  .ant-typography-ellipsis.entity-header-display-name {
+    font-weight: 600;
+    font-size: 16px;
+  }
+  .ant-col.entity-header-content {
+    max-width: calc(100% - 100px);
+  }
 }

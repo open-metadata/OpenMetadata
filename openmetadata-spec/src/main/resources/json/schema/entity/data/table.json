@@ -1150,6 +1150,11 @@
       "type": "string",
       "minLength": 1,
       "maxLength": 32
+    },
+    "processedLineage": {
+      "description": "Processed lineage for the table",
+      "type": "boolean",
+      "default": false
     }
   },
   "required": [
