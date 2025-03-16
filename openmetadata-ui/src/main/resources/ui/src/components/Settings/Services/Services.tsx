@@ -329,12 +329,10 @@ const Services = ({ serviceName }: ServicesProps) => {
       dataIndex: TABLE_COLUMNS_KEYS.DESCRIPTION,
       key: TABLE_COLUMNS_KEYS.DESCRIPTION,
       width: 200,
-      ellipsis: true,
       render: (description) =>
         description ? (
           <RichTextEditorPreviewerV1
             className="max-two-lines"
-            enableSeeMoreVariant={false}
             markdown={highlightSearchText(description, searchTerm)}
           />
         ) : (
