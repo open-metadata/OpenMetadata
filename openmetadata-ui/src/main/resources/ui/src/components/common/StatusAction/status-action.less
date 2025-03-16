@@ -12,20 +12,58 @@
  */
 @import url('../../../styles/variables.less');
 
-.approve-btn {
+.approve-btn,
+.reject-btn {
   &.ant-btn {
-    background-color: @blue-11;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    transition: width 0.3s ease;
     border-radius: 8px;
-    color: @white;
-    border: 1px solid @blue-12;
+    padding: 4px 12px;
     font-size: 12px;
     font-weight: 500;
+    height: 32px;
+
+    .anticon {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .btn-text {
+      margin-left: 4px;
+      white-space: nowrap;
+      transition: opacity 0.3s ease;
+    }
+  }
+}
+
+.approve-btn {
+  &.ant-btn {
+    background-color: @blue-13;
+    color: @white;
+    border: 1px solid @blue-14;
+    width: 100px;
+    padding: 4px 12px;
+
+    &.icon-only {
+      width: 32px;
+      padding: 4px;
+
+      .btn-text {
+        opacity: 0;
+        width: 0;
+        margin-left: 0;
+      }
+    }
 
     &:hover,
     &:focus,
     &:active {
-      background-color: @blue-11;
-      border-color: @blue-12;
+      background-color: @blue-13;
+      border-color: @blue-14;
       color: @white;
     }
   }
@@ -34,9 +72,27 @@
 .reject-btn {
   &.ant-btn {
     background-color: @red-11;
-    border-radius: 8px;
     color: @white;
     border: 1px solid @red-4;
+    width: 32px;
+    padding: 4px;
+
+    .btn-text {
+      opacity: 0;
+      width: 0;
+      margin-left: 0;
+    }
+
+    &.show-text {
+      width: 80px;
+      padding: 4px 12px;
+
+      .btn-text {
+        opacity: 1;
+        width: auto;
+        margin-left: 4px;
+      }
+    }
 
     &:hover,
     &:focus,

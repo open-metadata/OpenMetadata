@@ -405,9 +405,24 @@ test.describe('Glossary tests', () => {
       await redirectToHomePage(page1);
       await sidebarClick(page1, SidebarItem.GLOSSARY);
       await selectActiveGlossary(page1, glossary1.data.name);
+      await verifyTaskCreated(
+        page1,
+        glossary1.data.fullyQualifiedName,
+        glossary1.data.terms[0].data.name
+      );
+      await verifyTaskCreated(
+        page1,
+        glossary1.data.fullyQualifiedName,
+        glossary1.data.terms[1].data.name
+      );
+      await redirectToHomePage(page1);
+      await sidebarClick(page1, SidebarItem.GLOSSARY);
+      await selectActiveGlossary(page1, glossary1.data.name);
 
       const taskResolve = page1.waitForResponse('/api/v1/feed/tasks/*/resolve');
-      await page1.getByRole('button', { name: 'Approve' }).click();
+      await page1
+        .getByTestId(`${glossary1.data.terms[0].data.name}-approve-btn`)
+        .click();
       await taskResolve;
       await toastNotification(page1, /Task resolved successfully/);
 

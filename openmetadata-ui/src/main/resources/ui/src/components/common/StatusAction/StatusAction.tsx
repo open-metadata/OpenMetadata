@@ -12,7 +12,7 @@
  */
 import Icon from '@ant-design/icons';
 import { Button } from 'antd';
-import React from 'react';
+import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as CloseCircleIcon } from '../../../assets/svg/close-circle-white.svg';
 import { ReactComponent as TickCircleIcon } from '../../../assets/svg/tick-circle-white.svg';
@@ -30,22 +30,30 @@ const StatusAction = ({
   dataTestId,
 }: StatusActionProps) => {
   const { t } = useTranslation();
+  const [isRejectHovered, setIsRejectHovered] = useState<boolean>(false);
 
   return (
     <div className="flex items-center gap-2">
       <Button
-        className="approve-btn"
+        className={`approve-btn ${isRejectHovered ? 'icon-only' : ''}`}
         data-testid={dataTestId + '-approve-btn'}
         icon={<Icon component={TickCircleIcon} />}
         onClick={onApprove}>
-        {t('label.approve')}
+        {!isRejectHovered && (
+          <span className="btn-text">{t('label.approve')}</span>
+        )}
       </Button>
       <Button
-        className="reject-btn"
+        className={`reject-btn ${isRejectHovered ? 'show-text' : ''}`}
         data-testid={dataTestId + '-reject-btn'}
         icon={<Icon component={CloseCircleIcon} />}
         onClick={onReject}
-      />
+        onMouseEnter={() => setIsRejectHovered(true)}
+        onMouseLeave={() => setIsRejectHovered(false)}>
+        {isRejectHovered && (
+          <span className="btn-text">{t('label.reject')}</span>
+        )}
+      </Button>
     </div>
   );
 };
