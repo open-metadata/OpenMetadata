@@ -152,6 +152,7 @@ export const ROUTES = {
   SERVICE: `/service/${PLACEHOLDER_ROUTE_SERVICE_CAT}/${PLACEHOLDER_ROUTE_FQN}`,
   SERVICE_VERSION: `/service/${PLACEHOLDER_ROUTE_SERVICE_CAT}/${PLACEHOLDER_ROUTE_FQN}/versions/${PLACEHOLDER_ROUTE_VERSION}`,
   SERVICE_WITH_TAB: `/service/${PLACEHOLDER_ROUTE_SERVICE_CAT}/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
+  SERVICE_WITH_SUB_TAB: `/service/${PLACEHOLDER_ROUTE_SERVICE_CAT}/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ROUTE_TAB}/${PLACEHOLDER_ROUTE_SUB_TAB}`,
   ADD_SERVICE: `/${PLACEHOLDER_ROUTE_SERVICE_CAT}/add-service`,
   EDIT_SERVICE_CONNECTION: `/service/${PLACEHOLDER_ROUTE_SERVICE_CAT}/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ROUTE_TAB}/edit-connection`,
   SERVICES_WITH_TAB: `/services/${PLACEHOLDER_ROUTE_SERVICE_CAT}`,
@@ -340,15 +341,29 @@ export const getVersionPath = (
 export const getServiceDetailsPath = (
   serviceFQN: string,
   serviceCat: string,
-  tab?: string
+  tab?: string,
+  subTab?: string
 ) => {
-  let path = tab ? ROUTES.SERVICE_WITH_TAB : ROUTES.SERVICE;
+  let path = ROUTES.SERVICE;
+
+  if (tab) {
+    path = ROUTES.SERVICE_WITH_TAB;
+  }
+
+  if (subTab) {
+    path = ROUTES.SERVICE_WITH_SUB_TAB;
+  }
+
   path = path
     .replace(PLACEHOLDER_ROUTE_SERVICE_CAT, serviceCat)
     .replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(serviceFQN));
 
   if (tab) {
     path = path.replace(PLACEHOLDER_ROUTE_TAB, tab);
+  }
+
+  if (subTab) {
+    path = path.replace(PLACEHOLDER_ROUTE_SUB_TAB, subTab);
   }
 
   return path;
