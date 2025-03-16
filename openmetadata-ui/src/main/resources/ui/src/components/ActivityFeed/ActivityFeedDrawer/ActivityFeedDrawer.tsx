@@ -17,7 +17,6 @@ import React, { FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Thread, ThreadType } from '../../../generated/entity/feed/thread';
 import Loader from '../../common/Loader/Loader';
-import ActivityFeedEditor from '../ActivityFeedEditor/ActivityFeedEditor';
 import FeedPanelBodyV1 from '../ActivityFeedPanel/FeedPanelBodyV1';
 import FeedPanelHeader from '../ActivityFeedPanel/FeedPanelHeader';
 import { useActivityFeedProvider } from '../ActivityFeedProvider/ActivityFeedProvider';
@@ -33,20 +32,8 @@ const ActivityFeedDrawer: FC<ActivityFeedDrawerProps> = ({
   className,
 }) => {
   const { t } = useTranslation();
-  const {
-    focusReplyEditor,
-    isDrawerLoading,
-    hideDrawer,
-    postFeed,
-    selectedThread,
-  } = useActivityFeedProvider();
-
-  const onSave = (message: string) => {
-    postFeed(message, selectedThread?.id ?? '').catch(() => {
-      // ignore since error is displayed in toast in the parent promise.
-      // Added block for sonar code smell
-    });
-  };
+  const { isDrawerLoading, hideDrawer, selectedThread } =
+    useActivityFeedProvider();
 
   return (
     <Drawer
@@ -82,13 +69,6 @@ const ActivityFeedDrawer: FC<ActivityFeedDrawerProps> = ({
               }}
               feed={selectedThread as Thread}
               hidePopover={false}
-            />
-          </Col>
-          <Col span={24}>
-            <ActivityFeedEditor
-              className="activity-feed-editor-drawer"
-              focused={focusReplyEditor}
-              onSave={onSave}
             />
           </Col>
         </Row>

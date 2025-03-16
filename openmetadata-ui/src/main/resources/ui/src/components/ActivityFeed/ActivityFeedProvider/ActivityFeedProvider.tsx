@@ -125,7 +125,7 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
     try {
       setIsDrawerLoading(true);
       const res = await getFeedById(id);
-      setSelectedThread(res.data);
+      setActiveThread(res.data);
     } catch (err) {
       showErrorToast(
         err as AxiosError,

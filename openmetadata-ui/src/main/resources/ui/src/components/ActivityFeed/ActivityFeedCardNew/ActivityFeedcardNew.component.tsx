@@ -53,6 +53,7 @@ interface ActivityFeedCardNewProps {
   showActivityFeedEditor?: boolean;
   showThread?: boolean;
   isForFeedTab?: boolean;
+  isOpenInDrawer?: boolean;
 }
 
 const ActivityFeedCardNew = ({
@@ -63,6 +64,7 @@ const ActivityFeedCardNew = ({
   showThread,
   isActive,
   isForFeedTab,
+  isOpenInDrawer = false,
 }: ActivityFeedCardNewProps) => {
   const { entityFQN, entityType } = useMemo(() => {
     const entityFQN = getEntityFQN(feed.about) ?? '';
@@ -201,7 +203,8 @@ const ActivityFeedCardNew = ({
       className={classNames(
         'relative activity-feed-card-new',
         {
-          'activity-feed-card-new-right-panel m-0 gap-0': showThread || isPost,
+          'activity-feed-card-new-right-panel m-0 gap-0':
+            showThread || isPost || isOpenInDrawer,
         },
         { 'activity-feed-reply-card': isPost },
         { 'active-card is-active': isActive }
@@ -296,9 +299,9 @@ const ActivityFeedCardNew = ({
           )}
         </Space>
       </Space>
-      {showThread && (
+      {(showThread || isOpenInDrawer) && (
         <div className="activity-feed-comments-container d-flex flex-col">
-          {showActivityFeedEditor && (
+          {(showActivityFeedEditor || isOpenInDrawer) && (
             <Typography.Text className="activity-feed-comments-title m-b-md">
               {t('label.comment-plural')}
             </Typography.Text>

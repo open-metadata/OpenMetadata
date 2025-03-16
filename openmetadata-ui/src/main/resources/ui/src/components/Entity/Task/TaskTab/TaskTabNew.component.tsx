@@ -1035,7 +1035,9 @@ export const TaskTabNew = ({
             />
           </div>
         )}
-        {taskThread.task?.status === ThreadTaskStatus.Open && ActionRequired()}
+        {taskThread.task?.status === ThreadTaskStatus.Open &&
+          !rest.isOpenInDrawer &&
+          ActionRequired()}
 
         <Col span={24}>
           <div className="activity-feed-comments-container d-flex flex-col">

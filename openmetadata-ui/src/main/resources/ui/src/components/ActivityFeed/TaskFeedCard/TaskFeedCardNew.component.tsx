@@ -63,9 +63,10 @@ interface TaskFeedCardProps {
   feed: Thread;
   className?: string;
   isActive?: boolean;
-  onAfterClose: any;
-  onUpdateEntityDetails: any;
+  onAfterClose?: () => void;
+  onUpdateEntityDetails?: () => void;
   isForFeedTab?: boolean;
+  isOpenInDrawer?: boolean;
 }
 
 const TaskFeedCard = ({
@@ -75,6 +76,7 @@ const TaskFeedCard = ({
   onAfterClose,
   onUpdateEntityDetails,
   isForFeedTab = false,
+  isOpenInDrawer = false,
 }: TaskFeedCardProps) => {
   const history = useHistory();
   const { t } = useTranslation();
@@ -245,6 +247,7 @@ const TaskFeedCard = ({
       <div
         className={classNames(className, 'task-feed-card-v1-new', {
           active: isActive,
+          'no-bg-border': isOpenInDrawer,
         })}
         data-testid="task-feed-card">
         <Row
@@ -316,69 +319,71 @@ const TaskFeedCard = ({
               taskThread={feed}
             />
           )}
-          <Col
-            className="task-feed-card-footer  d-flex flex-wrap align-center justify-between"
-            span={24}>
-            <Col className="d-flex">
-              <Col className="d-flex flex-center">
-                <ReplyIcon
-                  className="m-r-xs"
-                  height={20}
-                  width={20}
-                  onClick={isForFeedTab ? showReplies : undefined}
-                />
-                {feed.posts && feed.posts?.length > 0 && (
-                  <span className="posts-length m-r-xss">
-                    {t(
-                      feed.posts.length === 1
-                        ? 'label.one-reply'
-                        : 'label.number-reply-plural',
-                      { number: feed.posts.length }
-                    )}
-                  </span>
-                )}
+          {!isOpenInDrawer && (
+            <Col
+              className="task-feed-card-footer  d-flex flex-wrap align-center justify-between"
+              span={24}>
+              <Col className="d-flex">
+                <Col className="d-flex flex-center">
+                  <ReplyIcon
+                    className="m-r-xs"
+                    height={20}
+                    width={20}
+                    onClick={isForFeedTab ? showReplies : undefined}
+                  />
+                  {feed.posts && feed.posts?.length > 0 && (
+                    <span className="posts-length m-r-xss">
+                      {t(
+                        feed.posts.length === 1
+                          ? 'label.one-reply'
+                          : 'label.number-reply-plural',
+                        { number: feed.posts.length }
+                      )}
+                    </span>
+                  )}
+                </Col>
+
+                <Col
+                  className={`flex items-center gap-2 text-grey-muted ${
+                    feed?.posts && feed?.posts?.length > 0
+                      ? 'task-card-assignee'
+                      : ''
+                  }`}>
+                  <AssigneesIcon height={20} width={20} />
+                  <UserAvatarGroup
+                    avatarSize={24}
+                    className="p-t-05"
+                    owners={feed?.task?.assignees}
+                  />
+                </Col>
               </Col>
 
-              <Col
-                className={`flex items-center gap-2 text-grey-muted ${
-                  feed?.posts && feed?.posts?.length > 0
-                    ? 'task-card-assignee'
-                    : ''
-                }`}>
-                <AssigneesIcon height={20} width={20} />
-                <UserAvatarGroup
-                  avatarSize={24}
-                  className="p-t-05"
-                  owners={feed?.task?.assignees}
-                />
-              </Col>
+              {!isTaskTestCaseResult && hasEditAccess && !isSuggestionEmpty && (
+                <Col className="d-flex gap-2">
+                  {feed.task?.status === ThreadTaskStatus.Open && (
+                    <Button
+                      className="approve-btn d-flex items-center"
+                      data-testid="approve-button"
+                      icon={<CheckCircleFilled />}
+                      type="primary"
+                      onClick={onTaskResolve}>
+                      {t('label.approve')}
+                    </Button>
+                  )}
+                  {feed.task?.status === ThreadTaskStatus.Open && (
+                    <Button
+                      className="reject-btn  d-flex items-center"
+                      data-testid="reject-button"
+                      icon={<CloseCircleFilled />}
+                      type="default"
+                      onClick={onTaskReject}>
+                      {t('label.reject')}
+                    </Button>
+                  )}
+                </Col>
+              )}
             </Col>
-
-            {!isTaskTestCaseResult && hasEditAccess && !isSuggestionEmpty && (
-              <Col className="d-flex gap-2">
-                {feed.task?.status === ThreadTaskStatus.Open && (
-                  <Button
-                    className="approve-btn d-flex items-center"
-                    data-testid="approve-button"
-                    icon={<CheckCircleFilled />}
-                    type="primary"
-                    onClick={onTaskResolve}>
-                    {t('label.approve')}
-                  </Button>
-                )}
-                {feed.task?.status === ThreadTaskStatus.Open && (
-                  <Button
-                    className="reject-btn  d-flex items-center"
-                    data-testid="reject-button"
-                    icon={<CloseCircleFilled />}
-                    type="default"
-                    onClick={onTaskReject}>
-                    {t('label.reject')}
-                  </Button>
-                )}
-              </Col>
-            )}
-          </Col>
+          )}
         </Row>
       </div>
     </Button>
