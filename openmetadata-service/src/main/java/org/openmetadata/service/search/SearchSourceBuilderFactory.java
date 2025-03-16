@@ -1,7 +1,16 @@
 package org.openmetadata.service.search;
 
+import static org.openmetadata.service.search.SearchUtil.isDataAssetIndex;
+import static org.openmetadata.service.search.SearchUtil.isDataQualityIndex;
+import static org.openmetadata.service.search.SearchUtil.isServiceIndex;
+import static org.openmetadata.service.search.SearchUtil.isTimeSeriesIndex;
+
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.openmetadata.schema.api.search.AssetTypeConfiguration;
+import org.openmetadata.schema.api.search.SearchSettings;
+import org.openmetadata.service.Entity;
 
 /**
  * Interface for creating search source builders for different entity types.
@@ -23,7 +32,149 @@ public interface SearchSourceBuilderFactory<S, Q, H, F> {
    * @param size the number of results to return
    * @return a search source builder configured for the specific entity type
    */
-  S getSearchSourceBuilder(String index, String q, int from, int size);
+  default S getSearchSourceBuilder(String index, String q, int from, int size) {
+    String indexName = Entity.getSearchRepository().getIndexNameWithoutAlias(index);
+
+    if (isTimeSeriesIndex(indexName)) {
+      return buildTimeSeriesSearchBuilder(indexName, q, from, size);
+    }
+
+    if (isServiceIndex(indexName)) {
+      return buildServiceSearchBuilder(q, from, size);
+    }
+
+    if (isDataQualityIndex(indexName)) {
+      return buildDataQualitySearchBuilder(indexName, q, from, size);
+    }
+
+    if (isDataAssetIndex(indexName)) {
+      return buildDataAssetSearchBuilder(indexName, q, from, size);
+    }
+
+    if (indexName.equals("all") || indexName.equals("dataAsset")) {
+      return buildCommonSearchBuilder(q, from, size);
+    }
+
+    return switch (indexName) {
+      case "user_search_index", "user", "team_search_index", "team" -> buildUserOrTeamSearchBuilder(
+          q, from, size);
+      default -> buildAggregateSearchBuilder(q, from, size);
+    };
+  }
+
+  S buildServiceSearchBuilder(String query, int from, int size);
+
+  S buildDataAssetSearchBuilder(String indexName, String query, int from, int size);
+
+  S buildCommonSearchBuilder(String query, int from, int size);
+
+  S buildUserOrTeamSearchBuilder(String query, int from, int size);
+
+  S buildAggregateSearchBuilder(String query, int from, int size);
+
+  default S buildTimeSeriesSearchBuilder(String indexName, String query, int from, int size) {
+    return switch (indexName) {
+      case "test_case_result_search_index" -> buildTestCaseResultSearch(query, from, size);
+      case "test_case_resolution_status_search_index" -> buildTestCaseResolutionStatusSearch(
+          query, from, size);
+      case "raw_cost_analysis_report_data_index",
+          "aggregated_cost_analysis_report_data_index" -> buildCostAnalysisReportDataSearch(
+          query, from, size);
+      default -> buildAggregateSearchBuilder(query, from, size);
+    };
+  }
+
+  default S buildDataQualitySearchBuilder(String indexName, String query, int from, int size) {
+    return switch (indexName) {
+      case "test_case_search_index",
+          "testCase",
+          "test_suite_search_index",
+          "testSuite" -> buildTestCaseSearch(query, from, size);
+      default -> buildAggregateSearchBuilder(query, from, size);
+    };
+  }
+
+  S buildTestCaseSearch(String query, int from, int size);
+
+  S buildTestCaseResultSearch(String query, int from, int size);
+
+  S buildTestCaseResolutionStatusSearch(String query, int from, int size);
+
+  S buildCostAnalysisReportDataSearch(String query, int from, int size);
+
+  default AssetTypeConfiguration findAssetTypeConfig(
+      String indexName, SearchSettings searchSettings) {
+    String assetType =
+        switch (indexName) {
+          case "topic_search_index", Entity.TOPIC -> Entity.TOPIC;
+          case "dashboard_search_index", Entity.DASHBOARD -> Entity.DASHBOARD;
+          case "pipeline_search_index", Entity.PIPELINE -> Entity.PIPELINE;
+          case "mlmodel_search_index", Entity.MLMODEL -> Entity.MLMODEL;
+          case "table_search_index", Entity.TABLE -> Entity.TABLE;
+          case "database_search_index", Entity.DATABASE -> Entity.DATABASE;
+          case "database_schema_search_index", Entity.DATABASE_SCHEMA -> Entity.DATABASE_SCHEMA;
+          case "container_search_index", Entity.CONTAINER -> Entity.CONTAINER;
+          case "query_search_index", Entity.QUERY -> Entity.QUERY;
+          case "stored_procedure_search_index", Entity.STORED_PROCEDURE -> Entity.STORED_PROCEDURE;
+          case "dashboard_data_model_search_index", Entity.DASHBOARD_DATA_MODEL -> Entity
+              .DASHBOARD_DATA_MODEL;
+          case "api_endpoint_search_index", Entity.API_ENDPOINT -> Entity.API_ENDPOINT;
+          case "search_entity_search_index", Entity.SEARCH_INDEX -> Entity.SEARCH_INDEX;
+          case "tag_search_index", Entity.TAG -> Entity.TAG;
+          case "glossary_term_search_index", Entity.GLOSSARY_TERM -> Entity.GLOSSARY_TERM;
+          default -> "default";
+        };
+
+    return searchSettings.getAssetTypeConfigurations().stream()
+        .filter(config -> config.getAssetType().equals(assetType))
+        .findFirst()
+        .orElse(searchSettings.getDefaultConfiguration());
+  }
+
+  default Map<String, Float> getAllSearchFieldsFromSettings(SearchSettings searchSettings) {
+    Map<String, Float> fields = new HashMap<>();
+
+    for (AssetTypeConfiguration config : searchSettings.getAssetTypeConfigurations()) {
+      String assetType = config.getAssetType();
+      boolean shouldInclude =
+          switch (assetType) {
+            case "table",
+                "storedProcedure",
+                "dashboard",
+                "dashboardDataModel",
+                "pipeline",
+                "topic",
+                "mlmodel",
+                "container",
+                "searchIndex",
+                "glossaryTerm",
+                "tag",
+                "dataProduct",
+                "apiEndpoint" -> true;
+            default -> false;
+          };
+
+      if (shouldInclude && config.getSearchFields() != null) {
+        config
+            .getSearchFields()
+            .forEach(
+                fieldBoost ->
+                    fields.put(fieldBoost.getField(), fieldBoost.getBoost().floatValue()));
+      }
+    }
+
+    // Add fields from default configuration
+    if (searchSettings.getDefaultConfiguration() != null
+        && searchSettings.getDefaultConfiguration().getSearchFields() != null) {
+      searchSettings
+          .getDefaultConfiguration()
+          .getSearchFields()
+          .forEach(
+              fieldBoost -> fields.put(fieldBoost.getField(), fieldBoost.getBoost().floatValue()));
+    }
+
+    return fields;
+  }
 
   /**
    * Build a search query builder with the specified fields and weights.

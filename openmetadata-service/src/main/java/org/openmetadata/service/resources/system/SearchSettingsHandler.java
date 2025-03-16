@@ -21,7 +21,7 @@ public class SearchSettingsHandler {
   public void validateSearchSettings(SearchSettings searchSettings) {
     // Validate global settings
     validateGlobalSettings(searchSettings.getGlobalSettings());
-    
+
     // Validate asset type configurations for duplicate fields
     if (searchSettings.getAssetTypeConfigurations() != null) {
       for (AssetTypeConfiguration assetConfig : searchSettings.getAssetTypeConfigurations()) {
@@ -33,13 +33,14 @@ public class SearchSettingsHandler {
   public void validateAssetTypeConfiguration(AssetTypeConfiguration assetConfig) {
     if (assetConfig.getSearchFields() != null) {
       Set<String> fieldNames = new HashSet<>();
-      
+
       for (FieldBoost fieldBoost : assetConfig.getSearchFields()) {
         String fieldName = fieldBoost.getField();
         if (!fieldNames.add(fieldName)) {
           throw new SystemSettingsException(
-              String.format("Duplicate field configuration found for field: %s in asset type: %s", 
-                           fieldName, assetConfig.getAssetType()));
+              String.format(
+                  "Duplicate field configuration found for field: %s in asset type: %s",
+                  fieldName, assetConfig.getAssetType()));
         }
       }
     }
@@ -169,7 +170,7 @@ public class SearchSettingsHandler {
 
     // Merge asset type configurations
     mergeAssetTypeConfigurations(defaultSearchSettings, incomingSearchSettings);
-    
+
     // Validate the merged settings before returning
     validateSearchSettings(incomingSearchSettings);
 

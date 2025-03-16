@@ -455,10 +455,11 @@ class SystemResourceTest extends OpenMetadataApplicationTest {
             .orElseThrow(() -> new AssertionError("Table configuration not found"));
 
     // Find the existing 'name' field and update its boost by adding 20.0
-    FieldBoost nameField = tableConfig.getSearchFields().stream()
-        .filter(field -> "name".equals(field.getField()))
-        .findFirst()
-        .orElseThrow(() -> new AssertionError("Name field configuration not found"));
+    FieldBoost nameField =
+        tableConfig.getSearchFields().stream()
+            .filter(field -> "name".equals(field.getField()))
+            .findFirst()
+            .orElseThrow(() -> new AssertionError("Name field configuration not found"));
 
     // Update the existing field boost instead of adding a new one
     nameField.setBoost(nameField.getBoost() + 20.0);
@@ -480,10 +481,12 @@ class SystemResourceTest extends OpenMetadataApplicationTest {
         modifiedSearchConfig.getAssetTypeConfigurations().stream()
             .filter(conf -> "table".equalsIgnoreCase(conf.getAssetType()))
             .findFirst()
-            .flatMap(conf -> conf.getSearchFields().stream()
-                .filter(field -> "name".equals(field.getField()))
-                .findFirst()
-                .map(FieldBoost::getBoost))
+            .flatMap(
+                conf ->
+                    conf.getSearchFields().stream()
+                        .filter(field -> "name".equals(field.getField()))
+                        .findFirst()
+                        .map(FieldBoost::getBoost))
             .orElse(null));
 
     resetSystemConfig();
@@ -500,10 +503,12 @@ class SystemResourceTest extends OpenMetadataApplicationTest {
         resetSearchConfig.getAssetTypeConfigurations().stream()
             .filter(conf -> "table".equalsIgnoreCase(conf.getAssetType()))
             .findFirst()
-            .flatMap(conf -> conf.getSearchFields().stream()
-                .filter(field -> "name".equals(field.getField()))
-                .findFirst()
-                .map(FieldBoost::getBoost))
+            .flatMap(
+                conf ->
+                    conf.getSearchFields().stream()
+                        .filter(field -> "name".equals(field.getField()))
+                        .findFirst()
+                        .map(FieldBoost::getBoost))
             .orElse(null));
   }
 
@@ -917,26 +922,30 @@ class SystemResourceTest extends OpenMetadataApplicationTest {
   @Test
   void testDuplicateSearchFieldConfiguration() throws HttpResponseException {
     Settings searchSettings = getSystemConfig(SettingsType.SEARCH_SETTINGS);
-    SearchSettings searchConfig = JsonUtils.convertValue(searchSettings.getConfigValue(), SearchSettings.class);
+    SearchSettings searchConfig =
+        JsonUtils.convertValue(searchSettings.getConfigValue(), SearchSettings.class);
 
-    AssetTypeConfiguration tableConfig = searchConfig.getAssetTypeConfigurations().stream()
-        .filter(conf -> "table".equalsIgnoreCase(conf.getAssetType()))
-        .findFirst()
-        .orElseThrow(() -> new AssertionError("Table configuration not found"));
+    AssetTypeConfiguration tableConfig =
+        searchConfig.getAssetTypeConfigurations().stream()
+            .filter(conf -> "table".equalsIgnoreCase(conf.getAssetType()))
+            .findFirst()
+            .orElseThrow(() -> new AssertionError("Table configuration not found"));
 
     tableConfig.getSearchFields().add(new FieldBoost().withField("name").withBoost(20.0));
 
-    Settings updatedSettings = new Settings()
-        .withConfigType(SettingsType.SEARCH_SETTINGS)
-        .withConfigValue(searchConfig);
+    Settings updatedSettings =
+        new Settings().withConfigType(SettingsType.SEARCH_SETTINGS).withConfigValue(searchConfig);
 
     WebTarget target = getResource("system/settings");
     try {
-        TestUtils.put(target, updatedSettings, Response.Status.OK, ADMIN_AUTH_HEADERS);
-        fail("Expected HttpResponseException for duplicate field configuration");
+      TestUtils.put(target, updatedSettings, Response.Status.OK, ADMIN_AUTH_HEADERS);
+      fail("Expected HttpResponseException for duplicate field configuration");
     } catch (HttpResponseException e) {
-        assertEquals(400, e.getStatusCode());
-        assertTrue(e.getMessage().contains("Duplicate field configuration found for field: name in asset type: table"));
+      assertEquals(400, e.getStatusCode());
+      assertTrue(
+          e.getMessage()
+              .contains(
+                  "Duplicate field configuration found for field: name in asset type: table"));
     }
   }
 
