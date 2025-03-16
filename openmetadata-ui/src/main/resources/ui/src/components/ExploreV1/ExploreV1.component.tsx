@@ -261,7 +261,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
   }
 
   return (
-    <div className="explore-page bg-white" data-testid="explore-page">
+    <div className="explore-page" data-testid="explore-page">
       {tabItems.length > 0 && (
         <ResizableLeftPanels
           className="content-height-with-resizable-panel"

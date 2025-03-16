@@ -42,12 +42,21 @@
   }
 
   .name-persona-container {
-    width: 98px;
+    max-width: 120px;
     display: flex;
     flex-direction: column;
-    align-items: flex-start;
-    justify-content: center;
     line-height: 20px;
-    color: #252b37;
+    text-align: left;
+
+    .ant-typography {
+      width: 100%;
+      // add ellipsis to the text
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    // Need to change this to 14px
+    font-size: @font-size-base;
   }
 }
