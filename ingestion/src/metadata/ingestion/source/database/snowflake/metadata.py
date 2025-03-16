@@ -69,6 +69,9 @@ from metadata.ingestion.source.database.incremental_metadata_extraction import (
     IncrementalConfig,
 )
 from metadata.ingestion.source.database.multi_db_source import MultiDBSource
+from metadata.ingestion.source.database.snowflake.constants import (
+    DEFAULT_STREAM_COLUMNS,
+)
 from metadata.ingestion.source.database.snowflake.models import (
     STORED_PROC_LANGUAGE_MAP,
     SnowflakeStoredProcedure,
@@ -97,6 +100,7 @@ from metadata.ingestion.source.database.snowflake.utils import (
     get_pk_constraint,
     get_schema_columns,
     get_schema_foreign_keys,
+    get_stream_definition,
     get_stream_names,
     get_stream_names_reflection,
     get_table_comment,
@@ -108,19 +112,12 @@ from metadata.ingestion.source.database.snowflake.utils import (
     get_view_names,
     get_view_names_reflection,
     normalize_names,
-    get_stream_definition,
 )
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_database
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sqlalchemy_utils import get_all_table_comments, get_all_table_ddls
 from metadata.utils.tag_utils import get_ometa_tag_and_classification
-
-
-from metadata.ingestion.source.database.snowflake.constants import (
-    DEFAULT_STREAM_COLUMNS,
-)
-
 
 ischema_names["VARIANT"] = VARIANT
 ischema_names["GEOGRAPHY"] = create_sqlalchemy_type("GEOGRAPHY")
