@@ -1,9 +1,5 @@
 package org.openmetadata.service.search.opensearch;
 
-import static org.openmetadata.service.search.EntityBuilderConstant.DOMAIN_DISPLAY_NAME_KEYWORD;
-import static org.openmetadata.service.search.EntityBuilderConstant.ES_TAG_FQN_FIELD;
-import static org.openmetadata.service.search.EntityBuilderConstant.MAX_AGGREGATE_SIZE;
-import static org.openmetadata.service.search.EntityBuilderConstant.OWNER_DISPLAY_NAME_KEYWORD;
 import static org.openmetadata.service.search.EntityBuilderConstant.POST_TAG;
 import static org.openmetadata.service.search.EntityBuilderConstant.PRE_TAG;
 
@@ -78,32 +74,15 @@ public class OpenSearchSourceBuilderFactory
   }
 
   private SearchSourceBuilder addAggregation(SearchSourceBuilder searchSourceBuilder) {
-    searchSourceBuilder
-        .aggregation(
-            AggregationBuilders.terms("serviceType").field("serviceType").size(MAX_AGGREGATE_SIZE))
-        .aggregation(
-            AggregationBuilders.terms("service.displayName.keyword")
-                .field("service.displayName.keyword")
-                .size(MAX_AGGREGATE_SIZE))
-        .aggregation(
-            AggregationBuilders.terms("entityType").field("entityType").size(MAX_AGGREGATE_SIZE))
-        .aggregation(
-            AggregationBuilders.terms("tier.tagFQN").field("tier.tagFQN").size(MAX_AGGREGATE_SIZE))
-        .aggregation(
-            AggregationBuilders.terms("certification.tagLabel.tagFQN")
-                .field("certification.tagLabel.tagFQN")
-                .size(MAX_AGGREGATE_SIZE))
-        .aggregation(
-            AggregationBuilders.terms(OWNER_DISPLAY_NAME_KEYWORD)
-                .field(OWNER_DISPLAY_NAME_KEYWORD)
-                .size(MAX_AGGREGATE_SIZE))
-        .aggregation(
-            AggregationBuilders.terms(DOMAIN_DISPLAY_NAME_KEYWORD)
-                .field(DOMAIN_DISPLAY_NAME_KEYWORD)
-                .size(MAX_AGGREGATE_SIZE))
-        .aggregation(AggregationBuilders.terms(ES_TAG_FQN_FIELD).field(ES_TAG_FQN_FIELD))
-        .aggregation(
-            AggregationBuilders.terms("index_count").field("_index").size(MAX_AGGREGATE_SIZE));
+    searchSettings
+        .getGlobalSettings()
+        .getAggregations()
+        .forEach(
+            agg ->
+                searchSourceBuilder.aggregation(
+                    AggregationBuilders.terms(agg.getName())
+                        .field(agg.getField())
+                        .size(searchSettings.getGlobalSettings().getMaxAggregateSize())));
     return searchSourceBuilder;
   }
 
@@ -400,15 +379,7 @@ public class OpenSearchSourceBuilderFactory
           buildHighlights(searchSettings.getGlobalSettings().getHighlightFields()));
     }
 
-    searchSettings
-        .getGlobalSettings()
-        .getAggregations()
-        .forEach(
-            agg ->
-                searchSourceBuilder.aggregation(
-                    AggregationBuilders.terms(agg.getName())
-                        .field(agg.getField())
-                        .size(searchSettings.getGlobalSettings().getMaxAggregateSize())));
+    addAggregation(searchSourceBuilder);
     return searchSourceBuilder;
   }
 }

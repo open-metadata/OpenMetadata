@@ -93,7 +93,6 @@ public class SystemResource {
 
     this.jwtFilter =
         new JwtFilter(config.getAuthenticationConfiguration(), config.getAuthorizerConfiguration());
-    loadDefaultSearchSettings(false);
   }
 
   public static class SettingsList extends ResultList<Settings> {
