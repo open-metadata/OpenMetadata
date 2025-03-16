@@ -265,11 +265,7 @@ public class LineageResource {
           String queryFilter,
       @Parameter(description = "Filter documents by deleted param. By default deleted is false")
           @QueryParam("includeDeleted")
-          boolean deleted,
-      @Parameter(description = "Source Fields to Include", schema = @Schema(type = "string"))
-          @QueryParam("fields")
-          @DefaultValue("*")
-          String includeSourceFields)
+          boolean deleted)
       throws IOException {
     return Entity.getSearchRepository().searchPlatformLineage(view, queryFilter, deleted);
   }
