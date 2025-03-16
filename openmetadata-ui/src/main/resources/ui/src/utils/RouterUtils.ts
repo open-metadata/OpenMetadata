@@ -677,7 +677,7 @@ export const getExplorePath: (args: {
   );
   let paramsObject: Record<string, unknown> = QueryString.parse(
     location.search.startsWith('?')
-      ? location.search.substr(1)
+      ? location.search.substring(1)
       : location.search
   );
 

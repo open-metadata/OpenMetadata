@@ -212,13 +212,14 @@ const UserListPageV1 = () => {
   const handleShowDeletedUserChange = (value: boolean) => {
     handlePageChange(INITIAL_PAGING_VALUE);
     handlePageSizeChange(PAGE_SIZE_MEDIUM);
-    setFilters({ isDeleted: value ? value : null });
+    // Clear search value, on Toggle delete
+    setFilters({ isDeleted: value || null, user: null });
   };
 
   const handleSearch = (value: string) => {
     handlePageChange(INITIAL_PAGING_VALUE);
 
-    setFilters({ user: value ? value : null });
+    setFilters({ user: isEmpty(value) ? null : value });
   };
 
   useEffect(() => {

@@ -211,7 +211,7 @@ export const editDisplayName = async (page: Page, editedUserName: string) => {
   await page.click('[data-testid="user-profile-manage-btn"]');
   await page.click('[data-testid="edit-displayname"]');
   await page.fill('[data-testid="displayName"]', '');
-  await page.type('[data-testid="displayName"]', editedUserName);
+  await page.getByTestId('displayName').fill(editedUserName);
 
   const saveResponse = page.waitForResponse('/api/v1/users/*');
   await page.click('[data-testid="save-display-name"]');
@@ -228,7 +228,7 @@ export const editTeams = async (page: Page, teamName: string) => {
   await page.click('.ant-select-selection-item-remove > .anticon');
 
   await page.click('[data-testid="team-select"]');
-  await page.type('[data-testid="team-select"]', teamName);
+  await page.getByTestId('team-select').fill(teamName);
 
   // Click the team from the dropdown
   await page.click('.filter-node > .ant-select-tree-node-content-wrapper');
@@ -668,10 +668,10 @@ export const addUser = async (
   await page.fill('#confirmPassword', password);
 
   await page.click('[data-testid="roles-dropdown"] > .ant-select-selector');
-  await page.type(
-    '[data-testid="roles-dropdown"] > .ant-select-selector',
-    role
-  );
+  await page
+    .getByTestId('roles-dropdown')
+    .locator('.ant-select-selector')
+    .fill(role);
   await page.click('.ant-select-item-option-content');
   await page.click('[data-testid="roles-dropdown"] > .ant-select-selector');
 
