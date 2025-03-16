@@ -43,7 +43,7 @@ import {
 } from '../constants/GlobalSettings.constants';
 import { arrServiceTypes } from '../constants/Services.constant';
 import { AlertDetailTabs } from '../enums/Alerts.enum';
-import { EntityAction, EntityTabs } from '../enums/entity.enum';
+import { EntityAction, EntityTabs, EntityType } from '../enums/entity.enum';
 import { ServiceAgentSubTabs } from '../enums/service.enum';
 import { ProfilerDashboardType } from '../enums/table.enum';
 import { PipelineType } from '../generated/api/services/ingestionPipelines/createIngestionPipeline';
@@ -642,9 +642,18 @@ export const getVersionPath = (
 export const getServiceDetailsPath = (
   serviceFQN: string,
   serviceCat: string,
-  tab?: string
+  tab?: string,
+  subTab?: string
 ) => {
-  let path = tab ? ROUTES.SERVICE_WITH_TAB : ROUTES.SERVICE;
+  let path = ROUTES.SERVICE;
+
+  if (tab) {
+    path = ROUTES.SERVICE_WITH_TAB;
+  }
+
+  if (subTab) {
+    path = ROUTES.SERVICE_WITH_SUB_TAB;
+  }
   path = path
     .replace(PLACEHOLDER_ROUTE_SERVICE_CAT, serviceCat)
     .replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(serviceFQN));
