@@ -23,6 +23,7 @@ import { DashboardChartTable } from '../../components/Dashboard/DashboardChartTa
 import ModelTab from '../../components/Dashboard/DataModel/DataModels/ModelTab/ModelTab.component';
 import SchemaTable from '../../components/Database/SchemaTable/SchemaTable.component';
 import DataProductsContainer from '../../components/DataProducts/DataProductsContainer/DataProductsContainer.component';
+import { EntityUnion } from '../../components/Explore/ExplorePage.interface';
 import GlossaryTermTab from '../../components/Glossary/GlossaryTermTab/GlossaryTermTab.component';
 import TagsViewer from '../../components/Tag/TagsViewer/TagsViewer';
 import { DisplayType } from '../../components/Tag/TagsViewer/TagsViewer.interface';
@@ -115,9 +116,8 @@ export const WIDGET_COMPONENTS = {
   [GlossaryTermDetailPageWidgetKeys.REVIEWER]: () => (
     <OwnerLabel hasPermission={false} owners={DUMMY_OWNER_LIST} />
   ),
-  [DetailPageWidgetKeys.DESCRIPTION]: () => (
-    // eslint-disable-next-line max-len
-    <RichTextEditorPreviewerV1 markdown="Glossary related to describing **conceptual** terms related to a Person. These terms are used to label data assets to describe the user data in those assets. Example - a table column can be labeled with `Person.PhoneNumber` tag. The associated `PII` and `PersonalData` tags are automatically applied. This is done to help users producing the data  focus on describing the data without being policy experts. The associated tags take care of applying classification tags automatically." />
+  [DetailPageWidgetKeys.DESCRIPTION]: (data?: EntityUnion) => (
+    <RichTextEditorPreviewerV1 markdown={data?.description ?? ''} />
   ),
   [DetailPageWidgetKeys.TABLE_SCHEMA]: () => (
     <GenericProvider<Table>

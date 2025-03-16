@@ -15,13 +15,17 @@ import { Button, Card, Space } from 'antd';
 import { startCase } from 'lodash';
 import React, { useMemo } from 'react';
 import { GlossaryTermDetailPageWidgetKeys } from '../../../enums/CustomizeDetailPage.enum';
+import { PageType } from '../../../generated/system/ui/page';
 import { WidgetCommonProps } from '../../../pages/CustomizablePage/CustomizablePage.interface';
+import { useCustomizeStore } from '../../../pages/CustomizablePage/CustomizeStore';
 import customizeGlossaryTermPageClassBase from '../../../utils/CustomizeGlossaryTerm/CustomizeGlossaryTermBaseClass';
+import { getDummyDataByPage } from '../../../utils/CustomizePage/CustomizePageUtils';
 import { WIDGET_COMPONENTS } from '../../../utils/GenericWidget/GenericWidgetUtils';
 import { useGlossaryStore } from '../../Glossary/useGlossary.store';
 import './generic-widget.less';
 
 export const GenericWidget = (props: WidgetCommonProps) => {
+  const { currentPageType } = useCustomizeStore();
   const handleRemoveClick = () => {
     if (props.handleRemoveWidget) {
       props.handleRemoveWidget(props.widgetKey);
@@ -29,6 +33,7 @@ export const GenericWidget = (props: WidgetCommonProps) => {
   };
 
   const { setGlossaryChildTerms } = useGlossaryStore();
+  const data = getDummyDataByPage(currentPageType as PageType);
 
   useMemo(() => {
     if (
@@ -53,7 +58,7 @@ export const GenericWidget = (props: WidgetCommonProps) => {
     if (matchingWidget) {
       const [, Component] = matchingWidget;
 
-      return Component();
+      return Component(data);
     }
 
     return widgetName;

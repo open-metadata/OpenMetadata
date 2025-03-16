@@ -12,6 +12,7 @@
  */
 import { TabsProps } from 'antd';
 import { noop, uniqueId } from 'lodash';
+import { EntityUnion } from '../../components/Explore/ExplorePage.interface';
 import { TAB_LABEL_MAP } from '../../constants/Customize.constants';
 import { CommonWidgetType } from '../../constants/CustomizeWidgets.constants';
 import { LandingPageWidgetKeys } from '../../enums/CustomizablePage.enum';
@@ -314,7 +315,7 @@ export const getDummyDataByPage = (pageType: PageType) => {
 
     case PageType.LandingPage:
     default:
-      return {};
+      return {} as EntityUnion;
   }
 };
 

@@ -28,7 +28,7 @@ import {
   Modal,
   Space,
 } from 'antd';
-import { isEmpty, isNil, toString, uniqueId } from 'lodash';
+import { isEmpty, isNil, isUndefined, toString, uniqueId } from 'lodash';
 import { MenuInfo } from 'rc-menu/lib/interface';
 import React, { useCallback, useMemo, useState } from 'react';
 import RGL, { Layout, WidthProvider } from 'react-grid-layout';
@@ -59,8 +59,9 @@ import {
   getDefaultWidgetForTab,
 } from '../../../utils/CustomizePage/CustomizePageUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
-import { getWidgetFromKey } from '../../../utils/GlossaryTerm/GlossaryTermUtil';
 import AddDetailsPageWidgetModal from '../../MyData/CustomizableComponents/AddDetailsPageWidgetModal/AddDetailsPageWidgetModal';
+import EmptyWidgetPlaceholder from '../../MyData/CustomizableComponents/EmptyWidgetPlaceholder/EmptyWidgetPlaceholder';
+import { GenericWidget } from '../GenericWidget/GenericWidget';
 
 const ReactGridLayout = WidthProvider(RGL);
 
@@ -164,17 +165,6 @@ export const CustomizeTabWidget = () => {
     newActiveKey !== activeKey && onChange(newActiveKey ?? EntityTabs.OVERVIEW);
   };
 
-  const onEdit = (
-    targetKey: React.MouseEvent | React.KeyboardEvent | string,
-    action: 'add' | 'remove'
-  ) => {
-    if (action === 'add') {
-      add();
-    } else {
-      remove(targetKey);
-    }
-  };
-
   const handleTabEditClick = (key: string) => {
     setEditableItem(items.find((item) => item.id === key) || null);
   };
@@ -214,17 +204,41 @@ export const CustomizeTabWidget = () => {
 
   const widgets = useMemo(
     () =>
-      tabLayouts.map((widget) => (
-        <div data-grid={widget} id={widget.i} key={widget.i}>
-          {getWidgetFromKey({
-            widgetConfig: widget,
-            handleOpenAddWidgetModal: handleOpenAddWidgetModal,
-            handlePlaceholderWidgetKey: handlePlaceholderWidgetKey,
-            handleRemoveWidget: handleRemoveWidget,
-            isEditView: true,
-          })}
-        </div>
-      )),
+      tabLayouts.map((widget) => {
+        let widgetComponent = null;
+
+        if (
+          widget.i.endsWith('.EmptyWidgetPlaceholder') &&
+          !isUndefined(handleOpenAddWidgetModal) &&
+          !isUndefined(handlePlaceholderWidgetKey) &&
+          !isUndefined(handleRemoveWidget)
+        ) {
+          widgetComponent = (
+            <EmptyWidgetPlaceholder
+              handleOpenAddWidgetModal={handleOpenAddWidgetModal}
+              handlePlaceholderWidgetKey={handlePlaceholderWidgetKey}
+              handleRemoveWidget={handleRemoveWidget}
+              isEditable={widget.isDraggable}
+              widgetKey={widget.i}
+            />
+          );
+        } else {
+          widgetComponent = (
+            <GenericWidget
+              isEditView
+              handleRemoveWidget={handleRemoveWidget}
+              selectedGridSize={widget.w}
+              widgetKey={widget.i}
+            />
+          );
+        }
+
+        return (
+          <div data-grid={widget} id={widget.i} key={widget.i}>
+            {widgetComponent}
+          </div>
+        );
+      }),
     [tabLayouts]
   );
 
@@ -387,7 +401,7 @@ export const CustomizeTabWidget = () => {
       </Col>
       <Col span={24}>
         <Card
-          bodyStyle={{ padding: 0 }}
+          bodyStyle={{ padding: 0, paddingBottom: '20px' }}
           bordered={false}
           className="m-x-lg"
           extra={
