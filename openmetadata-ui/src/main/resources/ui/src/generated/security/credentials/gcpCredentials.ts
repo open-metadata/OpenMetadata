@@ -66,6 +66,8 @@ export interface GCPCredentialsConfiguration {
     privateKeyId?: string;
     /**
      * Project ID
+     *
+     * GCP Project ID to parse metadata from
      */
     projectId?: string[] | string;
     /**
