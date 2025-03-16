@@ -68,7 +68,7 @@ export const IngestionRecentRuns = ({
     } finally {
       setLoading(false);
     }
-  }, [ingestion, ingestion?.fullyQualifiedName]);
+  }, [ingestion, ingestion?.fullyQualifiedName, appRuns]);
 
   useEffect(() => {
     fetchPipelineStatus();

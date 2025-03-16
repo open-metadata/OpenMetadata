@@ -47,7 +47,7 @@ function MetadataAgentsWidget({
   onPageChange,
   airflowInformation,
   searchText,
-}: MetadataAgentsWidgetProps) {
+}: Readonly<MetadataAgentsWidgetProps>) {
   const { t } = useTranslation();
   const { serviceCategory } = useParams<{
     serviceCategory: ServiceCategory;
