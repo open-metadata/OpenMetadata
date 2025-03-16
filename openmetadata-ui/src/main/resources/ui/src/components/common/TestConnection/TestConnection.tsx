@@ -10,18 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Alert, Button, Space } from 'antd';
+import { Button, Space } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, toNumber } from 'lodash';
-import React, {
-  FC,
-  ReactNode,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import React, { FC, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as FailIcon } from '../../../assets/svg/fail-badge.svg';
 import { ReactComponent as WarningIcon } from '../../../assets/svg/ic-warning.svg';
@@ -39,7 +32,6 @@ import {
   TEST_CONNECTION_WARNING_MESSAGE,
   WORKFLOW_COMPLETE_STATUS,
 } from '../../../constants/Services.constant';
-import { ClientErrors } from '../../../enums/Axios.enum';
 import { CreateWorkflow } from '../../../generated/api/automations/createWorkflow';
 import { ConfigClass } from '../../../generated/entity/automations/testServiceConnection';
 import {
@@ -52,6 +44,7 @@ import {
 import { TestConnectionStep } from '../../../generated/entity/services/connections/testConnectionDefinition';
 import useAbortController from '../../../hooks/AbortController/useAbortController';
 import { useAirflowStatus } from '../../../hooks/useAirflowStatus';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import {
   addWorkflow,
   deleteWorkflowById,
@@ -66,7 +59,6 @@ import {
   getTestConnectionName,
   shouldTestConnection,
 } from '../../../utils/ServiceUtils';
-import InlineAlert from '../InlineAlert/InlineAlert';
 import Loader from '../Loader/Loader';
 import './test-connection.style.less';
 import { TestConnectionProps, TestStatus } from './TestConnection.interface';
@@ -94,7 +86,10 @@ const TestConnection: FC<TestConnectionProps> = ({
     TEST_CONNECTION_INITIAL_MESSAGE
   );
 
-  const [errorComponent, setErrorComponent] = useState<ReactNode>();
+  const [errorMessage, setErrorMessage] = useState<{
+    description?: string;
+    subDescription?: string;
+  }>();
 
   const [testConnectionStep, setTestConnectionStep] = useState<
     TestConnectionStep[]
@@ -120,6 +115,8 @@ const TestConnection: FC<TestConnectionProps> = ({
   const currentWorkflowRef = useRef(currentWorkflow);
 
   const { controller } = useAbortController();
+
+  const { setInlineAlertDetails } = useApplicationStore();
 
   const serviceType = useMemo(() => {
     return getServiceType(serviceCategory);
@@ -356,32 +353,15 @@ const TestConnection: FC<TestConnectionProps> = ({
       setIsTestingConnection(false);
       setMessage(TEST_CONNECTION_FAILURE_MESSAGE);
       setTestStatus(StatusType.Failed);
-      if ((error as AxiosError).status === ClientErrors.BAD_REQUEST) {
-        setErrorComponent(
-          <Alert
-            message={(error as AxiosError).response?.data as ReactNode}
-            type="error"
-          />
-        );
-      } else if ((error as AxiosError).status === 500) {
-        setErrorComponent(
-          <InlineAlert
-            description={t('server.unexpected-response')}
-            heading={TEST_CONNECTION_FAILURE_MESSAGE}
-            type="error"
-          />
-        );
+      if ((error as AxiosError).status === 500) {
+        setErrorMessage({
+          description: t('server.unexpected-response'),
+        });
       } else {
-        setErrorComponent(
-          <InlineAlert
-            description={
-              (error as AxiosError<{ responseMessage: string }>).response?.data
-                ?.responseMessage
-            }
-            heading={TEST_CONNECTION_FAILURE_MESSAGE}
-            type="error"
-          />
-        );
+        setErrorMessage({
+          subDescription: (error as AxiosError<{ message: string }>).response
+            ?.data?.message,
+        });
       }
 
       // delete the workflow if there is an exception
@@ -407,6 +387,10 @@ const TestConnection: FC<TestConnectionProps> = ({
   const handleCancelTestConnectionModal = () => {
     controller.abort();
     setDialogOpen(false);
+  };
+
+  const handleCloseErrorMessage = () => {
+    setErrorMessage(undefined);
   };
 
   useEffect(() => {
@@ -514,7 +498,8 @@ const TestConnection: FC<TestConnectionProps> = ({
         </Button>
       )}
       <TestConnectionModal
-        errorComponent={errorComponent}
+        errorMessage={errorMessage}
+        handleCloseErrorMessage={handleCloseErrorMessage}
         isConnectionTimeout={isConnectionTimeout}
         isOpen={dialogOpen}
         isTestingConnection={isTestingConnection}

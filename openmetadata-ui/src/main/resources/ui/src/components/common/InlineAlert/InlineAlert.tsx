@@ -102,9 +102,11 @@ function InlineAlert({
             <Typography.Text className="font-semibold text-sm">
               {heading}
             </Typography.Text>
-            <Typography.Paragraph className="m-b-0 text-sm">
-              {description}
-            </Typography.Paragraph>
+            {description && (
+              <Typography.Paragraph className="m-b-0 text-sm">
+                {description}
+              </Typography.Paragraph>
+            )}
 
             {subDescription && showMore && (
               <Typography.Paragraph className="m-b-0 text-sm">
@@ -114,7 +116,7 @@ function InlineAlert({
 
             {subDescription && (
               <Button
-                className="text-xs p-0 m-0 w-fit-content"
+                className="text-xs p-0 m-0 w-fit-content h-auto"
                 data-testid={`read-${showMore ? 'less' : 'more'}-button`}
                 type="link"
                 onClick={handleToggleShowMore}>
