@@ -21,7 +21,7 @@ import React, {
   ReactNode,
   useEffect,
   useMemo,
-  useState,
+  useRef,
 } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useAlertStore } from '../../hooks/useAlertStore';
@@ -68,7 +68,7 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
   const { alert, resetAlert } = useAlertStore();
 
   const location = useLocation();
-  const [prevPath, setPrevPath] = useState<string>();
+  const prevPathRef = useRef<string | undefined>();
 
   const contentWidth = useMemo(() => {
     if (leftPanel && rightPanel) {
@@ -83,10 +83,12 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
   }, [leftPanel, rightPanel, leftPanelWidth, rightPanelWidth]);
 
   useEffect(() => {
-    if (prevPath !== location.pathname.split('/')[1]) {
+    const currentPath = location.pathname.split('/').filter(Boolean)[0];
+
+    if (prevPathRef.current !== currentPath) {
       resetAlert();
+      prevPathRef.current = currentPath;
     }
-    setPrevPath(location.pathname.split('/')[1]);
   }, [location.pathname, resetAlert]);
 
   return (
