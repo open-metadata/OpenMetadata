@@ -31,6 +31,7 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useAsyncDeleteProvider } from '../../../context/AsyncDeleteProvider/AsyncDeleteProvider';
 import { EntityType } from '../../../enums/entity.enum';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { deleteEntity } from '../../../rest/miscAPI';
@@ -57,6 +58,7 @@ const DeleteWidgetModal = ({
   onCancel,
   entityId,
   prepareType = true,
+  isAsyncDelete = false,
   isRecursiveDelete,
   afterDeleteAction,
   successMessage,
@@ -67,6 +69,7 @@ const DeleteWidgetModal = ({
   const { t } = useTranslation();
   const [form] = Form.useForm();
   const { currentUser, onLogoutHandler } = useApplicationStore();
+  const { handleOnAsyncEntityDeleteConfirm } = useAsyncDeleteProvider();
   const [deleteConfirmationText, setDeleteConfirmationText] =
     useState<string>('');
   const [deletionType, setDeletionType] = useState<DeleteType>(
@@ -192,6 +195,24 @@ const DeleteWidgetModal = ({
     ]
   );
 
+  const onFormFinish = useCallback(async (values: DeleteWidgetFormFields) => {
+    if (isAsyncDelete) {
+      setIsLoading(true);
+      await handleOnAsyncEntityDeleteConfirm({
+        entityName,
+        entityId: entityId ?? '',
+        entityType,
+        deleteType: values.deleteType,
+        prepareType,
+        isRecursiveDelete: isRecursiveDelete ?? false,
+      });
+      setIsLoading(false);
+      handleOnEntityDeleteCancel();
+    } else {
+      onDelete ? onDelete(values) : handleOnEntityDeleteConfirm(values);
+    }
+  }, []);
+
   const onChange = useCallback((e: RadioChangeEvent) => {
     const value = e.target.value;
     setDeletionType(value);
@@ -278,7 +299,7 @@ const DeleteWidgetModal = ({
         open={visible}
         title={`${t('label.delete')} ${entityType} "${entityName}"`}
         onCancel={handleOnEntityDeleteCancel}>
-        <Form form={form} onFinish={onDelete ?? handleOnEntityDeleteConfirm}>
+        <Form form={form} onFinish={onFormFinish}>
           <Form.Item<DeleteWidgetFormFields> className="m-0" name="deleteType">
             <Radio.Group onChange={onChange}>
               {(deleteOptions ?? DELETE_OPTION).map(

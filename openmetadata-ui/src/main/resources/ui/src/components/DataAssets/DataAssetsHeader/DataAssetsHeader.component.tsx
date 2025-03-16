@@ -633,6 +633,7 @@ export const DataAssetsHeader = ({
                   />
                 </Tooltip>
                 <ManageButton
+                  isAsyncDelete
                   afterDeleteAction={afterDeleteAction}
                   allowSoftDelete={!dataAsset.deleted && allowSoftDelete}
                   canDelete={permissions.Delete}
