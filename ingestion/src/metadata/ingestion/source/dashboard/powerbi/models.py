@@ -119,6 +119,8 @@ class PowerBiMeasures(BaseModel):
     expression: str
     description: Optional[str] = None
     isHidden: bool
+
+
 class PowerBITableSource(BaseModel):
     """
     PowerBI Table Source
