@@ -54,6 +54,7 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
 from metadata.ingestion.source.dashboard.powerbi.models import (
+    Dataflow,
     Dataset,
     Group,
     PowerBIDashboard,
@@ -342,7 +343,8 @@ class PowerbiSource(DashboardServiceSource):
         if self.source_config.includeDataModels:
             try:
                 for workspace in self.workspace_data:
-                    for dataset in workspace.datasets or []:
+                    workspace_datasets = workspace.datasets + workspace.dataflows
+                    for dataset in workspace_datasets or []:
                         if filter_by_datamodel(
                             self.source_config.dataModelFilterPattern, dataset.name
                         ):
@@ -360,18 +362,36 @@ class PowerbiSource(DashboardServiceSource):
         Method to fetch DataModels in bulk
         """
         try:
-            data_model_request = CreateDashboardDataModelRequest(
-                name=EntityName(dataset.id),
-                displayName=dataset.name,
-                description=Markdown(dataset.description)
-                if dataset.description
-                else None,
-                service=FullyQualifiedEntityName(self.context.get().dashboard_service),
-                dataModelType=DataModelType.PowerBIDataModel.value,
-                serviceType=DashboardServiceType.PowerBI.value,
-                columns=self._get_column_info(dataset),
-                project=self._fetch_dataset_workspace(dataset_id=dataset.id),
-            )
+            if isinstance(dataset, Dataset):
+                data_model_request = CreateDashboardDataModelRequest(
+                    name=EntityName(dataset.id),
+                    displayName=dataset.name,
+                    description=Markdown(dataset.description)
+                    if dataset.description
+                    else None,
+                    service=FullyQualifiedEntityName(
+                        self.context.get().dashboard_service
+                    ),
+                    dataModelType=DataModelType.PowerBIDataModel.value,
+                    serviceType=DashboardServiceType.PowerBI.value,
+                    columns=self._get_column_info(dataset),
+                    project=self._fetch_dataset_workspace(dataset_id=dataset.id),
+                )
+            else:
+                data_model_request = CreateDashboardDataModelRequest(
+                    name=EntityName(dataset.id),
+                    displayName=dataset.name,
+                    description=Markdown(dataset.description)
+                    if dataset.description
+                    else None,
+                    service=FullyQualifiedEntityName(
+                        self.context.get().dashboard_service
+                    ),
+                    dataModelType=DataModelType.PowerBIDataModel.value,
+                    serviceType=DashboardServiceType.PowerBI.value,
+                    columns=self._get_column_info(dataset),
+                    project=self._fetch_dataflow_workspace(dataflow_id=dataset.id),
+                )
             yield Either(right=data_model_request)
             self.register_record_datamodel(datamodel_request=data_model_request)
 
@@ -413,6 +433,8 @@ class PowerbiSource(DashboardServiceSource):
     def _get_column_info(self, dataset: Dataset) -> Optional[List[Column]]:
         """Build columns from dataset"""
         datasource_columns = []
+        if isinstance(dataset, Dataflow):
+            return datasource_columns
         for table in dataset.tables or []:
             try:
                 parsed_table = {
@@ -914,6 +936,21 @@ class PowerbiSource(DashboardServiceSource):
                 for workspace in self.workspace_data
                 for dataset in workspace.datasets
                 if dataset.id == dataset_id
+            )
+            return next(iter(workspace_names), None)
+
+        return None
+
+    def _fetch_dataflow_workspace(self, dataflow_id: Optional[str]) -> Optional[str]:
+        """
+        Method to search the workspace name in which the dataset in contained
+        """
+        if dataflow_id:
+            workspace_names = (
+                workspace.name
+                for workspace in self.workspace_data
+                for dataflow in workspace.dataflows
+                if dataflow.id == dataflow_id
             )
             return next(iter(workspace_names), None)
 
