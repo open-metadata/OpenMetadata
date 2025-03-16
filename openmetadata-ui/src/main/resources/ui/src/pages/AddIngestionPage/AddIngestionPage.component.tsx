@@ -29,9 +29,10 @@ import {
   INGESTION_PROGRESS_START_VAL,
 } from '../../constants/constants';
 import { INGESTION_ACTION_TYPE } from '../../constants/Ingestions.constant';
+import { EntityTabs } from '../../enums/entity.enum';
 import { FormSubmitType } from '../../enums/form.enum';
 import { IngestionActionMessage } from '../../enums/ingestion.enum';
-import { ServiceCategory } from '../../enums/service.enum';
+import { ServiceAgentSubTabs, ServiceCategory } from '../../enums/service.enum';
 import { CreateIngestionPipeline } from '../../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { PipelineType } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { useAirflowStatus } from '../../hooks/useAirflowStatus';
@@ -203,7 +204,12 @@ const AddIngestionPage = () => {
 
   const goToService = () => {
     history.push(
-      getServiceDetailsPath(serviceFQN, serviceCategory, 'ingestions')
+      getServiceDetailsPath(
+        serviceFQN,
+        serviceCategory,
+        EntityTabs.AGENTS,
+        ServiceAgentSubTabs.METADATA
+      )
     );
   };
 
