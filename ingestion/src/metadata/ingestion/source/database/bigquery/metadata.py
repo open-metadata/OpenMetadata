@@ -19,7 +19,6 @@ from typing import Dict, Iterable, List, Optional, Tuple
 
 from google import auth
 from google.cloud.datacatalog_v1 import PolicyTagManagerClient
-from sqlalchemy.engine import Engine
 from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy.sql.sqltypes import Interval
 from sqlalchemy.types import String
@@ -53,9 +52,8 @@ from metadata.generated.schema.entity.services.ingestionPipelines.status import 
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.generated.schema.security.credentials.gcpCredentials import (
-    GcpADC,
-    GcpCredentialsPath,
+from metadata.generated.schema.security.credentials.gcpExternalAccount import (
+    GcpExternalAccount,
 )
 from metadata.generated.schema.security.credentials.gcpValues import (
     GcpCredentialsValues,
@@ -313,23 +311,17 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
                 and hasattr(service_connection.credentials, "gcpConfig")
             ):
                 gcp_config = service_connection.credentials.gcpConfig
+                try:
+                    # Allow for multiple project IDs in the service connection
+                    if not isinstance(gcp_config, GcpExternalAccount) and getattr(
+                        gcp_config, "projectId", None
+                    ):
+                        if isinstance(gcp_config.projectId.root, list):
+                            return gcp_config.projectId.root
+                        return [gcp_config.projectId.root]
+                except Exception as exc:
+                    logger.warning(f"Error getting project ID, falling back: {exc}")
 
-                # Handle GcpCredentialsValues case
-                if isinstance(gcp_config, GcpCredentialsValues):
-                    if getattr(gcp_config, "projectId", None):
-                        if isinstance(gcp_config.projectId, list):
-                            return gcp_config.projectId
-                        return [gcp_config.projectId]
-
-                # Handle GcpCredentialsPath case
-                elif isinstance(gcp_config, GcpCredentialsPath):
-                    if getattr(gcp_config, "projectId", None):
-                        return [gcp_config.projectId]
-
-                # Handle GcpADC case - fetch projects only if explicitly configured to use ADC
-                elif isinstance(gcp_config, GcpADC):
-                    if getattr(gcp_config, "projectId", None):
-                        return [gcp_config.projectId]
             # Fallback to ADC default project
             try:
                 _, project_id = auth.default()
@@ -348,22 +340,18 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
             raise InvalidSourceException(f"Error setting BigQuery project IDs: {exc}")
 
     def _test_connection(self) -> None:
-        inspector_details_list: List[Engine] = []
         for project_id in self.project_ids:
-            inspector_details_list.append(
-                get_inspector_details(
-                    database_name=project_id, service_connection=self.service_connection
-                ).engine
+            inspector_details = get_inspector_details(
+                database_name=project_id, service_connection=self.service_connection
             )
-
-        test_connection_fn = get_test_connection_fn(self.service_connection)
-        test_connection_fn(
-            self.metadata, inspector_details_list, self.service_connection
-        )
-        # GOOGLE_CREDENTIALS may not have been set,
-        # to avoid key error, we use `get` for dict
-        if os.environ.get(GOOGLE_CREDENTIALS):
-            self.temp_credentials_file_path.append(os.environ[GOOGLE_CREDENTIALS])
+            test_connection_fn = get_test_connection_fn(self.service_connection)
+            test_connection_fn(
+                self.metadata, inspector_details.engine, self.service_connection
+            )
+            # GOOGLE_CREDENTIALS may not have been set,
+            # to avoid key error, we use `get` for dict
+            if os.environ.get(GOOGLE_CREDENTIALS):
+                self.temp_credentials_file_path.append(os.environ[GOOGLE_CREDENTIALS])
 
     def query_table_names_and_types(
         self, schema_name: str
