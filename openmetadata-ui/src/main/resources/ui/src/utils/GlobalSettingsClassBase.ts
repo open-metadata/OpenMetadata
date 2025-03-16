@@ -29,7 +29,6 @@ import { ReactComponent as EmailIcon } from '../assets/svg/email-colored.svg';
 import { ReactComponent as GlossaryIcon } from '../assets/svg/glossary-term-colored-new.svg';
 import { ReactComponent as LineageIcon } from '../assets/svg/ic-lineage-config.svg';
 import { ReactComponent as LinkIcon } from '../assets/svg/ic-url-link.svg';
-
 import { ReactComponent as StorageIcon } from '../assets/svg/containers-colored-new.svg';
 import { ReactComponent as DataAssetsIcon } from '../assets/svg/data-assets-colored-new.svg';
 import { ReactComponent as DataObservability } from '../assets/svg/data-observability-colored-new.svg';
@@ -692,6 +691,15 @@ class GlobalSettingsClassBase {
             isProtected: Boolean(isAdminUser),
             key: `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.GLOSSARY_TERM}`,
             icon: GlossaryIcon,
+          },
+          {
+            label: t('label.domain'),
+            description: t('message.define-custom-property-for-entity', {
+              entity: t('label.domain'),
+            }),
+            isProtected: Boolean(isAdminUser),
+            key: `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.DOMAIN}`,
+            icon: DomainIcon,
           },
         ].sort((a, b) => a.label.localeCompare(b.label)),
       },

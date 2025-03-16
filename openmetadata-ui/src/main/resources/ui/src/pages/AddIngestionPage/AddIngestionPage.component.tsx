@@ -30,9 +30,10 @@ import {
   INGESTION_PROGRESS_START_VAL,
 } from '../../constants/constants';
 import { INGESTION_ACTION_TYPE } from '../../constants/Ingestions.constant';
+import { EntityTabs } from '../../enums/entity.enum';
 import { FormSubmitType } from '../../enums/form.enum';
 import { IngestionActionMessage } from '../../enums/ingestion.enum';
-import { ServiceCategory } from '../../enums/service.enum';
+import { ServiceAgentSubTabs, ServiceCategory } from '../../enums/service.enum';
 import { CreateIngestionPipeline } from '../../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { PipelineType } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { useAirflowStatus } from '../../hooks/useAirflowStatus';
@@ -64,7 +65,7 @@ const AddIngestionPage = () => {
   const history = useHistory();
   const [serviceData, setServiceData] = useState<DataObj>();
   const [activeIngestionStep, setActiveIngestionStep] = useState(1);
-  const [isLoading, setIsloading] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
   const [isError, setIsError] = useState(false);
   const [ingestionProgress, setIngestionProgress] = useState(0);
   const [isIngestionCreated, setIsIngestionCreated] = useState(false);
@@ -86,32 +87,32 @@ const AddIngestionPage = () => {
     [ingestionType]
   );
 
-  const fetchServiceDetails = () => {
-    getServiceByFQN(serviceCategory, serviceFQN)
-      .then((resService) => {
-        if (resService) {
-          setServiceData(resService as DataObj);
-        } else {
-          showErrorToast(
-            t('server.entity-fetch-error', {
-              entity: t('label.service-detail-lowercase-plural'),
-            })
-          );
-        }
-      })
-      .catch((error: AxiosError) => {
-        if (error.response?.status === 404) {
-          setIsError(true);
-        } else {
-          showErrorToast(
-            error,
-            t('server.entity-fetch-error', {
-              entity: t('label.service-detail-lowercase-plural'),
-            })
-          );
-        }
-      })
-      .finally(() => setIsloading(false));
+  const fetchServiceDetails = async () => {
+    try {
+      const response = await getServiceByFQN(serviceCategory, serviceFQN);
+      if (response) {
+        setServiceData(response as DataObj);
+      } else {
+        showErrorToast(
+          t('server.entity-fetch-error', {
+            entity: t('label.service-detail-lowercase-plural'),
+          })
+        );
+      }
+    } catch (error) {
+      if ((error as AxiosError).response?.status === 404) {
+        setIsError(true);
+      } else {
+        showErrorToast(
+          error as AxiosError,
+          t('server.entity-fetch-error', {
+            entity: t('label.service-detail-lowercase-plural'),
+          })
+        );
+      }
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const onIngestionDeploy = (id?: string) => {
@@ -203,7 +204,12 @@ const AddIngestionPage = () => {
 
   const goToService = () => {
     history.push(
-      getServiceDetailsPath(serviceFQN, serviceCategory, 'ingestions')
+      getServiceDetailsPath(
+        serviceFQN,
+        serviceCategory,
+        EntityTabs.AGENTS,
+        ServiceAgentSubTabs.METADATA
+      )
     );
   };
 
