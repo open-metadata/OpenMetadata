@@ -13,7 +13,7 @@
 
 import { Typography } from 'antd';
 import { isEmpty, isUndefined, startCase, uniq } from 'lodash';
-import { ServiceTypes } from 'Models';
+import { ServicesUpdateRequest, ServiceTypes } from 'Models';
 import React from 'react';
 import ErrorPlaceHolder from '../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { getServiceDetailsPath } from '../constants/constants';
@@ -31,12 +31,14 @@ import {
   INGESTION_ACTION_TYPE,
   PIPELINE_TYPE_LOCALIZATION,
 } from '../constants/Ingestions.constant';
+import { SERVICE_FILTER_PATTERN_FIELDS } from '../constants/ServiceConnection.constants';
 import { SERVICE_INGESTION_PIPELINE_TYPES } from '../constants/Services.constant';
 import { ERROR_PLACEHOLDER_TYPE } from '../enums/common.enum';
 import { ELASTIC_SEARCH_RE_INDEX_PAGE_TABS } from '../enums/ElasticSearch.enum';
 import { EntityTabs } from '../enums/entity.enum';
 import { FormSubmitType } from '../enums/form.enum';
-import { ServiceAgentSubTabs } from '../enums/service.enum';
+import { ServiceAgentSubTabs, ServiceCategory } from '../enums/service.enum';
+import { ServiceConnectionFilterPatternFields } from '../enums/ServiceConnection.enum';
 import { PipelineType } from '../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { UIThemePreference } from '../generated/configuration/uiThemePreference';
 import { HiveMetastoreConnectionDetails as Connection } from '../generated/entity/services/databaseService';
@@ -49,8 +51,10 @@ import { SearchSourceAlias } from '../interface/search.interface';
 import { DataObj, ServicesType } from '../interface/service.interface';
 import { Transi18next } from './CommonUtils';
 import i18n from './i18next/LocalUtil';
+import { getSchemaByWorkflowType } from './IngestionWorkflowUtils';
 import { getSettingPath, getSettingsPathWithFqn } from './RouterUtils';
 import { getDayCron } from './SchedularUtils';
+import { getFilteredSchema } from './ServiceConnectionUtils';
 import serviceUtilClassBase from './ServiceUtilClassBase';
 import {
   getReadableCountString,
@@ -387,6 +391,60 @@ export const getDefaultIngestionSchedule = ({
       hour: '0',
     })
   );
+};
+
+export const getDefaultFilterPropertyFieldsFromSchema = (
+  pipelineType: PipelineType,
+  serviceCategory: ServiceCategory
+) => {
+  const pipelineSchema = getSchemaByWorkflowType(pipelineType, serviceCategory);
+
+  return Object.keys(pipelineSchema.properties ?? {}).filter((key) =>
+    SERVICE_FILTER_PATTERN_FIELDS.includes(
+      key as ServiceConnectionFilterPatternFields
+    )
+  );
+};
+
+export const getDefaultFilterPropertyValues = ({
+  pipelineType,
+  serviceCategory,
+  isEditMode,
+  ingestionData,
+  serviceData,
+}: {
+  pipelineType: PipelineType;
+  serviceCategory: ServiceCategory;
+  isEditMode: boolean;
+  ingestionData?: IngestionPipeline;
+  serviceData?: ServicesUpdateRequest;
+}) => {
+  // If it is edit mode, then return the filter property values from the ingestion data
+  if (isEditMode) {
+    return getFilteredSchema(ingestionData?.sourceConfig.config, false);
+  } else {
+    // Get the default filter property fields from the schema
+    const filterPropertiesInSchema = getDefaultFilterPropertyFieldsFromSchema(
+      pipelineType,
+      serviceCategory
+    );
+
+    // Get the default filter values from the service data
+    const filterValues = getFilteredSchema(
+      serviceData?.connection?.config,
+      false
+    );
+
+    // Return the default filter property values from the service data only if
+    // the property is present in the ingestion schema
+    return Object.entries(filterValues).reduce((acc, [key, value]) => {
+      if (filterPropertiesInSchema.includes(key)) {
+        acc[key] = value;
+      }
+
+      return acc;
+    }, {} as Record<string, any>);
+  }
 };
 
 export const getTypeAndStatusMenuItems = () => {
