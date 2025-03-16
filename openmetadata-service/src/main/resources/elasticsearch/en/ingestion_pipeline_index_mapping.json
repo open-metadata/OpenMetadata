@@ -112,7 +112,7 @@
       "href": {
         "type": "text"
       },
-      "domain" : {
+      "domain": {
         "properties": {
           "id": {
             "type": "keyword",
@@ -305,6 +305,25 @@
         "type": "keyword",
         "normalizer": "lowercase_normalizer"
       },
+      "pipelineStatuses": {
+        "properties": {
+          "pipelineState": {
+            "type": "keyword"
+          },
+          "runId": {
+            "type": "keyword"
+          },
+          "timestamp": {
+            "type": "long"
+          },
+          "startDate": {
+            "type": "long"
+          },
+          "endDate": {
+            "type": "long"
+          }
+        }
+      },
       "entityType": {
         "type": "keyword"
       },
@@ -315,7 +334,7 @@
         "type": "long",
         "null_value": 0
       },
-      "votes" : {
+      "votes": {
         "type": "object"
       },
       "descriptionStatus": {
@@ -325,14 +344,14 @@
         "type": "keyword",
         "normalizer": "lowercase_normalizer"
       },
-      "airflowConfig" : {
-        "properties" : {
-          "scheduleInterval" : {
-            "type" : "text",
-            "fields" : {
-              "keyword" : {
-                "type" : "keyword",
-                "ignore_above" : 256
+      "airflowConfig": {
+        "properties": {
+          "scheduleInterval": {
+            "type": "text",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 256
               }
             }
           }

@@ -13,20 +13,11 @@
 
 import { Popover, Skeleton, Space, Tag, Typography } from 'antd';
 import classNamesFunc from 'classnames';
-import { isEmpty, isUndefined, upperCase } from 'lodash';
-import React, {
-  FunctionComponent,
-  useCallback,
-  useEffect,
-  useState,
-} from 'react';
+import { isEmpty, isUndefined, upperFirst } from 'lodash';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { NO_DATA_PLACEHOLDER } from '../../../../../constants/constants';
-import { PIPELINE_INGESTION_RUN_STATUS } from '../../../../../constants/pipeline.constants';
-import {
-  IngestionPipeline,
-  PipelineStatus,
-} from '../../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { PipelineStatus } from '../../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { getRunHistoryForPipeline } from '../../../../../rest/ingestionPipelineAPI';
 import {
   formatDateTime,
@@ -35,28 +26,21 @@ import {
 } from '../../../../../utils/date-time/DateTimeUtils';
 import IngestionRunDetailsModal from '../../../../Modals/IngestionRunDetailsModal/IngestionRunDetailsModal';
 import './ingestion-recent-run.style.less';
+import { IngestionRecentRunsProps } from './IngestionRecentRuns.interface';
 
-interface Props {
-  ingestion?: IngestionPipeline;
-  classNames?: string;
-  appRuns?: PipelineStatus[];
-  isApplicationType?: boolean;
-  pipelineIdToFetchStatus?: string;
-  handlePipelineIdToFetchStatus?: (pipelineId?: string) => void;
-}
 const queryParams = {
   startTs: getEpochMillisForPastDays(1),
   endTs: getCurrentMillis(),
 };
 
-export const IngestionRecentRuns: FunctionComponent<Props> = ({
+export const IngestionRecentRuns = ({
   ingestion,
   classNames,
   appRuns,
-  isApplicationType,
+  fetchStatus = true,
   pipelineIdToFetchStatus = '',
   handlePipelineIdToFetchStatus,
-}: Props) => {
+}: Readonly<IngestionRecentRunsProps>) => {
   const { t } = useTranslation();
   const [recentRunStatus, setRecentRunStatus] = useState<PipelineStatus[]>([]);
   const [loading, setLoading] = useState(true);
@@ -65,31 +49,30 @@ export const IngestionRecentRuns: FunctionComponent<Props> = ({
   const fetchPipelineStatus = useCallback(async () => {
     setLoading(true);
     try {
-      const response = await getRunHistoryForPipeline(
-        ingestion?.fullyQualifiedName ?? '',
-        queryParams
-      );
+      if (fetchStatus && !isUndefined(ingestion?.fullyQualifiedName)) {
+        const response = await getRunHistoryForPipeline(
+          ingestion?.fullyQualifiedName ?? '',
+          queryParams
+        );
 
-      const runs = response.data.splice(0, 5).reverse() ?? [];
+        const runs = response.data.splice(0, 5).reverse() ?? [];
 
-      setRecentRunStatus(
-        runs.length === 0 && ingestion?.pipelineStatuses
-          ? [ingestion.pipelineStatuses]
-          : runs
-      );
+        setRecentRunStatus(
+          runs.length === 0 && ingestion?.pipelineStatuses
+            ? [ingestion.pipelineStatuses]
+            : runs
+        );
+      } else {
+        setRecentRunStatus(appRuns?.splice(0, 5).reverse() ?? []);
+      }
     } finally {
       setLoading(false);
     }
-  }, [ingestion, ingestion?.fullyQualifiedName]);
+  }, [ingestion, ingestion?.fullyQualifiedName, appRuns]);
 
   useEffect(() => {
-    if (isApplicationType && appRuns) {
-      setRecentRunStatus(appRuns.splice(0, 5).reverse() ?? []);
-      setLoading(false);
-    } else if (ingestion?.fullyQualifiedName) {
-      fetchPipelineStatus();
-    }
-  }, [ingestion, ingestion?.fullyQualifiedName]);
+    fetchPipelineStatus();
+  }, [ingestion, ingestion?.fullyQualifiedName, appRuns]);
 
   useEffect(() => {
     // To fetch pipeline status on demand
@@ -120,17 +103,18 @@ export const IngestionRecentRuns: FunctionComponent<Props> = ({
         recentRunStatus.map((r, i) => {
           const status = (
             <Tag
-              className={classNamesFunc('ingestion-run-badge', {
-                latest: i === recentRunStatus.length - 1,
-              })}
-              color={
-                PIPELINE_INGESTION_RUN_STATUS[r?.pipelineState ?? 'success']
-              }
+              className={classNamesFunc(
+                'ingestion-run-badge',
+                r?.pipelineState ?? '',
+                {
+                  latest: i === recentRunStatus.length - 1,
+                }
+              )}
               data-testid="pipeline-status"
               key={`${r.runId}-status`}
               onClick={() => handleRunStatusClick(r)}>
               {i === recentRunStatus.length - 1
-                ? upperCase(r?.pipelineState)
+                ? upperFirst(r?.pipelineState)
                 : ''}
             </Tag>
           );

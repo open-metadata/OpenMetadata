@@ -34,7 +34,7 @@ jest.mock('react-router-dom', () => ({
 }));
 
 describe('AddIngestionButton', () => {
-  it('should redirect to metadata ingestion page when no ingestion is present', async () => {
+  it('should not redirect to metadata ingestion page when no ingestion is present', async () => {
     await act(async () => {
       render(<AddIngestionButton {...mockAddIngestionButtonProps} />, {
         wrapper: MemoryRouter,
@@ -46,9 +46,11 @@ describe('AddIngestionButton', () => {
       userEvent.click(addIngestionButton);
     });
 
-    expect(mockPush).toHaveBeenCalledWith(
-      '/service/databaseServices/OpenMetadata/add-ingestion/metadata'
-    );
+    expect(mockPush).toHaveBeenCalledTimes(0);
+
+    expect(screen.getByTestId('agent-item-metadata')).toBeInTheDocument();
+    expect(screen.getByTestId('agent-item-profiler')).toBeInTheDocument();
+    expect(screen.getByTestId('agent-item-lineage')).toBeInTheDocument();
   });
 
   it('should not redirect to metadata ingestion page when ingestion data is present', async () => {

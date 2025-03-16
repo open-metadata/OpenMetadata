@@ -103,11 +103,15 @@ class MysqlIngestionClass extends ServiceBaseClass {
         true
       );
 
-      await page.click('[data-testid="ingestions"]');
+      await page.click('[data-testid="agents"]');
       await page.waitForSelector('[data-testid="ingestion-details-container"]');
       await page.waitForTimeout(1000);
       await page.click('[data-testid="add-new-ingestion-button"]');
-      await page.waitForTimeout(1000);
+
+      await page.waitForSelector(
+        '.ant-dropdown:visible [data-menu-id*="profiler"]'
+      );
+
       await page.click('[data-menu-id*="profiler"]');
 
       await page.waitForSelector('#root\\/profileSample');
@@ -121,9 +125,9 @@ class MysqlIngestionClass extends ServiceBaseClass {
       // Header available once page loads
       await page.waitForSelector('[data-testid="data-assets-header"]');
       await page.getByTestId('loader').waitFor({ state: 'detached' });
-      await page.getByTestId('ingestions').click();
+      await page.getByTestId('agents').click();
       await page
-        .getByLabel('Ingestions')
+        .getByLabel('agents')
         .getByTestId('loader')
         .waitFor({ state: 'detached' });
 

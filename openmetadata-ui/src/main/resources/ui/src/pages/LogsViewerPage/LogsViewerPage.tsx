@@ -277,8 +277,8 @@ const LogsViewerPage = () => {
       return (
         <IngestionRecentRuns
           appRuns={appRuns}
+          fetchStatus={!isApplicationType}
           ingestion={ingestionDetails}
-          isApplicationType={isApplicationType}
         />
       );
     }

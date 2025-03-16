@@ -150,11 +150,17 @@ class ServiceBaseClass {
   }
 
   async addIngestionPipeline(page: Page) {
-    await page.click('[role="tab"] [data-testid="ingestions"]');
+    await page.click('[role="tab"] [data-testid="agents"]');
 
     await page.waitForSelector('[data-testid="add-new-ingestion-button"]');
 
     await page.click('[data-testid="add-new-ingestion-button"]');
+
+    await page.waitForSelector(
+      '.ant-dropdown:visible [data-menu-id*="metadata"]'
+    );
+
+    await page.click('.ant-dropdown:visible [data-menu-id*="metadata"]');
 
     // Add ingestion page
     await page.waitForSelector('[data-testid="add-ingestion-container"]');
@@ -178,9 +184,9 @@ class ServiceBaseClass {
       .getByTestId('table-container')
       .getByTestId('loader')
       .waitFor({ state: 'detached' });
-    await page.getByTestId('ingestions').click();
+    await page.getByTestId('agents').click();
     await page
-      .getByLabel('Ingestions')
+      .getByLabel('agents')
       .getByTestId('loader')
       .waitFor({ state: 'detached' });
 
@@ -325,8 +331,8 @@ class ServiceBaseClass {
 
     await statusPromise;
 
-    await page.waitForSelector('[data-testid="ingestions"]');
-    await page.click('[data-testid="ingestions"]');
+    await page.waitForSelector('[data-testid="agents"]');
+    await page.click('[data-testid="agents"]');
     await page.waitForSelector(`td:has-text("${ingestionType}")`);
 
     await expect(
@@ -334,7 +340,7 @@ class ServiceBaseClass {
         .locator(`[data-row-key*="${workflowData.name}"]`)
         .getByTestId('pipeline-status')
         .last()
-    ).toContainText('SUCCESS');
+    ).toContainText('Success');
   };
 
   async updateService(page: Page) {
@@ -348,7 +354,7 @@ class ServiceBaseClass {
       false
     );
 
-    await page.click('[data-testid="ingestions"]');
+    await page.click('[data-testid="agents"]');
 
     // click and edit pipeline schedule for Hours
 
@@ -495,7 +501,7 @@ class ServiceBaseClass {
     const ingestionResponse = page.waitForResponse(
       `/api/v1/services/ingestionPipelines/*/pipelineStatus?**`
     );
-    await page.click('[data-testid="ingestions"]');
+    await page.click('[data-testid="agents"]');
 
     await ingestionResponse;
     await page
