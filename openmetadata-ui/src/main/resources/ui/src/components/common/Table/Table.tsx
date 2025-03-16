@@ -248,6 +248,7 @@ const Table = <T extends object = any>(
             emptyText: isLoading ? null : rest.locale?.emptyText,
           }}
           ref={ref}
+          tableLayout="fixed"
           {...resizingTableProps}
         />
       </Col>

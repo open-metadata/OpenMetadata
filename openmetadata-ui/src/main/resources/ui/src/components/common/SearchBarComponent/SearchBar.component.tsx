@@ -21,6 +21,7 @@ import { ReactComponent as IconSearchV1 } from '../../../assets/svg/search.svg';
 import Loader from '../Loader/Loader';
 
 type Props = {
+  inputClassName?: string;
   onSearch: (text: string) => void;
   searchValue: string;
   typingInterval?: number;
@@ -34,6 +35,7 @@ type Props = {
 };
 
 const Searchbar = ({
+  inputClassName = '',
   onSearch,
   searchValue,
   typingInterval = 0,
@@ -83,7 +85,7 @@ const Searchbar = ({
       <div className="flex relative">
         <Input
           allowClear={showClearSearch}
-          className="p-y-xs"
+          className={classNames('p-y-xs', inputClassName)}
           data-testid={searchBarDataTestId ?? 'searchbar'}
           placeholder={placeholder}
           prefix={
