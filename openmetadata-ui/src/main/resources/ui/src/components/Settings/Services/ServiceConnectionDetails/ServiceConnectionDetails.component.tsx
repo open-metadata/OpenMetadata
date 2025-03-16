@@ -11,9 +11,11 @@
  *  limitations under the License.
  */
 
-import { Row } from 'antd';
+import { InfoCircleOutlined } from '@ant-design/icons';
+import { Col, Input, Row, Space, Tooltip } from 'antd';
 import { isEmpty } from 'lodash';
 import React, { ReactNode, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { EntityType } from '../../../../enums/entity.enum';
 import { APIServiceType } from '../../../../generated/entity/services/apiService';
 import { DashboardServiceType } from '../../../../generated/entity/services/dashboardService';
@@ -143,6 +145,39 @@ const ServiceConnectionDetails = ({
       <Row className="w-full" gutter={[8, 8]}>
         {data}
       </Row>
+      {extraInfo && (
+        <>
+          <Col span={12}>
+            <Row>
+              <Col className="d-flex items-center" span={8}>
+                <Space size={0}>
+                  <p className="text-grey-muted m-0">{extraInfo.type}</p>
+                  {extraInfo.description && (
+                    <Tooltip
+                      placement="bottom"
+                      title={extraInfo.description}
+                      trigger="hover">
+                      <InfoCircleOutlined
+                        className="m-x-xss"
+                        style={{ color: '#C4C4C4' }}
+                      />
+                    </Tooltip>
+                  )}
+                </Space>
+              </Col>
+              <Col span={16}>
+                <Input
+                  readOnly
+                  className="w-full border-none"
+                  data-testid="input-field"
+                  type="text"
+                  value={extraInfo.name}
+                />
+              </Col>
+            </Row>
+          </Col>
+        </>
+      )}
     </div>
   );
 };
