@@ -26,6 +26,7 @@ import PostgresIngestionClass from '../../support/entity/ingestion/PostgresInges
 import RedshiftWithDBTIngestionClass from '../../support/entity/ingestion/RedshiftWithDBTIngestionClass';
 import S3IngestionClass from '../../support/entity/ingestion/S3IngestionClass';
 import SnowflakeIngestionClass from '../../support/entity/ingestion/SnowflakeIngestionClass';
+import SupersetIngestionClass from '../../support/entity/ingestion/SupersetIngestionClass';
 import { TableClass } from '../../support/entity/TableClass';
 import {
   createNewPage,
@@ -44,7 +45,7 @@ const services = [
   KafkaIngestionClass,
   MlFlowIngestionClass,
   SnowflakeIngestionClass,
-  // SupersetIngestionClass,
+  SupersetIngestionClass,
   PostgresIngestionClass,
   RedshiftWithDBTIngestionClass,
 ];
