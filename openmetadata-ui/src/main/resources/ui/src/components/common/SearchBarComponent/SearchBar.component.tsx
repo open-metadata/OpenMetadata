@@ -14,10 +14,11 @@
 import Icon from '@ant-design/icons/lib/components/Icon';
 import { Input, InputProps } from 'antd';
 import classNames from 'classnames';
-import { debounce } from 'lodash';
+import { debounce, isEmpty } from 'lodash';
 import { LoadingState } from 'Models';
 import React, { useCallback, useEffect, useState } from 'react';
 import { ReactComponent as IconSearchV1 } from '../../../assets/svg/search.svg';
+import { useTableFilters } from '../../../hooks/useTableFilters';
 import Loader from '../Loader/Loader';
 
 type Props = {
@@ -32,6 +33,10 @@ type Props = {
   showClearSearch?: boolean;
   inputProps?: InputProps;
   searchBarDataTestId?: string;
+  /**
+   * Key to be used for url search
+   */
+  urlSearchKey?: string;
 };
 
 const Searchbar = ({
@@ -46,10 +51,18 @@ const Searchbar = ({
   showClearSearch = true,
   searchBarDataTestId,
   inputProps,
+  urlSearchKey,
 }: Props) => {
   const [userSearch, setUserSearch] = useState('');
   const [loadingState, setLoadingState] = useState<LoadingState>('initial');
   const [isSearchBlur, setIsSearchBlur] = useState(true);
+  const { setFilters } = useTableFilters(
+    urlSearchKey
+      ? {
+          [urlSearchKey]: '',
+        }
+      : {}
+  );
 
   useEffect(() => {
     setUserSearch(searchValue);
@@ -58,6 +71,11 @@ const Searchbar = ({
   const debouncedOnSearch = useCallback(
     (searchText: string): void => {
       setLoadingState((pre) => (pre === 'waiting' ? 'success' : pre));
+
+      if (urlSearchKey) {
+        setFilters({ [urlSearchKey]: isEmpty(searchText) ? null : searchText });
+      }
+
       onSearch(searchText);
     },
     [onSearch]
@@ -124,7 +142,6 @@ const Searchbar = ({
 };
 
 Searchbar.defaultProps = {
-  searchValue: '',
   typingInterval: 1000,
   placeholder: 'Search...',
   label: '',

@@ -14,7 +14,7 @@
 import { Button, Col, Modal, Row, Space, Switch, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
-import { capitalize, debounce, isEmpty } from 'lodash';
+import { capitalize, isEmpty, noop } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, Redirect, useHistory, useParams } from 'react-router-dom';
@@ -479,8 +479,9 @@ const UserListPageV1 = () => {
               type: t('label.user'),
             })}...`}
             searchValue={searchValue}
-            typingInterval={0}
-            onSearch={debounce(handleSearch, 400)}
+            typingInterval={400}
+            urlSearchKey="user"
+            onSearch={noop}
           />
         </Col>
 
