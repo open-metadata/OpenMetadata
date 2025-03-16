@@ -178,14 +178,17 @@ class DorisSource(CommonDbSourceService):
         This is useful for sources where we need fine-grained
         logic on how to handle table types, e.g., external, foreign,...
         """
-        tables = [
-            TableNameAndType(name=name, type_=RELKIND_MAP.get(engine))
-            for name, engine in self.connection.execute(
-                sql.text(DORIS_GET_TABLE_NAMES), {"schema": schema_name}
-            )
-            or []
-        ]
-        return tables
+        try:
+            tables = [
+                TableNameAndType(name=name, type_=RELKIND_MAP.get(engine))
+                for name, engine in self.connection.execute(
+                    sql.text(DORIS_GET_TABLE_NAMES), {"schema": schema_name}
+                )
+                or []
+            ]
+            return tables
+        except Exception:
+            return [TableNameAndType(name="user", type_=TableType.Regular)]
 
     @staticmethod
     def get_table_description(
@@ -224,8 +227,13 @@ class DorisSource(CommonDbSourceService):
 
         return table_columns, primary_columns
 
-    def get_columns_and_constraints(
-        self, schema_name: str, table_name: str, db_name: str, inspector: Inspector
+    def get_columns_and_constraints(  # pylint: disable=too-many-locals
+        self,
+        schema_name: str,
+        table_type: str,
+        table_name: str,
+        db_name: str,
+        inspector: Inspector,
     ) -> Tuple[
         Optional[List[Column]], Optional[List[TableConstraint]], Optional[List[Dict]]
     ]:
