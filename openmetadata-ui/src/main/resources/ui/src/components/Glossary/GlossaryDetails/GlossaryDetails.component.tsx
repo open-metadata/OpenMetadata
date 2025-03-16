@@ -46,6 +46,7 @@ import {
 } from '../../../utils/EntityVersionUtils';
 import { getWidgetFromKey } from '../../../utils/GlossaryTerm/GlossaryTermUtil';
 import { ActivityFeedTab } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
+import { ActivityFeedLayoutType } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import DescriptionV1 from '../../common/EntityDescription/DescriptionV1';
 import Loader from '../../common/Loader/Loader';
 import TabsLabel from '../../common/TabsLabel/TabsLabel.component';
@@ -311,6 +312,7 @@ const GlossaryDetails = ({
                   entityFeedTotalCount={feedCount.totalCount}
                   entityType={EntityType.GLOSSARY}
                   hasGlossaryReviewer={!isEmpty(glossary.reviewers)}
+                  layoutType={ActivityFeedLayoutType.THREE_PANEL}
                   owners={glossary.owners}
                   onFeedUpdate={getEntityFeedCount}
                   onUpdateEntityDetails={noop}

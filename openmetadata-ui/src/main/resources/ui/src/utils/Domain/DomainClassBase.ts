@@ -93,6 +93,7 @@ class DomainClassBase {
       EntityTabs.SUBDOMAINS,
       EntityTabs.DATA_PRODUCTS,
       EntityTabs.ASSETS,
+      EntityTabs.CUSTOM_PROPERTIES,
     ].map((tab: EntityTabs) => ({
       id: tab,
       name: tab,

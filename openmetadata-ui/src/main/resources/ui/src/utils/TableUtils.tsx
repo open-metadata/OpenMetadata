@@ -119,6 +119,7 @@ import { ReactComponent as TagIcon } from '../assets/svg/tag.svg';
 import { ReactComponent as TaskIcon } from '../assets/svg/task-ic.svg';
 import { ReactComponent as UserIcon } from '../assets/svg/user.svg';
 import { ActivityFeedTab } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
+import { ActivityFeedLayoutType } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import { CustomPropertyTable } from '../components/common/CustomPropertyTable/CustomPropertyTable';
 import ErrorPlaceHolder from '../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { ManageButtonItemLabel } from '../components/common/ManageButtonContentItem/ManageButtonContentItem.component';
@@ -800,6 +801,7 @@ export const getTableDetailPageBaseTabs = ({
           columns={tableDetails?.columns}
           entityFeedTotalCount={totalFeedCount}
           entityType={EntityType.TABLE}
+          layoutType={ActivityFeedLayoutType.THREE_PANEL}
           owners={tableDetails?.owners}
           onFeedUpdate={getEntityFeedCount}
           onUpdateEntityDetails={fetchTableDetails}

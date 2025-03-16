@@ -29,6 +29,10 @@ export interface DatabricksConnection {
      */
     connectionTimeout?: number;
     /**
+     * Regex to only include/exclude databases that matches the pattern.
+     */
+    databaseFilterPattern?: DefaultDatabaseFilterPattern;
+    /**
      * Database Schema of the data source. This is optional parameter, if you would like to
      * restrict the metadata reading to a single schema. When left blank, OpenMetadata Ingestion
      * attempts to scan all the schemas.
@@ -48,6 +52,10 @@ export interface DatabricksConnection {
     queryHistoryTable?:       string;
     sampleDataStorageConfig?: SampleDataStorageConfig;
     /**
+     * Regex to only include/exclude schemas that matches the pattern.
+     */
+    schemaFilterPattern?: DefaultSchemaFilterPattern;
+    /**
      * SQLAlchemy driver scheme options.
      */
     scheme?:                     DatabricksScheme;
@@ -59,6 +67,10 @@ export interface DatabricksConnection {
     supportsQueryComment?:       boolean;
     supportsUsageExtraction?:    boolean;
     /**
+     * Regex to only include/exclude tables that matches the pattern.
+     */
+    tableFilterPattern?: FilterPattern;
+    /**
      * Generated Token to connect to Databricks.
      */
     token: string;
@@ -66,6 +78,15 @@ export interface DatabricksConnection {
      * Service Type
      */
     type?: DatabricksType;
+}
+
+/**
+ * Regex to only include/exclude databases that matches the pattern.
+ */
+export interface DefaultDatabaseFilterPattern {
+    excludes?: string[];
+    includes?: string[];
+    [property: string]: any;
 }
 
 /**
@@ -147,10 +168,35 @@ export interface AwsCredentials {
 }
 
 /**
+ * Regex to only include/exclude schemas that matches the pattern.
+ */
+export interface DefaultSchemaFilterPattern {
+    excludes?: string[];
+    includes?: string[];
+    [property: string]: any;
+}
+
+/**
  * SQLAlchemy driver scheme options.
  */
 export enum DatabricksScheme {
     DatabricksConnector = "databricks+connector",
+}
+
+/**
+ * Regex to only include/exclude tables that matches the pattern.
+ *
+ * Regex to only fetch entities that matches the pattern.
+ */
+export interface FilterPattern {
+    /**
+     * List of strings/regex patterns to match and exclude only database entities that match.
+     */
+    excludes?: string[];
+    /**
+     * List of strings/regex patterns to match and include only database entities that match.
+     */
+    includes?: string[];
 }
 
 /**

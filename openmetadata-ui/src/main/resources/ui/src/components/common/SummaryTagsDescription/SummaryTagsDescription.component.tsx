@@ -46,7 +46,7 @@ const SummaryTagsDescription = ({
           {tags.length > 0 ? (
             <TagsViewer sizeCap={-1} tags={tags} />
           ) : (
-            <Typography.Text className="text-grey-body text-grey-muted text-sm">
+            <Typography.Text className="text-sm no-data-chip-placeholder">
               {t('label.no-tags-added')}
             </Typography.Text>
           )}
@@ -71,7 +71,7 @@ const SummaryTagsDescription = ({
                 maxLength={200}
               />
             ) : (
-              <Typography className="text-grey-body">
+              <Typography className="no-data-chip-placeholder">
                 {t('label.no-data-found')}
               </Typography>
             )}

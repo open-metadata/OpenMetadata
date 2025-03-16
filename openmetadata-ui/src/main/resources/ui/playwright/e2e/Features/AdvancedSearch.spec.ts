@@ -52,6 +52,8 @@ test.describe('Advanced Search', { tag: '@advanced-search' }, () => {
   let searchCriteria: Record<string, any> = {};
 
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
+    test.slow(true);
+
     const { page, apiContext, afterAction } = await createNewPage(browser);
     await EntityDataClass.preRequisitesForTests(apiContext, creationConfig);
     await user.create(apiContext);
@@ -242,6 +244,8 @@ test.describe('Advanced Search', { tag: '@advanced-search' }, () => {
   });
 
   test.afterAll('Cleanup', async ({ browser }) => {
+    test.slow(true);
+
     const { apiContext, afterAction } = await createNewPage(browser);
     await EntityDataClass.postRequisitesForTests(apiContext, creationConfig);
     await glossaryEntity.delete(apiContext);

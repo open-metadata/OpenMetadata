@@ -733,16 +733,20 @@ public class ElasticSearchClient implements SearchClient {
       int offset,
       String index,
       SearchSortFilter searchSortFilter,
-      String q)
+      String q,
+      String queryString)
       throws IOException {
     SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
     if (!nullOrEmpty(q)) {
-      XContentParser queryParser = createXContentParser(q);
+      searchSourceBuilder = getSearchSourceBuilder(index, q, offset, limit);
+    }
+    if (!nullOrEmpty(queryString)) {
+      XContentParser queryParser = createXContentParser(queryString);
       searchSourceBuilder = SearchSourceBuilder.fromXContent(queryParser);
     }
 
     List<Map<String, Object>> results = new ArrayList<>();
-    getSearchFilter(filter, searchSourceBuilder, !nullOrEmpty(q));
+    getSearchFilter(filter, searchSourceBuilder, !nullOrEmpty(q) || !nullOrEmpty(queryString));
 
     searchSourceBuilder.timeout(new TimeValue(30, TimeUnit.SECONDS));
     searchSourceBuilder.from(offset);
@@ -2422,7 +2426,7 @@ public class ElasticSearchClient implements SearchClient {
         GetMappingsRequest request =
             new GetMappingsRequest()
                 .indices(
-                    DataInsightSystemChartRepository.DI_SEARCH_INDEX_PREFIX
+                    DataInsightSystemChartRepository.getDataInsightsIndexPrefix()
                         + "-"
                         + type.toLowerCase());
 
