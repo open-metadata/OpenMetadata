@@ -22,6 +22,7 @@ import KafkaIngestionClass from '../../support/entity/ingestion/KafkaIngestionCl
 import MetabaseIngestionClass from '../../support/entity/ingestion/MetabaseIngestionClass';
 import MlFlowIngestionClass from '../../support/entity/ingestion/MlFlowIngestionClass';
 import MysqlIngestionClass from '../../support/entity/ingestion/MySqlIngestionClass';
+import PostgresIngestionClass from '../../support/entity/ingestion/PostgresIngestionClass';
 import RedshiftWithDBTIngestionClass from '../../support/entity/ingestion/RedshiftWithDBTIngestionClass';
 import S3IngestionClass from '../../support/entity/ingestion/S3IngestionClass';
 import SnowflakeIngestionClass from '../../support/entity/ingestion/SnowflakeIngestionClass';
@@ -44,7 +45,7 @@ const services = [
   MlFlowIngestionClass,
   SnowflakeIngestionClass,
   // SupersetIngestionClass,
-  // PostgresIngestionClass,
+  PostgresIngestionClass,
   RedshiftWithDBTIngestionClass,
 ];
 
