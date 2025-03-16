@@ -18,6 +18,7 @@ import { PRIMARY_COLOR } from '../../../../constants/Color.constants';
 import { SearchSourceAlias } from '../../../../interface/search.interface';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import serviceUtilClassBase from '../../../../utils/ServiceUtilClassBase';
+import { getEntityIcon } from '../../../../utils/TableUtils';
 import { SourceType } from '../../../SearchedData/SearchedData.interface';
 import './entity-suggestion-option.less';
 import { EntitySuggestionOptionProps } from './EntitySuggestionOption.interface';
@@ -31,17 +32,24 @@ const EntitySuggestionOption: FC<EntitySuggestionOptionProps> = ({
   const serviceIcon = useMemo(() => {
     const serviceType = get(entity, 'serviceType', '');
 
-    return serviceType ? (
-      <img
-        alt={entity.name}
-        className="m-r-xs"
-        height="16px"
-        src={serviceUtilClassBase.getServiceTypeLogo(
-          entity as SearchSourceAlias
-        )}
-        width="16px"
-      />
-    ) : null;
+    if (serviceType) {
+      return (
+        <img
+          alt={entity.name}
+          className="m-r-xs"
+          height="16px"
+          src={serviceUtilClassBase.getServiceTypeLogo(
+            entity as SearchSourceAlias
+          )}
+          width="16px"
+        />
+      );
+    }
+
+    return getEntityIcon(
+      (entity as SearchSourceAlias).entityType ?? '',
+      'w-4 h-4 m-r-xs'
+    );
   }, [entity]);
 
   return (
