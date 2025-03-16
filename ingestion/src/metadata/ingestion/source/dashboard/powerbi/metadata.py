@@ -387,7 +387,7 @@ class PowerbiSource(DashboardServiceSource):
                     service=FullyQualifiedEntityName(
                         self.context.get().dashboard_service
                     ),
-                    dataModelType=DataModelType.PowerBIDataModel.value,
+                    dataModelType=DataModelType.PowerBIDataFlow.value,
                     serviceType=DashboardServiceType.PowerBI.value,
                     columns=self._get_column_info(dataset),
                     project=self._fetch_dataflow_workspace(dataflow_id=dataset.id),
