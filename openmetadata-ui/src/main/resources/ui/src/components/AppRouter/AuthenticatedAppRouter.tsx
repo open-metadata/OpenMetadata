@@ -290,11 +290,6 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         component={EditConnectionFormPage}
         path={ROUTES.EDIT_SERVICE_CONNECTION}
       />
-      <Route
-        exact
-        component={ServicePage}
-        path={[ROUTES.SERVICE_WITH_TAB, ROUTES.SERVICE]}
-      />
 
       <Route exact component={AddServicePage} path={ROUTES.ADD_SERVICE} />
       <Route exact component={QueryPage} path={ROUTES.QUERY_FULL_SCREEN_VIEW} />
@@ -319,6 +314,21 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         )}
         path={ROUTES.EDIT_INGESTION}
       />
+      <Route
+        exact
+        component={ServiceVersionPage}
+        path={ROUTES.SERVICE_VERSION}
+      />
+
+      <Route
+        exact
+        component={ServicePage}
+        path={[
+          ROUTES.SERVICE_WITH_SUB_TAB,
+          ROUTES.SERVICE_WITH_TAB,
+          ROUTES.SERVICE,
+        ]}
+      />
 
       <AdminProtectedRoute
         exact
@@ -340,12 +350,6 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
 
       <Route exact component={SwaggerPage} path={ROUTES.SWAGGER} />
       <Route exact component={DomainVersionPage} path={ROUTES.DOMAIN_VERSION} />
-
-      <Route
-        exact
-        component={ServiceVersionPage}
-        path={ROUTES.SERVICE_VERSION}
-      />
 
       <Route
         exact
