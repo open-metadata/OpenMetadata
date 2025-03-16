@@ -44,7 +44,6 @@ import {
 import { TestConnectionStep } from '../../../generated/entity/services/connections/testConnectionDefinition';
 import useAbortController from '../../../hooks/AbortController/useAbortController';
 import { useAirflowStatus } from '../../../hooks/useAirflowStatus';
-import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import {
   addWorkflow,
   deleteWorkflowById,
@@ -115,8 +114,6 @@ const TestConnection: FC<TestConnectionProps> = ({
   const currentWorkflowRef = useRef(currentWorkflow);
 
   const { controller } = useAbortController();
-
-  const { setInlineAlertDetails } = useApplicationStore();
 
   const serviceType = useMemo(() => {
     return getServiceType(serviceCategory);
@@ -359,8 +356,9 @@ const TestConnection: FC<TestConnectionProps> = ({
         });
       } else {
         setErrorMessage({
-          subDescription: (error as AxiosError<{ message: string }>).response
-            ?.data?.message,
+          subDescription:
+            (error as AxiosError<{ message: string }>).response?.data
+              ?.message ?? t('server.unexpected-error'),
         });
       }
 
