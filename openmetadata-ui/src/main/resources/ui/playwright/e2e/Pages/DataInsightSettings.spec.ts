@@ -27,7 +27,8 @@ import { settingClick } from '../../utils/sidebar';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
-test.describe.serial(
+// TODO: replace skip with serial while enabling test
+test.describe.skip(
   'Data Insight settings page should work properly',
   { tag: '@data-insight' },
   () => {

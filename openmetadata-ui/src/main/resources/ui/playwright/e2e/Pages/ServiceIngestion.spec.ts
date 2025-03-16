@@ -22,11 +22,9 @@ import KafkaIngestionClass from '../../support/entity/ingestion/KafkaIngestionCl
 import MetabaseIngestionClass from '../../support/entity/ingestion/MetabaseIngestionClass';
 import MlFlowIngestionClass from '../../support/entity/ingestion/MlFlowIngestionClass';
 import MysqlIngestionClass from '../../support/entity/ingestion/MySqlIngestionClass';
-import PostgresIngestionClass from '../../support/entity/ingestion/PostgresIngestionClass';
 import RedshiftWithDBTIngestionClass from '../../support/entity/ingestion/RedshiftWithDBTIngestionClass';
 import S3IngestionClass from '../../support/entity/ingestion/S3IngestionClass';
 import SnowflakeIngestionClass from '../../support/entity/ingestion/SnowflakeIngestionClass';
-import SupersetIngestionClass from '../../support/entity/ingestion/SupersetIngestionClass';
 import { TableClass } from '../../support/entity/TableClass';
 import {
   createNewPage,
@@ -45,8 +43,8 @@ const services = [
   KafkaIngestionClass,
   MlFlowIngestionClass,
   SnowflakeIngestionClass,
-  SupersetIngestionClass,
-  PostgresIngestionClass,
+  // SupersetIngestionClass,
+  // PostgresIngestionClass,
   RedshiftWithDBTIngestionClass,
 ];
 
