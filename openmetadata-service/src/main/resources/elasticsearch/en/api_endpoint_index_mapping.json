@@ -412,7 +412,7 @@
                     "type": "text"
                   },
                   "name": {
-                    "type": "keyword",
+                    "type": "text",
                     "fields": {
                       "keyword": {
                         "type": "keyword",

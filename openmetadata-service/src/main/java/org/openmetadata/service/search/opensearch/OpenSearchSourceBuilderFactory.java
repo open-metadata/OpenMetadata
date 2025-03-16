@@ -400,25 +400,15 @@ public class OpenSearchSourceBuilderFactory
           buildHighlights(searchSettings.getGlobalSettings().getHighlightFields()));
     }
 
-    // Add specific data asset aggregations
-    searchSourceBuilder
-        .aggregation(
-            AggregationBuilders.terms("database.name.keyword")
-                .field("database.name.keyword")
-                .size(MAX_AGGREGATE_SIZE))
-        .aggregation(
-            AggregationBuilders.terms("databaseSchema.name.keyword")
-                .field("databaseSchema.name.keyword")
-                .size(MAX_AGGREGATE_SIZE))
-        .aggregation(
-            AggregationBuilders.terms("database.displayName")
-                .field("database.displayName")
-                .size(MAX_AGGREGATE_SIZE))
-        .aggregation(
-            AggregationBuilders.terms("databaseSchema.displayName")
-                .field("databaseSchema.displayName")
-                .size(MAX_AGGREGATE_SIZE));
-
+    searchSettings
+        .getGlobalSettings()
+        .getAggregations()
+        .forEach(
+            agg ->
+                searchSourceBuilder.aggregation(
+                    AggregationBuilders.terms(agg.getName())
+                        .field(agg.getField())
+                        .size(searchSettings.getGlobalSettings().getMaxAggregateSize())));
     return searchSourceBuilder;
   }
 }

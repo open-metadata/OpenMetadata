@@ -2340,8 +2340,8 @@ public class OpenSearchClient implements SearchClient {
                 requestConfigBuilder
                     .setConnectTimeout(esConfig.getConnectionTimeoutSecs() * 1000)
                     .setSocketTimeout(esConfig.getSocketTimeoutSecs() * 1000));
-        // restClientBuilder.setCompressionEnabled(true);
-        // restClientBuilder.setChunkedEnabled(true);
+        restClientBuilder.setCompressionEnabled(true);
+        restClientBuilder.setChunkedEnabled(true);
         return new RestHighLevelClient(restClientBuilder);
       } catch (Exception e) {
         LOG.error("Failed to create open search client ", e);

@@ -331,9 +331,8 @@
         { "field": "responseSchema.schemaFields.children.keyword", "boost": 5.0 }
       ],
       "aggregations": [
-        {"name": "responseSchema.schemaFields.name.keyword", "type": "terms", "field": "responseSchema.schemaFields.name" },
+        {"name": "responseSchema.schemaFields.name", "type": "terms", "field": "responseSchema.schemaFields.name.keyword" },
         { "name": "fieldNames", "type": "terms", "field": "fieldsNames" }
-
       ],
       "scoreMode": "sum",
       "boostMode": "multiply",
@@ -423,8 +422,14 @@
   "defaultConfiguration": {
     "assetType": "default",
     "searchFields": [
-      { "field": "name", "boost": 5.0 },
-      { "field": "description", "boost": 1.0 }
+      { "field": "name.keyword", "boost": 10.0 },
+      { "field": "name", "boost": 10.0 },
+      { "field": "name.ngram", "boost": 1.0 },
+      { "field": "displayName", "boost": 10.0 },
+      { "field": "displayName.ngram", "boost": 1.0 },
+      { "field": "description", "boost": 2.0 },
+      { "field": "fullyQualifiedName", "boost": 5.0 },
+      { "field": "fqnParts", "boost": 5.0 }
     ],
     "highlightFields": [],
     "aggregations": []
