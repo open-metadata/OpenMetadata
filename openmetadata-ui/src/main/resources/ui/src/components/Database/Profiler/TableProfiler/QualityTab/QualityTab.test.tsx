@@ -121,6 +121,14 @@ jest.mock('../../../../../hoc/LimitWrapper', () => {
   ));
 });
 
+jest.mock('../../../../../hooks/useCustomLocation/useCustomLocation', () => ({
+  __esModule: true,
+  default: jest.fn().mockImplementation(() => ({
+    pathname: '/test-path',
+    search: '?test=value',
+  })),
+}));
+
 describe('QualityTab', () => {
   it('should render QualityTab', async () => {
     await act(async () => {
