@@ -14,7 +14,22 @@ import { Property } from '../pages/SearchSettingsPage/searchSettings.interface';
 import i18n from '../utils/i18next/LocalUtil';
 
 export const globalSettings: Property[] = [
-  { key: 'maxAggregateSize', label: i18n.t('label.max-aggregate-size') },
-  { key: 'maxResultHits', label: i18n.t('label.max-result-hits') },
-  { key: 'maxAnalyzedOffset', label: i18n.t('label.max-analyzed-offset') },
+  {
+    key: 'maxAggregateSize',
+    label: i18n.t('label.max-aggregate-size'),
+    min: 100,
+    max: 10000,
+  },
+  {
+    key: 'maxResultHits',
+    label: i18n.t('label.max-result-hits'),
+    min: 100,
+    max: 10000,
+  },
+  {
+    key: 'maxAnalyzedOffset',
+    label: i18n.t('label.max-analyzed-offset'),
+    min: 1000,
+    max: 1000000,
+  },
 ];

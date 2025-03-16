@@ -15,7 +15,7 @@ import { Button, Col, Row, Slider, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as Delete } from '../../../assets/svg/delete-white.svg';
+import { ReactComponent as Delete } from '../../../assets/svg/delete-colored.svg';
 import { ReactComponent as Document } from '../../../assets/svg/document.svg';
 import { ReactComponent as Save } from '../../../assets/svg/save.svg';
 import { TermBoost } from '../../../generated/configuration/searchSettings';
@@ -154,20 +154,18 @@ const TermBoostComponent: React.FC<TermBoostProps> = ({
         </Col>
       </Row>
       <Row className="p-box d-flex flex-column gap-3">
-        <Col className="p-y-xs p-x-sm border-radius-card m-b-sm bg-white config-section-content">
-          <label className="text-grey-muted text-xs font-normal">
-            {t('label.select-tag')}
-          </label>
+        <Col className="p-y-xs p-l-sm p-r-xss border-radius-card m-b-sm bg-white config-section-content">
           <AsyncSelect
             showSearch
             api={fetchTags}
             className="w-full custom-select"
             data-testid="term-boost-select"
+            defaultValue={termBoostData.value || undefined}
             filterOption={getFilterOptions}
             optionLabelProp="value"
             placeholder={t('label.select-tag')}
             suffixIcon={<DownOutlined className="text-grey-muted" />}
-            value={termBoostData.value}
+            value={termBoostData.value || undefined}
             onChange={handleTagChange}
           />
         </Col>

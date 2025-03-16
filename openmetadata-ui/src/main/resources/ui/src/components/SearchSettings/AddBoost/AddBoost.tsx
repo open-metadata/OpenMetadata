@@ -126,7 +126,7 @@ const AddBoost = ({
           </div>
           <div className="m-b-lg" data-testid="field-boost-slider">
             <Slider
-              max={10}
+              max={100}
               min={0}
               tooltip={{ open: false }}
               value={boostValue.factor}

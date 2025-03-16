@@ -85,29 +85,6 @@ test.describe('Search Settings Tests', () => {
     // Field Weight
     await setSliderValue(page, 'field-weight-slider', 8);
 
-    // Add Boost
-    const addBoostButton = page.getByTestId('add-boost');
-    await addBoostButton.click();
-
-    const fieldValueBoostSelect = page.getByTestId('value-boost-option');
-
-    await expect(fieldValueBoostSelect).toBeVisible();
-
-    await fieldValueBoostSelect.click();
-
-    await expect(page.getByTestId('add-boost-component')).toBeInViewport();
-
-    await setSliderValue(page, 'field-boost-slider', 4);
-
-    const modifierSelect = page.getByTestId('modifier-select');
-    await modifierSelect.click();
-
-    await page.getByText('sqrt').click();
-
-    await page.getByTestId('missing-value-input').fill('1');
-    await page.getByTestId('gte-input').fill('2');
-    await page.getByTestId('lte-input').fill('3');
-
     // Score Mode
     const scoreModeSelect = page.getByTestId('score-mode-select');
     await scoreModeSelect.click();

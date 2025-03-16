@@ -231,10 +231,12 @@ const SearchSettingsPage = () => {
                 }
               />
             </Col>
-            {globalSettings.map(({ key, label }) => (
+            {globalSettings.map(({ key, label, max, min }) => (
               <Col className="global-setting-card" key={key}>
                 <GlobalSettingItem
                   label={label}
+                  max={max}
+                  min={min}
                   value={searchConfig?.globalSettings?.[key] ?? 0}
                   onUpdate={(value) =>
                     handleUpdateSearchConfig({

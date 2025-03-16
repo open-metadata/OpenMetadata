@@ -11,17 +11,17 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Button, Col, Row, Select, Typography } from 'antd';
+import { Button, Checkbox, Col, Dropdown, Row, Select, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
+import { ReactComponent as MoreIcon } from '../../../assets/svg/menu.svg';
 import { ENTITY_PATH } from '../../../constants/constants';
 import { GlobalSettingsMenuCategory } from '../../../constants/GlobalSettings.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import {
   BoostMode,
-  FieldValueBoost,
   ScoreMode,
   SearchSettings,
   TermBoost,
@@ -30,6 +30,7 @@ import { Settings, SettingType } from '../../../generated/settings/settings';
 import { useAuth } from '../../../hooks/authHooks';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { EntitySearchSettingsState } from '../../../pages/SearchSettingsPage/searchSettings.interface';
+import { getEntityFields } from '../../../rest/metadataTypeAPI';
 import {
   restoreSettingsConfig,
   updateSettingsConfig,
@@ -77,6 +78,7 @@ const EntitySearchSettings = () => {
   const [previewSearchConfig, setPreviewSearchConfig] =
     useState<SearchSettings>(searchConfig ?? {});
   const [showNewTermBoost, setShowNewTermBoost] = useState<boolean>(false);
+  const [availableFields, setAvailableFields] = useState<string[]>([]);
 
   const entityType = useMemo(() => ENTITY_PATH[fqn], [fqn]);
 
@@ -94,15 +96,15 @@ const EntitySearchSettings = () => {
   }, [permissions, isAdminUser, fqn]);
 
   const entitySearchFields = useMemo(() => {
-    if (!getEntityConfiguration?.searchFields) {
+    if (!searchSettings.searchFields) {
       return [];
     }
 
-    return getEntityConfiguration.searchFields.map((field) => ({
+    return searchSettings.searchFields.map((field) => ({
       fieldName: field.field,
       weight: field.boost ?? 0,
     }));
-  }, [getEntityConfiguration, entityType]);
+  }, [searchSettings.searchFields]);
 
   const breadcrumbs: TitleBreadcrumbProps['titleLinks'] = useMemo(
     () =>
@@ -112,6 +114,68 @@ const EntitySearchSettings = () => {
       ),
     []
   );
+
+  const fetchEntityFields = async () => {
+    try {
+      const response = await getEntityFields(entityType);
+      const fields = response.map((field: { name: string }) => field.name);
+      setAvailableFields(fields);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
+
+  useEffect(() => {
+    fetchEntityFields();
+  }, [entityType]);
+
+  const menuItems = useMemo(
+    () => ({
+      items: availableFields.map((fieldName) => ({
+        key: fieldName,
+        label: (
+          <Checkbox
+            checked={searchSettings.searchFields?.some(
+              (field) => field.field === fieldName
+            )}
+            onChange={() => handleFieldSelection(fieldName)}>
+            {fieldName}
+          </Checkbox>
+        ),
+      })),
+      className: 'menu-items',
+    }),
+    [availableFields, searchSettings.searchFields]
+  );
+
+  const handleFieldSelection = (fieldName: string) => {
+    setSearchSettings((prev) => {
+      const isFieldSelected = prev.searchFields?.some(
+        (field) => field.field === fieldName
+      );
+
+      if (isFieldSelected) {
+        // Remove field if already selected
+        return {
+          ...prev,
+          searchFields: prev.searchFields?.filter(
+            (field) => field.field !== fieldName
+          ),
+          isUpdated: true,
+        };
+      } else {
+        // Add new field with boost value 0
+        return {
+          ...prev,
+          searchFields: [
+            ...(prev.searchFields ?? []),
+            { field: fieldName, boost: 0 },
+          ],
+          isUpdated: true,
+        };
+      }
+    });
+  };
 
   // Handle save changes - makes API call with all changes
   const updateSearchConfig = async (updatedData: EntitySearchSettingsState) => {
@@ -230,36 +294,11 @@ const EntitySearchSettings = () => {
     }));
   };
 
-  const handleValueBoostChange = (
-    fieldName: string,
-    boost: FieldValueBoost
-  ) => {
-    setSearchSettings((prev) => {
-      const existingBoostIndex = prev.fieldValueBoosts?.findIndex(
-        (b) => b.field === fieldName
-      );
-
-      let updatedBoosts = [...(prev.fieldValueBoosts ?? [])];
-
-      if (existingBoostIndex !== undefined && existingBoostIndex >= 0) {
-        updatedBoosts[existingBoostIndex] = boost;
-      } else {
-        updatedBoosts = [...updatedBoosts, boost];
-      }
-
-      return {
-        ...prev,
-        fieldValueBoosts: updatedBoosts,
-        isUpdated: true,
-      };
-    });
-  };
-
-  const handleDeleteValueBoost = (fieldName: string) => {
+  const handleDeleteSearchField = (fieldName: string) => {
     setSearchSettings((prev) => ({
       ...prev,
-      fieldValueBoosts: (prev.fieldValueBoosts ?? []).filter(
-        (boost) => boost.field !== fieldName
+      searchFields: (prev.searchFields ?? []).filter(
+        (field) => field.field !== fieldName
       ),
       isUpdated: true,
     }));
@@ -431,9 +470,21 @@ const EntitySearchSettings = () => {
         <Col
           className="bg-white border-radius-card h-full flex-1 p-box configuration-container"
           span={8}>
-          <Typography.Title level={5}>
-            {t('label.configuration')}
-          </Typography.Title>
+          <div className="d-flex justify-between align-center">
+            <Typography.Title level={5}>
+              {t('label.matching-fields')}
+            </Typography.Title>
+            <Dropdown
+              getPopupContainer={(triggerNode) => triggerNode.parentElement!}
+              menu={menuItems}
+              placement="bottomLeft"
+              trigger={['click']}>
+              <Icon
+                className="text-grey-muted text-md cursor-pointer"
+                component={MoreIcon}
+              />
+            </Dropdown>
+          </div>
           <Row
             className="p-y-xs config-section"
             data-testid="field-configurations">
@@ -444,10 +495,9 @@ const EntitySearchSettings = () => {
                   index={index}
                   key={field.fieldName}
                   searchSettings={searchSettings}
-                  onDeleteBoost={handleDeleteValueBoost}
+                  onDeleteSearchField={handleDeleteSearchField}
                   onFieldWeightChange={handleFieldWeightChange}
                   onHighlightFieldsChange={handleHighlightFieldsChange}
-                  onValueBoostChange={handleValueBoostChange}
                 />
               </Col>
             ))}

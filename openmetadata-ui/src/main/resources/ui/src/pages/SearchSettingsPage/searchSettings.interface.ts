@@ -29,6 +29,8 @@ type PropertyKey = keyof Pick<
 export interface Property {
   key: PropertyKey;
   label: string;
+  min?: number;
+  max?: number;
 }
 
 export interface SettingCategoryData {

@@ -22,6 +22,7 @@ export interface FieldConfigurationProps {
   index: number;
   onHighlightFieldsChange: (fieldName: string) => void;
   onFieldWeightChange: (fieldName: string, value: number) => void;
-  onValueBoostChange: (fieldName: string, boost: FieldValueBoost) => void;
-  onDeleteBoost: (fieldName: string) => void;
+  onValueBoostChange?: (fieldName: string, boost: FieldValueBoost) => void;
+  onDeleteBoost?: (fieldName: string) => void;
+  onDeleteSearchField: (fieldName: string) => void;
 }

@@ -20,12 +20,16 @@ import './global-settings-item.less';
 interface GlobalSettingItemProps {
   label: string;
   value: number;
+  min?: number;
+  max?: number;
   onUpdate: (value: number) => Promise<void>;
 }
 
 export const GlobalSettingItem = ({
   label,
   value,
+  min,
+  max,
   onUpdate,
 }: GlobalSettingItemProps) => {
   const [isEditing, setIsEditing] = useState<boolean>(false);
@@ -67,6 +71,8 @@ export const GlobalSettingItem = ({
               data-testid="value-input"
               disabled={isUpdating}
               id="value"
+              max={max}
+              min={min}
               placeholder="value"
               type="number"
               value={updatedValue}

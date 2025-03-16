@@ -11,21 +11,11 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import {
-  Button,
-  Collapse,
-  Divider,
-  Dropdown,
-  Slider,
-  Switch,
-  Typography,
-} from 'antd';
-import React, { useMemo, useState } from 'react';
+import { Button, Collapse, Divider, Slider, Switch, Typography } from 'antd';
+import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as ArrowDown } from '../../../assets/svg/arrow-down-light.svg';
-import { ReactComponent as Document } from '../../../assets/svg/document.svg';
-import { ReactComponent as FilterIcon } from '../../../assets/svg/filter.svg';
-import AddBoost from '../AddBoost/AddBoost';
+import { ReactComponent as Delete } from '../../../assets/svg/delete-colored.svg';
+import { ReactComponent as FilterIcon } from '../../../assets/svg/setting-colored.svg';
 import './field-configuration.less';
 import { FieldConfigurationProps } from './fieldConfiguration.interface';
 
@@ -35,34 +25,13 @@ const FieldConfiguration: React.FC<FieldConfigurationProps> = ({
   searchSettings,
   onHighlightFieldsChange,
   onFieldWeightChange,
-  onValueBoostChange,
-  onDeleteBoost,
+  onDeleteSearchField,
 }) => {
   const { t } = useTranslation();
   const [activeFieldKeys, setActiveFieldKeys] = useState<
     Record<number, string[]>
   >({});
-  const [boostDropdownOpen, setBoostDropdownOpen] = useState(false);
-  const [activeBoostField, setActiveBoostField] = useState<string | null>(null);
   const [fieldWeight, setFieldWeight] = useState(field.weight);
-
-  const boostMenuItems = useMemo(
-    () => [
-      {
-        key: '1',
-        label: (
-          <Button
-            className="d-flex items-center justify-between border-none bg-transparent boost-option-btn"
-            data-testid="value-boost-option"
-            onClick={() => handleValueBoostClick(field.fieldName)}>
-            <Icon className="text-xl" component={Document} />
-            <Typography.Text>{t('label.value')}</Typography.Text>
-          </Button>
-        ),
-      },
-    ],
-    [field.fieldName]
-  );
 
   const handleCollapseChange = (key: string | string[], index: number) => {
     setActiveFieldKeys((prevKeys) => ({
@@ -71,26 +40,9 @@ const FieldConfiguration: React.FC<FieldConfigurationProps> = ({
     }));
   };
 
-  const handleValueBoostClick = (fieldName: string) => {
-    setActiveBoostField(fieldName);
-    setBoostDropdownOpen(false);
-  };
-
-  const handleBoostDropdownToggle = (open: boolean) => {
-    setBoostDropdownOpen(open);
-    if (!open) {
-      setActiveBoostField(null);
-    }
-  };
-
   const handleWeightChange = (value: number) => {
     setFieldWeight(value);
     onFieldWeightChange(field.fieldName, value);
-  };
-
-  const handleDeleteBoost = (fieldName: string) => {
-    onDeleteBoost(fieldName);
-    setActiveBoostField(null);
   };
 
   return (
@@ -110,9 +62,21 @@ const FieldConfiguration: React.FC<FieldConfigurationProps> = ({
                 ? '#F5FAFF'
                 : 'white',
             }}>
-            <Typography.Text data-testid="field-name">
-              {field.fieldName}
-            </Typography.Text>
+            <div className="d-flex items-center justify-between">
+              <Typography.Text data-testid="field-name">
+                {field.fieldName}
+              </Typography.Text>
+              <Button
+                className="delete-search-field"
+                data-testid="delete-search-field"
+                icon={<Icon className="text-md" component={Delete} />}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDeleteSearchField(field.fieldName);
+                }}
+              />
+            </div>
+
             <div className="d-flex items-center justify-between m-y-xss">
               <span className="text-grey-muted text-xs font-normal">
                 {t('label.select-test-type')}
@@ -120,8 +84,8 @@ const FieldConfiguration: React.FC<FieldConfigurationProps> = ({
               <span
                 className="p-x-xs font-semibold text-primary d-flex items-center field-weightage"
                 data-testid="field-weight">
-                <Icon className="text-sm" component={FilterIcon} />
-                {field.weight < 10 ? `0${field.weight}` : field.weight}
+                <Icon className="text-md" component={FilterIcon} />
+                {fieldWeight < 10 ? `0${fieldWeight}` : fieldWeight}
               </span>
             </div>
           </div>
@@ -158,47 +122,13 @@ const FieldConfiguration: React.FC<FieldConfigurationProps> = ({
           </div>
           <div data-testid="field-weight-slider">
             <Slider
-              max={10}
+              max={100}
               min={0}
               tooltip={{ open: false }}
               value={fieldWeight}
               onChange={handleWeightChange}
             />
           </div>
-
-          <Divider />
-
-          {/* Boost Section */}
-          <div className="m-y-md d-flex justify-end w-full">
-            <Dropdown
-              getPopupContainer={(triggerNode) => triggerNode.parentElement!}
-              menu={{
-                items: boostMenuItems,
-              }}
-              open={boostDropdownOpen}
-              placement="bottom"
-              trigger={['click']}
-              onOpenChange={handleBoostDropdownToggle}>
-              <Button
-                className="add-boost-btn d-flex items-center justify-center gap-2"
-                data-testid="add-boost">
-                <span className="font-semibold text-sm">
-                  {t('label.add-boost')}
-                </span>
-                <Icon className="text-3xl m-t-lg" component={ArrowDown} />
-              </Button>
-            </Dropdown>
-          </div>
-
-          {/* Add Boost Component */}
-          {activeBoostField === field.fieldName && (
-            <AddBoost
-              fieldName={field.fieldName}
-              fieldValueBoosts={searchSettings?.fieldValueBoosts ?? []}
-              onDeleteBoost={handleDeleteBoost}
-              onValueBoostChange={onValueBoostChange}
-            />
-          )}
         </div>
       </Collapse.Panel>
     </Collapse>

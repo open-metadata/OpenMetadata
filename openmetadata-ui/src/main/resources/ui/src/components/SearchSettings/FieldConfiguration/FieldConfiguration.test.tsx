@@ -28,8 +28,7 @@ const mockProps = {
   },
   onHighlightFieldsChange: jest.fn(),
   onFieldWeightChange: jest.fn(),
-  onValueBoostChange: jest.fn(),
-  onDeleteBoost: jest.fn(),
+  onDeleteSearchField: jest.fn(),
 };
 
 jest.mock('react-i18next', () => ({
@@ -80,17 +79,14 @@ describe('FieldConfiguration', () => {
     expect(mockProps.onFieldWeightChange).toHaveBeenCalled();
   });
 
-  it('Should handle add boost dropdown', () => {
+  it('Should handle delete search field', () => {
     render(<FieldConfiguration {...mockProps} />);
 
     fireEvent.click(screen.getByTestId('field-container-header'));
 
-    const addBoostButton = screen.getByTestId('add-boost');
-    fireEvent.click(addBoostButton);
+    const deleteButton = screen.getByTestId('delete-search-field');
+    fireEvent.click(deleteButton);
 
-    const valueBoostOption = screen.getByTestId('value-boost-option');
-    fireEvent.click(valueBoostOption);
-
-    expect(screen.getByTestId('add-boost-component')).toBeInTheDocument();
+    expect(mockProps.onDeleteSearchField).toHaveBeenCalled();
   });
 });

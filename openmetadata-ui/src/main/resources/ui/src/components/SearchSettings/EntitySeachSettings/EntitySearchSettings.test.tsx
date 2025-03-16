@@ -18,10 +18,7 @@ import {
   ScoreMode,
 } from '../../../generated/configuration/searchSettings';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
-import {
-  restoreSettingsConfig,
-  updateSettingsConfig,
-} from '../../../rest/settingConfigAPI';
+import { restoreSettingsConfig } from '../../../rest/settingConfigAPI';
 import { showSuccessToast } from '../../../utils/ToastUtils';
 import EntitySearchSettings from './EntitySearchSettings';
 
@@ -150,55 +147,6 @@ describe('EntitySearchSettings', () => {
     ).toBeInTheDocument();
     expect(screen.getByTestId('search-preview')).toBeInTheDocument();
     expect(screen.getByTestId('field-configurations')).toBeInTheDocument();
-  });
-
-  it('Should handle save changes successfully', async () => {
-    const mockUpdatedConfig = {
-      ...mockSearchConfig,
-      assetTypeConfigurations: [
-        {
-          ...mockSearchConfig.assetTypeConfigurations[0],
-          boostMode: BoostMode.Sum,
-        },
-      ],
-    };
-
-    (updateSettingsConfig as jest.Mock).mockResolvedValueOnce({
-      data: { config_value: mockUpdatedConfig },
-    });
-    (useParams as jest.Mock).mockReturnValue({ tab: 'tables' });
-
-    render(
-      <MemoryRouter>
-        <EntitySearchSettings />
-      </MemoryRouter>
-    );
-
-    const boostModeSelect = screen.getByTestId('boost-mode-select');
-    await act(async () => {
-      fireEvent.change(boostModeSelect, { target: { value: 'sum' } });
-    });
-
-    const saveButton = screen.getByTestId('save-btn');
-
-    expect(saveButton).not.toBeDisabled();
-
-    await act(async () => {
-      fireEvent.click(saveButton);
-    });
-
-    expect(updateSettingsConfig).toHaveBeenCalledWith({
-      config_type: 'searchSettings',
-      config_value: expect.objectContaining({
-        assetTypeConfigurations: expect.arrayContaining([
-          expect.objectContaining({
-            boostMode: BoostMode.Sum,
-          }),
-        ]),
-      }),
-    });
-    expect(showSuccessToast).toHaveBeenCalled();
-    expect(mockSetAppPreferences).toHaveBeenCalled();
   });
 
   it('Should handle restore defaults successfully', async () => {
