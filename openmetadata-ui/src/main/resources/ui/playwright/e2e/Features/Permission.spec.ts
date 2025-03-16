@@ -143,7 +143,7 @@ test.afterAll(async ({ browser }) => {
   await afterAction();
 });
 
-test.skip('Permissions', async ({ userPage, adminPage }) => {
+test('Permissions', async ({ userPage, adminPage }) => {
   test.slow();
 
   await redirectToHomePage(userPage);
