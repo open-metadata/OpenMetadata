@@ -110,6 +110,10 @@ const FeedsWidget = ({
   const onTabChange = (key: string) => {
     if (key === ActivityFeedTabs.TASKS) {
       setDefaultFilter(FeedFilter.OWNER);
+    } else if (key === ActivityFeedTabs.ALL) {
+      setDefaultFilter(
+        currentUser?.isAdmin ? FeedFilter.ALL : FeedFilter.OWNER_OR_FOLLOWS
+      );
     }
     setActiveTab(key as ActivityFeedTabs);
   };

@@ -61,6 +61,7 @@ const ActivityFeedDrawer: FC<ActivityFeedDrawerProps> = ({
         <Row gutter={[0, 16]} id="feed-panel">
           <Col span={24}>
             <FeedPanelBodyV1
+              isForFeedTab
               isOpenInDrawer
               showThread
               componentsVisibility={{
