@@ -145,6 +145,7 @@ describe('Test UserListPage component', () => {
 
     expect(mockSetFilters).toHaveBeenCalledWith({
       isDeleted: true,
+      user: null,
     });
     expect(deletedSwitch).toHaveAttribute('aria-checked', 'true');
   });
