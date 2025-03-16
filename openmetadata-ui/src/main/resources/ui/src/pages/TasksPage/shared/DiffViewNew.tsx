@@ -13,8 +13,7 @@
 
 import classNames from 'classnames';
 import { Change } from 'diff';
-import { uniqueId } from 'lodash';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import TaskDescriptionPreviewer from '../../../components/common/RichTextEditor/TaskDescriptionPreviewer';
 import {
@@ -66,50 +65,54 @@ export const DiffViewNew = ({
     return () => clearTimeout(timer);
   }, [diffArr]);
 
-  const elements = diffArr.map((diff) => {
-    if (diff.added) {
-      return (
-        <ins
-          className="diff-added-new"
-          data-testid="diff-added"
-          key={uniqueId()}>
-          <TaskDescriptionPreviewer
-            enableSeeMoreVariant={false}
-            markdown={diff.value}
-            showReadMoreBtn={false}
-          />
-        </ins>
-      );
-    }
-    if (diff.removed) {
-      return (
-        <del
-          className="diff-removed-new"
-          data-testid="diff-removed-new"
-          key={uniqueId()}>
-          <TaskDescriptionPreviewer
-            enableSeeMoreVariant={false}
-            markdown={diff.value}
-            showReadMoreBtn={false}
-          />
-        </del>
-      );
-    }
+  const elements = useMemo(
+    () =>
+      diffArr.map((diff, index) => {
+        const key = `diff-${index}-${
+          diff.added ? 'added' : diff.removed ? 'removed' : 'normal'
+        }`;
 
-    return (
-      <span
-        className="diff-normal-new"
-        data-testid="diff-normal-new"
-        key={uniqueId()}>
-        {' '}
-        <TaskDescriptionPreviewer
-          enableSeeMoreVariant={false}
-          markdown={diff.value}
-          showReadMoreBtn={false}
-        />
-      </span>
-    );
-  });
+        if (diff.added) {
+          return (
+            <ins className="diff-added-new" data-testid="diff-added" key={key}>
+              <TaskDescriptionPreviewer
+                enableSeeMoreVariant={false}
+                markdown={diff.value}
+                showReadMoreBtn={false}
+              />
+            </ins>
+          );
+        }
+        if (diff.removed) {
+          return (
+            <del
+              className="diff-removed-new"
+              data-testid="diff-removed-new"
+              key={key}>
+              <TaskDescriptionPreviewer
+                enableSeeMoreVariant={false}
+                markdown={diff.value}
+                showReadMoreBtn={false}
+              />
+            </del>
+          );
+        }
+
+        return (
+          <span
+            className="diff-normal-new"
+            data-testid="diff-normal-new"
+            key={key}>
+            <TaskDescriptionPreviewer
+              enableSeeMoreVariant={false}
+              markdown={diff.value}
+              showReadMoreBtn={false}
+            />
+          </span>
+        );
+      }),
+    [diffArr]
+  );
 
   return (
     <div
