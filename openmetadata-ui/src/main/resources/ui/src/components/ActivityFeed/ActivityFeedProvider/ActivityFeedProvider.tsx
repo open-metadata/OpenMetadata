@@ -80,7 +80,6 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
   const [entityPaging, setEntityPaging] = useState<Paging>({} as Paging);
   const [focusReplyEditor, setFocusReplyEditor] = useState<boolean>(false);
   const [loading, setLoading] = useState(false);
-  const [isDrawerLoading, setIsDrawerLoading] = useState(false);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [selectedThread, setSelectedThread] = useState<Thread>();
   const [testCaseResolutionStatus, setTestCaseResolutionStatus] = useState<
@@ -118,23 +117,6 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
           setLoading(false);
         }
       );
-    }
-  }, []);
-
-  const getFeedDataById = useCallback(async (id) => {
-    try {
-      setIsDrawerLoading(true);
-      const res = await getFeedById(id);
-      setActiveThread(res.data);
-    } catch (err) {
-      showErrorToast(
-        err as AxiosError,
-        t('server.entity-fetch-error', {
-          entity: t('label.message-plural-lowercase'),
-        })
-      );
-    } finally {
-      setIsDrawerLoading(false);
     }
   }, []);
 
@@ -416,9 +398,7 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
 
   const showDrawer = useCallback((thread: Thread) => {
     setIsDrawerOpen(true);
-    getFeedDataById(thread.id).catch(() => {
-      // ignore since error is displayed in toast in the parent promise.
-    });
+    setSelectedThread(thread);
   }, []);
 
   const hideDrawer = useCallback(() => {
@@ -460,7 +440,6 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
       selectedThread,
       isDrawerOpen,
       loading,
-      isDrawerLoading,
       focusReplyEditor,
       refreshActivityFeed,
       deleteFeed,
@@ -485,7 +464,6 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
     selectedThread,
     isDrawerOpen,
     loading,
-    isDrawerLoading,
     focusReplyEditor,
     refreshActivityFeed,
     deleteFeed,
