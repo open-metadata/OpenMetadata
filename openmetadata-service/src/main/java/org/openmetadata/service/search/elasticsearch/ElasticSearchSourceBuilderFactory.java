@@ -1,5 +1,6 @@
 package org.openmetadata.service.search.elasticsearch;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.service.search.EntityBuilderConstant.MAX_ANALYZED_OFFSET;
 import static org.openmetadata.service.search.EntityBuilderConstant.POST_TAG;
 import static org.openmetadata.service.search.EntityBuilderConstant.PRE_TAG;
@@ -24,6 +25,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 import org.openmetadata.schema.api.search.Aggregation;
 import org.openmetadata.schema.api.search.AssetTypeConfiguration;
 import org.openmetadata.schema.api.search.FieldValueBoost;
@@ -338,22 +340,23 @@ public class ElasticSearchSourceBuilderFactory
 
   private void addConfiguredAggregations(
       SearchSourceBuilder searchSourceBuilder, AssetTypeConfiguration assetConfig) {
-    if (assetConfig.getAggregations() != null) {
-      for (Aggregation agg : assetConfig.getAggregations()) {
-        searchSourceBuilder.aggregation(
-            AggregationBuilders.terms(agg.getName())
-                .field(agg.getField())
-                .size(searchSettings.getGlobalSettings().getMaxAggregateSize()));
-      }
-    }
+    Map<String, Aggregation> aggregations = new HashMap<>();
 
-    if (searchSettings.getGlobalSettings().getAggregations() != null) {
-      for (Aggregation agg : searchSettings.getGlobalSettings().getAggregations()) {
-        searchSourceBuilder.aggregation(
-            AggregationBuilders.terms(agg.getName())
-                .field(agg.getField())
-                .size(searchSettings.getGlobalSettings().getMaxAggregateSize()));
-      }
+    // Add asset type aggregations
+    aggregations.putAll(
+        listOrEmpty(assetConfig.getAggregations()).stream()
+            .collect(Collectors.toMap(Aggregation::getName, agg -> agg)));
+    // Add global aggregations
+    aggregations.putAll(
+        listOrEmpty(searchSettings.getGlobalSettings().getAggregations()).stream()
+            .collect(Collectors.toMap(Aggregation::getName, agg -> agg)));
+
+    for (var entry : aggregations.entrySet()) {
+      Aggregation agg = entry.getValue();
+      searchSourceBuilder.aggregation(
+          AggregationBuilders.terms(agg.getName())
+              .field(agg.getField())
+              .size(searchSettings.getGlobalSettings().getMaxAggregateSize()));
     }
   }
 
