@@ -14,6 +14,7 @@ import { capitalize, isNil, toInteger, toNumber } from 'lodash';
 import { DateTime, Duration } from 'luxon';
 
 export const DATE_TIME_12_HOUR_FORMAT = 'MMM dd, yyyy, hh:mm a'; // e.g. Jan 01, 12:00 AM
+export const DATE_TIME_WITH_OFFSET_FORMAT = "MMMM dd, yyyy, h:mm a '(UTC'ZZ')'"; // e.g. Jan 01, 12:00 AM (UTC+05:30)
 
 /**
  * @param date EPOCH millis
@@ -49,10 +50,15 @@ export const formatDate = (date?: number, supportUTC = false) => {
  * @param date EPOCH millis
  * @returns Formatted date for valid input. Format: MMM DD, YYYY
  */
-export const formatDateTimeLong = (timestamp: number, format?: string) =>
-  DateTime.fromMillis(toNumber(timestamp), { locale: 'en-US' }).toFormat(
-    format || "ccc d'th' MMMM, yyyy, hh:mm a"
+export const formatDateTimeLong = (timestamp?: number, format?: string) => {
+  if (isNil(timestamp)) {
+    return '';
+  }
+
+  return DateTime.fromMillis(toNumber(timestamp), { locale: 'en-US' }).toFormat(
+    format || DATE_TIME_WITH_OFFSET_FORMAT
   );
+};
 
 /**
  *
