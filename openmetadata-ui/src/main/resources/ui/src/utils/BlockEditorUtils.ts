@@ -115,7 +115,12 @@ export const formatContent = (
   }
   const modifiedHtmlString = doc.body.innerHTML;
 
-  return modifiedHtmlString;
+  const boldTextToHtml = modifiedHtmlString.replace(
+    /\*\*(.+?)\*\*/g,
+    '<strong>$1</strong>'
+  );
+
+  return boldTextToHtml;
 };
 
 export const formatValueBasedOnContent = (value: string) =>
