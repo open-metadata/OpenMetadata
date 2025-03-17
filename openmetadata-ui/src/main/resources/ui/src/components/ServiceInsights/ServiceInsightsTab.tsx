@@ -13,7 +13,7 @@
 
 import { Col, Row } from 'antd';
 import { AxiosError } from 'axios';
-import { isUndefined, round, toLower } from 'lodash';
+import { isUndefined, toLower } from 'lodash';
 import { ServiceTypes } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
@@ -24,6 +24,7 @@ import {
   getCurrentDayStartGMTinMillis,
   getDayAgoStartGMTinMillis,
 } from '../../utils/date-time/DateTimeUtils';
+import { getPlatformInsightsChartDataFormattingMethod } from '../../utils/ServiceInsightsTabUtils';
 import serviceUtilClassBase from '../../utils/ServiceUtilClassBase';
 import { showErrorToast } from '../../utils/ToastUtils';
 import {
@@ -71,40 +72,13 @@ const ServiceInsightsTab = ({ serviceDetails }: ServiceInsightsTabProps) => {
         filter: `{"query":{"match":{"service.name.keyword":"${serviceName}"}}}`,
       });
 
-      const platformInsightsChart = PLATFORM_INSIGHTS_CHART.map((chartType) => {
-        const summaryChartData = chartsData[chartType];
-
-        const data = summaryChartData.results;
-
-        const firstDayPercentage = data.find(
-          (item) => item.day === sevenDaysAgoTimestampInMs
-        )?.count;
-        const lastDayPercentage = data.find(
-          (item) => item.day === currentTimestampInMs
-        )?.count;
-
-        if (!firstDayPercentage || !lastDayPercentage) {
-          return {
-            chartType,
-            data,
-            isIncreased: undefined,
-            percentageChange: undefined,
-            currentPercentage: lastDayPercentage ?? 0,
-          };
-        }
-
-        const percentageChange = lastDayPercentage - firstDayPercentage;
-
-        const isIncreased = lastDayPercentage > firstDayPercentage;
-
-        return {
-          chartType,
-          data,
-          isIncreased,
-          percentageChange: round(Math.abs(percentageChange), 2),
-          currentPercentage: round(lastDayPercentage ?? 0, 2),
-        };
-      });
+      const platformInsightsChart = PLATFORM_INSIGHTS_CHART.map(
+        getPlatformInsightsChartDataFormattingMethod(
+          chartsData,
+          sevenDaysAgoTimestampInMs,
+          currentTimestampInMs
+        )
+      );
 
       const piiDistributionChart = chartsData[
         SystemChartType.PIIDistribution
