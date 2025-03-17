@@ -23,6 +23,10 @@ export interface MssqlConnection {
      */
     database: string;
     /**
+     * Regex to only include/exclude databases that matches the pattern.
+     */
+    databaseFilterPattern?: DefaultDatabaseFilterPattern;
+    /**
      * ODBC driver version in case of pyodbc connection.
      */
     driver?: string;
@@ -40,6 +44,10 @@ export interface MssqlConnection {
     password?:                string;
     sampleDataStorageConfig?: SampleDataStorageConfig;
     /**
+     * Regex to only include/exclude schemas that matches the pattern.
+     */
+    schemaFilterPattern?: DefaultSchemaFilterPattern;
+    /**
      * SQLAlchemy driver scheme options.
      */
     scheme?:                     MssqlScheme;
@@ -52,6 +60,10 @@ export interface MssqlConnection {
     supportsQueryComment?:       boolean;
     supportsUsageExtraction?:    boolean;
     /**
+     * Regex to only include/exclude tables that matches the pattern.
+     */
+    tableFilterPattern?: FilterPattern;
+    /**
      * Service Type
      */
     type?: MssqlType;
@@ -60,6 +72,15 @@ export interface MssqlConnection {
      * in MsSQL.
      */
     username?: string;
+}
+
+/**
+ * Regex to only include/exclude databases that matches the pattern.
+ */
+export interface DefaultDatabaseFilterPattern {
+    excludes?: string[];
+    includes?: string[];
+    [property: string]: any;
 }
 
 /**
@@ -141,12 +162,37 @@ export interface AwsCredentials {
 }
 
 /**
+ * Regex to only include/exclude schemas that matches the pattern.
+ */
+export interface DefaultSchemaFilterPattern {
+    excludes?: string[];
+    includes?: string[];
+    [property: string]: any;
+}
+
+/**
  * SQLAlchemy driver scheme options.
  */
 export enum MssqlScheme {
     MssqlPymssql = "mssql+pymssql",
     MssqlPyodbc = "mssql+pyodbc",
     MssqlPytds = "mssql+pytds",
+}
+
+/**
+ * Regex to only include/exclude tables that matches the pattern.
+ *
+ * Regex to only fetch entities that matches the pattern.
+ */
+export interface FilterPattern {
+    /**
+     * List of strings/regex patterns to match and exclude only database entities that match.
+     */
+    excludes?: string[];
+    /**
+     * List of strings/regex patterns to match and include only database entities that match.
+     */
+    includes?: string[];
 }
 
 /**

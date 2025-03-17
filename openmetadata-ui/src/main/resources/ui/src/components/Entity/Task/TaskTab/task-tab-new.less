@@ -90,14 +90,21 @@
 }
 
 .task-details-id {
-  color: #175cd3;
   font-size: 14px;
   font-style: normal;
   font-weight: 400;
   line-height: 20px;
+  .ant-typography,
+  .ant-typography a,
+  &.ant-typography,
+  &.ant-typography a,
+  & a.ant-typography,
+  & .ant-typography a {
+    color: @blue-9;
+  }
 }
 .task-details-entity-link {
-  color: #535862;
+  color: @text-color-tertiary;
   font-size: 14px;
   font-style: normal;
   font-weight: 400;
@@ -175,17 +182,17 @@
 .entity-type {
   font-size: 14px;
   font-weight: 600;
-  color: #175cd3;
+  color: @blue-9;
   line-height: 20px;
 }
 .entity-link {
   font-weight: 600;
   line-height: 20px;
-  color: #175cd3;
+  color: @blue-9;
 }
 .task-details {
   font-size: 14px;
-  color: #535862;
+  color: @text-color;
   line-height: 20px;
   font-weight: 400;
 }
@@ -198,12 +205,12 @@
 }
 .diff-view-container-card-right-panel {
   max-height: 400px;
-  background: #f8f9fc;
+  background: @grey-9;
   border-radius: 12px;
   border: 0.5px solid #eaecf5;
 }
 .task-tab-description-header {
-  color: #414651;
+  color: @text-color;
   font-size: 14px;
   font-style: normal;
   font-weight: 600;
@@ -212,6 +219,6 @@
 .tags-details-contianer {
   border-radius: 12px;
   border: 0.5px solid #eaecf5;
-  background: #f8f9fc;
+  background: @grey-9;
   padding: 16px;
 }

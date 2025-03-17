@@ -25,7 +25,6 @@ import { ReactComponent as ReplyIcon } from '../../../assets/svg/ic-reply-2.svg'
 import EntityPopOverCard from '../../../components/common/PopOverCard/EntityPopOverCard';
 import UserPopOverCard from '../../../components/common/PopOverCard/UserPopOverCard';
 import {
-  Post,
   TaskDetails,
   Thread,
   ThreadTaskStatus,
@@ -61,14 +60,9 @@ import { useActivityFeedProvider } from '../ActivityFeedProvider/ActivityFeedPro
 import './task-feed-card.less';
 
 interface TaskFeedCardProps {
-  post: Post;
   feed: Thread;
   className?: string;
-  showThread?: boolean;
-  isOpenInDrawer?: boolean;
   isActive?: boolean;
-  isForFeedTab?: boolean;
-  hidePopover: boolean;
   onAfterClose: any;
   onUpdateEntityDetails: any;
 }
@@ -230,7 +224,15 @@ const TaskFeedCard = ({
     assignee.type === 'team' ? checkIfUserPartOfTeam(assignee.id) : false
   );
   const hasEditAccess =
-    isAdminUser || isAssignee || (Boolean(isPartOfAssigneeTeam) && !isCreator);
+    (isAdminUser && !isTaskGlossaryApproval) ||
+    isAssignee ||
+    (Boolean(isPartOfAssigneeTeam) && !isCreator);
+
+  const isSuggestionEmpty =
+    (isEqual(taskDetails?.suggestion, '[]') &&
+      taskDetails?.type === TaskType.RequestTag) ||
+    (!taskDetails?.suggestion &&
+      taskDetails?.type === TaskType.RequestDescription);
 
   return (
     <Button block className="remove-button-default-styling" type="text">
@@ -241,8 +243,8 @@ const TaskFeedCard = ({
         data-testid="task-feed-card">
         <Row
           gutter={
-            isTaskTestCaseResult
-              ? [0, 8]
+            isTaskTestCaseResult || isTaskGlossaryApproval
+              ? [0, 6]
               : isTaskDescription
               ? undefined
               : [0, 14]
@@ -341,11 +343,12 @@ const TaskFeedCard = ({
               </Col>
             </Col>
 
-            {!isTaskTestCaseResult && hasEditAccess && (
+            {!isTaskTestCaseResult && hasEditAccess && !isSuggestionEmpty && (
               <Col className="d-flex gap-2">
                 {feed.task?.status === ThreadTaskStatus.Open && (
                   <Button
                     className="approve-btn d-flex items-center"
+                    data-testid="approve-button"
                     icon={<CheckCircleFilled />}
                     type="primary"
                     onClick={onTaskResolve}>
@@ -355,6 +358,7 @@ const TaskFeedCard = ({
                 {feed.task?.status === ThreadTaskStatus.Open && (
                   <Button
                     className="reject-btn  d-flex items-center"
+                    data-testid="reject-button"
                     icon={<CloseCircleFilled />}
                     type="default"
                     onClick={onTaskReject}>

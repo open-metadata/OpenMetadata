@@ -21,7 +21,6 @@ import { useTranslation } from 'react-i18next';
 import { Link, useHistory } from 'react-router-dom';
 import {
   DISABLED,
-  getServiceDetailsPath,
   INITIAL_PAGING_VALUE,
   pagingObject,
 } from '../../../constants/constants';
@@ -49,7 +48,10 @@ import { getServices, searchService } from '../../../rest/serviceAPI';
 import { getServiceLogo } from '../../../utils/CommonUtils';
 import { getEntityName, highlightSearchText } from '../../../utils/EntityUtils';
 import { checkPermission } from '../../../utils/PermissionsUtils';
-import { getAddServicePath } from '../../../utils/RouterUtils';
+import {
+  getAddServicePath,
+  getServiceDetailsPath,
+} from '../../../utils/RouterUtils';
 import {
   getOptionalFields,
   getResourceEntityFromServiceCategory,
@@ -333,7 +335,6 @@ const Services = ({ serviceName }: ServicesProps) => {
         description ? (
           <RichTextEditorPreviewerV1
             className="max-two-lines"
-            enableSeeMoreVariant={false}
             markdown={highlightSearchText(description, searchTerm)}
           />
         ) : (

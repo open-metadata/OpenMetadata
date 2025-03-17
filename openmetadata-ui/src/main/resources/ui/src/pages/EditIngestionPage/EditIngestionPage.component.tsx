@@ -27,15 +27,14 @@ import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/Ti
 import AddIngestion from '../../components/Settings/Services/AddIngestion/AddIngestion.component';
 import {
   DEPLOYED_PROGRESS_VAL,
-  getServiceDetailsPath,
   INGESTION_PROGRESS_END_VAL,
   INGESTION_PROGRESS_START_VAL,
 } from '../../constants/constants';
 import { INGESTION_ACTION_TYPE } from '../../constants/Ingestions.constant';
-import { TabSpecificField } from '../../enums/entity.enum';
+import { EntityTabs, TabSpecificField } from '../../enums/entity.enum';
 import { FormSubmitType } from '../../enums/form.enum';
 import { IngestionActionMessage } from '../../enums/ingestion.enum';
-import { ServiceCategory } from '../../enums/service.enum';
+import { ServiceAgentSubTabs, ServiceCategory } from '../../enums/service.enum';
 import {
   IngestionPipeline,
   PipelineType,
@@ -55,6 +54,7 @@ import {
   getIngestionHeadingName,
   getSettingsPathFromPipelineType,
 } from '../../utils/IngestionUtils';
+import { getServiceDetailsPath } from '../../utils/RouterUtils';
 import { getServiceType } from '../../utils/ServiceUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
@@ -218,7 +218,12 @@ const EditIngestionPage = () => {
 
   const goToService = () => {
     history.push(
-      getServiceDetailsPath(serviceFQN, serviceCategory, 'ingestions')
+      getServiceDetailsPath(
+        serviceFQN,
+        serviceCategory,
+        EntityTabs.AGENTS,
+        ServiceAgentSubTabs.METADATA
+      )
     );
   };
 

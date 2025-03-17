@@ -165,7 +165,7 @@ jest.mock('../../components/common/TabsLabel/TabsLabel.component', () =>
   jest.fn().mockImplementation(({ name }) => <div>{name}</div>)
 );
 
-jest.mock('../../constants/constants', () => ({
+jest.mock('../../utils/RouterUtils', () => ({
   getEntityDetailsPath: jest.fn().mockReturnValue('/container-detail-path'),
   getVersionPath: jest.fn().mockReturnValue('/version-path'),
 }));
@@ -198,6 +198,8 @@ jest.mock('../../utils/EntityUtils', () => ({
   getEntityName: jest
     .fn()
     .mockImplementation((entity) => entity?.name ?? 'entityName'),
+  getEntityFeedLink: jest.fn(),
+  getColumnSorter: jest.fn(),
 }));
 
 jest.mock('../../utils/PermissionsUtils', () => ({

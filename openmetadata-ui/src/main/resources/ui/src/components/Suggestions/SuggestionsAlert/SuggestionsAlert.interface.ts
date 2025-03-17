@@ -14,6 +14,7 @@ import { Suggestion } from '../../../generated/entity/feed/suggestion';
 
 export interface SuggestionsAlertProps {
   suggestion: Suggestion;
+  showInlineCard?: boolean;
   hasEditAccess?: boolean;
   maxLength?: number;
   showSuggestedBy?: boolean;

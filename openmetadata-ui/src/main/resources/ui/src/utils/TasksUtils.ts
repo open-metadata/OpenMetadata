@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { AxiosError } from 'axios';
-import { Change, diffWordsWithSpace } from 'diff';
+import { Change, diffLines } from 'diff';
 import i18Next from 'i18next';
 import { isEmpty, isEqual, isUndefined } from 'lodash';
 import React from 'react';
@@ -22,10 +22,6 @@ import { ReactComponent as CheckIcon } from '../assets/svg/ic-tick-circle.svg';
 import { ActivityFeedTabs } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
-  getEntityDetailsPath,
-  getGlossaryTermDetailsPath,
-  getServiceDetailsPath,
-  getUserPath,
   PLACEHOLDER_ROUTE_ENTITY_TYPE,
   PLACEHOLDER_ROUTE_FQN,
   ROUTES,
@@ -95,7 +91,13 @@ import { getEntityFQN, getEntityType } from './FeedUtils';
 import { getGlossaryBreadcrumbs } from './GlossaryUtils';
 import { defaultFields as MlModelFields } from './MlModelDetailsUtils';
 import { defaultFields as PipelineFields } from './PipelineDetailsUtils';
-import { getIncidentManagerDetailPagePath } from './RouterUtils';
+import {
+  getEntityDetailsPath,
+  getGlossaryTermDetailsPath,
+  getIncidentManagerDetailPagePath,
+  getServiceDetailsPath,
+  getUserPath,
+} from './RouterUtils';
 import serviceUtilClassBase from './ServiceUtilClassBase';
 import { STORED_PROCEDURE_DEFAULT_FIELDS } from './StoredProceduresUtils';
 import { getEncodedFqn } from './StringsUtils';
@@ -218,7 +220,7 @@ export const getDescriptionDiff = (
   oldValue: string,
   newValue: string
 ): Change[] => {
-  return diffWordsWithSpace(oldValue, newValue);
+  return diffLines(oldValue, newValue);
 };
 
 export const fetchOptions = ({

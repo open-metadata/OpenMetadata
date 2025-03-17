@@ -20,6 +20,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ExecutorService;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
@@ -81,9 +82,13 @@ import org.openmetadata.service.secrets.masker.EntityMaskerFactory;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.util.AsyncService;
+import org.openmetadata.service.util.DeleteEntityResponse;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
+import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
+import org.openmetadata.service.util.WebsocketNotificationHandler;
 import org.quartz.SchedulerException;
 
 @Path("/v1/apps")
@@ -221,13 +226,16 @@ public class AppResource extends EntityResource<App, AppRepository> {
               schema = @Schema(type = "string"))
           @QueryParam("after")
           String after,
+      @Parameter(description = "Filter by agent type", schema = @Schema(type = "string"))
+          @QueryParam("agentType")
+          String agentType,
       @Parameter(
               description = "Include all, deleted, or non-deleted entities.",
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    ListFilter filter = new ListFilter(include);
+    ListFilter filter = new ListFilter(include).addQueryParam("agentType", agentType);
     return super.listInternal(
         uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
@@ -857,6 +865,36 @@ public class AppResource extends EntityResource<App, AppRepository> {
     return delete(uriInfo, securityContext, id, true, hardDelete);
   }
 
+  @DELETE
+  @Path("/async/{id}")
+  @Operation(
+      operationId = "uninstallAppByNameAsync",
+      summary = "Asynchronously delete a App by Id",
+      description = "Asynchronously delete a App by `Id`.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "OK"),
+        @ApiResponse(
+            responseCode = "400",
+            description = "System entity {name} of type SystemApp can not be deleted."),
+        @ApiResponse(responseCode = "404", description = "App for instance {id} is not found")
+      })
+  public Response deleteByIdAsync(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Hard delete the entity. (Default = `false`)")
+          @QueryParam("hardDelete")
+          @DefaultValue("false")
+          boolean hardDelete,
+      @Parameter(description = "Id of the App", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id) {
+    App app = repository.get(uriInfo, id, repository.getFields("bot,pipelines"), ALL, false);
+    if (app.getSystem()) {
+      throw new IllegalArgumentException(
+          CatalogExceptionMessage.systemEntityDeleteNotAllowed(app.getName(), "SystemApp"));
+    }
+    return deleteAppAsync(uriInfo, securityContext, id, true, hardDelete);
+  }
+
   @PUT
   @Path("/restore")
   @Operation(
@@ -966,6 +1004,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
   }
 
   @POST
+  @Consumes(MediaType.APPLICATION_JSON)
   @Path("/trigger/{name}")
   @Operation(
       operationId = "triggerApplicationRun",
@@ -985,18 +1024,28 @@ public class AppResource extends EntityResource<App, AppRepository> {
       @Context SecurityContext securityContext,
       @Parameter(description = "Name of the App", schema = @Schema(type = "string"))
           @PathParam("name")
-          String name) {
+          String name,
+      @RequestBody(
+              description =
+                  "Configuration payload. Keys will be added to the current configuration. Delete keys by setting them to null.",
+              content = @Content(mediaType = MediaType.APPLICATION_JSON))
+          Map<String, Object> configPayload) {
     EntityUtil.Fields fields = getFields(String.format("%s,bot,pipelines", FIELD_OWNERS));
     App app = repository.getByName(uriInfo, name, fields);
     if (app.getAppType().equals(AppType.Internal)) {
       ApplicationHandler.getInstance()
-          .triggerApplicationOnDemand(app, Entity.getCollectionDAO(), searchRepository);
-      return Response.status(Response.Status.OK).entity("Application Triggered").build();
+          .triggerApplicationOnDemand(
+              app, Entity.getCollectionDAO(), searchRepository, configPayload);
+      return Response.status(Response.Status.OK).build();
     } else {
       if (!app.getPipelines().isEmpty()) {
         IngestionPipeline ingestionPipeline = getIngestionPipeline(uriInfo, securityContext, app);
         ServiceEntityInterface service =
             Entity.getEntity(ingestionPipeline.getService(), "", Include.NON_DELETED);
+        if (configPayload != null) {
+          throw new BadRequestException(
+              "Overriding app config is not supported for external applications.");
+        }
         PipelineServiceClientResponse response =
             pipelineServiceClient.runPipeline(ingestionPipeline, service);
         return Response.status(response.getCode()).entity(response).build();
@@ -1159,5 +1208,60 @@ public class AppResource extends EntityResource<App, AppRepository> {
         }
       }
     }
+  }
+
+  public Response deleteAppAsync(
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      UUID id,
+      boolean recursive,
+      boolean hardDelete) {
+    String jobId = UUID.randomUUID().toString();
+    App app;
+    Response response;
+
+    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.DELETE);
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
+    app = repository.get(uriInfo, id, repository.getFields("bot,pipelines"), Include.ALL, false);
+    String userName = securityContext.getUserPrincipal().getName();
+
+    ExecutorService executorService = AsyncService.getInstance().getExecutorService();
+    executorService.submit(
+        () -> {
+          try {
+            ApplicationHandler.getInstance()
+                .performCleanup(app, Entity.getCollectionDAO(), searchRepository, userName);
+
+            // Remove from Pipeline Service
+            deleteApp(securityContext, app);
+
+            // Remove from repository
+            RestUtil.DeleteResponse<App> deleteResponse =
+                repository.delete(userName, id, recursive, hardDelete);
+
+            if (hardDelete) {
+              limits.invalidateCache(entityType);
+            }
+
+            WebsocketNotificationHandler.sendDeleteOperationCompleteNotification(
+                jobId, securityContext, deleteResponse.entity());
+          } catch (Exception e) {
+            WebsocketNotificationHandler.sendDeleteOperationFailedNotification(
+                jobId, securityContext, app, e.getMessage());
+          }
+        });
+
+    response =
+        Response.accepted()
+            .entity(
+                new DeleteEntityResponse(
+                    jobId,
+                    "Delete operation initiated for " + app.getName(),
+                    app.getName(),
+                    hardDelete,
+                    recursive))
+            .build();
+
+    return response;
   }
 }

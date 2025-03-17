@@ -27,6 +27,10 @@ jest.mock('../UserTag/UserTag.component', () => ({
   UserTag: jest.fn().mockImplementation(({ name }) => <>{name}</>),
 }));
 
+jest.mock('../SearchBarComponent/SearchBar.component', () =>
+  jest.fn().mockImplementation(() => <div>Searchbar</div>)
+);
+
 describe('SelectableList Component Test', () => {
   it('should call fetchOptions on render', () => {
     render(
@@ -56,7 +60,7 @@ describe('SelectableList Component Test', () => {
     );
 
     act(() => {
-      const searchBar = screen.getByTestId('search-bar-container');
+      const searchBar = screen.getByText('Searchbar');
 
       expect(searchBar).toBeInTheDocument();
     });
@@ -79,7 +83,7 @@ describe('SelectableList Component Test', () => {
     );
 
     act(() => {
-      const searchBar = screen.getByTestId('search-bar-container');
+      const searchBar = screen.getByText('Searchbar');
       const updateBtn = screen.getByText('label.update');
       const cancelBtn = screen.getByText('label.cancel');
 
