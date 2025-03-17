@@ -14,10 +14,13 @@ import org.jdbi.v3.core.statement.UnableToExecuteStatementException;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
 import org.openmetadata.schema.dataInsight.custom.LineChart;
 import org.openmetadata.schema.dataInsight.custom.LineChartMetric;
+import org.openmetadata.schema.entity.policies.Policy;
+import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.governance.workflows.WorkflowConfiguration;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.governance.workflows.elements.WorkflowNodeDefinitionInterface;
 import org.openmetadata.schema.type.LineageDetails;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.governance.workflows.flowable.MainWorkflow;
@@ -25,6 +28,7 @@ import org.openmetadata.service.jdbi3.AppMarketPlaceRepository;
 import org.openmetadata.service.jdbi3.AppRepository;
 import org.openmetadata.service.jdbi3.DataInsightSystemChartRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.jdbi3.PolicyRepository;
 import org.openmetadata.service.jdbi3.WorkflowDefinitionRepository;
 import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.util.EntityUtil;
@@ -326,5 +330,23 @@ public class MigrationUtil {
                     new LineChartMetric()
                         .withFormula("sum(k='tierSources.Automated')")
                         .withName("ai"))));
+  }
+
+  public static void updateLineageBotPolicy() {
+    PolicyRepository policyRepository =
+        (PolicyRepository) Entity.getEntityRepository(Entity.POLICY);
+    List<Policy> policies =
+        policyRepository.listAll(EntityUtil.Fields.EMPTY_FIELDS, new ListFilter());
+    for (Policy policy : policies) {
+      if (policy.getName().equals("LineageBotPolicy")) {
+        for (Rule rule : policy.getRules()) {
+          if (rule.getName().equals("LineageBotRule-Allow")
+              && !rule.getOperations().contains(MetadataOperation.EDIT_ALL)) {
+            rule.getOperations().add(MetadataOperation.EDIT_ALL);
+            policyRepository.createOrUpdate(null, policy);
+          }
+        }
+      }
+    }
   }
 }
