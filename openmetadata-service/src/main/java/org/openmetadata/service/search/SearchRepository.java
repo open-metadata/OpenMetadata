@@ -73,6 +73,7 @@ import org.openmetadata.schema.api.lineage.SearchLineageResult;
 import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.schema.entity.classification.Tag;
+import org.openmetadata.schema.entity.data.QueryCostSearchResult;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.tests.DataQualityReport;
 import org.openmetadata.schema.tests.TestSuite;
@@ -1225,5 +1226,9 @@ public class SearchRepository {
         GLOBAL_SEARCH_ALIAS,
         new ImmutablePair<>("entityRelationship.docId.keyword", relationDocId),
         new ImmutablePair<>(String.format(REMOVE_ENTITY_RELATIONSHIP, relationDocId), null));
+  }
+
+  public QueryCostSearchResult getQueryCostRecords(String serviceName) throws IOException {
+    return searchClient.getQueryCostRecords(serviceName);
   }
 }

@@ -18,6 +18,7 @@ import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChartResultList;
+import org.openmetadata.schema.entity.data.QueryCostSearchResult;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.tests.DataQualityReport;
 import org.openmetadata.schema.type.EntityReference;
@@ -355,4 +356,6 @@ public interface SearchClient {
   Object getClient();
 
   SearchHealthStatus getSearchHealthStatus() throws IOException;
+
+  QueryCostSearchResult getQueryCostRecords(String serviceName) throws IOException;
 }
