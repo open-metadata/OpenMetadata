@@ -14,10 +14,13 @@ import org.jdbi.v3.core.statement.UnableToExecuteStatementException;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
 import org.openmetadata.schema.dataInsight.custom.LineChart;
 import org.openmetadata.schema.dataInsight.custom.LineChartMetric;
+import org.openmetadata.schema.entity.policies.Policy;
+import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.governance.workflows.WorkflowConfiguration;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.governance.workflows.elements.WorkflowNodeDefinitionInterface;
 import org.openmetadata.schema.type.LineageDetails;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.governance.workflows.flowable.MainWorkflow;
@@ -25,6 +28,7 @@ import org.openmetadata.service.jdbi3.AppMarketPlaceRepository;
 import org.openmetadata.service.jdbi3.AppRepository;
 import org.openmetadata.service.jdbi3.DataInsightSystemChartRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.jdbi3.PolicyRepository;
 import org.openmetadata.service.jdbi3.WorkflowDefinitionRepository;
 import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.util.EntityUtil;
@@ -280,5 +284,69 @@ public class MigrationUtil {
         new LineChart()
             .withMetrics(
                 List.of(new LineChartMetric().withFormula("count(q='tags.tagFQN: tier.*')"))));
+
+    createChart(
+        "description_source_breakdown",
+        new LineChart()
+            .withMetrics(
+                List.of(
+                    new LineChartMetric()
+                        .withFormula(
+                            "sum(k='descriptionSources.Ingested')+"
+                                + "sum(k='descriptionSources.Manual')+"
+                                + "sum(k='descriptionSources.Propagated')+"
+                                + "sum(k='descriptionSources.Automated')")
+                        .withName("manual"),
+                    new LineChartMetric()
+                        .withFormula("sum(k='descriptionSources.Suggested')")
+                        .withName("ai"))));
+
+    createChart(
+        "tag_source_breakdown",
+        new LineChart()
+            .withMetrics(
+                List.of(
+                    new LineChartMetric()
+                        .withFormula(
+                            "sum(k='tagSources.Ingested')+"
+                                + "sum(k='tagSources.Manual')+"
+                                + "sum(k='tagSources.Propagated')")
+                        .withName("manual"),
+                    new LineChartMetric()
+                        .withFormula("sum(k='tagSources.Automated')")
+                        .withName("ai"))));
+
+    createChart(
+        "tier_source_breakdown",
+        new LineChart()
+            .withMetrics(
+                List.of(
+                    new LineChartMetric()
+                        .withFormula(
+                            "sum(k='tierSources.Ingested')+"
+                                + "sum(k='tierSources.Manual')+"
+                                + "sum(k='tierSources.Propagated')")
+                        .withName("manual"),
+                    new LineChartMetric()
+                        .withFormula("sum(k='tierSources.Automated')")
+                        .withName("ai"))));
+  }
+
+  public static void updateLineageBotPolicy() {
+    PolicyRepository policyRepository =
+        (PolicyRepository) Entity.getEntityRepository(Entity.POLICY);
+    List<Policy> policies =
+        policyRepository.listAll(EntityUtil.Fields.EMPTY_FIELDS, new ListFilter());
+    for (Policy policy : policies) {
+      if (policy.getName().equals("LineageBotPolicy")) {
+        for (Rule rule : policy.getRules()) {
+          if (rule.getName().equals("LineageBotRule-Allow")
+              && !rule.getOperations().contains(MetadataOperation.EDIT_ALL)) {
+            rule.getOperations().add(MetadataOperation.EDIT_ALL);
+            policyRepository.createOrUpdate(null, policy);
+          }
+        }
+      }
+    }
   }
 }

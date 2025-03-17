@@ -91,6 +91,10 @@ SELECT * from names
     def expected_tables() -> int:
         return 13
 
+    @staticmethod
+    def expected_profiled_tables() -> int:
+        return 16
+
     def expected_sample_size(self) -> int:
         # For the admin_emp table
         return 4

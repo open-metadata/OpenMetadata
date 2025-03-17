@@ -188,7 +188,12 @@ public class AppRepository extends EntityRepository<App> {
 
   public ResultList<AppRunRecord> listAppRuns(App app, int limitParam, int offset) {
     return listAppExtensionById(
-        app, limitParam, offset, AppRunRecord.class, AppExtension.ExtensionType.STATUS);
+        app, limitParam, offset, AppRunRecord.class, AppExtension.ExtensionType.STATUS, null);
+  }
+
+  public ResultList<AppRunRecord> listAppRuns(App app, int limitParam, int offset, UUID service) {
+    return listAppExtensionById(
+        app, limitParam, offset, AppRunRecord.class, AppExtension.ExtensionType.STATUS, service);
   }
 
   public AppRunRecord getLatestAppRuns(App app) {
@@ -234,10 +239,20 @@ public class AppRepository extends EntityRepository<App> {
       int offset,
       Class<T> clazz,
       AppExtension.ExtensionType extensionType) {
+    return listAppExtensionById(app, limitParam, offset, clazz, extensionType, null);
+  }
+
+  public <T> ResultList<T> listAppExtensionById(
+      App app,
+      int limitParam,
+      int offset,
+      Class<T> clazz,
+      AppExtension.ExtensionType extensionType,
+      UUID service) {
     int total =
         daoCollection
             .appExtensionTimeSeriesDao()
-            .listAppExtensionCount(app.getId().toString(), extensionType.toString());
+            .listAppExtensionCount(app.getId().toString(), extensionType.toString(), service);
     List<T> entities = new ArrayList<>();
     if (limitParam > 0) {
       // forward scrolling, if after == null then first page is being asked
@@ -245,7 +260,7 @@ public class AppRepository extends EntityRepository<App> {
           daoCollection
               .appExtensionTimeSeriesDao()
               .listAppExtension(
-                  app.getId().toString(), limitParam, offset, extensionType.toString());
+                  app.getId().toString(), limitParam, offset, extensionType.toString(), service);
       for (String json : jsons) {
         T entity = JsonUtils.readValue(json, clazz);
         entities.add(entity);
@@ -380,7 +395,7 @@ public class AppRepository extends EntityRepository<App> {
   @Override
   public EntityRepository<App>.EntityUpdater getUpdater(
       App original, App updated, Operation operation, ChangeSource changeSource) {
-    return new AppRepository.AppUpdater(original, updated, operation);
+    return new AppUpdater(original, updated, operation);
   }
 
   public App addEventSubscription(App app, EventSubscription eventSubscription) {
@@ -402,7 +417,7 @@ public class AppRepository extends EntityRepository<App> {
     newSubs.add(eventSubscription.getEntityReference());
     App updated = JsonUtils.deepCopy(app, App.class).withEventSubscriptions(newSubs);
     updated.setOpenMetadataServerConnection(null);
-    getUpdater(app, updated, EntityRepository.Operation.PUT, null).update();
+    getUpdater(app, updated, Operation.PUT, null).update();
     return updated;
   }
 
@@ -417,7 +432,7 @@ public class AppRepository extends EntityRepository<App> {
     newSubs.removeIf(sub -> sub.getId().equals(eventSubscriptionId));
     App updated = JsonUtils.deepCopy(app, App.class).withEventSubscriptions(newSubs);
     updated.setOpenMetadataServerConnection(null);
-    getUpdater(app, updated, EntityRepository.Operation.PUT, null).update();
+    getUpdater(app, updated, Operation.PUT, null).update();
     return updated;
   }
 

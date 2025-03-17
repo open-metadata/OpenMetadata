@@ -162,6 +162,7 @@ import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChartResultList;
 import org.openmetadata.schema.dataInsight.custom.FormulaHolder;
 import org.openmetadata.schema.entity.data.EntityHierarchy;
+import org.openmetadata.schema.entity.data.QueryCostSearchResult;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.tests.DataQualityReport;
@@ -200,6 +201,7 @@ import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.Elas
 import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.ElasticSearchMostViewedEntitiesAggregator;
 import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.ElasticSearchPageViewsByEntitiesAggregator;
 import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.ElasticSearchUnusedAssetsAggregator;
+import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.QueryCostRecordsAggregator;
 import org.openmetadata.service.search.elasticsearch.queries.ElasticQueryBuilder;
 import org.openmetadata.service.search.elasticsearch.queries.ElasticQueryBuilderFactory;
 import org.openmetadata.service.search.indexes.APIEndpointIndex;
@@ -733,16 +735,20 @@ public class ElasticSearchClient implements SearchClient {
       int offset,
       String index,
       SearchSortFilter searchSortFilter,
-      String q)
+      String q,
+      String queryString)
       throws IOException {
     SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
     if (!nullOrEmpty(q)) {
-      XContentParser queryParser = createXContentParser(q);
+      searchSourceBuilder = getSearchSourceBuilder(index, q, offset, limit);
+    }
+    if (!nullOrEmpty(queryString)) {
+      XContentParser queryParser = createXContentParser(queryString);
       searchSourceBuilder = SearchSourceBuilder.fromXContent(queryParser);
     }
 
     List<Map<String, Object>> results = new ArrayList<>();
-    getSearchFilter(filter, searchSourceBuilder, !nullOrEmpty(q));
+    getSearchFilter(filter, searchSourceBuilder, !nullOrEmpty(q) || !nullOrEmpty(queryString));
 
     searchSourceBuilder.timeout(new TimeValue(30, TimeUnit.SECONDS));
     searchSourceBuilder.from(offset);
@@ -2422,7 +2428,7 @@ public class ElasticSearchClient implements SearchClient {
         GetMappingsRequest request =
             new GetMappingsRequest()
                 .indices(
-                    DataInsightSystemChartRepository.DI_SEARCH_INDEX_PREFIX
+                    DataInsightSystemChartRepository.getDataInsightsIndexPrefix()
                         + "-"
                         + type.toLowerCase());
 
@@ -2494,6 +2500,14 @@ public class ElasticSearchClient implements SearchClient {
           diChart, searchResponse, formulas, metricFormulaHolder);
     }
     return null;
+  }
+
+  public QueryCostSearchResult getQueryCostRecords(String serviceName) throws IOException {
+    QueryCostRecordsAggregator queryCostRecordsAggregator = new QueryCostRecordsAggregator();
+    es.org.elasticsearch.action.search.SearchRequest searchRequest =
+        queryCostRecordsAggregator.getQueryCostRecords(serviceName);
+    SearchResponse searchResponse = client.search(searchRequest, RequestOptions.DEFAULT);
+    return queryCostRecordsAggregator.parseQueryCostResponse(searchResponse);
   }
 
   private static AggregationBuilder buildQueryAggregation(

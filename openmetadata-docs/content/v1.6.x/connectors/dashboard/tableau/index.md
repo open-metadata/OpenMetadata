@@ -19,6 +19,7 @@ Configure and schedule Tableau metadata and profiler workflows from the OpenMeta
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
 - [Enable Security](#securing-tableau-connection-with-ssl-in-openmetadata)
+- [Lineage](#lineage)
 
 {% partial file="/v1.6/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/dashboard/tableau/yaml"} /%}
 
@@ -115,5 +116,7 @@ To establish secure connections between OpenMetadata and Tableau, navigate to th
   alt="SSL Configuration"
   height="450px"
   caption="SSL Configuration" /%}
+
+{% partial file="/v1.6/connectors/dashboard/dashboard-lineage.md" /%}
 
 {% partial file="/v1.6/connectors/troubleshooting.md" /%}

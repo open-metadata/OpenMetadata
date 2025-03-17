@@ -72,6 +72,7 @@ import org.openmetadata.schema.api.lineage.SearchLineageRequest;
 import org.openmetadata.schema.api.lineage.SearchLineageResult;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.schema.entity.classification.Tag;
+import org.openmetadata.schema.entity.data.QueryCostSearchResult;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.tests.DataQualityReport;
 import org.openmetadata.schema.tests.TestSuite;
@@ -1019,6 +1020,18 @@ public class SearchRepository {
       SearchSortFilter searchSortFilter,
       String q)
       throws IOException {
+    return listWithOffset(filter, limit, offset, entityType, searchSortFilter, q, null);
+  }
+
+  public SearchResultListMapper listWithOffset(
+      SearchListFilter filter,
+      int limit,
+      int offset,
+      String entityType,
+      SearchSortFilter searchSortFilter,
+      String q,
+      String queryString)
+      throws IOException {
     IndexMapping index = entityIndexMap.get(entityType);
     return searchClient.listWithOffset(
         filter.getCondition(entityType),
@@ -1026,7 +1039,8 @@ public class SearchRepository {
         offset,
         index.getIndexName(clusterAlias),
         searchSortFilter,
-        q);
+        q,
+        queryString);
   }
 
   public SearchResultListMapper listWithDeepPagination(
@@ -1200,5 +1214,9 @@ public class SearchRepository {
         GLOBAL_SEARCH_ALIAS,
         new ImmutablePair<>("entityRelationship.docId.keyword", relationDocId),
         new ImmutablePair<>(String.format(REMOVE_ENTITY_RELATIONSHIP, relationDocId), null));
+  }
+
+  public QueryCostSearchResult getQueryCostRecords(String serviceName) throws IOException {
+    return searchClient.getQueryCostRecords(serviceName);
   }
 }

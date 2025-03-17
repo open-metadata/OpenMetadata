@@ -80,6 +80,7 @@ import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChartResultList;
 import org.openmetadata.schema.dataInsight.custom.FormulaHolder;
 import org.openmetadata.schema.entity.data.EntityHierarchy;
+import org.openmetadata.schema.entity.data.QueryCostSearchResult;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.tests.DataQualityReport;
@@ -138,6 +139,7 @@ import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSear
 import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSearchMostViewedEntitiesAggregator;
 import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSearchPageViewsByEntitiesAggregator;
 import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSearchUnusedAssetsAggregator;
+import org.openmetadata.service.search.opensearch.dataInsightAggregator.QueryCostRecordsAggregator;
 import org.openmetadata.service.search.opensearch.queries.OpenSearchQueryBuilder;
 import org.openmetadata.service.search.opensearch.queries.OpenSearchQueryBuilderFactory;
 import org.openmetadata.service.search.queries.OMQueryBuilder;
@@ -717,16 +719,20 @@ public class OpenSearchClient implements SearchClient {
       int offset,
       String index,
       SearchSortFilter searchSortFilter,
-      String q)
+      String q,
+      String queryString)
       throws IOException {
     SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
     if (!nullOrEmpty(q)) {
-      XContentParser queryParser = createXContentParser(q);
+      searchSourceBuilder = getSearchSourceBuilder(index, q, offset, limit);
+    }
+    if (!nullOrEmpty(queryString)) {
+      XContentParser queryParser = createXContentParser(queryString);
       searchSourceBuilder = SearchSourceBuilder.fromXContent(queryParser);
     }
 
     List<Map<String, Object>> results = new ArrayList<>();
-    getSearchFilter(filter, searchSourceBuilder, !nullOrEmpty(q));
+    getSearchFilter(filter, searchSourceBuilder, !nullOrEmpty(q) || !nullOrEmpty(queryString));
 
     searchSourceBuilder.timeout(new TimeValue(30, TimeUnit.SECONDS));
     searchSourceBuilder.from(offset);
@@ -2388,7 +2394,7 @@ public class OpenSearchClient implements SearchClient {
         GetMappingsRequest request =
             new GetMappingsRequest()
                 .indices(
-                    DataInsightSystemChartRepository.DI_SEARCH_INDEX_PREFIX
+                    DataInsightSystemChartRepository.getDataInsightsIndexPrefix()
                         + "-"
                         + type.toLowerCase());
 
@@ -2766,5 +2772,15 @@ public class OpenSearchClient implements SearchClient {
     } else {
       return new SearchHealthStatus(UNHEALTHY_STATUS);
     }
+  }
+
+  @Override
+  public QueryCostSearchResult getQueryCostRecords(String serviceName) throws IOException {
+    QueryCostRecordsAggregator queryCostRecordsAggregator = new QueryCostRecordsAggregator();
+    os.org.opensearch.action.search.SearchRequest searchRequest =
+        queryCostRecordsAggregator.getQueryCostRecords(serviceName);
+    os.org.opensearch.action.search.SearchResponse searchResponse =
+        client.search(searchRequest, RequestOptions.DEFAULT);
+    return queryCostRecordsAggregator.parseQueryCostResponse(searchResponse);
   }
 }
