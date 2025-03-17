@@ -19,13 +19,18 @@ import { ReactComponent as DataQualityIcon } from '../../../../assets/svg/ic-dat
 import { ReactComponent as DomainIcon } from '../../../../assets/svg/ic-domain.svg';
 import { ReactComponent as Layers } from '../../../../assets/svg/ic-layers.svg';
 import { ReactComponent as ServiceView } from '../../../../assets/svg/services.svg';
+import { SERVICE_TYPES } from '../../../../constants/Services.constant';
 import { useLineageProvider } from '../../../../context/LineageProvider/LineageProvider';
 import { LineagePlatformView } from '../../../../context/LineageProvider/LineageProvider.interface';
 import { EntityType } from '../../../../enums/entity.enum';
 import { LineageLayer } from '../../../../generated/settings/settings';
 import searchClassBase from '../../../../utils/SearchClassBase';
+import { AssetsUnion } from '../../../DataAssets/AssetsSelectionModal/AssetSelectionModal.interface';
 import './lineage-layers.less';
-import { LayerButtonProps } from './LineageLayers.interface';
+import {
+  LayerButtonProps,
+  LineageLayersProps,
+} from './LineageLayers.interface';
 
 const LayerButton: React.FC<LayerButtonProps> = React.memo(
   ({ isActive, onClick, icon, label, testId }) => (
@@ -43,13 +48,14 @@ const LayerButton: React.FC<LayerButtonProps> = React.memo(
   )
 );
 
-const LineageLayers = () => {
+const LineageLayers = ({ entityType }: LineageLayersProps) => {
   const {
     activeLayer,
     onUpdateLayerView,
     isEditMode,
     onPlatformViewChange,
     platformView,
+    isPlatformLineage,
   } = useLineageProvider();
 
   const handleLayerClick = React.useCallback(
@@ -76,37 +82,59 @@ const LineageLayers = () => {
   const buttonContent = React.useMemo(
     () => (
       <ButtonGroup>
-        <LayerButton
-          icon={searchClassBase.getEntityIcon(EntityType.TABLE)}
-          isActive={activeLayer.includes(LineageLayer.ColumnLevelLineage)}
-          label={t('label.column')}
-          testId="lineage-layer-column-btn"
-          onClick={() => handleLayerClick(LineageLayer.ColumnLevelLineage)}
-        />
-        <LayerButton
-          icon={<DataQualityIcon />}
-          isActive={activeLayer.includes(LineageLayer.DataObservability)}
-          label={t('label.observability')}
-          testId="lineage-layer-observability-btn"
-          onClick={() => handleLayerClick(LineageLayer.DataObservability)}
-        />
-        <LayerButton
-          icon={<ServiceView />}
-          isActive={platformView === LineagePlatformView.Service}
-          label={t('label.service')}
-          testId="lineage-layer-service-btn"
-          onClick={() => handlePlatformViewChange(LineagePlatformView.Service)}
-        />
-        <LayerButton
-          icon={<DomainIcon />}
-          isActive={platformView === LineagePlatformView.Domain}
-          label={t('label.domain')}
-          testId="lineage-layer-domain-btn"
-          onClick={() => handlePlatformViewChange(LineagePlatformView.Domain)}
-        />
+        {entityType && !SERVICE_TYPES.includes(entityType as AssetsUnion) && (
+          <>
+            <LayerButton
+              icon={searchClassBase.getEntityIcon(EntityType.TABLE)}
+              isActive={activeLayer.includes(LineageLayer.ColumnLevelLineage)}
+              label={t('label.column')}
+              testId="lineage-layer-column-btn"
+              onClick={() => handleLayerClick(LineageLayer.ColumnLevelLineage)}
+            />
+            <LayerButton
+              icon={<DataQualityIcon />}
+              isActive={activeLayer.includes(LineageLayer.DataObservability)}
+              label={t('label.observability')}
+              testId="lineage-layer-observability-btn"
+              onClick={() => handleLayerClick(LineageLayer.DataObservability)}
+            />
+          </>
+        )}
+
+        {(isPlatformLineage ||
+          (entityType &&
+            !SERVICE_TYPES.includes(entityType as AssetsUnion))) && (
+          <LayerButton
+            icon={<ServiceView />}
+            isActive={platformView === LineagePlatformView.Service}
+            label={t('label.service')}
+            testId="lineage-layer-service-btn"
+            onClick={() =>
+              handlePlatformViewChange(LineagePlatformView.Service)
+            }
+          />
+        )}
+
+        {(isPlatformLineage ||
+          (entityType && entityType !== EntityType.DOMAIN)) && (
+          <LayerButton
+            icon={<DomainIcon />}
+            isActive={platformView === LineagePlatformView.Domain}
+            label={t('label.domain')}
+            testId="lineage-layer-domain-btn"
+            onClick={() => handlePlatformViewChange(LineagePlatformView.Domain)}
+          />
+        )}
       </ButtonGroup>
     ),
-    [activeLayer, platformView, handleLayerClick, handlePlatformViewChange]
+    [
+      activeLayer,
+      platformView,
+      entityType,
+      handleLayerClick,
+      handlePlatformViewChange,
+      isPlatformLineage,
+    ]
   );
 
   return (

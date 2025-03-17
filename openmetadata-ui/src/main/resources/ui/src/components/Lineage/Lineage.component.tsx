@@ -137,6 +137,7 @@ const Lineage = ({
             <CustomControlsComponent className="absolute top-1 right-1 p-xs" />
             <LineageControlButtons
               deleted={deleted}
+              entityType={entityType}
               handleFullScreenViewClick={
                 !isFullScreen ? onFullScreenClick : undefined
               }
@@ -193,11 +194,10 @@ const Lineage = ({
               onPaneClick={onPaneClick}>
               <Background gap={12} size={1} />
               <MiniMap position="bottom-right" />
-              {!isPlatformLineage && (
-                <Panel position="bottom-left">
-                  <LineageLayers />
-                </Panel>
-              )}
+
+              <Panel position="bottom-left">
+                <LineageLayers entityType={entityType} />
+              </Panel>
             </ReactFlow>
           </ReactFlowProvider>
         ) : (

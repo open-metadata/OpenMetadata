@@ -1137,6 +1137,7 @@
     "search": "Zoeken",
     "search-by-type": "Zoeken op {{type}}",
     "search-entity": "Zoek {{entity}}",
+    "search-entity-for-lineage": "Zoek naar {{entity}} om afstamming te bekijken",
     "search-for-type": "Zoeken naar {{type}}",
     "search-index": "Zoekindex",
     "search-index-ingestion": "Zoekindexingestie",

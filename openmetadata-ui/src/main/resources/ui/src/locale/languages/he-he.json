@@ -1137,6 +1137,7 @@
     "search": "חיפוש",
     "search-by-type": "חפש לפי {{type}}",
     "search-entity": "חפש {{entity}}",
+    "search-entity-for-lineage": "חפש {{entity}} כדי להציג שושלת",
     "search-for-type": "חפש עבור {{type}}",
     "search-index": "חיפוש באינדקס",
     "search-index-ingestion": "פרסום חיפוש באינדקס",

@@ -1137,6 +1137,7 @@
     "search": "Buscar",
     "search-by-type": "Buscar por {{type}}",
     "search-entity": "Buscar {{entity}}",
+    "search-entity-for-lineage": "Buscar {{entity}} para ver el linaje",
     "search-for-type": "Buscar {{type}}",
     "search-index": "Índice de Búsqueda",
     "search-index-ingestion": "Ingesta de Índices de Búsqueda",

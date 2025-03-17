@@ -1137,6 +1137,7 @@
     "search": "Rechercher",
     "search-by-type": "Rechercher par {{type}}",
     "search-entity": "Rechercher {{entity}}",
+    "search-entity-for-lineage": "Rechercher {{entity}} pour afficher le lignage",
     "search-for-type": "Rechercher pour {{type}}",
     "search-index": "Index de Recherche",
     "search-index-ingestion": "Index de Recherche pour l'Ingestion",

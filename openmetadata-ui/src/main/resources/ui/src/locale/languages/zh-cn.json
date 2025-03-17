@@ -1137,6 +1137,7 @@
     "search": "搜索",
     "search-by-type": "通过{{type}}搜索",
     "search-entity": "搜索{{entity}}",
+    "search-entity-for-lineage": "搜索{{entity}}以查看血统",
     "search-for-type": "搜索{{type}}",
     "search-index": "搜索索引",
     "search-index-ingestion": "搜索索引提取",

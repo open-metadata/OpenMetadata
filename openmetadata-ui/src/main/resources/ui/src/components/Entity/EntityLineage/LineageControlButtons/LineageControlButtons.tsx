@@ -28,10 +28,12 @@ import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
 import { ReactComponent as ExportIcon } from '../../../../assets/svg/ic-export.svg';
 import { NO_PERMISSION_FOR_ACTION } from '../../../../constants/HelperTextUtil';
+import { SERVICE_TYPES } from '../../../../constants/Services.constant';
 import { useLineageProvider } from '../../../../context/LineageProvider/LineageProvider';
 import { LineagePlatformView } from '../../../../context/LineageProvider/LineageProvider.interface';
 import { LineageLayer } from '../../../../generated/configuration/lineageSettings';
 import { getLoadingStatusValue } from '../../../../utils/EntityLineageUtils';
+import { AssetsUnion } from '../../../DataAssets/AssetsSelectionModal/AssetSelectionModal.interface';
 import { LineageConfig } from '../EntityLineage.interface';
 import LineageConfigModal from '../LineageConfigModal';
 import './lineage-control-buttons.less';
@@ -42,6 +44,7 @@ const LineageControlButtons: FC<LineageControlButtonsProps> = ({
   onExitFullScreenViewClick,
   deleted,
   hasEditAccess,
+  entityType,
 }) => {
   const { t } = useTranslation();
   const [dialogVisible, setDialogVisible] = useState<boolean>(false);
@@ -53,7 +56,6 @@ const LineageControlButtons: FC<LineageControlButtonsProps> = ({
     platformView,
     toggleColumnView,
     onExportClick,
-    isPlatformLineage,
     loading,
     status,
     onLineageEditClick,
@@ -101,7 +103,8 @@ const LineageControlButtons: FC<LineageControlButtonsProps> = ({
       <div className="lineage-control-buttons">
         {!deleted &&
           platformView === LineagePlatformView.None &&
-          !isPlatformLineage && (
+          entityType &&
+          !SERVICE_TYPES.includes(entityType as AssetsUnion) && (
             <Button
               className={classNames('lineage-button', {
                 active: isEditMode,

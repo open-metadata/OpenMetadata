@@ -17,7 +17,6 @@ import { debounce } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';
 import { AssetsUnion } from '../../components/DataAssets/AssetsSelectionModal/AssetSelectionModal.interface';
 import EntitySuggestionOption from '../../components/Entity/EntityLineage/EntitySuggestionOption/EntitySuggestionOption.component';
@@ -27,7 +26,6 @@ import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { SourceType } from '../../components/SearchedData/SearchedData.interface';
 import { PAGE_SIZE_BASE } from '../../constants/constants';
 import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
-import { SERVICE_TYPES } from '../../constants/Services.constant';
 import LineageProvider from '../../context/LineageProvider/LineageProvider';
 import {
   OperationPermission,
@@ -54,8 +52,8 @@ const PlatformLineage = () => {
   const [loading, setLoading] = useState(false);
   const [options, setOptions] = useState<DefaultOptionType[]>([]);
   const [isSearchLoading, setIsSearchLoading] = useState(false);
-  const [defaultValue, setDefaultValue] = useState<string>(
-    decodedFqn ?? undefined
+  const [defaultValue, setDefaultValue] = useState<string | undefined>(
+    decodedFqn || undefined
   );
   const [permissions, setPermissions] = useState<OperationPermission>();
 
@@ -116,6 +114,8 @@ const PlatformLineage = () => {
 
   const init = useCallback(async () => {
     if (!decodedFqn || !entityType) {
+      setDefaultValue(undefined);
+
       return;
     }
 
@@ -131,7 +131,7 @@ const PlatformLineage = () => {
 
       if (entityResponse.status === 'fulfilled') {
         setSelectedEntity(entityResponse.value);
-        setDefaultValue(decodedFqn);
+        setDefaultValue(decodedFqn || undefined);
       }
 
       if (permissionResponse.status === 'fulfilled') {
@@ -155,27 +155,15 @@ const PlatformLineage = () => {
     if (loading) {
       return <Loader />;
     }
-    if (!selectedEntity) {
-      return (
-        <ErrorPlaceHolder
-          placeholderText={t('label.no-entity-selected', {
-            entity: t('label.entity'),
-          })}
-        />
-      );
-    }
 
     return (
       <LineageProvider>
         <Lineage
+          isPlatformLineage
           entity={selectedEntity}
           entityType={entityType}
           hasEditAccess={
             permissions?.EditAll || permissions?.EditLineage || false
-          }
-          isPlatformLineage={
-            SERVICE_TYPES.includes(entityType) ||
-            entityType === EntityType.DOMAIN
           }
         />
       </LineageProvider>
@@ -185,28 +173,32 @@ const PlatformLineage = () => {
   return (
     <PageLayoutV1 pageTitle={t('label.lineage')}>
       <Row gutter={[0, 16]}>
-        <Row className="p-x-lg">
-          <Col span={24}>
-            <PageHeader data={PAGE_HEADERS.PLATFORM_LINEAGE} />
-          </Col>
-          <Col span={18}>
-            <div className="m-t-md w-full">
-              <Select
-                showSearch
-                className="w-full"
-                data-testid="search-entity-select"
-                filterOption={false}
-                loading={isSearchLoading}
-                optionLabelProp="value"
-                options={options}
-                placeholder={t('label.search-entity', { entity: 'entity' })}
-                value={defaultValue}
-                onFocus={() => !defaultValue && debouncedSearch('')}
-                onSearch={debouncedSearch}
-              />
-            </div>
-          </Col>
-        </Row>
+        <Col span={24}>
+          <Row className="p-x-lg">
+            <Col span={24}>
+              <PageHeader data={PAGE_HEADERS.PLATFORM_LINEAGE} />
+            </Col>
+            <Col span={12}>
+              <div className="m-t-md w-full">
+                <Select
+                  showSearch
+                  className="w-full"
+                  data-testid="search-entity-select"
+                  filterOption={false}
+                  loading={isSearchLoading}
+                  optionLabelProp="value"
+                  options={options}
+                  placeholder={t('label.search-entity-for-lineage', {
+                    entity: 'entity',
+                  })}
+                  value={defaultValue}
+                  onFocus={() => !defaultValue && debouncedSearch('')}
+                  onSearch={debouncedSearch}
+                />
+              </div>
+            </Col>
+          </Row>
+        </Col>
         <Col span={24}>
           <Divider className="m-0" />
           <div className="platform-lineage-container">{lineageElement}</div>

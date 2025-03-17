@@ -77,6 +77,7 @@ import {
   exportLineageAsync,
   getDataQualityLineage,
   getLineageDataByFQN,
+  getPlatformLineage,
   updateLineageEdge,
 } from '../../rest/lineageAPI';
 import {
@@ -291,6 +292,8 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
         const rootNode = visibleNodes.find((n) => n.data.isRootNode);
         if (rootNode) {
           centerNodePosition(rootNode, reactFlowInstance, zoomValue);
+        } else if (visibleNodes.length > 0) {
+          centerNodePosition(visibleNodes[0], reactFlowInstance, zoomValue);
         }
       }
 
@@ -338,6 +341,41 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
       }
     },
     [redrawLineage]
+  );
+
+  const fetchPlatformLineage = useCallback(
+    async (view: 'service' | 'domain', config?: LineageConfig) => {
+      try {
+        setLoading(true);
+        setInit(false);
+        const res = await getPlatformLineage({
+          config,
+          view,
+        });
+
+        setLineageData(res);
+
+        const { nodes, edges, entity } = parseLineageData(res, '');
+        const updatedEntityLineage = {
+          nodes,
+          edges,
+          entity,
+        };
+
+        setEntityLineage(updatedEntityLineage);
+      } catch (err) {
+        showErrorToast(
+          err as AxiosError,
+          t('server.entity-fetch-error', {
+            entity: t('label.lineage-data-lowercase'),
+          })
+        );
+      } finally {
+        setInit(true);
+        setLoading(false);
+      }
+    },
+    []
   );
 
   const fetchLineageData = useCallback(
@@ -508,6 +546,9 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
       setEntity(entity);
       setEntityType(entityType);
       setIsPlatformLineage(isPlatformLineage ?? false);
+      if (isPlatformLineage && !entity) {
+        setPlatformView(LineagePlatformView.Service);
+      }
     },
     []
   );
@@ -1267,7 +1308,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
   }, [entityLineage, redrawLineage]);
 
   const onPlatformViewUpdate = useCallback(() => {
-    if (entity) {
+    if (entity && decodedFqn && entityType) {
       if (platformView === LineagePlatformView.Service && entity?.service) {
         fetchLineageData(
           entity?.service.fullyQualifiedName ?? '',
@@ -1285,7 +1326,17 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
         );
       } else if (platformView === LineagePlatformView.None) {
         fetchLineageData(decodedFqn, entityType, lineageConfig);
+      } else if (isPlatformLineage) {
+        fetchPlatformLineage(
+          platformView === LineagePlatformView.Domain ? 'domain' : 'service',
+          lineageConfig
+        );
       }
+    } else if (isPlatformLineage) {
+      fetchPlatformLineage(
+        platformView === LineagePlatformView.Domain ? 'domain' : 'service',
+        lineageConfig
+      );
     }
   }, [
     entity,
@@ -1294,6 +1345,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     lineageConfig,
     platformView,
     queryFilter,
+    isPlatformLineage,
   ]);
 
   useEffect(() => {

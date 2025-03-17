@@ -1137,6 +1137,7 @@
     "search": "शोधा",
     "search-by-type": "{{type}} द्वारे शोधा",
     "search-entity": "{{entity}} शोधा",
+    "search-entity-for-lineage": "वंशावळ पाहण्यासाठी {{entity}} शोधा",
     "search-for-type": "{{type}} साठी शोधा",
     "search-index": "शोध अनुक्रमणिका",
     "search-index-ingestion": "शोध अनुक्रमणिका अंतर्ग्रहण",

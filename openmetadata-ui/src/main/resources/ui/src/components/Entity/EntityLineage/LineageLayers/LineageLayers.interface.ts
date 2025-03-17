@@ -1,3 +1,6 @@
+import { EntityType } from '../../../../enums/entity.enum';
+import { SourceType } from '../../../SearchedData/SearchedData.interface';
+
 /*
  *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
@@ -16,4 +19,9 @@ export interface LayerButtonProps {
   icon: React.ReactNode;
   label: string;
   testId: string;
+}
+
+export interface LineageLayersProps {
+  entityType?: EntityType;
+  entity?: SourceType;
 }

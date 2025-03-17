@@ -1137,6 +1137,7 @@
     "search": "Поиск",
     "search-by-type": "Поиск {{type}}",
     "search-entity": "Поиск {{entity}}",
+    "search-entity-for-lineage": "Найдите {{entity}} для просмотра происхождения",
     "search-for-type": "Поиск для {{type}}",
     "search-index": "Search Index",
     "search-index-ingestion": "Получение поискового индекса",
