@@ -10,9 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { getTeamAndUserDetailsPath, getUserPath } from '../constants/constants';
 import { OwnerType } from '../enums/user.enum';
 import { EntityReference } from '../generated/entity/data/table';
+import { getTeamAndUserDetailsPath, getUserPath } from './RouterUtils';
 
 /**
  * Returns the appropriate path for an owner link based on owner type
