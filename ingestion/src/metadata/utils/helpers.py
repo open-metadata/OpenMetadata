@@ -541,7 +541,7 @@ def evaluate_threshold(threshold: str, result: int) -> bool:
         If no comparison operator is provided, it defaults to less than comparison.
         Returns False for invalid threshold formats.
     """
-    import operator
+    import operator  # pylint: disable=import-outside-toplevel
 
     threshold = threshold.strip()
     comparison_map = {
