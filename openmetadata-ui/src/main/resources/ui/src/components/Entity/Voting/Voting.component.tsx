@@ -39,7 +39,7 @@ const Voting = ({ votes, disabled, voteStatus, onUpdateVote }: VotingProps) => {
     <>
       <Tooltip title={t('label.up-vote')}>
         <Button
-          className="w-16 p-0 flex-center"
+          className=" ant-button-vote flex-center"
           data-testid="up-vote-btn"
           disabled={disabled}
           icon={
@@ -58,7 +58,7 @@ const Voting = ({ votes, disabled, voteStatus, onUpdateVote }: VotingProps) => {
       </Tooltip>
       <Tooltip title={t('label.down-vote')}>
         <Button
-          className="w-16 p-0 flex-center"
+          className="ant-button-vote  flex-center"
           data-testid="down-vote-btn"
           disabled={disabled}
           icon={
