@@ -17,6 +17,7 @@ Configure and schedule PowerBI metadata and profiler workflows from the OpenMeta
 
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
+- [Lineage](#lineage)
 
 {% partial file="/v1.7/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/dashboard/powerbi/yaml"} /%}
 
@@ -182,5 +183,7 @@ Refer to the section [here](/connectors/dashboard/powerbi#powerbi-admin-and-nona
 {% partial file="/v1.7/connectors/ingestion-schedule-and-deploy.md" /%}
 
 {% /stepsContainer %}
+
+{% partial file="/v1.7/connectors/dashboard/dashboard-lineage.md" /%}
 
 {% partial file="/v1.7/connectors/troubleshooting.md" /%}

@@ -18,6 +18,7 @@ Configure and schedule Redash metadata and profiler workflows from the OpenMetad
 
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
+- [Lineage](#lineage)
 
 {% partial file="/v1.6/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/dashboard/redash/yaml"} /%}
 
@@ -58,5 +59,7 @@ permissions, please visit Redash documentation [here](https://redash.io/help/use
 {% partial file="/v1.6/connectors/ingestion-schedule-and-deploy.md" /%}
 
 {% /stepsContainer %}
+
+{% partial file="/v1.6/connectors/dashboard/dashboard-lineage.md" /%}
 
 {% partial file="/v1.6/connectors/troubleshooting.md" /%}
