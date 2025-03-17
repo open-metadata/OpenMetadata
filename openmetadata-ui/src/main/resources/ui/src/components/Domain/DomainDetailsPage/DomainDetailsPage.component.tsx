@@ -53,7 +53,6 @@ import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import {
   DE_ACTIVE_COLOR,
   ERROR_MESSAGE,
-  getEntityDetailsPath,
   PAGE_SIZE_LARGE,
 } from '../../../constants/constants';
 import { EntityField } from '../../../constants/Feeds.constants';
@@ -95,6 +94,7 @@ import {
   getDomainDetailsPath,
   getDomainPath,
   getDomainVersionsPath,
+  getEntityDetailsPath,
 } from '../../../utils/RouterUtils';
 import {
   escapeESReservedCharacters,
@@ -282,7 +282,7 @@ const DomainDetailsPage = ({
   );
 
   const addDataProduct = useCallback(
-    async (formData: CreateDataProduct) => {
+    async (formData: CreateDataProduct | CreateDomain) => {
       const data = {
         ...formData,
         domain: domain.fullyQualifiedName,
