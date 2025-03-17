@@ -668,10 +668,7 @@ export const addUser = async (
   await page.fill('#confirmPassword', password);
 
   await page.click('[data-testid="roles-dropdown"] > .ant-select-selector');
-  await page
-    .getByTestId('roles-dropdown')
-    .locator('.ant-select-selector')
-    .fill(role);
+  await page.getByTestId('roles-dropdown').getByRole('combobox').fill(role);
   await page.click('.ant-select-item-option-content');
   await page.click('[data-testid="roles-dropdown"] > .ant-select-selector');
 
