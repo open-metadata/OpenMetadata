@@ -279,7 +279,12 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
               description = "search query term to use in list",
               schema = @Schema(type = "string"))
           @QueryParam("q")
-          String q)
+          String q,
+      @Parameter(
+              description = "raw elasticsearch query to use in list",
+              schema = @Schema(type = "string"))
+          @QueryParam("queryString")
+          String queryString)
       throws IOException {
     SearchSortFilter searchSortFilter =
         new SearchSortFilter(sortField, sortType, sortNestedPath, sortNestedMode);
@@ -305,7 +310,7 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
     List<AuthRequest> authRequests = getAuthRequestsForListOps();
     authorizer.authorizeRequests(securityContext, authRequests, AuthorizationLogic.ANY);
     return repository.listFromSearchWithOffset(
-        uriInfo, fields, searchListFilter, limit, offset, searchSortFilter, q);
+        uriInfo, fields, searchListFilter, limit, offset, searchSortFilter, q, queryString);
   }
 
   @GET

@@ -226,6 +226,9 @@ public class AppResource extends EntityResource<App, AppRepository> {
               schema = @Schema(type = "string"))
           @QueryParam("after")
           String after,
+      @Parameter(description = "Filter by agent type", schema = @Schema(type = "string"))
+          @QueryParam("agentType")
+          String agentType,
       @Parameter(
               description = "Include all, deleted, or non-deleted entities.",
               schema = @Schema(implementation = Include.class))
@@ -235,11 +238,11 @@ public class AppResource extends EntityResource<App, AppRepository> {
       @Parameter(
               description = "Filter services by domain",
               schema = @Schema(type = "string", example = "Marketing"))
-          @QueryParam("domain")
-          String domain) {
-    ListFilter filter = new ListFilter(include);
+      @QueryParam("domain")
+      String domain) {
+    ListFilter filter = new ListFilter(include).addQueryParam("agentType", agentType);
     return super.listInternal(
-        uriInfo, securityContext, fieldsParam, filter, limitParam, before, after, domain);
+        uriInfo, securityContext, fieldsParam, filter, limitParam, before, after,domain);
   }
 
   @GET
