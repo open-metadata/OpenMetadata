@@ -26,7 +26,6 @@ import {
 } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import { HTTP_STATUS_CODE } from '../../../constants/Auth.constants';
-import { getEntityDetailsPath } from '../../../constants/constants';
 import {
   DEFAULT_RANGE_DATA,
   STEPS_FOR_ADD_TEST_CASE,
@@ -51,6 +50,7 @@ import {
   getEntityBreadcrumbs,
   getEntityName,
 } from '../../../utils/EntityUtils';
+import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import ResizablePanels from '../../common/ResizablePanels/ResizablePanels';
 import SuccessScreen from '../../common/SuccessScreen/SuccessScreen';

@@ -43,7 +43,6 @@ import ServiceInsightsTab from '../../components/ServiceInsights/ServiceInsights
 import Ingestion from '../../components/Settings/Services/Ingestion/Ingestion.component';
 import ServiceConnectionDetails from '../../components/Settings/Services/ServiceConnectionDetails/ServiceConnectionDetails.component';
 import {
-  getServiceDetailsPath,
   INITIAL_PAGING_VALUE,
   PAGE_SIZE_BASE,
   pagingObject,
@@ -111,6 +110,7 @@ import { getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import {
   getEditConnectionPath,
+  getServiceDetailsPath,
   getServiceVersionPath,
   getSettingPath,
 } from '../../utils/RouterUtils';

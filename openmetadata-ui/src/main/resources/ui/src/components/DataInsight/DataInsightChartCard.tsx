@@ -36,7 +36,6 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ResponsiveContainer } from 'recharts';
 import { ReactComponent as RightArrowIcon } from '../../assets/svg/right-arrow.svg';
-import { getExplorePath } from '../../constants/constants';
 import {
   DI_STRUCTURE,
   GRAPH_HEIGHT,
@@ -61,6 +60,7 @@ import {
   isPercentageSystemGraph,
   renderDataInsightLineChart,
 } from '../../utils/DataInsightUtils';
+import { getExplorePath } from '../../utils/RouterUtils';
 import searchClassBase from '../../utils/SearchClassBase';
 import { showErrorToast } from '../../utils/ToastUtils';
 import Searchbar from '../common/SearchBarComponent/SearchBar.component';

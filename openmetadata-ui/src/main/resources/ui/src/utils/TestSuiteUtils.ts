@@ -13,10 +13,9 @@
 
 import { TableProfilerTab } from '../components/Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
-import { getEntityDetailsPath } from '../constants/constants';
 import { EntityTabs, EntityType } from '../enums/entity.enum';
 import Fqn from './Fqn';
-import { getTestSuitePath } from './RouterUtils';
+import { getEntityDetailsPath, getTestSuitePath } from './RouterUtils';
 
 export const getTestSuiteDetailsPath = ({
   isExecutableTestSuite,

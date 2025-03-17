@@ -20,7 +20,6 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as IconDelete } from '../../../../assets/svg/ic-delete.svg';
-import { getBotsPath } from '../../../../constants/constants';
 import { BOTS_DOCS } from '../../../../constants/docs.constants';
 import { GlobalSettingsMenuCategory } from '../../../../constants/GlobalSettings.constants';
 import { PAGE_HEADERS } from '../../../../constants/PageHeaders.constant';
@@ -39,6 +38,7 @@ import {
   highlightSearchText,
 } from '../../../../utils/EntityUtils';
 import { getSettingPageEntityBreadCrumb } from '../../../../utils/GlobalSettingsUtils';
+import { getBotsPath } from '../../../../utils/RouterUtils';
 import { stringToHTML } from '../../../../utils/StringsUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import DeleteWidgetModal from '../../../common/DeleteWidget/DeleteWidgetModal';

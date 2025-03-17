@@ -22,7 +22,7 @@ import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/Er
 import Loader from '../../../components/common/Loader/Loader';
 import { QueryVote } from '../../../components/Database/TableQueries/TableQueries.interface';
 import MetricDetails from '../../../components/Metric/MetricDetails/MetricDetails';
-import { getVersionPath, ROUTES } from '../../../constants/constants';
+import { ROUTES } from '../../../constants/constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
@@ -47,6 +47,7 @@ import {
 } from '../../../utils/CommonUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
+import { getVersionPath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 
 const MetricDetailsPage = () => {

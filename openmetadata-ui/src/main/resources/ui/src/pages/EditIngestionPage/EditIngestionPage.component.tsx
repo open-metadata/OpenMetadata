@@ -27,7 +27,6 @@ import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/Ti
 import AddIngestion from '../../components/Settings/Services/AddIngestion/AddIngestion.component';
 import {
   DEPLOYED_PROGRESS_VAL,
-  getServiceDetailsPath,
   INGESTION_PROGRESS_END_VAL,
   INGESTION_PROGRESS_START_VAL,
 } from '../../constants/constants';
@@ -55,6 +54,7 @@ import {
   getIngestionHeadingName,
   getSettingsPathFromPipelineType,
 } from '../../utils/IngestionUtils';
+import { getServiceDetailsPath } from '../../utils/RouterUtils';
 import { getServiceType } from '../../utils/ServiceUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 

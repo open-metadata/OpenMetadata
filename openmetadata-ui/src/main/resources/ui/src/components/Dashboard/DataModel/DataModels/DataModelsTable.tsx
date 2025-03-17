@@ -19,7 +19,6 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import {
-  getEntityDetailsPath,
   INITIAL_PAGING_VALUE,
   PAGE_SIZE_BASE,
   pagingObject,
@@ -37,6 +36,7 @@ import { useFqn } from '../../../../hooks/useFqn';
 import { ServicePageData } from '../../../../pages/ServiceDetailsPage/ServiceDetailsPage';
 import { getDataModels } from '../../../../rest/dashboardAPI';
 import { getEntityName } from '../../../../utils/EntityUtils';
+import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import NextPrevious from '../../../common/NextPrevious/NextPrevious';

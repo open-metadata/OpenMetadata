@@ -22,7 +22,6 @@ import React, {
   useState,
 } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
-import { getGlossaryTermDetailsPath } from '../../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
@@ -48,7 +47,10 @@ import {
 } from '../../../utils/CustomizePage/CustomizePageUtils';
 import { getEntityVersionByField } from '../../../utils/EntityVersionUtils';
 import { getQueryFilterToExcludeTerm } from '../../../utils/GlossaryUtils';
-import { getGlossaryTermsVersionsPath } from '../../../utils/RouterUtils';
+import {
+  getGlossaryTermDetailsPath,
+  getGlossaryTermsVersionsPath,
+} from '../../../utils/RouterUtils';
 import {
   escapeESReservedCharacters,
   getEncodedFqn,

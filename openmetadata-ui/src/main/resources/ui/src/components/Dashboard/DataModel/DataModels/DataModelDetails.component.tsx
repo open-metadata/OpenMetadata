@@ -17,10 +17,6 @@ import { isUndefined, toString } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import {
-  getEntityDetailsPath,
-  getVersionPath,
-} from '../../../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../../../constants/entity.constants';
 import { EntityTabs, EntityType } from '../../../../enums/entity.enum';
 import { DashboardDataModel } from '../../../../generated/entity/data/dashboardDataModel';
@@ -35,6 +31,10 @@ import {
   getTabLabelMapFromTabs,
 } from '../../../../utils/CustomizePage/CustomizePageUtils';
 import { getDashboardDataModelDetailPageTabs } from '../../../../utils/DashboardDataModelUtils';
+import {
+  getEntityDetailsPath,
+  getVersionPath,
+} from '../../../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import { withActivityFeed } from '../../../AppRouter/withActivityFeed';
 import { GenericProvider } from '../../../Customization/GenericProvider/GenericProvider';

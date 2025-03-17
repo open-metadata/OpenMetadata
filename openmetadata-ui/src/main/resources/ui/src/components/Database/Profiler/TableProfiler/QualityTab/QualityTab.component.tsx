@@ -27,10 +27,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import { ReactComponent as SettingIcon } from '../../../../../assets/svg/ic-settings-primery.svg';
-import {
-  getEntityDetailsPath,
-  INITIAL_PAGING_VALUE,
-} from '../../../../../constants/constants';
+import { INITIAL_PAGING_VALUE } from '../../../../../constants/constants';
 import { PAGE_HEADERS } from '../../../../../constants/PageHeaders.constant';
 import {
   DEFAULT_SORT_ORDER,
@@ -55,7 +52,10 @@ import {
   getBreadcrumbForTable,
   getEntityName,
 } from '../../../../../utils/EntityUtils';
-import { getAddDataQualityTableTestPath } from '../../../../../utils/RouterUtils';
+import {
+  getAddDataQualityTableTestPath,
+  getEntityDetailsPath,
+} from '../../../../../utils/RouterUtils';
 import NextPrevious from '../../../../common/NextPrevious/NextPrevious';
 import { NextPreviousProps } from '../../../../common/NextPrevious/NextPrevious.interface';
 import Searchbar from '../../../../common/SearchBarComponent/SearchBar.component';

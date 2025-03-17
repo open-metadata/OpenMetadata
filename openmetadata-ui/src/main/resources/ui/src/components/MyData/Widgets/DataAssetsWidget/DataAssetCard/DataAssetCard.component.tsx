@@ -15,11 +15,11 @@ import { capitalize, toString } from 'lodash';
 import { Bucket } from 'Models';
 import React, { useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { getExplorePath } from '../../../../../constants/constants';
 import {
   getServiceLogo,
   getServiceTypeExploreQueryFilter,
 } from '../../../../../utils/CommonUtils';
+import { getExplorePath } from '../../../../../utils/RouterUtils';
 import serviceUtilClassBase from '../../../../../utils/ServiceUtilClassBase';
 import AppBadge from '../../../../common/Badge/Badge.component';
 import '../data-assets-widget.less';

@@ -25,7 +25,7 @@ import RichTextEditorPreviewerV1 from '../../../components/common/RichTextEditor
 import TableTags from '../../../components/Database/TableTags/TableTags.component';
 import PageHeader from '../../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
-import { getEntityDetailsPath, ROUTES } from '../../../constants/constants';
+import { ROUTES } from '../../../constants/constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
@@ -43,6 +43,7 @@ import { usePaging } from '../../../hooks/paging/usePaging';
 import { getMetrics } from '../../../rest/metricsAPI';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
+import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import { getErrorText } from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 

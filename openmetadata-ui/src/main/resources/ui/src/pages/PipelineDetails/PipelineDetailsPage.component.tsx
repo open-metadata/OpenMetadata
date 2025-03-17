@@ -21,7 +21,7 @@ import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/Error
 import Loader from '../../components/common/Loader/Loader';
 import { QueryVote } from '../../components/Database/TableQueries/TableQueries.interface';
 import PipelineDetails from '../../components/Pipeline/PipelineDetails/PipelineDetails.component';
-import { getVersionPath, ROUTES } from '../../constants/constants';
+import { ROUTES } from '../../constants/constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ClientErrors } from '../../enums/Axios.enum';
@@ -45,6 +45,7 @@ import {
 import { getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { defaultFields } from '../../utils/PipelineDetailsUtils';
+import { getVersionPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const PipelineDetailsPage = () => {

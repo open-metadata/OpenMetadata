@@ -18,7 +18,6 @@ import { ServicesUpdateRequest, ServiceTypes } from 'Models';
 import React from 'react';
 import ErrorPlaceHolder from '../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import ConnectionStepCard from '../components/common/TestConnection/ConnectionStepCard/ConnectionStepCard';
-import { getServiceDetailsPath } from '../constants/constants';
 import {
   DATA_INSIGHTS_PIPELINE_DOCS,
   ELASTIC_SEARCH_RE_INDEX_PIPELINE_DOCS,
@@ -54,7 +53,11 @@ import { DataObj, ServicesType } from '../interface/service.interface';
 import { Transi18next } from './CommonUtils';
 import i18n from './i18next/LocalUtil';
 import { getSchemaByWorkflowType } from './IngestionWorkflowUtils';
-import { getSettingPath, getSettingsPathWithFqn } from './RouterUtils';
+import {
+  getServiceDetailsPath,
+  getSettingPath,
+  getSettingsPathWithFqn,
+} from './RouterUtils';
 import { getDayCron } from './SchedularUtils';
 import { getFilteredSchema } from './ServiceConnectionUtils';
 import serviceUtilClassBase from './ServiceUtilClassBase';

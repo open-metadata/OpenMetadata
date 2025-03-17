@@ -17,7 +17,6 @@ import { isUndefined } from 'lodash';
 import React, { FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { getUserPath } from '../../../../constants/constants';
 import { ThreadType } from '../../../../generated/entity/feed/thread';
 import { useUserProfile } from '../../../../hooks/user-profile/useUserProfile';
 import {
@@ -30,6 +29,7 @@ import {
   getEntityFieldDisplay,
   prepareFeedLink,
 } from '../../../../utils/FeedUtils';
+import { getUserPath } from '../../../../utils/RouterUtils';
 import { getTaskDetailPath } from '../../../../utils/TasksUtils';
 import EntityPopOverCard from '../../../common/PopOverCard/EntityPopOverCard';
 import UserPopOverCard from '../../../common/PopOverCard/UserPopOverCard';

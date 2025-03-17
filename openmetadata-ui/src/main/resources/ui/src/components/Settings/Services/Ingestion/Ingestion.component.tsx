@@ -18,13 +18,13 @@ import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { ReactComponent as MetadataAgentIcon } from '../../../../assets/svg/ic-collapse.svg';
 import { ReactComponent as CollateAI } from '../../../../assets/svg/ic-suggestions.svg';
-import { getServiceDetailsPath } from '../../../../constants/constants';
 import {
   ServiceAgentSubTabs,
   ServiceCategory,
 } from '../../../../enums/service.enum';
 import { useFqn } from '../../../../hooks/useFqn';
 import { getTypeAndStatusMenuItems } from '../../../../utils/IngestionUtils';
+import { getServiceDetailsPath } from '../../../../utils/RouterUtils';
 import serviceUtilClassBase from '../../../../utils/ServiceUtilClassBase';
 import ErrorPlaceHolderIngestion from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolderIngestion';
 import Searchbar from '../../../common/SearchBarComponent/SearchBar.component';

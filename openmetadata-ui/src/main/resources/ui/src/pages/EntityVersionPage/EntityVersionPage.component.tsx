@@ -36,10 +36,6 @@ import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import PipelineVersion from '../../components/Pipeline/PipelineVersion/PipelineVersion.component';
 import SearchIndexVersion from '../../components/SearchIndexVersion/SearchIndexVersion';
 import TopicVersion from '../../components/Topic/TopicVersion/TopicVersion.component';
-import {
-  getEntityDetailsPath,
-  getVersionPath,
-} from '../../constants/constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
@@ -120,6 +116,7 @@ import {
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import { getEntityBreadcrumbs, getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
+import { getEntityDetailsPath, getVersionPath } from '../../utils/RouterUtils';
 import { getTierTags } from '../../utils/TableUtils';
 import APICollectionVersionPage from '../APICollectionPage/APICollectionVersionPage';
 import DatabaseSchemaVersionPage from '../DatabaseSchemaVersionPage/DatabaseSchemaVersionPage';

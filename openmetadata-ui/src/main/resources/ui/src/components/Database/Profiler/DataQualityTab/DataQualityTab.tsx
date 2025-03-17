@@ -24,7 +24,6 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as IconEdit } from '../../../../assets/svg/edit-new.svg';
 import { ReactComponent as IconDelete } from '../../../../assets/svg/ic-delete.svg';
-import { getEntityDetailsPath } from '../../../../constants/constants';
 import { DATA_QUALITY_PROFILER_DOCS } from '../../../../constants/docs.constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../../../constants/HelperTextUtil';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
@@ -49,7 +48,10 @@ import {
   getEntityName,
 } from '../../../../utils/EntityUtils';
 import { getEntityFQN } from '../../../../utils/FeedUtils';
-import { getIncidentManagerDetailPagePath } from '../../../../utils/RouterUtils';
+import {
+  getEntityDetailsPath,
+  getIncidentManagerDetailPagePath,
+} from '../../../../utils/RouterUtils';
 import { replacePlus } from '../../../../utils/StringsUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import AppBadge from '../../../common/Badge/Badge.component';

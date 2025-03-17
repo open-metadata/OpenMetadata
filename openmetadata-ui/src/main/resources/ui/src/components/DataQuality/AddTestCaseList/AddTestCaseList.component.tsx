@@ -23,10 +23,7 @@ import React, {
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { WILD_CARD_CHAR } from '../../../constants/char.constants';
-import {
-  getEntityDetailsPath,
-  PAGE_SIZE_MEDIUM,
-} from '../../../constants/constants';
+import { PAGE_SIZE_MEDIUM } from '../../../constants/constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { TestCase } from '../../../generated/tests/testCase';
@@ -37,6 +34,7 @@ import {
   getEntityName,
 } from '../../../utils/EntityUtils';
 import { getEntityFQN } from '../../../utils/FeedUtils';
+import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import { replacePlus } from '../../../utils/StringsUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../common/Loader/Loader';

@@ -15,14 +15,6 @@
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { FC } from 'react';
 import DataProductsPage from '../components/DataProducts/DataProductsPage/DataProductsPage.component';
-import {
-  getEditWebhookPath,
-  getEntityDetailsPath,
-  getGlossaryTermDetailsPath,
-  getServiceDetailsPath,
-  getTagsDetailsPath,
-  getUserPath,
-} from '../constants/constants';
 import { GlobalSettingsMenuCategory } from '../constants/GlobalSettings.constants';
 import {
   OperationPermission,
@@ -50,14 +42,20 @@ import { ExtraDatabaseServiceDropdownOptions } from './DatabaseServiceUtils';
 import {
   getApplicationDetailsPath,
   getDomainDetailsPath,
+  getEditWebhookPath,
+  getEntityDetailsPath,
+  getGlossaryTermDetailsPath,
   getIncidentManagerDetailPagePath,
   getNotificationAlertDetailsPath,
   getObservabilityAlertDetailsPath,
   getPersonaDetailsPath,
   getPolicyWithFqnPath,
   getRoleWithFqnPath,
+  getServiceDetailsPath,
   getSettingPath,
+  getTagsDetailsPath,
   getTeamsWithFqnPath,
+  getUserPath,
 } from './RouterUtils';
 import { getEncodedFqn } from './StringsUtils';
 import { ExtraTableDropdownOptions } from './TableUtils';
