@@ -43,8 +43,7 @@
         }
       ],
       "default": {
-        "provider": "db",
-        "type": "SupersetApiConnection"
+        "provider": "db"
       }
     },
     "dashboardFilterPattern": {
