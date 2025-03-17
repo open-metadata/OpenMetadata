@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import Icon from '@ant-design/icons/lib/components/Icon';
 import { Button, Layout, Menu, MenuProps, Typography } from 'antd';
 import Modal from 'antd/lib/modal/Modal';
 import classNames from 'classnames';
@@ -125,6 +126,7 @@ const LeftSidebar = () => {
       ...sideBarItems.map((item) => {
         return {
           key: item.key,
+          icon: <Icon component={item.icon} />,
           label: <LeftSidebarItem data={item} />,
           children: item.children?.map((item: LeftSidebarItemType) => {
             return {
