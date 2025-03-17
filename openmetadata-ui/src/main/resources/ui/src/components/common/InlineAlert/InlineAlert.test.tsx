@@ -43,6 +43,14 @@ describe('InlineAlert', () => {
     expect(screen.getByText('Test Description')).toBeInTheDocument();
   });
 
+  it('should not render description when it is not provided', () => {
+    render(<InlineAlert {...mockProps} description={undefined} />);
+
+    expect(
+      screen.queryByTestId('inline-alert-description')
+    ).not.toBeInTheDocument();
+  });
+
   it('should handle show more/less functionality when subDescription is provided', () => {
     const subDescription = 'Additional details here';
     render(<InlineAlert {...mockProps} subDescription={subDescription} />);

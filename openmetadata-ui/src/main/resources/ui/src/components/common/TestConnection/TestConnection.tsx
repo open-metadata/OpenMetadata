@@ -58,7 +58,7 @@ import {
   getTestConnectionName,
   shouldTestConnection,
 } from '../../../utils/ServiceUtils';
-import { showErrorToast } from '../../../utils/ToastUtils';
+import { getErrorText } from '../../../utils/StringsUtils';
 import Loader from '../Loader/Loader';
 import './test-connection.style.less';
 import { TestConnectionProps, TestStatus } from './TestConnection.interface';
@@ -85,6 +85,11 @@ const TestConnection: FC<TestConnectionProps> = ({
   const [message, setMessage] = useState<string>(
     TEST_CONNECTION_INITIAL_MESSAGE
   );
+
+  const [errorMessage, setErrorMessage] = useState<{
+    description?: string;
+    subDescription?: string;
+  }>();
 
   const [testConnectionStep, setTestConnectionStep] = useState<
     TestConnectionStep[]
@@ -346,7 +351,18 @@ const TestConnection: FC<TestConnectionProps> = ({
       setIsTestingConnection(false);
       setMessage(TEST_CONNECTION_FAILURE_MESSAGE);
       setTestStatus(StatusType.Failed);
-      showErrorToast(error as AxiosError);
+      if ((error as AxiosError)?.status === 500) {
+        setErrorMessage({
+          description: t('server.unexpected-response'),
+        });
+      } else {
+        setErrorMessage({
+          subDescription: getErrorText(
+            error as AxiosError,
+            t('server.unexpected-error')
+          ),
+        });
+      }
 
       // delete the workflow if there is an exception
       const workflowId = currentWorkflowRef.current?.id;
@@ -371,6 +387,10 @@ const TestConnection: FC<TestConnectionProps> = ({
   const handleCancelTestConnectionModal = () => {
     controller.abort();
     setDialogOpen(false);
+  };
+
+  const handleCloseErrorMessage = () => {
+    setErrorMessage(undefined);
   };
 
   useEffect(() => {
@@ -478,6 +498,8 @@ const TestConnection: FC<TestConnectionProps> = ({
         </Button>
       )}
       <TestConnectionModal
+        errorMessage={errorMessage}
+        handleCloseErrorMessage={handleCloseErrorMessage}
         isConnectionTimeout={isConnectionTimeout}
         isOpen={dialogOpen}
         isTestingConnection={isTestingConnection}
