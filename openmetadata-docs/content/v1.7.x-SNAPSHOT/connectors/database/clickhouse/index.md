@@ -73,6 +73,7 @@ For the usage and lineage workflow, the user will need `SELECT` privilege. You c
 /%}
 
 {% stepsContainer %}
+
 {% extraContent parentTagName="stepsContainer" %}
 
 #### Connection Options

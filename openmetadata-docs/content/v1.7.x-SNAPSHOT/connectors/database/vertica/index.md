@@ -90,6 +90,18 @@ GRANT SELECT ON ALL TABLES IN SCHEMA <schema> TO openmetadata;
 
 {% stepsContainer %}
 
+{% extraContent parentTagName="stepsContainer" %}
+
+#### Connection Details
+
+- **Username**: Specify the User to connect to Vertica. It should have enough privileges to read all the metadata.
+- **Password**: Password to connect to Vertica.
+- **Host and Port**: Enter the fully qualified hostname and port number for your Vertica deployment in the Host and Port field.
+
+{% partial file="/v1.7/connectors/database/advanced-configuration.md" /%}
+
+{% /extraContent %}
+
 {% partial file="/v1.7/connectors/test-connection.md" /%}
 
 {% partial file="/v1.7/connectors/database/configure-ingestion.md" /%}
