@@ -42,10 +42,7 @@ export const visitEntityPage = async (data: {
   );
   await page.getByTestId('searchBox').fill(searchTerm);
   await waitForSearchResponse;
-  await page
-    .getByTestId(dataTestId)
-    .getByTestId('data-name')
-    .click({ force: true });
+  await page.getByTestId(dataTestId).getByTestId('data-name').click();
   await page.getByTestId('searchBox').clear();
 };
 

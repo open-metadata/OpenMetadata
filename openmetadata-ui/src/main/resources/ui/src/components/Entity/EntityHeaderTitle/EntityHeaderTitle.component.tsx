@@ -80,9 +80,7 @@ const EntityHeaderTitle = ({
         }`}>
         {/* If we do not have displayName name only be shown in the bold from the below code */}
         {!isEmpty(displayName) && showName ? (
-          <Tooltip
-            align={{ targetOffset: [0, -15] }}
-            title={stringToHTML(name)}>
+          <Tooltip placement="bottom" title={stringToHTML(name)}>
             <Typography.Text
               className={classNames(
                 'entity-header-name',
