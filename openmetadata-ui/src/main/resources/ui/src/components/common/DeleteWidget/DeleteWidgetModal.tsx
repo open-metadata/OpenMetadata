@@ -195,23 +195,35 @@ const DeleteWidgetModal = ({
     ]
   );
 
-  const onFormFinish = useCallback(async (values: DeleteWidgetFormFields) => {
-    if (isAsyncDelete) {
-      setIsLoading(true);
-      await handleOnAsyncEntityDeleteConfirm({
-        entityName,
-        entityId: entityId ?? '',
-        entityType,
-        deleteType: values.deleteType,
-        prepareType,
-        isRecursiveDelete: isRecursiveDelete ?? false,
-      });
-      setIsLoading(false);
-      handleOnEntityDeleteCancel();
-    } else {
-      onDelete ? onDelete(values) : handleOnEntityDeleteConfirm(values);
-    }
-  }, []);
+  const onFormFinish = useCallback(
+    async (values: DeleteWidgetFormFields) => {
+      if (isAsyncDelete) {
+        setIsLoading(true);
+        await handleOnAsyncEntityDeleteConfirm({
+          entityName,
+          entityId: entityId ?? '',
+          entityType,
+          deleteType: values.deleteType,
+          prepareType,
+          isRecursiveDelete: isRecursiveDelete ?? false,
+        });
+        setIsLoading(false);
+        handleOnEntityDeleteCancel();
+      } else {
+        onDelete ? onDelete(values) : handleOnEntityDeleteConfirm(values);
+      }
+    },
+    [
+      entityId,
+      onDelete,
+      entityName,
+      entityType,
+      prepareType,
+      isRecursiveDelete,
+      handleOnEntityDeleteConfirm,
+      handleOnEntityDeleteCancel,
+    ]
+  );
 
   const onChange = useCallback((e: RadioChangeEvent) => {
     const value = e.target.value;

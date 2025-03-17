@@ -111,7 +111,7 @@ export const deleteService = async (
     response
       .url()
       .includes(
-        `/api/v1/services/${getServiceCategoryFromService(typeOfService)}`
+        `/api/v1/services/${getServiceCategoryFromService(typeOfService)}/async`
       )
   );
 
