@@ -135,7 +135,7 @@ const DomainSelectableList = ({
                 : NO_PERMISSION_FOR_ACTION
             }>
             <Button
-              className="p-0 flex-center"
+              className="d-flex align-center justify-center p-xss w-6 h-6"
               data-testid="add-domain"
               disabled={!hasPermission}
               icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}

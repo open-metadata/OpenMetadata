@@ -1340,6 +1340,7 @@ export const getAlertExtraInfo = (
   return (
     <>
       <ExtraInfoLabel
+        inlineLayout
         dataTestId="total-events-count"
         label={t('label.total-entity', {
           entity: t('label.event-plural'),
@@ -1347,6 +1348,7 @@ export const getAlertExtraInfo = (
         value={alertEventCounts?.totalEventsCount ?? 0}
       />
       <ExtraInfoLabel
+        inlineLayout
         dataTestId="pending-events-count"
         label={t('label.pending-entity', {
           entity: t('label.event-plural'),
@@ -1354,6 +1356,7 @@ export const getAlertExtraInfo = (
         value={alertEventCounts?.pendingEventsCount ?? 0}
       />
       <ExtraInfoLabel
+        inlineLayout
         dataTestId="failed-events-count"
         label={t('label.failed-entity', {
           entity: t('label.event-plural'),
