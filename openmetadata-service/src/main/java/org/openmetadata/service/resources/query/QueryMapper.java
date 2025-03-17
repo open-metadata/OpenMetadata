@@ -14,6 +14,7 @@ import org.openmetadata.service.util.EntityUtil;
 public class QueryMapper implements EntityMapper<Query, CreateQuery> {
   @Override
   public Query createToEntity(CreateQuery create, String user) {
+
     return copy(new Query(), create, user)
         .withQuery(create.getQuery())
         .withChecksum(EntityUtil.hash(create.getQuery()))
@@ -23,6 +24,7 @@ public class QueryMapper implements EntityMapper<Query, CreateQuery> {
         .withUsers(getEntityReferences(USER, create.getUsers()))
         .withQueryUsedIn(EntityUtil.populateEntityReferences(create.getQueryUsedIn()))
         .withQueryDate(create.getQueryDate())
+        .withUsedBy(create.getUsedBy())
         .withTriggeredBy(create.getTriggeredBy())
         .withProcessedLineage(create.getProcessedLineage());
   }
