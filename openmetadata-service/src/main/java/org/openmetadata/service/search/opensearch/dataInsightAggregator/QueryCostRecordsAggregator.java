@@ -10,6 +10,7 @@ import org.openmetadata.schema.entity.data.QueryCostSearchResult;
 import org.openmetadata.schema.entity.data.QueryDetails;
 import org.openmetadata.schema.entity.data.QueryGroup;
 import org.openmetadata.schema.entity.data.QueryHolder;
+import org.openmetadata.service.Entity;
 import os.org.opensearch.action.search.SearchAction;
 import os.org.opensearch.action.search.SearchRequest;
 import os.org.opensearch.action.search.SearchRequestBuilder;
@@ -31,7 +32,6 @@ import os.org.opensearch.search.aggregations.metrics.SumAggregationBuilder;
 import os.org.opensearch.search.aggregations.metrics.TopHits;
 import os.org.opensearch.search.aggregations.metrics.TopHitsAggregationBuilder;
 import os.org.opensearch.search.aggregations.pipeline.BucketScriptPipelineAggregationBuilder;
-import org.openmetadata.service.Entity;
 
 public class QueryCostRecordsAggregator {
 
