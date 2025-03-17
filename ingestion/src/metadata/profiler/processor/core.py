@@ -165,6 +165,7 @@ class Profiler(Generic[TMetric]):
                 column
                 for column in self.profiler_interface.get_columns()
                 if column.name in self._get_included_columns()
+                or self._get_included_columns() == {"all"}
             ]
 
         if not self._get_included_columns():
