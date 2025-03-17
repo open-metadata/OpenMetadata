@@ -80,8 +80,6 @@ Follow the instructions [here](https://docs.docker.com/compose/cli-command/#inst
    > Docker Compose version v2.2.3
    ```
 
-{% partial file="/v1.6/deployment/minimum-sizing-requirements.md" /%}
-
 ## Steps for Deploying OpenMetadata using Docker
 
 ### 1. Create a directory for OpenMetadata

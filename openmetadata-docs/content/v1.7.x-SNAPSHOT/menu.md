@@ -20,6 +20,8 @@ site_menu:
 
   - category: Deployment
     url: /deployment
+  - category: Deployment / Minimum Requirements
+    url: /deployment/minimum-requirements
   - category: Deployment / Bare Metal Deployment
     url: /deployment/bare-metal
   - category: Deployment / Bare Metal Deployment / Enable Security
