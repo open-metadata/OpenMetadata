@@ -31,6 +31,7 @@ import os.org.opensearch.search.aggregations.metrics.SumAggregationBuilder;
 import os.org.opensearch.search.aggregations.metrics.TopHits;
 import os.org.opensearch.search.aggregations.metrics.TopHitsAggregationBuilder;
 import os.org.opensearch.search.aggregations.pipeline.BucketScriptPipelineAggregationBuilder;
+import org.openmetadata.service.Entity;
 
 public class QueryCostRecordsAggregator {
 
@@ -112,7 +113,11 @@ public class QueryCostRecordsAggregator {
     }
 
     // Build the search request
-    searchRequest = searchRequestBuilder.request().indices("query_cost_record_search_index");
+    searchRequest =
+        searchRequestBuilder
+            .request()
+            .indices(
+                Entity.getSearchRepository().getIndexOrAliasName("query_cost_record_search_index"));
 
     return searchRequest;
   }
