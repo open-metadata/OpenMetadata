@@ -367,7 +367,8 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
       int limit,
       int offset,
       SearchSortFilter searchSortFilter,
-      String q)
+      String q,
+      String queryString)
       throws IOException {
     List<T> entityList = new ArrayList<>();
     long total;
@@ -377,7 +378,7 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
     if (limit > 0) {
       SearchResultListMapper results =
           searchRepository.listWithOffset(
-              searchListFilter, limit, offset, entityType, searchSortFilter, q);
+              searchListFilter, limit, offset, entityType, searchSortFilter, q, queryString);
       total = results.getTotal();
       for (Map<String, Object> json : results.getResults()) {
         T entity = setFieldsInternal(JsonUtils.readOrConvertValue(json, entityClass), fields);
@@ -389,7 +390,7 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
     } else {
       SearchResultListMapper results =
           searchRepository.listWithOffset(
-              searchListFilter, limit, offset, entityType, searchSortFilter, q);
+              searchListFilter, limit, offset, entityType, searchSortFilter, q, queryString);
       total = results.getTotal();
       return new ResultList<>(entityList, null, limit, (int) total);
     }

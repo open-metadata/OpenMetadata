@@ -18,11 +18,12 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
 import { ReactComponent as IconUser } from '../../../../assets/svg/user.svg';
-import { DE_ACTIVE_COLOR, getUserPath } from '../../../../constants/constants';
+import { DE_ACTIVE_COLOR } from '../../../../constants/constants';
 import { EntityType } from '../../../../enums/entity.enum';
 import { Query } from '../../../../generated/entity/data/query';
 import { TagLabel } from '../../../../generated/type/tagLabel';
 import { getEntityName } from '../../../../utils/EntityUtils';
+import { getUserPath } from '../../../../utils/RouterUtils';
 import DescriptionV1 from '../../../common/EntityDescription/DescriptionV1';
 import Loader from '../../../common/Loader/Loader';
 import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
@@ -116,6 +117,7 @@ const TableQueryRightPanel = ({
             <Space direction="vertical" size={4}>
               <DescriptionV1
                 description={query?.description || ''}
+                entityFullyQualifiedName={query?.fullyQualifiedName}
                 entityType={EntityType.QUERY}
                 hasEditAccess={EditDescription || EditAll}
                 showCommentsIcon={false}

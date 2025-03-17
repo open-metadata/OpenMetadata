@@ -94,4 +94,17 @@ public interface DataInsightsSearchInterface {
   void updateLifecyclePolicy(int retentionDays) throws IOException;
 
   Boolean dataAssetDataStreamExists(String name) throws IOException;
+
+  String getClusterAlias();
+
+  default String getStringWithClusterAlias(String s) {
+    return getStringWithClusterAlias(getClusterAlias(), s);
+  }
+
+  static String getStringWithClusterAlias(String clusterAlias, String s) {
+    if (!(clusterAlias == null || clusterAlias.isEmpty())) {
+      return String.format("%s-%s", clusterAlias, s);
+    }
+    return s;
+  }
 }

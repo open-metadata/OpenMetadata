@@ -952,6 +952,20 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     ResultList<TestCase> allEntities =
         listEntitiesFromSearch(queryParams, testCasesNum, 0, ADMIN_AUTH_HEADERS);
     assertEquals(testCasesNum, allEntities.getData().size());
+    queryParams.put(
+        "queryString",
+        "%7B%22query%22%3A%20%7B%22term%22%3A%20%7B%22id%22%3A%20%22"
+            + testCaseForEL.getId()
+            + "%22%7D%7D%7D");
+    allEntities = listEntitiesFromSearch(queryParams, testCasesNum, 0, ADMIN_AUTH_HEADERS);
+    // Note: Since the "name" field and its ngram variant are  prioritized in the search query
+    // and the test case names are very similar, the fuzzy matching returns all test cases.
+    Assertions.assertTrue(
+        allEntities.getData().stream()
+            .allMatch(
+                ts -> ts.getFullyQualifiedName().equals(testCaseForEL.getFullyQualifiedName())));
+
+    queryParams.clear();
     queryParams.put("q", "test_getSimpleListFromSearchb");
     allEntities = listEntitiesFromSearch(queryParams, testCasesNum, 0, ADMIN_AUTH_HEADERS);
     // Note: Since the "name" field and its ngram variant are  prioritized in the search query
@@ -3654,6 +3668,19 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
               TestCase tc = Entity.getEntity(TEST_CASE, testCase.getId(), "", Include.ALL);
               assertTrue(tc.getEntityLink().contains("columns"));
             });
+
+    String id = testCaseResultResultList.getData().get(0).getId().toString();
+    queryParams.put(
+        "queryString",
+        "%7B%22query%22%3A%20%7B%22term%22%3A%20%7B%22id.keyword%22%3A%20%22"
+            + id
+            + "%22%7D%7D%7D");
+    testCaseResultResultList =
+        listTestCaseResultsFromSearch(
+            queryParams, 10, 0, "/testCaseResults/search/list", ADMIN_AUTH_HEADERS);
+    testCaseResultResultList
+        .getData()
+        .forEach(testCaseResult -> assertEquals(testCaseResult.getId().toString(), id));
   }
 
   @Test
