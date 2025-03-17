@@ -156,7 +156,6 @@ class DagDeployer:
                 dag: DAG = dag_bag.get_dag(self.dag_id, session=session)
                 # Sync to DB
                 dag.sync_to_db(session=session)
-                dag_bag.sync_to_db()
                 dag_model = (
                     session.query(DagModel)
                     .filter(DagModel.dag_id == self.dag_id)
