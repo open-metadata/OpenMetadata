@@ -162,6 +162,7 @@ import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChartResultList;
 import org.openmetadata.schema.dataInsight.custom.FormulaHolder;
 import org.openmetadata.schema.entity.data.EntityHierarchy;
+import org.openmetadata.schema.entity.data.QueryCostSearchResult;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.tests.DataQualityReport;
@@ -200,6 +201,7 @@ import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.Elas
 import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.ElasticSearchMostViewedEntitiesAggregator;
 import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.ElasticSearchPageViewsByEntitiesAggregator;
 import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.ElasticSearchUnusedAssetsAggregator;
+import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.QueryCostRecordsAggregator;
 import org.openmetadata.service.search.elasticsearch.queries.ElasticQueryBuilder;
 import org.openmetadata.service.search.elasticsearch.queries.ElasticQueryBuilderFactory;
 import org.openmetadata.service.search.indexes.APIEndpointIndex;
@@ -2498,6 +2500,14 @@ public class ElasticSearchClient implements SearchClient {
           diChart, searchResponse, formulas, metricFormulaHolder);
     }
     return null;
+  }
+
+  public QueryCostSearchResult getQueryCostRecords(String serviceName) throws IOException {
+    QueryCostRecordsAggregator queryCostRecordsAggregator = new QueryCostRecordsAggregator();
+    es.org.elasticsearch.action.search.SearchRequest searchRequest =
+        queryCostRecordsAggregator.getQueryCostRecords(serviceName);
+    SearchResponse searchResponse = client.search(searchRequest, RequestOptions.DEFAULT);
+    return queryCostRecordsAggregator.parseQueryCostResponse(searchResponse);
   }
 
   private static AggregationBuilder buildQueryAggregation(

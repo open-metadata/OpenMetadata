@@ -166,9 +166,6 @@ jest.mock('../../utils/CommonUtils', () => ({
 jest.mock('../../utils/RouterUtils', () => ({
   getSettingPath: jest.fn(),
   getAddServicePath: jest.fn(),
-}));
-
-jest.mock('../../constants/constants', () => ({
   getServiceDetailsPath: jest
     .fn()
     .mockImplementation(() => '/service/details/path'),

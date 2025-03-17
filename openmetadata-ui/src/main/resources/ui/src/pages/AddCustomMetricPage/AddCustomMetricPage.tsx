@@ -25,7 +25,6 @@ import SingleColumnProfile from '../../components/Database/Profiler/TableProfile
 import TableProfilerChart from '../../components/Database/Profiler/TableProfiler/TableProfilerChart/TableProfilerChart';
 import RightPanel from '../../components/DataQuality/AddDataQualityTest/components/RightPanel';
 import CustomMetricForm from '../../components/DataQuality/CustomMetricForm/CustomMetricForm.component';
-import { getEntityDetailsPath } from '../../constants/constants';
 import { DEFAULT_RANGE_DATA } from '../../constants/profiler.constant';
 import {
   EntityTabs,
@@ -42,6 +41,7 @@ import { getTableDetailsByFQN } from '../../rest/tableAPI';
 import { getNameFromFQN } from '../../utils/CommonUtils';
 import { getEntityBreadcrumbs, getEntityName } from '../../utils/EntityUtils';
 import i18n from '../../utils/i18next/LocalUtil';
+import { getEntityDetailsPath } from '../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 
 const AddCustomMetricPage = () => {

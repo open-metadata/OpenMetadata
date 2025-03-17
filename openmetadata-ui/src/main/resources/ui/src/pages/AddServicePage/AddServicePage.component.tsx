@@ -27,7 +27,6 @@ import IngestionStepper from '../../components/Settings/Services/Ingestion/Inges
 import ConnectionConfigForm from '../../components/Settings/Services/ServiceConfig/ConnectionConfigForm';
 import FiltersConfigForm from '../../components/Settings/Services/ServiceConfig/FiltersConfigForm';
 import { DAY_ONE_EXPERIENCE_APP_NAME } from '../../constants/Applications.constant';
-import { getServiceDetailsPath } from '../../constants/constants';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import {
   SERVICE_DEFAULT_ERROR_MAP,
@@ -43,7 +42,11 @@ import { getServiceLogo } from '../../utils/CommonUtils';
 import { getEntityFeedLink } from '../../utils/EntityUtils';
 import { handleEntityCreationError } from '../../utils/formUtils';
 import i18n from '../../utils/i18next/LocalUtil';
-import { getAddServicePath, getSettingPath } from '../../utils/RouterUtils';
+import {
+  getAddServicePath,
+  getServiceDetailsPath,
+  getSettingPath,
+} from '../../utils/RouterUtils';
 import {
   getAddServiceEntityBreadcrumb,
   getEntityTypeFromServiceCategory,

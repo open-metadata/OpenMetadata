@@ -20,7 +20,6 @@ import QueryString from 'qs';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useHistory } from 'react-router-dom';
 import {
-  getEntityDetailsPath,
   INITIAL_PAGING_VALUE,
   NO_DATA_PLACEHOLDER,
   PAGE_SIZE,
@@ -52,6 +51,7 @@ import {
   getEntityBulkEditPath,
   highlightSearchText,
 } from '../../../../utils/EntityUtils';
+import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
 import { stringToHTML } from '../../../../utils/StringsUtils';
 import { getUsagePercentile } from '../../../../utils/TableUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
@@ -257,6 +257,7 @@ export const DatabaseSchemaTable = ({
         title: t('label.description'),
         dataIndex: TABLE_COLUMNS_KEYS.DESCRIPTION,
         key: TABLE_COLUMNS_KEYS.DESCRIPTION,
+        width: 300,
         render: (text: string) =>
           text?.trim() ? (
             <RichTextEditorPreviewerV1 markdown={text} />

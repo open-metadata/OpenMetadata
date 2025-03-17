@@ -20,7 +20,7 @@ import ResizablePanels from '../../../components/common/ResizablePanels/Resizabl
 import ServiceDocPanel from '../../../components/common/ServiceDocPanel/ServiceDocPanel';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import SchemaEditor from '../../../components/Database/SchemaEditor/SchemaEditor';
-import { getEntityDetailsPath, ROUTES } from '../../../constants/constants';
+import { ROUTES } from '../../../constants/constants';
 import { NAME_FIELD_RULES } from '../../../constants/Form.constants';
 import { OPEN_METADATA } from '../../../constants/service-guide.constant';
 import { CSMode } from '../../../enums/codemirror.enum';
@@ -37,6 +37,7 @@ import { FieldProp, FieldTypes } from '../../../interface/FormUtils.interface';
 import { createMetric } from '../../../rest/metricsAPI';
 import { generateFormFields } from '../../../utils/formUtils';
 import i18n from '../../../utils/i18next/LocalUtil';
+import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 
 const AddMetricPage = () => {

@@ -24,7 +24,6 @@ import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/Ti
 import SchemaEditor from '../../components/Database/SchemaEditor/SchemaEditor';
 import { HTTP_STATUS_CODE } from '../../constants/Auth.constants';
 import {
-  getEntityDetailsPath,
   INITIAL_PAGING_VALUE,
   PAGE_SIZE_MEDIUM,
 } from '../../constants/constants';
@@ -52,6 +51,7 @@ import {
 } from '../../utils/EntityUtils';
 import { getField } from '../../utils/formUtils';
 import i18n from '../../utils/i18next/LocalUtil';
+import { getEntityDetailsPath } from '../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 
 const AddQueryPage = () => {
