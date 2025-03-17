@@ -761,8 +761,13 @@ public class OpenSearchClient implements SearchClient {
           getSearchBuilderFactory().getSearchSourceBuilder(index, q, offset, limit);
     }
 
+    if (!nullOrEmpty(queryString)) {
+      XContentParser queryParser = createXContentParser(queryString);
+      searchSourceBuilder = SearchSourceBuilder.fromXContent(queryParser);
+    }
+
     List<Map<String, Object>> results = new ArrayList<>();
-    getSearchFilter(filter, searchSourceBuilder, !nullOrEmpty(q) || !nullOrEmpty(queryString));
+    getSearchFilter(filter, searchSourceBuilder);
 
     searchSourceBuilder.timeout(new TimeValue(30, TimeUnit.SECONDS));
     searchSourceBuilder.from(offset);
@@ -819,7 +824,7 @@ public class OpenSearchClient implements SearchClient {
     List<Map<String, Object>> results = new ArrayList<>();
 
     if (Optional.ofNullable(filter).isPresent()) {
-      getSearchFilter(filter, searchSourceBuilder, !nullOrEmpty(query));
+      getSearchFilter(filter, searchSourceBuilder);
     }
 
     searchSourceBuilder.timeout(new TimeValue(30, TimeUnit.SECONDS));
@@ -1446,7 +1451,7 @@ public class OpenSearchClient implements SearchClient {
       BoolQueryBuilder boolQueryBuilder = QueryBuilders.boolQuery().must(parsedQuery);
       searchSourceBuilder.query(boolQueryBuilder);
     }
-    getSearchFilter(filter, searchSourceBuilder, !nullOrEmpty(query));
+    getSearchFilter(filter, searchSourceBuilder);
 
     searchSourceBuilder.size(0).timeout(new TimeValue(30, TimeUnit.SECONDS));
 
@@ -2364,8 +2369,8 @@ public class OpenSearchClient implements SearchClient {
     }
   }
 
-  private void getSearchFilter(
-      String filter, SearchSourceBuilder searchSourceBuilder, boolean hasQuery) throws IOException {
+  private void getSearchFilter(String filter, SearchSourceBuilder searchSourceBuilder)
+      throws IOException {
     if (!filter.isEmpty()) {
       try {
         XContentParser queryParser = createXContentParser(filter);
@@ -2374,10 +2379,10 @@ public class OpenSearchClient implements SearchClient {
         FetchSourceContext sourceFromXContent =
             SearchSourceBuilder.fromXContent(sourceParser).fetchSource();
         BoolQueryBuilder boolQuery = QueryBuilders.boolQuery();
-        boolQuery =
-            !hasQuery
-                ? boolQuery.filter(queryFromXContent)
-                : boolQuery.must(searchSourceBuilder.query()).filter(queryFromXContent);
+        if (searchSourceBuilder.query() != null) {
+          boolQuery = boolQuery.must(searchSourceBuilder.query());
+        }
+        boolQuery = boolQuery.filter(queryFromXContent);
         searchSourceBuilder.query(boolQuery);
         searchSourceBuilder.fetchSource(sourceFromXContent);
       } catch (Exception e) {
