@@ -5,6 +5,7 @@ import static org.openmetadata.service.migration.utils.v170.MigrationUtil.runLin
 import static org.openmetadata.service.migration.utils.v170.MigrationUtil.runLineageMigrationForNullColumn;
 import static org.openmetadata.service.migration.utils.v170.MigrationUtil.updateDataInsightsApplication;
 import static org.openmetadata.service.migration.utils.v170.MigrationUtil.updateGovernanceWorkflowDefinitions;
+import static org.openmetadata.service.migration.utils.v170.MigrationUtil.updateLineageBotPolicy;
 
 import lombok.SneakyThrows;
 import org.openmetadata.service.migration.api.MigrationProcessImpl;
@@ -28,6 +29,9 @@ public class Migration extends MigrationProcessImpl {
     runLineageMigrationForNullColumn(handle);
     runLineageMigrationForNonNullColumn(handle);
 
+    // DI
     createServiceCharts();
+
+    updateLineageBotPolicy();
   }
 }
