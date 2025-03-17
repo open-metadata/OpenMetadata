@@ -7,8 +7,8 @@ slug: /connectors/database/postgres
 name="PostgreSQL"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=["Metadata", "Query Usage", "Data Profiler", "Data Quality", "dbt", "Lineage", "Column-level Lineage", "Owners", "Tags", "Stored Procedures", "Sample Data"]
-unavailableFeatures=["Stored Procedures Lineage"]
+availableFeatures=["Metadata", "Query Usage", "Data Profiler", "Data Quality", "dbt", "Lineage", "Column-level Lineage", "Owners", "Tags", "Stored Procedures", "Sample Data", "Stored Procedures Lineage"]
+unavailableFeatures=[]
 / %}
 
 In this section, we provide guides and references to use the PostgreSQL connector.
@@ -27,6 +27,10 @@ Configure and schedule PostgreSQL metadata and profiler workflows from the OpenM
 {% partial file="/v1.6/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/postgres/yaml"} /%}
 
 ## Requirements
+
+{% note %}
+Starting from OpenMetadata **version 1.6.5**, support for **Stored Procedures Lineage** has been introduced. This feature enables tracking the relationships and dependencies between stored procedures and other database objects, enhancing lineage visibility and data traceability.
+{% /note %}
 
 {% note %}
 Note that we only support officially supported PostgreSQL versions. You can check the version list [here](https://www.postgresql.org/support/versioning/).
@@ -49,6 +53,26 @@ Then, when extracting usage and lineage data, the query log duration will have n
 ```sql
 GRANT pg_read_all_stats TO your_user;
 ```
+## Stored Procedures
+
+When executing stored procedures in PostgreSQL, lineage extraction relies on capturing the SQL queries executed within the procedure. However, by default, PostgreSQL does not track the internal queries of a stored procedure in `pg_stat_statements`.
+
+### Enabling Query Tracking for Lineage
+To ensure OpenMetadata captures lineage from stored procedures, follow these steps:
+
+1. **Enable Logging for All Statements**
+   Modify the `postgresql.conf` file and set:
+   ```ini
+   log_statement = 'all'
+   ```
+   This will log all executed SQL statements, including those inside stored procedures.
+
+2. **Configure `pg_stat_statements` to Track Nested Queries**
+   By default, `pg_stat_statements` may only capture top-level procedure calls and not the internal queries. To change this behavior, update:
+   ```ini
+   pg_stat_statements.track = 'all'
+   ```
+   This ensures that statements executed within procedures are recorded.
 
 ## Metadata Ingestion
 
