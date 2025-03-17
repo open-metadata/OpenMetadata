@@ -111,7 +111,9 @@ export const deleteService = async (
     response
       .url()
       .includes(
-        `/api/v1/services/${getServiceCategoryFromService(typeOfService)}/async`
+        `/api/v1/services/${getServiceCategoryFromService(
+          typeOfService
+        )}s/async`
       )
   );
 
@@ -122,7 +124,7 @@ export const deleteService = async (
   // Closing the toast notification
   await toastNotification(
     page,
-    `Delete operation initiated for "${serviceName}"`
+    `Delete operation initiated for ${serviceName}`
   );
 
   await page.waitForSelector(`[data-testid="service-name-${serviceName}"]`, {
