@@ -138,21 +138,11 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
         session_query = self._base_sample_query(
             column,
             (ModuloFn(RandomNumFn(), table_query.count())).label(RANDOM_LABEL)
-            if self.sample_config.randomizedSample else None,
+            if self.sample_config.randomizedSample
+            else None,
         )
-
-
-        if self.sample_config.randomizedSample:            
-            return (
-                session_query.order_by(RANDOM_LABEL)
-                .limit(self.sample_config.profileSample)
-                .cte(f"{self.get_sampler_table_name()}_rnd")
-            )
-        return (
-            session_query
-            .limit(self.sample_config.profileSample)
-            .cte(f"{self.get_sampler_table_name()}_rnd")
-        )
+        query = session_query.order_by(RANDOM_LABEL) if self.sample_config.randomizedSample else session_query
+        return query.limit(self.sample_config.profileSample).cte(f"{self.get_sampler_table_name()}_rnd")
 
     def get_dataset(self, column=None, **__) -> Union[DeclarativeMeta, AliasedClass]:
         """

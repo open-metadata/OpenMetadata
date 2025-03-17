@@ -91,7 +91,7 @@
     "randomizedSample": {
       "description": "Whether to randomize the sample data or not.",
       "type": "boolean",
-      "default": false
+      "default": true
     },
     "threadCount": {
       "description": "Number of threads to use during metric computations",
