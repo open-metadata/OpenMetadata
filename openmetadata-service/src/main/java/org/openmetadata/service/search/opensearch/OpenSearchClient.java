@@ -2434,11 +2434,11 @@ public class OpenSearchClient implements SearchClient {
     }
   }
 
-
   private OpenSearchSourceBuilderFactory getSearchBuilderFactory() {
     SearchSettings searchSettings =
         SettingsCache.getSetting(SettingsType.SEARCH_SETTINGS, SearchSettings.class);
     return new OpenSearchSourceBuilderFactory(searchSettings);
+  }
 
   @Override
   public QueryCostSearchResult getQueryCostRecords(String serviceName) throws IOException {
