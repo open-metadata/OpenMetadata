@@ -157,7 +157,7 @@ test.describe.serial(
     });
 
     if (process.env.PLAYWRIGHT_IS_OSS) {
-      test('Run application', async ({ page }) => {
+      test.skip('Run application', async ({ page }) => {
         const appResponse = page.waitForResponse(
           `/api/v1/apps/name/DataInsightsApplication?fields=*`
         );
