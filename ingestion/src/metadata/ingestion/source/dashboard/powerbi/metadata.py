@@ -10,6 +10,7 @@
 #  limitations under the License.
 """PowerBI source module"""
 
+import re
 import traceback
 from typing import Any, Iterable, List, Optional, Union
 
@@ -67,6 +68,7 @@ from metadata.utils.filters import (
     filter_by_datamodel,
     filter_by_project,
 )
+from metadata.utils.fqn import build_es_fqn_search_string
 from metadata.utils.helpers import clean_uri
 from metadata.utils.logger import ingestion_logger
 
@@ -132,7 +134,8 @@ class PowerbiSource(DashboardServiceSource):
         """
         fetch all the group workspace ids
         """
-        groups = self.client.api_client.fetch_all_workspaces()
+        filter_pattern = self.source_config.projectFilterPattern
+        groups = self.client.api_client.fetch_all_workspaces(filter_pattern)
         for group in groups:
             # add the dashboards to the groups
             group.dashboards.extend(
@@ -171,7 +174,8 @@ class PowerbiSource(DashboardServiceSource):
         fetch all the workspace ids
         """
         groups = []
-        workspaces = self.client.api_client.fetch_all_workspaces()
+        filter_pattern = self.source_config.projectFilterPattern
+        workspaces = self.client.api_client.fetch_all_workspaces(filter_pattern)
         if workspaces:
             workspace_id_list = [workspace.id for workspace in workspaces]
 
@@ -532,7 +536,9 @@ class PowerbiSource(DashboardServiceSource):
             )
 
     def create_datamodel_report_lineage(
-        self, db_service_name: str, dashboard_details: PowerBIReport
+        self,
+        db_service_name: Optional[str],
+        dashboard_details: PowerBIReport,
     ) -> Iterable[Either[CreateDashboardRequest]]:
         """
         create the lineage between datamodel and report
@@ -611,9 +617,90 @@ class PowerbiSource(DashboardServiceSource):
             logger.debug(f"Error to get data_model_column_fqn {exc}")
             logger.debug(traceback.format_exc())
 
+    def _parse_redshift_source(self, source_expression: str) -> Optional[dict]:
+        try:
+            db_match = re.search(
+                r'AmazonRedshift\.Database\("[^"]+","([^"]+)"\)', source_expression
+            )
+            if not db_match:
+                # not valid redshift source
+                return None
+            schema_table_match = re.findall(r'\[Name="([^"]+)"\]', source_expression)
+
+            database = db_match.group(1) if db_match else None
+            schema = table = None
+            if isinstance(schema_table_match, list):
+                schema = schema_table_match[0] if len(schema_table_match) > 0 else None
+                table = schema_table_match[1] if len(schema_table_match) > 1 else None
+
+            if (
+                schema and table
+            ):  # atlease 2 entities schema and table should be fetched
+                return {"database": database, "schema": schema, "table": table}
+            return None
+        except Exception as exc:
+            logger.debug(f"Error to parse redshift table source: {exc}")
+            logger.debug(traceback.format_exc())
+        return None
+
+    def _parse_snowflake_source(self, source_expression: str) -> Optional[dict]:
+        try:
+            if "Snowflake.Databases" not in source_expression:
+                # Not a snowflake valid expression
+                return None
+            db_match = re.search(
+                r'\[Name="([^"]+)",Kind="Database"\]', source_expression
+            )
+            schema_match = re.search(
+                r'\[Name="([^"]+)",Kind="Schema"\]', source_expression
+            )
+            view_match = re.search(r'\[Name="([^"]+)",Kind="View"\]', source_expression)
+            table_match = re.search(
+                r'\[Name="([^"]+)",Kind="Table"\]', source_expression
+            )
+
+            database = db_match.group(1) if db_match else None
+            schema = schema_match.group(1) if schema_match else None
+            view = view_match.group(1) if view_match else None
+            table = table_match.group(1) if table_match else None
+
+            if schema and (
+                table or view
+            ):  # atlease 2 entities schema and table should be fetched
+                return {
+                    "database": database,
+                    "schema": schema,
+                    "table": table if table else view,
+                }
+            return None
+        except Exception as exc:
+            logger.debug(f"Error to parse snowflake table source: {exc}")
+            logger.debug(traceback.format_exc())
+        return None
+
+    def _parse_table_info_from_source_exp(self, table: PowerBiTable) -> dict:
+        try:
+            if not isinstance(table.source, list):
+                return {}
+            source_expression = table.source[0].expression
+
+            # parse snowflake source
+            table_info = self._parse_snowflake_source(source_expression)
+            if isinstance(table_info, dict):
+                return table_info
+            # parse redshift source
+            table_info = self._parse_redshift_source(source_expression)
+            if isinstance(table_info, dict):
+                return table_info
+            return {}
+        except Exception as exc:
+            logger.debug(f"Error to parse table source: {exc}")
+            logger.debug(traceback.format_exc())
+        return {}
+
     def _get_table_and_datamodel_lineage(
         self,
-        db_service_name: str,
+        db_service_name: Optional[str],
         table: PowerBiTable,
         datamodel_entity: DashboardDataModel,
     ) -> Optional[Either[AddLineageRequest]]:
@@ -621,19 +708,17 @@ class PowerbiSource(DashboardServiceSource):
         Method to create lineage between table and datamodels
         """
         try:
-            table_fqn = fqn.build(
-                self.metadata,
+            table_info = self._parse_table_info_from_source_exp(table)
+            fqn_search_string = build_es_fqn_search_string(
+                database_name=table_info.get("database"),
+                schema_name=table_info.get("schema"),
+                service_name=db_service_name or "*",
+                table_name=table_info.get("table") or table.name,
+            )
+            table_entity = self.metadata.search_in_any_service(
                 entity_type=Table,
-                service_name=db_service_name,
-                database_name=None,
-                schema_name=None,
-                table_name=table.name,
+                fqn_search_string=fqn_search_string,
             )
-            table_entity = self.metadata.get_by_name(
-                entity=Table,
-                fqn=table_fqn,
-            )
-
             if table_entity and datamodel_entity:
                 columns_list = [column.name for column in table.columns]
                 column_lineage = self._get_column_lineage(
@@ -659,7 +744,7 @@ class PowerbiSource(DashboardServiceSource):
 
     def create_table_datamodel_lineage_from_files(
         self,
-        db_service_name: str,
+        db_service_name: Optional[str],
         datamodel_entity: Optional[DashboardDataModel],
     ) -> Iterable[Either[AddLineageRequest]]:
         """
@@ -704,7 +789,7 @@ class PowerbiSource(DashboardServiceSource):
     def yield_dashboard_lineage_details(
         self,
         dashboard_details: Union[PowerBIDashboard, PowerBIReport],
-        db_service_name: str,
+        db_service_name: Optional[str] = None,
     ) -> Iterable[Either[AddLineageRequest]]:
         """
         We will build the logic to build the logic as below
@@ -713,7 +798,8 @@ class PowerbiSource(DashboardServiceSource):
         try:
             if isinstance(dashboard_details, PowerBIReport):
                 yield from self.create_datamodel_report_lineage(
-                    db_service_name=db_service_name, dashboard_details=dashboard_details
+                    db_service_name=db_service_name,
+                    dashboard_details=dashboard_details,
                 )
 
             if isinstance(dashboard_details, PowerBIDashboard):

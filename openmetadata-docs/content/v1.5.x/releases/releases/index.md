@@ -8,7 +8,7 @@ slug: /releases/all-releases
 {% note %}
 
 The OpenMetadata community is on a monthly release cadence. At every 4-5 weeks we will be releasing a new
-version. To see what's coming in next releases, please check our [Roadmap](/releases/roadmap) section.
+version. To see what's coming in next releases, please check our {% collateContent %}[Roadmap](https://www.getcollate.io/roadmap){% /collateContent %}{% ossContent %}[Roadmap](/roadmap){% /ossContent %} section.
 
 {% /note %}
 
@@ -542,7 +542,7 @@ To continue pursuing this objective, the application was completely refactored t
 
 ## Ingestion Connectors
 
-80+ connectors to help teams to centralize metadata. We continue to push the boundaries of this mission, in
+90+ connectors to help teams to centralize metadata. We continue to push the boundaries of this mission, in
 
 - **Apache Flink** as a Pipeline Connector
 - **SAP ERP**, after a long and successful collaboration with our community and SAP experts

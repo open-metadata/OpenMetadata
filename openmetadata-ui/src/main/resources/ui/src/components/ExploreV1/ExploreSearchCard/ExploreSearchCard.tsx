@@ -236,7 +236,7 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
                 {entityIcon}
 
                 <Link
-                  className={classNames('no-underline line-height-22 ', {
+                  className={classNames('d-flex no-underline line-height-22 ', {
                     'w-max-full': !hasGlossaryTermStatus,
                     'm-r-xs': hasGlossaryTermStatus,
                   })}

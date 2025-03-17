@@ -27,6 +27,7 @@ import { ReactComponent as IconAPI } from '../assets/svg/ic-api-service.svg';
 import { ReactComponent as DashboardDataModelIcon } from '../assets/svg/ic-dashboard-data-model-colored.svg';
 import { ReactComponent as DataProductIcon } from '../assets/svg/ic-data-product-colored.svg';
 import { ReactComponent as SchemaIcon } from '../assets/svg/ic-database-schema-colored.svg';
+import { ReactComponent as DomainIcon } from '../assets/svg/ic-domain.svg';
 import { ReactComponent as LineageIcon } from '../assets/svg/ic-lineage-config.svg';
 import { ReactComponent as LinkIcon } from '../assets/svg/ic-url-link.svg';
 
@@ -62,6 +63,7 @@ import {
   UIPermission,
 } from '../context/PermissionProvider/PermissionProvider.interface';
 import { userPermissions } from '../utils/PermissionsUtils';
+import brandClassBase from './BrandData/BrandClassBase';
 
 class GlobalSettingsClassBase {
   settingCategories: Record<string, { name: string; url: string }> = {
@@ -109,6 +111,14 @@ class GlobalSettingsClassBase {
     this.settingCategories = categories;
   }
 
+  public getServiceIcon() {
+    return ServiceIcon;
+  }
+
+  public getPreferenceIcon() {
+    return OpenMetadataIcon;
+  }
+
   /**
    * getSidebarItems
    */
@@ -120,7 +130,7 @@ class GlobalSettingsClassBase {
       {
         category: t('label.service-plural'),
         key: GlobalSettingsMenuCategory.SERVICES,
-        icon: ServiceIcon,
+        icon: this.getServiceIcon(),
         description: t('message.service-description'),
         items: [
           {
@@ -243,7 +253,9 @@ class GlobalSettingsClassBase {
         category: t('label.team-user-management'),
         key: GlobalSettingsMenuCategory.MEMBERS,
         icon: ManagementIcon,
-        description: t('message.member-description'),
+        description: t('message.team-member-management-description', {
+          brandName: brandClassBase.getPageTitle(),
+        }),
         items: [
           {
             label: t('label.team-plural'),
@@ -302,8 +314,10 @@ class GlobalSettingsClassBase {
       {
         category: t('label.preference-plural'),
         key: GlobalSettingsMenuCategory.PREFERENCES,
-        icon: OpenMetadataIcon,
-        description: t('message.customize-open-metadata-description'),
+        icon: this.getPreferenceIcon(),
+        description: t('message.customize-brand-description', {
+          brandName: brandClassBase.getPageTitle(),
+        }),
         items: [
           {
             label: t('label.theme'),
@@ -518,6 +532,15 @@ class GlobalSettingsClassBase {
             isProtected: Boolean(isAdminUser),
             key: `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.GLOSSARY_TERM}`,
             icon: GlossaryIcon,
+          },
+          {
+            label: t('label.domain'),
+            description: t('message.define-custom-property-for-entity', {
+              entity: t('label.domain'),
+            }),
+            isProtected: Boolean(isAdminUser),
+            key: `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.DOMAIN}`,
+            icon: DomainIcon,
           },
         ].sort((a, b) => a.label.localeCompare(b.label)),
       },

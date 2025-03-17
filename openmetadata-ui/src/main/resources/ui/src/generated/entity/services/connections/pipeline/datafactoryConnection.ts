@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * Azure Data Factory Connection Config
  */
 export interface DatafactoryConnection {
@@ -24,6 +22,10 @@ export interface DatafactoryConnection {
      * The name of your azure data factory.
      */
     factory_name: string;
+    /**
+     * Regex exclude pipelines.
+     */
+    pipelineFilterPattern?: FilterPattern;
     /**
      * The name of your resource group the data factory is associated with.
      */
@@ -72,6 +74,22 @@ export interface AzureCredentials {
      * Key Vault Name
      */
     vaultName?: string;
+}
+
+/**
+ * Regex exclude pipelines.
+ *
+ * Regex to only fetch entities that matches the pattern.
+ */
+export interface FilterPattern {
+    /**
+     * List of strings/regex patterns to match and exclude only database entities that match.
+     */
+    excludes?: string[];
+    /**
+     * List of strings/regex patterns to match and include only database entities that match.
+     */
+    includes?: string[];
 }
 
 /**

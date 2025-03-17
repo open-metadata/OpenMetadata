@@ -10,26 +10,31 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Col, Divider, Row, Typography } from 'antd';
+import { Col, Row, Typography } from 'antd';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import TagsViewer from '../../../components/Tag/TagsViewer/TagsViewer';
 import { BasicEntityInfo } from '../../Explore/EntitySummaryPanel/SummaryList/SummaryList.interface';
-import { EntityUnion } from '../../Explore/ExplorePage.interface';
 import RichTextEditorPreviewerV1 from '../RichTextEditor/RichTextEditorPreviewerV1';
+
+export interface EntityWithDescription {
+  description?: string;
+}
 
 const SummaryTagsDescription = ({
   tags = [],
   entityDetail,
 }: {
   tags: BasicEntityInfo['tags'];
-  entityDetail: EntityUnion;
+  entityDetail: EntityWithDescription;
 }) => {
   const { t } = useTranslation();
 
   return (
     <>
-      <Row className="m-md" gutter={[0, 8]}>
+      <Row
+        className="p-md border-radius-card summary-panel-card"
+        gutter={[0, 8]}>
         <Col span={24}>
           <Typography.Text
             className="summary-panel-section-title"
@@ -41,16 +46,16 @@ const SummaryTagsDescription = ({
           {tags.length > 0 ? (
             <TagsViewer sizeCap={-1} tags={tags} />
           ) : (
-            <Typography.Text className="text-grey-body">
+            <Typography.Text className="text-sm no-data-chip-placeholder">
               {t('label.no-tags-added')}
             </Typography.Text>
           )}
         </Col>
       </Row>
 
-      <Divider className="m-y-xs" />
-
-      <Row className="m-md" gutter={[0, 8]}>
+      <Row
+        className="p-md border-radius-card summary-panel-card"
+        gutter={[0, 8]}>
         <Col span={24}>
           <Typography.Text
             className="summary-panel-section-title"
@@ -66,7 +71,7 @@ const SummaryTagsDescription = ({
                 maxLength={200}
               />
             ) : (
-              <Typography className="text-grey-body">
+              <Typography className="no-data-chip-placeholder">
                 {t('label.no-data-found')}
               </Typography>
             )}

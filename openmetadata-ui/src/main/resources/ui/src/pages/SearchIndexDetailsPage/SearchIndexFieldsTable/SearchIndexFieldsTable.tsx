@@ -24,14 +24,21 @@ import {
 import { EntityTags, TagFilterOptions } from 'Models';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { EntityAttachmentProvider } from '../../../components/common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import FilterTablePlaceHolder from '../../../components/common/ErrorWithPlaceholder/FilterTablePlaceHolder';
 import Table from '../../../components/common/Table/Table';
+import ToggleExpandButton from '../../../components/common/ToggleExpandButton/ToggleExpandButton';
 import { ColumnFilter } from '../../../components/Database/ColumnFilter/ColumnFilter.component';
 import TableDescription from '../../../components/Database/TableDescription/TableDescription.component';
 import TableTags from '../../../components/Database/TableTags/TableTags.component';
 import { ModalWithMarkdownEditor } from '../../../components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
 import { TABLE_SCROLL_VALUE } from '../../../constants/Table.constants';
+import {
+  COMMON_STATIC_TABLE_VISIBLE_COLUMNS,
+  DEFAULT_SEARCH_INDEX_VISIBLE_COLUMNS,
+  TABLE_COLUMNS_KEYS,
+} from '../../../constants/TableKeys.constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { SearchIndexField } from '../../../generated/entity/data/searchIndex';
 import { TagSource } from '../../../generated/type/schema';
@@ -66,9 +73,11 @@ const SearchIndexFieldsTable = ({
   hasTagEditAccess,
   hasGlossaryTermEditAccess,
   isReadOnly = false,
-  onThreadLinkSelect,
   entityFqn,
   searchText,
+  fieldAllRowKeys,
+  expandedRowKeys,
+  toggleExpandAll,
 }: SearchIndexFieldsTableProps) => {
   const { t } = useTranslation();
   const [editField, setEditField] = useState<{
@@ -181,25 +190,18 @@ const SearchIndexFieldsTable = ({
         index={index}
         isReadOnly={isReadOnly}
         onClick={() => handleUpdate(record, index)}
-        onThreadLinkSelect={onThreadLinkSelect}
       />
     ),
-    [
-      entityFqn,
-      hasDescriptionEditAccess,
-      isReadOnly,
-      handleUpdate,
-      onThreadLinkSelect,
-    ]
+    [entityFqn, hasDescriptionEditAccess, isReadOnly, handleUpdate]
   );
 
   const fields: ColumnsType<SearchIndexField> = useMemo(
     () => [
       {
         title: t('label.name'),
-        dataIndex: 'name',
-        key: 'name',
-        accessor: 'name',
+        dataIndex: TABLE_COLUMNS_KEYS.NAME,
+        key: TABLE_COLUMNS_KEYS.NAME,
+        accessor: TABLE_COLUMNS_KEYS.NAME,
         width: 220,
         fixed: 'left',
         sorter: getColumnSorter<SearchIndexField, 'name'>('name'),
@@ -215,26 +217,26 @@ const SearchIndexFieldsTable = ({
       },
       {
         title: t('label.type'),
-        dataIndex: 'dataTypeDisplay',
-        key: 'dataTypeDisplay',
-        accessor: 'dataTypeDisplay',
+        dataIndex: TABLE_COLUMNS_KEYS.DATA_TYPE_DISPLAY,
+        key: TABLE_COLUMNS_KEYS.DATA_TYPE_DISPLAY,
+        accessor: TABLE_COLUMNS_KEYS.DATA_TYPE_DISPLAY,
         ellipsis: true,
         width: 180,
         render: renderDataTypeDisplay,
       },
       {
         title: t('label.description'),
-        dataIndex: 'description',
-        key: 'description',
-        accessor: 'description',
+        dataIndex: TABLE_COLUMNS_KEYS.DESCRIPTION,
+        key: TABLE_COLUMNS_KEYS.DESCRIPTION,
+        accessor: TABLE_COLUMNS_KEYS.DESCRIPTION,
         width: 320,
         render: renderDescription,
       },
       {
         title: t('label.tag-plural'),
-        dataIndex: 'tags',
-        key: 'tags',
-        accessor: 'tags',
+        dataIndex: TABLE_COLUMNS_KEYS.TAGS,
+        key: TABLE_COLUMNS_KEYS.TAGS,
+        accessor: TABLE_COLUMNS_KEYS.TAGS,
         width: 250,
         filters: tagFilter.Classification,
         filterDropdown: ColumnFilter,
@@ -250,15 +252,14 @@ const SearchIndexFieldsTable = ({
             record={record}
             tags={tags}
             type={TagSource.Classification}
-            onThreadLinkSelect={onThreadLinkSelect}
           />
         ),
       },
       {
         title: t('label.glossary-term-plural'),
-        dataIndex: 'tags',
-        key: 'glossary',
-        accessor: 'tags',
+        dataIndex: TABLE_COLUMNS_KEYS.TAGS,
+        key: TABLE_COLUMNS_KEYS.GLOSSARY,
+        accessor: TABLE_COLUMNS_KEYS.TAGS,
         width: 250,
         filters: tagFilter.Glossary,
         filterDropdown: ColumnFilter,
@@ -274,7 +275,6 @@ const SearchIndexFieldsTable = ({
             record={record}
             tags={tags}
             type={TagSource.Glossary}
-            onThreadLinkSelect={onThreadLinkSelect}
           />
         ),
       },
@@ -288,8 +288,6 @@ const SearchIndexFieldsTable = ({
       handleTagSelection,
       renderDataTypeDisplay,
       renderDescription,
-      handleTagSelection,
-      onThreadLinkSelect,
       tagFilter,
     ]
   );
@@ -302,7 +300,15 @@ const SearchIndexFieldsTable = ({
         columns={fields}
         data-testid="search-index-fields-table"
         dataSource={data}
+        defaultVisibleColumns={DEFAULT_SEARCH_INDEX_VISIBLE_COLUMNS}
         expandable={expandableConfig}
+        extraTableFilters={
+          <ToggleExpandButton
+            allRowKeys={fieldAllRowKeys}
+            expandedRowKeys={expandedRowKeys}
+            toggleExpandAll={toggleExpandAll}
+          />
+        }
         locale={{
           emptyText: <FilterTablePlaceHolder />,
         }}
@@ -310,20 +316,25 @@ const SearchIndexFieldsTable = ({
         rowKey="fullyQualifiedName"
         scroll={TABLE_SCROLL_VALUE}
         size="middle"
+        staticVisibleColumns={COMMON_STATIC_TABLE_VISIBLE_COLUMNS}
       />
       {editField && (
-        <ModalWithMarkdownEditor
-          header={`${t('label.edit-entity', {
-            entity: t('label.field'),
-          })}: "${getEntityName(editField.field)}"`}
-          placeholder={t('label.enter-field-description', {
-            field: t('label.field'),
-          })}
-          value={editField.field.description as string}
-          visible={Boolean(editField)}
-          onCancel={closeEditFieldModal}
-          onSave={handleEditFieldChange}
-        />
+        <EntityAttachmentProvider
+          entityFqn={editField.field.fullyQualifiedName}
+          entityType={EntityType.SEARCH_INDEX}>
+          <ModalWithMarkdownEditor
+            header={`${t('label.edit-entity', {
+              entity: t('label.field'),
+            })}: "${getEntityName(editField.field)}"`}
+            placeholder={t('label.enter-field-description', {
+              field: t('label.field'),
+            })}
+            value={editField.field.description as string}
+            visible={Boolean(editField)}
+            onCancel={closeEditFieldModal}
+            onSave={handleEditFieldChange}
+          />
+        </EntityAttachmentProvider>
       )}
     </>
   );

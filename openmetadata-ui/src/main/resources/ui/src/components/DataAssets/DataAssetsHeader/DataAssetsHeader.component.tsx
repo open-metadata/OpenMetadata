@@ -14,12 +14,15 @@ import Icon from '@ant-design/icons';
 import { Button, Col, Divider, Row, Space, Tooltip, Typography } from 'antd';
 import ButtonGroup from 'antd/lib/button/button-group';
 import { AxiosError } from 'axios';
+import classNames from 'classnames';
 import { capitalize, get, isEmpty } from 'lodash';
+import QueryString from 'qs';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory } from 'react-router-dom';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as IconExternalLink } from '../../../assets/svg/external-links.svg';
+import { ReactComponent as RedAlertIcon } from '../../../assets/svg/ic-alert-red.svg';
 import { ReactComponent as TaskOpenIcon } from '../../../assets/svg/ic-open-task.svg';
 import { ReactComponent as ShareIcon } from '../../../assets/svg/ic-share.svg';
 import { ReactComponent as StarFilledIcon } from '../../../assets/svg/ic-star-filled.svg';
@@ -33,41 +36,42 @@ import EntityHeaderTitle from '../../../components/Entity/EntityHeaderTitle/Enti
 import {
   DATA_ASSET_ICON_DIMENSION,
   DE_ACTIVE_COLOR,
-  getEntityDetailsPath,
 } from '../../../constants/constants';
 import { SERVICE_TYPES } from '../../../constants/Services.constant';
+import { TAG_START_WITH } from '../../../constants/Tag.constants';
 import { useTourProvider } from '../../../context/TourProvider/TourProvider';
 import {
   EntityTabs,
   EntityType,
   TabSpecificField,
 } from '../../../enums/entity.enum';
+import { LineageLayer } from '../../../generated/configuration/lineageSettings';
 import { Container } from '../../../generated/entity/data/container';
+import { Metric } from '../../../generated/entity/data/metric';
 import { Table } from '../../../generated/entity/data/table';
 import { Thread } from '../../../generated/entity/feed/thread';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useClipboard } from '../../../hooks/useClipBoard';
 import { SearchSourceAlias } from '../../../interface/search.interface';
 import { getActiveAnnouncement } from '../../../rest/feedsAPI';
+import { getDataQualityLineage } from '../../../rest/lineageAPI';
 import { getContainerByName } from '../../../rest/storageAPI';
-import { getDataAssetsHeaderInfo } from '../../../utils/DataAssetsHeader.utils';
+import {
+  getDataAssetsHeaderInfo,
+  isDataAssetsWithServiceField,
+} from '../../../utils/DataAssetsHeader.utils';
+import EntityLink from '../../../utils/EntityLink';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import {
   getEntityFeedLink,
   getEntityName,
   getEntityVoteStatus,
 } from '../../../utils/EntityUtils';
+import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
+import tableClassBase from '../../../utils/TableClassBase';
 import { getTierTags } from '../../../utils/TableUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-
-import QueryString from 'qs';
-import { ReactComponent as RedAlertIcon } from '../../../assets/svg/ic-alert-red.svg';
-import { TAG_START_WITH } from '../../../constants/Tag.constants';
-import { LineageLayer } from '../../../generated/configuration/lineageSettings';
-import { Metric } from '../../../generated/entity/data/metric';
-import { useApplicationStore } from '../../../hooks/useApplicationStore';
-import { getDataQualityLineage } from '../../../rest/lineageAPI';
-import tableClassBase from '../../../utils/TableClassBase';
 import AnnouncementCard from '../../common/EntityPageInfos/AnnouncementCard/AnnouncementCard';
 import AnnouncementDrawer from '../../common/EntityPageInfos/AnnouncementDrawer/AnnouncementDrawer';
 import ManageButton from '../../common/EntityPageInfos/ManageButton/ManageButton';
@@ -76,14 +80,14 @@ import RetentionPeriod from '../../Database/RetentionPeriod/RetentionPeriod.comp
 import Voting from '../../Entity/Voting/Voting.component';
 import { VotingDataProps } from '../../Entity/Voting/voting.interface';
 import MetricHeaderInfo from '../../Metric/MetricHeaderInfo/MetricHeaderInfo';
+import SuggestionsAlert from '../../Suggestions/SuggestionsAlert/SuggestionsAlert';
+import { useSuggestionsContext } from '../../Suggestions/SuggestionsProvider/SuggestionsProvider';
 import TagsV1 from '../../Tag/TagsV1/TagsV1.component';
 import './data-asset-header.less';
 import {
   DataAssetHeaderInfo,
   DataAssetsHeaderProps,
-  DataAssetsType,
   DataAssetsWithFollowersField,
-  DataAssetsWithServiceField,
   EntitiesWithDomainField,
 } from './DataAssetsHeader.interface';
 
@@ -114,19 +118,25 @@ export const ExtraInfoLink = ({
   value,
   href,
   newTab = false,
+  ellipsis = false,
 }: {
   label: string;
   value: string | number;
   href: string;
   newTab?: boolean;
+  ellipsis?: boolean;
 }) => (
   <>
     <Divider className="self-center" type="vertical" />
-    <div className="d-flex items-center text-xs">
+    <div
+      className={classNames('d-flex items-center text-xs', {
+        'w-48': ellipsis,
+      })}>
       {!isEmpty(label) && (
         <span className="text-grey-muted m-r-xss">{`${label}: `}</span>
       )}
       <Typography.Link
+        ellipsis
         href={href}
         rel={newTab ? 'noopener noreferrer' : undefined}
         style={{ fontSize: '12px' }}
@@ -165,8 +175,10 @@ export const DataAssetsHeader = ({
   onMetricUpdate,
   badge,
   isDqAlertSupported,
+  isCustomizedView = false,
 }: DataAssetsHeaderProps) => {
   const { currentUser } = useApplicationStore();
+  const { selectedUserSuggestions } = useSuggestionsContext();
   const USER_ID = currentUser?.id ?? '';
   const { t } = useTranslation();
   const { isTourPage } = useTourProvider();
@@ -330,7 +342,7 @@ export const DataAssetsHeader = ({
   };
 
   useEffect(() => {
-    if (dataAsset.fullyQualifiedName && !isTourPage) {
+    if (dataAsset.fullyQualifiedName && !isTourPage && !isCustomizedView) {
       fetchActiveAnnouncement();
       fetchDQFailureCount();
     }
@@ -338,7 +350,7 @@ export const DataAssetsHeader = ({
       const asset = dataAsset as Container;
       fetchContainerParent(asset.parent?.fullyQualifiedName ?? '');
     }
-  }, [dataAsset.fullyQualifiedName, isTourPage]);
+  }, [dataAsset.fullyQualifiedName, isTourPage, isCustomizedView]);
 
   const { extraInfo, breadcrumbs }: DataAssetHeaderInfo = useMemo(
     () =>
@@ -371,13 +383,6 @@ export const DataAssetsHeader = ({
     setCopyTooltip(t('message.link-copy-to-clipboard'));
     setTimeout(() => setCopyTooltip(''), 2000);
   };
-
-  const isDataAssetsWithServiceField = useCallback(
-    (asset: DataAssetsType): asset is DataAssetsWithServiceField => {
-      return (asset as DataAssetsWithServiceField).service !== undefined;
-    },
-    []
-  );
 
   const dataAssetServiceName = useMemo(() => {
     if (isDataAssetsWithServiceField(dataAsset)) {
@@ -417,6 +422,40 @@ export const DataAssetsHeader = ({
       }),
       [permissions, dataAsset]
     );
+
+  const tierSuggestionRender = useMemo(() => {
+    if (entityType === EntityType.TABLE) {
+      const entityLink = EntityLink.getTableEntityLink(
+        dataAsset.fullyQualifiedName ?? ''
+      );
+
+      const activeSuggestion = selectedUserSuggestions?.tags.find(
+        (suggestion) =>
+          suggestion.entityLink === entityLink &&
+          getTierTags(suggestion.tagLabels ?? [])
+      );
+
+      if (activeSuggestion) {
+        return (
+          <div className="w-auto" data-testid="tier-suggestion-container">
+            <SuggestionsAlert
+              showInlineCard
+              hasEditAccess={editTierPermission}
+              showSuggestedBy={false}
+              suggestion={activeSuggestion}
+            />
+          </div>
+        );
+      }
+    }
+
+    return null;
+  }, [
+    entityType,
+    dataAsset.fullyQualifiedName,
+    editTierPermission,
+    selectedUserSuggestions,
+  ]);
 
   return (
     <>
@@ -462,42 +501,48 @@ export const DataAssetsHeader = ({
                   onUpdate={onOwnerUpdate}
                 />
                 <Divider className="self-center" type="vertical" />
-                <TierCard currentTier={tier?.tagFQN} updateTier={onTierUpdate}>
-                  <Space data-testid="header-tier-container">
-                    {tier ? (
-                      <TagsV1
-                        startWith={TAG_START_WITH.SOURCE_ICON}
-                        tag={tier}
-                        tagProps={{
-                          'data-testid': 'Tier',
-                        }}
-                      />
-                    ) : (
-                      <span className="font-medium text-xs" data-testid="Tier">
-                        {t('label.no-entity', {
-                          entity: t('label.tier'),
-                        })}
-                      </span>
-                    )}
-
-                    {editTierPermission && (
-                      <Tooltip
-                        title={t('label.edit-entity', {
-                          entity: t('label.tier'),
-                        })}>
-                        <Button
-                          className="flex-center p-0"
-                          data-testid="edit-tier"
-                          icon={
-                            <EditIcon color={DE_ACTIVE_COLOR} width="14px" />
-                          }
-                          size="small"
-                          type="text"
+                {tierSuggestionRender ?? (
+                  <TierCard
+                    currentTier={tier?.tagFQN}
+                    updateTier={onTierUpdate}>
+                    <Space data-testid="header-tier-container">
+                      {tier ? (
+                        <TagsV1
+                          startWith={TAG_START_WITH.SOURCE_ICON}
+                          tag={tier}
+                          tagProps={{
+                            'data-testid': 'Tier',
+                          }}
                         />
-                      </Tooltip>
-                    )}
-                  </Space>
-                </TierCard>
+                      ) : (
+                        <span
+                          className="font-medium text-xs"
+                          data-testid="Tier">
+                          {t('label.no-entity', {
+                            entity: t('label.tier'),
+                          })}
+                        </span>
+                      )}
+
+                      {editTierPermission && (
+                        <Tooltip
+                          title={t('label.edit-entity', {
+                            entity: t('label.tier'),
+                          })}>
+                          <Button
+                            className="flex-center p-0"
+                            data-testid="edit-tier"
+                            icon={
+                              <EditIcon color={DE_ACTIVE_COLOR} width="14px" />
+                            }
+                            size="small"
+                            type="text"
+                          />
+                        </Tooltip>
+                      )}
+                    </Space>
+                  </TierCard>
+                )}
 
                 {entityType === EntityType.TABLE && onUpdateRetentionPeriod && (
                   <RetentionPeriod

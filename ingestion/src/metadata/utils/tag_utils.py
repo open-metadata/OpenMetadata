@@ -59,33 +59,36 @@ def get_ometa_tag_and_classification(
     """
     if include_tags:
         for tag in tags:
-            try:
-                classification = OMetaTagAndClassification(
-                    fqn=tag_fqn,
-                    classification_request=CreateClassificationRequest(
-                        name=EntityName(classification_name),
-                        description=Markdown(classification_description),
-                    ),
-                    tag_request=CreateTagRequest(
-                        classification=FullyQualifiedEntityName(classification_name),
-                        name=EntityName(tag),
-                        description=Markdown(tag_description)
-                        if tag_description
-                        else None,
-                    ),
-                )
-                yield Either(right=classification)
-                logger.debug(
-                    f"Classification {classification_name}, Tag {tag} Ingested"
-                )
-            except Exception as err:
-                yield Either(
-                    left=StackTraceError(
-                        name=tag,
-                        error=f"Error yielding tag [{tag}]: [{err}]",
-                        stackTrace=traceback.format_exc(),
+            if tag:
+                try:
+                    classification = OMetaTagAndClassification(
+                        fqn=tag_fqn,
+                        classification_request=CreateClassificationRequest(
+                            name=EntityName(classification_name),
+                            description=Markdown(classification_description),
+                        ),
+                        tag_request=CreateTagRequest(
+                            classification=FullyQualifiedEntityName(
+                                classification_name
+                            ),
+                            name=EntityName(tag),
+                            description=Markdown(tag_description)
+                            if tag_description
+                            else None,
+                        ),
                     )
-                )
+                    yield Either(right=classification)
+                    logger.debug(
+                        f"Classification {classification_name}, Tag {tag} Ingested"
+                    )
+                except Exception as err:
+                    yield Either(
+                        left=StackTraceError(
+                            name=tag,
+                            error=f"Error yielding tag [{tag}]: [{err}]",
+                            stackTrace=traceback.format_exc(),
+                        )
+                    )
 
 
 @functools.lru_cache(maxsize=512)

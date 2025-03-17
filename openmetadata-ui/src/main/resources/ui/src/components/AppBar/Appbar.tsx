@@ -15,11 +15,12 @@ import { isString } from 'lodash';
 import Qs from 'qs';
 import React, { useEffect, useState } from 'react';
 import { useHistory } from 'react-router-dom';
-import { getExplorePath, TOUR_SEARCH_TERM } from '../../constants/constants';
+import { TOUR_SEARCH_TERM } from '../../constants/constants';
 import { useTourProvider } from '../../context/TourProvider/TourProvider';
 import { CurrentTourPageType } from '../../enums/tour.enum';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
+import TokenService from '../../utils/Auth/TokenService/TokenServiceUtil';
 import {
   extractDetailsFromToken,
   isProtectedRoute,
@@ -27,6 +28,7 @@ import {
 } from '../../utils/AuthProvider.util';
 import { addToRecentSearched } from '../../utils/CommonUtils';
 import { getOidcToken } from '../../utils/LocalStorageUtils';
+import { getExplorePath } from '../../utils/RouterUtils';
 import searchClassBase from '../../utils/SearchClassBase';
 import NavBar from '../NavBar/NavBar';
 import './app-bar.style.less';
@@ -38,8 +40,7 @@ const Appbar: React.FC = (): JSX.Element => {
   const { isTourOpen, updateTourPage, updateTourSearch, tourSearchValue } =
     useTourProvider();
 
-  const { isAuthenticated, searchCriteria, trySilentSignIn } =
-    useApplicationStore();
+  const { isAuthenticated, searchCriteria } = useApplicationStore();
 
   const parsedQueryString = Qs.parse(
     location.search.startsWith('?')
@@ -126,7 +127,7 @@ const Appbar: React.FC = (): JSX.Element => {
       const { isExpired } = extractDetailsFromToken(getOidcToken());
       if (!document.hidden && isExpired) {
         // force logout
-        trySilentSignIn(true);
+        TokenService.getInstance().refreshToken();
       }
     };
 

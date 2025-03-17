@@ -11,7 +11,7 @@ Welcome to OpenMetadata's unified platform for data discovery, observability, an
 
 OpenMetadata is designed to support both technical and non-technical data practitioners across various use cases, including data discovery, lineage, observability, quality, collaboration, governance, and insights.
 
-The platform includes a library of 80+ turnkey connectors to easily ingest metadata from sources such as data warehouses, data lakes, streaming platforms, dashboards, and ML models. For custom data sources, APIs are available to streamline metadata ingestion. Metadata from these sources is organized into a Unified Metadata Graph, providing a single, comprehensive source of truth for your entire data estate.
+The platform includes a library of 90+ turnkey connectors to easily ingest metadata from sources such as data warehouses, data lakes, streaming platforms, dashboards, and ML models. For custom data sources, APIs are available to streamline metadata ingestion. Metadata from these sources is organized into a Unified Metadata Graph, providing a single, comprehensive source of truth for your entire data estate.
 
 This centralized metadata is accessible through a unified user interface, eliminating the need for practitioners to switch between multiple catalogs, quality, or governance tools. OpenMetadata can also be extended with applications, such as AI-driven productivity tools like MetaPilot, or through custom-built workflows that integrate the platform with existing systems.
 The platform’s native collaboration features support shared workflows, enabling different teams—data platform engineers, governance professionals, data scientists/analysts, and business users—to collaborate effectively in a single environment.
@@ -23,7 +23,7 @@ Before we get started, here’s a quick summary of some of OpenMetadata’s main
 ### Discovery
 - Integrated catalog, data quality, and glossary
 - Natural language search, filtering, and faceting
-- 80+ turnkey data connectors
+- 90+ turnkey data connectors
 
 ### Lineage
 - Table and column-level lineage

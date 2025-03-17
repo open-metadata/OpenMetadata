@@ -13,11 +13,6 @@
 import { expect, Page } from '@playwright/test';
 import { isEmpty, lowerCase } from 'lodash';
 import {
-  customFormatDateTime,
-  getCurrentMillis,
-  getEpochMillisForFutureDays,
-} from '../../src/utils/date-time/DateTimeUtils';
-import {
   ENTITIES_WITHOUT_FOLLOWING_BUTTON,
   LIST_OF_FIELDS_TO_EDIT_NOT_TO_BE_PRESENT,
   LIST_OF_FIELDS_TO_EDIT_TO_BE_DISABLED,
@@ -30,6 +25,11 @@ import {
   redirectToHomePage,
   toastNotification,
 } from './common';
+import {
+  customFormatDateTime,
+  getCurrentMillis,
+  getEpochMillisForFutureDays,
+} from './dateTime';
 
 export const visitEntityPage = async (data: {
   page: Page;
@@ -64,7 +64,7 @@ export const addOwner = async ({
   await page.getByTestId(initiatorId).click();
   if (type === 'Users') {
     const userListResponse = page.waitForResponse(
-      '/api/v1/users?limit=*&isBot=false*'
+      '/api/v1/search/query?q=*isBot:false*index=user_search_index*'
     );
     await page.getByRole('tab', { name: type }).click();
     await userListResponse;
@@ -359,7 +359,7 @@ export const assignTag = async (
   page: Page,
   tag: string,
   action: 'Add' | 'Edit' = 'Add',
-  parentId = 'entity-right-panel'
+  parentId = 'KnowledgePanel.Tags'
 ) => {
   await page
     .getByTestId(parentId)
@@ -446,7 +446,7 @@ export const assignTagToChildren = async ({
 export const removeTag = async (page: Page, tags: string[]) => {
   for (const tag of tags) {
     await page
-      .getByTestId('entity-right-panel')
+      .getByTestId('KnowledgePanel.Tags')
       .getByTestId('tags-container')
       .getByTestId('edit-button')
       .click();
@@ -473,7 +473,7 @@ export const removeTag = async (page: Page, tags: string[]) => {
 
     expect(
       page
-        .getByTestId('entity-right-panel')
+        .getByTestId('KnowledgePanel.Tags')
         .getByTestId('tags-container')
         .getByTestId(`tag-${tag}`)
     ).not.toBeVisible();
@@ -540,7 +540,7 @@ export const assignGlossaryTerm = async (
   action: 'Add' | 'Edit' = 'Add'
 ) => {
   await page
-    .getByTestId('entity-right-panel')
+    .getByTestId('KnowledgePanel.GlossaryTerms')
     .getByTestId('glossary-container')
     .getByTestId(action === 'Add' ? 'add-tag' : 'edit-button')
     .click();
@@ -564,7 +564,7 @@ export const assignGlossaryTerm = async (
 
   await expect(
     page
-      .getByTestId('entity-right-panel')
+      .getByTestId('KnowledgePanel.GlossaryTerms')
       .getByTestId('glossary-container')
       .getByTestId(`tag-${glossaryTerm.fullyQualifiedName}`)
   ).toBeVisible();
@@ -625,7 +625,7 @@ export const removeGlossaryTerm = async (
 ) => {
   for (const tag of glossaryTerms) {
     await page
-      .getByTestId('entity-right-panel')
+      .getByTestId('KnowledgePanel.GlossaryTerms')
       .getByTestId('glossary-container')
       .getByTestId('edit-button')
       .click();
@@ -653,7 +653,7 @@ export const removeGlossaryTerm = async (
 
     expect(
       page
-        .getByTestId('entity-right-panel')
+        .getByTestId('KnowledgePanel.GlossaryTerms')
         .getByTestId('glossary-container')
         .getByTestId(`tag-${tag.fullyQualifiedName}`)
     ).not.toBeVisible();
@@ -1098,9 +1098,6 @@ export const deletedEntityCommonChecks = async ({
   deleted?: boolean;
 }) => {
   const isTableEntity = endPoint === EntityTypeEndpoint.Table;
-
-  // Go to first tab before starts validating
-  await page.click('.ant-tabs-tab:nth-child(1)');
 
   // Check if all the edit actions are available for the entity
   await checkForEditActions({

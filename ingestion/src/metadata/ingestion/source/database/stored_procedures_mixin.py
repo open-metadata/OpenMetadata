@@ -38,6 +38,7 @@ from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.status import Status
 from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper
 from metadata.ingestion.lineage.sql_lineage import get_lineage_by_query
+from metadata.ingestion.models.ometa_lineage import OMetaLineageRequest
 from metadata.ingestion.models.topology import Queue
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.logger import ingestion_logger
@@ -221,7 +222,19 @@ class StoredProcedureLineageMixin(ABC):
                     query_by_procedure=procedure_and_query.query_by_procedure,
                     procedure=procedure_and_query.procedure,
                 ):
-                    queue.put(lineage)
+                    if lineage and lineage.right is not None:
+                        queue.put(
+                            Either(
+                                right=OMetaLineageRequest(
+                                    override_lineage=False,
+                                    lineage_request=lineage.right,
+                                    entity=StoredProcedure,
+                                    entity_fqn=procedure_and_query.procedure.fullyQualifiedName.root,
+                                )
+                            )
+                        )
+                    else:
+                        queue.put(lineage)
             except Exception as exc:
                 logger.debug(traceback.format_exc())
                 logger.warning(
@@ -260,8 +273,11 @@ class StoredProcedureLineageMixin(ABC):
                 }
             }
         }
+        if self.source_config.incrementalLineageProcessing:
+            query.get("query").get("bool").get("must").append(
+                {"bool": {"should": [{"term": {"processedLineage": False}}]}}
+            )
         query_filter = json.dumps(query)
-
         logger.info("Processing Lineage for Stored Procedures")
         # First, get all the query history
         queries_dict = self.get_stored_procedure_queries_dict()

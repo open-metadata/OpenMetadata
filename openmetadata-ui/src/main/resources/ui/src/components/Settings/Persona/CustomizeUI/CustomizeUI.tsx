@@ -12,8 +12,10 @@
  */
 import { Col, Row } from 'antd';
 import { isEmpty } from 'lodash';
-import React from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { useHistory } from 'react-router-dom';
+import { FQN_SEPARATOR_CHAR } from '../../../../constants/char.constants';
+import useCustomLocation from '../../../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../../../hooks/useFqn';
 import { getCustomizePagePath } from '../../../../utils/GlobalSettingsUtils';
 import {
@@ -26,7 +28,12 @@ const categories = getCustomizePageCategories();
 
 export const CustomizeUI = () => {
   const history = useHistory();
+  const location = useCustomLocation();
   const { fqn: personaFQN } = useFqn();
+  const activeCat = useMemo(
+    () => (location.hash?.replace('#', '') || '').split('.')[1] ?? '',
+    [location]
+  );
 
   const [items, setItems] = React.useState(categories);
 
@@ -36,9 +43,22 @@ export const CustomizeUI = () => {
     if (isEmpty(nestedItems)) {
       history.push(getCustomizePagePath(personaFQN, category));
     } else {
-      setItems(nestedItems);
+      history.push({
+        hash: location.hash + FQN_SEPARATOR_CHAR + category,
+      });
     }
   };
+
+  useEffect(() => {
+    if (!activeCat) {
+      setItems(categories);
+
+      return;
+    }
+
+    const nestedItems = getCustomizePageOptions(activeCat);
+    setItems(nestedItems);
+  }, [activeCat]);
 
   return (
     <Row gutter={[16, 16]}>

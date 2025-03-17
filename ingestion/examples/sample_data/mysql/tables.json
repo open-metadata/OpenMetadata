@@ -54,7 +54,8 @@
         "displayName": "mysql_sample",
         "deleted": false,
         "inherited": null
-      }
+      },
+      "sourceUrl": "https://localhost:3306/new_er_database"
     },
     {
       "name": "Users",
@@ -125,7 +126,8 @@
         "displayName": "mysql_sample",
         "deleted": false,
         "inherited": null
-      }
+      },
+      "sourceUrl": "https://localhost:3306/new_er_database"
     },
     {
       "name": "Categories",
@@ -180,110 +182,8 @@
         "displayName": "mysql_sample",
         "deleted": false,
         "inherited": null
-      }
-    },
-    {
-      "name": "Comments",
-      "displayName": null,
-      "fullyQualifiedName": "mysql_sample.default.posts_db.Comments",
-      "description": null,
-      "tableType": "Regular",
-      "columns": [
-        {
-          "name": "comment_id",
-          "displayName": null,
-          "dataType": "INT",
-          "dataTypeDisplay": "int",
-          "description": null,
-          "constraint": "PRIMARY_KEY",
-          "ordinalPosition": 1
-        },
-        {
-          "name": "post_id",
-          "displayName": null,
-          "dataType": "INT",
-          "dataTypeDisplay": "int",
-          "description": null,
-          "constraint": "NULL",
-          "ordinalPosition": 2
-        },
-        {
-          "name": "user_id",
-          "displayName": null,
-          "dataType": "INT",
-          "dataTypeDisplay": "int",
-          "description": null,
-          "constraint": "NULL",
-          "ordinalPosition": 3
-        },
-        {
-          "name": "comment",
-          "displayName": null,
-          "dataType": "TEXT",
-          "dataTypeDisplay": "text",
-          "description": null,
-          "constraint": "NOT_NULL",
-          "ordinalPosition": 4
-        },
-        {
-          "name": "created_at",
-          "displayName": null,
-          "dataType": "TIMESTAMP",
-          "dataTypeDisplay": "timestamp",
-          "description": null,
-          "constraint": "NULL",
-          "ordinalPosition": 5
-        }
-      ],
-      "tableConstraints": [
-        {
-          "constraintType": "FOREIGN_KEY",
-          "columns": [
-            "post_id"
-          ],
-          "referredColumns": [
-            "mysql_sample.default.posts_db.Posts.post_id"
-          ],
-          "relationshipType": "MANY_TO_ONE"
-        },
-        {
-          "constraintType": "FOREIGN_KEY",
-          "columns": [
-            "user_id"
-          ],
-          "referredColumns": [
-            "mysql_sample.default.posts_db.Users.user_id"
-          ],
-          "relationshipType": "MANY_TO_ONE"
-        }
-      ],
-      "databaseSchema": {
-        "type": "databaseSchema",
-        "name": "posts_db",
-        "fullyQualifiedName": "mysql_sample.default.posts_db",
-        "description": null,
-        "displayName": "posts_db",
-        "deleted": false,
-        "inherited": null
       },
-      "database": {
-        "type": "database",
-        "name": "default",
-        "fullyQualifiedName": "mysql_sample.default",
-        "description": null,
-        "displayName": "default",
-        "deleted": false,
-        "inherited": null
-      },
-      "service": {
-        "type": "databaseService",
-        "name": "mysql_sample",
-        "fullyQualifiedName": "mysql_sample",
-        "description": null,
-        "displayName": "mysql_sample",
-        "deleted": false,
-        "inherited": null
-      }
+      "sourceUrl": "https://localhost:3306/posts_db"
     },
     {
       "name": "Posts",
@@ -402,7 +302,112 @@
         "displayName": "mysql_sample",
         "deleted": false,
         "inherited": null
-      }
+      },
+      "sourceUrl": "https://localhost:3306/posts_db"
+    },
+    {
+      "name": "Comments",
+      "displayName": null,
+      "fullyQualifiedName": "mysql_sample.default.posts_db.Comments",
+      "description": null,
+      "tableType": "Regular",
+      "columns": [
+        {
+          "name": "comment_id",
+          "displayName": null,
+          "dataType": "INT",
+          "dataTypeDisplay": "int",
+          "description": null,
+          "constraint": "PRIMARY_KEY",
+          "ordinalPosition": 1
+        },
+        {
+          "name": "post_id",
+          "displayName": null,
+          "dataType": "INT",
+          "dataTypeDisplay": "int",
+          "description": null,
+          "constraint": "NULL",
+          "ordinalPosition": 2
+        },
+        {
+          "name": "user_id",
+          "displayName": null,
+          "dataType": "INT",
+          "dataTypeDisplay": "int",
+          "description": null,
+          "constraint": "NULL",
+          "ordinalPosition": 3
+        },
+        {
+          "name": "comment",
+          "displayName": null,
+          "dataType": "TEXT",
+          "dataTypeDisplay": "text",
+          "description": null,
+          "constraint": "NOT_NULL",
+          "ordinalPosition": 4
+        },
+        {
+          "name": "created_at",
+          "displayName": null,
+          "dataType": "TIMESTAMP",
+          "dataTypeDisplay": "timestamp",
+          "description": null,
+          "constraint": "NULL",
+          "ordinalPosition": 5
+        }
+      ],
+      "tableConstraints": [
+        {
+          "constraintType": "FOREIGN_KEY",
+          "columns": [
+            "post_id"
+          ],
+          "referredColumns": [
+            "mysql_sample.default.posts_db.Posts.post_id"
+          ],
+          "relationshipType": "MANY_TO_ONE"
+        },
+        {
+          "constraintType": "FOREIGN_KEY",
+          "columns": [
+            "user_id"
+          ],
+          "referredColumns": [
+            "mysql_sample.default.posts_db.Users.user_id"
+          ],
+          "relationshipType": "MANY_TO_ONE"
+        }
+      ],
+      "databaseSchema": {
+        "type": "databaseSchema",
+        "name": "posts_db",
+        "fullyQualifiedName": "mysql_sample.default.posts_db",
+        "description": null,
+        "displayName": "posts_db",
+        "deleted": false,
+        "inherited": null
+      },
+      "database": {
+        "type": "database",
+        "name": "default",
+        "fullyQualifiedName": "mysql_sample.default",
+        "description": null,
+        "displayName": "default",
+        "deleted": false,
+        "inherited": null
+      },
+      "service": {
+        "type": "databaseService",
+        "name": "mysql_sample",
+        "fullyQualifiedName": "mysql_sample",
+        "description": null,
+        "displayName": "mysql_sample",
+        "deleted": false,
+        "inherited": null
+      },
+      "sourceUrl": "https://localhost:3306/posts_db"
     },
     {
       "name": "PostTags",
@@ -489,7 +494,8 @@
         "displayName": "mysql_sample",
         "deleted": false,
         "inherited": null
-      }
+      },
+      "sourceUrl": "https://localhost:3306/posts_db"
     },
     {
       "name": "Profiles",
@@ -567,7 +573,8 @@
         "displayName": "mysql_sample",
         "deleted": false,
         "inherited": null
-      }
+      },
+      "sourceUrl": "https://localhost:3306/posts_db"
     }
   ]
 }

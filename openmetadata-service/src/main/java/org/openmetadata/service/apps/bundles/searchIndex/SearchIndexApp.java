@@ -1,11 +1,12 @@
 package org.openmetadata.service.apps.bundles.searchIndex;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.service.Entity.QUERY_COST_RECORD;
 import static org.openmetadata.service.Entity.TEST_CASE_RESOLUTION_STATUS;
 import static org.openmetadata.service.Entity.TEST_CASE_RESULT;
-import static org.openmetadata.service.apps.scheduler.AbstractOmAppJobListener.APP_RUN_STATS;
-import static org.openmetadata.service.apps.scheduler.AbstractOmAppJobListener.WEBSOCKET_STATUS_CHANNEL;
 import static org.openmetadata.service.apps.scheduler.AppScheduler.ON_DEMAND_JOB;
+import static org.openmetadata.service.apps.scheduler.OmAppJobListener.APP_RUN_STATS;
+import static org.openmetadata.service.apps.scheduler.OmAppJobListener.WEBSOCKET_STATUS_CHANNEL;
 import static org.openmetadata.service.socket.WebSocketManager.SEARCH_INDEX_JOB_BROADCAST_CHANNEL;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.ENTITY_TYPE_KEY;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.isDataInsightIndex;
@@ -23,6 +24,7 @@ import java.util.concurrent.Semaphore;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
+import javax.ws.rs.core.Response;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang.exception.ExceptionUtils;
@@ -41,6 +43,7 @@ import org.openmetadata.schema.system.Stats;
 import org.openmetadata.schema.system.StepStats;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.AbstractNativeApplication;
+import org.openmetadata.service.exception.AppException;
 import org.openmetadata.service.exception.SearchIndexException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
@@ -70,7 +73,8 @@ public class SearchIndexApp extends AbstractNativeApplication {
           ReportData.ReportDataType.WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA.value(),
           ReportData.ReportDataType.AGGREGATED_COST_ANALYSIS_REPORT_DATA.value(),
           TEST_CASE_RESOLUTION_STATUS,
-          TEST_CASE_RESULT);
+          TEST_CASE_RESULT,
+          QUERY_COST_RECORD);
 
   // Constants to replace magic numbers
   private BulkSink searchIndexSink;
@@ -465,6 +469,16 @@ public class SearchIndexApp extends AbstractNativeApplication {
     LOG.info("Stopped reindexing job.");
     jobData.setStatus(EventPublisherJob.Status.STOPPED);
     sendUpdates(jobExecutionContext);
+  }
+
+  @Override
+  protected void validateConfig(Map<String, Object> appConfig) {
+    try {
+      JsonUtils.convertValue(appConfig, EventPublisherJob.class);
+    } catch (IllegalArgumentException e) {
+      throw AppException.byMessage(
+          Response.Status.BAD_REQUEST, "Invalid App Configuration: " + e.getMessage());
+    }
   }
 
   private void processTask(IndexingTask<?> task, JobExecutionContext jobExecutionContext) {

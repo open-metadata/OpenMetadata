@@ -16,7 +16,6 @@ import classNames from 'classnames';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import { getVersionPath } from '../../../constants/constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { ChangeDescription } from '../../../generated/entity/data/metric';
@@ -26,10 +25,12 @@ import {
   getEntityVersionByField,
   getEntityVersionTags,
 } from '../../../utils/EntityVersionUtils';
+import { getVersionPath } from '../../../utils/RouterUtils';
 import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
 import DescriptionV1 from '../../common/EntityDescription/DescriptionV1';
 import Loader from '../../common/Loader/Loader';
 import TabsLabel from '../../common/TabsLabel/TabsLabel.component';
+import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
 import DataAssetsVersionHeader from '../../DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader';
 import DataProductsContainer from '../../DataProducts/DataProductsContainer/DataProductsContainer.component';
 import EntityVersionTimeLine from '../../Entity/EntityVersionTimeLine/EntityVersionTimeLine';
@@ -125,7 +126,7 @@ const MetricVersion: FC<MetricVersionProp> = ({
                   />
                 </Col>
                 <Col span={24}>
-                  <MetricExpression metricDetails={currentVersionData} />
+                  <MetricExpression />
                 </Col>
               </Row>
             </Col>
@@ -165,7 +166,6 @@ const MetricVersion: FC<MetricVersionProp> = ({
           <div className="p-md">
             <CustomPropertyTable
               isVersionView
-              entityDetails={currentVersionData}
               entityType={EntityType.METRIC}
               hasEditAccess={false}
               hasPermission={entityPermissions.ViewAll}
@@ -199,13 +199,21 @@ const MetricVersion: FC<MetricVersionProp> = ({
                 onVersionClick={backHandler}
               />
             </Col>
-            <Col span={24}>
-              <Tabs
-                defaultActiveKey={tab ?? EntityTabs.OVERVIEW}
-                items={tabItems}
-                onChange={handleTabChange}
-              />
-            </Col>
+            <GenericProvider
+              isVersionView
+              currentVersionData={currentVersionData}
+              data={currentVersionData}
+              permissions={entityPermissions}
+              type={EntityType.METRIC}
+              onUpdate={() => Promise.resolve()}>
+              <Col span={24}>
+                <Tabs
+                  defaultActiveKey={tab ?? EntityTabs.OVERVIEW}
+                  items={tabItems}
+                  onChange={handleTabChange}
+                />
+              </Col>
+            </GenericProvider>
           </Row>
         </div>
       )}

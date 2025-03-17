@@ -47,6 +47,8 @@ export const getToken = async (page: Page) => {
 
 export const getAuthContext = async (token: string) => {
   return await request.newContext({
+    // Default timeout is 30s making it to 1m for AUTs
+    timeout: 60000,
     extraHTTPHeaders: {
       Authorization: `Bearer ${token}`,
     },
@@ -116,8 +118,6 @@ export const toastNotification = async (
   page: Page,
   message: string | RegExp
 ) => {
-  await page.waitForSelector('[data-testid="alert-bar"]', { state: 'visible' });
-
   await expect(page.getByTestId('alert-bar')).toHaveText(message);
 
   await expect(page.getByTestId('alert-icon')).toBeVisible();

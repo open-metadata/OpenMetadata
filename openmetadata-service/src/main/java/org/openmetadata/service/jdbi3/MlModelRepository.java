@@ -39,6 +39,7 @@ import org.openmetadata.schema.type.MlHyperParameter;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TaskType;
+import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.FeedRepository.TaskWorkflow;
@@ -228,7 +229,8 @@ public class MlModelRepository extends EntityRepository<MlModel> {
   }
 
   @Override
-  public EntityUpdater getUpdater(MlModel original, MlModel updated, Operation operation) {
+  public EntityRepository<MlModel>.EntityUpdater getUpdater(
+      MlModel original, MlModel updated, Operation operation, ChangeSource changeSource) {
     return new MlModelUpdater(original, updated, operation);
   }
 

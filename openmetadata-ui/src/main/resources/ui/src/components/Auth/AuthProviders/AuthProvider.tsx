@@ -38,6 +38,7 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
+import { UN_AUTHORIZED_EXCLUDED_PATHS } from '../../../constants/Auth.constants';
 import {
   DEFAULT_DOMAIN_VALUE,
   ES_MAX_PAGE_SIZE,
@@ -167,6 +168,7 @@ export const AuthProvider = ({
     resetWebAnalyticSession();
   };
 
+  // Handler to perform logout within application
   const onLogoutHandler = useCallback(() => {
     clearTimeout(timeoutId);
 
@@ -183,6 +185,9 @@ export const AuthProvider = ({
     setRefreshToken('');
 
     setApplicationLoading(false);
+
+    // Clear the refresh flag (used after refresh is complete)
+    tokenService.current.clearRefreshInProgress();
 
     // Upon logout, redirect to the login page
     history.push(ROUTES.SIGNIN);
@@ -389,6 +394,7 @@ export const AuthProvider = ({
     ]
   );
 
+  // Callback to cleanup session related info upon successful logout
   const handleSuccessfulLogout = () => {
     resetUserDetails();
   };
@@ -517,7 +523,9 @@ export const AuthProvider = ({
         if (error.response) {
           const { status } = error.response;
           if (status === ClientErrors.UNAUTHORIZED) {
-            if (error.config.url === '/users/refresh') {
+            // For login or refresh we don't want to fire another refresh req
+            // Hence rejecting it
+            if (UN_AUTHORIZED_EXCLUDED_PATHS.includes(error.config.url)) {
               return Promise.reject(error as Error);
             }
             handleStoreProtectedRedirectPath();

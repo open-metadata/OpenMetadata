@@ -10,32 +10,43 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from 'antd';
+import { Col, Row, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
-import React, { FC, useEffect, useMemo } from 'react';
+import { AxiosError } from 'axios';
+import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { getEntityDetailsPath } from '../../../constants/constants';
 import { EntityType } from '../../../enums/entity.enum';
-import { Container } from '../../../generated/entity/data/container';
 import { EntityReference } from '../../../generated/type/entityReference';
+import { usePaging } from '../../../hooks/paging/usePaging';
+import { useFqn } from '../../../hooks/useFqn';
+import { getContainerChildrenByName } from '../../../rest/storageAPI';
 import { getColumnSorter, getEntityName } from '../../../utils/EntityUtils';
+import { getEntityDetailsPath } from '../../../utils/RouterUtils';
+import { showErrorToast } from '../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import NextPrevious from '../../common/NextPrevious/NextPrevious';
+import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
 import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import Table from '../../common/Table/Table';
 
-interface ContainerChildrenProps {
-  childrenList: Container['children'];
-  isLoading?: boolean;
-  fetchChildren: () => void;
-}
-
-const ContainerChildren: FC<ContainerChildrenProps> = ({
-  childrenList,
-  isLoading,
-  fetchChildren,
-}) => {
+const ContainerChildren: FC = () => {
   const { t } = useTranslation();
+  const {
+    paging,
+    pageSize,
+    currentPage,
+    showPagination,
+    handlePageChange,
+    handlePageSizeChange,
+    handlePagingChange,
+  } = usePaging();
+
+  const { fqn: decodedContainerName } = useFqn();
+  const [isChildrenLoading, setIsChildrenLoading] = useState(false);
+  const [containerChildrenData, setContainerChildrenData] = useState<
+    EntityReference[]
+  >([]);
 
   const columns: ColumnsType<EntityReference> = useMemo(
     () => [
@@ -81,24 +92,65 @@ const ContainerChildren: FC<ContainerChildrenProps> = ({
     []
   );
 
+  const fetchContainerChildren = async (pagingOffset?: number) => {
+    setIsChildrenLoading(true);
+    try {
+      const { data, paging } = await getContainerChildrenByName(
+        decodedContainerName,
+        {
+          limit: pageSize,
+          offset: pagingOffset ?? 0,
+        }
+      );
+      setContainerChildrenData(data ?? []);
+      handlePagingChange(paging);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setIsChildrenLoading(false);
+    }
+  };
+
+  const handleChildrenPageChange = (data: PagingHandlerParams) => {
+    handlePageChange(data.currentPage);
+    fetchContainerChildren((data.currentPage - 1) * pageSize);
+  };
+
   useEffect(() => {
-    fetchChildren();
-  }, []);
+    fetchContainerChildren();
+  }, [pageSize]);
 
   return (
-    <Table
-      bordered
-      columns={columns}
-      data-testid="container-list-table"
-      dataSource={childrenList}
-      loading={isLoading}
-      locale={{
-        emptyText: <ErrorPlaceHolder className="p-y-md" />,
-      }}
-      pagination={false}
-      rowKey="id"
-      size="small"
-    />
+    <Row className="m-b-md" gutter={[0, 16]}>
+      <Col span={24}>
+        <Table
+          bordered
+          columns={columns}
+          data-testid="container-list-table"
+          dataSource={containerChildrenData}
+          loading={isChildrenLoading}
+          locale={{
+            emptyText: <ErrorPlaceHolder className="p-y-md" />,
+          }}
+          pagination={false}
+          rowKey="id"
+          size="small"
+        />
+      </Col>
+      <Col span={24}>
+        {showPagination && (
+          <NextPrevious
+            isNumberBased
+            currentPage={currentPage}
+            isLoading={isChildrenLoading}
+            pageSize={pageSize}
+            paging={paging}
+            pagingHandler={handleChildrenPageChange}
+            onShowSizeChange={handlePageSizeChange}
+          />
+        )}
+      </Col>
+    </Row>
   );
 };
 

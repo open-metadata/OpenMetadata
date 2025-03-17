@@ -74,11 +74,11 @@ const App: FC = () => {
       <div className="content-wrapper" data-testid="content-wrapper">
         <Router history={history}>
           <I18nextProvider i18n={i18n}>
-            <ErrorBoundary>
-              <AntDConfigProvider>
-                <AuthProvider childComponentType={AppRouter}>
-                  <TourProvider>
-                    <HelmetProvider>
+            <HelmetProvider>
+              <ErrorBoundary>
+                <AntDConfigProvider>
+                  <AuthProvider childComponentType={AppRouter}>
+                    <TourProvider>
                       <WebAnalyticsProvider>
                         <PermissionProvider>
                           <WebSocketProvider>
@@ -90,11 +90,11 @@ const App: FC = () => {
                           </WebSocketProvider>
                         </PermissionProvider>
                       </WebAnalyticsProvider>
-                    </HelmetProvider>
-                  </TourProvider>
-                </AuthProvider>
-              </AntDConfigProvider>
-            </ErrorBoundary>
+                    </TourProvider>
+                  </AuthProvider>
+                </AntDConfigProvider>
+              </ErrorBoundary>
+            </HelmetProvider>
           </I18nextProvider>
         </Router>
       </div>

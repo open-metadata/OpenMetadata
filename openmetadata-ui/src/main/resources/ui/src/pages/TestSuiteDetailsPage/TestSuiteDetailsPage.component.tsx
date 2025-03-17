@@ -28,6 +28,7 @@ import {
   PagingHandlerParams,
 } from '../../components/common/NextPrevious/NextPrevious.interface';
 import { OwnerLabel } from '../../components/common/OwnerLabel/OwnerLabel.component';
+import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import DataQualityTab from '../../components/Database/Profiler/DataQualityTab/DataQualityTab';
@@ -49,13 +50,14 @@ import {
   EntityType,
   TabSpecificField,
 } from '../../enums/entity.enum';
+import { PipelineType } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { TestCase } from '../../generated/tests/testCase';
 import { EntityReference, TestSuite } from '../../generated/tests/testSuite';
 import { Include } from '../../generated/type/include';
-import { useAuth } from '../../hooks/authHooks';
 import { usePaging } from '../../hooks/paging/usePaging';
 import { useFqn } from '../../hooks/useFqn';
 import { DataQualityPageTabs } from '../../pages/DataQuality/DataQualityPage.interface';
+import { getIngestionPipelines } from '../../rest/ingestionPipelineAPI';
 import {
   addTestCaseToLogicalTestSuite,
   getListTestCaseBySearch,
@@ -76,14 +78,13 @@ const TestSuiteDetailsPage = () => {
   const { t } = useTranslation();
   const { getEntityPermissionByFqn } = usePermissionProvider();
   const { fqn: testSuiteFQN } = useFqn();
-  const { isAdminUser } = useAuth();
   const history = useHistory();
 
   const afterDeleteAction = () => {
     history.push(getDataQualityPagePath(DataQualityPageTabs.TEST_SUITES));
   };
   const [testSuite, setTestSuite] = useState<TestSuite>();
-  const [isDescriptionEditable, setIsDescriptionEditable] = useState(false);
+
   const [isTestCaseLoading, setIsTestCaseLoading] = useState(true);
   const [testCaseResult, setTestCaseResult] = useState<Array<TestCase>>([]);
 
@@ -103,6 +104,8 @@ const TestSuiteDetailsPage = () => {
     useState<boolean>(false);
   const [sortOptions, setSortOptions] =
     useState<ListTestCaseParamsBySearch>(DEFAULT_SORT_ORDER);
+  const [ingestionPipelineCount, setIngestionPipelineCount] =
+    useState<number>(0);
 
   const [slashedBreadCrumb, setSlashedBreadCrumb] = useState<
     TitleBreadcrumbProps['titleLinks']
@@ -115,6 +118,19 @@ const TestSuiteDetailsPage = () => {
       testSuiteDescription: testSuite?.description ?? '',
     };
   }, [testSuite]);
+
+  const permissions = useMemo(() => {
+    return {
+      hasViewPermission:
+        testSuitePermissions?.ViewAll || testSuitePermissions?.ViewBasic,
+      hasEditPermission: testSuitePermissions?.EditAll,
+      hasEditOwnerPermission:
+        testSuitePermissions?.EditAll || testSuitePermissions?.EditOwners,
+      hasEditDescriptionPermission:
+        testSuitePermissions?.EditAll || testSuitePermissions?.EditDescription,
+      hasDeletePermission: testSuitePermissions?.Delete,
+    };
+  }, [testSuitePermissions]);
 
   const incidentUrlState = useMemo(() => {
     return [
@@ -133,10 +149,6 @@ const TestSuiteDetailsPage = () => {
     const jsonPatch = compare(testSuite as TestSuite, updatedData);
 
     return updateTestSuiteById(testSuiteId as string, jsonPatch);
-  };
-
-  const descriptionHandler = (value: boolean) => {
-    setIsDescriptionEditable(value);
   };
 
   const fetchTestSuitePermission = async () => {
@@ -169,7 +181,13 @@ const TestSuiteDetailsPage = () => {
         ...param,
         limit: pageSize,
       });
-
+      const { paging: ingestionPipelinePaging } = await getIngestionPipelines({
+        arrQueryFields: [],
+        testSuite: testSuiteFQN,
+        pipelineType: [PipelineType.TestSuite],
+        limit: 0,
+      });
+      setIngestionPipelineCount(ingestionPipelinePaging.total);
       setTestCaseResult(response.data);
       handlePagingChange(response.paging);
     } catch {
@@ -208,7 +226,7 @@ const TestSuiteDetailsPage = () => {
   const fetchTestSuiteByName = async () => {
     try {
       const response = await getTestSuiteByName(testSuiteFQN, {
-        fields: TabSpecificField.OWNERS,
+        fields: [TabSpecificField.OWNERS, TabSpecificField.DOMAIN],
         include: Include.All,
       });
       setSlashedBreadCrumb([
@@ -280,11 +298,7 @@ const TestSuiteDetailsPage = () => {
         }
       } catch (error) {
         showErrorToast(error as AxiosError);
-      } finally {
-        descriptionHandler(false);
       }
-    } else {
-      descriptionHandler(false);
     }
   };
 
@@ -330,10 +344,10 @@ const TestSuiteDetailsPage = () => {
   };
 
   useEffect(() => {
-    if (testSuitePermissions.ViewAll || testSuitePermissions.ViewBasic) {
+    if (permissions.hasViewPermission) {
       fetchTestSuiteByName();
     }
-  }, [testSuitePermissions, testSuiteFQN]);
+  }, [permissions, testSuiteFQN]);
 
   useEffect(() => {
     fetchTestSuitePermission();
@@ -360,7 +374,13 @@ const TestSuiteDetailsPage = () => {
   const tabs = useMemo(
     () => [
       {
-        label: t('label.test-case-plural'),
+        label: (
+          <TabsLabel
+            count={pagingData.paging.total}
+            id={EntityTabs.TEST_CASES}
+            name={t('label.test-case-plural')}
+          />
+        ),
         key: EntityTabs.TEST_CASES,
         children: (
           <DataQualityTab
@@ -378,7 +398,13 @@ const TestSuiteDetailsPage = () => {
         ),
       },
       {
-        label: t('label.pipeline-plural'),
+        label: (
+          <TabsLabel
+            count={ingestionPipelineCount}
+            id={EntityTabs.PIPELINE}
+            name={t('label.pipeline-plural')}
+          />
+        ),
         key: EntityTabs.PIPELINE,
         children: (
           <TestSuitePipelineTab isLogicalTestSuite testSuite={testSuite} />
@@ -396,6 +422,7 @@ const TestSuiteDetailsPage = () => {
       handleTestSuiteUpdate,
       handleSortTestCase,
       fetchTestCases,
+      ingestionPipelineCount,
     ]
   );
 
@@ -447,7 +474,7 @@ const TestSuiteDetailsPage = () => {
                   isRecursiveDelete
                   afterDeleteAction={afterDeleteAction}
                   allowSoftDelete={false}
-                  canDelete={isAdminUser}
+                  canDelete={permissions.hasDeletePermission}
                   deleted={testSuite?.deleted}
                   displayName={getEntityName(testSuite)}
                   editDisplayNamePermission={
@@ -474,7 +501,7 @@ const TestSuiteDetailsPage = () => {
                 />
                 <Divider className="self-center" type="vertical" />
                 <OwnerLabel
-                  hasPermission={isAdminUser}
+                  hasPermission={permissions.hasEditOwnerPermission}
                   owners={testOwners}
                   onUpdate={onUpdateOwner}
                 />
@@ -489,11 +516,8 @@ const TestSuiteDetailsPage = () => {
             description={testSuiteDescription}
             entityName={getEntityName(testSuite)}
             entityType={EntityType.TEST_SUITE}
-            hasEditAccess={isAdminUser}
-            isEdit={isDescriptionEditable}
+            hasEditAccess={permissions.hasEditDescriptionPermission}
             showCommentsIcon={false}
-            onCancel={() => descriptionHandler(false)}
-            onDescriptionEdit={() => descriptionHandler(true)}
             onDescriptionUpdate={onDescriptionUpdate}
           />
         </Col>

@@ -102,7 +102,7 @@ import org.quartz.SchedulerException;
         "The `Events` are changes to metadata and are sent when entities are created, modified, or updated. External systems can subscribe to events using event subscription API over Webhooks, Slack, or Microsoft Teams.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "events/subscriptions")
+@Collection(name = "events/subscriptions", order = 7) // needs to initialize before applications
 public class EventSubscriptionResource
     extends EntityResource<EventSubscription, EventSubscriptionRepository> {
   public static final String COLLECTION_PATH = "/v1/events/subscriptions";
@@ -132,6 +132,7 @@ public class EventSubscriptionResource
   @Override
   public void initialize(OpenMetadataApplicationConfig config) {
     try {
+      EventSubscriptionScheduler.initialize(config);
       EventsSubscriptionRegistry.initialize(
           listOrEmpty(EventSubscriptionResource.getNotificationsFilterDescriptors()),
           listOrEmpty(EventSubscriptionResource.getObservabilityFilterDescriptors()));
@@ -485,6 +486,36 @@ public class EventSubscriptionResource
   }
 
   @DELETE
+  @Path("/async/{id}")
+  @Valid
+  @Operation(
+      operationId = "deleteEventSubscriptionAsync",
+      summary = "Asynchronously delete an Event Subscription by Id",
+      description = "Asynchronously delete an Event Subscription",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Entity events",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = EventSubscription.class))),
+        @ApiResponse(responseCode = "404", description = "Entity for instance {id} is not found")
+      })
+  public Response deleteEventSubscriptionAsync(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the Event Subscription", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id)
+      throws SchedulerException {
+    EventSubscription eventSubscription = repository.get(null, id, repository.getFields("id"));
+    EventSubscriptionScheduler.getInstance().deleteEventSubscriptionPublisher(eventSubscription);
+    EventSubscriptionScheduler.getInstance().deleteSuccessfulAndFailedEventsRecordByAlert(id);
+    return deleteByIdAsync(uriInfo, securityContext, id, true, true);
+  }
+
+  @DELETE
   @Path("/name/{name}")
   @Operation(
       operationId = "deleteEventSubscriptionByName",
@@ -538,8 +569,6 @@ public class EventSubscriptionResource
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.VIEW_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
-
-    authorizer.authorizeAdmin(securityContext);
     EventSubscription sub = repository.getByName(null, name, repository.getFields("name"));
     return EventSubscriptionScheduler.getInstance()
         .getStatusForEventSubscription(sub.getId(), destinationId);
@@ -1316,6 +1345,39 @@ public class EventSubscriptionResource
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
     EventSubscription sub = repository.getByName(null, name, repository.getFields("id"));
     return EventSubscriptionScheduler.getInstance().listAlertDestinations(sub.getId());
+  }
+
+  @PUT
+  @Path("name/{eventSubscriptionName}/syncOffset")
+  @Valid
+  @Operation(
+      operationId = "syncOffsetForEventSubscriptionByName",
+      summary = "Sync Offset for a specific Event Subscription by its name",
+      description = "Sync Offset for a specific Event Subscription by its name",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Returns the destinations for the Event Subscription",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = SubscriptionDestination.class))),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Event Subscription with the name {fqn} is not found")
+      })
+  public Response syncOffsetForEventSubscription(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Name of the Event Subscription", schema = @Schema(type = "string"))
+          @PathParam("eventSubscriptionName")
+          String name) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.EDIT_ALL);
+    authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
+    return Response.status(Response.Status.OK)
+        .entity(repository.syncEventSubscriptionOffset(name))
+        .build();
   }
 
   @POST

@@ -46,7 +46,7 @@ import { VersionStatus } from '../../../../utils/EntityVersionUtils.interface';
 import { getGlossaryPath } from '../../../../utils/RouterUtils';
 import { SelectOption } from '../../../common/AsyncSelectList/AsyncSelectList.interface';
 import TagButton from '../../../common/TagButton/TagButton.component';
-import { useGenericContext } from '../../../GenericProvider/GenericProvider';
+import { useGenericContext } from '../../../Customization/GenericProvider/GenericProvider';
 
 const RelatedTerms = () => {
   const history = useHistory();
