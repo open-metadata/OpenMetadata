@@ -85,6 +85,8 @@ class CliDBBase(TestCase):
                 3. build config file for auto classification
                 4. run auto classification
             """
+            self.delete_table_and_view()
+            self.create_table_and_view()
             self.build_config_file()
             self.run_command()
             self.build_config_file(

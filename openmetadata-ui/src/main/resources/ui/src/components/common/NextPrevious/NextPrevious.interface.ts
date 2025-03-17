@@ -14,7 +14,9 @@
 import { CursorType } from '../../../enums/pagination.enum';
 import { Paging } from '../../../generated/type/paging';
 
-export type NextPreviousProps = BasicProps | (BasicProps & PagingProps);
+export interface NextPreviousProps extends BasicProps, Partial<PagingProps> {
+  className?: string;
+}
 
 export interface PagingHandlerParams {
   currentPage: number;

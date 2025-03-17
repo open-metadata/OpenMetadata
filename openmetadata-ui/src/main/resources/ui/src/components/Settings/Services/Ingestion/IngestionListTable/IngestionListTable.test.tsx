@@ -48,10 +48,17 @@ jest.mock('../../../../../rest/ingestionPipelineAPI', () => ({
   deleteIngestionPipelineById: jest
     .fn()
     .mockImplementation(() => Promise.resolve()),
+  getRunHistoryForPipeline: jest
+    .fn()
+    .mockImplementation(() => Promise.resolve({ data: [] })),
 }));
 
 jest.mock('../../../../../utils/IngestionUtils', () => ({
-  getErrorPlaceHolder: jest.fn().mockImplementation(() => 'ErrorPlaceholder'),
+  getErrorPlaceHolder: jest
+    .fn()
+    .mockImplementation(() => (
+      <div data-testid="error-placeholder">ErrorPlaceholder</div>
+    )),
 }));
 
 jest.mock('./PipelineActions/PipelineActions', () =>
@@ -76,6 +83,10 @@ jest.mock('../../../../Modals/EntityDeleteModal/EntityDeleteModal', () =>
     .mockImplementation(({ onConfirm }) => (
       <button onClick={onConfirm}>EntityDeleteModal</button>
     ))
+);
+
+jest.mock('./IngestionStatusCount/IngestionStatusCount', () =>
+  jest.fn().mockImplementation(() => <div>IngestionStatusCount</div>)
 );
 
 jest.mock('../IngestionRecentRun/IngestionRecentRuns.component', () => ({
@@ -115,6 +126,11 @@ jest.mock('../../../../../utils/EntityUtils', () => ({
   highlightSearchText: jest.fn((text) => text),
 }));
 
+jest.mock('../../../../../utils/date-time/DateTimeUtils', () => ({
+  getEpochMillisForPastDays: jest.fn().mockImplementation(() => 1),
+  getCurrentMillis: jest.fn().mockImplementation(() => 1),
+}));
+
 describe('Ingestion', () => {
   it('should render custom emptyPlaceholder if passed', async () => {
     await act(async () => {
@@ -122,6 +138,7 @@ describe('Ingestion', () => {
         <IngestionListTable
           {...mockIngestionListTableProps}
           emptyPlaceholder="customErrorPlaceholder"
+          extraTableProps={{ scroll: undefined }}
           ingestionData={[]}
         />,
         {
@@ -138,6 +155,7 @@ describe('Ingestion', () => {
       render(
         <IngestionListTable
           {...mockIngestionListTableProps}
+          extraTableProps={{ scroll: undefined }}
           ingestionData={[]}
         />,
         {

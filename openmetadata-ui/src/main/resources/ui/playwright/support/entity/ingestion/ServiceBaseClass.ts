@@ -150,7 +150,17 @@ class ServiceBaseClass {
   }
 
   async addIngestionPipeline(page: Page) {
-    await page.click('[data-testid="add-ingestion-button"]');
+    await page.click('[role="tab"] [data-testid="agents"]');
+
+    await page.waitForSelector('[data-testid="add-new-ingestion-button"]');
+
+    await page.click('[data-testid="add-new-ingestion-button"]');
+
+    await page.waitForSelector(
+      '.ant-dropdown:visible [data-menu-id*="metadata"]'
+    );
+
+    await page.click('.ant-dropdown:visible [data-menu-id*="metadata"]');
 
     // Add ingestion page
     await page.waitForSelector('[data-testid="add-ingestion-container"]');
@@ -174,9 +184,9 @@ class ServiceBaseClass {
       .getByTestId('table-container')
       .getByTestId('loader')
       .waitFor({ state: 'detached' });
-    await page.getByTestId('ingestions').click();
+    await page.getByTestId('agents').click();
     await page
-      .getByLabel('Ingestions')
+      .getByLabel('agents')
       .getByTestId('loader')
       .waitFor({ state: 'detached' });
 
@@ -185,6 +195,8 @@ class ServiceBaseClass {
 
     await page.getByTestId('more-actions').first().click();
     await page.getByTestId('run-button').click();
+
+    await page.waitForLoadState('networkidle');
 
     await toastNotification(page, `Pipeline triggered successfully!`);
 
@@ -195,14 +207,19 @@ class ServiceBaseClass {
   }
 
   async submitService(page: Page) {
-    await page.click('[data-testid="submit-btn"]');
-    await page.waitForSelector('[data-testid="success-line"]', {
-      state: 'visible',
-    });
+    await page.getByTestId('submit-btn').getByText('Next').click();
 
-    await expect(page.getByTestId('success-line')).toContainText(
-      'has been created successfully'
+    const dayOneExperienceApplicationRequest = page.waitForRequest(
+      (request) =>
+        request
+          .url()
+          .includes('/api/v1/apps/trigger/DayOneExperienceApplication') &&
+        request.method() === 'POST'
     );
+
+    await page.getByTestId('submit-btn').getByText('Save').click();
+
+    await dayOneExperienceApplicationRequest;
   }
 
   async scheduleIngestion(page: Page) {
@@ -314,8 +331,8 @@ class ServiceBaseClass {
 
     await statusPromise;
 
-    await page.waitForSelector('[data-testid="ingestions"]');
-    await page.click('[data-testid="ingestions"]');
+    await page.waitForSelector('[data-testid="agents"]');
+    await page.click('[data-testid="agents"]');
     await page.waitForSelector(`td:has-text("${ingestionType}")`);
 
     await expect(
@@ -323,7 +340,7 @@ class ServiceBaseClass {
         .locator(`[data-row-key*="${workflowData.name}"]`)
         .getByTestId('pipeline-status')
         .last()
-    ).toContainText('SUCCESS');
+    ).toContainText('Success');
   };
 
   async updateService(page: Page) {
@@ -337,7 +354,7 @@ class ServiceBaseClass {
       false
     );
 
-    await page.click('[data-testid="ingestions"]');
+    await page.click('[data-testid="agents"]');
 
     // click and edit pipeline schedule for Hours
 
@@ -484,7 +501,7 @@ class ServiceBaseClass {
     const ingestionResponse = page.waitForResponse(
       `/api/v1/services/ingestionPipelines/*/pipelineStatus?**`
     );
-    await page.click('[data-testid="ingestions"]');
+    await page.click('[data-testid="agents"]');
 
     await ingestionResponse;
     await page

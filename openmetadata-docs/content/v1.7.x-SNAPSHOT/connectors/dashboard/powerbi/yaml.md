@@ -8,7 +8,7 @@ slug: /connectors/dashboard/powerbi/yaml
   stage="PROD"
   platform="OpenMetadata"
   availableFeatures=["Dashboards", "Charts", "Datamodels", "Projects", "Lineage"]
-  unavailableFeatures=["Owners", "Tags"]
+  unavailableFeatures=["Owners", "Tags", "Usage"]
 / %}
 
 In this section, we provide guides and references to use the PowerBI connector.
@@ -29,6 +29,10 @@ To access the PowerBI APIs and import dashboards, charts, and datasets from Powe
 
 {% note %}
 PowerBI dataflows are not yet supported.
+{% /note %}
+
+{% note %}
+OpenMetadata does not support Power BI usage ingestion because the Power BI Usage API does not support Service Principal authentication.
 {% /note %}
 
 ### PowerBI Admin and Non-Admin APIs:
