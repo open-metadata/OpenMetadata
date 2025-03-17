@@ -163,6 +163,13 @@ public class CreateIngestionPipelineImpl {
 
     if (deploy) {
       wasSuccessful = deployPipeline(pipelineServiceClient, ingestionPipeline, service);
+      if (wasSuccessful) {
+        // Mark the pipeline as deployed
+        ingestionPipeline.setDeployed(true);
+        IngestionPipelineRepository repository =
+            (IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
+        repository.createOrUpdate(null, ingestionPipeline);
+      }
     }
 
     return new CreateIngestionPipelineResult(ingestionPipeline.getId(), wasSuccessful);
