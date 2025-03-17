@@ -540,9 +540,7 @@ export const ActivityFeedTab = ({
         })}
         id="center-container">
         {(isTaskActiveTab || isMentionTabSelected) && (
-          <div
-            className="d-flex gap-4  p-x-lg p-b-0 p-t-lg justify-between items-center"
-            style={{ marginTop: '6px' }}>
+          <div className="d-flex gap-4 task-filter-container  justify-between items-center ">
             <Dropdown
               disabled={isMentionTabSelected}
               menu={{
@@ -568,7 +566,7 @@ export const ActivityFeedTab = ({
           emptyPlaceholderText={placeholderText}
           feedList={entityThread}
           handlePanelResize={handlePanelResize}
-          isForFeedTab={isForFeedTab}
+          isForFeedTab={false}
           isFullWidth={isFullWidth}
           isLoading={loading}
           selectedThread={selectedThread}
