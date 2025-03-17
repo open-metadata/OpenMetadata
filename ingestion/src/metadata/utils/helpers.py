@@ -527,3 +527,47 @@ def retry_with_docker_host(config: Optional[WorkflowSource] = None):
 def get_query_hash(query: str) -> str:
     result = hashlib.md5(query.encode())
     return str(result.hexdigest())
+
+
+def evaluate_threshold(threshold: str, result: int) -> bool:
+    """Evaluate the threshold against the result.
+
+    Args:
+        threshold: A string representing a comparison threshold (e.g., "< 5", ">= 10").
+        result: The integer value to compare against the threshold.
+
+    Returns:
+        True if the result satisfies the threshold condition, False otherwise.
+        If no comparison operator is provided, it defaults to less than comparison.
+        Returns False for invalid threshold formats.
+    """
+    import operator
+
+    threshold = threshold.strip()
+    comparison_map = {
+        "<=": operator.le,
+        ">=": operator.ge,
+        "==": operator.eq,
+        "!=": operator.ne,
+        "<": operator.lt,
+        ">": operator.gt,
+    }
+
+    for symbol, op_func in comparison_map.items():
+        if threshold.startswith(symbol):
+            try:
+                value = int(threshold.replace(symbol, "").strip())
+                return op_func(result, value)
+            except ValueError:
+                return False
+
+    # Fallback:
+    try:
+        value = int(threshold)
+        return result < value
+    except ValueError:
+        logger.error(
+            f"Invalid threshold: {threshold}, "
+            "Allowed format: <, >, <=, >=, ==, !=. Example: >5"
+        )
+        return False
