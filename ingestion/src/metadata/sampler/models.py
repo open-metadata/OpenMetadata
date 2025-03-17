@@ -41,7 +41,7 @@ class BaseProfileConfig(ConfigModel):
     profileSampleType: Optional[ProfileSampleType] = None
     samplingMethodType: Optional[SamplingMethodType] = None
     sampleDataCount: Optional[int] = 100
-    randomizedSample: Optional[bool] = False
+    randomizedSample: Optional[bool] = True
 
 
 class ColumnConfig(ConfigModel):
@@ -57,7 +57,7 @@ class TableConfig(BaseProfileConfig):
     profileQuery: Optional[str] = None
     partitionConfig: Optional[PartitionProfilerConfig] = None
     columnConfig: Optional[ColumnConfig] = None
-    randomizedSample: Optional[bool] = False
+    randomizedSample: Optional[bool] = True
 
     @classmethod
     def from_database_and_schema_config(
@@ -106,4 +106,4 @@ class SampleConfig(ConfigModel):
     profileSample: Optional[Union[float, int]] = None
     profileSampleType: Optional[ProfileSampleType] = ProfileSampleType.PERCENTAGE
     samplingMethodType: Optional[SamplingMethodType] = None
-    randomizedSample: Optional[bool] = False
+    randomizedSample: Optional[bool] = True
