@@ -360,7 +360,7 @@ class QuicksightSource(DashboardServiceSource):
                     containers = self.metadata.es_search_container_by_path(
                         full_path=f"s3://{bucket_name}/{key_name}"
                     )
-                    for container in containers:
+                    for container in containers or []:
                         if container is not None and data_model_entity is not None:
                             storage_entity = EntityReference(
                                 id=Uuid(container.id.root),
