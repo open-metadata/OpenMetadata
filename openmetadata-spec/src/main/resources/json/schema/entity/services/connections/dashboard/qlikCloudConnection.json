@@ -33,6 +33,16 @@
         "type": "string",
         "format": "uri"
       },
+      "spaceType": {
+        "title": "Space Type",
+        "description": "Space type to filter apps/dashboards.",
+        "type": "array",
+        "uniqueItems": true,
+        "items": {
+          "type": "string",
+          "enum": ["Managed", "Shared", "Personal"]
+        }
+      },
       "dashboardFilterPattern": {
         "description": "Regex to exclude or include dashboards that matches the pattern.",
         "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern",
