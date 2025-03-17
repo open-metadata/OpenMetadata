@@ -10,13 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { PlusOutlined } from '@ant-design/icons';
 import Icon from '@ant-design/icons/lib/components/Icon';
 import { Button, Checkbox, Col, Dropdown, Row, Select, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
-import { ReactComponent as MoreIcon } from '../../../assets/svg/menu.svg';
 import { ENTITY_PATH } from '../../../constants/constants';
 import { GlobalSettingsMenuCategory } from '../../../constants/GlobalSettings.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
@@ -470,21 +470,9 @@ const EntitySearchSettings = () => {
         <Col
           className="bg-white border-radius-card h-full flex-1 p-box configuration-container"
           span={8}>
-          <div className="d-flex justify-between align-center">
-            <Typography.Title level={5}>
-              {t('label.matching-fields')}
-            </Typography.Title>
-            <Dropdown
-              getPopupContainer={(triggerNode) => triggerNode.parentElement!}
-              menu={menuItems}
-              placement="bottomLeft"
-              trigger={['click']}>
-              <Icon
-                className="text-grey-muted text-md cursor-pointer"
-                component={MoreIcon}
-              />
-            </Dropdown>
-          </div>
+          <Typography.Title level={5}>
+            {t('label.matching-fields')}
+          </Typography.Title>
           <Row
             className="p-y-xs config-section"
             data-testid="field-configurations">
@@ -501,6 +489,21 @@ const EntitySearchSettings = () => {
                 />
               </Col>
             ))}
+            <Col className="m-b-sm" span={24}>
+              <Dropdown
+                getPopupContainer={(triggerNode) => triggerNode.parentElement!}
+                menu={menuItems}
+                placement="bottomLeft"
+                trigger={['click']}>
+                <Button
+                  className="add-field-btn"
+                  data-testid="add-field-btn"
+                  icon={<PlusOutlined />}
+                  type="primary">
+                  {t('label.add-matching-field')}
+                </Button>
+              </Dropdown>
+            </Col>
             {/* Score Mode and Boost Mode Section */}
             <Col className="flex flex-col w-full">
               <div className="p-y-xs p-x-sm border-radius-card m-b-sm bg-white config-section-content">

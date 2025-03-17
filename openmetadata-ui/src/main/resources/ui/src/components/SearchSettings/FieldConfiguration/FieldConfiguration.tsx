@@ -79,7 +79,7 @@ const FieldConfiguration: React.FC<FieldConfigurationProps> = ({
 
             <div className="d-flex items-center justify-between m-y-xss">
               <span className="text-grey-muted text-xs font-normal">
-                {t('label.select-test-type')}
+                {t('label.select-field-and-weight')}
               </span>
               <span
                 className="p-x-xs font-semibold text-primary d-flex items-center field-weightage"

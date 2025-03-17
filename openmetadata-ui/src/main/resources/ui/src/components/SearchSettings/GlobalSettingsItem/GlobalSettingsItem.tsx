@@ -14,6 +14,7 @@ import Icon from '@ant-design/icons/lib/components/Icon';
 import { Input, Typography } from 'antd';
 import React, { useState } from 'react';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
+import '../../../pages/SearchSettingsPage/search-settings.less';
 import InlineEdit from '../../common/InlineEdit/InlineEdit.component';
 import './global-settings-item.less';
 
