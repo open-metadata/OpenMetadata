@@ -58,6 +58,7 @@ import {
   getTestConnectionName,
   shouldTestConnection,
 } from '../../../utils/ServiceUtils';
+import { getErrorText } from '../../../utils/StringsUtils';
 import Loader from '../Loader/Loader';
 import './test-connection.style.less';
 import { TestConnectionProps, TestStatus } from './TestConnection.interface';
@@ -350,15 +351,16 @@ const TestConnection: FC<TestConnectionProps> = ({
       setIsTestingConnection(false);
       setMessage(TEST_CONNECTION_FAILURE_MESSAGE);
       setTestStatus(StatusType.Failed);
-      if ((error as AxiosError).status === 500) {
+      if ((error as AxiosError)?.status === 500) {
         setErrorMessage({
           description: t('server.unexpected-response'),
         });
       } else {
         setErrorMessage({
-          subDescription:
-            (error as AxiosError<{ message: string }>).response?.data
-              ?.message ?? t('server.unexpected-error'),
+          subDescription: getErrorText(
+            error as AxiosError,
+            t('server.unexpected-error')
+          ),
         });
       }
 

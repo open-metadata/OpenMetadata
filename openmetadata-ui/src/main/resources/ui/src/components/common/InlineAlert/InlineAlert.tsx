@@ -103,13 +103,17 @@ function InlineAlert({
               {heading}
             </Typography.Text>
             {description && (
-              <Typography.Paragraph className="m-b-0 text-sm">
+              <Typography.Paragraph
+                className="m-b-0 text-sm"
+                data-testid="inline-alert-description">
                 {description}
               </Typography.Paragraph>
             )}
 
             {subDescription && showMore && (
-              <Typography.Paragraph className="m-b-0 text-sm">
+              <Typography.Paragraph
+                className="m-b-0 text-sm"
+                data-testid="inline-alert-sub-description">
                 {subDescription}
               </Typography.Paragraph>
             )}
