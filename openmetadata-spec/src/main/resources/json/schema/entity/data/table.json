@@ -771,6 +771,11 @@
           "default": 50,
           "title": "Sample Data Rows Count"
         },
+        "randomizedSample": {
+          "description": "Whether to randomize the sample data or not.",
+          "type": "boolean",
+          "default": false
+        }
         "profileQuery": {
           "description": "Users' raw SQL query to fetch sample data and profile the table",
           "type": "string",
