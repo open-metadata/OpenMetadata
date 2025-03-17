@@ -23,14 +23,11 @@ import {
   Tooltip,
 } from 'antd';
 import { isEmpty } from 'lodash';
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import { ReactComponent as SettingIcon } from '../../../../../assets/svg/ic-settings-primery.svg';
-import {
-  getEntityDetailsPath,
-  INITIAL_PAGING_VALUE,
-} from '../../../../../constants/constants';
+import { INITIAL_PAGING_VALUE } from '../../../../../constants/constants';
 import { PAGE_HEADERS } from '../../../../../constants/PageHeaders.constant';
 import {
   DEFAULT_SORT_ORDER,
@@ -41,10 +38,12 @@ import { INITIAL_TEST_SUMMARY } from '../../../../../constants/TestSuite.constan
 import { useLimitStore } from '../../../../../context/LimitsProvider/useLimitsStore';
 import { EntityTabs, EntityType } from '../../../../../enums/entity.enum';
 import { ProfilerDashboardType } from '../../../../../enums/table.enum';
+import { PipelineType } from '../../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { TestCaseStatus } from '../../../../../generated/tests/testCase';
 import LimitWrapper from '../../../../../hoc/LimitWrapper';
 import useCustomLocation from '../../../../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../../../../hooks/useFqn';
+import { getIngestionPipelines } from '../../../../../rest/ingestionPipelineAPI';
 import {
   ListTestCaseParamsBySearch,
   TestCaseType,
@@ -53,7 +52,10 @@ import {
   getBreadcrumbForTable,
   getEntityName,
 } from '../../../../../utils/EntityUtils';
-import { getAddDataQualityTableTestPath } from '../../../../../utils/RouterUtils';
+import {
+  getAddDataQualityTableTestPath,
+  getEntityDetailsPath,
+} from '../../../../../utils/RouterUtils';
 import NextPrevious from '../../../../common/NextPrevious/NextPrevious';
 import { NextPreviousProps } from '../../../../common/NextPrevious/NextPrevious.interface';
 import Searchbar from '../../../../common/SearchBarComponent/SearchBar.component';
@@ -107,6 +109,28 @@ export const QualityTab = () => {
   const [sortOptions, setSortOptions] =
     useState<ListTestCaseParamsBySearch>(DEFAULT_SORT_ORDER);
   const testSuite = useMemo(() => table?.testSuite, [table]);
+  const [ingestionPipelineCount, setIngestionPipelineCount] =
+    useState<number>(0);
+
+  const fetchIngestionPipelineCount = async () => {
+    try {
+      const { paging: ingestionPipelinePaging } = await getIngestionPipelines({
+        arrQueryFields: [],
+        testSuite: testSuite?.fullyQualifiedName ?? '',
+        pipelineType: [PipelineType.TestSuite],
+        limit: 0,
+      });
+      setIngestionPipelineCount(ingestionPipelinePaging.total);
+    } catch (error) {
+      // do nothing for count error
+    }
+  };
+
+  useEffect(() => {
+    if (testSuite?.fullyQualifiedName) {
+      fetchIngestionPipelineCount();
+    }
+  }, [testSuite?.fullyQualifiedName]);
 
   const handleTestCasePageChange: NextPreviousProps['pagingHandler'] = ({
     currentPage,
@@ -161,7 +185,13 @@ export const QualityTab = () => {
   const tabs = useMemo(
     () => [
       {
-        label: t('label.test-case-plural'),
+        label: (
+          <TabsLabel
+            count={paging.total}
+            id={EntityTabs.TEST_CASES}
+            name={t('label.test-case-plural')}
+          />
+        ),
         key: EntityTabs.TEST_CASES,
         children: (
           <Row className="p-t-md">
@@ -208,7 +238,13 @@ export const QualityTab = () => {
         ),
       },
       {
-        label: t('label.pipeline'),
+        label: (
+          <TabsLabel
+            count={ingestionPipelineCount}
+            id={EntityTabs.PIPELINE}
+            name={t('label.pipeline-plural')}
+          />
+        ),
         key: EntityTabs.PIPELINE,
         children: <TestSuitePipelineTab testSuite={testSuite} />,
       },
@@ -222,6 +258,7 @@ export const QualityTab = () => {
       getResourceLimit,
       tableBreadcrumb,
       testCasePaging,
+      ingestionPipelineCount,
     ]
   );
 

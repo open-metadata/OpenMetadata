@@ -33,7 +33,6 @@ import EntityHeaderTitle from '../../../components/Entity/EntityHeaderTitle/Enti
 import {
   DATA_ASSET_ICON_DIMENSION,
   DE_ACTIVE_COLOR,
-  getEntityDetailsPath,
 } from '../../../constants/constants';
 import { SERVICE_TYPES } from '../../../constants/Services.constant';
 import { TAG_START_WITH } from '../../../constants/Tag.constants';
@@ -64,6 +63,7 @@ import {
   getEntityName,
   getEntityVoteStatus,
 } from '../../../utils/EntityUtils';
+import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 import tableClassBase from '../../../utils/TableClassBase';
 import { getTierTags } from '../../../utils/TableUtils';
