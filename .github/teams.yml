@@ -3,14 +3,12 @@
 
 "safe to test":
   - '@ayush-shah'
-  - '@OnkarVO7'
   - '@TeddyCr'
   - '@ulixius9'
   - '@pmbrull'
   - '@aniketkatkar97'
   - '@Ashish8689'
   - '@chirag-madlani'
-  - '@Sachin-chaurasiya'
   - '@shahsank3t'
   - '@ShaileshParmar11'
   - '@karanh37'
@@ -32,10 +30,11 @@
   - '@sweta1308'
   - '@shrushti2000'
   - '@mohittilala'
+  - '@pellejador'
+  - '@pranita09'
 
 ingestion:
   - '@ayush-shah'
-  - '@OnkarVO7'
   - '@TeddyCr'
   - '@ulixius9'
   - '@pmbrull'
@@ -50,12 +49,12 @@ UI:
   - '@aniketkatkar97'
   - '@Ashish8689'
   - '@chirag-madlani'
-  - '@Sachin-chaurasiya'
   - '@shahsank3t'
   - '@ShaileshParmar11'
   - '@karanh37'
   - '@sweta1308'
   - '@shrushti2000'
+  - '@pranita09'
 
 backend:
   - '@harshach'
@@ -67,3 +66,4 @@ backend:
 devops:
   - '@akash-jain-10'
   - '@tutte'
+  - '@pellejador'
