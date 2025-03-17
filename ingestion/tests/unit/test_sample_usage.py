@@ -77,7 +77,7 @@ class QueryParserTest(TestCase):
             "dim_customer": 4,
             "fact_order": 4,
             "shopify.fact_sale": 5,
-            "shopify.raw_customer": 10,
+            "shopify.raw_customer": 11,
         }
         config_dict = json.loads(config)
         config_dict["source"]["serviceConnection"]["config"]["connectionOptions"][
