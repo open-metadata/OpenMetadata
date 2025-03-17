@@ -223,9 +223,10 @@ public class TableResource extends EntityResource<Table, TableRepository> {
         new ListFilter(include)
             .addQueryParam("database", databaseParam)
             .addQueryParam("databaseSchema", databaseSchemaParam)
-            .addQueryParam("includeEmptyTestSuite", includeEmptyTestSuite);
+            .addQueryParam("includeEmptyTestSuite", includeEmptyTestSuite)
+            .addQueryParam("domain", domain);
     return super.listInternal(
-        uriInfo, securityContext, fieldsParam, filter, limitParam, before, after, domain);
+        uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
   @GET

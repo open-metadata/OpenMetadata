@@ -170,13 +170,14 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
     ListFilter filter = new ListFilter(include);
     filter.addQueryParam("testSuiteType", testSuiteType);
     filter.addQueryParam("includeEmptyTestSuites", includeEmptyTestSuites);
+    filter.addQueryParam("domain", domain);
     EntityUtil.Fields fields = getFields(fieldsParam);
 
     List<AuthRequest> authRequests = getAuthRequestsForListOps();
     authorizer.authorizeRequests(securityContext, authRequests, AuthorizationLogic.ANY);
 
     return super.listInternal(
-        uriInfo, securityContext, fieldsParam, filter, limitParam, before, after, domain);
+        uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
   @GET

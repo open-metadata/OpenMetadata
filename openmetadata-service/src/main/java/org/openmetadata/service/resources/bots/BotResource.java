@@ -178,8 +178,8 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
               schema = @Schema(type = "string", example = "Marketing"))
           @QueryParam("domain")
           String domain) {
-    return listInternal(
-        uriInfo, securityContext, "", new ListFilter(include), limitParam, before, after, domain);
+    ListFilter filter = new ListFilter(include).addQueryParam("domain", domain);
+    return listInternal(uriInfo, securityContext, "", filter, limitParam, before, after);
   }
 
   @GET

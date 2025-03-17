@@ -148,9 +148,9 @@ public class ClassificationResource
               schema = @Schema(type = "string", example = "Marketing"))
           @QueryParam("domain")
           String domain) {
-    ListFilter filter = new ListFilter(include);
+    ListFilter filter = new ListFilter(include).addQueryParam("domain", domain);
     return super.listInternal(
-        uriInfo, securityContext, fieldsParam, filter, limitParam, before, after, domain);
+        uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
   @GET

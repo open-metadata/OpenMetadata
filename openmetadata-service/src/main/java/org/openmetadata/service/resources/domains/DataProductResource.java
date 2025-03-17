@@ -13,6 +13,8 @@
 
 package org.openmetadata.service.resources.domains;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -48,6 +50,8 @@ import org.openmetadata.schema.api.domains.CreateDataProduct;
 import org.openmetadata.schema.entity.domains.DataProduct;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityHistory;
+import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.api.BulkAssets;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.service.Entity;
@@ -131,13 +135,12 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
           @QueryParam("after")
           String after) {
     ListFilter filter = new ListFilter(null);
-    //    if (!nullOrEmpty(domain)) {
-    //      EntityReference domainReference =
-    //          Entity.getEntityReferenceByName(Entity.DOMAIN, domain, Include.NON_DELETED);
-    //      filter.addQueryParam("domainId", String.format("'%s'", domainReference.getId()));
-    //    }
-    return listInternal(
-        uriInfo, securityContext, fieldsParam, filter, limitParam, before, after, domain);
+    if (!nullOrEmpty(domain)) {
+      EntityReference domainReference =
+          Entity.getEntityReferenceByName(Entity.DOMAIN, domain, Include.NON_DELETED);
+      filter.addQueryParam("domainId", String.format("'%s'", domainReference.getId()));
+    }
+    return listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
   @GET

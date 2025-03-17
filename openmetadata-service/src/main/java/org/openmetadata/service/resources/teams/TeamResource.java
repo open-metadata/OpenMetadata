@@ -228,12 +228,15 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
               schema = @Schema(type = "string", example = "Marketing"))
           @QueryParam("domain")
           String domain) {
-    ListFilter filter = new ListFilter(include).addQueryParam("parentTeam", parentTeam);
+    ListFilter filter =
+        new ListFilter(include)
+            .addQueryParam("parentTeam", parentTeam)
+            .addQueryParam("domain", domain);
     if (isJoinable != null) {
       filter.addQueryParam("isJoinable", String.valueOf(isJoinable));
     }
     return super.listInternal(
-        uriInfo, securityContext, fieldsParam, filter, limitParam, before, after, domain);
+        uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
   @GET

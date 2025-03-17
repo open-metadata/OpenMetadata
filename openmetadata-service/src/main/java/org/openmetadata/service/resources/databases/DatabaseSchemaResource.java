@@ -160,9 +160,11 @@ public class DatabaseSchemaResource
               schema = @Schema(type = "string", example = "Marketing"))
           @QueryParam("domain")
           String domain) {
-    ListFilter filter = new ListFilter(include).addQueryParam("database", databaseParam);
-    return listInternal(
-        uriInfo, securityContext, fieldsParam, filter, limitParam, before, after, domain);
+    ListFilter filter =
+        new ListFilter(include)
+            .addQueryParam("database", databaseParam)
+            .addQueryParam("domain", domain);
+    return listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
   @GET

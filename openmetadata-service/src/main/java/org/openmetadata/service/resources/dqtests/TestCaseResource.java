@@ -229,7 +229,8 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
             .addQueryParam("includeAllTests", includeAllTests.toString())
             .addQueryParam("testCaseStatus", status)
             .addQueryParam("testCaseType", type)
-            .addQueryParam("entityFQN", entityFQN);
+            .addQueryParam("entityFQN", entityFQN)
+            .addQueryParam("domain", domain);
     ResourceContextInterface resourceContext = getResourceContext(entityLink, filter);
 
     // Override OperationContext to change the entity to table and operation from VIEW_ALL to
@@ -248,8 +249,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
             before,
             after,
             operationContext,
-            resourceContext,
-            domain);
+            resourceContext);
     return PIIMasker.getTestCases(tests, authorizer, securityContext);
   }
 

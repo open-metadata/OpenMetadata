@@ -210,12 +210,11 @@ public class EventSubscriptionResource
               schema = @Schema(type = "string", example = "Marketing"))
           @QueryParam("domain")
           String domain) {
-    ListFilter filter = new ListFilter(null);
+    ListFilter filter = new ListFilter(null).addQueryParam("domain", domain);
     if (!nullOrEmpty(alertType)) {
       filter.addQueryParam("alertType", alertType);
     }
-    return listInternal(
-        uriInfo, securityContext, fieldsParam, filter, limitParam, before, after, domain);
+    return listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
   @GET

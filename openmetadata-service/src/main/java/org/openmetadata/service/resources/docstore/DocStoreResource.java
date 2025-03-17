@@ -155,15 +155,14 @@ public class DocStoreResource extends EntityResource<Document, DocumentRepositor
               schema = @Schema(type = "string", example = "Marketing"))
           @QueryParam("domain")
           String domain) {
-    ListFilter filter = new ListFilter(Include.ALL);
+    ListFilter filter = new ListFilter(Include.ALL).addQueryParam("domain", domain);
     if (entityType != null) {
       filter.addQueryParam("entityType", entityType);
     }
     if (fqnPrefix != null) {
       filter.addQueryParam("fqnPrefix", fqnPrefix);
     }
-    return super.listInternal(
-        uriInfo, securityContext, "", filter, limitParam, before, after, domain);
+    return super.listInternal(uriInfo, securityContext, "", filter, limitParam, before, after);
   }
 
   @GET

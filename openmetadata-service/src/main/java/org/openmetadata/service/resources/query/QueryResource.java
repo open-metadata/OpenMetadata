@@ -142,14 +142,14 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
               schema = @Schema(type = "string", example = "Marketing"))
           @QueryParam("domain")
           String domain) {
-    ListFilter filter = new ListFilter(null);
+    ListFilter filter = new ListFilter(null).addQueryParam("domain", domain);
     if (!CommonUtil.nullOrEmpty(entityId)) {
       filter.addQueryParam("entityId", entityId.toString());
     }
     filter.addQueryParam("service", service);
     ResultList<Query> queries =
         super.listInternal(
-            uriInfo, securityContext, fieldsParam, filter, limitParam, before, after, domain);
+            uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
     return PIIMasker.getQueries(queries, authorizer, securityContext);
   }
 

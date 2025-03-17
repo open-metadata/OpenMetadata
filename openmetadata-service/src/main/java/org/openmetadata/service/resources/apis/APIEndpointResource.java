@@ -155,9 +155,10 @@ public class APIEndpointResource extends EntityResource<APIEndpoint, APIEndpoint
     ListFilter filter =
         new ListFilter(include)
             .addQueryParam("service", serviceParam)
-            .addQueryParam("apiCollection", apiCollectionParam);
+            .addQueryParam("apiCollection", apiCollectionParam)
+            .addQueryParam("domain", domain);
     return super.listInternal(
-        uriInfo, securityContext, fieldsParam, filter, limitParam, before, after, domain);
+        uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
   @GET

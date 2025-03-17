@@ -249,10 +249,11 @@ public class IngestionPipelineResource
             .addQueryParam("pipelineType", pipelineType)
             .addQueryParam("serviceType", serviceType)
             .addQueryParam("testSuite", testSuiteParam)
-            .addQueryParam("applicationType", applicationType);
+            .addQueryParam("applicationType", applicationType)
+            .addQueryParam("domain", domain);
     ResultList<IngestionPipeline> ingestionPipelines =
         super.listInternal(
-            uriInfo, securityContext, fieldsParam, filter, limitParam, before, after, domain);
+            uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
 
     for (IngestionPipeline ingestionPipeline : listOrEmpty(ingestionPipelines.getData())) {
       if (fieldsParam != null && fieldsParam.contains(FIELD_PIPELINE_STATUS)) {

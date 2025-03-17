@@ -160,9 +160,12 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
               schema = @Schema(type = "string", example = "Marketing"))
           @QueryParam("domain")
           String domain) {
-    ListFilter filter = new ListFilter(include).addQueryParam("service", serviceParam);
+    ListFilter filter =
+        new ListFilter(include)
+            .addQueryParam("service", serviceParam)
+            .addQueryParam("domain", domain);
     return super.listInternal(
-        uriInfo, securityContext, fieldsParam, filter, limitParam, before, after, domain);
+        uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
   @GET

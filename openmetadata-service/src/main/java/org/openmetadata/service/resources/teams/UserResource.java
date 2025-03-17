@@ -299,7 +299,8 @@ public class UserResource extends EntityResource<User, UserRepository> {
               schema = @Schema(type = "string", example = "Marketing"))
           @QueryParam("domain")
           String domain) {
-    ListFilter filter = new ListFilter(include).addQueryParam("team", teamParam);
+    ListFilter filter =
+        new ListFilter(include).addQueryParam("team", teamParam).addQueryParam("domain", domain);
     if (isAdmin != null) {
       filter.addQueryParam("isAdmin", String.valueOf(isAdmin));
     }
@@ -307,8 +308,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
       filter.addQueryParam("isBot", String.valueOf(isBot));
     }
     ResultList<User> users =
-        listInternal(
-            uriInfo, securityContext, fieldsParam, filter, limitParam, before, after, domain);
+        listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
     users.getData().forEach(user -> decryptOrNullify(securityContext, user));
     return users;
   }

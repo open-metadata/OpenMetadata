@@ -131,15 +131,8 @@ public class DomainResource extends EntityResource<Domain, DomainRepository> {
               schema = @Schema(type = "string", example = "Marketing"))
           @QueryParam("domain")
           String domain) {
-    return listInternal(
-        uriInfo,
-        securityContext,
-        fieldsParam,
-        new ListFilter(null),
-        limitParam,
-        before,
-        after,
-        domain);
+    ListFilter filter = new ListFilter(null).addQueryParam("domain", domain);
+    return listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
   @GET

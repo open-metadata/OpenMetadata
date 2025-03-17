@@ -168,7 +168,7 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
               schema = @Schema(implementation = WorkflowStatus.class))
           @QueryParam("workflowStatus")
           String status) {
-    ListFilter filter = new ListFilter(include);
+    ListFilter filter = new ListFilter(include).addQueryParam("domain", domain);
     if (workflowType != null) {
       filter.addQueryParam("workflowType", workflowType);
     }
@@ -177,7 +177,7 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
     }
     ResultList<Workflow> workflows =
         super.listInternal(
-            uriInfo, securityContext, fieldsParam, filter, limitParam, before, after, domain);
+            uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
     workflows.setData(
         listOrEmpty(workflows.getData()).stream()
             .map(service -> decryptOrNullify(securityContext, service))

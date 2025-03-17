@@ -692,11 +692,12 @@ public final class EntityUtil {
   }
 
   public static void addDomainQueryParam(
-      SecurityContext securityContext, ListFilter filter, String entityType, String domain) {
+      SecurityContext securityContext, ListFilter filter, String entityType) {
     SubjectContext subjectContext = getSubjectContext(securityContext);
     // If the User is admin then no need to add domainId in the query param
     // Also if there are domain restriction on the subject context via role
     // Similarly, for my_doamin, apply user domain filter
+    String domain = filter.getQueryParam("domain");
     if (!subjectContext.isAdmin()
             && !subjectContext.isBot()
             && subjectContext.hasAnyRole(DOMAIN_ONLY_ACCESS_ROLE)

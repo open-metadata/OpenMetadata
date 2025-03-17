@@ -155,7 +155,7 @@ public class TestDefinitionResource
               schema = @Schema(implementation = ColumnDataType.class))
           @QueryParam("supportedDataType")
           String supportedDataTypeParam) {
-    ListFilter filter = new ListFilter(include);
+    ListFilter filter = new ListFilter(include).addQueryParam("domain", domain);
     if (entityType != null) {
       filter.addQueryParam("entityType", entityType);
     }
@@ -166,7 +166,7 @@ public class TestDefinitionResource
       filter.addQueryParam("supportedDataType", supportedDataTypeParam);
     }
     return super.listInternal(
-        uriInfo, securityContext, fieldsParam, filter, limitParam, before, after, domain);
+        uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
   @GET

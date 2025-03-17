@@ -121,9 +121,10 @@ public class StoredProcedureResource
           @QueryParam("domain")
           String domain) {
     ListFilter filter =
-        new ListFilter(include).addQueryParam("databaseSchema", databaseSchemaParam);
-    return listInternal(
-        uriInfo, securityContext, fieldsParam, filter, limitParam, before, after, domain);
+        new ListFilter(include)
+            .addQueryParam("databaseSchema", databaseSchemaParam)
+            .addQueryParam("domain", domain);
+    return listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
   @GET

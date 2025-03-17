@@ -150,12 +150,13 @@ public class ContainerResource extends EntityResource<Container, ContainerReposi
               schema = @Schema(type = "string", example = "Marketing"))
           @QueryParam("domain")
           String domain) {
-    ListFilter filter = new ListFilter(include).addQueryParam("service", service);
+    ListFilter filter =
+        new ListFilter(include).addQueryParam("service", service).addQueryParam("domain", domain);
     if (root != null) {
       filter.addQueryParam("root", root.toString());
     }
     return super.listInternal(
-        uriInfo, securityContext, fieldsParam, filter, limitParam, before, after, domain);
+        uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
   @GET

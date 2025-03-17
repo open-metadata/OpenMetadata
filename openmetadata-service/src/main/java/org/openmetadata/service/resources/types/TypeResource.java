@@ -184,9 +184,11 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
               schema = @Schema(type = "string", example = "Marketing"))
           @QueryParam("domain")
           String domain) {
-    ListFilter filter = new ListFilter(Include.ALL).addQueryParam("category", categoryParam);
-    return super.listInternal(
-        uriInfo, securityContext, "", filter, limitParam, before, after, domain);
+    ListFilter filter =
+        new ListFilter(Include.ALL)
+            .addQueryParam("category", categoryParam)
+            .addQueryParam("domain", domain);
+    return super.listInternal(uriInfo, securityContext, "", filter, limitParam, before, after);
   }
 
   @GET

@@ -210,9 +210,10 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
     ListFilter filter =
         new ListFilter(include)
             .addQueryParam("parent", parent)
-            .addQueryParam("classification.disabled", disabled);
+            .addQueryParam("classification.disabled", disabled)
+            .addQueryParam("domain", domain);
     return super.listInternal(
-        uriInfo, securityContext, fieldsParam, filter, limitParam, before, after, domain);
+        uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
   @GET
