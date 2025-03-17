@@ -98,6 +98,29 @@ class PowerBiColumns(BaseModel):
     description: Optional[str] = None
 
 
+class PowerBiMeasureModel(BaseModel):
+    """
+    Represents a Power BI measure, used before converting to a Column instance.
+    """
+
+    dataType: str
+    dataTypeDisplay: str
+    name: str
+    description: str
+
+
+class PowerBiMeasures(BaseModel):
+    """
+    PowerBI Column Model
+    Definition: https://learn.microsoft.com/en-us/rest/api/power-bi/push-datasets/datasets-get-tables-in-group#measure
+    """
+
+    name: str
+    expression: str
+    description: Optional[str] = None
+    isHidden: bool
+
+
 class PowerBITableSource(BaseModel):
     """
     PowerBI Table Source
@@ -114,6 +137,7 @@ class PowerBiTable(BaseModel):
 
     name: str
     columns: Optional[List[PowerBiColumns]] = None
+    measures: Optional[List[PowerBiMeasures]] = None
     description: Optional[str] = None
     source: Optional[List[PowerBITableSource]] = None
 
