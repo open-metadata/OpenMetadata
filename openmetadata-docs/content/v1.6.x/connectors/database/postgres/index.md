@@ -53,26 +53,33 @@ Then, when extracting usage and lineage data, the query log duration will have n
 ```sql
 GRANT pg_read_all_stats TO your_user;
 ```
+
 ## Stored Procedures
 
 When executing stored procedures in PostgreSQL, lineage extraction relies on capturing the SQL queries executed within the procedure. However, by default, PostgreSQL does not track the internal queries of a stored procedure in `pg_stat_statements`.
 
 ### Enabling Query Tracking for Lineage
+
 To ensure OpenMetadata captures lineage from stored procedures, follow these steps:
 
 1. **Enable Logging for All Statements**
    Modify the `postgresql.conf` file and set:
+
    ```ini
    log_statement = 'all'
    ```
-   This will log all executed SQL statements, including those inside stored procedures.
+
+ This will log all executed SQL statements, including those inside stored procedures.
 
 2. **Configure `pg_stat_statements` to Track Nested Queries**
-   By default, `pg_stat_statements` may only capture top-level procedure calls and not the internal queries. To change this behavior, update:
+   
+By default, `pg_stat_statements` may only capture top-level procedure calls and not the internal queries. To change this behavior, update:
+
    ```ini
    pg_stat_statements.track = 'all'
    ```
-   This ensures that statements executed within procedures are recorded.
+
+This ensures that statements executed within procedures are recorded.
 
 ## Metadata Ingestion
 
