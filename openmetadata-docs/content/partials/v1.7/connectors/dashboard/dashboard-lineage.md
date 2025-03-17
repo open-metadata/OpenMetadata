@@ -1,4 +1,4 @@
-# Lineage
+## Lineage
 
 To establish lineage from your **database tables to dashboards**, you must add the corresponding **database service name**.
 
