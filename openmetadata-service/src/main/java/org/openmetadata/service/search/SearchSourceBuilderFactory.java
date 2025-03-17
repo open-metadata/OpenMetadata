@@ -122,6 +122,8 @@ public interface SearchSourceBuilderFactory<S, Q, H, F> {
           case "search_entity_search_index", Entity.SEARCH_INDEX -> Entity.SEARCH_INDEX;
           case "tag_search_index", Entity.TAG -> Entity.TAG;
           case "glossary_term_search_index", Entity.GLOSSARY_TERM -> Entity.GLOSSARY_TERM;
+          case "domain_search_index", Entity.DOMAIN -> Entity.DOMAIN;
+          case "data_product_search_index", Entity.DATA_PRODUCT -> Entity.DATA_PRODUCT;
           default -> "default";
         };
 

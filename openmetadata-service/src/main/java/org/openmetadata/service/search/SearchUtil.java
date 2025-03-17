@@ -34,6 +34,9 @@ public class SearchUtil {
           "dashboard_data_model_search_index",
           Entity.DASHBOARD_DATA_MODEL,
           "data_product_search_index",
+          Entity.DATA_PRODUCT,
+          "domain_search_index",
+          Entity.DOMAIN,
           "api_endpoint_search_index",
           Entity.API_ENDPOINT -> true;
       default -> false;

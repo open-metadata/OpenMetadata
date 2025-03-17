@@ -1009,6 +1009,11 @@
         }
       ],
       "aggregations": [
+        {
+          "name": "fqnParts_agg",
+          "type": "terms",
+          "field": "fqnParts"
+        }
       ],
       "scoreMode": "sum",
       "boostMode": "multiply",
