@@ -15,7 +15,7 @@ import { DateTime, Duration } from 'luxon';
 
 export const DATE_TIME_12_HOUR_FORMAT = 'MMM dd, yyyy, hh:mm a'; // e.g. Jan 01, 12:00 AM
 export const DATE_TIME_WITH_OFFSET_FORMAT = "MMMM dd, yyyy, h:mm a '(UTC'ZZ')'"; // e.g. Jan 01, 12:00 AM (UTC+05:30)
-
+export const DATE_TIME_WEEKDAY_WITH_ORDINAL = "ccc d'th' MMMM, yyyy, hh:mm a"; // e.g. Mon 1st January, 2025, 12:00 AM
 /**
  * @param date EPOCH millis
  * @returns Formatted date for valid input. Format: MMM DD, YYYY, HH:MM AM/PM
