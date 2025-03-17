@@ -177,9 +177,7 @@ test.describe('Service Version pages', () => {
         await versionDetailResponse;
 
         await expect(
-          page.locator(
-            '[data-testid="owner-link"] > [data-testid="diff-added"]'
-          )
+          page.locator('[data-testid="owner-link"] [data-testid="diff-added"]')
         ).toBeVisible();
       });
 
