@@ -22,7 +22,7 @@ import { useTranslation } from 'react-i18next';
 import { DeleteType } from '../../components/common/DeleteWidget/DeleteWidget.interface';
 import { deleteAsyncEntity } from '../../rest/miscAPI';
 import deleteWidgetClassBase from '../../utils/DeleteWidget/DeleteWidgetClassBase';
-import { showDeleteEntityToast, showErrorToast } from '../../utils/ToastUtils';
+import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import {
   AsyncDeleteContextType,
   AsyncDeleteJob,
@@ -72,7 +72,7 @@ const AsyncDeleteProvider = ({ children }: AsyncDeleteProviderProps) => {
 
       setAsyncDeleteJob(response);
       asyncDeleteJobRef.current = response;
-      showDeleteEntityToast(response.message);
+      showSuccessToast(response.message);
     } catch (error) {
       showErrorToast(
         error as AxiosError,

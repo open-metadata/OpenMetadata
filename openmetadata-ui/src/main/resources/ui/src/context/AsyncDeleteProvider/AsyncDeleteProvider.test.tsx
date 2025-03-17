@@ -15,7 +15,7 @@ import { renderHook } from '@testing-library/react-hooks';
 import React from 'react';
 import { DeleteType } from '../../components/common/DeleteWidget/DeleteWidget.interface';
 import { deleteAsyncEntity } from '../../rest/miscAPI';
-import { showDeleteEntityToast, showErrorToast } from '../../utils/ToastUtils';
+import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import AsyncDeleteProvider, {
   useAsyncDeleteProvider,
 } from './AsyncDeleteProvider';
@@ -23,7 +23,7 @@ import { AsyncDeleteWebsocketResponse } from './AsyncDeleteProvider.interface';
 
 jest.mock('../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
-  showDeleteEntityToast: jest.fn(),
+  showSuccessToast: jest.fn(),
 }));
 
 jest.mock('../../rest/miscAPI', () => ({
@@ -77,7 +77,7 @@ describe('AsyncDeleteProvider', () => {
       false,
       false
     );
-    expect(showDeleteEntityToast).toHaveBeenCalledWith(mockResponse.message);
+    expect(showSuccessToast).toHaveBeenCalledWith(mockResponse.message);
     expect(result.current.asyncDeleteJob).toEqual(mockResponse);
   });
 

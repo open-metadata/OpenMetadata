@@ -140,17 +140,3 @@ export const showSuccessToast = (message: string, autoCloseTimer = 5000) => {
 export const showInfoToast = (message: string, autoCloseTimer = 5000) => {
   useAlertStore.getState().addAlert({ type: 'info', message }, autoCloseTimer);
 };
-
-/**
- * Display an Async Delete entity Toast message.
- * @param message Async Delete entity message .
- * @param autoCloseTimer Set the delay in ms to close the toast automatically. `Default: 5000`
- */
-export const showDeleteEntityToast = (
-  message: string,
-  autoCloseTimer = 5000
-) => {
-  useAlertStore
-    .getState()
-    .addAlert({ type: 'success', message }, autoCloseTimer);
-};
