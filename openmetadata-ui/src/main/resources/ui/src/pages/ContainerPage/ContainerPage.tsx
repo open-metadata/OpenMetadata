@@ -448,7 +448,7 @@ const ContainerPage = () => {
     return getDetailsTabWithNewLabel(
       tabs,
       customizedPage?.tabs,
-      EntityTabs.CHILDREN
+      isDataModelEmpty ? EntityTabs.CHILDREN : EntityTabs.SCHEMA
     );
   }, [
     isDataModelEmpty,

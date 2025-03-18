@@ -88,9 +88,7 @@ const DatabaseDetails: FunctionComponent = () => {
   const { getEntityPermissionByFqn } = usePermissionProvider();
   const { withinPageSearch } =
     useLocationSearch<{ withinPageSearch: string }>();
-
-  const { tab: activeTab = EntityTabs.SCHEMA } =
-    useParams<{ tab: EntityTabs }>();
+  const { tab: activeTab } = useParams<{ tab: EntityTabs }>();
   const { fqn: decodedDatabaseFQN } = useFqn();
   const [isLoading, setIsLoading] = useState(true);
   const { customizedPage, isLoading: loading } = useCustomPages(

@@ -81,7 +81,7 @@ class DatabaseSchemaClassBase {
     return [
       EntityTabs.TABLE,
       EntityTabs.STORED_PROCEDURE,
-      EntityTabs.ACTIVITY_FEED,
+      EntityTabs.ACTIVITY_FEEDS,
       EntityTabs.CUSTOM_PROPERTIES,
     ].map((tab: EntityTabs) => ({
       id: tab,
