@@ -38,6 +38,10 @@ public class SearchUtil {
           "domain_search_index",
           Entity.DOMAIN,
           "api_endpoint_search_index",
+          "glossary_term_search_index",
+          Entity.GLOSSARY_TERM,
+          "glossary_search_index",
+          Entity.GLOSSARY,
           Entity.API_ENDPOINT -> true;
       default -> false;
     };
