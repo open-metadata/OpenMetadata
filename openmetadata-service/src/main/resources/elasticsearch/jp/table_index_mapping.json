@@ -446,7 +446,7 @@
             }
           },
           "fullyQualifiedName": {
-            "type": "text"
+            "type": "keyword"
           },
           "description": {
             "type": "text"
@@ -540,6 +540,9 @@
         }
       },
       "deleted": {
+        "type": "boolean"
+      },
+      "processedLineage": {
         "type": "boolean"
       },
       "followers": {

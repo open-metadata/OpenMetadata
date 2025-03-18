@@ -37,6 +37,11 @@
       "description": "Entity reference the test suite needs to execute the test against. Only applicable if the test suite is basic.",
       "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
     },
+    "executableEntityReference": {
+      "description": "DEPRECATED in 1.6.2: use 'basicEntityReference'",
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName",
+      "deprecated": true
+    },
     "domain": {
       "description": "Fully qualified name of the domain the Table belongs to.",
       "type": "string"

@@ -115,6 +115,7 @@ import { PipelineServiceType } from '../generated/entity/services/pipelineServic
 import { SearchServiceType } from '../generated/entity/services/searchService';
 import { ServiceType } from '../generated/entity/services/serviceType';
 import i18n from '../utils/i18next/LocalUtil';
+import { SERVICE_FILTER_PATTERN_FIELDS } from './ServiceConnection.constants';
 
 export const MYSQL = mysql;
 export const SQLITE = sqlite;
@@ -298,13 +299,17 @@ export const INGESTION_WORKFLOW_UI_SCHEMA = {
   'ui:order': [
     'name',
     'displayName',
-    'databaseFilterPattern',
-    'schemaFilterPattern',
-    'tableFilterPattern',
-    'classificationFilterPattern',
+    ...SERVICE_FILTER_PATTERN_FIELDS,
     'enableDebugLog',
     '*',
   ],
+};
+
+export const EXCLUDE_INCREMENTAL_EXTRACTION_SUPPORT_UI_SCHEMA = {
+  incremental: {
+    'ui:widget': 'hidden',
+    'ui:hideError': true,
+  },
 };
 
 export const COMMON_UI_SCHEMA = {
@@ -343,6 +348,23 @@ export const STEPS_FOR_ADD_SERVICE: Array<StepperStepType> = [
       entity: i18n.t('label.detail-plural'),
     }),
     step: 3,
+  },
+  {
+    name: i18n.t('label.set-default-filters'),
+    step: 4,
+  },
+];
+
+export const STEPS_FOR_EDIT_SERVICE: Array<StepperStepType> = [
+  {
+    name: i18n.t('label.connection-entity', {
+      entity: i18n.t('label.detail-plural'),
+    }),
+    step: 1,
+  },
+  {
+    name: i18n.t('label.set-default-filters'),
+    step: 2,
   },
 ];
 
@@ -445,6 +467,7 @@ export const ADVANCED_PROPERTIES = [
   'sslConfig',
   'sslMode',
   'schemaRegistrySSL',
+  'consumerConfigSSL',
   'verify',
 ];
 

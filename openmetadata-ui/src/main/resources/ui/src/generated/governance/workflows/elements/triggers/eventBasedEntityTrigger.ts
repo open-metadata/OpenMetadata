@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,13 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * Event Based Entity Trigger.
  */
 export interface EventBasedEntityTrigger {
-    config?: Config;
+    config?: TriggerConfiguration;
     output?: string[];
     type?:   string;
 }
@@ -24,14 +22,14 @@ export interface EventBasedEntityTrigger {
 /**
  * Entity Event Trigger Configuration.
  */
-export interface Config {
+export interface TriggerConfiguration {
     /**
      * Entity Type for which it should be triggered.
      */
     entityType: string;
     events:     Event[];
     /**
-     * Exclude events that only modify given attributes.
+     * Select fields that should not trigger the workflow if only them are modified.
      */
     exclude?: string[];
 }

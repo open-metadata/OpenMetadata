@@ -28,7 +28,7 @@ import { Table } from '../../../generated/entity/data/table';
 import { EntityReference } from '../../../generated/entity/type';
 import { TagLabel } from '../../../generated/tests/testCase';
 import { AssetCertification } from '../../../generated/type/assetCertification';
-import { getEntityName } from '../../../utils/EntityUtils';
+import { getEntityName, highlightSearchText } from '../../../utils/EntityUtils';
 import { getDomainPath } from '../../../utils/RouterUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
 import { stringToHTML } from '../../../utils/StringsUtils';
@@ -61,6 +61,7 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
       showCheckboxes = false,
       checked = false,
       onCheckboxChange,
+      searchValue,
     },
     ref
   ) => {
@@ -222,7 +223,12 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
                 <Typography.Text
                   className="text-lg font-medium text-link-color"
                   data-testid="entity-header-display-name">
-                  {stringToHTML(searchClassBase.getEntityName(source))}
+                  {stringToHTML(
+                    highlightSearchText(
+                      searchClassBase.getEntityName(source),
+                      searchValue
+                    )
+                  )}
                 </Typography.Text>
               </Button>
             ) : (
@@ -230,7 +236,7 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
                 {entityIcon}
 
                 <Link
-                  className={classNames('no-underline line-height-22 ', {
+                  className={classNames('d-flex no-underline line-height-22 ', {
                     'w-max-full': !hasGlossaryTermStatus,
                     'm-r-xs': hasGlossaryTermStatus,
                   })}
@@ -250,7 +256,12 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
                   <Typography.Text
                     className="text-lg font-medium text-link-color break-word whitespace-normal"
                     data-testid="entity-header-display-name">
-                    {stringToHTML(searchClassBase.getEntityName(source))}
+                    {stringToHTML(
+                      highlightSearchText(
+                        searchClassBase.getEntityName(source),
+                        searchValue
+                      )
+                    )}
                   </Typography.Text>
                 </Link>
 
@@ -296,7 +307,10 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
 
         <div className="p-t-sm">
           <TableDataCardBody
-            description={source.description ?? ''}
+            description={highlightSearchText(
+              source.description ?? '',
+              searchValue
+            )}
             extraInfo={otherDetails}
             tags={showTags ? source.tags : []}
           />

@@ -1,11 +1,11 @@
 ---
-title: Run the Data Factory Connector Externally
+title: Run the Azure Data Factory Connector Externally
 slug: /connectors/pipeline/datafactory/yaml
 collate: true
 ---
 
 {% connectorDetailsHeader
-name="DataFactory"
+name="Azure Data Factory"
 stage="PROD"
 platform="Collate"
 availableFeatures=["Pipelines", "Pipeline Status", "Lineage"]
@@ -13,9 +13,9 @@ unavailableFeatures=["Owners", "Tags"]
 / %}
 
 
-In this section, we provide guides and references to use the Azure DataFactory connector.
+In this section, we provide guides and references to use the Azure Data Factory connector.
 
-Configure and schedule Azure DataFactory metadata and profiler workflows from the OpenMetadata UI:
+Configure and schedule Azure Data Factory metadata and profiler workflows from the OpenMetadata UI:
 
 - [Requirements](#requirements)
     - [Data Factory Versions](#data-factory-versions)

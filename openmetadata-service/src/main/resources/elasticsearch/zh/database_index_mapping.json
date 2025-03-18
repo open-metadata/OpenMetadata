@@ -1,5 +1,8 @@
 {
   "settings": {
+    "index": {
+      "max_ngram_diff": 17
+    },
     "analysis": {
       "normalizer": {
         "lowercase_normalizer": {
@@ -38,7 +41,13 @@
   "mappings": {
     "properties": {
       "id": {
-        "type": "text"
+        "type": "text",
+        "fields": {
+          "keyword": {
+            "type": "keyword",
+            "ignore_above": 256
+          }
+        }
       },
       "name": {
         "type": "text",
@@ -78,7 +87,8 @@
       "description": {
         "type": "text",
         "analyzer": "ik_max_word",
-        "search_analyzer": "ik_smart"
+        "search_analyzer": "ik_smart",
+        "similarity": "boolean"
       },
       "entityType": {
         "type": "keyword"
@@ -140,7 +150,7 @@
             }
           },
           "fullyQualifiedName": {
-            "type": "text"
+            "type": "keyword"
           },
           "description": {
             "type": "text"

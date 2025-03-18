@@ -15,14 +15,6 @@
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { FC } from 'react';
 import DataProductsPage from '../components/DataProducts/DataProductsPage/DataProductsPage.component';
-import {
-  getEditWebhookPath,
-  getEntityDetailsPath,
-  getGlossaryTermDetailsPath,
-  getServiceDetailsPath,
-  getTagsDetailsPath,
-  getUserPath,
-} from '../constants/constants';
 import { GlobalSettingsMenuCategory } from '../constants/GlobalSettings.constants';
 import {
   OperationPermission,
@@ -44,18 +36,29 @@ import SearchIndexDetailsPage from '../pages/SearchIndexDetailsPage/SearchIndexD
 import StoredProcedurePage from '../pages/StoredProcedure/StoredProcedurePage';
 import TableDetailsPageV1 from '../pages/TableDetailsPageV1/TableDetailsPageV1';
 import TopicDetailsPage from '../pages/TopicDetails/TopicDetailsPage.component';
+import { ExtraDatabaseDropdownOptions } from './Database/Database.util';
+import { ExtraDatabaseSchemaDropdownOptions } from './DatabaseSchemaDetailsUtils';
+import { ExtraDatabaseServiceDropdownOptions } from './DatabaseServiceUtils';
 import {
   getApplicationDetailsPath,
   getDomainDetailsPath,
+  getEditWebhookPath,
+  getEntityDetailsPath,
+  getGlossaryTermDetailsPath,
   getIncidentManagerDetailPagePath,
   getNotificationAlertDetailsPath,
   getObservabilityAlertDetailsPath,
   getPersonaDetailsPath,
   getPolicyWithFqnPath,
   getRoleWithFqnPath,
+  getServiceDetailsPath,
   getSettingPath,
+  getTagsDetailsPath,
   getTeamsWithFqnPath,
+  getUserPath,
 } from './RouterUtils';
+import { getEncodedFqn } from './StringsUtils';
+import { ExtraTableDropdownOptions } from './TableUtils';
 import { getTestSuiteDetailsPath } from './TestSuiteUtils';
 
 class EntityUtilClassBase {
@@ -370,11 +373,26 @@ class EntityUtilClassBase {
   }
 
   public getManageExtraOptions(
-    _entityType?: EntityType,
-    _fqn?: string,
-    _permission?: OperationPermission
+    _entityType: EntityType,
+    _fqn: string,
+    _permission: OperationPermission
   ): ItemType[] {
-    return [];
+    // We are encoding here since we are getting the decoded fqn from the OSS code
+    const encodedFqn = getEncodedFqn(_fqn);
+    switch (_entityType) {
+      case EntityType.TABLE:
+        return [...ExtraTableDropdownOptions(encodedFqn, _permission)];
+      case EntityType.DATABASE:
+        return [...ExtraDatabaseDropdownOptions(encodedFqn, _permission)];
+      case EntityType.DATABASE_SCHEMA:
+        return [...ExtraDatabaseSchemaDropdownOptions(encodedFqn, _permission)];
+      case EntityType.DATABASE_SERVICE:
+        return [
+          ...ExtraDatabaseServiceDropdownOptions(encodedFqn, _permission),
+        ];
+      default:
+        return [];
+    }
   }
 }
 

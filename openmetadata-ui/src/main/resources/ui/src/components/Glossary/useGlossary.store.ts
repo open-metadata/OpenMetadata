@@ -72,12 +72,28 @@ export const useGlossaryStore = create<{
     }
   },
   insertNewGlossaryTermToChildTerms: (glossary: GlossaryTerm) => {
-    const { glossaryChildTerms } = get();
+    const { glossaryChildTerms, activeGlossary } = get();
 
-    // Typically used to updated the glossary term list in the glossary page
-    set({
-      glossaryChildTerms: findAndUpdateNested(glossaryChildTerms, glossary),
-    });
+    const glossaryTerm = 'glossary' in activeGlossary;
+
+    // If activeGlossary is Glossary term & User is adding term to the activeGlossary term
+    // we don't need to find in hierarchy
+    if (
+      glossaryTerm &&
+      activeGlossary.fullyQualifiedName === glossary.parent?.fullyQualifiedName
+    ) {
+      set({
+        glossaryChildTerms: [
+          ...glossaryChildTerms,
+          glossary,
+        ] as ModifiedGlossary[],
+      });
+    } else {
+      // Typically used to updated the glossary term list in the glossary page
+      set({
+        glossaryChildTerms: findAndUpdateNested(glossaryChildTerms, glossary),
+      });
+    }
   },
   setGlossaryChildTerms: (glossaryChildTerms: ModifiedGlossary[]) => {
     set({ glossaryChildTerms });

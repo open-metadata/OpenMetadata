@@ -416,6 +416,36 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
     return create(uriInfo, securityContext, term);
   }
 
+  @POST
+  @Path("/createMany")
+  @Operation(
+      operationId = "createManyGlossaryTerm",
+      summary = "Create multiple glossary terms at once",
+      description = "Create multiple new glossary terms.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "The glossary term",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = GlossaryTerm.class))),
+        @ApiResponse(responseCode = "400", description = "Bad request")
+      })
+  public Response createMany(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid List<CreateGlossaryTerm> creates) {
+    List<GlossaryTerm> terms =
+        creates.stream()
+            .map(
+                create ->
+                    mapper.createToEntity(create, securityContext.getUserPrincipal().getName()))
+            .toList();
+    List<GlossaryTerm> result = repository.createMany(uriInfo, terms);
+    return Response.ok(result).build();
+  }
+
   @PATCH
   @Path("/{id}")
   @Operation(
@@ -627,6 +657,35 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
           @PathParam("id")
           UUID id) {
     return delete(uriInfo, securityContext, id, recursive, hardDelete);
+  }
+
+  @DELETE
+  @Path("/async/{id}")
+  @Operation(
+      summary = "Asynchronously delete a glossary term by Id",
+      description = "Asynchronously delete a glossary term by `Id`.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "OK"),
+        @ApiResponse(
+            responseCode = "404",
+            description = "glossaryTerm for instance {id} is not found")
+      })
+  public Response deleteByIdAsync(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Recursively delete this entity and it's children. (Default `false`)")
+          @DefaultValue("false")
+          @QueryParam("recursive")
+          boolean recursive,
+      @Parameter(description = "Hard delete the entity. (Default = `false`)")
+          @QueryParam("hardDelete")
+          @DefaultValue("false")
+          boolean hardDelete,
+      @Parameter(description = "Id of the glossary term", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id) {
+    return deleteByIdAsync(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
   @DELETE

@@ -581,7 +581,7 @@ public class SchemaFieldExtractor {
   }
 
   private String determineReferencePath(String typeName) {
-    String baseSchemaDirectory = "json/schema/entity/";
+    String baseSchemaDirectory = "json/schema/type/";
     String schemaFileName = typeName + ".json";
     return baseSchemaDirectory + schemaFileName;
   }
@@ -596,8 +596,10 @@ public class SchemaFieldExtractor {
         Map.of(
             "dashboard", "data",
             "table", "data",
-            "pipeline", "services",
-            "votes", "data");
+            "pipeline", "data",
+            "votes", "data",
+            "dataProduct", "domains",
+            "domain", "domains");
     return entityTypeToSubdirectory.getOrDefault(entityType, "data");
   }
 

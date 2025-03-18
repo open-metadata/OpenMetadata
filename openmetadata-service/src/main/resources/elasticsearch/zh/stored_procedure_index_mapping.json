@@ -127,7 +127,7 @@
             }
           },
           "fullyQualifiedName": {
-            "type": "text"
+            "type": "keyword"
           },
           "description": {
             "type": "text"
@@ -296,6 +296,9 @@
         "normalizer": "lowercase_normalizer"
       },
       "deleted": {
+        "type": "boolean"
+      },
+      "processedLineage": {
         "type": "boolean"
       },
       "entityType": {

@@ -16,7 +16,6 @@ import { AxiosError } from 'axios';
 import { filter, isEmpty } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-
 import { AsyncSelect } from '../../components/common/AsyncSelect/AsyncSelect';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
@@ -24,7 +23,6 @@ import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/Ti
 import SchemaEditor from '../../components/Database/SchemaEditor/SchemaEditor';
 import { HTTP_STATUS_CODE } from '../../constants/Auth.constants';
 import {
-  getEntityDetailsPath,
   INITIAL_PAGING_VALUE,
   PAGE_SIZE_MEDIUM,
 } from '../../constants/constants';
@@ -50,6 +48,7 @@ import {
   getEntityName,
 } from '../../utils/EntityUtils';
 import { getField } from '../../utils/formUtils';
+import { getEntityDetailsPath } from '../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 
 const AddQueryPage = () => {
@@ -109,6 +108,7 @@ const AddQueryPage = () => {
       const options = data.hits.hits.map((value) => ({
         label: getEntityLabel(value._source),
         value: value._source.id,
+        labelName: getEntityName(value._source),
       }));
 
       return table
@@ -267,6 +267,7 @@ const AddQueryPage = () => {
                     api={fetchTableEntity}
                     data-testid="query-used-in"
                     mode="multiple"
+                    optionLabelProp="labelName"
                     options={initialOptions}
                     placeholder={t('label.please-select-entity', {
                       entity: t('label.query-used-in'),

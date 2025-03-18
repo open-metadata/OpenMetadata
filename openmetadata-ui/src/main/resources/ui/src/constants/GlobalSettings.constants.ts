@@ -51,6 +51,7 @@ export enum GlobalSettingOptions {
   EMAIL = 'email',
   NOTIFICATIONS = 'notifications',
   ALERT = 'alert',
+  DOMAIN = 'domains',
   OBSERVABILITY = 'observability',
   GLOSSARY_TERM = 'glossaryTerm',
   ADD_NOTIFICATION = 'add-notification',
@@ -77,4 +78,5 @@ export enum GlobalSettingOptions {
   METRICS = 'metrics',
   SEARCH_RBAC = 'search-rbac',
   LINEAGE_CONFIG = 'lineageConfig',
+  OM_URL_CONFIG = 'om-url-config',
 }

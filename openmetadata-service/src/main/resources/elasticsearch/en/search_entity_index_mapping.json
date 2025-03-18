@@ -1,5 +1,8 @@
 {
   "settings": {
+    "index": {
+      "max_ngram_diff": 17
+    },
     "analysis": {
       "tokenizer": {
         "edge_ngram_tokenizer": {
@@ -90,7 +93,7 @@
       "description": {
         "type": "text",
         "analyzer": "om_analyzer",
-        "index_options": "freqs"
+        "similarity": "boolean"
       },
       "tier": {
         "properties": {
@@ -438,7 +441,7 @@
             }
           },
           "fullyQualifiedName": {
-            "type": "text"
+            "type": "keyword"
           },
           "description": {
             "type": "text"

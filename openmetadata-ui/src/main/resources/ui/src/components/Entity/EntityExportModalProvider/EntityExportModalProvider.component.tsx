@@ -14,9 +14,18 @@ import { Form, Input, Modal } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isString } from 'lodash';
-import React, { ReactNode, useEffect, useMemo, useRef, useState } from 'react';
+import React, {
+  ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
+import { useLocation } from 'react-router-dom';
 import { getCurrentISODate } from '../../../utils/date-time/DateTimeUtils';
+import { isBulkEditRoute } from '../../../utils/EntityBulkEdit/EntityBulkEditUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import Banner from '../../common/Banner/Banner';
 import {
@@ -38,12 +47,21 @@ export const EntityExportModalProvider = ({
 }) => {
   const [form] = Form.useForm();
   const { t } = useTranslation();
+  const location = useLocation();
+
   const [exportData, setExportData] = useState<ExportData | null>(null);
   const [downloading, setDownloading] = useState<boolean>(false);
 
   const csvExportJobRef = useRef<Partial<CSVExportJob>>();
 
   const [csvExportJob, setCSVExportJob] = useState<Partial<CSVExportJob>>();
+
+  const [csvExportData, setCSVExportData] = useState<string>();
+
+  const isBulkEdit = useMemo(
+    () => isBulkEditRoute(location.pathname),
+    [location]
+  );
 
   const handleCancel = () => {
     setExportData(null);
@@ -78,6 +96,12 @@ export const EntityExportModalProvider = ({
     }
     try {
       setDownloading(true);
+      // assigning the job data to ref here, as exportData.onExport may take time to return the data
+      // and websocket connection may be respond before that, so we need to keep the job data in ref
+      // to handle the download
+      csvExportJobRef.current = {
+        fileName: fileName,
+      };
       const data = await exportData.onExport(exportData.name);
 
       if (isString(data)) {
@@ -100,65 +124,82 @@ export const EntityExportModalProvider = ({
     }
   };
 
-  const handleCSVExportSuccess = (data: string, fileName?: string) => {
-    handleDownload(
-      data,
-      fileName ?? `${exportData?.name}_${getCurrentISODate()}`
-    );
-    setDownloading(false);
-    handleCancel();
-    setCSVExportJob(undefined);
-    csvExportJobRef.current = undefined;
-  };
-
-  const handleCSVExportJobUpdate = (
-    response: Partial<CSVExportWebsocketResponse>
-  ) => {
-    // If multiple tab is open, then we need to check if the tab has active job or not before initiating the download
-    if (!csvExportJobRef.current) {
-      return;
-    }
-    const updatedCSVExportJob: Partial<CSVExportJob> = {
-      ...response,
-      ...csvExportJobRef.current,
-    };
-
-    setCSVExportJob(updatedCSVExportJob);
-
-    csvExportJobRef.current = updatedCSVExportJob;
-
-    if (response.status === 'COMPLETED' && response.data) {
-      handleCSVExportSuccess(
-        response.data ?? '',
-        csvExportJobRef.current?.fileName
-      );
-    } else {
+  const handleCSVExportSuccess = useCallback(
+    (data: string, fileName?: string) => {
+      if (isBulkEdit) {
+        setCSVExportData(data);
+      } else {
+        handleDownload(
+          data,
+          fileName ?? `${exportData?.name}_${getCurrentISODate()}`
+        );
+      }
       setDownloading(false);
-    }
-  };
+      handleCancel();
+      setCSVExportJob(undefined);
+      csvExportJobRef.current = undefined;
+    },
+    [isBulkEdit]
+  );
+
+  const handleCSVExportJobUpdate = useCallback(
+    (response: Partial<CSVExportWebsocketResponse>) => {
+      // If multiple tab is open, then we need to check if the tab has active job or not before initiating the download
+      if (!csvExportJobRef.current) {
+        return;
+      }
+      const updatedCSVExportJob: Partial<CSVExportJob> = {
+        ...response,
+        ...csvExportJobRef.current,
+      };
+
+      setCSVExportJob(updatedCSVExportJob);
+
+      csvExportJobRef.current = updatedCSVExportJob;
+
+      if (response.status === 'COMPLETED' && response.data) {
+        handleCSVExportSuccess(
+          response.data ?? '',
+          csvExportJobRef.current?.fileName
+        );
+      } else {
+        setDownloading(false);
+      }
+    },
+    [isBulkEdit, handleCSVExportSuccess]
+  );
 
   useEffect(() => {
     if (exportData) {
-      form.setFieldValue(
-        'fileName',
-        `${exportData.name}_${getCurrentISODate()}`
-      );
+      if (isBulkEdit) {
+        handleExport({ fileName: 'bulk-edit' });
+      } else {
+        form.setFieldValue(
+          'fileName',
+          `${exportData.name}_${getCurrentISODate()}`
+        );
+      }
     }
-  }, [exportData]);
+  }, [isBulkEdit, exportData]);
 
   const providerValue = useMemo(
     () => ({
+      csvExportData,
+      clearCSVExportData: () => setCSVExportData(undefined),
       showModal,
+      triggerExportForBulkEdit: (exportData: ExportData) => {
+        setExportData(exportData);
+      },
       onUpdateCSVExportJob: handleCSVExportJobUpdate,
     }),
-    []
+    [isBulkEdit, csvExportData, handleCSVExportJobUpdate]
   );
 
   return (
     <EntityExportModalContext.Provider value={providerValue}>
       <>
         {children}
-        {exportData && (
+        {exportData && !isBulkEdit && (
           <Modal
             centered
             open

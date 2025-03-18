@@ -11,8 +11,9 @@ slug: /main-concepts/metadata-standard/schemas/type/paging
 
 - **`before`** *(string)*: Before cursor used for getting the previous page (see API pagination for details).
 - **`after`** *(string)*: After cursor used for getting the next page (see API pagination for details).
-- **`offset`** *(integer)*: Offset used in case of offset based pagination. Default: `None`.
+- **`offset`** *(integer)*: Offset used in case of offset based pagination. Default: `null`.
+- **`limit`** *(integer)*: Limit used in case of offset based pagination. Default: `null`.
 - **`total`** *(integer)*: Total number of entries available to page through.
 
 
-Documentation file automatically generated at 2023-10-27 13:55:46.343512.
+Documentation file automatically generated at 2025-01-15 09:05:25.266839+00:00.

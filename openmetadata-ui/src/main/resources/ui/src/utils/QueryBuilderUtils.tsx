@@ -33,6 +33,9 @@ import { generateUUID } from './StringsUtils';
 
 export const JSONLOGIC_FIELDS_TO_IGNORE_SPLIT = [
   EntityReferenceFields.EXTENSION,
+  EntityReferenceFields.SERVICE,
+  EntityReferenceFields.DATABASE,
+  EntityReferenceFields.DATABASE_SCHEMA,
 ];
 
 const resolveFieldType = (
@@ -333,6 +336,15 @@ export const getJsonTreePropertyFromQueryFilter = (
               ?.value
           ),
         };
+      } else if (!isUndefined((curr.bool as EsBoolQuery)?.must)) {
+        return {
+          ...acc,
+          ...getJsonTreePropertyFromQueryFilter(
+            parentPath,
+            (curr.bool as EsBoolQuery).must as QueryFieldInterface[],
+            fields
+          ),
+        };
       }
 
       return acc;
@@ -534,9 +546,15 @@ export const elasticsearchToJsonLogic = (
     if (field.includes('.')) {
       const [parentField, childField] = field.split('.');
 
-      return JSONLOGIC_FIELDS_TO_IGNORE_SPLIT.includes(
-        parentField as EntityReferenceFields
-      )
+      const shouldIgnoreSplit =
+        JSONLOGIC_FIELDS_TO_IGNORE_SPLIT.includes(
+          parentField as EntityReferenceFields
+        ) ||
+        JSONLOGIC_FIELDS_TO_IGNORE_SPLIT.includes(
+          field as EntityReferenceFields
+        );
+
+      return shouldIgnoreSplit
         ? { '==': [{ var: field }, value] }
         : {
             some: [

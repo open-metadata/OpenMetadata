@@ -120,7 +120,7 @@ source:
       spaceUUID: <spaceUUID>
 ```
 ```yaml {% srNumber=5 %}
-proxyAuthentication: <ProxyAuthentication>
+      proxyAuthentication: <ProxyAuthentication>
 ```
 
 {% partial file="/v1.6/connectors/yaml/dashboard/source-config.md" /%}

@@ -186,11 +186,14 @@ const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
         },
       },
     };
+    try {
+      const ingestion = await addIngestionPipeline(ingestionPayload);
 
-    const ingestion = await addIngestionPipeline(ingestionPayload);
-
-    setIngestionData(ingestion);
-    handleIngestionDeploy(ingestion.id);
+      setIngestionData(ingestion);
+      handleIngestionDeploy(ingestion.id);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
   };
 
   const onUpdateIngestionPipeline = async (

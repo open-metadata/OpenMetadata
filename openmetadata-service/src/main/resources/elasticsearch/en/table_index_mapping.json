@@ -1,9 +1,12 @@
 {
-  "settings": {
+ "settings": {
+   "index": {
+     "max_ngram_diff": 17
+   },
     "analysis": {
       "tokenizer": {
-        "edge_ngram_tokenizer": {
-          "type": "edge_ngram",
+        "n_gram_tokenizer": {
+          "type": "ngram",
           "min_gram": 3,
           "max_gram": 20,
           "token_chars": ["letter", "digit"]
@@ -13,9 +16,7 @@
         "lowercase_normalizer": {
           "type": "custom",
           "char_filter": [],
-          "filter": [
-            "lowercase"
-          ]
+          "filter": ["lowercase"]
         }
       },
       "analyzer": {
@@ -29,7 +30,7 @@
         },
         "om_ngram": {
           "type": "custom",
-          "tokenizer": "edge_ngram_tokenizer",
+          "tokenizer": "n_gram_tokenizer",
           "filter": ["lowercase"]
         }
       },
@@ -48,7 +49,13 @@
   "mappings": {
     "properties": {
       "id": {
-        "type": "text"
+        "type": "text",
+        "fields": {
+          "keyword": {
+            "type": "keyword",
+            "ignore_above": 256
+          }
+        }
       },
       "name": {
         "type": "text",
@@ -87,7 +94,7 @@
       "description": {
         "type": "text",
         "analyzer": "om_analyzer",
-        "index_options": "docs"
+        "similarity": "boolean"
       },
       "version": {
         "type": "float"
@@ -138,7 +145,7 @@
           "description": {
             "type": "text",
             "analyzer": "om_analyzer",
-            "index_options": "docs"
+            "similarity": "boolean"
           },
           "fullyQualifiedName": {
             "type": "keyword",
@@ -158,7 +165,7 @@
               },
               "description": {
                 "type": "text",
-                "index_options": "docs"
+                "similarity": "boolean"
               },
               "source": {
                 "type": "keyword"
@@ -451,7 +458,7 @@
             }
           },
           "fullyQualifiedName": {
-            "type": "text"
+            "type": "keyword"
           },
           "description": {
             "type": "text"
@@ -542,6 +549,9 @@
         }
       },
       "deleted": {
+        "type": "boolean"
+      },
+      "processedLineage": {
         "type": "boolean"
       },
       "followers": {
@@ -657,6 +667,9 @@
             "format": "strict_date_optional_time||epoch_millis"
           }
         }
+      },
+      "changeSummary": {
+        "type" : "object"
       }
     }
   }

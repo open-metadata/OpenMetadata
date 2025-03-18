@@ -18,7 +18,7 @@ import {
   TestType,
 } from '@playwright/test';
 import { env } from 'process';
-import { resetTokenFromProfilerBotPage } from '../../../utils/bot';
+import { resetTokenFromBotPage } from '../../../utils/bot';
 import {
   getApiContext,
   redirectToHomePage,
@@ -35,6 +35,7 @@ import ServiceBaseClass from './ServiceBaseClass';
 
 class MysqlIngestionClass extends ServiceBaseClass {
   name = '';
+  defaultFilters = ['^information_schema$', '^performance_schema$'];
   tableFilter: string[];
   profilerTable = 'alert_entity';
   constructor(tableFilter?: string[]) {
@@ -87,7 +88,10 @@ class MysqlIngestionClass extends ServiceBaseClass {
       await redirectToHomePage(page);
 
       // Todo: Remove this patch once the issue is fixed #19140
-      await resetTokenFromProfilerBotPage(page);
+      await resetTokenFromBotPage(page, {
+        name: 'profiler',
+        testId: 'bot-link-ProfilerBot',
+      });
 
       await visitServiceDetailsPage(
         page,
@@ -99,11 +103,15 @@ class MysqlIngestionClass extends ServiceBaseClass {
         true
       );
 
-      await page.click('[data-testid="ingestions"]');
+      await page.click('[data-testid="agents"]');
       await page.waitForSelector('[data-testid="ingestion-details-container"]');
       await page.waitForTimeout(1000);
       await page.click('[data-testid="add-new-ingestion-button"]');
-      await page.waitForTimeout(1000);
+
+      await page.waitForSelector(
+        '.ant-dropdown:visible [data-menu-id*="profiler"]'
+      );
+
       await page.click('[data-menu-id*="profiler"]');
 
       await page.waitForSelector('#root\\/profileSample');
@@ -117,9 +125,9 @@ class MysqlIngestionClass extends ServiceBaseClass {
       // Header available once page loads
       await page.waitForSelector('[data-testid="data-assets-header"]');
       await page.getByTestId('loader').waitFor({ state: 'detached' });
-      await page.getByTestId('ingestions').click();
+      await page.getByTestId('agents').click();
       await page
-        .getByLabel('Ingestions')
+        .getByLabel('agents')
         .getByTestId('loader')
         .waitFor({ state: 'detached' });
 
@@ -170,7 +178,7 @@ class MysqlIngestionClass extends ServiceBaseClass {
     await page.waitForSelector('.ant-select-selection-item-content');
 
     await expect(page.locator('.ant-select-selection-item-content')).toHaveText(
-      this.tableFilter
+      this.defaultFilters.concat(this.tableFilter)
     );
   }
 }

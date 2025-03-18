@@ -43,6 +43,11 @@
         }
       ]
     },
+    "searchAcrossDatabases": {
+      "description": "Optional configuration to search across databases for tables or not",
+      "type": "boolean",
+      "default": false
+    },
     "dbtUpdateDescriptions": {
       "description": "Optional configuration to update the description from DBT or not",
       "type": "boolean",

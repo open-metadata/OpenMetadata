@@ -25,15 +25,6 @@ pre {
 .font-normal {
   font-weight: 400;
 }
-.font-medium {
-  font-weight: 500;
-}
-.font-semibold {
-  font-weight: 600;
-}
-.font-bold {
-  font-weight: 700;
-}
 
 // font size
 .text-xss {
@@ -166,3 +157,92 @@ a.ant-typography,
 .line-height-16 {
   line-height: 16px;
 }
+
+// =============================== New Design System ===============================
+
+.text-secondary-new {
+  color: #414651;
+}
+
+.border-secondary-new {
+  border-color: #d5d7da;
+}
+
+//font weight
+.font-regular {
+  font-weight: @font-regular;
+}
+.font-medium {
+  font-weight: @font-medium;
+}
+.font-semibold {
+  font-weight: @font-semibold;
+}
+.font-bold {
+  font-weight: @font-bold;
+}
+
+// Typography Mixins
+.text-style(@size, @lh, @ls: 0%) {
+  font-size: @size;
+  line-height: @lh;
+  letter-spacing: @ls;
+}
+
+.font-weight-variants() {
+  &.regular {
+    font-weight: @font-regular;
+  }
+  &.medium {
+    font-weight: @font-medium;
+  }
+  &.semibold {
+    font-weight: @font-semibold;
+  }
+  &.bold {
+    font-weight: @font-bold;
+  }
+}
+
+// Font Style Definitions
+.display-lg {
+  .text-style(48px, 60px, -2%);
+
+  .font-weight-variants();
+}
+
+.display-md {
+  .text-style(36px, 44px, -2%);
+
+  .font-weight-variants();
+}
+
+.display-sm {
+  .text-style(30px, 38px, 0%);
+
+  .font-weight-variants();
+}
+
+.display-xs {
+  .text-style(24px, 32px, 0%);
+
+  .font-weight-variants();
+}
+
+.text-xl {
+  .text-style(20px, 30px, 0%);
+}
+.text-lg {
+  .text-style(18px, 28px, 0%);
+}
+.text-md {
+  .text-style(16px, 24px, 0%);
+}
+.text-sm {
+  .text-style(14px, 20px, 0%);
+}
+.text-xs {
+  .text-style(12px, 18px, 0%);
+}
+
+// =============================== End of New Design System ===============================

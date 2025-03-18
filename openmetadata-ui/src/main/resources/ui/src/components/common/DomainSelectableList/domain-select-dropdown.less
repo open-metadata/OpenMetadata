@@ -15,7 +15,11 @@
 
 .domain-select-popover {
   min-width: 275px;
-  padding-top: 0;
+
+  &.ant-popover {
+    padding-top: 0;
+  }
+
   .ant-popover-inner-content {
     padding: 0;
   }
@@ -35,5 +39,13 @@
 
   .ant-list-empty-text {
     color: @text-color;
+  }
+}
+.remove-button-default-styling {
+  .ant-btn-icon-only {
+    border: 1px solid @border-light;
+    background-color: @background-color;
+    border-radius: 4px;
+    padding: 4px;
   }
 }

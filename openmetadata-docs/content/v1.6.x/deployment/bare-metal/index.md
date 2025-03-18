@@ -61,10 +61,12 @@ Please follow the instructions here to [install ElasticSearch](https://www.elast
 
 If you are using AWS OpenSearch Service, OpenMetadata Supports AWS OpenSearch Service engine version up to 2.7. For more information on AWS OpenSearch Service, please visit the official docs [here](https://docs.aws.amazon.com/opensearch-service/latest/developerguide/what-is.html).
 
-## Airflow (version 2.9.1) or other workflow schedulers
+## Airflow or other workflow schedulers
 
 OpenMetadata performs metadata ingestion using the Ingestion Framework. Learn more about how to deploy and manage
 the ingestion workflows [here](/deployment/ingestion).
+
+OpenMetadata versions have specific Airflow compatibility requirements to ensure seamless metadata ingestion. OpenMetadata 1.5 supports Airflow 2.9, 1.6.4 supports Airflow 2.9.3, and 1.6.5 supports Airflow 2.10.5. Ensure that your Airflow version aligns with your OpenMetadata deployment to maintain stability and functionality.
 
 ## Minimum Sizing Requirements
 
@@ -219,6 +221,43 @@ ELASTICSEARCH_BATCH_SIZE='10'
 ELASTICSEARCH_HOST='vpc-<random_characters>.<aws_region>.es.amazonaws.com'
 ELASTICSEARCH_PASSWORD='<ES_PASSWORD>'
 ```
+
+### Configure OpenSearch
+```
+# ElasticSearch Configurations
+SEARCH_TYPE="opensearch"
+ELASTICSEARCH_HOST="<OPENSEARCH_ENDPOINT>"
+ELASTICSEARCH_PORT="<OPENSEARCH_ENDPOINT_PORT>"
+ELASTICSEARCH_SCHEME="<OPENSEARCH_ENDPOINT_SCHEME>"
+ELASTICSEARCH_USER="<OPENSEARCH_USERNAME>"
+ELASTICSEARCH_PASSWORD="<OPENSEARCH_PASSWORD>"
+...
+```
+
+### Configure Ingestion
+
+```
+PIPELINE_SERVICE_CLIENT_ENDPOINT="<INGESTION_ENDPOINT_URL_WITH_SCHEME>"
+PIPELINE_SERVICE_CLIENT_HEALTH_CHECK_INTERVAL="300"
+SERVER_HOST_API_URL="<OPENMETADATA_ENDPOINT_URL_WITH_SCHEME>/api"
+PIPELINE_SERVICE_CLIENT_VERIFY_SSL="no-ssl"
+PIPELINE_SERVICE_CLIENT_SSL_CERT_PATH=""
+PIPELINE_SERVICE_CLIENT_CLASS_NAME="org.openmetadata.service.clients.pipeline.airflow.AirflowRESTClient"
+PIPELINE_SERVICE_IP_INFO_ENABLED="false"
+PIPELINE_SERVICE_CLIENT_HOST_IP=""
+PIPELINE_SERVICE_CLIENT_SECRETS_MANAGER_LOADER="noop"
+AIRFLOW_USERNAME="<AIRFLOW_UI_LOGIN_USERNAME>"
+AIRFLOW_PASSWORD="<AIRFLOW_UI_LOGIN_PASSWORD>"
+AIRFLOW_TIMEOUT="10"
+AIRFLOW_TRUST_STORE_PATH=""
+AIRFLOW_TRUST_STORE_PASSWORD=""
+```
+
+{% note noteType="Warning" %}
+
+When setting up environment file if your custom password includes any special characters then make sure to follow the steps [here](https://github.com/open-metadata/OpenMetadata/issues/12110#issuecomment-1611341650).
+
+{% /note %}
 
 ## Troubleshooting
 

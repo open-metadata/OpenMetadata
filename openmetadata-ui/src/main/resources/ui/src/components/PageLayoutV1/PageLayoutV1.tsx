@@ -21,16 +21,16 @@ import React, {
   ReactNode,
   useMemo,
 } from 'react';
+import { useAlertStore } from '../../hooks/useAlertStore';
+import AlertBar from '../AlertBar/AlertBar';
 import DocumentTitle from '../common/DocumentTitle/DocumentTitle';
 import './../../styles/layout/page-layout.less';
 
 interface PageLayoutProp extends HTMLAttributes<HTMLDivElement> {
   leftPanel?: ReactNode;
-  header?: ReactNode;
   rightPanel?: ReactNode;
   center?: boolean;
   pageTitle: string;
-  headerClassName?: string;
   mainContainerClassName?: string;
   pageContainerStyle?: React.CSSProperties;
   rightPanelWidth?: number;
@@ -52,14 +52,14 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
   rightPanel,
   className,
   pageTitle,
-  header,
   center = false,
   leftPanelWidth = 230,
   rightPanelWidth = 284,
-  headerClassName = '',
   mainContainerClassName = '',
   pageContainerStyle = {},
 }: PageLayoutProp) => {
+  const { alert } = useAlertStore();
+
   const contentWidth = useMemo(() => {
     if (leftPanel && rightPanel) {
       return `calc(100% - ${leftPanelWidth + rightPanelWidth}px)`;
@@ -75,20 +75,8 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
   return (
     <Fragment>
       <DocumentTitle title={pageTitle} />
-      {header && (
-        <div
-          className={classNames(
-            {
-              'header-center': center,
-              'm-t-md p-x-md': !center,
-            },
-            headerClassName
-          )}>
-          {header}
-        </div>
-      )}
       <Row
-        className={classNames(className, 'bg-white')}
+        className={classNames('bg-white', className)}
         data-testid="page-layout-v1"
         style={{ ...pageContainerStyles, ...pageContainerStyle }}>
         {leftPanel && (
@@ -101,7 +89,9 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
         )}
         <Col
           className={classNames(
-            'page-layout-v1-center p-t-sm page-layout-v1-vertical-scroll',
+            `page-layout-v1-center page-layout-v1-vertical-scroll ${
+              !alert && 'p-t-sm'
+            }`,
             {
               'flex justify-center': center,
             },
@@ -110,7 +100,17 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
           flex={contentWidth}
           offset={center ? 3 : 0}
           span={center ? 18 : 24}>
-          {children}
+          <Row>
+            {alert && (
+              <Col id="page-alert" span={24}>
+                <AlertBar message={alert.message} type={alert.type} />
+              </Col>
+            )}
+
+            <Col className={`${alert && 'p-t-sm'}`} span={24}>
+              {children}
+            </Col>
+          </Row>
         </Col>
         {rightPanel && (
           <Col

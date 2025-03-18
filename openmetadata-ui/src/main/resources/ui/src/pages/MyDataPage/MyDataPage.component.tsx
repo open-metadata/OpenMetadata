@@ -13,16 +13,10 @@
 
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import RGL, { WidthProvider } from 'react-grid-layout';
 import { useTranslation } from 'react-i18next';
-import ActivityFeedProvider from '../../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
+import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
 import Loader from '../../components/common/Loader/Loader';
 import WelcomeScreen from '../../components/MyData/WelcomeScreen/WelcomeScreen.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
@@ -59,7 +53,7 @@ const MyDataPage = () => {
   const [isLoadingOwnedData, setIsLoadingOwnedData] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState(true);
   const [layout, setLayout] = useState<Array<WidgetConfig>>([]);
-  const isMounted = useRef(false);
+
   const [showWelcomeScreen, setShowWelcomeScreen] = useState(false);
   const [isAnnouncementLoading, setIsAnnouncementLoading] =
     useState<boolean>(true);
@@ -118,7 +112,6 @@ const MyDataPage = () => {
   }, [selectedPersona]);
 
   useEffect(() => {
-    isMounted.current = true;
     updateWelcomeScreen(!usernameExistsInCookie && isWelcomeVisible);
 
     return () => updateWelcomeScreen(false);
@@ -203,6 +196,10 @@ const MyDataPage = () => {
   // call the hook to set the direction of the grid layout
   useGridLayoutDirection(isLoading);
 
+  if (isLoading) {
+    return <Loader fullScreen />;
+  }
+
   if (showWelcomeScreen) {
     return (
       <div className="bg-white full-height">
@@ -212,37 +209,24 @@ const MyDataPage = () => {
   }
 
   return (
-    <ActivityFeedProvider>
-      <PageLayoutV1
-        mainContainerClassName="p-t-0"
-        pageTitle={t('label.my-data')}>
-        {isLoading ? (
-          <div className="ant-layout-content flex-center">
-            <Loader />
-          </div>
-        ) : (
-          <>
-            <ReactGridLayout
-              className="bg-white"
-              cols={4}
-              compactType="vertical"
-              isDraggable={false}
-              isResizable={false}
-              margin={[
-                customizePageClassBase.landingPageWidgetMargin,
-                customizePageClassBase.landingPageWidgetMargin,
-              ]}
-              rowHeight={100}>
-              {widgets}
-            </ReactGridLayout>
-            <LimitWrapper resource="dataAssets">
-              <br />
-            </LimitWrapper>
-          </>
-        )}
-      </PageLayoutV1>
-    </ActivityFeedProvider>
+    <PageLayoutV1 mainContainerClassName="p-t-0" pageTitle={t('label.my-data')}>
+      <ReactGridLayout
+        className="bg-white"
+        cols={4}
+        isDraggable={false}
+        isResizable={false}
+        margin={[
+          customizePageClassBase.landingPageWidgetMargin,
+          customizePageClassBase.landingPageWidgetMargin,
+        ]}
+        rowHeight={100}>
+        {widgets}
+      </ReactGridLayout>
+      <LimitWrapper resource="dataAssets">
+        <br />
+      </LimitWrapper>
+    </PageLayoutV1>
   );
 };
 
-export default MyDataPage;
+export default withActivityFeed(MyDataPage);

@@ -14,7 +14,7 @@
 package org.openmetadata.service.formatter.decorators;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
-import static org.openmetadata.service.util.email.EmailUtil.getSmtpSettings;
+import static org.openmetadata.service.util.EntityUtil.encodeEntityFqn;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -40,6 +40,7 @@ import org.openmetadata.service.apps.bundles.changeEvent.msteams.TeamsMessage.Co
 import org.openmetadata.service.apps.bundles.changeEvent.msteams.TeamsMessage.Image;
 import org.openmetadata.service.apps.bundles.changeEvent.msteams.TeamsMessage.TextBlock;
 import org.openmetadata.service.exception.UnhandledServerException;
+import org.openmetadata.service.util.email.EmailUtil;
 
 public class MSTeamsMessageDecorator implements MessageDecorator<TeamsMessage> {
   private static final String TEST_CASE_RESULT = "testCaseResult";
@@ -81,11 +82,13 @@ public class MSTeamsMessageDecorator implements MessageDecorator<TeamsMessage> {
 
   @Override
   public String getEntityUrl(String prefix, String fqn, String additionalParams) {
+    String encodedFqn = encodeEntityFqn(fqn);
     return String.format(
-        "[%s](/%s/%s%s)",
+        "[%s](%s/%s/%s%s)",
         fqn.trim(),
-        getSmtpSettings().getOpenMetadataUrl(),
+        EmailUtil.getOMBaseURL(),
         prefix,
+        encodedFqn,
         nullOrEmpty(additionalParams) ? "" : String.format("/%s", additionalParams));
   }
 

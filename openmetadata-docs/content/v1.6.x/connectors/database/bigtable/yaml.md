@@ -8,7 +8,7 @@ name="BigTable"
 stage="PROD"
 platform="OpenMetadata"
 availableFeatures=["Metadata"]
-unavailableFeatures=["Query Usage", "Lineage", "Column-level Lineage", "Data Profiler", "Data Quality", "Owners", "dbt", "Tags", "Stored Procedures"]
+unavailableFeatures=["Query Usage", "Lineage", "Column-level Lineage", "Data Profiler", "Data Quality", "Owners", "dbt", "Tags", "Stored Procedures", "Sample Data"]
 / %}
 
 In this section, we provide guides and references to use the BigTable connector.
@@ -93,6 +93,8 @@ You can checkout [this](https://cloud.google.com/iam/docs/keys-create-delete#iam
 
 **2.**  Passing a local file path that contains the credentials:
   - **gcpCredentialsPath**
+
+{% /codeInfo %}
 
 #### Advanced Configuration
 

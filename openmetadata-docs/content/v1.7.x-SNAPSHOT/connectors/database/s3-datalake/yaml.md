@@ -7,7 +7,7 @@ slug: /connectors/database/s3-datalake/yaml
 name="S3 Datalake"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=["Metadata", "Data Profiler", "Data Quality"]
+availableFeatures=["Metadata", "Data Profiler", "Data Quality", "Sample Data"]
 unavailableFeatures=["Query Usage", "Lineage", "Column-level Lineage", "Owners", "dbt", "Tags", "Stored Procedures"]
 / %}
 

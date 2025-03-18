@@ -26,6 +26,7 @@ export interface TeamHierarchyProps {
     updateChildNode?: boolean
   ) => void;
   isFetchingAllTeamAdvancedDetails: boolean;
+  searchTerm?: string;
 }
 
 export interface MovedTeamProps {

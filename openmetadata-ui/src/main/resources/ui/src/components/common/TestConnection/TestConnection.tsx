@@ -58,7 +58,7 @@ import {
   getTestConnectionName,
   shouldTestConnection,
 } from '../../../utils/ServiceUtils';
-import { showErrorToast } from '../../../utils/ToastUtils';
+import { getErrorText } from '../../../utils/StringsUtils';
 import Loader from '../Loader/Loader';
 import './test-connection.style.less';
 import { TestConnectionProps, TestStatus } from './TestConnection.interface';
@@ -85,6 +85,11 @@ const TestConnection: FC<TestConnectionProps> = ({
   const [message, setMessage] = useState<string>(
     TEST_CONNECTION_INITIAL_MESSAGE
   );
+
+  const [errorMessage, setErrorMessage] = useState<{
+    description?: string;
+    subDescription?: string;
+  }>();
 
   const [testConnectionStep, setTestConnectionStep] = useState<
     TestConnectionStep[]
@@ -165,7 +170,7 @@ const TestConnection: FC<TestConnectionProps> = ({
     setTestConnectionStepResult([]);
     setTestStatus(undefined);
     setIsConnectionTimeout(false);
-    setProgress(0);
+    setProgress(TEST_CONNECTION_PROGRESS_PERCENTAGE.ZERO);
   };
 
   const handleDeleteWorkflow = async (workflowId: string) => {
@@ -204,7 +209,10 @@ const TestConnection: FC<TestConnectionProps> = ({
 
   const handleWorkflowPolling = async (
     response: Workflow,
-    intervalId: number | undefined
+    intervalObject: {
+      intervalId?: number;
+      timeoutId?: number;
+    }
   ) => {
     // return a promise that wraps the interval and handles errors inside it
     return new Promise<void>((resolve, reject) => {
@@ -212,7 +220,7 @@ const TestConnection: FC<TestConnectionProps> = ({
        * fetch workflow repeatedly with 2s interval
        * until status is either Failed or Successful
        */
-      intervalId = toNumber(
+      intervalObject.intervalId = toNumber(
         setInterval(async () => {
           setProgress((prev) => prev + TEST_CONNECTION_PROGRESS_PERCENTAGE.ONE);
           try {
@@ -239,7 +247,8 @@ const TestConnection: FC<TestConnectionProps> = ({
             await handleCompletionStatus(isTestConnectionSuccess, steps);
 
             // clear the current interval
-            clearInterval(intervalId);
+            clearInterval(intervalObject.intervalId);
+            clearTimeout(intervalObject.timeoutId);
 
             // set testing connection to false
             setIsTestingConnection(false);
@@ -265,7 +274,10 @@ const TestConnection: FC<TestConnectionProps> = ({
     const updatedFormData = formatFormDataForSubmit(getData());
 
     // current interval id
-    let intervalId: number | undefined;
+    const intervalObject: {
+      intervalId?: number;
+      timeoutId?: number;
+    } = {};
 
     try {
       const createWorkflowData: CreateWorkflow = {
@@ -308,9 +320,9 @@ const TestConnection: FC<TestConnectionProps> = ({
       }
 
       // stop fetching the workflow after 2 minutes
-      setTimeout(() => {
+      const timeoutId = setTimeout(() => {
         // clear the current interval
-        clearInterval(intervalId);
+        clearInterval(intervalObject.intervalId);
 
         // using reference to ensure call back should have latest value
         const currentWorkflowStatus = currentWorkflowRef.current
@@ -329,15 +341,28 @@ const TestConnection: FC<TestConnectionProps> = ({
         setProgress(TEST_CONNECTION_PROGRESS_PERCENTAGE.HUNDRED);
       }, FETCHING_EXPIRY_TIME);
 
+      intervalObject.timeoutId = Number(timeoutId);
+
       // Handle workflow polling and completion
-      await handleWorkflowPolling(response, intervalId);
+      await handleWorkflowPolling(response, intervalObject);
     } catch (error) {
       setProgress(TEST_CONNECTION_PROGRESS_PERCENTAGE.HUNDRED);
-      clearInterval(intervalId);
+      clearInterval(intervalObject.intervalId);
       setIsTestingConnection(false);
       setMessage(TEST_CONNECTION_FAILURE_MESSAGE);
       setTestStatus(StatusType.Failed);
-      showErrorToast(error as AxiosError);
+      if ((error as AxiosError)?.status === 500) {
+        setErrorMessage({
+          description: t('server.unexpected-response'),
+        });
+      } else {
+        setErrorMessage({
+          subDescription: getErrorText(
+            error as AxiosError,
+            t('server.unexpected-error')
+          ),
+        });
+      }
 
       // delete the workflow if there is an exception
       const workflowId = currentWorkflowRef.current?.id;
@@ -362,6 +387,10 @@ const TestConnection: FC<TestConnectionProps> = ({
   const handleCancelTestConnectionModal = () => {
     controller.abort();
     setDialogOpen(false);
+  };
+
+  const handleCloseErrorMessage = () => {
+    setErrorMessage(undefined);
   };
 
   useEffect(() => {
@@ -469,6 +498,8 @@ const TestConnection: FC<TestConnectionProps> = ({
         </Button>
       )}
       <TestConnectionModal
+        errorMessage={errorMessage}
+        handleCloseErrorMessage={handleCloseErrorMessage}
         isConnectionTimeout={isConnectionTimeout}
         isOpen={dialogOpen}
         isTestingConnection={isTestingConnection}

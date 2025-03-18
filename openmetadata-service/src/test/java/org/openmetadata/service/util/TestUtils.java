@@ -51,6 +51,7 @@ import javax.json.JsonObject;
 import javax.validation.constraints.Size;
 import javax.ws.rs.client.Entity;
 import javax.ws.rs.client.WebTarget;
+import javax.ws.rs.core.Form;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
@@ -277,6 +278,13 @@ public final class TestUtils {
     assertEquals(expectedReason, exception.getReasonPhrase());
   }
 
+  public static void assertResponse(
+      Executable executable, Response.Status expectedStatus, List<String> expectedReasons) {
+    HttpResponseException exception = assertThrows(HttpResponseException.class, executable);
+    assertEquals(expectedStatus.getStatusCode(), exception.getStatusCode());
+    assertTrue(expectedReasons.contains(exception.getReasonPhrase()));
+  }
+
   public static void assertResponseContains(
       Executable executable, Response.Status expectedStatus, String expectedReason) {
     HttpResponseException exception = assertThrows(HttpResponseException.class, executable);
@@ -314,10 +322,16 @@ public final class TestUtils {
 
   public static <K> void post(WebTarget target, K request, Map<String, String> headers)
       throws HttpResponseException {
+    post(target, request, Status.CREATED.getStatusCode(), headers);
+  }
+
+  public static <K> void post(
+      WebTarget target, K request, int expectedStatus, Map<String, String> headers)
+      throws HttpResponseException {
     Entity<K> entity =
         (request == null) ? null : Entity.entity(request, MediaType.APPLICATION_JSON);
     Response response = SecurityUtil.addHeaders(target, headers).post(entity);
-    readResponse(response, Status.CREATED.getStatusCode());
+    readResponse(response, expectedStatus);
   }
 
   public static <T, K> T post(
@@ -412,6 +426,29 @@ public final class TestUtils {
       readResponseError(response);
     }
     assertEquals(Status.OK.getStatusCode(), response.getStatus());
+  }
+
+  public static javax.ws.rs.core.Response deleteAsync(WebTarget target, Map<String, String> headers)
+      throws HttpResponseException {
+    try {
+      final javax.ws.rs.core.Response response = SecurityUtil.addHeaders(target, headers).delete();
+      int status = response.getStatus();
+
+      // For async operations, we expect 202 Accepted
+      if (status != Response.Status.ACCEPTED.getStatusCode()) {
+        if (!HttpStatus.isSuccess(status)) {
+          readResponseError(response);
+        }
+        throw new HttpResponseException(
+            status,
+            "Expected status " + Response.Status.ACCEPTED.getStatusCode() + " but got " + status);
+      }
+      return response;
+    } catch (HttpResponseException e) {
+      throw e;
+    } catch (Exception e) {
+      throw new HttpResponseException(500, "Failed to execute delete request: " + e.getMessage());
+    }
   }
 
   public static void assertDeleted(List<EntityReference> list, Boolean expected) {
@@ -726,5 +763,20 @@ public final class TestUtils {
       // If the path doesn't exist, this is expected behavior, so the test should pass.
       assertTrue(true, "The path does not exist as expected: " + jsonPath);
     }
+  }
+
+  public static Form buildMultipartForm(
+      java.io.InputStream fileStream,
+      String fileParamName,
+      String fileName,
+      String entityLink,
+      String contentType,
+      Double size) {
+    Form form = new Form();
+    form.param("file", "dummy"); // For simplicity, a dummy value is used
+    form.param("entityLink", entityLink);
+    form.param("contentType", contentType);
+    form.param("size", String.valueOf(size));
+    return form;
   }
 }

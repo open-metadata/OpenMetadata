@@ -96,7 +96,7 @@ class SqlColumnHandlerMixin:
             col_type = ColumnTypeParser.get_column_type(column["type"])
             # For arrays, we'll get the item type if possible, or parse the string representation of the column
             # if SQLAlchemy does not provide any further information
-            if col_type == "ARRAY" and getattr(column["type"], "item_type"):
+            if col_type == "ARRAY" and getattr(column["type"], "item_type", None):
                 arr_data_type = ColumnTypeParser.get_column_type(
                     column["type"].item_type
                 )
@@ -203,26 +203,6 @@ class SqlColumnHandlerMixin:
         return Column(**parsed_string)
 
     @calculate_execution_time()
-    def process_json_type_column_fields(  # pylint: disable=too-many-locals
-        self, schema_name: str, table_name: str, column_name: str, inspector: Inspector
-    ) -> Optional[List[Column]]:
-        """
-        Parse fields column with json data types
-        """
-        try:
-            if hasattr(inspector, "get_json_fields_and_type"):
-                result = inspector.get_json_fields_and_type(
-                    table_name, column_name, schema_name
-                )
-                return result
-
-        except NotImplementedError:
-            logger.debug(
-                "Cannot parse json fields for table column [{schema_name}.{table_name}.{col_name}]: NotImplementedError"
-            )
-        return None
-
-    @calculate_execution_time()
     def get_columns_and_constraints(  # pylint: disable=too-many-locals
         self, schema_name: str, table_name: str, db_name: str, inspector: Inspector
     ) -> Tuple[
@@ -246,12 +226,16 @@ class SqlColumnHandlerMixin:
             if len(col) == 1:
                 column_level_unique_constraints.add(col[0])
             else:
-                table_constraints.append(
-                    TableConstraint(
-                        constraintType=ConstraintType.UNIQUE,
-                        columns=col,
+                if not any(
+                    tc.constraintType == ConstraintType.UNIQUE and tc.columns == col
+                    for tc in table_constraints
+                ):
+                    table_constraints.append(
+                        TableConstraint(
+                            constraintType=ConstraintType.UNIQUE,
+                            columns=col,
+                        )
                     )
-                )
         if len(pk_columns) > 1:
             table_constraints.append(
                 TableConstraint(
@@ -297,11 +281,6 @@ class SqlColumnHandlerMixin:
                         precision,
                     )
                     col_data_length = 1 if col_data_length is None else col_data_length
-
-                    if col_type == "JSON":
-                        children = self.process_json_type_column_fields(
-                            schema_name, table_name, column.get("name"), inspector
-                        )
 
                     om_column = Column(
                         name=ColumnName(

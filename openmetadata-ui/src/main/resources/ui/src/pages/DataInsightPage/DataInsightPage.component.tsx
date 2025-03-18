@@ -13,7 +13,7 @@
 
 import { Col, Row } from 'antd';
 import { t } from 'i18next';
-import React, { useLayoutEffect, useMemo, useState } from 'react';
+import React, { useCallback, useLayoutEffect, useMemo, useState } from 'react';
 import {
   Redirect,
   Route,
@@ -28,10 +28,11 @@ import { ENTITIES_CHARTS } from '../../constants/DataInsight.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
+import { SystemChartType } from '../../enums/DataInsight.enum';
 import { DataInsightChartType } from '../../generated/dataInsight/dataInsightChartResult';
 import { Operation } from '../../generated/entity/policies/policy';
+import { withPageLayout } from '../../hoc/withPageLayout';
 import { DataInsightTabs } from '../../interface/data-insight.interface';
-import { SystemChartType } from '../../rest/DataInsightAPI';
 import { getDataInsightPathWithFqn } from '../../utils/DataInsightUtils';
 import { checkPermission } from '../../utils/PermissionsUtils';
 import './data-insight.less';
@@ -75,16 +76,17 @@ const DataInsightPage = () => {
     SystemChartType | DataInsightChartType
   >();
 
-  const handleScrollToChart = (
-    chartType: SystemChartType | DataInsightChartType
-  ) => {
-    if (ENTITIES_CHARTS.includes(chartType as SystemChartType)) {
-      history.push(getDataInsightPathWithFqn(DataInsightTabs.DATA_ASSETS));
-    } else {
-      history.push(getDataInsightPathWithFqn(DataInsightTabs.APP_ANALYTICS));
-    }
-    setSelectedChart(chartType);
-  };
+  const handleScrollToChart = useCallback(
+    (chartType: SystemChartType | DataInsightChartType) => {
+      if (ENTITIES_CHARTS.includes(chartType as SystemChartType)) {
+        history.push(getDataInsightPathWithFqn(DataInsightTabs.DATA_ASSETS));
+      } else {
+        history.push(getDataInsightPathWithFqn(DataInsightTabs.APP_ANALYTICS));
+      }
+      setSelectedChart(chartType);
+    },
+    [history]
+  );
 
   useLayoutEffect(() => {
     if (selectedChart) {
@@ -125,52 +127,53 @@ const DataInsightPage = () => {
   }
 
   return (
-    <ResizableLeftPanels
-      className="content-height-with-resizable-panel"
-      firstPanel={{
-        className: 'content-resizable-panel-container',
-        minWidth: 280,
-        flex: 0.13,
-        children: <LeftPanel />,
-      }}
-      pageTitle={t('label.data-insight')}
-      secondPanel={{
-        children: (
-          <DataInsightProvider>
-            <Row
-              className="page-container"
-              data-testid="data-insight-container"
-              gutter={[16, 16]}>
-              {isHeaderVisible && (
+    <div className="m--t-sm">
+      <ResizableLeftPanels
+        className="content-height-with-resizable-panel"
+        firstPanel={{
+          className: 'content-resizable-panel-container',
+          minWidth: 280,
+          flex: 0.13,
+          children: <LeftPanel />,
+        }}
+        pageTitle={t('label.data-insight')}
+        secondPanel={{
+          children: (
+            <DataInsightProvider>
+              <Row
+                className="page-container"
+                data-testid="data-insight-container"
+                gutter={[16, 16]}>
+                {isHeaderVisible && (
+                  <Col span={24}>
+                    <DataInsightHeader onScrollToChart={handleScrollToChart} />
+                  </Col>
+                )}
                 <Col span={24}>
-                  <DataInsightHeader onScrollToChart={handleScrollToChart} />
+                  <Switch>
+                    {dataInsightTabs.map((tab) => (
+                      <Route
+                        exact
+                        component={tab.component}
+                        key={tab.key}
+                        path={tab.path}
+                      />
+                    ))}
+                    <Route exact path={ROUTES.DATA_INSIGHT}>
+                      <Redirect to={getDataInsightPathWithFqn()} />
+                    </Route>
+                  </Switch>
                 </Col>
-              )}
-              <Col span={24}>
-                <Switch>
-                  {dataInsightTabs.map((tab) => (
-                    <Route
-                      exact
-                      component={tab.component}
-                      key={tab.key}
-                      path={tab.path}
-                    />
-                  ))}
-
-                  <Route exact path={ROUTES.DATA_INSIGHT}>
-                    <Redirect to={getDataInsightPathWithFqn()} />
-                  </Route>
-                </Switch>
-              </Col>
-            </Row>
-          </DataInsightProvider>
-        ),
-        className: 'content-resizable-panel-container p-t-sm',
-        minWidth: 800,
-        flex: 0.87,
-      }}
-    />
+              </Row>
+            </DataInsightProvider>
+          ),
+          className: 'content-resizable-panel-container p-t-sm',
+          minWidth: 800,
+          flex: 0.87,
+        }}
+      />
+    </div>
   );
 };
 
-export default DataInsightPage;
+export default withPageLayout('data-insight')(DataInsightPage);

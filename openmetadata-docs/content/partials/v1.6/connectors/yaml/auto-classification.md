@@ -136,7 +136,7 @@ sink:
   config: {}
 ```
 
-{% partial file="/v1.5/connectors/yaml/workflow-config.md" /%}
+{% partial file="/v1.6/connectors/yaml/workflow-config.md" /%}
 
 {% /codeBlock %}
 
@@ -151,4 +151,8 @@ After saving the YAML config, we will run the command the same way we did for th
 metadata classify -c <path-to-yaml>
 ```
 
-Note now instead of running `ingest`, we are using the `classify` command to select the Auto Classification workflow.
+{% note %}
+
+Now instead of running `ingest`, we are using the `classify` command to select the Auto Classification workflow.
+
+{% /note %}

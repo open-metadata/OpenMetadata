@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * Tableau Connection Config
  */
 export interface TableauConnection {
@@ -25,6 +23,18 @@ export interface TableauConnection {
      */
     authType?: AuthenticationTypeForTableau;
     /**
+     * Regex exclude or include charts that matches the pattern.
+     */
+    chartFilterPattern?: FilterPattern;
+    /**
+     * Regex to exclude or include dashboards that matches the pattern.
+     */
+    dashboardFilterPattern?: FilterPattern;
+    /**
+     * Regex exclude or include data models that matches the pattern.
+     */
+    dataModelFilterPattern?: FilterPattern;
+    /**
      * Tableau Environment Name.
      */
     env: string;
@@ -36,6 +46,10 @@ export interface TableauConnection {
      * Pagination limit used while querying the tableau metadata API for getting data sources
      */
     paginationLimit?: number;
+    /**
+     * Regex to exclude or include projects that matches the pattern.
+     */
+    projectFilterPattern?: FilterPattern;
     /**
      * Tableau Site Name.
      */
@@ -77,6 +91,28 @@ export interface AuthenticationTypeForTableau {
      * Personal Access Token Secret.
      */
     personalAccessTokenSecret?: string;
+}
+
+/**
+ * Regex exclude or include charts that matches the pattern.
+ *
+ * Regex to only fetch entities that matches the pattern.
+ *
+ * Regex to exclude or include dashboards that matches the pattern.
+ *
+ * Regex exclude or include data models that matches the pattern.
+ *
+ * Regex to exclude or include projects that matches the pattern.
+ */
+export interface FilterPattern {
+    /**
+     * List of strings/regex patterns to match and exclude only database entities that match.
+     */
+    excludes?: string[];
+    /**
+     * List of strings/regex patterns to match and include only database entities that match.
+     */
+    includes?: string[];
 }
 
 /**

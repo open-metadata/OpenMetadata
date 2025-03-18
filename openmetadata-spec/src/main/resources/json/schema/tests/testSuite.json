@@ -115,6 +115,10 @@
       "description": "Change that lead to this version of the entity.",
       "$ref": "../type/entityHistory.json#/definitions/changeDescription"
     },
+    "incrementalChangeDescription": {
+      "description": "Change that lead to this version of the entity.",
+      "$ref": "../type/entityHistory.json#/definitions/changeDescription"
+    },
     "deleted": {
       "description": "When `true` indicates the entity has been soft deleted.",
       "type": "boolean",
@@ -125,9 +129,19 @@
       "type": "boolean",
       "default": false
     },
+    "executable": {
+      "description": "DEPRECATED in 1.6.2: Use 'basic'",
+      "type": "boolean",
+      "deprecated": true
+    },
     "basicEntityReference": {
       "description": "Entity reference the test suite needs to execute the test against. Only applicable if the test suite is basic.",
       "$ref": "../type/entityReference.json"
+    },
+    "executableEntityReference": {
+      "description": "DEPRECATED in 1.6.2: Use 'basicEntityReference'.",
+      "$ref": "../type/entityReference.json",
+      "deprecated": true
     },
     "summary": {
       "description": "Summary of the previous day test cases execution for this test suite.",

@@ -1,0 +1,18 @@
+{
+  "name": "DataRetentionApplication",
+  "displayName": "Data Retention",
+  "description": "The Data Retention App automates the cleanup of OpenMetadata's internal database to maintain performance and efficiency. Based on customizable retention periods and admin-defined retention policies, this application helps manage rapidly growing tables and prevents data bloat by removing outdated records.\n\n**Efficient Record Management:** The Retention Policy App automates the cleanup and deletion of records for selected entities based on specified retention durations. It simplifies compliance with data retention policies and ensures efficient database management.",
+  "appType": "internal",
+  "appScreenshots": ["DataRetentionApplication.png"],
+  "developer": "Collate Inc.",
+  "developerUrl": "https://www.getcollate.io",
+  "privacyPolicyUrl": "https://www.getcollate.io",
+  "supportEmail": "support@getcollate.io",
+  "scheduleType": "ScheduledOrManual",
+  "permission": "All",
+  "className": "org.openmetadata.service.apps.bundles.dataRetention.DataRetention",
+  "runtime": {
+    "enabled": "true"
+  },
+  "appConfiguration": {}
+}

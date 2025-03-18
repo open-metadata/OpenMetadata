@@ -74,6 +74,7 @@ jest.mock('./EntityUtils', () => ({
 }));
 
 jest.mock('./StringsUtils', () => ({
+  getEncodedFqn: jest.fn().mockImplementation((fqn) => fqn),
   bytesToSize: jest.fn().mockReturnValue('bytesToSize'),
 }));
 
@@ -82,6 +83,7 @@ jest.mock('./TableUtils', () => ({
 }));
 
 jest.mock('../constants/constants', () => ({
+  ...jest.requireActual('../constants/constants'),
   NO_DATA_PLACEHOLDER: jest.fn().mockReturnValue('---'),
   getEntityDetailsPath: jest.fn().mockReturnValue('getDashboardDetailsPath'),
 }));
