@@ -50,26 +50,25 @@ export interface MlModelDetailPageTabProps {
   labelMap: Record<EntityTabs, string>;
 }
 
-enum MlModelWidgetKeys {
-  DESCRIPTION = DetailPageWidgetKeys.DESCRIPTION,
-  ML_MODEL_FEATURES = DetailPageWidgetKeys.ML_MODEL_FEATURES,
-  DATA_PRODUCTS = DetailPageWidgetKeys.DATA_PRODUCTS,
-  TAGS = DetailPageWidgetKeys.TAGS,
-  GLOSSARY_TERMS = DetailPageWidgetKeys.GLOSSARY_TERMS,
-  CUSTOM_PROPERTIES = DetailPageWidgetKeys.CUSTOM_PROPERTIES,
-}
+type MlModelWidgetKeys =
+  | DetailPageWidgetKeys.DESCRIPTION
+  | DetailPageWidgetKeys.ML_MODEL_FEATURES
+  | DetailPageWidgetKeys.DATA_PRODUCTS
+  | DetailPageWidgetKeys.TAGS
+  | DetailPageWidgetKeys.GLOSSARY_TERMS
+  | DetailPageWidgetKeys.CUSTOM_PROPERTIES;
 
 class MlModelDetailsClassBase {
   defaultWidgetHeight: Record<MlModelWidgetKeys, number>;
 
   constructor() {
     this.defaultWidgetHeight = {
-      [MlModelWidgetKeys.DESCRIPTION]: 2,
-      [MlModelWidgetKeys.ML_MODEL_FEATURES]: 8,
-      [MlModelWidgetKeys.DATA_PRODUCTS]: 2,
-      [MlModelWidgetKeys.TAGS]: 2,
-      [MlModelWidgetKeys.GLOSSARY_TERMS]: 2,
-      [MlModelWidgetKeys.CUSTOM_PROPERTIES]: 4,
+      [DetailPageWidgetKeys.DESCRIPTION]: 2,
+      [DetailPageWidgetKeys.ML_MODEL_FEATURES]: 8,
+      [DetailPageWidgetKeys.DATA_PRODUCTS]: 2,
+      [DetailPageWidgetKeys.TAGS]: 2,
+      [DetailPageWidgetKeys.GLOSSARY_TERMS]: 2,
+      [DetailPageWidgetKeys.CUSTOM_PROPERTIES]: 4,
     };
   }
 
@@ -102,7 +101,7 @@ class MlModelDetailsClassBase {
 
     return [
       {
-        h: this.defaultWidgetHeight[MlModelWidgetKeys.DESCRIPTION],
+        h: this.defaultWidgetHeight[DetailPageWidgetKeys.DESCRIPTION],
         i: DetailPageWidgetKeys.DESCRIPTION,
         w: 6,
         x: 0,
@@ -110,7 +109,7 @@ class MlModelDetailsClassBase {
         static: false,
       },
       {
-        h: this.defaultWidgetHeight[MlModelWidgetKeys.ML_MODEL_FEATURES],
+        h: this.defaultWidgetHeight[DetailPageWidgetKeys.ML_MODEL_FEATURES],
         i: DetailPageWidgetKeys.ML_MODEL_FEATURES,
         w: 6,
         x: 0,
@@ -118,7 +117,7 @@ class MlModelDetailsClassBase {
         static: false,
       },
       {
-        h: this.defaultWidgetHeight[MlModelWidgetKeys.DATA_PRODUCTS],
+        h: this.defaultWidgetHeight[DetailPageWidgetKeys.DATA_PRODUCTS],
         i: DetailPageWidgetKeys.DATA_PRODUCTS,
         w: 2,
         x: 6,
@@ -126,7 +125,7 @@ class MlModelDetailsClassBase {
         static: false,
       },
       {
-        h: this.defaultWidgetHeight[MlModelWidgetKeys.TAGS],
+        h: this.defaultWidgetHeight[DetailPageWidgetKeys.TAGS],
         i: DetailPageWidgetKeys.TAGS,
         w: 2,
         x: 6,
@@ -134,7 +133,7 @@ class MlModelDetailsClassBase {
         static: false,
       },
       {
-        h: this.defaultWidgetHeight[MlModelWidgetKeys.GLOSSARY_TERMS],
+        h: this.defaultWidgetHeight[DetailPageWidgetKeys.GLOSSARY_TERMS],
         i: DetailPageWidgetKeys.GLOSSARY_TERMS,
         w: 2,
         x: 6,
@@ -142,7 +141,7 @@ class MlModelDetailsClassBase {
         static: false,
       },
       {
-        h: this.defaultWidgetHeight[MlModelWidgetKeys.CUSTOM_PROPERTIES],
+        h: this.defaultWidgetHeight[DetailPageWidgetKeys.CUSTOM_PROPERTIES],
         i: DetailPageWidgetKeys.CUSTOM_PROPERTIES,
         w: 2,
         x: 6,
@@ -179,17 +178,17 @@ class MlModelDetailsClassBase {
   public getWidgetHeight(widgetName: string) {
     switch (widgetName) {
       case DetailPageWidgetKeys.DESCRIPTION:
-        return this.defaultWidgetHeight[MlModelWidgetKeys.DESCRIPTION];
+        return this.defaultWidgetHeight[DetailPageWidgetKeys.DESCRIPTION];
       case DetailPageWidgetKeys.ML_MODEL_FEATURES:
-        return this.defaultWidgetHeight[MlModelWidgetKeys.ML_MODEL_FEATURES];
+        return this.defaultWidgetHeight[DetailPageWidgetKeys.ML_MODEL_FEATURES];
       case DetailPageWidgetKeys.DATA_PRODUCTS:
-        return this.defaultWidgetHeight[MlModelWidgetKeys.DATA_PRODUCTS];
+        return this.defaultWidgetHeight[DetailPageWidgetKeys.DATA_PRODUCTS];
       case DetailPageWidgetKeys.TAGS:
-        return this.defaultWidgetHeight[MlModelWidgetKeys.TAGS];
+        return this.defaultWidgetHeight[DetailPageWidgetKeys.TAGS];
       case DetailPageWidgetKeys.GLOSSARY_TERMS:
-        return this.defaultWidgetHeight[MlModelWidgetKeys.GLOSSARY_TERMS];
+        return this.defaultWidgetHeight[DetailPageWidgetKeys.GLOSSARY_TERMS];
       case DetailPageWidgetKeys.CUSTOM_PROPERTIES:
-        return this.defaultWidgetHeight[MlModelWidgetKeys.CUSTOM_PROPERTIES];
+        return this.defaultWidgetHeight[DetailPageWidgetKeys.CUSTOM_PROPERTIES];
       default:
         return 1;
     }

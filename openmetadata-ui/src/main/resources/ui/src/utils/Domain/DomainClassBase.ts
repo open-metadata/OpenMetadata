@@ -56,28 +56,27 @@ export interface DomainDetailPageTabProps {
   labelMap?: Record<EntityTabs, string>;
 }
 
-enum DomainWidgetKeys {
-  DESCRIPTION = DetailPageWidgetKeys.DESCRIPTION,
-  OWNERS = DetailPageWidgetKeys.OWNERS,
-  TAGS = DetailPageWidgetKeys.TAGS,
-  GLOSSARY_TERMS = DetailPageWidgetKeys.GLOSSARY_TERMS,
-  EXPERTS = DetailPageWidgetKeys.EXPERTS,
-  DOMAIN_TYPE = DetailPageWidgetKeys.DOMAIN_TYPE,
-  CUSTOM_PROPERTIES = DetailPageWidgetKeys.CUSTOM_PROPERTIES,
-}
+type DomainWidgetKeys =
+  | DetailPageWidgetKeys.DESCRIPTION
+  | DetailPageWidgetKeys.OWNERS
+  | DetailPageWidgetKeys.TAGS
+  | DetailPageWidgetKeys.GLOSSARY_TERMS
+  | DetailPageWidgetKeys.EXPERTS
+  | DetailPageWidgetKeys.DOMAIN_TYPE
+  | DetailPageWidgetKeys.CUSTOM_PROPERTIES;
 
 class DomainClassBase {
   defaultWidgetHeight: Record<DomainWidgetKeys, number>;
 
   constructor() {
     this.defaultWidgetHeight = {
-      [DomainWidgetKeys.DESCRIPTION]: 2,
-      [DomainWidgetKeys.OWNERS]: 1,
-      [DomainWidgetKeys.TAGS]: 2,
-      [DomainWidgetKeys.GLOSSARY_TERMS]: 2,
-      [DomainWidgetKeys.EXPERTS]: 2,
-      [DomainWidgetKeys.DOMAIN_TYPE]: 2,
-      [DomainWidgetKeys.CUSTOM_PROPERTIES]: 4,
+      [DetailPageWidgetKeys.DESCRIPTION]: 2,
+      [DetailPageWidgetKeys.OWNERS]: 1,
+      [DetailPageWidgetKeys.TAGS]: 2,
+      [DetailPageWidgetKeys.GLOSSARY_TERMS]: 2,
+      [DetailPageWidgetKeys.EXPERTS]: 2,
+      [DetailPageWidgetKeys.DOMAIN_TYPE]: 2,
+      [DetailPageWidgetKeys.CUSTOM_PROPERTIES]: 4,
     };
   }
 
@@ -110,7 +109,7 @@ class DomainClassBase {
 
     return [
       {
-        h: this.defaultWidgetHeight[DomainWidgetKeys.DESCRIPTION],
+        h: this.defaultWidgetHeight[DetailPageWidgetKeys.DESCRIPTION],
         i: DetailPageWidgetKeys.DESCRIPTION,
         w: 6,
         x: 0,
@@ -118,7 +117,7 @@ class DomainClassBase {
         static: false,
       },
       {
-        h: this.defaultWidgetHeight[DomainWidgetKeys.OWNERS],
+        h: this.defaultWidgetHeight[DetailPageWidgetKeys.OWNERS],
         i: DetailPageWidgetKeys.OWNERS,
         w: 2,
         x: 6,
@@ -126,7 +125,7 @@ class DomainClassBase {
         static: false,
       },
       {
-        h: this.defaultWidgetHeight[DomainWidgetKeys.TAGS],
+        h: this.defaultWidgetHeight[DetailPageWidgetKeys.TAGS],
         i: DetailPageWidgetKeys.TAGS,
         w: 2,
         x: 6,
@@ -134,7 +133,7 @@ class DomainClassBase {
         static: false,
       },
       {
-        h: this.defaultWidgetHeight[DomainWidgetKeys.GLOSSARY_TERMS],
+        h: this.defaultWidgetHeight[DetailPageWidgetKeys.GLOSSARY_TERMS],
         i: DetailPageWidgetKeys.GLOSSARY_TERMS,
         w: 2,
         x: 6,
@@ -142,7 +141,7 @@ class DomainClassBase {
         static: false,
       },
       {
-        h: this.defaultWidgetHeight[DomainWidgetKeys.EXPERTS],
+        h: this.defaultWidgetHeight[DetailPageWidgetKeys.EXPERTS],
         i: DetailPageWidgetKeys.EXPERTS,
         w: 2,
         x: 6,
@@ -150,7 +149,7 @@ class DomainClassBase {
         static: false,
       },
       {
-        h: this.defaultWidgetHeight[DomainWidgetKeys.DOMAIN_TYPE],
+        h: this.defaultWidgetHeight[DetailPageWidgetKeys.DOMAIN_TYPE],
         i: DetailPageWidgetKeys.DOMAIN_TYPE,
         w: 2,
         x: 6,
@@ -158,7 +157,7 @@ class DomainClassBase {
         static: false,
       },
       {
-        h: this.defaultWidgetHeight[DomainWidgetKeys.CUSTOM_PROPERTIES],
+        h: this.defaultWidgetHeight[DetailPageWidgetKeys.CUSTOM_PROPERTIES],
         i: DetailPageWidgetKeys.CUSTOM_PROPERTIES,
         w: 2,
         x: 6,
@@ -206,19 +205,19 @@ class DomainClassBase {
   public getWidgetHeight(widgetName: string) {
     switch (widgetName) {
       case DetailPageWidgetKeys.DESCRIPTION:
-        return this.defaultWidgetHeight[DomainWidgetKeys.DESCRIPTION];
+        return this.defaultWidgetHeight[DetailPageWidgetKeys.DESCRIPTION];
       case DetailPageWidgetKeys.OWNERS:
-        return this.defaultWidgetHeight[DomainWidgetKeys.OWNERS];
+        return this.defaultWidgetHeight[DetailPageWidgetKeys.OWNERS];
       case DetailPageWidgetKeys.TAGS:
-        return this.defaultWidgetHeight[DomainWidgetKeys.TAGS];
+        return this.defaultWidgetHeight[DetailPageWidgetKeys.TAGS];
       case DetailPageWidgetKeys.GLOSSARY_TERMS:
-        return this.defaultWidgetHeight[DomainWidgetKeys.GLOSSARY_TERMS];
+        return this.defaultWidgetHeight[DetailPageWidgetKeys.GLOSSARY_TERMS];
       case DetailPageWidgetKeys.EXPERTS:
-        return this.defaultWidgetHeight[DomainWidgetKeys.EXPERTS];
+        return this.defaultWidgetHeight[DetailPageWidgetKeys.EXPERTS];
       case DetailPageWidgetKeys.DOMAIN_TYPE:
-        return this.defaultWidgetHeight[DomainWidgetKeys.DOMAIN_TYPE];
+        return this.defaultWidgetHeight[DetailPageWidgetKeys.DOMAIN_TYPE];
       case DetailPageWidgetKeys.CUSTOM_PROPERTIES:
-        return this.defaultWidgetHeight[DomainWidgetKeys.CUSTOM_PROPERTIES];
+        return this.defaultWidgetHeight[DetailPageWidgetKeys.CUSTOM_PROPERTIES];
       default:
         return 1;
     }

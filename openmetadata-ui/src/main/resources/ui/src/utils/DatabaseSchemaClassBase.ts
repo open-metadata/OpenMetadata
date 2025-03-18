@@ -49,26 +49,25 @@ export interface DatabaseSchemaPageTabProps {
   labelMap: Record<string, string>;
 }
 
-enum DatabaseSchemaWidgetKeys {
-  DESCRIPTION = DetailPageWidgetKeys.DESCRIPTION,
-  TABLES = DetailPageWidgetKeys.TABLE_SCHEMA,
-  DATA_PRODUCTS = DetailPageWidgetKeys.DATA_PRODUCTS,
-  TAGS = DetailPageWidgetKeys.TAGS,
-  GLOSSARY_TERMS = DetailPageWidgetKeys.GLOSSARY_TERMS,
-  CUSTOM_PROPERTIES = DetailPageWidgetKeys.CUSTOM_PROPERTIES,
-}
+type DatabaseSchemaWidgetKeys =
+  | DetailPageWidgetKeys.DESCRIPTION
+  | DetailPageWidgetKeys.TABLES
+  | DetailPageWidgetKeys.DATA_PRODUCTS
+  | DetailPageWidgetKeys.TAGS
+  | DetailPageWidgetKeys.GLOSSARY_TERMS
+  | DetailPageWidgetKeys.CUSTOM_PROPERTIES;
 
 class DatabaseSchemaClassBase {
   defaultWidgetHeight: Record<DatabaseSchemaWidgetKeys, number>;
 
   constructor() {
     this.defaultWidgetHeight = {
-      [DatabaseSchemaWidgetKeys.DESCRIPTION]: 2,
-      [DatabaseSchemaWidgetKeys.TABLES]: 8,
-      [DatabaseSchemaWidgetKeys.DATA_PRODUCTS]: 2,
-      [DatabaseSchemaWidgetKeys.TAGS]: 2,
-      [DatabaseSchemaWidgetKeys.GLOSSARY_TERMS]: 2,
-      [DatabaseSchemaWidgetKeys.CUSTOM_PROPERTIES]: 4,
+      [DetailPageWidgetKeys.DESCRIPTION]: 2,
+      [DetailPageWidgetKeys.TABLES]: 8,
+      [DetailPageWidgetKeys.DATA_PRODUCTS]: 2,
+      [DetailPageWidgetKeys.TAGS]: 2,
+      [DetailPageWidgetKeys.GLOSSARY_TERMS]: 2,
+      [DetailPageWidgetKeys.CUSTOM_PROPERTIES]: 4,
     };
   }
 
@@ -100,7 +99,7 @@ class DatabaseSchemaClassBase {
 
     return [
       {
-        h: this.defaultWidgetHeight[DatabaseSchemaWidgetKeys.DESCRIPTION],
+        h: this.defaultWidgetHeight[DetailPageWidgetKeys.DESCRIPTION],
         i: DetailPageWidgetKeys.DESCRIPTION,
         w: 6,
         x: 0,
@@ -108,7 +107,7 @@ class DatabaseSchemaClassBase {
         static: false,
       },
       {
-        h: this.defaultWidgetHeight[DatabaseSchemaWidgetKeys.TABLES],
+        h: this.defaultWidgetHeight[DetailPageWidgetKeys.TABLES],
         i: DetailPageWidgetKeys.TABLES,
         w: 6,
         x: 0,
@@ -116,7 +115,7 @@ class DatabaseSchemaClassBase {
         static: false,
       },
       {
-        h: this.defaultWidgetHeight[DatabaseSchemaWidgetKeys.DATA_PRODUCTS],
+        h: this.defaultWidgetHeight[DetailPageWidgetKeys.DATA_PRODUCTS],
         i: DetailPageWidgetKeys.DATA_PRODUCTS,
         w: 2,
         x: 6,
@@ -124,7 +123,7 @@ class DatabaseSchemaClassBase {
         static: false,
       },
       {
-        h: this.defaultWidgetHeight[DatabaseSchemaWidgetKeys.TAGS],
+        h: this.defaultWidgetHeight[DetailPageWidgetKeys.TAGS],
         i: DetailPageWidgetKeys.TAGS,
         w: 2,
         x: 6,
@@ -132,7 +131,7 @@ class DatabaseSchemaClassBase {
         static: false,
       },
       {
-        h: this.defaultWidgetHeight[DatabaseSchemaWidgetKeys.GLOSSARY_TERMS],
+        h: this.defaultWidgetHeight[DetailPageWidgetKeys.GLOSSARY_TERMS],
         i: DetailPageWidgetKeys.GLOSSARY_TERMS,
         w: 2,
         x: 6,
@@ -140,7 +139,7 @@ class DatabaseSchemaClassBase {
         static: false,
       },
       {
-        h: this.defaultWidgetHeight[DatabaseSchemaWidgetKeys.CUSTOM_PROPERTIES],
+        h: this.defaultWidgetHeight[DetailPageWidgetKeys.CUSTOM_PROPERTIES],
         i: DetailPageWidgetKeys.CUSTOM_PROPERTIES,
         w: 2,
         x: 6,
@@ -178,21 +177,17 @@ class DatabaseSchemaClassBase {
   public getWidgetHeight(widgetName: string) {
     switch (widgetName) {
       case DetailPageWidgetKeys.DESCRIPTION:
-        return this.defaultWidgetHeight[DatabaseSchemaWidgetKeys.DESCRIPTION];
-      case DetailPageWidgetKeys.TABLE_SCHEMA:
-        return this.defaultWidgetHeight[DatabaseSchemaWidgetKeys.TABLES];
+        return this.defaultWidgetHeight[DetailPageWidgetKeys.DESCRIPTION];
+      case DetailPageWidgetKeys.TABLES:
+        return this.defaultWidgetHeight[DetailPageWidgetKeys.TABLES];
       case DetailPageWidgetKeys.DATA_PRODUCTS:
-        return this.defaultWidgetHeight[DatabaseSchemaWidgetKeys.DATA_PRODUCTS];
+        return this.defaultWidgetHeight[DetailPageWidgetKeys.DATA_PRODUCTS];
       case DetailPageWidgetKeys.TAGS:
-        return this.defaultWidgetHeight[DatabaseSchemaWidgetKeys.TAGS];
+        return this.defaultWidgetHeight[DetailPageWidgetKeys.TAGS];
       case DetailPageWidgetKeys.GLOSSARY_TERMS:
-        return this.defaultWidgetHeight[
-          DatabaseSchemaWidgetKeys.GLOSSARY_TERMS
-        ];
+        return this.defaultWidgetHeight[DetailPageWidgetKeys.GLOSSARY_TERMS];
       case DetailPageWidgetKeys.CUSTOM_PROPERTIES:
-        return this.defaultWidgetHeight[
-          DatabaseSchemaWidgetKeys.CUSTOM_PROPERTIES
-        ];
+        return this.defaultWidgetHeight[DetailPageWidgetKeys.CUSTOM_PROPERTIES];
       default:
         return 1;
     }

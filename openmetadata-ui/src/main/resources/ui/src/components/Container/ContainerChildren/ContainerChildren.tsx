@@ -17,6 +17,7 @@ import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { EntityType } from '../../../enums/entity.enum';
+import { Container } from '../../../generated/entity/data/container';
 import { EntityReference } from '../../../generated/type/entityReference';
 import { usePaging } from '../../../hooks/paging/usePaging';
 import { useFqn } from '../../../hooks/useFqn';
@@ -29,6 +30,7 @@ import NextPrevious from '../../common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
 import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import Table from '../../common/Table/Table';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 
 interface ContainerChildrenProps {
   isReadOnly?: boolean;
@@ -45,7 +47,7 @@ const ContainerChildren: FC<ContainerChildrenProps> = ({ isReadOnly }) => {
     handlePageSizeChange,
     handlePagingChange,
   } = usePaging();
-
+  const { data: container } = useGenericContext<Container>();
   const { fqn: decodedContainerName } = useFqn();
   const [isChildrenLoading, setIsChildrenLoading] = useState(false);
   const [containerChildrenData, setContainerChildrenData] = useState<
@@ -123,6 +125,8 @@ const ContainerChildren: FC<ContainerChildrenProps> = ({ isReadOnly }) => {
   useEffect(() => {
     if (!isReadOnly) {
       fetchContainerChildren();
+    } else {
+      setContainerChildrenData(container?.children ?? []);
     }
   }, [pageSize, isReadOnly]);
 

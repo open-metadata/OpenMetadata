@@ -234,7 +234,10 @@ export const getContainerDetailPageTabs = ({
 };
 
 export const getContainerWidgetsFromKey = (widgetConfig: WidgetConfig) => {
-  if (widgetConfig.i.startsWith(DetailPageWidgetKeys.CONTAINER_CHILDREN)) {
+  if (
+    widgetConfig.i.startsWith(DetailPageWidgetKeys.CONTAINER_CHILDREN) ||
+    widgetConfig.i.startsWith(DetailPageWidgetKeys.CONTAINER_SCHEMA)
+  ) {
     return <ContainerWidget />;
   }
 

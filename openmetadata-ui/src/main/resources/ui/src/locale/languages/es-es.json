@@ -274,6 +274,8 @@
     "custom-theme": "Custom Theme",
     "customise": "Personalizar",
     "customize-entity": "Personalizar {{entity}}",
+    "customize-entity-widget-plural": "Personalizar Widgets de {{entity}}",
+    "customize-tab-plural": "Personalizar Pestañas",
     "customize-ui": "Customize UI",
     "dag": "DAG",
     "dag-view": "Vista DAG",

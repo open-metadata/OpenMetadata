@@ -50,26 +50,25 @@ export interface APICollectionDetailPageTabProps {
   labelMap: Record<EntityTabs, string>;
 }
 
-enum APICollectionWidgetKeys {
-  DESCRIPTION = DetailPageWidgetKeys.DESCRIPTION,
-  API_ENDPOINTS = DetailPageWidgetKeys.API_ENDPOINTS,
-  DATA_PRODUCTS = DetailPageWidgetKeys.DATA_PRODUCTS,
-  TAGS = DetailPageWidgetKeys.TAGS,
-  GLOSSARY_TERMS = DetailPageWidgetKeys.GLOSSARY_TERMS,
-  CUSTOM_PROPERTIES = DetailPageWidgetKeys.CUSTOM_PROPERTIES,
-}
+type APICollectionWidgetKeys =
+  | DetailPageWidgetKeys.DESCRIPTION
+  | DetailPageWidgetKeys.API_ENDPOINTS
+  | DetailPageWidgetKeys.DATA_PRODUCTS
+  | DetailPageWidgetKeys.TAGS
+  | DetailPageWidgetKeys.GLOSSARY_TERMS
+  | DetailPageWidgetKeys.CUSTOM_PROPERTIES;
 
 class APICollectionClassBase {
   defaultWidgetHeight: Record<APICollectionWidgetKeys, number>;
 
   constructor() {
     this.defaultWidgetHeight = {
-      [APICollectionWidgetKeys.DESCRIPTION]: 2,
-      [APICollectionWidgetKeys.API_ENDPOINTS]: 8,
-      [APICollectionWidgetKeys.DATA_PRODUCTS]: 2,
-      [APICollectionWidgetKeys.TAGS]: 2,
-      [APICollectionWidgetKeys.GLOSSARY_TERMS]: 2,
-      [APICollectionWidgetKeys.CUSTOM_PROPERTIES]: 4,
+      [DetailPageWidgetKeys.DESCRIPTION]: 2,
+      [DetailPageWidgetKeys.API_ENDPOINTS]: 8,
+      [DetailPageWidgetKeys.DATA_PRODUCTS]: 2,
+      [DetailPageWidgetKeys.TAGS]: 2,
+      [DetailPageWidgetKeys.GLOSSARY_TERMS]: 2,
+      [DetailPageWidgetKeys.CUSTOM_PROPERTIES]: 4,
     };
   }
 
@@ -100,7 +99,7 @@ class APICollectionClassBase {
 
     return [
       {
-        h: this.defaultWidgetHeight[APICollectionWidgetKeys.DESCRIPTION],
+        h: this.defaultWidgetHeight[DetailPageWidgetKeys.DESCRIPTION],
         i: DetailPageWidgetKeys.DESCRIPTION,
         w: 6,
         x: 0,
@@ -108,7 +107,7 @@ class APICollectionClassBase {
         static: false,
       },
       {
-        h: this.defaultWidgetHeight[APICollectionWidgetKeys.API_ENDPOINTS],
+        h: this.defaultWidgetHeight[DetailPageWidgetKeys.API_ENDPOINTS],
         i: DetailPageWidgetKeys.API_ENDPOINTS,
         w: 6,
         x: 0,
@@ -116,7 +115,7 @@ class APICollectionClassBase {
         static: false,
       },
       {
-        h: this.defaultWidgetHeight[APICollectionWidgetKeys.DATA_PRODUCTS],
+        h: this.defaultWidgetHeight[DetailPageWidgetKeys.DATA_PRODUCTS],
         i: DetailPageWidgetKeys.DATA_PRODUCTS,
         w: 2,
         x: 6,
@@ -124,7 +123,7 @@ class APICollectionClassBase {
         static: false,
       },
       {
-        h: this.defaultWidgetHeight[APICollectionWidgetKeys.TAGS],
+        h: this.defaultWidgetHeight[DetailPageWidgetKeys.TAGS],
         i: DetailPageWidgetKeys.TAGS,
         w: 2,
         x: 6,
@@ -132,7 +131,7 @@ class APICollectionClassBase {
         static: false,
       },
       {
-        h: this.defaultWidgetHeight[APICollectionWidgetKeys.GLOSSARY_TERMS],
+        h: this.defaultWidgetHeight[DetailPageWidgetKeys.GLOSSARY_TERMS],
         i: DetailPageWidgetKeys.GLOSSARY_TERMS,
         w: 2,
         x: 6,
@@ -140,7 +139,7 @@ class APICollectionClassBase {
         static: false,
       },
       {
-        h: this.defaultWidgetHeight[APICollectionWidgetKeys.CUSTOM_PROPERTIES],
+        h: this.defaultWidgetHeight[DetailPageWidgetKeys.CUSTOM_PROPERTIES],
         i: DetailPageWidgetKeys.CUSTOM_PROPERTIES,
         w: 2,
         x: 6,
@@ -177,19 +176,17 @@ class APICollectionClassBase {
   public getWidgetHeight(widgetName: string) {
     switch (widgetName) {
       case DetailPageWidgetKeys.DESCRIPTION:
-        return this.defaultWidgetHeight[APICollectionWidgetKeys.DESCRIPTION];
+        return this.defaultWidgetHeight[DetailPageWidgetKeys.DESCRIPTION];
       case DetailPageWidgetKeys.API_ENDPOINTS:
-        return this.defaultWidgetHeight[APICollectionWidgetKeys.API_ENDPOINTS];
+        return this.defaultWidgetHeight[DetailPageWidgetKeys.API_ENDPOINTS];
       case DetailPageWidgetKeys.DATA_PRODUCTS:
-        return this.defaultWidgetHeight[APICollectionWidgetKeys.DATA_PRODUCTS];
+        return this.defaultWidgetHeight[DetailPageWidgetKeys.DATA_PRODUCTS];
       case DetailPageWidgetKeys.TAGS:
-        return this.defaultWidgetHeight[APICollectionWidgetKeys.TAGS];
+        return this.defaultWidgetHeight[DetailPageWidgetKeys.TAGS];
       case DetailPageWidgetKeys.GLOSSARY_TERMS:
-        return this.defaultWidgetHeight[APICollectionWidgetKeys.GLOSSARY_TERMS];
+        return this.defaultWidgetHeight[DetailPageWidgetKeys.GLOSSARY_TERMS];
       case DetailPageWidgetKeys.CUSTOM_PROPERTIES:
-        return this.defaultWidgetHeight[
-          APICollectionWidgetKeys.CUSTOM_PROPERTIES
-        ];
+        return this.defaultWidgetHeight[DetailPageWidgetKeys.CUSTOM_PROPERTIES];
       default:
         return 1;
     }

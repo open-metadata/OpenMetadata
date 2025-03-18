@@ -274,6 +274,8 @@
     "custom-theme": "맞춤 테마",
     "customise": "맞춤 설정",
     "customize-entity": "{{entity}} 맞춤 설정",
+    "customize-entity-widget-plural": "{{entity}} 위젯 맞춤 설정",
+    "customize-tab-plural": "탭 맞춤 설정",
     "customize-ui": "UI 맞춤 설정",
     "dag": "Dag",
     "dag-view": "DAG 보기",

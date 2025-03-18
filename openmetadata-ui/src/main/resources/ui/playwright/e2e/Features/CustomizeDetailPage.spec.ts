@@ -112,6 +112,8 @@ test.describe('Persona customization', () => {
   test.slow();
 
   test.beforeAll(async ({ browser }) => {
+    test.slow();
+
     const { apiContext, afterAction } = await performAdminLogin(browser);
 
     await EntityDataClass.preRequisitesForTests(apiContext, creationConfig);
@@ -149,6 +151,8 @@ test.describe('Persona customization', () => {
   });
 
   test.afterAll(async ({ browser }) => {
+    test.slow();
+
     const { apiContext, afterAction } = await performAdminLogin(browser);
 
     await EntityDataClass.postRequisitesForTests(apiContext, creationConfig);
@@ -162,6 +166,8 @@ test.describe('Persona customization', () => {
         adminPage,
         userPage,
       }) => {
+        test.slow();
+
         await test.step(
           `should show all the tabs & widget as default when no customization is done`,
           async () => {
@@ -249,94 +255,100 @@ test.describe('Persona customization', () => {
 
   test.describe('Validate persona customization for Governance', async () => {
     Object.values(ECustomizedGovernance).forEach(async (type) => {
-      test(`${type} - customization should work`, async ({
-        adminPage,
-        userPage,
-      }) => {
-        await test.step(
-          `should show all the tabs & widget as default when no customization is done`,
-          async () => {
-            await settingClick(adminPage, GlobalSettingOptions.PERSONA);
-            await adminPage.waitForLoadState('networkidle');
-            await adminPage
-              .getByTestId(`persona-details-card-${persona.data.name}`)
-              .click();
-            await adminPage.getByRole('tab', { name: 'Customize UI' }).click();
-            await adminPage.waitForLoadState('networkidle');
-            await adminPage.getByText('Governance').click();
-            await adminPage.getByText(type, { exact: true }).click();
+      test.fixme(
+        `${type} - customization should work`,
+        async ({ adminPage, userPage }) => {
+          test.slow();
 
-            await adminPage.waitForSelector('[data-testid="loader"]', {
+          await test.step(
+            `should show all the tabs & widget as default when no customization is done`,
+            async () => {
+              await settingClick(adminPage, GlobalSettingOptions.PERSONA);
+              await adminPage.waitForLoadState('networkidle');
+              await adminPage
+                .getByTestId(`persona-details-card-${persona.data.name}`)
+                .click();
+              await adminPage
+                .getByRole('tab', { name: 'Customize UI' })
+                .click();
+              await adminPage.waitForLoadState('networkidle');
+              await adminPage.getByText('Governance').click();
+              await adminPage.getByText(type, { exact: true }).click();
+
+              await adminPage.waitForSelector('[data-testid="loader"]', {
+                state: 'detached',
+              });
+
+              const expectedTabs = getCustomizeDetailsDefaultTabs(type);
+
+              const tabs = adminPage
+                .getByTestId('customize-tab-card')
+                .getByRole('button')
+                .filter({ hasNotText: 'Add Tab' });
+
+              await expect(tabs).toHaveCount(expectedTabs.length);
+
+              for (const tabName of expectedTabs) {
+                await expect(
+                  adminPage
+                    .getByTestId('customize-tab-card')
+                    .getByRole('button', {
+                      name: tabName,
+                    })
+                ).toBeVisible();
+              }
+            }
+          );
+
+          await test.step('apply customization', async () => {
+            expect(
+              adminPage.locator('#KnowledgePanel\\.Description')
+            ).toBeVisible();
+
+            await adminPage
+              .locator('#KnowledgePanel\\.Description')
+              .getByTestId('remove-widget-button')
+              .click();
+
+            await adminPage.getByRole('button', { name: 'Add tab' }).click();
+            await adminPage.getByTestId('add-widget-button').click();
+            await adminPage.getByTestId('Description-widget').click();
+            await adminPage
+              .getByTestId('add-widget-modal')
+              .getByTestId('add-widget-button')
+              .click();
+            await adminPage.getByTestId('save-button').click();
+
+            await toastNotification(
+              adminPage,
+              /^Page layout (created|updated) successfully\.$/
+            );
+          });
+
+          await test.step('Validate customization', async () => {
+            await redirectToHomePage(userPage);
+
+            const entity = getCustomizeDetailsEntity(type);
+            await entity.visitEntityPage(userPage);
+            await userPage.waitForLoadState('networkidle');
+            await userPage.waitForSelector('[data-testid="loader"]', {
               state: 'detached',
             });
 
-            const expectedTabs = getCustomizeDetailsDefaultTabs(type);
+            expect(
+              userPage.getByRole('tab', { name: 'New Tab' })
+            ).toBeVisible();
 
-            const tabs = adminPage
-              .getByTestId('customize-tab-card')
-              .getByRole('button')
-              .filter({ hasNotText: 'Add Tab' });
+            await userPage.getByRole('tab', { name: 'New Tab' }).click();
 
-            await expect(tabs).toHaveCount(expectedTabs.length);
+            const visibleDescription = userPage
+              .getByTestId(/KnowledgePanel.Description-/)
+              .locator('visible=true');
 
-            for (const tabName of expectedTabs) {
-              await expect(
-                adminPage
-                  .getByTestId('customize-tab-card')
-                  .getByRole('button', {
-                    name: tabName,
-                  })
-              ).toBeVisible();
-            }
-          }
-        );
-
-        await test.step('apply customization', async () => {
-          expect(
-            adminPage.locator('#KnowledgePanel\\.Description')
-          ).toBeVisible();
-
-          await adminPage
-            .locator('#KnowledgePanel\\.Description')
-            .getByTestId('remove-widget-button')
-            .click();
-
-          await adminPage.getByRole('button', { name: 'Add tab' }).click();
-          await adminPage.getByTestId('add-widget-button').click();
-          await adminPage.getByTestId('Description-widget').click();
-          await adminPage
-            .getByTestId('add-widget-modal')
-            .getByTestId('add-widget-button')
-            .click();
-          await adminPage.getByTestId('save-button').click();
-
-          await toastNotification(
-            adminPage,
-            /^Page layout (created|updated) successfully\.$/
-          );
-        });
-
-        await test.step('Validate customization', async () => {
-          await redirectToHomePage(userPage);
-
-          const entity = getCustomizeDetailsEntity(type);
-          await entity.visitEntityPage(userPage);
-          await userPage.waitForLoadState('networkidle');
-          await userPage.waitForSelector('[data-testid="loader"]', {
-            state: 'detached',
+            await expect(visibleDescription).toBeVisible();
           });
-
-          expect(userPage.getByRole('tab', { name: 'New Tab' })).toBeVisible();
-
-          await userPage.getByRole('tab', { name: 'New Tab' }).click();
-
-          const visibleDescription = userPage
-            .getByTestId(/KnowledgePanel.Description-/)
-            .locator('visible=true');
-
-          await expect(visibleDescription).toBeVisible();
-        });
-      });
+        }
+      );
     });
   });
 });

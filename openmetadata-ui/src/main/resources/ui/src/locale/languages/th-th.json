@@ -274,6 +274,8 @@
     "custom-theme": "ธีมที่กำหนดเอง",
     "customise": "ปรับแต่ง",
     "customize-entity": "ปรับแต่ง {{entity}}",
+    "customize-entity-widget-plural": "ปรับแต่ง Widgets ของ {{entity}}",
+    "customize-tab-plural": "ปรับแต่งแท็บ",
     "customize-ui": "ปรับแต่ง UI",
     "dag": "Dag",
     "dag-view": "มุมมอง DAG",

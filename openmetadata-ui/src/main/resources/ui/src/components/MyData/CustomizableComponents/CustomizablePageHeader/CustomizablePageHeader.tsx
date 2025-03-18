@@ -39,7 +39,8 @@ export const CustomizablePageHeader = ({
   const [saving, setSaving] = React.useState(false);
 
   const handleCancel = () => {
-    history.push(getPersonaDetailsPath(personaFqn));
+    // Go back in history
+    history.goBack();
   };
 
   const handleOpenResetModal = useCallback(() => {
@@ -73,7 +74,6 @@ export const CustomizablePageHeader = ({
 
   return (
     <Card
-      bordered={false}
       className="customize-page-header"
       data-testid="customize-landing-page-header">
       <div className="d-flex items-center justify-between">

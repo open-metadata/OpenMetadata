@@ -53,26 +53,25 @@ export interface PipelineDetailPageTabProps {
   labelMap?: Record<EntityTabs, string>;
 }
 
-enum PipelineWidgetKeys {
-  DESCRIPTION = DetailPageWidgetKeys.DESCRIPTION,
-  PIPELINE_TASKS = DetailPageWidgetKeys.PIPELINE_TASKS,
-  DATA_PRODUCTS = DetailPageWidgetKeys.DATA_PRODUCTS,
-  TAGS = DetailPageWidgetKeys.TAGS,
-  GLOSSARY_TERMS = DetailPageWidgetKeys.GLOSSARY_TERMS,
-  CUSTOM_PROPERTIES = DetailPageWidgetKeys.CUSTOM_PROPERTIES,
-}
+type PipelineWidgetKeys =
+  | DetailPageWidgetKeys.DESCRIPTION
+  | DetailPageWidgetKeys.PIPELINE_TASKS
+  | DetailPageWidgetKeys.DATA_PRODUCTS
+  | DetailPageWidgetKeys.TAGS
+  | DetailPageWidgetKeys.GLOSSARY_TERMS
+  | DetailPageWidgetKeys.CUSTOM_PROPERTIES;
 
 class PipelineClassBase {
   defaultWidgetHeight: Record<PipelineWidgetKeys, number>;
 
   constructor() {
     this.defaultWidgetHeight = {
-      [PipelineWidgetKeys.DESCRIPTION]: 2,
-      [PipelineWidgetKeys.PIPELINE_TASKS]: 8,
-      [PipelineWidgetKeys.DATA_PRODUCTS]: 2,
-      [PipelineWidgetKeys.TAGS]: 2,
-      [PipelineWidgetKeys.GLOSSARY_TERMS]: 2,
-      [PipelineWidgetKeys.CUSTOM_PROPERTIES]: 4,
+      [DetailPageWidgetKeys.DESCRIPTION]: 2,
+      [DetailPageWidgetKeys.PIPELINE_TASKS]: 8,
+      [DetailPageWidgetKeys.DATA_PRODUCTS]: 2,
+      [DetailPageWidgetKeys.TAGS]: 2,
+      [DetailPageWidgetKeys.GLOSSARY_TERMS]: 2,
+      [DetailPageWidgetKeys.CUSTOM_PROPERTIES]: 4,
     };
   }
 
@@ -105,7 +104,7 @@ class PipelineClassBase {
 
     return [
       {
-        h: this.defaultWidgetHeight[PipelineWidgetKeys.DESCRIPTION],
+        h: this.defaultWidgetHeight[DetailPageWidgetKeys.DESCRIPTION],
         i: DetailPageWidgetKeys.DESCRIPTION,
         w: 6,
         x: 0,
@@ -113,7 +112,7 @@ class PipelineClassBase {
         static: false,
       },
       {
-        h: this.defaultWidgetHeight[PipelineWidgetKeys.PIPELINE_TASKS],
+        h: this.defaultWidgetHeight[DetailPageWidgetKeys.PIPELINE_TASKS],
         i: DetailPageWidgetKeys.PIPELINE_TASKS,
         w: 6,
         x: 0,
@@ -121,7 +120,7 @@ class PipelineClassBase {
         static: false,
       },
       {
-        h: this.defaultWidgetHeight[PipelineWidgetKeys.DATA_PRODUCTS],
+        h: this.defaultWidgetHeight[DetailPageWidgetKeys.DATA_PRODUCTS],
         i: DetailPageWidgetKeys.DATA_PRODUCTS,
         w: 2,
         x: 6,
@@ -129,7 +128,7 @@ class PipelineClassBase {
         static: false,
       },
       {
-        h: this.defaultWidgetHeight[PipelineWidgetKeys.TAGS],
+        h: this.defaultWidgetHeight[DetailPageWidgetKeys.TAGS],
         i: DetailPageWidgetKeys.TAGS,
         w: 2,
         x: 6,
@@ -137,7 +136,7 @@ class PipelineClassBase {
         static: false,
       },
       {
-        h: this.defaultWidgetHeight[PipelineWidgetKeys.GLOSSARY_TERMS],
+        h: this.defaultWidgetHeight[DetailPageWidgetKeys.GLOSSARY_TERMS],
         i: DetailPageWidgetKeys.GLOSSARY_TERMS,
         w: 2,
         x: 6,
@@ -145,7 +144,7 @@ class PipelineClassBase {
         static: false,
       },
       {
-        h: this.defaultWidgetHeight[PipelineWidgetKeys.CUSTOM_PROPERTIES],
+        h: this.defaultWidgetHeight[DetailPageWidgetKeys.CUSTOM_PROPERTIES],
         i: DetailPageWidgetKeys.CUSTOM_PROPERTIES,
         w: 2,
         x: 6,
@@ -183,17 +182,17 @@ class PipelineClassBase {
   public getWidgetHeight(widgetName: string) {
     switch (widgetName) {
       case DetailPageWidgetKeys.DESCRIPTION:
-        return this.defaultWidgetHeight[PipelineWidgetKeys.DESCRIPTION];
+        return this.defaultWidgetHeight[DetailPageWidgetKeys.DESCRIPTION];
       case DetailPageWidgetKeys.PIPELINE_TASKS:
-        return this.defaultWidgetHeight[PipelineWidgetKeys.PIPELINE_TASKS];
+        return this.defaultWidgetHeight[DetailPageWidgetKeys.PIPELINE_TASKS];
       case DetailPageWidgetKeys.DATA_PRODUCTS:
-        return this.defaultWidgetHeight[PipelineWidgetKeys.DATA_PRODUCTS];
+        return this.defaultWidgetHeight[DetailPageWidgetKeys.DATA_PRODUCTS];
       case DetailPageWidgetKeys.TAGS:
-        return this.defaultWidgetHeight[PipelineWidgetKeys.TAGS];
+        return this.defaultWidgetHeight[DetailPageWidgetKeys.TAGS];
       case DetailPageWidgetKeys.GLOSSARY_TERMS:
-        return this.defaultWidgetHeight[PipelineWidgetKeys.GLOSSARY_TERMS];
+        return this.defaultWidgetHeight[DetailPageWidgetKeys.GLOSSARY_TERMS];
       case DetailPageWidgetKeys.CUSTOM_PROPERTIES:
-        return this.defaultWidgetHeight[PipelineWidgetKeys.CUSTOM_PROPERTIES];
+        return this.defaultWidgetHeight[DetailPageWidgetKeys.CUSTOM_PROPERTIES];
       default:
         return 1;
     }

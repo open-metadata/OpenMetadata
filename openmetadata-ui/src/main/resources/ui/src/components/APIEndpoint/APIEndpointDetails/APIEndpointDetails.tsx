@@ -227,6 +227,7 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
     editCustomAttributePermission,
     viewAllPermission,
     editLineagePermission,
+    customizedPage,
   ]);
 
   if (isLoading) {

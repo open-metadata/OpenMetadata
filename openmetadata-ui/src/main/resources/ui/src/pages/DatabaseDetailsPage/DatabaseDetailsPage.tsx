@@ -406,7 +406,7 @@ const DatabaseDetails: FunctionComponent = () => {
     return getDetailsTabWithNewLabel(
       tabs,
       customizedPage?.tabs,
-      EntityTabs.CHILDREN
+      EntityTabs.SCHEMAS
     );
   }, [
     activeTab,

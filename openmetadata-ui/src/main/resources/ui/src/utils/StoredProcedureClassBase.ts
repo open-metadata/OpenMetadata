@@ -56,26 +56,25 @@ export interface StoredProcedureDetailPageTabProps {
   handleFeedCount: (data: FeedCounts) => void;
 }
 
-enum StoredProcedureWidgetKeys {
-  DESCRIPTION = DetailPageWidgetKeys.DESCRIPTION,
-  STORED_PROCEDURE_CODE = DetailPageWidgetKeys.STORED_PROCEDURE_CODE,
-  DATA_PRODUCTS = DetailPageWidgetKeys.DATA_PRODUCTS,
-  TAGS = DetailPageWidgetKeys.TAGS,
-  GLOSSARY_TERMS = DetailPageWidgetKeys.GLOSSARY_TERMS,
-  CUSTOM_PROPERTIES = DetailPageWidgetKeys.CUSTOM_PROPERTIES,
-}
+type StoredProcedureWidgetKeys =
+  | DetailPageWidgetKeys.DESCRIPTION
+  | DetailPageWidgetKeys.STORED_PROCEDURE_CODE
+  | DetailPageWidgetKeys.DATA_PRODUCTS
+  | DetailPageWidgetKeys.TAGS
+  | DetailPageWidgetKeys.GLOSSARY_TERMS
+  | DetailPageWidgetKeys.CUSTOM_PROPERTIES;
 
 class StoredProcedureClassBase {
   defaultWidgetHeight: Record<StoredProcedureWidgetKeys, number>;
 
   constructor() {
     this.defaultWidgetHeight = {
-      [StoredProcedureWidgetKeys.DESCRIPTION]: 2,
-      [StoredProcedureWidgetKeys.STORED_PROCEDURE_CODE]: 8,
-      [StoredProcedureWidgetKeys.DATA_PRODUCTS]: 2,
-      [StoredProcedureWidgetKeys.TAGS]: 2,
-      [StoredProcedureWidgetKeys.GLOSSARY_TERMS]: 2,
-      [StoredProcedureWidgetKeys.CUSTOM_PROPERTIES]: 4,
+      [DetailPageWidgetKeys.DESCRIPTION]: 2,
+      [DetailPageWidgetKeys.STORED_PROCEDURE_CODE]: 8,
+      [DetailPageWidgetKeys.DATA_PRODUCTS]: 2,
+      [DetailPageWidgetKeys.TAGS]: 2,
+      [DetailPageWidgetKeys.GLOSSARY_TERMS]: 2,
+      [DetailPageWidgetKeys.CUSTOM_PROPERTIES]: 4,
     };
   }
 
@@ -107,7 +106,7 @@ class StoredProcedureClassBase {
 
     return [
       {
-        h: this.defaultWidgetHeight[StoredProcedureWidgetKeys.DESCRIPTION],
+        h: this.defaultWidgetHeight[DetailPageWidgetKeys.DESCRIPTION],
         i: DetailPageWidgetKeys.DESCRIPTION,
         w: 6,
         x: 0,
@@ -115,9 +114,7 @@ class StoredProcedureClassBase {
         static: false,
       },
       {
-        h: this.defaultWidgetHeight[
-          StoredProcedureWidgetKeys.STORED_PROCEDURE_CODE
-        ],
+        h: this.defaultWidgetHeight[DetailPageWidgetKeys.STORED_PROCEDURE_CODE],
         i: DetailPageWidgetKeys.STORED_PROCEDURE_CODE,
         w: 6,
         x: 0,
@@ -125,7 +122,7 @@ class StoredProcedureClassBase {
         static: false,
       },
       {
-        h: this.defaultWidgetHeight[StoredProcedureWidgetKeys.DATA_PRODUCTS],
+        h: this.defaultWidgetHeight[DetailPageWidgetKeys.DATA_PRODUCTS],
         i: DetailPageWidgetKeys.DATA_PRODUCTS,
         w: 2,
         x: 6,
@@ -133,7 +130,7 @@ class StoredProcedureClassBase {
         static: false,
       },
       {
-        h: this.defaultWidgetHeight[StoredProcedureWidgetKeys.TAGS],
+        h: this.defaultWidgetHeight[DetailPageWidgetKeys.TAGS],
         i: DetailPageWidgetKeys.TAGS,
         w: 2,
         x: 6,
@@ -141,7 +138,7 @@ class StoredProcedureClassBase {
         static: false,
       },
       {
-        h: this.defaultWidgetHeight[StoredProcedureWidgetKeys.GLOSSARY_TERMS],
+        h: this.defaultWidgetHeight[DetailPageWidgetKeys.GLOSSARY_TERMS],
         i: DetailPageWidgetKeys.GLOSSARY_TERMS,
         w: 2,
         x: 6,
@@ -149,9 +146,7 @@ class StoredProcedureClassBase {
         static: false,
       },
       {
-        h: this.defaultWidgetHeight[
-          StoredProcedureWidgetKeys.CUSTOM_PROPERTIES
-        ],
+        h: this.defaultWidgetHeight[DetailPageWidgetKeys.CUSTOM_PROPERTIES],
         i: DetailPageWidgetKeys.CUSTOM_PROPERTIES,
         w: 2,
         x: 6,
@@ -193,27 +188,21 @@ class StoredProcedureClassBase {
   public getWidgetHeight(widgetName: string) {
     switch (widgetName) {
       case DetailPageWidgetKeys.DESCRIPTION:
-        return this.defaultWidgetHeight[StoredProcedureWidgetKeys.DESCRIPTION];
+        return this.defaultWidgetHeight[DetailPageWidgetKeys.DESCRIPTION];
       case DetailPageWidgetKeys.TABLE_SCHEMA:
         return this.defaultWidgetHeight[
-          StoredProcedureWidgetKeys.STORED_PROCEDURE_CODE
+          DetailPageWidgetKeys.STORED_PROCEDURE_CODE
         ];
       case DetailPageWidgetKeys.FREQUENTLY_JOINED_TABLES:
-        return this.defaultWidgetHeight[
-          StoredProcedureWidgetKeys.DATA_PRODUCTS
-        ];
+        return this.defaultWidgetHeight[DetailPageWidgetKeys.DATA_PRODUCTS];
       case DetailPageWidgetKeys.DATA_PRODUCTS:
-        return this.defaultWidgetHeight[StoredProcedureWidgetKeys.TAGS];
+        return this.defaultWidgetHeight[DetailPageWidgetKeys.TAGS];
       case DetailPageWidgetKeys.TAGS:
-        return this.defaultWidgetHeight[StoredProcedureWidgetKeys.TAGS];
+        return this.defaultWidgetHeight[DetailPageWidgetKeys.TAGS];
       case DetailPageWidgetKeys.GLOSSARY_TERMS:
-        return this.defaultWidgetHeight[
-          StoredProcedureWidgetKeys.GLOSSARY_TERMS
-        ];
+        return this.defaultWidgetHeight[DetailPageWidgetKeys.GLOSSARY_TERMS];
       case DetailPageWidgetKeys.TABLE_CONSTRAINTS:
-        return this.defaultWidgetHeight[
-          StoredProcedureWidgetKeys.CUSTOM_PROPERTIES
-        ];
+        return this.defaultWidgetHeight[DetailPageWidgetKeys.CUSTOM_PROPERTIES];
       default:
         return 1;
     }

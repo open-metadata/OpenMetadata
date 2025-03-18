@@ -12,12 +12,14 @@
  */
 import { noop } from 'lodash';
 import React from 'react';
+import APIEndpointSchema from '../../components/APIEndpoint/APIEndpointSchema/APIEndpointSchema';
 import { ExtensionTable } from '../../components/common/CustomPropertyTable/ExtensionTable';
 import { DomainLabel } from '../../components/common/DomainLabel/DomainLabel.component';
 import { OwnerLabel } from '../../components/common/OwnerLabel/OwnerLabel.component';
 import RichTextEditorPreviewerV1 from '../../components/common/RichTextEditor/RichTextEditorPreviewerV1';
 import TagButton from '../../components/common/TagButton/TagButton.component';
 import ContainerChildren from '../../components/Container/ContainerChildren/ContainerChildren';
+import { ContainerWidget } from '../../components/Container/ContainerWidget/ContainerWidget';
 import { DashboardChartTable } from '../../components/Dashboard/DashboardChartTable/DashboardChartTable';
 import ModelTab from '../../components/Dashboard/DataModel/DataModels/ModelTab/ModelTab.component';
 import SchemaTable from '../../components/Database/SchemaTable/SchemaTable.component';
@@ -149,4 +151,6 @@ export const WIDGET_COMPONENTS = {
   [DetailPageWidgetKeys.API_ENDPOINTS]: () => (
     <APIEndpointsTab isCustomizationPage />
   ),
+  [DetailPageWidgetKeys.API_SCHEMA]: () => <APIEndpointSchema />,
+  [DetailPageWidgetKeys.CONTAINER_SCHEMA]: () => <ContainerWidget />,
 } as const;

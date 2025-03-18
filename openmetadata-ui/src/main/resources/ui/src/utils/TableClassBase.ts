@@ -58,32 +58,31 @@ export interface TableDetailPageTabProps {
   labelMap?: Record<EntityTabs, string>;
 }
 
-enum TableWidgetKeys {
-  DESCRIPTION = DetailPageWidgetKeys.DESCRIPTION,
-  TABLE_SCHEMA = DetailPageWidgetKeys.TABLE_SCHEMA,
-  FREQUENTLY_JOINED_TABLES = DetailPageWidgetKeys.FREQUENTLY_JOINED_TABLES,
-  DATA_PRODUCTS = DetailPageWidgetKeys.DATA_PRODUCTS,
-  TAGS = DetailPageWidgetKeys.TAGS,
-  GLOSSARY_TERMS = DetailPageWidgetKeys.GLOSSARY_TERMS,
-  CUSTOM_PROPERTIES = DetailPageWidgetKeys.CUSTOM_PROPERTIES,
-  TABLE_CONSTRAINTS = DetailPageWidgetKeys.TABLE_CONSTRAINTS,
-  PARTITIONED_KEYS = DetailPageWidgetKeys.PARTITIONED_KEYS,
-}
+type TableWidgetKeys =
+  | DetailPageWidgetKeys.DESCRIPTION
+  | DetailPageWidgetKeys.TABLE_SCHEMA
+  | DetailPageWidgetKeys.FREQUENTLY_JOINED_TABLES
+  | DetailPageWidgetKeys.DATA_PRODUCTS
+  | DetailPageWidgetKeys.TAGS
+  | DetailPageWidgetKeys.GLOSSARY_TERMS
+  | DetailPageWidgetKeys.CUSTOM_PROPERTIES
+  | DetailPageWidgetKeys.TABLE_CONSTRAINTS
+  | DetailPageWidgetKeys.PARTITIONED_KEYS;
 
 class TableClassBase {
   defaultWidgetHeight: Record<TableWidgetKeys, number>;
 
   constructor() {
     this.defaultWidgetHeight = {
-      [TableWidgetKeys.DESCRIPTION]: 2,
-      [TableWidgetKeys.TABLE_SCHEMA]: 8,
-      [TableWidgetKeys.FREQUENTLY_JOINED_TABLES]: 2,
-      [TableWidgetKeys.DATA_PRODUCTS]: 2,
-      [TableWidgetKeys.TAGS]: 2,
-      [TableWidgetKeys.GLOSSARY_TERMS]: 2,
-      [TableWidgetKeys.CUSTOM_PROPERTIES]: 4,
-      [TableWidgetKeys.TABLE_CONSTRAINTS]: 2,
-      [TableWidgetKeys.PARTITIONED_KEYS]: 2,
+      [DetailPageWidgetKeys.DESCRIPTION]: 2,
+      [DetailPageWidgetKeys.TABLE_SCHEMA]: 8,
+      [DetailPageWidgetKeys.FREQUENTLY_JOINED_TABLES]: 2,
+      [DetailPageWidgetKeys.DATA_PRODUCTS]: 2,
+      [DetailPageWidgetKeys.TAGS]: 2,
+      [DetailPageWidgetKeys.GLOSSARY_TERMS]: 2,
+      [DetailPageWidgetKeys.CUSTOM_PROPERTIES]: 4,
+      [DetailPageWidgetKeys.TABLE_CONSTRAINTS]: 2,
+      [DetailPageWidgetKeys.PARTITIONED_KEYS]: 2,
     };
   }
 
@@ -120,7 +119,7 @@ class TableClassBase {
 
     return [
       {
-        h: this.defaultWidgetHeight[TableWidgetKeys.DESCRIPTION],
+        h: this.defaultWidgetHeight[DetailPageWidgetKeys.DESCRIPTION],
         i: DetailPageWidgetKeys.DESCRIPTION,
         w: 6,
         x: 0,
@@ -128,7 +127,7 @@ class TableClassBase {
         static: false,
       },
       {
-        h: this.defaultWidgetHeight[TableWidgetKeys.TABLE_SCHEMA],
+        h: this.defaultWidgetHeight[DetailPageWidgetKeys.TABLE_SCHEMA],
         i: DetailPageWidgetKeys.TABLE_SCHEMA,
         w: 6,
         x: 0,
@@ -136,7 +135,9 @@ class TableClassBase {
         static: false,
       },
       {
-        h: this.defaultWidgetHeight[TableWidgetKeys.FREQUENTLY_JOINED_TABLES],
+        h: this.defaultWidgetHeight[
+          DetailPageWidgetKeys.FREQUENTLY_JOINED_TABLES
+        ],
         i: DetailPageWidgetKeys.FREQUENTLY_JOINED_TABLES,
         w: 2,
         x: 6,
@@ -144,7 +145,7 @@ class TableClassBase {
         static: false,
       },
       {
-        h: this.defaultWidgetHeight[TableWidgetKeys.DATA_PRODUCTS],
+        h: this.defaultWidgetHeight[DetailPageWidgetKeys.DATA_PRODUCTS],
         i: DetailPageWidgetKeys.DATA_PRODUCTS,
         w: 2,
         x: 6,
@@ -152,7 +153,7 @@ class TableClassBase {
         static: false,
       },
       {
-        h: this.defaultWidgetHeight[TableWidgetKeys.TAGS],
+        h: this.defaultWidgetHeight[DetailPageWidgetKeys.TAGS],
         i: DetailPageWidgetKeys.TAGS,
         w: 2,
         x: 6,
@@ -160,7 +161,7 @@ class TableClassBase {
         static: false,
       },
       {
-        h: this.defaultWidgetHeight[TableWidgetKeys.GLOSSARY_TERMS],
+        h: this.defaultWidgetHeight[DetailPageWidgetKeys.GLOSSARY_TERMS],
         i: DetailPageWidgetKeys.GLOSSARY_TERMS,
         w: 2,
         x: 6,
@@ -168,7 +169,7 @@ class TableClassBase {
         static: false,
       },
       {
-        h: this.defaultWidgetHeight[TableWidgetKeys.TABLE_CONSTRAINTS],
+        h: this.defaultWidgetHeight[DetailPageWidgetKeys.TABLE_CONSTRAINTS],
         i: DetailPageWidgetKeys.TABLE_CONSTRAINTS,
         w: 2,
         x: 6,
@@ -176,7 +177,7 @@ class TableClassBase {
         static: false,
       },
       {
-        h: this.defaultWidgetHeight[TableWidgetKeys.CUSTOM_PROPERTIES],
+        h: this.defaultWidgetHeight[DetailPageWidgetKeys.CUSTOM_PROPERTIES],
         i: DetailPageWidgetKeys.CUSTOM_PROPERTIES,
         w: 2,
         x: 6,
@@ -232,23 +233,23 @@ class TableClassBase {
   public getWidgetHeight(widgetName: string) {
     switch (widgetName) {
       case DetailPageWidgetKeys.DESCRIPTION:
-        return this.defaultWidgetHeight[TableWidgetKeys.DESCRIPTION];
+        return this.defaultWidgetHeight[DetailPageWidgetKeys.DESCRIPTION];
       case DetailPageWidgetKeys.TABLE_SCHEMA:
-        return this.defaultWidgetHeight[TableWidgetKeys.TABLE_SCHEMA];
+        return this.defaultWidgetHeight[DetailPageWidgetKeys.TABLE_SCHEMA];
       case DetailPageWidgetKeys.FREQUENTLY_JOINED_TABLES:
         return this.defaultWidgetHeight[
-          TableWidgetKeys.FREQUENTLY_JOINED_TABLES
+          DetailPageWidgetKeys.FREQUENTLY_JOINED_TABLES
         ];
       case DetailPageWidgetKeys.DATA_PRODUCTS:
-        return this.defaultWidgetHeight[TableWidgetKeys.DATA_PRODUCTS];
+        return this.defaultWidgetHeight[DetailPageWidgetKeys.DATA_PRODUCTS];
       case DetailPageWidgetKeys.TAGS:
-        return this.defaultWidgetHeight[TableWidgetKeys.TAGS];
+        return this.defaultWidgetHeight[DetailPageWidgetKeys.TAGS];
       case DetailPageWidgetKeys.GLOSSARY_TERMS:
-        return this.defaultWidgetHeight[TableWidgetKeys.GLOSSARY_TERMS];
+        return this.defaultWidgetHeight[DetailPageWidgetKeys.GLOSSARY_TERMS];
       case DetailPageWidgetKeys.TABLE_CONSTRAINTS:
-        return this.defaultWidgetHeight[TableWidgetKeys.TABLE_CONSTRAINTS];
+        return this.defaultWidgetHeight[DetailPageWidgetKeys.TABLE_CONSTRAINTS];
       case DetailPageWidgetKeys.PARTITIONED_KEYS:
-        return this.defaultWidgetHeight[TableWidgetKeys.PARTITIONED_KEYS];
+        return this.defaultWidgetHeight[DetailPageWidgetKeys.PARTITIONED_KEYS];
       default:
         return 1;
     }

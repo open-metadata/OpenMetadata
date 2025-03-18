@@ -286,7 +286,6 @@ export const CustomizeTabWidget = () => {
       <Col span={24}>
         <Card
           bordered={false}
-          className="m-x-lg"
           data-testid="customize-tab-card"
           extra={
             <Button icon={<PlusOutlined />} type="primary" onClick={add}>
@@ -317,7 +316,6 @@ export const CustomizeTabWidget = () => {
         <Card
           bodyStyle={{ padding: 0, paddingBottom: '20px' }}
           bordered={false}
-          className="m-x-lg"
           extra={
             <Button
               icon={<PlusOutlined />}

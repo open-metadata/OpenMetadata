@@ -274,6 +274,8 @@
     "custom-theme": "सानुकूल थीम",
     "customise": "सानुकूलित करा",
     "customize-entity": "{{entity}} सानुकूलित करा",
+    "customize-entity-widget-plural": "{{entity}} विजेट्स सानुकूलित करा",
+    "customize-tab-plural": "टॅब्स सानुकूलित करा",
     "customize-ui": "UI सानुकूलित करा",
     "dag": "Dag",
     "dag-view": "DAG दृश्य",

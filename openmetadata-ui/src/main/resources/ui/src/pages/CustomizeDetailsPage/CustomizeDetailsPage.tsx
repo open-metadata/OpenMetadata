@@ -73,20 +73,18 @@ export const CustomizeDetailsPage = ({
           />
         </Col>
         <Col span={24}>
-          <div className="m-x-lg">
-            <DataAssetsHeader
-              isCustomizedView
-              dataAsset={entityDummyData as Table}
-              entityType={
-                PageTypeToEntityTypeMap[currentPageType] as EntityType.TABLE
-              }
-              permissions={{} as OperationPermission}
-              onDisplayNameUpdate={asyncNoop}
-              onOwnerUpdate={asyncNoop}
-              onRestoreDataAsset={asyncNoop}
-              onTierUpdate={asyncNoop}
-            />
-          </div>
+          <DataAssetsHeader
+            isCustomizedView
+            dataAsset={entityDummyData as Table}
+            entityType={
+              PageTypeToEntityTypeMap[currentPageType] as EntityType.TABLE
+            }
+            permissions={{} as OperationPermission}
+            onDisplayNameUpdate={asyncNoop}
+            onOwnerUpdate={asyncNoop}
+            onRestoreDataAsset={asyncNoop}
+            onTierUpdate={asyncNoop}
+          />
         </Col>
         {/* It will render cols inside the row */}
         <CustomizeTabWidget />
