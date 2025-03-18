@@ -13,6 +13,7 @@
 import { EntityType } from '../enums/entity.enum';
 import { ServiceConnectionFilterPatternFields } from '../enums/ServiceConnection.enum';
 
+// Ordered list of filter pattern fields
 export const SERVICE_FILTER_PATTERN_FIELDS = Object.values(
   ServiceConnectionFilterPatternFields
 );
@@ -53,4 +54,8 @@ export const FILTER_PATTERN_BY_SERVICE_TYPE = {
   [EntityType.STORAGE_SERVICE]: [
     ServiceConnectionFilterPatternFields.CONTAINER_FILTER_PATTERN,
   ],
+};
+
+export const SERVICE_CONNECTION_UI_SCHEMA = {
+  'ui:order': [...SERVICE_FILTER_PATTERN_FIELDS],
 };
