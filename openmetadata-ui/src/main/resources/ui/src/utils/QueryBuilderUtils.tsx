@@ -38,7 +38,7 @@ export const JSONLOGIC_FIELDS_TO_IGNORE_SPLIT = [
   EntityReferenceFields.DATABASE_SCHEMA,
 ];
 
-const resolveFieldType = (
+export const resolveFieldType = (
   fields: Fields,
   field: string
 ): string | undefined => {
@@ -53,6 +53,19 @@ const resolveFieldType = (
 
   // Traverse nested subfields if there are more parts
   for (let i = 1; i < fieldParts.length; i++) {
+    // First check if a more specific path exists (e.g., "expert.name" as a direct subfield)
+    if (i === 1 && (currentField as FieldGroup)?.subfields) {
+      // Join the remaining parts and check if it exists as a single subfield
+      const remainingPath = fieldParts.slice(1).join('.');
+      const remainingField = (currentField as FieldGroup).subfields[
+        remainingPath
+      ];
+      if (remainingField?.type) {
+        return remainingField.type;
+      }
+    }
+
+    // If no specific path found, continue with normal traversal
     if (!(currentField as FieldGroup)?.subfields?.[fieldParts[i]]) {
       return undefined; // Subfield not found
     }
