@@ -57,7 +57,7 @@ import {
   getPartialNameFromTableFQN,
 } from '../../utils/CommonUtils';
 import {
-  formatDateTime,
+  formatDateTimeLong,
   getCurrentMillis,
   getEpochMillisForPastDays,
 } from '../../utils/date-time/DateTimeUtils';
@@ -468,8 +468,8 @@ const IncidentManager = ({
         title: t('label.execution-time'),
         dataIndex: 'timestamp',
         key: 'timestamp',
-        width: 150,
-        render: (value: number) => (value ? formatDateTime(value) : '--'),
+        width: 200,
+        render: (value: number) => (value ? formatDateTimeLong(value) : '--'),
       },
       {
         title: t('label.status'),
@@ -500,7 +500,7 @@ const IncidentManager = ({
         title: t('label.severity'),
         dataIndex: 'severity',
         key: 'severity',
-        width: 150,
+        width: 100,
         render: (value: Severities, record: TestCaseResolutionStatus) => {
           if (isPermissionLoading) {
             return <Skeleton.Input size="small" />;
