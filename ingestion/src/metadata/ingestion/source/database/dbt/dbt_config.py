@@ -255,6 +255,7 @@ def get_blobs_grouped_by_dir(blobs: List[str]) -> Dict[str, List[str]]:
             DBT_MANIFEST_FILE_NAME == blob_file_name.lower()
             or DBT_CATALOG_FILE_NAME == blob_file_name.lower()
             or DBT_RUN_RESULTS_FILE_NAME in blob_file_name.lower()
+            or DBT_SOURCES_FILE_NAME == blob_file_name.lower()
         ):
             blob_grouped_by_directory[subdirectory].append(blob)
     return blob_grouped_by_directory
