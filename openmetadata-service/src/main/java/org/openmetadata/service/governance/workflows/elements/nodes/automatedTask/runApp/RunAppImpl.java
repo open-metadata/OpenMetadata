@@ -4,6 +4,7 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.util.EntityUtil.Fields.EMPTY_FIELDS;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import javax.json.JsonPatch;
 import lombok.SneakyThrows;
@@ -64,22 +65,18 @@ public class RunAppImpl {
       return true;
     }
 
-    App updatedApp = getUpdatedApp(app, service);
-
-    updateApp(appRepository, app, updatedApp);
-
     long startTime = System.currentTimeMillis();
     long timeoutMillis = timeoutSeconds * 1000;
-    boolean success = true;
 
+    Map<String, Object> config = getConfig(app, service);
     if (app.getAppType().equals(AppType.Internal)) {
-      success = runApp(appRepository, app, waitForCompletion, startTime, timeoutMillis);
+      return runApp(appRepository, app, config, waitForCompletion, startTime, timeoutMillis);
     } else {
-      success = runApp(pipelineServiceClient, app, waitForCompletion, startTime, timeoutMillis);
+      App updatedApp = JsonUtils.deepCopy(app, App.class);
+      updatedApp.setAppConfiguration(config);
+      updateApp(appRepository, app, app);
+      return runApp(pipelineServiceClient, app, waitForCompletion, startTime, timeoutMillis);
     }
-
-    updateApp(appRepository, updatedApp, app);
-    return success;
   }
 
   private boolean validateAppShouldRun(App app, ServiceEntityInterface service) {
@@ -89,62 +86,62 @@ public class RunAppImpl {
         && List.of("CollateAIApplication", "CollateAIQualityAgentApplication")
             .contains(app.getName())) {
       return true;
-    } else if (List.of("DataInsightsApplication", "CollateAITierAgentApplication")
-        .contains(app.getName())) {
-      return true;
-    } else {
-      return false;
-    }
+    } else
+      return List.of("DataInsightsApplication", "CollateAITierAgentApplication")
+          .contains(app.getName());
   }
 
-  private App getUpdatedApp(App app, ServiceEntityInterface service) {
-    App updatedApp = JsonUtils.deepCopy(app, App.class);
-    Object updatedConfig = JsonUtils.deepCopy(app.getAppConfiguration(), Object.class);
+  private Map<String, Object> getConfig(App app, ServiceEntityInterface service) {
+    Object config = JsonUtils.deepCopy(app.getAppConfiguration(), Object.class);
 
-    if (app.getName().equals("CollateAIApplication")) {
-      (JsonUtils.convertValue(updatedConfig, CollateAIAppConfig.class))
-          .withFilter(
-              String.format(
-                  "{\"query\":{\"bool\":{\"must\":[{\"bool\":{\"must\":[{\"term\":{\"Tier.TagFQN\":\"Tier.Tier1\"}}]}},{\"bool\":{\"must\":[{\"term\":{\"entityType\":\"table\"}}]}},{\"bool\":{\"must\":[{\"term\":{\"service.name.keyword\":\"%s\"}}]}}]}}}",
-                  service.getName().toLowerCase()));
-    } else if (app.getName().equals("CollateAIQualityAgentApplication")) {
-      (JsonUtils.convertValue(updatedConfig, CollateAIQualityAgentAppConfig.class))
-          .withFilter(
-              String.format(
-                  "{\"query\":{\"bool\":{\"must\":[{\"bool\":{\"must\":[{\"term\":{\"Tier.TagFQN\":\"Tier.Tier1\"}}]}},{\"bool\":{\"must\":[{\"term\":{\"entityType\":\"table\"}}]}},{\"bool\":{\"must\":[{\"term\":{\"service.name.keyword\":\"%s\"}}]}}]}}}",
-                  service.getName().toLowerCase()));
-    } else if (app.getName().equals("CollateAITierAgentApplication")) {
-      (JsonUtils.convertValue(updatedConfig, CollateAITierAgentAppConfig.class))
-          .withFilter(
-              String.format(
-                  "{\"query\":{\"bool\":{\"must\":[{\"bool\":{\"must\":[{\"term\":{\"entityType\":\"table\"}}]}},{\"bool\":{\"must\":[{\"term\":{\"service.name.keyword\":\"%s\"}}]}}]}}}",
-                  service.getName().toLowerCase()));
-    } else if (app.getName().equals("DataInsightsApplication")) {
-      DataInsightsAppConfig updatedAppConfig =
-          (JsonUtils.convertValue(updatedConfig, DataInsightsAppConfig.class));
-      ModuleConfiguration updatedModuleConfig =
-          updatedAppConfig
-              .getModuleConfiguration()
-              .withAppAnalytics(new AppAnalyticsConfig().withEnabled(false))
-              .withCostAnalysis(new CostAnalysisConfig().withEnabled(false))
-              .withDataQuality(new DataQualityConfig().withEnabled(false))
-              .withDataAssets(
-                  new DataAssetsConfig()
-                      .withRetention(
-                          updatedAppConfig.getModuleConfiguration().getDataAssets().getRetention())
-                      .withServiceFilter(
-                          new ServiceFilter()
-                              .withServiceName(service.getName())
-                              .withServiceType(Entity.getEntityTypeFromObject(service))));
+    switch (app.getName()) {
+      case "CollateAIApplication" -> config =
+          (JsonUtils.convertValue(config, CollateAIAppConfig.class))
+              .withFilter(
+                  String.format(
+                      "{\"query\":{\"bool\":{\"must\":[{\"bool\":{\"must\":[{\"term\":{\"Tier.TagFQN\":\"Tier.Tier1\"}}]}},{\"bool\":{\"must\":[{\"term\":{\"entityType\":\"table\"}}]}},{\"bool\":{\"must\":[{\"term\":{\"service.name.keyword\":\"%s\"}}]}}]}}}",
+                      service.getName().toLowerCase()));
+      case "CollateAIQualityAgentApplication" -> config =
+          (JsonUtils.convertValue(config, CollateAIQualityAgentAppConfig.class))
+              .withFilter(
+                  String.format(
+                      "{\"query\":{\"bool\":{\"must\":[{\"bool\":{\"must\":[{\"term\":{\"Tier.TagFQN\":\"Tier.Tier1\"}}]}},{\"bool\":{\"must\":[{\"term\":{\"entityType\":\"table\"}}]}},{\"bool\":{\"must\":[{\"term\":{\"service.name.keyword\":\"%s\"}}]}}]}}}",
+                      service.getName().toLowerCase()));
+      case "CollateAITierAgentApplication" -> config =
+          (JsonUtils.convertValue(config, CollateAITierAgentAppConfig.class))
+              .withFilter(
+                  String.format(
+                      "{\"query\":{\"bool\":{\"must\":[{\"bool\":{\"must\":[{\"term\":{\"entityType\":\"table\"}}]}},{\"bool\":{\"must\":[{\"term\":{\"service.name.keyword\":\"%s\"}}]}}]}}}",
+                      service.getName().toLowerCase()));
+      case "DataInsightsApplication" -> {
+        DataInsightsAppConfig updatedAppConfig =
+            (JsonUtils.convertValue(config, DataInsightsAppConfig.class));
+        ModuleConfiguration updatedModuleConfig =
+            updatedAppConfig
+                .getModuleConfiguration()
+                .withAppAnalytics(new AppAnalyticsConfig().withEnabled(false))
+                .withCostAnalysis(new CostAnalysisConfig().withEnabled(false))
+                .withDataQuality(new DataQualityConfig().withEnabled(false))
+                .withDataAssets(
+                    new DataAssetsConfig()
+                        .withRetention(
+                            updatedAppConfig
+                                .getModuleConfiguration()
+                                .getDataAssets()
+                                .getRetention())
+                        .withServiceFilter(
+                            new ServiceFilter()
+                                .withServiceName(service.getName())
+                                .withServiceType(Entity.getEntityTypeFromObject(service))));
 
-      updatedConfig =
-          updatedAppConfig
-              .withBackfillConfiguration(new BackfillConfiguration().withEnabled(false))
-              .withRecreateDataAssetsIndex(false)
-              .withModuleConfiguration(updatedModuleConfig);
+        config =
+            updatedAppConfig
+                .withBackfillConfiguration(new BackfillConfiguration().withEnabled(false))
+                .withRecreateDataAssetsIndex(false)
+                .withModuleConfiguration(updatedModuleConfig);
+      }
     }
-    updatedApp.withAppConfiguration(JsonUtils.getMap(updatedConfig));
-    return updatedApp;
+    return JsonUtils.getMap(config);
   }
 
   private void updateApp(AppRepository repository, App originalApp, App updatedApp) {
@@ -157,12 +154,13 @@ public class RunAppImpl {
   private boolean runApp(
       AppRepository repository,
       App app,
+      Map<String, Object> config,
       boolean waitForCompletion,
       long startTime,
       long timeoutMillis) {
     ApplicationHandler.getInstance()
         .triggerApplicationOnDemand(
-            app, Entity.getCollectionDAO(), Entity.getSearchRepository(), null);
+            app, Entity.getCollectionDAO(), Entity.getSearchRepository(), config);
 
     if (waitForCompletion) {
       return waitForCompletion(repository, app, startTime, timeoutMillis);
