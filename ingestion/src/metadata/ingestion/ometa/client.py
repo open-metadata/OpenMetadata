@@ -14,6 +14,7 @@ Python API REST wrapper and helpers
 import time
 import traceback
 from datetime import datetime, timezone
+from json import JSONDecodeError
 from typing import Any, Callable, Dict, List, Optional, Union
 
 import requests
@@ -24,7 +25,6 @@ from metadata.ingestion.ometa.credentials import URL, get_api_version
 from metadata.ingestion.ometa.ttl_cache import TTLCache
 from metadata.utils.execution_time_tracker import calculate_execution_time
 from metadata.utils.logger import ometa_logger
-from json import JSONDecodeError
 
 logger = ometa_logger()
 

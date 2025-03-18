@@ -12,12 +12,15 @@
 Client to interact with Nifi apis
 """
 import traceback
-from typing import Iterable, List, Dict
+from typing import Dict, Iterable, List
 
-from metadata.generated.schema.entity.services.connections.pipeline.nifi.clientCertificateAuth import \
-    NifiClientCertificateAuth
-from metadata.generated.schema.entity.services.connections.pipeline.nifi.basicAuth import NifiBasicAuth
-from metadata.ingestion.ometa.client import REST, HTTPError, ClientConfig
+from metadata.generated.schema.entity.services.connections.pipeline.nifi.basicAuth import (
+    NifiBasicAuth,
+)
+from metadata.generated.schema.entity.services.connections.pipeline.nifi.clientCertificateAuth import (
+    NifiClientCertificateAuth,
+)
+from metadata.ingestion.ometa.client import REST, ClientConfig, HTTPError
 from metadata.utils.constants import AUTHORIZATION_HEADER, NO_ACCESS_TOKEN
 from metadata.utils.helpers import clean_uri
 from metadata.utils.logger import ingestion_logger
@@ -36,13 +39,11 @@ class NifiClient:
     """
     Wrapper on top of Nifi REST API
     """
+
     client: REST
 
     # pylint: disable=too-many-arguments
-    def __init__(
-            self,
-            connection: NifiConnection
-    ):
+    def __init__(self, connection: NifiConnection):
         self.connection = connection
         self._token, self._resources, self.data = None, None, None
         self.api_endpoint = clean_uri(self.connection.hostPort) + NIFI_API_BASE_ENDPOINT
@@ -58,7 +59,9 @@ class NifiClient:
             self.verify = self.connection.nifiConfig.verifySSL
             self.data = {
                 "username": self.connection.nifiConfig.username,
-                "password": self.connection.nifiConfig.password.get_secret_value() if self.connection.nifiConfig.password else None
+                "password": self.connection.nifiConfig.password.get_secret_value()
+                if self.connection.nifiConfig.password
+                else None,
             }
             client_config.verify = self.connection.nifiConfig.verifySSL
             client_config.auth_header = AUTHORIZATION_HEADER
