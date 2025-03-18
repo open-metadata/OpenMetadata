@@ -528,7 +528,8 @@ public class OpenSearchClient implements SearchClient {
           client.search(
               new os.org.opensearch.action.search.SearchRequest(request.getIndex())
                   .source(searchSourceBuilder),
-      if (!request.getIsHierarchy()) {
+              RequestOptions.DEFAULT);
+      if (Boolean.FALSE.equals(request.getIsHierarchy())) {
         return Response.status(OK).entity(searchResponse.toString()).build();
       } else {
         List<?> response = buildSearchHierarchy(request, searchResponse);

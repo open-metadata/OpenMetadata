@@ -45,9 +45,8 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.schema.search.SearchRequest;
 import org.openmetadata.schema.search.PreviewSearchRequest;
-import org.openmetadata.schema.system.EventPublisherJob;
+import org.openmetadata.schema.search.SearchRequest;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.Collection;
@@ -244,20 +243,19 @@ public class SearchResource {
     SubjectContext subjectContext = getSubjectContext(securityContext);
 
     SearchRequest searchRequest =
-        new SearchRequest.ElasticSearchRequestBuilder(
-                previewRequest.getQuery(),
-                previewRequest.getSize(),
-                Entity.getSearchRepository().getIndexOrAliasName(previewRequest.getIndex()))
-            .from(previewRequest.getFrom())
-            .queryFilter(previewRequest.getQueryFilter())
-            .postFilter(previewRequest.getPostFilter())
-            .fetchSource(previewRequest.getFetchSource())
-            .trackTotalHits(previewRequest.getTrackTotalHits())
-            .sortFieldParam(previewRequest.getSortField())
-            .sortOrder(previewRequest.getSortOrder().value())
-            .includeSourceFields(previewRequest.getIncludeSourceFields())
-            .explain(previewRequest.getExplain())
-            .build();
+        new SearchRequest()
+            .withQuery(previewRequest.getQuery())
+            .withSize(previewRequest.getSize())
+            .withIndex(Entity.getSearchRepository().getIndexOrAliasName(previewRequest.getIndex()))
+            .withFrom(previewRequest.getFrom())
+            .withQueryFilter(previewRequest.getQueryFilter())
+            .withPostFilter(previewRequest.getPostFilter())
+            .withFetchSource(previewRequest.getFetchSource())
+            .withTrackTotalHits(previewRequest.getTrackTotalHits())
+            .withSortFieldParam(previewRequest.getSortField())
+            .withSortOrder(previewRequest.getSortOrder().value())
+            .withIncludeSourceFields(previewRequest.getIncludeSourceFields())
+            .withExplain(previewRequest.getExplain());
 
     return searchRepository.previewSearch(
         searchRequest, subjectContext, previewRequest.getSearchSettings());
@@ -297,10 +295,11 @@ public class SearchResource {
     SubjectContext subjectContext = getSubjectContext(securityContext);
 
     SearchRequest request =
-        new SearchRequest.ElasticSearchRequestBuilder(
-                nlqQuery, size, Entity.getSearchRepository().getIndexOrAliasName(index))
-            .from(from)
-            .build();
+        new SearchRequest()
+            .withQuery(nlqQuery)
+            .withSize(size)
+            .withIndex(Entity.getSearchRepository().getIndexOrAliasName(index))
+            .withFrom(from);
 
     return searchRepository.searchWithNLQ(request, subjectContext);
   }
