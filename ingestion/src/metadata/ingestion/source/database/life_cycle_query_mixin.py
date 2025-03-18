@@ -99,19 +99,21 @@ class LifeCycleQueryMixin:
         Get the life cycle data
         """
         try:
-            life_cycle_data = self.life_cycle_query_dict(query=query).get(entity_name)            
+            life_cycle_data = self.life_cycle_query_dict(query=query).get(entity_name)
             if life_cycle_data:
                 if life_cycle_data.created_at:
-                    timestamp_value = datetime_to_timestamp(life_cycle_data.created_at, milliseconds=True)
+                    timestamp_value = datetime_to_timestamp(
+                        life_cycle_data.created_at, milliseconds=True
+                    )
                 else:
-                    timestamp_value = datetime_to_timestamp(datetime.min, milliseconds=True)  # Using minimum date
+                    timestamp_value = datetime_to_timestamp(
+                        datetime.min, milliseconds=True
+                    )  # Using minimum date
 
                 life_cycle = LifeCycle(
-                    created=AccessDetails(
-                        timestamp=Timestamp(timestamp_value)
-                    )
+                    created=AccessDetails(timestamp=Timestamp(timestamp_value))
                 )
-            
+
                 yield Either(
                     right=OMetaLifeCycleData(
                         entity=entity, entity_fqn=entity_fqn, life_cycle=life_cycle
