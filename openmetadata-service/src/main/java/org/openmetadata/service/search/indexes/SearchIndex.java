@@ -92,7 +92,6 @@ public interface SearchIndex {
 
   default Map<String, Object> getCommonAttributesMap(EntityInterface entity, String entityType) {
     Map<String, Object> map = new HashMap<>();
-    List<SearchSuggest> suggest = getSuggest();
     map.put(
         "displayName",
         entity.getDisplayName() != null ? entity.getDisplayName() : entity.getName());
@@ -106,12 +105,7 @@ public interface SearchIndex {
             ? 0
             : entity.getVotes().getUpVotes() - entity.getVotes().getDownVotes());
     map.put("descriptionStatus", getDescriptionStatus(entity));
-    map.put("suggest", suggest);
-    map.put(
-        "fqnParts",
-        getFQNParts(
-            entity.getFullyQualifiedName(),
-            suggest.stream().map(SearchSuggest::getInput).toList()));
+    map.put("fqnParts", getFQNParts(entity.getFullyQualifiedName()));
     map.put("deleted", entity.getDeleted() != null && entity.getDeleted());
 
     Optional.ofNullable(entity.getCertification())
@@ -119,7 +113,7 @@ public interface SearchIndex {
     return map;
   }
 
-  default Set<String> getFQNParts(String fqn, List<String> fqnSplits) {
+  default Set<String> getFQNParts(String fqn) {
     Set<String> fqnParts = new HashSet<>();
     fqnParts.add(fqn);
     String parent = FullyQualifiedName.getParentFQN(fqn);
@@ -127,7 +121,6 @@ public interface SearchIndex {
       fqnParts.add(parent);
       parent = FullyQualifiedName.getParentFQN(parent);
     }
-    fqnParts.addAll(fqnSplits);
     return fqnParts;
   }
 

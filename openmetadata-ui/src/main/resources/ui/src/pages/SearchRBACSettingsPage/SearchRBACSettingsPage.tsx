@@ -122,7 +122,7 @@ const SearchRBACSettingsPage = () => {
             </Tooltip>
           </Typography.Text>
           <Switch
-            checked={searchConfig?.enableAccessControl}
+            checked={searchConfig?.globalSettings?.enableAccessControl}
             className="m-l-xlg"
             disabled={isUpdating}
             onChange={handleUpdateClick}

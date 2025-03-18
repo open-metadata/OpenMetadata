@@ -14,6 +14,7 @@
 import { AxiosResponse } from 'axios';
 import { isArray, isNil } from 'lodash';
 import { SearchIndex } from '../enums/search.enum';
+import { PreviewSearchRequest } from '../generated/api/search/previewSearchRequest';
 import {
   Aggregations,
   KeysOfUnion,
@@ -232,4 +233,13 @@ export const searchQuery = async <
   const res = await rawSearchQuery(req);
 
   return formatSearchQueryResponse(res.data);
+};
+
+export const searchPreview = async (payload: PreviewSearchRequest) => {
+  const response = await APIClient.post<SearchResponse<SearchIndex>>(
+    '/search/preview',
+    payload
+  );
+
+  return response.data;
 };

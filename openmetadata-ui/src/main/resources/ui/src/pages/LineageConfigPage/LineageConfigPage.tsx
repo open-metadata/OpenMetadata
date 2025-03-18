@@ -50,7 +50,7 @@ const LineageConfigPage = () => {
   const [isUpdating, setIsUpdating] = useState(false);
   const [form] = Form.useForm();
   const history = useHistory();
-  const { setAppPreferences } = useApplicationStore();
+  const { setAppPreferences, appPreferences } = useApplicationStore();
   const breadcrumbs: TitleBreadcrumbProps['titleLinks'] = useMemo(
     () =>
       getSettingPageEntityBreadCrumb(
@@ -101,7 +101,10 @@ const LineageConfigPage = () => {
       setLineageConfig(lineageConfig);
 
       // Update lineage config in store
-      setAppPreferences({ lineageConfig });
+      setAppPreferences({
+        ...appPreferences,
+        lineageConfig,
+      });
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
