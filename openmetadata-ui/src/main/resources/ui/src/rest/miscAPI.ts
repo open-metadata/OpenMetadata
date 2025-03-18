@@ -15,6 +15,7 @@ import { AxiosResponse } from 'axios';
 import { Edge } from '../components/Entity/EntityLineage/EntityLineage.interface';
 import { ExploreSearchIndex } from '../components/Explore/ExplorePage.interface';
 import { PAGE_SIZE } from '../constants/constants';
+import { AsyncDeleteJob } from '../context/AsyncDeleteProvider/AsyncDeleteProvider.interface';
 import { SearchIndex } from '../enums/search.enum';
 import { AuthenticationConfiguration } from '../generated/configuration/authenticationConfiguration';
 import { AuthorizerConfiguration } from '../generated/configuration/authorizerConfiguration';
@@ -129,6 +130,27 @@ export const deleteEntity = async (
   return APIClient.delete<{ version?: number }>(`/${entityType}/${entityId}`, {
     params,
   });
+};
+
+export const deleteAsyncEntity = async (
+  entityType: string,
+  entityId: string,
+  isRecursive: boolean,
+  isHardDelete = true
+) => {
+  const params = {
+    hardDelete: isHardDelete,
+    recursive: isRecursive,
+  };
+
+  const response = await APIClient.delete<AsyncDeleteJob>(
+    `/${entityType}/async/${entityId}`,
+    {
+      params,
+    }
+  );
+
+  return response.data;
 };
 
 /**

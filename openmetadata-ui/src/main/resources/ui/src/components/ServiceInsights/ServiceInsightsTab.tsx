@@ -13,20 +13,18 @@
 
 import { Col, Row } from 'antd';
 import { AxiosError } from 'axios';
-import { isUndefined, last, round } from 'lodash';
+import { isUndefined, toLower } from 'lodash';
 import { ServiceTypes } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import {
-  PLATFORM_INSIGHTS_CHART,
-  SERVICE_INSIGHTS_CHART,
-} from '../../constants/ServiceInsightsTab.constants';
+import { PLATFORM_INSIGHTS_CHART } from '../../constants/ServiceInsightsTab.constants';
 import { SystemChartType } from '../../enums/DataInsight.enum';
 import { getMultiChartsPreviewByName } from '../../rest/DataInsightAPI';
 import {
-  getCurrentMillis,
-  getEpochMillisForPastDays,
+  getCurrentDayStartGMTinMillis,
+  getDayAgoStartGMTinMillis,
 } from '../../utils/date-time/DateTimeUtils';
+import { getPlatformInsightsChartDataFormattingMethod } from '../../utils/ServiceInsightsTabUtils';
 import serviceUtilClassBase from '../../utils/ServiceUtilClassBase';
 import { showErrorToast } from '../../utils/ToastUtils';
 import {
@@ -50,51 +48,44 @@ const ServiceInsightsTab = ({ serviceDetails }: ServiceInsightsTabProps) => {
 
   const serviceName = serviceDetails.name;
 
+  const widgets = serviceUtilClassBase.getInsightsTabWidgets(serviceCategory);
+
   const fetchChartsData = async () => {
     try {
       setIsLoading(true);
-      const currentTimestampInMs = getCurrentMillis();
-      const sevenDaysAgoTimestampInMs = getEpochMillisForPastDays(7);
+      const currentTimestampInMs = getCurrentDayStartGMTinMillis();
+      const sevenDaysAgoTimestampInMs = getDayAgoStartGMTinMillis(7);
 
-      const chartsData = await getMultiChartsPreviewByName(
-        SERVICE_INSIGHTS_CHART,
-        {
-          start: sevenDaysAgoTimestampInMs,
-          end: currentTimestampInMs,
-          filter: `{"query":{"match":{"service.name.keyword":"${serviceName}"}}}`,
-        }
-      );
+      const chartsList = [
+        ...PLATFORM_INSIGHTS_CHART,
+        ...(widgets.PIIDistributionWidget
+          ? [SystemChartType.PIIDistribution]
+          : []),
+        ...(widgets.TierDistributionWidget
+          ? [SystemChartType.TierDistribution]
+          : []),
+      ];
 
-      const platformInsightsChart = PLATFORM_INSIGHTS_CHART.map((chartType) => {
-        const summaryChartData = chartsData[chartType];
-
-        const data = summaryChartData.results;
-
-        const firstDayValue = data.length > 1 ? data[0]?.count : 0;
-        const lastDayValue = data[data.length - 1]?.count;
-
-        const percentageChange =
-          ((lastDayValue - firstDayValue) /
-            (firstDayValue === 0 ? lastDayValue : firstDayValue)) *
-          100;
-
-        const isIncreased = lastDayValue >= firstDayValue;
-
-        return {
-          chartType,
-          data,
-          isIncreased,
-          percentageChange: isNaN(percentageChange)
-            ? 0
-            : round(Math.abs(percentageChange), 2),
-          currentCount: round(last(summaryChartData.results)?.count ?? 0, 2),
-        };
+      const chartsData = await getMultiChartsPreviewByName(chartsList, {
+        start: sevenDaysAgoTimestampInMs,
+        end: currentTimestampInMs,
+        filter: `{"query":{"match":{"service.name.keyword":"${serviceName}"}}}`,
       });
 
-      const piiDistributionChart =
-        chartsData[SystemChartType.PIIDistribution].results;
-      const tierDistributionChart =
-        chartsData[SystemChartType.TierDistribution].results;
+      const platformInsightsChart = PLATFORM_INSIGHTS_CHART.map(
+        getPlatformInsightsChartDataFormattingMethod(
+          chartsData,
+          sevenDaysAgoTimestampInMs,
+          currentTimestampInMs
+        )
+      );
+
+      const piiDistributionChart = chartsData[
+        SystemChartType.PIIDistribution
+      ]?.results.filter((item) => item.term.includes(toLower(item.group)));
+      const tierDistributionChart = chartsData[
+        SystemChartType.TierDistribution
+      ]?.results.filter((item) => item.term.includes(toLower(item.group)));
 
       setChartsResults({
         platformInsightsChart,
@@ -111,8 +102,6 @@ const ServiceInsightsTab = ({ serviceDetails }: ServiceInsightsTabProps) => {
   useEffect(() => {
     fetchChartsData();
   }, []);
-
-  const widgets = serviceUtilClassBase.getInsightsTabWidgets(serviceCategory);
 
   const arrayOfWidgets = [
     { Widget: widgets.PlatformInsightsWidget, name: 'PlatformInsightsWidget' },

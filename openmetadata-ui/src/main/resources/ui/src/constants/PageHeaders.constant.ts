@@ -211,6 +211,10 @@ export const PAGE_HEADERS = {
     header: i18n.t('label.search'),
     subHeader: i18n.t('message.page-sub-header-for-search-setting'),
   },
+  SEARCH_SETTINGS: {
+    header: i18n.t('label.search'),
+    subHeader: i18n.t('message.page-sub-header-for-search-setting'),
+  },
   LINEAGE_CONFIG: {
     header: i18n.t('label.lineage-config'),
     subHeader: i18n.t('message.page-sub-header-for-lineage-config-setting'),

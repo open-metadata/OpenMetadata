@@ -375,20 +375,35 @@ class EntityUtilClassBase {
   public getManageExtraOptions(
     _entityType: EntityType,
     _fqn: string,
-    _permission: OperationPermission
+    _permission: OperationPermission,
+    _deleted: boolean
   ): ItemType[] {
     // We are encoding here since we are getting the decoded fqn from the OSS code
     const encodedFqn = getEncodedFqn(_fqn);
     switch (_entityType) {
       case EntityType.TABLE:
-        return [...ExtraTableDropdownOptions(encodedFqn, _permission)];
+        return [
+          ...ExtraTableDropdownOptions(encodedFqn, _permission, _deleted),
+        ];
       case EntityType.DATABASE:
-        return [...ExtraDatabaseDropdownOptions(encodedFqn, _permission)];
+        return [
+          ...ExtraDatabaseDropdownOptions(encodedFqn, _permission, _deleted),
+        ];
       case EntityType.DATABASE_SCHEMA:
-        return [...ExtraDatabaseSchemaDropdownOptions(encodedFqn, _permission)];
+        return [
+          ...ExtraDatabaseSchemaDropdownOptions(
+            encodedFqn,
+            _permission,
+            _deleted
+          ),
+        ];
       case EntityType.DATABASE_SERVICE:
         return [
-          ...ExtraDatabaseServiceDropdownOptions(encodedFqn, _permission),
+          ...ExtraDatabaseServiceDropdownOptions(
+            encodedFqn,
+            _permission,
+            _deleted
+          ),
         ];
       default:
         return [];

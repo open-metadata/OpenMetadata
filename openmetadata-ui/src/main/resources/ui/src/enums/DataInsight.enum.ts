@@ -33,4 +33,8 @@ export enum SystemChartType {
   OwnersCoverage = 'assets_with_owners',
   PIIDistribution = 'assets_with_pii_bar',
   TierDistribution = 'assets_with_tier_bar',
+  DescriptionSourceBreakdown = 'description_source_breakdown',
+  TagSourceBreakdown = 'tag_source_breakdown',
+  TierSourceBreakdown = 'tier_source_breakdown',
+  DataQualityTestBreakdown = 'data_quality_test_breakdown',
 }

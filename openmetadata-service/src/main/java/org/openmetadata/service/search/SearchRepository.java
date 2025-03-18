@@ -70,11 +70,13 @@ import org.openmetadata.schema.EntityTimeSeriesInterface;
 import org.openmetadata.schema.analytics.ReportData;
 import org.openmetadata.schema.api.lineage.SearchLineageRequest;
 import org.openmetadata.schema.api.lineage.SearchLineageResult;
+import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.QueryCostSearchResult;
 import org.openmetadata.schema.search.SearchRequest;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
+import org.openmetadata.schema.service.configuration.elasticsearch.NaturalLanguageSearchConfiguration;
 import org.openmetadata.schema.tests.DataQualityReport;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.type.ChangeDescription;
@@ -88,6 +90,8 @@ import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.search.elasticsearch.ElasticSearchClient;
 import org.openmetadata.service.search.indexes.SearchIndex;
 import org.openmetadata.service.search.models.IndexMapping;
+import org.openmetadata.service.search.nlq.NLQService;
+import org.openmetadata.service.search.nlq.NLQServiceFactory;
 import org.openmetadata.service.search.opensearch.OpenSearchClient;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -128,6 +132,8 @@ public class SearchRepository {
           AGGREGATED_COST_ANALYSIS_REPORT_DATA);
 
   public static final String ELASTIC_SEARCH_EXTENSION = "service.eventPublisher";
+
+  private NLQService nlqService;
 
   public SearchRepository(ElasticSearchConfiguration config) {
     elasticSearchConfiguration = config;
@@ -183,11 +189,15 @@ public class SearchRepository {
 
   public SearchClient buildSearchClient(ElasticSearchConfiguration config) {
     SearchClient sc;
+
+    // Initialize NLQ service first
+    initializeNLQService(config);
+
     if (config != null
         && config.getSearchType() == ElasticSearchConfiguration.SearchType.OPENSEARCH) {
-      sc = new OpenSearchClient(config);
+      sc = new OpenSearchClient(config, nlqService);
     } else {
-      sc = new ElasticSearchClient(config);
+      sc = new ElasticSearchClient(config, nlqService);
     }
     return sc;
   }
@@ -1009,6 +1019,17 @@ public class SearchRepository {
     return searchClient.search(request, subjectContext);
   }
 
+  public Response previewSearch(
+      SearchRequest request, SubjectContext subjectContext, SearchSettings searchSettings)
+      throws IOException {
+    return searchClient.previewSearch(request, subjectContext, searchSettings);
+  }
+
+  public Response searchWithNLQ(SearchRequest request, SubjectContext subjectContext)
+      throws IOException {
+    return searchClient.searchWithNLQ(request, subjectContext);
+  }
+
   public Response getDocument(String indexName, UUID entityId) throws IOException {
     return searchClient.getDocByID(indexName, entityId.toString());
   }
@@ -1170,7 +1191,7 @@ public class SearchRepository {
 
       SearchRequest searchRequest =
           new SearchRequest()
-              .withQuery("*")
+              .withQuery("")
               .withSize(size)
               .withIndex(Entity.getSearchRepository().getIndexOrAliasName(indexName))
               .withFrom(0)
@@ -1225,5 +1246,20 @@ public class SearchRepository {
 
   public QueryCostSearchResult getQueryCostRecords(String serviceName) throws IOException {
     return searchClient.getQueryCostRecords(serviceName);
+  }
+
+  public void initializeNLQService(ElasticSearchConfiguration config) {
+    try {
+      IndexMapping.initializeSchemaCache();
+      NaturalLanguageSearchConfiguration nlqConfig = config.getNaturalLanguageSearch();
+      if (nlqConfig != null && Boolean.TRUE.equals(nlqConfig.getEnabled())) {
+        nlqService = NLQServiceFactory.createNLQService(nlqConfig);
+        LOG.info("Initialized NLQ service with provider: {}", nlqConfig.getProviderClass());
+      } else {
+        LOG.info("Natural language search is not enabled");
+      }
+    } catch (Exception e) {
+      LOG.error("Failed to initialize NLQ service", e);
+    }
   }
 }

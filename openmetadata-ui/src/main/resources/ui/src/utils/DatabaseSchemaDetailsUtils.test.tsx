@@ -43,7 +43,8 @@ describe('ExtraDatabaseSchemaDropdownOptions', () => {
 
     const result = ExtraDatabaseSchemaDropdownOptions(
       'databaseSchemaFqn',
-      permission
+      permission,
+      false
     );
 
     expect(result).toHaveLength(1);
@@ -58,7 +59,8 @@ describe('ExtraDatabaseSchemaDropdownOptions', () => {
 
     const result = ExtraDatabaseSchemaDropdownOptions(
       'databaseSchemaFqn',
-      permission
+      permission,
+      false
     );
 
     expect(result).toHaveLength(1);
@@ -73,7 +75,8 @@ describe('ExtraDatabaseSchemaDropdownOptions', () => {
 
     const result = ExtraDatabaseSchemaDropdownOptions(
       'databaseSchemaFqn',
-      permission
+      permission,
+      false
     );
 
     expect(result).toHaveLength(2);
@@ -88,7 +91,23 @@ describe('ExtraDatabaseSchemaDropdownOptions', () => {
     } as OperationPermission;
     const result = ExtraDatabaseSchemaDropdownOptions(
       'databaseSchemaFqn',
-      permission
+      permission,
+      false
+    );
+
+    expect(result).toHaveLength(0);
+    expect(result).toStrictEqual([]);
+  });
+
+  it('should not render any buttons when the entity is deleted', () => {
+    const permission = {
+      ViewAll: true,
+      EditAll: true,
+    } as OperationPermission;
+    const result = ExtraDatabaseSchemaDropdownOptions(
+      'databaseSchemaFqn',
+      permission,
+      true
     );
 
     expect(result).toHaveLength(0);

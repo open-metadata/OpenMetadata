@@ -273,7 +273,8 @@ public class MigrationUtil {
         new LineChart()
             .withMetrics(List.of(new LineChartMetric().withFormula("count(k='id.keyword')")))
             .withxAxisField("tags.tagFQN")
-            .withIncludeXAxisFiled("pii.*"),
+            .withIncludeXAxisFiled("pii.*")
+            .withGroupBy("tags.name.keyword"),
         DataInsightCustomChart.ChartType.BAR_CHART);
 
     createChart(
@@ -281,7 +282,8 @@ public class MigrationUtil {
         new LineChart()
             .withMetrics(List.of(new LineChartMetric().withFormula("count(k='id.keyword')")))
             .withxAxisField("tags.tagFQN")
-            .withIncludeXAxisFiled("tier.*"),
+            .withIncludeXAxisFiled("tier.*")
+            .withGroupBy("tags.name.keyword"),
         DataInsightCustomChart.ChartType.BAR_CHART);
 
     createChart(
@@ -290,13 +292,17 @@ public class MigrationUtil {
             .withMetrics(
                 List.of(
                     new LineChartMetric()
-                        .withFormula("count(k='id.keyword',q='hasDescription: 1')"))));
+                        .withFormula(
+                            "(count(k='id.keyword',q='hasDescription: 1')/count(k='id.keyword'))*100"))));
 
     createChart(
         "assets_with_owners",
         new LineChart()
             .withMetrics(
-                List.of(new LineChartMetric().withFormula("count(k='id.keyword',q='owners: *')"))));
+                List.of(
+                    new LineChartMetric()
+                        .withFormula(
+                            "(count(k='id.keyword',q='owners.name.keyword: *')/count(k='id.keyword'))*100"))));
 
     createChart(
         "assets_with_pii",
@@ -305,14 +311,17 @@ public class MigrationUtil {
                 List.of(
                     new LineChartMetric()
                         .withFormula(
-                            "count(q='tags.tagFQN: pii.sensitive OR tags.tagFQN:"
-                                + " pii.nonsensitive OR tags.tagFQN: pii.none')"))));
+                            "(count(q='tags.tagFQN: pii.sensitive OR tags.tagFQN:"
+                                + " pii.nonsensitive OR tags.tagFQN: pii.none')/count(k='id.keyword'))*100"))));
 
     createChart(
         "assets_with_tier",
         new LineChart()
             .withMetrics(
-                List.of(new LineChartMetric().withFormula("count(q='tags.tagFQN: tier.*')"))));
+                List.of(
+                    new LineChartMetric()
+                        .withFormula(
+                            "(count(q='tags.tagFQN: tier.*')/count(k='id.keyword'))*100"))));
 
     createChart(
         "description_source_breakdown",

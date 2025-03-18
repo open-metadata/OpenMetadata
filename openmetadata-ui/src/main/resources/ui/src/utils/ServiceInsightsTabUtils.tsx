@@ -10,9 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { first, round, sortBy } from 'lodash';
 import { ServiceTypes } from 'Models';
 import { SystemChartType } from '../enums/DataInsight.enum';
 import { EntityType } from '../enums/entity.enum';
+import { DataInsightCustomChartResult } from '../rest/DataInsightAPI';
 import i18n from '../utils/i18next/LocalUtil';
 
 const { t } = i18n;
@@ -71,3 +73,45 @@ export const getTitleByChartType = (chartType: SystemChartType) => {
       return '';
   }
 };
+
+export const getPlatformInsightsChartDataFormattingMethod =
+  (
+    chartsData: Record<SystemChartType, DataInsightCustomChartResult>,
+    startTime: number,
+    endTime: number
+  ) =>
+  (chartType: SystemChartType) => {
+    const summaryChartData = chartsData[chartType];
+
+    const data = sortBy(summaryChartData.results, 'day');
+
+    // This is the data for the day 7 days ago
+    const sevenDaysAgoData = data.find((item) => item.day === startTime)?.count;
+    // This is the data for the current day
+    const currentData = data.find((item) => item.day === endTime)?.count;
+    // This is the data for the earliest day
+    // separating this out because sometimes the data is not available for all the days
+    const earliestDayData = first(data)?.count;
+
+    // This is the percentage change for the last 7 days
+    // This is undefined if the data is not available for all the days
+    const percentageChangeInSevenDays =
+      currentData && sevenDaysAgoData
+        ? round(Math.abs(currentData - sevenDaysAgoData), 2)
+        : undefined;
+
+    // This is true if the current data is greater than the earliest day data
+    // This is false if the data is not available for more than 1 day
+    const isIncreased =
+      currentData && data.length > 1
+        ? currentData > (earliestDayData ?? 0)
+        : false;
+
+    return {
+      chartType,
+      data,
+      isIncreased,
+      percentageChange: percentageChangeInSevenDays,
+      currentPercentage: round(currentData ?? 0, 2),
+    };
+  };
