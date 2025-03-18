@@ -65,15 +65,10 @@ const FeedPanelBodyV1: FC<FeedPanelBodyPropV1> = ({
     [feed]
   );
 
-  return (
-    <Button
-      block
-      className={classNames('activity-feed-card-container ', className)}
-      data-testid="message-container"
-      type="text"
-      onClick={handleFeedClick}>
-      {feed.type === ThreadType.Task ? (
-        !isForFeedTab ? (
+  const renderFeedContent = () => {
+    if (feed.type === ThreadType.Task) {
+      if (!isForFeedTab) {
+        return (
           <TaskFeedCard
             feed={feed}
             hidePopover={hidePopover}
@@ -84,25 +79,38 @@ const FeedPanelBodyV1: FC<FeedPanelBodyPropV1> = ({
             post={mainFeed}
             showThread={showThread}
           />
-        ) : (
-          <TaskTabNew
-            isOpenInDrawer
-            entityType={
-              isUserEntity ? entityTypeTask : getEntityType(feed.about)
-            }
-            isForFeedTab={isForFeedTab}
-            taskThread={feed}
-          />
-        )
-      ) : (
-        <ActivityFeedCardNew
+        );
+      }
+
+      return (
+        <TaskTabNew
           isOpenInDrawer
-          feed={feed}
-          isActive={isActive}
-          post={mainFeed}
-          showThread={showThread}
+          entityType={isUserEntity ? entityTypeTask : getEntityType(feed.about)}
+          isForFeedTab={isForFeedTab}
+          taskThread={feed}
         />
-      )}
+      );
+    }
+
+    return (
+      <ActivityFeedCardNew
+        isOpenInDrawer
+        feed={feed}
+        isActive={isActive}
+        post={mainFeed}
+        showThread={showThread}
+      />
+    );
+  };
+
+  return (
+    <Button
+      block
+      className={classNames('activity-feed-card-container ', className)}
+      data-testid="message-container"
+      type="text"
+      onClick={handleFeedClick}>
+      {renderFeedContent()}
     </Button>
   );
 };

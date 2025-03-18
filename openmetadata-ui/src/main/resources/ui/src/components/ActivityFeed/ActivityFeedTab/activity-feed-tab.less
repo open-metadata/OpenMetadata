@@ -480,6 +480,7 @@
     }
   }
 }
+
 .view-more-less-button {
   color: @blue-9;
   font-size: 14px;
@@ -487,6 +488,33 @@
   font-family: 'Inter', sans-serif;
   font-weight: 400;
   line-height: 20px;
+  border: none;
+  padding: 0;
+  background: none;
+  box-shadow: none;
+
+  &.ant-btn {
+    color: @blue-9;
+    border: none;
+    background: none;
+    box-shadow: none;
+
+    &:hover,
+    &:focus,
+    &:active {
+      color: @blue-9;
+      border: none;
+      background: none;
+      box-shadow: none;
+      outline: none;
+    }
+
+    &::before,
+    &::after {
+      display: none;
+      content: none;
+    }
+  }
 }
 
 .task-filter-container {

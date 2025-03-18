@@ -79,6 +79,14 @@ const RichTextEditorPreviewerV1: FC<PreviewerProp> = ({
     };
   }, [content, readMore]);
 
+  const getMaxHeight = () => {
+    if (!isContentLoaded) {
+      return '3em';
+    }
+
+    return readMore ? 'none' : '3em';
+  };
+
   if (isDescriptionContentEmpty(markdown)) {
     return <span className="text-grey-muted">{t('label.no-description')}</span>;
   }
@@ -99,7 +107,7 @@ const RichTextEditorPreviewerV1: FC<PreviewerProp> = ({
           WebkitBoxOrient: 'vertical',
           WebkitLineClamp: readMore ? 'unset' : 2,
           overflow: 'hidden',
-          maxHeight: !isContentLoaded ? '3em' : readMore ? 'none' : '3em',
+          maxHeight: getMaxHeight(),
           transition: 'max-height 0.3s ease',
         }}>
         <BlockEditor autoFocus={false} content={content} editable={false} />

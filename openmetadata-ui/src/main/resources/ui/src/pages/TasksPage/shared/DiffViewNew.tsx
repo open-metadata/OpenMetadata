@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Button } from 'antd';
 import classNames from 'classnames';
 import { Change } from 'diff';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
@@ -65,12 +66,21 @@ export const DiffViewNew = ({
     return () => clearTimeout(timer);
   }, [diffArr]);
 
+  const getDiffKey = (diff: Change, index: number) => {
+    if (diff.added) {
+      return `diff-${index}-added`;
+    }
+    if (diff.removed) {
+      return `diff-${index}-removed`;
+    }
+
+    return `diff-${index}-normal`;
+  };
+
   const elements = useMemo(
     () =>
       diffArr.map((diff, index) => {
-        const key = `diff-${index}-${
-          diff.added ? 'added' : diff.removed ? 'removed' : 'normal'
-        }`;
+        const key = getDiffKey(diff, index);
 
         if (diff.added) {
           return (
@@ -114,6 +124,16 @@ export const DiffViewNew = ({
     [diffArr]
   );
 
+  const getContentClassName = () => {
+    if (expanded) {
+      return '';
+    }
+
+    return showDescTitle
+      ? 'clamp-text-3 overflow-hidden'
+      : 'clamp-text-2 overflow-hidden';
+  };
+
   return (
     <div
       className={classNames('w-full overflow-y-auto p-md border-radius-xs', {
@@ -152,25 +172,18 @@ export const DiffViewNew = ({
         {diffArr.length ? (
           <>
             <div
-              className={classNames(
-                'relative',
-                expanded
-                  ? ''
-                  : showDescTitle
-                  ? 'clamp-text-3 overflow-hidden'
-                  : 'clamp-text-2  overflow-hidden'
-              )}
+              className={classNames('relative', getContentClassName())}
               ref={contentRef}>
               {elements}
             </div>
             {shouldShowViewMore && (
               <div className="mt-2">
-                <span
-                  className="cursor-pointer view-more-less-button"
+                <Button
+                  className="view-more-less-button cursor-pointer remove-button-default-styling"
                   data-testid="view-more-button"
                   onClick={() => setExpanded(!expanded)}>
                   {expanded ? t('label.view-less') : t('label.view-more')}
-                </span>
+                </Button>
               </div>
             )}
           </>
