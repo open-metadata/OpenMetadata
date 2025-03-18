@@ -461,6 +461,7 @@ export const ADVANCED_PROPERTIES = [
   'useStatistics',
   'confidence',
   'samplingMethodType',
+  'randomizedSample',
   'sampleDataCount',
   'threadCount',
   'timeoutSeconds',
