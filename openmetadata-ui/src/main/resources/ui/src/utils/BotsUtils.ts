@@ -12,7 +12,10 @@
  */
 
 import { JWTTokenExpiry } from '../generated/entity/teams/user';
-import { formatDateTimeLong } from './date-time/DateTimeUtils';
+import {
+  DATE_TIME_WEEKDAY_WITH_ORDINAL,
+  formatDateTimeLong,
+} from './date-time/DateTimeUtils';
 
 export const getJWTTokenExpiryOptions = () => {
   return Object.keys(JWTTokenExpiry).map((expiry) => {
@@ -38,7 +41,7 @@ export const getTokenExpiry = (expiry: number) => {
   const isTokenExpired = currentTimeStamp >= expiry;
 
   return {
-    tokenExpiryDate: formatDateTimeLong(expiry),
+    tokenExpiryDate: formatDateTimeLong(expiry, DATE_TIME_WEEKDAY_WITH_ORDINAL),
     isTokenExpired,
   };
 };
