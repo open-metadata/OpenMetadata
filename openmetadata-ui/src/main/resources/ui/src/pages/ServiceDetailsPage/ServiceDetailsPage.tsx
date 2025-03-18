@@ -239,7 +239,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
       return EntityTabs.AGENTS;
     }
 
-    return getCountLabel(serviceCategory).toLowerCase();
+    return EntityTabs.INSIGHTS;
   }, [tab, serviceCategory, isMetadataService]);
 
   const handleSearchChange = useCallback(

@@ -308,7 +308,6 @@ function IngestionListTable({
         dataIndex: 'name',
         key: 'name',
         fixed: 'left' as FixedType,
-        width: 250,
         render: customRenderNameField ?? renderNameField(searchText),
       },
       ...(showDescriptionCol
@@ -338,7 +337,7 @@ function IngestionListTable({
           title: t('label.type'),
           dataIndex: 'pipelineType',
           key: 'pipelineType',
-          width: 120,
+          width: 150,
           render: renderTypeField(searchText),
         },
       ]),
@@ -346,7 +345,7 @@ function IngestionListTable({
         title: t('label.count'),
         dataIndex: 'count',
         key: 'count',
-        width: 150,
+        width: 220,
         render: (_: string, record: IngestionPipeline) => {
           return (
             <IngestionStatusCount
@@ -360,7 +359,6 @@ function IngestionListTable({
         title: t('label.schedule'),
         dataIndex: 'schedule',
         key: 'schedule',
-        width: 150,
         render: renderScheduleField,
       },
       {
@@ -383,7 +381,7 @@ function IngestionListTable({
         title: t('label.status'),
         dataIndex: 'status',
         key: 'status',
-        width: 80,
+        width: 90,
         render: renderStatusField,
       },
       ...(enableActions
@@ -392,7 +390,7 @@ function IngestionListTable({
               title: t('label.action-plural'),
               dataIndex: 'actions',
               key: 'actions',
-              width: 180,
+              width: 220,
               fixed: 'right' as FixedType,
               render: renderActionsField,
             },
@@ -450,7 +448,7 @@ function IngestionListTable({
             }}
             pagination={false}
             rowKey="fullyQualifiedName"
-            scroll={{ x: 1500 }}
+            scroll={{ x: 1300 }}
             size="small"
             {...extraTableProps}
           />

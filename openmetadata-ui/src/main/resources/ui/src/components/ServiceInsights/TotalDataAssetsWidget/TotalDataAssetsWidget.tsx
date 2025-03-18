@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Card, Skeleton, Tooltip, Typography } from 'antd';
+import { Card, Skeleton, Typography } from 'antd';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -26,7 +26,10 @@ import { SearchIndex } from '../../../enums/search.enum';
 import { searchQuery } from '../../../rest/searchAPI';
 import { getEntityNameLabel } from '../../../utils/EntityUtils';
 import { getAssetsByServiceType } from '../../../utils/ServiceInsightsTabUtils';
-import { getServiceNameQueryFilter } from '../../../utils/ServiceUtils';
+import {
+  getReadableCountString,
+  getServiceNameQueryFilter,
+} from '../../../utils/ServiceUtils';
 import { getEntityIcon } from '../../../utils/TableUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { ServiceInsightWidgetCommonProps } from '../ServiceInsightsTab.interface';
@@ -41,10 +44,17 @@ function TotalDataAssetsWidget({
     tab: string;
   }>();
   const [loadingCount, setLoadingCount] = useState<number>(0);
+  const [hoveredSegment, setHoveredSegment] = useState<{
+    name: string;
+    value: number;
+  } | null>(null);
   const [entityCounts, setEntityCounts] =
     useState<
       Array<{ name: string; value: number; fill: string; icon: JSX.Element }>
     >();
+
+  const totalCount =
+    entityCounts?.reduce((sum, entity) => sum + entity.value, 0) ?? 0;
 
   const getDataAssetsCount = useCallback(async () => {
     try {
@@ -117,14 +127,14 @@ function TotalDataAssetsWidget({
                     <Typography.Text>{entity.name}</Typography.Text>
                   </div>
 
-                  <Typography.Text className="font-semibold">
-                    {entity.value}
+                  <Typography.Text className="font-bold">
+                    {getReadableCountString(entity.value)}
                   </Typography.Text>
                 </div>
               ))}
             </div>
-            <div className="h-full flex-center flex-half">
-              <ResponsiveContainer height="100%" width="100%">
+            <div className="chart-container">
+              <ResponsiveContainer height="100%" minHeight={275} width="100%">
                 <PieChart>
                   <Pie
                     cx="50%"
@@ -132,8 +142,8 @@ function TotalDataAssetsWidget({
                     data={[{ value: 1 }]}
                     dataKey="value"
                     fill={WHITE_SMOKE}
-                    innerRadius="75%"
-                    outerRadius="98%">
+                    innerRadius="74%"
+                    outerRadius="99%">
                     <Cell fill={WHITE_SMOKE} />
                   </Pie>
                   <Pie
@@ -141,14 +151,36 @@ function TotalDataAssetsWidget({
                     cy="50%"
                     data={entityCounts}
                     dataKey="value"
-                    innerRadius="80%"
+                    innerRadius="79%"
                     isAnimationActive={false}
                     nameKey="name"
-                    outerRadius="93%"
+                    outerRadius="94%"
+                    onMouseEnter={(_, index) => {
+                      if (entityCounts?.[index]) {
+                        setHoveredSegment({
+                          name: entityCounts[index].name,
+                          value: entityCounts[index].value,
+                        });
+                      }
+                    }}
+                    onMouseLeave={() => setHoveredSegment(null)}
                   />
-                  <Tooltip />
                 </PieChart>
               </ResponsiveContainer>
+              <div className="tooltip-container">
+                <Typography.Text strong className="text-md font-bold">
+                  {getReadableCountString(
+                    hoveredSegment ? hoveredSegment.value : totalCount
+                  )}
+                </Typography.Text>
+                <Typography.Text className="text-sm text-grey-muted">
+                  {hoveredSegment
+                    ? hoveredSegment.name
+                    : t('label.total-entity', {
+                        entity: t('label.asset-plural'),
+                      })}
+                </Typography.Text>
+              </div>
             </div>
           </div>
         )}

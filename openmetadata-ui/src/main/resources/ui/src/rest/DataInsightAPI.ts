@@ -17,7 +17,13 @@ import { ChartAggregateParam } from '../interface/data-insight.interface';
 import APIClient from './index';
 
 export interface DataInsightCustomChartResult {
-  results: Array<{ count: number; day: number; group: string }>;
+  results: Array<{
+    count: number;
+    day: number;
+    group: string;
+    term: string;
+    metric?: string;
+  }>;
 }
 
 export const getAggregateChartData = async (params: ChartAggregateParam) => {
