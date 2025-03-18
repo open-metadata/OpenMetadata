@@ -55,6 +55,8 @@ import {
 } from '../../constants/constants';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import { HELP_ITEMS_ENUM } from '../../constants/Navbar.constants';
+import { useAsyncDeleteProvider } from '../../context/AsyncDeleteProvider/AsyncDeleteProvider';
+import { AsyncDeleteWebsocketResponse } from '../../context/AsyncDeleteProvider/AsyncDeleteProvider.interface';
 import { useWebSocketConnector } from '../../context/WebSocketProvider/WebSocketProvider';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import { EntityReference } from '../../generated/entity/type';
@@ -119,6 +121,7 @@ const NavBar = ({
   handleClear,
 }: NavBarProps) => {
   const { onUpdateCSVExportJob } = useEntityExportModalProvider();
+  const { handleDeleteEntityWebsocketResponse } = useAsyncDeleteProvider();
   const { searchCriteria, updateSearchCriteria } = useApplicationStore();
   const searchContainerRef = useRef<HTMLDivElement>(null);
   const Logo = useMemo(() => brandClassBase.getMonogram().src, []);
@@ -405,14 +408,23 @@ const NavBar = ({
           );
         }
       });
+
+      socket.on(SOCKET_EVENTS.DELETE_ENTITY_CHANNEL, (deleteResponse) => {
+        if (deleteResponse) {
+          const deleteResponseData = JSON.parse(
+            deleteResponse
+          ) as AsyncDeleteWebsocketResponse;
+          handleDeleteEntityWebsocketResponse(deleteResponseData);
+        }
+      });
     }
 
     return () => {
       socket && socket.off(SOCKET_EVENTS.TASK_CHANNEL);
       socket && socket.off(SOCKET_EVENTS.MENTION_CHANNEL);
       socket && socket.off(SOCKET_EVENTS.CSV_EXPORT_CHANNEL);
-      socket && socket.off(SOCKET_EVENTS.CSV_EXPORT_CHANNEL);
       socket && socket.off(SOCKET_EVENTS.BACKGROUND_JOB_CHANNEL);
+      socket && socket.off(SOCKET_EVENTS.DELETE_ENTITY_CHANNEL);
     };
   }, [socket, onUpdateCSVExportJob]);
 
