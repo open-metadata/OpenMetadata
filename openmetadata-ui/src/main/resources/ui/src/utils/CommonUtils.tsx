@@ -37,7 +37,6 @@ import {
   RecentlyViewedData,
 } from 'Models';
 import React, { ReactNode } from 'react';
-import ReactDOM from 'react-dom';
 import { Trans } from 'react-i18next';
 import { reactLocalStorage } from 'reactjs-localstorage';
 import ErrorPlaceHolder from '../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -833,21 +832,4 @@ export const calculatePercentageFromValue = (
   percentageValue: number
 ) => {
   return (value * percentageValue) / 100;
-};
-
-/**
- * Check if the element is a valid React element
- * @param element - ReactNode
- * @returns boolean
- */
-export const checkIfElementIsJSX = (element: React.ReactNode): boolean => {
-  const root = document.createElement('div');
-
-  ReactDOM.render(element as React.ReactElement, root);
-
-  if (root.children.length > 0) {
-    return true;
-  }
-
-  return false;
 };

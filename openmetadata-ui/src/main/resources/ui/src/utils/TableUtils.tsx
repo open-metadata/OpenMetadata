@@ -168,7 +168,6 @@ import ConstraintIcon from '../pages/TableDetailsPageV1/TableConstraints/Constra
 import TableConstraints from '../pages/TableDetailsPageV1/TableConstraints/TableConstraints';
 import { exportTableDetailsInCSV } from '../rest/tableAPI';
 import {
-  checkIfElementIsJSX,
   getPartialNameFromTableFQN,
   getTableFQNFromColumnFQN,
 } from './CommonUtils';
@@ -1145,15 +1144,9 @@ export const getTableWidgetFromKey = (
   } else if (
     widgetConfig.i.startsWith(DetailPageWidgetKeys.FREQUENTLY_JOINED_TABLES)
   ) {
-    const frequentlyJoinedTables = <FrequentlyJoinedTables />;
-
-    return checkIfElementIsJSX(frequentlyJoinedTables)
-      ? frequentlyJoinedTables
-      : null;
+    return <FrequentlyJoinedTables />;
   } else if (widgetConfig.i.startsWith(DetailPageWidgetKeys.PARTITIONED_KEYS)) {
-    const partitionedKeys = <PartitionedKeys />;
-
-    return checkIfElementIsJSX(partitionedKeys) ? partitionedKeys : null;
+    return <PartitionedKeys />;
   } else {
     return (
       <CommonWidgets
